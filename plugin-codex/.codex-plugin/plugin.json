@@ -1,6 +1,6 @@
 {
   "name": "dmtool",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "Author, validate, and safely edit A12 Kernel document models — validation rules, computed fields, and model structure (fields, groups, type-defs, includes) — with the dmtool CLI. Bundles the native binary (downloaded on demand by the skill, the first time the agent needs it) + the authoring skill. Targets A12 Kernel 30.8.1 (A12 Tools 2025.06-ext5).",
   "author": { "name": "Martin Backschat" },
   "homepage": "https://github.com/mbackschat/a12-dmtool-releases",

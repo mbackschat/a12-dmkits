@@ -4,6 +4,20 @@ All notable changes to the **publicly released `dmtool` artifacts** — the nati
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/) plus **A12 Kernel compatibility metadata** (the kernel each release targets is recorded per entry, never folded into the version string).
 
+## [0.8.2] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+A platform-coverage patch release on the 0.8.x surface — no change to the model operations themselves.
+
+### Added
+
+- **Linux ARM64 native binary.** The public release now ships `dmtool-linux-arm64` alongside macOS ARM64, Linux x64, and Windows x64, so ARM Linux hosts can install through the agent plugin or download the raw binary with checksum coverage.
+- The public mirror now ships generated-repo agent guidance (`CLAUDE.md`, with `AGENTS.md` redirecting to it) that makes the release-only boundary explicit.
+
+### Fixed
+
+- Published releases are now treated as immutable by the release script: after a release goes live, adding or replacing assets requires a new patch release rather than mutating the existing tag.
+- Generated public mirror trees no longer carry local `.DS_Store` metadata files.
+
 ## [0.8.1] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
 A small maintenance + docs release on the 0.8.0 surface — no change to the model operations themselves.
