@@ -1,6 +1,6 @@
 name: build-native
 
-# Builds the dmtool native binaries (linux-x64, windows-x64) on the PUBLIC mirror's free Actions and
+# Builds the dmtool native binaries (linux-x64, linux-arm64, windows-x64) on the PUBLIC mirror's free Actions and
 # attaches them to a mirror Release. RELEASE-SPEC §4.
 #
 # This file is SINGLE-SOURCED in the private repo at .github/mirror-workflows/build-native.yml (inert
@@ -16,7 +16,7 @@ name: build-native
 # ONLY (workflow_dispatch) — NEVER pull_request — so a fork PR can never see the token.
 #
 # macOS arm64 is built + uploaded locally by the maintainer (native-image can't cross-compile, and macOS
-# CI bills 10×); this workflow covers linux + windows, then regenerates SHA256SUMS over ALL release assets.
+# CI bills 10×); this workflow covers Linux + Windows, then regenerates SHA256SUMS over ALL release assets.
 
 on:
   workflow_dispatch:
@@ -93,10 +93,17 @@ jobs:
             target: linux-x64
             binary: dmtool
             asset: dmtool-linux-x64
+            java_home_env: JAVA_HOME_21_X64
+          - os: ubuntu-24.04-arm
+            target: linux-arm64
+            binary: dmtool
+            asset: dmtool-linux-arm64
+            java_home_env: JAVA_HOME_21_ARM64
           - os: windows-latest
             target: windows-x64
             binary: dmtool.exe
             asset: dmtool-windows-x64.exe
+            java_home_env: JAVA_HOME_21_X64
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
@@ -115,8 +122,8 @@ jobs:
           path: ~/.m2/repository/com/mgmtp
 
       # The Gradle toolchain is JDK 21 (compileJava); native-image needs GraalVM 25 (toolchainDetection=false
-      # → resolved via GRAALVM_HOME). Provide BOTH: setup-java 21 first (exports JAVA_HOME_21_X64), then
-      # setup-graalvm 25 (becomes JAVA_HOME + GRAALVM_HOME). Gradle finds the 21 toolchain via fromEnv below.
+      # → resolved via GRAALVM_HOME). Provide BOTH: setup-java 21 first (exports the arch-specific JAVA_HOME_21_*),
+      # then setup-graalvm 25 (becomes JAVA_HOME + GRAALVM_HOME). Gradle finds the 21 toolchain via fromEnv below.
       - name: Set up JDK 21 (Gradle toolchain)
         uses: actions/setup-java@v5
         with:
@@ -137,25 +144,25 @@ jobs:
           GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
         run: |
           ./gradlew --no-daemon :cli:nativeCompile \
-            -Porg.gradle.java.installations.fromEnv=JAVA_HOME_21_X64
+            -Porg.gradle.java.installations.fromEnv=${{ matrix.java_home_env }}
           ls -la cli/build/native/nativeCompile/
 
-      # ---- Linux: the full native verification gate (byte-for-byte showboat, §5) ----
+      # ---- Linux (x64 + arm64): the full native verification gate (byte-for-byte showboat, §5) ----
       - name: Set up uv (for uvx showboat)
-        if: matrix.os == 'ubuntu-latest'
+        if: startsWith(matrix.target, 'linux-')
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
 
       - name: Native verification gate (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: startsWith(matrix.target, 'linux-')
         working-directory: a12-dmkits
         run: ./scripts/native-gate.sh
 
       # ---- Windows: a lighter smoke that still exercises the reflection metadata (the main porting risk),
       #      with CRLF normalization since showboat exact-match + bash heredocs don't port (§5). ----
       - name: Native smoke (Windows)
-        if: matrix.os == 'windows-latest'
+        if: matrix.target == 'windows-x64'
         working-directory: a12-dmkits
         shell: bash
         run: |
@@ -191,7 +198,7 @@ jobs:
           path: a12-dmkits/out/${{ matrix.asset }}
           if-no-files-found: error
 
-  # 3. Attach the linux + windows binaries to the named release and regenerate SHA256SUMS over EVERY
+  # 3. Attach the CI-built Linux + Windows binaries to the named release and regenerate SHA256SUMS over EVERY
   #    asset (incl. the locally-uploaded macOS binary), so the checksum file always covers the full set.
   publish:
     needs: build-native

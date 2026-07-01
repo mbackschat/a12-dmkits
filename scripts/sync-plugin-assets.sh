@@ -6,6 +6,7 @@
 #   • the bug-report skill  — skill-bug-report/SKILL.md (helps a user file a good report; the probe uses it too)
 #   • the binary installer  — scripts/ensure-dmtool.sh (agent-agnostic on-demand downloader; the skill runs
 #                             it, so it is synced INTO the skill dir, beside SKILL.md)
+#   • the asset manifest    — scripts/release-assets.sh (canonical release asset names + platform mapping)
 #
 # The per-agent files (each plugin's manifest + AGENTS.md) are NOT synced — they differ by host and are
 # maintained in place. This is the proven "one source → copies, freshness-checked" pattern (symlinks don't
@@ -19,9 +20,11 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILL_SRC="$ROOT/skill/SKILL.md"
 BUGREPORT_SRC="$ROOT/skill-bug-report/SKILL.md"
 INSTALLER_SRC="$ROOT/scripts/ensure-dmtool.sh"
+ASSETS_SRC="$ROOT/scripts/release-assets.sh"
 [[ -f "$SKILL_SRC" ]] || { echo "canonical skill not found: $SKILL_SRC" >&2; exit 2; }
 [[ -f "$BUGREPORT_SRC" ]] || { echo "canonical bug-report skill not found: $BUGREPORT_SRC" >&2; exit 2; }
 [[ -f "$INSTALLER_SRC" ]] || { echo "canonical installer not found: $INSTALLER_SRC" >&2; exit 2; }
+[[ -f "$ASSETS_SRC" ]] || { echo "canonical release asset manifest not found: $ASSETS_SRC" >&2; exit 2; }
 
 # Each plugin tree that receives the shared assets. Add a row here when a new agent plugin is introduced.
 PLUGINS=("$ROOT/plugin" "$ROOT/plugin-codex")
@@ -31,6 +34,7 @@ PLUGINS=("$ROOT/plugin" "$ROOT/plugin-codex")
 ASSETS=(
   "$SKILL_SRC|skills/a12-dmtool/SKILL.md"
   "$INSTALLER_SRC|skills/a12-dmtool/ensure-dmtool.sh"
+  "$ASSETS_SRC|skills/a12-dmtool/release-assets.sh"
   "$BUGREPORT_SRC|skills/a12-dmtool-bug-report/SKILL.md"
 )
 

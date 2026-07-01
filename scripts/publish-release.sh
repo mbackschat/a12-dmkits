@@ -7,7 +7,7 @@
 #   4. the ORDERING trap: the mac binary must be on the release BEFORE the CI dispatch, because the
 #      workflow's publish job re-sums EVERY `dmtool-*` already attached (build-native.yml step "Regenerate
 #      SHA256SUMS") — upload mac late and the checksum file silently won't cover it;
-#   5. the linux/windows CI dispatch via `gh workflow run` (not a click-path);
+#   5. the Linux/Windows CI dispatch via `gh workflow run` (not a click-path);
 #   6. the final --latest flip, kept as a SEPARATE explicit step (the runbook's draft-review seam).
 #
 # PREREQ — the release commit + annotated tag must exist on main AND be PUSHED TO ORIGIN (the mirror's
@@ -26,16 +26,18 @@
 #
 # Usage:
 #   ./scripts/publish-release.sh vX.Y.Z             # STAGE: build+gate mac, assemble, push mirror content,
-#                                                   #   create draft, upload mac, dispatch linux/windows CI
+#                                                   #   create draft, upload mac, dispatch Linux/Windows CI
 #   ./scripts/publish-release.sh vX.Y.Z --go-live   # after CI is GREEN and you reviewed the draft:
-#                                                   #   verify all 3 binaries + SHA256SUMS, then flip --latest
+#                                                   #   verify all 4 binaries + SHA256SUMS, then flip --latest
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+# shellcheck source=release-assets.sh
+. "$ROOT/scripts/release-assets.sh"
 
 MIRROR="mbackschat/a12-dmtool-releases"
 NATIVE="$ROOT/cli/build/native/nativeCompile/dmtool"   # mac arm64 (per-OS, no cross-compile — §3a)
-MAC_ASSET="dmtool-macos-arm64"
+MAC_ASSET="$RK_MACOS_ARM64_ASSET"
 CLONE="$ROOT/build/mirror-clone"
 DEST="$ROOT/build/release-repo"
 
@@ -67,7 +69,7 @@ if [[ "$GO_LIVE" == 1 ]]; then
   say "Verify all assets present before going live"
   assets="$(gh release view "$TAG" --repo "$MIRROR" --json assets -q '.assets[].name' | sort)"
   echo "$assets"
-  for a in "$MAC_ASSET" dmtool-linux-x64 dmtool-windows-x64.exe SHA256SUMS; do
+  for a in "${RK_RELEASE_ASSETS[@]}"; do
     grep -qx "$a" <<<"$assets" || { echo "MISSING asset: $a — is the CI run finished?" >&2; exit 1; }
   done
   say "Verify SHA256SUMS covers every binary"
@@ -108,6 +110,7 @@ fi
 [[ "$(grep -oE "version = '[^']+'" build.gradle | sed -E "s/.*'([^']+)'.*/\1/")" == "$VER" ]] || { echo "build.gradle version != $VER" >&2; exit 1; }
 gh auth status >/dev/null 2>&1 || { echo "gh not authenticated" >&2; exit 1; }
 gh repo view "$MIRROR" >/dev/null 2>&1 || { echo "cannot reach mirror repo $MIRROR" >&2; exit 1; }
+./scripts/check-release-assets.sh >/dev/null || { echo "release asset manifest/mirror workflow drift — run ./scripts/check-release-assets.sh" >&2; exit 1; }
 ./scripts/sync-plugin-assets.sh --check >/dev/null || { echo "plugin assets stale — run ./scripts/sync-plugin-assets.sh" >&2; exit 1; }
 echo "ok — $TITLE"
 
@@ -158,13 +161,13 @@ stage="$(mktemp -d)"; cp "$NATIVE" "$stage/$MAC_ASSET"
 gh release upload "$TAG" "$stage/$MAC_ASSET" --clobber --repo "$MIRROR"
 rm -rf "$stage"
 
-say "6. Dispatch the linux/windows native build (it uploads them + re-sums ALL dmtool-*)"
+say "6. Dispatch the Linux/Windows native build (it uploads them + re-sums ALL dmtool-*)"
 gh workflow run build-native --repo "$MIRROR" -f source_ref="$TAG" -f release_tag="$TAG"
 echo "dispatched. Watch:  gh run watch \$(gh run list --repo $MIRROR --workflow build-native -L1 --json databaseId -q '.[0].databaseId') --repo $MIRROR"
 
 cat <<EOF
 
-STAGED. The draft release has the mac binary; linux/windows + SHA256SUMS arrive when CI finishes.
+STAGED. The draft release has the mac binary; Linux/Windows + SHA256SUMS arrive when CI finishes.
 Next (after CI is GREEN and you've reviewed the draft):
   ./scripts/publish-release.sh $TAG --go-live
 EOF

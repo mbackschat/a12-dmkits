@@ -98,7 +98,7 @@ Download the binary for your OS from the latest [Release](../../releases) + `SHA
 
 ```sh
 shasum -a 256 -c SHA256SUMS            # verify integrity
-chmod +x dmtool-macos-arm64            # macOS / Linux
+chmod +x dmtool-linux-arm64            # or dmtool-linux-x64 / dmtool-macos-arm64
 # macOS only, if Gatekeeper blocks a browser download:
 xattr -d com.apple.quarantine dmtool-macos-arm64
 ```

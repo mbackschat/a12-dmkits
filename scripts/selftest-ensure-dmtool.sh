@@ -11,7 +11,10 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INSTALLER="$ROOT/scripts/ensure-dmtool.sh"
+# shellcheck source=release-assets.sh
+. "$ROOT/scripts/release-assets.sh"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
+export RK_SELFTEST_BINARY_ASSETS="${RK_BINARY_ASSETS[*]}"
 
 # --- a fake `curl` release server -------------------------------------------------------------------
 # Serves, for any /releases/download/vX.Y.Z/ URL: the asset = a shell script printing "a12-dmkits X.Y.Z",
@@ -29,15 +32,24 @@ content() { printf '#!/bin/sh\necho "a12-dmkits %s"\n' "${ver#v}"; }
 case "$url" in
   *SHA256SUMS)
     : > "$out"
-    for a in dmtool-macos-arm64 dmtool-linux-x64 dmtool-windows-x64.exe; do
+    for a in $RK_SELFTEST_BINARY_ASSETS; do
       tmp="$(mktemp)"; content > "$tmp"
       printf '%s  %s\n' "$(shasum -a 256 "$tmp" | awk '{print $1}')" "$a" >> "$out"; rm -f "$tmp"
     done ;;
-  *dmtool-*) content > "$out"; echo "$ver" >> "$FETCH_LOG" ;;
+  *dmtool-*) content > "$out"; echo "$ver ${url##*/}" >> "$FETCH_LOG" ;;
   *) exit 22 ;;
 esac
 STUB
 chmod +x "$WORK/bin/curl"
+cat > "$WORK/bin/uname" <<'STUB'
+#!/usr/bin/env bash
+case "${1:-}" in
+  -s) printf '%s\n' "${FAKE_UNAME_S:-$(/usr/bin/uname -s)}" ;;
+  -m) printf '%s\n' "${FAKE_UNAME_M:-$(/usr/bin/uname -m)}" ;;
+  *) /usr/bin/uname "$@" ;;
+esac
+STUB
+chmod +x "$WORK/bin/uname"
 export FETCH_LOG="$WORK/fetches.log"; : > "$FETCH_LOG"
 export PATH="$WORK/bin:$PATH"
 export PLUGIN_DATA="$WORK/data" CLAUDE_PLUGIN_DATA="$WORK/data"
@@ -50,6 +62,7 @@ resolved_dir=""
 run_at() {
   local ver="$1"; local copy="$WORK/installer-$ver.sh" envf="$WORK/env-$ver"; : > "$envf"
   sed -E "s/^VERSION=\"v[0-9.]+\"/VERSION=\"$ver\"/" "$INSTALLER" > "$copy"
+  cp "$ROOT/scripts/release-assets.sh" "$WORK/release-assets.sh"
   CLAUDE_ENV_FILE="$envf" bash "$copy" || fail "installer exited non-zero at $ver"
   resolved_dir="$(sed -nE 's#^export PATH="([^:]+):.*#\1#p' "$envf" | tail -1)"
   [[ -n "$resolved_dir" ]] || fail "installer put nothing on PATH at $ver"
@@ -74,5 +87,12 @@ run_at v9.9.2
 before="$(grep -c v9.9.2 "$FETCH_LOG")"
 run_at v9.9.2
 [[ "$(grep -c v9.9.2 "$FETCH_LOG")" == "$before" ]] || fail "re-running the same version re-downloaded (cache miss)"
+
+# 4. platform mapping: Linux arm64/aarch64 must fetch the arm64 release asset, not fall through to manual install
+rm -rf "$WORK/data"; : > "$FETCH_LOG"
+FAKE_UNAME_S=Linux FAKE_UNAME_M=aarch64 run_at v9.9.3
+[[ "$(reports)" == 9.9.3 ]] || fail "linux arm64: resolved binary reports '$(reports)', want 9.9.3"
+grep -q "v9.9.3 $RK_LINUX_ARM64_ASSET" "$FETCH_LOG" \
+  || fail "linux arm64 did not download $RK_LINUX_ARM64_ASSET"
 
 echo "SELFTEST OK: version-aware cache — downloads on bump, reuses on same version"
