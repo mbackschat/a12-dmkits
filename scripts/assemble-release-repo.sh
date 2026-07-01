@@ -24,9 +24,12 @@ fi
 # silently survive in a stale DEST and get rsync'd back onto the mirror. DEST is always a derived build tree.
 rm -rf "$DEST"
 mkdir -p "$DEST/licenses"
-# 1a. the CLAUDE CODE plugin at the mirror ROOT + the public-repo README (already EUPL-aware: per-artifact
-#     licensing + source pointer + disclaimer). Claude's marketplace.json has source "." → the repo root.
+# 1a. the CLAUDE CODE plugin at the mirror ROOT + the public-repo README/CLAUDE.md (already EUPL-aware:
+#     per-artifact licensing + source pointer + disclaimer). Claude's marketplace.json has source "." → the
+#     repo root. AGENTS.md follows the source repo pattern: a tiny redirect to CLAUDE.md, not a second source
+#     of agent instructions.
 cp -Rf "$ROOT/plugin/." "$DEST/"
+cp -f  "$ROOT/AGENTS.md" "$DEST/AGENTS.md"
 # 1b. the CODEX plugin under codex/ (its manifest .codex-plugin/plugin.json + AGENTS.md differ from Claude's,
 #     so it can't share the root), with its marketplace manifest at the Codex-standard location pointing back
 #     at ./codex (git-subdir). The on-demand installer rides inside skills/ (no hooks dir — there is no hook).
@@ -81,6 +84,9 @@ Embedded component — A12 Kernel — NOTICE:
 EOF
   cat "$KERNEL/NOTICE"
 } > "$DEST/NOTICE"
+
+# Local Finder metadata is noise in a generated public mirror and must never be published.
+find "$DEST" -type f -name .DS_Store -delete
 
 # 4. Release-time no-drift guard: the assembled public README + plugin manifest must state both pinned
 #    versions (the JUnit VersionMentionFreshnessTest enforces the source files; this re-checks what we

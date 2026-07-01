@@ -66,6 +66,12 @@ notes_file() {
 
 # ============================ --go-live : the final, separate publish ============================
 if [[ "$GO_LIVE" == 1 ]]; then
+  release_is_draft="$(gh release view "$TAG" --repo "$MIRROR" --json isDraft -q '.isDraft')" \
+    || { echo "release $TAG does not exist — stage it first with ./scripts/publish-release.sh $TAG" >&2; exit 1; }
+  [[ "$release_is_draft" == "true" ]] || {
+    echo "release $TAG is already published — project policy treats published releases as immutable; cut a patch release instead." >&2
+    exit 1
+  }
   say "Verify all assets present before going live"
   assets="$(gh release view "$TAG" --repo "$MIRROR" --json assets -q '.assets[].name' | sort)"
   echo "$assets"
@@ -110,6 +116,11 @@ fi
 [[ "$(grep -oE "version = '[^']+'" build.gradle | sed -E "s/.*'([^']+)'.*/\1/")" == "$VER" ]] || { echo "build.gradle version != $VER" >&2; exit 1; }
 gh auth status >/dev/null 2>&1 || { echo "gh not authenticated" >&2; exit 1; }
 gh repo view "$MIRROR" >/dev/null 2>&1 || { echo "cannot reach mirror repo $MIRROR" >&2; exit 1; }
+existing_release_is_draft="$(gh release view "$TAG" --repo "$MIRROR" --json isDraft -q '.isDraft' 2>/dev/null || true)"
+if [[ "$existing_release_is_draft" == "false" ]]; then
+  echo "release $TAG is already published — project policy treats published releases as immutable; cut a patch release instead." >&2
+  exit 1
+fi
 ./scripts/check-release-assets.sh >/dev/null || { echo "release asset manifest/mirror workflow drift — run ./scripts/check-release-assets.sh" >&2; exit 1; }
 ./scripts/sync-plugin-assets.sh --check >/dev/null || { echo "plugin assets stale — run ./scripts/sync-plugin-assets.sh" >&2; exit 1; }
 echo "ok — $TITLE"
@@ -151,7 +162,7 @@ fi
 say "4. Ensure a DRAFT release exists"
 NOTES="$(notes_file)"
 if gh release view "$TAG" --repo "$MIRROR" >/dev/null 2>&1; then
-  echo "release $TAG already exists — leaving as is"
+  echo "draft release $TAG already exists — leaving as is"
 else
   gh release create "$TAG" --repo "$MIRROR" --draft --title "$TITLE" --notes-file "$NOTES"
 fi
