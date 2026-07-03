@@ -81,6 +81,13 @@ tasks.named('test') {
         if (!all && !project.hasProperty('runPerf')) excludeTags 'perf'
         if (!all && !project.hasProperty('runFuzz')) excludeTags 'fuzz'
     }
+    // Fork the kernel-heavy suite across JVMs — distributes test CLASSES over N forks so the differential
+    // + fuzz classes run in parallel (:adapter:test is the ~8-min CI hog: the kernel oracle does Groovy
+    // codegen per rule). Fork-based = each fork is an isolated JVM+kernel, so there's no shared state to
+    // race. Cores-capped (each fork loads its own kernel ⇒ memory-bound); heap left at the default (forks
+    // run SUBSETS, so a fixed cap would only risk OOM). Override with -PtestForks=N. No maxParallelForks=1
+    // guard is needed here — the native-agent reflection capture runs :cli:test, not :adapter.
+    maxParallelForks = (project.findProperty('testForks') ?: Math.max(2, Math.min(4, Runtime.runtime.availableProcessors()))) as int
     // Forward opt-in harness locations (read-only corpora) AND the opt-in perf knobs from the Gradle CLI to the
     // test JVM, e.g. -Da12.kernel.mm.dir=… / -Dperf.profile=true / -Dperf.edge=true — harnesses skip (or gate)
     // when their property is unset.

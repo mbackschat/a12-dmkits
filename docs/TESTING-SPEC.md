@@ -230,6 +230,8 @@ The full kernel-backed suite was ~12 min, but **two categories accounted for ~10
 
 **Nothing is dropped — CI runs them on a defined trigger:** the fuzzers on **every push/PR** (`-PrunFuzz` — correctness nets, interpreter == kernel), the perf gate **nightly + on `workflow_dispatch`** (`-PrunPerf` — a ratio gate, not a per-commit check). `GateTierWiringTest` fails the build if either lane is dropped from the CI workflow (F11 loud-detection). **Tagging rule:** a new perf benchmark gets `@Tag("perf")`, a new differential fuzzer `@Tag("fuzz")` — so it joins the right lane automatically.
 
+**Parallelism keeps the per-push fuzz lane affordable.** `:adapter:test` sets `maxParallelForks` (cores-capped: `max(2, min(4, cores))`, override with `-PtestForks=N`), so the kernel-differential + fuzz classes run across **isolated JVM forks** (each fork loads its own kernel — no shared state to race, heap left at the default). That's what lets the fuzzers stay **per-push** rather than being deferred to nightly. The native-agent reflection capture runs `:cli:test` (which pins `maxParallelForks=1`), not `:adapter`, so the adapter fork setting needs no capture guard.
+
 ## Tests that read repo files at runtime → slim, task-specific inputs
 
 A few guards read repo files Gradle can't infer as inputs: `CliTourFreshnessTest` reads `examples/*.md`; `CommandReferencesResolveTest` reads the source + public READMEs, `skill/SKILL.md`, the Codex `AGENTS.md`, and the operator catalog. If those files aren't declared inputs, the test task goes **up-to-date / restores from the build cache** on a docs-only change — a **false green locally** while CI (a fresh checkout) fails. It bit us: a stale `cli-discover.md` capture passed locally in `1s` (cached) and only CI caught the drift.
