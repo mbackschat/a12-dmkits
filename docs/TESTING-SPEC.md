@@ -193,10 +193,10 @@ This is *not* extract-and-compile of every fence. The README and many study bloc
 
 ## Doc-drift demos (showboat / `examples/`) — tier 2
 
-The `examples/*.md` files are **runnable CLI demos**: each interleaves prose, a `dmtool` command, and its **captured output**, and `showboat verify` re-runs every command and **exact-matches** the output against the live CLI. So a demo is documentation *and* a doc-drift regression test — a verb rename or output-shape change not carried into the demo fails. Six demos cover the whole target-first verb surface (read/inspect · rulekit edit · modelkit structure · `apply` · runtime eval · versions); the per-demo verb inventory is [`../examples/README.md`](../examples/README.md) and the method is [`CLI-TOUR-SPEC.md`](CLI-TOUR-SPEC.md).
+The `examples/*.md` files are **runnable CLI demos**: each interleaves prose, a `dmtool` command, and its **captured output**, and `showboat verify` re-runs every command and **exact-matches** the output against the live CLI. So a demo is documentation *and* a doc-drift regression test — a verb rename or output-shape change not carried into the demo fails. The demos cover the target-first verb surface end to end (read/inspect · rulekit edit · modelkit structure · `apply` · runtime eval · JSON-Schema interop · custom types · versions); the per-demo verb inventory is [`../examples/README.md`](../examples/README.md) and the method is [`CLI-TOUR-SPEC.md`](CLI-TOUR-SPEC.md).
 
 **Two levers, because the showboat gate is CI-only:**
-- **CI** runs `uvx showboat@0.6.1 verify` on all six (`.github/workflows/ci.yml`) — the authoritative drift gate.
+- **CI** runs `scripts/verify-demos.sh` (`.github/workflows/ci.yml`) — the **same** script developers run locally, and the authoritative drift gate. It builds the launcher, **discovers** every `examples/*.md` demo (so the set can't drift from a hand-kept CI list), and `uvx showboat@0.6.1 verify`s them **in parallel** (bounded by `VERIFY_JOBS`, default 6).
 - **A high-churn value a demo *pins* can still drift in a *local* commit with CI red but unnoticed** (it happened — two new `RkCode`s shifted the tour's `diagnostics` count 31→33). So every live-derived value a demo pins also gets a **local `:cli:test` lock**: the verb list in `ManifestVerbTest.EXPECTED_VERBS`, and the `diagnostics` count + `manifest` list + `schema rule add` keys in `CliTourFreshnessTest` (runs the real verb in-process, fails naming the regen command). Add such an inner-loop guard whenever a demo starts pinning a new live value.
 
 Audience note: these are **not** for cold-agent discoverability — the N6 eval agent never sees `examples/` (that's the self-describing surface's job). They serve the **CI drift-guard** and a **repo-equipped reader** learning a verb end to end.
@@ -251,9 +251,11 @@ ROOT="$(cd .. && pwd)"; export GRADLE_USER_HOME="$ROOT/.gradle-isolated"; export
 ./gradlew syncDocSnippets                                   # rewrite drifted locked doc snippets (autonomous; never CI)
 ```
 
-**Tier 2 — doc-drift demos (showboat).** Exact-match a demo against the live CLI; run from the repo root with `bin/` on PATH so `dmtool` resolves (CI verifies all six):
+**Tier 2 — doc-drift demos (showboat).** One command verifies them all — `./scripts/verify-demos.sh` builds the launcher, discovers every demo, and verifies them in parallel (exactly what CI runs). To exact-match a single demo by hand, put `bin/` on PATH so `dmtool` resolves:
 
 ```sh
+./scripts/verify-demos.sh                                   # build + verify EVERY demo (parallel) — the CI gate
+# — or a single demo by hand:
 export JAVA_HOME="$(/usr/libexec/java_home -v 21)"; export PATH="$PWD/bin:$PATH"
 ./gradlew :cli:installDist                                  # the launcher the demos call
 uvx showboat@0.6.1 verify examples/cli-tour.md              # exit 0 = still matches the live CLI

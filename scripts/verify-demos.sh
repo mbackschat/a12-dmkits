@@ -11,11 +11,14 @@
 #
 # The demo set is DISCOVERED, not enumerated (an enumerated list is itself a staleness source — a new
 # demo would silently go unverified). It globs examples/*.md and keeps the ones that are actually
-# Showboat demos (carry a ```output block). It then cross-checks the CI gate's enumerated list against
-# the discovered set and warns if CI is missing a demo (so the OTHER list can't rot silently either).
-# It builds the JVM launcher (installDist — always reflects current source; native could be stale).
+# Showboat demos (carry a ```output block). It builds the JVM launcher (installDist — always reflects
+# current source; native could be stale), then verifies the demos IN PARALLEL (bounded, VERIFY_JOBS).
 #
-#   ./scripts/verify-demos.sh           # build + verify every discovered demo; non-zero if any drifted
+# CI runs THIS script (one step, all demos, parallel) rather than a hand-enumerated list of `uvx`
+# calls — so the demo set can't drift out of sync with a separate CI list.
+#
+#   ./scripts/verify-demos.sh                 # build + verify every discovered demo (parallel); non-zero if any drifted
+#   VERIFY_JOBS=4 ./scripts/verify-demos.sh   # cap concurrent verifies (default 6)
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -47,23 +50,44 @@ if [[ "${#demos[@]}" -eq 0 ]]; then
   exit 1
 fi
 
+# Verify in PARALLEL, bounded — a serial loop over ~11 demos (each spawning `uvx showboat`, which in
+# turn runs many `dmtool` JVMs) dominated the CI wall-clock. Each verify writes to its own log +
+# status file (interleaved stdout would be garbled); we print an ordered summary once all finish.
+# Batched throttle (launch a batch of CAP, wait for it, launch the next) keeps this portable to bash
+# 3.2 — `wait -n` is bash 4.3+, absent on stock macOS.
+CAP="${VERIFY_JOBS:-6}"
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+verify_one() {
+  local f="$1" base
+  base="$(basename "$f" .md)"
+  if uvx showboat@0.6.1 verify "$f" >"$tmp/$base.log" 2>&1; then
+    echo 0 >"$tmp/$base.status"
+  else
+    echo 1 >"$tmp/$base.status"
+  fi
+}
+
+echo "==> verifying ${#demos[@]} demos in parallel (cap $CAP)"
+running=0
+for f in "${demos[@]}"; do
+  verify_one "$f" &
+  if (( ++running >= CAP )); then wait; running=0; fi
+done
+wait
+
 failed=0
 for f in "${demos[@]}"; do
   base="$(basename "$f" .md)"
-  printf '==> verify %s ... ' "$base"
-  if uvx showboat@0.6.1 verify "$f" >/tmp/verify-demos-$$.log 2>&1; then
-    echo "OK"
+  if [[ "$(cat "$tmp/$base.status" 2>/dev/null)" == 0 ]]; then
+    echo "==> verify $base ... OK"
   else
-    echo "DRIFT"
-    cat /tmp/verify-demos-$$.log
+    echo "==> verify $base ... DRIFT"
+    cat "$tmp/$base.log" 2>/dev/null || true
     failed=1
   fi
-  # cross-check: the CI gate enumerates demos by hand — warn if it's missing this one (CI list staleness)
-  if [[ -f .github/workflows/ci.yml ]] && ! grep -q "examples/$base.md" .github/workflows/ci.yml; then
-    echo "    WARN: $f is not in the CI showboat gate (.github/workflows/ci.yml) — add it there too" >&2
-  fi
 done
-rm -f "/tmp/verify-demos-$$.log"
 
 if [[ "$failed" == 1 ]]; then
   echo "" >&2

@@ -101,17 +101,12 @@ jobs:
       # Doc-drift gate (F11 "loud detection at build"): the examples/ Showboat demos are executable
       # docs — `verify` re-runs each captured CLI invocation and exact-matches its recorded output. A
       # verb rename or output-shape change that wasn't reflected in the demos fails CI here instead of
-      # rotting silently (the read/export rename bit them twice before this gate existed). Needs the CLI
-      # launcher (installDist) + uv (for `uvx showboat`); jq is on the runner. The demos call the bare
-      # `dmtool` (what an installed user types), so the repo `bin/` (the shim → installDist launcher) is
-      # put on PATH for the run; the shim resolves `dmtool` to the JVM launcher.
-      - name: Build the CLI launcher (for the demos)
-        working-directory: a12-dmkits
-        env:
-          JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
-          GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
-        run: ./gradlew --no-daemon :cli:installDist
-
+      # rotting silently (the read/export rename bit them twice before this gate existed). We run the
+      # committed scripts/verify-demos.sh — the SAME script developers run locally — which builds the CLI
+      # launcher (installDist), DISCOVERS every demo (so the set can't drift from a hand-kept CI list),
+      # and verifies them IN PARALLEL. Needs Node (the --custom-*-js worker demo) + uv (`uvx showboat`);
+      # jq is on the runner. verify-demos.sh puts the repo bin/ shim on PATH so the demos' bare `dmtool`
+      # resolves to the freshly-built JVM launcher.
       - name: Set up Node (for the --custom-conditions-js / --custom-field-types-js worker + its demo)
         uses: actions/setup-node@v4
         with:
@@ -122,20 +117,9 @@ jobs:
         with:
           enable-cache: false   # no Python deps to key a cache on (one-off `uvx showboat`); silences the cache-glob warning
 
-      - name: Verify the Showboat demos still match the live CLI
+      - name: Verify the Showboat demos still match the live CLI (all, parallel)
         working-directory: a12-dmkits
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
-        run: |
-          export PATH="$PWD/bin:$PATH"   # the demos call bare `dmtool`; the repo shim resolves it
-          uvx showboat@0.6.1 verify examples/cli-tour.md
-          uvx showboat@0.6.1 verify examples/cli-discover.md
-          uvx showboat@0.6.1 verify examples/cli-review.md
-          uvx showboat@0.6.1 verify examples/cli-workspace.md
-          uvx showboat@0.6.1 verify examples/cli-edit-loop.md
-          uvx showboat@0.6.1 verify examples/cli-structure-edit.md
-          uvx showboat@0.6.1 verify examples/cli-apply.md
-          uvx showboat@0.6.1 verify examples/cli-runtime.md
-          uvx showboat@0.6.1 verify examples/cli-custom-types.md
-          uvx showboat@0.6.1 verify examples/cli-version.md
-          uvx showboat@0.6.1 verify examples/cli-jsonschema.md
+          GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
+        run: ./scripts/verify-demos.sh
