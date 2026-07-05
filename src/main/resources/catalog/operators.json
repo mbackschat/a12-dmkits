@@ -929,15 +929,16 @@
     "keywords": { "en": "For", "de": "Fuer" },
     "operands": [ { "type": "field" }, { "type": "index-value" } ],
     "returns": "value",
-    "meaning": "The field's value in the repetition whose index field equals the given value ([Field For \"value\"]).",
+    "meaning": "The field's value in the repetition whose index field equals the given key ([Field For \"value\"] or [Field For KeyField]).",
     "constraints": [
       "the field's enclosing repeatable group must declare an indexFieldName (else MVK_NO_INDEX_FIELD)",
-      "the index value is a string constant matching the index field; an iterating entity index is restricted (MVK_SEMANTIC_INDEX_INVALID_ITER)",
+      "the key is EITHER a quoted string constant ([Field For \"x\"]) OR a field reference ([Field For KeyField], the current value of KeyField), matching the index field's type; an iterating entity key is restricted (MVK_SEMANTIC_INDEX_INVALID_ITER)",
       "accepted inside NumberOfFilledFields, but rejected inside NumberOfFilledGroups and RepetitionNotUnique (MVK_SEMANTIC_INDEX_NOT_ALLOWED)",
       "not supported under a starred enclosing group (MVK_SEMANTIC_INDEX_AND_WILDCARD)"
     ],
     "gotchas": [
       { "text": "selects a specific repetition by key — distinct from '*' (all repetitions) and the rule's own iteration", "kind": "AUTHORING" }
+    , { "text": "the indexed field may be ANY kind (number, string, enum, date, time, date-time) — not only a number; the comparison then uses that kind's operators (ordering for number/date, == / != for string/enum). The key may be a quoted constant or a bare field reference.", "kind": "AUTHORING" }
     , { "text": "when no repetition carries the index value the comparison is not evaluated (no fire) — it does not fall back to the empty-number 0", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And [Items/Count For \"SKU-1\"] > 0", "note": "the ordered count of the line item keyed SKU-1" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And [BillingAddress/PostalCode For \"x\"] == \"y\"", "error": "MVK_NO_INDEX_FIELD", "fix": "semantic index needs a repeatable group with an index field; BillingAddress has none" },
@@ -1151,9 +1152,10 @@
     "keywords": { "en": "StartOfDateRange", "de": "StartAusDatumBereich" },
     "operands": [ { "type": "date-range" } ],
     "returns": "date",
-    "meaning": "The start bound of a date-range field, as a comparable date.",
-    "gotchas": [ { "text": "the operand is a BARE entity ref: StartOfDateRange(CoverageWindow), not StartOfDateRange([CoverageWindow]). Bracketing a function's argument is MVK_UNEXPECTED_TOKEN — brackets are only for a field used as a comparison value.", "kind": "AUTHORING" } ],
-    "constraints": [ "the operand is a date-range field, rendered as a bare entity ref" ],
+    "meaning": "The start bound of a date-range field (or of BaseYear), as a comparable date.",
+    "gotchas": [ { "text": "the operand is a BARE entity ref: StartOfDateRange(CoverageWindow), not StartOfDateRange([CoverageWindow]). Bracketing a function's argument is MVK_UNEXPECTED_TOKEN — brackets are only for a field used as a comparison value.", "kind": "AUTHORING" }
+    , { "text": "the source may be a date-range FIELD or the point-in-time BaseYear (the reference year read as a range): StartOfDateRange(BaseYear) = 01.01 of the base year (needs a declared base year).", "kind": "AUTHORING" } ],
+    "constraints": [ "the operand is a date-range field or BaseYear, rendered as a bare entity ref" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And YearFromDate(StartOfDateRange(CoverageWindow)) > 2020", "note": "fires when the coverage window starts after 2020" },
     "sinceKernel": "30.8.x"
   },
@@ -1163,9 +1165,10 @@
     "keywords": { "en": "EndOfDateRange", "de": "EndeAusDatumBereich" },
     "operands": [ { "type": "date-range" } ],
     "returns": "date",
-    "meaning": "The end bound of a date-range field, as a comparable date (feeds comparisons or DayFromDate/MonthFromDate/...).",
-    "gotchas": [ { "text": "the operand is a BARE entity ref: EndOfDateRange(CoverageWindow), not EndOfDateRange([CoverageWindow]). Bracketing a function's argument is MVK_UNEXPECTED_TOKEN — brackets are only for a field used as a comparison value.", "kind": "AUTHORING" } ],
-    "constraints": [ "the operand is a date-range field" ],
+    "meaning": "The end bound of a date-range field (or of BaseYear), as a comparable date (feeds comparisons or DayFromDate/MonthFromDate/...).",
+    "gotchas": [ { "text": "the operand is a BARE entity ref: EndOfDateRange(CoverageWindow), not EndOfDateRange([CoverageWindow]). Bracketing a function's argument is MVK_UNEXPECTED_TOKEN — brackets are only for a field used as a comparison value.", "kind": "AUTHORING" }
+    , { "text": "the source may be a date-range FIELD or the point-in-time BaseYear (the reference year read as a range): EndOfDateRange(BaseYear) = 31.12 of the base year (needs a declared base year).", "kind": "AUTHORING" } ],
+    "constraints": [ "the operand is a date-range field or BaseYear" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And DayFromDate(EndOfDateRange(CoverageWindow)) > 28", "note": "fires when the coverage window ends late in the month" },
     "sinceKernel": "30.8.x"
   },

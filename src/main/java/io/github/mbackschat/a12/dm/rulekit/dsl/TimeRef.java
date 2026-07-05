@@ -32,4 +32,18 @@ public record TimeRef(FieldRef field, boolean correlated) implements TimeOperand
     public Condition notFilled() {
         return field.notFilled();
     }
+
+    /**
+     * {@code [field For "indexValue"]} — the semantic index: this field's value in the repetition whose
+     * index field equals {@code indexValue}, as a comparable time. The enclosing repeatable group must
+     * declare an {@code indexFieldName} (else {@code MVK_NO_INDEX_FIELD}). (DEV-API-GAPS DG15.)
+     */
+    public TimeExpr forIndex(String indexValue) {
+        return new TimeExpr(new SemanticIndexValue(field, indexValue));
+    }
+
+    /** {@code [field For keyField]} — the field-keyed semantic index (the current value of {@code keyField}). */
+    public TimeExpr forIndex(FieldRef keyField) {
+        return new TimeExpr(new SemanticIndexFieldValue(field, keyField));
+    }
 }

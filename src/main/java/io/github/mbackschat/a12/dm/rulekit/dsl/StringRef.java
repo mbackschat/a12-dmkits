@@ -31,6 +31,20 @@ public record StringRef(FieldRef field, boolean correlated) {
         return field.notFilled();
     }
 
+    /**
+     * {@code [field For "indexValue"]} — the semantic index: this field's value in the repetition whose
+     * index field equals {@code indexValue}, as a comparable string expression. The enclosing repeatable
+     * group must declare an {@code indexFieldName} (else {@code MVK_NO_INDEX_FIELD}). (DEV-API-GAPS DG15.)
+     */
+    public StringExpr forIndex(String indexValue) {
+        return new StringExpr(new SemanticIndexValue(field, indexValue));
+    }
+
+    /** {@code [field For keyField]} — the field-keyed semantic index (the current value of {@code keyField}). */
+    public StringExpr forIndex(FieldRef keyField) {
+        return new StringExpr(new SemanticIndexFieldValue(field, keyField));
+    }
+
     public Condition eq(String literal) {
         return new ComparisonCondition(value(), CompareOp.EQ, new StringLiteral(literal));
     }

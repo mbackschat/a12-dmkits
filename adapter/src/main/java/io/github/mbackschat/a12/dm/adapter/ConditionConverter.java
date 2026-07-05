@@ -108,6 +108,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberOfValueInFields;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoolLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexFieldValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance;
@@ -733,17 +735,26 @@ final class ConditionConverter {
         // semantic index on a non-number field stays Opaque (never a silent drop).
         java.util.List<Object> semIdx = field.getField().getSemanticIndex();
         if (semIdx != null && !semIdx.isEmpty()) {
-            if (semIdx.size() == 1 && kind == ValueKind.NUMBER) {
+            if (semIdx.size() == 1) {
+                // Build the semantic-index value node — a constant String key (SemanticIndexValue) or a
+                // field-ref IEntityId key (SemanticIndexFieldValue) — then compare it through the indexed
+                // field's OWN kind's machinery. A semantic index has the kind of the field it indexes, and
+                // the kernel places no kind restriction on it (its flagship example is an enum). DG15.
                 Object key = semIdx.get(0);
-                if (key instanceof String constKey) {
-                    return numberExprComparison(model.num(path).forIndex(constKey), op, other, origin);
-                }
-                if (key instanceof IEntityId fieldKey) {
-                    return numberExprComparison(model.num(path).forIndex(model.field(fieldKey.getFullName())), op, other, origin);
-                }
+                Calculation semantic = key instanceof String constKey
+                        ? new SemanticIndexValue(model.field(path), constKey)
+                        : new SemanticIndexFieldValue(model.field(path), model.field(((IEntityId) key).getFullName()));
+                return switch (kind) {
+                    case NUMBER -> numberExprComparison(new NumberExpr(semantic), op, other, origin);
+                    case STRING -> stringExprComparison(new StringExpr(semantic), op, other, origin);
+                    case ENUMERATION -> enumExprComparison(new EnumExpr(semantic), op, other, origin);
+                    case DATE, DATE_FRAGMENT -> dateComparison(new DateExpr(semantic), op, other, origin);
+                    case TIME -> timeComparison(new TimeExpr(semantic), op, other, origin);
+                    case DATE_TIME -> dateTimeComparison(new DateTimeExpr(semantic), op, other, origin);
+                    default -> throw unsupported("semantic index ([field For …]) on a " + kind + " field", origin);
+                };
             }
-            throw unsupported("semantic index ([field For …]) on a " + kind
-                    + " field — only a constant- or field-keyed index on a NUMBER field is modeled", origin);
+            throw unsupported("semantic index ([field For …]) with a multi-element key", origin);
         }
         // an enum field navigated to one of its categories ([field -> Cat]) rides on getCategoryName()
         String category = field.getField().getCategoryName();
@@ -1330,6 +1341,29 @@ final class ConditionConverter {
             };
         }
         throw unsupported("enum comparison against a non-constant operand, operator " + op, origin);
+    }
+
+    /** {@code <enum expr> <op> other} — the expression peer of {@link #enumComparison} (a DG15 enum semantic index). */
+    private Condition enumExprComparison(EnumExpr left, ComparisonOperation op, IOperation right, ICondition origin) {
+        if (right instanceof IConstantOperation constant) {
+            return switch (op) {
+                case EQ -> left.is(constant.getValue());
+                case NE -> left.isNot(constant.getValue());
+                default -> throw unsupported("enum comparison operator " + op, origin);
+            };
+        }
+        if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
+            EnumRef other = model.enumOf(rf.getField().getFullName());
+            if (rf.getField().isOuter()) {
+                other = other.outer();   // $ correlation on the right operand (D13)
+            }
+            return switch (op) {
+                case EQ -> left.is(other);
+                case NE -> left.isNot(other);
+                default -> throw unsupported("enum field comparison operator " + op, origin);
+            };
+        }
+        throw unsupported("enum semantic-index compared against " + right.getClass().getSimpleName(), origin);
     }
 
     /** {@code [bool] == True|False} → {@link io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef}. */

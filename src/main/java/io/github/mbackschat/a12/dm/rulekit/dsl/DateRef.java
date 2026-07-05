@@ -32,4 +32,18 @@ public record DateRef(FieldRef field, boolean correlated) implements DateOperand
     public Condition notFilled() {
         return field.notFilled();
     }
+
+    /**
+     * {@code [field For "indexValue"]} — the semantic index: this field's value in the repetition whose
+     * index field equals {@code indexValue}, as a comparable date. The enclosing repeatable group must
+     * declare an {@code indexFieldName} (else {@code MVK_NO_INDEX_FIELD}). (DEV-API-GAPS DG15.)
+     */
+    public DateExpr forIndex(String indexValue) {
+        return new DateExpr(new SemanticIndexValue(field, indexValue));
+    }
+
+    /** {@code [field For keyField]} — the field-keyed semantic index (the current value of {@code keyField}). */
+    public DateExpr forIndex(FieldRef keyField) {
+        return new DateExpr(new SemanticIndexFieldValue(field, keyField));
+    }
 }

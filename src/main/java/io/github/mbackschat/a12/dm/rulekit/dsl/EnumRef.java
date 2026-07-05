@@ -31,7 +31,7 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
         return new EnumRef(field, allowedValues, categories, true);
     }
 
-    private FieldValue value() {
+    FieldValue value() {   // package-private: EnumExpr compares against a field's value (DG15 semantic index)
         return new FieldValue(field, correlated);
     }
 
@@ -51,6 +51,20 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
 
     public Condition notFilled() {
         return field.notFilled();
+    }
+
+    /**
+     * {@code [field For "indexValue"]} — the semantic index: this field's value in the repetition whose
+     * index field equals {@code indexValue}, as a comparable enum expression. The enclosing repeatable
+     * group must declare an {@code indexFieldName} (else {@code MVK_NO_INDEX_FIELD}). (DEV-API-GAPS DG15.)
+     */
+    public EnumExpr forIndex(String indexValue) {
+        return new EnumExpr(new SemanticIndexValue(field, indexValue));
+    }
+
+    /** {@code [field For keyField]} — the field-keyed semantic index (the current value of {@code keyField}). */
+    public EnumExpr forIndex(FieldRef keyField) {
+        return new EnumExpr(new SemanticIndexFieldValue(field, keyField));
     }
 
     public Condition is(String value) {
