@@ -222,6 +222,8 @@ static Condition uniqueBy(GroupRef repeating, FieldRef key) {
 
 The fragments show how the shipped primitives compose into the **business idioms** the proposal's §2 names (`mandatory`, `withinTolerance`, per-row thresholds, `uniqueBy`) — each is 1–3 lines built from the operators in hand.
 
+The per-row threshold uses the **semantic index** `num(f).forIndex(key)` — read *this field's value in the row whose index field equals `key`*. It is **not number-only**: `forIndex` lives on every comparable ref (`num`/`str`/`enumOf`/`date`/`time`/`dateTime`), and the key is either a **constant** (`forIndex("AUTO")`) or **another field** (`forIndex(m.field("/Policy/PreferredCode"))`). The kernel places no kind restriction on the indexed field — its own flagship example indexes an *enum* (`[Addresses/Country For PreferredAddress]`) — so the ref you call it on decides the result kind. (Finding 55 / DEV-API-GAPS DG15.)
+
 ### 3.3 A domain fragment library — packaging reuse
 
 <!-- teaser -->
@@ -752,6 +754,8 @@ ModelDocument.read(json)
     .validate();
 ```
 A label must cover every declared locale (fails fast otherwise); the add/re-type reuse the build-from-scratch emitter, so a configured field is shaped identically to a built one. *Locked by `modelkit.ModelMetadataTest`.* The pattern's error text can be **localized**: the single message in `pattern(regex, msg)` covers every declared locale, and `StringFieldBuilder.patternMessage(locale, text)` (CLI: `string.patternMessages`) overrides it per locale — the string sibling of an enum's per-locale invalid-value text, so a bilingual model carries a German pattern error (*locked by `FieldAddSpecTest`*). Each aspect has its own setter (`setRequiredness`/`setLabel`/`setHelperText`/`setGlobal`/…); `ModelDocument.applyModification(path, FieldModification)` applies a **partial** bundle of them at once (only the present aspects), which is what the CLI's **`field modify <spec.json>`** rides (G6) — so an agent can add a STRING `pattern` *or* change a label on an existing field without delete-and-recreate, and an aspect it asks for is never silently dropped (CLI-SPEC §5). `StringFieldBuilder.noValueValidation()` authors the value-skip flag (the attachment-content idiom), and the builder **fails fast** on the kernel's co-requirement — a no-value-validation string must permit line breaks (`MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK`) — with a named cause at `build()` rather than a late kernel reject (finding 47).
+
+A **group** carries a display label too — it is the kernel's `ILabeled` via `IEntity`, exactly like a field. The from-scratch builder authors it (`GroupBuilder.label("en_US", "Order lines").label("de_DE", "Bestellzeilen")`), the edit path sets it on an existing group (`setLabel(groupPath, …)`, CLI `meta <groupPath> --label`), and the same cover-every-declared-locale rule applies to both (finding 56 / DG17). *Locked by `modelkit.GroupLabelTest` (kernel read-back).*
 
 ### Rules *along with* structure — one session
 
