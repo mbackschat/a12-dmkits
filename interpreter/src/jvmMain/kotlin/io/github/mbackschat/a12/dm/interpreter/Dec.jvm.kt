@@ -5,15 +5,15 @@ import java.math.MathContext
 import java.math.RoundingMode
 
 /**
- * JVM decimal actual — full-precision BigDecimal, with the kernel's scale-19 comparison pre-rounding
- * ([scale19]). Still NOT bit-for-bit on ARITHMETIC: the kernel caps `×`/`÷`/`^` at `MathContext(50)` HALF_UP
- * (`VkBigDecimal.INTERNAL_PRECISION`); `times` here is full-precision (diverges only beyond 50 significant
- * digits — deferred to the `÷`/`^` increment, where the MathContext is mandatory). Compare/equality now match.
+ * JVM decimal actual — BigDecimal, with the kernel's scale-19 comparison pre-rounding ([scale19]) and its
+ * `MathContext(50)` HALF_UP arithmetic cap (`VkBigDecimal.INTERNAL_PRECISION`) on `×`/`÷`/`^` — bit-for-bit
+ * with the kernel: `+`/`-` are exact (the kernel does not cap them), while a product/quotient/power is rounded
+ * to 50 significant digits (observable only beyond 50, e.g. a 26-digit × 26-digit → 52-digit product).
  */
 actual class Dec(val v: BigDecimal) : Comparable<Dec> {
     actual operator fun plus(other: Dec): Dec = Dec(v + other.v)
     actual operator fun minus(other: Dec): Dec = Dec(v - other.v)
-    actual operator fun times(other: Dec): Dec = Dec(v * other.v)
+    actual operator fun times(other: Dec): Dec = Dec(v.multiply(other.v, INTERNAL))
     actual fun div(other: Dec): Dec = Dec(v.divide(other.v, INTERNAL))
     actual fun pow(exponent: Int): Dec =
         if (exponent >= 0) Dec(v.pow(exponent, INTERNAL))
@@ -48,7 +48,7 @@ actual class Dec(val v: BigDecimal) : Comparable<Dec> {
     override fun hashCode(): Int = v.stripTrailingZeros().toPlainString().hashCode()
 }
 
-/** The kernel's `VkBigDecimal.INTERNAL_PRECISION` — 50 significant digits, HALF_UP — for ÷ and ^. */
+/** The kernel's `VkBigDecimal.INTERNAL_PRECISION` — 50 significant digits, HALF_UP — for `×`, `÷` and `^`. */
 private val INTERNAL = MathContext(50, RoundingMode.HALF_UP)
 
 actual fun dec(value: String): Dec = Dec(BigDecimal(value))

@@ -22,9 +22,10 @@ external class Big(value: String) {
 actual class Dec(val v: Big) : Comparable<Dec> {
     actual operator fun plus(other: Dec): Dec = Dec(v.plus(other.v))
     actual operator fun minus(other: Dec): Dec = Dec(v.minus(other.v))
+    // big.js `×` is exact — it matches the kernel's `MathContext(50)` cap up to 50 significant digits; `÷`/`^`
+    // match up to big.js's Big.DP. The JVM is the differential-exact target (the kernel is JVM-only), so JS
+    // keeping more precision than the 50-sig-digit / Big.DP cap is a documented JS edge.
     actual operator fun times(other: Dec): Dec = Dec(v.times(other.v))
-    // ÷ and ^ match the JVM (kernel MathContext(50)) up to big.js's Big.DP; the JVM is the differential-exact
-    // target (the kernel is JVM-only) — JS high-precision division beyond Big.DP is a documented JS edge.
     actual fun div(other: Dec): Dec = Dec(v.div(other.v))
     actual fun pow(exponent: Int): Dec = Dec(v.pow(exponent))
     actual override fun compareTo(other: Dec): Int = v.cmp(other.v)

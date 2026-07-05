@@ -19,7 +19,8 @@ import org.junit.jupiter.api.Test
  * Observable only beyond 19 fractional digits: a tiny literal added to `[Quantity]` (→0) makes a scale-20
  * value whose 20th digit decides the comparison after rounding (`…04` rounds down to 0, `…06` rounds up to
  * `1e-19`). Without the pre-rounding the interpreter would compare full-precision and diverge. (The
- * `MathContext(50)` arithmetic cap — the *other* precision item — is deferred to the `÷`/`^` increment.)
+ * `MathContext(50)` arithmetic cap — the *other* precision item — is locked separately: `×` in
+ * `ArithmeticDiffTest`, `÷`/`^` in `DivPowDiffTest`.)
  */
 class PrecisionDiffTest {
 

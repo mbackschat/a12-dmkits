@@ -16,8 +16,8 @@ import org.junit.jupiter.api.function.Executable
 /**
  * Differential — binary arithmetic (`+ - *`, with `{ }` grouping) inside comparisons, parsed from text
  * and checked against the REAL kernel. Precedence is `*` over `+`/`-`; empty numeric operands read as 0.
- * (Division and power are deferred — they carry scale/rounding + div-by-zero→unknown semantics handled
- * in a later increment, KERNEL-FINDINGS §finding "Power Operator".)
+ * `×` caps at the kernel's `MathContext(50)` (the last-case test below); `÷`/`^` (div-by-zero→unknown, power
+ * quiet cases) have their own differential in `DivPowDiffTest`.
  */
 class ArithmeticDiffTest {
 
@@ -59,6 +59,26 @@ class ArithmeticDiffTest {
             Executable { assertEquals(kernel, interp, "\"${c.text}\" over ${c.values} [k=$kernel i=$interp]") }
         }
         assertAll(checks)
+    }
+
+    /**
+     * Multiplication caps at the kernel's `MathContext(50)` HALF_UP (`VkBigDecimal.INTERNAL_PRECISION`), like
+     * `÷`/`^`. Two 26-digit factors make a 52-digit product, so the kernel drops its last 2 significant digits;
+     * comparing the product for equality with its FULL-precision value is therefore FALSE in the kernel, and the
+     * interpreter must agree. (Before the cap, `Dec.times` was full-precision and wrongly reported `==` — the
+     * residual behind KERNEL-FINDINGS §5's "arithmetic ×/÷/^ cap".)
+     */
+    @Test
+    fun multiplicationCapsAtMathContext50LikeTheKernel() {
+        val a = "12345678901234567890123457"
+        val b = "98765432109876543210987649"
+        val exact = java.math.BigDecimal(a).multiply(java.math.BigDecimal(b)).toPlainString()  // 52 sig digits
+        val cond = render(m.num(Q).asNumber().times(m.num(BQ).asNumber()).eq(exact))
+        val model = RuntimeLaws.withRule(order, "/Order", "Mul", "../Quantity", "MUL", cond)
+        val values = mapOf(Q to a, BQ to b)
+        val kernel = RuntimeLaws.fires(model, "MUL", setOf("/Order"), emptySet(), values)
+        val interp = Interpreter(SingleRowDoc("/Order", values, kinds)).fires(parseCondition(cond, "/Order"))
+        assertEquals(kernel, interp, "product == full-precision: kernel caps at 50 sig digits [k=$kernel i=$interp]")
     }
 
     private companion object {
