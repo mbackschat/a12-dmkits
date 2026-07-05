@@ -29,6 +29,16 @@ Building it immediately caught **four** read defects no other test saw — two *
 
 Lesson: an our-renderer-on-both-sides round-trip proves *stability*, not *fidelity* — comparing against the kernel's canonical form is what catches a consistent read+write loss. (Task #9.)
 
+### `model read` failure-reason taxonomy (`adapter.KernelAdapter.opaqueFailureReason`, 2026-07-05)
+
+The tolerant whole-DM read (F10) degrades a rule/computation it can't convert to a verbatim `Opaque` with a `reason`, and that `reason` now names *which kind* of failure. The earlier blanket `"unresolved reference (<Class>): <message>"` collapsed three very different outcomes into one — and for a null-message crash produced the useless `"unresolved reference (NullPointerException): null"`. The three kinds:
+
+- **`F10 converter does not yet handle …`** — an intentional coverage gap (`UnsupportedConstructException`): the construct is legal, rulekit just doesn't model it yet.
+- **`unresolved reference (…): no element at path: /X`** — a benign asymmetry: a header/cross-form entity the kernel resolves but rulekit's content-only `ModelIndex` legitimately lacks. Kept verbatim (its `"no element at path:"` message is the corpus histograms' bucket key).
+- **`converter error (<Class>): <message> at <Class>.<method>(<file>:<line>)`** — a converter **bug** on a rule the kernel accepts: names the exception class + the first stack frame in our own code, so the crash site is actionable.
+
+Why it matters: a large real-world model corpus read reported **65** failures identically as `"unresolved reference (NullPointerException): null"` — indistinguishable and locus-less, hiding 65 real converter bugs behind a reassuring "reference problem" label. Locked by `adapter.OpaqueFailureReasonTest`; the benign unresolved path by `adapter.UnresolvedReferenceReadTest`.
+
 ## Validating a rule via `checkConsistency` (F4 — verified by experiment)
 
 **Enum comparison by stored value works for text-bearing enums.** `[Tier] == "PRO"` validates against the kernel even though `Tier` is a text-bearing enum (BASIC/PRO/ENTERPRISE with labels). This clarifies the §5b "text-bearing enum ↔ string: no" rule: it forbids comparing an enum to an actual **string field/expression**, not to its own **enum-value literal** (the quoted stored value). So rulekit's `EnumRef.is("PRO")` → `[Tier] == "PRO"` is correct; the value is checked against the model's enum domain at build time.

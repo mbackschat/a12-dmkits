@@ -305,14 +305,50 @@ public final class KernelAdapter {
         } catch (UnsupportedConstructException unconverted) {
             return new ReadResult.Opaque(verbatimConditionText(ruleFullName), unconverted.getMessage());
         } catch (RuntimeException unexpected) {
-            // Tolerant-by-design: a rule the kernel accepts must never crash whole-DM read. A
-            // reference the converter can't resolve in rulekit's content-only index (e.g. a header
-            // entity like /header/id, or a path form rulekit doesn't model) degrades to Opaque —
-            // preserved verbatim, never lost — rather than escaping as an exception.
-            return new ReadResult.Opaque(verbatimConditionText(ruleFullName),
-                    "unresolved reference (" + unexpected.getClass().getSimpleName() + "): "
-                            + unexpected.getMessage());
+            // Tolerant-by-design: a rule the kernel accepts must never crash whole-DM read. But be
+            // HONEST about why it didn't convert — opaqueFailureReason() keeps the benign
+            // "unresolved reference" wording for a header/cross-form entity rulekit's content-only
+            // index legitimately lacks, and reports anything else as a located "converter error"
+            // (class + crash site), never the old blanket "unresolved reference (…): null" that hid
+            // a converter bug behind a reference-problem label.
+            return new ReadResult.Opaque(verbatimConditionText(ruleFullName), opaqueFailureReason(unexpected));
         }
+    }
+
+    /**
+     * The honest {@code reason} for a read that failed with an <em>unexpected</em> exception — anything the
+     * converter threw that is not an intentional {@link UnsupportedConstructException}. Two sub-cases, never
+     * the old blanket {@code "unresolved reference (NullPointerException): null"} that mislabeled a converter
+     * bug as a reference problem and discarded the locus:
+     *
+     * <ol>
+     *   <li><b>a genuinely unresolved reference</b> — a header/cross-form entity rulekit's content-only
+     *       {@code ModelIndex} legitimately lacks, recognizable by {@code ModelIndex.require}'s stable
+     *       {@code "no element at path:"} message: a benign degrade, kept as {@code "unresolved reference …"}
+     *       (so the corpus histograms that bucket on that substring keep working).</li>
+     *   <li><b>anything else</b> — a converter bug on a rule the kernel accepts: reported as {@code
+     *       "converter error (<Class>): <message> at <site>"}, naming the exception class and the first stack
+     *       frame inside our own code so the failing site is actionable.</li>
+     * </ol>
+     */
+    static String opaqueFailureReason(RuntimeException e) {
+        String message = e.getMessage();
+        if (e instanceof IllegalArgumentException && message != null && message.startsWith("no element at path:")) {
+            return "unresolved reference (" + e.getClass().getSimpleName() + "): " + message;
+        }
+        return "converter error (" + e.getClass().getSimpleName() + ")"
+                + (message != null ? ": " + message : "") + locus(e);
+    }
+
+    /** {@code " at Class.method(File:line)"} for the first frame inside our own packages — the crash locus. */
+    private static String locus(Throwable e) {
+        for (StackTraceElement f : e.getStackTrace()) {
+            if (f.getClassName().startsWith("io.github.mbackschat.a12.dm.")) {
+                String cls = f.getClassName().substring(f.getClassName().lastIndexOf('.') + 1);
+                return " at " + cls + "." + f.getMethodName() + "(" + f.getFileName() + ":" + f.getLineNumber() + ")";
+            }
+        }
+        return "";
     }
 
     /**
@@ -489,8 +525,7 @@ public final class KernelAdapter {
         } catch (UnsupportedConstructException unconverted) {
             return new ReadComputation.Opaque(verbatim, unconverted.getMessage());
         } catch (RuntimeException unexpected) {
-            return new ReadComputation.Opaque(verbatim, "unresolved reference ("
-                    + unexpected.getClass().getSimpleName() + "): " + unexpected.getMessage());
+            return new ReadComputation.Opaque(verbatim, opaqueFailureReason(unexpected));
         }
     }
 
