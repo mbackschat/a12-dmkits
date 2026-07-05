@@ -60,6 +60,10 @@ class DivPowDiffTest {
     @Test fun powDoesNotFire() = agree(render(qty().toThePowerOf(Dsl.number("2")).gt(10)), "3", "1", "9 not > 10")
     @Test fun powZeroExponent() = agree(render(qty().toThePowerOf(Dsl.number("0")).gt(0)), "7", "1", "7^0 = 1 > 0")
     @Test fun powNegativeExponent() = agree(render(qty().toThePowerOf(Dsl.number("-1")).gt(0)), "4", "1", "4^-1 = 0.25 > 0")
+    @Test fun powZeroToNegativeIsQuiet() =
+        agree(render(m.field(QTY).filled().and(qty().toThePowerOf(Dsl.number("-1")).gt(0))), "0", "1", "0^-1 quiet → no fire")
+    @Test fun powExponentOutOfRangeIsQuiet() =
+        agree(render(m.field(QTY).filled().and(qty().toThePowerOf(Dsl.number("2000")).gt(0))), "2", "1", "|exp|>1000 quiet → no fire")
     @Test fun powBindsTighterThanMultiply() =
         agree(render(Dsl.number("2").times(qty().toThePowerOf(Dsl.number("2"))).gt(10)), "3", "1", "2 * 3^2 = 18 (^ first) > 10")
 
