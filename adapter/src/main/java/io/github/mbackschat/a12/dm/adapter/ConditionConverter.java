@@ -1510,9 +1510,16 @@ final class ConditionConverter {
         }
         // StartOfDateRange(range) / EndOfDateRange(range) → a bound of a date-range, as a date operand
         if (op instanceof IDateRangeExtractionOperation rangeExt) {
-            DateRangeRef range = dateRangeSource(rangeExt.getDateRangeSpec(), rangeExt);
-            return rangeExt.getOperatorName() == DateRangeExtractionOperationName.StartOfDateRange
-                    ? Dsl.startOfDateRange(range) : Dsl.endOfDateRange(range);
+            boolean start = rangeExt.getOperatorName() == DateRangeExtractionOperationName.StartOfDateRange;
+            IOperation spec = rangeExt.getDateRangeSpec();
+            // BaseYear is the one point-in-time usable as a date-range source: Start = 01.01, End = 31.12 of
+            // the reference year. Discriminate on the enum — its getType() reports NUMBER in this position.
+            if (spec instanceof IPointInTimeOperation pit
+                    && pit.getOperatorName() == PointInTimeOperationName.BaseYear) {
+                return start ? Dsl.startOfBaseYear() : Dsl.endOfBaseYear();
+            }
+            DateRangeRef range = dateRangeSource(spec, rangeExt);
+            return start ? Dsl.startOfDateRange(range) : Dsl.endOfDateRange(range);
         }
         // Date(day, month, year[, decade]) → a constructed date operand
         if (op instanceof IDateConstructionOperation date) {
@@ -1599,8 +1606,10 @@ final class ConditionConverter {
                 default -> throw unsupported("extraction over a " + kind + " field", origin);
             };
         }
-        if (op instanceof IPointInTimeOperation pit && pit.getOperatorName() == PointInTimeOperationName.Today) {
-            return Dsl.today();
+        // a point-in-time extraction source — Today / Now / BaseYear (all date-valued here); convertDateOperand
+        // resolves each, so YearFromDate(BaseYear) / MonthFromDate(Now) read as well as YearFromDate(Today).
+        if (op instanceof IPointInTimeOperation) {
+            return convertDateOperand(op, origin);
         }
         // a shifted date-time as the extraction source, e.g. HoursFromTime(AddHours(scheduledAt, 2))
         if (op instanceof IDateAddOperation add) {

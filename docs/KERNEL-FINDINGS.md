@@ -544,6 +544,11 @@ VALUE polarity (a constant, not fillable). It is **model config, not the clock**
 
 *(Interpreter: `ModelDef.baseYear` ← `modelInfo.baseYear`; `Interpreter.evalCmpOperand` resolves the date/number form by the other operand's evaluated type, `evalConst` defaults to the date form for non-comparison uses. Locked: `adapter.laws.BaseYearDiffTest`.)*
 
+**A point-in-time as a temporal SOURCE (source-read, 2026-07-05).** Beyond a plain operand, a point-in-time can be the *source* of an extraction/range op, and the F10 converter reads all such forms (was `Today`-only):
+
+- **Date extraction source** (`YearFromDate`/`MonthFromDate`/…): `Today`, `Now`, and `BaseYear` are all valid — `YearFromDate(BaseYear)` (kernel short-circuits a `YEAR` extraction when a base year is declared), `MonthFromDate(Now)` (Now is a date-time, so it has a month). The converter resolves any `IPointInTimeOperation` extraction source via the shared date-operand path.
+- **Date-range source** (`StartOfDateRange`/`EndOfDateRange`): **`BaseYear` is the ONE point-in-time the grammar allows here** (`datumBereichAngabe: entitySpec | konstanteReferenzjahr`). It reads the base year as a range: **`StartOfDateRange(BaseYear)` = 01.01, `EndOfDateRange(BaseYear)` = 31.12** of the reference year (kernel `CodeGenCreator` picks the `monatTag`). The discriminator is the enum `operatorName == BaseYear` — its `getType()` reports NUMBER in the range-source position (vs DATE in the extraction-source position), so never branch on the type there. rulekit authoring: `Dsl.startOfBaseYear()`/`endOfBaseYear()`. *(Locked: `adapter.PointInTimeSourceReadTest` — kernel-valid + round-trip for both extraction and range sources.)*
+
 ### §6 supplement — a quoted date LITERAL is typed by its own SYNTAX, not by context (probe, 2026-06-24)
 
 A German-format date literal (`"15.06.2024"`, `dd.MM.yyyy`) is typed a **DATE constant by the kernel from its own syntax** — NOT by the operand it is compared to (clarifies line ~292). Probed decisively: `[CustomerName(string)] == "15.06.2024"` is **rejected** with `MVK_INVALID_COMPARE_TO_DATE` (string vs a date constant) — so there is no valid "string field vs a `dd.MM.yyyy` literal" comparison. Confirmed behaviors the interpreter must match:

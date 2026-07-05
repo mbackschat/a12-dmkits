@@ -442,6 +442,20 @@ public final class Dsl {
     }
 
     /**
+     * {@code StartOfDateRange(BaseYear)} — 01.01 of the model's base year, as a comparable date. The kernel
+     * treats {@code BaseYear} as a date range spanning the reference year, so it is the one point-in-time
+     * usable as a date-range source (needs a declared base year, else {@code MVK_NO_BASE_YEAR}).
+     */
+    public static DateExpr startOfBaseYear() {
+        return new DateExpr(new DateRangeBound(DateRangeBound.Bound.START, new BaseYear()));
+    }
+
+    /** {@code EndOfDateRange(BaseYear)} — 31.12 of the model's base year, as a comparable date. */
+    public static DateExpr endOfBaseYear() {
+        return new DateExpr(new DateRangeBound(DateRangeBound.Bound.END, new BaseYear()));
+    }
+
+    /**
      * {@code ValueAsDate(field, FirstDay)} — the earliest concrete date of a partially known date field
      * (a {@code DateType} with a date precision other than FULL), as a comparable date.
      */
