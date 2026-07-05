@@ -55,8 +55,9 @@ class MetaVerbTest {
     }
 
     // G21 — the display LABEL is the one metadata aspect `meta` didn't cover (it had internal/external
-    // descriptions + annotations). A group's label was settable only via the builder; this is the missing
-    // CLI surface, kept on the cross-cutting `meta` verb so field + group labels share one path.
+    // descriptions + annotations). A field's label was authorable in the from-scratch builder, but editing an
+    // existing element's label had no CLI surface; `meta` adds it on the cross-cutting verb so field + group
+    // labels share one edit path (the from-scratch builder now covers a group's label too — GroupBuilder.label).
 
     @Test
     void setsAndReadsAGroupLabel(@TempDir Path dir) throws Exception {

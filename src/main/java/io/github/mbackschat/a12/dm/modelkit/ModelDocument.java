@@ -936,7 +936,7 @@ public final class ModelDocument {
 
     private ModelDocument addGroup(String parentPath, String name, int repeatability) {
         ArrayNode container = parentPath.isEmpty() ? rootGroups() : containerElements(parentPath);
-        ElementDraft.Group group = new ElementDraft.Group(name, repeatability, null, List.of(), List.of());
+        ElementDraft.Group group = new ElementDraft.Group(name, repeatability, null, List.of(), GroupMeta.none());
         container.add(DocumentModelDraft.groupNode(group, parentPath, locales()));
         return this;
     }

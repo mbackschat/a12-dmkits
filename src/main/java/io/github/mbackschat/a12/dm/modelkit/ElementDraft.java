@@ -56,38 +56,36 @@ public sealed interface ElementDraft
      * may carry an {@code indexFieldName} — the direct child field whose value identifies a row (so two
      * lists can be iterated in lockstep); {@code null} when unset. {@code usageType} is the kernel's
      * group-template marker ({@code "attachment"} / {@code "multi-select"}, FEATURE-GAPS); {@code null}
-     * for a plain group.
+     * for a plain group. Its non-structural {@link GroupMeta metadata} (labels, annotations, descriptions)
+     * is grouped into one cohesive value so a group stays a compact record instead of a long positional
+     * constructor — the same Extract-Class as {@link Field}'s {@link FieldMeta}.
      */
     record Group(String name, int repeatability, String indexFieldName, List<ElementDraft> elements,
-            List<Annotation> annotations, String usageType,
-            Map<String, String> internalDescription, Map<String, String> externalDescription,
-            List<SortField> sortFields)
+            String usageType, List<SortField> sortFields, GroupMeta meta)
             implements ElementDraft {
 
         public Group {
-            internalDescription = internalDescription == null ? Map.of() : Map.copyOf(internalDescription);
-            externalDescription = externalDescription == null ? Map.of() : Map.copyOf(externalDescription);
+            elements = elements == null ? List.of() : List.copyOf(elements);
             sortFields = sortFields == null ? List.of() : List.copyOf(sortFields);
+            meta = meta == null ? GroupMeta.none() : meta;
         }
 
-        /** A plain group — no {@code usageType} template marker, no descriptions. */
+        /** A plain group — no {@code usageType} template marker, no declared row sort. */
         public Group(String name, int repeatability, String indexFieldName, List<ElementDraft> elements,
-                List<Annotation> annotations) {
-            this(name, repeatability, indexFieldName, elements, annotations, null, Map.of(), Map.of());
+                GroupMeta meta) {
+            this(name, repeatability, indexFieldName, elements, null, List.of(), meta);
         }
 
-        /** A group with a {@code usageType} template marker, no descriptions. */
+        /** A group with a {@code usageType} template marker, no declared row sort. */
         public Group(String name, int repeatability, String indexFieldName, List<ElementDraft> elements,
-                List<Annotation> annotations, String usageType) {
-            this(name, repeatability, indexFieldName, elements, annotations, usageType, Map.of(), Map.of());
+                String usageType, GroupMeta meta) {
+            this(name, repeatability, indexFieldName, elements, usageType, List.of(), meta);
         }
 
-        /** No declared row sort (the common case) — the eight-arg form defaults {@code sortFields} to empty. */
-        public Group(String name, int repeatability, String indexFieldName, List<ElementDraft> elements,
-                List<Annotation> annotations, String usageType,
-                Map<String, String> internalDescription, Map<String, String> externalDescription) {
-            this(name, repeatability, indexFieldName, elements, annotations, usageType,
-                    internalDescription, externalDescription, List.of());
+        /** The group's element annotations (the {@link ElementDraft#annotations()} contract) — from its metadata. */
+        @Override
+        public List<Annotation> annotations() {
+            return meta.annotations();
         }
     }
 

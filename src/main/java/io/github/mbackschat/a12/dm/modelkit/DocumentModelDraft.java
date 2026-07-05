@@ -202,10 +202,12 @@ public final class DocumentModelDraft {
         node.put("name", group.name());
         writeAnnotations(node, group.annotations());
         // internal/external description are element-level (alongside annotations), uniform with fields (IDescribed)
-        writeLocalizedText(node, "internalDescription", group.internalDescription());
-        writeLocalizedText(node, "externalDescription", group.externalDescription());
+        writeLocalizedText(node, "internalDescription", group.meta().internalDescription());
+        writeLocalizedText(node, "externalDescription", group.meta().externalDescription());
         ObjectNode body = node.putObject("Group");
         body.put("repeatability", group.repeatability());
+        // the display label (ILabeled) lives in the Group body, like a field's — verified against real models
+        writeLabel(body, group.meta().labels(), locales, "group '" + group.name() + "'");
         if (group.usageType() != null) {
             // the kernel group-template marker (attachment / multi-select), FEATURE-GAPS
             body.put("usageType", group.usageType());
@@ -295,20 +297,7 @@ public final class DocumentModelDraft {
         if (mode != null) {
             body.putObject("requirednessConfig").put("mode", mode);
         }
-        if (!meta.labels().isEmpty()) {
-            // a label, once present, must cover every declared locale (same rule as enum labels).
-            // This is a SPEC error (the caller supplied incomplete labels), not an internal invariant —
-            // IllegalArgumentException, so every CLI field-write path (add/modify/apply/batch) reports it as
-            // a clean "invalid field spec" rejection instead of letting it escape as RK_INTERNAL_ERROR (02-crash).
-            for (String loc : locales) {
-                if (!meta.labels().containsKey(loc)) {
-                    throw new IllegalArgumentException("field '" + field.name()
-                            + "' label is missing declared locale '" + loc + "'");
-                }
-            }
-            ArrayNode label = body.putArray("label");
-            locales.forEach(loc -> label.addObject().put("locale", loc).put("text", meta.labels().get(loc)));
-        }
+        writeLabel(body, meta.labels(), locales, "field '" + field.name() + "'");
         // global / transient flags + helperText live inside the Field body (kernel FieldSerializer)
         if (meta.global()) {
             body.put("global", true);
@@ -318,6 +307,27 @@ public final class DocumentModelDraft {
         }
         writeLocalizedText(body, "helperText", meta.helperText());
         return node;
+    }
+
+    /**
+     * Write a per-locale display {@code label} into an element body (a field's or a group's — both are the
+     * kernel's {@code ILabeled}). A label, once present, must cover <b>every</b> declared locale (the same rule
+     * as enum labels). That is a SPEC error (the caller supplied incomplete labels), not an internal invariant —
+     * {@link IllegalArgumentException}, so every CLI write path (add/modify/apply/batch) reports it as a clean
+     * "invalid spec" rejection instead of letting it escape as {@code RK_INTERNAL_ERROR} (02-crash).
+     */
+    private static void writeLabel(ObjectNode body, Map<String, String> labels, List<String> locales,
+            String elementDesc) {
+        if (labels.isEmpty()) {
+            return;
+        }
+        for (String loc : locales) {
+            if (!labels.containsKey(loc)) {
+                throw new IllegalArgumentException(elementDesc + " label is missing declared locale '" + loc + "'");
+            }
+        }
+        ArrayNode label = body.putArray("label");
+        locales.forEach(loc -> label.addObject().put("locale", loc).put("text", labels.get(loc)));
     }
 
     /** Emit an optional per-locale text slot as {@code key: [{locale, text}]} (omitted when empty). */
@@ -830,11 +840,22 @@ public final class DocumentModelDraft {
         private final String name;
         private int repeatability = 1;
         private String indexFieldName;
+        private final Map<String, String> labels = new LinkedHashMap<>();
         private final List<ElementDraft> elements = new ArrayList<>();
         private final List<ElementDraft.SortField> sortFields = new ArrayList<>();
 
         private GroupBuilder(String name) {
             this.name = name;
+        }
+
+        /**
+         * Set this group's per-locale display {@code label} (its caption — the kernel's {@code ILabeled}, which
+         * a group carries via {@code IEntity} just like a field). Call once per locale; a label, once present,
+         * must cover every declared locale (checked at build, uniform with field/enum labels).
+         */
+        public GroupBuilder label(String locale, String text) {
+            labels.put(locale, text);
+            return this;
         }
 
         /** Make this group a repeatable list with the given maximum (≥ 2; {@code 1} is the single default). */
@@ -1024,9 +1045,14 @@ public final class DocumentModelDraft {
                             + "' is not a direct child field");
                 }
             }
+            GroupMeta meta = GroupMeta.builder()
+                    .labels(labels)
+                    .annotations(annotations)
+                    .internalDescription(internalDescription)
+                    .externalDescription(externalDescription)
+                    .build();
             return new ElementDraft.Group(name, repeatability, indexFieldName,
-                    List.copyOf(elements), List.copyOf(annotations), null,
-                    Map.copyOf(internalDescription), Map.copyOf(externalDescription), List.copyOf(sortFields));
+                    List.copyOf(elements), null, List.copyOf(sortFields), meta);
         }
     }
 
@@ -1099,8 +1125,8 @@ public final class DocumentModelDraft {
             }
             ElementDraft.Field field =
                     new ElementDraft.Field(fieldName, fieldType, requiredness);
-            return new ElementDraft.Group(groupName, maxRows, null, List.of(field),
-                    List.copyOf(annotations), "multi-select");
+            return new ElementDraft.Group(groupName, maxRows, null, List.of(field), "multi-select",
+                    GroupMeta.builder().annotations(annotations).build());
         }
     }
 
@@ -1182,8 +1208,8 @@ public final class DocumentModelDraft {
             for (AttachmentRule rule : AttachmentRule.values()) {
                 elements.add(ruleFor(rule, german, locales));
             }
-            return new ElementDraft.Group(groupName, repeatability, null, elements,
-                    List.copyOf(annotations), "attachment");
+            return new ElementDraft.Group(groupName, repeatability, null, elements, "attachment",
+                    GroupMeta.builder().annotations(annotations).build());
         }
 
         private static ElementDraft.Field stringField(String name) {
