@@ -726,15 +726,24 @@ final class ConditionConverter {
         // handles expose outer(); other kinds leave the marker unset and the N8 backstop (verifyOuterPreserved)
         // catches the silent drop and degrades the rule to Opaque.
         boolean leftOuter = field.getField().isOuter();
-        // a semantic index ([field For "x"]) reads the field's value in the repetition whose index field
-        // equals "x" — it rides on getSemanticIndex(). We model the single-string index on a number field
-        // (SemanticIndexValue); a multi-element or entity-valued index stays Opaque (never a silent drop).
+        // a semantic index ([field For X]) reads the field's value in the repetition whose group index field
+        // equals X — it rides on getSemanticIndex(). The kernel's index is always a single element: a constant
+        // String key ([field For "x"] → SemanticIndexValue) or a field-ref IEntityId key ([field For keyField]
+        // → SemanticIndexFieldValue, the current value of keyField). We model both on a NUMBER field; a
+        // semantic index on a non-number field stays Opaque (never a silent drop).
         java.util.List<Object> semIdx = field.getField().getSemanticIndex();
         if (semIdx != null && !semIdx.isEmpty()) {
-            if (semIdx.size() == 1 && semIdx.get(0) instanceof String idx && kind == ValueKind.NUMBER) {
-                return numberExprComparison(model.num(path).forIndex(idx), op, other, origin);
+            if (semIdx.size() == 1 && kind == ValueKind.NUMBER) {
+                Object key = semIdx.get(0);
+                if (key instanceof String constKey) {
+                    return numberExprComparison(model.num(path).forIndex(constKey), op, other, origin);
+                }
+                if (key instanceof IEntityId fieldKey) {
+                    return numberExprComparison(model.num(path).forIndex(model.field(fieldKey.getFullName())), op, other, origin);
+                }
             }
-            throw unsupported("semantic index ([field For …]) — only a single string index on a number field is modeled", origin);
+            throw unsupported("semantic index ([field For …]) on a " + kind
+                    + " field — only a constant- or field-keyed index on a NUMBER field is modeled", origin);
         }
         // an enum field navigated to one of its categories ([field -> Cat]) rides on getCategoryName()
         String category = field.getField().getCategoryName();
