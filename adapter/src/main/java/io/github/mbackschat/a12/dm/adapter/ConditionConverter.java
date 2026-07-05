@@ -762,6 +762,8 @@ final class ConditionConverter {
             case DATE_TIME -> dateTimeComparison(leftOuter ? model.dateTime(path).outer() : model.dateTime(path), op, other, origin);
             case BOOLEAN -> booleanComparison(model.bool(path), op, other, origin);
             case CONFIRM -> confirmComparison(model.confirm(path), op, other, origin);
+            // a custom-typed field's value is text — the kernel compares it as a string (m.custom → StringRef)
+            case CUSTOM -> stringComparison(leftOuter ? model.custom(path).outer() : model.custom(path), op, other, origin);
             default -> throw unsupported("comparison on a " + kind + " field", origin);
         };
     }
@@ -892,6 +894,10 @@ final class ConditionConverter {
             ICondition origin) {
         if (right instanceof IConstantOperation constant) {
             String v = constant.getValue();
+            Tolerance tol = toleranceOf(op);   // NE1/NE2/NE5/NE10 → DiffersWithToleranceRange{N}
+            if (tol != null) {
+                return expr.differsWithTolerance(tol, Dsl.number(v));
+            }
             return switch (op) {
                 case GT -> expr.gt(v);
                 case LT -> expr.lt(v);
@@ -1041,6 +1047,10 @@ final class ConditionConverter {
 
     /** A comparison between two numeric expressions (field-vs-aggregate, aggregate-vs-field, …). */
     private Condition exprVsExpr(NumberExpr left, ComparisonOperation op, NumberExpr right, ICondition origin) {
+        Tolerance tol = toleranceOf(op);   // NE1/NE2/NE5/NE10 → DiffersWithToleranceRange{N}
+        if (tol != null) {
+            return left.differsWithTolerance(tol, right);
+        }
         return switch (op) {
             case LT -> left.lt(right);
             case LE -> left.le(right);
