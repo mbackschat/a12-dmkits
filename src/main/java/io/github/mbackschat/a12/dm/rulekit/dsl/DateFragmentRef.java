@@ -1,13 +1,16 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 /**
- * A typed handle to a date-fragment field (e.g. a year-month partial date, §6) — usable as the
- * {@link TemporalOperand source} of a component extraction ({@link Dsl#monthFromDate},
- * {@link Dsl#yearFromDate}). Obtain from {@link BoundModel#dateFragment(String)}. Like
- * {@link DateTimeRef} it is a source-only kind: rulekit does not model date-fragment comparison
- * directly (no corpus consumer) — extract a component first, then compare that.
+ * A typed handle to a date-fragment field (e.g. a year-month partial date, §6). It is a full
+ * {@link DateOperand}: the kernel collapses a date fragment into a plain {@code Date} for
+ * parsing/checking/rendering/comparison (KERNEL-FINDINGS §6), so a fragment compares like a date field
+ * ({@code <, <=, >, >=, ==, !=}) against a date field, another fragment, {@code Date(...)},
+ * {@link Dsl#today() Today}, or a date expression. It is also usable as the {@link TemporalOperand
+ * source} of a component extraction ({@link Dsl#monthFromDate}, {@link Dsl#yearFromDate}). Obtain from
+ * {@link BoundModel#dateFragment(String)}. The kernel enforces one extra rule at validation time — two
+ * date values are comparable only if both carry a year or neither does (the year-class partition, §6).
  */
-public record DateFragmentRef(FieldRef field, boolean correlated) implements TemporalOperand {
+public record DateFragmentRef(FieldRef field, boolean correlated) implements DateOperand {
 
     public DateFragmentRef(FieldRef field) {
         this(field, false);

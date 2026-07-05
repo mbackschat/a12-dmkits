@@ -1,12 +1,13 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 /**
- * A date-valued operand — a date {@link DateRef field}, {@link Dsl#today() Today}, or an
- * {@link Dsl#addMonths add} result ({@link DateExpr}). Dates are orderable (§5b), and unlike numbers
+ * A date-valued operand — a date {@link DateRef field}, a {@link DateFragmentRef date-fragment field}
+ * (collapsed to a date by the kernel, §6), {@link Dsl#today() Today}, or an {@link Dsl#addMonths add}
+ * result ({@link DateExpr}). Dates are orderable (§5b), and unlike numbers
  * they carry no scale, so field-vs-field date comparison needs none of the D13 scale machinery.
  * The comparison builders are default methods so every date operand compares the same way.
  */
-public sealed interface DateOperand extends TemporalOperand permits DateRef, DateExpr {
+public sealed interface DateOperand extends TemporalOperand permits DateRef, DateExpr, DateFragmentRef {
 
     /** This operand as a value expression (a date {@link FieldValue}, {@link Today}, or {@link DateShift}). */
     @Override

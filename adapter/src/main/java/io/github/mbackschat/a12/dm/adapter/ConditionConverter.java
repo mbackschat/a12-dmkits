@@ -76,6 +76,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ValueListCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateFragmentRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateShift;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand;
@@ -746,6 +747,8 @@ final class ConditionConverter {
             case STRING -> stringComparison(leftOuter ? model.str(path).outer() : model.str(path), op, other, origin);
             case ENUMERATION -> enumComparison(leftOuter ? model.enumOf(path).outer() : model.enumOf(path), op, other, origin);
             case DATE -> dateComparison(leftOuter ? model.date(path).outer() : model.date(path), op, other, origin);
+            // a date-fragment field compares like a date (the kernel collapses it to a Date, §6) — same machinery
+            case DATE_FRAGMENT -> dateComparison(leftOuter ? model.dateFragment(path).outer() : model.dateFragment(path), op, other, origin);
             case TIME -> timeComparison(leftOuter ? model.time(path).outer() : model.time(path), op, other, origin);
             case DATE_TIME -> dateTimeComparison(leftOuter ? model.dateTime(path).outer() : model.dateTime(path), op, other, origin);
             case BOOLEAN -> booleanComparison(model.bool(path), op, other, origin);
@@ -1345,7 +1348,7 @@ final class ConditionConverter {
         throw unsupported("boolean/confirm comparison against a non-boolean-literal operand", origin);
     }
 
-    private Condition dateComparison(DateRef left, ComparisonOperation op, IOperation right, ICondition origin) {
+    private Condition dateComparison(DateOperand left, ComparisonOperation op, IOperation right, ICondition origin) {
         return dateComparison(left, op, convertDateOperand(right, origin), origin);
     }
 
@@ -1454,8 +1457,16 @@ final class ConditionConverter {
     /** A date-valued operand: a date field ({@code FieldValue}), a date constant, or a point-in-time ({@code Today}). */
     private DateOperand convertDateOperand(IOperation op, Object origin) {
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
-            DateRef date = model.date(field.getField().getFullName());
-            return field.getField().isOuter() ? date.outer() : date;   // $ correlation (D13)
+            String path = field.getField().getFullName();
+            boolean outer = field.getField().isOuter();   // $ correlation (D13)
+            // a date-fragment field is a legal date operand too (the kernel collapses it to a Date, §6) —
+            // resolving it as a plain date here would throw "is not a date field (kind=DATE_FRAGMENT)"
+            if (model.fieldAt(path).map(i -> i.kind() == ValueKind.DATE_FRAGMENT).orElse(false)) {
+                DateFragmentRef frag = model.dateFragment(path);
+                return outer ? frag.outer() : frag;
+            }
+            DateRef date = model.date(path);
+            return outer ? date.outer() : date;
         }
         // a date constant — [date] > "01.01.2022", or a DifferenceInDays(date, "01.01.2022") operand (the
         // kernel stores it German-format, type DATE, independent of the field's display format)
