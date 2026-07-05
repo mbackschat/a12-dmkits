@@ -671,10 +671,18 @@ class Interpreter(
     private fun baseYearOrThrow(): Int = baseYear
         ?: throw UnsupportedConstructException("BaseYear needs the model's base year (modelInfo.baseYear)")
 
-    /** Binary arithmetic on numbers; an empty numeric operand already arrives as 0. Unknown propagates. */
+    /** Binary arithmetic; an empty numeric operand already arrives as 0, Unknown propagates. `+` is overloaded:
+     *  STRING CONCATENATION when an operand is textual, else numeric addition (IG24). */
     private fun evalArith(a: Expr.Arith): Val {
         val l = evalExpr(a.left)
         val r = evalExpr(a.right)
+        // `+` = string concatenation when an operand is a string VALUE, or STATICALLY a string-typed operand (so
+        // two EMPTY strings still concat to "", where the runtime `Val.Txt` check alone would see only Unknowns).
+        // An empty/absent string operand concatenates as "" (kernel-probed: `"" + " " + "Smith"` = " Smith"), NOT
+        // as non-evaluable. (The kernel rejects a mixed number+string `+` at compile, so a concat is all-strings.)
+        if (a.op == ArithOp.ADD && (l is Val.Txt || r is Val.Txt || producesString(a.left) || producesString(a.right))) {
+            return Val.Txt(concatText(l) + concatText(r))
+        }
         if (l is Val.Unknown || r is Val.Unknown) return Val.Unknown
         val x = num(l)
         val y = num(r)
@@ -699,6 +707,23 @@ class Interpreter(
         if (e !in -1000..1000) return Val.Unknown
         if (base.compareTo(DEC_ZERO) == 0 && e < 0) return Val.Unknown
         return Val.Num(base.pow(e))
+    }
+
+    /** A concat operand as text: a string value as-is; an empty/absent/non-evaluable string operand as "" (the
+     *  kernel treats an empty string field in a concat as ""); a number defensively via its display form. */
+    private fun concatText(v: Val): String = when (v) {
+        is Val.Txt -> v.v
+        is Val.Num -> v.v.display()
+        else -> ""
+    }
+
+    /** Whether [e] statically yields a STRING — the signal that a `+` is concatenation (so two EMPTY string
+     *  operands still concat to "", where the runtime `Val.Txt` check alone would see only Unknowns). */
+    private fun producesString(e: Expr): Boolean = when (e) {
+        is Expr.StrLit -> true
+        is Expr.Field -> ctx.declaredKind(e.path) == Kind.STRING
+        is Expr.Arith -> e.op == ArithOp.ADD && (producesString(e.left) || producesString(e.right))
+        else -> false
     }
 
     private fun evalFunc(f: Expr.Func): Val {
