@@ -60,8 +60,9 @@ public abstract class FieldAttrs<SELF extends FieldAttrs<SELF>> extends ElementM
      * {@code GroupEditor}, so authoring and editing produce a byte-identical field.
      */
     public ElementDraft.Field toField(String name) {
-        return new ElementDraft.Field(name, spec(), requiredness, Map.copyOf(labels),
-                List.copyOf(annotations), global, notPersisted, Map.copyOf(internalDescription),
-                Map.copyOf(externalDescription), Map.copyOf(helperText));
+        return new ElementDraft.Field(name, spec(), requiredness, FieldMeta.builder()
+                .labels(labels).annotations(annotations).global(global).notPersisted(notPersisted)
+                .internalDescription(internalDescription).externalDescription(externalDescription)
+                .helperText(helperText).build());
     }
 }

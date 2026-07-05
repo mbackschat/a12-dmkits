@@ -284,38 +284,39 @@ public final class DocumentModelDraft {
         node.put("type", "Field");
         node.put("id", parentPath + "/" + field.name());
         node.put("name", field.name());
-        writeAnnotations(node, field.annotations());
+        FieldMeta meta = field.meta();
+        writeAnnotations(node, meta.annotations());
         // internal/external description are element-level (alongside annotations), per the kernel serializer
-        writeLocalizedText(node, "internalDescription", field.internalDescription());
-        writeLocalizedText(node, "externalDescription", field.externalDescription());
+        writeLocalizedText(node, "internalDescription", meta.internalDescription());
+        writeLocalizedText(node, "externalDescription", meta.externalDescription());
         ObjectNode body = node.putObject("Field");
         writeFieldType(body.putObject("fieldType"), field.type(), locales);
         String mode = field.requiredness().mode();
         if (mode != null) {
             body.putObject("requirednessConfig").put("mode", mode);
         }
-        if (!field.labels().isEmpty()) {
+        if (!meta.labels().isEmpty()) {
             // a label, once present, must cover every declared locale (same rule as enum labels).
             // This is a SPEC error (the caller supplied incomplete labels), not an internal invariant —
             // IllegalArgumentException, so every CLI field-write path (add/modify/apply/batch) reports it as
             // a clean "invalid field spec" rejection instead of letting it escape as RK_INTERNAL_ERROR (02-crash).
             for (String loc : locales) {
-                if (!field.labels().containsKey(loc)) {
+                if (!meta.labels().containsKey(loc)) {
                     throw new IllegalArgumentException("field '" + field.name()
                             + "' label is missing declared locale '" + loc + "'");
                 }
             }
             ArrayNode label = body.putArray("label");
-            locales.forEach(loc -> label.addObject().put("locale", loc).put("text", field.labels().get(loc)));
+            locales.forEach(loc -> label.addObject().put("locale", loc).put("text", meta.labels().get(loc)));
         }
         // global / transient flags + helperText live inside the Field body (kernel FieldSerializer)
-        if (field.global()) {
+        if (meta.global()) {
             body.put("global", true);
         }
-        if (field.notPersisted()) {
+        if (meta.notPersisted()) {
             body.put("transient", true);
         }
-        writeLocalizedText(body, "helperText", field.helperText());
+        writeLocalizedText(body, "helperText", meta.helperText());
         return node;
     }
 
@@ -874,7 +875,7 @@ public final class DocumentModelDraft {
 
         /** Add a bare field of the given easy kind with explicit requiredness. */
         public GroupBuilder field(String name, FieldKind kind, Requiredness requiredness) {
-            elements.add(new ElementDraft.Field(name, bareSpec(kind), requiredness, Map.of(), List.of()));
+            elements.add(new ElementDraft.Field(name, bareSpec(kind), requiredness));
             return this;
         }
 
@@ -949,7 +950,7 @@ public final class DocumentModelDraft {
         /** Add a field whose type is a reusable {@code typeDef} (referenced by id), with requiredness. */
         public GroupBuilder typedefField(String name, String typeDefId, Requiredness requiredness) {
             elements.add(new ElementDraft.Field(name, new FieldTypeSpec.TypeDefRef(typeDefId),
-                    requiredness, Map.of(), List.of()));
+                    requiredness));
             return this;
         }
 
@@ -1097,7 +1098,7 @@ public final class DocumentModelDraft {
                         "a multi-select needs maxRows > 1 (the kernel requires a repeatable group); was " + maxRows);
             }
             ElementDraft.Field field =
-                    new ElementDraft.Field(fieldName, fieldType, requiredness, Map.of(), List.of());
+                    new ElementDraft.Field(fieldName, fieldType, requiredness);
             return new ElementDraft.Group(groupName, maxRows, null, List.of(field),
                     List.copyOf(annotations), "multi-select");
         }
@@ -1174,9 +1175,9 @@ public final class DocumentModelDraft {
             elements.add(stringField("attachment_id"));
             elements.add(sizeField());
             elements.add(new ElementDraft.Field("mime_type", enumOrString(allowedMimeTypes),
-                    Requiredness.OPTIONAL, Map.of(), List.of()));
+                    Requiredness.OPTIONAL));
             elements.add(new ElementDraft.Field("category", enumOrString(categories),
-                    Requiredness.OPTIONAL, Map.of(), List.of()));
+                    Requiredness.OPTIONAL));
             elements.add(stringField("description"));
             for (AttachmentRule rule : AttachmentRule.values()) {
                 elements.add(ruleFor(rule, german, locales));
@@ -1187,19 +1188,19 @@ public final class DocumentModelDraft {
 
         private static ElementDraft.Field stringField(String name) {
             return new ElementDraft.Field(name, new FieldTypeSpec.StringSpec(null, null, null, null),
-                    Requiredness.OPTIONAL, Map.of(), List.of());
+                    Requiredness.OPTIONAL);
         }
 
         /** The kernel requires {@code content} to be a String that skips value validation and permits line breaks. */
         private static ElementDraft.Field contentField() {
             FieldTypeSpec spec = new FieldTypeSpec.StringSpec(null, null, null, null, true, false, Map.of(), true);
-            return new ElementDraft.Field("content", spec, Requiredness.OPTIONAL, Map.of(), List.of());
+            return new ElementDraft.Field("content", spec, Requiredness.OPTIONAL);
         }
 
         private ElementDraft.Field sizeField() {
             BigDecimal max = maxSizeBytes == null ? null : BigDecimal.valueOf(maxSizeBytes);
             return new ElementDraft.Field("size", new FieldTypeSpec.NumberSpec(0, null, max),
-                    Requiredness.OPTIONAL, Map.of(), List.of());
+                    Requiredness.OPTIONAL);
         }
 
         private static FieldTypeSpec enumOrString(List<String> values) {

@@ -522,7 +522,7 @@ public final class ModelDocument {
      * {@link FieldKind} overload (which is just {@code addField(g, n, bareSpec(kind))}).
      */
     public ModelDocument addField(String groupPath, String name, FieldTypeSpec type) {
-        return addField(groupPath, new ElementDraft.Field(name, type, Requiredness.OPTIONAL, Map.of(), List.of()));
+        return addField(groupPath, new ElementDraft.Field(name, type, Requiredness.OPTIONAL));
     }
 
     /**
@@ -1513,7 +1513,7 @@ public final class ModelDocument {
     /** Add a field at {@code groupPath} typed by the type definition {@code typeDefId}. */
     public ModelDocument addTypedefField(String groupPath, String name, String typeDefId) {
         ElementDraft.Field field = new ElementDraft.Field(
-                name, new FieldTypeSpec.TypeDefRef(typeDefId), Requiredness.OPTIONAL, Map.of(), List.of());
+                name, new FieldTypeSpec.TypeDefRef(typeDefId), Requiredness.OPTIONAL);
         containerElements(groupPath).add(DocumentModelDraft.fieldNode(field, groupPath, locales()));
         return this;
     }

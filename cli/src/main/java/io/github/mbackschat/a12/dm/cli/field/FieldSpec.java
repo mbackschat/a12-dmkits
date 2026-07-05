@@ -10,6 +10,7 @@ import java.util.Set;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldMeta;
 import io.github.mbackschat.a12.dm.modelkit.FieldModification;
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 import io.github.mbackschat.a12.dm.modelkit.NumberTrait;
@@ -79,11 +80,12 @@ public final class FieldSpec {
             throw new IllegalArgumentException("a field spec needs \"group\" (a group path) and \"name\"");
         }
         FieldTypeSpec type = type(spec, name);
-        ElementDraft.Field field = new ElementDraft.Field(name, type, requiredness(spec),
-                textMap(spec.get("label")), annotations(spec.get("annotations")),
-                spec.path("global").asBoolean(false), spec.path("transient").asBoolean(false),
-                textMap(spec.get("internalDescription")), textMap(spec.get("externalDescription")),
-                textMap(spec.get("helperText")));
+        ElementDraft.Field field = new ElementDraft.Field(name, type, requiredness(spec), FieldMeta.builder()
+                .labels(textMap(spec.get("label"))).annotations(annotations(spec.get("annotations")))
+                .global(spec.path("global").asBoolean(false)).notPersisted(spec.path("transient").asBoolean(false))
+                .internalDescription(textMap(spec.get("internalDescription")))
+                .externalDescription(textMap(spec.get("externalDescription")))
+                .helperText(textMap(spec.get("helperText"))).build());
         return new Parsed(group, field);
     }
 

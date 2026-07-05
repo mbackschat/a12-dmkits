@@ -26,28 +26,28 @@ public sealed interface ElementDraft
     record SortField(String fieldName, SortOrder order) {}
 
     /**
-     * A leaf field — its typed config ({@link FieldTypeSpec}), how it must be filled, per-locale display
-     * {@code labels} (locale → text), and element-level {@code annotations}. Plus the field-level metadata
-     * (FEATURE-GAPS): the kernel flags {@code global} (relevant to partial validation) and
-     * {@code notPersisted} (the kernel {@code transient} flag — not stored), and three per-locale text slots
-     * distinct from the label — {@code internalDescription} / {@code externalDescription} (element-level) and
-     * {@code helperText} (field-level UI help).
+     * A leaf field — its short name, typed config ({@link FieldTypeSpec}), how it must be filled
+     * ({@link Requiredness}), and its non-type {@link FieldMeta metadata} (labels, annotations, the
+     * {@code global}/{@code transient} flags, internal/external descriptions, helper text). The metadata is
+     * grouped into one cohesive value so a field stays a four-part record instead of a long positional
+     * constructor (the aspects had accreted incrementally).
      */
-    record Field(String name, FieldTypeSpec type, Requiredness requiredness, Map<String, String> labels,
-            List<Annotation> annotations, boolean global, boolean notPersisted,
-            Map<String, String> internalDescription, Map<String, String> externalDescription,
-            Map<String, String> helperText) implements ElementDraft {
+    record Field(String name, FieldTypeSpec type, Requiredness requiredness, FieldMeta meta)
+            implements ElementDraft {
 
         public Field {
-            internalDescription = internalDescription == null ? Map.of() : Map.copyOf(internalDescription);
-            externalDescription = externalDescription == null ? Map.of() : Map.copyOf(externalDescription);
-            helperText = helperText == null ? Map.of() : Map.copyOf(helperText);
+            meta = meta == null ? FieldMeta.none() : meta;
         }
 
-        /** The earlier form: no field-level flags or description/helper text. */
-        public Field(String name, FieldTypeSpec type, Requiredness requiredness, Map<String, String> labels,
-                List<Annotation> annotations) {
-            this(name, type, requiredness, labels, annotations, false, false, Map.of(), Map.of(), Map.of());
+        /** A bare field — no metadata (labels/annotations/flags/descriptions all default). */
+        public Field(String name, FieldTypeSpec type, Requiredness requiredness) {
+            this(name, type, requiredness, FieldMeta.none());
+        }
+
+        /** The field's element annotations (the {@link ElementDraft#annotations()} contract) — from its metadata. */
+        @Override
+        public List<Annotation> annotations() {
+            return meta.annotations();
         }
     }
 
