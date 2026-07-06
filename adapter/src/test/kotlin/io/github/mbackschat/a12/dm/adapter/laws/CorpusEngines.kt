@@ -53,17 +53,28 @@ object CorpusEngines {
     private fun javaEngine(modelJson: String): RuntimeLaws.JavaKernelEngine =
         javaEngines.getOrPut(modelJson) { RuntimeLaws.kernelJavaEngine(modelJson) }
 
-    /** The interpreter's rendered signatures for [op] over the case instance. */
-    fun interpret(modelJson: String, placements: List<Placement>, op: Op, clock: String? = null): List<String> {
+    /** The interpreter's outcome: the rendered [signatures] plus any [unsupported] constructs it declaredly can
+     *  not evaluate (their reasons) — a non-empty [unsupported] makes the runner report SKIP (§12). */
+    data class InterpOutcome(val signatures: List<String>, val unsupported: List<String>)
+
+    /** The interpreter's detailed outcome for [op] over the case instance (signatures + unsupported reasons). */
+    fun interpretDetailed(modelJson: String, placements: List<Placement>, op: Op, clock: String? = null): InterpOutcome {
         val def = ModelLoader.load(modelJson)
         val doc = interpDoc(def, placements)
         val engine = DmInterpreter(def, evalClock(clock))
         return when (op) {
-            is Op.ValidateFull -> engine.validate(doc).messages.map(::sigOf).sorted()
-            is Op.ValidatePart -> engine.validatePart(doc, relevantEntities(op)).messages.map(::sigOf).sorted()
-            is Op.Compute -> engine.compute(doc).map(::sigOf).sorted()
+            is Op.ValidateFull -> engine.validate(doc).let { InterpOutcome(it.messages.map(::sigOf).sorted(), unsupportedReasons(it.unsupported)) }
+            is Op.ValidatePart -> engine.validatePart(doc, relevantEntities(op)).let { InterpOutcome(it.messages.map(::sigOf).sorted(), unsupportedReasons(it.unsupported)) }
+            is Op.Compute -> InterpOutcome(engine.compute(doc).map(::sigOf).sorted(), emptyList())
         }
     }
+
+    /** The interpreter's rendered signatures for [op] over the case instance (see [interpretDetailed]). */
+    fun interpret(modelJson: String, placements: List<Placement>, op: Op, clock: String? = null): List<String> =
+        interpretDetailed(modelJson, placements, op, clock).signatures
+
+    private fun unsupportedReasons(unsupported: List<io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule>): List<String> =
+        unsupported.map { "${it.rulePath}: ${it.reason}" }
 
     /** The Groovy-dynamic kernel's rendered signatures for [op] — the corpus anchor. */
     fun groovyDynamic(modelJson: String, placements: List<Placement>, op: Op, clock: String? = null): List<String> {

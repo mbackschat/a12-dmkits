@@ -1,0 +1,345 @@
+{
+    "meta": {
+        "id": "compute-cascade-seed",
+        "kernelVersion": "30.8.1",
+        "source": "fuzz-seed",
+        "sections": [
+            "§2"
+        ],
+        "tags": [
+            "compute",
+            "fuzz"
+        ],
+        "seed": 7,
+        "scenario": "compfuzz#3 b=2 c=5",
+        "notes": "a pinned computation-cascade fuzz seed"
+    },
+    "model": {
+        "header": {
+            "id": "calc",
+            "modelType": "document",
+            "modelVersion": "28.4.0",
+            "locales": [
+                {
+                    "code": "en_US"
+                }
+            ],
+            "labels": [],
+            "annotations": [],
+            "modelReferences": []
+        },
+        "content": {
+            "modelInfo": {
+                "name": "calc",
+                "variant": "cockpit",
+                "revision": "Arbeitsversion",
+                "immutable": false
+            },
+            "modelConfig": {
+                "decimalSeparator": ".",
+                "timeZone": "Europe/Berlin",
+                "conditionLanguage": {
+                    "code": "en_US"
+                },
+                "fieldRefByShortNameAllowed": true
+            },
+            "modelRoot": {
+                "rootGroups": [
+                    {
+                        "type": "Group",
+                        "id": "/Calc",
+                        "name": "Calc",
+                        "Group": {
+                            "repeatability": 1,
+                            "elements": [
+                                {
+                                    "type": "Computation",
+                                    "id": "/Calc/Comp_C4",
+                                    "name": "Comp_C4",
+                                    "Computation": {
+                                        "computedFieldRelPath": "../C4",
+                                        "computationAlternatives": [
+                                            {
+                                                "operation": "{ [C3] + 1 - 5 }"
+                                            }
+                                        ],
+                                        "errorMessage": [
+                                            {
+                                                "locale": "en_US",
+                                                "text": "x"
+                                            },
+                                            {
+                                                "locale": "de_DE",
+                                                "text": "x"
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "type": "Computation",
+                                    "id": "/Calc/Comp_C3",
+                                    "name": "Comp_C3",
+                                    "Computation": {
+                                        "computedFieldRelPath": "../C3",
+                                        "computationAlternatives": [
+                                            {
+                                                "operation": "{ [C2] + [C0] * [C1] }"
+                                            }
+                                        ],
+                                        "errorMessage": [
+                                            {
+                                                "locale": "en_US",
+                                                "text": "x"
+                                            },
+                                            {
+                                                "locale": "de_DE",
+                                                "text": "x"
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "type": "Computation",
+                                    "id": "/Calc/Comp_C2",
+                                    "name": "Comp_C2",
+                                    "Computation": {
+                                        "computedFieldRelPath": "../C2",
+                                        "computationAlternatives": [
+                                            {
+                                                "operation": "{ [C1] + 3 + 2 }"
+                                            }
+                                        ],
+                                        "errorMessage": [
+                                            {
+                                                "locale": "en_US",
+                                                "text": "x"
+                                            },
+                                            {
+                                                "locale": "de_DE",
+                                                "text": "x"
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "type": "Computation",
+                                    "id": "/Calc/Comp_C1",
+                                    "name": "Comp_C1",
+                                    "Computation": {
+                                        "computedFieldRelPath": "../C1",
+                                        "computationAlternatives": [
+                                            {
+                                                "operation": "{ [C0] - [C0] - [C0] }"
+                                            }
+                                        ],
+                                        "errorMessage": [
+                                            {
+                                                "locale": "en_US",
+                                                "text": "x"
+                                            },
+                                            {
+                                                "locale": "de_DE",
+                                                "text": "x"
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "type": "Computation",
+                                    "id": "/Calc/Comp_C0",
+                                    "name": "Comp_C0",
+                                    "Computation": {
+                                        "computedFieldRelPath": "../C0",
+                                        "computationAlternatives": [
+                                            {
+                                                "operation": "{ [B0] - [B0] + [B0] }"
+                                            }
+                                        ],
+                                        "errorMessage": [
+                                            {
+                                                "locale": "en_US",
+                                                "text": "x"
+                                            },
+                                            {
+                                                "locale": "de_DE",
+                                                "text": "x"
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "type": "Field",
+                                    "id": "/Calc/B0",
+                                    "name": "B0",
+                                    "Field": {
+                                        "fieldType": {
+                                            "type": "NumberType",
+                                            "NumberType": {
+                                                "maxFractionalDigits": 0
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "type": "Field",
+                                    "id": "/Calc/B1",
+                                    "name": "B1",
+                                    "Field": {
+                                        "fieldType": {
+                                            "type": "NumberType",
+                                            "NumberType": {
+                                                "maxFractionalDigits": 0
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "type": "Field",
+                                    "id": "/Calc/C0",
+                                    "name": "C0",
+                                    "Field": {
+                                        "fieldType": {
+                                            "type": "NumberType",
+                                            "NumberType": {
+                                                "maxFractionalDigits": 0
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "type": "Field",
+                                    "id": "/Calc/C1",
+                                    "name": "C1",
+                                    "Field": {
+                                        "fieldType": {
+                                            "type": "NumberType",
+                                            "NumberType": {
+                                                "maxFractionalDigits": 0
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "type": "Field",
+                                    "id": "/Calc/C2",
+                                    "name": "C2",
+                                    "Field": {
+                                        "fieldType": {
+                                            "type": "NumberType",
+                                            "NumberType": {
+                                                "maxFractionalDigits": 0
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "type": "Field",
+                                    "id": "/Calc/C3",
+                                    "name": "C3",
+                                    "Field": {
+                                        "fieldType": {
+                                            "type": "NumberType",
+                                            "NumberType": {
+                                                "maxFractionalDigits": 0
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "type": "Field",
+                                    "id": "/Calc/C4",
+                                    "name": "C4",
+                                    "Field": {
+                                        "fieldType": {
+                                            "type": "NumberType",
+                                            "NumberType": {
+                                                "maxFractionalDigits": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    },
+    "placements": [
+        {
+            "kind": "GROUP",
+            "path": "/Calc",
+            "reps": [
+                1
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Calc/B0",
+            "reps": [
+                1,
+                1
+            ],
+            "value": "23"
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Calc/B1",
+            "reps": [
+                1,
+                1
+            ],
+            "value": "10"
+        },
+        {
+            "kind": "EMPTY",
+            "path": "/Calc/C0",
+            "reps": [
+                1,
+                1
+            ]
+        },
+        {
+            "kind": "EMPTY",
+            "path": "/Calc/C1",
+            "reps": [
+                1,
+                1
+            ]
+        },
+        {
+            "kind": "EMPTY",
+            "path": "/Calc/C2",
+            "reps": [
+                1,
+                1
+            ]
+        },
+        {
+            "kind": "EMPTY",
+            "path": "/Calc/C3",
+            "reps": [
+                1,
+                1
+            ]
+        },
+        {
+            "kind": "EMPTY",
+            "path": "/Calc/C4",
+            "reps": [
+                1,
+                1
+            ]
+        }
+    ],
+    "op": {
+        "kind": "compute"
+    },
+    "computeExpected": [
+        "/Calc[1]/C0|VALUE|23",
+        "/Calc[1]/C1|VALUE|-23",
+        "/Calc[1]/C2|VALUE|-18",
+        "/Calc[1]/C3|VALUE|-547",
+        "/Calc[1]/C4|VALUE|-551"
+    ]
+}

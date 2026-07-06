@@ -80,6 +80,9 @@ tasks.named('test') {
         def all = project.hasProperty('allTests')
         if (!all && !project.hasProperty('runPerf')) excludeTags 'perf'
         if (!all && !project.hasProperty('runFuzz')) excludeTags 'fuzz'
+        // The corpus generator mutates the working tree (writes corpus/cases/**); opt in with -PrunCorpusCapture.
+        // The everyday guard is CorpusReplayTest, which replays the committed files (no exclusion).
+        if (!project.hasProperty('runCorpusCapture')) excludeTags 'corpus-capture'
     }
     // Fork the kernel-heavy suite across JVMs — distributes test CLASSES over N forks so the differential
     // + fuzz classes run in parallel (:adapter:test is the ~8-min CI hog: the kernel oracle does Groovy
