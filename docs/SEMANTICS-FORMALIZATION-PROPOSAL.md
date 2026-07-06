@@ -43,7 +43,7 @@ The *statement* half needs no dedicated work: the runtime-semantics extraction i
 | **WI-T** | Divergence triage (reactive, from WI-1/WI-7 findings; anchor = groovy-dynamic per S3) | **BEST_MODEL** | unbounded | repro handoff (§5) |
 | **WI-P** | Parser completion against the S1 gap list (case variants, `;;` comments, `..Name`, value-list literals, `For` shapes) — **done 2026-07-06** (both corpora parse 100%; IG35 → IF55; INTERPRETER-SPEC §11 / fork F4 resolved) | **REGULAR_MODEL** | ~~1–2~~ done | WI-0 |
 | **WI-2** | Multiplatform DM-JSON → `ModelDef` loader in `:interpreter` (+ `InterpreterModelLoader` delegates) — **done 2026-07-06** (`load.ModelLoader`, JVM+JS; delegate + parity over all 37 fixture models; kotlinx tree API per F1) | **REGULAR_MODEL** | ~~2–3~~ done | WI-0 (fork F1) |
-| **WI-3a** | Corpus **contract**: case format, runner spec, corpus-spec draft | **BEST_MODEL** | 1 | WI-0 (S1) |
+| **WI-3a** | Corpus **contract**: case format, runner spec, corpus spec — **done 2026-07-06** ([CONFORMANCE-CORPUS-SPEC](CONFORMANCE-CORPUS-SPEC.md); §7's detail superseded by it) | **BEST_MODEL** | ~~1~~ done | WI-0 (S1) |
 | **WI-3b** | Corpus capture + JVM replay implementation | **REGULAR_MODEL** | 1–3 | WI-2, WI-3a |
 | **WI-4** | Property pack in `interpreter/commonTest` | **REGULAR_MODEL** | 1–2 | — |
 | **WI-5a** | Facet **vertical slice**: `emptyOperand` end-to-end (schema → populate → verification probes → lint → enricher → serving) | **BEST_MODEL** | 2–3 | WI-0 (S6) |
@@ -96,9 +96,11 @@ A `commonMain` DM-JSON → `ModelDef` loader in `:interpreter` (expanded, self-c
 
 **Outcome (2026-07-06).** Shipped as `io.github.mbackschat.a12.dm.interpreter.load.ModelLoader` (`commonMain`, green on JVM + JS). Port is behavior-faithful: the new `:cli` `ModelLoaderParityTest` asserts `ModelLoader.load(json) == InterpreterModelLoader.load(json)` over **all 37 fixture models** across both roots (`cli/src/test/resources/models` + `examples/models`) — verified green *before* the switch, then kept as the delegation guard (runs in `docGuardTest` with both model roots as declared inputs). Per fork F1: kotlinx-serialization-json **tree API only** (`Json.parseToJsonElement` + a hand-written `JsonElement`→`ModelDef` mapper, no `@Serializable`/plugin), and the purity lint gained a **commonMain allowlist** (Kotlin stdlib + own packages + declared third parties) so `kotlinx.serialization.` is an explicit, reviewed boundary — any future common third-party import now fails the build until declared. Raw number text is preserved (`100.50` stays `"100.50"`), closing a latent Jackson `Double` round-trip gap no fixture exercised. Graduated: [API-GUIDE](API-GUIDE.md) §5e (loader teaser), [API-FINDINGS](API-FINDINGS.md) finding 57, [INTERPRETER-SPEC](INTERPRETER-SPEC.md) §6/§7 (standalone boundary gains the loader), [INTERPRETER-ARCHITECTURE](INTERPRETER-ARCHITECTURE.md) §2 (`.load` package). **IG36 (packed item) — TimeType half shipped** (a separate commit, INTERPRETER-FINDINGS IF56: the loader now carries `TimeType.format`; a kernel differential is impossible because codegen rejects non-default time formats, so it's unit-locked); the **`DateFragmentType` half stays open** in [INTERPRETER-GAPS](INTERPRETER-GAPS.md) — a focused eval effort (partial-date precision + comparability/gating laws), not a loader tweak.
 
-### 6.3 WI-3a/b — the corpus — `Model: 3a BEST_MODEL · 3b REGULAR_MODEL`
+### 6.3 WI-3a/b — the corpus — `Model: 3a BEST_MODEL · 3b REGULAR_MODEL` — **3a DONE 2026-07-06**
 
 WI-3a fixes the published **contract** (§7): the case format, the canonicalization rules, the runner spec, the corpus-spec draft doc. WI-3b implements capture (promote `Place` to a public serializable type; pin fuzz seeds; a capture harness in `:adapter`) and JVM replay for interpreter + codegen-Java, with the build-discipline guards (§7 guards). Migrating the ~105 curated DiffTest scenarios into cases is **drip work, not a gate** — per-family, alongside other touches; corpus value comes first from fuzz-pinned + facet-generated cases.
+
+**WI-3a outcome (2026-07-06).** The contract is [CONFORMANCE-CORPUS-SPEC](CONFORMANCE-CORPUS-SPEC.md): the layout (`corpus/cases/<family>/<id>.json`, own-domain lane), the case document, placement semantics (a serialized `PlacementSink`, parent-before-child, `EMPTY` = an instantiated-empty cell), the shared `formatPointer` pointer form including **phantom rows** (IF54), `code|type|pointer` signatures under sorted-multiset equality, and compute outcomes with **per-row pointers and exact stored-form values** — deliberately superseding the differential's regex index-strip, which obliges WI-3b to expose repetition indices on the interpreter's `Computed` (internally present as `ComputedInstance`) and to normalize kernel compute paths. Also fixed there: the one-instant clock with the modern-`DocumentV2` pin, the `Locale.US`/stored-English pins, per-strategy `divergences` as full-replacement overrides against the groovy-dynamic anchor, PASS/FAIL/SKIP verdict rules (a stored-condition parse failure is a FAIL — parser conformance is in scope), and the reference-implementation obligations WI-3b builds against (tri-verification at capture, the declared-inputs task, the case schema + id guard, the KERNEL-UPGRADE guardian registration).
 
 ### 6.4 WI-4 — property pack — `Model: REGULAR_MODEL` (statement questions escalate per §5)
 
@@ -123,50 +125,11 @@ For each model in `../a12-kernel-mm` (15 metamodels, 547 kernel-team-authored ru
 
 ## 7. Corpus design
 
-### Case format (settled sketch — WI-3a finalizes)
+**The contract lives in [CONFORMANCE-CORPUS-SPEC.md](CONFORMANCE-CORPUS-SPEC.md)** (WI-3a, 2026-07-06) — case format, placement/pointer semantics, signature and compute canonicalization, clock/locale pins, divergence records, runner verdicts, and the reference-implementation obligations. This section keeps only the design intent the spec rests on:
 
-```
-{ meta:       { id, kernelVersion: "30.8.1", source: fuzz-seed | curated | facet-generated,
-                sections: ["§9"], tags: ["partial", ...] },
-  model:      <expanded, self-contained DM-JSON; rules embedded as stored-English condition strings>,
-  clock:      "2026-07-06T12:00:00",              // present iff the case uses Now/Today; ONE instant (S5) — interpreter
-                                                  // runners inject via EvalClock (today = the instant's date); kernel replay
-                                                  // pins it via DocumentProcessingConfig.currentDateForTest (modern path only)
-  placements: [ {kind: GROUP|FIELD|EMPTY, path, reps: [..], value?} ],
-  op:         validateFull | validatePart{ relevant: [..] } | compute,
-  expected:   [ "CODE|VALUE_ERROR|/Lines[2]/Amount", ... ],   // sorted multiset; NO message text
-  computeExpected: [ "path|VALUE|v" | "path|CLEARED" | "path|ERRORED" ],
-  divergences: [ {strategy, signatures} ] }                    // recorded facts; expected = groovy-dynamic (S3: production-normative)
-```
-
-Keying on DM-JSON is deliberate: it is the production input any real engine must parse, and the embedded stored-English conditions make the corpus a **parser conformance suite for free** (which is why S1 gates WI-3). `validatePart` cases are included and tagged (fork F3, resolved): partial-only semantics — IF54's phantom-row firing — exist nowhere else, so the runner contract must represent pointers to non-existent rows.
-
-### The two-lane license structure
-
-| Lane | Content | Posture |
-|---|---|---|
-| **Committed portable corpus** | own-domain models + captured expectations | MIT-clean; the future third-party acceptance suite |
-| **Opt-in live sweeps** (WI-7) | real corpora evaluated in place, nothing persisted | discovery net only; findings re-expressed own-domain into lane 1 |
-
-### Replay matrix
-
-| Engine | Via |
-|---|---|
-| kernel Groovy-dynamic | capture source (`RuntimeLaws`) |
-| kernel static-JAVA codegen | `JavaKernelEngine` (WI-1) |
-| kernel static-GROOVY codegen | optional WI-1 follow-on |
-| interpreter JVM | loader (WI-2) + replay (WI-3b) |
-| interpreter JS | WI-6 |
-| kernel JS codegen / TS runtime | deferred — re-open when a JS host harness exists |
-| a new third-party interpreter | the JSON files + the runner spec |
-
-### Runner spec (the third-party contract; WI-3a authors it)
-
-Placement semantics (parent-before-child, 1-based repetition indexes), the pointer format **including phantom rows** (IF54), value canonicalization (decimal scale/trailing-zero rules), sort/multiset comparison rules, clock injection (one instant; Today = its calendar date in the model's timezone — S5), locale pin (`Locale.US`-equivalent behavior; message text excluded), and the compute-pointer form — specced cleanly, replacing the current regex index-strip in the comparator (a wart that must not leak into a published contract). Capture and kernel replay route through the modern `DocumentV2` + `DocumentProcessingConfig` path (the legacy `validateFull(IDocument, Locale)` cannot pin the clock).
-
-### Guards & maintenance
-
-Corpus-reading tests run in a **dedicated Gradle task with the corpus files as declared inputs** (the `docGuardTest` pattern — prevents both false-green and full-suite re-runs). The corpus registers as a **new guardian in the [KERNEL-UPGRADE](KERNEL-UPGRADE.md) coupling map**: on a kernel bump, regenerate expectations and diff — the diff *is* the behavior-change characterization. [LICENSING](LICENSING.md) §19 provenance re-confirm before the corpus is ever published (fork F2).
+- **Keying on DM-JSON is deliberate**: it is the production input any real engine must parse, and the embedded stored-English conditions make the corpus a **parser conformance suite for free** (which is why S1 gated WI-3). `validatePart` cases are included and tagged (fork F3, resolved): partial-only semantics — IF54's phantom-row firing — exist nowhere else, so the pointer contract represents non-existent rows.
+- **The two-lane license structure**: the committed portable corpus (own-domain models + captured expectations; MIT-clean, the future third-party acceptance suite) vs the opt-in live sweeps of WI-7 (real corpora evaluated in place, nothing persisted; findings re-expressed own-domain into lane 1).
+- **The replay matrix**: kernel Groovy-dynamic = the capture source (`RuntimeLaws`); kernel static-JAVA = `JavaKernelEngine` (WI-1); static-GROOVY = optional follow-on; interpreter JVM = loader (WI-2) + replay (WI-3b); interpreter JS = WI-6; kernel JS codegen / TS runtime = deferred until a JS host harness exists; a third-party engine = the JSON files + the runner contract.
 
 ## 8. Property pack (WI-4)
 
