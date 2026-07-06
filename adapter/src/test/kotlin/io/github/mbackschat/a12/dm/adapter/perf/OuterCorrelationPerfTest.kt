@@ -54,6 +54,21 @@ class OuterCorrelationPerfTest {
         return (1..3).minOf { val t = System.nanoTime(); interp.validateFull(d); (System.nanoTime() - t) / 1e6 }
     }
 
+    private val kernelEngine = RuntimeLaws.kernelEngine(
+        RuntimeLaws.withRule(order, "/Order", "Corr", "../Items/Count", "CORR", corr))   // Groovy codegen once
+
+    private fun kDoc(n: Int): RuntimeLaws.Doc {
+        val d = RuntimeLaws.doc().group("/Order", 1).field(CN, "Acme", 1, 1)
+        for (r in 1..n) d.group("/Order/Items", 1, r).field(SKU, "S$r", 1, r, 1).field(COUNT, (r % 50).toString(), 1, r, 1)
+        return d
+    }
+
+    private fun kernelMinMs(n: Int): Double {
+        val instance = kernelEngine.instance(kDoc(n))           // build the IDocument once, outside timing
+        repeat(2) { kernelEngine.firedCodesSorted(instance) }   // warmup — the timed region is steady-state validate
+        return (1..3).minOf { val t = System.nanoTime(); kernelEngine.firedCodesSorted(instance); (System.nanoTime() - t) / 1e6 }
+    }
+
     @Test
     fun outerCorrelationScalesSubCubically() {
         var best = Double.MAX_VALUE
@@ -69,6 +84,27 @@ class OuterCorrelationPerfTest {
             .format(small, N, large, N * 4, best))
         assertTrue(best < 36.0,
             "\$ correlation scaling looks cubic: 4× the rows took ${best}× the time (quadratic≈16, cubic≈64)")
+    }
+
+    /**
+     * **Measured against the kernel** (INTERPRETER-PERFORMANCE "measure AGAINST the kernel"): the interpreter
+     * must stay in the kernel's O(N²) complexity CLASS for a `$` self-correlation — not merely sub-cubic in
+     * isolation. Times BOTH engines at N and 4N and asserts the interp/kernel RATIO is stable (a worse class
+     * would make the ratio grow ~4× with N). Being a constant factor slower than the kernel is fine (perf goal
+     * #2 is "equal-or-better"; #1 is just "good = same class"); a growing ratio is the regression this catches.
+     */
+    @Test
+    fun outerCorrelationMatchesKernelComplexityClass() {
+        val (iSmall, kSmall) = minMs(N) to kernelMinMs(N)
+        val (iLarge, kLarge) = minMs(N * 4) to kernelMinMs(N * 4)
+        val ratioSmall = iSmall / kSmall
+        val ratioLarge = iLarge / kLarge
+        println("[perf] \$ correlation vs kernel: N=%d interp=%.1f kernel=%.1f (%.2f×) | N=%d interp=%.1f kernel=%.1f (%.2f×)"
+            .format(N, iSmall, kSmall, ratioSmall, N * 4, iLarge, kLarge, ratioLarge))
+        // The ratio must not GROW with N (that would mean a worse complexity class than the kernel). Generous
+        // 2.5× headroom for timing noise; a true O(N³)-vs-O(N²) regression would blow the ratio up ~4×.
+        assertTrue(ratioLarge < ratioSmall * 2.5,
+            "interp/kernel ratio grew from $ratioSmall× to $ratioLarge× at 4× rows — interp is a worse class than the kernel")
     }
 
     private companion object {

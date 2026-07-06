@@ -373,6 +373,31 @@ class Document @JvmOverloads constructor(
                 .map { reps -> RowContext(groupPath, reps, attach.any { (d, pfx) -> reps.take(d) in pfx }) }
         }
 
+    // Hash-join buckets for a `$` equality-correlation Having, cached per (group, scope, joinFields, starPath):
+    // built ONCE from the group's rows (O(N)) and reused by every outer row (each an O(1) lookup) — the O(N)
+    // strategy that matches/beats the kernel's linear self-correlation. The document is immutable during eval.
+    private val correlationBucketCache = HashMap<List<Any>, Map<List<Val>, IntArray>>()
+
+    private fun correlationBucketsScoped(
+        groupPath: String, scopeReps: List<Int>, joinFields: List<String>, starPath: String,
+    ): Map<List<Val>, IntArray> =
+        correlationBucketCache.getOrPut(listOf(groupPath, scopeReps, joinFields, starPath)) {
+            val buckets = HashMap<List<Val>, IntArray>()
+            for (rc in rowContextsScoped(groupPath, scopeReps)) {
+                if (!rc.evaluated) continue                                   // all-empty row → filter row-gate excludes it
+                val key = joinFields.map { rc.field(it) }
+                if (key.any { it is Val.Unknown }) continue                   // an Unknown join value never matches via ==
+                val tfn = buckets.getOrPut(key) { IntArray(3) }
+                tfn[2]++                                                      // n = rows in this bucket
+                when {
+                    rc.presenceUnknown(starPath) -> {}                        // parallel-index 3VL → neither
+                    !rc.filled(starPath) -> tfn[1]++                          // empty → f
+                    else -> tfn[0]++                                          // present → t
+                }
+            }
+            buckets
+        }
+
     /** Indices for a referenced path P under a row of group G: shared-prefix indices from the row, else 1. */
     private fun repsFor(refPath: String, group: String, rowReps: List<Int>): List<Int> {
         val refParts = partsOf(refPath)
@@ -517,6 +542,9 @@ class Document @JvmOverloads constructor(
         // prefix (take(n) with n ≥ this depth ≡ rowReps), so it stays scoped to this row — unchanged.
         override fun rowContexts(groupPath: String): List<EvalContext> =
             rowContextsScoped(groupPath, rowReps.take(partsOf(groupPath).size - 1))
+
+        override fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String): Map<List<Val>, IntArray> =
+            correlationBucketsScoped(groupPath, rowReps.take(partsOf(groupPath).size - 1), joinFields, starPath)
 
         // The data view a CustomCondition reads (the kernel's IData): document-wide raw-value lookup by
         // (path, indices) and the set of present field instances — a custom condition's IData spans the whole

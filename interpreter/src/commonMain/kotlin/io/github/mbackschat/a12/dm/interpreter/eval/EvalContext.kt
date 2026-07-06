@@ -103,6 +103,18 @@ interface EvalContext {
      *  per-row filter inside an aggregate. Default empty (the flat spike contexts don't model rows). */
     fun rowContexts(groupPath: String): List<EvalContext> = emptyList()
 
+    /**
+     * Hash-join buckets for a `$` EQUALITY-correlation `Having` over [groupPath]'s rows (IG23 perf) — keyed by
+     * the [joinFields]' value tuple, each bucket an `[t, f, n]` tally of [starPath]'s fill across the rows in it
+     * (`t` = present + check-relevant, `f` = empty, `n` = rows). A row whose join tuple contains a [Val.Unknown]
+     * (an empty string / malformed join field) is EXCLUDED — an `==` with Unknown never matches; an all-empty
+     * (un-evaluated) row is excluded too (the filter's row-gate). This lets a filtered quantifier resolve
+     * `AtLeastOneFieldFilled(G* / F Having [X] == [$X] …)` in O(1) per outer row (a hash lookup) instead of an
+     * O(N) inner scan — the kernel's own linear strategy. Built + **cached per (group, scope)** by the general
+     * [Document] (shared across every outer row); the flat spike contexts don't model rows. */
+    fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String): Map<List<Val>, IntArray> =
+        throw UnsupportedConstructException("correlation buckets need the general Document context, not $this")
+
     /** The row's data view for a `CustomCondition` — the kernel's `IData` surface (read field values by
      *  path+indices, enumerate present fields). The general [Document] resolves it document-wide (a custom
      *  condition's `IData` spans the document; the row is carried by the error-field pointer); the flat spike
