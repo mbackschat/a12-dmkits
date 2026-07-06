@@ -813,6 +813,14 @@ object PerfCatalog {
         cartParts.errorRule("RW", fzWeight.field(), fzWeight.filled().and(Dsl.roundUpValue(fzWeight).gt(50))), // CEILING, *Value field form
         cart.errorRule("CR", fzQty.field(), fzQty.filled().and(Dsl.currentRepetition(cartLines.ref()).gt(2))), // per-row index
         cartParts.errorRule("XL", fzWeight.field(), fzWeight.filled().and(fzWeight.gt(fzQty))),
+        // `$` OUTER-CORRELATION (IF47): "another Line shares this Line's Qty" — an equality self-correlation
+        // (hash-join fast path), the construct whose absence hid IG23. Teaching the fuzz it (100 random docs ×
+        // both engines) is the durable net for "the `$`-class can't happen again". The `FieldFilled(Qty)` gate
+        // keeps the iterating rule from firing on an empty Line rep (else MVK_NEG_CONDITION_IN_ITERATION).
+        cart.errorRule("DQ", fzQty.field(),
+            fzQty.filled().and(Dsl.atLeastOneFieldFilled(cart.flatten("Lines*/Qty").having(
+                Dsl.currentRepetition(cartLines.ref()).ne(Dsl.currentRepetition(cartLines.ref(), true))
+                    .and(fzQty.eq(fzQty.outer())))))),
     )
 
     /** The fuzz rules' rendered condition texts — what [CatalogParityTest] scans to know which constructs the

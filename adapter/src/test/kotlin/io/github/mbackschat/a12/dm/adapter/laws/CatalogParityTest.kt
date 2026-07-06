@@ -85,8 +85,8 @@ class CatalogParityTest {
      */
     private val fuzzPending: Map<String, String> = buildMap {
         group(
-            "field/group-list quantifier siblings — same 3VL (t,f) tally as the fuzzed AllFieldsFilled (AF rule); DiffTest-locked",
-            "FieldNotFilled", "NoFieldFilled", "AtLeastOneFieldFilled", "MoreThanOneFieldFilled",
+            "field/group-list quantifier siblings — same 3VL (t,f) tally as the fuzzed AllFieldsFilled (AF) / AtLeastOneFieldFilled (DQ) rules; DiffTest-locked",
+            "FieldNotFilled", "NoFieldFilled", "MoreThanOneFieldFilled",
             "NotAllFieldsFilled", "NotExactlyOneFieldFilled", "FieldsNotCollectivelyFilled",
             "GroupFilled", "GroupNotFilled", "AllGroupsFilled", "NoGroupFilled",
             "AtLeastOneGroupFilled", "NotAllGroupsFilled", "GroupsNotCollectivelyFilled",
@@ -191,6 +191,29 @@ class CatalogParityTest {
         assertTrue(nowFuzzed.isEmpty()) {
             "Operators listed as fuzz-pending are actually in the fuzz net now — remove them from fuzzPending:\n  " +
                 nowFuzzed.sorted().joinToString("\n  ")
+        }
+    }
+
+    /**
+     * The renderer-vocabulary MODIFIER net — the durable guard for "the `$` gap can't happen again" (IF47). The
+     * operator-keyed classification above **structurally cannot** see a non-operator syntactic MODIFIER — a `$`
+     * outer-correlation (an `outer` flag on a ref), a `*` star, a `Having` filter — which is exactly how IG23
+     * went unnoticed (every parity guard enumerated operator/construct NAMES; `$` is neither). So assert the
+     * differential fuzz net (both engines × random docs) EXERCISES each such modifier token, keyed on what
+     * `DslRenderer` can EMIT rather than the operator inventory — the net the operator guards can't provide.
+     */
+    @Test
+    fun fuzzNetCoversRendererModifiers() {
+        val corpus = PerfCatalog.fuzzConditions().joinToString("\n")
+        val required = mapOf(
+            "\$ outer-correlation (IF47)" to Regex("""[(\[]\$"""),   // `($group` or `[$field`
+            "* star aggregate" to Regex("""\*"""),
+            "Having filter" to Regex("""\bHaving\b"""),
+        )
+        val missing = required.filterValues { !it.containsMatchIn(corpus) }.keys
+        assertTrue(missing.isEmpty()) {
+            "the fuzz net no longer exercises these renderer MODIFIERS (a durable-guard regression — a modifier " +
+                "is not an operator, so nothing else covers it; re-add a fuzz rule using it):\n  " + missing.joinToString("\n  ")
         }
     }
 
