@@ -250,6 +250,11 @@ public final class EditSession {
         return editStructure(d -> d.setModelComment(text));
     }
 
+    /** Remove the model-level {@code comment} ({@code modelInfo.comment}) — no-op if absent. */
+    public EditSession clearModelComment() {
+        return editStructure(d -> d.clearModelComment());
+    }
+
     /** Remove a model-level header annotation (no-op if absent). */
     public EditSession removeModelAnnotation(String name) {
         return editStructure(d -> d.removeModelAnnotation(name));

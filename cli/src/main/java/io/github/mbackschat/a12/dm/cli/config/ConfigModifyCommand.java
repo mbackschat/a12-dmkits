@@ -92,6 +92,21 @@ final class ConfigModifyCommand extends BaseCommand {
     Integer baseYear;
 
     @ParamKind(ParamKind.Kind.SCALAR)
+    @Option(names = "--field-ref-by-short-name", paramLabel = "<true|false>", arity = "1",
+            description = "allow field references by SHORT name where unique (modelConfig.fieldRefByShortNameAllowed); "
+                    + "`config read` echoes the current value")
+    Boolean fieldRefByShortName;
+
+    @Option(names = "--clear-comment", description = "remove the model-level comment (the inverse of --comment)")
+    boolean clearComment;
+
+    @ParamKind(ParamKind.Kind.SCALAR)
+    @Option(names = "--remove-annotation", paramLabel = "<name>",
+            description = "remove a model-level header annotation by name (repeatable; the inverse of --annotation). "
+                    + "The general form of --clear-roles.")
+    java.util.List<String> removeAnnotations = new java.util.ArrayList<>();
+
+    @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--add-locale", paramLabel = "<code>",
             description = "register a display locale on the model (repeatable), e.g. --add-locale de_DE — "
                     + "appends to the header.locales registry. The kernel then requires every rule/computation "
@@ -124,10 +139,14 @@ final class ConfigModifyCommand extends BaseCommand {
         if (decimalSeparator == null && timeZone == null && conditionLanguage == null
                 && labels.isEmpty() && annotations.isEmpty() && supportedCharacters.isEmpty() && comment == null
                 && addLocales.isEmpty() && removeLocales.isEmpty() && roles.isEmpty() && !clearRoles
-                && baseYear == null) {
+                && baseYear == null && fieldRefByShortName == null && !clearComment && removeAnnotations.isEmpty()) {
             return fail("nothing to change — pass at least one of --decimal-separator, --time-zone, "
-                    + "--condition-language, --label, --annotation, --supported-character, --comment, --base-year, "
-                    + "--add-locale, --remove-locale, --role, --clear-roles");
+                    + "--condition-language, --label, --annotation, --supported-character, --comment, --clear-comment, "
+                    + "--base-year, --field-ref-by-short-name, --add-locale, --remove-locale, --role, --clear-roles, "
+                    + "--remove-annotation");
+        }
+        if (comment != null && clearComment) {
+            return fail("pass either --comment <text> (set) or --clear-comment, not both");
         }
         if (!roles.isEmpty() && clearRoles) {
             return fail("pass either --role <name> (add roles) or --clear-roles, not both");
@@ -181,6 +200,18 @@ final class ConfigModifyCommand extends BaseCommand {
             if (baseYear != null) {
                 doc.setBaseYear(baseYear);
                 changed.put("baseYear", baseYear);
+            }
+            if (fieldRefByShortName != null) {
+                doc.setFieldRefByShortNameAllowed(fieldRefByShortName);
+                changed.put("fieldRefByShortNameAllowed", fieldRefByShortName);
+            }
+            if (clearComment) {
+                doc.clearModelComment();
+                changed.putNull("comment");
+            }
+            for (String name : removeAnnotations) {
+                doc.removeModelAnnotation(name);
+                changed.putNull("annotation." + name);
             }
             ArrayNode addedLocales = MAPPER.createArrayNode();
             for (String code : addLocales) {

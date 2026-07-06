@@ -90,8 +90,8 @@ final class ApplyCommand extends BaseCommand {
                 "repeatability", "exclude-rules", "exclude-computations")),
         INCLUDE_REMOVE("include", "remove", Set.of("alias")),
         CONFIG_MODIFY("config", "modify", Set.of("decimal-separator", "time-zone", "condition-language",
-                "label", "annotation", "comment", "add-locale", "remove-locale", "role", "clear-roles",
-                "supported-character")),
+                "label", "annotation", "comment", "clear-comment", "add-locale", "remove-locale", "role", "clear-roles",
+                "supported-character", "base-year", "field-ref-by-short-name", "remove-annotation")),
         FIELD_RENAME("field", "rename", Set.of("fieldPathInModel", "to")),
         FIELD_MOVE("field", "move", Set.of("fieldPathInModel", "to")),
         GROUP_RENAME("group", "rename", Set.of("groupPathInModel", "to")),
@@ -602,10 +602,28 @@ final class ApplyCommand extends BaseCommand {
                     session.removeModelAnnotation("roles");
                     changed.putNull("roles");
                 }
+                if (op.hasNonNull("base-year")) {
+                    int year = op.get("base-year").asInt();
+                    session.setBaseYear(year);
+                    changed.put("baseYear", year);
+                }
+                if (op.hasNonNull("field-ref-by-short-name")) {
+                    boolean allowed = op.get("field-ref-by-short-name").asBoolean();
+                    session.setFieldRefByShortNameAllowed(allowed);
+                    changed.put("fieldRefByShortNameAllowed", allowed);
+                }
+                if (op.path("clear-comment").asBoolean(false)) {
+                    session.clearModelComment();
+                    changed.putNull("comment");
+                }
+                for (String name : stringValues(op, "remove-annotation")) {
+                    session.removeModelAnnotation(name);
+                    changed.putNull("annotation." + name);
+                }
                 if (changed.isEmpty()) {
                     throw new IllegalArgumentException("config modify needs one of decimal-separator, time-zone, "
-                            + "condition-language, label, annotation, comment, add-locale, role, clear-roles, "
-                            + "supported-character");
+                            + "condition-language, label, annotation, comment, clear-comment, add-locale, remove-locale, "
+                            + "role, clear-roles, supported-character, base-year, field-ref-by-short-name, remove-annotation");
                 }
                 yield staged(which, changed, session);
             }

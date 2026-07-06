@@ -88,6 +88,41 @@ class ConfigVerbTest {
                 () -> "config read echoes the base year: " + read.out());
     }
 
+    // G32 — the fieldRefByShortNameAllowed config flag: settable in modelkit, read-only in the CLI before.
+    @Test
+    void modifySetsFieldRefByShortNameAndReadEchoesIt(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "config", "modify", "--field-ref-by-short-name", "false");
+        assertEquals(0, res.code(), res.err());
+        assertEquals(false, M.readTree(res.out()).path("changed").path("fieldRefByShortNameAllowed").asBoolean(true));
+        var read = CliTestSupport.run("-m", model.toString(), "config", "read");
+        assertEquals(false, M.readTree(read.out()).path("data").path("fieldRefByShortNameAllowed").asBoolean(true),
+                () -> "config read echoes the flag: " + read.out());
+    }
+
+    // G34 — --clear-comment (the inverse of --comment).
+    @Test
+    void clearCommentRemovesIt(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "config", "modify", "--comment", "note").code());
+        var res = CliTestSupport.run("-m", model.toString(), "config", "modify", "--clear-comment");
+        assertEquals(0, res.code(), res.err());
+        var read = CliTestSupport.run("-m", model.toString(), "config", "read");
+        assertTrue(M.readTree(read.out()).path("data").path("comment").isMissingNode(), () -> "comment gone: " + read.out());
+    }
+
+    // G35 — --remove-annotation <name> (the general form of --clear-roles).
+    @Test
+    void removeAnnotationUnsetsIt(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "config", "modify", "--annotation", "owner=x").code());
+        var res = CliTestSupport.run("-m", model.toString(), "config", "modify", "--remove-annotation", "owner");
+        assertEquals(0, res.code(), res.err());
+        var read = CliTestSupport.run("-m", model.toString(), "config", "read");
+        assertTrue(M.readTree(read.out()).path("data").path("annotations").path("owner").isMissingNode(),
+                () -> "annotation gone: " + read.out());
+    }
+
     @Test
     void modifyMergesRolesAndConfigReadEchoesThem(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
