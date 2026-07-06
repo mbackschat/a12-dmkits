@@ -45,7 +45,7 @@ The *statement* half needs no dedicated work: the runtime-semantics extraction i
 | **WI-2** | Multiplatform DM-JSON → `ModelDef` loader in `:interpreter` (+ `InterpreterModelLoader` delegates) — **done 2026-07-06** (`load.ModelLoader`, JVM+JS; delegate + parity over all 37 fixture models; kotlinx tree API per F1) | **REGULAR_MODEL** | ~~2–3~~ done | WI-0 (fork F1) |
 | **WI-3a** | Corpus **contract**: case format, runner spec, corpus spec — **done 2026-07-06** ([CONFORMANCE-CORPUS-SPEC](CONFORMANCE-CORPUS-SPEC.md); §7's detail superseded by it) | **BEST_MODEL** | ~~1~~ done | WI-0 (S1) |
 | **WI-3b** | Corpus capture + JVM replay implementation — **done 2026-07-06** (per-row compute identity; serializable case model + tree-API JSON; tri-verified capture on the clock-pinned modern path; 3-way JVM replay guard; initial own-domain case set; schema/id guard + declared-inputs task) | **REGULAR_MODEL** | ~~1–3~~ done | WI-2, WI-3a |
-| **WI-4** | Property pack in `interpreter/commonTest` | **REGULAR_MODEL** | 1–2 | — |
+| **WI-4** | Property pack in `interpreter/commonTest` — **done 2026-07-06** (all seven §8 properties, seeded/hand-rolled, green on jvm + js; 3 internal seams; property 2 scoped off counting quantifiers, property 4 off the IF49 declared-range clamp) | **REGULAR_MODEL** | ~~1–2~~ done | — |
 | **WI-5a** | Facet **vertical slice**: `emptyOperand` end-to-end (schema → populate → verification probes → lint → enricher → serving) | **BEST_MODEL** | 2–3 | WI-0 (S6) |
 | **WI-5b** | Facet bulk: remaining dimensions, 109-op population, judge wiring, demos, native metadata re-capture | **REGULAR_MODEL** | 2–3 | WI-5a |
 | **WI-5c** | Skill migration (empty-value table, sign notes → facets) + N6 eval re-run | **BEST_MODEL** | 1 | WI-5b |
@@ -135,17 +135,19 @@ For each model in `../a12-kernel-mm` (15 metamodels, 547 kernel-team-authored ru
 - **The two-lane license structure**: the committed portable corpus (own-domain models + captured expectations; MIT-clean, the future third-party acceptance suite) vs the opt-in live sweeps of WI-7 (real corpora evaluated in place, nothing persisted; findings re-expressed own-domain into lane 1).
 - **The replay matrix**: kernel Groovy-dynamic = the capture source (`RuntimeLaws`); kernel static-JAVA = `JavaKernelEngine` (WI-1); static-GROOVY = optional follow-on; interpreter JVM = loader (WI-2) + replay (WI-3b); interpreter JS = replay (WI-6, `CorpusReplayCommonTest` on `jsNodeTest`); kernel JS codegen / TS runtime = deferred until a JS host harness exists; a third-party engine = the JSON files + the runner contract.
 
-## 8. Property pack (WI-4)
+## 8. Property pack (WI-4) — **DONE 2026-07-06**
 
-Kernel-free, ∀-quantified, sampled via seeded `SeedGenerator` models; each also runs on JS. Initial set:
+Kernel-free, ∀-quantified, sampled via seeded models; each also runs on JS. Initial set:
 
-1. **Lazy ≡ eager polarity** — `evalTypedLazy == evalTyped` on every sampled (model, doc); currently a trusted KDoc induction.
-2. **Kleene monotonicity / suppression soundness** — routing any operand to UNKNOWN never flips TRUE↔FALSE; branch-scoped suppression follows.
-3. **Row-permutation equivariance** — permuting repetition rows permutes pointers; the code multiset is invariant.
-4. **Empty-row append laws** — stated against the settled IF53/IF54 semantics: appending an instantiated-empty row is *content* (full validation evaluates it); clamped vs full-declared-range quantifier deltas as specified.
-5. **Aggregate identities** — all-empty `Sum`/`MaxValue`/`MinValue` = 0; `Min`/`Max` operand-list empty-substitution; `NumberOfDifferentValues` of the empty set.
-6. **Hash-join ≡ nested-loop** — the `$`-correlation fast path equals the naive tally on the same input.
-7. **Determinism** — `validateFull` twice ≡ once.
+1. **Lazy ≡ eager polarity** — `evalTypedLazy == evalTyped` on every sampled (model, doc); ~~currently a trusted KDoc induction~~ **now a swept law** (`LazyEagerPolarityPropertyTest` via the `Interpreter.lazyEagerConsistent` seam).
+2. **Kleene monotonicity / suppression soundness** — routing any operand to UNKNOWN never flips TRUE↔FALSE; branch-scoped suppression follows (`KleeneMonotonicityPropertyTest`: the exhaustive `Kleene` table + the `invalid` mechanism over sampled docs). **Scoped:** the counting quantifiers (`NoFieldFilled`/`NotAllFieldsFilled`) are excluded — there "operand UNKNOWN" is a *tally* change (an operand dropped from a count), not a 3VL leaf going UNKNOWN, so Kleene monotonicity is not the applicable law (they are still swept by property 1). Not contentious — a scoping of the mechanism, recorded in-test.
+3. **Row-permutation equivariance** — permuting repetition rows permutes pointers; the code multiset is invariant (`RowPermutationPropertyTest`: single-level + nested-top-level relabels, blanked-signature multiset invariant).
+4. **Empty-row append laws** — stated against the settled IF53/IF54 semantics (`EmptyRowAppendPropertyTest`): appending an instantiated-empty row is *content* (full validation fires per row, IF53), `NumberOfFilledGroups` tracks the instantiated count (IF46), and a partial-relevant phantom row fires (IF54). The **declared-range clamp** side (`AllFieldsFilled` over the full declared range) is **IF49**, locked by its own `:adapter` differential — not restated here (not a property statement question; the settled deltas are covered, the clamp is elsewhere).
+5. **Aggregate identities** — all-empty `Sum`/`MaxValue`/`MinValue`/`NumberOfDifferentValues` = 0; operand-list `Min`/`Max` empty-substitution vs starred skip; distinct-count typed & scale-insensitive (`AggregateIdentityPropertyTest`: sampled `Aggregates` folds + engine-level empty handling).
+6. **Hash-join ≡ nested-loop** — the `$`-correlation fast path equals the naive tally on the same input (`HashJoinPropertyTest` via the `Interpreter.correlationTallyBothWays` seam over duplicate-key samples).
+7. **Determinism** — `validateFull`/`compute` twice ≡ once, reused *and* fresh engine (`DeterminismPropertyTest`).
+
+Implementation notes: hand-rolled `kotlin.test` (no property framework, no new dependency — the module is purity-linted), a deterministic seed stream × diverse models (`PropertySupport`), and exactly **three `private`→`internal` seams** on the engine (annotated "WI-4 property seam"). Graduated to [TESTING-SPEC](TESTING-SPEC.md) ("The property pack — the third kind"). No property statement proved contentious enough to escalate.
 
 Exploratory (not committed scope): polarity *soundness* (an OMISSION verdict implies a fill exists that changes the outcome) — statement first, at a BEST_MODEL boundary.
 

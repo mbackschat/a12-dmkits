@@ -699,6 +699,16 @@ class Interpreter(
         // a HASH JOIN — O(1) per outer row against buckets the Document builds + caches once (O(N)). This is the
         // kernel's own linear strategy; the O(N²) scan below is the fallback for an arbitrary Having.
         star.having?.let { parseCorrelationJoin(it, group) }?.let { return hashJoinTally(star, group, it) }
+        return naiveStarQuantTally(star, group)
+    }
+
+    /**
+     * The O(N²) inner-scan `(t, f, n)` tally of a starred filter quantifier — the general fallback for an
+     * arbitrary `Having`, and the **reference** the hash-join fast path must equal on a recognized correlation
+     * `Having` (WI-4 property 6, [correlationTallyBothWays]). Iterates the group's rows, keeps those the filter
+     * accepts, and 3-state-counts each kept row's star cell (present / empty / not-check-relevant).
+     */
+    private fun naiveStarQuantTally(star: Expr.Star, group: String): Triple<Int, Int, Int> {
         var t = 0
         var f = 0
         var n = 0
@@ -713,6 +723,35 @@ class Interpreter(
             }
         }
         return Triple(t, f, n)
+    }
+
+    // ---- WI-4 property seams (proposal §8; internal — consumed only by the property pack in commonTest) -------
+
+    /**
+     * **Property 1 (lazy ≡ eager polarity).** Whether the production lazy-polarity walk [evalTypedLazy] agrees
+     * with the full eager walk [evalTyped] for [cond] in this context: the same truth, and — when the rule FIRES
+     * (truth TRUE) — the same [MsgType] polarity. That is exactly the invariant [firedType] relies on (it walks
+     * lazily and reads the type only on a TRUE node). Compared only when the row is [gated] (else [firedType]
+     * would not walk at all, so there is nothing to compare). The property sweeps this over sampled (model, doc).
+     */
+    internal fun lazyEagerConsistent(cond: Cond): Boolean {
+        if (!gated(cond)) return true
+        val eager = evalTyped(cond)
+        val lazy = evalTypedLazy(cond)
+        return eager.truth == lazy.truth && (eager.truth != Tri.TRUE || eager.type == lazy.type)
+    }
+
+    /**
+     * **Property 6 (hash-join ≡ nested-loop).** For a starred filter quantifier [star] whose `Having` is a
+     * recognized `$`-equality self-correlation, the `(t, f, n)` tally computed by the O(1) hash-join fast path
+     * ([hashJoinTally]) paired with the O(N²) naive inner scan ([naiveStarQuantTally]) — the property asserts the
+     * two are equal on every sampled input. Returns null when [star] carries no recognized correlation `Having`
+     * (no fast path exists to compare against the scan).
+     */
+    internal fun correlationTallyBothWays(star: Expr.Star): Pair<Triple<Int, Int, Int>, Triple<Int, Int, Int>>? {
+        val group = star.path.substringBeforeLast('/')
+        val join = star.having?.let { parseCorrelationJoin(it, group) } ?: return null
+        return hashJoinTally(star, group, join) to naiveStarQuantTally(star, group)
     }
 
     /** A recognized `$` equality-correlation `Having`: aligned inner/outer field paths of its equality conjuncts
