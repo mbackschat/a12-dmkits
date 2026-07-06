@@ -170,6 +170,23 @@ class ModelLoaderTest {
     }
 
     @Test
+    fun carriesNonDefaultTimeFormat() {
+        // formatOf must read TimeType.format too (not only date/datetime/range) — else a TIME field's declared
+        // format is dropped and the interpreter falls back to HH:mm:ss. Locked here as a loader UNIT test rather
+        // than a kernel differential: kernel codegen rejects a non-default TimeType format ("date format is
+        // invalid" — probed HH:mm / HH.mm.ss / H:mm:ss), so the drop is unobservable via the kernel but real for
+        // the standalone interpreter, whose format-driven parseTimeToIso honors it (IG36).
+        val def = ModelLoader.load(
+            """{ "content": { "modelRoot": { "rootGroups": [ {
+                  "type":"Group","id":"/F","name":"F","Group": { "elements": [
+                    { "type":"Field","id":"/F/T","name":"T",
+                      "Field": { "fieldType": {"type":"TimeType","TimeType":{"format":"HH.mm.ss"}} } } ] } } ] } } }""",
+        )
+        assertEquals("HH.mm.ss", def.fields.single().format)
+        assertEquals("HH.mm.ss", def.timeFormats["/F/T"])
+    }
+
+    @Test
     fun malformedJsonThrowsIllegalArgument() {
         assertFailsWith<IllegalArgumentException> { ModelLoader.load("{ not json") }
     }

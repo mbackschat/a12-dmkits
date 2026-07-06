@@ -172,12 +172,14 @@ object ModelLoader {
             else -> Kind.STRING   // String / Enumeration — STRING-shaped for the operators modeled so far
         }
 
-    /** A date-ish field's rendering format (`<Type>.format`), read for DATE / DATE_TIME / DATE_RANGE; else null. */
+    /** A date-ish field's rendering format (`<Type>.format`), read for DATE / DATE_TIME / DATE_RANGE / TIME;
+     *  else null. (TIME is carried for the standalone interpreter's format-driven parse — the kernel itself
+     *  constrains a TimeType format to the default, but a hand-built model may declare another — IG36.) */
     private fun formatOf(fieldNode: JsonElement?): String? {
         val type = fieldNode.path("Field").path("fieldType")
         val typeName = type.path("type").asText()
         return when (typeName) {
-            "DateType", "DateTimeType", "DateRangeType" -> type.path(typeName).path("format").asText().ifEmpty { null }
+            "DateType", "DateTimeType", "DateRangeType", "TimeType" -> type.path(typeName).path("format").asText().ifEmpty { null }
             else -> null
         }
     }
