@@ -79,8 +79,9 @@ final class ApplyCommand extends BaseCommand {
                 "label", "annotation", "remove-annotation", "internal-description", "external-description")),
         GROUP_REMOVE("group", "remove", Set.of("groupPathInModel", "cascade")),
         RULE_ADD("rule", "add", Set.of("field", "group", "condition", "comment", "code", "severity", "name", "messages",
-                "allowDifferingDecimals")),
-        RULE_MODIFY("rule", "modify", Set.of("rulePathInModel", "condition", "comment", "severity", "messages")),
+                "allowDifferingDecimals", "annotation", "internal-description", "external-description")),
+        RULE_MODIFY("rule", "modify", Set.of("rulePathInModel", "condition", "comment", "severity", "messages",
+                "annotation", "remove-annotation", "internal-description", "external-description")),
         RULE_REMOVE("rule", "remove", Set.of("rulePathInModel")),
         COMPUTATION_ADD("computation", "add", Set.of("computedField", "alternatives", "commonPrecondition", "comment", "name", "messages")),
         COMPUTATION_MODIFY("computation", "modify", Set.of("computationPathInModel", "computedField", "alternatives", "commonPrecondition", "comment", "name", "messages")),
@@ -373,7 +374,7 @@ final class ApplyCommand extends BaseCommand {
                     session.clearSortFields(path);
                     changed.putArray("sortFields");
                 }
-                // group metadata (G38) — mirrors config modify's object/array shapes and field-metadata edits
+                // group metadata (G38) — label is group-specific, the rest is the shared element-metadata helper
                 if (op.hasNonNull("label")) {
                     Map<String, String> labelMap = new LinkedHashMap<>();
                     op.get("label").fields().forEachRemaining(e -> {
@@ -382,28 +383,7 @@ final class ApplyCommand extends BaseCommand {
                     });
                     session.setLabel(path, labelMap);
                 }
-                if (op.hasNonNull("annotation")) {
-                    op.get("annotation").fields().forEachRemaining(e -> {
-                        session.setAnnotation(path, e.getKey(), e.getValue().asText());
-                        changed.put("annotation." + e.getKey(), e.getValue().asText());
-                    });
-                }
-                for (String name : stringValues(op, "remove-annotation")) {
-                    session.removeAnnotation(path, name);
-                    changed.putNull("annotation." + name);
-                }
-                if (op.hasNonNull("internal-description")) {
-                    op.get("internal-description").fields().forEachRemaining(e -> {
-                        session.setInternalDescription(path, e.getKey(), e.getValue().asText());
-                        changed.put("internalDescription." + e.getKey(), e.getValue().asText());
-                    });
-                }
-                if (op.hasNonNull("external-description")) {
-                    op.get("external-description").fields().forEachRemaining(e -> {
-                        session.setExternalDescription(path, e.getKey(), e.getValue().asText());
-                        changed.put("externalDescription." + e.getKey(), e.getValue().asText());
-                    });
-                }
+                metadataOps(op, session, path, changed);
                 changed.put("group", path);
                 yield staged(which, changed, session);
             }
@@ -457,6 +437,8 @@ final class ApplyCommand extends BaseCommand {
                     condition = "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) " + condition;
                 }
                 session.addRule(group, ruleName, errorEntityRelPath, code, condition, severity, messages);
+                // G39: optional rule metadata at add time (annotation / internal-/external-description)
+                metadataOps(op, session, group + "/" + ruleName, changed);
                 changed.put("rule", group + "/" + ruleName);
                 yield staged(which, changed, session);
             }
@@ -485,8 +467,13 @@ final class ApplyCommand extends BaseCommand {
                     provided.forEach(t -> m.addObject().put("locale", t.locale()).put("text", t.text()));
                     any = true;
                 }
+                // G39: rule metadata (annotation / remove-annotation / internal-/external-description)
+                if (metadataOps(op, session, rule, changed)) {
+                    any = true;
+                }
                 if (!any) {
-                    throw new IllegalArgumentException("rule modify needs one of condition / severity / messages");
+                    throw new IllegalArgumentException(
+                            "rule modify needs one of condition / severity / messages / metadata");
                 }
                 changed.put("modified", rule);
                 yield staged(which, changed, session);
@@ -924,6 +911,50 @@ final class ApplyCommand extends BaseCommand {
             out.add(n.asText());
         }
         return out;
+    }
+
+    /**
+     * Apply the shared element-metadata op keys — {@code annotation} / {@code remove-annotation} /
+     * {@code internal-description} / {@code external-description} — from {@code op} to {@code session} at
+     * {@code path} (a field / group / rule name-path), recording each under {@code changed}. Returns whether any
+     * metadata key was present (so a rule modify can count it toward its at-least-one-directive gate). The
+     * {@code label} key is element-specific (groups/config only) and stays inline at its call site.
+     */
+    private static boolean metadataOps(JsonNode op, EditSession session, String path, ObjectNode changed) {
+        boolean any = false;
+        if (op.hasNonNull("annotation")) {
+            var it = op.get("annotation").fields();
+            while (it.hasNext()) {
+                var e = it.next();
+                session.setAnnotation(path, e.getKey(), e.getValue().asText());
+                changed.put("annotation." + e.getKey(), e.getValue().asText());
+                any = true;
+            }
+        }
+        for (String name : stringValues(op, "remove-annotation")) {
+            session.removeAnnotation(path, name);
+            changed.putNull("annotation." + name);
+            any = true;
+        }
+        if (op.hasNonNull("internal-description")) {
+            var it = op.get("internal-description").fields();
+            while (it.hasNext()) {
+                var e = it.next();
+                session.setInternalDescription(path, e.getKey(), e.getValue().asText());
+                changed.put("internalDescription." + e.getKey(), e.getValue().asText());
+                any = true;
+            }
+        }
+        if (op.hasNonNull("external-description")) {
+            var it = op.get("external-description").fields();
+            while (it.hasNext()) {
+                var e = it.next();
+                session.setExternalDescription(path, e.getKey(), e.getValue().asText());
+                changed.put("externalDescription." + e.getKey(), e.getValue().asText());
+                any = true;
+            }
+        }
+        return any;
     }
 
     /** Parse a severity arg, with a clean corrective for a bad value (not the raw enum-{@code valueOf} message). */

@@ -11,6 +11,7 @@ import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,7 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolve
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.adapter.ReadResult;
+import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
@@ -38,14 +40,19 @@ import picocli.CommandLine.Parameters;
 /**
  * {@code dmtool rule modify <rulePath> [--condition <DSL>] [--severity <S>] [--message <loc>=<txt>]} — edit
  * an existing rule in place and write the model back (in place; {@code -o} redirects, {@code --dry-run}
- * previews). At least one of condition / severity / message is required. A condition change re-expresses
- * the rule (the before/after {@code RenderedDiff} rides {@code changed.condition}); severity/message edits
- * leave the condition untouched. The whole result is re-bound through the kernel — an invalid edit is a
- * {@code rejected} envelope (nothing written).
+ * previews). At least one of condition / severity / message / metadata is required. A condition change
+ * re-expresses the rule (the before/after {@code RenderedDiff} rides {@code changed.condition}); severity/
+ * message edits leave the condition untouched. The rule's <b>metadata</b> — {@code --annotation}/
+ * {@code --remove-annotation} and per-locale {@code --internal-description}/{@code --external-description}
+ * (G39, the rule peer of the group-metadata edits {@code group modify} carries — rules have no label slot) —
+ * rides {@link EditSession} (a whitespace-normalizing re-serialize, exactly as {@code group modify}), while
+ * condition/severity/message stay targeted textual edits. The whole result is re-bound through the kernel —
+ * an invalid edit is a {@code rejected} envelope (nothing written).
  */
 @Command(name = "modify", mixinStandardHelpOptions = true,
-        description = "Edit a rule's condition / severity / messages and write the model back "
-                + "(at least one; in place, -o redirects, --dry-run previews).")
+        description = "Edit a rule's condition / severity / messages / metadata (--annotation / "
+                + "--remove-annotation / --internal-description / --external-description) and write the model "
+                + "back (at least one; in place, -o redirects, --dry-run previews).")
 final class RuleModifyCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -74,6 +81,22 @@ final class RuleModifyCommand extends BaseCommand {
     @Option(names = "--comment", paramLabel = "<text>",
             description = "set an explanatory ;; comment on the rule (with --condition; omit to keep the existing one)")
     String comment;
+
+    @Option(names = "--annotation", paramLabel = "<name>=<value>",
+            description = "set a rule annotation (repeatable), e.g. --annotation owner=risk")
+    Map<String, String> annotations = new LinkedHashMap<>();
+
+    @Option(names = "--remove-annotation", paramLabel = "<name>",
+            description = "remove a rule annotation by name (repeatable; the inverse of --annotation)")
+    List<String> removeAnnotations = new ArrayList<>();
+
+    @Option(names = "--internal-description", paramLabel = "<locale>=<text>",
+            description = "set a per-locale internal description on the rule (repeatable)")
+    Map<String, String> internalDescriptions = new LinkedHashMap<>();
+
+    @Option(names = "--external-description", paramLabel = "<locale>=<text>",
+            description = "set a per-locale external description on the rule (repeatable)")
+    Map<String, String> externalDescriptions = new LinkedHashMap<>();
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting the model)")
@@ -106,8 +129,11 @@ final class RuleModifyCommand extends BaseCommand {
         if (refusal.isPresent()) {
             return refuse("rule", "modify", refusal.get());
         }
-        if (condition == null && severity == null && messages.isEmpty()) {
-            return fail("nothing to change — pass at least one of --condition, --severity, --message");
+        boolean metadataChange = !annotations.isEmpty() || !removeAnnotations.isEmpty()
+                || !internalDescriptions.isEmpty() || !externalDescriptions.isEmpty();
+        if (condition == null && severity == null && messages.isEmpty() && !metadataChange) {
+            return fail("nothing to change — pass at least one of --condition, --severity, --message, "
+                    + "--annotation/--remove-annotation, --internal-description/--external-description");
         }
 
         String modifiedJson;
@@ -133,6 +159,18 @@ final class RuleModifyCommand extends BaseCommand {
                 List<LocalizedText> msgs = merged.entrySet().stream()
                         .map(e -> new LocalizedText(e.getKey(), e.getValue())).toList();
                 modifiedJson = ModelWriter.replaceMessages(modifiedJson, rule, msgs);
+            }
+            // G39: rule metadata (annotations + internal/external descriptions) rides EditSession — the same
+            // path group modify uses (G38). The condition/severity/message edits above stay targeted textual
+            // ModelWriter edits (RenderedDiff + ;;-comment fidelity); a metadata edit re-serializes whitespace
+            // through ModelDocument, exactly as `group modify --annotation` does (rules have no label slot).
+            if (metadataChange) {
+                EditSession session = EditSession.read(modifiedJson, resolver);
+                annotations.forEach((name, value) -> session.setAnnotation(rule, name, value));
+                removeAnnotations.forEach(name -> session.removeAnnotation(rule, name));
+                internalDescriptions.forEach((locale, text) -> session.setInternalDescription(rule, locale, text));
+                externalDescriptions.forEach((locale, text) -> session.setExternalDescription(rule, locale, text));
+                modifiedJson = session.toJson();
             }
         } catch (RuntimeException e) {
             return fail("cannot apply the change: " + e.getMessage());
@@ -176,6 +214,10 @@ final class RuleModifyCommand extends BaseCommand {
             ArrayNode m = changed.putArray("messages");
             messages.forEach((locale, text) -> m.addObject().put("locale", locale).put("text", text));
         }
+        annotations.forEach((name, value) -> changed.put("annotation." + name, value));
+        removeAnnotations.forEach(name -> changed.putNull("annotation." + name));
+        internalDescriptions.forEach((locale, text) -> changed.put("internalDescription." + locale, text));
+        externalDescriptions.forEach((locale, text) -> changed.put("externalDescription." + locale, text));
 
         if (dryRun) {
             String summary = (condition != null ? "would re-express " : "would modify ") + rule;

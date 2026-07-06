@@ -274,13 +274,16 @@ dmtool schema rule add | jq '{op, returns, inputKeys: (.input.properties|keys)}'
   "inputKeys": [
     "allowDifferingDecimals",
     "alternatives",
+    "annotation",
     "code",
     "comment",
     "commonPrecondition",
     "computedField",
     "condition",
+    "external-description",
     "field",
     "group",
+    "internal-description",
     "messages",
     "name",
     "severity"

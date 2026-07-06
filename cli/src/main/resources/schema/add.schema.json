@@ -17,6 +17,9 @@
     "code": { "type": "string", "description": "(rule) the rule's error code" },
     "severity": { "type": "string", "description": "(rule) ERROR | WARNING | INFO (default ERROR)" },
     "allowDifferingDecimals": { "type": "boolean", "description": "(rule) the editor's 'Allow Differing Decimal Places' — prepend @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) so a field-vs-field == / != across differing decimal scales is accepted (the kernel's one suppressible warning). Default false." },
+    "annotation": { "type": "object", "additionalProperties": { "type": "string" }, "description": "(rule) OPTIONAL name→value annotations to set on the rule at add time (a rule has no label slot; change them later with `rule modify`). Read back via `rule read` under `annotations`." },
+    "internal-description": { "type": "object", "additionalProperties": { "type": "string" }, "description": "(rule) OPTIONAL per-locale (locale→text) internal description on the rule; read back via `rule read` under `internalDescription`." },
+    "external-description": { "type": "object", "additionalProperties": { "type": "string" }, "description": "(rule) OPTIONAL per-locale (locale→text) external description on the rule; read back via `rule read` under `externalDescription`." },
 
     "computedField": { "type": "string", "description": "(computation) the calculated field's ABSOLUTE path; the computation is placed in its parent group (its iteration scope). Same PLACEMENT LAW as a rule's error field: a computation that reads per-row fields must compute a field INSIDE that repeatable group; to compute a non-repeatable field from per-row data, aggregate first (e.g. Sum(Group*/Field)) — else MVK_ERROR_FIELD_NOT_IN_RULEGROUP." },
     "commonPrecondition": { "type": "string", "description": "(computation) optional guard (A12 DSL) shared by all alternatives" },
@@ -57,6 +60,9 @@
       "condition": "FieldFilled(/Subscription/Addons/MonthlyFee) And [/Subscription/Addons/MonthlyFee] > 1000",
       "comment": "cap the monthly fee per policy",
       "code": "FEE_CAP",
+      "annotation": { "owner": "risk-team" },
+      "internal-description": { "en_US": "why this cap exists" },
+      "external-description": { "en_US": "your monthly fee is capped" },
       "messages": [
         { "locale": "en_US", "text": "Monthly fee is too high." },
         { "locale": "de_DE", "text": "Monatsgebühr zu hoch." }

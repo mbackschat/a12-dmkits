@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -16,6 +17,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.adapter.ReadResult;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
@@ -86,6 +88,13 @@ final class RuleReadCommand extends BaseCommand {
             adapter.ruleErrorField(rule).ifPresent(f -> data.put("errorField", f));
             putRuleOutcome(data, read);
             RuleMessages.putInto(data, adapter.ruleMessages(rule));
+            // echo the rule's metadata (G39) so a `rule modify --annotation/--*-description` round-trips
+            // (rules have no label slot). Read from ModelDocument — the metadata sits on the element node,
+            // not the KernelAdapter's condition/message view.
+            ModelDocument doc = ModelDocument.read(json);
+            putIfNotEmpty(data, "annotations", doc.annotations(rule));
+            putIfNotEmpty(data, "internalDescription", doc.internalDescription(rule));
+            putIfNotEmpty(data, "externalDescription", doc.externalDescription(rule));
             ResultEnvelope env = ResultEnvelope.read("rule", "read",
                     read instanceof ReadResult.Converted ? "read " + rule : "read " + rule + " (Opaque)",
                     true, List.of(), data);
@@ -95,6 +104,13 @@ final class RuleReadCommand extends BaseCommand {
             throw e; // G14: an invalid-on-disk model → the one Cli handler renders the structured `rejected` envelope (CLI-SPEC §3)
         } catch (RuntimeException e) {
             return fail("read failed: " + e.getMessage());
+        }
+    }
+
+    /** Echo a per-locale/per-name metadata map under {@code key}, only when it carries something (mirrors group read). */
+    private static void putIfNotEmpty(ObjectNode data, String key, Map<String, String> m) {
+        if (m != null && !m.isEmpty()) {
+            data.set(key, MAPPER.valueToTree(m));
         }
     }
 

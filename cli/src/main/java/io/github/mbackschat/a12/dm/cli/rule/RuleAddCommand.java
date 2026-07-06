@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 
+import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
@@ -119,8 +120,12 @@ final class RuleAddCommand extends BaseCommand {
             return env.exitCode();
         }
 
+        String ruleFullName = group + "/" + name;
         String persisted = ModelWriter.addRule(modelJson, group, name, errorEntityRelPath,
                 code, condition, severity, messages);
+        // G39: optional rule metadata (annotation / internal-/external-description) at add time — applied via
+        // EditSession, the same path group add/modify use; the BoundModel re-bind below validates the result.
+        persisted = applyMetadata(persisted, ruleFullName, spec, resolver);
         BoundModel reModel;
         try {
             reModel = BoundModel.ofJson(persisted, resolver);
@@ -128,7 +133,6 @@ final class RuleAddCommand extends BaseCommand {
             return fail("persisted rule is invalid (e.g. missing a message for a declared locale): "
                     + e.getMessage());
         }
-        String ruleFullName = group + "/" + name;
         List<Diagnostic> warnings = LintBackstop.lintPersisted(reModel, ruleFullName, field);
 
         ObjectNode changed = MAPPER.createObjectNode();
@@ -147,6 +151,30 @@ final class RuleAddCommand extends BaseCommand {
         ResultEnvelope env = ResultEnvelope.applied("rule", "add", "added rule " + ruleFullName, changed, warnings, dest);
         out().print(env.toJsonString());
         return env.exitCode();
+    }
+
+    /** Apply the optional rule metadata keys ({@code annotation} / {@code internal-description} /
+     *  {@code external-description}, each an object) from the spec via {@link EditSession}; a no-op when absent. */
+    private static String applyMetadata(String json, String rulePath, JsonNode spec,
+            IDocumentModelReferenceResolver resolver) {
+        if (!spec.hasNonNull("annotation") && !spec.hasNonNull("internal-description")
+                && !spec.hasNonNull("external-description")) {
+            return json;
+        }
+        EditSession session = EditSession.read(json, resolver);
+        if (spec.hasNonNull("annotation")) {
+            spec.get("annotation").fields().forEachRemaining(e ->
+                    session.setAnnotation(rulePath, e.getKey(), e.getValue().asText()));
+        }
+        if (spec.hasNonNull("internal-description")) {
+            spec.get("internal-description").fields().forEachRemaining(e ->
+                    session.setInternalDescription(rulePath, e.getKey(), e.getValue().asText()));
+        }
+        if (spec.hasNonNull("external-description")) {
+            spec.get("external-description").fields().forEachRemaining(e ->
+                    session.setExternalDescription(rulePath, e.getKey(), e.getValue().asText()));
+        }
+        return session.toJson();
     }
 
     private static List<LocalizedText> messages(JsonNode spec) {
