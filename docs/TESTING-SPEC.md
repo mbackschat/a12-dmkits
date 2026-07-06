@@ -88,6 +88,7 @@ Consequence: the kernel is an unstable dependency, so the suite is also an **ear
 | **Law tier 2 — fires / does-not-fire** | does a *valid* rule *evaluate* as intended on data? | `adapter/…/laws/…LawsTest` (`PolarityLawsTest`, `EmptyValueLawsTest`) via the `RuntimeLaws` oracle | real kernel `IDocumentRtService.validateFull` |
 | **Read round-trip** | does render → kernel-parse → convert → render round-trip (F10)? | `adapter/…/ReadRoundTripTest` + per-construct `…ReadTest` | real kernel parser + the converter |
 | **Interpreter differential** | does the native-safe `:interpreter` evaluate a rule *identically to the kernel*? | Kotlin `adapter/…/laws/*DiffTest.kt` (`PolarityDiffTest`, `ParserDiffTest`, `InterpreterDiffTest`, …) | real kernel runtime, as the differential oracle |
+| **Parser coverage sweep** | does the interpreter parser accept the legal DSL the kernel actually stores? | `adapter/…/laws/ParserCorpusSweepTest` — catalog `validExample`/`computationExample` + `PerfCatalog.fuzzConditions` **always-on 100%**; the `a12-kernel-mm` + A12 Tools corpora **opt-in 100%** (`assumeTrue`-skip). A residual failure must fix the parser or record a reason (IF55) | the pinned corpora as the population; parse = `parseCondition`/`parseExpression` |
 | **Codegen tri-differential** | does the interpreter match **BOTH** kernel codegen strategies — the Groovy-dynamic *and* the static-JAVA generated validator? | the differential **fuzz** nets run a **third engine** (`RuntimeLaws.JavaKernelEngine`) via `FuzzDiagnostics`: `interp == kernel-groovy-dynamic == kernel-java-static` at `code|type|pointer` | real kernel — the Groovy-dynamic service is the parity anchor (S3); a `kernel≠java-static` split is a recorded language-execution artifact, never adopted as expected |
 | **Structural-law guardians** | did the kernel *add/move/rename* a construct, code, slot, or category we must track? | see the guardian table below | reflective parity vs the kernel's own enums/accessors |
 | **CLI self-describing & conformance** | does the CLI describe its own verbs/params/I-O, and does every mutating verb refuse misuse with a *structured* diagnostic (not a bare fail)? | the `cli` conformance suite — see below | the live picocli tree + a derived fuzzer |
@@ -211,6 +212,7 @@ These read the **real** model corpora to measure coverage; they skip when their 
 | `KernelMmIntegrationTest` | `../a12-kernel-mm` | sibling clone present | all canonical metamodels load/expand/`checkConsistency`; every field classifies |
 | `KernelMmReadCoverageTest` | `../a12-kernel-mm` | sibling clone present | read coverage ≥ a floor (regression gate) |
 | `Corpus1ReadCoverageTest` | A12 Tools workspaces | `-Da12.corpus1.dir=…` | prints coverage only (proprietary) |
+| `ParserCorpusSweepTest` (corpus half) | `../a12-kernel-mm` + A12 Tools workspaces | sibling clone / `-Da12.corpus1.dir=…` | every distinct stored condition/operation **parses** (100% — a residual fails, forcing triage; IF55). Its catalog+fuzz half is always-on |
 
 ## Layout conventions (so hotspots never grow)
 

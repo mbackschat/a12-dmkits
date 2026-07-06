@@ -12,14 +12,17 @@ import io.github.mbackschat.a12.dm.interpreter.ast.ValueListQuantOp
  * A recursive-descent parser turning condition TEXT into the interpreter [Cond] AST. It lives in
  * commonMain, so it parses on JVM and JS alike.
  *
- * This is NOT yet the full condition grammar — the production parser choice (kernel parse-tree-api vs
- * ANTLR-from-grammar) stays open (proposal §11) — but the text→AST pipeline closes end to end. Paths in
- * condition text are
- * RELATIVE to the rule's group; [base] resolves them to absolute (base "/Order": `Quantity` →
- * "/Order/Quantity", `Items* / Count` → Star("/Order/Items/Count")).
+ * Parser source is a **hand-written completion** (INTERPRETER-SPEC §11, decided WI-P): kernel-free (no
+ * parse-tree-api dependency), so it stays native-safe and JS-compilable, and the EUPL question on generating
+ * from the kernel `.g4` is moot. It accepts the legal stored DSL the real kernel emits — verified against the
+ * catalog + fuzz (100%) and the `a12-kernel-mm` + A12 Tools corpora (100%) by
+ * [io.github.mbackschat.a12.dm.adapter.laws.ParserCorpusSweepTest]. Paths in condition text are RELATIVE to
+ * the rule's group; [base] resolves them to absolute (base "/Order": `Quantity` → "/Order/Quantity",
+ * `Items* / Count` → Star("/Order/Items/Count")).
  *
  * Grammar (low→high precedence): `or := and ("Or" and)*` · `and := primary ("And" primary)*` ·
- * `primary := "(" or ")" | expr (cmpOp expr)? | predicateCall`.
+ * `primary := "(" or ")" | expr (cmpOp expr)? | predicateCall`. Keyword case variants (And/and/AND, …),
+ * `;;` comments, `..Name` turning-point paths, and the `For` semantic-index suffix on bare args are handled.
  */
 fun parseCondition(text: String, base: String): Cond = ConditionParser(text, base).parse()
 
@@ -127,39 +130,20 @@ private class ConditionParser(private val src: String, private val base: String)
                 // `[$field]` reads the field in the ENCLOSING iteration row when inside a `Having` filter.
                 val outer = if (peek() == '$') { next(); true } else false
                 val p = readRef(outer)            // [/abs] · [../parent-rel] · [relative] — readRef resolves all
-                skipWs()
-                when {
-                    // `[field -> Category]` — an EnumCategory access mapping the enum value to its category value.
-                    matchArrow() -> {
-                        skipWs()
-                        val cat = readIdent()
-                        skipWs(); expect(']')
-                        Expr.EnumCategory((p as Expr.Field).path, cat, outer = p.outer)
-                    }
-                    // `[field For "value"]` (literal key) OR `[field For keyField]` (field-keyed) — a
-                    // SemanticIndex lookup by the target group's index value.
-                    matchKeyword("For") -> {
-                        skipWs()
-                        val sem = if (peek() == '"') {
-                            Expr.SemanticIndex((p as Expr.Field).path, indexValue = readString().v)
-                        } else {
-                            val keyField = readRef() as Expr.Field
-                            Expr.SemanticIndex((p as Expr.Field).path, indexFieldPath = keyField.path)
-                        }
-                        skipWs(); expect(']')
-                        sem
-                    }
-                    else -> { expect(']'); p }
-                }
+                val e = entitySuffix(p)           // optional `-> Category` / `For <index>` (the entitySpec suffix)
+                skipWs(); expect(']')
+                e
             }
             '"' -> readString()
             // A bare ABSOLUTE (`/A/x`) or PARENT-RELATIVE (`../x`) path as a predicate / aggregate argument —
             // `FieldFilled(/Pol/Cap0)`, `AllFieldsFilled(../A, ../B)`, `Sum(/A*/v)` — the forms the kernel and
-            // the rulekit DSL renderer emit. (The same forms inside `[...]` value refs are handled above.)
-            '/', '.' -> readRef()
+            // the rulekit DSL renderer emit. (The same forms inside `[...]` value refs are handled above.) The
+            // `entitySpec` suffix (`-> Category` / `For <index>`) can also ride a BARE arg — e.g.
+            // `FieldValueAsString(Product For MaxNumber)` — so apply it here too.
+            '/', '.' -> entitySuffix(readRef())
             // a bare `$path` — the `$` outer-iteration correlation on a predicate/aggregate arg
             // (`CurrentRepetition($/G/H)`, `NoFieldFilled($a, $b)`, a value-list `$Group*/field`).
-            '$' -> { next(); readRef(outer = true) }
+            '$' -> { next(); entitySuffix(readRef(outer = true)) }
             else -> when {
                 c == '-' || c.isDigit() -> readNumber()
                 else -> {
@@ -171,7 +155,7 @@ private class ConditionParser(private val src: String, private val base: String)
                         in CONSTANTS -> Expr.Const(name)
                         else -> {
                             skipWs()
-                            if (peek() == '(') Expr.Func(name, readArgs()) else pathFrom(name)
+                            if (peek() == '(') Expr.Func(name, readArgs()) else entitySuffix(pathFrom(name))
                         }
                     }
                 }
@@ -180,27 +164,74 @@ private class ConditionParser(private val src: String, private val base: String)
     }
 
     /**
-     * Read a field/value reference at the current position, resolving its path to absolute. Three forms,
-     * exactly as the kernel — and the rulekit renderer — emit them: a leading `/` is **absolute** (used
-     * as-is, IF24); one-or-more `../` runs are **parent-relative** (each `..` walks one group level up from
-     * the rule's group [base], IG1); otherwise it is **relative** to [base].
+     * The `entitySpec` suffix the kernel grammar allows after ANY entity reference — an `-> Category`
+     * (EnumCategory) or a `For <index>` (SemanticIndex) — in BOTH a `[...]` value ref AND a bare
+     * predicate/aggregate argument (`FieldValueAsString(Product For MaxNumber)`, string-concat operands). The
+     * `For` key is a literal (`For "value"`) or another field (`For keyField`). Applies to a just-read [Expr.Field];
+     * any other expression (a `Star`, literal, function) has no such suffix and is returned unchanged.
+     */
+    private fun entitySuffix(e: Expr): Expr {
+        if (e !is Expr.Field) return e
+        if (matchArrow()) {
+            skipWs()
+            return Expr.EnumCategory(e.path, readIdent(), outer = e.outer)
+        }
+        if (matchKeyword("For")) {
+            skipWs()
+            return if (peek() == '"') {
+                Expr.SemanticIndex(e.path, indexValue = readString().v)
+            } else {
+                Expr.SemanticIndex(e.path, indexFieldPath = (readRef() as Expr.Field).path)
+            }
+        }
+        return e
+    }
+
+    /**
+     * Read a field/value reference at the current position, resolving its path to absolute. The forms the
+     * kernel — and the rulekit renderer — emit: a leading `/` is **absolute** (used as-is, IF24); a leading
+     * run of `..` is **parent-relative** (each `..` walks one group level up from the rule's group [base],
+     * IF25); otherwise it is **relative** to [base]. The last `..` in the run may be a **bare `..Name`** —
+     * the grammar's `relativeUp` turning-point form (`relUp? '..' idName?`): `Name` merely NAMES the ancestor
+     * landed on (the kernel validates it equals that group's short name; the target is set purely by the
+     * up-count), so it is ignored for resolution — `..Name/rest` ≡ `../rest`, `..Name` ≡ the ancestor group.
      */
     private fun readRef(outer: Boolean = false): Expr {
         if (peek() == '/') { next(); return pathFrom(readIdent(), absolute = true, outer = outer) }
         val ups = readParentUps()   // MUST precede readIdent — the `..` prefix comes before the first segment
+        if (ups > 0 && peek() != '/') {
+            // `..Name` / bare `..` with NO descent — the reference IS the ancestor group walkUp(base, ups).
+            return Expr.Field(walkUp(base, ups), outer = outer)
+        }
+        if (ups > 0) next()   // consume the descent '/' separating the up-run from the first segment
         return pathFrom(readIdent(), ups = ups, outer = outer)
     }
 
-    /** Consume leading `../` segments (each = one group level up) and return how many — 0 if none (IG1). */
+    /**
+     * Consume a leading run of `..` tokens (each = one group level up) and return how many — 0 if none (IF25).
+     * A `..` is either `../` (a `relUp` step — another `..` or the descent `/segment` follows) or a **bare
+     * `..Name`** terminal (the `relativeUp` turning point): its optional `Name` label is consumed and DISCARDED
+     * (it names the ancestor for validation but never changes the target — see [readRef]). The position is left
+     * at the descent `/` (unconsumed) or past the run at a bare ancestor-group reference.
+     */
     private fun readParentUps(): Int {
         var ups = 0
         while (peek() == '.' && pos + 1 < src.length && src[pos + 1] == '.') {
-            pos += 2                                                              // ".."
-            require(peek() == '/') { "parser: '..' must be followed by '/' at $pos in \"$src\"" }
-            next()                                                               // "/"
+            pos += 2                                                              // consume ".." (one level up)
             ups++
+            when {
+                peek() != '/' -> { skipTurningPointLabel(); break }               // bare "..Name"/".." terminal
+                pos + 2 < src.length && src[pos + 1] == '.' && src[pos + 2] == '.' -> next()   // "/.." — another up
+                else -> break                                                     // "/segment" — descent boundary
+            }
         }
         return ups
+    }
+
+    /** Consume (and discard) a `..Name` turning-point label — an identifier read RAW (no whitespace/comment skip,
+     *  a path token is contiguous), stopping at the descent `/` or any non-identifier char. */
+    private fun skipTurningPointLabel() {
+        while (peek().isLetterOrDigit() || peek() == '_') next()
     }
 
     /**
@@ -265,10 +296,10 @@ private class ConditionParser(private val src: String, private val base: String)
             args[0] = Expr.Star(star.path, parseOr())
             skipWs()
         }
-        // An infix grammar literal separating arg0 from the rest: `In` for `NumberOfValueInFields(value In f1, …)`,
-        // `IN` for `AtLeastOneDateRangeOverlaps(range IN rangeList)` (the kernel grammar has distinct In/IN/in
-        // tokens — operator-specific). For every other function the next token is `,`/`)`.
-        if (matchKeyword("In") || matchKeyword("IN")) { args.add(parseExpr()); skipWs() }
+        // An infix grammar literal separating arg0 from the rest: `In` for `NumberOfValueInFields(value In f1, …)`
+        // / `AtLeastOneDateRangeOverlaps(range In rangeList)`. The kernel's `inOp` is `'In' | 'IN' | 'in'`, so
+        // matchKeyword("In") accepts all three via KEYWORD_VARIANTS. For every other function the next token is `,`/`)`.
+        if (matchKeyword("In")) { args.add(parseExpr()); skipWs() }
         while (peek() == ',') { next(); args.add(parseExpr()); skipWs() }
         // `@From <group>` (localized `@Von`) — RepetitionNotUnique's optional reference-group selector. The
         // group ref (a relative name/path, `RuleGroup`, `..`, or absolute) is captured raw as a trailing
@@ -325,10 +356,13 @@ private class ConditionParser(private val src: String, private val base: String)
         return false
     }
 
-    /** Consume the keyword if it is the next identifier; otherwise leave the position untouched. */
+    /** Consume the keyword if it is the next identifier; otherwise leave the position untouched. A keyword with
+     *  enumerated CASE VARIANTS ([KEYWORD_VARIANTS]) matches any of its variants — nothing else (no case-folding). */
     private fun matchKeyword(kw: String): Boolean {
         val save = pos
-        if (readIdent() == kw) return true
+        val id = readIdent()
+        val accepted = KEYWORD_VARIANTS[kw]
+        if (if (accepted == null) id == kw else id in accepted) return true
         pos = save
         return false
     }
@@ -401,5 +435,20 @@ private class ConditionParser(private val src: String, private val base: String)
          *  date-constants resolve to a value; `FirstDay`/`LastDay` are day-specification markers consumed
          *  structurally by `ValueAsDate` (never evaluated standalone). */
         val CONSTANTS = setOf("Today", "Now", "BaseYear", "FirstDay", "LastDay")
+
+        /**
+         * Keyword CASE VARIANTS the kernel enumerates (`LexerTerminals_en`: the UND/ODER/IN token families) —
+         * the kernel accepts EXACTLY these spellings per keyword, so `aNd`/`oR`/`In`-miscased stay REJECTED
+         * (not blanket case-folding). Real stored conditions mix all three (the A12 Tools workspaces freely use
+         * `and`, `AND`, `Or`). Keywords absent here (`FieldFilled`, `Having`, `For`, …) match their single
+         * spelling only. The `to`/`To`/`TO` (ZU) family is intentionally absent: its only user is the
+         * `ValueNotConsistent` separator, which the interpreter does not parse (not in the catalog, not in the
+         * real corpora), so it has no match site — adding it would be dead.
+         */
+        val KEYWORD_VARIANTS: Map<String, Set<String>> = mapOf(
+            "And" to setOf("And", "and", "AND"),
+            "Or" to setOf("Or", "or", "OR"),
+            "In" to setOf("In", "in", "IN"),
+        )
     }
 }

@@ -79,7 +79,7 @@ Once it's an interpreter, **Kotlin Multiplatform (KMP)** is the strongest fit: o
 The interpreter **owns the runtime evaluation path** (the part that needed Groovy) and nothing else. Two things stay delegated:
 
 1. **Structural `checkConsistency`** — already native-safe; dmtool keeps calling it for model validity. The interpreter does *not* re-implement structural validation.
-2. **The parser → AST** — conditions live as *text* on disk, so something must parse them (see the open decision in §11: kernel parse-tree-api vs. an ANTLR parser generated from the kernel `.g4`).
+2. **The parser → AST** — conditions live as *text* on disk, so something must parse them: a **hand-written recursive-descent parser** (`parse/Parser.kt`), completed against the real stored grammar in WI-P and locked to 100% over the catalog/fuzz + real corpora (§11, resolved; INTERPRETER-FINDINGS IF55).
 
 The boundary to dmtool is a **clean data contract, not a shared object model**:
 
@@ -150,7 +150,7 @@ Narrow, and each is measurable from the spike:
 
 - **Throughput bar** — is there a real big-document/server scenario, or is dmtool's short-lived process the target? Decides tree-walk (§4) vs. investing early in the IR-VM.
 - **Message-fidelity bar** — structural `Diagnostic` equality (code + where + severity + message-type), or **byte-identical localized prose**? The latter means reusing the kernel's message bundles + rendering.
-- **Parser source** — reuse the kernel parse-tree-api (a kernel dep on each platform) vs. generate an ANTLR parser from the kernel `.g4` (self-contained, but see §13). Lean: ANTLR-from-grammar for a clean standalone component.
+- **Parser source** — ~~reuse the kernel parse-tree-api vs. generate an ANTLR parser from the kernel `.g4`~~ **resolved (WI-P, 2026-07-06): complete the hand-written recursive-descent parser** (`parse/Parser.kt`). The option the fork missed: neither kernel-dep. The gap turned out small and enumerable (Phase-0 S1 → the [SEMANTICS-FORMALIZATION-PROPOSAL](SEMANTICS-FORMALIZATION-PROPOSAL.md) WI-P gap list), so completing the hand-written parser keeps the component **kernel-free** (native-safe, JS-compilable) and makes the EUPL-`.g4` derivative question (§13) **moot** — reading the grammar for syntax *shapes* is mechanism, not expression. Coverage is now proven, not assumed: the catalog + fuzz DSL parse 100% (always-on) and the `a12-kernel-mm` + A12 Tools workspace corpora parse 100% (opt-in), locked by `adapter.laws.ParserCorpusSweepTest`. Detail: INTERPRETER-FINDINGS IF55.
 
 ## 12. Non-goals / scope
 
