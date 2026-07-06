@@ -20,18 +20,18 @@ import io.github.mbackschat.a12.dm.interpreter.conformance.Op
  */
 object CorpusReplay {
 
-    /** Replay [case] three ways; keys are [CorpusEngines.INTERPRETER] / [CorpusEngines.GROOVY_DYNAMIC] / [CorpusEngines.JAVA_STATIC]. */
-    fun replay(case: ConformanceCase): Map<String, InterpreterReplay.Result> {
+    /** Replay [case] (its model resolved to [modelJson]) three ways; keys are [CorpusEngines.INTERPRETER] / [CorpusEngines.GROOVY_DYNAMIC] / [CorpusEngines.JAVA_STATIC]. */
+    fun replay(case: ConformanceCase, modelJson: String): Map<String, InterpreterReplay.Result> {
         val anchor = InterpreterReplay.anchorOf(case)
 
-        val interp = InterpreterReplay.replay(case)
+        val interp = InterpreterReplay.replay(case, modelJson)
 
         val groovy = InterpreterReplay.compare(
-            CorpusEngines.groovyDynamic(case.model, case.placements, case.op, case.clock), anchor)
+            CorpusEngines.groovyDynamic(modelJson, case.placements, case.op, case.clock), anchor)
 
         val javaExpected = overrideFor(case, CorpusEngines.JAVA_STATIC) ?: anchor
         val java = InterpreterReplay.compare(
-            CorpusEngines.javaStatic(case.model, case.placements, case.op, case.clock), javaExpected)
+            CorpusEngines.javaStatic(modelJson, case.placements, case.op, case.clock), javaExpected)
 
         return mapOf(
             CorpusEngines.INTERPRETER to interp,

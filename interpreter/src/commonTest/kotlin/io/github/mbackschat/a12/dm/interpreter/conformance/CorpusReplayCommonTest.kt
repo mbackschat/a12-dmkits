@@ -25,7 +25,8 @@ class CorpusReplayCommonTest {
             "expected >= $MIN_CASES committed conformance cases, found ${files.size} — is CORPUS_DIR set for this test task?",
         )
         val failures = files.mapNotNull { f ->
-            val result = InterpreterReplay.replay(CaseJson.parse(f.text))
+            val case = CaseJson.parse(f.text)
+            val result = InterpreterReplay.replay(case, readCorpusModel(case.modelRef))
             if (result.verdict == InterpreterReplay.Verdict.PASS) null
             else "${f.family}/${f.id}: ${result.verdict} — ${result.detail}"
         }

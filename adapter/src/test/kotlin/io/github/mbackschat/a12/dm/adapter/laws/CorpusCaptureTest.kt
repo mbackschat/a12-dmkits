@@ -28,9 +28,10 @@ class CorpusCaptureTest {
             Placement(PlacementKind.FIELD, "/Order/Quantity", listOf(1, 1), "5"),
         )
         val meta = CaseMeta("qty-low-full", "pending", CaseSource.CURATED, listOf("§7"), tags = listOf("comparison"))
-        val case = CorpusCapture.capture(meta, model, placements, Op.ValidateFull)
+        val case = CorpusCapture.capture(meta, "order-qty-low", model, placements, Op.ValidateFull)
 
         assertEquals("30.8.1", case.meta.kernelVersion, "capture stamps the pinned kernel version")
+        assertEquals("models/order-qty-low.json", case.modelRef, "capture references the standalone model file")
         assertEquals(listOf("QTY_LOW|VALUE_ERROR|/Order[1]/Quantity"), case.expected)
         assertEquals(emptyList<Any>(), case.divergences)
         assertEquals(case, CaseJson.parse(CaseJson.write(case)), "the captured case round-trips through CaseJson")
@@ -49,7 +50,7 @@ class CorpusCaptureTest {
             Placement(PlacementKind.FIELD, "/Order/Items/Count", listOf(1, 2, 1), "3"),
         )
         val meta = CaseMeta("stock-per-row", "pending", CaseSource.CURATED, listOf("§2"), tags = listOf("compute"))
-        val case = CorpusCapture.capture(meta, model, placements, Op.Compute)
+        val case = CorpusCapture.capture(meta, "order-stock-compute", model, placements, Op.Compute)
 
         assertEquals(null, case.expected)
         assertEquals(
@@ -68,7 +69,7 @@ class CorpusCaptureTest {
         )
         val op = Op.ValidatePart(listOf(RelevantPointer("/Order/Quantity", listOf(1, 1))))
         val meta = CaseMeta("qty-low-part", "pending", CaseSource.CURATED, listOf("§13"), tags = listOf("partial"))
-        val case = CorpusCapture.capture(meta, model, placements, op)
+        val case = CorpusCapture.capture(meta, "order-qty-low", model, placements, op)
 
         assertEquals(listOf("QTY_LOW|VALUE_ERROR|/Order[1]/Quantity"), case.expected)
         assertEquals(case, CaseJson.parse(CaseJson.write(case)))

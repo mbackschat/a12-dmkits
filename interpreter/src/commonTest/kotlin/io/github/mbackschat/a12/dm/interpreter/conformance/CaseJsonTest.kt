@@ -9,21 +9,20 @@ import kotlin.test.assertTrue
 
 /**
  * The multiplatform conformance-case (de)serialization ([CaseJson]) — round-trip + shape on BOTH targets
- * (JVM + JS; `:interpreter:check` runs both). The model sub-object is carried through verbatim; every other
- * field survives a `write` → `parse` round trip; and [replayInto] drives the [PlacementSink] in order.
+ * (JVM + JS; `:interpreter:check` runs both). The model lives in a standalone file the case references by
+ * `modelRef`; every field survives a `write` → `parse` round trip; and [replayInto] drives the [PlacementSink]
+ * in order. [CaseJson.writeModel] pretty-prints a model file preserving every literal.
  */
 class CaseJsonTest {
 
-    // Model text is COMPACT (kotlinx JsonElement.toString form) so the full-object round trip holds — the parser
-    // stores model as the canonical tree string, and the writer re-embeds it verbatim.
-    private val model = """{"header":{"id":"m","modelType":"document"},"content":{"modelRoot":{"rootGroups":[]}}}"""
+    private val modelRef = "models/policy-claims.json"
 
     @Test
     fun roundTripsAValidateFullCase() {
         val case = ConformanceCase(
             meta = CaseMeta("claim-min-001", "30.8.1", CaseSource.CURATED, listOf("§9"),
                 tags = listOf("aggregates"), notes = "MinValue over one filled row"),
-            model = model,
+            modelRef = modelRef,
             placements = listOf(
                 Placement(PlacementKind.GROUP, "/Policy", listOf(1)),
                 Placement(PlacementKind.GROUP, "/Policy/Claims", listOf(1, 1)),
@@ -41,7 +40,7 @@ class CaseJsonTest {
         val case = ConformanceCase(
             meta = CaseMeta("phantom-row-002", "30.8.1", CaseSource.FUZZ_SEED, listOf("§10"),
                 tags = listOf("partial", "phantom-row"), seed = 42, scenario = "policyClaims"),
-            model = model,
+            modelRef = modelRef,
             placements = listOf(Placement(PlacementKind.GROUP, "/Policy", listOf(1))),
             op = Op.ValidatePart(listOf(RelevantPointer("/Policy/Claims/Amount", listOf(1, 1, 1)))),
             clock = "2026-07-06T12:00:00",
@@ -55,7 +54,7 @@ class CaseJsonTest {
     fun roundTripsAComputeCase() {
         val case = ConformanceCase(
             meta = CaseMeta("compute-perrow-003", "30.8.1", CaseSource.CURATED, listOf("§2")),
-            model = model,
+            modelRef = modelRef,
             placements = listOf(Placement(PlacementKind.GROUP, "/Order", listOf(1))),
             op = Op.Compute,
             computeExpected = listOf("/Order[1]/Items[1]/StockQty|VALUE|20", "/Order[1]/Items[2]/StockQty|VALUE|30"),
@@ -68,7 +67,7 @@ class CaseJsonTest {
         val text = """
             {
               "meta": { "id": "c", "kernelVersion": "30.8.1", "source": "curated", "sections": ["§9"] },
-              "model": { "header": { "id": "m" } },
+              "modelRef": "models/policy.json",
               "placements": [ { "kind": "GROUP", "path": "/Policy", "reps": [1] } ],
               "op": { "kind": "validateFull" },
               "expected": []
@@ -76,12 +75,21 @@ class CaseJsonTest {
         """.trimIndent()
         val case = CaseJson.parse(text)
         assertEquals("c", case.meta.id)
+        assertEquals("models/policy.json", case.modelRef)
         assertEquals(CaseSource.CURATED, case.meta.source)
         assertTrue(case.meta.tags.isEmpty())
         assertNull(case.clock)
         assertNull(case.computeExpected)
         assertEquals(emptyList(), case.expected)   // an empty expected is a real assertion, not "absent"
         assertEquals(Op.ValidateFull, case.op)
+    }
+
+    @Test
+    fun missingModelRefThrowsCorrectiveError() {
+        val text = """{"meta":{"id":"c","kernelVersion":"30.8.1","source":"curated","sections":["§9"]},
+            "placements":[],"op":{"kind":"validateFull"},"expected":[]}"""
+        val ex = assertFailsWith<IllegalArgumentException> { CaseJson.parse(text) }
+        assertTrue("modelRef" in (ex.message ?: ""), "the error names the missing modelRef key")
     }
 
     @Test
@@ -108,7 +116,7 @@ class CaseJsonTest {
     @Test
     fun unknownSourceThrows() {
         val text = """{"meta":{"id":"c","kernelVersion":"30.8.1","source":"nope","sections":[]},
-            "model":{},"placements":[],"op":{"kind":"validateFull"},"expected":[]}"""
+            "modelRef":"models/x.json","placements":[],"op":{"kind":"validateFull"},"expected":[]}"""
         assertFailsWith<IllegalArgumentException> { CaseJson.parse(text) }
     }
 }

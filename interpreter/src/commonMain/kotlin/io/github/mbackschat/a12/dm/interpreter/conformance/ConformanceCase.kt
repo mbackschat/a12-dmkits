@@ -3,14 +3,18 @@ package io.github.mbackschat.a12.dm.interpreter.conformance
 import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
 
 /**
- * The portable **conformance case** — one document model, one instance, one operation, and the kernel-verified
- * expected outcome, all as data (CONFORMANCE-CORPUS-SPEC). It is engine-neutral and kernel-free: any engine
- * replays it by loading [model], replaying [placements], injecting [clock], running [op], and comparing its
- * rendered outcome to [expected] / [computeExpected]. This is the in-memory twin of a `corpus/cases/…` file;
- * (de)serialization is [CaseJson].
+ * The portable **conformance case** — a reference to a document model, one instance, one operation, and the
+ * kernel-verified expected outcome, all as data (CONFORMANCE-CORPUS-SPEC). It is engine-neutral and kernel-free:
+ * a runner resolves [modelRef] against the corpus root, loads that standalone DM-JSON file, replays [placements],
+ * injects [clock], runs [op], and compares its rendered outcome to [expected] / [computeExpected]. This is the
+ * in-memory twin of a `corpus/cases/…` file; (de)serialization is [CaseJson].
  *
- * @property model the expanded, self-contained DM-JSON of the model (rules embedded as stored-English strings),
- *   kept as text so a runner feeds it straight to [io.github.mbackschat.a12.dm.interpreter.load.ModelLoader].
+ * The model lives **outside** the case: [modelRef] is the corpus-root-relative path of a shared `models/<name>.json`
+ * file (envelope-free DM-JSON — openable in the A12 modeling tools, consumable by `dmtool` directly). Many cases
+ * reference one model. The runner reads the file and feeds its text straight to
+ * [io.github.mbackschat.a12.dm.interpreter.load.ModelLoader].
+ *
+ * @property modelRef the corpus-root-relative path of the case's model file (e.g. `"models/order-basic.json"`).
  * @property clock the single wall-clock instant (`yyyy-MM-dd'T'HH:mm:ss`, no zone), present iff evaluation
  *   touches `Today`/`Now` (§9).
  * @property expected the sorted `code|type|pointer` signature multiset for a validate op (§6); null for compute.
@@ -18,7 +22,7 @@ import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
  */
 data class ConformanceCase(
     val meta: CaseMeta,
-    val model: String,
+    val modelRef: String,
     val placements: List<Placement>,
     val op: Op,
     val clock: String? = null,

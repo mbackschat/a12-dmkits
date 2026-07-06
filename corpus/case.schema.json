@@ -2,9 +2,9 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/mbackschat/a12-dmkits/corpus/case.schema.json",
   "title": "Conformance corpus case",
-  "description": "One portable conformance case: a document model, an instance (placements), an operation, and the kernel-verified expected outcome. The normative contract is docs/CONFORMANCE-CORPUS-SPEC.md; this schema is its machine-readable shape. Executable validation of every committed case is CorpusSchemaGuardTest (which parses each file through the same reference (de)serializer a runner uses).",
+  "description": "One portable conformance case: a reference to a standalone document model (modelRef), an instance (placements), an operation, and the kernel-verified expected outcome. The normative contract is docs/CONFORMANCE-CORPUS-SPEC.md; this schema is its machine-readable shape. Executable validation of every committed case is CorpusSchemaGuardTest (which parses each file through the same reference (de)serializer a runner uses, resolves every modelRef, and loads every models/*.json).",
   "type": "object",
-  "required": ["meta", "model", "placements", "op"],
+  "required": ["meta", "modelRef", "placements", "op"],
   "additionalProperties": false,
   "properties": {
     "meta": {
@@ -28,9 +28,10 @@
         "notes": { "type": "string", "description": "One human sentence on what the case pins." }
       }
     },
-    "model": {
-      "type": "object",
-      "description": "Expanded, self-contained DM-JSON with rules/computations embedded as stored-English condition strings."
+    "modelRef": {
+      "type": "string",
+      "pattern": "^models/[a-z0-9-]+\\.json$",
+      "description": "Corpus-root-relative path of the case's standalone DM-JSON model file (e.g. \"models/order-basic.json\"), shared across cases. The file is expanded, self-contained DM-JSON with rules/computations embedded as stored-English condition strings — no wrapper envelope, so it opens in the A12 modeling tools and feeds dmtool directly."
     },
     "clock": {
       "type": "string",

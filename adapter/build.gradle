@@ -112,10 +112,11 @@ tasks.named('test') {
     }
 }
 
-// The conformance-corpus guards read the committed corpus/cases/** at runtime — a dedicated Test task with those
-// files as ITS declared inputs (the docGuardTest pattern, docs/TESTING-SPEC). Replays each case three ways
-// (interpreter, groovy-dynamic, java-static) + the schema/id guard; the groovy leg re-runs the kernel, so a
-// kernel bump that changes a committed expectation fails here (the KERNEL-UPGRADE re-capture signal).
+// The conformance-corpus guards read the committed corpus tree (cases/** + shared models/**) at runtime — a
+// dedicated Test task with those files as ITS declared inputs (the docGuardTest pattern, docs/TESTING-SPEC) so a
+// case OR model edit re-runs ONLY them. Replays each case three ways (interpreter, groovy-dynamic, java-static) +
+// the schema/id/model guard; the groovy leg re-runs the kernel, so a kernel bump that changes a committed
+// expectation fails here (the KERNEL-UPGRADE re-capture signal).
 tasks.register('corpusReplayTest', Test) {
     description = 'Replays the committed conformance corpus three ways + schema/id guard (corpus files declared as inputs).'
     group = 'verification'

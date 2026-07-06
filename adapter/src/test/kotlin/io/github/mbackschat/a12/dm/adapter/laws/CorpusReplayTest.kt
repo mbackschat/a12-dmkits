@@ -31,7 +31,7 @@ class CorpusReplayTest {
     @TestFactory
     fun everyCaseReplaysThreeWays(): List<DynamicTest> = CorpusFiles.all().map { cf ->
         DynamicTest.dynamicTest("${cf.path.parent.fileName}/${cf.case.meta.id}") {
-            val results = CorpusReplay.replay(cf.case)
+            val results = CorpusReplay.replay(cf.case, cf.modelJson)
             val bad = results.filterValues { it.verdict != InterpreterReplay.Verdict.PASS }
             assertTrue(bad.isEmpty()) {
                 "conformance verdict != PASS for ${cf.path}:\n" +

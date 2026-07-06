@@ -15,9 +15,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
 
 /**
  * The **one** interpreter-leg replay of a [ConformanceCase] (CONFORMANCE-CORPUS-SPEC §12), kernel-free and
- * multiplatform. It loads [ConformanceCase.model] with the [ModelLoader], replays [ConformanceCase.placements],
- * injects [ConformanceCase.clock], runs [ConformanceCase.op], and renders the outcome to corpus signatures
- * (§6/§7). It is shared by:
+ * multiplatform. The runner resolves [ConformanceCase.modelRef] to the model's DM-JSON text and passes it in; this
+ * loads it with the [ModelLoader], replays [ConformanceCase.placements], injects [ConformanceCase.clock], runs
+ * [ConformanceCase.op], and renders the outcome to corpus signatures (§6/§7). It is shared by:
  *
  * - the JVM three-engine runner (`:adapter` `CorpusEngines`/`CorpusReplay`) — its interpreter leg IS this, and
  * - the multiplatform replay suite (`CorpusReplayCommonTest`) that runs on **both** JVM and JS.
@@ -41,8 +41,8 @@ object InterpreterReplay {
      *  (their reasons) — a non-empty [unsupported] makes a runner report [Verdict.SKIP]. */
     data class Outcome(val signatures: List<String>, val unsupported: List<String>)
 
-    /** Replay [case] on the interpreter and render its [Outcome] (signatures + unsupported reasons). */
-    fun run(case: ConformanceCase): Outcome = run(case.model, case.placements, case.op, case.clock)
+    /** Replay [case] (its model already resolved to [modelJson]) on the interpreter and render its [Outcome]. */
+    fun run(case: ConformanceCase, modelJson: String): Outcome = run(modelJson, case.placements, case.op, case.clock)
 
     /** Replay a raw scenario (used by capture, before a [ConformanceCase] exists) and render its [Outcome]. */
     fun run(modelJson: String, placements: List<Placement>, op: Op, clock: String? = null): Outcome {
@@ -58,9 +58,9 @@ object InterpreterReplay {
         }
     }
 
-    /** The interpreter's PASS/FAIL/SKIP [Result] for [case] against its anchor expectation (§12). */
-    fun replay(case: ConformanceCase): Result {
-        val outcome = run(case)
+    /** The interpreter's PASS/FAIL/SKIP [Result] for [case] (model resolved to [modelJson]) against its anchor (§12). */
+    fun replay(case: ConformanceCase, modelJson: String): Result {
+        val outcome = run(case, modelJson)
         if (outcome.unsupported.isNotEmpty()) return Result(Verdict.SKIP, outcome.unsupported.joinToString("; "))
         return compare(outcome.signatures, anchorOf(case))
     }

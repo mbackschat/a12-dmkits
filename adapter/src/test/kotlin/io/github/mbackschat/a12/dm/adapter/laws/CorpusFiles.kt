@@ -8,7 +8,7 @@ import java.nio.file.Paths
 import kotlin.io.path.name
 import kotlin.io.path.readText
 
-/** Locates and reads the committed conformance corpus (the `corpus/cases` tree) from the repo root. */
+/** Locates and reads the committed conformance corpus (the `corpus/cases` tree + shared `corpus/models`) from the repo root. */
 object CorpusFiles {
 
     /** The repo root — walk up from the test working dir to the dir carrying `settings.gradle`. */
@@ -18,19 +18,35 @@ object CorpusFiles {
         return d
     }
 
+    /** The corpus root (`corpus/`), against which a case's `modelRef` resolves. */
+    fun corpusRoot(): Path = repoRoot().resolve("corpus")
+
     /** The `corpus/cases` directory (may not exist before the first generation). */
-    fun casesDir(): Path = repoRoot().resolve("corpus").resolve("cases")
+    fun casesDir(): Path = corpusRoot().resolve("cases")
 
-    /** A committed case with its file path, for a runner's report. */
-    data class CaseFile(val path: Path, val case: ConformanceCase)
+    /** The `corpus/models` directory of standalone DM-JSON model files (may not exist before the first generation). */
+    fun modelsDir(): Path = corpusRoot().resolve("models")
 
-    /** Every committed case, sorted by path (stable dynamic-test order); empty if the corpus is absent. */
+    /** Resolve a case's [ConformanceCase.modelRef] against the corpus root; fails fast if it does not resolve. */
+    fun resolveModel(modelRef: String): String {
+        val file = corpusRoot().resolve(modelRef)
+        require(Files.exists(file)) {
+            "case modelRef '$modelRef' does not resolve — expected a corpus-root-relative model file " +
+                "(e.g. \"models/<name>.json\") at $file"
+        }
+        return file.readText()
+    }
+
+    /** A committed case with its file path and its resolved model DM-JSON, for a runner's report. */
+    data class CaseFile(val path: Path, val case: ConformanceCase, val modelJson: String)
+
+    /** Every committed case (model resolved), sorted by path (stable dynamic-test order); empty if the corpus is absent. */
     fun all(): List<CaseFile> {
         val dir = casesDir()
         if (!Files.exists(dir)) return emptyList()
         Files.walk(dir).use { stream ->
             return stream.filter { Files.isRegularFile(it) && it.name.endsWith(".json") }.sorted()
-                .map { CaseFile(it, CaseJson.parse(it.readText())) }.toList()
+                .map { val case = CaseJson.parse(it.readText()); CaseFile(it, case, resolveModel(case.modelRef)) }.toList()
         }
     }
 }

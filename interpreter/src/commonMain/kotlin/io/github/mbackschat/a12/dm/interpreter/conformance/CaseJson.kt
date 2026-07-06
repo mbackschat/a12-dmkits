@@ -20,12 +20,13 @@ import kotlinx.serialization.json.putJsonArray
 
 /**
  * (De)serialize a [ConformanceCase] to/from its `corpus/cases/<family>/<id>.json` — kernel-free and **multiplatform**
- * (JVM + JS), so both the JVM replay runner and the future JS one (WI-6) share it. Tree API only
+ * (JVM + JS), so both the JVM replay runner and the JS one (WI-6) share it. Tree API only
  * ([Json.parseToJsonElement] + a hand-written walk; proposal fork F1) — no `@Serializable`, no compiler plugin.
  *
- * The `model` sub-object is carried through **verbatim** as its own JSON tree ([ConformanceCase.model] holds the
- * DM-JSON text): a runner feeds it straight to the loader, and a round-trip keeps every model literal intact
- * (raw-number fidelity, same as the loader — no `Double` round-trip).
+ * The model lives in a **standalone** `models/<name>.json` file; the case carries only its corpus-root-relative
+ * [ConformanceCase.modelRef]. A runner resolves that ref, reads the file, and feeds its text to the loader. The
+ * separate model files are written by [writeModel] (stable pretty-printed DM-JSON, every literal preserved —
+ * raw-number fidelity, no `Double` round-trip, so a declared scale survives a shared-model diff).
  */
 object CaseJson {
 
@@ -41,7 +42,11 @@ object CaseJson {
         }
         return ConformanceCase(
             meta = parseMeta(root.obj("meta")),
-            model = root.getValue("model").toString(),
+            modelRef = root["modelRef"]?.jsonPrimitive?.contentOrNull
+                ?: throw IllegalArgumentException(
+                    "conformance case is missing required 'modelRef' — expected a corpus-root-relative model path " +
+                        "like \"models/<name>.json\"",
+                ),
             placements = root.arr("placements").map { parsePlacement(it.jsonObject) },
             op = parseOp(root.obj("op")),
             clock = root["clock"]?.jsonPrimitive?.contentOrNull,
@@ -56,13 +61,14 @@ object CaseJson {
     fun write(case: ConformanceCase): String = PRETTY.encodeToString(JsonElement.serializer(), toJson(case))
 
     /**
-     * The canonical (compact tree) form of a DM-JSON model — what [parse] stores in [ConformanceCase.model]. A
-     * captured case normalizes its model through this so an in-memory case round-trips (`parse(write(c)) == c`)
-     * regardless of the source model's formatting; every literal is preserved (raw-number fidelity, no `Double`
-     * round-trip).
+     * The stable, pretty-printed form of a DM-JSON model — what the generator writes to a standalone
+     * `models/<name>.json` file. Formatting is deterministic (so re-capture is idempotent and a shared-model diff
+     * stays reviewable) and every literal is preserved (raw-number fidelity, no `Double` round-trip, so a declared
+     * `minValue`/scale survives). The output is pure DM-JSON with no wrapper envelope — openable in the A12
+     * modeling tools and consumable by `dmtool` directly.
      */
     @JvmStatic
-    fun canonicalModel(dmJson: String): String = Json.parseToJsonElement(dmJson).toString()
+    fun writeModel(dmJson: String): String = PRETTY.encodeToString(JsonElement.serializer(), Json.parseToJsonElement(dmJson))
 
     // ---- parse ----------------------------------------------------------------------------------
 
@@ -104,7 +110,7 @@ object CaseJson {
 
     private fun toJson(case: ConformanceCase): JsonObject = buildJsonObject {
         put("meta", metaJson(case.meta))
-        put("model", Json.parseToJsonElement(case.model))
+        put("modelRef", case.modelRef)
         case.clock?.let { put("clock", it) }
         putJsonArray("placements") { case.placements.forEach { p -> add(placementJson(p)) } }
         put("op", opJson(case.op))

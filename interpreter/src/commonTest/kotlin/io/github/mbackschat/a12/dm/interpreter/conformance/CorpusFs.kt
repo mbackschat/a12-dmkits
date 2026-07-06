@@ -15,3 +15,11 @@ class RawCorpusFile(val family: String, val id: String, val text: String)
  * order); the list is empty when the corpus directory is absent.
  */
 expect fun readCorpusFiles(): List<RawCorpusFile>
+
+/**
+ * Resolve a case's [ConformanceCase.modelRef] (corpus-root-relative, e.g. `"models/order-basic.json"`) against the
+ * corpus **root** — the parent of the `corpus/cases` directory located above — and read the standalone model file
+ * (§12 step 1). Throws with a corrective message naming the expected form when the ref does not resolve: an
+ * unresolvable `modelRef` is a corpus defect, not a runner verdict.
+ */
+expect fun readCorpusModel(modelRef: String): String

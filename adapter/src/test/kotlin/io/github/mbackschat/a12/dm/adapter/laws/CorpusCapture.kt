@@ -1,6 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.interpreter.conformance.CaseJson
 import io.github.mbackschat.a12.dm.interpreter.conformance.CaseMeta
 import io.github.mbackschat.a12.dm.interpreter.conformance.ConformanceCase
 import io.github.mbackschat.a12.dm.interpreter.conformance.Divergence
@@ -33,11 +32,12 @@ object CorpusCapture {
         })
 
     /**
-     * Tri-verify [scenario] and build its [ConformanceCase]. Throws [InterpreterDivergence] if the interpreter
-     * disagrees with the anchor (the case is not committable). [meta]'s `kernelVersion` is overwritten with the
-     * pinned version.
+     * Tri-verify [scenario] and build its [ConformanceCase], referencing the standalone model file
+     * `models/[modelName].json` via [ConformanceCase.modelRef] (the model text is written separately by the
+     * generator). Throws [InterpreterDivergence] if the interpreter disagrees with the anchor (the case is not
+     * committable). [meta]'s `kernelVersion` is overwritten with the pinned version.
      */
-    fun capture(meta: CaseMeta, modelJson: String, placements: List<Placement>, op: Op, clock: String? = null): ConformanceCase {
+    fun capture(meta: CaseMeta, modelName: String, modelJson: String, placements: List<Placement>, op: Op, clock: String? = null): ConformanceCase {
         val anchor = CorpusEngines.groovyDynamic(modelJson, placements, op, clock)
         val interp = CorpusEngines.interpret(modelJson, placements, op, clock)
         if (interp != anchor) throw InterpreterDivergence(meta.id, anchor, interp)
@@ -50,7 +50,7 @@ object CorpusCapture {
         )
         return ConformanceCase(
             meta = meta.copy(kernelVersion = CorpusEngines.KERNEL_VERSION),
-            model = CaseJson.canonicalModel(modelJson),   // canonical so the case round-trips regardless of source formatting
+            modelRef = modelRefOf(modelName),
             placements = placements,
             op = op,
             clock = clock,
@@ -59,4 +59,7 @@ object CorpusCapture {
             divergences = divergences,
         )
     }
+
+    /** The corpus-root-relative model path a case references for the domain model [modelName]. */
+    fun modelRefOf(modelName: String): String = "models/$modelName.json"
 }
