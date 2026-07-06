@@ -102,4 +102,32 @@ tasks.named('test') {
     // and dumps on exit — feed a tight validateFull loop (a perf.profile test) and `jfr print` the hot methods.
     def jfr = System.getProperty('perf.jfr')
     if (jfr != null) jvmArgs "-XX:StartFlightRecording=settings=profile,filename=${jfr},dumponexit=true"
+    dependsOn 'corpusReplayTest'
+    // The corpus guards read corpus/cases/** at runtime; they live in corpusReplayTest (with those files declared
+    // as its inputs) so a case edit re-runs ONLY them (not the whole kernel-heavy suite) and can't go up-to-date /
+    // restore from the build cache into a FALSE GREEN. `test` dependsOn it, so CI + local always drive it.
+    filter {
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusReplayTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusSchemaGuardTest'
+    }
+}
+
+// The conformance-corpus guards read the committed corpus/cases/** at runtime — a dedicated Test task with those
+// files as ITS declared inputs (the docGuardTest pattern, docs/TESTING-SPEC). Replays each case three ways
+// (interpreter, groovy-dynamic, java-static) + the schema/id guard; the groovy leg re-runs the kernel, so a
+// kernel bump that changes a committed expectation fails here (the KERNEL-UPGRADE re-capture signal).
+tasks.register('corpusReplayTest', Test) {
+    description = 'Replays the committed conformance corpus three ways + schema/id guard (corpus files declared as inputs).'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusReplayTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusSchemaGuardTest'
+    }
+    inputs.files(rootProject.fileTree('corpus') { include '**/*.json' })
+        .withPropertyName('corpusFiles')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+        .optional()
 }
