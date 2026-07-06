@@ -141,6 +141,29 @@ fun dayOptionalParts(raw: String, format: String): Triple<Int, Int, Int>? {
 }
 
 /**
+ * Complete a **date FRAGMENT** value (rendered in its `getFormatOfFragment` [format], one of `yyyy-MM`,
+ * `yyyy`, `MM`, `MM-dd`) to its **earliest** concrete ISO `yyyy-MM-dd` date — the kernel's `feldWertAlsDatum`
+ * INTERVAL_START completion: a missing MONTH → `01`, a missing DAY → `01`, a missing YEAR → [baseYear] (the
+ * model's declared base year, else the kernel default 2000). Returns null when the value does not match its
+ * format, has an out-of-range month, or is an impossible calendar day (the kernel's `datumFormatFalsch`);
+ * a missing day-in-month uses [baseYear]'s leap-ness (so `MM-dd` = `02-29` is real iff [baseYear] is a leap
+ * year — matching the kernel completing with the base year before the realness check).
+ *
+ * Both kernel strategies read a fragment field through this single completion, so canonicalizing a fragment
+ * to this ISO date makes ALL the ordinary date machinery (comparison, `Add*`, extraction) match both — the
+ * interpreter never re-enforces the authoring-time comparability/granularity gates (KERNEL-FINDINGS §6).
+ */
+fun completeFragmentToIso(raw: String, format: String, baseYear: Int): String? {
+    val (frag, comps) = dateFragment(format) ?: return null
+    val m = Regex("^$frag$").matchEntire(raw) ?: return null
+    val g = m.groupValues.drop(1)
+    var y = baseYear; var mo = 1; var d = 1
+    comps.forEachIndexed { i, c -> val v = g[i].toInt(); when (c) { 'y' -> y = v; 'M' -> mo = v; 'd' -> d = v } }
+    if (mo < 1 || mo > 12 || d < 1 || d > daysInMonth(y, mo)) return null
+    return iso(y, mo, d)
+}
+
+/**
  * Resolve a DAY_OPTIONAL date value to a concrete ISO date: a specified day → that exact date; an omitted
  * day (`00`) → day 01 ([lastDay] = false) or the month's last day ([lastDay] = true). Null if malformed. The
  * `ValueAsDate(field, FirstDay\|LastDay)` resolution.

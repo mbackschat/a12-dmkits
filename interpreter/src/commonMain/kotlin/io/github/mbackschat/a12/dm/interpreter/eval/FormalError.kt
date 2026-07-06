@@ -184,6 +184,9 @@ fun formalError(
     datePrecision: DatePrecision = DatePrecision.FULL, rangeSep: String? = null,
     constraints: FieldConstraints = FieldConstraints.NONE,
     legalCharset: LegalCharset = LegalCharset.BMP,
+    /** The model's base year (kernel default 2000) — the year a year-less date FRAGMENT (`MM`, `MM-dd`)
+     *  completes to for its realness check; unused for non-fragment kinds. */
+    baseYear: Int = 2000,
 ): FormalErrorCode? {
     if (raw.isEmpty()) return null
     // BASELINE value checks the kernel runs for EVERY kind before the type format (`checkFieldValueFormat`,
@@ -192,13 +195,17 @@ fun formalError(
     baselineValueError(raw, legalCharset)?.let { return it }
     return when (kind) {
         // Format-aware: a value valid for the field's DECLARED format is well-formed (a `dd.MM.yyyy` field's
-        // `15.06.2024` is fine — not ISO, but valid for its format). Canonicalize-or-fail via parseDateToIso;
-        // null format defaults to ISO (KERNEL-FINDINGS plain-date locale handling, PlainDateDiffTest). A
-        // DAY_OPTIONAL field additionally accepts a day-omitted `00.MM.yyyy` value as well-formed.
+        // `15.06.2024` is fine — not ISO, but valid for its format). Null format defaults to ISO (KERNEL-FINDINGS
+        // plain-date locale handling, PlainDateDiffTest). Precision widens what "valid" means: DAY_OPTIONAL also
+        // accepts a day-omitted `00.MM.yyyy`; a FRAGMENT is well-formed iff its value parses in its (partial)
+        // format with real components (`completeFragmentToIso`) — a `2024-13` yyyy-MM is `datumFormatFalsch`.
         Kind.DATE -> {
             val fmt = format ?: ISO_FORMAT
-            val ok = if (datePrecision == DatePrecision.DAY_OPTIONAL) dayOptionalParts(raw, fmt) != null
-            else parseDateToIso(raw, fmt) != null
+            val ok = when (datePrecision) {
+                DatePrecision.DAY_OPTIONAL -> dayOptionalParts(raw, fmt) != null
+                DatePrecision.FRAGMENT -> completeFragmentToIso(raw, fmt, baseYear) != null
+                DatePrecision.FULL -> parseDateToIso(raw, fmt) != null
+            }
             if (ok) null else FormalErrorCode.DATE_FORMAT
         }
         // Format well-formedness FIRST (blanks, invalid chars, signed-zero/plus, decimal-separator,

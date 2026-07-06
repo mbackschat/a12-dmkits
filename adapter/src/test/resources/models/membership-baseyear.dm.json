@@ -1,0 +1,164 @@
+{
+  "header": {
+    "id": "membership_by",
+    "modelType": "document",
+    "modelVersion": "28.4.0",
+    "locales": [
+      {
+        "code": "en_US"
+      }
+    ],
+    "labels": [],
+    "annotations": [],
+    "modelReferences": []
+  },
+  "content": {
+    "modelInfo": {
+      "name": "membership_by",
+      "variant": "cockpit",
+      "revision": "Arbeitsversion",
+      "immutable": false,
+      "baseYear": "2024"
+    },
+    "modelConfig": {
+      "decimalSeparator": ".",
+      "timeZone": "Europe/Berlin",
+      "conditionLanguage": {
+        "code": "en_US"
+      },
+      "fieldRefByShortNameAllowed": true
+    },
+    "modelRoot": {
+      "rootGroups": [
+        {
+          "type": "Group",
+          "id": "/Card",
+          "name": "Card",
+          "Group": {
+            "repeatability": 1,
+            "elements": [
+              {
+                "type": "Field",
+                "id": "/Card/CardExpiry",
+                "name": "CardExpiry",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateFragmentType",
+                    "DateFragmentType": {
+                      "formatOfFragment": "yyyy-MM"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Card/RenewExpiry",
+                "name": "RenewExpiry",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateFragmentType",
+                    "DateFragmentType": {
+                      "formatOfFragment": "yyyy-MM"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Card/WarrantyYear",
+                "name": "WarrantyYear",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateFragmentType",
+                    "DateFragmentType": {
+                      "formatOfFragment": "yyyy"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Card/RefYear",
+                "name": "RefYear",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateFragmentType",
+                    "DateFragmentType": {
+                      "formatOfFragment": "yyyy"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Card/BillMonth",
+                "name": "BillMonth",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateFragmentType",
+                    "DateFragmentType": {
+                      "formatOfFragment": "MM"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Card/PeakMonth",
+                "name": "PeakMonth",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateFragmentType",
+                    "DateFragmentType": {
+                      "formatOfFragment": "MM"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Card/SaleWindow",
+                "name": "SaleWindow",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateFragmentType",
+                    "DateFragmentType": {
+                      "formatOfFragment": "MM-dd"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Card/PromoWindow",
+                "name": "PromoWindow",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateFragmentType",
+                    "DateFragmentType": {
+                      "formatOfFragment": "MM-dd"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Card/OrderDate",
+                "name": "OrderDate",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateType",
+                    "DateType": {
+                      "format": "yyyy-MM-dd",
+                      "datePrecision": "FULL"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

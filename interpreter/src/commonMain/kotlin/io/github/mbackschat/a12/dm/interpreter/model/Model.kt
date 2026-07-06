@@ -11,13 +11,25 @@ package io.github.mbackschat.a12.dm.interpreter.model
 enum class Kind { NUMBER, STRING, BOOLEAN, CONFIRM, DATE, TIME, DATE_RANGE, DATE_TIME }
 
 /**
- * A [Kind.DATE] field's precision (the kernel's `DateType.datePrecision`). [FULL] is a complete date;
- * [DAY_OPTIONAL] permits the **day** to be omitted — entered as `00` in the day position (`00.06.2024`),
- * which is well-formed (NOT a format error) but is not a single concrete date. `ValueAsDate(field, FirstDay
- * \|LastDay)` resolves such a partial value to its earliest / latest concrete date. (Only these two are
- * modeled; a finer precision would map to FULL until a fixture needs it.)
+ * How complete a [Kind.DATE] field's value is — the kernel's "teilbekannt" (partially-known) axis, which the
+ * kernel unifies for a `DateType`'s optional day AND a `DateFragmentType`'s missing components:
+ * - [FULL] — a complete `DateType` (all of year/month/day present & required).
+ * - [DAY_OPTIONAL] — a `DateType` whose **day** may be omitted (entered as `00`, `00.06.2024`): well-formed
+ *   but not a single concrete date, so a *direct* reference resolves to `Val.Unknown`; only
+ *   `ValueAsDate(field, FirstDay\|LastDay)` resolves it.
+ * - [FRAGMENT] — a `DateFragmentType`: the field's format itself carries only a proper SUBSET of the date
+ *   components (`getFormatOfFragment` ∈ {`yyyy-MM`, `yyyy`, `MM`, `MM-dd`}). Unlike [DAY_OPTIONAL], a
+ *   fragment DOES resolve for a direct comparison: the kernel collapses it to a plain `Date` by completing the
+ *   missing components to the **earliest** concrete date (its `feldWertAlsDatum` INTERVAL_START rule — missing
+ *   month → `01`, missing day → `01`, missing year → the model base year), then compares/shifts/extracts on
+ *   that. The *which* components are present is carried by the field's [FieldDef.format] (the format string),
+ *   so this one marker + the format drives the completion; both kernel strategies share the same completion,
+ *   so the interpreter matches both. The comparability partition (`MVK_INVALID_COMPARE_TO_DATE`) and the
+ *   `Add*`/extract granularity gating (`MVK_WRONG_DATE_FORMAT_FOR_OP`) are kernel authoring-time gates — a
+ *   valid model carries only legal combos, so the interpreter evaluates only those and does not re-enforce
+ *   the gates (KERNEL-FINDINGS §6 "a date fragment IS a DateOperand").
  */
-enum class DatePrecision { FULL, DAY_OPTIONAL }
+enum class DatePrecision { FULL, DAY_OPTIONAL, FRAGMENT }
 
 /**
  * The evaluation reference clock — the "current point in time" the kernel reads for the clock constants

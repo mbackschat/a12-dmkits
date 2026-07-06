@@ -164,6 +164,10 @@ object ModelLoader {
         when (fieldNode.path("Field").path("fieldType").path("type").asText()) {
             "NumberType" -> Kind.NUMBER
             "DateType" -> Kind.DATE
+            // The kernel collapses a DateFragmentType to a plain Date (KERNEL-FINDINGS §6 "a date fragment IS a
+            // DateOperand"); the interpreter loads it as a DATE with a FRAGMENT precision + the fragment format,
+            // and the eval completes the missing components (Document.resolveValue / completeFragmentToIso).
+            "DateFragmentType" -> Kind.DATE
             "DateTimeType" -> Kind.DATE_TIME
             "TimeType" -> Kind.TIME
             "DateRangeType" -> Kind.DATE_RANGE
@@ -172,14 +176,17 @@ object ModelLoader {
             else -> Kind.STRING   // String / Enumeration — STRING-shaped for the operators modeled so far
         }
 
-    /** A date-ish field's rendering format (`<Type>.format`), read for DATE / DATE_TIME / DATE_RANGE / TIME;
-     *  else null. (TIME is carried for the standalone interpreter's format-driven parse — the kernel itself
-     *  constrains a TimeType format to the default, but a hand-built model may declare another — IG36.) */
+    /** A date-ish field's rendering format, read for DATE / DATE_TIME / DATE_RANGE / TIME as `<Type>.format`,
+     *  and for a DateFragmentType as its `formatOfFragment` (a partial format, one of `yyyy-MM`/`yyyy`/`MM`/
+     *  `MM-dd`) — which is what drives the fragment completion (`completeFragmentToIso`); else null. (TIME is
+     *  carried for the standalone interpreter's format-driven parse — the kernel itself constrains a TimeType
+     *  format to the default, but a hand-built model may declare another — IF56.) */
     private fun formatOf(fieldNode: JsonElement?): String? {
         val type = fieldNode.path("Field").path("fieldType")
         val typeName = type.path("type").asText()
         return when (typeName) {
             "DateType", "DateTimeType", "DateRangeType", "TimeType" -> type.path(typeName).path("format").asText().ifEmpty { null }
+            "DateFragmentType" -> type.path(typeName).path("formatOfFragment").asText().ifEmpty { null }
             else -> null
         }
     }
@@ -206,12 +213,17 @@ object ModelLoader {
         return type.path("DateRangeType").path("rangeSeparator").asText().ifEmpty { null }
     }
 
-    /** A DATE field's precision (`DateType.datePrecision`); `DAY_OPTIONAL` permits `00.MM.yyyy`, else FULL. */
+    /** A DATE field's precision: a `DateFragmentType` is [DatePrecision.FRAGMENT] (its format carries only some
+     *  components — the eval completes the rest); a `DateType` with `datePrecision: DAY_OPTIONAL` permits
+     *  `00.MM.yyyy`; else [DatePrecision.FULL]. */
     private fun datePrecisionOf(fieldNode: JsonElement?): DatePrecision {
         val type = fieldNode.path("Field").path("fieldType")
-        val dayOptional = type.path("type").asText() == "DateType" &&
-            type.path("DateType").path("datePrecision").asText() == "DAY_OPTIONAL"
-        return if (dayOptional) DatePrecision.DAY_OPTIONAL else DatePrecision.FULL
+        return when {
+            type.path("type").asText() == "DateFragmentType" -> DatePrecision.FRAGMENT
+            type.path("type").asText() == "DateType" &&
+                type.path("DateType").path("datePrecision").asText() == "DAY_OPTIONAL" -> DatePrecision.DAY_OPTIONAL
+            else -> DatePrecision.FULL
+        }
     }
 
     /** A field's requiredness (`Field.requirednessConfig.mode`); absent / `notRequired` → not required. */

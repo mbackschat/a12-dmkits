@@ -51,7 +51,7 @@ internal const val UNKNOWN_REP = -5
  */
 fun ModelDef.newDocument(): Document = Document(
     kinds, declaredReps, unsignedFields, rangeConfig, dateFormats, scales,
-    dateTimeFormats, datePrecisions, enumValues, enumCategories, timeFormats,
+    dateTimeFormats, datePrecisions, enumValues, enumCategories, timeFormats, baseYear,
 )
 
 class Document @JvmOverloads constructor(
@@ -88,6 +88,12 @@ class Document @JvmOverloads constructor(
      *  [resolveValue] formal-check a TIME so a malformed value resolves to [Val.Unknown] (a malformed time was
      *  previously unchecked → it escaped suppression; KERNEL-FINDINGS §6). (Appended for positional compat.) */
     private val timeFormats: Map<String, String> = emptyMap(),
+    /** The model's declared base year (the kernel's `modelInfo.baseYear`), or null → the kernel default 2000 —
+     *  the YEAR a year-less date FRAGMENT (`MM`, `MM-dd`) completes to when [resolveValue] canonicalizes it. A
+     *  model with a declared base year makes that completed year OBSERVABLE (a year-less fragment then compares
+     *  to a year-bearing date, the partition's base-year relaxation — DateFragmentComparisonDiffTest).
+     *  (Appended for positional-constructor compatibility.) */
+    private val baseYear: Int? = null,
 ) {
     private data class Placement(val path: String, val reps: List<Int>, val value: String?, val isGroup: Boolean)
 
@@ -240,7 +246,7 @@ class Document @JvmOverloads constructor(
      *  the single place the config param list is threaded, so [withComputed] stays in lockstep with the
      *  constructor. */
     private fun emptyCopy(): Document = Document(kinds, declaredReps, unsignedFields, rangeConfig, dateFormats,
-        scales, dateTimeFormats, datePrecisions, enumValues, enumCategories, timeFormats)
+        scales, dateTimeFormats, datePrecisions, enumValues, enumCategories, timeFormats, baseYear)
 
     /**
      * One [EvalContext] per instantiated row of [groupPath]; empty if the group has no rows. Each row's
@@ -809,17 +815,27 @@ class Document @JvmOverloads constructor(
             Kind.DATE_RANGE -> rangeConfig[path]?.first
             else -> null
         }
-        if (formalError(kind, raw, scales[path], dateLikeFormat, precision, rangeConfig[path]?.second) != null) return Val.Unknown
+        if (formalError(kind, raw, scales[path], dateLikeFormat, precision, rangeConfig[path]?.second,
+                baseYear = baseYear ?: 2000) != null) return Val.Unknown
         return when (kind) {
             Kind.DATE_RANGE -> rangeConfig[path]?.let { (format, sep) ->
                 parseRangeToIso(raw, format, sep)?.let { Val.Range(it.first, it.second) }
             } ?: Val.Unknown
-            // A DAY_OPTIONAL field's day-omitted value (`00.MM.yyyy`) is well-formed but NOT a single concrete
-            // date → Unknown for a direct reference (only `ValueAsDate` resolves it); a full value canonicalizes.
+            // A DATE field canonicalizes to ISO, precision-aware:
+            //  - FRAGMENT: the format carries only some components — complete the rest to the earliest concrete
+            //    date (missing month/day → 01, missing year → base year), so it compares/shifts/extracts like a
+            //    plain date (KERNEL-FINDINGS §6 "a date fragment IS a DateOperand"; the kernel's feldWertAlsDatum).
+            //  - DAY_OPTIONAL: a day-omitted value (`00.MM.yyyy`) is well-formed but NOT a single concrete date →
+            //    Unknown for a direct reference (only `ValueAsDate` resolves it).
+            //  - FULL: a plain full date.
             Kind.DATE -> {
                 val fmt = dateFormats[path] ?: "yyyy-MM-dd"
-                if (precision == DatePrecision.DAY_OPTIONAL && dayOptionalParts(raw, fmt)?.third == 0) Val.Unknown
-                else parseDateToIso(raw, fmt)?.let { Val.Txt(it) } ?: Val.Unknown
+                when {
+                    precision == DatePrecision.FRAGMENT ->
+                        completeFragmentToIso(raw, fmt, baseYear ?: 2000)?.let { Val.Txt(it) } ?: Val.Unknown
+                    precision == DatePrecision.DAY_OPTIONAL && dayOptionalParts(raw, fmt)?.third == 0 -> Val.Unknown
+                    else -> parseDateToIso(raw, fmt)?.let { Val.Txt(it) } ?: Val.Unknown
+                }
             }
             Kind.DATE_TIME -> parseDateTimeToIso(raw, dateTimeFormats[path] ?: "yyyy-MM-dd'T'HH:mm:ss")
                 ?.let { Val.Txt(it) } ?: Val.Unknown

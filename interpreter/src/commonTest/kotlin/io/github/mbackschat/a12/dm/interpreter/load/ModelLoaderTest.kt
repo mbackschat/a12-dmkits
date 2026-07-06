@@ -175,7 +175,7 @@ class ModelLoaderTest {
         // format is dropped and the interpreter falls back to HH:mm:ss. Locked here as a loader UNIT test rather
         // than a kernel differential: kernel codegen rejects a non-default TimeType format ("date format is
         // invalid" — probed HH:mm / HH.mm.ss / H:mm:ss), so the drop is unobservable via the kernel but real for
-        // the standalone interpreter, whose format-driven parseTimeToIso honors it (IG36).
+        // the standalone interpreter, whose format-driven parseTimeToIso honors it (IF56).
         val def = ModelLoader.load(
             """{ "content": { "modelRoot": { "rootGroups": [ {
                   "type":"Group","id":"/F","name":"F","Group": { "elements": [
@@ -184,6 +184,33 @@ class ModelLoaderTest {
         )
         assertEquals("HH.mm.ss", def.fields.single().format)
         assertEquals("HH.mm.ss", def.timeFormats["/F/T"])
+    }
+
+    @Test
+    fun mapsDateFragmentTypeToDatePrecisionFragmentCarryingItsFormat() {
+        // A DateFragmentType collapses to a DATE (KERNEL-FINDINGS §6) with a FRAGMENT precision and its
+        // formatOfFragment as the format — which drives the eval's completion. Each of the four fragment
+        // formats must round-trip through the loader (IF57).
+        val def = ModelLoader.load(
+            """{ "content": { "modelRoot": { "rootGroups": [ {
+                  "type":"Group","id":"/Card","name":"Card","Group": { "elements": [
+                    { "type":"Field","id":"/Card/Ym","name":"Ym",
+                      "Field": { "fieldType": {"type":"DateFragmentType","DateFragmentType":{"formatOfFragment":"yyyy-MM"}} } },
+                    { "type":"Field","id":"/Card/Y","name":"Y",
+                      "Field": { "fieldType": {"type":"DateFragmentType","DateFragmentType":{"formatOfFragment":"yyyy"}} } },
+                    { "type":"Field","id":"/Card/M","name":"M",
+                      "Field": { "fieldType": {"type":"DateFragmentType","DateFragmentType":{"formatOfFragment":"MM"}} } },
+                    { "type":"Field","id":"/Card/Md","name":"Md",
+                      "Field": { "fieldType": {"type":"DateFragmentType","DateFragmentType":{"formatOfFragment":"MM-dd"}} } } ] } } ] } } }""",
+        )
+        for ((path, fmt) in listOf("/Card/Ym" to "yyyy-MM", "/Card/Y" to "yyyy", "/Card/M" to "MM", "/Card/Md" to "MM-dd")) {
+            val f = def.fields.single { it.path == path }
+            assertEquals(Kind.DATE, f.kind, path)
+            assertEquals(DatePrecision.FRAGMENT, f.datePrecision, path)
+            assertEquals(fmt, f.format, path)
+            assertEquals(fmt, def.dateFormats[path], path)                       // included in the DATE-format map
+            assertEquals(DatePrecision.FRAGMENT, def.datePrecisionOf(path), path)
+        }
     }
 
     @Test
