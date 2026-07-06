@@ -897,10 +897,19 @@ class Interpreter(
         else -> false
     }
 
-    /** Canonicalize a German `dd.MM.yyyy` date literal to ISO `yyyy-MM-dd`; any other value (already-ISO, a
-     *  non-date string) is unchanged — so it only ever rewrites a literal that genuinely parses as a date. */
-    private fun coerceDate(v: Val): Val =
-        if (v is Val.Txt) parseDateToIso(v.v, "dd.MM.yyyy")?.let { Val.Txt(it) } ?: v else v
+    /** Canonicalize a German date literal to ISO `yyyy-MM-dd`; any other value (already-ISO, a non-date string)
+     *  is unchanged — so it only ever rewrites a literal that genuinely parses as a date. Two literal shapes: the
+     *  full `dd.MM.yyyy`, and the **omitted-year** `dd.MM.` (a reference-year feature — the kernel injects the
+     *  model's `baseYear`, so `"13.07."` means `13.07.<baseYear>`; a model with NO base year rejects it at
+     *  validation, `MVK_INVALID_COMPARE_TO_DATE`, so we only ever see it when `baseYear` is set — IF52). */
+    private fun coerceDate(v: Val): Val {
+        if (v !is Val.Txt) return v
+        parseDateToIso(v.v, "dd.MM.yyyy")?.let { return Val.Txt(it) }
+        if (baseYear != null && OMITTED_YEAR.matches(v.v)) {
+            parseDateToIso(v.v + baseYear.toString().padStart(4, '0'), "dd.MM.yyyy")?.let { return Val.Txt(it) }
+        }
+        return v
+    }
 
     /** `BaseYear` as the base-year-START date (ISO `yyyy-01-01`). */
     private fun baseYearDate(): Val = Val.Txt("${baseYearOrThrow().toString().padStart(4, '0')}-01-01")
@@ -1394,6 +1403,10 @@ class Interpreter(
     private companion object {
         /** A TIME value `HH:mm:ss` — captures hours, minutes, seconds for the time-of-day extractors. */
         val TIME = Regex("""(\d{2}):(\d{2}):(\d{2})""")
+
+        /** The OMITTED-YEAR date literal shape `dd.MM.` (day.month., trailing dot, no year) — the reference-year
+         *  form that gets `baseYear` injected (IF52); the full `dd.MM.yyyy` never matches (it has a trailing year). */
+        val OMITTED_YEAR = Regex("""\d{1,2}\.\d{1,2}\.""")
 
         /** Functions that yield a DATE value — so a counterpart string literal beside one is a date literal
          *  ([producesDate]). The date-time/range constructors return other kinds; the extractors return numbers. */
