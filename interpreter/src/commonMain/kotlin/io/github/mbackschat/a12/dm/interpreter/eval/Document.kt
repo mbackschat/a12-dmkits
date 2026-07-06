@@ -501,8 +501,14 @@ class Document @JvmOverloads constructor(
             return if (!raw.isNullOrEmpty()) resolveValue(targetPath, raw) else null
         }
 
-        // Rows of groupPath scoped UNDER this row (the Having filter's per-row contexts).
-        override fun rowContexts(groupPath: String): List<EvalContext> = rowContextsScoped(groupPath, rowReps)
+        // Rows of groupPath in this row's SCOPE (the Having filter's per-row contexts). An aggregate/quantifier
+        // over groupPath spans all rows under groupPath's PARENT (the common ancestor) — so scope to the
+        // parent-rep prefix, NOT the full rowReps. This matters when THIS context is itself a row of groupPath
+        // (a rule iterating the same group the aggregate ranges over — the `$` outer-correlation case): scoping
+        // to the full rowReps would wrongly return only this one row. A DEEPER (nested) aggregate keeps the full
+        // prefix (take(n) with n ≥ this depth ≡ rowReps), so it stays scoped to this row — unchanged.
+        override fun rowContexts(groupPath: String): List<EvalContext> =
+            rowContextsScoped(groupPath, rowReps.take(partsOf(groupPath).size - 1))
 
         // The data view a CustomCondition reads (the kernel's IData): document-wide raw-value lookup by
         // (path, indices) and the set of present field instances — a custom condition's IData spans the whole

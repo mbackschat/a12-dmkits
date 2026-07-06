@@ -83,7 +83,30 @@ class Interpreter(
      *  of `Valid(field, "Name")` / `Invalid(field, "Name")`, consulted ONLY after [predefinedTypes] misses (so that
      *  declarative path stays monomorphic). Supplied by [DmInterpreter]; default empty. */
     private val customFieldTypes: Map<String, CustomFieldType> = emptyMap(),
+    /** The ENCLOSING iteration's context for `$` outer-correlation refs (KERNEL-FINDINGS §"$ correlation"):
+     *  set only while evaluating a `Having` filter, so a `$`-marked ref inside the filter resolves against the
+     *  row the aggregate/quantifier is iterating FROM, not the inner filtered row. Null at top level (a `$`
+     *  there is an error — it needs an enclosing iteration). */
+    private val outer: EvalContext? = null,
 ) {
+
+    /** The context a node resolves against: the enclosing (`outer`) iteration for a `$`-marked ref, else [ctx]. */
+    private fun ctxOf(node: Expr): EvalContext = when {
+        node is Expr.Field && node.outer -> outerOrThrow()
+        node is Expr.Star && node.outer -> outerOrThrow()
+        node is Expr.EnumCategory && node.outer -> outerOrThrow()
+        else -> ctx
+    }
+
+    private fun outerOrThrow(): EvalContext =
+        outer ?: throw UnsupportedConstructException("a \$ outer-correlation reference is only valid inside a Having filter")
+
+    /** A sub-interpreter for a `Having` filter row [rc], carrying the SAME config and setting the enclosing
+     *  iteration ([ctx]) as its `outer` — so a `$`-marked ref in the filter resolves against this row. */
+    private fun havingInterp(rc: EvalContext): Interpreter =
+        Interpreter(rc, clock, baseYear, indexFields, predefinedTypes, customConditions, customErrorField, invalid,
+            cellRelevant = cellRelevant, starRelevant = starRelevant, customRelevant = customRelevant,
+            customFieldTypes = customFieldTypes, outer = ctx)
 
     fun fires(cond: Cond): Boolean = eval(cond) == Tri.TRUE
 
@@ -241,7 +264,7 @@ class Interpreter(
      *  other operand (star aggregate, function, arithmetic) keeps the prior *symmetric* omission notion — so
      *  for those, `leafType` below reduces exactly to the old `leafOmission(left) || leafOmission(right)`. */
     private fun fill(e: Expr): Fill = when (e) {
-        is Expr.Field -> if (ctx.filled(e.path)) Fill.of(false, false) else Fill.of(true, ctx.signed(e.path))
+        is Expr.Field -> ctxOf(e).let { c -> if (c.filled(e.path)) Fill.of(false, false) else Fill.of(true, c.signed(e.path)) }
         is Expr.Func -> funcFill(e)
         // A SemanticIndex resolves to a matched cell or (absent row / empty cell) the empty value — fillable
         // exactly when empty, with the target field's sign, so its directional polarity matches a field ref.
@@ -383,8 +406,7 @@ class Interpreter(
             return if (p.args.size == 2 || dateStatusOf(p.args.single()) != DateStatus.HAS_EMPTY) MsgType.VALUE
                 else MsgType.OMISSION
         op.polarity?.let { return it }
-        val n = p.args.size
-        val (t, f) = quantTally(op, p.args)
+        val (t, f, n) = quantCounts(op, p.args)
         // OMISSION iff filling some currently-empty (FALSE) operand could clear the firing — each fill moves a
         // FALSE to TRUE: (t, f) → (t+j, f-j). (UNKNOWN operands aren't "fillable" — they need correcting, not
         // filling — so they don't enter this; the type isn't differential-checked with malformed operands.)
@@ -432,10 +454,10 @@ class Interpreter(
     private fun evalPred(p: Cond.Pred): Tri {
         val op = PredicateOp.byName(p.name) ?: throw UnsupportedConstructException("unsupported predicate ${p.name}")
         return when (op) {
-            PredicateOp.FIELD_FILLED -> filledTri(pathOf(p.args.single()))
-            PredicateOp.FIELD_NOT_FILLED -> Kleene.not(filledTri(pathOf(p.args.single())))
-            PredicateOp.GROUP_FILLED -> Tri.of(ctx.groupFilled(pathOf(p.args.single())))
-            PredicateOp.GROUP_NOT_FILLED -> Tri.of(!ctx.groupFilled(pathOf(p.args.single())))
+            PredicateOp.FIELD_FILLED -> filledTri(ctxOf(p.args.single()), pathOf(p.args.single()))
+            PredicateOp.FIELD_NOT_FILLED -> Kleene.not(filledTri(ctxOf(p.args.single()), pathOf(p.args.single())))
+            PredicateOp.GROUP_FILLED -> Tri.of(ctxOf(p.args.single()).groupFilled(pathOf(p.args.single())))
+            PredicateOp.GROUP_NOT_FILLED -> Tri.of(!ctxOf(p.args.single()).groupFilled(pathOf(p.args.single())))
             PredicateOp.FIELD_VALUE_IN_LIST -> valueInList(p.args)
             PredicateOp.FIELD_VALUE_NOT_IN_LIST -> Kleene.not(valueInList(p.args))
             PredicateOp.DATE_RANGES_OVERLAP,
@@ -464,8 +486,8 @@ class Interpreter(
             PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED, PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED,
             PredicateOp.ALL_GROUPS_FILLED, PredicateOp.NO_GROUP_FILLED, PredicateOp.AT_LEAST_ONE_GROUP_FILLED,
             PredicateOp.NOT_ALL_GROUPS_FILLED, PredicateOp.GROUPS_NOT_COLLECTIVELY_FILLED -> {
-                val (t, f) = quantTally(op, p.args)
-                Tri.of(quantifierFires(op, t, f, p.args.size))
+                val (t, f, n) = quantCounts(op, p.args)
+                Tri.of(quantifierFires(op, t, f, n))
             }
         }
     }
@@ -497,9 +519,9 @@ class Interpreter(
      * `FieldFilled(malformedQty) And …` does NOT fire (the And goes UNKNOWN), matching the kernel — a presence
      * check on a malformed field is not-check-relevant even though it reads no value. (KERNEL-FINDINGS §3.)
      */
-    private fun filledTri(path: String): Tri = when {
-        ctx.presenceUnknown(path) -> Tri.UNKNOWN   // presence itself is 3VL (invalid parallel index) — before filled
-        !ctx.filled(path) -> Tri.FALSE
+    private fun filledTri(c: EvalContext, path: String): Tri = when {
+        c.presenceUnknown(path) -> Tri.UNKNOWN   // presence itself is 3VL (invalid parallel index) — before filled
+        !c.filled(path) -> Tri.FALSE
         invalid(path) -> Tri.UNKNOWN
         else -> Tri.TRUE
     }
@@ -511,18 +533,55 @@ class Interpreter(
      *  a malformed field is neither — so e.g. `AtLeastOneFieldFilled` does NOT fire on a lone malformed field. */
     private fun quantTally(op: PredicateOp, args: List<Expr>): Pair<Int, Int> {
         if (op.countsGroups) {
-            val t = args.count { ctx.groupFilled(pathOf(it)) }
+            val t = args.count { ctxOf(it).groupFilled(pathOf(it)) }
             return t to (args.size - t)
         }
         var t = 0
         var f = 0
-        for (a in args) when {
-            ctx.presenceUnknown(pathOf(a)) -> {}   // presence 3VL (invalid parallel index) → UNKNOWN, neither
-            !ctx.filled(pathOf(a)) -> f++          // empty (check-relevant) → FALSE
-            invalid(pathOf(a)) -> {}               // present but not check-relevant (malformed/dup) → UNKNOWN
-            else -> t++                            // present + check-relevant → TRUE
+        for (a in args) {
+            val c = ctxOf(a)                       // a `$`-marked operand tallies against the enclosing row
+            when {
+                c.presenceUnknown(pathOf(a)) -> {} // presence 3VL (invalid parallel index) → UNKNOWN, neither
+                !c.filled(pathOf(a)) -> f++        // empty (check-relevant) → FALSE
+                invalid(pathOf(a)) -> {}           // present but not check-relevant (malformed/dup) → UNKNOWN
+                else -> t++                        // present + check-relevant → TRUE
+            }
         }
         return t to f
+    }
+
+    /** The quantifier's `(TRUE, FALSE, N)` tally — a STARRED operand (`AtLeastOneFieldFilled(Group* / Field
+     *  Having …)`) expands to its filtered rows via [starQuantTally]; else a plain field/group operand list. */
+    private fun quantCounts(op: PredicateOp, args: List<Expr>): Triple<Int, Int, Int> {
+        val single = args.singleOrNull()
+        if (single is Expr.Star) return starQuantTally(single)
+        val (t, f) = quantTally(op, args)
+        return Triple(t, f, args.size)
+    }
+
+    /**
+     * Tally a STARRED field-list quantifier operand — `AtLeastOneFieldFilled(Group* / Field Having …)`: iterate
+     * the star's group rows, keep those the optional `Having` filter accepts, and count each kept row's cell as
+     * TRUE (present + check-relevant) / FALSE (empty) / neither (malformed) — the same 3-state as [quantTally].
+     * **Linear in the group's rows** (O(1) per row: the filter's `$` refs resolve against the fixed enclosing
+     * row via [havingInterp], and `filled`/`rowContexts` are O(1)/O(rows)). Returns `(t, f, n = kept rows)`.
+     */
+    private fun starQuantTally(star: Expr.Star): Triple<Int, Int, Int> {
+        val group = star.path.substringBeforeLast('/')
+        var t = 0
+        var f = 0
+        var n = 0
+        for (rc in ctx.rowContexts(group)) {
+            if (star.having != null && !havingInterp(rc).fires(star.having)) continue
+            n++
+            when {
+                rc.presenceUnknown(star.path) -> {}
+                !rc.filled(star.path) -> f++
+                invalid(star.path) -> {}
+                else -> t++
+            }
+        }
+        return Triple(t, f, n)
     }
 
     /**
@@ -547,7 +606,7 @@ class Interpreter(
     private fun dateRangesOverlap(args: List<Expr>): Tri {
         val a = evalExpr(args[0]) as? Val.Range ?: return Tri.UNKNOWN
         val others = when (val b = args[1]) {
-            is Expr.Star -> ctx.star(b.path)
+            is Expr.Star -> ctxOf(b).star(b.path)
             else -> listOf(evalExpr(b))
         }.filterIsInstance<Val.Range>()
         return Tri.of(others.any { rangesOverlap(a, it) })
@@ -588,13 +647,13 @@ class Interpreter(
         is Expr.NumLit -> e.asVal
         is Expr.StrLit -> e.asVal
         is Expr.BoolLit -> e.asVal
-        is Expr.Field -> if (invalid(e.path)) Val.Unknown else ctx.field(e.path)
+        is Expr.Field -> if (invalid(e.path)) Val.Unknown else ctxOf(e).field(e.path)
         is Expr.Star -> error("a starred path must sit inside an aggregate (Sum/MaxValue/…)")
         is Expr.Func -> evalFunc(e)
         is Expr.Arith -> evalArith(e)
         is Expr.Const -> evalConst(e.name)
         is Expr.SemanticIndex -> evalSemanticIndex(e)
-        is Expr.EnumCategory -> ctx.enumCategory(e.path, e.category)
+        is Expr.EnumCategory -> ctxOf(e).enumCategory(e.path, e.category)
     }
 
     /** `[field For "value"]` — the field's value in the row whose index field equals the value; an absent row
@@ -849,7 +908,7 @@ class Interpreter(
         // SumOfProducts(a*, b*): Σ aᵢ·bᵢ paired row-by-row (empty → 0); any malformed element → suppressed.
         FunctionOp.SUM_OF_PRODUCTS -> sumOfProducts(f.args)
         // CurrentRepetition(group): the current row's 1-based index at that group's level (the last reps part).
-        FunctionOp.CURRENT_REPETITION -> Val.Num(dec(ctx.repsOf(pathOf(f.args[0])).last()))
+        FunctionOp.CURRENT_REPETITION -> Val.Num(dec(ctxOf(f.args[0]).repsOf(pathOf(f.args[0])).last()))
         null -> throw UnsupportedConstructException("unsupported function ${f.name}")
         }
     }
@@ -1108,7 +1167,7 @@ class Interpreter(
         // filled values (empties dropped, like `star`) — the aggregate then consumes only those.
         val group = star.path.substringBeforeLast('/')
         return ctx.rowContexts(group)
-            .filter { rc -> Interpreter(rc, clock, baseYear, indexFields, predefinedTypes, customConditions, customErrorField, invalid, customRelevant = customRelevant, starRelevant = starRelevant, cellRelevant = cellRelevant, customFieldTypes = customFieldTypes).fires(star.having) }
+            .filter { rc -> havingInterp(rc).fires(star.having) }
             .mapNotNull { rc -> if (rc.filled(star.path)) rc.field(star.path) else null }
     }
 

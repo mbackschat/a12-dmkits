@@ -123,7 +123,10 @@ private class ConditionParser(private val src: String, private val base: String)
             '{' -> { next(); val e = parseExpr(); skipWs(); expect('}'); e }
             '[' -> {
                 next()
-                val p = readRef()                 // [/abs] · [../parent-rel] · [relative] — readRef resolves all
+                // an optional `$` marks the outer-iteration correlation (KERNEL-FINDINGS §"$ correlation"):
+                // `[$field]` reads the field in the ENCLOSING iteration row when inside a `Having` filter.
+                val outer = if (peek() == '$') { next(); true } else false
+                val p = readRef(outer)            // [/abs] · [../parent-rel] · [relative] — readRef resolves all
                 skipWs()
                 when {
                     // `[field -> Category]` — an EnumCategory access mapping the enum value to its category value.
@@ -131,7 +134,7 @@ private class ConditionParser(private val src: String, private val base: String)
                         skipWs()
                         val cat = readIdent()
                         skipWs(); expect(']')
-                        Expr.EnumCategory((p as Expr.Field).path, cat)
+                        Expr.EnumCategory((p as Expr.Field).path, cat, outer = p.outer)
                     }
                     // `[field For "value"]` (literal key) OR `[field For keyField]` (field-keyed) — a
                     // SemanticIndex lookup by the target group's index value.
@@ -154,6 +157,9 @@ private class ConditionParser(private val src: String, private val base: String)
             // `FieldFilled(/Pol/Cap0)`, `AllFieldsFilled(../A, ../B)`, `Sum(/A*/v)` — the forms the kernel and
             // the rulekit DSL renderer emit. (The same forms inside `[...]` value refs are handled above.)
             '/', '.' -> readRef()
+            // a bare `$path` — the `$` outer-iteration correlation on a predicate/aggregate arg
+            // (`CurrentRepetition($/G/H)`, `NoFieldFilled($a, $b)`, a value-list `$Group*/field`).
+            '$' -> { next(); readRef(outer = true) }
             else -> when {
                 c == '-' || c.isDigit() -> readNumber()
                 else -> {
@@ -179,10 +185,10 @@ private class ConditionParser(private val src: String, private val base: String)
      * as-is, IF24); one-or-more `../` runs are **parent-relative** (each `..` walks one group level up from
      * the rule's group [base], IG1); otherwise it is **relative** to [base].
      */
-    private fun readRef(): Expr {
-        if (peek() == '/') { next(); return pathFrom(readIdent(), absolute = true) }
+    private fun readRef(outer: Boolean = false): Expr {
+        if (peek() == '/') { next(); return pathFrom(readIdent(), absolute = true, outer = outer) }
         val ups = readParentUps()   // MUST precede readIdent — the `..` prefix comes before the first segment
-        return pathFrom(readIdent(), ups = ups)
+        return pathFrom(readIdent(), ups = ups, outer = outer)
     }
 
     /** Consume leading `../` segments (each = one group level up) and return how many — 0 if none (IG1). */
@@ -202,7 +208,7 @@ private class ConditionParser(private val src: String, private val base: String)
      * path resolves against the rule's group [base] walked up [ups] levels (0 = the group itself); an
      * [absolute] path (a leading `/`) is used as-is — the kernel allows all three forms in conditions.
      */
-    private fun pathFrom(firstSeg: String, absolute: Boolean = false, ups: Int = 0): Expr {
+    private fun pathFrom(firstSeg: String, absolute: Boolean = false, ups: Int = 0, outer: Boolean = false): Expr {
         val segs = mutableListOf(firstSeg)
         var starred = false
         if (peek() == '*') { next(); starred = true }
@@ -213,7 +219,7 @@ private class ConditionParser(private val src: String, private val base: String)
         }
         val joined = segs.joinToString("/")
         val full = if (absolute) "/$joined" else "${walkUp(base, ups)}/$joined"
-        return if (starred) Expr.Star(full) else Expr.Field(full)
+        return if (starred) Expr.Star(full, outer = outer) else Expr.Field(full, outer = outer)
     }
 
     /** Walk [path] up [ups] group levels (drop that many trailing segments) — the base for a `../` ref (IG1). */

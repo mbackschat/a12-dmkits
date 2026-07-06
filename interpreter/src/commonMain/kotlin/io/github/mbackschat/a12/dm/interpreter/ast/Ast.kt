@@ -101,7 +101,10 @@ enum class ArithOp { ADD, SUB, MUL, DIV, POW }
 
 /** Expression AST. */
 sealed interface Expr {
-    data class Field(val path: String) : Expr
+    /** A field/value reference. [outer] marks the `$` outer-iteration correlation (KERNEL-FINDINGS §"$
+     *  correlation"): inside a `Having` filter it resolves against the ENCLOSING iteration row, not the inner
+     *  filtered row. Default `false` (an ordinary reference). */
+    data class Field(val path: String, val outer: Boolean = false) : Expr
 
     /** A numeric literal. [asVal] is the typed value, built ONCE at parse (the AST is cached per rule, #31)
      *  so evaluating the literal costs zero allocation per (rule, row) — the kernel's constant is likewise
@@ -121,7 +124,7 @@ sealed interface Expr {
     /** A starred path, e.g. `Items* / Count` — the values across repetition rows; only inside an aggregate.
      *  [having] is an optional per-row FILTER (a `… Having <cond>` clause on the starred operand): the
      *  aggregate consumes only the rows for which the condition holds. */
-    data class Star(val path: String, val having: Cond? = null) : Expr
+    data class Star(val path: String, val having: Cond? = null, val outer: Boolean = false) : Expr
 
     /** A value-valued function, e.g. Min(a, b) (operand-list) or Sum(Star) (aggregate). */
     data class Func(val name: String, val args: List<Expr>) : Expr
@@ -145,7 +148,7 @@ sealed interface Expr {
      *  value in the named [category] (the model pairs category values positionally with the enum values), then
      *  compares against the category's value domain. An empty enum or an out-of-enum value yields no comparison
      *  value (→ the rule does not fire / is suppressed). */
-    data class EnumCategory(val path: String, val category: String) : Expr
+    data class EnumCategory(val path: String, val category: String, val outer: Boolean = false) : Expr
 }
 
 /** Parse a raw field value into a typed [Val] by kind. A malformed NUMBER resolves to [Val.Unknown] (NOT a
