@@ -1,6 +1,6 @@
 {
     "header": {
-        "id": "order",
+        "id": "order-stock-low",
         "modelType": "document",
         "modelVersion": "28.4.0",
         "locales": [
@@ -14,7 +14,7 @@
     },
     "content": {
         "modelInfo": {
-            "name": "order",
+            "name": "order-stock-low",
             "variant": "cockpit",
             "revision": "Arbeitsversion",
             "baseYear": "2020",

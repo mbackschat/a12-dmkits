@@ -1,6 +1,6 @@
 {
     "header": {
-        "id": "order",
+        "id": "order-stock-compute",
         "modelType": "document",
         "modelVersion": "28.4.0",
         "locales": [
@@ -14,7 +14,7 @@
     },
     "content": {
         "modelInfo": {
-            "name": "order",
+            "name": "order-stock-compute",
             "variant": "cockpit",
             "revision": "Arbeitsversion",
             "baseYear": "2020",

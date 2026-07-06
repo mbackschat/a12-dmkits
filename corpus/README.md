@@ -24,6 +24,8 @@ A case does not embed its model — it carries a **`modelRef`**, the corpus-root
 
 Each `models/<name>.json` is **pure DM-JSON with no wrapper envelope** — expanded, self-contained, with rules/computations embedded as stored-English condition strings. That is exactly what makes it **openable in the A12 modeling tools** and directly consumable by `dmtool` (e.g. `dmtool model describe -m corpus/models/order-qty-low.json`, `dmtool rule check …`). Files are domain-named, deduped by content (same model → one file), stable pretty-printed, and never orphaned — a model lands with its first referencing case (all guard-checked, see below).
 
+Each model's **identity (`header.id` and `content.modelInfo.name`) equals its file-stem name**, so it is a **uniquely-named workspace item**: the A12 modeling tools (SME) require workspace items to have unique names, and several models here derive from one base (all Order models), which would otherwise share the base's id and collide. Giving each the unique file-stem id makes them coexist. This is set by the generator and CI-locked (`header.id == stem`), so uniqueness holds by construction.
+
 ## Reference runners & re-capture
 
 The kernel-grounded reference implementation lives in `:adapter` test sources (it needs the kernel); a second, **kernel-free** runner replays the same cases on the interpreter's JVM **and JS** targets:

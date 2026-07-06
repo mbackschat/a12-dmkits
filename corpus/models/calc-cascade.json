@@ -1,6 +1,6 @@
 {
     "header": {
-        "id": "calc",
+        "id": "calc-cascade",
         "modelType": "document",
         "modelVersion": "28.4.0",
         "locales": [
@@ -14,7 +14,7 @@
     },
     "content": {
         "modelInfo": {
-            "name": "calc",
+            "name": "calc-cascade",
             "variant": "cockpit",
             "revision": "Arbeitsversion",
             "immutable": false

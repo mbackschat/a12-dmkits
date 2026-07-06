@@ -1,6 +1,6 @@
 {
     "header": {
-        "id": "m",
+        "id": "iteration-groups",
         "modelType": "document",
         "modelVersion": "28.4.0",
         "locales": [
@@ -14,7 +14,7 @@
     },
     "content": {
         "modelInfo": {
-            "name": "m",
+            "name": "iteration-groups",
             "variant": "cockpit",
             "revision": "Arbeitsversion",
             "immutable": false

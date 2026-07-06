@@ -61,14 +61,35 @@ object CaseJson {
     fun write(case: ConformanceCase): String = PRETTY.encodeToString(JsonElement.serializer(), toJson(case))
 
     /**
-     * The stable, pretty-printed form of a DM-JSON model — what the generator writes to a standalone
-     * `models/<name>.json` file. Formatting is deterministic (so re-capture is idempotent and a shared-model diff
-     * stays reviewable) and every literal is preserved (raw-number fidelity, no `Double` round-trip, so a declared
+     * The stable, pretty-printed form of a DM-JSON model, with its identity **normalized to [modelId]** — what the
+     * generator writes to a standalone `models/<name>.json` file. Both `header.id` and `content.modelInfo.name` are
+     * set to [modelId] (the file-stem domain name), so each standalone model is a **uniquely-named workspace item**:
+     * files derived from one base model (all sharing the base's id) would otherwise collide as workspace items in
+     * the A12 modeling tools (SME) — giving each the unique file-stem id makes them coexist. [modelId] must match
+     * the A12 model-name grammar (letter/underscore start, then letters/digits/`_`/`-`/`.`; the file-stem form
+     * `[a-z0-9-]+` does). Formatting is deterministic (so re-capture is idempotent and a shared-model diff stays
+     * reviewable) and every literal is preserved (raw-number fidelity, no `Double` round-trip, so a declared
      * `minValue`/scale survives). The output is pure DM-JSON with no wrapper envelope — openable in the A12
      * modeling tools and consumable by `dmtool` directly.
      */
     @JvmStatic
-    fun writeModel(dmJson: String): String = PRETTY.encodeToString(JsonElement.serializer(), Json.parseToJsonElement(dmJson))
+    fun writeModel(dmJson: String, modelId: String): String {
+        val root = Json.parseToJsonElement(dmJson).jsonObject
+        val normalized = buildJsonObject {
+            for ((key, value) in root) when (key) {
+                "header" -> put("header", setMember(value.jsonObject, "id", modelId))
+                "content" -> put("content", setContentModelName(value.jsonObject, modelId))
+                else -> put(key, value)
+            }
+        }
+        return PRETTY.encodeToString(JsonElement.serializer(), normalized)
+    }
+
+    /** The model identity of a DM-JSON model — its `header.id` (the SME workspace-item name); throws if absent. */
+    @JvmStatic
+    fun modelIdOf(dmJson: String): String =
+        Json.parseToJsonElement(dmJson).jsonObject.obj("header")["id"]?.jsonPrimitive?.contentOrNull
+            ?: throw IllegalArgumentException("DM-JSON model has no header.id")
 
     // ---- parse ----------------------------------------------------------------------------------
 
@@ -157,6 +178,20 @@ object CaseJson {
         put("strategy", d.strategy)
         d.expected?.let { putStrings("expected", it) }
         d.computeExpected?.let { putStrings("computeExpected", it) }
+    }
+
+    // ---- model-identity normalization (writeModel) ----------------------------------------------
+
+    /** [obj] with [key] set to the string [value], preserving key order (appended if absent). */
+    private fun setMember(obj: JsonObject, key: String, value: String): JsonObject = buildJsonObject {
+        var replaced = false
+        for ((k, v) in obj) if (k == key) { put(k, value); replaced = true } else put(k, v)
+        if (!replaced) put(key, value)
+    }
+
+    /** [content] with `modelInfo.name` set to [name] (so the model's SME name matches its `header.id`); a no-op if it has no `modelInfo`. */
+    private fun setContentModelName(content: JsonObject, name: String): JsonObject = buildJsonObject {
+        for ((k, v) in content) if (k == "modelInfo" && v is JsonObject) put(k, setMember(v, "name", name)) else put(k, v)
     }
 
     // ---- tiny tree accessors (fail loud on a missing required key) -------------------------------

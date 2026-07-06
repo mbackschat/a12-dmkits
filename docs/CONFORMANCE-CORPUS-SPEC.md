@@ -27,7 +27,7 @@ corpus/
 |---|---|
 | **family** | kebab-case directory naming the primary semantic area (`aggregates`, `comparison`, `dates`, `iteration`, `partial`, `compute`, …). A grouping aid for partial engines; the normative taxonomy tag is `meta.sections`. |
 | **id** | `meta.id` equals the file stem and is unique corpus-wide (guard-checked). |
-| **model files** | `models/<name>.json` is **pure DM-JSON with no wrapper envelope** — that is what keeps it openable in the modeling tools and directly consumable by `dmtool`. Domain-named (`order-basic`), shared across cases, stable canonical formatting so shared-model diffs stay reviewable. **No orphans**: a model file lands with its first referencing case (guard-checked). |
+| **model files** | `models/<name>.json` is **pure DM-JSON with no wrapper envelope** — that is what keeps it openable in the modeling tools and directly consumable by `dmtool`. Domain-named (`order-basic`), shared across cases, stable canonical formatting so shared-model diffs stay reviewable. Its **identity (`header.id` + `content.modelInfo.name`) equals its file-stem name**, so each model is a **uniquely-named workspace item** — models derived from one base would otherwise share the base's id and collide in the modeling tools (SME); the file-stem id (which matches the A12 model-name grammar) is unique corpus-wide, so uniqueness holds by construction. **No orphans**: a model file lands with its first referencing case (guard-checked). |
 | **file form** | UTF-8, LF, pretty-printed JSON. One case per file. |
 | **content lane** | Everything committed here is **own-domain original material** (the project's license-safe rule: mechanism, never expression). Findings from live sweeps over EUPL/proprietary corpora are re-expressed in our own domain before they land here; nothing from those corpora is persisted. |
 
@@ -212,7 +212,7 @@ What the in-repo reference capture + runners must satisfy (beyond the runner con
 | **Serializable placements** | The capture seam's placement record is promoted to a public serializable type (today `FuzzDiagnostics.Place`, private). |
 | **Per-row compute identity** | The interpreter exposes repetition indices on its compute outcomes (internally present as `ComputedInstance`), and kernel compute paths are normalized to the [§5](#5-the-pointer-format) form — replacing the index-strip comparison ([§7](#7-compute-expectations)). |
 | **Build discipline** | Corpus-reading tests run in a dedicated Gradle task with the corpus files as **declared inputs** (the `docGuardTest` pattern, [TESTING-SPEC](TESTING-SPEC.md)) — no false green, no full-suite re-runs on a case edit. |
-| **Schema & id guard** | A machine-readable case schema (`corpus/case.schema.json`) plus a guard: every case validates, `meta.id` equals the file stem, ids unique, `partial` tag ⇔ `validatePart`, every `modelRef` resolves, every `models/*.json` loads as a model, no model file is orphaned. |
+| **Schema & id guard** | A machine-readable case schema (`corpus/case.schema.json`) plus a guard: every case validates, `meta.id` equals the file stem, ids unique, `partial` tag ⇔ `validatePart`, every `modelRef` resolves, every model file loads as a model, its `header.id` equals the file stem (unique workspace-item name), and no model file is orphaned. |
 | **Kernel-upgrade guardian** | The corpus registers in the [KERNEL-UPGRADE](KERNEL-UPGRADE.md) coupling map: on a kernel bump, re-capture and diff — the diff **is** the behavior-change characterization; `meta.kernelVersion` moves with it. |
 
 ## 14. Licensing & publication

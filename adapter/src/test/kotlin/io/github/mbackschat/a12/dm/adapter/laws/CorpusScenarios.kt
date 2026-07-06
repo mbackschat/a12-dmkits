@@ -167,8 +167,8 @@ object CorpusScenarios {
 
     private const val PENDING = "pending"   // overwritten by CorpusCapture with the pinned kernel version
 
-    /** A standalone model file from raw DM-JSON — pretty-printed to the exact committed form. */
-    private fun model(name: String, dmJson: String) = ModelFile(name, CaseJson.writeModel(dmJson))
+    /** A standalone model file from raw DM-JSON — identity normalized to the unique [name], pretty-printed to the exact committed form. */
+    private fun model(name: String, dmJson: String) = ModelFile(name, CaseJson.writeModel(dmJson, name))
 
     /** Capture a case against [model] (tri-verified on the committed bytes) and bundle it into a [Family]. */
     private fun family(dir: String, model: ModelFile, meta: CaseMeta, placements: List<Placement>, op: Op, clock: String? = null): Family =

@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import io.github.mbackschat.a12.dm.interpreter.conformance.CaseJson
 import io.github.mbackschat.a12.dm.interpreter.conformance.Op
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -57,7 +58,13 @@ class CorpusSchemaGuardTest {
                 assertTrue("models/${file.name}" in referenced) {
                     "orphaned model file (no referencing case): models/${file.name}"
                 }
-                ModelLoader.load(file.readText())   // loads as a model through the kernel-free loader, or throws
+                val text = file.readText()
+                ModelLoader.load(text)   // loads as a model through the kernel-free loader, or throws
+                // The model's SME workspace-item name (header.id) MUST equal the file stem: file stems are unique
+                // corpus-wide, so id==stem makes every model a uniquely-named workspace item by construction — two
+                // models sharing a base id (e.g. all Order models) can no longer collide in a workspace/SME.
+                assertEquals(file.name.removeSuffix(".json"), CaseJson.modelIdOf(text),
+                    "model header.id must equal the file stem (unique workspace-item name)")
             }
         }
     }
