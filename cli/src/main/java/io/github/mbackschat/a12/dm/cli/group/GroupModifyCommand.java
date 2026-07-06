@@ -12,7 +12,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,15 +38,19 @@ import picocli.CommandLine.Parameters;
  * collapses a list back to one; {@code --index-field <fieldName>} designates a direct-child field as the
  * repetition row-key (arms {@code RepetitionNotUnique} + parallel iteration; requires a repeatable group),
  * {@code --clear-index-field} removes it; {@code --sort-field <child>[:asc|desc]} (repeatable) declares the
- * row display sort, {@code --clear-sort-fields} removes it. At least one directive is required. The change is
- * re-bound through the kernel gate, so one that breaks the model (e.g. a {@code *}-wildcard rule that now has
- * no list to range over) fails loudly as a {@code rejected} envelope. (Repeatability was settable only at
- * {@code group add} — G15; the index field only via the builder — G24; sort fields — G28.)
+ * row display sort, {@code --clear-sort-fields} removes it; and the group's <b>metadata</b> — per-locale
+ * {@code --label}, {@code --annotation}/{@code --remove-annotation}, and per-locale
+ * {@code --internal-description}/{@code --external-description} (G38, the group peer of the field-metadata edits
+ * {@code field modify} carries). At least one directive is required. The change is re-bound through the kernel
+ * gate, so one that breaks the model (e.g. a {@code *}-wildcard rule that now has no list to range over) fails
+ * loudly as a {@code rejected} envelope. (Repeatability was settable only at {@code group add} — G15; the index
+ * field only via the builder — G24; sort fields — G28; group metadata — G38.)
  */
 @Command(name = "modify", mixinStandardHelpOptions = true,
         description = "Change a group's repeatability (--repeatable <max> / --non-repeatable), index field "
-                + "(--index-field <fieldName> / --clear-index-field), and/or row sort (--sort-field "
-                + "<child>[:asc|desc] / --clear-sort-fields) in place.")
+                + "(--index-field <fieldName> / --clear-index-field), row sort (--sort-field "
+                + "<child>[:asc|desc] / --clear-sort-fields), and/or metadata (--label / --annotation / "
+                + "--remove-annotation / --internal-description / --external-description) in place.")
 final class GroupModifyCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -77,6 +83,26 @@ final class GroupModifyCommand extends BaseCommand {
 
     @Option(names = "--clear-sort-fields", description = "remove the group's declared row sort fields")
     boolean clearSortFields;
+
+    @Option(names = "--label", paramLabel = "<locale>=<text>",
+            description = "set a per-locale group label (repeatable), e.g. --label en_US=Shipping")
+    Map<String, String> labels = new LinkedHashMap<>();
+
+    @Option(names = "--annotation", paramLabel = "<name>=<value>",
+            description = "set a group annotation (repeatable), e.g. --annotation owner=fulfilment")
+    Map<String, String> annotations = new LinkedHashMap<>();
+
+    @Option(names = "--remove-annotation", paramLabel = "<name>",
+            description = "remove a group annotation by name (repeatable; the inverse of --annotation)")
+    List<String> removeAnnotations = new ArrayList<>();
+
+    @Option(names = "--internal-description", paramLabel = "<locale>=<text>",
+            description = "set a per-locale internal description (repeatable)")
+    Map<String, String> internalDescriptions = new LinkedHashMap<>();
+
+    @Option(names = "--external-description", paramLabel = "<locale>=<text>",
+            description = "set a per-locale external description (repeatable)")
+    Map<String, String> externalDescriptions = new LinkedHashMap<>();
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting the model)")
@@ -115,9 +141,12 @@ final class GroupModifyCommand extends BaseCommand {
         boolean repeatabilityChange = repeatable != null || nonRepeatable;
         boolean indexChange = indexField != null || clearIndexField;
         boolean sortChange = !sortFields.isEmpty() || clearSortFields;
-        if (!repeatabilityChange && !indexChange && !sortChange) {
+        boolean metadataChange = !labels.isEmpty() || !annotations.isEmpty() || !removeAnnotations.isEmpty()
+                || !internalDescriptions.isEmpty() || !externalDescriptions.isEmpty();
+        if (!repeatabilityChange && !indexChange && !sortChange && !metadataChange) {
             return fail("nothing to change — pass --repeatable/--non-repeatable, "
-                    + "--index-field/--clear-index-field, and/or --sort-field/--clear-sort-fields");
+                    + "--index-field/--clear-index-field, --sort-field/--clear-sort-fields, and/or "
+                    + "--label/--annotation/--remove-annotation/--internal-description/--external-description");
         }
         if (repeatable != null && repeatable < 2) {
             return fail("--repeatable <max> must be >= 2 (use --non-repeatable to make it a single group)");
@@ -145,6 +174,13 @@ final class GroupModifyCommand extends BaseCommand {
             } else if (clearSortFields) {
                 session.clearSortFields(group);
             }
+            if (!labels.isEmpty()) {
+                session.setLabel(group, labels);
+            }
+            annotations.forEach((name, value) -> session.setAnnotation(group, name, value));
+            removeAnnotations.forEach(name -> session.removeAnnotation(group, name));
+            internalDescriptions.forEach((locale, text) -> session.setInternalDescription(group, locale, text));
+            externalDescriptions.forEach((locale, text) -> session.setExternalDescription(group, locale, text));
         } catch (RuntimeException e) {
             return fail(e.getMessage());
         }
@@ -188,6 +224,26 @@ final class GroupModifyCommand extends BaseCommand {
             changed.putArray("sortFields");
             summaryParts.add("sort fields cleared");
         }
+        labels.forEach((locale, text) -> {
+            changed.put("label." + locale, text);
+            summaryParts.add("label[" + locale + "]");
+        });
+        annotations.forEach((name, value) -> {
+            changed.put("annotation." + name, value);
+            summaryParts.add("annotation " + name);
+        });
+        removeAnnotations.forEach(name -> {
+            changed.putNull("annotation." + name);
+            summaryParts.add("annotation " + name + " removed");
+        });
+        internalDescriptions.forEach((locale, text) -> {
+            changed.put("internalDescription." + locale, text);
+            summaryParts.add("internal-description[" + locale + "]");
+        });
+        externalDescriptions.forEach((locale, text) -> {
+            changed.put("externalDescription." + locale, text);
+            summaryParts.add("external-description[" + locale + "]");
+        });
         String summary = "set " + group + ": " + String.join(", ", summaryParts);
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("group", "modify", "would have " + summary, changed);

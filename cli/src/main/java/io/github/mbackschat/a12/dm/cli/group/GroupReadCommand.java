@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -91,11 +92,23 @@ final class GroupReadCommand extends BaseCommand {
             doc.fieldPaths().stream()
                     .filter(p -> p.startsWith(prefix) && p.indexOf('/', prefix.length()) < 0)
                     .forEach(fields::add);
+            // echo the group's metadata (G38) so a `group modify --label/--annotation/--*-description` round-trips
+            doc.labels(group).ifPresent(m -> putIfNotEmpty(data, "label", m));
+            putIfNotEmpty(data, "annotations", doc.annotations(group));
+            putIfNotEmpty(data, "internalDescription", doc.internalDescription(group));
+            putIfNotEmpty(data, "externalDescription", doc.externalDescription(group));
             ResultEnvelope env = ResultEnvelope.read("group", "read", "read " + group, true, List.of(), data);
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {
             return fail("read failed: " + e.getMessage());
+        }
+    }
+
+    /** Echo a per-locale/per-name metadata map under {@code key}, only when it carries something. */
+    private static void putIfNotEmpty(ObjectNode data, String key, Map<String, String> m) {
+        if (m != null && !m.isEmpty()) {
+            data.set(key, MAPPER.valueToTree(m));
         }
     }
 }

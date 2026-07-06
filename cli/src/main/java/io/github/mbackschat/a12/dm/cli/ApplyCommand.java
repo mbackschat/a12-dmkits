@@ -9,7 +9,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -73,7 +75,8 @@ final class ApplyCommand extends BaseCommand {
         FIELD_REMOVE("field", "remove", Set.of("fieldPathInModel")),
         GROUP_ADD("group", "add", Set.of("parent", "name", "repeatable")),
         GROUP_MODIFY("group", "modify", Set.of("groupPathInModel", "repeatable", "non-repeatable",
-                "index-field", "clear-index-field", "sort-field", "clear-sort-fields")),
+                "index-field", "clear-index-field", "sort-field", "clear-sort-fields",
+                "label", "annotation", "remove-annotation", "internal-description", "external-description")),
         GROUP_REMOVE("group", "remove", Set.of("groupPathInModel", "cascade")),
         RULE_ADD("rule", "add", Set.of("field", "group", "condition", "comment", "code", "severity", "name", "messages",
                 "allowDifferingDecimals")),
@@ -334,10 +337,14 @@ final class ApplyCommand extends BaseCommand {
                 if (!sortArgs.isEmpty() && clearSorts) {
                     throw new IllegalArgumentException("group modify: pass at most one of sort-field / clear-sort-fields");
                 }
+                boolean hasMeta = op.hasNonNull("label") || op.hasNonNull("annotation")
+                        || op.has("remove-annotation") || op.hasNonNull("internal-description")
+                        || op.hasNonNull("external-description");
                 if (repeatable == null && !nonRepeatable && indexField == null && !clearIndex
-                        && sortArgs.isEmpty() && !clearSorts) {
+                        && sortArgs.isEmpty() && !clearSorts && !hasMeta) {
                     throw new IllegalArgumentException("group modify needs one of repeatable / non-repeatable / "
-                            + "index-field / clear-index-field / sort-field / clear-sort-fields");
+                            + "index-field / clear-index-field / sort-field / clear-sort-fields / label / "
+                            + "annotation / remove-annotation / internal-description / external-description");
                 }
                 if (repeatable != null) {
                     session.setRepeatable(path, repeatable);
@@ -365,6 +372,37 @@ final class ApplyCommand extends BaseCommand {
                 } else if (clearSorts) {
                     session.clearSortFields(path);
                     changed.putArray("sortFields");
+                }
+                // group metadata (G38) — mirrors config modify's object/array shapes and field-metadata edits
+                if (op.hasNonNull("label")) {
+                    Map<String, String> labelMap = new LinkedHashMap<>();
+                    op.get("label").fields().forEachRemaining(e -> {
+                        labelMap.put(e.getKey(), e.getValue().asText());
+                        changed.put("label." + e.getKey(), e.getValue().asText());
+                    });
+                    session.setLabel(path, labelMap);
+                }
+                if (op.hasNonNull("annotation")) {
+                    op.get("annotation").fields().forEachRemaining(e -> {
+                        session.setAnnotation(path, e.getKey(), e.getValue().asText());
+                        changed.put("annotation." + e.getKey(), e.getValue().asText());
+                    });
+                }
+                for (String name : stringValues(op, "remove-annotation")) {
+                    session.removeAnnotation(path, name);
+                    changed.putNull("annotation." + name);
+                }
+                if (op.hasNonNull("internal-description")) {
+                    op.get("internal-description").fields().forEachRemaining(e -> {
+                        session.setInternalDescription(path, e.getKey(), e.getValue().asText());
+                        changed.put("internalDescription." + e.getKey(), e.getValue().asText());
+                    });
+                }
+                if (op.hasNonNull("external-description")) {
+                    op.get("external-description").fields().forEachRemaining(e -> {
+                        session.setExternalDescription(path, e.getKey(), e.getValue().asText());
+                        changed.put("externalDescription." + e.getKey(), e.getValue().asText());
+                    });
                 }
                 changed.put("group", path);
                 yield staged(which, changed, session);

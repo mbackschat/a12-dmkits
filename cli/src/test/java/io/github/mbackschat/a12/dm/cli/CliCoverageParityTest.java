@@ -62,15 +62,15 @@ class CliCoverageParityTest {
             Map.entry("moveField", "field move"),
             Map.entry("setFieldType", "field modify --type / typedef"),
             Map.entry("setRequiredness", "field modify --required/--optional/--required-if"),
-            // field/group/rule metadata (polymorphic): covered for FIELDS via field modify (FieldSpec);
-            // the GROUP path is the open G38, the RULE path the open G39 — see FEATURE-GAPS-LEDGER.
-            Map.entry("setLabel", "field modify --label (group=G38, rule=G39 partial)"),
-            Map.entry("setAnnotation", "field modify --annotation (group=G38, rule=G39 partial)"),
-            Map.entry("removeAnnotation", "field modify (group=G38, rule=G39 partial)"),
-            Map.entry("setInternalDescription", "field modify --internal-description (group=G38, rule=G39 partial)"),
-            Map.entry("setExternalDescription", "field modify --external-description (group=G38, rule=G39 partial)"),
-            Map.entry("removeInternalDescription", "field modify (group=G38, rule=G39 partial)"),
-            Map.entry("removeExternalDescription", "field modify (group=G38, rule=G39 partial)"),
+            // field/group/rule metadata (polymorphic): covered for FIELDS via field modify (FieldSpec) and for
+            // GROUPS via group modify (G38); the RULE path is the still-open G39 — see FEATURE-GAPS-LEDGER.
+            Map.entry("setLabel", "field modify --label + group modify --label (rule=G39)"),
+            Map.entry("setAnnotation", "field modify --annotation + group modify --annotation (rule=G39)"),
+            Map.entry("removeAnnotation", "field modify + group modify --remove-annotation (rule=G39)"),
+            Map.entry("setInternalDescription", "field modify + group modify --internal-description (rule=G39)"),
+            Map.entry("setExternalDescription", "field modify + group modify --external-description (rule=G39)"),
+            Map.entry("removeInternalDescription", "field modify + group modify (rule=G39)"),
+            Map.entry("removeExternalDescription", "field modify + group modify (rule=G39)"),
             // ── groups ──
             Map.entry("addGroup", "group add"),
             Map.entry("addRepeatableGroup", "group add --repeatable"),
