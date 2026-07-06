@@ -359,11 +359,19 @@ class Document @JvmOverloads constructor(
      *  the `Having` clause asks for this per parent scope, so the old O(all-rows) scan was O(scopes·rows) =
      *  quadratic on a deep nested doc (the `deepRichScaling` cliff — JFR-confirmed). The prefix map is built
      *  once per group; document order is preserved (the same rows the filter returned). */
-    private fun rowContextsScoped(groupPath: String, scopeReps: List<Int>): List<EvalContext> {
-        val attach = attachByDepth(groupPath)   // memoized per group — no O(valued) rescan per nested row
-        return rowsWithPrefix(groupPath, scopeReps)
-            .map { reps -> RowContext(groupPath, reps, attach.any { (d, pfx) -> reps.take(d) in pfx }) }
-    }
+    // Memoized (group, scope) → row contexts: the document is immutable during evaluation, so the rows under a
+    // given parent scope are fixed. A `$` self-correlation is the hot case — a rule iterating group G evaluates a
+    // `Having` over G* once PER outer row, all sharing G's PARENT scope, so without this every outer row rebuilt
+    // the SAME N RowContexts → O(N²) allocation. Cached, that is O(N) once. (The reused RowContexts also keep
+    // their warm per-row value caches across outer rows — a further constant win. Bounded by distinct scopes.)
+    private val rowContextsCache = HashMap<Pair<String, List<Int>>, List<EvalContext>>()
+
+    private fun rowContextsScoped(groupPath: String, scopeReps: List<Int>): List<EvalContext> =
+        rowContextsCache.getOrPut(groupPath to scopeReps) {
+            val attach = attachByDepth(groupPath)   // memoized per group — no O(valued) rescan per nested row
+            rowsWithPrefix(groupPath, scopeReps)
+                .map { reps -> RowContext(groupPath, reps, attach.any { (d, pfx) -> reps.take(d) in pfx }) }
+        }
 
     /** Indices for a referenced path P under a row of group G: shared-prefix indices from the row, else 1. */
     private fun repsFor(refPath: String, group: String, rowReps: List<Int>): List<Int> {
