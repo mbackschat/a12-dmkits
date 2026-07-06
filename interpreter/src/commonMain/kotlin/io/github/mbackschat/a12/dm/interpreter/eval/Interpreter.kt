@@ -363,7 +363,10 @@ class Interpreter(
      * the typed [eq], as for the scalar `FieldValueIncludedInValueList`.
      */
     private fun evalValueListQuant(c: Cond.ValueListQuant): Tri {
-        val list = c.values.map { evalExpr(it) }
+        // An ENTITY value list (`f In /Group*/x`, IF50) has a STARRED value ref → the value SET is that field's
+        // FILLED cell values across all rows (`star` drops empties, keeps a malformed cell as Unknown → UNKNOWN);
+        // a literal / plain field value stays a single `evalExpr`.
+        val list = c.values.flatMap { v -> if (v is Expr.Star) ctxOf(v).star(v.path) else listOf(evalExpr(v)) }
         if (list.any { it is Val.Unknown }) return Tri.UNKNOWN
         var nIn = 0
         var nOut = 0
