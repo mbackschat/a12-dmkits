@@ -61,28 +61,37 @@ object CaseJson {
     fun write(case: ConformanceCase): String = PRETTY.encodeToString(JsonElement.serializer(), toJson(case))
 
     /**
-     * The stable, pretty-printed form of a DM-JSON model, with its identity **normalized to [modelId]** — what the
-     * generator writes to a standalone `models/<name>.json` file. Both `header.id` and `content.modelInfo.name` are
-     * set to [modelId] (the file-stem domain name), so each standalone model is a **uniquely-named workspace item**:
-     * files derived from one base model (all sharing the base's id) would otherwise collide as workspace items in
-     * the A12 modeling tools (SME) — giving each the unique file-stem id makes them coexist. [modelId] must match
-     * the A12 model-name grammar (letter/underscore start, then letters/digits/`_`/`-`/`.`; the file-stem form
-     * `[a-z0-9-]+` does). Formatting is deterministic (so re-capture is idempotent and a shared-model diff stays
-     * reviewable) and every literal is preserved (raw-number fidelity, no `Double` round-trip, so a declared
-     * `minValue`/scale survives). The output is pure DM-JSON with no wrapper envelope — openable in the A12
-     * modeling tools and consumable by `dmtool` directly.
+     * The stable, pretty-printed form of a DM-JSON model, **normalized to be openable in the A12 modeling tools
+     * (SME)** and identified by [modelId] — what the generator writes to a standalone `models/<name>.json` file.
+     * Two normalizations make the base test fixture (authored for the lenient kernel *runtime*, which the JVM
+     * differential uses) a valid *authoring* model:
+     *
+     * 1. **Identity** — both `header.id` and `content.modelInfo.name` are set to [modelId] (the file-stem domain
+     *    name), so each model is a **uniquely-named workspace item**: files derived from one base (all sharing the
+     *    base's id) would otherwise collide in the SME. [modelId] must match the A12 model-name grammar
+     *    (letter/underscore start, then letters/digits/`_`/`-`/`.`; the file-stem form `[a-z0-9-]+` does).
+     * 2. **Date formats** — every date-ish field's `format` is set to its canonical A12 storage format
+     *    ([CANONICAL_DATE_FORMAT]). The SME's model deserializer accepts **only** those three canonical formats in
+     *    `format` (a localized display format like German `dd.MM.yyyy` belongs in `notInDCustomFormat`); the kernel
+     *    runtime is lenient and parses whatever `format` declares, so a fixture using `dd.MM.yyyy` directly in
+     *    `format` evaluates fine but fails to *open* in the SME (`unsupported date format`). See KERNEL-FINDINGS §6.
+     *
+     * Formatting is deterministic (so re-capture is idempotent and a shared-model diff stays reviewable) and every
+     * literal is preserved (raw-number fidelity, no `Double` round-trip, so a declared `minValue`/scale survives).
+     * The output is pure DM-JSON with no wrapper envelope — openable in the A12 modeling tools and consumable by
+     * `dmtool` directly.
      */
     @JvmStatic
     fun writeModel(dmJson: String, modelId: String): String {
         val root = Json.parseToJsonElement(dmJson).jsonObject
-        val normalized = buildJsonObject {
+        val withIdentity = buildJsonObject {
             for ((key, value) in root) when (key) {
                 "header" -> put("header", setMember(value.jsonObject, "id", modelId))
                 "content" -> put("content", setContentModelName(value.jsonObject, modelId))
                 else -> put(key, value)
             }
         }
-        return PRETTY.encodeToString(JsonElement.serializer(), normalized)
+        return PRETTY.encodeToString(JsonElement.serializer(), canonicalizeDateFormats(withIdentity))
     }
 
     /** The model identity of a DM-JSON model — its `header.id` (the SME workspace-item name); throws if absent. */
@@ -90,6 +99,32 @@ object CaseJson {
     fun modelIdOf(dmJson: String): String =
         Json.parseToJsonElement(dmJson).jsonObject.obj("header")["id"]?.jsonPrimitive?.contentOrNull
             ?: throw IllegalArgumentException("DM-JSON model has no header.id")
+
+    /**
+     * The date-ish field `format`s in [dmJson] that the A12 modeling tools (SME) would reject — any value not in
+     * [SME_DATE_FORMATS] (reported as `<Type>:<format>`). Empty means the model opens in the SME; the corpus guard
+     * asserts this, and [writeModel] guarantees it. KERNEL-FINDINGS §6.
+     */
+    @JvmStatic
+    fun unsupportedDateFormats(dmJson: String): List<String> {
+        val out = mutableListOf<String>()
+        fun walk(el: JsonElement) {
+            when (el) {
+                is JsonObject -> {
+                    val typeName = el["type"]?.let { it as? JsonPrimitive }?.takeIf { it.isString }?.content
+                    if (typeName != null && typeName in CANONICAL_DATE_FORMAT) {
+                        val fmt = (el[typeName] as? JsonObject)?.get("format")?.jsonPrimitive?.contentOrNull
+                        if (fmt != null && fmt !in SME_DATE_FORMATS) out += "$typeName:$fmt"
+                    }
+                    el.values.forEach(::walk)
+                }
+                is JsonArray -> el.forEach(::walk)
+                else -> {}
+            }
+        }
+        walk(Json.parseToJsonElement(dmJson))
+        return out
+    }
 
     // ---- parse ----------------------------------------------------------------------------------
 
@@ -180,7 +215,22 @@ object CaseJson {
         d.computeExpected?.let { putStrings("computeExpected", it) }
     }
 
-    // ---- model-identity normalization (writeModel) ----------------------------------------------
+    // ---- model normalization for SME-openability (writeModel) -----------------------------------
+
+    /**
+     * The canonical A12 storage `format` per date-ish field type — the ONLY values the A12 modeling tools (SME)
+     * accept in a field's `format` (a localized display format goes in `notInDCustomFormat`). Source: the
+     * simple-model-editor date (de)serialization switch. KERNEL-FINDINGS §6.
+     */
+    val CANONICAL_DATE_FORMAT: Map<String, String> = mapOf(
+        "DateType" to "yyyy-MM-dd",
+        "DateTimeType" to "yyyy-MM-dd'T'HH:mm:ss",
+        "TimeType" to "HH:mm:ss",
+        "DateRangeType" to "yyyy-MM-dd",
+    )
+
+    /** The distinct SME-supported `format` values (the codomain of [CANONICAL_DATE_FORMAT]). */
+    val SME_DATE_FORMATS: Set<String> = CANONICAL_DATE_FORMAT.values.toSet()
 
     /** [obj] with [key] set to the string [value], preserving key order (appended if absent). */
     private fun setMember(obj: JsonObject, key: String, value: String): JsonObject = buildJsonObject {
@@ -192,6 +242,37 @@ object CaseJson {
     /** [content] with `modelInfo.name` set to [name] (so the model's SME name matches its `header.id`); a no-op if it has no `modelInfo`. */
     private fun setContentModelName(content: JsonObject, name: String): JsonObject = buildJsonObject {
         for ((k, v) in content) if (k == "modelInfo" && v is JsonObject) put(k, setMember(v, "name", name)) else put(k, v)
+    }
+
+    /**
+     * [el] with every date-ish field type's `format` set to its canonical value ([CANONICAL_DATE_FORMAT]) and a
+     * `DateRangeType` separator reset to the A12 standard `/` — so the model opens in the SME (KERNEL-FINDINGS §6).
+     * A field type object carries `{ "type": "DateType", "DateType": { "format": … } }`; the walk descends the whole
+     * tree. Already-canonical formats are untouched (no-op).
+     */
+    private fun canonicalizeDateFormats(el: JsonElement): JsonElement = when (el) {
+        is JsonObject -> {
+            val typeName = el["type"]?.let { it as? JsonPrimitive }?.takeIf { it.isString }?.content
+            val canonical = typeName?.let { CANONICAL_DATE_FORMAT[it] }
+            buildJsonObject {
+                for ((k, v) in el) {
+                    if (canonical != null && k == typeName && v is JsonObject) {
+                        put(k, canonicalizeDateSubtype(v, typeName, canonical))
+                    } else {
+                        put(k, canonicalizeDateFormats(v))
+                    }
+                }
+            }
+        }
+        is JsonArray -> JsonArray(el.map { canonicalizeDateFormats(it) })
+        else -> el
+    }
+
+    /** A date field-type sub-object with `format` set to [canonical] (and a `DateRangeType`'s `rangeSeparator` to `/`). */
+    private fun canonicalizeDateSubtype(sub: JsonObject, typeName: String, canonical: String): JsonObject {
+        val withFormat = setMember(sub, "format", canonical)
+        return if (typeName == "DateRangeType" && "rangeSeparator" in withFormat) setMember(withFormat, "rangeSeparator", "/")
+        else withFormat
     }
 
     // ---- tiny tree accessors (fail loud on a missing required key) -------------------------------

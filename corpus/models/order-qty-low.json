@@ -265,8 +265,8 @@
                                                 "fieldType": {
                                                     "type": "DateRangeType",
                                                     "DateRangeType": {
-                                                        "format": "dd.MM.yyyy",
-                                                        "rangeSeparator": "-"
+                                                        "format": "yyyy-MM-dd",
+                                                        "rangeSeparator": "/"
                                                     }
                                                 }
                                             }
@@ -416,7 +416,7 @@
                                     "fieldType": {
                                         "type": "DateType",
                                         "DateType": {
-                                            "format": "dd.MM.yyyy",
+                                            "format": "yyyy-MM-dd",
                                             "datePrecision": "DAY_OPTIONAL"
                                         }
                                     }
@@ -472,8 +472,8 @@
                                     "fieldType": {
                                         "type": "DateRangeType",
                                         "DateRangeType": {
-                                            "format": "dd.MM.yyyy",
-                                            "rangeSeparator": "-"
+                                            "format": "yyyy-MM-dd",
+                                            "rangeSeparator": "/"
                                         }
                                     }
                                 }

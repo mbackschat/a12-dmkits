@@ -26,6 +26,8 @@ Each `models/<name>.json` is **pure DM-JSON with no wrapper envelope** — expan
 
 Each model's **identity (`header.id` and `content.modelInfo.name`) equals its file-stem name**, so it is a **uniquely-named workspace item**: the A12 modeling tools (SME) require workspace items to have unique names, and several models here derive from one base (all Order models), which would otherwise share the base's id and collide. Giving each the unique file-stem id makes them coexist. This is set by the generator and CI-locked (`header.id == stem`), so uniqueness holds by construction.
 
+Each model's date-ish fields also use only **SME-canonical `format`s** (`yyyy-MM-dd`, `yyyy-MM-dd'T'HH:mm:ss`, `HH:mm:ss`). The kernel runtime tolerates a localized display format (e.g. German `dd.MM.yyyy`) directly in `format`, but the SME's model deserializer rejects it (`unsupported date format`) — a custom display format belongs in `notInDCustomFormat`. The generator canonicalizes date formats when it writes a standalone model, and a guard rejects any non-canonical one. Background: [KERNEL-FINDINGS §6](../docs/KERNEL-FINDINGS.md).
+
 ## Reference runners & re-capture
 
 The kernel-grounded reference implementation lives in `:adapter` test sources (it needs the kernel); a second, **kernel-free** runner replays the same cases on the interpreter's JVM **and JS** targets:

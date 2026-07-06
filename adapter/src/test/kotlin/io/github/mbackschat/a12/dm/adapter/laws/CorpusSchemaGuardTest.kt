@@ -65,6 +65,13 @@ class CorpusSchemaGuardTest {
                 // models sharing a base id (e.g. all Order models) can no longer collide in a workspace/SME.
                 assertEquals(file.name.removeSuffix(".json"), CaseJson.modelIdOf(text),
                     "model header.id must equal the file stem (unique workspace-item name)")
+                // Every date-ish field's `format` MUST be SME-canonical, else the SME refuses to open the model
+                // ("unsupported date format"): the kernel runtime tolerates a display format like dd.MM.yyyy in
+                // `format`, but SME accepts only the canonical ISO storage formats. KERNEL-FINDINGS §6.
+                assertTrue(CaseJson.unsupportedDateFormats(text).isEmpty()) {
+                    "models/${file.name} has non-SME date format(s) ${CaseJson.unsupportedDateFormats(text)} — " +
+                        "`format` must be one of ${CaseJson.SME_DATE_FORMATS} (a custom display format goes in notInDCustomFormat)"
+                }
             }
         }
     }
