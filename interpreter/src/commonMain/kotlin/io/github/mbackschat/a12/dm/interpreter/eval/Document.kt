@@ -546,6 +546,70 @@ class Document @JvmOverloads constructor(
         override fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String): Map<List<Val>, IntArray> =
             correlationBucketsScoped(groupPath, rowReps.take(partsOf(groupPath).size - 1), joinFields, starPath)
 
+        // A group-scoped / starred-field fill quantifier — "the fields inside the group" (recursively, the kernel
+        // ExpandService → getAllContainedFields), across the two kernel ranges (IF49). See [EvalContext.fillScope].
+        override fun fillScope(scopePath: String, isGroup: Boolean): FillScope {
+            val descendants = if (isGroup) kinds.keys.filter { it.startsWith("$scopePath/") }.sorted()
+                else listOf(scopePath)
+            var t = 0; var f = 0; var n = 0; var unknown = false
+            var allFilled = true; var anyEmpty = false
+            for (field in descendants) {
+                val parts = partsOf(field)
+                val common = commonPrefixLen(parts, partsOf(group))
+                for (v in instCells(field, parts, common)) {           // INSTANTIATED tally
+                    n++
+                    when {
+                        v == null -> f++
+                        v == Val.Unknown -> unknown = true
+                        else -> t++
+                    }
+                }
+                val (af, ae) = declaredFlags(field, parts, common)     // DECLARED-range flags
+                allFilled = allFilled && af
+                anyEmpty = anyEmpty || ae
+            }
+            return FillScope(t, f, n, unknown, allFilled, anyEmpty)
+        }
+
+        /** The INSTANTIATED cells of a descendant [field]: one cell (its scope reps) when no repeatable level lies
+         *  below the scope, else one per instantiated rep-tuple. Each entry is the resolved value, or null (empty). */
+        private fun instCells(field: String, parts: List<String>, common: Int): List<Val?> {
+            val multi = (common until parts.size - 1).any { "/" + parts.take(it + 1).joinToString("/") in declaredReps }
+            val cellReps = if (multi) starRows(field) else listOf(reps(field))
+            return cellReps.map { r -> valueAt(field, r)?.value?.let { resolveValue(field, it) } }
+        }
+
+        /** Over the FULL DECLARED repetition range of [field] in this row's scope: `(allFilledValid, anyEmpty)`. An
+         *  un-instantiated declared rep reads empty. Iterates 1..declaredMax at each repeatable level below the
+         *  scope (shared-prefix levels fixed to this row); short-circuits once an empty cell is found. */
+        private fun declaredFlags(field: String, parts: List<String>, common: Int): Pair<Boolean, Boolean> {
+            var allFilled = true
+            var anyEmpty = false
+            fun rec(level: Int, repsSoFar: List<Int>) {
+                if (anyEmpty) return                                   // settled (anyEmpty ⟹ !allFilled)
+                if (level == parts.size) {
+                    when (valueAt(field, repsSoFar)?.value?.let { resolveValue(field, it) }) {
+                        null -> { anyEmpty = true; allFilled = false }
+                        Val.Unknown -> allFilled = false               // present-but-malformed: not filled, not empty
+                        else -> {}
+                    }
+                    return
+                }
+                val prefix = "/" + parts.take(level + 1).joinToString("/")
+                when {
+                    level < common -> rec(level + 1, repsSoFar + rowReps[level])
+                    prefix in declaredReps -> {
+                        val max = declaredReps.getValue(prefix)
+                        var r = 1
+                        while (r <= max && !anyEmpty) { rec(level + 1, repsSoFar + r); r++ }
+                    }
+                    else -> rec(level + 1, repsSoFar + 1)
+                }
+            }
+            rec(0, emptyList())
+            return allFilled to anyEmpty
+        }
+
         // The data view a CustomCondition reads (the kernel's IData): document-wide raw-value lookup by
         // (path, indices) and the set of present field instances — a custom condition's IData spans the whole
         // document, the current row is carried by the error-field pointer (not row-scoped here).

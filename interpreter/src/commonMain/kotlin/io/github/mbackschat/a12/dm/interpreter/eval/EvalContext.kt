@@ -115,6 +115,19 @@ interface EvalContext {
     fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String): Map<List<Val>, IntArray> =
         throw UnsupportedConstructException("correlation buckets need the general Document context, not $this")
 
+    /**
+     * The fill tally of a **group-scoped** (or starred-field) fill-quantifier operand — `AllFieldsFilled(/Group*)`,
+     * `AtLeastOneFieldFilled(/Addr)` (IF49). A group scope means "the fields INSIDE the group" (recursively, incl.
+     * nested subgroups — the kernel `ExpandService` → `getAllContainedFields`); a bare field path is that one field.
+     * Two ranges, because the kernel uses two: the **instantiated** tally ([FillScope.tInst]/[FillScope.fInst]/
+     * [FillScope.nInst] over present reps, malformed cell → [FillScope.hasUnknownInst]) drives `AtLeastOne`/`NoField`/
+     * `MoreThanOne`/`NotExactlyOne`, while the **declared** range ([FillScope.allFilledDeclared] = every declared
+     * rep's cell filled+valid; [FillScope.anyEmptyDeclared] = some declared rep's cell empty — an un-instantiated rep
+     * reads empty) drives `AllFieldsFilled`/`NotAllFieldsFilled` and the declared half of `FieldsNotCollectivelyFilled`.
+     * Resolved by the general [Document]; the flat spike contexts don't model group structure. */
+    fun fillScope(scopePath: String, isGroup: Boolean): FillScope =
+        throw UnsupportedConstructException("group-scoped field-fill needs the general Document context, not $this")
+
     /** The row's data view for a `CustomCondition` — the kernel's `IData` surface (read field values by
      *  path+indices, enumerate present fields). The general [Document] resolves it document-wide (a custom
      *  condition's `IData` spans the document; the row is carried by the error-field pointer); the flat spike
@@ -136,3 +149,20 @@ interface EvalContext {
      */
     fun repsOf(path: String): List<Int> = List(path.trim('/').split('/').size) { 1 }
 }
+
+/**
+ * The fill tally of a group-scoped / starred-field fill-quantifier operand ([EvalContext.fillScope]) — the two
+ * kernel iteration ranges. [tInst]/[fInst]/[nInst] tally the **instantiated** cells (present reps): `t` = filled +
+ * valid, `f` = empty, and a present-but-malformed cell is counted in neither ([hasUnknownInst] flags it), matching
+ * the kernel's 3-valued `isWertAngegeben`. [allFilledDeclared]/[anyEmptyDeclared] describe the **full declared**
+ * repetition range (an un-instantiated rep reads empty). Aggregated across a multi-scope operand list by summing
+ * the counts and OR/AND-ing the declared flags.
+ */
+data class FillScope(
+    val tInst: Int,
+    val fInst: Int,
+    val nInst: Int,
+    val hasUnknownInst: Boolean,
+    val allFilledDeclared: Boolean,
+    val anyEmptyDeclared: Boolean,
+)

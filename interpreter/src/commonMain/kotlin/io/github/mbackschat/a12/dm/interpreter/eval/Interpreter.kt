@@ -406,6 +406,7 @@ class Interpreter(
             return if (p.args.size == 2 || dateStatusOf(p.args.single()) != DateStatus.HAS_EMPTY) MsgType.VALUE
                 else MsgType.OMISSION
         op.polarity?.let { return it }
+        if (!op.countsGroups && hasFillScopeOperand(p.args)) return fillScopeType(op, fillScopeInfo(p.args))
         val (t, f, n) = quantCounts(op, p.args)
         // OMISSION iff filling some currently-empty (FALSE) operand could clear the firing — each fill moves a
         // FALSE to TRUE: (t, f) → (t+j, f-j). (UNKNOWN operands aren't "fillable" — they need correcting, not
@@ -486,10 +487,61 @@ class Interpreter(
             PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED, PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED,
             PredicateOp.ALL_GROUPS_FILLED, PredicateOp.NO_GROUP_FILLED, PredicateOp.AT_LEAST_ONE_GROUP_FILLED,
             PredicateOp.NOT_ALL_GROUPS_FILLED, PredicateOp.GROUPS_NOT_COLLECTIVELY_FILLED -> {
-                val (t, f, n) = quantCounts(op, p.args)
-                Tri.of(quantifierFires(op, t, f, n))
+                if (!op.countsGroups && hasFillScopeOperand(p.args)) Tri.of(fillScopeFires(op, fillScopeInfo(p.args)))
+                else {
+                    val (t, f, n) = quantCounts(op, p.args)
+                    Tri.of(quantifierFires(op, t, f, n))
+                }
             }
         }
+    }
+
+    /** A field-fill quantifier operand that needs the group/starred-scope treatment (IF49): a bare GROUP ref (a
+     *  `Field` whose path is not a declared field), or a starred field/group WITHOUT a `Having` (a Star with a
+     *  Having is the filtered-correlation path, handled by [starQuantTally]). A plain field list is not a scope. */
+    private fun hasFillScopeOperand(args: List<Expr>): Boolean = args.any {
+        (it is Expr.Star && it.having == null) || (it is Expr.Field && ctxOf(it).declaredKind(it.path) == null)
+    }
+
+    /** Aggregate the [FillScope] tally across a fill quantifier's operands (a group scope expands to its
+     *  descendant fields; the counts sum, the declared flags OR/AND). */
+    private fun fillScopeInfo(args: List<Expr>): FillScope {
+        var t = 0; var f = 0; var n = 0; var unknown = false
+        var allFilled = true; var anyEmpty = false
+        for (a in args) {
+            val path = scopePathOf(a)
+            val c = ctxOf(a)
+            val fs = c.fillScope(path, isGroup = c.declaredKind(path) == null)
+            t += fs.tInst; f += fs.fInst; n += fs.nInst; unknown = unknown || fs.hasUnknownInst
+            allFilled = allFilled && fs.allFilledDeclared
+            anyEmpty = anyEmpty || fs.anyEmptyDeclared
+        }
+        return FillScope(t, f, n, unknown, allFilled, anyEmpty)
+    }
+
+    /** Whether a field-fill quantifier fires over a group/starred scope — `AllFieldsFilled`/`NotAllFieldsFilled`
+     *  use the DECLARED range, `FieldsNotCollectivelyFilled` mixes, the rest use the instantiated tally (IF49). */
+    private fun fillScopeFires(op: PredicateOp, fs: FillScope): Boolean = when (op) {
+        PredicateOp.ALL_FIELDS_FILLED -> fs.allFilledDeclared
+        PredicateOp.NOT_ALL_FIELDS_FILLED -> fs.anyEmptyDeclared
+        PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED -> fs.tInst >= 1 && fs.anyEmptyDeclared
+        else -> quantifierFires(op, fs.tInst, fs.fInst, fs.nInst)
+    }
+
+    /** The message polarity of a fired group/starred-scope fill quantifier — the kernel's fixed WF/AF per op
+     *  (`NoField`/`NotAll`/`FieldsNotCollectively` are omission errors; `NotExactlyOne` is omission at 0 filled,
+     *  value at ≥2; the rest are value errors). IF49. */
+    private fun fillScopeType(op: PredicateOp, fs: FillScope): MsgType = when (op) {
+        PredicateOp.NO_FIELD_FILLED, PredicateOp.NOT_ALL_FIELDS_FILLED,
+        PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED -> MsgType.OMISSION
+        PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED -> if (fs.tInst == 0) MsgType.OMISSION else MsgType.VALUE
+        else -> MsgType.VALUE
+    }
+
+    private fun scopePathOf(e: Expr): String = when (e) {
+        is Expr.Field -> e.path
+        is Expr.Star -> e.path
+        else -> throw UnsupportedConstructException("not a fill-scope operand: $e")
     }
 
     /**
