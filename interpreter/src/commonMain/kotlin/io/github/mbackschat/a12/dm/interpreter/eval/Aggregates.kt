@@ -22,23 +22,35 @@ object Aggregates {
     /** Σ of [values] (each a [Val.Num]); the empty list folds to 0 (the kernel's empty-Sum identity). */
     fun sum(values: List<Val>): Val = Val.Num(values.fold(DEC_ZERO) { acc, v -> acc + numOf(v) })
 
-    /** The maximum by the kernel's value order ([ValCompare.ORDER]); empty list → [Val.Unknown]. */
-    fun max(values: List<Val>): Val = values.maxWithOrNull(ValCompare.ORDER) ?: Val.Unknown
+    /** The maximum by the kernel's value order ([ValCompare.ORDER]) of the FILLED values; an empty list → `0`
+     *  (the kernel's empty-aggregate identity — probed: `MaxValue()` over all-empty operands / no rows == 0, the
+     *  same seed as `Sum`; an empty operand is IGNORED, not folded, so `MaxValue(-5, empty)` == -5, not 0 —
+     *  KERNEL-FINDINGS). Distinct from a malformed operand (→ [Val.Unknown] via the strategy's [Interpreter.combine]). */
+    fun max(values: List<Val>): Val = values.maxWithOrNull(ValCompare.ORDER) ?: Val.Num(DEC_ZERO)
 
-    /** The minimum by [ValCompare.ORDER]; empty list → [Val.Unknown]. */
-    fun min(values: List<Val>): Val = values.minWithOrNull(ValCompare.ORDER) ?: Val.Unknown
+    /** The minimum by [ValCompare.ORDER] of the FILLED values; an empty list → `0` (see [max]). */
+    fun min(values: List<Val>): Val = values.minWithOrNull(ValCompare.ORDER) ?: Val.Num(DEC_ZERO)
 
     /**
-     * Count of DISTINCT values by **numeric** equality (scale-insensitive `compareTo`, so `49.90` ≡ `49.9`).
-     * O(n log n) via sort — equal values group adjacently, so a run boundary (`compareTo != prev`) marks a new
-     * distinct value. (The prior "linear scan of the distinct-so-far per element" was O(n²) — a latent cliff on
-     * a large value list, IF; the sort fix keeps it sub-quadratic.)
+     * Count of DISTINCT values by the kernel's typed value equality — NUMBERS scale-insensitively (`49.90` ≡
+     * `49.9`), STRINGS/BOOLS by themselves. The kernel explicitly permits non-numeric operands here
+     * (`CountAggregate.checkValueComparable`), so this counts by a canonical TYPED key (not `numOf`, which
+     * crashed on a STRING/ENUM value — IF51). O(n) via a HashSet of the keys; the key mirrors the
+     * interpreter's `fieldValuesNotUnique` keying (`"N"+scale19` / `"S"+str` / `"B"+bool`) so distinctness and
+     * duplicate-detection agree, and the type prefix prevents cross-type collision.
      */
     fun numberOfDifferentValues(values: List<Val>): Val {
-        val nums = values.map { numOf(it) }.sortedWith { a, b -> a.compareTo(b) }
-        var count = 0
-        for (i in nums.indices) if (i == 0 || nums[i].compareTo(nums[i - 1]) != 0) count++
-        return Val.Num(dec(count))
+        val seen = HashSet<String>(values.size * 2)
+        for (v in values) seen.add(distinctKey(v))
+        return Val.Num(dec(seen.size))
+    }
+
+    /** The canonical distinct-key of a resolved value (see [numberOfDifferentValues]). */
+    private fun distinctKey(v: Val): String = when (v) {
+        is Val.Num -> "N" + v.v.scale19().display()
+        is Val.Txt -> "S" + v.v
+        is Val.Bool -> "B" + v.v
+        else -> error("NumberOfDifferentValues over a non-comparable value: $v")
     }
 
     /**

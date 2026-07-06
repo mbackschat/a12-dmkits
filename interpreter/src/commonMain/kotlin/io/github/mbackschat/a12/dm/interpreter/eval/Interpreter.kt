@@ -300,6 +300,15 @@ class Interpreter(
         FunctionOp.FIRST_FILLED_VALUE ->
             ((f.args.singleOrNull() as? Expr.Star)?.path?.let { ctx.firstStarRowEmpty(it) } ?: false)
                 .let { Fill.of(it, it) }
+        // The COUNT aggregates are monotonic NON-DECREASING under filling — filling a field / row / distinct value
+        // can only ADD to the count, never remove one. So they grow like an UNSIGNED `Sum`: `canGrow` while a
+        // fillable operand remains, `canShrink` NEVER. Directionally this makes a fired `count >= n` / `count > n`
+        // a VALUE error (filling can't clear it) while `count < n` / `count == n` stays OMISSION (filling still
+        // can) — the old symmetric `leafOmission` wrongly typed the `>=`/`>` direction OMISSION (KERNEL-FINDINGS;
+        // MultiFieldAggregateDiffTest.firedPolarityMatchesKernel, NumberOfFilledDiffTest).
+        FunctionOp.NUMBER_OF_FILLED_FIELDS, FunctionOp.NUMBER_OF_FILLED_GROUPS,
+        FunctionOp.NUMBER_OF_DIFFERENT_VALUES, FunctionOp.NUMBER_OF_VALUE_IN_FIELDS ->
+            Fill.of(canGrow = leafOmission(f), canShrink = false)
         else -> leafOmission(f).let { Fill.of(it, it) }
     }
 
@@ -625,6 +634,25 @@ class Interpreter(
         val star = args.singleOrNull() as? Expr.Star
         if (star != null) return ctxOf(star).rowContexts(star.path).size
         return args.count { ctxOf(it).groupFilled(pathOf(it)) }
+    }
+
+    /**
+     * `NumberOfFilledFields(...)`'s count across its operands — a plain field counts 1 when filled; a STARRED
+     * repetition list (`Items* then Count`) counts its FILLED cells across all rows (IF51, the `pathOf(Star)`
+     * crash); a GROUP operand counts the FILLED fields INSIDE it recursively (IF51, the kernel `ExpandService` →
+     * `getAllContainedFields`, via [EvalContext.fillScope]). A present-but-malformed cell counts as filled
+     * (present), matching a plain field's [EvalContext.filled] and [EvalContext.star] (which keeps a malformed
+     * cell). Linear: O(rows) per star, O(instantiated cells) per group, O(1) per plain field.
+     */
+    private fun filledFieldsCount(args: List<Expr>): Int = args.sumOf { filledOperandCount(it) }
+
+    private fun filledOperandCount(arg: Expr): Int = when (arg) {
+        is Expr.Star -> ctx.star(arg.path).size                       // filled cells across the rep rows (empties dropped)
+        else -> {
+            val path = pathOf(arg)
+            if (ctx.declaredKind(path) == null) ctx.fillScope(path, isGroup = true).let { it.nInst - it.fInst }
+            else if (ctx.filled(path)) 1 else 0
+        }
     }
 
     /**
@@ -970,7 +998,7 @@ class Interpreter(
             if (a == null || b == null) Val.Unknown else Val.Num(dec((b - a).toString()))
         }
         // Count-of-filled functions (used in a comparison, e.g. NumberOfFilledFields(a, b, c) < 2).
-        FunctionOp.NUMBER_OF_FILLED_FIELDS -> Val.Num(dec(f.args.count { ctx.filled(pathOf(it)) }))
+        FunctionOp.NUMBER_OF_FILLED_FIELDS -> Val.Num(dec(filledFieldsCount(f.args)))
         FunctionOp.NUMBER_OF_FILLED_GROUPS -> Val.Num(dec(filledGroupsCount(f.args)))
         // Date-component extractors — a number from the date's parts; an empty/absent date is Unknown.
         FunctionOp.YEAR_FROM_DATE -> dateComponent(f.args[0]) { y, _, _ -> y }
@@ -1313,11 +1341,25 @@ class Interpreter(
         return Val.Unknown
     }
 
-    private fun starVals(f: Expr.Func): List<Val> {
-        val star = f.args.single() as Expr.Star
+    /**
+     * The FILLED values feeding a value aggregate (`Sum`/`MaxValue`/`MinValue`/`NumberOfDifferentValues`),
+     * collected across ALL operands — the single-star form AND the kernel's explicit MULTI-FIELD list (IF51).
+     * A starred field expands over its repetition rows (a `Having` filters them); a plain field contributes
+     * its value only when filled, so an empty operand is DROPPED (as the star drops empty cells) — `MinValue(A, B)`
+     * with `B` empty ignores `B`, it never treats it as 0. A filled-but-malformed operand resolves to [Val.Unknown]
+     * and [combine] then suppresses the whole aggregate.
+     */
+    private fun starVals(f: Expr.Func): List<Val> = f.args.flatMap { aggOperandVals(it) }
+
+    private fun aggOperandVals(arg: Expr): List<Val> = when (arg) {
+        is Expr.Star -> starOperandVals(arg)
+        else -> if (ctx.filled(pathOf(arg))) listOf(evalExpr(arg)) else emptyList()   // plain field: empty dropped
+    }
+
+    /** A starred aggregate operand's filled values — its group's row cells (empties dropped, like [EvalContext.star]);
+     *  an optional `Having` evaluates the per-row filter in each row context and keeps only the matching rows. */
+    private fun starOperandVals(star: Expr.Star): List<Val> {
         if (star.having == null) return ctx.star(star.path)
-        // Having: evaluate the per-row filter in each row context of the star's group, keep the matching rows'
-        // filled values (empties dropped, like `star`) — the aggregate then consumes only those.
         val group = star.path.substringBeforeLast('/')
         return ctx.rowContexts(group)
             .filter { rc -> havingInterp(rc).fires(star.having) }
