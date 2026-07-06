@@ -116,6 +116,13 @@ class Document @JvmOverloads constructor(
         val valueByKey: Map<String, Map<List<Int>, Placement>>,
         val rowsByGroup: Map<String, List<List<Int>>>,             // group path → distinct reps, document order
         val valued: List<Placement>,                               // valued (value != null) non-group placements
+        // The kernel's "content" notion: a valued field OR an instantiated REPEATABLE-group row (creating a
+        // repeatable row is content in itself — KERNEL-FINDINGS §4/§9). Feeds the `evaluated` row gate
+        // ([attachByDepth]) AND `GroupFilled` for a non-repeatable group ([nonRepGroupFilledDepths]) — so both
+        // see an all-field-empty-but-instantiated repeatable row as content (IF53). A non-repeatable group's
+        // structural presence is NOT content (excluded here). Distinct from [valued], which the formal-error walk
+        // ([valuedFields]) needs to stay valued-only.
+        val content: List<Placement>,
         val partsByPath: Map<String, List<String>>,                // memoized path split
     ) {
         // Per-group memos, deterministic for this (immutable) index, rebuilt with it on mutation. They turn the
@@ -146,6 +153,7 @@ class Document @JvmOverloads constructor(
         val byKey = HashMap<String, HashMap<List<Int>, Placement>>()
         val rows = LinkedHashMap<String, MutableList<List<Int>>>()
         val valued = ArrayList<Placement>()
+        val content = ArrayList<Placement>()
         val partsMemo = HashMap<String, List<String>>()
         for (p in placements) {
             partsMemo.getOrPut(p.path) { parts(p.path) }
@@ -156,12 +164,13 @@ class Document @JvmOverloads constructor(
                 // perf harness never saw (build runs once, before timing) but every COLD first validateFull
                 // pays — the startup / CLI-one-shot path, and the reason a single JS pass blew up at scale.
                 rows.getOrPut(p.path) { ArrayList() }.add(p.reps)
+                if (p.path in declaredReps) content.add(p)   // an instantiated REPEATABLE row is content (IF53)
             } else {
                 byKey.getOrPut(p.path) { HashMap() }.getOrPut(p.reps) { p }   // FIRST placement per (path,reps) wins
-                if (p.value != null) valued.add(p)
+                if (p.value != null) { valued.add(p); content.add(p) }
             }
         }
-        return Index(byKey, rows, valued, partsMemo)
+        return Index(byKey, rows, valued, content, partsMemo)
     }
 
     private fun partsOf(path: String): List<String> = index().partsByPath[path] ?: parts(path)
@@ -315,32 +324,31 @@ class Document @JvmOverloads constructor(
 
     /**
      * The per-group attach-depth index: `attach-depth → the set of row index-prefixes that have CONTENT in scope
-     * at that depth`. **Content-bearing = a valued field OR an INSTANTIATED REPEATABLE-group row**: the kernel
-     * treats creating a repeatable row as content in itself (KERNEL-FINDINGS §4/§9), so it EVALUATES a rule on an
+     * at that depth`, over [Index.content] (a valued field OR an INSTANTIATED REPEATABLE-group row — the kernel
+     * treats creating a repeatable row as content in itself, KERNEL-FINDINGS §4/§9). So a rule is EVALUATED on an
      * all-field-empty but instantiated row — a per-row rule on the row itself, an ancestor-scoped aggregate whose
-     * descendant rows make the ancestor content-bearing. A NON-repeatable group's mere structural presence is NOT
-     * content (its group placements have `value == null` and are not in [declaredReps], so they are excluded) —
-     * matching the truly-empty `/Order` in `EmptyRowGateDiffTest`. The O(content) scan that builds it is
-     * **memoized per group** (rebuilt with the [Index] on mutation), so many rules sharing one iteration scope —
-     * and nested per-row [rowContextsScoped] lookups — pay it once, not per rule/row. A row is `evaluated` iff
-     * some prefix matches.
+     * descendant rows make the ancestor content-bearing (IF53). A NON-repeatable group's mere structural presence
+     * is NOT content (excluded from [Index.content]) — matching the truly-empty `/Order` in `EmptyRowGateDiffTest`.
+     * The O(content) scan that builds it is **memoized per group** (rebuilt with the [Index] on mutation), so many
+     * rules sharing one iteration scope — and nested per-row [rowContextsScoped] lookups — pay it once, not per
+     * rule/row. A row is `evaluated` iff some prefix matches.
      */
     private fun attachByDepth(groupPath: String): Map<Int, Set<List<Int>>> =
         index().attachByGroup.getOrPut(groupPath) {
             val gParts = partsOf(groupPath)
             val m = HashMap<Int, HashSet<List<Int>>>()
-            fun mark(path: String, reps: List<Int>) {
-                val common = commonPrefixLen(partsOf(path), gParts)
-                m.getOrPut(common) { HashSet() }.add(reps.take(common))
+            for (p in index().content) {
+                val common = commonPrefixLen(partsOf(p.path), gParts)
+                m.getOrPut(common) { HashSet() }.add(p.reps.take(common))
             }
-            for (p in index().valued) mark(p.path, p.reps)
-            for ((g, gRows) in index().rowsByGroup) if (g in declaredReps) for (reps in gRows) mark(g, reps)
             m
         }
 
     /**
      * For `groupFilled(nonRepeatableGroupPath)` evaluated from iteration group [group]: `attach-depth →
-     * prefix-set` over the valued **descendants of [groupPath]** (paths under `groupPath/`). Memoized per
+     * prefix-set` over the CONTENT **descendants of [groupPath]** (paths under `groupPath/` in [Index.content] —
+     * a valued field OR an instantiated repeatable descendant row, so an empty-but-instantiated repeatable child
+     * fills its non-repeatable ancestor exactly as the kernel's `GroupFillCache` does, IF53). Memoized per
      * (groupPath, group) in the [Index]. A row's instance of [groupPath] is filled iff `rowReps.take(d)` is in
      * the set at some depth `d` — which mirrors the per-descendant `commonPrefixLen(p.path, group)` shared-index
      * scope check exactly, only grouped so it is computed once per (groupPath, group) instead of scanned per row.
@@ -350,7 +358,7 @@ class Document @JvmOverloads constructor(
             val gParts = partsOf(group)
             val prefix = "$groupPath/"
             val m = HashMap<Int, HashSet<List<Int>>>()
-            for (p in index().valued) {
+            for (p in index().content) {
                 if (!p.path.startsWith(prefix)) continue
                 val common = commonPrefixLen(partsOf(p.path), gParts)
                 m.getOrPut(common) { HashSet() }.add(p.reps.take(common))

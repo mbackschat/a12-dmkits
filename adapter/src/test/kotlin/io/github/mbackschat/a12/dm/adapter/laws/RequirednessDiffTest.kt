@@ -136,6 +136,31 @@ class RequirednessDiffTest {
         }
     }
 
+    @Test
+    fun relativeToParentIsFilledByAnInstantiatedRepeatableChildRow() {
+        // Quantity required relativeToParent → its parent /Order (a non-repeatable root). An INSTANTIATED
+        // repeatable child row (Items) makes /Order "filled" — the same content notion the `GroupFilled` operator
+        // and the rule-eval gate use (IF53) — so Quantity IS required even with no /Order *field* filled. With no
+        // Items row /Order has no content → Quantity not required. (Sku is auto-required as the index field, so an
+        // instantiated Item row also fires mandatoryField(Sku) — asserted as part of the full code set.)
+        val kModel = require(order, "/Order/Quantity", "relativeToParent")
+        val def = ModelDef(
+            listOf(FieldDef(Q, Kind.NUMBER, required = Requiredness.RELATIVE_TO_PARENT),
+                FieldDef(CN, Kind.STRING), FieldDef(IS, Kind.STRING), FieldDef(IC, Kind.NUMBER)),
+            emptyList(), repeatableGroups = setOf("/Order/Items"),
+            declaredReps = mapOf("/Order/Items" to 50), indexFields = setOf(IS),
+        )
+        // no Items row, no /Order field → /Order not filled → Quantity NOT required
+        agree(kModel, def, "empty /Order → Quantity not required") {
+            it.group("/Order", 1).emptyField(Q, 1, 1)
+        }
+        // an instantiated (empty) Items row makes /Order content-bearing → Quantity required
+        agree(kModel, def, "instantiated Items row fills /Order → mandatoryField(Quantity)") {
+            it.group("/Order", 1).emptyField(Q, 1, 1)
+                .group("/Order/Items", 1, 1).emptyField(IS, 1, 1, 1).emptyField(IC, 1, 1, 1)
+        }
+    }
+
     /** Build the doc both ways (kernel + interpreter) from one description, and assert identical code@pointer sets. */
     private fun agree(kModel: String, def: ModelDef, msg: String, build: (DocLike) -> Unit) {
         val kDoc = RuntimeLaws.doc()
