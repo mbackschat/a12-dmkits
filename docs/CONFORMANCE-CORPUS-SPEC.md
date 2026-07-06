@@ -1,15 +1,15 @@
 # Conformance corpus — case format & runner contract
 
-The portable, kernel-independent record of A12 document-model **runtime semantics as data**: each case is one JSON file holding a document model, one document instance, one operation, and the kernel-verified expected outcome. Any engine that claims kernel-compatible evaluation — the in-repo interpreter (JVM and JS), a kernel codegen strategy, or a third-party reimplementation — demonstrates it by replaying the corpus and matching the expectations. The contract below is what a runner implements; the *why* behind the program lives in the [formalization proposal §7](SEMANTICS-FORMALIZATION-PROPOSAL.md).
+The portable, kernel-independent record of A12 document-model **runtime semantics as data**: each case is one JSON file holding a reference to a document model, one document instance, one operation, and the kernel-verified expected outcome — the models themselves are **standalone DM-JSON files** the cases share. Any engine that claims kernel-compatible evaluation — the in-repo interpreter (JVM and JS), a kernel codegen strategy, or a third-party reimplementation — demonstrates it by replaying the corpus and matching the expectations. The contract below is what a runner implements; the *why* behind the program lives in the [formalization proposal §7](SEMANTICS-FORMALIZATION-PROPOSAL.md).
 
-Contract fixed 2026-07-06 (WI-3a). The reference capture harness and JVM runner are specified as obligations in [§13](#13-reference-implementation-obligations); the proposal's §4 tracks what is built.
+Contract fixed 2026-07-06 (WI-3a); amended 2026-07-06 (owner): models moved out of the case files into standalone `models/*.json` referenced by `modelRef` — envelope-free, so they open in the A12 modeling tools and feed `dmtool` directly, and one model serves many cases. The reference capture harness and JVM runner are specified as obligations in [§13](#13-reference-implementation-obligations); the proposal's §4 tracks what is built.
 
 ## 1. Design tenets
 
 | Tenet | Consequence |
 |---|---|
 | **Semantics as data, not as tests** | A case asserts observable behavior only: `code`, polarity type, pointer. No engine internals, no API shapes. |
-| **DM-JSON is the key** | The model ships as production DM-JSON with rules embedded as **stored-English condition strings** — so the corpus is a **parser conformance suite for free**: a runner that cannot parse a stored condition fails, it does not skip. |
+| **DM-JSON is the key** | The model ships as a **standalone production DM-JSON file** (no wrapper envelope — openable in the A12 modeling tools, consumable by `dmtool` directly) with rules embedded as **stored-English condition strings** — so the corpus is a **parser conformance suite for free**: a runner that cannot parse a stored condition fails, it does not skip. |
 | **The anchor is the kernel's Groovy-dynamic strategy** | `expected` records what the production-normative strategy does (the [proposal's](SEMANTICS-FORMALIZATION-PROPOSAL.md) Phase-0 finding S3). Another kernel strategy that differs is a recorded *divergence* ([§11](#11-strategy-divergences)), never the expectation. |
 | **No message text** | Kernel message text is German-only and EUPL-licensed (interpreter finding IF3), and text is locale-bearing. The observation stops at `code|type|pointer` — the parts a consumer acts on. |
 | **Deterministic by construction** | A single wall-clock instant when time is involved ([§9](#9-the-clock)), a fixed locale ([§10](#10-locale--language)), sorted-multiset comparison ([§6](#6-validation-expectations--signatures)) — a case has exactly one correct outcome. |
@@ -19,6 +19,7 @@ Contract fixed 2026-07-06 (WI-3a). The reference capture harness and JVM runner 
 ```
 corpus/
   README.md                    # how to consume; points here
+  models/<name>.json           # standalone DM-JSON models, shared across cases
   cases/<family>/<id>.json     # one case per file
 ```
 
@@ -26,6 +27,7 @@ corpus/
 |---|---|
 | **family** | kebab-case directory naming the primary semantic area (`aggregates`, `comparison`, `dates`, `iteration`, `partial`, `compute`, …). A grouping aid for partial engines; the normative taxonomy tag is `meta.sections`. |
 | **id** | `meta.id` equals the file stem and is unique corpus-wide (guard-checked). |
+| **model files** | `models/<name>.json` is **pure DM-JSON with no wrapper envelope** — that is what keeps it openable in the modeling tools and directly consumable by `dmtool`. Domain-named (`order-basic`), shared across cases, stable canonical formatting so shared-model diffs stay reviewable. **No orphans**: a model file lands with its first referencing case (guard-checked). |
 | **file form** | UTF-8, LF, pretty-printed JSON. One case per file. |
 | **content lane** | Everything committed here is **own-domain original material** (the project's license-safe rule: mechanism, never expression). Findings from live sweeps over EUPL/proprietary corpora are re-expressed in our own domain before they land here; nothing from those corpora is persisted. |
 
@@ -40,7 +42,7 @@ corpus/
 | `meta.tags` | no | Free labels (`partial`, `clock`, `phantom-row`, …). Cases with a `validatePart` op MUST carry `partial`. |
 | `meta.seed`, `meta.scenario` | no | Provenance for `fuzz-seed` cases: the generator scenario + seed that produced the instance, so a case can be regenerated. |
 | `meta.notes` | no | One human sentence on what the case pins. |
-| `model` | yes | **Expanded, self-contained DM-JSON** (includes resolved upstream by the kernel's `expand()`), valid at `meta.kernelVersion`, with rules/computations embedded as stored-English condition strings. |
+| `modelRef` | yes | Corpus-root-relative path of the case's model file (e.g. `"models/order-basic.json"`). The file is **expanded, self-contained DM-JSON** (includes resolved upstream by the kernel's `expand()`), valid at `meta.kernelVersion`, with rules/computations embedded as stored-English condition strings. |
 | `clock` | iff needed | Present exactly when evaluation touches `Today`/`Now` — see [§9](#9-the-clock). |
 | `placements` | yes | The document instance as an ordered placement list — see [§4](#4-placements). |
 | `op` | yes | The operation to run — see [§8](#8-operations). |
@@ -60,10 +62,10 @@ Illustrative example (shape-normative; the values are not a captured expectation
     "tags": ["aggregates"],
     "notes": "MinValue over one filled row, below the bound"
   },
-  // Expanded DM-JSON, elided here: a Policy document with a repeatable Claims group,
+  // models/policy-claims.json: a Policy document with a repeatable Claims group,
   // a scale-2 number Amount, and a rule CLAIM_MIN with error field Claims-star Amount
   // storing the English condition  MinValue(Claims*/Amount) < 50
-  "model": { "…": "…" },
+  "modelRef": "models/policy-claims.json",
   "placements": [
     { "kind": "GROUP", "path": "/Policy", "reps": [1] },
     { "kind": "GROUP", "path": "/Policy/Claims", "reps": [1, 1] },
@@ -191,7 +193,7 @@ Engine mapping for the in-repo runners: the interpreter takes `EvalClock(today =
 
 A conformance runner, per case:
 
-1. Parse `model` (DM-JSON **including its stored condition strings** — a parse failure is a FAIL, not a SKIP: parser conformance is in scope by design).
+1. Resolve `modelRef` against the corpus root and parse the model file (DM-JSON **including its stored condition strings** — a parse failure is a FAIL, not a SKIP: parser conformance is in scope by design; an unresolvable `modelRef` is a corpus defect, not a runner verdict).
 2. Build the instance by replaying `placements` in order ([§4](#4-placements)).
 3. Inject `clock` if present ([§9](#9-the-clock)).
 4. Execute `op`, render the outcome as signatures ([§6](#6-validation-expectations--signatures)/[§7](#7-compute-expectations)), sort, compare.
@@ -210,7 +212,7 @@ What the in-repo reference capture + runners must satisfy (beyond the runner con
 | **Serializable placements** | The capture seam's placement record is promoted to a public serializable type (today `FuzzDiagnostics.Place`, private). |
 | **Per-row compute identity** | The interpreter exposes repetition indices on its compute outcomes (internally present as `ComputedInstance`), and kernel compute paths are normalized to the [§5](#5-the-pointer-format) form — replacing the index-strip comparison ([§7](#7-compute-expectations)). |
 | **Build discipline** | Corpus-reading tests run in a dedicated Gradle task with the corpus files as **declared inputs** (the `docGuardTest` pattern, [TESTING-SPEC](TESTING-SPEC.md)) — no false green, no full-suite re-runs on a case edit. |
-| **Schema & id guard** | A machine-readable case schema (`corpus/case.schema.json`) plus a guard: every case validates, `meta.id` equals the file stem, ids unique, `partial` tag ⇔ `validatePart`. |
+| **Schema & id guard** | A machine-readable case schema (`corpus/case.schema.json`) plus a guard: every case validates, `meta.id` equals the file stem, ids unique, `partial` tag ⇔ `validatePart`, every `modelRef` resolves, every `models/*.json` loads as a model, no model file is orphaned. |
 | **Kernel-upgrade guardian** | The corpus registers in the [KERNEL-UPGRADE](KERNEL-UPGRADE.md) coupling map: on a kernel bump, re-capture and diff — the diff **is** the behavior-change characterization; `meta.kernelVersion` moves with it. |
 
 ## 14. Licensing & publication
