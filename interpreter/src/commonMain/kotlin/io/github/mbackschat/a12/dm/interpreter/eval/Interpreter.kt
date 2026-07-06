@@ -313,10 +313,17 @@ class Interpreter(
     }
 
     /** A starred aggregate's fill: [build] (with the starred field's sign) while its tail can still grow,
-     *  else fixed; falls back to the symmetric notion if the operand is not a single star. */
+     *  else fixed; falls back to the symmetric notion if the operand is not a single star. At the EMPTY identity
+     *  (no filled value yet — the aggregate is `0`), filling the FIRST value can move it EITHER way (up always;
+     *  down only if signed), so the fill is `(canGrow = true, canShrink = signed)` regardless of the per-op
+     *  direction — the directional [build] (Min shrink-only, Max grow-only) applies only once ≥1 value is present.
+     *  So a fired `MinValue(star) < n` over an all-empty star is OMISSION (fill to raise off 0), not VALUE
+     *  (kernel-probed; the fuzz surfaced this after the empty→0 identity fix — IF51). */
     private fun starFill(f: Expr.Func, build: (signed: Boolean) -> Fill): Fill {
         val star = f.args.singleOrNull() as? Expr.Star ?: return leafOmission(f).let { Fill.of(it, it) }
-        return if (ctx.starOmission(star.path)) build(ctx.signed(star.path)) else Fill.of(false, false)
+        if (!ctx.starOmission(star.path)) return Fill.of(false, false)   // exhausted (all filled) → fixed
+        if (ctx.star(star.path).isEmpty()) return Fill.of(canGrow = true, canShrink = ctx.signed(star.path))
+        return build(ctx.signed(star.path))
     }
 
     /**
@@ -640,19 +647,33 @@ class Interpreter(
      * `NumberOfFilledFields(...)`'s count across its operands — a plain field counts 1 when filled; a STARRED
      * repetition list (`Items* then Count`) counts its FILLED cells across all rows (IF51, the `pathOf(Star)`
      * crash); a GROUP operand counts the FILLED fields INSIDE it recursively (IF51, the kernel `ExpandService` →
-     * `getAllContainedFields`, via [EvalContext.fillScope]). A present-but-malformed cell counts as filled
-     * (present), matching a plain field's [EvalContext.filled] and [EvalContext.star] (which keeps a malformed
-     * cell). Linear: O(rows) per star, O(instantiated cells) per group, O(1) per plain field.
+     * `getAllContainedFields`, via [EvalContext.fillScope]). A present-but-**malformed** cell is a formal error
+     * that makes the count **non-evaluable** → the whole function is [Val.Unknown] and the referencing rule is
+     * suppressed (the kernel's formal-suppression, exactly as [combine] does for the value aggregates — the fuzz
+     * surfaced that "count the valid ones" was WRONG: a malformed cell among valid ones suppresses, not skips;
+     * IF51). Empties are simply not counted. Linear: O(rows) per star, O(instantiated cells) per group.
      */
-    private fun filledFieldsCount(args: List<Expr>): Int = args.sumOf { filledOperandCount(it) }
-
-    private fun filledOperandCount(arg: Expr): Int = when (arg) {
-        is Expr.Star -> ctx.star(arg.path).size                       // filled cells across the rep rows (empties dropped)
-        else -> {
-            val path = pathOf(arg)
-            if (ctx.declaredKind(path) == null) ctx.fillScope(path, isGroup = true).let { it.nInst - it.fInst }
-            else if (ctx.filled(path)) 1 else 0
+    private fun filledFieldsValue(args: List<Expr>): Val {
+        var count = 0
+        for (arg in args) when (arg) {
+            is Expr.Star -> {
+                val cells = ctx.star(arg.path)                      // filled cells in row order (empties dropped)
+                if (cells.any { it is Val.Unknown }) return Val.Unknown   // a malformed cell → non-evaluable
+                count += cells.size
+            }
+            else -> {
+                val path = pathOf(arg)
+                if (ctx.declaredKind(path) == null) {              // GROUP operand — its descendant fields
+                    val fs = ctx.fillScope(path, isGroup = true)
+                    if (fs.hasUnknownInst) return Val.Unknown      // a malformed descendant → non-evaluable
+                    count += fs.tInst
+                } else {                                           // plain field
+                    if (ctx.filled(path) && invalid(path)) return Val.Unknown   // malformed → non-evaluable
+                    if (ctx.filled(path)) count++
+                }
+            }
         }
+        return Val.Num(dec(count))
     }
 
     /**
@@ -1007,7 +1028,7 @@ class Interpreter(
             if (a == null || b == null) Val.Unknown else Val.Num(dec((b - a).toString()))
         }
         // Count-of-filled functions (used in a comparison, e.g. NumberOfFilledFields(a, b, c) < 2).
-        FunctionOp.NUMBER_OF_FILLED_FIELDS -> Val.Num(dec(filledFieldsCount(f.args)))
+        FunctionOp.NUMBER_OF_FILLED_FIELDS -> filledFieldsValue(f.args)
         FunctionOp.NUMBER_OF_FILLED_GROUPS -> Val.Num(dec(filledGroupsCount(f.args)))
         // Date-component extractors — a number from the date's parts; an empty/absent date is Unknown.
         FunctionOp.YEAR_FROM_DATE -> dateComponent(f.args[0]) { y, _, _ -> y }

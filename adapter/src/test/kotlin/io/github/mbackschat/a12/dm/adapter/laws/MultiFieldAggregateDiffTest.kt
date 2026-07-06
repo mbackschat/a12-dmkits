@@ -156,6 +156,9 @@ class MultiFieldAggregateDiffTest {
         agree(nffStar, Scene(items = listOf("x" to "10", "x" to null)))  // 1 filled not
         agree(nffStar, Scene(items = listOf("x" to "10", "x" to "20", "x" to "30")))  // 3 fires
         agree(nffStar, Scene())                                          // 0 not
+        // a MALFORMED Count (decimal on a scale-0 field) makes the whole count non-evaluable → the rule is
+        // SUPPRESSED, even though 2 cells are valid (NOT "count the valid ones" — fuzz-surfaced, IF51).
+        agree(nffStar, Scene(items = listOf("x" to "10", "x" to "20", "x" to "5.5")))
     }
 
     @Test fun numberOfFilledFieldsGroup() {       // IG32 — a group operand (fields inside)

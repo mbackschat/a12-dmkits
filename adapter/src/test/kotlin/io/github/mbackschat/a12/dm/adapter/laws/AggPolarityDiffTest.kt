@@ -44,6 +44,10 @@ class AggPolarityDiffTest {
         filledCn,
         Cond.Cmp(CmpOp.LT, Expr.Func("Sum", listOf(Expr.Star(IC))), Expr.NumLit(dec(100))),
     )
+    private fun minLt5() = Cond.And(
+        filledCn,
+        Cond.Cmp(CmpOp.LT, Expr.Func("MinValue", listOf(Expr.Star(IC))), Expr.NumLit(dec(5))),
+    )
 
     @Test
     fun starredAggregateTypingAgreesWithKernel() {
@@ -54,6 +58,13 @@ class AggPolarityDiffTest {
                 render(Dsl.numberOfDifferentValues(itemCounts).eq(1)), ndvEq1(), listOf("5", "5", "5")),
             typeDiff("sum, all 50 filled → VALUE (exhausted)", "TOTAL_LOW",
                 render(Dsl.sum(itemCounts).lt(100)), sumLt100(), List(50) { "1" }),
+            // empty-identity MinValue: min = 0 (no filled cell) → `< 5` fires OMISSION (fill to raise off 0),
+            // NOT the Min-shrink-only direction — the empty identity is both-directional (IF51, fuzz-surfaced).
+            typeDiff("minValue, all-empty → 0 → OMISSION (fill to raise)", "MIN_LOW",
+                render(Dsl.minValue(itemCounts).lt(5)), minLt5(), listOf(null)),
+            // once a value is present, MinValue `< 5` is VALUE (the 3 is fixed; filling can't raise the min).
+            typeDiff("minValue, one filled 3 → VALUE (fixed)", "MIN_LOW",
+                render(Dsl.minValue(itemCounts).lt(5)), minLt5(), listOf("3")),
         )
     }
 

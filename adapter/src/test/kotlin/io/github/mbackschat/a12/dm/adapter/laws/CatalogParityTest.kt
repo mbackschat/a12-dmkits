@@ -98,9 +98,12 @@ class CatalogParityTest {
         group("date-range overlap predicates — DateRangeDiffTest-locked; need date-range fields in the fuzz model",
             "DateRangesOverlap", "AtLeastOneDateRangeOverlaps")
         group(
-            "numeric aggregates not yet in the net — Sum is fuzzed (TP); each is AggregateDiffTest-locked",
-            "Min", "Max", "MaxValue", "MinValue", "NumberOfDifferentValues",
-            "NumberOfFilledFields", "NumberOfFilledGroups",
+            "numeric aggregates not yet in the net — Sum/MaxValue/NumberOfDifferentValues/NumberOfFilledFields " +
+                "ARE fuzzed (TP/MX/ND/NF); MinValue is DiffTest-locked but deferred from the fuzz until IG34 (the " +
+                "partial-validation empty-aggregate relevance edge a `MinValue < n` firing on the empty identity " +
+                "exposes) is closed; the operand-list Min/Max and NumberOfFilledGroups have no fuzzable operand in " +
+                "the model (no two same-scale plain numbers / no fillable group count); all AggregateDiffTest-locked",
+            "Min", "Max", "MinValue", "NumberOfFilledGroups",
         )
         group(
             "date extractors/arithmetic — YearFromDate is fuzzed (YO/YD); the family is mechanically identical, each DiffTest-locked",
