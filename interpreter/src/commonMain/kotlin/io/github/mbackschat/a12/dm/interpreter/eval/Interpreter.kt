@@ -560,6 +560,19 @@ class Interpreter(
     }
 
     /**
+     * `NumberOfFilledGroups(...)`'s count — the STARRED single-repeatable-group form `NumberOfFilledGroups(
+     * /Group*)` (the `RootGroupCount` DSL node / `Dsl.numberOfFilledGroups(repeatableGroup)`) counts the group's
+     * **instantiated repetitions** (a created-but-empty row counts too — kernel-probed, IF46); the plain
+     * multi-group form counts each listed group that is [EvalContext.groupFilled]. Linear: O(rows) for the
+     * starred form (one row-context list, already scoped + cached), O(args) for the plain form.
+     */
+    private fun filledGroupsCount(args: List<Expr>): Int {
+        val star = args.singleOrNull() as? Expr.Star
+        if (star != null) return ctxOf(star).rowContexts(star.path).size
+        return args.count { ctxOf(it).groupFilled(pathOf(it)) }
+    }
+
+    /**
      * Tally a STARRED field-list quantifier operand — `AtLeastOneFieldFilled(Group* / Field Having …)`: iterate
      * the star's group rows, keep those the optional `Having` filter accepts, and count each kept row's cell as
      * TRUE (present + check-relevant) / FALSE (empty) / neither (malformed) — the same 3-state as [quantTally].
@@ -903,7 +916,7 @@ class Interpreter(
         }
         // Count-of-filled functions (used in a comparison, e.g. NumberOfFilledFields(a, b, c) < 2).
         FunctionOp.NUMBER_OF_FILLED_FIELDS -> Val.Num(dec(f.args.count { ctx.filled(pathOf(it)) }))
-        FunctionOp.NUMBER_OF_FILLED_GROUPS -> Val.Num(dec(f.args.count { ctx.groupFilled(pathOf(it)) }))
+        FunctionOp.NUMBER_OF_FILLED_GROUPS -> Val.Num(dec(filledGroupsCount(f.args)))
         // Date-component extractors — a number from the date's parts; an empty/absent date is Unknown.
         FunctionOp.YEAR_FROM_DATE -> dateComponent(f.args[0]) { y, _, _ -> y }
         FunctionOp.MONTH_FROM_DATE -> dateComponent(f.args[0]) { _, m, _ -> m }
