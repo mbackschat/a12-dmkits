@@ -829,7 +829,7 @@ class Interpreter(
         ?: throw UnsupportedConstructException("BaseYear needs the model's base year (modelInfo.baseYear)")
 
     /** Binary arithmetic; an empty numeric operand already arrives as 0, Unknown propagates. `+` is overloaded:
-     *  STRING CONCATENATION when an operand is textual, else numeric addition (IG24). */
+     *  STRING CONCATENATION when an operand is textual, else numeric addition (IF48). */
     private fun evalArith(a: Expr.Arith): Val {
         val l = evalExpr(a.left)
         val r = evalExpr(a.right)

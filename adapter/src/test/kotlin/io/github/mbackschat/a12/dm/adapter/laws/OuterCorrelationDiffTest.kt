@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * Differential — the `$` OUTER-ITERATION CORRELATION (IG23) through [DmInterpreter], the interpreter twin of
+ * Differential — the `$` OUTER-ITERATION CORRELATION (IF47) through [DmInterpreter], the interpreter twin of
  * the kernel-only `CorrelationLawsTest`. A `Having` filter over a starred field correlates each inner row to the
  * OUTER row (`[$Count]`, `CurrentRepetition($Items)`); the quantifier then fires on the rows a cross-row
  * predicate selects. The interpreter must fire on EXACTLY the rows the kernel does — the reported bug was

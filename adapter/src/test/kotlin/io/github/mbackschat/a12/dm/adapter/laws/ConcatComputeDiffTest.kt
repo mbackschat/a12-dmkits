@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test
 /**
  * Differential — STRING CONCATENATION `[First] + " " + [Last]` (`Concatenation`, the kernel's overloaded `+`
  * on text) through [DmInterpreter.compute]. The computed value must match the kernel's, including how an
- * EMPTY string operand concatenates. (IG24: `+` was numeric-only, so two FILLED string operands crashed
+ * EMPTY string operand concatenates. (IF48: `+` was numeric-only, so two FILLED string operands crashed
  * `num(Val.Txt)` — an uncaught error aborting the whole compute run, not one rule.)
  */
 class ConcatComputeDiffTest {

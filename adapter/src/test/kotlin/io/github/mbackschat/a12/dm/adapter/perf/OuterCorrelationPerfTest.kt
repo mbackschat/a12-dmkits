@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 
 /**
- * Perf gate — the `$` OUTER-CORRELATION (IG23) stays **linear PER ROW**. A self-correlation is O(N²) *by
+ * Perf gate — the `$` OUTER-CORRELATION (IF47) stays **linear PER ROW**. A self-correlation is O(N²) *by
  * nature* (each row is compared against every other — the kernel is O(N²) here too); the risk this guards is an
  * accidental O(N³) from per-inner-row O(N) work. So it asserts **sub-cubic** growth: 4× the rows must cost well
  * under 64× the time (a clean quadratic ≈ 16×). Passing proves the per-row filter work is O(1) — the `$` ref

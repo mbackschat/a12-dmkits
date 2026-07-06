@@ -104,7 +104,7 @@ interface EvalContext {
     fun rowContexts(groupPath: String): List<EvalContext> = emptyList()
 
     /**
-     * Hash-join buckets for a `$` EQUALITY-correlation `Having` over [groupPath]'s rows (IG23 perf) — keyed by
+     * Hash-join buckets for a `$` EQUALITY-correlation `Having` over [groupPath]'s rows (IF47 perf) — keyed by
      * the [joinFields]' value tuple, each bucket an `[t, f, n]` tally of [starPath]'s fill across the rows in it
      * (`t` = present + check-relevant, `f` = empty, `n` = rows). A row whose join tuple contains a [Val.Unknown]
      * (an empty string / malformed join field) is EXCLUDED — an `==` with Unknown never matches; an all-empty
