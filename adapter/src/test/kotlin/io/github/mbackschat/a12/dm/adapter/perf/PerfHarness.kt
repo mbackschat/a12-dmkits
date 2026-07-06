@@ -205,6 +205,31 @@ data class RepeatedRow(
 object PerfHarness {
 
     /**
+     * Emit a LIVE progress line during a long perf run. Gradle buffers a test's captured stdout until the whole
+     * task ENDS, so a slow multi-scenario gate looks frozen with no output — this writes to a **tailable file**
+     * with an immediate flush (append-per-call, so nothing is buffered), in addition to `println` (which still
+     * lands in the test report). Watch a run with `tail -f adapter/build/perf-progress.log`. The file is
+     * truncated once per JVM (first call), so each run starts clean.
+     */
+    private val progressFile: java.io.File by lazy {
+        java.io.File("build/perf-progress.log").apply { parentFile?.mkdirs(); writeText("") }
+    }
+
+    fun progress(msg: String) {
+        println(msg)
+        runCatching { progressFile.appendText(msg + "\n") }
+    }
+
+    /** Time [block], streaming a `<label> …` line before and the `<label> = <ms>` after (live [progress]). */
+    inline fun <T> step(label: String, block: () -> T): T {
+        progress("[perf] $label …")
+        val t = System.nanoTime()
+        val r = block()
+        progress("[perf] $label — done in %.1fs".format((System.nanoTime() - t) / 1e9))
+        return r
+    }
+
+    /**
      * Median (+ min + p90) wall-clock of [block] over [iters] timed runs after [warmup] discarded runs. The
      * warmup must be **generous**: the kernel's per-call time DECREASES monotonically over the first ~dozen
      * calls (JVM JIT warming the Groovy-compiled rules — NOT per-call codegen, which is cached), so too few

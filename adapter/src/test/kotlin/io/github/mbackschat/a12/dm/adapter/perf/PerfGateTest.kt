@@ -41,8 +41,12 @@ class PerfGateTest {
     fun gatesEveryCatalogShape() {
         // Groovy-only for the routine gate (fast — no per-scenario Java codegen+compile). The Groovy tax (~1.0–1.3×)
         // is pinned by KernelEdgeTest + KernelJavaBaselineDiffTest; the fair Java ratio lives in the analysis log.
-        val rows = gate.map { (scenario, n) -> PerfHarness.runScenario(scenario, n, withJava = false) }
-        rows.forEach { println(PerfHarness.format(it, CAVEAT)) }
+        // Stream each scenario's result AS it completes (live to build/perf-progress.log) — Gradle otherwise
+        // buffers all test stdout until the task ends, so a slow multi-scenario gate looks frozen.
+        val rows = gate.map { (scenario, n) ->
+            PerfHarness.step("gate ${scenario.name} @N=$n") { PerfHarness.runScenario(scenario, n, withJava = false) }
+                .also { PerfHarness.progress(PerfHarness.format(it, CAVEAT)) }
+        }
 
         rows.forEach { row ->
             // (a) absolute backstop: a catastrophic O(N²) blows far past this generous ceiling for the gate N.
