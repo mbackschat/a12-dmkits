@@ -49,7 +49,7 @@ The *statement* half needs no dedicated work: the runtime-semantics extraction i
 | **WI-5a** | Facet **vertical slice**: `emptyOperand` end-to-end (schema → populate → verification probes → lint → enricher → serving) | **BEST_MODEL** | 2–3 | WI-0 (S6) |
 | **WI-5b** | Facet bulk: remaining dimensions, 109-op population, judge wiring, demos, native metadata re-capture | **REGULAR_MODEL** | 2–3 | WI-5a |
 | **WI-5c** | Skill migration (empty-value table, sign notes → facets) + N6 eval re-run | **BEST_MODEL** | 1 | WI-5b |
-| **WI-6** | JS replay (`expect/actual` FS shim + corpus in `jsTest`) | **REGULAR_MODEL** | 1–2 | WI-2, WI-3b |
+| **WI-6** | JS replay (`expect/actual` FS shim + corpus replay on jvm+js) — **done 2026-07-06** (Node FS shim via `CORPUS_DIR`; shared kernel-free `InterpreterReplay`; `CorpusReplayCommonTest` green on `jvmTest` + `jsNodeTest`, 0 FAIL/0 SKIP — the first kernel-grounded JS oracle) | **REGULAR_MODEL** | ~~1–2~~ done | WI-2, WI-3b |
 | **WI-7** | Opt-in real-corpus sweeps (`../a12-kernel-mm` + workspaces) + the S2 seeding prerequisites | **REGULAR_MODEL** | 2–3 | WI-1, WI-2, WI-P |
 | **WI-8a** | `-GAPS` doc rename sweep (§10) — **done 2026-07-06** (5 files renamed, all refs swept, CLAUDE.md suffix rule collapsed) | **REGULAR_MODEL** | ~~≤1~~ done | — |
 | **WI-8b** | Consolidation: re-homing verify-sweep + semantics navigation map + resolve-guard | **BEST_MODEL** | 1–2 | — |
@@ -112,9 +112,11 @@ Kernel-free ∀-properties in `interpreter/commonTest` (runs JVM **and** JS), ha
 
 WI-5a is a **vertical slice**: the `emptyOperand` dimension end-to-end — schema, population for its operators, the N7-style verification lane (every facet claim generates a kernel-executed probe), the lint rework (`RK_UNGUARDED_NUMBER_COMPARISON` becomes facet-driven and complete), the operand-aware fix selection **in `SpanResolver`** (per S6: the read pass already holds the typed `Condition` AST with `FieldRef` kinds and typed literals; the kernel exposes no span/operand, and none is needed), and serving through `operators` (including fixing the dropped `gotcha.kind`). Only after the slice survives its consumers does WI-5b populate the remaining dimensions (§9) across all 109 operators, wire the eval judge, regenerate demos, and **re-capture native-image metadata** (an `operators.json` change is a re-capture trigger). WI-5c migrates the skill's per-operator facts to facets under the full skill-edit discipline (re-read whole file, verify every claim through the binary) and re-runs the N6 eval via the `run-dmtool-eval` skill.
 
-### 6.6 WI-6 — JS replay — `Model: REGULAR_MODEL`
+### 6.6 WI-6 — JS replay — `Model: REGULAR_MODEL` — **DONE 2026-07-06**
 
 An `expect/actual` FS shim for Node `jsTest`, corpus JSON parsing in common code (rides WI-2's serialization choice), and the replay suite on the JS target — the first kernel-grounded oracle JS has. Also the prerequisite for ever adding kernel-JS-codegen comparison (deferred, WI-1).
+
+**WI-6 outcome (2026-07-06).** Shipped, acceptance met. The interpreter-leg replay + signature rendering was extracted into a shared, kernel-free, multiplatform `conformance.InterpreterReplay` (commonMain) — the JVM three-engine runner's interpreter leg (`:adapter` `CorpusEngines`/`CorpusReplay`) now delegates to it, so JVM capture, JVM replay, and JS replay render **byte-identical** signatures (a JS-vs-JVM split then shows as a corpus FAIL, the bug class this item exists to catch). The **FS shim** is `expect fun readCorpusFiles()` in `commonTest` with a `jvmTest` actual (`java.nio`) and a `jsTest` actual (Node `fs` via typed externals); the corpus is located from the **`CORPUS_DIR` env var** Gradle sets on `jvmTest` + `jsNodeTest` (the robust path, not a `process.cwd()` guess), with those tasks declaring the corpus files as inputs. `CorpusReplayCommonTest` runs under `:interpreter:check` on **both** targets and is green — **0 FAIL / 0 SKIP** across the seven committed cases; a negative-control corruption was confirmed to FAIL `jsNodeTest`. No JS-vs-JVM eval-semantics split surfaced (nothing to hand to WI-T). Contract: [CONFORMANCE-CORPUS-SPEC](CONFORMANCE-CORPUS-SPEC.md) §12.
 
 ### 6.7 WI-7 — opt-in real-corpus sweeps — `Model: REGULAR_MODEL` (findings → WI-T)
 
@@ -131,7 +133,7 @@ For each model in `../a12-kernel-mm` (15 metamodels, 547 kernel-team-authored ru
 
 - **Keying on DM-JSON is deliberate**: it is the production input any real engine must parse, and the embedded stored-English conditions make the corpus a **parser conformance suite for free** (which is why S1 gated WI-3). `validatePart` cases are included and tagged (fork F3, resolved): partial-only semantics — IF54's phantom-row firing — exist nowhere else, so the pointer contract represents non-existent rows.
 - **The two-lane license structure**: the committed portable corpus (own-domain models + captured expectations; MIT-clean, the future third-party acceptance suite) vs the opt-in live sweeps of WI-7 (real corpora evaluated in place, nothing persisted; findings re-expressed own-domain into lane 1).
-- **The replay matrix**: kernel Groovy-dynamic = the capture source (`RuntimeLaws`); kernel static-JAVA = `JavaKernelEngine` (WI-1); static-GROOVY = optional follow-on; interpreter JVM = loader (WI-2) + replay (WI-3b); interpreter JS = WI-6; kernel JS codegen / TS runtime = deferred until a JS host harness exists; a third-party engine = the JSON files + the runner contract.
+- **The replay matrix**: kernel Groovy-dynamic = the capture source (`RuntimeLaws`); kernel static-JAVA = `JavaKernelEngine` (WI-1); static-GROOVY = optional follow-on; interpreter JVM = loader (WI-2) + replay (WI-3b); interpreter JS = replay (WI-6, `CorpusReplayCommonTest` on `jsNodeTest`); kernel JS codegen / TS runtime = deferred until a JS host harness exists; a third-party engine = the JSON files + the runner contract.
 
 ## 8. Property pack (WI-4)
 

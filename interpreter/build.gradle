@@ -106,3 +106,18 @@ def verifyInterpreterPurity = tasks.register('verifyInterpreterPurity') {
     }
 }
 tasks.named('check') { dependsOn verifyInterpreterPurity }
+
+// --- Conformance corpus replay (WI-6) --------------------------------------------------------------
+// CorpusReplayCommonTest replays the committed corpus/cases tree through the interpreter on BOTH targets
+// (jvm + js). It locates the corpus via CORPUS_DIR (the robust Gradle-provided path — never a fragile
+// relative guess from the Node/JVM working dir; CONFORMANCE-CORPUS-SPEC). The corpus files are declared
+// inputs of both test tasks, so a case edit re-runs the replay and a no-change run stays cached (the
+// declared-inputs discipline, docs/TESTING-SPEC.md). jsNodeTest is the first kernel-grounded JS oracle.
+def corpusCasesDir = rootProject.file('corpus/cases')
+def corpusCaseFiles = rootProject.fileTree('corpus') { include '**/*.json' }
+['jvmTest', 'jsNodeTest'].each { taskName ->
+    tasks.named(taskName) {
+        environment 'CORPUS_DIR', corpusCasesDir.absolutePath
+        inputs.files(corpusCaseFiles).withPropertyName('conformanceCorpus').optional()
+    }
+}
