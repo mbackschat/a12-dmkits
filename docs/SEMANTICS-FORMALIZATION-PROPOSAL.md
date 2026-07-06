@@ -213,7 +213,7 @@ CLAUDE.md's lifecycle section gains the third suffix row; the two disambiguation
 
 | # | Fork | State |
 |---|---|---|
-| F1 | Loader serialization: kotlinx.serialization (compiler plugin + runtime in the publishable artifact) vs hand-rolled minimal JSON reader (the module already hand-rolls its condition parser) | **open — owner call at WI-0/S4**; the loader itself is settled (the `:cli`/`:adapter` cycle makes it structurally required) |
+| F1 | Loader serialization | **resolved (owner, 2026-07-06): kotlinx-serialization-json, tree API only** — `Json.parseToJsonElement` + a hand-written mapper; runtime library only (no compiler plugin, no `@Serializable`); the purity lint whitelists the import explicitly so the dependency stays a deliberate boundary. Rejected: hand-rolled JSON reader (reuse-first rule) |
 | F2 | Corpus publication | in-repo directory now; **publish when an external consumer materializes** (re-open trigger), after LICENSING §19 re-confirm |
 | F3 | `validatePart` cases | **resolved: include, tagged `partial`** — IF54's phantom-row semantics are otherwise uncapturable |
 | F4 | Parser strategy | **resolved (WI-0/S1+S4): complete the hand-written parser** (WI-P) — the gap is small and enumerable, the EUPL ANTLR-from-`.g4` question is moot, and the hand-written parser is already the shipped `model eval` path |
