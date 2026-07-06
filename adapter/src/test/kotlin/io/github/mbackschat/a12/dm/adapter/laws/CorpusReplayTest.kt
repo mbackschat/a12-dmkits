@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import io.github.mbackschat.a12.dm.interpreter.conformance.InterpreterReplay
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.Test
@@ -31,7 +32,7 @@ class CorpusReplayTest {
     fun everyCaseReplaysThreeWays(): List<DynamicTest> = CorpusFiles.all().map { cf ->
         DynamicTest.dynamicTest("${cf.path.parent.fileName}/${cf.case.meta.id}") {
             val results = CorpusReplay.replay(cf.case)
-            val bad = results.filterValues { it.verdict != CorpusReplay.Verdict.PASS }
+            val bad = results.filterValues { it.verdict != InterpreterReplay.Verdict.PASS }
             assertTrue(bad.isEmpty()) {
                 "conformance verdict != PASS for ${cf.path}:\n" +
                     bad.entries.joinToString("\n") { "  ${it.key}: ${it.value.verdict} — ${it.value.detail}" }

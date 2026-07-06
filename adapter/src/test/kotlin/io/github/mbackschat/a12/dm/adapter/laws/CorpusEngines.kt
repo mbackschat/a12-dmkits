@@ -1,22 +1,10 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.conformance.InterpreterReplay
 import io.github.mbackschat.a12.dm.interpreter.conformance.Op
 import io.github.mbackschat.a12.dm.interpreter.conformance.Placement
 import io.github.mbackschat.a12.dm.interpreter.conformance.replayInto
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
-import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
-import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
-import io.github.mbackschat.a12.dm.interpreter.gen.asSink
-import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
-import io.github.mbackschat.a12.dm.interpreter.model.Computed
-import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
-import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
-import io.github.mbackschat.a12.dm.interpreter.model.Message
-import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
-import io.github.mbackschat.a12.dm.interpreter.model.MsgType
-import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Date
@@ -26,13 +14,15 @@ import java.util.concurrent.ConcurrentHashMap
  * The **conformance corpus engine core** — runs a case's `(model, placements, op, clock?)` through each of the
  * three JVM engines and renders the outcome to the corpus signature form (CONFORMANCE-CORPUS-SPEC §6/§7). Shared
  * by both [CorpusCapture] (authoring: tri-verify + fill `expected`) and the JVM replay runner (verify a committed
- * case), so a single place owns the signature rendering and the modern-`DocumentV2` + clock-pinned path (§9).
+ * case), so a single place owns the modern-`DocumentV2` + clock-pinned kernel path (§9).
  *
  * The three strategies:
  * - **[GROOVY_DYNAMIC]** — the production-normative parity anchor (S3), the kernel's dynamic Groovy service.
  * - **[JAVA_STATIC]** — the kernel's static-JAVA codegen (in-memory javac); a divergence from the anchor is a
  *   language-execution artifact recorded as a `divergences` entry, never the anchor.
- * - **[INTERPRETER]** — the kernel-free interpreter (loader + `DmInterpreter`), the engine under test.
+ * - **[INTERPRETER]** — the kernel-free interpreter, the engine under test. Its replay + signature rendering is
+ *   the multiplatform [InterpreterReplay] (shared with the JS replay, WI-6), so JVM capture == JVM replay == JS
+ *   replay byte-for-byte; here it is only re-exposed as [interpret].
  *
  * A validate op renders `code|type|pointer`; a compute op renders `pointer|VALUE|value` / `…|CLEARED` /
  * `…|ERRORED` — both sorted (UTF-16 order) into a multiset the runner compares for list equality.
@@ -53,28 +43,10 @@ object CorpusEngines {
     private fun javaEngine(modelJson: String): RuntimeLaws.JavaKernelEngine =
         javaEngines.getOrPut(modelJson) { RuntimeLaws.kernelJavaEngine(modelJson) }
 
-    /** The interpreter's outcome: the rendered [signatures] plus any [unsupported] constructs it declaredly can
-     *  not evaluate (their reasons) — a non-empty [unsupported] makes the runner report SKIP (§12). */
-    data class InterpOutcome(val signatures: List<String>, val unsupported: List<String>)
-
-    /** The interpreter's detailed outcome for [op] over the case instance (signatures + unsupported reasons). */
-    fun interpretDetailed(modelJson: String, placements: List<Placement>, op: Op, clock: String? = null): InterpOutcome {
-        val def = ModelLoader.load(modelJson)
-        val doc = interpDoc(def, placements)
-        val engine = DmInterpreter(def, evalClock(clock))
-        return when (op) {
-            is Op.ValidateFull -> engine.validate(doc).let { InterpOutcome(it.messages.map(::sigOf).sorted(), unsupportedReasons(it.unsupported)) }
-            is Op.ValidatePart -> engine.validatePart(doc, relevantEntities(op)).let { InterpOutcome(it.messages.map(::sigOf).sorted(), unsupportedReasons(it.unsupported)) }
-            is Op.Compute -> InterpOutcome(engine.compute(doc).map(::sigOf).sorted(), emptyList())
-        }
-    }
-
-    /** The interpreter's rendered signatures for [op] over the case instance (see [interpretDetailed]). */
+    /** The interpreter's rendered signatures for [op] — delegated to the multiplatform [InterpreterReplay] so the
+     *  interpreter leg is identical to what the JS replay runs (a JS-vs-JVM split then shows as a corpus FAIL). */
     fun interpret(modelJson: String, placements: List<Placement>, op: Op, clock: String? = null): List<String> =
-        interpretDetailed(modelJson, placements, op, clock).signatures
-
-    private fun unsupportedReasons(unsupported: List<io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule>): List<String> =
-        unsupported.map { "${it.rulePath}: ${it.reason}" }
+        InterpreterReplay.run(modelJson, placements, op, clock).signatures
 
     /** The Groovy-dynamic kernel's rendered signatures for [op] — the corpus anchor. */
     fun groovyDynamic(modelJson: String, placements: List<Placement>, op: Op, clock: String? = null): List<String> {
@@ -99,11 +71,9 @@ object CorpusEngines {
         }
     }
 
-    // ---- signature rendering (one form per engine, so capture == replay) -------------------------
+    // ---- kernel signature rendering (the interpreter's is InterpreterReplay's, so capture == replay) ----------
 
     private fun sigOf(m: RuntimeLaws.Msg): String = "${m.code()}|${m.type().name}|${m.field()}"
-
-    private fun sigOf(m: Message): String = "${m.code}|${polarity(m.type)}|${m.errorPath}"
 
     private fun sigOf(c: RuntimeLaws.Computed): String = when {
         c.cleared() -> "${c.pointer()}|CLEARED"
@@ -111,21 +81,7 @@ object CorpusEngines {
         else -> "${c.pointer()}|VALUE|${c.value().orElse("")}"
     }
 
-    private fun sigOf(c: Computed): String {
-        val p = formatPointer(c.path, c.indices)
-        return when (c.outcome) {
-            ComputeOutcome.VALUE -> "$p|VALUE|${c.value ?: ""}"
-            ComputeOutcome.CLEARED -> "$p|CLEARED"
-            ComputeOutcome.ERRORED -> "$p|ERRORED"
-        }
-    }
-
-    private fun polarity(type: MsgType): String = if (type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"
-
-    // ---- instance building + clock --------------------------------------------------------------
-
-    private fun interpDoc(def: ModelDef, placements: List<Placement>): Document =
-        def.newDocument().also { placements.replayInto(it.asSink()) }
+    // ---- kernel instance building + clock --------------------------------------------------------------------
 
     private fun kernelDoc(placements: List<Placement>): RuntimeLaws.Doc {
         val builder = RuntimeLaws.doc()
@@ -137,17 +93,10 @@ object CorpusEngines {
         return builder
     }
 
-    /** The interpreter clock from a case's instant (`Today` = date part, `Now` = the instant); null when absent. */
-    private fun evalClock(clock: String?): EvalClock? =
-        clock?.let { EvalClock(today = it.substringBefore('T'), now = it) }
-
     /** The kernel clock ([Date]) — the local wall-clock instant, no zone (§9); null when absent. */
     private fun clockDate(clock: String?): Date? =
         clock?.let { Date.from(LocalDateTime.parse(it).atZone(ZoneId.systemDefault()).toInstant()) }
 
     private fun relevants(op: Op.ValidatePart): Set<RuntimeLaws.Relevant> =
         op.relevant.map { RuntimeLaws.Relevant.of(it.path, *it.reps.toIntArray()) }.toSet()
-
-    private fun relevantEntities(op: Op.ValidatePart): Set<RelevantEntity> =
-        op.relevant.map { RelevantEntity(it.path, it.reps) }.toSet()
 }
