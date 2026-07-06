@@ -133,13 +133,23 @@ class Interpreter(
         return if (r.truth == Tri.TRUE) r.type else null
     }
 
+    /** Partial-validation mode (the caller supplied a relevant set → [cellRelevant] is non-null). In partial the
+     *  row-content gate is REPLACED by the upstream relevance gate: [DmInterpreter.rowOutcomes] only reaches an
+     *  eval when the rule's error-field instance is RELEVANT, and the kernel checks every relevant instance —
+     *  firing a comparison's empty-as-0 or an empty-identity aggregate even on a non-content-bearing (empty /
+     *  phantom) relevant row (kernel-probed: `MinValue` over `Lines* then Qty` `< 5` on a `/Cart`-relevant empty
+     *  document, and `[Note] < 5` on a relevant empty `Note`, both FIRE in partial though neither fires in full). So
+     *  the content gate must NOT suppress here; the IF42 star-relevance gate still bounds aggregates (IF54). */
+    private val partial: Boolean = cellRelevant != null
+
     /**
-     * Whether the row is evaluated at all. A non-empty row always is; an entirely-empty row is evaluated
-     * only when the condition CAN fire empty ([canFireEmpty]) — so the negative presence conditions
-     * (NoFieldFilled, NotAllFieldsFilled, FieldNotFilled, …) fire on a blank instance, while a comparison's
-     * empty-as-0 stays suppressed (the kernel's structural "can fire empty" gate, not a data check).
+     * Whether the row is evaluated at all. In FULL validation: a content-bearing row always is; an entirely-empty
+     * row is evaluated only when the condition CAN fire empty ([canFireEmpty]) — so the negative presence
+     * conditions (NoFieldFilled, NotAllFieldsFilled, FieldNotFilled, …) fire on a blank instance, while a
+     * comparison's empty-as-0 stays suppressed (the kernel's structural "can fire empty" gate, not a data check).
+     * In [partial] validation the gate is bypassed — the upstream relevance gate has already decided (see [partial]).
      */
-    private fun gated(cond: Cond): Boolean = ctx.evaluated || canFireEmpty(cond)
+    private fun gated(cond: Cond): Boolean = partial || ctx.evaluated || canFireEmpty(cond)
 
     /** Structural: would [cond] fire on an all-empty row? A comparison/pattern can't (empty-as-0 is
      *  suppressed; an empty string/pattern leaf is false); a presence predicate fires iff it is TRUE at a

@@ -810,9 +810,10 @@ object PerfCatalog {
         cartLines.errorRule("RD", fzPrice.field(), fzPrice.filled().and(Dsl.roundDown(fzPrice.asNumber(), 0).gt(50))), // FLOOR (signed Price → negatives)
         cartLines.errorRule("RA", fzPrice.field(), fzPrice.filled().and(Dsl.roundAccounting(fzPrice.asNumber().times(fzQty.asNumber()), 1).gt(100))), // HALF_UP over a product
         // starred value/count aggregates (IF51 family) — random-combination coverage for the class that had the
-        // IG29–IG32 cluster. These thresholds don't fire on the EMPTY identity (0 > 50 / 0 distinct >= 2 false),
-        // so they stay clear of the partial-validation empty-aggregate edge tracked as IG34 (a `< n` MinValue
-        // that fires on the empty identity is deferred until that edge is closed).
+        // IG29–IG32 cluster. `MN` (`MinValue < 5`) FIRES on the EMPTY identity (0 < 5), so it exercises the
+        // content-bearing-empty-row path (an instantiated-but-field-empty row is evaluated — IF53); `MX`/`ND`/`NF`
+        // don't fire on 0 (0 > 50 / 0 distinct >= 2 false), covering the non-firing side.
+        cart.errorRule("MN", fzQty.field(), Dsl.minValue(cart.flatten("Lines*/Qty")).lt(5)),
         cart.errorRule("MX", fzQty.field(), Dsl.maxValue(cart.flatten("Lines*/Qty")).gt(50)),
         cart.errorRule("ND", fzPrice.field(), Dsl.numberOfDifferentValues(cart.flatten("Lines*/Price")).ge(2)),
         cart.errorRule("NF", fzQty.field(), Dsl.numberOfFilledFields(cart.flatten("Lines*/Qty")).ge(2)),

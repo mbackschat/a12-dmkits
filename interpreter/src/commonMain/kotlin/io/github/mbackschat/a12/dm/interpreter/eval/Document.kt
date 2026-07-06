@@ -314,19 +314,27 @@ class Document @JvmOverloads constructor(
     }
 
     /**
-     * The per-group attach-depth index: `attach-depth → the set of row index-prefixes that have a valued field
-     * in scope at that depth`. The O(valued) scan that builds it is **memoized per group** (rebuilt with the
-     * [Index] on mutation), so many rules sharing one iteration scope — and nested per-row [rowContextsScoped]
-     * lookups — pay it once, not per rule/row. A row is `evaluated` iff some prefix matches.
+     * The per-group attach-depth index: `attach-depth → the set of row index-prefixes that have CONTENT in scope
+     * at that depth`. **Content-bearing = a valued field OR an INSTANTIATED REPEATABLE-group row**: the kernel
+     * treats creating a repeatable row as content in itself (KERNEL-FINDINGS §4/§9), so it EVALUATES a rule on an
+     * all-field-empty but instantiated row — a per-row rule on the row itself, an ancestor-scoped aggregate whose
+     * descendant rows make the ancestor content-bearing. A NON-repeatable group's mere structural presence is NOT
+     * content (its group placements have `value == null` and are not in [declaredReps], so they are excluded) —
+     * matching the truly-empty `/Order` in `EmptyRowGateDiffTest`. The O(content) scan that builds it is
+     * **memoized per group** (rebuilt with the [Index] on mutation), so many rules sharing one iteration scope —
+     * and nested per-row [rowContextsScoped] lookups — pay it once, not per rule/row. A row is `evaluated` iff
+     * some prefix matches.
      */
     private fun attachByDepth(groupPath: String): Map<Int, Set<List<Int>>> =
         index().attachByGroup.getOrPut(groupPath) {
             val gParts = partsOf(groupPath)
             val m = HashMap<Int, HashSet<List<Int>>>()
-            for (p in index().valued) {
-                val common = commonPrefixLen(partsOf(p.path), gParts)
-                m.getOrPut(common) { HashSet() }.add(p.reps.take(common))
+            fun mark(path: String, reps: List<Int>) {
+                val common = commonPrefixLen(partsOf(path), gParts)
+                m.getOrPut(common) { HashSet() }.add(reps.take(common))
             }
+            for (p in index().valued) mark(p.path, p.reps)
+            for ((g, gRows) in index().rowsByGroup) if (g in declaredReps) for (reps in gRows) mark(g, reps)
             m
         }
 
