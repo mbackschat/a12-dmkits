@@ -21,13 +21,23 @@ import kotlin.random.Random
  * - [shrink] **delta-debugs** the generated document: greedily drop repeatable-group rows that aren't needed to
  *   keep the divergence, leaving a MINIMAL failing instance to read.
  *
- * Kernel-only (`:adapter`): the kernel side runs through [RuntimeLaws.messages], the interpreter side through
- * [DmInterpreter.validateFull]. The divergence predicate is the SAME as the fuzz's — the sorted fired-code
- * **multiset** — so a seed [diverges] here iff the fuzz flagged it. A debugging tool, not a gate.
+ * Kernel-only (`:adapter`): the interpreter side runs through [DmInterpreter.validateFull]; the kernel side runs
+ * **BOTH codegen strategies** — the Groovy-dynamic service ([RuntimeLaws.messages], the production-normative
+ * parity anchor, S3) AND the static-JAVA codegen ([RuntimeLaws.JavaKernelEngine], WI-1's third engine). So every
+ * agreement check ([signaturesAgree], [computeOutcomesAgree], [partialSignaturesAgree], [diverges]) is
+ * **three-way** — `interp == kernel-groovy-dynamic == kernel-java-static` at `code|type|pointer` granularity —
+ * catching a codegen-only bug the runtime differential structurally cannot see. The divergence reporters name
+ * *which* pair split: an `interp≠kernel` split is a real interpreter bug (→ WI-T handoff, §5); a
+ * `kernel≠java-static` split is a language-execution artifact of the same generated logic (recorded, never
+ * adopted as expected — S3). A debugging tool AND the gate the fuzz nets ride.
  *
- * It is also the **compute** oracle (harness F — [computeOutcomesAgree]/[computeDivergence]): the same
- * record/replay materializes one generated document into both `compute()` paths and compares the computed-field
- * outcome multiset, the gate the [io.github.mbackschat.a12.dm.adapter.perf.ComputationFuzz] cascade net rides.
+ * The static-JAVA engine is **cached per model** ([javaEngine]) — the in-memory javac compile is once-per-model
+ * (~hundreds of ms), reused across every seed of a scenario — so the tri-comparison stays affordable at fuzz
+ * cadence.
+ *
+ * It is also the **compute** oracle (harness F — [computeOutcomesAgree]/[computeDivergence]) and the **partial**
+ * oracle ([partialSignaturesAgree]): the same record/replay materializes one generated document into all three
+ * engines and compares the outcome multiset — the gate the fuzz nets in `…adapter.perf` ride.
  */
 object FuzzDiagnostics {
 
@@ -67,6 +77,30 @@ object FuzzDiagnostics {
         }
     }
 
+    /** Replay [places] into a fresh [RuntimeLaws.Doc] — the kernel-side document shared by BOTH codegen legs. */
+    private fun kernelDoc(places: List<Place>): RuntimeLaws.Doc {
+        val builder = RuntimeLaws.doc()
+        replay(places, object : PlacementSink {
+            override fun group(path: String, vararg reps: Int) { builder.group(path, *reps) }
+            override fun field(path: String, value: String, vararg reps: Int) { builder.field(path, value, *reps) }
+            override fun emptyField(path: String, vararg reps: Int) { builder.emptyField(path, *reps) }
+        })
+        return builder
+    }
+
+    // The static-JAVA codegen engine per model — WI-1's third engine. The in-memory javac compile is
+    // once-per-model, so it is cached and reused across every seed of a scenario (keyed on the model JSON).
+    private val javaEngines = java.util.concurrent.ConcurrentHashMap<String, RuntimeLaws.JavaKernelEngine>()
+    private fun javaEngine(kernelModel: String): RuntimeLaws.JavaKernelEngine =
+        javaEngines.getOrPut(kernelModel) { RuntimeLaws.kernelJavaEngine(kernelModel) }
+
+    /** The `code|type|pointer` signature of a kernel [RuntimeLaws.Msg] — the full-message granularity. */
+    private fun msgSig(m: RuntimeLaws.Msg): String = "${m.code()}|${m.type().name}|${m.field()}"
+
+    /** A [Detail] over a kernel [RuntimeLaws.Msg] list — shared by the Groovy and java-static kernel legs. */
+    private fun detailOf(msgs: List<RuntimeLaws.Msg>): Detail =
+        Detail(msgs.map { it.code() }.sorted(), msgs.map { it.code() to it.field() }.toSet(), msgs.map(::msgSig).sorted())
+
     private fun interpDoc(model: ModelDef, places: List<Place>): Document {
         val doc = Document(model.kinds, model.declaredReps, model.unsignedFields, model.rangeConfig, model.dateFormats, model.scales)
         replay(places, doc.asSink())
@@ -79,53 +113,75 @@ object FuzzDiagnostics {
             msgs.map { "${it.code}|${polarity(it.type)}|${it.errorPath}" }.sorted())
     }
 
-    private fun kernelDetail(modelJson: String, places: List<Place>): Detail {
-        val builder = RuntimeLaws.doc()
-        replay(places, object : PlacementSink {
-            override fun group(path: String, vararg reps: Int) { builder.group(path, *reps) }
-            override fun field(path: String, value: String, vararg reps: Int) { builder.field(path, value, *reps) }
-            override fun emptyField(path: String, vararg reps: Int) { builder.emptyField(path, *reps) }
-        })
-        val msgs = RuntimeLaws.messages(modelJson, builder)
-        return Detail(msgs.map { it.code() }.sorted(), msgs.map { it.code() to it.field() }.toSet(),
-            msgs.map { "${it.code()}|${it.type().name}|${it.field()}" }.sorted())
+    /** The Groovy-dynamic kernel detail (the production-normative parity anchor, S3). */
+    private fun kernelDetail(modelJson: String, places: List<Place>): Detail =
+        detailOf(RuntimeLaws.messages(modelJson, kernelDoc(places)))
+
+    /** The static-JAVA codegen kernel detail — WI-1's third engine (same generated logic, different language). */
+    private fun javaDetail(kernelModel: String, places: List<Place>): Detail {
+        val engine = javaEngine(kernelModel)
+        return detailOf(engine.messages(engine.instance(kernelDoc(places))))
     }
 
-    /** Whether [places] still diverge — the SAME predicate as the fuzz (sorted fired-code multiset differs). */
-    private fun diverges(scenario: PerfScenario, places: List<Place>): Boolean =
-        interpDetail(scenario.interpModel, places).codes != kernelDetail(scenario.kernelModel, places).codes
+    /** Whether [places] still diverge — three-way on the fired-code multiset (interp vs kernel-Groovy vs java-static). */
+    private fun diverges(scenario: PerfScenario, places: List<Place>): Boolean {
+        val i = interpDetail(scenario.interpModel, places).codes
+        val k = kernelDetail(scenario.kernelModel, places).codes
+        val j = javaDetail(scenario.kernelModel, places).codes
+        return i != k || k != j
+    }
+
+    /**
+     * Which engine pair split, as report parts (empty string = all three agree). An `interp≠kernel` split is a
+     * real interpreter bug (→ WI-T handoff); a `kernel≠java-static` split is a codegen language-execution
+     * artifact of the same generated logic (recorded, never adopted as expected — S3). "kernel" = the
+     * Groovy-dynamic parity anchor.
+     */
+    private fun splitReport(interp: List<String>, kernel: List<String>, java: List<String>): String = buildString {
+        if (interp != kernel)
+            append("  [interp≠kernel] interp-only=${multisetMinus(interp, kernel)} kernel-only=${multisetMinus(kernel, interp)}")
+        if (kernel != java)
+            append("  [kernel≠java-static] java-only=${multisetMinus(java, kernel)} kernel-only=${multisetMinus(kernel, java)}")
+    }
 
     /** A localized report for [seed]: the (code @ pointer) pairs present in only one engine (empty if no divergence). */
     fun localize(scenario: PerfScenario, seed: Int): String {
         val places = record(scenario, seed)
         val k = kernelDetail(scenario.kernelModel, places).codePointers
         val i = interpDetail(scenario.interpModel, places).codePointers
-        val kOnly = (k - i).map { "${it.first}@${it.second}" }.sorted()
-        val iOnly = (i - k).map { "${it.first}@${it.second}" }.sorted()
-        return if (kOnly.isEmpty() && iOnly.isEmpty()) "seed=$seed: no (code,pointer) divergence"
-        else "seed=$seed  kernel-only=$kOnly  interp-only=$iOnly"
+        val j = javaDetail(scenario.kernelModel, places).codePointers
+        fun only(a: Set<Pair<String, String>>, b: Set<Pair<String, String>>) = (a - b).map { "${it.first}@${it.second}" }.sorted()
+        return buildString {
+            append("seed=$seed")
+            if (i != k) append("  kernel-only=${only(k, i)}  interp-only=${only(i, k)}")
+            if (k != j) append("  [kernel≠java-static] java-only=${only(j, k)}  kernel-only=${only(k, j)}")
+            if (i == k && k == j) append(": no (code,pointer) divergence")
+        }
     }
 
     /**
-     * Whether [seed]'s **full-message signatures** (`code|type|pointer` multiset) agree across both engines —
-     * the harness-D gate. Stronger than the codes-only fuzz: it also trips on a wrong **polarity**
-     * (VALUE↔OMISSION) or a right code on the **wrong row**, which a code multiset hides.
+     * Whether [seed]'s **full-message signatures** (`code|type|pointer` multiset) agree across all THREE engines —
+     * the harness-D gate, now the codegen tri-differential (interp == kernel-Groovy-dynamic == kernel-java-static).
+     * Stronger than the codes-only fuzz: it also trips on a wrong **polarity** (VALUE↔OMISSION) or a right code on
+     * the **wrong row**, which a code multiset hides — AND on a codegen-only divergence the runtime differential
+     * can't see.
      */
     fun signaturesAgree(scenario: PerfScenario, seed: Int): Boolean {
         val places = record(scenario, seed)
-        return interpDetail(scenario.interpModel, places).signatures ==
-            kernelDetail(scenario.kernelModel, places).signatures
+        val i = interpDetail(scenario.interpModel, places).signatures
+        val k = kernelDetail(scenario.kernelModel, places).signatures
+        val j = javaDetail(scenario.kernelModel, places).signatures
+        return i == k && k == j
     }
 
-    /** A localized full-message report for [seed]: the `code|type|pointer` signatures present in only one engine. */
+    /** A localized full-message report for [seed]: which engine pair's `code|type|pointer` signatures split. */
     fun signatureDivergence(scenario: PerfScenario, seed: Int): String {
         val places = record(scenario, seed)
-        val k = kernelDetail(scenario.kernelModel, places).signatures
         val i = interpDetail(scenario.interpModel, places).signatures
-        val kOnly = multisetMinus(k, i)
-        val iOnly = multisetMinus(i, k)
-        return if (kOnly.isEmpty() && iOnly.isEmpty()) "seed=$seed: signatures agree"
-        else "seed=$seed  kernel-only=$kOnly  interp-only=$iOnly"
+        val k = kernelDetail(scenario.kernelModel, places).signatures
+        val j = javaDetail(scenario.kernelModel, places).signatures
+        val report = splitReport(i, k, j)
+        return if (report.isEmpty()) "seed=$seed: signatures agree" else "seed=$seed$report"
     }
 
     /** The kernel's fired-code set for [seed]'s document — the sanity oracle for the parallel-iteration fuzz
@@ -136,7 +192,8 @@ object FuzzDiagnostics {
     // ---- compute differential (harness F — computation cascade) ---------------------------------
 
     /**
-     * Whether [seed]'s **compute outcomes** agree across both engines — the harness-F gate. Each engine's
+     * Whether [seed]'s **compute outcomes** agree across all THREE engines (interp == kernel-Groovy-dynamic ==
+     * kernel-java-static) — the harness-F gate. Each engine's
      * `compute()` is reduced to a sorted multiset of `path|VALUE|value` / `path|CLEARED` / `path|ERRORED`
      * signatures (the kernel's per-row repetition indices stripped, so a non-repeatable scope's paths line up
      * with the interpreter's index-free `targetPath`s). A divergence means a computed field resolved to a
@@ -144,16 +201,20 @@ object FuzzDiagnostics {
      */
     fun computeOutcomesAgree(scenario: PerfScenario, seed: Int): Boolean {
         val places = record(scenario, seed)
-        return interpComputeSignatures(scenario.interpModel, places) == kernelComputeSignatures(scenario.kernelModel, places)
+        val i = interpComputeSignatures(scenario.interpModel, places)
+        val k = kernelComputeSignatures(scenario.kernelModel, places)
+        val j = javaComputeSignatures(scenario.kernelModel, places)
+        return i == k && k == j
     }
 
-    /** A localized compute report for [seed]: the outcome signatures present in only one engine (null if agree). */
+    /** A localized compute report for [seed]: which engine pair's outcome signatures split (null if all three agree). */
     fun computeDivergence(scenario: PerfScenario, seed: Int): String? {
         val places = record(scenario, seed)
-        val k = kernelComputeSignatures(scenario.kernelModel, places)
         val i = interpComputeSignatures(scenario.interpModel, places)
-        if (k == i) return null
-        return "seed=$seed  kernel-only=${multisetMinus(k, i)}  interp-only=${multisetMinus(i, k)}"
+        val k = kernelComputeSignatures(scenario.kernelModel, places)
+        val j = javaComputeSignatures(scenario.kernelModel, places)
+        val report = splitReport(i, k, j)
+        return if (report.isEmpty()) null else "seed=$seed$report"
     }
 
     private fun interpComputeSignatures(model: ModelDef, places: List<Place>): List<String> =
@@ -165,14 +226,10 @@ object FuzzDiagnostics {
             }
         }.sorted()
 
-    private fun kernelComputeSignatures(modelJson: String, places: List<Place>): List<String> {
-        val builder = RuntimeLaws.doc()
-        replay(places, object : PlacementSink {
-            override fun group(path: String, vararg reps: Int) { builder.group(path, *reps) }
-            override fun field(path: String, value: String, vararg reps: Int) { builder.field(path, value, *reps) }
-            override fun emptyField(path: String, vararg reps: Int) { builder.emptyField(path, *reps) }
-        })
-        return RuntimeLaws.compute(modelJson, builder).map {
+    /** The `path|VALUE|v` / `path|CLEARED` / `path|ERRORED` signature of a kernel [RuntimeLaws.Computed] (per-row
+     *  repetition indices stripped) — shared by the Groovy and java-static compute legs. */
+    private fun computeSigOf(outcomes: List<RuntimeLaws.Computed>): List<String> =
+        outcomes.map {
             val p = it.path().replace(INDEX, "")
             when {
                 it.cleared() -> "$p|CLEARED"
@@ -180,6 +237,15 @@ object FuzzDiagnostics {
                 else -> "$p|VALUE|${it.value().orElse("")}"
             }
         }.sorted()
+
+    /** The Groovy-dynamic kernel compute signatures (the parity anchor). */
+    private fun kernelComputeSignatures(modelJson: String, places: List<Place>): List<String> =
+        computeSigOf(RuntimeLaws.compute(modelJson, kernelDoc(places)))
+
+    /** The static-JAVA codegen compute signatures — WI-1's third engine. */
+    private fun javaComputeSignatures(kernelModel: String, places: List<Place>): List<String> {
+        val engine = javaEngine(kernelModel)
+        return computeSigOf(engine.compute(engine.instance(kernelDoc(places))))
     }
 
     // ---- partial-validation differential (harness: random relevant subsets over a generated document) ----
@@ -206,15 +272,14 @@ object FuzzDiagnostics {
         DmInterpreter(model).validatePart(interpDoc(model, places), rel).messages
             .map { "${it.code}|${polarity(it.type)}|${it.errorPath}" }.sorted()
 
-    private fun kernelPartialSignatures(modelJson: String, places: List<Place>, rel: Set<RuntimeLaws.Relevant>): List<String> {
-        val builder = RuntimeLaws.doc()
-        replay(places, object : PlacementSink {
-            override fun group(path: String, vararg reps: Int) { builder.group(path, *reps) }
-            override fun field(path: String, value: String, vararg reps: Int) { builder.field(path, value, *reps) }
-            override fun emptyField(path: String, vararg reps: Int) { builder.emptyField(path, *reps) }
-        })
-        return RuntimeLaws.messagesPart(modelJson, builder, rel).map { "${it.code}|${it.type.name}|${it.field}" }.sorted()
-    }
+    /** The Groovy-dynamic kernel partial-validation signatures (the parity anchor). */
+    private fun kernelPartialSignatures(modelJson: String, places: List<Place>, rel: Set<RuntimeLaws.Relevant>): List<String> =
+        RuntimeLaws.messagesPart(modelJson, kernelDoc(places), rel).map(::msgSig).sorted()
+
+    /** The static-JAVA codegen partial-validation signatures — WI-1's third engine (static `validatePart`, the
+     *  modern-path conversion; its support is pinned by `JavaStaticPartialBaselineDiffTest`). */
+    private fun javaPartialSignatures(kernelModel: String, places: List<Place>, rel: Set<RuntimeLaws.Relevant>): List<String> =
+        javaEngine(kernelModel).messagesPart(kernelDoc(places), rel).map(::msgSig).sorted()
 
     /** Drop the signatures whose code is in [ignoreCodes] (the IG20 boundary — see [partialSignaturesAgree]). */
     private fun filterCodes(sigs: List<String>, ignoreCodes: Set<String>): List<String> =
@@ -222,7 +287,8 @@ object FuzzDiagnostics {
 
     /**
      * Whether [seed]'s generated document, under a random relevant subset ([relevantSeed]), produces the SAME
-     * fired-message signatures (`code|type|pointer`) from the kernel's `validatePart` and the interpreter's — the
+     * fired-message signatures (`code|type|pointer`) from the interpreter's `validatePart`, the kernel's
+     * Groovy-dynamic `validatePart`, AND the kernel's static-JAVA `validatePart` (WI-1's third engine) — the
      * partial-validation differential gate (rule-gating + 3VL + non-aggregate rules + formal/uniqueness errors).
      *
      * [ignoreCodes] carves out the **IG20 boundary**: STARRED AGGREGATES over a repeatable group under *mixed*
@@ -234,19 +300,22 @@ object FuzzDiagnostics {
     fun partialSignaturesAgree(scenario: PerfScenario, seed: Int, relevantSeed: Int, ignoreCodes: Set<String> = emptySet()): Boolean {
         val places = record(scenario, seed)
         val (kRel, iRel) = relevantSets(places, relevantSeed)
-        return filterCodes(interpPartialSignatures(scenario.interpModel, places, iRel), ignoreCodes) ==
-            filterCodes(kernelPartialSignatures(scenario.kernelModel, places, kRel), ignoreCodes)
+        val i = filterCodes(interpPartialSignatures(scenario.interpModel, places, iRel), ignoreCodes)
+        val k = filterCodes(kernelPartialSignatures(scenario.kernelModel, places, kRel), ignoreCodes)
+        val j = filterCodes(javaPartialSignatures(scenario.kernelModel, places, kRel), ignoreCodes)
+        return i == k && k == j
     }
 
-    /** A localized partial report for ([seed], [relevantSeed]): the signatures present in only one engine. */
+    /** A localized partial report for ([seed], [relevantSeed]): which engine pair's signatures split. */
     fun partialDivergence(scenario: PerfScenario, seed: Int, relevantSeed: Int, ignoreCodes: Set<String> = emptySet()): String {
         val places = record(scenario, seed)
         val (kRel, iRel) = relevantSets(places, relevantSeed)
-        val k = filterCodes(kernelPartialSignatures(scenario.kernelModel, places, kRel), ignoreCodes)
         val i = filterCodes(interpPartialSignatures(scenario.interpModel, places, iRel), ignoreCodes)
-        if (k == i) return "seed=$seed/rel=$relevantSeed: signatures agree"
-        return "seed=$seed/rel=$relevantSeed  relevant=${iRel.size}/${places.size}" +
-            "  kernel-only=${multisetMinus(k, i)}  interp-only=${multisetMinus(i, k)}"
+        val k = filterCodes(kernelPartialSignatures(scenario.kernelModel, places, kRel), ignoreCodes)
+        val j = filterCodes(javaPartialSignatures(scenario.kernelModel, places, kRel), ignoreCodes)
+        val report = splitReport(i, k, j)
+        return if (report.isEmpty()) "seed=$seed/rel=$relevantSeed: signatures agree"
+        else "seed=$seed/rel=$relevantSeed  relevant=${iRel.size}/${places.size}$report"
     }
 
     private val INDEX = Regex("\\[\\d+]")

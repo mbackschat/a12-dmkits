@@ -469,9 +469,16 @@ public final class RuntimeLaws {
         IDocumentModelResolver resolver = id -> model;
         IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
         IDocumentFactory df = new DocumentServiceFactory(resolver).createDocumentFactory();
+        return computeDetail(rt, buildInstance(modelJson, df, doc));
+    }
 
-        IDocument d = buildInstance(modelJson, df, doc);
-        IDocumentComputationResult result = rt.compute(d, Locale.US);
+    /**
+     * Map a {@code compute()} run over {@code instance} to its value/cleared/errored detail — shared by the
+     * Groovy {@link #compute(String, Doc)} and the {@link JavaKernelEngine#compute(IDocument)} tri-differential
+     * path, so both codegen strategies report compute outcomes at the same granularity as the interpreter.
+     */
+    private static List<Computed> computeDetail(IDocumentRtService rt, IDocument instance) {
+        IDocumentComputationResult result = rt.compute(instance, Locale.US);
         List<Computed> out = new ArrayList<>();
         result.getComputedFieldInstancesWithChanges().forEach(c ->
                 out.add(new Computed(c.getPath(), c.getStringValue(), false, false)));
@@ -603,6 +610,7 @@ public final class RuntimeLaws {
         private final String modelJson;
         private final IDocumentRtService rt;
         private final IDocumentFactory df;
+        private final DocumentServiceFactory dsf;   // kept for the V1→V2 conversion the modern validatePart needs
 
         JavaKernelEngine(String modelJson) {
             this.modelJson = modelJson;
@@ -612,8 +620,9 @@ public final class RuntimeLaws {
                     expanded, IValidationCodeGeneratorConfig.ProgrammingLanguage.JAVA, idToPackage);
             ClassLoader codeLoader = compileInMemory(sources);
             IDocumentModelResolver resolver = id -> expanded;
+            this.dsf = new DocumentServiceFactory(resolver);
             this.rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(staticConfig(idToPackage, codeLoader));
-            this.df = new DocumentServiceFactory(resolver).createDocumentFactory();
+            this.df = dsf.createDocumentFactory();
         }
 
         /** Build the kernel {@link IDocument} for {@code doc} once — do this OUTSIDE the timed region. */
@@ -631,6 +640,38 @@ public final class RuntimeLaws {
         /** Every computed-field outcome for an already-built instance, normalized + <b>sorted</b> (the B7 compute payload). */
         public List<String> computeOutcomesSorted(IDocument instance) {
             return computeSorted(rt, instance);
+        }
+
+        /**
+         * Every validation message (code + type + clean pointer) for an already-built instance — the full
+         * {@code code|type|pointer} signature the codegen tri-differential (WI-1) compares, mirroring the Groovy
+         * {@link RuntimeLaws#messages(String, Doc)}. So the static-JAVA codegen strategy is diffed against the
+         * interpreter and the Groovy-dynamic strategy at the SAME granularity (polarity + row, not codes-only).
+         */
+        @SuppressWarnings("removal")
+        List<Msg> messages(IDocument instance) {
+            return rt.validateFull(instance, Locale.US).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        }
+
+        /** Every computed-field outcome (value / cleared / errored) for an already-built instance — the compute
+         *  tri-differential payload, mirroring the Groovy {@link RuntimeLaws#compute(String, Doc)}. */
+        List<Computed> compute(IDocument instance) {
+            return computeDetail(rt, instance);
+        }
+
+        /**
+         * Partial validation over the static-JAVA codegen path — the {@code validatePart} twin of {@link #messages}
+         * for the WI-1 tri-differential. Converts the built instance to {@link DocumentV2} (the modern-path
+         * requirement the static rt-service shares with the dynamic one) and runs {@code validatePart} for the
+         * given relevant entities, returning the same {@code code|type|pointer} signatures. Whether the static
+         * path supports this at all is what {@code JavaStaticPartialBaselineDiffTest} pins.
+         */
+        List<Msg> messagesPart(Doc doc, Set<Relevant> relevant) {
+            DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(instance(doc));
+            Set<DocumentMultiPointer> relevantPointers = relevant.stream()
+                    .map(r -> DocumentMultiPointer.of(r.path(), r.reps())).collect(Collectors.toSet());
+            DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US).build();
+            return rt.validatePart(v2, relevantPointers, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
         }
     }
 
