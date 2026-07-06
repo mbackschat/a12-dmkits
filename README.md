@@ -312,6 +312,9 @@ dmtool -m order.dm.json config modify \
 # access-control roles (merge-safe; the `workspace roles` lint binds them to auth/roles.yaml)
 dmtool -m order.dm.json config modify --role shopper --role merchant
 
+# the model's base year (resolves year-less dates + the BaseYear constant); `config read` echoes it
+dmtool -m order.dm.json config modify --base-year 2024
+
 # restrict the allowed-character set (runtime-enforced)
 dmtool -m order.dm.json config modify \
   --supported-character A-Z --supported-character 0-9

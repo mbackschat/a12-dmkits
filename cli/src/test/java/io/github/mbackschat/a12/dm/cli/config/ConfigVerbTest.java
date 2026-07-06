@@ -72,6 +72,22 @@ class ConfigVerbTest {
     // G26 — the model's access-control roles (a `roles` header annotation, comma-separated, the lint binds to
     // roles.yaml). `--role` MERGES (so adding one keeps the rest — the G17 rule); `config read` echoes them.
 
+    // The model's base year (modelInfo.baseYear) — resolves year-less dates + drives the BaseYear constant.
+    // Settable only via the modelkit library before; `config modify --base-year` closes that CLI gap, and
+    // `config read` echoes it so an agent can discover the current value.
+    @Test
+    void modifySetsBaseYearAndConfigReadEchoesIt(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "config", "modify", "--base-year", "2024");
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("applied", j.get("outcome").asText());
+        assertEquals(2024, j.path("changed").path("baseYear").asInt());
+        var read = CliTestSupport.run("-m", model.toString(), "config", "read");
+        assertEquals(2024, M.readTree(read.out()).path("data").path("baseYear").asInt(),
+                () -> "config read echoes the base year: " + read.out());
+    }
+
     @Test
     void modifyMergesRolesAndConfigReadEchoesThem(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);

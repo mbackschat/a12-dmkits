@@ -1156,6 +1156,23 @@ public final class ModelDocument {
         return this;
     }
 
+    /** The model's base year ({@code modelInfo.baseYear}), if set — the read peer of {@link #setBaseYear}
+     *  (the kernel stores it as a string, so tolerate both textual and numeric). */
+    public Optional<Integer> baseYear() {
+        JsonNode by = root.path("content").path("modelInfo").path("baseYear");
+        if (by.isInt()) {
+            return Optional.of(by.asInt());
+        }
+        if (by.isTextual() && !by.asText().isBlank()) {
+            try {
+                return Optional.of(Integer.parseInt(by.asText().trim()));
+            } catch (NumberFormatException e) {
+                return Optional.empty();
+            }
+        }
+        return Optional.empty();
+    }
+
     private ObjectNode modelConfig() {
         JsonNode config = root.path("content").path("modelConfig");
         if (!config.isObject()) {

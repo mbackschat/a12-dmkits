@@ -85,6 +85,13 @@ final class ConfigModifyCommand extends BaseCommand {
     String comment;
 
     @ParamKind(ParamKind.Kind.SCALAR)
+    @Option(names = "--base-year", paramLabel = "<year>",
+            description = "set the model's base year (modelInfo.baseYear) — the year the kernel injects into "
+                    + "year-less dates (a dd.MM. date fragment / literal) and the value of the `BaseYear` "
+                    + "point-in-time constant (a construct using BaseYear without one draws MVK_NO_BASE_YEAR)")
+    Integer baseYear;
+
+    @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--add-locale", paramLabel = "<code>",
             description = "register a display locale on the model (repeatable), e.g. --add-locale de_DE — "
                     + "appends to the header.locales registry. The kernel then requires every rule/computation "
@@ -116,10 +123,11 @@ final class ConfigModifyCommand extends BaseCommand {
         }
         if (decimalSeparator == null && timeZone == null && conditionLanguage == null
                 && labels.isEmpty() && annotations.isEmpty() && supportedCharacters.isEmpty() && comment == null
-                && addLocales.isEmpty() && removeLocales.isEmpty() && roles.isEmpty() && !clearRoles) {
+                && addLocales.isEmpty() && removeLocales.isEmpty() && roles.isEmpty() && !clearRoles
+                && baseYear == null) {
             return fail("nothing to change — pass at least one of --decimal-separator, --time-zone, "
-                    + "--condition-language, --label, --annotation, --supported-character, --comment, --add-locale, "
-                    + "--remove-locale, --role, --clear-roles");
+                    + "--condition-language, --label, --annotation, --supported-character, --comment, --base-year, "
+                    + "--add-locale, --remove-locale, --role, --clear-roles");
         }
         if (!roles.isEmpty() && clearRoles) {
             return fail("pass either --role <name> (add roles) or --clear-roles, not both");
@@ -169,6 +177,10 @@ final class ConfigModifyCommand extends BaseCommand {
             if (comment != null) {
                 doc.setModelComment(comment);
                 changed.put("comment", comment);
+            }
+            if (baseYear != null) {
+                doc.setBaseYear(baseYear);
+                changed.put("baseYear", baseYear);
             }
             ArrayNode addedLocales = MAPPER.createArrayNode();
             for (String code : addLocales) {
