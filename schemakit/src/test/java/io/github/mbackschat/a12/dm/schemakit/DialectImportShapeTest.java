@@ -122,7 +122,7 @@ class DialectImportShapeTest {
     @Test
     void explicitDiscriminatorDrivesTheUnionEnum() {
         // A discriminated union as a PROPERTY of an object component (a top-level union component would need a
-        // type:object root, which the importer requires — SCHEMAKIT-GAPS-LEDGER).
+        // type:object root, which the importer requires — SCHEMAKIT-GAPS).
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
                 { "openapi": "3.1.0", "info": { "title": "X", "version": "1" },
                   "components": { "schemas": {

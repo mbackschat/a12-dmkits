@@ -9,7 +9,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEdit.Kind;
 
 /**
  * {@link ConditionEdit} — the coarse classification of <i>what</i> changed between two condition ASTs,
- * the edit-script half of MODEL-REVIEW-LEDGER MR1. It reuses {@link ConditionReferences} for the
+ * the edit-script half of MODEL-REVIEW-GAPS MR1. It reuses {@link ConditionReferences} for the
  * reference set and a Condition-layer {@code operatorId}/node-count walk, so it never re-walks the deep
  * {@link Calculation} hierarchy. Order of confidence: structure (clause add/remove) → references →
  * operator → operand (a literal within an unchanged shape).

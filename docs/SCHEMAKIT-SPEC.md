@@ -85,7 +85,7 @@ Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes t
 | **Field config** | `minLength`/`maxLength`/`pattern`→string config; `minimum`/`maximum`→number bounds |
 | **Rules (direct)** | `required`→requiredness; `enum`→ENUMERATION; `uniqueItems`→`RepetitionNotUnique`/`FieldValuesNotUnique`; `pattern`→`PatternViolated` |
 | **Rules (composed), built** | constraints with no field-config home become a12 *rules* — `exclusiveMinimum`/`exclusiveMaximum`, `multipleOf`, `const`, `dependentRequired`, `oneOf`/`anyOf` discriminator, `uniqueItems`, `if {f=v [and …]} then/else {required}` (incl. **multi-property** `if`), **then/else value-constraints** (`g` must satisfy `const`/`enum`/`min`/`max`/`pattern` when the `if` holds, and on the `else` — single- or multi-property), `contains`/`minContains`/`maxContains` (a simple predicate — incl. clauses on a **nested-object** field, e.g. `payment.method` → a filtered-count rule), `not {const\|enum\|pattern\|minimum\|maximum\|minLength\|maxLength}`, object-level `not {required}`. **Each keyword's exact fire condition is tabulated in §4f.** |
-| **Rules — declined** (reported, not enforced) | the *feasible-but-not-built* gaps — **nested/compound** `not`, a `contains` clause that descends into a **nested array** (nested aggregation) or an **arbitrary combinator subschema** (`oneOf`/`anyOf`/`not`) — are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §3 (feasible, but off the build queue on ROI). *Not-feasible* constraints (`not {type}`, `minItems`, §4c) are permanently omitted — ledger §4. |
+| **Rules — declined** (reported, not enforced) | the *feasible-but-not-built* gaps — **nested/compound** `not`, a `contains` clause that descends into a **nested array** (nested aggregation) or an **arbitrary combinator subschema** (`oneOf`/`anyOf`/`not`) — are tracked in [`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §3 (feasible, but off the build queue on ROI). *Not-feasible* constraints (`not {type}`, `minItems`, §4c) are permanently omitted — ledger §4. |
 | **Carriage (export, a12↔a12)** | the full rule rides `x-a12-rule`, a computation `x-a12-computation`; `readOnly:true` marks a computed field |
 | **Two-tier validation** *(proposal §12.1)* | exported Tier-A keywords = field-local tier (any validator); `:interpreter` = full-rule tier |
 
@@ -121,7 +121,7 @@ Five cases have no static a12 representation even with a strategy; each is **omi
 4. **unbounded recursive `$ref`** — expanded to `--recursion-depth` levels (default 1), then the deeper recursion is omitted with a to-do; `--strict` / `0` omits it entirely (§4b). (Self-/cyclic *includes* are likewise rejected by the kernel — §4e.)
 5. **`not {type}`** — an a12 field has one fixed kind (structural), and there is no runtime type-check operator to negate, so "the value must not be of type X" has no rule form. *(The other `not` shapes — `const`/`enum`/`pattern`/`min`/`max`/`minLength`/`maxLength` — DO map via paired negated operators, §4f.)*
 
-The full impossibility view (these + `minItems`) is consolidated in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §4.
+The full impossibility view (these + `minItems`) is consolidated in [`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §4.
 
 ---
 
@@ -163,7 +163,7 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | `unevaluatedProperties` / `unevaluatedItems` | structure imports; constraint reported — **not enforced** | omitted (§4c) |
 | `$dynamicRef` / `$dynamicAnchor` | reported | omitted (§4c) |
 | `contains`/`minContains`/`maxContains` (clauses: const/enum/range/pattern, single- or multi-property, incl. **nested-object** fields) | a `Having`-filtered count rule (`≥`/`≤ N` matching rows) | rule (Tier A+) |
-| nested/compound `not`; `contains` descending into a nested **array** / an arbitrary **combinator** subschema | structure imports; keyword reported — **feasible, but declined** ([`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §3) | omitted (declined gap) |
+| nested/compound `not`; `contains` descending into a nested **array** / an arbitrary **combinator** subschema | structure imports; keyword reported — **feasible, but declined** ([`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §3) | omitted (declined gap) |
 | `not {type}` | structure imports; reported — **not feasible** (a12 field kind is fixed; no type-check operator to negate) | omitted (ledger §4) |
 
 ### Export — Document Model → JSON Schema
@@ -266,7 +266,7 @@ The keywords with no field-config home become real a12 **rules** (§4 "Rules (co
 
 **Kind resolution + graceful skip.** The synthesis resolves each field's kind from the just-built model and only emits a rule the kind can carry: equality (`const`, discriminator, `if/then`/`else`) on **string + enum**; `not {enum|pattern}` on **string**; numeric bounds (`exclusive*`, `multipleOf`, `not {min|max}`) on **number**. A constraint on an incompatible kind (e.g. `not {enum}` on a number) is **skipped and reported**, never silently dropped (the omit-never-silent rule, §4a).
 
-**The `if/then/else` vacuous-match decision.** Bare `if:{properties:{f:{const:V}}}` matches *vacuously* when `f` is absent, so strict JSON Schema would apply `then` even with `f` missing. The importer instead maps the **pragmatic** reading (`then` fires when `f=V`; `else` fires when `f` is **present and** `≠V` — hence the extra `Filled(f)` guard on the `else` row). This is the near-universal author intent; it is recorded as a deliberate decision in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §2.
+**The `if/then/else` vacuous-match decision.** Bare `if:{properties:{f:{const:V}}}` matches *vacuously* when `f` is absent, so strict JSON Schema would apply `then` even with `f` missing. The importer instead maps the **pragmatic** reading (`then` fires when `f=V`; `else` fires when `f` is **present and** `≠V` — hence the extra `Filled(f)` guard on the `else` row). This is the near-universal author intent; it is recorded as a deliberate decision in [`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §2.
 
 **Authored through the typed surface, kernel-gated.** Each rule is built via the rulekit `Dsl`/`BoundModel` typed builder (the dogfood rule), **not** assembled as a condition string, and every imported model is run through the kernel-accept gate (§5) — so a synthesized rule is guaranteed well-formed. Each carries a deterministic name + code (`EXCLUSIVE_MIN_<FIELD>`, `DISCRIMINATED_REQUIRED_<FIELD>_<VALUE>`, `ELSE_REQUIRED_<FIELD>_<VALUE>`, `FORBIDDEN_PATTERN_<FIELD>`, …), `ERROR` severity, and an English message.
 
@@ -304,7 +304,7 @@ An OpenAPI document is a **bundle**: its schemas live under `components/schemas`
 - **`x-a12-rule` / `x-a12-computation` carriage is dialect-agnostic** — `x-` extensions are first-class in every OpenAPI version, so the a12↔a12 round-trip survives the OpenAPI trip.
 - a12 carries **no null** and **inclusive-only** field bounds (strict bounds live in rules → carriage/projection), so the export dialect mainly drives the ref location + the envelope; `OPENAPI_30` + `$defs` is reported.
 
-The verbs/options are discoverable from the binary (`manifest`/`--help`): import takes `--dialect` + `--component`; export takes `--dialect` + `--wrap-openapi`. Remaining limitations are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md).
+The verbs/options are discoverable from the binary (`manifest`/`--help`): import takes `--dialect` + `--component`; export takes `--dialect` + `--wrap-openapi`. Remaining limitations are tracked in [`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md).
 
 ---
 
@@ -332,4 +332,4 @@ Built test-first, smallest increment first. Progress is git, not a status table 
 4. **Rule carriage** — Tier-A `if/then`+`required`; Tier-B cross-field/aggregate as `x-a12-rule`; a computation as `x-a12-computation`; meta-schema-valid; re-import reconstructs all three.
 5. **Tier A+ import & interpreter coupling** — synthesize rules from `dependentRequired`/`exclusiveMinimum`/`multipleOf`/`const`/discriminators; two-tier validation holds (proposal §12).
 
-> **Open / deferred work** is not tracked here — the stable contract is this spec; the moving edge (import-synthesis gaps + the deferred contract/architecture decisions) lives in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md).
+> **Open / deferred work** is not tracked here — the stable contract is this spec; the moving edge (import-synthesis gaps + the deferred contract/architecture decisions) lives in [`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md).

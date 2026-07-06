@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * Classifies <i>what kind</i> of change separates two condition ASTs — the coarse edit-script half of
- * {@code model diff}'s rule-logic review (MODEL-REVIEW-LEDGER MR1). It answers "did the logical
+ * {@code model diff}'s rule-logic review (MODEL-REVIEW-GAPS MR1). It answers "did the logical
  * structure change, the referenced elements, an operator, or just a literal?", which is the triage a
  * reviewer wants on top of the before/after text.
  *

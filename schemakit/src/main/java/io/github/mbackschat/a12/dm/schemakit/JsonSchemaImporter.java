@@ -748,7 +748,7 @@ public final class JsonSchemaImporter {
      *  path ({@code origin/address/country}). A property that is neither a simple value constraint nor a nested
      *  object — a nested <em>array</em> (a deeper repetition) or an arbitrary subschema — makes the whole
      *  predicate non-mappable (returns empty), so the {@code contains} is reported rather than half-synthesized
-     *  ([`SCHEMAKIT-GAPS-LEDGER.md`] §3: nested aggregation stays declined). */
+     *  ([`SCHEMAKIT-GAPS.md`] §3: nested aggregation stays declined). */
     private static Optional<List<RuleSynthesis.Clause>> objectClauses(JsonNode props, String prefix) {
         List<RuleSynthesis.Clause> clauses = new ArrayList<>();
         for (Iterator<Map.Entry<String, JsonNode>> it = props.fields(); it.hasNext(); ) {

@@ -31,7 +31,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
  * A changed rule condition is further refined from the two typed ASTs ({@link ConditionPolarity}): a
  * provable structural flip is {@code POLARITY_INVERTED} (HIGH), otherwise the honest {@code CONDITION_CHANGED}.
  * The fuller AST edit-script (which operand/clause moved), rename/move, and computations/groups are later
- * slices (MODEL-REVIEW-LEDGER MR1–MR4).
+ * slices (MODEL-REVIEW-GAPS MR1–MR4).
  */
 public record ModelDiff(List<ElementChange> changes) {
 

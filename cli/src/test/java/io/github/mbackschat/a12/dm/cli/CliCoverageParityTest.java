@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
  * <p>{@link EditSession} is the unified authoring facade the CLI's {@code apply}/{@code batch} + the standalone
  * verbs all drive. This test reflectively enumerates <b>every public mutator</b> on it and requires each to be
  * <b>classified</b> — either mapped to the CLI verb/apply-op that covers it, or explicitly marked {@code OPEN:}
- * (a tracked {@code FEATURE-GAPS-LEDGER} gap) or {@code EXCLUDED:} (intentionally not in the CLI, with a reason).
+ * (a tracked {@code FEATURE-GAPS} gap) or {@code EXCLUDED:} (intentionally not in the CLI, with a reason).
  * A NEW mutator with no classification <b>fails the build</b> — forcing the author to answer "does the CLI expose
  * this?" at the moment it is added, instead of a user discovering the gap months later (as happened with base-year).
  *
@@ -134,7 +134,7 @@ class CliCoverageParityTest {
         assertTrue(unclassified.isEmpty(), () ->
                 "EditSession mutators with NO CLI-coverage classification — the base-year gap class. For each, add "
                         + "the CLI verb/flag (or apply-op) that exposes it and map it here, OR record it in "
-                        + "FEATURE-GAPS-LEDGER as an OPEN: gap, OR mark it EXCLUDED: with a reason:\n  "
+                        + "FEATURE-GAPS as an OPEN: gap, OR mark it EXCLUDED: with a reason:\n  "
                         + String.join("\n  ", unclassified));
     }
 
@@ -154,9 +154,9 @@ class CliCoverageParityTest {
                 .filter(e -> e.getValue().startsWith("OPEN:"))
                 .map(e -> e.getKey() + " → " + e.getValue())
                 .collect(Collectors.toCollection(TreeSet::new));
-        // Not an assertion of emptiness — OPEN gaps are legitimately tracked in FEATURE-GAPS-LEDGER; this prints
+        // Not an assertion of emptiness — OPEN gaps are legitimately tracked in FEATURE-GAPS; this prints
         // the current set so a reviewer sees exactly which library mutators still lack a CLI path.
-        System.out.println("[cli-coverage] EditSession mutators still lacking a CLI path (tracked in FEATURE-GAPS-LEDGER):\n  "
+        System.out.println("[cli-coverage] EditSession mutators still lacking a CLI path (tracked in FEATURE-GAPS):\n  "
                 + (open.isEmpty() ? "(none)" : String.join("\n  ", open)));
     }
 }

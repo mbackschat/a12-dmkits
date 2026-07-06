@@ -144,7 +144,7 @@ class ContainsShapeTest {
     @Test
     void aNestedArrayContainsClauseStaysReported() {
         // descending into a nested *array* (a deeper repetition) is NOT attempted — that is nested aggregation,
-        // which stays a declined gap (SCHEMAKIT-GAPS-LEDGER §3). The structure imports; the predicate is reported.
+        // which stays a declined gap (SCHEMAKIT-GAPS §3). The structure imports; the predicate is reported.
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
                 { "type": "object", "properties": {
                     "orders": { "type": "array", "maxItems": 50,

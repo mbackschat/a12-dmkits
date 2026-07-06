@@ -51,7 +51,7 @@ The *statement* half needs no dedicated work: the runtime-semantics extraction i
 | **WI-5c** | Skill migration (empty-value table, sign notes → facets) + N6 eval re-run | **BEST_MODEL** | 1 | WI-5b |
 | **WI-6** | JS replay (`expect/actual` FS shim + corpus in `jsTest`) | **REGULAR_MODEL** | 1–2 | WI-2, WI-3b |
 | **WI-7** | Opt-in real-corpus sweeps (`../a12-kernel-mm` + workspaces) + the S2 seeding prerequisites | **REGULAR_MODEL** | 2–3 | WI-1, WI-2, WI-P |
-| **WI-8a** | `-GAPS` doc rename sweep (§10) | **REGULAR_MODEL** | ≤1 | — |
+| **WI-8a** | `-GAPS` doc rename sweep (§10) — **done 2026-07-06** (5 files renamed, all refs swept, CLAUDE.md suffix rule collapsed) | **REGULAR_MODEL** | ~~≤1~~ done | — |
 | **WI-8b** | Consolidation: re-homing verify-sweep + semantics navigation map + resolve-guard | **BEST_MODEL** | 1–2 | — |
 
 Bounded totals after Phase-0: **BEST_MODEL ≈ 5–8 further sessions** (WI-0 done), **REGULAR_MODEL ≈ 12–20 sessions** (≈ 17–28 overall), plus the open-ended discovery items (§13). WI-1 is the urgent start; WI-P, WI-4, and WI-8a/b are independent fillers; WI-5a's schema design can begin while WI-2/3 build.
@@ -196,18 +196,7 @@ A `semantics` block per operator in `operators.json` (schema-safe: `OperatorEntr
 
 ## 10. Consolidation details (WI-8)
 
-**The `-GAPS` rename** — `-LEDGER` currently names two opposite instruments. After the rename the suffix is readable off the filename: `*-GAPS.md` = open work only, rows deleted on ship; `*-LEDGER.md` = complete CI-locked classification of an external constant, rows kept forever.
-
-| Current | New |
-|---|---|
-| FEATURE-GAPS-LEDGER.md | FEATURE-GAPS.md |
-| DEV-API-GAPS-LEDGER.md | DEV-API-GAPS.md |
-| INTERPRETER-GAPS-LEDGER.md | INTERPRETER-GAPS.md |
-| SCHEMAKIT-GAPS-LEDGER.md | SCHEMAKIT-GAPS.md |
-| MODEL-REVIEW-LEDGER.md | MODEL-REVIEW-GAPS.md |
-| MVK / RT-SEMANTICS / GRAMMAR ledgers | unchanged — the suffix now uniquely theirs |
-
-CLAUDE.md's lifecycle section gains the third suffix row; the two disambiguation paragraphs collapse. The corpus program itself uses both correctly from day one: per-operator **case-coverage classification** (today half-embedded in `fuzzPending`) becomes a true `-LEDGER`; the program's open build items live in INTERPRETER-GAPS.
+**The `-GAPS` rename — DONE 2026-07-06 (WI-8a).** `-LEDGER` previously named two opposite instruments; after the rename the suffix is readable off the filename: `*-GAPS.md` = open work only, rows deleted on ship; `*-LEDGER.md` = complete CI-locked classification of an external constant, rows kept forever. The five gap-trackers were renamed (`FEATURE-GAPS-LEDGER` → `FEATURE-GAPS`, `DEV-API-GAPS-LEDGER` → `DEV-API-GAPS`, `INTERPRETER-GAPS-LEDGER` → `INTERPRETER-GAPS`, `SCHEMAKIT-GAPS-LEDGER` → `SCHEMAKIT-GAPS`, `MODEL-REVIEW-LEDGER` → `MODEL-REVIEW-GAPS`); every reference (docs + code-comment pointers) was swept; the `MVK`/`RT-SEMANTICS`/`GRAMMAR` ledgers are unchanged (the `-LEDGER` suffix is now uniquely theirs). CLAUDE.md's lifecycle section was collapsed so the suffix self-describes (no more "two opposite `-LEDGER` instruments"). WI-8b (below) is still open. When the corpus program adds its per-operator **case-coverage classification** (today half-embedded in `fuzzPending`), that is a true `-LEDGER`; the program's open build items live in INTERPRETER-GAPS.
 
 ## 11. Open forks
 

@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *       match; {@code not: {minimum/maximum}} → the inverted numeric bound.</li>
  * </ul>
  * A non-tractable shape (arbitrary {@code if}/{@code then}/{@code else} value-constraints, complex {@code not} such
- * as {@code minLength}/{@code type}/nested) is still <b>reported</b>, never silently dropped (SCHEMAKIT-GAPS-LEDGER).
+ * as {@code minLength}/{@code type}/nested) is still <b>reported</b>, never silently dropped (SCHEMAKIT-GAPS).
  */
 class IfThenNotShapeTest {
 

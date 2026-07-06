@@ -1,6 +1,6 @@
 # a12-dmkits — Model Review & Diff (spec)
 
-> **Status — the contract for the human review & inspection surface** over LLM-driven model edits: the verb surface, I/O, the change model + risk taxonomy, the gloss, the rendering policy — plus the **rationale** (the problem, the trust principle, the six jobs, the settled forks) in §9. **Open/deferred/out-of-scope** items live in [`MODEL-REVIEW-LEDGER.md`](MODEL-REVIEW-LEDGER.md). This may later fold into [`CLI-SPEC.md`](CLI-SPEC.md).
+> **Status — the contract for the human review & inspection surface** over LLM-driven model edits: the verb surface, I/O, the change model + risk taxonomy, the gloss, the rendering policy — plus the **rationale** (the problem, the trust principle, the six jobs, the settled forks) in §9. **Open/deferred/out-of-scope** items live in [`MODEL-REVIEW-GAPS.md`](MODEL-REVIEW-GAPS.md). This may later fold into [`CLI-SPEC.md`](CLI-SPEC.md).
 
 ## 1. Surface — two verbs, one engine
 

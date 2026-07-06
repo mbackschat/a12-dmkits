@@ -1,6 +1,6 @@
-# schemakit — import gaps ledger
+# schemakit — import gaps
 
-> **What this is** — the `-LEDGER`-family tracker for the **`:schemakit` JSON-Schema importer**, a peer of [`DEV-API-GAPS-LEDGER.md`](DEV-API-GAPS-LEDGER.md) / [`INTERPRETER-GAPS-LEDGER.md`](INTERPRETER-GAPS-LEDGER.md) / [`FEATURE-GAPS-LEDGER.md`](FEATURE-GAPS-LEDGER.md). It records the importer's **open build queue (§1)**, a recorded **semantic decision (§2)**, the constraints that are **feasible but deliberately not built (§3)**, and what has **no a12 form at all (§4)**. The stable mapping contract lives in [`SCHEMAKIT-SPEC.md`](SCHEMAKIT-SPEC.md) §4; this ledger holds the moving edge.
+> **What this is** — the `-GAPS`-family tracker for the **`:schemakit` JSON-Schema importer**, a peer of [`DEV-API-GAPS.md`](DEV-API-GAPS.md) / [`INTERPRETER-GAPS.md`](INTERPRETER-GAPS.md) / [`FEATURE-GAPS.md`](FEATURE-GAPS.md). It records the importer's **open build queue (§1)**, a recorded **semantic decision (§2)**, the constraints that are **feasible but deliberately not built (§3)**, and what has **no a12 form at all (§4)**. The stable mapping contract lives in [`SCHEMAKIT-SPEC.md`](SCHEMAKIT-SPEC.md) §4; this ledger holds the moving edge.
 >
 > **No-history policy** (like its siblings): a shipped gap is **deleted**, never kept as a "shipped" list — git is the *what/when*, and the gap's home is the SCHEMAKIT-SPEC §4 "built" row (its *why*). The `else` branch and `not {pattern}`/`{minimum}`/`{maximum}` shipped this way and so are **not** here.
 >

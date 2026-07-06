@@ -1,6 +1,6 @@
-# a12-dmkits — Model Review & Diff (gaps ledger)
+# a12-dmkits — Model Review & Diff (gaps)
 
-> **What this is** — the open-issues ledger for the model **review & inspection** surface (the `-LEDGER` family, peer of [`FEATURE-GAPS-LEDGER.md`](FEATURE-GAPS-LEDGER.md) / [`INTERPRETER-GAPS-LEDGER.md`](INTERPRETER-GAPS-LEDGER.md)). The **contract + rationale** are in [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md) (rationale in its §9). **Records only OPEN work** — a shipped gap is **deleted** (git + the SPEC section / its finding are the record, no "shipped" list). `MR<n>` ids are stable so a code comment or SPEC ref resolves. §1 open (tractable, to build), §2 deferred (with a re-open trigger each), §3 out-of-scope (won't build).
+> **What this is** — the open-issues tracker for the model **review & inspection** surface (the `-GAPS` family, peer of [`FEATURE-GAPS.md`](FEATURE-GAPS.md) / [`INTERPRETER-GAPS.md`](INTERPRETER-GAPS.md)). The **contract + rationale** are in [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md) (rationale in its §9). **Records only OPEN work** — a shipped gap is **deleted** (git + the SPEC section / its finding are the record, no "shipped" list). `MR<n>` ids are stable so a code comment or SPEC ref resolves. §1 open (tractable, to build), §2 deferred (with a re-open trigger each), §3 out-of-scope (won't build).
 
 ## 1. Open — tractable, to build
 

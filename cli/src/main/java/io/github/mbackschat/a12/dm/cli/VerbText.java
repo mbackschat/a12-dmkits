@@ -12,7 +12,7 @@ import com.fasterxml.jackson.databind.JsonNode;
  * falls back to the generic indented tree — so specializing one verb never touches the rest.
  *
  * <p>Kept out of {@link TextRenderer} on purpose: the boundary stays generic and consults this small
- * registry, rather than growing a per-verb switch (the smell MODEL-REVIEW-LEDGER MR5 calls out).
+ * registry, rather than growing a per-verb switch (the smell MODEL-REVIEW-GAPS MR5 calls out).
  */
 interface VerbText {
 

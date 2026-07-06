@@ -1,8 +1,8 @@
-# dmkits — BA-workflow gaps ledger
+# dmkits — BA-workflow gaps
 
 > **What this is.** A record of the **ergonomic gaps** in the BA+agent loop that a 2026-06-14 review (and the later OQ1 probe) surfaced — and what we decided about each. dmkits (rulekit + modelkit + `dmtool`) is driven by a **business analyst working through an LLM agent**: the BA holds a requirement in business terms ("delivery can't precede the order date"), and the agent realizes it through `dmtool` — authoring the **rule or computation** (rulekit), shaping the **model structure** it references (modelkit), and **reading/auditing** the result.
 >
-> **This ledger records only OPEN work** — like its siblings [`DEV-API-GAPS-LEDGER.md`](DEV-API-GAPS-LEDGER.md) and [`INTERPRETER-GAPS-LEDGER.md`](INTERPRETER-GAPS-LEDGER.md), a shipped gap is **deleted**, not kept as a "shipped" list (git is the *what/when*; the gap's API-FINDINGS finding / CLI-SPEC section is the *why*). What the doc keeps is the **review's framing** (§1), the no-history policy + how legacy `Gn`/`§N` refs resolve (§2), the **open backlog** (§3), and the **out-of-scope decisions** (§4 — the durable part).
+> **This ledger records only OPEN work** — like its siblings [`DEV-API-GAPS.md`](DEV-API-GAPS.md) and [`INTERPRETER-GAPS.md`](INTERPRETER-GAPS.md), a shipped gap is **deleted**, not kept as a "shipped" list (git is the *what/when*; the gap's API-FINDINGS finding / CLI-SPEC section is the *why*). What the doc keeps is the **review's framing** (§1), the no-history policy + how legacy `Gn`/`§N` refs resolve (§2), the **open backlog** (§3), and the **out-of-scope decisions** (§4 — the durable part).
 
 ---
 
