@@ -35,12 +35,13 @@ One engine, two compile targets, from a single `commonMain` source set:
 | package | holds | role |
 |---|---|---|
 | `.model` | `ModelDef`/`FieldDef`/`RuleDef`/`ComputationDef` · `Kind`/`MsgType`/`Severity`/`Requiredness` · `Message`/`RuleResult`/`ValidationOutcome`/`Computed` · `RelevantEntity` · the `CustomCondition` SPI (`CustomCondition`/`CustomConditionData`/`FieldPointer`) · `PredefinedType` registry | the data contract consumers build/read |
+| `.load` | `ModelLoader` — DM-JSON → `ModelDef` (kotlinx tree API, WI-2) | build a `ModelDef` from DM-JSON so a consumer needn't hand-build it |
 | `.ast` | `Cond` / `Expr` (sealed) · `Val` / `Tri` · `typedValue`/`emptyValue` | the parsed rule, as data |
 | `.parse` | `parseCondition` / `parseExpression` — recursive descent (§3) | text → AST |
 | `.eval` | `Interpreter` · `EvalContext` + `Document` (+ the `SingleRowDoc`/`RepDoc` test doubles) · the operator registries (`PredicateOp`/`FunctionOp`/`ConstantOp`) · `Kleene` · `DateMath` · `ValCompare` · `Aggregates` · `Polarity` · `FormalError` · `Pointer` · the message renderer | the engine |
 | root | `DmInterpreter` (the public façade), the `Dec` `expect`, `UnsupportedConstructException` | API surface |
 
-**Dependency direction:** `model ← ast ← parse`, `model,ast ← eval`, all ← root. `:interpreter` itself depends on **nothing** (no kernel, no dmtool); `:`/`:adapter`/`:cli` consume *it*, never the reverse.
+**Dependency direction:** `model ← ast ← parse`, `model,ast ← eval`, `model ← load`, all ← root. `:interpreter` depends on **one** third-party runtime lib — kotlinx-serialization-json, common, tree API only, for `.load` (whitelisted in the purity lint per proposal §11 F1) — and on no kernel/dmtool; `:`/`:adapter`/`:cli` consume *it*, never the reverse.
 
 ## 3. Parsing, the AST & "lowering"
 

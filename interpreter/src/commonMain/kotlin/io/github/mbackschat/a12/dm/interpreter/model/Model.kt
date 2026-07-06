@@ -1,10 +1,10 @@
 package io.github.mbackschat.a12.dm.interpreter.model
 
 /**
- * The structured model the interpreter evaluates — the interpreter owns its types and does NOT parse
- * JSON (proposal §6/§7: a clean data contract, not a shared object model). The *consumer* builds a
- * [ModelDef] from its own source (dmtool from DM-JSON via Jackson; a multiplatform JSON loader is a
- * later, additive increment). Kernel-free, so the purity lint holds.
+ * The structured model the interpreter evaluates — the interpreter owns its types (a clean data contract,
+ * not a shared object model; proposal §6/§7). A consumer can build a [ModelDef] directly, or load one from
+ * expanded DM-JSON with the kernel-free, multiplatform
+ * [io.github.mbackschat.a12.dm.interpreter.load.ModelLoader] (WI-2). Kernel-free, so the purity lint holds.
  */
 
 /** Field kinds the empty-value asymmetry depends on — the miniature "metadata bridge" (proposal §10). */

@@ -969,6 +969,22 @@ bad.messages().get(0).message();        // "Discount of -5.00 must not be negati
 
 So you can prove a rule *behaves* — run a passing and a violating document and read `firedCodes()` — not just that it parses. Each fired `EvalMessage` also carries `message()`: the kernel's **interpolated** end-user text — the authored template with its `$Field$`/`$Field.value$` tokens resolved against this very document (G1). That closes the loop on the BA's real deliverable: not "did it fire" but "here is exactly what the user will read". This is the basis of the eval's **verify-by-execution** judge (construct discriminating documents, compare what fires for a *gold* vs a *candidate* rule — equivalence by execution, not by recalling polarity/empty-operand semantics), and the natural close of the read→modify loop: change a rule, then *show* it now fires correctly on the cases that matter. *Test-backed: `adapter.RuntimeEvalExampleTest` + `adapter.MessageInterpolationTest`; the seam's depth (per-row repetition indices, `compute`, empty-operand semantics) by `adapter.laws.EvalDocSeamLawsTest`.*
 
+### The kernel-free twin — load a model and evaluate it without the kernel (`ModelLoader` + `DmInterpreter`)
+
+`KernelAdapter` above is the JVM-only path that *uses* the kernel. Its twin is [`:interpreter`](INTERPRETER-SPEC.md) — a **standalone, kernel-free, multiplatform (JVM + JS)** evaluator (the engine dmtool's native image runs, and a publishable Kotlin/JS library). Its `ModelLoader` reads an **expanded, self-contained** DM-JSON model straight into a `ModelDef` on **both** targets — so a browser/JVM library consumer no longer hand-builds the model (the standalone-loader design observation, finding 57):
+
+<!-- teaser -->
+```kotlin
+// tree API only (no @Serializable, no compiler plugin); a number's raw literal is preserved — a declared
+// minValue of 100.50 stays "100.50" (never round-tripped through a Double/JS number).
+val model: ModelDef = ModelLoader.load(dmJson)
+
+// …build a Document for the instance, then evaluate with NO kernel on the classpath:
+val fired = DmInterpreter(model).validate(document, "en_US").messages.map { it.code }
+```
+
+dmtool's JVM `InterpreterModelLoader.load` is a thin delegate over this same loader — parity across every fixture model is CI-guarded (`ModelLoaderParityTest`), so the native runtime verbs and a JS library see identical `ModelDef`s. *Test-backed: `interpreter/…/load/ModelLoaderTest` (JVM + JS), `cli.interp.ModelLoaderParityTest`, `cli.interp.InterpreterRealModelDiffTest`.*
+
 ## 5f. Comments — author `;;` notes, preserved across the loop
 
 A rule's condition can carry a `;;` line **comment** — concrete syntax the kernel tolerates but does **not** keep in its parsed AST. rulekit carries comments in a **side-channel** beside the immutable AST (`rulekit.dsl.Comments`, keyed by *node identity*, covering both a `Condition` branch and a `Calculation` operation — the "carrier (c)" design, so the sealed hierarchies + their exhaustive switches stay untouched). The payoff: you **author** comments with the typed builder, and a rule's **leading comment is preserved by default** across read→modify→write-back.

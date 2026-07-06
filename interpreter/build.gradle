@@ -21,6 +21,15 @@ kotlin {
     }
 
     sourceSets {
+        commonMain {
+            dependencies {
+                // DM-JSON → ModelDef loader (proposal §6.2 / §11 fork F1): the TREE API only
+                // (Json.parseToJsonElement + a hand-written mapper) — the runtime library alone, NO compiler
+                // plugin, NO @Serializable. The ONE common third-party dep; whitelisted in verifyInterpreterPurity
+                // below so it stays a deliberate boundary.
+                implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0'
+            }
+        }
         jsMain {
             dependencies {
                 // Arbitrary-precision decimal on JS (proposal §5's named choice), so JS matches the JVM's
@@ -45,10 +54,19 @@ def verifyInterpreterPurity = tasks.register('verifyInterpreterPurity') {
     def srcRoot = file('src')
     inputs.dir(srcRoot)
     doLast {
+        // commonMain (the code that compiles to JS + native) is held to an ALLOWLIST, not just a blacklist:
+        // every third-party dependency must be a DELIBERATE, reviewed boundary (proposal §11 fork F1). A new
+        // external import fails the build until it is declared here on purpose — it can never slip in silently.
+        // Allowed in commonMain = the Kotlin stdlib, the module's own packages, and these named third parties:
+        def commonAllowedThirdParty = [
+            'kotlinx.serialization.',   // F1: DM-JSON loader — TREE API only (Json.parseToJsonElement + hand mapper)
+        ]
+        def commonAllowedPrefixes = ['kotlin.', 'io.github.mbackschat.a12.dm.interpreter.'] + commonAllowedThirdParty
+
         // sourceSet -> forbidden import prefixes (+ why). commonMain must be pure common Kotlin (it compiles
         // to JS); the JVM shim may touch java.* but never the kernel; the JS shim is pure Kotlin/JS + externals.
         def rules = [
-            commonMain: [forbidden: ['java.', 'javax.', 'com.mgmtp.', 'groovy.'],
+            commonMain: [forbidden: ['java.', 'javax.', 'com.mgmtp.', 'groovy.'], allowed: commonAllowedPrefixes,
                          why: 'must be pure common Kotlin (compiles to JS) — no JVM/kernel/groovy types'],
             jvmMain   : [forbidden: ['com.mgmtp.', 'groovy.'],
                          why: 'the JVM shim may use java.* but never the kernel/groovy (no runtime kernel dep)'],
@@ -71,6 +89,11 @@ def verifyInterpreterPurity = tasks.register('verifyInterpreterPurity') {
                             if (imp.startsWith(bad)) {
                                 violations << "${sourceSet}/${f.name}:${n}: import ${imp}  (${rule.why})".toString()
                             }
+                        }
+                        if (rule.allowed && !rule.allowed.any { imp.startsWith(it) }) {
+                            violations << ("${sourceSet}/${f.name}:${n}: import ${imp}  (undeclared third-party — commonMain " +
+                                "allows only the Kotlin stdlib, the interpreter's own packages, and declared deps; add it to " +
+                                "commonAllowedThirdParty citing proposal §11 F1 if deliberate)").toString()
                         }
                     }
                 }

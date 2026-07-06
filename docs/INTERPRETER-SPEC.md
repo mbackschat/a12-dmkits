@@ -89,13 +89,15 @@ The boundary to dmtool is a **clean data contract, not a shared object model**:
 
 The interpreter has its **own multiplatform AST** and does **not** import `dm.core`/`BoundModel` — which falls out of KMP anyway (common code can't see JVM-only Java types). dmtool *adapts to* the interpreter; the interpreter never depends on dmtool.
 
+**The `ModelDef` is loadable, not only hand-buildable (WI-2).** `:interpreter` `commonMain` ships `load.ModelLoader` — a kernel-free, multiplatform (JVM + JS) **DM-JSON → `ModelDef`** loader — so a consumer holding expanded, self-contained DM-JSON gets a `ModelDef` directly, without hand-building it (the earlier standalone gap: a JS consumer had no loader). It reads via kotlinx-serialization-json's **tree API only** (no `@Serializable`/compiler plugin — proposal §11 F1; the purity lint whitelists the dep explicitly), preserving a number's raw literal (no `Double` round-trip). v1 scope is **expanded, self-contained** models (includes/`TypeDefType` resolved upstream by the kernel's `expand()`). dmtool's JVM `InterpreterModelLoader.load` is a thin delegate over it (parity CI-guarded); it is also what lets `:adapter` replay a corpus without a `:cli` dependency cycle.
+
 ## 7. Standalone = dependency hygiene (not location)
 
 "Standalone library" is a property of the artifact's dependencies and API, not of where the source sits. Four leaf rules make it standalone in either home:
 
 1. **No dependency on `cli`/dmtool** — they consume it, never the reverse.
 2. **No *runtime* dependency on the kernel** — the whole point. The kernel appears only as a **test-only** conformance oracle.
-3. **A clean data contract, not a shared object model** (§6) — owns its AST.
+3. **A clean data contract, not a shared object model** (§6) — owns its AST *and* a kernel-free DM-JSON → `ModelDef` loader for it (`load.ModelLoader`, JVM + JS — WI-2).
 4. **Independently publishable** — Maven (JVM) + npm (JS), its own coordinates (package `io.github.mbackschat.a12.dm.interpreter`).
 
 Hold these from day one and extraction (§8) stays cheap.
