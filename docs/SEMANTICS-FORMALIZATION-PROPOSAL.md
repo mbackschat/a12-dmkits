@@ -38,9 +38,10 @@ The *statement* half needs no dedicated work: the runtime-semantics extraction i
 
 | WI | What | Model | Sessions | Depends on |
 |---|---|---|---|---|
-| **WI-0** | Phase-0 research sprint (S1–S6, §6.0) — de-risks the estimates, resolves forks | **BEST_MODEL** | 1–2 | — |
+| **WI-0** | Phase-0 research sprint (S1–S6, §6.0) — **done 2026-07-06**, findings in §6.0 | **BEST_MODEL** | ~~1–2~~ done | — |
 | **WI-1** | Codegen tri-differential: `JavaKernelEngine` as third engine over the fuzz nets (+ optional static-GROOVY) | **REGULAR_MODEL** | 1–2 (+1) | — |
-| **WI-T** | Divergence triage (reactive, from WI-1/WI-7 findings) | **BEST_MODEL** | unbounded | repro handoff (§5) |
+| **WI-T** | Divergence triage (reactive, from WI-1/WI-7 findings; anchor = groovy-dynamic per S3) | **BEST_MODEL** | unbounded | repro handoff (§5) |
+| **WI-P** | Parser completion against the S1 gap list (case variants, `;;` comments, `..Name`, value-list literals, `For` shapes) — ledger row IG35 | **REGULAR_MODEL** | 1–2 | WI-0 |
 | **WI-2** | Multiplatform DM-JSON → `ModelDef` loader in `:interpreter` (+ `InterpreterModelLoader` delegates) | **REGULAR_MODEL** | 2–3 | WI-0 (fork F1) |
 | **WI-3a** | Corpus **contract**: case format, runner spec, corpus-spec draft | **BEST_MODEL** | 1 | WI-0 (S1) |
 | **WI-3b** | Corpus capture + JVM replay implementation | **REGULAR_MODEL** | 1–3 | WI-2, WI-3a |
@@ -49,11 +50,11 @@ The *statement* half needs no dedicated work: the runtime-semantics extraction i
 | **WI-5b** | Facet bulk: remaining dimensions, 109-op population, judge wiring, demos, native metadata re-capture | **REGULAR_MODEL** | 2–3 | WI-5a |
 | **WI-5c** | Skill migration (empty-value table, sign notes → facets) + N6 eval re-run | **BEST_MODEL** | 1 | WI-5b |
 | **WI-6** | JS replay (`expect/actual` FS shim + corpus in `jsTest`) | **REGULAR_MODEL** | 1–2 | WI-2, WI-3b |
-| **WI-7** | Opt-in real-corpus sweeps (`../a12-kernel-mm` + workspaces) | **REGULAR_MODEL** | 1–2 | WI-1, WI-2 |
+| **WI-7** | Opt-in real-corpus sweeps (`../a12-kernel-mm` + workspaces) + the S2 seeding prerequisites | **REGULAR_MODEL** | 2–3 | WI-1, WI-2, WI-P |
 | **WI-8a** | `-GAPS` doc rename sweep (§10) | **REGULAR_MODEL** | ≤1 | — |
 | **WI-8b** | Consolidation: re-homing verify-sweep + semantics navigation map + resolve-guard | **BEST_MODEL** | 1–2 | — |
 
-Bounded totals: **BEST_MODEL ≈ 6–9 sessions**, **REGULAR_MODEL ≈ 9–15 sessions** (≈ 15–24 overall), plus the two open-ended discovery items (§13). WI-1 is the urgent start; WI-4 and WI-8a/b are independent fillers; WI-5a's schema design can begin while WI-2/3 build.
+Bounded totals after Phase-0: **BEST_MODEL ≈ 5–8 further sessions** (WI-0 done), **REGULAR_MODEL ≈ 12–20 sessions** (≈ 17–28 overall), plus the open-ended discovery items (§13). WI-1 is the urgent start; WI-P, WI-4, and WI-8a/b are independent fillers; WI-5a's schema design can begin while WI-2/3 build.
 
 ## 5. Model policy (owner directive, 2026-07-06)
 
@@ -66,20 +67,26 @@ Bounded totals: **BEST_MODEL ≈ 6–9 sessions**, **REGULAR_MODEL ≈ 9–15 se
 
 ## 6. Work items in detail
 
-### 6.0 WI-0 — Phase-0 research sprint — `Model: BEST_MODEL`
+### 6.0 WI-0 — Phase-0 research sprint — `Model: BEST_MODEL` — **DONE 2026-07-06**
 
-Cheap, decisive checks whose outcomes swing the estimates; results are written back into this proposal (estimates + fork resolutions) before WI-3a.
+The sprint's findings, applied throughout this proposal (the sweep method is recreatable: parse the catalog `validExample`s + the fuzz DSL + the MM/workspace stored conditions through `parseCondition`, classify failures):
 
-- **S1 — parser-coverage sweep (decisive for WI-3).** Run every catalog `validExample`, the fuzz rule DSL, and all curated DiffTest condition strings through `parseCondition`; classify failures. Only 3 DiffTests exercise the parser today — the corpus forces *every* case through it, and `Parser.kt` self-describes as "NOT yet the full condition grammar". A small gap → fix TDD per failure; a large gap → a parser workstream gets added to this program with its own estimate.
-- **S2 — SeedGenerator enum handling** (`Kind` has no ENUMERATION; `enumValues` rides on the field — verify/extend legal-member seeding) + a kind histogram of the real corpora (they're enum-heavy; WI-7 depends on this).
-- **S3 — normative codegen strategy.** The standing rule says the interpreter matches *production codegen* on divergence — determine from kernel docs/BA which target that is (static Java? JS? Groovy-dynamic?), so WI-T has a decision rule and the corpus's `divergences` records name a winner.
-- **S4 — [INTERPRETER-SPEC](INTERPRETER-SPEC.md) §11 in full** (the open production-parser decision + the EUPL question on generating from the kernel `.g4`) — S1's result feeds this; the proposal's fork F1/F4 resolutions land here.
-- **S5 — kernel-side clock pinning** (read `ClockDiffTest`/`NowDiffTest`): confirm how capture keeps kernel and interpreter clocks aligned, and whether kernel replay of a clock-bearing corpus case is possible or excluded.
-- **S6 — `Where` population feasibility (D1 fix).** `Diagnostic.Where` already carries `operator`/`span` but is empty at enrich time — establish what the kernel's problem reports expose at check-failure, deciding whether WI-5a's enricher consumer is operand-aware selection or a narrower disambiguation.
+| Item | Outcome |
+|---|---|
+| **S1 parser coverage** | **Benign — no program change, but a new bounded work item (WI-P / IG35).** Canonical populations parse 100% (catalog 108/108, fuzz 28/28); MM corpus 647/657; workspaces 46% raw — the failures collapse into a kernel-grammar-verified gap list: keyword **case variants** (`and`/`AND`, `or`/`OR`, `in`, `to` — enumerated per-variant in `LexerTerminals_en`, not blanket case-folding), **`;;` comments** (a lexer token with multi-line continuation), **`..Name` named-ancestor paths** (the `relativeUp` production), the **value-list literal form** `Pred(field, "a", "b")`, **`For`-semantic-index shapes**, plus Having/absolute-path residuals to re-triage after the case fix (~23 further failures were artifacts of the sweep's fixed base path). These are live product gaps too: `model eval` on real workspace models hits them today. |
+| **S2 seeding** | Enum seeding is **already correct by construction** (`ValidValues` draws a declared member when `enumValues` is populated). The real WI-7 blocker is **`TypeDefType` resolution** (258 fields; 67% of kernel-mm; e-commerce's cross-model backbone) — the self-contained loader flattens typedef refs to STRING with empty `enumValues`; cheapest fix: kernel pre-expansion on the read tier before loading. Second tier: constraint-aware seeding (number bounds SMALL, string lengths TRIVIAL, pattern satisfaction MEDIUM or leave-empty fallback). Two discovered gaps recorded as ledger row **IG36** (`DateFragmentType` unmodeled; `TimeType.format` dropped by the loader). |
+| **S3 normative strategy** | **Production-normative on the JVM = the dynamic Groovy service** (the kernel dev guide: "the dynamic solution is usually used"; static is a startup optimization); browser = pre-generated `JAVA_SCRIPT_VK` on the hand-ported TS runtime, a pre-check subordinate to the server. → the corpus `expected` anchor and WI-T's decision rule are **groovy-dynamic** — exactly what the differential already captures; java-static divergences are *language-execution artifacts* of the same generated logic (Groovy vs Java), recorded but never adopted as `expected`. |
+| **S4 spec §11** | Fork **F4 resolved**: complete the **hand-written parser** (the option §11 didn't list — it weighed only kernel parse-tree-api vs ANTLR-from-`.g4`); the EUPL derivative question on the grammar is moot (reading the grammar for syntax *shapes* is mechanism, not expression). INTERPRETER-SPEC §11 records the decision when WI-P ships. |
+| **S5 clock** | The kernel clock **is pinnable**: `DocumentProcessingConfig.currentDateForTest(Date)` pins **both** Today and Now from one instant (`RuntimeController.validationTime`; Today = the instant's date cleared in the model's timezone). Requires the modern `DocumentV2`+config path — the legacy `validateFull(IDocument, Locale)` the capture path uses today has no hook, so WI-3b routes capture/replay through the modern path. Corpus consequence (§7): `clock` is a **single instant**; an independent today/now pair is unrepresentable kernel-side. The existing differential's far-sentinel-date technique remains valid for its own tests. |
+| **S6 Where/D1** | **Feasible now, light plumbing.** The kernel exposes no span/operator/operand at check time (`RankedNotification` = message + severity; positions hardcoded `-1`) — but the **`SpanResolver` read pass already holds the typed `Condition` AST**, pins the operator by catalog∩usage intersection, and re-derives fixes; operand kinds sit on `FieldRef`, literals are typed nodes (`StringLiteral` vs `DateLiteral`). → WI-5a's operand-aware fix selection lands **in `SpanResolver`**, not `DiagnosticEnricher`; no full parse needed; foreign-rule fallback via `parseCondition`. |
+
+### 6.0b WI-P — parser completion (from S1) — `Model: REGULAR_MODEL`
+
+Complete the hand-written parser against the S1 gap list (ledger row IG35), TDD with the recreated sweep as the red/green driver: (1) keyword case variants exactly as `LexerTerminals_en` enumerates them, (2) `;;` comments including the multi-line continuation form, (3) `..Name` named-ancestor paths, (4) the value-list literal form, (5) `For`-semantic-index shapes, (6) re-triage the Having/absolute-path residuals once (1) lands. Fixes the live `model eval` gaps on real models as a by-product. **Gates WI-7** (real stored text must parse), *not* the committed corpus (own-domain cases render canonically). Graduates: INTERPRETER-SPEC §11 (parser-source decision: hand-written completion) and any GRAMMAR-LEDGER rows whose classification flips.
 
 ### 6.1 WI-1 — codegen tri-differential — `Model: REGULAR_MODEL`
 
-Wire `JavaKernelEngine` (static-JAVA codegen, in-memory javac, accepts arbitrary self-contained model JSON) as a **third engine** into the `FuzzDiagnostics` comparison, over the existing fuzz nets: `interp == groovy-dynamic == java-static` at `code|type|pointer` signature granularity. Codegen+compile is once-per-model (~hundreds of ms) — acceptable at fuzz-tag cadence. Optional follow-on (+1 session): static-GROOVY via a `GroovyClassLoader` compile path (not just an enum flip — generated `.groovy` needs the Groovy compiler, which the kernel already ships). Kernel-JS codegen targets and the TS runtime are **deferred** (need a JS host harness; re-open when WI-6's JS infrastructure exists). Divergences → WI-T per §5. The first full run doubles as the feasibility probe for codegen construct coverage.
+Wire `JavaKernelEngine` (static-JAVA codegen, in-memory javac, accepts arbitrary self-contained model JSON) as a **third engine** into the `FuzzDiagnostics` comparison, over the existing fuzz nets: `interp == groovy-dynamic == java-static` at `code|type|pointer` signature granularity. Codegen+compile is once-per-model (~hundreds of ms) — acceptable at fuzz-tag cadence. Per S3, **groovy-dynamic is the parity anchor** (the production-normative strategy); a java-static divergence is a language-execution artifact of the same generated logic — recorded, investigated (it may still reveal an interpreter bug *shared* with one side), never adopted as `expected`. Optional follow-on (+1 session): static-GROOVY via a `GroovyClassLoader` compile path — per S3 it is *not* a distinct production path, so this is diagnostic value only. Kernel-JS codegen targets and the TS runtime are **deferred** (need a JS host harness; re-open when WI-6's JS infrastructure exists). Divergences → WI-T per §5. The first full run doubles as the feasibility probe for codegen construct coverage.
 
 ### 6.2 WI-2 — multiplatform DM-JSON loader — `Model: REGULAR_MODEL`
 
@@ -95,7 +102,7 @@ Kernel-free ∀-properties in `interpreter/commonTest` (runs JVM **and** JS), ha
 
 ### 6.5 WI-5a/b/c — facets — `Model: 5a BEST_MODEL · 5b REGULAR_MODEL · 5c BEST_MODEL`
 
-WI-5a is a **vertical slice**: the `emptyOperand` dimension end-to-end — schema, population for its operators, the N7-style verification lane (every facet claim generates a kernel-executed probe), the lint rework (`RK_UNGUARDED_NUMBER_COMPARISON` becomes facet-driven and complete), the enricher consumer (shape per S6), and serving through `operators` (including fixing the dropped `gotcha.kind`). Only after the slice survives its consumers does WI-5b populate the remaining dimensions (§9) across all 109 operators, wire the eval judge, regenerate demos, and **re-capture native-image metadata** (an `operators.json` change is a re-capture trigger). WI-5c migrates the skill's per-operator facts to facets under the full skill-edit discipline (re-read whole file, verify every claim through the binary) and re-runs the N6 eval via the `run-dmtool-eval` skill.
+WI-5a is a **vertical slice**: the `emptyOperand` dimension end-to-end — schema, population for its operators, the N7-style verification lane (every facet claim generates a kernel-executed probe), the lint rework (`RK_UNGUARDED_NUMBER_COMPARISON` becomes facet-driven and complete), the operand-aware fix selection **in `SpanResolver`** (per S6: the read pass already holds the typed `Condition` AST with `FieldRef` kinds and typed literals; the kernel exposes no span/operand, and none is needed), and serving through `operators` (including fixing the dropped `gotcha.kind`). Only after the slice survives its consumers does WI-5b populate the remaining dimensions (§9) across all 109 operators, wire the eval judge, regenerate demos, and **re-capture native-image metadata** (an `operators.json` change is a re-capture trigger). WI-5c migrates the skill's per-operator facts to facets under the full skill-edit discipline (re-read whole file, verify every claim through the binary) and re-runs the N6 eval via the `run-dmtool-eval` skill.
 
 ### 6.6 WI-6 — JS replay — `Model: REGULAR_MODEL`
 
@@ -103,7 +110,7 @@ An `expect/actual` FS shim for Node `jsTest`, corpus JSON parsing in common code
 
 ### 6.7 WI-7 — opt-in real-corpus sweeps — `Model: REGULAR_MODEL` (findings → WI-T)
 
-For each model in `../a12-kernel-mm` (15 metamodels, 547 kernel-team-authored rules) and the A12 Tools workspaces: kernel `expand()` → loader → `SeedGenerator` instances → tri-engine comparison. Opt-in and env-guarded (the `KernelMmIntegrationTest` pattern — skips when the sibling/volume is absent); **nothing persisted** from either corpus (EUPL / proprietary). Unsupported constructs → a skip-and-report triage list (itself valuable: interpreter coverage measured against *real* usage). Custom conditions skip by class (no SPI impls). A divergence found live is minimized and **re-expressed as an own-domain committed corpus case** — the real corpus discovers, the committed corpus records (the standing copy-the-mechanism rule, extended from parsing to evaluation).
+For each model in `../a12-kernel-mm` (15 metamodels, 547 kernel-team-authored rules) and the A12 Tools workspaces: kernel `expand()` → loader → `SeedGenerator` instances → tri-engine comparison. **Prerequisites from S2** (why this item grew to 2–3 sessions): kernel pre-expansion must also resolve **`TypeDefType`** references into effective kinds/`enumValues`/constraints (258 fields — 67% of kernel-mm — otherwise seed as illegal strings and suppress the very rules under test); constraint-aware `ValidValues` (number bounds SMALL, string lengths TRIVIAL, pattern satisfaction MEDIUM — or a leave-empty fallback); the IG36 loader fixes (`DateFragmentType`, `TimeType.format`). Opt-in and env-guarded (the `KernelMmIntegrationTest` pattern — skips when the sibling/volume is absent); **nothing persisted** from either corpus (EUPL / proprietary). Unsupported constructs → a skip-and-report triage list (itself valuable: interpreter coverage measured against *real* usage). Custom conditions skip by class (no SPI impls). A divergence found live is minimized and **re-expressed as an own-domain committed corpus case** — the real corpus discovers, the committed corpus records (the standing copy-the-mechanism rule, extended from parsing to evaluation).
 
 ### 6.8 WI-8a/b — consolidation — `Model: 8a REGULAR_MODEL · 8b BEST_MODEL`
 
@@ -118,12 +125,14 @@ For each model in `../a12-kernel-mm` (15 metamodels, 547 kernel-team-authored ru
 { meta:       { id, kernelVersion: "30.8.1", source: fuzz-seed | curated | facet-generated,
                 sections: ["§9"], tags: ["partial", ...] },
   model:      <expanded, self-contained DM-JSON; rules embedded as stored-English condition strings>,
-  clock:      "2026-07-06T12:00:00",              // present iff the case uses Now/Today; runners inject via EvalClock
+  clock:      "2026-07-06T12:00:00",              // present iff the case uses Now/Today; ONE instant (S5) — interpreter
+                                                  // runners inject via EvalClock (today = the instant's date); kernel replay
+                                                  // pins it via DocumentProcessingConfig.currentDateForTest (modern path only)
   placements: [ {kind: GROUP|FIELD|EMPTY, path, reps: [..], value?} ],
   op:         validateFull | validatePart{ relevant: [..] } | compute,
   expected:   [ "CODE|VALUE_ERROR|/Lines[2]/Amount", ... ],   // sorted multiset; NO message text
   computeExpected: [ "path|VALUE|v" | "path|CLEARED" | "path|ERRORED" ],
-  divergences: [ {strategy, signatures} ] }                    // recorded facts; expected = production codegen (S3)
+  divergences: [ {strategy, signatures} ] }                    // recorded facts; expected = groovy-dynamic (S3: production-normative)
 ```
 
 Keying on DM-JSON is deliberate: it is the production input any real engine must parse, and the embedded stored-English conditions make the corpus a **parser conformance suite for free** (which is why S1 gates WI-3). `validatePart` cases are included and tagged (fork F3, resolved): partial-only semantics — IF54's phantom-row firing — exist nowhere else, so the runner contract must represent pointers to non-existent rows.
@@ -149,7 +158,7 @@ Keying on DM-JSON is deliberate: it is the production input any real engine must
 
 ### Runner spec (the third-party contract; WI-3a authors it)
 
-Placement semantics (parent-before-child, 1-based repetition indexes), the pointer format **including phantom rows**, value canonicalization (decimal scale/trailing-zero rules), sort/multiset comparison rules, clock injection, locale pin (`Locale.US`-equivalent behavior; message text excluded), and the compute-pointer form — specced cleanly, replacing the current regex index-strip in the comparator (a wart that must not leak into a published contract).
+Placement semantics (parent-before-child, 1-based repetition indexes), the pointer format **including phantom rows** (IF54), value canonicalization (decimal scale/trailing-zero rules), sort/multiset comparison rules, clock injection (one instant; Today = its calendar date in the model's timezone — S5), locale pin (`Locale.US`-equivalent behavior; message text excluded), and the compute-pointer form — specced cleanly, replacing the current regex index-strip in the comparator (a wart that must not leak into a published contract). Capture and kernel replay route through the modern `DocumentV2` + `DocumentProcessingConfig` path (the legacy `validateFull(IDocument, Locale)` cannot pin the clock).
 
 ### Guards & maintenance
 
@@ -205,7 +214,7 @@ CLAUDE.md's lifecycle section gains the third suffix row; the two disambiguation
 | F1 | Loader serialization: kotlinx.serialization (compiler plugin + runtime in the publishable artifact) vs hand-rolled minimal JSON reader (the module already hand-rolls its condition parser) | **open — owner call at WI-0/S4**; the loader itself is settled (the `:cli`/`:adapter` cycle makes it structurally required) |
 | F2 | Corpus publication | in-repo directory now; **publish when an external consumer materializes** (re-open trigger), after LICENSING §19 re-confirm |
 | F3 | `validatePart` cases | **resolved: include, tagged `partial`** — IF54's phantom-row semantics are otherwise uncapturable |
-| F4 | Parser strategy if S1 finds a large gap | decided at WI-0 with S4's EUPL constraint in view (hand-written completion keeps the license question moot) |
+| F4 | Parser strategy | **resolved (WI-0/S1+S4): complete the hand-written parser** (WI-P) — the gap is small and enumerable, the EUPL ANTLR-from-`.g4` question is moot, and the hand-written parser is already the shipped `model eval` path |
 
 ## 12. Doc impact
 
@@ -233,5 +242,5 @@ Verb surface: **no new verbs** (the `operators` payload grows; `model seed` alre
 
 - **Divergence triage (WI-T) is discovery, not overrun** — finding interpreter≠production-codegen divergences is the point; each is #1-priority exactness work that preempts the schedule. History (the fuzz bug track record) suggests hours-to-a-day each; the count is unknowable.
 - **Facet vocabulary will need one revision cycle** after the enricher and lints — the consumers with real logic — push back on the first schema. The vertical slice (WI-5a) caps that cost at one dimension.
-- **S1 is the estimate swing**: a large parser gap converts WI-3 from 2–4 sessions into a program-with-a-parser-workstream. Do not start WI-3a before S1 lands.
+- ~~S1 is the estimate swing~~ **retired 2026-07-06**: the sweep ran — the parser gap is bounded and enumerable (WI-P, 1–2 sessions); WI-3a is unblocked.
 - Native-image re-capture (WI-5b) and the corpus-task Gradle-input discipline (§7) are known traps carried as explicit checklist items, not risks.
