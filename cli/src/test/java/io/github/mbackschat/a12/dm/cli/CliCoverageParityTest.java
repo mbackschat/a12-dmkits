@@ -110,8 +110,8 @@ class CliCoverageParityTest {
             Map.entry("addInclude", "include add"),
             Map.entry("removeInclude", "include remove"),
             Map.entry("mount", "include add (mount a declared include)"),
-            Map.entry("setIncludeReference", "OPEN: G36 (include set-reference — FEATURE-GAPS-LEDGER)"),
-            Map.entry("renameInclude", "OPEN: G37 (include rename — FEATURE-GAPS-LEDGER)"),
+            Map.entry("setIncludeReference", "include set-reference"),
+            Map.entry("renameInclude", "include rename"),
             // ── terminal (not a CLI-authored mutation) ──
             Map.entry("validate", "EXCLUDED: terminal validate-and-bind, not an authoring op"));
 

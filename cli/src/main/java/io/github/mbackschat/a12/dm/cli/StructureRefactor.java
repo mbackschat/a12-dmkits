@@ -163,6 +163,17 @@ public final class StructureRefactor {
                 (adapter, doc) -> Set.of());
     }
 
+    public static StructureRefactor includeRename(String alias, String newAlias) {
+        // renameInclude repoints the header modelReference AND every mount's modelAlias in step; mounts are keyed
+        // by alias, and rules over mounted content are keyed by PATH (not alias), so no AST reference-rewrite.
+        return new StructureRefactor("include", "rename", "renamed", alias, newAlias, Map.of(),
+                (doc, adapter) -> new SafetyGate()
+                        .require(SafetyChecks.includeExists(doc, alias))
+                        .require(SafetyChecks.includeAliasAvailable(doc, newAlias)),
+                doc -> doc.renameInclude(alias, newAlias),
+                (adapter, doc) -> Set.of());
+    }
+
     /** The new full path of a renamed element: its parent path + the new name. */
     private static String renamePath(String path, String newName) {
         return path.substring(0, path.lastIndexOf('/') + 1) + newName;

@@ -132,6 +132,80 @@ class IncludeVerbTest {
     }
 
     @Test
+    void setReferenceRepointsAnIncludeInPlace(@TempDir Path dir) throws Exception {
+        Path model = subscriptionWithCatalog(dir);
+        Files.writeString(dir.resolve("catalog2.dm.json"),
+                DocumentModelDraft.named("catalog2").locale("en_US").locale("de_DE")
+                        .rootGroup("Catalog2", g -> g.field("Code", FieldKind.STRING))
+                        .build().toJson());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add",
+                "--alias", "catalog", "--reference", "catalog",
+                "--parent", "/Subscription", "--name", "Catalog",
+                "-w", dir.toString()).code());
+        var res = CliTestSupport.run("-m", model.toString(), "include", "set-reference", "catalog",
+                "--to", "catalog2", "-w", dir.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("applied", j.get("outcome").asText());
+        assertEquals("catalog2", j.path("changed").path("reference").asText());
+        // header re-pointed, the mount (keyed by alias) kept
+        assertTrue(Files.readString(model).contains("\"reference\" : \"catalog2\""));
+        assertTrue(Files.readString(model).contains("\"modelAlias\" : \"catalog\""));
+    }
+
+    @Test
+    void setReferenceOnUnknownAliasRefuses(@TempDir Path dir) throws Exception {
+        Path model = subscriptionWithCatalog(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "include", "set-reference", "nope",
+                "--to", "catalog", "-w", dir.toString());
+        assertEquals(2, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("refused", j.get("outcome").asText());
+        assertEquals("RK_NO_SUCH_INCLUDE", j.path("diagnostics").get(0).path("code").asText());
+    }
+
+    @Test
+    void renamesAnIncludeAliasAndItsMount(@TempDir Path dir) throws Exception {
+        Path model = subscriptionWithCatalog(dir);
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add",
+                "--alias", "catalog", "--reference", "catalog",
+                "--parent", "/Subscription", "--name", "Catalog",
+                "-w", dir.toString()).code());
+        var res = CliTestSupport.run("-m", model.toString(), "include", "rename", "catalog",
+                "--to", "products", "-w", dir.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("applied", j.get("outcome").asText());
+        assertEquals("catalog", j.path("changed").path("renamed").asText());
+        assertEquals("products", j.path("changed").path("to").asText());
+        String written = Files.readString(model);
+        assertTrue(written.contains("\"modelAlias\" : \"products\""), "the mount's alias moved");
+        assertFalse(written.contains("\"products\"") && written.contains("\"catalog\" :"), "no dangling old alias");
+    }
+
+    @Test
+    void renameToTakenAliasRefuses(@TempDir Path dir) throws Exception {
+        // the refactor safety gate (CLI-SPEC §6): renaming onto an existing include alias is refused, nothing written.
+        Path model = subscriptionWithCatalog(dir);
+        Files.writeString(dir.resolve("catalog2.dm.json"),
+                DocumentModelDraft.named("catalog2").locale("en_US").locale("de_DE")
+                        .rootGroup("Catalog2", g -> g.field("Code", FieldKind.STRING))
+                        .build().toJson());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add",
+                "--alias", "catalog", "--reference", "catalog",
+                "--parent", "/Subscription", "--name", "Catalog", "-w", dir.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add",
+                "--alias", "catalog2", "--reference", "catalog2",
+                "--parent", "/Subscription", "--name", "Catalog2", "-w", dir.toString()).code());
+        var res = CliTestSupport.run("-m", model.toString(), "include", "rename", "catalog",
+                "--to", "catalog2", "-w", dir.toString());
+        assertEquals(2, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("refused", j.get("outcome").asText());
+        assertEquals("RK_NAME_EXISTS", j.path("diagnostics").get(0).path("code").asText());
+    }
+
+    @Test
     void removesAnInclude(@TempDir Path dir) throws Exception {
         Path model = subscriptionWithCatalog(dir);
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add",

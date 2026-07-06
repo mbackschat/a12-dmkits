@@ -88,6 +88,8 @@ final class ApplyCommand extends BaseCommand {
         TYPEDEF_REMOVE("typedef", "remove", Set.of("typeDefId")),
         INCLUDE_ADD("include", "add", Set.of("alias", "reference", "parent", "name",
                 "repeatability", "exclude-rules", "exclude-computations")),
+        INCLUDE_SET_REFERENCE("include", "set-reference", Set.of("alias", "reference")),
+        INCLUDE_RENAME("include", "rename", Set.of("alias", "to")),
         INCLUDE_REMOVE("include", "remove", Set.of("alias")),
         CONFIG_MODIFY("config", "modify", Set.of("decimal-separator", "time-zone", "condition-language",
                 "label", "annotation", "comment", "clear-comment", "add-locale", "remove-locale", "role", "clear-roles",
@@ -532,6 +534,14 @@ final class ApplyCommand extends BaseCommand {
                 }
                 yield staged(which, changed, session);
             }
+            case INCLUDE_SET_REFERENCE -> {
+                String alias = req(op, "alias");
+                String reference = req(op, "reference");
+                session.setIncludeReference(alias, reference);
+                changed.put("alias", alias);
+                changed.put("reference", reference);
+                yield staged(which, changed, session);
+            }
             case INCLUDE_REMOVE -> {
                 String alias = req(op, "alias");
                 session.removeInclude(alias);
@@ -639,6 +649,8 @@ final class ApplyCommand extends BaseCommand {
                     StructureRefactor.ruleRename(req(op, "rulePathInModel"), req(op, "to")));
             case TYPEDEF_RENAME -> applyRefactor(session, resolver,
                     StructureRefactor.typedefRename(req(op, "typeDefId"), req(op, "to")));
+            case INCLUDE_RENAME -> applyRefactor(session, resolver,
+                    StructureRefactor.includeRename(req(op, "alias"), req(op, "to")));
             case FIELD_READ -> {
                 String path = req(op, "fieldPathInModel");
                 ModelDocument doc = ModelDocument.read(session.toJson());

@@ -240,6 +240,17 @@ public final class SafetyChecks {
                 : Optional.of(notFound(RkCode.NO_SUCH_INCLUDE, "include", alias));
     }
 
+    /**
+     * Refuse an include rename when {@code newAlias} is already a declared include alias — a rename must not
+     * collide with (and silently merge into) an existing include. The new-alias check runs before any mutation.
+     */
+    public static SafetyCheck includeAliasAvailable(ModelDocument doc, String newAlias) {
+        return () -> doc.includes().stream().anyMatch(i -> i.alias().equals(newAlias))
+                ? Optional.of(nameExists(newAlias, "include",
+                        "choose a new alias that is not already declared, or remove the existing '" + newAlias + "' first"))
+                : Optional.empty();
+    }
+
     /** Refuse a computation op whose target computation does not exist (RK_NO_SUCH_COMPUTATION). */
     public static SafetyCheck computationExists(KernelAdapter adapter, String computationFullName) {
         return () -> adapter.computationFullNames().contains(computationFullName)

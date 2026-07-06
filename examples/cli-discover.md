@@ -68,6 +68,8 @@ typedef import
 typedef unimport
 include add
 include read
+include set-reference
+include rename
 include remove
 include inline
 config read
