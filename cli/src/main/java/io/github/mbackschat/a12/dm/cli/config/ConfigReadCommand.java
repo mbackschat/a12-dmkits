@@ -19,8 +19,10 @@ import picocli.CommandLine.Command;
 /**
  * {@code dmtool config read} — read the model's document configuration. A read op: the payload rides {@code
  * data} ({@code decimalSeparator}, {@code timeZone}, {@code conditionLanguage}, {@code fieldRefByShortNameAllowed},
- * {@code supportedCharacters} — the allowed-character set, empty = all allowed — and {@code locales}, the
- * declared message locales that a rule/computation must each carry a message for).
+ * {@code supportedCharacters} — the allowed-character set, empty = all allowed — {@code locales}, the declared
+ * message locales that a rule/computation must each carry a message for, and the model-level metadata:
+ * {@code label} (per-locale, the read peer of {@code config modify --label}), {@code comment}, {@code baseYear},
+ * and {@code annotations}).
  */
 @Command(name = "read", mixinStandardHelpOptions = true,
         description = "Read the document configuration into `data` — incl. `locales`, the declared display-locale "
@@ -53,6 +55,12 @@ final class ConfigReadCommand extends BaseCommand {
             // The allowed-character set (each entry a char or a range like " -~"); empty = all characters allowed.
             ArrayNode supported = data.putArray("supportedCharacters");
             c.supportedCharacters().forEach(supported::add);
+            // the model-level per-locale label (header.labels) — the read peer of `config modify --label`
+            Map<String, String> modelLabels = doc.modelLabels();
+            if (!modelLabels.isEmpty()) {
+                ObjectNode label = data.putObject("label");
+                modelLabels.forEach(label::put);
+            }
             // the model-level comment (modelInfo.comment), if set
             doc.modelComment().ifPresent(comment -> data.put("comment", comment));
             // the model's base year (modelInfo.baseYear), if set — the read peer of `config modify --base-year`

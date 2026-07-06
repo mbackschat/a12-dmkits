@@ -242,6 +242,19 @@ class ConfigVerbTest {
     }
 
     @Test
+    void configReadEchoesTheModelLabel(@TempDir Path dir) throws Exception {
+        // the model-level label round-trips through config read (a per-locale label must cover every declared
+        // model locale, a kernel constraint — the en-only fixture keeps it a single locale)
+        Path model = enOnlyModel(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "config", "modify", "--label", "en_US=Orders");
+        assertEquals(0, res.code(), res.err());
+        assertEquals("Orders", M.readTree(res.out()).path("changed").path("label.en_US").asText());
+        var read = CliTestSupport.run("-m", model.toString(), "config", "read");
+        assertEquals("Orders", M.readTree(read.out()).path("data").path("label").path("en_US").asText(),
+                () -> read.out());
+    }
+
+    @Test
     void modifyRequiresAtLeastOneSetting(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         var res = CliTestSupport.run("-m", model.toString(), "config", "modify");
