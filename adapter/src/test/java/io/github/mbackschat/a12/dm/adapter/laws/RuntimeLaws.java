@@ -8,6 +8,7 @@ import java.io.StringReader;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -485,7 +486,12 @@ public final class RuntimeLaws {
      * path, so both codegen strategies report compute outcomes at the same granularity as the interpreter.
      */
     private static List<Computed> computeDetail(IDocumentRtService rt, IDocument instance) {
-        IDocumentComputationResult result = rt.compute(instance, Locale.US);
+        return computeDetailOf(rt.compute(instance, Locale.US));
+    }
+
+    /** Map a {@link IDocumentComputationResult} to its value/cleared/errored detail — shared by the legacy
+     *  {@link #computeDetail} and the modern clock-pinnable {@link #computeModern} path. */
+    private static List<Computed> computeDetailOf(IDocumentComputationResult result) {
         List<Computed> out = new ArrayList<>();
         result.getComputedFieldInstancesWithChanges().forEach(c ->
                 out.add(new Computed(c.getPath(), fmtPointer(c.pointer()), c.getStringValue(), false, false)));
@@ -494,6 +500,53 @@ public final class RuntimeLaws {
         result.getClearedFieldInstances().forEach(c ->
                 out.add(new Computed(c.getPath(), fmtPointer(c.pointer()), Optional.empty(), true, false)));
         return out;
+    }
+
+    // ---- modern path with an optional pinned clock (the corpus capture/replay path, §9/§13) ------
+
+    /** The modern {@link DocumentProcessingConfig} at {@link Locale#US}, pinning {@code clock} as
+     *  {@code currentDateForTest} (both Today and Now) when non-null (else the real current date). */
+    static DocumentProcessingConfig config(Date clock) {
+        var b = DocumentProcessingConfig.builder(Locale.US);
+        if (clock != null) {
+            b.currentDateForTest(clock);
+        }
+        return b.build();
+    }
+
+    /** Groovy-dynamic {@code validateFull(DocumentV2, config)} — the corpus capture anchor (S3/§13), clock-pinnable. */
+    static List<Msg> messagesModern(String modelJson, Doc doc, Date clock) {
+        IDocumentModelResolver resolver = resolverOf(modelJson);
+        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
+        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
+        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
+        return rt.validateFull(v2, config(clock)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+    }
+
+    /** Groovy-dynamic {@code validatePart(DocumentV2, relevant, config)} — clock-pinnable. */
+    static List<Msg> messagesPartModern(String modelJson, Doc doc, Set<Relevant> relevant, Date clock) {
+        IDocumentModelResolver resolver = resolverOf(modelJson);
+        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
+        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
+        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
+        Set<DocumentMultiPointer> rel = relevant.stream()
+                .map(r -> DocumentMultiPointer.of(r.path(), r.reps())).collect(Collectors.toSet());
+        return rt.validatePart(v2, rel, config(clock)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+    }
+
+    /** Groovy-dynamic {@code compute(DocumentV2, config)} — clock-pinnable (the corpus compute capture path). */
+    static List<Computed> computeModern(String modelJson, Doc doc, Date clock) {
+        IDocumentModelResolver resolver = resolverOf(modelJson);
+        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
+        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
+        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
+        return computeDetailOf(rt.compute(v2, config(clock)));
+    }
+
+    /** A single-model {@link IDocumentModelResolver} for {@code modelJson} (deserialized + expanded once). */
+    private static IDocumentModelResolver resolverOf(String modelJson) {
+        IDocumentModel model = expandedModel(modelJson);
+        return id -> model;
     }
 
     /** Whether {@code path} computed a (non-empty) value under {@code compute()}. */
@@ -679,6 +732,28 @@ public final class RuntimeLaws {
                     .map(r -> DocumentMultiPointer.of(r.path(), r.reps())).collect(Collectors.toSet());
             DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US).build();
             return rt.validatePart(v2, relevantPointers, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        }
+
+        // ---- modern clock-pinnable path (the corpus tri-verification's java-static leg, §9) ----------
+
+        /** Static-JAVA {@code validateFull(DocumentV2, config)} — clock-pinnable. */
+        List<Msg> messagesModern(Doc doc, Date clock) {
+            DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(instance(doc));
+            return rt.validateFull(v2, config(clock)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        }
+
+        /** Static-JAVA {@code validatePart(DocumentV2, relevant, config)} — clock-pinnable. */
+        List<Msg> messagesPartModern(Doc doc, Set<Relevant> relevant, Date clock) {
+            DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(instance(doc));
+            Set<DocumentMultiPointer> rel = relevant.stream()
+                    .map(r -> DocumentMultiPointer.of(r.path(), r.reps())).collect(Collectors.toSet());
+            return rt.validatePart(v2, rel, config(clock)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        }
+
+        /** Static-JAVA {@code compute(DocumentV2, config)} — clock-pinnable. */
+        List<Computed> computeModern(Doc doc, Date clock) {
+            DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(instance(doc));
+            return computeDetailOf(rt.compute(v2, config(clock)));
         }
     }
 
