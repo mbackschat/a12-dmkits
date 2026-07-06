@@ -37,6 +37,7 @@ import javax.tools.ToolProvider;
 import com.mgmtp.a12.kernel.md.document.api.IDocument;
 import com.mgmtp.a12.kernel.md.document.api.services.IDocumentFactory;
 import com.mgmtp.a12.kernel.md.document.apiV2.DocumentMultiPointer;
+import com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer;
 import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer;
 import com.mgmtp.a12.kernel.md.document.apiV2.immutable.DocumentV2;
 import io.github.mbackschat.a12.dm.interpreter.eval.PointerKt;
@@ -296,6 +297,12 @@ public final class RuntimeLaws {
         return PointerKt.formatPointer(p.fullName(), p.repetitionIndexes());
     }
 
+    /** A computed-field {@link DocumentPointer} rendered the SAME clean {@code formatPointer} way — the per-row
+     *  compute identity the corpus records (CONFORMANCE-CORPUS-SPEC §7), replacing the historical index-strip. */
+    private static String fmtPointer(DocumentPointer p) {
+        return PointerKt.formatPointer(p.fullName(), p.repetitionIndexes());
+    }
+
     /** The {@link IMessage.MessageType} of the fired {@code errorCode} (empty when it did not fire). */
     static Optional<IMessage.MessageType> typeOf(String modelJson, String errorCode, Doc doc) {
         return messages(modelJson, doc).stream().filter(m -> m.code().equals(errorCode))
@@ -455,7 +462,7 @@ public final class RuntimeLaws {
      * in — {@code value} present means it computed a value; {@code cleared} means the kernel set it empty
      * (computed nothing); {@code errored} means an operand/computation error.
      */
-    record Computed(String path, Optional<String> value, boolean cleared, boolean errored) {
+    record Computed(String path, String pointer, Optional<String> value, boolean cleared, boolean errored) {
     }
 
     /**
@@ -481,11 +488,11 @@ public final class RuntimeLaws {
         IDocumentComputationResult result = rt.compute(instance, Locale.US);
         List<Computed> out = new ArrayList<>();
         result.getComputedFieldInstancesWithChanges().forEach(c ->
-                out.add(new Computed(c.getPath(), c.getStringValue(), false, false)));
+                out.add(new Computed(c.getPath(), fmtPointer(c.pointer()), c.getStringValue(), false, false)));
         result.getComputedFieldInstancesWithErrors().forEach(c ->
-                out.add(new Computed(c.getPath(), c.getStringValue(), false, true)));
+                out.add(new Computed(c.getPath(), fmtPointer(c.pointer()), c.getStringValue(), false, true)));
         result.getClearedFieldInstances().forEach(c ->
-                out.add(new Computed(c.getPath(), Optional.empty(), true, false)));
+                out.add(new Computed(c.getPath(), fmtPointer(c.pointer()), Optional.empty(), true, false)));
         return out;
     }
 

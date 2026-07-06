@@ -3,6 +3,8 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import io.github.mbackschat.a12.dm.adapter.perf.PerfScenario
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
 import io.github.mbackschat.a12.dm.interpreter.gen.asSink
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
@@ -102,7 +104,7 @@ object FuzzDiagnostics {
         Detail(msgs.map { it.code() }.sorted(), msgs.map { it.code() to it.field() }.toSet(), msgs.map(::msgSig).sorted())
 
     private fun interpDoc(model: ModelDef, places: List<Place>): Document {
-        val doc = Document(model.kinds, model.declaredReps, model.unsignedFields, model.rangeConfig, model.dateFormats, model.scales)
+        val doc = model.newDocument()   // ALL config maps threaded (dateTime/precision/enum/time too) — not a partial
         replay(places, doc.asSink())
         return doc
     }
@@ -219,18 +221,21 @@ object FuzzDiagnostics {
 
     private fun interpComputeSignatures(model: ModelDef, places: List<Place>): List<String> =
         DmInterpreter(model).compute(interpDoc(model, places)).map {
+            val p = formatPointer(it.path, it.indices)   // PER-ROW pointer — a wrong value on the wrong row now splits
             when (it.outcome) {
-                ComputeOutcome.VALUE -> "${it.path}|VALUE|${it.value}"
-                ComputeOutcome.CLEARED -> "${it.path}|CLEARED"
-                ComputeOutcome.ERRORED -> "${it.path}|ERRORED"
+                ComputeOutcome.VALUE -> "$p|VALUE|${it.value}"
+                ComputeOutcome.CLEARED -> "$p|CLEARED"
+                ComputeOutcome.ERRORED -> "$p|ERRORED"
             }
         }.sorted()
 
-    /** The `path|VALUE|v` / `path|CLEARED` / `path|ERRORED` signature of a kernel [RuntimeLaws.Computed] (per-row
-     *  repetition indices stripped) — shared by the Groovy and java-static compute legs. */
+    /** The `pointer|VALUE|v` / `pointer|CLEARED` / `pointer|ERRORED` signature of a kernel [RuntimeLaws.Computed] —
+     *  the PER-ROW pointer (shared `formatPointer` form, CONFORMANCE-CORPUS-SPEC §7), shared by the Groovy and
+     *  java-static compute legs. Supersedes the historical index-strip, which could not tell the right value on
+     *  the wrong row from the right value on the right row. */
     private fun computeSigOf(outcomes: List<RuntimeLaws.Computed>): List<String> =
         outcomes.map {
-            val p = it.path().replace(INDEX, "")
+            val p = it.pointer()
             when {
                 it.cleared() -> "$p|CLEARED"
                 it.errored() -> "$p|ERRORED"
@@ -317,8 +322,6 @@ object FuzzDiagnostics {
         return if (report.isEmpty()) "seed=$seed/rel=$relevantSeed: signatures agree"
         else "seed=$seed/rel=$relevantSeed  relevant=${iRel.size}/${places.size}$report"
     }
-
-    private val INDEX = Regex("\\[\\d+]")
 
     /** Multiset difference `a − b` (each element of [b] cancels at most one of [a]). */
     private fun multisetMinus(a: List<String>, b: List<String>): List<String> {

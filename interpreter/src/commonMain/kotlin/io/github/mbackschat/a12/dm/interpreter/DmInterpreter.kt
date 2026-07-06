@@ -490,7 +490,7 @@ class DmInterpreter @JvmOverloads constructor(
      * formal-error increment.
      */
     fun compute(doc: Document, locale: String = "en_US"): List<Computed> =
-        computeInstances(doc).map { it.computed }
+        computeInstances(doc)
 
     /**
      * Apply this model's computations to [doc] and return the **updated document** (old + computed values) —
@@ -507,19 +507,17 @@ class DmInterpreter @JvmOverloads constructor(
      */
     fun applyComputations(doc: Document, locale: String = "en_US"): Document {
         val overrides = HashMap<Pair<String, List<Int>>, String?>()
-        for ((reps, computed) in computeInstances(doc)) {
-            overrides[computed.path to reps] = if (computed.outcome == ComputeOutcome.VALUE) computed.value else null
+        for (computed in computeInstances(doc)) {
+            overrides[computed.path to computed.indices] = if (computed.outcome == ComputeOutcome.VALUE) computed.value else null
         }
         return doc.withComputed(overrides)
     }
 
-    /** One computed-field outcome paired with the repetition indices of its target cell. */
-    private data class ComputedInstance(val reps: List<Int>, val computed: Computed)
-
     /**
-     * Every computed-field outcome WITH its target's repetition indices — the reps-aware core behind both
-     * [compute] (which strips the reps into the public report) and [applyComputations] (which needs them to
-     * address the right cell).
+     * Every computed-field outcome WITH its target cell's repetition indices ([Computed.indices]) — the core
+     * behind both [compute] (which returns it as the public report) and [applyComputations] (which needs the
+     * indices to address the right cell). The per-row identity flows straight onto [Computed] (no separate
+     * carrier), which the conformance corpus records (CONFORMANCE-CORPUS-SPEC §7).
      *
      * **Cascade** — a computation may reference ANOTHER computation's target field; the kernel computes the
      * dependency first and the dependent reads its computed value (the CalculationCache). We mirror that
@@ -533,8 +531,8 @@ class DmInterpreter @JvmOverloads constructor(
      * outcome (not changed / cleared / errored; probe-confirmed, IF40). We track each errored (or transitively
      * dependent) target instance as *poisoned* and skip any dependent that reads it.
      */
-    private fun computeInstances(doc: Document): List<ComputedInstance> {
-        val out = mutableListOf<ComputedInstance>()
+    private fun computeInstances(doc: Document): List<Computed> {
+        val out = mutableListOf<Computed>()
         val overlay = HashMap<Pair<String, List<Int>>, Val>()
         val poisoned = HashSet<Pair<String, List<Int>>>()
         val computedTargets = model.computations.mapTo(HashSet()) { it.targetPath }
@@ -552,8 +550,8 @@ class DmInterpreter @JvmOverloads constructor(
                 val interp = Interpreter(ectx, clock, model.baseYear, model.indexFields, predefinedTypes,
                     customFieldTypes = customFieldTypes)
                 val v = evalComputation(parsed, interp)
-                val computed = toComputed(comp, v)
-                out += ComputedInstance(targetKey.second, computed)
+                val computed = toComputed(comp, v, targetKey.second)
+                out += computed
                 // ERRORED: report it, but poison the target and do NOT overlay — a dependent must be skipped, not
                 // computed from the bad value. A resolved VALUE overlays so dependents read the computed result.
                 when {
@@ -581,8 +579,9 @@ class DmInterpreter @JvmOverloads constructor(
         return Val.Unknown
     }
 
-    /** One computed-field outcome for [comp] from its evaluated [v]: VALUE (resolved, empty-as-0 applies) / CLEARED. */
-    private fun toComputed(comp: ComputationDef, v: Val): Computed {
+    /** One computed-field outcome for [comp] at target-cell [reps] from its evaluated [v]: VALUE (resolved,
+     *  empty-as-0 applies) / CLEARED. [reps] rides onto [Computed.indices] for the per-row identity (§7). */
+    private fun toComputed(comp: ComputationDef, v: Val, reps: List<Int>): Computed {
         // Render the computed value to the TARGET field's stored form: a Num → canonical decimal; a DATE Txt →
         // the field's date format (IF33; `AddYears(...)` into `dd.MM.yyyy` → `30.06.2026`); a date-RANGE → the
         // field's (format, separator). An Unknown computes nothing → CLEARED.
@@ -591,9 +590,9 @@ class DmInterpreter @JvmOverloads constructor(
             is Val.Txt -> renderScalarValue(v.v, comp.targetPath)
             is Val.Bool -> v.v.toString()
             is Val.Range -> renderRange(v, comp.targetPath)
-            is Val.Unknown -> return Computed(comp.targetPath, ComputeOutcome.CLEARED)
+            is Val.Unknown -> return Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps)
         }
-        return Computed(comp.targetPath, computedOutcome(comp.targetPath, rendered), rendered)
+        return Computed(comp.targetPath, computedOutcome(comp.targetPath, rendered), rendered, reps)
     }
 
     /** A computed value's bucket: ERRORED when it is formally INVALID for the target field (e.g. a number out of

@@ -508,9 +508,17 @@ data class RuleResult(
  */
 enum class ComputeOutcome { VALUE, CLEARED, ERRORED }
 
-/** The [outcome] of computing one field at [path], with its [value] when [ComputeOutcome.VALUE]. */
+/**
+ * The [outcome] of computing one field at [path], with its [value] when [ComputeOutcome.VALUE], and the
+ * target cell's repetition [indices] (one 1-based index per path part, the field included) — so a per-row
+ * computed field (one outcome per repeated row) carries its exact row identity. Render the full pointer with
+ * [io.github.mbackschat.a12.dm.interpreter.eval.formatPointer]`(path, indices)` — this is the per-row identity
+ * the conformance corpus records (CONFORMANCE-CORPUS-SPEC §7), superseding the historical index-strip. [indices]
+ * defaults empty for a hand-built [Computed] (a non-repeatable target renders bare).
+ */
 data class Computed(
     val path: String,
     val outcome: ComputeOutcome,
     val value: String? = null,
+    val indices: List<Int> = emptyList(),
 )

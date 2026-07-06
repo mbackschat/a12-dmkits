@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionData
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.ValuedField
 import kotlin.jvm.JvmOverloads
 
@@ -40,6 +41,19 @@ internal const val UNKNOWN_REP = -5
  * auto-instantiation dedupes via a set (not an O(P²) build scan). Net: per-row evaluation is ~O(rows · refs),
  * not O(rows · placements).
  */
+/**
+ * An empty [Document] configured from [model] — every kind / reps / format / scale / enum / precision map the
+ * evaluator needs, threaded from the [ModelDef] in ONE place. Placements are then added via the builder methods
+ * or [io.github.mbackschat.a12.dm.interpreter.gen.asSink]. A consumer (corpus replay, a differential, a demo)
+ * builds an instance without hand-listing the constructor's config maps — hand-listing them is how the FIVE
+ * trailing maps (`dateTimeFormats`, `datePrecisions`, `enumValues`, `enumCategories`, `timeFormats`) get silently
+ * dropped, which mis-evaluates a document over a datetime / partial-date / enum-category / time field.
+ */
+fun ModelDef.newDocument(): Document = Document(
+    kinds, declaredReps, unsignedFields, rangeConfig, dateFormats, scales,
+    dateTimeFormats, datePrecisions, enumValues, enumCategories, timeFormats,
+)
+
 class Document @JvmOverloads constructor(
     private val kinds: Map<String, Kind>,
     private val declaredReps: Map<String, Int> = emptyMap(),
