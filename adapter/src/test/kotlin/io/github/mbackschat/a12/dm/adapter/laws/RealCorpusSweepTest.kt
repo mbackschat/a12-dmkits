@@ -260,35 +260,35 @@ class RealCorpusSweepTest {
         var computeComparisons = 0
         var javaStaticSplits = 0
         private val firedCodes = HashSet<String>()
-        private val modelSkips = LinkedHashMap<String, MutableList<String>>()
+        private val modelSkips = LinkedHashMap<String, Int>()
         private val evalSkips = LinkedHashMap<String, Int>()
         private val unsupportedRules = LinkedHashMap<String, Int>()
-        val divergences = mutableListOf<String>()
 
         fun modelSwept(m: ModelDef) { models++; rules += m.rules.size; computationsDeclared += m.computations.size }
         fun validated(sigs: List<String>) { validateComparisons++; sigs.forEach { firedCodes.add(it.substringBefore('|')) } }
         fun computed() { computeComparisons++ }
         fun javaStaticSplit(file: Path, op: String) { javaStaticSplits++ }
         fun unsupportedRule(cls: String) { unsupportedRules.merge(cls, 1) { a, b -> a + b } }
-        fun modelSkip(cls: String, file: Path, t: Throwable) {
-            modelSkips.getOrPut(cls) { mutableListOf() }.add(file.name)
-        }
+        fun modelSkip(cls: String, file: Path, t: Throwable) { modelSkips.merge(cls, 1) { a, b -> a + b } }
         fun evalSkip(cls: String, file: Path, t: Throwable) { evalSkips.merge(cls, 1) { a, b -> a + b } }
         private val divergenceClasses = LinkedHashMap<String, Int>()
+        private var divergenceCount = 0
         fun divergence(file: Path, seed: Int, op: String, kernel: List<String>, interp: List<String>) {
-            val kOnly = kernel.toMutableList().apply { interp.forEach { remove(it) } }
-            val iOnly = interp.toMutableList().apply { kernel.forEach { remove(it) } }
-            divergences.add("${file.name} seed=$seed $op  kernel-only=${kOnly.take(6)} interp-only=${iOnly.take(6)}")
-            // A license-safe shape class (op + which side has extra signatures) — the WI-T triage taxonomy; no
-            // corpus codes leak (the raw kernel-only/interp-only lists are console-only, never committed).
+            divergenceCount++
+            val kOnly = kernel.any { it !in interp }
+            val iOnly = interp.any { it !in kernel }
+            // Only a license-safe SHAPE class is retained (op + which side has extra signatures) — the WI-T triage
+            // taxonomy. The raw kernel-only/interp-only signatures carry real corpus codes/values, so they are
+            // NEVER persisted (not printed, not written to the XML) — nothing from the EUPL/proprietary corpora
+            // leaves this process.
             val shape = when {
-                kOnly.isNotEmpty() && iOnly.isNotEmpty() -> "both-sides-differ"
-                kOnly.isNotEmpty() -> "kernel-only (interp misses)"
+                kOnly && iOnly -> "both-sides-differ"
+                kOnly -> "kernel-only (interp misses)"
                 else -> "interp-only (interp extra)"
             }
             divergenceClasses.merge("$op: $shape", 1) { a, b -> a + b }
         }
-        fun divergenceClassHistogram(): Map<String, Int> = divergenceClasses
+        val divergences: Int get() = divergenceCount
 
         fun print() {
             println("\n[corpus-sweep] ===== $label =====")
@@ -303,18 +303,17 @@ class RealCorpusSweepTest {
             }
             if (modelSkips.isNotEmpty()) {
                 println("  model-level skips by class:")
-                modelSkips.forEach { (cls, files) -> println("     [${files.size}] $cls   e.g. ${files.take(3)}") }
+                modelSkips.entries.sortedByDescending { it.value }.forEach { (cls, n) -> println("     [$n] $cls") }
             }
             if (evalSkips.isNotEmpty()) {
                 println("  eval-level skips by class:")
                 evalSkips.entries.sortedByDescending { it.value }.forEach { (cls, n) -> println("     [$n] $cls") }
             }
-            println("  interp≠kernel divergences: ${divergences.size}")
+            println("  interp≠kernel divergences: $divergences")
             if (divergenceClasses.isNotEmpty()) {
                 println("  divergence classes (shape — the WI-T triage taxonomy):")
                 divergenceClasses.entries.sortedByDescending { it.value }.forEach { (cls, n) -> println("     [$n] $cls") }
             }
-            divergences.take(40).forEach { println("     · $it") }
         }
     }
 }
