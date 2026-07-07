@@ -10,11 +10,14 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * Multiplatform (JVM + JS) lock for IG40(c)/IF64: `RepetitionNotUnique` excludes a row whose KEY cell is FORMALLY
- * INVALID (UNKNOWN — a malformed value or a duplicate-index cell), mirroring the kernel's
- * `getWerteOrNullIfEinFeldNichtPruefungsRelevant`. A required-empty cell is NOT invalid (it is a valid empty
- * participant). The kernel-differential is `adapter.laws.RepetitionNotUniqueFormalKeyDiffTest` (JVM only); this
- * runs the SAME evaluator on both targets.
+ * Multiplatform (JVM + JS) lock for IF64: `RepetitionNotUnique` excludes a row whose KEY cell is FORMALLY
+ * INVALID (kernel `isWertAngegeben == UNKNOWN`), mirroring `getWerteOrNullIfEinFeldNichtPruefungsRelevant`. UNKNOWN
+ * covers EVERY not-check-relevant cause: a malformed value, a duplicate-index cell, and a required-EMPTY cell — the
+ * kernel's mandatory check is a preliminary autogen rule that marks the field invalid BEFORE RNU builds its cache
+ * (corrected 2026-07-07 — IF64's original "required-empty is a valid participant" claim was wrong). An OPTIONAL-empty key cell is
+ * NOT invalid — it is a valid empty participant (locked by `RepetitionNotUniqueDiffTest.compositeEmptyComponentIsOmission`).
+ * The kernel-differential is `adapter.laws.RepetitionNotUniqueFormalKeyDiffTest` (JVM only); this runs the SAME
+ * evaluator on both targets.
  */
 class RepetitionNotUniqueFormalKeyTest {
 
@@ -59,5 +62,18 @@ class RepetitionNotUniqueFormalKeyTest {
         // excluded from the RNU cache → RNU does not fire (only the auto uniqueIndex would, a different code).
         val m = model("RepetitionNotUnique(Items/Sku)", "../Items/Sku")
         assertEquals(emptyList(), fired(m, twoRows(m, "DUP", "1", "DUP", "2")), "duplicate-index key cells excluded")
+    }
+
+    @Test
+    fun requiredEmptyKeyCellIsExcluded() {
+        // COMPOSITE key (Sku, Count) with Sku (the index → auto-required RELATIVE_TO_PARENT) left EMPTY on both
+        // rows and Count duplicated. Sku is required-empty → the preliminary mandatory rule marks it UNKNOWN →
+        // the row is dropped from the cache → RNU does NOT fire (IF64, corrected 2026-07-07). Two empty Sku cells do not collide, so
+        // the only invalidation is the required-empty one.
+        val m = model("RepetitionNotUnique(Items/Sku, Items/Count)", "../Items/Count")
+        val doc = m.newDocument().group("/Order", 1)
+            .group("/Order/Items", 1, 1).field(count, "5", 1, 1, 1)
+            .group("/Order/Items", 1, 2).field(count, "5", 1, 2, 1)
+        assertEquals(emptyList(), fired(m, doc), "required-empty key cell excludes the row")
     }
 }

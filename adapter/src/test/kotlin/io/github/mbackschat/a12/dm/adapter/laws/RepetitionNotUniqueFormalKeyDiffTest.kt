@@ -30,8 +30,12 @@ class RepetitionNotUniqueFormalKeyDiffTest {
     /** Inject `RepetitionNotUnique(Items/<key>)` on `/Order` (the kernel requires the RNU rule to sit ABOVE the
      *  repeatable group — `MVK_REPEATABLE_GROUP_MISSING`); build `Items` rows = [rows] (`(sku, count)`, null =
      *  empty). Equal `sku` values are duplicate INDEXES (Sku is the model's index field). */
-    private fun scenario(key: String, errorRel: String, rows: List<Pair<String?, String?>>): Scenario {
-        val cond = "RepetitionNotUnique(Items/$key)"
+    private fun scenario(key: String, errorRel: String, rows: List<Pair<String?, String?>>): Scenario =
+        scenarioCond("RepetitionNotUnique(Items/$key)", errorRel, rows)
+
+    /** As [scenario], but with an explicit RNU condition (so a COMPOSITE key `Items/Sku, Items/Count` can be
+     *  injected). Each row is `(sku, count)`, null = an empty (present-but-valueless) cell. */
+    private fun scenarioCond(cond: String, errorRel: String, rows: List<Pair<String?, String?>>): Scenario {
         val kModel = RuntimeLaws.withRule(order, "/Order", "R", errorRel, CODE, cond)
         val def = ModelLoader.load(kModel)
         val kDoc = RuntimeLaws.doc().group("/Order", 1)
@@ -86,6 +90,30 @@ class RepetitionNotUniqueFormalKeyDiffTest {
     @Test fun rnuOverMalformedKeyCellsDoesNotFire() =
         agree(scenario("Count", "../Items/Count", listOf("A" to "1x", "B" to "1x")),
             "RNU(Count) over malformed key cells: excluded → RNU does not fire")
+
+    // IF64 correction (2026-07-07): a COMPOSITE key whose one component is REQUIRED and left EMPTY, with the OTHER
+    // component duplicated. IF64 originally claimed a required-empty key cell PARTICIPATES as a valid empty
+    // participant (isWertAngegeben == FALSE → a null key component) → the rows would duplicate on (null, "5") and
+    // fire OMISSION. Differentially FALSE: the kernel marks a required-empty field INVALID via the PRELIMINARY
+    // mandatory autogen rule (isPreliminary → preliminaryError → markFieldAsInvalidForValidation), which runs
+    // BEFORE the RNU rule builds its cache, so isWertAngegeben == UNKNOWN →
+    // getWerteOrNullIfEinFeldNichtPruefungsRelevant drops the whole row → RNU does NOT fire (kernel == []). Sku is
+    // the index field, auto-required RELATIVE_TO_PARENT; two empty Sku cells do not collide (uniqueIndex ignores
+    // empties), so the ONLY invalidation is the required-empty one. (Contrast the OPTIONAL-empty key component in
+    // RepetitionNotUniqueDiffTest.compositeEmptyComponentIsOmission — a non-required empty cell IS a valid empty
+    // participant → OMISSION; the distinguishing property is requiredness, not emptiness.)
+    @Test fun rnuCompositeKeyWithRequiredEmptyComponentDoesNotFire() =
+        agree(scenarioCond("RepetitionNotUnique(Items/Sku, Items/Count)", "../Items/Count",
+            listOf(null to "5", null to "5")),
+            "RNU(Sku,Count), Sku required+empty on both rows, Count duplicated: required-empty key cell is UNKNOWN " +
+                "(preliminary mandatory marks it invalid) → row dropped → does not fire")
+
+    // Control (composite machinery + a FILLED key participates): both components filled and fully duplicated →
+    // the rows are duplicates on ("A", "5"), no empty component → VALUE fire on both.
+    @Test fun rnuCompositeKeyFullyDuplicatedFiresValue() =
+        agree(scenarioCond("RepetitionNotUnique(Items/Sku, Items/Count)", "../Items/Count",
+            listOf("A" to "5", "A" to "5")),
+            "RNU(Sku,Count) fully duplicated (no empty component): fires VALUE on both")
 
     // Both strategies: codegen's `EntityListCondition.st` calls the SAME runtime `wiederholungNichtEindeutig` /
     // `ermittleWiederholungenMitDuplikaten` (IF62), so the check-relevant-cells-only exclusion holds on the
