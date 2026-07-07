@@ -219,7 +219,7 @@ class DmInterpreter @JvmOverloads constructor(
         for (rule in model.rules) {
             try {
                 val rnu = repetitionNotUnique(rule)
-                messages += if (rnu != null) repetitionNotUniqueMessages(rule, rnu, doc, locale, isRelevant)
+                messages += if (rnu != null) repetitionNotUniqueMessages(rule, rnu, doc, locale, dup, cache, isRelevant, customRelevant, starRelevant)
                 else messagesFor(rule, doc, locale, dup, cache, isRelevant, customRelevant, starRelevant)
             } catch (e: UnsupportedConstructException) {
                 unsupported += UnsupportedRule(rule.path, e.message ?: "unsupported construct")
@@ -361,22 +361,66 @@ class DmInterpreter @JvmOverloads constructor(
                 uniqueIndexText(locale))
         }
 
-    /** A recognized `RepetitionNotUnique` rule: its key field paths + the optional `@From` reference-group ref. */
-    private data class RnuRule(val keys: List<String>, val fromScope: String?)
+    /** A recognized `RepetitionNotUnique` rule: its key field paths, the optional `@From` reference-group ref,
+     *  and the optional [guard] — the conjunction of the OTHER top-level conjuncts when the RNU predicate is
+     *  one conjunct of an And-tree (null when RNU is the whole condition). */
+    private data class RnuRule(val keys: List<String>, val fromScope: String?, val guard: Cond?)
 
     /**
-     * If [rule]'s condition is a standalone `RepetitionNotUnique(key, … [@From ref])` over plain fields, its
-     * keys + the optional `@From` ref; else null (a normal rule, handled per-row). The kernel forbids
-     * groups/asterisks as keys, so a non-field key arg makes it unsupported (returns null).
+     * If [rule]'s condition is `[<guard> And] RepetitionNotUnique(key, … [@From ref])` — the RNU predicate
+     * standing alone OR as exactly ONE top-level conjunct of an And-tree — its keys, the optional `@From` ref,
+     * and the guard (the AND of the remaining conjuncts, or null); else null (a normal rule, handled per-row).
+     *
+     * The kernel evaluates RepetitionNotUnique as a **per-row 3VL predicate** whose duplicate cache is built
+     * over the full scope **independent of the guard** — confirmed in BOTH strategies: the runtime
+     * `RuntimeController.wiederholungNichtEindeutig` builds the cache once (`isInitialised`) over all rows in
+     * `ermittleWiederholungenMitDuplikaten`, then per-row returns TRUE_WF/TRUE_AF/FALSE_OR_UNKNOWN; the codegen
+     * `EntityListCondition.st` emits a call to that same method with a per-rule `RepetitionNotUniqueErrorCache`.
+     * So a guard is just a separate conjunct combined by the ordinary 3VL And ([repetitionNotUniqueMessages]
+     * gates each duplicate row by it).
+     *
+     * Recognition stays STRICT — degrade loud (IF61), never silently wrong — returning null when the shape is
+     * NOT this per-row-predicate-under-And form: RNU under an `Or` or nested below a non-`And` (never appears as
+     * a top-level conjunct → 0 found), more than one RNU conjunct, a group/asterisk (non-`Expr.Field`) key (the
+     * kernel forbids those), or a guard whose iteration scope is DEEPER than the keys' group (an iteration
+     * granularity we don't model). None of these occurs in the real corpora; each is handled loud not wrong.
      */
     private fun repetitionNotUnique(rule: RuleDef): RnuRule? {
-        val ast = condAstOf(rule)
-        if (ast !is Cond.Pred || ast.name != "RepetitionNotUnique") return null
+        val conjuncts = flattenAnd(condAstOf(rule))
+        val rnuPreds = conjuncts.filter { it is Cond.Pred && it.name == "RepetitionNotUnique" }
+        if (rnuPreds.size != 1) return null                              // 0 → not an RNU rule; >1 → unmodeled
+        val pred = rnuPreds[0] as Cond.Pred
+        val guards = conjuncts.filter { it !== pred }
+        if (guards.any { containsRepetitionNotUnique(it) }) return null  // RNU nested in another conjunct — unmodeled
         // The parser appends an `@From:<ref>` StrLit marker as the last arg when `@From` is present.
-        val fromScope = (ast.args.lastOrNull() as? Expr.StrLit)?.v?.takeIf { it.startsWith("@From:") }?.removePrefix("@From:")
-        val keyArgs = if (fromScope != null) ast.args.dropLast(1) else ast.args
-        val keys = keyArgs.map { (it as? Expr.Field)?.path ?: return null }
-        return keys.ifEmpty { null }?.let { RnuRule(it, fromScope) }
+        val fromScope = (pred.args.lastOrNull() as? Expr.StrLit)?.v?.takeIf { it.startsWith("@From:") }?.removePrefix("@From:")
+        val keyArgs = if (fromScope != null) pred.args.dropLast(1) else pred.args
+        val keys = keyArgs.map { (it as? Expr.Field)?.path ?: return null }.ifEmpty { return null }
+        val guard = guards.reduceOrNull { a, b -> Cond.And(a, b) }
+        if (guard != null && !guardScopeWithinKeyGroup(guard, rule, keys.first())) return null
+        return RnuRule(keys, fromScope, guard)
+    }
+
+    /** Flatten a top-level `And`-tree into its conjuncts; a non-`And` node is a single conjunct. */
+    private fun flattenAnd(cond: Cond): List<Cond> =
+        if (cond is Cond.And) flattenAnd(cond.left) + flattenAnd(cond.right) else listOf(cond)
+
+    /** Whether a `RepetitionNotUnique` predicate appears anywhere within [cond] (any nesting/boolean position). */
+    private fun containsRepetitionNotUnique(cond: Cond): Boolean = when (cond) {
+        is Cond.Pred -> cond.name == "RepetitionNotUnique"
+        is Cond.And -> containsRepetitionNotUnique(cond.left) || containsRepetitionNotUnique(cond.right)
+        is Cond.Or -> containsRepetitionNotUnique(cond.left) || containsRepetitionNotUnique(cond.right)
+        is Cond.Not -> containsRepetitionNotUnique(cond.c)
+        else -> false
+    }
+
+    /** The guard's iteration scope must be the keys' repeatable group or ABOVE it, so each key row uniquely
+     *  determines the guard's row (RNU iterates the key group; a deeper/sibling guard would need a different
+     *  iteration granularity — unmodeled, degrade loud). */
+    private fun guardScopeWithinKeyGroup(guard: Cond, rule: RuleDef, firstKey: String): Boolean {
+        val keyGroup = parentGroup(firstKey)
+        val guardScope = scopeFromRefs(nonStarredRefs(guard), rule.group)
+        return keyGroup == guardScope || keyGroup.startsWith("$guardScope/")
     }
 
     /**
@@ -414,7 +458,8 @@ class DmInterpreter @JvmOverloads constructor(
      * **OMISSION** (else VALUE). The rule sits at the parent and iterates the keys' repeatable group.
      */
     private fun repetitionNotUniqueMessages(rule: RuleDef, rnu: RnuRule, doc: Document, locale: String,
-            isRelevant: Relevance = ALL_RELEVANT): List<Message> {
+            dup: Set<Pair<String, List<Int>>>, cache: FormalCache, isRelevant: Relevance = ALL_RELEVANT,
+            customRelevant: Set<FieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null): List<Message> {
         val keys = rnu.keys
         val repGroup = parentGroup(keys.first())     // the keys' shared repeatable group (kernel: keys on one path)
         val errorPath = resolveErrorPath(rule)
@@ -433,7 +478,17 @@ class DmInterpreter @JvmOverloads constructor(
             .forEach { (_, scope) ->
                 val dups = scope.groupingBy { it.key }.eachCount().filterValues { it > 1 }.keys
                 for (row in scope.filter { it.key in dups }) {
-                    val type = if (row.key.any { it == null }) MsgType.OMISSION else MsgType.VALUE
+                    // RepetitionNotUnique's own polarity: OMISSION when a (fillable) key component is empty, else VALUE.
+                    val rnuType = if (row.key.any { it == null }) MsgType.OMISSION else MsgType.VALUE
+                    // A combined `<guard> And RepetitionNotUnique(key)`: the guard is a SEPARATE per-row 3VL
+                    // conjunct (the duplicate cache above is guard-independent, matching the kernel). The And fires
+                    // only if the guard also fires, and its polarity combines by the Cond.And rule (OMISSION if
+                    // either operand is OMISSION). A guard that is FALSE/UNKNOWN for this row suppresses it.
+                    val type = if (rnu.guard == null) rnuType else {
+                        val guardType = interpreterFor(row.ctx, errorPath, dup, cache, isRelevant, customRelevant, starRelevant)
+                            .firedType(rnu.guard) ?: continue
+                        if (rnuType == MsgType.OMISSION || guardType == MsgType.OMISSION) MsgType.OMISSION else MsgType.VALUE
+                    }
                     val text = rule.messages[locale]?.let { renderMessage(it, rule.group, row.ctx) { p -> model.labelOf(p, locale) } } ?: ""
                     val referenced = keys.map { formatPointer(it, row.ctx.repsOf(it)) }
                     val fillToFix = if (type == MsgType.OMISSION) referenced else emptyList()
@@ -714,6 +769,30 @@ class DmInterpreter @JvmOverloads constructor(
         rowOutcomes(rule, doc, locale, dup, cache, isRelevant, customRelevant, starRelevant)
             .filterIsInstance<RowOutcome.Fired>().map { it.message }
 
+    /**
+     * The per-row [Interpreter] used to evaluate a rule condition at [ctx] — the single construction point shared
+     * by [rowOutcomes] (the whole condition) and [repetitionNotUniqueMessages] (a RepetitionNotUnique rule's
+     * guard conjunct). A formally-invalid / (in partial) non-relevant referenced field resolves to Val.Unknown
+     * via [invalid]; [cellRelevant]/[customRelevant]/[starRelevant] carry the partial-validation relevance seams.
+     */
+    private fun interpreterFor(ctx: EvalContext, errorPath: String, dup: Set<Pair<String, List<Int>>>,
+            cache: FormalCache, isRelevant: Relevance, customRelevant: Set<FieldPointer>?,
+            starRelevant: ((String) -> Boolean)?): Interpreter =
+        Interpreter(ctx, clock, model.baseYear, model.indexFields, predefinedTypes,
+            customConditions, FieldPointer(errorPath, ctx.repsOf(errorPath)),
+            invalid = { path ->
+                val reps = ctx.repsOf(path)   // computed once, reused for the formal check AND relevance
+                formalErrorAt(path, reps, ctx, dup, cache) != null || !isRelevant(path, reps)
+            },
+            // Partial validation only: per-cell relevance, for FirstFilled's order-aware gate (IF42); null in
+            // full validation, so the gate is skipped entirely (the flat-spike `RepDoc` path is untouched).
+            cellRelevant = if (isRelevant === ALL_RELEVANT) null else { path, reps -> isRelevant(path, reps) },
+            // The relevant set a CustomCondition sees — null in full, the caller's set + globals in partial (IF38).
+            customRelevant = customRelevant,
+            // Partial validation only: whether an all-rows aggregate's star is wildcard-relevant (IF42).
+            starRelevant = starRelevant,
+            customFieldTypes = customFieldTypes)
+
     /** The per-row outcome of one rule: fired (with its message), passed, or suppressed (which field/code). */
     private sealed interface RowOutcome {
         data class Fired(val message: Message) : RowOutcome
@@ -738,20 +817,7 @@ class DmInterpreter @JvmOverloads constructor(
             // referenced field instance that is NOT relevant is also unknown — the same 3VL yields the kernel's
             // suppression (`And` suppresses, `Or` with a relevant-true operand still fires). The custom-condition
             // registry + the row's error-field pointer ride along for a `CustomCondition X` leaf.
-            val interp = Interpreter(ctx, clock, model.baseYear, model.indexFields, predefinedTypes,
-                customConditions, FieldPointer(errorPath, ctx.repsOf(errorPath)),
-                invalid = { path ->
-                    val reps = ctx.repsOf(path)   // computed once, reused for the formal check AND relevance
-                    formalErrorAt(path, reps, ctx, dup, cache) != null || !isRelevant(path, reps)
-                },
-                // Partial validation only: per-cell relevance, for FirstFilled's order-aware gate (IF42); null in
-                // full validation, so the gate is skipped entirely (the flat-spike `RepDoc` path is untouched).
-                cellRelevant = if (isRelevant === ALL_RELEVANT) null else { path, reps -> isRelevant(path, reps) },
-                // The relevant set a CustomCondition sees — null in full, the caller's set + globals in partial (IF38).
-                customRelevant = customRelevant,
-                // Partial validation only: whether an all-rows aggregate's star is wildcard-relevant (IF42).
-                starRelevant = starRelevant,
-                customFieldTypes = customFieldTypes)
+            val interp = interpreterFor(ctx, errorPath, dup, cache, isRelevant, customRelevant, starRelevant)
             // ONE typed walk per row (the fired MsgType, or null if it doesn't fire) — firedType != null ⟺ the
             // rule fires (truth == TRUE), and the value IS the polarity. The walk is LAZY-polarity: it skips the
             // VALUE/OMISSION typing on non-firing nodes (the kernel types only firing rows), measured faster in
