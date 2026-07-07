@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
@@ -115,6 +116,14 @@ class DmInterpreter @JvmOverloads constructor(
     private val compParsedAst: Map<ComputationDef, Lazy<ParsedComputation>> =
         model.computations.associateWith { c -> lazy { parseComputation(c) } }
 
+    /** The implicit per-computation validation rules (IF32/IF65): one synthetic [RuleDef] per named computation,
+     *  with its condition AST **built directly from the already-parsed alternatives** ([parsedOf]) rather than
+     *  re-parsed from text — so the embedded operation/precondition ASTs are byte-identical to the ones the
+     *  compute path uses, and no fragile string round-trip can fail to re-parse (IF65). The AST is cached (lazy,
+     *  forced by [condAstOf]) exactly like a model rule's. */
+    private val implicitComputationAst: Map<RuleDef, Lazy<Cond>> =
+        model.computations.mapNotNull { c -> implicitComputationRuleDef(c)?.let { it to lazy { implicitComputationCond(c) } } }.toMap()
+
     /** A computation's parsed form: each tiered alternative's (precondition?, operation), under an optional
      *  whole-computation common precondition — all parsed once. The kernel selects the first alternative whose
      *  precondition holds (null precondition = unconditional); a present common precondition gates them all. */
@@ -126,9 +135,10 @@ class DmInterpreter @JvmOverloads constructor(
         c.alternatives.map { ParsedAlternative(it.precondition?.let { p -> parseCondition(p, c.group) }, parseExpression(it.operation, c.group)) },
     )
 
-    /** The parsed condition AST for [rule] — cached for a model rule; a one-off parse for an ad-hoc candidate. */
+    /** The parsed condition AST for [rule] — cached for a model rule or an implicit computation-validation rule;
+     *  a one-off parse for an ad-hoc candidate. */
     private fun condAstOf(rule: RuleDef): Cond =
-        ruleCondAst[rule]?.value ?: parseCondition(rule.conditionText, rule.group)
+        ruleCondAst[rule]?.value ?: implicitComputationAst[rule]?.value ?: parseCondition(rule.conditionText, rule.group)
 
     /** The parsed form of [comp] (a model computation) — cached. */
     private fun parsedOf(comp: ComputationDef): ParsedComputation = compParsedAst.getValue(comp).value
@@ -225,30 +235,59 @@ class DmInterpreter @JvmOverloads constructor(
                 unsupported += UnsupportedRule(rule.path, e.message ?: "unsupported construct")
             }
         }
-        // Every computation is ALSO a validation rule (KERNEL-FINDINGS, IF32): the kernel auto-generates an
-        // implicit `FieldFilled(F) And [F] != <term>` that fires under the computation's NAME when a stored
-        // computed value disagrees with its term. Synthesize + evaluate it through the same rule machinery.
-        for (comp in model.computations) {
-            val implicit = implicitComputationRule(comp) ?: continue
+        // Every computation is ALSO a validation rule (KERNEL-FINDINGS, IF32/IF65): the kernel auto-generates one
+        // implicit validation per computation — a field gate `FieldFilled(F) And` then the guard/tier selection
+        // and `[F] != <selected operation>` — that fires under the computation's NAME when a stored computed value
+        // disagrees with what the (guard-selected) tier computes. This covers GUARDED/TIERED computations, not
+        // just the degenerate single-unconditional one (IF65). Evaluated through the same rule machinery.
+        for (implicit in implicitComputationAst.keys) {
             try {
                 messages += messagesFor(implicit, doc, locale, dup, cache, isRelevant, customRelevant, starRelevant)
             } catch (e: UnsupportedConstructException) {
-                unsupported += UnsupportedRule(comp.targetPath, e.message ?: "unsupported computation validation")
+                unsupported += UnsupportedRule(implicit.errorEntityRelPath, e.message ?: "unsupported computation validation")
             }
         }
         return ValidationOutcome(messages, unsupported)
     }
 
-    /** The implicit per-computation validation rule (IF32): `FieldFilled(F) And [F] != <term>`, error code = the
-     *  computation's name, error field = F. Null when the computation is unnamed or TIERED (a precondition / >1
-     *  alternative / common guard) — those validate against the selected-tier result, not a single static term,
-     *  so they are not synthesized here (the common single-unconditional form is). */
-    private fun implicitComputationRule(comp: ComputationDef): RuleDef? {
+    /** The synthetic [RuleDef] for [comp]'s implicit validation (IF32/IF65): error code = the computation's NAME,
+     *  rule element at `<group>/<name>` (a sibling of the computed field, like the kernel's rule-from-computation).
+     *  The error entity is the computed field, whose rel-path is written FROM the rule element — `../<fRel>` (one
+     *  level up to the group, then down to the field), matching the DM-JSON `computedFieldRelPath` convention and
+     *  the way [resolveErrorPath] climbs `../` from [RuleDef.path]. (The earlier IF32 wrote the bare `fRel`, which
+     *  [resolveErrorPath] read relative to the rule ELEMENT — appending a spurious `<name>` segment to the pointer;
+     *  latent because no lock checked a REPEATABLE computation's implicit-validation POINTER, only the code.) Its
+     *  condition AST is supplied by [implicitComputationCond] via [implicitComputationAst], never parsed from the
+     *  placeholder [RuleDef.conditionText]. Null when the computation is unnamed or has no alternatives. */
+    private fun implicitComputationRuleDef(comp: ComputationDef): RuleDef? {
         val name = comp.name ?: return null
-        if (comp.commonPrecondition != null || comp.alternatives.size != 1 || comp.alternatives[0].precondition != null) return null
+        if (comp.alternatives.isEmpty()) return null
         val fRel = comp.targetPath.removePrefix(comp.group.removeSuffix("/") + "/")
-        val cond = "FieldFilled($fRel) And [$fRel] != ${comp.alternatives[0].operation}"
-        return RuleDef("${comp.group}/$name", comp.group, cond, name, fRel)
+        return RuleDef("${comp.group}/$name", comp.group, "FieldFilled($fRel) And <implicit validation of $name>", name, "../$fRel")
+    }
+
+    /**
+     * The implicit computation-validation condition AST, built directly from [comp]'s already-parsed alternatives
+     * ([parsedOf]) — mirroring the kernel's `ComputationAlternativesJoiner.join()` (md-model
+     * `ValidationModelConverter.getComputationStatement`): a **field gate** `FieldFilled(F) And`, then the optional
+     * `(commonPrecondition) And`, then the alternatives — a SINGLE alternative is `[(precondition) And] [F] != op`;
+     * **>1** alternatives are the `Or` of each so-gated comparison. So the field is flagged when it is filled and,
+     * for a tier whose precondition holds, its stored value disagrees with that tier's operation — the exact
+     * per-tier semantics, gated by the same preconditions the compute path uses (so `compute` and this validation
+     * never disagree on which tier applies). Building the AST from the parsed components (not a re-parsed string)
+     * means the operation/precondition ASTs are identical to compute's and cannot fail to re-parse (the initial
+     * string-synthesis attempt introduced parser crashes — IF65). (`@SuppressWarning` + tolerance-`!=` ops are not modeled:
+     * absent from the corpora; a tolerance-op computation would compare with `!=`, a narrow over-fire to revisit.) */
+    private fun implicitComputationCond(comp: ComputationDef): Cond {
+        val parsed = parsedOf(comp)
+        val fExpr = Expr.Field(comp.targetPath)
+        fun alternative(a: ParsedAlternative): Cond {
+            val cmp = Cond.Cmp(CmpOp.NE, fExpr, a.operation)
+            return a.precondition?.let { Cond.And(it, cmp) } ?: cmp
+        }
+        val body = parsed.alternatives.map(::alternative).reduce { l, r -> Cond.Or(l, r) }
+        val guarded = parsed.commonPrecondition?.let { Cond.And(it, body) } ?: body
+        return Cond.And(Cond.Pred("FieldFilled", listOf(fExpr)), guarded)
     }
 
     /**
