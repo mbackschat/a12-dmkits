@@ -465,7 +465,17 @@ class DmInterpreter @JvmOverloads constructor(
         val errorPath = resolveErrorPath(rule)
         val scopeLen = scopePrefixLen(rule, rnu)
         data class Row(val ctx: EvalContext, val reps: List<Int>, val key: List<String?>)
-        val rows = doc.contextsFor(repGroup).map { ctx ->
+        val rows = doc.contextsFor(repGroup).mapNotNull { ctx ->
+            // A key cell that is FORMALLY INVALID (UNKNOWN — a bad format, a duplicate-index cell, or an
+            // over-repetition; NOT a required-empty cell, which is a valid EMPTY participant → null key component)
+            // drops the WHOLE row from the duplicate cache — exactly the kernel's
+            // getWerteOrNullIfEinFeldNichtPruefungsRelevant (isWertAngegeben == UNKNOWN → returns null → the row
+            // is skipped). So RNU over a duplicated INDEX field does NOT fire: the uniqueIndex error makes each
+            // key cell not-check-relevant, so no two rows are ever "duplicates" in the check-relevant cache (IF64,
+            // the "RepetitionNotUnique × uniqueIndex" divergence). Exclusion is per-KEY-CELL: a formal error on a
+            // NON-key field in the same row does not remove the row (the kernel checks only the key `entityList`).
+            if (keys.any { k -> formalErrorAt(k, ctx.repsOf(k), ctx, dup, cache).let { it != null && it != MANDATORY_FIELD } })
+                return@mapNotNull null
             Row(ctx, ctx.repsOf(errorPath), keys.map { ctx.displayValue(it)?.takeIf { v -> v.isNotEmpty() } })
         }
         val out = mutableListOf<Message>()

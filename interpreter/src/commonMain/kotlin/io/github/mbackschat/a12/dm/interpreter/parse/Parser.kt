@@ -153,6 +153,10 @@ private class ConditionParser(private val src: String, private val base: String)
                         "True" -> Expr.BoolLit(true)
                         "False" -> Expr.BoolLit(false)
                         in CONSTANTS -> Expr.Const(name)
+                        // `RuleGroup` (the kernel's RegelKontext) is the rule's OWN group — the [base] itself, not a
+                        // child field/group. See [readRef] for the full rationale (IF63); this is the BARE-argument
+                        // form (`GroupFilled(RuleGroup)`), which never reaches [readRef].
+                        "RuleGroup" -> Expr.Field(base)
                         else -> {
                             skipWs()
                             if (peek() == '(') Expr.Func(name, readArgs()) else entitySuffix(pathFrom(name))
@@ -197,6 +201,13 @@ private class ConditionParser(private val src: String, private val base: String)
      * up-count), so it is ignored for resolution — `..Name/rest` ≡ `../rest`, `..Name` ≡ the ancestor group.
      */
     private fun readRef(outer: Boolean = false): Expr {
+        // `RuleGroup` (the kernel's RegelKontext) is the rule's OWN group — the [base] itself. It is a reserved
+        // group-context keyword (KERNEL: `REGEL_KONTEXT`), the only such self-reference in the condition grammar,
+        // and never a path prefix (a star on it is authoring-rejected `MVK_INVALID_WILDCARD_FOR_RULEGROUP`, and it
+        // takes no descent segments), so it resolves to `Expr.Field(base)`. Without this it would parse as a
+        // nonexistent child group `base/RuleGroup`, making `GroupFilled(RuleGroup)` always false and silently
+        // suppressing the rule (IF63; `matchKeyword` enforces a word boundary, so a field named `RuleGroupX` is safe).
+        if (matchKeyword("RuleGroup")) return Expr.Field(base, outer = outer)
         if (peek() == '/') { next(); return pathFrom(readIdent(), absolute = true, outer = outer) }
         val ups = readParentUps()   // MUST precede readIdent — the `..` prefix comes before the first segment
         if (ups > 0 && peek() != '/') {
