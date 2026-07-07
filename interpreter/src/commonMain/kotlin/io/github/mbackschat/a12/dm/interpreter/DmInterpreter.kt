@@ -252,18 +252,36 @@ class DmInterpreter @JvmOverloads constructor(
 
     /** The synthetic [RuleDef] for [comp]'s implicit validation (IF32/IF65): error code = the computation's NAME,
      *  rule element at `<group>/<name>` (a sibling of the computed field, like the kernel's rule-from-computation).
-     *  The error entity is the computed field, whose rel-path is written FROM the rule element — `../<fRel>` (one
-     *  level up to the group, then down to the field), matching the DM-JSON `computedFieldRelPath` convention and
-     *  the way [resolveErrorPath] climbs `../` from [RuleDef.path]. (The earlier IF32 wrote the bare `fRel`, which
-     *  [resolveErrorPath] read relative to the rule ELEMENT — appending a spurious `<name>` segment to the pointer;
-     *  latent because no lock checked a REPEATABLE computation's implicit-validation POINTER, only the code.) Its
-     *  condition AST is supplied by [implicitComputationCond] via [implicitComputationAst], never parsed from the
-     *  placeholder [RuleDef.conditionText]. Null when the computation is unnamed or has no alternatives. */
+     *  The error entity is the computed field [ComputationDef.targetPath]; the synthetic error-entity relpath is the
+     *  general relative path FROM the rule element TO that absolute target ([relativePath], matching how
+     *  [resolveErrorPath] climbs `../` from [RuleDef.path]).
+     *
+     *  The computed field may NOT be a descendant of the computation's group — a computation can target a field in a
+     *  sibling subtree, or in ANOTHER top-level root (a `header`/`content` multi-root model), its DM-JSON
+     *  `computedFieldRelPath` walking `../` up past its own group. The earlier form `"../" + targetPath.removePrefix(group)`
+     *  assumed the target sat under the group: for a cross-subtree target the `removePrefix` no-op'd and left an
+     *  absolute path, so the relpath became a `..//abs/path` double-slash that [resolveErrorPath] mangled into a
+     *  wrong, over-long pointer (IF66, graduated from IG41). [relativePath] resolves to the exact target for all three
+     *  shapes (descendant, sibling-subtree, cross-root). Its condition AST is supplied by [implicitComputationCond]
+     *  via [implicitComputationAst], never parsed from the placeholder [RuleDef.conditionText]. Null when the
+     *  computation is unnamed or has no alternatives. */
     private fun implicitComputationRuleDef(comp: ComputationDef): RuleDef? {
         val name = comp.name ?: return null
         if (comp.alternatives.isEmpty()) return null
-        val fRel = comp.targetPath.removePrefix(comp.group.removeSuffix("/") + "/")
-        return RuleDef("${comp.group}/$name", comp.group, "FieldFilled($fRel) And <implicit validation of $name>", name, "../$fRel")
+        val node = "${comp.group}/$name"
+        return RuleDef(node, comp.group, "FieldFilled(${comp.targetPath}) And <implicit validation of $name>",
+            name, relativePath(node, comp.targetPath))
+    }
+
+    /** The `../…`-form relative path FROM rule element [from] TO absolute [target], matching [resolveErrorPath]'s
+     *  convention: one `../` per [from] segment above the two paths' common prefix, then [target]'s remaining tail.
+     *  Correct whether [target] is a descendant of [from]'s group, a sibling subtree, or in another root. */
+    private fun relativePath(from: String, target: String): String {
+        val f = pathParts(from)
+        val t = pathParts(target)
+        var common = 0
+        while (common < f.size && common < t.size && f[common] == t[common]) common++
+        return "../".repeat(f.size - common) + t.drop(common).joinToString("/")
     }
 
     /**
