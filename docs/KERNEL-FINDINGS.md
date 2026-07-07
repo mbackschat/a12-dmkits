@@ -213,6 +213,30 @@ Corrects the earlier attribution (which wrongly gave `trait:"amount"` its own `s
 
 **STRING `noValueValidation` DISABLES the whole string format check** (source + probe-verified 2026-06-26). When `StringType.noValueValidation:true`, the kernel's `FormatDefinitionString.validiereFormat` returns `Valid` *immediately* — pattern, length, and the default newline check are all skipped. The key is MVK-constrained: it **forbids** `pattern`/`minLength` (`MVK_STRING_TYPE_PARAMS_INCONSISTENT` — only `maxLength` may accompany it) and **requires** `lineBreaksPermitted:true` (`MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK`). So on a *kernel-valid* model the single observable runtime effect is that a declared **`maxLength` is NOT enforced** (a longer value is clean). Reachable on shipped A12 Tools StringType fields (Country/City/Person). The interpreter models it — INTERPRETER-FINDINGS IF29.
 
+## §3 supplement — the full NUMBER formal-error PRECEDENCE order (source `FormatDefinitionZahl.validiereFormat`, 2026-07-07)
+
+The number format checks fire in ONE fixed sequence (the kernel returns on the first failure), so a value matching several reports the FIRST in this order. Extends the digit-check note above with the whole ladder:
+
+| # | check | code | trigger |
+|---|---|---|---|
+| 1 | leading plus | `zahlMitPlus` | a `+` sign |
+| 2 | invalid chars | `zahlHatUngueltigeZeichen` | not a number |
+| 3 | > 15 total digits | `stelligkeitZuLang` | int+frac digits > 15 (fires even pre-`fullCheck`) |
+| 4 | signed zero | `zahlNullEnthaeltVorzeichen` | `-0` on a signed, zero-allowed field |
+| 5 | minus on unsigned | `zahlEnthaeltVorzeichen` | a `-` on a `positivesOnly` field |
+| 6 | separator in integer field | `zahlHatDezimalTrenner` | a `.` where scale = 0 |
+| 7 | missing separator | `zahlOhneDezimalTrenner` | `minFractionalDigits` > 0 but no `.` |
+| 8 | wrong # decimals | `zahlFalscheAnzahlNachkommastellen` | too few OR too many fractional digits |
+| 9 | integer-digit cap | `zahlZuvieleVorkommastellen` | integer digits > `maxIntegerDigits` / amount `15−scale` |
+| 10 | zero not allowed | `zahlIstNull` | value == 0, `zeroNotAllowed` |
+| 11 | leading zeros | `zahlHatFuehrendeNullen` | `07`/`00`/… — the **LAST** format check |
+| 12 | value too short | `zahlZuKurz` | string length < `minLength` |
+| 13 | value too long | `zahlZuLang` | string length > `maxLength` |
+| 14 | below min | `zahlZuKlein` | value < `minValue` |
+| 15 | above max | `zahlZuGross` | value > `maxValue` |
+
+Two traps this order encodes (probe-verified, IG42): **zero-not-allowed (10) fires AFTER the decimal (7-8) and integer-cap (9) checks** — so a `0` on a `zeroNotAllowed`+`minFractionalDigits` field is `zahlOhneDezimalTrenner`, not `zahlIstNull`; and **leading-zeros (11) is the LAST format check** — every earlier check beats it (`07.5` on a scale-0 field is `zahlHatDezimalTrenner`, not `zahlHatFuehrendeNullen`; `0007` over an integer cap is `zahlZuvieleVorkommastellen`). Interpreter: INTERPRETER-FINDINGS IF70 (reordered `numberConstraintError` to this sequence, moved `leadingZeros` out of the parse-level `numberFormalError`), differential-locked by `adapter.laws.FieldConstraintFormalDiffTest` (the precedence matrix, each case pinning the kernel winner) + multiplatform `interpreter.NumberDigitFormalTest`.
+
 ## §3 supplement — a DATE value is stored and formal-checked in the field's DECLARED format, not ISO (runtime, 2026-06-23)
 
 Also surfaced by the **fuzz net**. A `DateType` field's value is the date **rendered in that field's `format`** — `OrderDate` (`yyyy-MM-dd`) holds `2024-06-15`, but `ApproxDate` (`dd.MM.yyyy`) holds `15.06.2024`. The formal check is **against the declared format**: a value in the field's own format is well-formed; a value in a *different* format is `datumFormatFalsch` (verified both ways — `ApproxDate = "2024-06-15"` → `datumFormatFalsch`; `OrderDate = "15.06.2024"` → `datumFormatFalsch`). So there is **no single canonical wire format** — a consumer must read each field's `format` to parse/validate its dates (the same is already known for `DateRangeType`, IF12). The interpreter canonicalizes every date to ISO internally via the declared format. *(Locked: `adapter.laws.PlainDateDiffTest`.)*

@@ -143,6 +143,55 @@ class FieldConstraintFormalDiffTest {
     @Test fun zeroNotAllowedFires() = agree(zna, znaDef, "/Order/NZ", "0", "zeroNotAllowed + 0 → zahlIstNull")
     @Test fun zeroNotAllowedCleanNonZero() = agree(zna, znaDef, "/Order/NZ", "5", "zeroNotAllowed + 5 → clean")
 
+    // ── IG42: number formal-error PRECEDENCE matrix (FormatDefinitionZahl.validiereFormat order → IF67 extended).
+    //    The kernel order among the declared-constraint checks: missing-decimal-separator → wrong-#-decimals →
+    //    integer-cap → zero-not-allowed → LEADING-ZEROS (last) → length → range. The interpreter had TWO
+    //    mis-orderings: zeroNotAllowed fired before the decimal/integer checks, and leadingZeros fired FIRST (in
+    //    numberFormalError) instead of after zero-not-allowed. `agreeCode` locks the winning code AND the differential. ──
+
+    /** As [agree], but also pins the KERNEL's winning code — so a precedence claim is locked as a fact, and a
+     *  mis-prediction fails on the kernel assertion (not silently on the differential). */
+    private fun agreeCode(fieldJson: String, field: FieldDef, path: String, value: String, expectedKernel: String, msg: String) {
+        val kModel = withField(fieldJson)
+        val kCode = RuntimeLaws.firedCodes(kModel, setOf("/Order"), mapOf(path to value)).firstOrNull()
+        assertEquals(expectedKernel, kCode, "$msg — KERNEL winner")
+        val def = ModelDef(listOf(field), emptyList())
+        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
+            def.scales, def.dateTimeFormats, def.datePrecisions, def.enumValues, def.enumCategories).group("/Order", 1)
+            .field(path, value, 1, 1)
+        val iCode = DmInterpreter(def).validate(iDoc).messages.firstOrNull { it.rulePath == FORMAL_RULE_PATH }?.code
+        assertEquals(kCode, iCode, "$msg  (kernel=$kCode interp=$iCode)")
+    }
+
+    // A field carrying zeroNotAllowed AND a min-fractional-digits requirement (both apply to "0" / "0.0").
+    private val zeroMinFracStr = """{ "type": "Field", "id": "/Order/ZF", "name": "ZF", "Field": { "fieldType": {
+        "type": "NumberType", "NumberType": { "maxFractionalDigits": 2, "minFractionalDigits": 2, "zeroNotAllowed": true } } } },"""
+    private val zeroMinFracDef = FieldDef("/Order/ZF", Kind.NUMBER, scale = 2, minFractionalDigits = 2, zeroNotAllowed = true)
+
+    // (reported IG42) zero-not-allowed vs missing-decimal-separator: "0" is zero AND lacks the required separator —
+    // the kernel reports the missing separator (step 7), NOT zahlIstNull (step 10).
+    @Test fun missingSeparatorBeatsZeroNotAllowed() =
+        agreeCode(zeroMinFracStr, zeroMinFracDef, "/Order/ZF", "0", "zahlOhneDezimalTrenner",
+            "0 on a zeroNotAllowed+minFrac field → ohneDezimalTrenner wins over zahlIstNull")
+    // zero-not-allowed vs too-few-decimals: "0.0" is zero AND has too few decimals — falscheAnzahl (step 8) wins.
+    @Test fun tooFewDecimalsBeatsZeroNotAllowed() =
+        agreeCode(zeroMinFracStr, zeroMinFracDef, "/Order/ZF", "0.0", "zahlFalscheAnzahlNachkommastellen",
+            "0.0 (zero, 1 frac < min 2) → falscheAnzahl wins over zahlIstNull")
+
+    // leading-zeros is the LAST format check (kernel step 11) — every earlier check beats it:
+    @Test fun decimalSeparatorBeatsLeadingZeros() =
+        agreeCode(plainNum, plainNumDef, "/Order/Num", "07.5", "zahlHatDezimalTrenner",
+            "07.5 on a scale-0 field → hatDezimalTrenner wins over zahlHatFuehrendeNullen")
+    @Test fun wrongDecimalsBeatsLeadingZeros() =
+        agreeCode(plainN2Str, plainN2Def, "/Order/N", "07.555", "zahlFalscheAnzahlNachkommastellen",
+            "07.555 (3 frac > 2) → falscheAnzahl wins over zahlHatFuehrendeNullen")
+    @Test fun integerCapBeatsLeadingZeros() =
+        agreeCode(maxIntStr, maxIntDef, "/Order/N", "0007", "zahlZuvieleVorkommastellen",
+            "0007 (4 int > cap 3, leading zeros) → zuvieleVorkommastellen wins over zahlHatFuehrendeNullen")
+    @Test fun zeroNotAllowedBeatsLeadingZeros() =
+        agreeCode(zna, znaDef, "/Order/NZ", "00", "zahlIstNull",
+            "00 (zero, leading zeros) → zahlIstNull wins over zahlHatFuehrendeNullen")
+
     // Enum value-domain: the order fixture's Priority (STANDARD/EXPRESS/OVERNIGHT). Out-of-domain → stringFalschesMuster.
     private val priorityDef = FieldDef("/Order/Priority", Kind.STRING, enumValues = listOf("STANDARD", "EXPRESS", "OVERNIGHT"))
 

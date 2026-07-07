@@ -27,6 +27,9 @@ class NumberDigitFormalTest {
     private val plain0 = FieldDef("/G/N", Kind.NUMBER, scale = 0)
     private val plain2 = FieldDef("/G/N", Kind.NUMBER, scale = 2)
     private val amount2 = FieldDef("/G/N", Kind.NUMBER, scale = 2, amountTrait = true)
+    private val maxInt3 = FieldDef("/G/N", Kind.NUMBER, scale = 0, maxIntegerDigits = 3)
+    private val zero0 = FieldDef("/G/N", Kind.NUMBER, scale = 0, zeroNotAllowed = true)
+    private val zeroMinFrac2 = FieldDef("/G/N", Kind.NUMBER, scale = 2, minFractionalDigits = 2, zeroNotAllowed = true)
 
     // ── stelligkeitZuLang: > 15 total digits, on ANY number (the class-2 K-only miss the sweep found) ──
     @Test fun plain16DigitsTooLong() = assertEquals("stelligkeitZuLang", code(plain0, "1234567890123456"), "16 digits, plain number")
@@ -38,4 +41,16 @@ class NumberDigitFormalTest {
     @Test fun amountIntegerCapFires() = assertEquals("zahlZuvieleVorkommastellen", code(amount2, "12345678901234"), "14 int > 15-2=13, total 14")
     @Test fun amountIntegerCapWithinCap() = assertEquals(null, code(amount2, "1234567890123"), "13 int = cap → clean")
     @Test fun amountTotal16HitsStelligkeitFirst() = assertEquals("stelligkeitZuLang", code(amount2, "12345678901234.56"), "16 total pre-empts the integer cap")
+
+    // ── IG42: the number formal-error PRECEDENCE order (FormatDefinitionZahl.validiereFormat): missing-separator →
+    //    wrong-decimals → integer-cap → zero-not-allowed → leading-zeros (LAST). ──
+    @Test fun missingSeparatorBeatsZeroNotAllowed() = assertEquals("zahlOhneDezimalTrenner", code(zeroMinFrac2, "0"), "0 on zeroNotAllowed+minFrac → ohneDezimalTrenner, not zahlIstNull")
+    @Test fun tooFewDecimalsBeatsZeroNotAllowed() = assertEquals("zahlFalscheAnzahlNachkommastellen", code(zeroMinFrac2, "0.0"), "0.0 → falscheAnzahl, not zahlIstNull")
+    @Test fun decimalSeparatorBeatsLeadingZeros() = assertEquals("zahlHatDezimalTrenner", code(plain0, "07.5"), "07.5 scale-0 → hatDezimalTrenner, not fuehrendeNullen")
+    @Test fun wrongDecimalsBeatsLeadingZeros() = assertEquals("zahlFalscheAnzahlNachkommastellen", code(plain2, "07.555"), "07.555 → falscheAnzahl, not fuehrendeNullen")
+    @Test fun integerCapBeatsLeadingZeros() = assertEquals("zahlZuvieleVorkommastellen", code(maxInt3, "0007"), "0007 → zuvieleVorkommastellen, not fuehrendeNullen")
+    @Test fun zeroNotAllowedBeatsLeadingZeros() = assertEquals("zahlIstNull", code(zero0, "00"), "00 → zahlIstNull, not fuehrendeNullen")
+    // controls: each check still fires alone (single-check behavior preserved by the reorder)
+    @Test fun leadingZerosStillFiresAlone() = assertEquals("zahlHatFuehrendeNullen", code(plain0, "007"), "007 (no other violation) → fuehrendeNullen")
+    @Test fun zeroNotAllowedStillFiresAlone() = assertEquals("zahlIstNull", code(zero0, "0"), "0 (no minFrac) → zahlIstNull")
 }

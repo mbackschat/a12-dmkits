@@ -216,7 +216,7 @@ fun formalError(
         // Format well-formedness FIRST (blanks, invalid chars, signed-zero/plus, decimal-separator,
         // too-MANY decimals via scale); only a well-formed number reaches the declared-constraint checks
         // (min fractional digits, then range) — KERNEL-FINDINGS §3 precedence.
-        Kind.NUMBER -> numberFormalError(raw, scale, constraints.leadingZerosAllowed) ?: numberConstraintError(raw, constraints)
+        Kind.NUMBER -> numberFormalError(raw, scale) ?: numberConstraintError(raw, constraints)
         // A malformed TIME / DATE_TIME value carries the kernel's `datumFormatFalsch` (probe-verified — the same
         // code as DATE), and resolving it to Val.Unknown suppresses a referencing rule. (TIME was previously
         // unchecked entirely, so a malformed time even *escaped* suppression — KERNEL-FINDINGS §6 / IF8.)
@@ -282,7 +282,11 @@ private fun stringConstraintError(raw: String, c: FieldConstraints): FormalError
  * matching compare the interpreter uses everywhere).
  */
 private fun numberConstraintError(raw: String, c: FieldConstraints): FormalErrorCode? {
-    if (c.zeroNotAllowed) decOrNull(raw)?.let { if (it.compareScaled19(DEC_ZERO) == 0) return FormalErrorCode.ZERO_NOT_ALLOWED }
+    // The kernel's declared-constraint ORDER (FormatDefinitionZahl.validiereFormat, IF67 extended → IG42): the
+    // min-fractional-digits rule (missing separator, then too few) → the integer-digit cap → zero-not-allowed →
+    // leading zeros (LAST format check) → value-string length → value range. This order is kernel-EXACT: a "0" on
+    // a minFrac field is zahlOhneDezimalTrenner (not zahlIstNull), and a leading-zero value that also violates an
+    // earlier check reports THAT check (e.g. "07.5" on a scale-0 field is zahlHatDezimalTrenner).
     val minFrac = c.minFractionalDigits ?: 0
     if (minFrac > 0) {
         if (!raw.contains('.')) return FormalErrorCode.NO_DECIMAL_SEPARATOR
@@ -294,6 +298,12 @@ private fun numberConstraintError(raw: String, c: FieldConstraints): FormalError
     // sanity check `stelligkeitZuLang` fired earlier, in numberFormalError — it precedes this integer-cap check.)
     val intCap = c.maxIntegerDigits ?: c.amountMaxIntegerDigits
     if (intCap != null && integerDigits(raw) > intCap) return FormalErrorCode.TOO_MANY_INTEGER_DIGITS
+    // Zero-not-allowed fires AFTER the decimal / integer-cap checks (kernel order): a "0" that also lacks a
+    // required separator or overruns the integer cap reports THAT, not zahlIstNull.
+    if (c.zeroNotAllowed) decOrNull(raw)?.let { if (it.compareScaled19(DEC_ZERO) == 0) return FormalErrorCode.ZERO_NOT_ALLOWED }
+    // Leading zeros are the LAST format check (kernel step 11, after zero-not-allowed) — default-forbidden unless
+    // the field declares leadingZerosAllowed. `07`/`00`/`-07`/`00.50` fire; a lone `0` and `0.50` are clean.
+    if (!c.leadingZerosAllowed && hasLeadingZeros(raw)) return FormalErrorCode.LEADING_ZEROS
     // Value-string length bounds (the full stored text, incl. sign + decimal point).
     if (c.numberMinLength != null && raw.length < c.numberMinLength) return FormalErrorCode.NUMBER_TOO_SHORT
     if (c.numberMaxLength != null && raw.length > c.numberMaxLength) return FormalErrorCode.NUMBER_TOO_LONG
@@ -303,21 +313,25 @@ private fun numberConstraintError(raw: String, c: FieldConstraints): FormalError
     return null
 }
 
-private fun numberFormalError(raw: String, scale: Int?, leadingZerosAllowed: Boolean): FormalErrorCode? = when {
+/**
+ * The parse-level number-format checks the kernel runs regardless of declared constraints, in the kernel's exact
+ * `FormatDefinitionZahl.validiereFormat` order: plus-sign → invalid characters → > 15 total digits → signed-zero →
+ * decimal-separator (in a scale-0 field) → too-many-decimals (over the scale). The DECLARED-constraint checks —
+ * missing/too-few decimals, the integer-digit cap, zero-not-allowed, and (fires LATE, kernel step 11) LEADING
+ * ZEROS — all follow in [numberConstraintError], in the kernel's order.
+ */
+private fun numberFormalError(raw: String, scale: Int?): FormalErrorCode? = when {
     // (leading/trailing blanks are handled by the cross-kind baselineValueError before this, IF43)
     // A leading `+` on an otherwise-valid number is its own error (the kernel reports it, not "invalid chars").
     raw.startsWith("+") && DECIMAL.matches(raw.drop(1)) -> FormalErrorCode.PLUS_SIGN
     !DECIMAL.matches(raw) -> FormalErrorCode.INVALID_NUMBER
     // The kernel's stelligkeitZuLang — > 15 TOTAL digits (sign + decimal separator excluded) — a generic parse
-    // sanity check on EVERY number, right after the invalid-char check and BEFORE the sign/scale/leading-zero
-    // checks (FormatDefinitionZahl order — probe-verified it beats signed-zero, leading-zeros, decimal-separator).
+    // sanity check on EVERY number, right after the invalid-char check and BEFORE the sign/scale checks
+    // (FormatDefinitionZahl order — probe-verified it beats signed-zero, leading-zeros, decimal-separator).
     raw.count { it in '0'..'9' } > 15 -> FormalErrorCode.TOTAL_DIGITS_TOO_LONG
     // Signed-zero is checked BEFORE the scale/separator checks (verified: `-0.0` on a scale-0 field is the
     // signed-zero error, NOT the decimal-separator one — kernel order, NumberSignFormalDiffTest).
     isNegativeZero(raw) -> FormalErrorCode.SIGNED_ZERO
-    // Leading zeros in the integer part are forbidden BY DEFAULT (probe-verified: `07`/`00`/`-07` fire; `0`/`0.50`
-    // are clean) — unless the field declares `leadingZerosAllowed`. A format concern, after the sign checks.
-    !leadingZerosAllowed && hasLeadingZeros(raw) -> FormalErrorCode.LEADING_ZEROS
     scale == 0 && raw.contains('.') -> FormalErrorCode.DECIMAL_SEPARATOR
     scale != null && fractionalDigits(raw) > scale -> FormalErrorCode.TOO_MANY_DECIMALS
     else -> null
