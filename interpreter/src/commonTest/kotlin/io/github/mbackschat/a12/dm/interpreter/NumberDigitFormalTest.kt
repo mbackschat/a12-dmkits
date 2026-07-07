@@ -42,7 +42,7 @@ class NumberDigitFormalTest {
     @Test fun amountIntegerCapWithinCap() = assertEquals(null, code(amount2, "1234567890123"), "13 int = cap → clean")
     @Test fun amountTotal16HitsStelligkeitFirst() = assertEquals("stelligkeitZuLang", code(amount2, "12345678901234.56"), "16 total pre-empts the integer cap")
 
-    // ── IG42: the number formal-error PRECEDENCE order (FormatDefinitionZahl.validiereFormat): missing-separator →
+    // ── IF70: the number formal-error PRECEDENCE order (FormatDefinitionZahl.validiereFormat): missing-separator →
     //    wrong-decimals → integer-cap → zero-not-allowed → leading-zeros (LAST). ──
     @Test fun missingSeparatorBeatsZeroNotAllowed() = assertEquals("zahlOhneDezimalTrenner", code(zeroMinFrac2, "0"), "0 on zeroNotAllowed+minFrac → ohneDezimalTrenner, not zahlIstNull")
     @Test fun tooFewDecimalsBeatsZeroNotAllowed() = assertEquals("zahlFalscheAnzahlNachkommastellen", code(zeroMinFrac2, "0.0"), "0.0 → falscheAnzahl, not zahlIstNull")

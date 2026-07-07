@@ -1178,8 +1178,12 @@
     "keywords": { "en": "DateRangesOverlap", "de": "DatumsBereicheUeberlappend" },
     "operands": [ { "type": "date-range" } ],
     "returns": "boolean",
-    "meaning": "True iff the date ranges of the listed date-range fields overlap (start and end inclusive).",
-    "gotchas": [ { "text": "ranges are closed intervals: periods that merely TOUCH (one ends the day the other starts) overlap — seamless periods must start the day after the previous end", "kind": "SURPRISE" } ],
+    "meaning": "True iff ANY PAIR among ALL the listed date-range fields' filled ranges overlaps (start and end inclusive) — every operand's cells join ONE set and it fires on the first overlapping pair; there is no distinguished 'first' operand.",
+    "gotchas": [
+      { "text": "ranges are closed intervals: periods that merely TOUCH (one ends the day the other starts) overlap — seamless periods must start the day after the previous end", "kind": "SURPRISE" },
+      { "text": "ANY-PAIR among ALL operands (NOT a first-vs-rest test): DateRangesOverlap(X, Group*/Y) fires even when X is disjoint from every Y but two Y rows overlap EACH OTHER. And the SAME cell reached via a scalar ref AND via the star — a per-row rule's DateRangesOverlap(Period, ../Group*/Period) — overlaps ITSELF, so it fires on EVERY filled row (there is no self-exclusion). Empty/malformed cells are skipped; an INVALID range (start after end) never overlaps anything.", "kind": "SURPRISE" },
+      { "text": "polarity is FILTER-derived, not fill-derived: the error is an OMISSION (fillable) iff a filled cell of a Having-filtered operand was processed at or before the firing pair (operand order), else a VALUE error. A Having filter IS legal on a rep-list operand and is applied per cell (keep iff the filter is TRUE; a $-correlation term there has no enclosing iteration so it is trivially satisfied → keeps every row).", "kind": "SURPRISE" }
+    ],
     "constraints": [ "the operands are date-range fields (or a flattened repetition list of them)" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And DateRangesOverlap(CoverageWindow, Items*/ItemCoverage)", "note": "fires when the order's coverage window overlaps a line-item coverage" },
     "sinceKernel": "30.8.x"
@@ -1193,7 +1197,8 @@
     "meaning": "True iff the first date-range field's interval overlaps at least one date-range field in the list (start and end inclusive).",
     "gotchas": [
       { "text": "ranges are closed intervals: periods sharing one boundary day count as overlapping", "kind": "SURPRISE" },
-      { "text": "SELF-MEMBERSHIP in a per-row rule: AtLeastOneDateRangeOverlaps(Period IN Group*/Period) from a rule iterating over Group flattens ALL rows' periods INCLUDING the current row's, so the current Period overlaps ITSELF and the rule fires on EVERY row (rule check still says valid:true — it is a semantic trap, not a syntax error; there is no self-exclusion). For 'no two rows overlap', author a MODEL-LEVEL rule with DateRangesOverlap(/Group*/Period) over the single flattened list (error field a non-repeatable field, referenced via a FieldFilled guard) — it fires ONCE for the document instead of per row.", "kind": "SURPRISE" }
+      { "text": "SELF-MEMBERSHIP in a per-row rule: AtLeastOneDateRangeOverlaps(Period IN Group*/Period) from a rule iterating over Group flattens ALL rows' periods INCLUDING the current row's, so the current Period overlaps ITSELF and the rule fires on EVERY row (rule check still says valid:true — it is a semantic trap, not a syntax error; there is no self-exclusion). For 'no two rows overlap', author a MODEL-LEVEL rule with DateRangesOverlap(/Group*/Period) over the single flattened list (error field a non-repeatable field, referenced via a FieldFilled guard) — it fires ONCE for the document instead of per row.", "kind": "SURPRISE" },
+      { "text": "genuinely SCALAR-vs-LIST (unlike DateRangesOverlap's any-pair set): the single first range is compared against each list cell and is NOT itself a set member, so two LIST cells overlapping each other do NOT fire (only the scalar-vs-list overlap does); a not-filled/malformed scalar → no fire (not unknown-suppression). Polarity is FILTER-derived: OMISSION iff the MATCHED list operand carries a Having, else a VALUE error.", "kind": "SURPRISE" }
     ],
     "constraints": [ "a date-range field, then In, then a date-range field list (often a flattened repetition list)" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And AtLeastOneDateRangeOverlaps(CoverageWindow IN Items*/ItemCoverage)", "note": "fires when the coverage window overlaps any line-item coverage" },

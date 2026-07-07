@@ -88,6 +88,11 @@ class Interpreter(
      *  row the aggregate/quantifier is iterating FROM, not the inner filtered row. Null at top level (a `$`
      *  there is an error — it needs an enclosing iteration). */
     private val outer: EvalContext? = null,
+    /** The overlap-predicate `Having` filter (a plain boolean predicate's rep-list arg) has NO enclosing
+     *  iteration to bind `$` to — unlike a quantifier's `Having`, whose star iterates. So here a `$`-marked
+     *  ref is UNBOUND and resolves to UNKNOWN (the kernel then keeps the cell: keep-law = not-FALSE keeps),
+     *  rather than binding to [outer] or throwing. Set only by [overlapFilterInterp] (KERNEL-FINDINGS §6, IF72). */
+    private val outerUnbound: Boolean = false,
 ) {
 
     /** The context a node resolves against: the enclosing (`outer`) iteration for a `$`-marked ref, else [ctx]. */
@@ -98,8 +103,29 @@ class Interpreter(
         else -> ctx
     }
 
+    /** Whether a `$`-marked node is UNBOUND in this context — an overlap-predicate `Having` ([outerUnbound]) has
+     *  no enclosing iteration, so a `$` ref there resolves to UNKNOWN (not [outer], not a throw). */
+    private fun outerUnknown(node: Expr): Boolean = outerUnbound && when (node) {
+        is Expr.Field -> node.outer
+        is Expr.Star -> node.outer
+        is Expr.EnumCategory -> node.outer
+        else -> false
+    }
+
     private fun outerOrThrow(): EvalContext =
         outer ?: throw UnsupportedConstructException("a \$ outer-correlation reference is only valid inside a Having filter")
+
+    /** Whether [e]'s expression tree references a `$` outer-correlation — used ONLY in [outerUnbound] mode (an
+     *  overlap-predicate `Having`) to detect a term the codegen cannot compile (no enclosing iteration to bind
+     *  `$` to), which is therefore trivially satisfied. */
+    private fun hasUnboundOuter(e: Expr): Boolean = when (e) {
+        is Expr.Field -> e.outer
+        is Expr.Star -> e.outer
+        is Expr.EnumCategory -> e.outer
+        is Expr.Func -> e.args.any { hasUnboundOuter(it) }
+        is Expr.Arith -> hasUnboundOuter(e.left) || hasUnboundOuter(e.right)
+        else -> false
+    }
 
     /** A sub-interpreter for a `Having` filter row [rc], carrying the SAME config and setting the enclosing
      *  iteration ([ctx]) as its `outer` — so a `$`-marked ref in the filter resolves against this row. */
@@ -107,6 +133,14 @@ class Interpreter(
         Interpreter(rc, clock, baseYear, indexFields, predefinedTypes, customConditions, customErrorField, invalid,
             cellRelevant = cellRelevant, starRelevant = starRelevant, customRelevant = customRelevant,
             customFieldTypes = customFieldTypes, outer = ctx)
+
+    /** A sub-interpreter for the overlap predicates' `Having` filter row [rc] — like [havingInterp] but with NO
+     *  outer binding ([outerUnbound]): a plain boolean predicate's rep-list arg has no enclosing iteration, so a
+     *  `$` term in its filter is unbound → UNKNOWN → the cell is KEPT (keep-law: not-FALSE keeps; KERNEL-FINDINGS §6). */
+    private fun overlapFilterInterp(rc: EvalContext): Interpreter =
+        Interpreter(rc, clock, baseYear, indexFields, predefinedTypes, customConditions, customErrorField, invalid,
+            cellRelevant = cellRelevant, starRelevant = starRelevant, customRelevant = customRelevant,
+            customFieldTypes = customFieldTypes, outer = null, outerUnbound = true)
 
     fun fires(cond: Cond): Boolean = eval(cond) == Tri.TRUE
 
@@ -582,6 +616,9 @@ class Interpreter(
         if (op == PredicateOp.INVALID)
             return if (p.args.size == 2 || dateStatusOf(p.args.single()) != DateStatus.HAS_EMPTY) MsgType.VALUE
                 else MsgType.OMISSION
+        // The overlap predicates' polarity is filter-derived, computed in the SAME scan as the truth (shared [Res]).
+        if (op == PredicateOp.DATE_RANGES_OVERLAP) return overlapAny(p.args).type
+        if (op == PredicateOp.ATLEAST_ONE_DATE_RANGE_OVERLAPS) return atLeastOneOverlap(p.args).type
         op.polarity?.let { return it }
         if (!op.countsGroups && hasFillScopeOperand(p.args)) return fillScopeType(op, fillScopeInfo(p.args))
         val (t, f, n) = quantCounts(op, p.args)
@@ -633,6 +670,8 @@ class Interpreter(
     }
 
     private fun evalPred(p: Cond.Pred): Tri {
+        // Overlap-predicate Having: a predicate touching an unbound `$` is trivially TRUE (see [evalCmp]).
+        if (outerUnbound && p.args.any { hasUnboundOuter(it) }) return Tri.TRUE
         val op = PredicateOp.byName(p.name) ?: throw UnsupportedConstructException("unsupported predicate ${p.name}")
         return when (op) {
             PredicateOp.FIELD_FILLED -> presenceTri(p.args.single())
@@ -641,8 +680,8 @@ class Interpreter(
             PredicateOp.GROUP_NOT_FILLED -> Tri.of(!ctxOf(p.args.single()).groupFilled(pathOf(p.args.single())))
             PredicateOp.FIELD_VALUE_IN_LIST -> valueInList(p.args)
             PredicateOp.FIELD_VALUE_NOT_IN_LIST -> Kleene.not(valueInList(p.args))
-            PredicateOp.DATE_RANGES_OVERLAP,
-            PredicateOp.ATLEAST_ONE_DATE_RANGE_OVERLAPS -> dateRangesOverlap(p.args)
+            PredicateOp.DATE_RANGES_OVERLAP -> overlapAny(p.args).truth
+            PredicateOp.ATLEAST_ONE_DATE_RANGE_OVERLAPS -> atLeastOneOverlap(p.args).truth
             PredicateOp.FIELD_VALUES_NOT_UNIQUE -> fieldValuesNotUnique(p.args)
             // Valid/Invalid(Date(...)): 3VL over the construction's status. A malformed part makes the whole
             // non-evaluable (UNKNOWN — both go quiet, the formal error fires); else Valid iff real-and-all-present,
@@ -1019,22 +1058,92 @@ class Interpreter(
     }
 
     /**
-     * `DateRangesOverlap(range, ranges)` — TRUE when the scalar [args]`[0]` range overlaps **any** of the
-     * second operand's ranges (a starred `Items* / ItemCoverage` → the rows' ranges; else a single range). An
-     * empty/absent first range → UNKNOWN (not evaluated); empty rows are skipped. Ranges are **closed
-     * intervals** — overlap ⇔ `end1 ≥ start2 ∧ end2 ≥ start1` (so touching ranges overlap; KERNEL-FINDINGS §6).
+     * `DateRangesOverlap(op0, op1, …)` — **any-pair among ALL** operands' kept, filled range cells (kernel
+     * `datumsBereicheUeberlappend`): every operand's cells feed ONE growing set in operand order, and the
+     * predicate fires on the FIRST range overlapping any already-seen member. There is NO distinguished first
+     * operand — so the SAME row's cell arriving via a scalar ref AND via the star is two members whose identical
+     * range "overlaps" (the self-pair), and a list-internal pair fires even when a scalar operand is disjoint.
+     * Empty/malformed cells are SKIPPED (no unknown-suppression); an INVALID range never overlaps ([rangesOverlap]).
+     *
+     * Polarity is **filter-derived** (not fill-derived): OMISSION iff a filled cell of a FILTER-bearing operand
+     * (a rep-list arg carrying a `Having`) was processed at/before the fire — the `containsFilter` flag evolves
+     * in operand order, matching the kernel exactly. Returns the (truth, polarity) [Res] so [evalPred] and
+     * [predType] share ONE scan (KERNEL-FINDINGS §6, IF72).
      */
-    private fun dateRangesOverlap(args: List<Expr>): Tri {
-        val a = evalExpr(args[0]) as? Val.Range ?: return Tri.UNKNOWN
-        val others = when (val b = args[1]) {
-            is Expr.Star -> ctxOf(b).star(b.path)
-            else -> listOf(evalExpr(b))
-        }.filterIsInstance<Val.Range>()
-        return Tri.of(others.any { rangesOverlap(a, it) })
+    private fun overlapAny(args: List<Expr>): Res {
+        val seen = mutableListOf<Val.Range>()
+        var containsFilter = false
+        for (arg in args) {
+            val filtered = arg is Expr.Star && arg.having != null
+            for (cell in overlapCells(arg)) {
+                if (filtered) containsFilter = true
+                if (seen.any { rangesOverlap(cell, it) })
+                    return Res.of(Tri.TRUE, if (containsFilter) MsgType.OMISSION else MsgType.VALUE)
+                seen.add(cell)
+            }
+        }
+        return Res.of(Tri.FALSE, MsgType.VALUE)
     }
 
-    /** Closed-interval overlap of two ISO date ranges (lexicographic compare = chronological on ISO). */
-    private fun rangesOverlap(x: Val.Range, y: Val.Range): Boolean = x.end >= y.start && y.end >= x.start
+    /**
+     * `AtLeastOneDateRangeOverlaps(scalar In list…)` — genuinely scalar-vs-list (kernel
+     * `mindestensEinDatumsBereichUeberlappendFL`): the single unstarred [args]`[0]` range is compared against
+     * each list cell; it is NOT a member of the set, so there is no self-pair. A not-filled/malformed scalar →
+     * FALSE (no fire — NOT unknown-suppression). Polarity: OMISSION iff the MATCHED container (the list operand
+     * whose cell overlapped) carries a `Having`, VALUE otherwise (KERNEL-FINDINGS §6, IF72).
+     */
+    private fun atLeastOneOverlap(args: List<Expr>): Res {
+        val scalar = evalExpr(args[0]) as? Val.Range ?: return Res.of(Tri.FALSE, MsgType.VALUE)
+        for (i in 1 until args.size) {
+            val arg = args[i]
+            val filtered = arg is Expr.Star && arg.having != null
+            for (cell in overlapCells(arg)) {
+                if (rangesOverlap(scalar, cell))
+                    return Res.of(Tri.TRUE, if (filtered) MsgType.OMISSION else MsgType.VALUE)
+            }
+        }
+        return Res.of(Tri.FALSE, MsgType.VALUE)
+    }
+
+    /**
+     * The kept, FILLED range cells of an overlap operand, in row order — empties/malformed dropped (the kernel's
+     * `isWertAngegeben != TRUE → continue`). A scalar operand contributes its one range (or nothing); a starred
+     * operand expands over its group's rows, and a `Having` KEEPS a row iff the filter is TRUE (the kernel
+     * compiles the filter to a BOOLEAN — a runtime-UNKNOWN comparison, e.g. a malformed operand, is not-TRUE →
+     * the row is dropped). A `$`-correlation term has no enclosing iteration for a plain predicate's arg, so the
+     * codegen cannot compile it and the whole term is trivially TRUE ([evalCmp]/[evalPred] short-circuit under
+     * [outerUnbound]) — that is why a `!= $RuleGroup` / `== $RuleGroup` self-"exclusion" keeps ALL rows, while a
+     * malformed real operand drops them. Distinct from the quantifier-`Having` path ([starOperandVals], `$` bound
+     * to the enclosing row). (KERNEL-FINDINGS §6, IF72.)
+     */
+    private fun overlapCells(arg: Expr): List<Val.Range> = when (arg) {
+        is Expr.Star -> filteredStarCells(arg).filterIsInstance<Val.Range>()
+        else -> listOfNotNull(evalExpr(arg) as? Val.Range)
+    }
+
+    /**
+     * The FILLED cells of a starred rep-list operand of a plain boolean predicate (`DateRangesOverlap`,
+     * `FieldValuesNotUnique`), honoring an optional `Having` — the SHARED filter path. Without a `Having`:
+     * [EvalContext.star] (empties dropped, a malformed cell → [Val.Unknown]). With one: keep a row iff the filter
+     * FIRES (TRUE) — the kernel compiles the filter to a boolean, so a malformed operand (runtime-UNKNOWN) drops
+     * the row, and a `$`-correlation term (no enclosing iteration here) is trivially TRUE ([evalCmp] short-circuit
+     * via [overlapFilterInterp]); a kept row's empty cell is dropped, a kept malformed cell surfaces as
+     * [Val.Unknown]. Distinct from the quantifier-`Having` path ([starOperandVals], `$` bound). KERNEL-FINDINGS §6.
+     */
+    private fun filteredStarCells(star: Expr.Star): List<Val> {
+        val c = ctxOf(star)
+        if (star.having == null) return c.star(star.path)
+        return c.rowContexts(star.path.substringBeforeLast('/'))
+            .filter { rc -> overlapFilterInterp(rc).fires(star.having) }
+            .mapNotNull { rc -> if (rc.filled(star.path)) rc.field(star.path) else null }
+    }
+
+    /** Closed-interval overlap of two ISO date ranges (lexicographic compare = chronological on ISO). An INVALID
+     *  range (start > end) never overlaps anything (kernel `DatumBereich.ueberlappt` returns false for either
+     *  side invalid), so both sides must be well-formed first. Overlap ⇔ `end1 ≥ start2 ∧ end2 ≥ start1` (closed —
+     *  touching ranges overlap; KERNEL-FINDINGS §6). */
+    private fun rangesOverlap(x: Val.Range, y: Val.Range): Boolean =
+        x.start <= x.end && y.start <= y.end && x.end >= y.start && y.end >= x.start
 
     /** `value PatternMatched/PatternViolated "regex"` — anchored full-value match; empty → not evaluated. */
     private fun evalPattern(p: Cond.Pattern): Tri {
@@ -1046,6 +1155,10 @@ class Interpreter(
     }
 
     private fun evalCmp(c: Cond.Cmp): Tri {
+        // Overlap-predicate Having: a comparison touching an unbound `$` cannot be compiled (no enclosing
+        // iteration) → the kernel treats the term as trivially TRUE (KERNEL-FINDINGS §6). This is why a
+        // `$`-self-"exclusion" keeps every row, unlike a malformed real operand (which drops, evaluated below).
+        if (outerUnbound && (hasUnboundOuter(c.left) || hasUnboundOuter(c.right))) return Tri.TRUE
         val l = evalCmpOperand(c.left, c.right)
         val r = evalCmpOperand(c.right, c.left)
         if (l is Val.Unknown || r is Val.Unknown) return Tri.UNKNOWN
@@ -1068,13 +1181,13 @@ class Interpreter(
         is Expr.NumLit -> e.asVal
         is Expr.StrLit -> e.asVal
         is Expr.BoolLit -> e.asVal
-        is Expr.Field -> if (invalid(e.path)) Val.Unknown else ctxOf(e).field(e.path)
+        is Expr.Field -> if (outerUnknown(e) || invalid(e.path)) Val.Unknown else ctxOf(e).field(e.path)
         is Expr.Star -> throw UnsupportedConstructException("a starred path must sit inside an aggregate (Sum/MaxValue/…)")
         is Expr.Func -> evalFunc(e)
         is Expr.Arith -> evalArith(e)
         is Expr.Const -> evalConst(e.name)
         is Expr.SemanticIndex -> evalSemanticIndex(e)
-        is Expr.EnumCategory -> ctxOf(e).enumCategory(e.path, e.category)
+        is Expr.EnumCategory -> if (outerUnknown(e)) Val.Unknown else ctxOf(e).enumCategory(e.path, e.category)
     }
 
     /** `[field For "value"]` — the field's value in the row whose index field equals the value; an absent row
@@ -1107,8 +1220,9 @@ class Interpreter(
 
     /** The 3VL presence of a field-valued predicate/quantifier operand — a plain field ref ([filledTri]) or a
      *  semantic index ([semanticIndexPresence]). Any other operand shape is not a presence operand. */
-    private fun presenceTri(e: Expr): Tri = when (e) {
-        is Expr.SemanticIndex -> semanticIndexPresence(e)
+    private fun presenceTri(e: Expr): Tri = when {
+        outerUnknown(e) -> Tri.UNKNOWN   // an unbound `$` presence operand (overlap-predicate Having) → UNKNOWN
+        e is Expr.SemanticIndex -> semanticIndexPresence(e)
         else -> filledTri(ctxOf(e), pathOf(e))
     }
 
@@ -1371,7 +1485,9 @@ class Interpreter(
         // SumOfProducts(a*, b*): Σ aᵢ·bᵢ paired row-by-row (empty → 0); any malformed element → suppressed.
         FunctionOp.SUM_OF_PRODUCTS -> sumOfProducts(f.args)
         // CurrentRepetition(group): the current row's 1-based index at that group's level (the last reps part).
-        FunctionOp.CURRENT_REPETITION -> Val.Num(dec(ctxOf(f.args[0]).repsOf(pathOf(f.args[0])).last()))
+        // An UNBOUND `$` group (an overlap-predicate Having, no enclosing iteration) → UNKNOWN (KERNEL-FINDINGS §6).
+        FunctionOp.CURRENT_REPETITION ->
+            if (outerUnknown(f.args[0])) Val.Unknown else Val.Num(dec(ctxOf(f.args[0]).repsOf(pathOf(f.args[0])).last()))
         null -> throw UnsupportedConstructException("unsupported function ${f.name}")
         }
     }
@@ -1422,7 +1538,10 @@ class Interpreter(
         val values = mutableListOf<Val>()
         for (a in args) when (a) {
             is Expr.Star -> {
-                val rows = ctx.star(a.path)                      // filled row values (empties dropped)
+                // filled row values (empties dropped) — an optional `Having` filters the rows (kernel-probed: FVNU
+                // ACCEPTS + EVALUATES a filter, the overlap-predicate keep-law; unlike SumOfProducts, which the
+                // kernel authoring-rejects). A malformed kept cell → non-evaluable (suppressed).
+                val rows = filteredStarCells(a)
                 if (rows.any { it is Val.Unknown }) return Tri.UNKNOWN  // a malformed row → non-evaluable
                 values.addAll(rows)
             }
@@ -1457,9 +1576,24 @@ class Interpreter(
      * any malformed cell makes the whole sum non-evaluable → the rule is suppressed (the formal mechanism). Both
      * stars resolve over the same group, so `starAll` yields equal-length, row-aligned lists.
      */
-    private fun sumOfProducts(args: List<Expr>): Val =
+    private fun sumOfProducts(args: List<Expr>): Val {
+        rejectHaving(args, "SumOfProducts")
         // Resolve the two row-aligned star lists here (ctx-coupled); the Σ aᵢ·bᵢ fold is pure ([Aggregates], IF10).
-        Aggregates.sumOfProducts(ctx.starAll((args[0] as Expr.Star).path), ctx.starAll((args[1] as Expr.Star).path))
+        return Aggregates.sumOfProducts(ctx.starAll((args[0] as Expr.Star).path), ctx.starAll((args[1] as Expr.Star).path))
+    }
+
+    /**
+     * Degrade LOUD (IF61) if any operand is a starred rep-list carrying a `Having` this consumer does not
+     * evaluate — the kernel AUTHORING-REJECTS a filter on a `SumOfProducts` operand (`MVK_WILDCARD_AT_LOWEST_
+     * LEVEL_REQUIRED`: the lowest repetition must be an unrestricted `*`), so on a valid model this never fires
+     * (parity-by-construction); a filter that somehow reached the interpreter must be REPORTED (the rule is
+     * reported unsupported), never SILENTLY ignored (which would compute the wrong answer). Contrast
+     * `FieldValuesNotUnique`, which the kernel ACCEPTS + EVALUATES — it filters via [filteredStarCells], not here.
+     */
+    private fun rejectHaving(args: List<Expr>, op: String) {
+        if (args.any { it is Expr.Star && it.having != null })
+            throw UnsupportedConstructException("$op does not support a Having filter on its operand")
+    }
 
     /**
      * `FieldValueAsString(ref)` — the RAW stored value as a string; an empty/absent value reads as `""` (which

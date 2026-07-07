@@ -27,11 +27,14 @@ enum class PredicateOp(val kernelName: String, val polarity: MsgType?, val count
     GROUP_NOT_FILLED("GroupNotFilled", MsgType.OMISSION),
     FIELD_VALUE_IN_LIST("FieldValueIncludedInValueList", MsgType.VALUE),
     FIELD_VALUE_NOT_IN_LIST("FieldValueNotIncludedInValueList", MsgType.VALUE),
-    // Two PRESENT date ranges that clash → a value error (no fill clears an overlap; you change a value).
-    DATE_RANGES_OVERLAP("DateRangesOverlap", MsgType.VALUE),
-    // The `A IN B*` sibling of DateRangesOverlap — semantically identical (A overlaps ≥1 of B), only the
-    // surface syntax differs (the `IN` literal vs a comma); kernel-probed equal, so it shares the eval.
-    ATLEAST_ONE_DATE_RANGE_OVERLAPS("AtLeastOneDateRangeOverlaps", MsgType.VALUE),
+    // Date-range overlap — polarity is DATA-dependent (null → computed in `Interpreter.predType`): OMISSION when
+    // a FILTER-bearing operand (a rep-list arg with a `Having`) contributed the firing cell, VALUE otherwise
+    // (KERNEL-FINDINGS §6). The two are NOT interchangeable: `DateRangesOverlap(op0, …)` is ANY-PAIR among ALL
+    // operands' cells (a self-pair fires), while `AtLeastOneDateRangeOverlaps(scalar In list)` is genuinely
+    // scalar-vs-list (the scalar is not in the set) — they differ exactly where the set semantics bites, so each
+    // has its own eval (`overlapAny` / `atLeastOneOverlap`).
+    DATE_RANGES_OVERLAP("DateRangesOverlap", null),
+    ATLEAST_ONE_DATE_RANGE_OVERLAPS("AtLeastOneDateRangeOverlaps", null),
     // Two of the listed fields hold the same value → a value error (you change a value, you don't fill — both
     // are already filled). Empties are skipped (two empties are NOT a duplicate); a malformed operand suppresses.
     FIELD_VALUES_NOT_UNIQUE("FieldValuesNotUnique", MsgType.VALUE),

@@ -109,6 +109,18 @@ class FieldValuesNotUniqueDiffTest {
     @Test fun starredDistinctWithEmptyDoesNotFire() = starAgree(star, listOf("5", null, "9"), msg = "distinct rows + empty → not fire")
     @Test fun starredSingleRowDoesNotFire() = starAgree(star, listOf("5"), msg = "one value → no duplicate")
 
+    // A `Having` on the starred operand — kernel-probed to be ACCEPTED + EVALUATED (unlike SumOfProducts, which
+    // the kernel authoring-rejects). The keep-law is the overlap-predicate one (keep iff the filter is TRUE);
+    // filtering the rows CHANGES which values are compared for distinctness (IF72).
+    private val items = m.group("/Order/Items")
+    private val havingLeq2 = render(Dsl.fieldValuesNotUnique(m.flatten("/Order/Items*/Count").having(Dsl.currentRepetition(items).le(2))))
+    private val havingGeq2 = render(Dsl.fieldValuesNotUnique(m.flatten("/Order/Items*/Count").having(Dsl.currentRepetition(items).ge(2))))
+
+    @Test fun starHavingKeepsDistinctDoesNotFire() =
+        starAgree(havingLeq2, listOf("5", "9", "9"), msg = "Having <=2 keeps rows 1,2 = [5,9] distinct → not fire (filter evaluated)")
+    @Test fun starHavingKeepsDuplicateFires() =
+        starAgree(havingGeq2, listOf("5", "9", "9"), msg = "Having >=2 keeps rows 2,3 = [9,9] duplicate → fires (filter evaluated)")
+
     private companion object {
         const val QTY = "/Order/Quantity"
         const val BACK = "/Order/BackorderQuantity"

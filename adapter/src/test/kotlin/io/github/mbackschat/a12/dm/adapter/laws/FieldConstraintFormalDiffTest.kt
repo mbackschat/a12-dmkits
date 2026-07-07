@@ -143,7 +143,7 @@ class FieldConstraintFormalDiffTest {
     @Test fun zeroNotAllowedFires() = agree(zna, znaDef, "/Order/NZ", "0", "zeroNotAllowed + 0 → zahlIstNull")
     @Test fun zeroNotAllowedCleanNonZero() = agree(zna, znaDef, "/Order/NZ", "5", "zeroNotAllowed + 5 → clean")
 
-    // ── IG42: number formal-error PRECEDENCE matrix (FormatDefinitionZahl.validiereFormat order → IF67 extended).
+    // ── IF70: number formal-error PRECEDENCE matrix (FormatDefinitionZahl.validiereFormat order → IF67 extended).
     //    The kernel order among the declared-constraint checks: missing-decimal-separator → wrong-#-decimals →
     //    integer-cap → zero-not-allowed → LEADING-ZEROS (last) → length → range. The interpreter had TWO
     //    mis-orderings: zeroNotAllowed fired before the decimal/integer checks, and leadingZeros fired FIRST (in
@@ -168,7 +168,7 @@ class FieldConstraintFormalDiffTest {
         "type": "NumberType", "NumberType": { "maxFractionalDigits": 2, "minFractionalDigits": 2, "zeroNotAllowed": true } } } },"""
     private val zeroMinFracDef = FieldDef("/Order/ZF", Kind.NUMBER, scale = 2, minFractionalDigits = 2, zeroNotAllowed = true)
 
-    // (reported IG42) zero-not-allowed vs missing-decimal-separator: "0" is zero AND lacks the required separator —
+    // (IF70) zero-not-allowed vs missing-decimal-separator: "0" is zero AND lacks the required separator —
     // the kernel reports the missing separator (step 7), NOT zahlIstNull (step 10).
     @Test fun missingSeparatorBeatsZeroNotAllowed() =
         agreeCode(zeroMinFracStr, zeroMinFracDef, "/Order/ZF", "0", "zahlOhneDezimalTrenner",

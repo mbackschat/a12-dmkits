@@ -298,20 +298,13 @@ private class ConditionParser(private val src: String, private val base: String)
 
     private fun readArgs(): List<Expr> {
         expect('(')
-        val args = mutableListOf(parseExpr())
+        val args = mutableListOf(parseArg())
         skipWs()
-        // `<star> Having <condition>` — an aggregate's per-row filter (`Sum(Items*/Count Having …)`); attaches
-        // the condition to the starred operand so the aggregate consumes only the matching rows.
-        if (matchKeyword("Having")) {
-            val star = args[0] as? Expr.Star ?: throw UnsupportedConstructException("Having applies to a starred aggregate operand")
-            args[0] = Expr.Star(star.path, parseOr())
-            skipWs()
-        }
         // An infix grammar literal separating arg0 from the rest: `In` for `NumberOfValueInFields(value In f1, …)`
         // / `AtLeastOneDateRangeOverlaps(range In rangeList)`. The kernel's `inOp` is `'In' | 'IN' | 'in'`, so
         // matchKeyword("In") accepts all three via KEYWORD_VARIANTS. For every other function the next token is `,`/`)`.
-        if (matchKeyword("In")) { args.add(parseExpr()); skipWs() }
-        while (peek() == ',') { next(); args.add(parseExpr()); skipWs() }
+        if (matchKeyword("In")) { args.add(parseArg()); skipWs() }
+        while (peek() == ',') { next(); args.add(parseArg()); skipWs() }
         // `@From <group>` (localized `@Von`) — RepetitionNotUnique's optional reference-group selector. The
         // group ref (a relative name/path, `RuleGroup`, `..`, or absolute) is captured raw as a trailing
         // `@From:<ref>` marker arg; the consumer (DmInterpreter) splits it off the key fields and resolves it.
@@ -324,6 +317,22 @@ private class ConditionParser(private val src: String, private val base: String)
         }
         expect(')')
         return args
+    }
+
+    /**
+     * One function/predicate argument, with an optional trailing `<star> Having <condition>` per-row filter. The
+     * `Having` attaches to WHATEVER starred operand precedes it — not only `arg0` — so it rides an aggregate's
+     * single star (`Sum(Items* / Count Having …)`), a quantifier's star, AND a rep-list arg of a boolean predicate
+     * (`DateRangesOverlap(X, Items* / Y Having …)`, `AtLeastOneDateRangeOverlaps(X In Items* / Y Having …)`), which
+     * the kernel accepts and the interpreter previously rejected ("expected ')'"). A `Having` after a non-star
+     * operand is an authoring error (a filter needs rows to filter). The `outer` (`$`) flag is preserved.
+     */
+    private fun parseArg(): Expr {
+        val e = parseExpr()
+        skipWs()
+        if (!matchKeyword("Having")) return e
+        val star = e as? Expr.Star ?: throw UnsupportedConstructException("Having applies to a starred operand")
+        return Expr.Star(star.path, parseOr(), star.outer)
     }
 
     /** Read a `@From` reference-group token raw — up to the closing `)` (a group path/name, possibly with `/`). */

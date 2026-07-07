@@ -282,7 +282,7 @@ private fun stringConstraintError(raw: String, c: FieldConstraints): FormalError
  * matching compare the interpreter uses everywhere).
  */
 private fun numberConstraintError(raw: String, c: FieldConstraints): FormalErrorCode? {
-    // The kernel's declared-constraint ORDER (FormatDefinitionZahl.validiereFormat, IF67 extended → IG42): the
+    // The kernel's declared-constraint ORDER (FormatDefinitionZahl.validiereFormat, IF67 extended → IF70): the
     // min-fractional-digits rule (missing separator, then too few) → the integer-digit cap → zero-not-allowed →
     // leading zeros (LAST format check) → value-string length → value range. This order is kernel-EXACT: a "0" on
     // a minFrac field is zahlOhneDezimalTrenner (not zahlIstNull), and a leading-zero value that also violates an
