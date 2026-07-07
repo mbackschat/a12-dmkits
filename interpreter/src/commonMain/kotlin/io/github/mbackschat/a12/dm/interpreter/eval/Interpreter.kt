@@ -518,10 +518,13 @@ class Interpreter(
         op.polarity?.let { return it }
         if (!op.countsGroups && hasFillScopeOperand(p.args)) return fillScopeType(op, fillScopeInfo(p.args))
         val (t, f, n) = quantCounts(op, p.args)
-        // OMISSION iff filling some currently-empty (FALSE) operand could clear the firing — each fill moves a
-        // FALSE to TRUE: (t, f) → (t+j, f-j). (UNKNOWN operands aren't "fillable" — they need correcting, not
-        // filling — so they don't enter this; the type isn't differential-checked with malformed operands.)
-        val fillable = (1..f).any { j -> !quantifierFires(op, t + j, f - j, n) }
+        // OMISSION iff filling more content could clear the firing. For a STARRED group operand the fix is ADDING
+        // a row — (t, f, n) → (t+1, f, n+1), n is not fixed — so `NoGroupFilled(G*)` at zero rows is OMISSION
+        // (add a row) while `AtLeastOneGroupFilled(G*)` is VALUE (adding never clears it) (IF68). For a fixed-arity
+        // quantifier each fill moves a FALSE operand to TRUE: (t, f) → (t+j, f-j). (UNKNOWN operands aren't
+        // "fillable" — they need correcting, not filling — so they don't enter this.)
+        val fillable = if (op.countsGroups && p.args.singleOrNull() is Expr.Star) !quantifierFires(op, t + 1, f, n + 1)
+            else (1..f).any { j -> !quantifierFires(op, t + j, f - j, n) }
         return if (fillable) MsgType.OMISSION else MsgType.VALUE
     }
 
@@ -712,13 +715,32 @@ class Interpreter(
         return t to f
     }
 
-    /** The quantifier's `(TRUE, FALSE, N)` tally — a STARRED operand (`AtLeastOneFieldFilled(Group* / Field
-     *  Having …)`) expands to its filtered rows via [starQuantTally]; else a plain field/group operand list. */
+    /** The quantifier's `(TRUE, FALSE, N)` tally — a STARRED operand expands to its filtered rows: a
+     *  countsGroups predicate's star is a starred repeatable GROUP ([starGroupTally]); a field quantifier's star
+     *  is a field-list (`AtLeastOneFieldFilled(Group* / Field Having …)`, [starQuantTally]); else a plain
+     *  field/group operand list. */
     private fun quantCounts(op: PredicateOp, args: List<Expr>): Triple<Int, Int, Int> {
         val single = args.singleOrNull()
-        if (single is Expr.Star) return starQuantTally(single)
+        if (single is Expr.Star) return if (op.countsGroups) starGroupTally(single) else starQuantTally(single)
         val (t, f) = quantTally(op, args)
         return Triple(t, f, args.size)
+    }
+
+    /**
+     * Tally a STARRED single repeatable-GROUP quantifier operand — `NoGroupFilled(G*)` / `AtLeastOneGroupFilled(G*)`.
+     * Unlike a field-list star ([starQuantTally], whose path ends at a FIELD), the operand IS the group, and EVERY
+     * instantiated row counts as a "filled" group (a created row is content — IF46, matching `NumberOfFilledGroups`),
+     * so `t = n = instantiated (Having-matching) rows` and `f = 0` (probe-verified: the kernel does NOT fire
+     * `NoGroupFilled(G*)` on one instantiated-but-empty row, and DOES fire `AtLeastOneGroupFilled(G*)`). The kernel
+     * forbids `*` on a group for the AllGroupsFilled / NotAllGroupsFilled / collectively family
+     * (`MVK_NO_WILDCARDS_G_ALLOWED`), so only the count-zero / count-≥1 predicates reach here on a valid model.
+     * (The earlier code mis-routed this to [starQuantTally], which resolved the group's PARENT and counted zero —
+     * an over-fire of `NoGroupFilled` and an under-fire of `AtLeastOneGroupFilled`; IF68.)
+     */
+    private fun starGroupTally(star: Expr.Star): Triple<Int, Int, Int> {
+        val rows = ctxOf(star).rowContexts(star.path)
+        val n = if (star.having == null) rows.size else rows.count { havingInterp(it).fires(star.having) }
+        return Triple(n, 0, n)
     }
 
     /**
