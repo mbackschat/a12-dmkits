@@ -361,7 +361,40 @@ class Interpreter(
         FunctionOp.NUMBER_OF_FILLED_FIELDS, FunctionOp.NUMBER_OF_FILLED_GROUPS,
         FunctionOp.NUMBER_OF_DIFFERENT_VALUES, FunctionOp.NUMBER_OF_VALUE_IN_FIELDS ->
             Fill.of(canGrow = leafOmission(f), canShrink = false)
+        // Value FUNCTIONS carry their arg's directional fill through the kernel's `VkBigDecimal` (IF69's sibling).
+        // Rounding is `setScale`, which PRESERVES `kannGroesser/Kleiner` exactly — so a `Round*([expr], n)` /
+        // `Round*Value(field)` propagates its rounded operand's [fill] unchanged (the places literal is fixed).
+        FunctionOp.ROUND_DOWN, FunctionOp.ROUND_UP, FunctionOp.ROUND_ACCOUNTING,
+        FunctionOp.ROUND_DOWN_VALUE, FunctionOp.ROUND_UP_VALUE, FunctionOp.ROUND_ACCOUNTING_VALUE -> fill(f.args[0])
+        // |x| — `VkBigDecimal.abs` TRANSFORMS the fill with the operand's value sign (grows off either direction,
+        // shrinks only toward 0). Both `Abs([expr])` and `AbsValue(field)` take one operand.
+        FunctionOp.ABS, FunctionOp.ABS_VALUE -> ArithFill.abs(fill(f.args[0]), signOf(f.args[0]))
+        // Operand-list Min/Max — `VkBigDecimal.min`/`max` carry directional fill (min shrinks via either, grows
+        // via the smaller; max mirrors), left-folded over the operands. DATE-like min/max ride the symmetric
+        // DateCombiner, so they keep the leaf notion (numeric only here).
+        FunctionOp.MIN, FunctionOp.MAX -> minMaxFill(f)
+        // RangeAsNumber returns a number ≥ 0 (only `\d+` parses; kernel `bereichAlsZahl` sets `kannKleiner=false`,
+        // `kannGroesser = the source string is empty`), so it is GROW-ONLY — the same directional shape as the
+        // count aggregates. An empty source string still yields 0 and FIRES (unlike Length / the date extractors,
+        // whose empty-operand resolution is a separate gap).
+        FunctionOp.RANGE_AS_NUMBER -> Fill.of(canGrow = leafOmission(f.args[0]), canShrink = false)
         else -> leafOmission(f).let { Fill.of(it, it) }
+    }
+
+    /** Directional fill of an operand-list `Min`/`Max` — [ArithFill.min]/[ArithFill.max] left-folded over the
+     *  operands' resolved [fill]s, selecting by value ORDER (the smaller wins a `Min`'s grow direction). Numeric
+     *  operands only; a DATE-like or non-numeric operand falls back to the symmetric leaf (the kernel's date
+     *  min/max carries only the symmetric `nichtAngegeben`, matching [leafOmission]). */
+    private fun minMaxFill(f: Expr.Func): Fill {
+        val isMin = FunctionOp.byName(f.name) == FunctionOp.MIN
+        val terms = f.args.map { it to (evalExpr(it) as? Val.Num)?.v }
+        // A non-numeric / DATE-like / Unknown operand → the symmetric leaf (kernel date min/max is symmetric).
+        if (terms.any { it.second == null }) return leafOmission(f).let { Fill.of(it, it) }
+        return terms.drop(1).fold(fill(terms[0].first) to terms[0].second!!) { (accFill, accVal), (e, v) ->
+            val less = accVal.compareTo(v!!)                 // running selection vs the next operand
+            val combined = if (isMin) ArithFill.min(accFill, fill(e), less) else ArithFill.max(accFill, fill(e), less)
+            combined to (if (isMin == (less <= 0)) accVal else v)   // the new running min / max VALUE
+        }.first
     }
 
     /** A starred aggregate's fill: [build] (with the starred field's sign) while its tail can still grow,

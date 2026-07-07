@@ -5,23 +5,53 @@ import io.github.mbackschat.a12.dm.interpreter.Dec
 import io.github.mbackschat.a12.dm.interpreter.dec
 
 /**
- * Pure arithmetic FILL propagation — how a comparison operand's directional fillability ([Fill], the kernel's
- * `kannGroesserWerden`/`kannKleinerWerden` bits) flows through `+`, `−`, `×`, `÷`, `^`. Strategy-agnostic
- * runtime semantics (the IF10 *runtime-vs-strategy* split, sibling of [Polarity]/[Aggregates]): the strategy
- * RESOLVES each operand to a [Fill] plus its value (`Interpreter.fill`/`evalExpr`) and passes them here; these
- * apply the per-operator propagation rule, then [Polarity] types the fired comparison. A future generator emits
- * the same calls.
+ * Pure numeric FILL propagation — how a comparison operand's directional fillability ([Fill], the kernel's
+ * `kannGroesserWerden`/`kannKleinerWerden` bits) flows through the `VkBigDecimal` numeric operations: the five
+ * binary arithmetic ops `+`, `−`, `×`, `÷`, `^`, plus the value functions [abs], [min], [max], and rounding
+ * (`setScale`, which PRESERVES fill exactly — so the strategy propagates a `Round*` by simply reusing the arg's
+ * [Fill], no function here). Strategy-agnostic runtime semantics (the IF10 *runtime-vs-strategy* split, sibling
+ * of [Polarity]/[Aggregates]): the strategy RESOLVES each operand to a [Fill] plus its value
+ * (`Interpreter.fill`/`evalExpr`) and passes them here; these apply the per-operation propagation rule, then
+ * [Polarity] types the fired comparison. A future generator emits the same calls.
  *
- * Clean-room from the kernel's `VkBigDecimal` (its `add`/`subtract`/`multiply`/`divide`/`power` +
- * `produktKannGroesser/KleinerWerden`/`powCanChange`) — the *mechanism*, not the source expression. The kernel
+ * Clean-room from the kernel's `VkBigDecimal` (its `add`/`subtract`/`multiply`/`divide`/`power`/`abs`/`min`/`max`
+ * + `produktKannGroesser/KleinerWerden`/`powCanChange`) — the *mechanism*, not the source expression. The kernel
  * carries value + fill together on one object; the interpreter keeps value resolution in the strategy and passes
- * the resolved value SIGN (for `×`/`÷`) or the value itself (for `^`, whose direction depends on the base's
- * magnitude and the exponent's parity).
+ * the resolved value SIGN (for `×`/`÷`/`abs`) or the value itself (for `^`, whose direction depends on the base's
+ * magnitude and the exponent's parity; and the min/max SELECTION via the operands' value ORDER).
  */
 object ArithFill {
 
     /** `a + b`: each direction is fillable iff EITHER operand is fillable in that direction. */
     fun add(a: Fill, b: Fill): Fill = Fill.of(a.canGrow || b.canGrow, a.canShrink || b.canShrink)
+
+    /**
+     * `|a|` — `VkBigDecimal.abs`. The magnitude grows if the value can move EITHER way (moving off a positive
+     * downward past 0, or a negative upward past 0, both grow |a| — the kernel's conservative bound); it shrinks
+     * only toward 0, i.e. a POSITIVE value that can shrink or a NEGATIVE value that can grow (a value already at 0
+     * can't shrink below 0). [valueSign] is the operand's resolved value sign (−1 / 0 / +1).
+     */
+    fun abs(a: Fill, valueSign: Int): Fill =
+        Fill.of(a.canGrow || a.canShrink, (valueSign > 0 && a.canShrink) || (valueSign < 0 && a.canGrow))
+
+    /**
+     * `min(a, b)` — `VkBigDecimal.min`. It shrinks if EITHER operand can shrink; it grows only via the SMALLER
+     * operand (or, when the two are equal, only if BOTH can grow — else the other stays and dominates). [less] is
+     * `a`'s value compared to `b`'s (−1 / 0 / +1). A left-fold of this over an operand list gives the list `Min`.
+     */
+    fun min(a: Fill, b: Fill, less: Int): Fill {
+        val grows = if (less == 0) a.canGrow && b.canGrow else if (less < 0) a.canGrow else b.canGrow
+        return Fill.of(grows, a.canShrink || b.canShrink)
+    }
+
+    /**
+     * `max(a, b)` — `VkBigDecimal.max` (the mirror of [min]). It grows if EITHER can grow; it shrinks only via the
+     * LARGER operand (equal → only if both can shrink). [less] is `a`'s value compared to `b`'s (−1 / 0 / +1).
+     */
+    fun max(a: Fill, b: Fill, less: Int): Fill {
+        val shrinks = if (less == 0) a.canShrink && b.canShrink else if (less > 0) a.canShrink else b.canShrink
+        return Fill.of(a.canGrow || b.canGrow, shrinks)
+    }
 
     /** `a − b`: the subtrahend's direction FLIPS — the result grows if `a` grows or `b` shrinks, shrinks if
      *  `a` shrinks or `b` grows. */
