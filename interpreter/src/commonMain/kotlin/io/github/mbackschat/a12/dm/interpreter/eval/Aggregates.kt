@@ -22,14 +22,18 @@ object Aggregates {
     /** Σ of [values] (each a [Val.Num]); the empty list folds to 0 (the kernel's empty-Sum identity). */
     fun sum(values: List<Val>): Val = Val.Num(values.fold(DEC_ZERO) { acc, v -> acc + numOf(v) })
 
-    /** The maximum by the kernel's value order ([ValCompare.ORDER]) of the FILLED values; an empty list → `0`
-     *  (the kernel's empty-aggregate identity — probed: `MaxValue()` over all-empty operands / no rows == 0, the
-     *  same seed as `Sum`; an empty operand is IGNORED, not folded, so `MaxValue(-5, empty)` == -5, not 0 —
-     *  KERNEL-FINDINGS). Distinct from a malformed operand (→ [Val.Unknown] via the strategy's [Interpreter.combine]). */
-    fun max(values: List<Val>): Val = values.maxWithOrNull(ValCompare.ORDER) ?: Val.Num(DEC_ZERO)
+    /** The maximum by the kernel's value order ([ValCompare.ORDER]) of the FILLED values; an empty list folds
+     *  to the [empty] identity, which is KIND-dependent because the kernel has two combiner families: the
+     *  number combiner seeds `0` (probed: `MaxValue()` over all-empty operands / no rows == 0, the same seed
+     *  as `Sum`; an empty operand is IGNORED, not folded, so `MaxValue(-5, empty)` == -5, not 0 —
+     *  KERNEL-FINDINGS), while the DATE combiner seeds a NULL date — no value, so a comparison against it
+     *  does not fire → [Val.Unknown] (`DateAggregateDiffTest`). The strategy resolves the operand kind and
+     *  passes the identity, mirroring the kernel's static `minWert` vs `minWertDatum` dispatch. Distinct from
+     *  a malformed operand (→ [Val.Unknown] via the strategy's [Interpreter.combine]). */
+    fun max(values: List<Val>, empty: Val = Val.Num(DEC_ZERO)): Val = values.maxWithOrNull(ValCompare.ORDER) ?: empty
 
-    /** The minimum by [ValCompare.ORDER] of the FILLED values; an empty list → `0` (see [max]). */
-    fun min(values: List<Val>): Val = values.minWithOrNull(ValCompare.ORDER) ?: Val.Num(DEC_ZERO)
+    /** The minimum by [ValCompare.ORDER] of the FILLED values; an empty list → the kind's [empty] identity (see [max]). */
+    fun min(values: List<Val>, empty: Val = Val.Num(DEC_ZERO)): Val = values.minWithOrNull(ValCompare.ORDER) ?: empty
 
     /**
      * Count of DISTINCT values by the kernel's typed value equality — NUMBERS scale-insensitively (`49.90` ≡

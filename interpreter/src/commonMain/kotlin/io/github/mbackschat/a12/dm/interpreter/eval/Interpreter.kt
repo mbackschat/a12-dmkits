@@ -284,8 +284,16 @@ class Interpreter(
 
     /** Whether a SemanticIndex resolves to a present (filled) cell — vs an absent row / empty cell (or an
      *  empty/absent key field for the field-keyed form, which also yields no match). */
-    private fun semanticIndexFilled(e: Expr.SemanticIndex): Boolean =
-        indexFieldOf(e.path)?.let { idx -> resolveIndexKey(e)?.let { key -> ctx.indexedCell(e.path, idx, key) != null } } ?: false
+    private fun semanticIndexFilled(e: Expr.SemanticIndex): Boolean = semanticIndexCell(e) != null
+
+    /** The values appearing MORE than once among [cells] (each duplicate-valued cell carries the kernel's
+     *  uniqueIndex error). Values compare as [Val] (typed; a Txt index compares by text). */
+    private fun duplicatedValues(cells: List<Pair<List<Int>, Val?>>): Set<Val> {
+        val seen = HashSet<Val>()
+        val dups = HashSet<Val>()
+        for ((_, v) in cells) if (v != null && v !is Val.Unknown && !seen.add(v)) dups += v
+        return dups
+    }
 
     /**
      * Directional fillability of a value FUNCTION. The starred aggregates carry the kernel's `NumberCombiner`
@@ -328,9 +336,18 @@ class Interpreter(
      *  down only if signed), so the fill is `(canGrow = true, canShrink = signed)` regardless of the per-op
      *  direction — the directional [build] (Min shrink-only, Max grow-only) applies only once ≥1 value is present.
      *  So a fired `MinValue(star) < n` over an all-empty star is OMISSION (fill to raise off 0), not VALUE
-     *  (kernel-probed; the fuzz surfaced this after the empty→0 identity fix — IF51). */
+     *  (kernel-probed; the fuzz surfaced this after the empty→0 identity fix — IF51).
+     *
+     *  A DATE-like star has NO directional fill at all: the kernel's `DateCombiner` carries only the symmetric
+     *  `nichtAngegeben` (any empty cell, an un-instantiated tail, or a `Having` filter — the combiner's
+     *  `getValue(containsFilter)` marks a filtered result unconditionally), and `vergleicheDATUM` types a fired
+     *  comparison OMISSION on it regardless of the comparison direction (`DateAggregateDiffTest`). */
     private fun starFill(f: Expr.Func, build: (signed: Boolean) -> Fill): Fill {
         val star = f.args.singleOrNull() as? Expr.Star ?: return leafOmission(f).let { Fill.of(it, it) }
+        if (dateLike(ctx.declaredKind(star.path))) {
+            val om = ctx.starOmission(star.path) || star.having != null
+            return Fill.of(om, om)
+        }
         if (!ctx.starOmission(star.path)) return Fill.of(false, false)   // exhausted (all filled) → fixed
         if (ctx.star(star.path).isEmpty()) return Fill.of(canGrow = true, canShrink = ctx.signed(star.path))
         return build(ctx.signed(star.path))
@@ -382,40 +399,104 @@ class Interpreter(
         if (Polarity.anyMove(fill(c.left), fill(c.right))) MsgType.OMISSION else MsgType.VALUE
 
     /**
-     * The field-list value-list quantifiers (shape B, kernel-probed). Classify each field against the value
-     * list as IN (present value ∈ list), OUT (present value ∉ list), or EMPTY (skipped from both counts); a
-     * malformed field or value-list member makes the rule non-evaluable → Unknown (suppressed). Then:
-     * `AtLeastOne` fires iff some field is IN, `No` iff none is IN, `NotAll` iff some field is OUT. Equality is
-     * the typed [eq], as for the scalar `FieldValueIncludedInValueList`.
+     * One side of a field-list × value-list quantifier, expanded to per-cell classes: the [present] cells'
+     * typed values, whether an empty cell was seen ([anyEmpty] — an empty plain field / an empty star cell /
+     * a starred entry's un-instantiated declared tail; the kernel's `einWertDerWerteListeNichtAngegeben` /
+     * `isAuslassungsFehler` flag sources), and whether a malformed, not-check-relevant cell was seen
+     * ([anyUnknown]). A star expands to one cell per instantiated row; a `Having`-filtered entry is
+     * unsupported (the kernel escalates a fired result to TRUE_AF there — loud, not wrong, until
+     * differential-locked).
      */
-    private fun evalValueListQuant(c: Cond.ValueListQuant): Tri {
-        // An ENTITY value list (`f In /Group*/x`, IF50) has a STARRED value ref → the value SET is that field's
-        // FILLED cell values across all rows (`star` drops empties, keeps a malformed cell as Unknown → UNKNOWN);
-        // a literal / plain field value stays a single `evalExpr`.
-        val list = c.values.flatMap { v -> if (v is Expr.Star) ctxOf(v).star(v.path) else listOf(evalExpr(v)) }
-        if (list.any { it is Val.Unknown }) return Tri.UNKNOWN
-        var nIn = 0
-        var nOut = 0
-        for (f in c.fields) {
-            if (!ctx.filled(pathOf(f))) continue            // EMPTY → counted in neither
-            val v = evalExpr(f)
-            if (v is Val.Unknown) return Tri.UNKNOWN          // a filled-but-malformed field → non-evaluable
-            if (list.any { eq(v, it) }) nIn++ else nOut++
+    private class VlqSide {
+        val present = mutableListOf<Val>()
+        var anyEmpty = false
+        var anyUnknown = false
+    }
+
+    private fun vlqSide(entries: List<Expr>): VlqSide {
+        val out = VlqSide()
+        for (e in entries) when (e) {
+            is Expr.Star -> {
+                if (e.having != null)
+                    throw UnsupportedConstructException("a Having filter on a value-list quantifier operand is not supported")
+                val c = ctxOf(e)
+                // A starred INDEX field's formal errors are field-LOCAL and make the CELL not check-relevant
+                // → UNKNOWN: an empty cell is mandatory-empty (the kernel auto-requires an index field per
+                // row), and EVERY cell of a duplicated value carries the uniqueIndex error. A clean sibling
+                // field in the same row reads normally — the row is not collectively compromised.
+                // `ValueListQuantifierStarDiffTest.compromisedIndexRows`.
+                val dupIndexValues = if (e.path in indexFields) duplicatedValues(c.starCells(e.path)) else null
+                for ((_, v) in c.starCells(e.path)) when {
+                    v == null -> if (dupIndexValues != null) out.anyUnknown = true else out.anyEmpty = true
+                    v is Val.Unknown -> out.anyUnknown = true
+                    dupIndexValues != null && v in dupIndexValues -> out.anyUnknown = true
+                    else -> out.present += v
+                }
+                if (c.starOmission(e.path)) out.anyEmpty = true   // un-instantiated declared tail counts as empty
+            }
+            is Expr.Field, is Expr.SemanticIndex -> when (presenceTri(e)) {
+                Tri.TRUE -> out.present += evalExpr(e)
+                Tri.FALSE -> out.anyEmpty = true
+                Tri.UNKNOWN -> out.anyUnknown = true
+            }
+            else -> out.present += evalExpr(e)   // a literal member (never empty/unknown)
         }
-        return when (c.op) {
-            ValueListQuantOp.AT_LEAST_ONE -> Tri.of(nIn >= 1)
-            ValueListQuantOp.NO -> Tri.of(nIn == 0)
-            ValueListQuantOp.NOT_ALL -> Tri.of(nOut >= 1)
+        return out
+    }
+
+    /**
+     * The field-list value-list quantifiers (shape B) — kernel-exact per the 30.8.1 runtime
+     * (`mindestensEinFeldWertInWerteListe` / `keinFeldWertInWerteListe` / `nichtAlleFeldWerteInWerteListe`,
+     * shared by both strategies; `ValueListQuantifierStarDiffTest`). Both sides expand per-cell ([vlqSide]) —
+     * this includes the ENTITY value list (`f In` the flatten of `/Group*` then `x`, IF50) and STARRED fields
+     * entries; equality is the
+     * typed [eq] (numbers scale-19-insensitively — the kernel's `VkBigDecimal.equals` rescales too). The
+     * malformed (UNKNOWN) handling is OP-ASYMMETRIC, never a blanket suppression:
+     *
+     *  - `AtLeastOne`: empty/malformed cells and members are SKIPPED outright; an empty value SET → no fire;
+     *    fires iff some present cell ∈ values.
+     *  - `No`: a malformed FIELDS cell or VALUES member POISONS (→ Unknown, no fire); fires iff no present
+     *    cell ∈ values — including when nothing is filled at all.
+     *  - `NotAll`: no filled FIELDS cell → no fire (`noEntityFilled`); a malformed VALUES member poisons, a
+     *    malformed FIELDS cell is skipped; fires iff some present cell ∉ values.
+     */
+    private fun evalValueListQuant(c: Cond.ValueListQuant): Tri = when (c.op) {
+        ValueListQuantOp.AT_LEAST_ONE -> {
+            val values = vlqSide(c.values)
+            if (values.present.isEmpty()) Tri.FALSE
+            else Tri.of(vlqSide(c.fields).present.any { p -> values.present.any { eq(p, it) } })
+        }
+        ValueListQuantOp.NO -> {
+            val values = vlqSide(c.values)
+            if (values.anyUnknown) Tri.UNKNOWN
+            else {
+                val fields = vlqSide(c.fields)
+                if (fields.anyUnknown) Tri.UNKNOWN
+                else Tri.of(fields.present.none { p -> values.present.any { eq(p, it) } })
+            }
+        }
+        ValueListQuantOp.NOT_ALL -> {
+            val fields = vlqSide(c.fields)
+            if (fields.present.isEmpty()) Tri.FALSE
+            else {
+                val values = vlqSide(c.values)
+                if (values.anyUnknown) Tri.UNKNOWN
+                else Tri.of(fields.present.any { p -> values.present.none { eq(p, it) } })
+            }
         }
     }
 
-    /** Value-list-quantifier polarity (kernel-probed): `AtLeastOne`/`NotAll` fire on a PRESENT in/out value →
-     *  VALUE; `No` (zero fields in list) is fixable by filling an EMPTY field with a list value → OMISSION when
-     *  some field is still empty, else VALUE. */
+    /** Fired value-list-quantifier polarity (kernel TRUE_AF vs TRUE_WF): `AtLeastOne` fires on a PRESENT
+     *  matching value → VALUE (empties are irrelevant to it); a fired `No` is OMISSION on any empty FIELDS
+     *  cell / un-instantiated tail OR an empty VALUES member; a fired `NotAll` is OMISSION only on the VALUES
+     *  side's account — it has no fields-tail flag (the No-vs-NotAll asymmetry,
+     *  `ValueListQuantifierStarDiffTest`). */
     private fun valueListQuantType(c: Cond.ValueListQuant): MsgType = when (c.op) {
-        ValueListQuantOp.AT_LEAST_ONE, ValueListQuantOp.NOT_ALL -> MsgType.VALUE
+        ValueListQuantOp.AT_LEAST_ONE -> MsgType.VALUE
         ValueListQuantOp.NO ->
-            if (c.fields.any { !ctx.filled(pathOf(it)) }) MsgType.OMISSION else MsgType.VALUE
+            if (vlqSide(c.fields).anyEmpty || vlqSide(c.values).anyEmpty) MsgType.OMISSION else MsgType.VALUE
+        ValueListQuantOp.NOT_ALL ->
+            if (vlqSide(c.values).anyEmpty) MsgType.OMISSION else MsgType.VALUE
     }
 
     /**
@@ -484,8 +565,8 @@ class Interpreter(
     private fun evalPred(p: Cond.Pred): Tri {
         val op = PredicateOp.byName(p.name) ?: throw UnsupportedConstructException("unsupported predicate ${p.name}")
         return when (op) {
-            PredicateOp.FIELD_FILLED -> filledTri(ctxOf(p.args.single()), pathOf(p.args.single()))
-            PredicateOp.FIELD_NOT_FILLED -> Kleene.not(filledTri(ctxOf(p.args.single()), pathOf(p.args.single())))
+            PredicateOp.FIELD_FILLED -> presenceTri(p.args.single())
+            PredicateOp.FIELD_NOT_FILLED -> Kleene.not(presenceTri(p.args.single()))
             PredicateOp.GROUP_FILLED -> Tri.of(ctxOf(p.args.single()).groupFilled(pathOf(p.args.single())))
             PredicateOp.GROUP_NOT_FILLED -> Tri.of(!ctxOf(p.args.single()).groupFilled(pathOf(p.args.single())))
             PredicateOp.FIELD_VALUE_IN_LIST -> valueInList(p.args)
@@ -609,9 +690,11 @@ class Interpreter(
 
     /** A list quantifier's operand tally as `(t, f)` — `t` = TRUE (present + check-relevant), `f` = FALSE
      *  (check-relevant but empty); the rest are UNKNOWN (present but not check-relevant — a malformed value),
-     *  counted in NEITHER, matching the kernel's `isWertAngegeben`. GROUP operands have no UNKNOWN state (a group
-     *  can't be malformed), so `f = n - t`. The kernel counts only TRUE for "filled" and only FALSE for "empty";
-     *  a malformed field is neither — so e.g. `AtLeastOneFieldFilled` does NOT fire on a lone malformed field. */
+     *  counted in NEITHER, matching the kernel's `isWertAngegeben` (the shared [presenceTri], which also
+     *  resolves a SEMANTIC-INDEX operand to its one matched cell — `SemanticIndexPresenceDiffTest`). GROUP
+     *  operands have no UNKNOWN state (a group can't be malformed), so `f = n - t`. The kernel counts only TRUE
+     *  for "filled" and only FALSE for "empty"; a malformed field is neither — so e.g. `AtLeastOneFieldFilled`
+     *  does NOT fire on a lone malformed field. A `$`-marked operand tallies against the enclosing row (ctxOf). */
     private fun quantTally(op: PredicateOp, args: List<Expr>): Pair<Int, Int> {
         if (op.countsGroups) {
             val t = args.count { ctxOf(it).groupFilled(pathOf(it)) }
@@ -620,12 +703,10 @@ class Interpreter(
         var t = 0
         var f = 0
         for (a in args) {
-            val c = ctxOf(a)                       // a `$`-marked operand tallies against the enclosing row
-            when {
-                c.presenceUnknown(pathOf(a)) -> {} // presence 3VL (invalid parallel index) → UNKNOWN, neither
-                !c.filled(pathOf(a)) -> f++        // empty (check-relevant) → FALSE
-                invalid(pathOf(a)) -> {}           // present but not check-relevant (malformed/dup) → UNKNOWN
-                else -> t++                        // present + check-relevant → TRUE
+            when (presenceTri(a)) {
+                Tri.TRUE -> t++
+                Tri.FALSE -> f++
+                Tri.UNKNOWN -> {}
             }
         }
         return t to f
@@ -899,7 +980,7 @@ class Interpreter(
         is Expr.StrLit -> e.asVal
         is Expr.BoolLit -> e.asVal
         is Expr.Field -> if (invalid(e.path)) Val.Unknown else ctxOf(e).field(e.path)
-        is Expr.Star -> error("a starred path must sit inside an aggregate (Sum/MaxValue/…)")
+        is Expr.Star -> throw UnsupportedConstructException("a starred path must sit inside an aggregate (Sum/MaxValue/…)")
         is Expr.Func -> evalFunc(e)
         is Expr.Arith -> evalArith(e)
         is Expr.Const -> evalConst(e.name)
@@ -910,9 +991,36 @@ class Interpreter(
     /** `[field For "value"]` — the field's value in the row whose index field equals the value; an absent row
      *  or empty cell reads as the kind's EMPTY value (a number → 0, fillable), matching a missing field ref. */
     private fun evalSemanticIndex(e: Expr.SemanticIndex): Val {
+        val kind = ctx.declaredKind(e.path) ?: return Val.Unknown
+        return semanticIndexCell(e) ?: emptyValue(kind)
+    }
+
+    /** The matched CELL of `[F For key]`, or null when nothing matches — an empty/absent key field, no row
+     *  carrying the key, or a matched row whose cell is empty. A matched-but-malformed cell is [Val.Unknown]. */
+    private fun semanticIndexCell(e: Expr.SemanticIndex): Val? {
         val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException("SemanticIndex needs an index field on the group of ${e.path}")
-        val key = resolveIndexKey(e) ?: return emptyValue(ctx.declaredKind(e.path) ?: return Val.Unknown)
-        return ctx.indexedCell(e.path, idx, key) ?: emptyValue(ctx.declaredKind(e.path) ?: return Val.Unknown)
+        val key = resolveIndexKey(e) ?: return null
+        return ctx.indexedCell(e.path, idx, key)
+    }
+
+    /**
+     * The 3VL presence of `[F For key]` — the kernel resolves the indexed row and answers `isWertAngegeben` on
+     * the ONE matched cell: matched + check-relevant filled → TRUE; an ABSENT row, an empty matched cell, or an
+     * empty/no-match key → FALSE (an absent row is judged like an empty cell, NOT skipped — kernel
+     * `ValidationCache.resolveSemanticIndex` → `isEntityFilled`); a malformed matched cell, or a formally
+     * invalid KEY field, → UNKNOWN (not check-relevant). `SemanticIndexPresenceDiffTest`.
+     */
+    private fun semanticIndexPresence(e: Expr.SemanticIndex): Tri {
+        e.indexFieldPath?.let { if (invalid(it)) return Tri.UNKNOWN }
+        val cell = semanticIndexCell(e) ?: return Tri.FALSE
+        return if (cell is Val.Unknown) Tri.UNKNOWN else Tri.TRUE
+    }
+
+    /** The 3VL presence of a field-valued predicate/quantifier operand — a plain field ref ([filledTri]) or a
+     *  semantic index ([semanticIndexPresence]). Any other operand shape is not a presence operand. */
+    private fun presenceTri(e: Expr): Tri = when (e) {
+        is Expr.SemanticIndex -> semanticIndexPresence(e)
+        else -> filledTri(ctxOf(e), pathOf(e))
     }
 
     /** The lookup key of a [Expr.SemanticIndex]: the string literal, or the CURRENT value of the key field
@@ -958,11 +1066,14 @@ class Interpreter(
 
     /** Whether [e] statically yields a DATE value — the signal that a counterpart string LITERAL is a date
      *  literal (German `dd.MM.yyyy`), not a plain string. A DATE field, the date constants (`Today`/`BaseYear`),
-     *  or a date-producing function. */
+     *  a date-producing function, or a min/max whose operands are dates ([dateAggregate] — the kernel types
+     *  `Min`/`MinValue` polymorphically by their operands, so a literal beside a date min is a date literal). */
     private fun producesDate(e: Expr): Boolean = when (e) {
         is Expr.Field -> ctx.declaredKind(e.path) == Kind.DATE
         is Expr.Const -> ConstantOp.byName(e.name).let { it == ConstantOp.TODAY || it == ConstantOp.BASE_YEAR }
-        is Expr.Func -> FunctionOp.byName(e.name) in DATE_PRODUCING_FUNCS
+        is Expr.Func -> FunctionOp.byName(e.name).let { op ->
+            op in DATE_PRODUCING_FUNCS || (op in MIN_MAX_FUNCS && dateAggregate(e))
+        }
         is Expr.SemanticIndex -> ctx.declaredKind(e.path) == Kind.DATE
         else -> false
     }
@@ -1060,14 +1171,17 @@ class Interpreter(
         return when (op) {
         // Value aggregates — the FOLDS are pure runtime semantics ([Aggregates], IG5→IF10); the strategy only
         // RESOLVES operands (operand-list `map { evalExpr }` vs the starred `starVals`) and gates Unknown
-        // ([combine]). The same fold serves both forms (`Min`/`MinValue` share [Aggregates.min]).
-        // operand-list forms: every operand counts (an empty number arrives as the substituted 0)
-        FunctionOp.MIN -> combine(f.args.map { evalExpr(it) }, Aggregates::min)
-        FunctionOp.MAX -> combine(f.args.map { evalExpr(it) }, Aggregates::max)
+        // ([combine]). The same fold serves both forms (`Min`/`MinValue` share [Aggregates.min]). Min/max over
+        // DATE-like operands ride the kernel's DateCombiner semantics ([dateAggregate]): the empty identity is
+        // no-value (Unknown), not the number combiner's 0 (DateAggregateDiffTest).
+        // operand-list forms: every operand counts (an empty number arrives as the substituted 0; a DATE-like
+        // empty operand is SKIPPED — the kernel's `minDatum` combine keeps the date-bearing side)
+        FunctionOp.MIN -> combine(minMaxOperandVals(f)) { Aggregates.min(it, minMaxEmpty(f)) }
+        FunctionOp.MAX -> combine(minMaxOperandVals(f)) { Aggregates.max(it, minMaxEmpty(f)) }
         // starred aggregates: empties are SKIPPED (Sum substitutes 0 = same result; Max/distinct ignore)
         FunctionOp.SUM -> combine(starVals(f), Aggregates::sum)
-        FunctionOp.MAX_VALUE -> combine(starVals(f), Aggregates::max)
-        FunctionOp.MIN_VALUE -> combine(starVals(f), Aggregates::min)
+        FunctionOp.MAX_VALUE -> combine(starVals(f)) { Aggregates.max(it, minMaxEmpty(f)) }
+        FunctionOp.MIN_VALUE -> combine(starVals(f)) { Aggregates.min(it, minMaxEmpty(f)) }
         FunctionOp.NUMBER_OF_DIFFERENT_VALUES -> combine(starVals(f), Aggregates::numberOfDifferentValues)
         // DifferenceInDays(a, b) = b − a in whole days (sign = second − first), as a number. An empty or
         // malformed date operand → Unknown (the rule typically guards it with AllFieldsFilled).
@@ -1160,9 +1274,9 @@ class Interpreter(
         FunctionOp.RANGE_AS_NUMBER -> rangeSubstring(f.args)?.let {
             Val.Num(if (DIGITS.matches(it)) dec(it) else DEC_ZERO)   // kernel: only `\d+` parses, else 0
         } ?: Val.Unknown
-        // FieldValueAsString(numberField): the RAW stored value as a string (empty → ""). Coercion to string.
-        FunctionOp.FIELD_VALUE_AS_STRING ->
-            pathOf(f.args[0]).let { if (invalid(it)) Val.Unknown else Val.Txt(ctx.displayValue(it) ?: "") }
+        // FieldValueAsString(ref): the RAW stored value as a string (empty → ""). Coercion to string; the ref
+        // may also be a semantic index (the kernel resolves the one matched cell, then feldWertAlsString).
+        FunctionOp.FIELD_VALUE_AS_STRING -> fieldValueAsString(f.args[0])
         // FieldValueAsNumber(string/numeric-enum field): the value parsed to a number; empty → 0 (kernel feldWertAlsZahl).
         FunctionOp.FIELD_VALUE_AS_NUMBER -> fieldValueAsNumber(pathOf(f.args[0]))
         // SumOfProducts(a*, b*): Σ aᵢ·bᵢ paired row-by-row (empty → 0); any malformed element → suppressed.
@@ -1257,6 +1371,30 @@ class Interpreter(
     private fun sumOfProducts(args: List<Expr>): Val =
         // Resolve the two row-aligned star lists here (ctx-coupled); the Σ aᵢ·bᵢ fold is pure ([Aggregates], IF10).
         Aggregates.sumOfProducts(ctx.starAll((args[0] as Expr.Star).path), ctx.starAll((args[1] as Expr.Star).path))
+
+    /**
+     * `FieldValueAsString(ref)` — the RAW stored value as a string; an empty/absent value reads as `""` (which
+     * a string comparison then suppresses — the kernel's `vergleicheSTRING` empty rule). A plain field reads its
+     * display value (formally invalid → Unknown). A SEMANTIC INDEX reads the one matched cell: absent row /
+     * empty cell / empty key → `""`; a malformed matched cell → Unknown. A matched DATE-like cell is
+     * unsupported — its resolved [Val] is the canonical ISO form, not the raw stored text the kernel returns
+     * (loud, not wrong). `SemanticIndexPresenceDiffTest`.
+     */
+    private fun fieldValueAsString(arg: Expr): Val = when (arg) {
+        is Expr.SemanticIndex -> {
+            if (dateLike(ctx.declaredKind(arg.path)))
+                throw UnsupportedConstructException("FieldValueAsString over a date-valued semantic index is not supported")
+            when (val cell = semanticIndexCell(arg)) {
+                null -> Val.Txt("")
+                is Val.Unknown -> Val.Unknown
+                is Val.Num -> Val.Txt(cell.v.display())
+                is Val.Txt -> cell
+                is Val.Bool -> Val.Txt(cell.v.toString())
+                is Val.Range -> throw UnsupportedConstructException("FieldValueAsString over a date-range semantic index is not supported")
+            }
+        }
+        else -> pathOf(arg).let { if (invalid(it)) Val.Unknown else Val.Txt(ctx.displayValue(it) ?: "") }
+    }
 
     /** `FieldValueAsNumber(field)` — the field's value parsed to a number; an EMPTY field reads as `0` (kernel
      *  `feldWertAlsZahl`), a formally-invalid one → Unknown. The field's values are compile-guaranteed numeric
@@ -1420,6 +1558,43 @@ class Interpreter(
         return Val.Unknown
     }
 
+    /** DATE-like kinds ride the kernel's date machinery (`VkDate`) — min/max over them dispatch to the
+     *  `DateCombiner` family, not the number combiner ([dateAggregate]). */
+    private fun dateLike(k: Kind?): Boolean = k == Kind.DATE || k == Kind.TIME || k == Kind.DATE_TIME
+
+    /**
+     * Whether a min/max aggregate's operands are DATE-like — the kernel dispatches these statically to its
+     * date combiners (`minWertDatum`/`maxWertDatum` for the star form, `minDatum`/`maxDatum` for the operand
+     * list), whose empty identity is a NULL date (no value → [Val.Unknown], the comparison does not fire) —
+     * never the number combiner's `0`. Operand types are homogeneous by authoring (the MVK comparison type
+     * checks), so any date-like operand decides for the whole aggregate (`DateAggregateDiffTest`).
+     */
+    private fun dateAggregate(f: Expr.Func): Boolean = f.args.any { a ->
+        when (a) {
+            is Expr.Field -> dateLike(ctxOf(a).declaredKind(a.path))
+            is Expr.Star -> dateLike(ctxOf(a).declaredKind(a.path))
+            is Expr.SemanticIndex -> dateLike(ctx.declaredKind(a.path))
+            else -> producesDate(a)
+        }
+    }
+
+    /** The min/max empty-fold identity by operand kind: dates → no value; numbers → `0` (see [dateAggregate]). */
+    private fun minMaxEmpty(f: Expr.Func): Val = if (dateAggregate(f)) Val.Unknown else Val.Num(DEC_ZERO)
+
+    /**
+     * Operand values for the operand-list `Min`/`Max`. A NUMBER operand always counts — an empty number field
+     * arrives as the substituted `0` (the kernel feeds every operand's `feldWertAlsZahl` to the combiner). A
+     * DATE-like field operand that is EMPTY (and not formally invalid) is SKIPPED — the kernel's `minDatum`
+     * combine keeps the date-bearing side when the other is a valueless `VkDate` — while a malformed or
+     * required-but-empty one still resolves [Val.Unknown] and poisons via [combine] (`feldWertAlsDatum` returns
+     * nicht-prüfungsrelevant there). `DateAggregateDiffTest`.
+     */
+    private fun minMaxOperandVals(f: Expr.Func): List<Val> = f.args.mapNotNull { a ->
+        val skippableEmptyDate = a is Expr.Field && dateLike(ctxOf(a).declaredKind(a.path))
+            && !ctxOf(a).filled(a.path) && !invalid(a.path)
+        if (skippableEmptyDate) null else evalExpr(a)
+    }
+
     /**
      * The FILLED values feeding a value aggregate (`Sum`/`MaxValue`/`MinValue`/`NumberOfDifferentValues`),
      * collected across ALL operands — the single-star form AND the kernel's explicit MULTI-FIELD list (IF51).
@@ -1456,7 +1631,11 @@ class Interpreter(
     private inline fun combine(vals: List<Val>, op: (List<Val>) -> Val): Val =
         if (vals.any { it is Val.Unknown }) Val.Unknown else op(vals)
 
-    private fun pathOf(e: Expr): String = (e as Expr.Field).path
+    /** The path of a plain field-ref operand. Any other operand shape in a field-ref position is a construct
+     *  this evaluator does not model there — reported UNSUPPORTED (the per-rule tolerance catches it), never a
+     *  ClassCastException that would sink the whole validation (the per-rule degrade net, IF61). */
+    private fun pathOf(e: Expr): String = (e as? Expr.Field)?.path
+        ?: throw UnsupportedConstructException("unsupported operand ${e::class.simpleName} in a field-reference position")
     private fun num(v: Val): Dec = (v as? Val.Num)?.v ?: error("expected a number, got $v")
 
     private fun eq(l: Val, r: Val): Boolean = when {
@@ -1486,6 +1665,9 @@ class Interpreter(
             FunctionOp.ADD_DAYS, FunctionOp.ADD_MONTHS, FunctionOp.ADD_YEARS,
             FunctionOp.VALUE_AS_DATE,
         )
+
+        /** The min/max family — DATE-valued when its operands are dates ([dateAggregate]/[producesDate]). */
+        val MIN_MAX_FUNCS = setOf(FunctionOp.MIN, FunctionOp.MAX, FunctionOp.MIN_VALUE, FunctionOp.MAX_VALUE)
 
         /** `RangeAsNumber` parses its substring ONLY when it is a run of digits (kernel `\d+`); else the value is 0. */
         val DIGITS = Regex("""\d+""")
