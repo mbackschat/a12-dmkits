@@ -66,6 +66,9 @@ class ArithmeticFillTest {
     // ── ^ ──────────────────────────────────────────────────────────────────────────────────────────────────
     @Test fun powEvenExponentGrows() = assertEquals("OMISSION", sig("[Qty] ^ [Back] < 100", mapOf("/Order/Back" to "2"), listOf("/Order/Qty")))
     @Test fun powEvenExponentCannotShrink() = assertEquals("VALUE", sig("[Qty] ^ [Back] > -100", mapOf("/Order/Back" to "2"), listOf("/Order/Qty")))
+    // odd exponent keeps the base's sign → can go negative (contrast the even square above).
+    @Test fun powOddExponentCanShrink() = assertEquals("OMISSION", sig("[Qty] ^ [Back] > -100", mapOf("/Order/Back" to "3"), listOf("/Order/Qty")))
+    @Test fun powFixedBaseVariableExponent() = assertEquals("OMISSION", sig("[Back] ^ [Qty] < 100", mapOf("/Order/Back" to "5"), listOf("/Order/Qty")))
 
     private companion object {
         const val CODE = "AF"

@@ -157,6 +157,24 @@ class ArithmeticFillPolarityDiffTest {
     @Test fun powFixedBaseGtOneVariableExponent() =
         agree(scenario(render(n(BQ).toThePowerOf(n(Q)).lt(100)), "../BackorderQuantity", mapOf(BQ to "5"), listOf(Q)),
             "OMISSION_ERROR", "(5^Q) < 100: raising the empty exponent grows it → OMISSION")
+    // ODD fixed exponent over a signed-empty base: an odd power keeps the base's sign, so it CAN go negative →
+    // `> -100` is OMISSION (contrast the even square, which is ≥ 0 → VALUE) — the powCanChangeWithFixedExponent
+    // parity branch.
+    @Test fun powOddExponentSignedEmptyBaseCanShrink() =
+        agree(scenario(render(n(Q).toThePowerOf(n(BQ)).gt(-100)), "../Quantity", mapOf(BQ to "3"), listOf(Q)),
+            "OMISSION_ERROR", "(Q^3) > -100: an odd power of a signed-empty base can go negative → OMISSION")
+    // fixed NEGATIVE base ^ variable (empty) exponent — powCanChangeWithFixedNegativeBase.
+    @Test fun powFixedNegativeBaseVariableExponent() =
+        agree(scenario(render(n(BQ).toThePowerOf(n(Q)).lt(100)), "../BackorderQuantity", mapOf(BQ to "-2"), listOf(Q)),
+            "OMISSION_ERROR", "(-2^Q) < 100: the empty exponent makes it fillable → OMISSION")
+    // fixed base 0<a<1 ^ variable (empty) exponent — powCanChangeWithFixedBase, monotone-falling branch.
+    @Test fun powFixedFractionBaseVariableExponent() =
+        agree(scenario(render(n(UP).toThePowerOf(n(Q)).lt(100)), "../UnitPrice", mapOf(UP to "0.50"), listOf(Q)),
+            "OMISSION_ERROR", "(0.50^Q) < 100: fillable via the empty exponent → OMISSION")
+    // everything-variable: both base and exponent empty — powCanChangeWithEverythingVariable.
+    @Test fun powEverythingVariable() =
+        agree(scenario(render(n(Q).toThePowerOf(n(SOH)).lt(100)), "../Quantity", mapOf(), listOf(Q, SOH)),
+            "OMISSION_ERROR", "(Q^SOH) < 100 (both empty): fillable → OMISSION")
 
     // ── nested arithmetic: fill propagates through the tree ─────────────────────────────────────────────────
     @Test fun nestedAddTimesCanGrow() =
