@@ -94,11 +94,26 @@ class FieldConstraintFormalDiffTest {
     @Test fun tooManyIntegerDigits() = agree(maxIntStr, maxIntDef, "/Order/N", "1234", "4 int digits > 3 → zahlZuvieleVorkommastellen")
     @Test fun integerDigitsWithinCap() = agree(maxIntStr, maxIntDef, "/Order/N", "123", "3 int digits → clean")
 
+    // trait:"amount" integer-digit cap = 15 − scale = 13, firing zahlZuvieleVorkommastellen (the SAME code as an
+    // explicit maxIntegerDigits — the kernel's TypeConverter maps both to maxDigitsBeforeDecimalPlace; IF67). Uses
+    // a value whose TOTAL digits ≤ 15 so the generic stelligkeitZuLang parse check does NOT pre-empt the cap.
     private val amountStr = """{ "type": "Field", "id": "/Order/N", "name": "N", "Field": { "fieldType": {
         "type": "NumberType", "NumberType": { "maxFractionalDigits": 2, "trait": "amount" } } } },"""
     private val amountDef = FieldDef("/Order/N", Kind.NUMBER, scale = 2, amountTrait = true)
-    @Test fun amountPrecisionTooLong() = agree(amountStr, amountDef, "/Order/N", "12345678901234.00", "14 int > 15-2=13 → stelligkeitZuLang")
-    @Test fun amountPrecisionWithinCap() = agree(amountStr, amountDef, "/Order/N", "1234567890123.00", "13 int = cap → clean")
+    @Test fun amountIntegerCapFires() = agree(amountStr, amountDef, "/Order/N", "12345678901234", "14 int > 15-2=13 cap, total 14 ≤ 15 → zahlZuvieleVorkommastellen (NOT stelligkeitZuLang)")
+    @Test fun amountIntegerCapWithinCap() = agree(amountStr, amountDef, "/Order/N", "1234567890123", "13 int = cap, total 13 → clean")
+
+    // stelligkeitZuLang — > 15 TOTAL digits — is a GENERIC parse check on EVERY number, NOT trait-gated (IF67);
+    // it fires before the sign / scale / leading-zero / integer-cap checks (FormatDefinitionZahl order).
+    private val plainN2Str = """{ "type": "Field", "id": "/Order/N", "name": "N", "Field": { "fieldType": {
+        "type": "NumberType", "NumberType": { "maxFractionalDigits": 2 } } } },"""
+    private val plainN2Def = FieldDef("/Order/N", Kind.NUMBER, scale = 2)
+    @Test fun plainNumber16DigitsTooLong() = agree(plainNum, plainNumDef, "/Order/Num", "1234567890123456", "16 int digits > 15 → stelligkeitZuLang (plain, no amount trait — was a K-only miss)")
+    @Test fun plainNumber15DigitsClean() = agree(plainNum, plainNumDef, "/Order/Num", "123456789012345", "15 digits → clean")
+    @Test fun scale2Total16TooLong() = agree(plainN2Str, plainN2Def, "/Order/N", "12345678901234.56", "14 int + 2 frac = 16 total > 15 → stelligkeitZuLang")
+    @Test fun amountTotal16HitsStelligkeitFirst() = agree(amountStr, amountDef, "/Order/N", "12345678901234.56", "amount, 16 total → stelligkeitZuLang pre-empts the integer cap")
+    @Test fun totalDigitsBeatsLeadingZeros() = agree(plainNum, plainNumDef, "/Order/Num", "01234567890123456", "17 digits + leading zero → stelligkeitZuLang wins over zahlHatFuehrendeNullen")
+    @Test fun totalDigitsBeatsDecimalSeparator() = agree(plainNum, plainNumDef, "/Order/Num", "1234567890123456.5", "scale0, 18 total + decimal → stelligkeitZuLang wins over zahlHatDezimalTrenner")
 
     private val numMinStr = """{ "type": "Field", "id": "/Order/N", "name": "N", "Field": { "fieldType": {
         "type": "NumberType", "NumberType": { "maxFractionalDigits": 0, "minLength": 5 } } } },"""

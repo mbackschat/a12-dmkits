@@ -179,8 +179,8 @@ The constraints are declared on the field type (kernel `IStringType` / `INumberT
 | | `minFractionalDigits` (too few / none) | `zahlFalscheAnzahlNachkommastellen` / `zahlOhneDezimalTrenner` |
 | | `zeroNotAllowed: true` *(inverted key — NOT `zeroAllowed`)* | `zahlIstNull` |
 | | **leading zeros** — forbidden BY DEFAULT; `leadingZerosAllowed: true` opts out | `zahlHatFuehrendeNullen` |
-| | `maxIntegerDigits` (integer-part digits above it) | `zahlZuvieleVorkommastellen` |
-| | `trait:"amount"` (implicit `15 − scale` integer-digit cap; only without explicit `maxIntegerDigits`) | `stelligkeitZuLang` |
+| | **> 15 TOTAL digits** (int + frac, sign/separator excluded) — a GENERIC parse check on EVERY number, not a declaration | `stelligkeitZuLang` |
+| | `maxIntegerDigits`, OR `trait:"amount"`'s implicit `15 − scale` cap (only without explicit `maxIntegerDigits`) — the kernel's one `maxDigitsBeforeDecimalPlace` | `zahlZuvieleVorkommastellen` |
 | | `minLength` / `maxLength` (value-string length) | `zahlZuKurz` / `zahlZuLang` |
 | **STRING** | `pattern` (regex) | `stringFalschesMuster` |
 | | `noValueValidation: true` — disables the WHOLE string check (pattern/length/newline) | *(skips all — only `maxLength` may accompany it, and it is not enforced)* |
@@ -190,11 +190,22 @@ The constraints are declared on the field type (kernel `IStringType` / `INumberT
 
 **Two are kernel DEFAULTS, not declarations** (follow-up probe 2026-06-26): a plain number rejects a leading zero (`"007"` → `zahlHatFuehrendeNullen`; `"0"`/`"0.50"` clean) and a plain string rejects a newline (`"a\nb"` → `stringMitNewline`) unless the field opts in.
 
-**More NumberType integer-digit / length constraints DO serialize (corrected 2026-06-26 — the earlier "no DM-JSON key" claim was WRONG):** `maxIntegerDigits` → `zahlZuvieleVorkommastellen` (integer-digit count above the cap; sign + decimals excluded); `trait:"amount"` → an implicit cap of `15 − scale` but a **distinct** code `stelligkeitZuLang` (applies only when no explicit `maxIntegerDigits`); NumberType `minLength`/`maxLength` → `zahlZuKurz`/`zahlZuLang` on the value-string length (sign + decimal point counted). All probe-verified 2026-06-26 and modeled by the interpreter (IF30). **Still out of scope (probe-confirmed):** a **charset** check (`zeichenNichtImZeichensatz`) is not declarable and does not fire by default (tab / non-ASCII / control chars on a plain string are all clean); a field-level `uniqueValue` is not DM-JSON-deserializable.
+**More NumberType integer-digit / length constraints DO serialize (corrected 2026-06-26; the `stelligkeitZuLang`/amount attribution CORRECTED again 2026-07-07 — see the digit-check supplement below):** `maxIntegerDigits` → `zahlZuvieleVorkommastellen` (integer-digit count above the cap; sign + decimals excluded); `trait:"amount"` → an implicit integer-digit cap of `15 − scale` **firing the SAME `zahlZuvieleVorkommastellen`** (only without explicit `maxIntegerDigits`); NumberType `minLength`/`maxLength` → `zahlZuKurz`/`zahlZuLang` on the value-string length (sign + decimal point counted). All modeled by the interpreter (IF30/IF67). **Still out of scope (probe-confirmed):** a **charset** check (`zeichenNichtImZeichensatz`) is not declarable and does not fire by default (tab / non-ASCII / control chars on a plain string are all clean); a field-level `uniqueValue` is not DM-JSON-deserializable.
 
 **Probe-verified (2026-06-25/26)**: `/Order/BirthDay` (`minValue:1, maxValue:31`) — `"99"` → `zahlZuGross`, `"0"` → `zahlZuKlein`; `/Order/Priority` (enum) — `"BOGUS"` → `stringFalschesMuster`; precedence — string pattern/newline fire **before** length; the **suppression** was confirmed (a rule `[BirthDay] == 99` with `BirthDay = "99"` does **not** fire — only `zahlZuGross`, the field is unknown). So an out-of-constraint value is observable two ways: the **auto-emitted formal error** *and* the **suppression of referencing rules**.
 
 This is the same class as §94/§98 (format-error suppression) — only the trigger differs (a declared constraint / kernel default vs raw well-formedness). The **interpreter now models this dimension** (the per-cell family + the two defaults) — INTERPRETER-FINDINGS IF20, differential-locked by `adapter.laws.FieldConstraintFormalDiffTest`.
+
+## §3 supplement — the two DISTINCT number-digit checks: generic `stelligkeitZuLang` (> 15 total) vs the integer-cap `zahlZuvieleVorkommastellen` (source + probe-verified 2026-07-07)
+
+Corrects the earlier attribution (which wrongly gave `trait:"amount"` its own `stelligkeitZuLang` code). There are **two** independent digit checks, with different triggers, codes, and precedence:
+
+| check | trigger | code | when it runs |
+|---|---|---|---|
+| **total-digit sanity** | > 15 **total** digits (integer + fractional, sign + decimal separator stripped) — on **EVERY** number, no declaration needed | `stelligkeitZuLang` | at **parse** (`NumberConversion.sanityCheck` / `FormatDefinitionZahl.validiereFormat`), **third** — right after the plus-sign + invalid-character checks, **before** sign / scale / leading-zero / integer-cap |
+| **integer-digit cap** | integer-part digits > the cap, where the cap = explicit `maxIntegerDigits`, else `trait:"amount"`'s `15 − maxFractionalDigits` (the kernel's `TypeConverter` maps both to the one `maxDigitsBeforeDecimalPlace`) | `zahlZuvieleVorkommastellen` | later, in the full format check (only reached when total digits ≤ 15) |
+
+**Precedence, probe-verified:** the total-digit check pre-empts leading-zeros, the scale-0 decimal-separator check, and signed-zero (e.g. `01234567890123456` → `stelligkeitZuLang`, not `zahlHatFuehrendeNullen`). The **decisive** case that separates the two: amount `scale=5`, value `12345678901` (11 integer, 0 fractional, 11 total) → **`zahlZuvieleVorkommastellen`** (11 > `15−5`), because total 11 ≤ 15 so the generic check does not fire. Interpreter: INTERPRETER-FINDINGS IF67, differential-locked by `adapter.laws.FieldConstraintFormalDiffTest` (+ multiplatform `interpreter.NumberDigitFormalTest`).
 
 **STRING `noValueValidation` DISABLES the whole string format check** (source + probe-verified 2026-06-26). When `StringType.noValueValidation:true`, the kernel's `FormatDefinitionString.validiereFormat` returns `Valid` *immediately* — pattern, length, and the default newline check are all skipped. The key is MVK-constrained: it **forbids** `pattern`/`minLength` (`MVK_STRING_TYPE_PARAMS_INCONSISTENT` — only `maxLength` may accompany it) and **requires** `lineBreaksPermitted:true` (`MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK`). So on a *kernel-valid* model the single observable runtime effect is that a declared **`maxLength` is NOT enforced** (a longer value is clean). Reachable on shipped A12 Tools StringType fields (Country/City/Person). The interpreter models it — INTERPRETER-FINDINGS IF29.
 

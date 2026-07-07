@@ -162,14 +162,19 @@ enum class FormalErrorCode(val id: String) {
     /** A NUMBER equal to zero where the field declares `zeroNotAllowed: true` (the kernel's `zahlIstNull`). */
     ZERO_NOT_ALLOWED("zahlIstNull"),
 
-    /** A NUMBER whose INTEGER-part digit count exceeds the field's explicit `maxIntegerDigits` (the kernel's
-     *  `zahlZuvieleVorkommastellen`). Sign and fractional digits are excluded from the count. */
+    /** A NUMBER whose INTEGER-part digit count exceeds the field's integer-digit cap — the kernel's
+     *  `zahlZuvieleVorkommastellen`. The cap is the explicit `maxIntegerDigits`, or (when unset) a `trait:"amount"`
+     *  field's implicit `15 − maxFractionalDigits`: the kernel's `TypeConverter` maps BOTH to the one
+     *  `maxDigitsBeforeDecimalPlace` cap firing the one code (amount is not a separate code). Sign and fractional
+     *  digits are excluded from the count; checked AFTER the [TOTAL_DIGITS_TOO_LONG] parse check. */
     TOO_MANY_INTEGER_DIGITS("zahlZuvieleVorkommastellen"),
 
-    /** A NUMBER whose INTEGER-part digit count exceeds the implicit `trait:"amount"` cap (`15 − maxFractionalDigits`)
-     *  — the kernel's `stelligkeitZuLang` (a precision check distinct from [TOO_MANY_INTEGER_DIGITS]; applies only
-     *  when no explicit `maxIntegerDigits` is set). */
-    AMOUNT_PRECISION_TOO_LONG("stelligkeitZuLang"),
+    /** A NUMBER with MORE THAN 15 TOTAL digits (integer + fractional, sign and decimal separator excluded) — the
+     *  kernel's `stelligkeitZuLang`. This is a GENERIC parse-time sanity check on EVERY number (the kernel's
+     *  `FormatDefinitionZahl.validiereFormat` / `NumberConversion.sanityCheck`), NOT a `trait:"amount"` concern:
+     *  it fires right after the invalid-character check and BEFORE the sign / scale / leading-zero / integer-cap
+     *  checks (probe-verified it beats leading-zeros, the decimal-separator check, and signed-zero). */
+    TOTAL_DIGITS_TOO_LONG("stelligkeitZuLang"),
 
     /** A NUMBER whose value-string length is below the field's declared `minLength` (the kernel's `zahlZuKurz`);
      *  the length counts the full stored text incl. sign and decimal point. */
@@ -283,11 +288,12 @@ private fun numberConstraintError(raw: String, c: FieldConstraints): FormalError
         if (!raw.contains('.')) return FormalErrorCode.NO_DECIMAL_SEPARATOR
         if (fractionalDigits(raw) < minFrac) return FormalErrorCode.TOO_FEW_DECIMALS
     }
-    // Integer-digit cap: explicit maxIntegerDigits (zahlZuvieleVorkommastellen), else the trait:"amount" cap of
-    // 15 − scale (stelligkeitZuLang — a distinct code). Sign + fractional digits are excluded from the count.
-    val intDigits = integerDigits(raw)
-    if (c.maxIntegerDigits != null && intDigits > c.maxIntegerDigits) return FormalErrorCode.TOO_MANY_INTEGER_DIGITS
-    if (c.amountMaxIntegerDigits != null && intDigits > c.amountMaxIntegerDigits) return FormalErrorCode.AMOUNT_PRECISION_TOO_LONG
+    // Integer-digit cap → zahlZuvieleVorkommastellen: the explicit maxIntegerDigits, else the trait:"amount"
+    // implicit 15 − scale cap. The kernel's TypeConverter maps BOTH to one `maxDigitsBeforeDecimalPlace` firing
+    // the SAME code (amount is not a distinct code). Sign + fractional digits are excluded. (The > 15 TOTAL-digit
+    // sanity check `stelligkeitZuLang` fired earlier, in numberFormalError — it precedes this integer-cap check.)
+    val intCap = c.maxIntegerDigits ?: c.amountMaxIntegerDigits
+    if (intCap != null && integerDigits(raw) > intCap) return FormalErrorCode.TOO_MANY_INTEGER_DIGITS
     // Value-string length bounds (the full stored text, incl. sign + decimal point).
     if (c.numberMinLength != null && raw.length < c.numberMinLength) return FormalErrorCode.NUMBER_TOO_SHORT
     if (c.numberMaxLength != null && raw.length > c.numberMaxLength) return FormalErrorCode.NUMBER_TOO_LONG
@@ -302,6 +308,10 @@ private fun numberFormalError(raw: String, scale: Int?, leadingZerosAllowed: Boo
     // A leading `+` on an otherwise-valid number is its own error (the kernel reports it, not "invalid chars").
     raw.startsWith("+") && DECIMAL.matches(raw.drop(1)) -> FormalErrorCode.PLUS_SIGN
     !DECIMAL.matches(raw) -> FormalErrorCode.INVALID_NUMBER
+    // The kernel's stelligkeitZuLang — > 15 TOTAL digits (sign + decimal separator excluded) — a generic parse
+    // sanity check on EVERY number, right after the invalid-char check and BEFORE the sign/scale/leading-zero
+    // checks (FormatDefinitionZahl order — probe-verified it beats signed-zero, leading-zeros, decimal-separator).
+    raw.count { it in '0'..'9' } > 15 -> FormalErrorCode.TOTAL_DIGITS_TOO_LONG
     // Signed-zero is checked BEFORE the scale/separator checks (verified: `-0.0` on a scale-0 field is the
     // signed-zero error, NOT the decimal-separator one — kernel order, NumberSignFormalDiffTest).
     isNegativeZero(raw) -> FormalErrorCode.SIGNED_ZERO
@@ -417,8 +427,8 @@ fun formalErrorText(code: FormalErrorCode, locale: String, scale: Int? = null): 
             if (de) "Wert darf nicht null sein." else "Value must not be zero."
         FormalErrorCode.TOO_MANY_INTEGER_DIGITS ->
             if (de) "Zahl hat zu viele Vorkommastellen." else "Number has too many digits before the decimal point."
-        FormalErrorCode.AMOUNT_PRECISION_TOO_LONG ->
-            if (de) "Betrag hat zu viele Stellen." else "Amount has too many significant digits."
+        FormalErrorCode.TOTAL_DIGITS_TOO_LONG ->
+            if (de) "Zahl hat mehr als 15 Stellen." else "Number has more than 15 digits."
         FormalErrorCode.NUMBER_TOO_SHORT ->
             if (de) "Zahl ist zu kurz." else "Number is too short."
         FormalErrorCode.NUMBER_TOO_LONG ->

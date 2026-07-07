@@ -187,8 +187,10 @@ data class FieldDef(
     val zeroNotAllowed: Boolean = false,
     /** NUMBER explicit `maxIntegerDigits` — integer-part digit count above it → `zahlZuvieleVorkommastellen`. */
     val maxIntegerDigits: Int? = null,
-    /** NUMBER `trait:"amount"` — an implicit integer-digit cap of `15 − scale` (a DIFFERENT code, `stelligkeitZuLang`),
-     *  applied only when no explicit [maxIntegerDigits] is set (the kernel's `TypeConverter` amount rule). */
+    /** NUMBER `trait:"amount"` — an implicit integer-digit cap of `15 − scale` firing `zahlZuvieleVorkommastellen`
+     *  (the SAME code as an explicit [maxIntegerDigits] — the kernel's `TypeConverter` maps both to one
+     *  `maxDigitsBeforeDecimalPlace`), applied only when no explicit [maxIntegerDigits] is set. Distinct from the
+     *  generic > 15-TOTAL-digit `stelligkeitZuLang` parse check, which applies to every number (IF67). */
     val amountTrait: Boolean = false,
     /** NUMBER `minLength` — value-string length below it → `zahlZuKurz` (counts sign + decimal point). */
     val numberMinLength: Int? = null,
@@ -256,7 +258,8 @@ data class FieldConstraints(
     /** NUMBER explicit `maxIntegerDigits` — integer-part digit count above it → `zahlZuvieleVorkommastellen`. */
     val maxIntegerDigits: Int? = null,
     /** NUMBER `trait:"amount"` integer-digit cap, precomputed as `15 − scale` (or null) — exceeded →
-     *  `stelligkeitZuLang`; applied only when [maxIntegerDigits] is unset. */
+     *  `zahlZuvieleVorkommastellen` (the SAME code as [maxIntegerDigits]); applied only when [maxIntegerDigits]
+     *  is unset. (The generic > 15-TOTAL-digit `stelligkeitZuLang` parse check is separate, IF67.) */
     val amountMaxIntegerDigits: Int? = null,
     /** NUMBER `minLength` — value-string length below it → `zahlZuKurz`. */
     val numberMinLength: Int? = null,
