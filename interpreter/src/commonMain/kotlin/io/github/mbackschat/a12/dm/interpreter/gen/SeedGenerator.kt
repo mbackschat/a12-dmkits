@@ -104,21 +104,30 @@ fun interface ValueStrategy {
 }
 
 /**
- * The default [ValueStrategy]: a **valid** value for each [Kind] — NUMBER respecting [FieldDef.scale] and
- * [FieldDef.signed], dates/times/ranges rendered in the field's [FieldDef.format]. Never empties a field
- * (compose with a wrapper that returns null for the empty case — e.g. the fuzz net's fill-or-empty strategy).
+ * The default [ValueStrategy]: a **valid** value for each [Kind] — NUMBER respecting [FieldDef.scale],
+ * [FieldDef.signed] and its declared `min/maxValue` range, STRING respecting its declared `min/maxLength`,
+ * dates/times/ranges rendered in the field's [FieldDef.format]. **Constraint-aware** (S2 seeding): drawing a
+ * value inside a field's declared constraints keeps the kernel's per-cell formal checks (`zahlZuKlein`,
+ * `stringZuLang`, `stringFalschesMuster`, …) from firing and *suppressing the very rules a differential means
+ * to exercise. It returns `null` (leaves the field empty) only for a STRING whose `pattern` it cannot cheaply
+ * satisfy — the sanctioned leave-empty fallback (compose with a wrapper for other empty cases, e.g. the fuzz
+ * net's fill-or-empty strategy).
  */
 object ValidValues : ValueStrategy {
-    override fun value(field: FieldDef, reps: List<Int>, rnd: Random): String = when {
+    override fun value(field: FieldDef, reps: List<Int>, rnd: Random): String? = when {
         // An enumeration field (stored as a STRING with declared members) MUST draw a real member — a generic
         // string would be a non-member, an invalid value. Picks one of the declared values at random.
         field.enumValues.isNotEmpty() -> field.enumValues[rnd.nextInt(field.enumValues.size)]
+        // A STRING pattern (unless noValueValidation waives all string checks): satisfy it cheaply, else leave
+        // empty (S2 MEDIUM). A satisfying sample is VERIFIED against the pattern before use, so a wrong guess is
+        // discarded (→ empty), never emitted; an empty value skips the pattern check (no stringFalschesMuster).
+        field.pattern != null && !field.noValueValidation -> patternSample(field.pattern)
         else -> byKind(field, reps, rnd)
     }
 
     private fun byKind(field: FieldDef, reps: List<Int>, rnd: Random): String = when (field.kind) {
         Kind.NUMBER -> number(field, rnd)
-        Kind.STRING -> "s" + reps.joinToString("_") + "_" + rnd.nextInt(0, 1000)
+        Kind.STRING -> fitLength("s" + reps.joinToString("_") + "_" + rnd.nextInt(0, 1000), field)
         Kind.BOOLEAN -> rnd.nextBoolean().toString()
         Kind.CONFIRM -> "true"   // a confirm has no `false` (that is a formal error) — true or empty only
         Kind.DATE -> renderByFormat(field.format ?: "yyyy-MM-dd", 2024, 1 + rnd.nextInt(12), 1 + rnd.nextInt(28))
@@ -133,6 +142,18 @@ object ValidValues : ValueStrategy {
     }
 
     private fun number(field: FieldDef, rnd: Random): String {
+        // A declared min/maxValue bound is itself a valid in-range value (a consistent model has min <= max),
+        // and drawing one at random exercises BOTH ends across seeds — an in-range value without decimal
+        // arithmetic in commonMain (S2 NUMBER = SMALL). Unbounded fields keep the random-magnitude path below.
+        val min = field.minValue
+        val max = field.maxValue
+        if (min != null || max != null) {
+            return when {
+                min != null && max != null -> if (rnd.nextBoolean()) min else max
+                min != null -> min
+                else -> max!!
+            }
+        }
         val whole = rnd.nextInt(0, 1000)
         val scale = field.scale ?: 0
         val frac = if (scale > 0 && rnd.nextBoolean())
@@ -170,5 +191,111 @@ object ValidValues : ValueStrategy {
             }
         }
         return sb.toString()
+    }
+
+    /** Trim/pad [s] into a STRING field's declared `[minLength, maxLength]` (S2 STRING = TRIVIAL). Padding uses
+     *  `'x'` (never a newline — the kernel forbids those by default). A consistent model has min <= max. */
+    private fun fitLength(s: String, field: FieldDef): String {
+        var r = s
+        field.maxLength?.let { if (r.length > it) r = r.take(it) }
+        field.minLength?.let { if (r.length < it) r = r.padEnd(it, 'x') }
+        return r
+    }
+
+    /**
+     * A minimal string satisfying [pattern], or `null` when the pattern is beyond this cheap sampler (S2 PATTERN
+     * = MEDIUM, with the leave-empty fallback). Handled: literals, escapes (`\d`→digit, `\w`→letter, `\s`→space),
+     * `.`, `[...]` classes (first member / range start), and the quantifiers `{n}` / `{n,m}` / `+` / `*` / `?`; a
+     * `(group)` is skipped only when its quantifier permits zero (`*` / `?` / `{0,…}`), else the sampler bails.
+     * **The candidate is always verified** with a full-match against the real [Regex] — a wrong guess yields
+     * `null` (an empty cell), never an invalid value — so an over-simple sampler stays SOUND, just less covering.
+     */
+    private fun patternSample(pattern: String): String? {
+        val sb = StringBuilder()
+        var i = 0
+        while (i < pattern.length) {
+            when (val c = pattern[i]) {
+                '^', '$' -> i++                                            // anchors contribute nothing
+                '(' -> {
+                    val close = matchingParen(pattern, i) ?: return null
+                    // a group is only omissible when its quantifier allows zero occurrences
+                    if (!quantifierAllowsZero(pattern, close + 1)) return null
+                    i = close + 1 + quantifierLength(pattern, close + 1)
+                }
+                '[' -> {
+                    val close = pattern.indexOf(']', i + 1).takeIf { it > 0 } ?: return null
+                    val atom = firstClassChar(pattern.substring(i + 1, close)) ?: return null
+                    i = appendAtom(sb, atom, pattern, close + 1)
+                }
+                '\\' -> {
+                    if (i + 1 >= pattern.length) return null
+                    val atom = escapedAtom(pattern[i + 1]) ?: return null
+                    i = appendAtom(sb, atom, pattern, i + 2)
+                }
+                '.' -> i = appendAtom(sb, "a", pattern, i + 1)
+                '*', '+', '?', '{', '|', ')' -> return null                // stray/unsupported metacharacter
+                else -> i = appendAtom(sb, c.toString(), pattern, i + 1)
+            }
+        }
+        val sample = sb.toString()
+        return if (Regex(pattern).matches(sample)) sample else null
+    }
+
+    /** Append [atom] repeated per the quantifier at [qi] (min count: `{n}`→n, `{n,m}`→n, `+`→1, `*`/`?`→0, none→1);
+     *  returns the index past the quantifier. */
+    private fun appendAtom(sb: StringBuilder, atom: String, pattern: String, qi: Int): Int {
+        repeat(minRepeat(pattern, qi)) { sb.append(atom) }
+        return qi + quantifierLength(pattern, qi)
+    }
+
+    private fun escapedAtom(c: Char): String? = when (c) {
+        'd' -> "0"; 'w' -> "a"; 's' -> " "
+        '.', '\\', '/', '-', '+', '*', '?', '(', ')', '[', ']', '{', '}', '|', '^', '$' -> c.toString()
+        else -> null
+    }
+
+    /** The first concrete char of a `[...]` class body (`abc`→`a`, `a-z`→`a`, `\d`→`0`); null if empty/negated. */
+    private fun firstClassChar(body: String): String? = when {
+        body.isEmpty() || body.startsWith("^") -> null
+        body.startsWith("\\") && body.length >= 2 -> escapedAtom(body[1])
+        else -> body[0].toString()
+    }
+
+    private fun minRepeat(pattern: String, qi: Int): Int = when {
+        qi >= pattern.length -> 1
+        pattern[qi] == '+' -> 1
+        pattern[qi] == '*' || pattern[qi] == '?' -> 0
+        pattern[qi] == '{' -> pattern.substring(qi + 1, pattern.indexOf('}', qi).coerceAtLeast(qi + 1))
+            .substringBefore(',').trim().toIntOrNull() ?: 1
+        else -> 1
+    }
+
+    private fun quantifierLength(pattern: String, qi: Int): Int = when {
+        qi >= pattern.length -> 0
+        pattern[qi] == '+' || pattern[qi] == '*' || pattern[qi] == '?' -> 1
+        pattern[qi] == '{' -> (pattern.indexOf('}', qi).takeIf { it > 0 }?.let { it - qi + 1 }) ?: 0
+        else -> 0
+    }
+
+    private fun quantifierAllowsZero(pattern: String, qi: Int): Boolean = when {
+        qi >= pattern.length -> false
+        pattern[qi] == '*' || pattern[qi] == '?' -> true
+        pattern[qi] == '{' -> minRepeat(pattern, qi) == 0
+        else -> false
+    }
+
+    /** The index of the `)` matching the `(` at [open], honoring nesting; null if unbalanced. */
+    private fun matchingParen(pattern: String, open: Int): Int? {
+        var depth = 0
+        var i = open
+        while (i < pattern.length) {
+            when (pattern[i]) {
+                '\\' -> i++                                  // skip an escaped char
+                '(' -> depth++
+                ')' -> if (--depth == 0) return i
+            }
+            i++
+        }
+        return null
     }
 }
