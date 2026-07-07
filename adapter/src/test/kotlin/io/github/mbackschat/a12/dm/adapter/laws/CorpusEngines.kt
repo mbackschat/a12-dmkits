@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Date
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -48,26 +49,30 @@ object CorpusEngines {
     fun interpret(modelJson: String, placements: List<Placement>, op: Op, clock: String? = null): List<String> =
         InterpreterReplay.run(modelJson, placements, op, clock).signatures
 
-    /** The Groovy-dynamic kernel's rendered signatures for [op] — the corpus anchor. */
-    fun groovyDynamic(modelJson: String, placements: List<Placement>, op: Op, clock: String? = null): List<String> {
+    /** The Groovy-dynamic kernel's rendered signatures for [op] — the corpus anchor. [locale] defaults to the
+     *  corpus-pinned [Locale.US]; the real-corpus sweep overrides it with a model-declared locale (the kernel
+     *  rejects an undeclared locale; signatures are locale-independent). */
+    fun groovyDynamic(modelJson: String, placements: List<Placement>, op: Op, clock: String? = null,
+                      locale: Locale = Locale.US): List<String> {
         val doc = kernelDoc(placements)
         val cd = clockDate(clock)
         return when (op) {
-            is Op.ValidateFull -> RuntimeLaws.messagesModern(modelJson, doc, cd).map(::sigOf).sorted()
+            is Op.ValidateFull -> RuntimeLaws.messagesModern(modelJson, doc, cd, locale).map(::sigOf).sorted()
             is Op.ValidatePart -> RuntimeLaws.messagesPartModern(modelJson, doc, relevants(op), cd).map(::sigOf).sorted()
-            is Op.Compute -> RuntimeLaws.computeModern(modelJson, doc, cd).map(::sigOf).sorted()
+            is Op.Compute -> RuntimeLaws.computeModern(modelJson, doc, cd, locale).map(::sigOf).sorted()
         }
     }
 
-    /** The static-JAVA kernel codegen's rendered signatures for [op]. */
-    fun javaStatic(modelJson: String, placements: List<Placement>, op: Op, clock: String? = null): List<String> {
+    /** The static-JAVA kernel codegen's rendered signatures for [op] ([locale] as in [groovyDynamic]). */
+    fun javaStatic(modelJson: String, placements: List<Placement>, op: Op, clock: String? = null,
+                   locale: Locale = Locale.US): List<String> {
         val engine = javaEngine(modelJson)
         val doc = kernelDoc(placements)
         val cd = clockDate(clock)
         return when (op) {
-            is Op.ValidateFull -> engine.messagesModern(doc, cd).map(::sigOf).sorted()
+            is Op.ValidateFull -> engine.messagesModern(doc, cd, locale).map(::sigOf).sorted()
             is Op.ValidatePart -> engine.messagesPartModern(doc, relevants(op), cd).map(::sigOf).sorted()
-            is Op.Compute -> engine.computeModern(doc, cd).map(::sigOf).sorted()
+            is Op.Compute -> engine.computeModern(doc, cd, locale).map(::sigOf).sorted()
         }
     }
 

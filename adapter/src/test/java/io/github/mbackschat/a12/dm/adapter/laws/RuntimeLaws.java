@@ -507,7 +507,13 @@ public final class RuntimeLaws {
     /** The modern {@link DocumentProcessingConfig} at {@link Locale#US}, pinning {@code clock} as
      *  {@code currentDateForTest} (both Today and Now) when non-null (else the real current date). */
     static DocumentProcessingConfig config(Date clock) {
-        var b = DocumentProcessingConfig.builder(Locale.US);
+        return config(clock, Locale.US);
+    }
+
+    /** As {@link #config(Date)} but at an explicit {@code locale} — the kernel rejects a locale the model does not
+     *  declare (the real-corpus sweep passes a model-declared locale; signatures are locale-independent). */
+    static DocumentProcessingConfig config(Date clock, Locale locale) {
+        var b = DocumentProcessingConfig.builder(locale);
         if (clock != null) {
             b.currentDateForTest(clock);
         }
@@ -516,11 +522,16 @@ public final class RuntimeLaws {
 
     /** Groovy-dynamic {@code validateFull(DocumentV2, config)} — the corpus capture anchor (S3/§13), clock-pinnable. */
     static List<Msg> messagesModern(String modelJson, Doc doc, Date clock) {
+        return messagesModern(modelJson, doc, clock, Locale.US);
+    }
+
+    /** As {@link #messagesModern(String, Doc, Date)} but at an explicit locale (the sweep's model-declared locale). */
+    static List<Msg> messagesModern(String modelJson, Doc doc, Date clock, Locale locale) {
         IDocumentModelResolver resolver = resolverOf(modelJson);
         DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
         IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
         DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
-        return rt.validateFull(v2, config(clock)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        return rt.validateFull(v2, config(clock, locale)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
     }
 
     /** Groovy-dynamic {@code validatePart(DocumentV2, relevant, config)} — clock-pinnable. */
@@ -536,11 +547,16 @@ public final class RuntimeLaws {
 
     /** Groovy-dynamic {@code compute(DocumentV2, config)} — clock-pinnable (the corpus compute capture path). */
     static List<Computed> computeModern(String modelJson, Doc doc, Date clock) {
+        return computeModern(modelJson, doc, clock, Locale.US);
+    }
+
+    /** As {@link #computeModern(String, Doc, Date)} but at an explicit locale (the sweep's model-declared locale). */
+    static List<Computed> computeModern(String modelJson, Doc doc, Date clock, Locale locale) {
         IDocumentModelResolver resolver = resolverOf(modelJson);
         DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
         IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
         DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
-        return computeDetailOf(rt.compute(v2, config(clock)));
+        return computeDetailOf(rt.compute(v2, config(clock, locale)));
     }
 
     /** A single-model {@link IDocumentModelResolver} for {@code modelJson} (deserialized + expanded once). */
@@ -738,8 +754,13 @@ public final class RuntimeLaws {
 
         /** Static-JAVA {@code validateFull(DocumentV2, config)} — clock-pinnable. */
         List<Msg> messagesModern(Doc doc, Date clock) {
+            return messagesModern(doc, clock, Locale.US);
+        }
+
+        /** As {@link #messagesModern(Doc, Date)} but at an explicit locale (the sweep's model-declared locale). */
+        List<Msg> messagesModern(Doc doc, Date clock, Locale locale) {
             DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(instance(doc));
-            return rt.validateFull(v2, config(clock)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+            return rt.validateFull(v2, config(clock, locale)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
         }
 
         /** Static-JAVA {@code validatePart(DocumentV2, relevant, config)} — clock-pinnable. */
@@ -752,8 +773,13 @@ public final class RuntimeLaws {
 
         /** Static-JAVA {@code compute(DocumentV2, config)} — clock-pinnable. */
         List<Computed> computeModern(Doc doc, Date clock) {
+            return computeModern(doc, clock, Locale.US);
+        }
+
+        /** As {@link #computeModern(Doc, Date)} but at an explicit locale (the sweep's model-declared locale). */
+        List<Computed> computeModern(Doc doc, Date clock, Locale locale) {
             DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(instance(doc));
-            return computeDetailOf(rt.compute(v2, config(clock)));
+            return computeDetailOf(rt.compute(v2, config(clock, locale)));
         }
     }
 

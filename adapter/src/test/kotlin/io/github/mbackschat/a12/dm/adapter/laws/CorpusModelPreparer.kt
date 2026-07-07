@@ -58,7 +58,18 @@ object CorpusModelPreparer {
             throw IllegalStateException("model failed serialization consistency: " +
                 errors.joinToString("; ") { it.toString() })
         }
-        return sw.toString()
+        // Post-expand the includes are folded into the tree and imported typedefs embedded, but `header`
+        // still lists the (now vestigial) references as `transitiveInclude`/`typeDefinitions`. Strip them so
+        // the self-contained re-expand a downstream kernel leg (RuntimeLaws) runs finds nothing to resolve.
+        return stripModelReferences(sw.toString())
+    }
+
+    /** Remove the vestigial `header.modelReferences` left after `expand` folded everything in — so a
+     *  self-contained re-expand has nothing to resolve. No-op for a model that declared no references. */
+    private fun stripModelReferences(json: String): String {
+        val root = MAPPER.readTree(json) as ObjectNode
+        (root.get("header") as? ObjectNode)?.remove("modelReferences")
+        return MAPPER.writeValueAsString(root)
     }
 
     /** Interpreter leg: the kernel form with `TypeDefType` inlined and ids normalized to name-paths (pure JSON). */

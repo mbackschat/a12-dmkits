@@ -83,6 +83,10 @@ tasks.named('test') {
         // The corpus generator mutates the working tree (writes corpus/cases/**); opt in with -PrunCorpusCapture.
         // The everyday guard is CorpusReplayTest, which replays the committed files (no exclusion).
         if (!project.hasProperty('runCorpusCapture')) excludeTags 'corpus-capture'
+        // The WI-7 real-corpus sweep reads the EUPL/proprietary corpora in place (nothing persisted) and is
+        // slow (per-model kernel codegen); it skips when absent but is excluded from the default/CI run — opt in
+        // with -PrunCorpusSweep (+ ../a12-kernel-mm present and/or -Da12.corpus1.dir=<workspaces>).
+        if (!project.hasProperty('runCorpusSweep')) excludeTags 'corpus-sweep'
     }
     // Fork the kernel-heavy suite across JVMs — distributes test CLASSES over N forks so the differential
     // + fuzz classes run in parallel (:adapter:test is the ~8-min CI hog: the kernel oracle does Groovy
