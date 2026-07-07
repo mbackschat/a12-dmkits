@@ -279,8 +279,42 @@ class Interpreter(
         // A SemanticIndex resolves to a matched cell or (absent row / empty cell) the empty value — fillable
         // exactly when empty, with the target field's sign, so its directional polarity matches a field ref.
         is Expr.SemanticIndex -> if (semanticIndexFilled(e)) Fill.of(false, false) else Fill.of(true, ctx.signed(e.path))
+        is Expr.Arith -> arithFill(e)
         else -> leafOmission(e).let { Fill.of(it, it) }
     }
+
+    /**
+     * Directional fillability of an ARITHMETIC expression — the kernel's `VkBigDecimal` fill propagation
+     * (`add`/`subtract`/`multiply`/`divide`/`power`) applied to the operands' resolved [fill]s, in the runtime
+     * layer [ArithFill] (IF10). `×`/`÷` are SIGN-DEPENDENT so each operand's resolved value SIGN is passed;
+     * `^` needs the base magnitude + exponent parity so their values are passed. A `+` over string operands is
+     * CONCATENATION, not numeric — it carries no `VkBigDecimal` fill (a fired string comparison is VALUE), so it
+     * keeps the fixed leaf. A malformed / non-numeric operand makes the whole term non-evaluable (the comparison
+     * is UNKNOWN and does not fire, so its type is discarded) → the fixed leaf, matching `INVALID_NUMBER`.
+     */
+    private fun arithFill(a: Expr.Arith): Fill {
+        if (a.op == ArithOp.ADD && (producesString(a.left) || producesString(a.right))) return Fill.of(false, false)
+        val l = fill(a.left)
+        val r = fill(a.right)
+        return when (a.op) {
+            ArithOp.ADD -> ArithFill.add(l, r)
+            ArithOp.SUB -> ArithFill.subtract(l, r)
+            ArithOp.MUL -> ArithFill.multiply(l, signOf(a.left), r, signOf(a.right))
+            ArithOp.DIV -> ArithFill.divide(l, signOf(a.left), r, signOf(a.right))
+            ArithOp.POW -> {
+                val base = numValOrNull(a.left); val exp = numValOrNull(a.right)
+                if (base == null || exp == null) Fill.of(false, false) else ArithFill.power(l, base, r, exp)
+            }
+        }
+    }
+
+    /** The resolved value SIGN (−1 / 0 / +1) of an operand — 0 for empty (empty-as-0) or a non-numeric/Unknown
+     *  value (then the whole term is Unknown and its polarity is discarded). */
+    private fun signOf(e: Expr): Int = (evalExpr(e) as? Val.Num)?.v?.compareTo(DEC_ZERO) ?: 0
+
+    /** The resolved numeric value of an operand, or null when non-numeric/Unknown (a division-by-zero, a
+     *  malformed cell) — the caller then reports the term fixed (it never fires). */
+    private fun numValOrNull(e: Expr): Dec? = (evalExpr(e) as? Val.Num)?.v
 
     /** Whether a SemanticIndex resolves to a present (filled) cell — vs an absent row / empty cell (or an
      *  empty/absent key field for the field-keyed form, which also yields no match). */
