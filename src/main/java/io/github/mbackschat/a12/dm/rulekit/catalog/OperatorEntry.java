@@ -60,6 +60,12 @@ public record OperatorEntry(
         return semantics == null ? null : semantics.boundary();
     }
 
+    /** The {@code iterationRange} facet claim (CATALOG-SPEC §3b), or {@code null} when the operator
+     *  follows the natural INSTANTIATED default (all operators but the deviating field-fill quantifiers). */
+    public IterationRangeClaim iterationRangeClaim() {
+        return semantics == null ? null : semantics.iterationRange();
+    }
+
     /** Whether rulekit builds a typed handle for this operator (vs a {@link OperatorStatus#PLANNED} stub). */
     public boolean supported() {
         return status == OperatorStatus.SUPPORTED;

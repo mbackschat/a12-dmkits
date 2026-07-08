@@ -49,6 +49,18 @@ Design rules, fixed by the WI-5a slice:
 
 The consumer this serves (the §21D razor): the eval judge, to reason that `[Q] < 100` ≡ `[Q] <= 99` over integers but `[Q] < 100` ≢ `[Q] <= 100`, and that touching date ranges overlap. Each claim's probe pins a document whose operand sits **exactly at** the endpoint, so a STRICT/INCLUSIVE mistake flips `fires`. Populated over the ten threshold/interval operators — the four orderings (`<` `>` `<=` `>=`), the four tolerance ops, and the two date-range overlap predicates; `Equal`/`NotEqual` carry no boundary (equality has no interval endpoint).
 
+### 3b. The `iterationRange` dimension
+
+**The question it answers:** for a field-fill quantifier over a starred / group scope, which repetition range does it iterate — the rows that *exist* or the full *declared* range? One value per operator (`IterationRangeClaim`), vocabulary `IterationRange` derived from IF49:
+
+| value | meaning | canonical lock |
+|---|---|---|
+| `INSTANTIATED` | the rows that exist (the natural **default** — not recorded as a claim) | the count quantifiers (`AtLeastOne`/`No`/`MoreThanOne`/`NotExactlyOne`-`FieldFilled`) |
+| `DECLARED` | the **full declared** range — an un-instantiated rep counts as empty, so `AllFieldsFilled(/Items*)` is TRUE only when every *declared* rep is filled | `AllFieldsFilled` / `NotAllFieldsFilled` (IF49 / `GroupScopedFieldFillDiffTest`) |
+| `MIXED` | instantiated-≥1-filled AND declared-≥1-empty | `FieldsNotCollectivelyFilled` (IF49) |
+
+This is a **deviation dimension** (like `emptyOperand`, but the default is not per-kind — it is the single natural `INSTANTIATED`). Only the two families that deviate carry a claim: `All`/`NotAll` (`DECLARED`) and `FieldsNotCollectivelyFilled` (`MIXED`). The **count quantifiers carry no claim** — deliberately, because DECLARED vs INSTANTIATED is *observationally identical for firing* there: an un-instantiated rep contributes no filled cell, so "is there ≥ 1 filled / are there 0 filled / how many filled" is unchanged. (The range does bite their *polarity* — the fillable declared tail — which is the `polarity` dimension, not firing.) Each claim's probe instantiates 2 of the 50 declared `Items` rows, so a DECLARED / INSTANTIATED slip flips `fires`.
+
 ## 4. The `emptyOperand` dimension
 
 **The question it answers:** what does this operator do when a given operand is *empty* (a present-but-valueless field)? This is the #1 recurring semantic failure class (empty-as-0 firing, judge false-positives, incomplete lints), and the per-operator answers were already differentially locked by the WI-T campaign — the facet is their machine-readable projection.
@@ -171,7 +183,11 @@ The mechanism: an entry carries `correctives` — per-`code`, per-operand-shape 
 
 ## 9. Population state & boundaries (WI-5a → WI-5b)
 
-**WI-5b dimensions** slot in additively as single operator-level claims (§3a). Shipped so far: **`boundary`** — the ten threshold/interval operators (four orderings, four tolerance ops, two date-range overlaps); STRICT for `<`/`>`/tolerance, INCLUSIVE for `<=`/`>=`/date-range-overlap (CLOSED). `iterationRange`, `aggregateIdentity`, `polarity` follow.
+**WI-5b dimensions** slot in additively as single operator-level claims (§3a/§3b). Shipped so far:
+- **`boundary`** — the ten threshold/interval operators; STRICT for `<`/`>`/tolerance, INCLUSIVE for `<=`/`>=`/date-range-overlap (CLOSED).
+- **`iterationRange`** — the field-fill quantifier deviations from the INSTANTIATED default: `AllFieldsFilled`/`NotAllFieldsFilled` = DECLARED, `FieldsNotCollectivelyFilled` = MIXED (IF49).
+
+`aggregateIdentity`, `polarity` follow.
 
 ### 9a. The WI-5a `emptyOperand` slice
 

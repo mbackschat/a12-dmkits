@@ -481,6 +481,29 @@
     "constraints": [ "the operand is a list of field references (typically two or more)" ],
     "gotchas": [ { "text": "a field carrying a formal error is removed from evaluation (see FieldFilled)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(CustomerName, ProductCode)", "note": "true when both are filled" },
+    "semantics": {
+      "iterationRange": {
+        "value": "DECLARED",
+        "basis": "IF49 / adapter.laws.GroupScopedFieldFillDiffTest (the kernel's two iteration ranges over a starred field)",
+        "note": "scans the full DECLARED repetition range: TRUE only when EVERY declared rep is filled, so an un-instantiated tail makes it false (deviates from the INSTANTIATED default)",
+        "probes": [
+          {
+            "dsl": "FieldFilled(CustomerName) And AllFieldsFilled(Items*/Sku)",
+            "errorField": "CustomerName",
+            "rows": [
+              "/Order/Items[1]",
+              "/Order/Items[2]"
+            ],
+            "given": {
+              "/Order/Items[1]/Sku": "A",
+              "/Order/Items[2]/Sku": "B"
+            },
+            "fires": false,
+            "note": "2 of 50 declared reps filled → the declared tail is empty → not all filled → does NOT fire (an INSTANTIATED reading of the 2 filled rows WOULD fire)"
+          }
+        ]
+      }
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -518,6 +541,29 @@
     "constraints": [ "the operand is a list of field references" ],
     "gotchas": [ { "text": "NOT the complement of NoFieldFilled: they agree when all listed fields are empty but diverge on a partial fill — NotAllFieldsFilled fires (at least one empty), NoFieldFilled does not. The DE keyword NichtAlleFelderOderKeinFeldAngegeben spells out the 'or none' branch.", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "NotAllFieldsFilled(CustomerName, ProductCode)", "note": "true unless both are filled" },
+    "semantics": {
+      "iterationRange": {
+        "value": "DECLARED",
+        "basis": "IF49 / adapter.laws.GroupScopedFieldFillDiffTest (the kernel's two iteration ranges over a starred field)",
+        "note": "scans the full DECLARED range: TRUE whenever any declared rep is empty, so an un-instantiated tail makes it fire even when every instantiated row is filled",
+        "probes": [
+          {
+            "dsl": "FieldFilled(CustomerName) And NotAllFieldsFilled(Items*/Sku)",
+            "errorField": "CustomerName",
+            "rows": [
+              "/Order/Items[1]",
+              "/Order/Items[2]"
+            ],
+            "given": {
+              "/Order/Items[1]/Sku": "A",
+              "/Order/Items[2]/Sku": "B"
+            },
+            "fires": true,
+            "note": "2 of 50 declared reps filled → the declared tail is empty → not-all is TRUE → fires (an INSTANTIATED reading would NOT fire)"
+          }
+        ]
+      }
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -530,6 +576,29 @@
     "constraints": [ "the operand is a list of field references" ],
     "gotchas": [ { "text": "a strict partial-fill check — fires only when at least one listed field is filled AND at least one is empty; the all-empty case does NOT fire (contrast NotAllFieldsFilled, which includes all-empty).", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldsNotCollectivelyFilled(CustomerName, ProductCode)", "note": "true on a partial fill" },
+    "semantics": {
+      "iterationRange": {
+        "value": "MIXED",
+        "basis": "IF49 / adapter.laws.GroupScopedFieldFillDiffTest (the kernel's two iteration ranges over a starred field)",
+        "note": "MIXES the ranges: fires on instantiated-≥1-filled AND declared-≥1-empty — so it fires even when every instantiated row is filled, as long as the declared range has an empty rep",
+        "probes": [
+          {
+            "dsl": "FieldFilled(CustomerName) And FieldsNotCollectivelyFilled(Items*/Sku)",
+            "errorField": "CustomerName",
+            "rows": [
+              "/Order/Items[1]",
+              "/Order/Items[2]"
+            ],
+            "given": {
+              "/Order/Items[1]/Sku": "A",
+              "/Order/Items[2]/Sku": "B"
+            },
+            "fires": true,
+            "note": "both instantiated rows filled, but the declared tail is empty → instantiated-≥1-filled AND declared-≥1-empty → fires (a pure-INSTANTIATED reading needs an empty instantiated cell, so it would NOT fire)"
+          }
+        ]
+      }
+    },
     "sinceKernel": "30.8.x"
   },
   {

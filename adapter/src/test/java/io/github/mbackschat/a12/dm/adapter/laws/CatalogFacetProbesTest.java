@@ -68,6 +68,14 @@ class CatalogFacetProbesTest {
                         .map(p -> probeTest(e.id() + " boundary", p)));
     }
 
+    @TestFactory
+    Stream<DynamicTest> everyIterationRangeClaimProbeHoldsOnTheKernel() {
+        return CATALOG.entries().stream()
+                .filter(e -> e.iterationRangeClaim() != null)
+                .flatMap(e -> e.iterationRangeClaim().probes().stream()
+                        .map(p -> probeTest(e.id() + " iterationRange", p)));
+    }
+
     private static DynamicTest probeTest(String claim, FacetProbe probe) {
         return dynamicTest(claim + " · " + probe.dsl(), () -> {
             DraftRule draft = new DraftRule("/Order", "FacetProbeRule", "../" + probe.errorField(),

@@ -249,6 +249,39 @@ class OperatorCatalogTest {
         }
     }
 
+    /**
+     * Every {@code semantics.iterationRange} claim is well-formed: a value, a basis, and at least one
+     * executable probe (CATALOG-SPEC §3b/§5).
+     */
+    @Test
+    void everyIterationRangeClaimIsWellFormedAndProbed() {
+        for (OperatorEntry e : CATALOG.entries()) {
+            IterationRangeClaim claim = e.iterationRangeClaim();
+            if (claim == null) {
+                continue;
+            }
+            String at = e.id() + " iterationRange";
+            assertNotNull(claim.value(), () -> at + ": missing value");
+            assertFalse(isBlank(claim.basis()), () -> at + ": missing basis (the lock/finding it derives from)");
+            assertFalse(claim.probes().isEmpty(), () -> at + ": a facet claim needs at least one probe");
+            claim.probes().forEach(p -> assertProbeWellFormed(at, p));
+        }
+    }
+
+    /** The IF49 deviations from the INSTANTIATED default (CATALOG-SPEC §3b): All/NotAll scan the DECLARED
+     *  range, FieldsNotCollectivelyFilled MIXES; the count quantifiers carry no claim (default). */
+    @Test
+    void fieldFillQuantifierRangesFollowIF49() {
+        assertEquals(IterationRange.DECLARED, CATALOG.byId("AllFieldsFilled").orElseThrow().iterationRangeClaim().value());
+        assertEquals(IterationRange.DECLARED, CATALOG.byId("NotAllFieldsFilled").orElseThrow().iterationRangeClaim().value());
+        assertEquals(IterationRange.MIXED, CATALOG.byId("FieldsNotCollectivelyFilled").orElseThrow().iterationRangeClaim().value());
+        // the count quantifiers follow the default → no claim
+        assertNull(CATALOG.byId("AtLeastOneFieldFilled").orElseThrow().iterationRangeClaim(),
+                "AtLeastOneFieldFilled uses the INSTANTIATED default — no deviation claim");
+        assertNull(CATALOG.byId("NoFieldFilled").orElseThrow().iterationRangeClaim(),
+                "NoFieldFilled uses the INSTANTIATED default — no deviation claim");
+    }
+
     /** The two non-obvious boundary facts the dimension exists to carry (CATALOG-SPEC §3): the tolerance
      *  band is STRICT (fires only beyond N) and the date-range overlap predicates are INCLUSIVE (closed). */
     @Test
