@@ -671,7 +671,13 @@ class DmInterpreter @JvmOverloads constructor(
      * own dependents' reads poison transitively. Read-driven, so evaluation order/short-circuits decide.
      */
     private fun computeInstances(doc: Document): List<Computed> {
-        val out = mutableListOf<Computed>()
+        // A field may be targeted by MULTIPLE computations (a composed base + subtype override — IF87): they run in
+        // document order and the FIRST NON-EMPTY outcome (a VALUE or a POISON) wins per cell; an empty/clearing one is
+        // a no-op and control falls through to the next (the kernel's `CalculationController.handleBerechnetenWert` —
+        // "for empty values, do like no calculation was done"). [outcomeByCell] keeps the winner per target cell
+        // (insertion-ordered), [decided] marks the cells a non-empty outcome has already claimed.
+        val outcomeByCell = LinkedHashMap<Pair<String, List<Int>>, Computed>()
+        val decided = HashSet<Pair<String, List<Int>>>()
         val overlay = HashMap<Pair<String, List<Int>>, Val>()
         // A computed field a PRIOR computation CLEARED — dependents must read it as EMPTY (empty-as-0 / skip), NOT
         // the stale STORED (seeded) value the overlay would otherwise fall through to. Without this a dependent's
@@ -691,6 +697,7 @@ class DmInterpreter @JvmOverloads constructor(
             val scope = scopeFromRefs(computationScopeRefs(parsed) + comp.targetPath, comp.group)
             for (ctx in doc.contextsFor(scope)) {
                 val targetKey = comp.targetPath to ctx.repsOf(comp.targetPath)
+                if (targetKey in decided) continue   // an earlier computation's non-empty outcome already won (IF87)
                 val ectx = if (overlay.isEmpty() && cleared.isEmpty() && poisoned.isEmpty()) ctx
                     else OverlayContext(ctx, overlay, cleared, poisoned, emptyOf)
                 val interp = Interpreter(ectx, clock, model.baseYear, model.indexFields, predefinedTypes,
@@ -705,27 +712,27 @@ class DmInterpreter @JvmOverloads constructor(
                 // the poison set so ITS dependents' reads poison transitively. The poison is READ-driven: a
                 // dependent that never actually reads the poisoned target (a short-circuit skipped it) computes
                 // normally — there is no static dependency pre-skip.
-                val v = try {
-                    evalComputation(parsed, interp)
+                val computed = try {
+                    val v = evalComputation(parsed, interp)
+                    // ERRORED: poison the target + do NOT overlay — a dependent's READ of it must poison, not read
+                    // the bad value. A resolved VALUE overlays (dependents read the computed result) and DECIDES the
+                    // cell. An EMPTY (Unknown) is a no-op (IF87): recorded as a tentative clear (dependents read it
+                    // EMPTY, IF77) but NOT decided, so a later computation for the SAME cell can still win.
+                    toComputed(comp, v, targetKey.second).also { c ->
+                        when {
+                            c.outcome == ComputeOutcome.ERRORED -> { poisoned += targetKey; cleared -= targetKey; decided += targetKey }
+                            v !is Val.Unknown -> { overlay[targetKey] = v; cleared -= targetKey; decided += targetKey }
+                            else -> cleared += targetKey
+                        }
+                    }
                 } catch (p: PoisonedReadException) {
-                    poisoned += targetKey
-                    out += Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = targetKey.second)
-                    continue
+                    poisoned += targetKey; cleared -= targetKey; decided += targetKey
+                    Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = targetKey.second)
                 }
-                val computed = toComputed(comp, v, targetKey.second)
-                out += computed
-                // ERRORED: report it, but poison the target and do NOT overlay — a dependent's READ of it must
-                // poison, not compute from the bad value. A resolved VALUE overlays so dependents read the
-                // computed result. A CLEARED (Unknown) target is recorded so dependents read it EMPTY, not the
-                // stale stored seed (IF77 — a precondition-false clear cascades as EMPTY, never as a poison).
-                when {
-                    computed.outcome == ComputeOutcome.ERRORED -> poisoned += targetKey
-                    v !is Val.Unknown -> overlay[targetKey] = v
-                    else -> cleared += targetKey
-                }
+                outcomeByCell[targetKey] = computed   // a decided cell is skipped above → a value/poison overwrites a prior tentative clear
             }
         }
-        return out
+        return outcomeByCell.values.toList()
     }
 
     /** Whether a FILLED operand is "not check-relevant" for a computation — the SAME test full validation uses
@@ -792,22 +799,26 @@ class DmInterpreter @JvmOverloads constructor(
      * dependency through an aggregate over a computed field is ordered too.
      */
     private fun computationsInDependencyOrder(): List<ComputationDef> {
-        val byTarget = model.computations.associateBy { it.targetPath }
+        // A field can be targeted by MULTIPLE computations (a composed base + subtype override — IF87), so order the
+        // TARGET GROUPS by dependency and return ALL computations (no dedup). Within a target the computations keep
+        // DOCUMENT order ([groupBy] preserves encounter order), which is the order [computeInstances]'s
+        // first-non-empty-wins consumes; across targets, a target is emitted only after every target it reads.
+        val byTarget: Map<String, List<ComputationDef>> = model.computations.groupBy { it.targetPath }
         val ordered = mutableListOf<ComputationDef>()
         val done = HashSet<String>()
         val onStack = HashSet<String>()
-        fun visit(c: ComputationDef) {
-            if (c.targetPath in done) return
-            if (!onStack.add(c.targetPath)) {
-                throw UnsupportedConstructException("cyclic computation dependency involving ${c.targetPath}")
+        fun visit(target: String) {
+            if (target in done) return
+            if (!onStack.add(target)) {
+                throw UnsupportedConstructException("cyclic computation dependency involving $target")
             }
-            for (ref in computationDepRefs(parsedOf(c))) {
-                byTarget[ref]?.let { dep -> if (dep.targetPath != c.targetPath) visit(dep) }
-            }
-            onStack.remove(c.targetPath)
-            if (done.add(c.targetPath)) ordered.add(c)
+            for (comp in byTarget[target].orEmpty())
+                for (ref in computationDepRefs(parsedOf(comp)))
+                    if (ref != target && ref in byTarget) visit(ref)
+            onStack.remove(target)
+            if (done.add(target)) ordered.addAll(byTarget[target].orEmpty())
         }
-        model.computations.forEach { visit(it) }
+        model.computations.forEach { visit(it.targetPath) }
         return ordered
     }
 
