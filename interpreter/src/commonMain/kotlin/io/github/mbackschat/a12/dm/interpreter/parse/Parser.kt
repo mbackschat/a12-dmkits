@@ -126,6 +126,7 @@ private class ConditionParser(private val src: String, private val base: String)
             '{' -> { next(); val e = parseExpr(); skipWs(); expect('}'); e }
             '[' -> {
                 next()
+                skipWs()   // whitespace after `[` is hidden in ANTLR — `[ /abs]` / `[ ../rel]` are the space-free path
                 // an optional `$` marks the outer-iteration correlation (KERNEL-FINDINGS §"$ correlation"):
                 // `[$field]` reads the field in the ENCLOSING iteration row when inside a `Having` filter.
                 val outer = if (peek() == '$') { next(); true } else false
@@ -253,15 +254,31 @@ private class ConditionParser(private val src: String, private val base: String)
     private fun pathFrom(firstSeg: String, absolute: Boolean = false, ups: Int = 0, outer: Boolean = false): Expr {
         val segs = mutableListOf(firstSeg)
         var starred = false
-        if (peek() == '*') { next(); starred = true }
-        while (peek() == '/') {
-            next()
-            segs.add(readIdent())
-            if (peek() == '*') { next(); starred = true }
+        if (skipWsAndMatch('*')) starred = true
+        while (skipWsAndMatch('/')) {
+            segs.add(readIdent())                    // readIdent skips leading whitespace before the next segment
+            if (skipWsAndMatch('*')) starred = true
         }
         val joined = segs.joinToString("/")
         val full = if (absolute) "/$joined" else "${walkUp(base, ups)}/$joined"
         return if (starred) Expr.Star(full, outer = outer) else Expr.Field(full, outer = outer)
+    }
+
+    /**
+     * Skip whitespace and consume [c] if it is the next significant char; else restore the position and return
+     * false. Lets a path cross whitespace around its `/` separator and `*` wildcard — the kernel's ANTLR lexer
+     * puts whitespace on a HIDDEN channel, so `Group* / Field` ≡ the space-free form (the gold standard). This
+     * is unambiguous because a BARE-identifier path is never an arithmetic operand (the grammar's arithmetic
+     * atoms `einfacheOperation` are bracketed `[entity]`, constants, or named functions — never a bare ident),
+     * so a `/`/`*` after a path segment is a separator/wildcard, not division/multiplication; the arithmetic
+     * `parseMultiplicative` only ever sees a `/` or `*` after a NON-path atom. See [PathWhitespaceParseTest].
+     */
+    private fun skipWsAndMatch(c: Char): Boolean {
+        val save = pos
+        skipWs()
+        if (peek() == c) { next(); return true }
+        pos = save
+        return false
     }
 
     /** Walk [path] up [ups] group levels (drop that many trailing segments) — the base for a `../` ref (IG1). */
