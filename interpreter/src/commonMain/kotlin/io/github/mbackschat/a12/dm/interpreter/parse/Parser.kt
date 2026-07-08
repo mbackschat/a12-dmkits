@@ -277,7 +277,10 @@ private class ConditionParser(private val src: String, private val base: String)
      * The value-list QUANTIFIERS (shape B: `op(f1, f2 In v1, v2)`) — recognized up front and parsed directly
      * into [Cond.ValueListQuant], because the generic expr→`Cond.Pred` flow would discard the `In` boundary
      * between the field list and the value list. Restores the position and returns null if the next token is
-     * not one of these names.
+     * not one of these names. Each operand goes through [parseArg], so a trailing `<star> Having <cond>` filter
+     * rides a starred operand on EITHER side — the kernel's `entityListe : entitySpec*` with an optional `Mit`
+     * per `entitySpec` (grammar); the kernel accepts + evaluates it (IG48), so it must parse (else the corpus
+     * idiom would silently degrade — the IG42 class).
      */
     private fun matchValueListQuant(): Cond? {
         val save = pos
@@ -285,13 +288,13 @@ private class ConditionParser(private val src: String, private val base: String)
         skipWs()
         if (op == null || peek() != '(') { pos = save; return null }
         next()   // consume '('
-        val fields = mutableListOf(parseExpr())
+        val fields = mutableListOf(parseArg())
         skipWs()
-        while (peek() == ',') { next(); fields.add(parseExpr()); skipWs() }
+        while (peek() == ',') { next(); fields.add(parseArg()); skipWs() }
         require(matchKeyword("In")) { "parser: $op expects 'In' between its field list and its value list in \"$src\"" }
-        val values = mutableListOf(parseExpr())
+        val values = mutableListOf(parseArg())
         skipWs()
-        while (peek() == ',') { next(); values.add(parseExpr()); skipWs() }
+        while (peek() == ',') { next(); values.add(parseArg()); skipWs() }
         expect(')')
         return Cond.ValueListQuant(op, fields, values)
     }
