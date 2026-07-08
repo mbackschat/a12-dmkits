@@ -15,6 +15,7 @@ import org.junit.jupiter.api.TestFactory;
 
 import io.github.mbackschat.a12.dm.rulekit.catalog.FacetProbe;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
+import io.github.mbackschat.a12.dm.rulekit.catalog.ProbeOutcome;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -84,6 +85,14 @@ class CatalogFacetProbesTest {
                         .map(p -> probeTest(e.id() + " aggregateIdentity", p)));
     }
 
+    @TestFactory
+    Stream<DynamicTest> everyPolarityClaimProbeHoldsOnTheKernel() {
+        return CATALOG.entries().stream()
+                .filter(e -> e.polarityClaim() != null)
+                .flatMap(e -> e.polarityClaim().probes().stream()
+                        .map(p -> probeTest(e.id() + " polarity", p)));
+    }
+
     private static DynamicTest probeTest(String claim, FacetProbe probe) {
         return dynamicTest(claim + " · " + probe.dsl(), () -> {
             DraftRule draft = new DraftRule("/Order", "FacetProbeRule", "../" + probe.errorField(),
@@ -94,11 +103,23 @@ class CatalogFacetProbesTest {
 
             String model = RuntimeLaws.withRule(ORDER, "/Order", "FacetProbeRule",
                     "../" + probe.errorField(), PROBE_CODE, probe.dsl());
-            boolean fired = RuntimeLaws.firedCodes(model, instance(probe)).contains(PROBE_CODE);
+            RuntimeLaws.Doc doc = instance(probe);
+            boolean fired = RuntimeLaws.firedCodes(model, doc).contains(PROBE_CODE);
             assertEquals(probe.fires(), fired,
                     () -> claim + ": expected fires=" + probe.fires() + " for '" + probe.dsl()
                             + "' on given=" + probe.given() + " empty=" + probe.empty()
                             + (probe.note() == null ? "" : " — " + probe.note()));
+
+            // A polarity probe additionally pins the value-vs-omission TYPE of the firing (CATALOG-SPEC §5a):
+            // fires alone is not enough — the claim is about HOW it fires.
+            if (probe.outcome() != null) {
+                assertTrue(fired, () -> claim + ": an outcome-typed probe must fire");
+                String expected = probe.outcome() == ProbeOutcome.VALUE ? "VALUE_ERROR" : "OMISSION_ERROR";
+                String actual = RuntimeLaws.typeOf(model, PROBE_CODE, doc).map(Enum::name).orElse(null);
+                assertEquals(expected, actual,
+                        () -> claim + ": expected outcome=" + probe.outcome() + " for '" + probe.dsl()
+                                + "'" + (probe.note() == null ? "" : " — " + probe.note()));
+            }
         });
     }
 

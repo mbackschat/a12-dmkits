@@ -25,7 +25,10 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  *       precondition for empty-value evaluation);</li>
  *   <li>{@code empty} — instantiated-empty cells (present but valueless — how a form renders an
  *       unfilled field);</li>
- *   <li>{@code fires} — whether the rule must fire on that instance.</li>
+ *   <li>{@code fires} — whether the rule must fire on that instance;</li>
+ *   <li>{@code outcome} — (optional, the {@code polarity} dimension only) the value-vs-omission
+ *       TYPE the firing must carry; when present the lane asserts {@code fires: true} <em>and</em> the
+ *       fired message's type, so a fill-polarity claim is verified, not just its firing.</li>
  * </ul>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -36,6 +39,7 @@ public record FacetProbe(
         Map<String, String> given,
         List<String> empty,
         Boolean fires,
+        ProbeOutcome outcome,
         String note) {
 
     public FacetProbe {

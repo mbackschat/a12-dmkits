@@ -769,6 +769,23 @@
     "validExample": { "dsl": "Length(CustomerName) > 10", "note": "fires when CustomerName is longer than 10 characters" },
     "invalidExample": { "dsl": "Length(Quantity) > 10", "error": "operand type", "fix": "Length needs a string field, not a number" },
     "semantics": {
+      "polarity": {
+        "value": "GROW_ONLY",
+        "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (Length grow-only: kannKleiner=false, so a fired >= 0 is VALUE, a fired < n is OMISSION)",
+        "note": "grow-only fill: a fired >= 0 / > n is VALUE (filling only raises the value), a fired < n / == 0 is OMISSION",
+        "probes": [
+          {
+            "dsl": "Length(ProductCode) >= 0",
+            "errorField": "ProductCode",
+            "fires": true,
+            "outcome": "VALUE",
+            "note": "empty → 0, 0 >= 0 fires; grow-only → filling only raises the value, cannot clear >= 0 → VALUE (a symmetric op would be OMISSION here)",
+            "empty": [
+              "/Order/ProductCode"
+            ]
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "0",
@@ -1230,6 +1247,24 @@
     "validExample": { "dsl": "NumberOfFilledFields(CustomerName, ProductCode, Quantity) < 2", "note": "fires when fewer than two of the three are filled" },
     "invalidExample": { "dsl": "NumberOfFilledFields(CustomerName) < 1", "error": "MVK_PARAMSIZE_INVALIDN", "fix": "list at least two fields (or one group) — for a single field use FieldFilled/FieldNotFilled" },
     "semantics": {
+      "polarity": {
+        "value": "GROW_ONLY",
+        "basis": "IF51 / adapter.laws.MultiFieldAggregateDiffTest (the fill-count family is grow-only: a fired count >= n is VALUE)",
+        "note": "grow-only fill: a fired >= 0 / > n is VALUE (filling only raises the value), a fired < n / == 0 is OMISSION",
+        "probes": [
+          {
+            "dsl": "NumberOfFilledFields(Quantity, BackorderQuantity) >= 0",
+            "errorField": "Quantity",
+            "fires": true,
+            "outcome": "VALUE",
+            "note": "empty → 0, 0 >= 0 fires; grow-only → filling only raises the value, cannot clear >= 0 → VALUE (a symmetric op would be OMISSION here)",
+            "empty": [
+              "/Order/Quantity",
+              "/Order/BackorderQuantity"
+            ]
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "0",
@@ -1269,6 +1304,22 @@
     , { "text": "a counted field in the formal-error state suppresses the count entirely", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "NumberOfFilledGroups(ShippingAddress, BillingAddress) == 2", "note": "true when both address groups exist" },
     "invalidExample": { "dsl": "NumberOfFilledGroups(ShippingAddress, CustomerName) < 1", "error": "MVK_NO_FIELDS_ALLOWED", "fix": "NumberOfFilledGroups takes groups — count fields with NumberOfFilledFields" },
+    "semantics": {
+      "polarity": {
+        "value": "GROW_ONLY",
+        "basis": "IF51 / adapter.laws.MultiFieldAggregateDiffTest (the fill-count family is grow-only: a fired count >= n is VALUE)",
+        "note": "grow-only fill: a fired >= 0 / > n is VALUE (filling only raises the value), a fired < n / == 0 is OMISSION",
+        "probes": [
+          {
+            "dsl": "FieldFilled(CustomerName) And NumberOfFilledGroups(Items*) >= 0",
+            "errorField": "CustomerName",
+            "fires": true,
+            "outcome": "VALUE",
+            "note": "empty → 0, 0 >= 0 fires; grow-only → filling only raises the value, cannot clear >= 0 → VALUE (a symmetric op would be OMISSION here)"
+          }
+        ]
+      }
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1790,6 +1841,20 @@
     "validExample": { "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(Items*/Sku) < 2", "note": "fires when all line items are variants of one Sku" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(CustomerName, Quantity) < 2", "error": "MVK_STRING_ENUM_AND_NON_STRING_ENUM", "fix": "list only same-type fields" },
     "semantics": {
+      "polarity": {
+        "value": "GROW_ONLY",
+        "basis": "IF51 / adapter.laws.MultiFieldAggregateDiffTest (the fill-count family is grow-only: a fired count >= n is VALUE)",
+        "note": "grow-only fill: a fired >= 0 / > n is VALUE (filling only raises the value), a fired < n / == 0 is OMISSION",
+        "probes": [
+          {
+            "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(Items*/Count) >= 0",
+            "errorField": "CustomerName",
+            "fires": true,
+            "outcome": "VALUE",
+            "note": "empty → 0, 0 >= 0 fires; grow-only → filling only raises the value, cannot clear >= 0 → VALUE (a symmetric op would be OMISSION here)"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "0",
@@ -1957,6 +2022,24 @@
     "gotchas": [ { "text": "differences are a floor, not a calendar count (DifferenceInMonths(31.01,30.03)=1); fractional offsets truncate", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) > 7", "note": "fires when delivery is more than a week after order" },
     "semantics": {
+      "polarity": {
+        "value": "SYMMETRIC",
+        "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (empty operand → 0, symmetric fill → a fired comparison is OMISSION in any direction)",
+        "note": "the value functions over dates/times: an empty operand reads 0 and a fired comparison is OMISSION in any direction (symmetric fill)",
+        "probes": [
+          {
+            "dsl": "DifferenceInDays(OrderDate, DeliveryDate) >= 0",
+            "errorField": "OrderDate",
+            "empty": [
+              "/Order/OrderDate",
+              "/Order/DeliveryDate"
+            ],
+            "fires": true,
+            "outcome": "OMISSION",
+            "note": "empty operand reads 0, 0 >= 0 fires; symmetric fill → filling could break >= 0 → OMISSION (a grow-only op would be VALUE here)"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "all",
@@ -1992,6 +2075,24 @@
     "gotchas": [ { "text": "a floor, not a calendar count (KERNEL-SEMANTICS §6)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInMonths(OrderDate, DeliveryDate) >= 1", "note": "fires when at least a month apart" },
     "semantics": {
+      "polarity": {
+        "value": "SYMMETRIC",
+        "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (empty operand → 0, symmetric fill → a fired comparison is OMISSION in any direction)",
+        "note": "the value functions over dates/times: an empty operand reads 0 and a fired comparison is OMISSION in any direction (symmetric fill)",
+        "probes": [
+          {
+            "dsl": "DifferenceInMonths(OrderDate, DeliveryDate) >= 0",
+            "errorField": "OrderDate",
+            "empty": [
+              "/Order/OrderDate",
+              "/Order/DeliveryDate"
+            ],
+            "fires": true,
+            "outcome": "OMISSION",
+            "note": "empty operand reads 0, 0 >= 0 fires; symmetric fill → filling could break >= 0 → OMISSION (a grow-only op would be VALUE here)"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "all",
@@ -2026,6 +2127,24 @@
     "gotchas": [ { "text": "a floor; a naive age check around leap days can be off (Add* vs Difference* disagree across leap years)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInYears(OrderDate, DeliveryDate) >= 1", "note": "fires when at least a year apart" },
     "semantics": {
+      "polarity": {
+        "value": "SYMMETRIC",
+        "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (empty operand → 0, symmetric fill → a fired comparison is OMISSION in any direction)",
+        "note": "the value functions over dates/times: an empty operand reads 0 and a fired comparison is OMISSION in any direction (symmetric fill)",
+        "probes": [
+          {
+            "dsl": "DifferenceInYears(OrderDate, DeliveryDate) >= 0",
+            "errorField": "OrderDate",
+            "empty": [
+              "/Order/OrderDate",
+              "/Order/DeliveryDate"
+            ],
+            "fires": true,
+            "outcome": "OMISSION",
+            "note": "empty operand reads 0, 0 >= 0 fires; symmetric fill → filling could break >= 0 → OMISSION (a grow-only op would be VALUE here)"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "all",
@@ -2060,6 +2179,24 @@
     "gotchas": [ { "text": "a floor, not a rounded count; the sign follows operand order (DifferenceIn*(a,b) = b - a)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(ScheduledAt, CompletedAt) And DifferenceInHours(ScheduledAt, CompletedAt) > 24", "note": "fires when completion is more than a day after scheduling" },
     "semantics": {
+      "polarity": {
+        "value": "SYMMETRIC",
+        "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (empty operand → 0, symmetric fill → a fired comparison is OMISSION in any direction)",
+        "note": "the value functions over dates/times: an empty operand reads 0 and a fired comparison is OMISSION in any direction (symmetric fill)",
+        "probes": [
+          {
+            "dsl": "DifferenceInHours(ScheduledAt, CompletedAt) >= 0",
+            "errorField": "ScheduledAt",
+            "empty": [
+              "/Order/ScheduledAt",
+              "/Order/CompletedAt"
+            ],
+            "fires": true,
+            "outcome": "OMISSION",
+            "note": "empty operand reads 0, 0 >= 0 fires; symmetric fill → filling could break >= 0 → OMISSION (a grow-only op would be VALUE here)"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "all",
@@ -2094,6 +2231,24 @@
     "gotchas": [ { "text": "a floor, not a rounded count", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(ScheduledAt, CompletedAt) And DifferenceInMinutes(ScheduledAt, CompletedAt) > 90", "note": "fires when more than 90 minutes elapsed" },
     "semantics": {
+      "polarity": {
+        "value": "SYMMETRIC",
+        "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (empty operand → 0, symmetric fill → a fired comparison is OMISSION in any direction)",
+        "note": "the value functions over dates/times: an empty operand reads 0 and a fired comparison is OMISSION in any direction (symmetric fill)",
+        "probes": [
+          {
+            "dsl": "DifferenceInMinutes(ScheduledAt, CompletedAt) >= 0",
+            "errorField": "ScheduledAt",
+            "empty": [
+              "/Order/ScheduledAt",
+              "/Order/CompletedAt"
+            ],
+            "fires": true,
+            "outcome": "OMISSION",
+            "note": "empty operand reads 0, 0 >= 0 fires; symmetric fill → filling could break >= 0 → OMISSION (a grow-only op would be VALUE here)"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "all",
@@ -2128,6 +2283,24 @@
     "gotchas": [ { "text": "a floor, not a rounded count", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(ScheduledAt, CompletedAt) And DifferenceInSeconds(ScheduledAt, CompletedAt) > 0", "note": "fires when completion is strictly after scheduling" },
     "semantics": {
+      "polarity": {
+        "value": "SYMMETRIC",
+        "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (empty operand → 0, symmetric fill → a fired comparison is OMISSION in any direction)",
+        "note": "the value functions over dates/times: an empty operand reads 0 and a fired comparison is OMISSION in any direction (symmetric fill)",
+        "probes": [
+          {
+            "dsl": "DifferenceInSeconds(ScheduledAt, CompletedAt) >= 0",
+            "errorField": "ScheduledAt",
+            "empty": [
+              "/Order/ScheduledAt",
+              "/Order/CompletedAt"
+            ],
+            "fires": true,
+            "outcome": "OMISSION",
+            "note": "empty operand reads 0, 0 >= 0 fires; symmetric fill → filling could break >= 0 → OMISSION (a grow-only op would be VALUE here)"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "all",
@@ -2233,6 +2406,23 @@
     "constraints": [ "the operand is a date or date-time (a field or expression), rendered as a bare entity ref" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And YearFromDate(OrderDate) < 2020", "note": "fires for orders dated before 2020" },
     "semantics": {
+      "polarity": {
+        "value": "SYMMETRIC",
+        "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (empty operand → 0, symmetric fill → a fired comparison is OMISSION in any direction)",
+        "note": "the value functions over dates/times: an empty operand reads 0 and a fired comparison is OMISSION in any direction (symmetric fill)",
+        "probes": [
+          {
+            "dsl": "YearFromDate(OrderDate) >= 0",
+            "errorField": "OrderDate",
+            "empty": [
+              "/Order/OrderDate"
+            ],
+            "fires": true,
+            "outcome": "OMISSION",
+            "note": "empty operand reads 0, 0 >= 0 fires; symmetric fill → filling could break >= 0 → OMISSION (a grow-only op would be VALUE here)"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "0",
@@ -2264,6 +2454,23 @@
     "constraints": [ "the operand is a date or date-time (a field or expression)" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And MonthFromDate(OrderDate) == 12", "note": "fires for December orders" },
     "semantics": {
+      "polarity": {
+        "value": "SYMMETRIC",
+        "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (empty operand → 0, symmetric fill → a fired comparison is OMISSION in any direction)",
+        "note": "the value functions over dates/times: an empty operand reads 0 and a fired comparison is OMISSION in any direction (symmetric fill)",
+        "probes": [
+          {
+            "dsl": "MonthFromDate(OrderDate) >= 0",
+            "errorField": "OrderDate",
+            "empty": [
+              "/Order/OrderDate"
+            ],
+            "fires": true,
+            "outcome": "OMISSION",
+            "note": "empty operand reads 0, 0 >= 0 fires; symmetric fill → filling could break >= 0 → OMISSION (a grow-only op would be VALUE here)"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "0",
@@ -2295,6 +2502,23 @@
     "gotchas": [ { "text": "rejected on a partially-known date (a DateType with a date precision other than FULL, e.g. DAY_OPTIONAL) — MVK_INVALID_DATE_TYPE; resolve it to a concrete date with ValueAsDate first. (MonthFromDate/YearFromDate/QuarterFromDate ARE permitted on a DAY_OPTIONAL date.)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And DayFromDate(OrderDate) > 28", "note": "fires for orders late in the month" },
     "semantics": {
+      "polarity": {
+        "value": "SYMMETRIC",
+        "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (empty operand → 0, symmetric fill → a fired comparison is OMISSION in any direction)",
+        "note": "the value functions over dates/times: an empty operand reads 0 and a fired comparison is OMISSION in any direction (symmetric fill)",
+        "probes": [
+          {
+            "dsl": "DayFromDate(OrderDate) >= 0",
+            "errorField": "OrderDate",
+            "empty": [
+              "/Order/OrderDate"
+            ],
+            "fires": true,
+            "outcome": "OMISSION",
+            "note": "empty operand reads 0, 0 >= 0 fires; symmetric fill → filling could break >= 0 → OMISSION (a grow-only op would be VALUE here)"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "0",
@@ -2325,6 +2549,23 @@
     "constraints": [ "the operand is a date or date-time (a field or expression)" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And QuarterFromDate(OrderDate) == 4", "note": "fires for fourth-quarter orders" },
     "semantics": {
+      "polarity": {
+        "value": "SYMMETRIC",
+        "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (empty operand → 0, symmetric fill → a fired comparison is OMISSION in any direction)",
+        "note": "the value functions over dates/times: an empty operand reads 0 and a fired comparison is OMISSION in any direction (symmetric fill)",
+        "probes": [
+          {
+            "dsl": "QuarterFromDate(OrderDate) >= 0",
+            "errorField": "OrderDate",
+            "empty": [
+              "/Order/OrderDate"
+            ],
+            "fires": true,
+            "outcome": "OMISSION",
+            "note": "empty operand reads 0, 0 >= 0 fires; symmetric fill → filling could break >= 0 → OMISSION (a grow-only op would be VALUE here)"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "0",
@@ -2527,6 +2768,23 @@
     "constraints": [ "the operand is a time or date-time (a field or expression), rendered as a bare entity ref" ],
     "validExample": { "dsl": "FieldFilled(PickupTime) And HoursFromTime(PickupTime) < 9", "note": "fires for pickups before 9am" },
     "semantics": {
+      "polarity": {
+        "value": "SYMMETRIC",
+        "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (empty operand → 0, symmetric fill → a fired comparison is OMISSION in any direction)",
+        "note": "the value functions over dates/times: an empty operand reads 0 and a fired comparison is OMISSION in any direction (symmetric fill)",
+        "probes": [
+          {
+            "dsl": "HoursFromTime(PickupTime) >= 0",
+            "errorField": "PickupTime",
+            "empty": [
+              "/Order/PickupTime"
+            ],
+            "fires": true,
+            "outcome": "OMISSION",
+            "note": "empty operand reads 0, 0 >= 0 fires; symmetric fill → filling could break >= 0 → OMISSION (a grow-only op would be VALUE here)"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "0",
@@ -2557,6 +2815,23 @@
     "constraints": [ "the operand is a time or date-time (a field or expression)" ],
     "validExample": { "dsl": "FieldFilled(PickupTime) And MinutesFromTime(PickupTime) != 0", "note": "fires when the pickup minute is not on the hour" },
     "semantics": {
+      "polarity": {
+        "value": "SYMMETRIC",
+        "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (empty operand → 0, symmetric fill → a fired comparison is OMISSION in any direction)",
+        "note": "the value functions over dates/times: an empty operand reads 0 and a fired comparison is OMISSION in any direction (symmetric fill)",
+        "probes": [
+          {
+            "dsl": "MinutesFromTime(PickupTime) >= 0",
+            "errorField": "PickupTime",
+            "empty": [
+              "/Order/PickupTime"
+            ],
+            "fires": true,
+            "outcome": "OMISSION",
+            "note": "empty operand reads 0, 0 >= 0 fires; symmetric fill → filling could break >= 0 → OMISSION (a grow-only op would be VALUE here)"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "0",
@@ -2587,6 +2862,23 @@
     "constraints": [ "the operand is a time or date-time (a field or expression)" ],
     "validExample": { "dsl": "FieldFilled(PickupTime) And SecondsFromTime(PickupTime) == 0", "note": "fires when the pickup time has no seconds offset" },
     "semantics": {
+      "polarity": {
+        "value": "SYMMETRIC",
+        "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (empty operand → 0, symmetric fill → a fired comparison is OMISSION in any direction)",
+        "note": "the value functions over dates/times: an empty operand reads 0 and a fired comparison is OMISSION in any direction (symmetric fill)",
+        "probes": [
+          {
+            "dsl": "SecondsFromTime(PickupTime) >= 0",
+            "errorField": "PickupTime",
+            "empty": [
+              "/Order/PickupTime"
+            ],
+            "fires": true,
+            "outcome": "OMISSION",
+            "note": "empty operand reads 0, 0 >= 0 fires; symmetric fill → filling could break >= 0 → OMISSION (a grow-only op would be VALUE here)"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "0",
@@ -2685,6 +2977,25 @@
     "gotchas": [ { "text": "a non-numeric substring (or an empty field) yields 0, not an error", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(ProductCode) And RangeAsNumber(ProductCode, 1, 2) == 0", "note": "fires when the first two characters are not a number (so 0)" },
     "invalidExample": { "dsl": "RangeAsNumber(ProductCode, 0, 3) == 0", "error": "MVK_INVALID_INTERVAL", "fix": "the range is 1-based — start must be >= 1 and <= the end (start == end is allowed)" },
+    "semantics": {
+      "polarity": {
+        "value": "GROW_ONLY",
+        "basis": "IF71 / adapter.laws.FunctionFillPolarityDiffTest (RangeAsNumber grow-only: value >= 0, kannKleiner=false)",
+        "note": "grow-only fill: a fired >= 0 / > n is VALUE (filling only raises the value), a fired < n / == 0 is OMISSION",
+        "probes": [
+          {
+            "dsl": "RangeAsNumber(ProductCode, 1, 2) >= 0",
+            "errorField": "ProductCode",
+            "fires": true,
+            "outcome": "VALUE",
+            "note": "empty → 0, 0 >= 0 fires; grow-only → filling only raises the value, cannot clear >= 0 → VALUE (a symmetric op would be OMISSION here)",
+            "empty": [
+              "/Order/ProductCode"
+            ]
+          }
+        ]
+      }
+    },
     "sinceKernel": "30.8.x"
   },
   {

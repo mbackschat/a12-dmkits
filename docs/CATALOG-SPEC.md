@@ -72,6 +72,19 @@ This is a **deviation dimension** (like `emptyOperand`, but the default is not p
 
 The per-kind operators (`Min`, `Max`, `FirstFilledValue`) carry a `perKind` split (`{number: ZERO, date: NO_VALUE}`) — the very fact this dimension exists to record (`Sum(∅) = 0` **vs** a date aggregate's no-value). The consumer (judge): `Sum(∅) >= 0` always holds, but `Min(dates…) >= X` is vacuous when empty — not equivalent. Each probe pins an all-empty selection over a **non-index** field (an index field's empty cell is not-check-relevant — the invalid class, IF86, not emptiness). Populated over the seven value-folding aggregates; the counts (`NumberOf…`) carry no claim — a count of nothing is trivially 0 (obvious, and their empty-*operand* behavior is the `emptyOperand` dimension).
 
+### 3d. The `polarity` dimension
+
+**The question it answers:** how does an operator propagate the **directional fillability** of an unfilled operand — the kernel's `kannGroesserWerden`/`kannKleinerWerden` bits (the runtime `Polarity` object)? Combined with the enclosing comparison's direction, that decides whether a fired comparison is a **VALUE** or an **OMISSION** error. One value per operator (`PolarityClaim`), vocabulary `FillPolarity`:
+
+| value | meaning | canonical lock |
+|---|---|---|
+| `SYMMETRIC` | the result can grow AND shrink off an unfilled operand → a fired comparison is OMISSION **in any direction** | the date diffs `DifferenceIn*`, the date/time extractors `*FromDate`/`*FromTime` (IF73 / `EmptyOperandFiringDiffTest`) |
+| `GROW_ONLY` | the result can only grow → a fired `>=`/`>` is **VALUE** (filling cannot clear it), a fired `<`/`<=`/`==` is **OMISSION** | `Length` (IF73), the fill-count family `NumberOfFilled…`/`NumberOfDifferentValues` (IF51), `RangeAsNumber` (IF71) |
+
+This dimension needs more than firing: the claim is about *how* it fires, so each probe pins a fired `F(empty) >= 0` **and an `outcome`** (VALUE/OMISSION, §5a) that the lane asserts against the kernel's message type. The UP direction (`>= 0`) is the discriminator — SYMMETRIC types it OMISSION, GROW_ONLY types it VALUE (the DOWN direction is OMISSION for both). The consumer (judge): a `SYMMETRIC` firing is always fillable (an omission you could still satisfy), a `GROW_ONLY` `>=` firing is a hard VALUE error — a real equivalence/severity distinction.
+
+**Scoped out — the compositional-fill operators carry no scalar claim** (a deliberate boundary, not an omission): arithmetic `+`/`−`/`×`/`÷`/`^` (IF69), the value functions that transform a fillable argument (`Round*` preserves, `Abs` transforms, operand-list `Min`/`Max` combine — IF71), the sign-dependent starred aggregates (`Sum`/`MaxValue`/`MinValue`, whose fill's shrink half is `hatVorzeichen`), and the filter-derived date-range overlaps (IF72). Their fill is a **truth table over the operands' fills/signs** or is computed **per evaluation** — not a single value a per-operator facet can carry, so it is represented by the differential locks (`ArithmeticFillPolarityDiffTest` / `FunctionFillPolarityDiffTest` / `DateRangeOverlapSemanticsDiffTest`), not this dimension. A richer (non-scalar) representation is a future option if a consumer needs it.
+
 ## 4. The `emptyOperand` dimension
 
 **The question it answers:** what does this operator do when a given operand is *empty* (a present-but-valueless field)? This is the #1 recurring semantic failure class (empty-as-0 firing, judge false-positives, incomplete lints), and the per-operator answers were already differentially locked by the WI-T campaign — the facet is their machine-readable projection.
@@ -132,9 +145,9 @@ Every executable artifact in the catalog is CI-executed against the **real kerne
 |---|---|---|
 | N7 examples | `catalog.CatalogExamplesAreKernelValidTest` | every `validExample` kernel-ACCEPTED, every `invalidExample` REJECTED (with its `error` code when `MVK_*`) |
 | N7 computations | `catalog.CatalogComputationExamplesAreKernelValidTest` | every `computationExample` runs as a real computation |
-| **facet probes** | `adapter.laws.CatalogFacetProbesTest` | every `emptyOperandDefaults` probe and every `semantics.*` dimension probe (`emptyOperand`, `boundary`, …): the probe rule is (1) kernel-**ACCEPTED** and (2) **fires ⟺ `fires`** on the described instance, through the kernel runtime (`RuntimeLaws`) |
+| **facet probes** | `adapter.laws.CatalogFacetProbesTest` | every `emptyOperandDefaults` probe and every `semantics.*` dimension probe (`emptyOperand`, `boundary`, `iterationRange`, `aggregateIdentity`, `polarity`): the probe rule is (1) kernel-**ACCEPTED**, (2) **fires ⟺ `fires`**, and (3) when it carries an `outcome`, the fired message's **value-vs-omission type matches** — all through the kernel runtime (`RuntimeLaws`) |
 | **corrective probes** | `catalog.CatalogCorrectiveProbesTest` | every `correctives[].probe.dsl` kernel-**REJECTED with exactly its `code`** |
-| structural | `catalog.OperatorCatalogTest` | every claim, per dimension: well-formed value (emptyOperand: valid operand selector + behavior XOR perKind; boundary: a value), non-blank basis, **≥ 1 probe**, well-formed probe paths; every corrective: known operand-class tokens, fix, reject probe |
+| structural | `catalog.OperatorCatalogTest` | every claim, per dimension: well-formed value (emptyOperand/aggregateIdentity: valid selector + value XOR perKind; boundary/iterationRange/polarity: a value; polarity additionally: every probe pins an `outcome` and `fires: true`), non-blank basis, **≥ 1 probe**, well-formed probe paths; every corrective: known operand-class tokens, fix, reject probe |
 | keyword / construct parity | `KeywordParityTest`, `adapter.KernelConstructParityTest` | catalog ↔ lexer terminals / parsetree construct enums (unchanged) |
 
 ### 5a. The firing-probe contract (`FacetProbe`)
@@ -149,6 +162,7 @@ Probes are **fixture-bound to `models/order.dm.json`** (the N7 fixture — one s
 | `given` | filled cells, absolute path → value (same `[n]` indexing) |
 | `empty` | **instantiated-empty** cells — present but valueless, how a form renders an unfilled field |
 | `fires` | whether the rule must fire |
+| `outcome` | (optional, `polarity` only) the value-vs-omission **type** the firing must carry (`VALUE`/`OMISSION`); when set the lane asserts `fires: true` and the fired message's type — a fill-polarity claim is about *how* it fires, not just that it does |
 
 The lane always adds the content-bearing filler `/Order/CustomerName = "Acme"` (unless the probe itself uses CustomerName), so every probe runs on a filled row — the §4b precondition. Each probe is first validated (`RuleValidator` must ACCEPT the injected rule) so a `fires: false` probe can never pass because its DSL was silently broken — the false-green trap.
 
@@ -198,15 +212,15 @@ The mechanism: an entry carries `correctives` — per-`code`, per-operand-shape 
 - **`boundary`** — the ten threshold/interval operators; STRICT for `<`/`>`/tolerance, INCLUSIVE for `<=`/`>=`/date-range-overlap (CLOSED).
 - **`iterationRange`** — the field-fill quantifier deviations from the INSTANTIATED default: `AllFieldsFilled`/`NotAllFieldsFilled` = DECLARED, `FieldsNotCollectivelyFilled` = MIXED (IF49).
 - **`aggregateIdentity`** — the seven value-folding aggregates' all-empty fold: `Sum`/`MaxValue`/`MinValue`/`SumOfProducts` = ZERO; `Min`/`Max`/`FirstFilledValue` = per-kind {number: ZERO, date: NO_VALUE} (IF51/IF58/IF80/IF83).
+- **`polarity`** — the fill-propagation class of the value functions with a clean per-operator scalar: 13 SYMMETRIC (the date diffs + date/time extractors, IF73), 5 GROW_ONLY (`Length`, the fill counts, `RangeAsNumber` — IF73/IF51/IF71). Each probe pins the outcome TYPE. The compositional-fill operators (arithmetic, `Round*`/`Abs`/operand-list `Min`/`Max`, the sign-dependent starred aggregates, the date-range overlaps) are scoped out — their fill is a truth-table/per-eval, not a scalar (§3d).
 
-`polarity` follows.
+**All four WI-5b dimensions shipped.** The four remaining `emptyOperand` gaps from §9a (the `Date`/`Time`/`DateTime` constructions with an empty part; `RangeAsString`/`FieldValueAsNumber`/`ValueAsDate`/`AddDays`-family empties) stay open — no differential lock yet; characterize before claiming.
 
 ### 9a. The WI-5a `emptyOperand` slice
 
 WI-5a populated the `emptyOperand` dimension for the families its consumers touch — the comparison defaults (header), the value/count aggregates, the value functions (`Length`, the date/time extractors, the `DifferenceIn*` family, `Min`/`Max`, `FieldValueAsString`), the value-list membership + quantifier predicates, the date-range overlap predicates, and `Concatenation` (a new entry — the intrinsic `+` previously had no catalog home). The lane earned its keep immediately: probing the claims surfaced the index-field carve-out (an INDEX field's empty cell is mandatory-empty → not-check-relevant — the *invalid* class, which poisons counts and `No…ValueList`; the probes deliberately use non-index fields) **and** a real interpreter divergence ([INTERPRETER-GAPS](INTERPRETER-GAPS.md) IG55: `NumberOfDifferentValues` over an index field's empty cell — kernel suppresses, interpreter fires). Not populated, with reasons:
 
 - **`Date(d,m,y)` / `Time(h,m,s)` / `DateTime` constructions with an empty part** — kernel behavior uncharacterized (IF73 scoped them out; no corpus instance). Characterize before claiming — a facet must never state an unverified value.
-- **`RangeAsString` / `RangeAsNumber` / `FieldValueAsNumber` / `ValueAsDate` / `AddDays`-family empties** — no differential lock yet; deferred to WI-5b with fresh probes (and, where the interpreter disagrees with a fresh kernel probe, a WI-T gap row *first*).
-- The remaining dimension (`polarity`) — WI-5b (§9 above tracks what has landed).
+- **`RangeAsString` / `RangeAsNumber` / `FieldValueAsNumber` / `ValueAsDate` / `AddDays`-family empty *operand* behavior** — no `emptyOperand` differential lock yet; characterize before claiming (and, where the interpreter disagrees with a fresh kernel probe, a WI-T gap row *first*). (`RangeAsNumber` does carry a `polarity` GROW_ONLY claim, IF71 — a different dimension.)
 
 **Maintenance rules:** a new operator claim needs basis + probes in the same commit (the guards enforce it). An `operators.json` change is a **native-image re-capture trigger** ([NATIVE-IMAGE-GRAALVM §5.1](NATIVE-IMAGE-GRAALVM.md)). On a kernel bump the probes re-run against the new kernel automatically (they are ordinary CI tests — the [KERNEL-UPGRADE](KERNEL-UPGRADE.md) guardian net gains this lane for free).

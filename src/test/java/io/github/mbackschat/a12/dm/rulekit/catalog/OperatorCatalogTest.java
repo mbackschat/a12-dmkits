@@ -317,6 +317,45 @@ class OperatorCatalogTest {
                 CATALOG.byId("Min").orElseThrow().aggregateIdentityClaim().identityFor("date"));
     }
 
+    /**
+     * Every {@code semantics.polarity} claim is well-formed: a value, a basis, and at least one probe —
+     * and each polarity probe pins an {@code outcome} (VALUE/OMISSION) with {@code fires: true} (a
+     * polarity claim is about HOW it fires, so firing alone is not a verification — CATALOG-SPEC §3d/§5a).
+     */
+    @Test
+    void everyPolarityClaimIsWellFormedAndOutcomeProbed() {
+        for (OperatorEntry e : CATALOG.entries()) {
+            PolarityClaim claim = e.polarityClaim();
+            if (claim == null) {
+                continue;
+            }
+            String at = e.id() + " polarity";
+            assertNotNull(claim.value(), () -> at + ": missing value");
+            assertFalse(isBlank(claim.basis()), () -> at + ": missing basis (the lock/finding it derives from)");
+            assertFalse(claim.probes().isEmpty(), () -> at + ": a facet claim needs at least one probe");
+            for (FacetProbe p : claim.probes()) {
+                assertProbeWellFormed(at, p);
+                assertNotNull(p.outcome(), () -> at + ": a polarity probe must pin an outcome (VALUE/OMISSION)");
+                assertEquals(Boolean.TRUE, p.fires(), () -> at + ": an outcome-typed probe must fire");
+            }
+        }
+    }
+
+    /** The IF73 fill classes (CATALOG-SPEC §3d): the date/time value functions are SYMMETRIC, Length and
+     *  the fill-count family are GROW_ONLY; the compositional-fill operators carry no claim. */
+    @Test
+    void fillPolarityClassesFollowIF73() {
+        assertEquals(FillPolarity.SYMMETRIC, CATALOG.byId("DifferenceInDays").orElseThrow().polarityClaim().value());
+        assertEquals(FillPolarity.SYMMETRIC, CATALOG.byId("YearFromDate").orElseThrow().polarityClaim().value());
+        assertEquals(FillPolarity.GROW_ONLY, CATALOG.byId("Length").orElseThrow().polarityClaim().value());
+        assertEquals(FillPolarity.GROW_ONLY, CATALOG.byId("NumberOfFilledFields").orElseThrow().polarityClaim().value());
+        // the compositional-fill operators carry no scalar claim (truth-table / per-eval fill)
+        assertNull(CATALOG.byId("Arithmetic").orElseThrow().polarityClaim(),
+                "arithmetic fill is a truth table (IF69) — no per-operator scalar");
+        assertNull(CATALOG.byId("Sum").orElseThrow().polarityClaim(),
+                "a starred Sum's fill is sign-dependent — no per-operator scalar");
+    }
+
     /** The two non-obvious boundary facts the dimension exists to carry (CATALOG-SPEC §3): the tolerance
      *  band is STRICT (fires only beyond N) and the date-range overlap predicates are INCLUSIVE (closed). */
     @Test

@@ -72,6 +72,12 @@ public record OperatorEntry(
         return semantics == null ? null : semantics.aggregateIdentity();
     }
 
+    /** The {@code polarity} facet claim (CATALOG-SPEC §3d), or {@code null} when the operator's fill is
+     *  not a clean per-operator scalar (the compositional-fill operators — see {@link FillPolarity}). */
+    public PolarityClaim polarityClaim() {
+        return semantics == null ? null : semantics.polarity();
+    }
+
     /** Whether rulekit builds a typed handle for this operator (vs a {@link OperatorStatus#PLANNED} stub). */
     public boolean supported() {
         return status == OperatorStatus.SUPPORTED;
