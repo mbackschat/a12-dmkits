@@ -148,7 +148,32 @@ interface EvalContext {
      * single-row context); a repeatable context overrides it with the row's real indices.
      */
     fun repsOf(path: String): List<Int> = List(path.trim('/').split('/').size) { 1 }
+
+    /**
+     * The COMPUTE-mode read state of this row's cell at [path] (IF85): [CellState.EMPTY] (no value),
+     * [CellState.INVALID] (a present value that is **formally invalid** — the poison trigger), else
+     * [CellState.FILLED]. Distinct from "resolves to [Val.Unknown]": a well-formed day-omitted date resolves
+     * Unknown for a direct reference but is NOT invalid (it must not poison). The general [Document] answers
+     * from the formal check; the default (no invalidity knowledge) never reports INVALID.
+     */
+    fun cellState(path: String): CellState =
+        if (displayValue(path) == null) CellState.EMPTY else CellState.FILLED
+
+    /** The COMPUTE-mode scan states of a starred field's cells, one per row in row order — the per-cell
+     *  [cellState] twin of [starCells] (IF85). The default derives from [starCells] (a [Val.Unknown] cell reads
+     *  INVALID); the general [Document] overrides with the precise formal check. */
+    fun starScanStates(path: String): List<CellState> = starCells(path).map { (_, v) ->
+        when {
+            v == null -> CellState.EMPTY
+            v is Val.Unknown -> CellState.INVALID
+            else -> CellState.FILLED
+        }
+    }
 }
+
+/** A cell's COMPUTE-mode read state ([EvalContext.cellState], IF85) — a visited [INVALID] cell poisons the
+ *  reading computation instance ([PoisonedReadException]). */
+enum class CellState { EMPTY, FILLED, INVALID }
 
 /**
  * The fill tally of a group-scoped / starred-field fill-quantifier operand ([EvalContext.fillScope]) — the two

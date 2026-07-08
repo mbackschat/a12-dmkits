@@ -6,8 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
+import io.github.mbackschat.a12.dm.interpreter.eval.CellState
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
+import io.github.mbackschat.a12.dm.interpreter.eval.PoisonedReadException
 import io.github.mbackschat.a12.dm.interpreter.eval.CUSTOM_TYPE_INVALID
 import io.github.mbackschat.a12.dm.interpreter.eval.FORMAL_RULE_PATH
 import io.github.mbackschat.a12.dm.interpreter.eval.OVER_REPETITION_CONTEXT
@@ -663,9 +665,10 @@ class DmInterpreter @JvmOverloads constructor(
      * value (verified vs the kernel). No doc mutation, so a reused doc never accumulates placements; for a
      * model with no inter-computation dependency the overlay is never consulted (zero behavior change).
      *
-     * A computation that reads an ERRORED computed dependency is SKIPPED by the kernel — it produces NO
-     * outcome (not changed / cleared / errored; probe-confirmed, IF40). We track each errored (or transitively
-     * dependent) target instance as *poisoned* and skip any dependent that reads it.
+     * A computation whose evaluation READS an invalid cell — a formally-invalid input field, an ERRORED
+     * computed dependency, or an itself-poisoned one — is POISONED (IF85, the kernel's
+     * `CalculationFieldException` → "fehlerhaft berechnet"): no value, reported CLEARED (report-all), and its
+     * own dependents' reads poison transitively. Read-driven, so evaluation order/short-circuits decide.
      */
     private fun computeInstances(doc: Document): List<Computed> {
         val out = mutableListOf<Computed>()
@@ -678,33 +681,43 @@ class DmInterpreter @JvmOverloads constructor(
         val cleared = HashSet<Pair<String, List<Int>>>()
         val emptyOf: (String) -> Val = { p -> emptyValue(model.kinds[p] ?: Kind.STRING) }
         val poisoned = HashSet<Pair<String, List<Int>>>()
-        val computedTargets = model.computations.mapTo(HashSet()) { it.targetPath }
         // A FILLED operand that is "not check-relevant" — formally invalid — makes a computation over it
-        // non-evaluable, so the kernel computes NOTHING and CLEARS the field (IG44/IF76, generalized IF78). This is
-        // the SAME operand-invalidity test full validation uses ([operandNotCheckRelevant] → [computeFormalErrorAt]):
-        // the differential proves the kernel clears on EVERY formal-error class (each of the 15 number codes, string
-        // length/pattern, …), not merely the value-domain subset. An EMPTY operand — even a required one — stays
-        // empty-as-0 (`nichtAngegeben`, not `nichtPruefungsrelevant`), so the gate is filled-only.
+        // non-evaluable (IG44/IF76, generalized IF78; poison semantics IF85). The gate is the SAME
+        // operand-invalidity test full validation uses ([operandNotCheckRelevant] → [computeFormalErrorAt]),
+        // but on the compute path a positive test THROWS: the consult IS the kernel's poisoning read. An EMPTY
+        // operand — even a required one — stays empty-as-0 (`nichtAngegeben`, not `nichtPruefungsrelevant`).
         for (comp in computationsInDependencyOrder()) {
             val parsed = parsedOf(comp)
-            val depTargets = computationDepRefs(parsed).filter { it in computedTargets }   // its COMPUTED dependencies
             val scope = scopeFromRefs(computationScopeRefs(parsed) + comp.targetPath, comp.group)
             for (ctx in doc.contextsFor(scope)) {
                 val targetKey = comp.targetPath to ctx.repsOf(comp.targetPath)
-                if (depTargets.any { dep -> (dep to ctx.repsOf(dep)) in poisoned }) {
-                    poisoned += targetKey   // depends on an errored value → skipped + transitively poisoned
+                val ectx = if (overlay.isEmpty() && cleared.isEmpty() && poisoned.isEmpty()) ctx
+                    else OverlayContext(ctx, overlay, cleared, poisoned, emptyOf)
+                val interp = Interpreter(ectx, clock, model.baseYear, model.indexFields, predefinedTypes,
+                    // The compute gate THROWS (IF85): consulting it on a filled formally-invalid operand IS the
+                    // kernel's poisoning read (validation's gate stays Boolean → the 3VL exclusion).
+                    invalid = { path -> if (operandNotCheckRelevant(path, ectx)) throw PoisonedReadException(path) else false },
+                    customFieldTypes = customFieldTypes, computeMode = true)
+                // A read of a formally-invalid cell — an input field, or a POISONED computed dependency — aborts
+                // this instance (IF85, the kernel's CalculationFieldException → "fehlerhaft berechnet"): it skips
+                // the remaining alternatives, produces no value (reported CLEARED under the report-all contract;
+                // the kernel reports it only when input-filled — kernelComputeGranularity projects), and joins
+                // the poison set so ITS dependents' reads poison transitively. The poison is READ-driven: a
+                // dependent that never actually reads the poisoned target (a short-circuit skipped it) computes
+                // normally — there is no static dependency pre-skip.
+                val v = try {
+                    evalComputation(parsed, interp)
+                } catch (p: PoisonedReadException) {
+                    poisoned += targetKey
+                    out += Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = targetKey.second)
                     continue
                 }
-                val ectx = if (overlay.isEmpty() && cleared.isEmpty()) ctx else OverlayContext(ctx, overlay, cleared, emptyOf)
-                val interp = Interpreter(ectx, clock, model.baseYear, model.indexFields, predefinedTypes,
-                    invalid = { path -> operandNotCheckRelevant(path, ectx) },
-                    customFieldTypes = customFieldTypes)
-                val v = evalComputation(parsed, interp)
                 val computed = toComputed(comp, v, targetKey.second)
                 out += computed
-                // ERRORED: report it, but poison the target and do NOT overlay — a dependent must be skipped, not
-                // computed from the bad value. A resolved VALUE overlays so dependents read the computed result. A
-                // CLEARED (Unknown) target is recorded so dependents read it EMPTY, not the stale stored seed.
+                // ERRORED: report it, but poison the target and do NOT overlay — a dependent's READ of it must
+                // poison, not compute from the bad value. A resolved VALUE overlays so dependents read the
+                // computed result. A CLEARED (Unknown) target is recorded so dependents read it EMPTY, not the
+                // stale stored seed (IF77 — a precondition-false clear cascades as EMPTY, never as a poison).
                 when {
                     computed.outcome == ComputeOutcome.ERRORED -> poisoned += targetKey
                     v !is Val.Unknown -> overlay[targetKey] = v
@@ -810,28 +823,68 @@ class DmInterpreter @JvmOverloads constructor(
         private val d: EvalContext,
         private val overlay: Map<Pair<String, List<Int>>, Val>,
         private val cleared: Set<Pair<String, List<Int>>>,
+        private val poisoned: Set<Pair<String, List<Int>>>,
         private val emptyOf: (String) -> Val,
     ) : EvalContext by d {
         private fun overlaid(path: String): Val? = overlay[path to d.repsOf(path)]
         private fun isCleared(path: String): Boolean = path to d.repsOf(path) in cleared
-        // A CLEARED cascade target reads as EMPTY (kind-empty value, not filled), overriding the stored seed.
-        override fun field(path: String): Val = if (isCleared(path)) emptyOf(path) else overlaid(path) ?: d.field(path)
-        override fun filled(path: String): Boolean =
-            if (isCleared(path)) false else overlaid(path)?.let { it !is Val.Unknown } ?: d.filled(path)
-        override fun displayValue(path: String): String? = if (isCleared(path)) null else when (val v = overlaid(path)) {
-            is Val.Num -> v.v.display()
-            is Val.Txt -> v.v
-            is Val.Bool -> v.v.toString()
-            else -> d.displayValue(path)
+        // A POISONED cascade target (an errored value / an itself-poisoned instance) poisons EVERY read — value,
+        // presence, or display (IF85; the kernel's CalculationCache.getWertXML/isEntityFilled throw for an
+        // invalid-marked field). A CLEARED target instead reads as EMPTY (IF77) — the two clear-causes differ.
+        private fun poisonIfPoisoned(path: String) {
+            if (path to d.repsOf(path) in poisoned) throw PoisonedReadException(path)
+        }
+        override fun field(path: String): Val {
+            poisonIfPoisoned(path)
+            return if (isCleared(path)) emptyOf(path) else overlaid(path) ?: d.field(path)
+        }
+        override fun filled(path: String): Boolean {
+            poisonIfPoisoned(path)
+            return if (isCleared(path)) false else overlaid(path)?.let { it !is Val.Unknown } ?: d.filled(path)
+        }
+        override fun displayValue(path: String): String? {
+            poisonIfPoisoned(path)
+            return if (isCleared(path)) null else when (val v = overlaid(path)) {
+                is Val.Num -> v.v.display()
+                is Val.Txt -> v.v
+                is Val.Bool -> v.v.toString()
+                else -> d.displayValue(path)
+            }
+        }
+        override fun cellState(path: String): CellState = when {
+            path to d.repsOf(path) in poisoned -> CellState.INVALID
+            isCleared(path) -> CellState.EMPTY
+            overlaid(path) != null -> CellState.FILLED
+            else -> d.cellState(path)
         }
 
-        // Each row's value is the overlaid (computed) value if present, a CLEARED cascade cell is empty, else the
-        // stored cell — so an aggregate over a computed field reads the cascade results. star = filled values;
+        // Each row's value is the overlaid (computed) value if present, a CLEARED cascade cell is empty, a
+        // POISONED cell is Val.Unknown (the compute-mode readers treat it as a poisoning read), else the stored
+        // cell — so an aggregate over a computed field reads the cascade results. star = filled values;
         // starAll = row-aligned with empty/cleared rows as the kind-empty value.
         override fun starCells(path: String): List<Pair<List<Int>, Val?>> =
-            d.starCells(path).map { (reps, v) -> reps to (if (path to reps in cleared) null else overlay[path to reps] ?: v) }
+            d.starCells(path).map { (reps, v) ->
+                reps to when {
+                    path to reps in poisoned -> Val.Unknown
+                    path to reps in cleared -> null
+                    else -> overlay[path to reps] ?: v
+                }
+            }
         override fun star(path: String): List<Val> = starCells(path).mapNotNull { it.second }
         override fun starAll(path: String): List<Val> = starCells(path).map { (_, v) -> v ?: emptyOf(path) }
+        override fun starScanStates(path: String): List<CellState> {
+            val states = d.starScanStates(path)
+            val rows = d.starCells(path)
+            return states.mapIndexed { i, s ->
+                val key = path to rows[i].first
+                when {
+                    key in poisoned -> CellState.INVALID
+                    key in cleared -> CellState.EMPTY
+                    key in overlay -> CellState.FILLED
+                    else -> s
+                }
+            }
+        }
     }
 
     /** Every field/star path an expression reads — for cascade dependency ordering (incl. starred aggregates). */

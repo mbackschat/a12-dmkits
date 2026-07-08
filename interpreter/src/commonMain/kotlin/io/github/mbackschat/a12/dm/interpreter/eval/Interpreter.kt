@@ -93,6 +93,20 @@ class Interpreter(
      *  ref is UNBOUND and resolves to UNKNOWN (the kernel then keeps the cell: keep-law = not-FALSE keeps),
      *  rather than binding to [outer] or throwing. Set only by [overlapFilterInterp] (KERNEL-FINDINGS §6, IF72). */
     private val outerUnbound: Boolean = false,
+    /**
+     * COMPUTE-mode evaluation semantics (IF85 — the kernel's calculation path, which differs from validation):
+     * - a read of a formally-invalid cell POISONS the computation instance ([PoisonedReadException]) instead of
+     *   the three-valued "not check-relevant" exclusion — the [invalid] gate THROWS (supplied by
+     *   `DmInterpreter.computeInstances`), a star cell resolving to [Val.Unknown] throws at its read site;
+     * - the field-fill quantifiers SCAN their cells in row order with the kernel's per-operator stop
+     *   ([computeFillQuantifier]) — a cell after the deciding one is never read, so it cannot poison;
+     * - `And` short-circuits a not-TRUE left (FALSE and UNKNOWN alike — the generated `isKnownAndTrue`
+     *   collapse), `Or` a TRUE left;
+     * - a quantifier/aggregate `Having` keeps only TRUE rows (the 2-valued collapse — validation's not-FALSE
+     *   keep-law does not apply on the compute path).
+     * False (the default) = validation semantics, unchanged.
+     */
+    private val computeMode: Boolean = false,
 ) {
 
     /** The context a node resolves against: the enclosing (`outer`) iteration for a `$`-marked ref, else [ctx]. */
@@ -132,7 +146,7 @@ class Interpreter(
     private fun havingInterp(rc: EvalContext): Interpreter =
         Interpreter(rc, clock, baseYear, indexFields, predefinedTypes, customConditions, customErrorField, invalid,
             cellRelevant = cellRelevant, starRelevant = starRelevant, customRelevant = customRelevant,
-            customFieldTypes = customFieldTypes, outer = ctx)
+            customFieldTypes = customFieldTypes, outer = ctx, computeMode = computeMode)
 
     /** A sub-interpreter for the overlap predicates' `Having` filter row [rc] — like [havingInterp] but with NO
      *  outer binding ([outerUnbound]): a plain boolean predicate's rep-list arg has no enclosing iteration, so a
@@ -140,7 +154,7 @@ class Interpreter(
     private fun overlapFilterInterp(rc: EvalContext): Interpreter =
         Interpreter(rc, clock, baseYear, indexFields, predefinedTypes, customConditions, customErrorField, invalid,
             cellRelevant = cellRelevant, starRelevant = starRelevant, customRelevant = customRelevant,
-            customFieldTypes = customFieldTypes, outer = null, outerUnbound = true)
+            customFieldTypes = customFieldTypes, outer = null, outerUnbound = true, computeMode = computeMode)
 
     fun fires(cond: Cond): Boolean = eval(cond) == Tri.TRUE
 
@@ -672,8 +686,16 @@ class Interpreter(
         is Cond.Cmp -> evalCmp(c)
         is Cond.Tolerance -> evalTolerance(c)
         is Cond.ValueListQuant -> evalValueListQuant(c)
-        is Cond.And -> Kleene.and(evalCond(c.left), evalCond(c.right))
-        is Cond.Or -> Kleene.or(evalCond(c.left), evalCond(c.right))
+        // COMPUTE mode short-circuits like the kernel's generated `isKnownAndTrue` collapse (IF85): an And
+        // whose LEFT is not-TRUE (FALSE or UNKNOWN) never evaluates the right — so a poisoning read there
+        // does not happen; an Or with a TRUE left likewise. Validation keeps eager Kleene (its UNKNOWN∧FALSE
+        // = FALSE distinction is observable in polarity/keep-laws; no poison channel exists there).
+        is Cond.And ->
+            if (computeMode) evalCond(c.left).let { l -> if (l != Tri.TRUE) l else evalCond(c.right) }
+            else Kleene.and(evalCond(c.left), evalCond(c.right))
+        is Cond.Or ->
+            if (computeMode) evalCond(c.left).let { l -> if (l == Tri.TRUE) Tri.TRUE else Kleene.or(l, evalCond(c.right)) }
+            else Kleene.or(evalCond(c.left), evalCond(c.right))
         is Cond.Not -> Kleene.not(evalCond(c.c))
         is Cond.Pred -> evalPred(c)
         is Cond.Pattern -> evalPattern(c)
@@ -729,13 +751,18 @@ class Interpreter(
                     DateStatus.MALFORMED -> Tri.UNKNOWN
                 }
             // List quantifiers over the (TRUE, FALSE) operand tally (row-evaluated gate is upstream in eval).
+            // COMPUTE mode replaces the tally with the kernel's ordered SCAN for the FIELD-fill family (IF85):
+            // each visited cell is a read (an invalid one poisons), and the per-operator stop ends the scan —
+            // a later invalid cell is never read. Group-fill quantifiers keep the tally (group presence reads
+            // the fill caches, not cell values).
             PredicateOp.ALL_FIELDS_FILLED, PredicateOp.NO_FIELD_FILLED, PredicateOp.AT_LEAST_ONE_FIELD_FILLED,
             PredicateOp.MORE_THAN_ONE_FIELD_FILLED, PredicateOp.NOT_ALL_FIELDS_FILLED,
             PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED, PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED,
             PredicateOp.ALL_GROUPS_FILLED, PredicateOp.NO_GROUP_FILLED, PredicateOp.AT_LEAST_ONE_GROUP_FILLED,
-            PredicateOp.NOT_ALL_GROUPS_FILLED, PredicateOp.GROUPS_NOT_COLLECTIVELY_FILLED -> {
-                if (!op.countsGroups && hasFillScopeOperand(p.args)) Tri.of(fillScopeFires(op, fillScopeInfo(p.args)))
-                else {
+            PredicateOp.NOT_ALL_GROUPS_FILLED, PredicateOp.GROUPS_NOT_COLLECTIVELY_FILLED -> when {
+                computeMode && !op.countsGroups -> computeFillQuantifier(op, p.args)
+                !op.countsGroups && hasFillScopeOperand(p.args) -> Tri.of(fillScopeFires(op, fillScopeInfo(p.args)))
+                else -> {
                     val (t, f, n) = quantCounts(op, p.args)
                     Tri.of(quantifierFires(op, t, f, n))
                 }
@@ -791,6 +818,91 @@ class Interpreter(
         else -> throw UnsupportedConstructException("not a fill-scope operand: $e")
     }
 
+    // ---- COMPUTE-mode fill-quantifier scans (IF85 — the kernel's RuntimeController read order) --------------
+
+    /**
+     * COMPUTE-mode field-fill quantifiers — the kernel's ordered SCAN, not validation's tally: each visited
+     * cell is a READ (an INVALID one poisons, [PoisonedReadException]), and each operator stops at its deciding
+     * cell, so a cell after the stop is never read (kernel `mindestensEineEntityAngegeben` stops at the first
+     * filled; `keineEntityAngegeben` at the first filled; `alleEntitiesAngegeben` / `nichtAlleOderKeine…` at the
+     * first empty — the latter two over the DECLARED range, where an un-instantiated rep reads empty without a
+     * value read). `NotExactlyOne` and `FieldsNotCollectivelyFilled` compose two scans, like the kernel.
+     * During compute there is no not-relevant UNKNOWN (the kernel resets the sets and throws instead), so a
+     * cell is simply FILLED or EMPTY. Locked by `adapter.laws.ComputePoisonReadDiffTest`.
+     */
+    private fun computeFillQuantifier(op: PredicateOp, args: List<Expr>): Tri = when (op) {
+        PredicateOp.AT_LEAST_ONE_FIELD_FILLED -> Tri.of(scanFilled(args, declaredTail = false).any { it })
+        PredicateOp.NO_FIELD_FILLED -> Tri.of(scanFilled(args, declaredTail = false).none { it })
+        PredicateOp.ALL_FIELDS_FILLED -> Tri.of(scanFilled(args, declaredTail = true).all { it })
+        PredicateOp.NOT_ALL_FIELDS_FILLED -> Tri.of(!scanFilled(args, declaredTail = true).all { it })
+        PredicateOp.MORE_THAN_ONE_FIELD_FILLED -> {
+            var seen = 0
+            Tri.of(scanFilled(args, declaredTail = false).any { it && ++seen > 1 })
+        }
+        // The kernel's two-pass composition: TRUE when NONE is filled, else the more-than-one scan decides.
+        PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED ->
+            if (scanFilled(args, declaredTail = false).none { it }) Tri.TRUE
+            else {
+                var seen = 0
+                Tri.of(scanFilled(args, declaredTail = false).any { it && ++seen > 1 })
+            }
+        // at-least-one filled AND not-all filled (kernel `entitiesNichtGemeinsamAngegeben`, two passes).
+        PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED ->
+            if (scanFilled(args, declaredTail = false).none { it }) Tri.FALSE
+            else Tri.of(!scanFilled(args, declaredTail = true).all { it })
+        else -> throw UnsupportedConstructException("not a field-fill quantifier: $op")
+    }
+
+    /**
+     * The lazy filled/empty cell stream of a fill quantifier's operands, in the kernel's read order — operands
+     * in list order, a star's rows in row order, a `Having` filter evaluated per row inside the scan (its reads
+     * can poison too). An INVALID visited cell throws ([PoisonedReadException]); [declaredTail] appends the
+     * DECLARED-range emptiness after a star/group's instantiated cells (an un-instantiated rep reads empty —
+     * no value read, so it cannot poison; kernel `alleEntitiesAngegeben`'s declared iteration).
+     */
+    private fun scanFilled(args: List<Expr>, declaredTail: Boolean): Sequence<Boolean> = sequence {
+        for (a in args) when {
+            a is Expr.Star && a.having == null -> {
+                val c = ctxOf(a)
+                for (state in c.starScanStates(a.path)) yield(filledOrPoison(a.path, state))
+                if (declaredTail && c.fillScope(a.path, isGroup = false).anyEmptyDeclared) yield(false)
+            }
+            a is Expr.Star -> {
+                // A filtered star: the filter runs per row inside the scan (its reads poison row-correctly); an
+                // un-instantiated declared rep cannot pass a filter, so there is no declared tail.
+                val group = a.path.substringBeforeLast('/')
+                for (rc in ctxOf(a).rowContexts(group)) {
+                    if (!havingInterp(rc).fires(a.having!!)) continue
+                    yield(filledOrPoison(a.path, rc.cellState(a.path)))
+                }
+            }
+            a is Expr.Field && ctxOf(a).declaredKind(a.path) == null -> {
+                // A GROUP scope expands to its contained fields. The tally reads every instantiated cell (the
+                // poison is order-free once no scan stop can precede it within the group — an approximation of
+                // the kernel's per-field declared interleaving, which no probe distinguishes yet).
+                val fs = ctxOf(a).fillScope(a.path, isGroup = true)
+                if (fs.hasUnknownInst) throw PoisonedReadException(a.path)
+                repeat(fs.tInst) { yield(true) }
+                repeat(fs.fInst) { yield(false) }
+                if (declaredTail && fs.anyEmptyDeclared) yield(false)
+            }
+            else -> yield(
+                when (presenceTri(a)) {
+                    Tri.TRUE -> true
+                    // No compute-time not-relevant state exists (the kernel resets it; invalidity THROWS in
+                    // presenceTri/filledTri) — a residual UNKNOWN (unbound `$`, invalid parallel index) reads empty.
+                    else -> false
+                },
+            )
+        }
+    }
+
+    private fun filledOrPoison(path: String, state: CellState): Boolean = when (state) {
+        CellState.INVALID -> throw PoisonedReadException(path)
+        CellState.FILLED -> true
+        CellState.EMPTY -> false
+    }
+
     /**
      * `Valid(field, "Name")` / `Invalid(field, "Name")` — predefined-type validity (the kernel's client-SPI
      * `IPredefinedType`; KERNEL-FINDINGS §8). An EMPTY field is "not specified" → not evaluated (UNKNOWN → no
@@ -820,6 +932,9 @@ class Interpreter(
      */
     private fun filledTri(c: EvalContext, path: String): Tri = when {
         c.presenceUnknown(path) -> Tri.UNKNOWN   // presence itself is 3VL (invalid parallel index) — before filled
+        // COMPUTE mode: a presence check READS the cell — an invalid one poisons (IF85), row-correct via the
+        // context's own cellState (a `Having` filter row judges ITS row's cell, not the computation's).
+        computeMode && c.cellState(path) == CellState.INVALID -> throw PoisonedReadException(path)
         !c.filled(path) -> Tri.FALSE
         invalid(path) -> Tri.UNKNOWN
         else -> Tri.TRUE
@@ -905,14 +1020,20 @@ class Interpreter(
         for (arg in args) when (arg) {
             is Expr.Star -> {
                 val cells = ctx.star(arg.path)                      // filled cells in row order (empties dropped)
-                if (cells.any { it is Val.Unknown }) return Val.Unknown   // a malformed cell → non-evaluable
+                if (cells.any { it is Val.Unknown }) {              // a malformed cell → non-evaluable
+                    if (computeMode) throw PoisonedReadException(arg.path)   // …and a POISON on the compute path (IF85)
+                    return Val.Unknown
+                }
                 count += cells.size
             }
             else -> {
                 val path = pathOf(arg)
                 if (ctx.declaredKind(path) == null) {              // GROUP operand — its descendant fields
                     val fs = ctx.fillScope(path, isGroup = true)
-                    if (fs.hasUnknownInst) return Val.Unknown      // a malformed descendant → non-evaluable
+                    if (fs.hasUnknownInst) {                       // a malformed descendant → non-evaluable
+                        if (computeMode) throw PoisonedReadException(path)
+                        return Val.Unknown
+                    }
                     count += fs.tInst
                 } else {                                           // plain field
                     if (ctx.filled(path) && invalid(path)) return Val.Unknown   // malformed → non-evaluable
@@ -1209,7 +1330,15 @@ class Interpreter(
         is Expr.NumLit -> e.asVal
         is Expr.StrLit -> e.asVal
         is Expr.BoolLit -> e.asVal
-        is Expr.Field -> if (outerUnknown(e) || invalid(e.path)) Val.Unknown else ctxOf(e).field(e.path)
+        // COMPUTE mode: a value read of a formally-invalid cell poisons (IF85) — row-correct via the resolving
+        // context's own cellState (a `Having` filter row reads ITS row's cell, where the parent-row [invalid]
+        // gate cannot judge it).
+        is Expr.Field -> when {
+            outerUnknown(e) -> Val.Unknown
+            computeMode && ctxOf(e).cellState(e.path) == CellState.INVALID -> throw PoisonedReadException(e.path)
+            invalid(e.path) -> Val.Unknown
+            else -> ctxOf(e).field(e.path)
+        }
         is Expr.Star -> throw UnsupportedConstructException("a starred path must sit inside an aggregate (Sum/MaxValue/…)")
         is Expr.Func -> evalFunc(e)
         is Expr.Arith -> evalArith(e)
@@ -1623,6 +1752,12 @@ class Interpreter(
      */
     private fun sumOfProducts(args: List<Expr>): Val {
         rejectHaving(args, "SumOfProducts")
+        if (computeMode) {
+            for (a in args) {
+                val p = (a as Expr.Star).path
+                if (ctx.starScanStates(p).any { it == CellState.INVALID }) throw PoisonedReadException(p)
+            }
+        }
         // Resolve the two row-aligned star lists here (ctx-coupled); the Σ aᵢ·bᵢ fold is pure ([Aggregates], IF10).
         return Aggregates.sumOfProducts(ctx.starAll((args[0] as Expr.Star).path), ctx.starAll((args[1] as Expr.Star).path))
     }
@@ -1932,13 +2067,23 @@ class Interpreter(
     }
 
     /** A starred aggregate operand's filled values — its group's row cells (empties dropped, like [EvalContext.star]);
-     *  an optional `Having` evaluates the per-row filter in each row context and keeps only the matching rows. */
+     *  an optional `Having` evaluates the per-row filter in each row context and keeps only the matching rows.
+     *  COMPUTE mode: a value aggregate reads ALL its selected cells (the kernel feeds every row to the combiner),
+     *  so any formally-INVALID selected cell poisons (IF85) — the filter's own reads poison inside [havingInterp]. */
     private fun starOperandVals(star: Expr.Star): List<Val> {
-        if (star.having == null) return ctx.star(star.path)
+        if (star.having == null) {
+            if (computeMode && ctx.starScanStates(star.path).any { it == CellState.INVALID }) {
+                throw PoisonedReadException(star.path)
+            }
+            return ctx.star(star.path)
+        }
         val group = star.path.substringBeforeLast('/')
         return ctx.rowContexts(group)
             .filter { rc -> havingInterp(rc).fires(star.having) }
-            .mapNotNull { rc -> if (rc.filled(star.path)) rc.field(star.path) else null }
+            .mapNotNull { rc ->
+                if (computeMode && rc.cellState(star.path) == CellState.INVALID) throw PoisonedReadException(star.path)
+                if (rc.filled(star.path)) rc.field(star.path) else null
+            }
     }
 
     /**

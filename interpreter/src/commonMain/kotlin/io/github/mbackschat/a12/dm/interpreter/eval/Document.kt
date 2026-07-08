@@ -541,6 +541,22 @@ class Document @JvmOverloads constructor(
         override fun starCells(path: String): List<Pair<List<Int>, Val?>> =
             starRows(path).map { reps -> reps to valueAt(path, reps)?.value?.let { resolveValue(path, it) } }
 
+        // COMPUTE-mode read states (IF85): the precise formal check, so a well-formed day-omitted date (which
+        // RESOLVES Unknown for a direct reference) reads FILLED, not INVALID — only real invalidity poisons.
+        override fun cellState(path: String): CellState {
+            val raw = placeOf(path)?.value ?: return CellState.EMPTY
+            return if (formallyInvalid(path, raw)) CellState.INVALID else CellState.FILLED
+        }
+
+        override fun starScanStates(path: String): List<CellState> = starRows(path).map { reps ->
+            val raw = valueAt(path, reps)?.value
+            when {
+                raw == null -> CellState.EMPTY
+                formallyInvalid(path, raw) -> CellState.INVALID
+                else -> CellState.FILLED
+            }
+        }
+
         override fun starOmission(path: String): Boolean {
             val repGroup = parentGroup(path)
             val rows = starRows(path)
@@ -810,12 +826,11 @@ class Document @JvmOverloads constructor(
      * construction (the format is read, not hardcoded); a malformed value → [Val.Unknown] (the referencing rule
      * is suppressed, and the document-wide formal check reports it). Other kinds go through the plain [typedValue].
      */
-    private fun resolveValue(path: String, raw: String): Val {
+    /** Whether a PRESENT raw value at [path] is **formally invalid** (not check-relevant) — the [resolveValue]
+     *  gate, and the COMPUTE-mode poison trigger ([EvalContext.cellState], IF85). Format + declared constraints,
+     *  the full per-cell check. */
+    private fun formallyInvalid(path: String, raw: String): Boolean {
         val kind = kindOf(path)
-        // A formally-invalid value is "unknown" EVERYWHERE — a direct ref, an aggregate element, a computation
-        // operand — matching the kernel (a formal error makes the value non-evaluable). This catches values
-        // that parse but are still invalid: signed-zero `-0`, leading-plus `+5`, too-many-decimals. Without
-        // this, an aggregate would silently fold a `-0` as 0 and fire where the kernel suppresses.
         val precision = datePrecisions[path] ?: DatePrecision.FULL
         // The field's date-ish format for the formal check — DATE/TIME/DATE_TIME/DATE_RANGE each from their own
         // map (so a malformed TIME/DATE_TIME/range also resolves to Unknown, not just DATE; KERNEL-FINDINGS §6).
@@ -826,8 +841,18 @@ class Document @JvmOverloads constructor(
             Kind.DATE_RANGE -> rangeConfig[path]?.first
             else -> null
         }
-        if (formalError(kind, raw, scales[path], dateLikeFormat, precision, rangeConfig[path]?.second,
-                fieldConstraints[path] ?: FieldConstraints.NONE, baseYear = baseYear ?: 2000) != null) return Val.Unknown
+        return formalError(kind, raw, scales[path], dateLikeFormat, precision, rangeConfig[path]?.second,
+            fieldConstraints[path] ?: FieldConstraints.NONE, baseYear = baseYear ?: 2000) != null
+    }
+
+    private fun resolveValue(path: String, raw: String): Val {
+        val kind = kindOf(path)
+        // A formally-invalid value is "unknown" EVERYWHERE — a direct ref, an aggregate element, a computation
+        // operand — matching the kernel (a formal error makes the value non-evaluable). This catches values
+        // that parse but are still invalid: signed-zero `-0`, leading-plus `+5`, too-many-decimals. Without
+        // this, an aggregate would silently fold a `-0` as 0 and fire where the kernel suppresses.
+        if (formallyInvalid(path, raw)) return Val.Unknown
+        val precision = datePrecisions[path] ?: DatePrecision.FULL
         return when (kind) {
             Kind.DATE_RANGE -> rangeConfig[path]?.let { (format, sep) ->
                 parseRangeToIso(raw, format, sep)?.let { Val.Range(it.first, it.second) }

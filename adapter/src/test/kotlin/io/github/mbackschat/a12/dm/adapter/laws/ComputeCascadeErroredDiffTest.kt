@@ -54,12 +54,20 @@ class ComputeCascadeErroredDiffTest {
         assertEquals(kSig("500"), iSig("500"), "in-range cascade — kernel=${kSig("500")} interp=${iSig("500")}")
     }
 
-    /** IG13: A out of range → T errored, U and V (transitively) SKIPPED on the kernel; the interpreter must match. */
+    /**
+     * IG13/IF40, refined by IF85: A out of range → T errored; U's read of T POISONS U, transitively V. The
+     * kernel reports the poisoned dependents only when their input cell was FILLED — here U/V are unseeded, so
+     * the kernel reports ONLY the errored T. The interpreter reports EVERY instance (report-all): U and V come
+     * back CLEARED, and the kernel-granularity projection drops an unseeded clear before comparison
+     * (KERNEL-FINDINGS "compute reporting granularity"; the seeded-dependent case — kernel CLEARED too — is
+     * `ComputePoisonReadDiffTest.seededDependentOfAnErroredDependencyIsCleared`).
+     */
     @Test fun erroredDependencySkipsDependentsLikeKernel() {
         val k = kSig("5000")
-        val i = iSig("5000")
+        // The projection inline: no cell but A is seeded, so an interpreter CLEARED here is a kernel non-report.
+        val i = iSig("5000").filterNot { it.endsWith("|CLEARED|") }
         assertEquals(1, k.size, "kernel computes ONLY T (errored); U and V are skipped: $k")
-        assertEquals(k, i, "errored-cascade — kernel=$k interp=$i")
+        assertEquals(k, i, "errored-cascade — kernel=$k interp(projected)=$i")
     }
 
     private companion object {
