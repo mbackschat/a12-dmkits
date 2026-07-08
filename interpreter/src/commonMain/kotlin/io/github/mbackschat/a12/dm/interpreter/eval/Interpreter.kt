@@ -1342,6 +1342,11 @@ class Interpreter(
         // An empty/absent string operand concatenates as "" (kernel-probed: `"" + " " + "Smith"` = " Smith"), NOT
         // as non-evaluable. (The kernel rejects a mixed number+string `+` at compile, so a concat is all-strings.)
         if (a.op == ArithOp.ADD && (l is Val.Txt || r is Val.Txt || producesString(a.left) || producesString(a.right))) {
+            // A FILLED-but-formally-invalid concat operand makes the WHOLE concatenation non-evaluable → the
+            // computed field CLEARS (IF81, was IG51 — differential-confirmed: `[S] + "x"` over a too-long S
+            // yields CLEARED). Distinct from an EMPTY operand, which concatenates as "" — even a REQUIRED-empty
+            // one (kernel-probed: required-empty stays "", not cleared). `invalid` is the operand-invalidity gate.
+            if (concatOperandInvalid(a.left) || concatOperandInvalid(a.right)) return Val.Unknown
             return Val.Txt(concatText(l) + concatText(r))
         }
         if (l is Val.Unknown || r is Val.Unknown) return Val.Unknown
@@ -1376,6 +1381,17 @@ class Interpreter(
         is Val.Txt -> v.v
         is Val.Num -> v.v.display()
         else -> ""
+    }
+
+    /** Whether a concat operand (possibly a nested `+` concatenation) contains a FILLED-but-formally-invalid
+     *  string field — the kernel makes the whole concatenation non-evaluable (the computed field CLEARS),
+     *  distinct from an EMPTY operand which concatenates as "" (IF81, was IG51). `filled &&` excludes a
+     *  required-empty field (empty-as-"", not cleared — kernel-probed); a constant/function operand is never
+     *  a field-invalidity site here. */
+    private fun concatOperandInvalid(e: Expr): Boolean = when (e) {
+        is Expr.Field -> ctxOf(e).filled(e.path) && invalid(e.path)
+        is Expr.Arith -> e.op == ArithOp.ADD && (concatOperandInvalid(e.left) || concatOperandInvalid(e.right))
+        else -> false
     }
 
     /** Whether [e] statically yields a STRING — the signal that a `+` is concatenation (so two EMPTY string
