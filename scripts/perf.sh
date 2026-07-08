@@ -33,8 +33,10 @@ out="build/perf-${mode}.log"
 markers='\[edge\]|\[perf\]|\[jsperf\]|^\s*rules=|^\s*distributed|^\s*B[0-9] |^\s*groups=|µs/row|us/row|interp=|MethodTooLarge|KERNEL CODEGEN FAILED|cold=|warm-best='
 
 run_gradle() {  # $1.. = extra gradle args; writes RAW to $out (no pipe!)
-    echo "running: ./build.sh --console=plain -i :adapter:test $* (raw → $out)"
-    ./build.sh --console=plain -i :adapter:test "$@" > "$out" 2>&1
+    # The perf tests are @Tag("perf"), excluded from :adapter:test unless opted in (adapter/build.gradle) — so
+    # every mode below must pass -PrunPerf, else the run reports "No tests found for [*…]" and exits non-zero.
+    echo "running: ./build.sh --console=plain -i :adapter:test -PrunPerf $* (raw → $out)"
+    ./build.sh --console=plain -i :adapter:test -PrunPerf "$@" > "$out" 2>&1
 }
 
 case "$mode" in

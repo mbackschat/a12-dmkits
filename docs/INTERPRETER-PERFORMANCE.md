@@ -312,6 +312,21 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 *The current headline + the naive baseline it improved on. The intermediate optimization-journey entries were collapsed away (2026-06-27) — the *method* and the *lessons* live above (the optimization catalog, the kernel-technique map, the biases-to-re-check); this log keeps only the **current** measures and the **pre-optimization yardstick** they're read against. Dates are when each axis was last measured.*
 
+### Checkpoint 2026-07-08 — `PerfGateTest` GREEN after the IF85 compute rebuild (no regression)
+
+Standing WI-T perf checkpoint (`scripts/perf.sh gate`, Apple Silicon; the IF85 compute poison-on-read rebuild + the IF86 index-aggregate fix had not been perf-measured). **`BUILD SUCCESSFUL` — every ratio ceiling + sub-quadratic guard held.** The compute path (the IF85 territory) is unregressed and strong; sub-quadratic growth (≈4× for 4× data ⟹ linear, far under the quadratic≈16 trip) holds on every axis. Ratios are `ratioG` = interp / kernel-**Groovy** (the gate's baseline; lower = interp faster).
+
+| scenario | scale | interp (min) | groovy | ratioG |
+|---|--:|--:|--:|--:|
+| **tiered compute** | 3000 firings | 3.10 ms | 134.1 ms | **0.02** |
+| **B7 compute** | 600 | 3.48 ms | 102.9 ms | **0.04** |
+| B1 per-row | 3000 (1470 fire) | 12.2 ms | 114.6 ms | 0.12 |
+| B2 star-aggregate | 3000 | 10.8 ms | 99.8 ms | 0.11 |
+| B6 many-rules | 600 (3548 fire) | 19.9 ms | 73.4 ms | 0.29 |
+| combined real-world | 1233f/1017r, 60 rows | 12.1 ms | 66.3 ms | 0.19 |
+
+Sub-quadratic growth (5000 → 20000, min-growth): tiered compute **3.34×**, constrained-field formal check **2.11×**, B1 4.54×, parallel-iteration 3.71×, NDV 4.13×, semantic-index 4.10×, deep-nested Having 4.05×, complex real-world 4.20× — all linear-class. **Tooling gap fixed in the same pass:** `scripts/perf.sh` never passed `-PrunPerf`, so every mode reported "No tests found" (the perf tests are `@Tag("perf")`, excluded by default) — added to `run_gradle`.
+
 ### At a glance (current — 2026-06-27)
 
 All ratios are **`ratioJava` = interp_median / kernel-Java_median** (the *fair* algorithmic comparison — same kernel logic, Groovy execution tax removed; **lower = the interpreter is faster**). Measured on the real `Document`/kernel evaluation path (never the spike `RepDoc`). "interp speed" = 1 / ratioJava.
