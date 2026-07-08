@@ -58,11 +58,16 @@ object InterpreterReplay {
         }
     }
 
-    /** The interpreter's PASS/FAIL/SKIP [Result] for [case] (model resolved to [modelJson]) against its anchor (§12). */
+    /** The interpreter's PASS/FAIL/SKIP [Result] for [case] (model resolved to [modelJson]) against its anchor (§12).
+     *  A compute outcome is projected to the kernel's reporting granularity first ([kernelComputeGranularity]) —
+     *  the anchor is kernel-captured, so a report-all engine must drop its non-changes before comparing (§7). */
     fun replay(case: ConformanceCase, modelJson: String): Result {
         val outcome = run(case, modelJson)
         if (outcome.unsupported.isNotEmpty()) return Result(Verdict.SKIP, outcome.unsupported.joinToString("; "))
-        return compare(outcome.signatures, anchorOf(case))
+        val actual =
+            if (case.op is Op.Compute) kernelComputeGranularity(outcome.signatures, case.placements, ModelLoader.load(modelJson))
+            else outcome.signatures
+        return compare(actual, anchorOf(case))
     }
 
     /** The anchor multiset the interpreter is compared to — `computeExpected` for a compute op, else `expected`. */

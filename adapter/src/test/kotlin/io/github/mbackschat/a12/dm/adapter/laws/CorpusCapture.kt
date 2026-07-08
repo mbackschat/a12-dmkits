@@ -5,6 +5,8 @@ import io.github.mbackschat.a12.dm.interpreter.conformance.ConformanceCase
 import io.github.mbackschat.a12.dm.interpreter.conformance.Divergence
 import io.github.mbackschat.a12.dm.interpreter.conformance.Op
 import io.github.mbackschat.a12.dm.interpreter.conformance.Placement
+import io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity
+import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 
 /**
  * **Conformance corpus capture** (CONFORMANCE-CORPUS-SPEC §13) — turns a scenario `(model, placements, op,
@@ -39,7 +41,12 @@ object CorpusCapture {
      */
     fun capture(meta: CaseMeta, modelName: String, modelJson: String, placements: List<Placement>, op: Op, clock: String? = null): ConformanceCase {
         val anchor = CorpusEngines.groovyDynamic(modelJson, placements, op, clock)
-        val interp = CorpusEngines.interpret(modelJson, placements, op, clock)
+        // The interpreter reports EVERY computed instance; the kernel anchor is change-only — project the
+        // interpreter's compute outcome to the kernel's reporting granularity before comparing (SPEC §7).
+        val interpAll = CorpusEngines.interpret(modelJson, placements, op, clock)
+        val interp =
+            if (op is Op.Compute) kernelComputeGranularity(interpAll, placements, ModelLoader.load(modelJson))
+            else interpAll
         if (interp != anchor) throw InterpreterDivergence(meta.id, anchor, interp)
 
         val java = CorpusEngines.javaStatic(modelJson, placements, op, clock)

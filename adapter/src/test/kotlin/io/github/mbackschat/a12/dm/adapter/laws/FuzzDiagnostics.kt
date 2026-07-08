@@ -2,6 +2,9 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.perf.PerfScenario
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.conformance.Placement
+import io.github.mbackschat.a12.dm.interpreter.conformance.PlacementKind
+import io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
@@ -219,15 +222,30 @@ object FuzzDiagnostics {
         return if (report.isEmpty()) null else "seed=$seed$report"
     }
 
+    // Projected to the KERNEL's reporting granularity (change-only / input-filled clears) so the report-all
+    // interpreter compares one-to-one with the kernel legs — see kernelComputeGranularity (SPEC §7).
     private fun interpComputeSignatures(model: ModelDef, places: List<Place>): List<String> =
-        DmInterpreter(model).compute(interpDoc(model, places)).map {
-            val p = formatPointer(it.path, it.indices)   // PER-ROW pointer — a wrong value on the wrong row now splits
-            when (it.outcome) {
-                ComputeOutcome.VALUE -> "$p|VALUE|${it.value}"
-                ComputeOutcome.CLEARED -> "$p|CLEARED"
-                ComputeOutcome.ERRORED -> "$p|ERRORED"
-            }
-        }.sorted()
+        kernelComputeGranularity(
+            DmInterpreter(model).compute(interpDoc(model, places)).map {
+                val p = formatPointer(it.path, it.indices)   // PER-ROW pointer — a wrong value on the wrong row now splits
+                when (it.outcome) {
+                    ComputeOutcome.VALUE -> "$p|VALUE|${it.value}"
+                    ComputeOutcome.CLEARED -> "$p|CLEARED"
+                    ComputeOutcome.ERRORED -> "$p|ERRORED"
+                }
+            },
+            places.map {
+                Placement(
+                    when (it.kind) {
+                        Place.Kind.GROUP -> PlacementKind.GROUP
+                        Place.Kind.FIELD -> PlacementKind.FIELD
+                        Place.Kind.EMPTY -> PlacementKind.EMPTY
+                    },
+                    it.path, it.reps, it.value,
+                )
+            },
+            model,
+        ).sorted()
 
     /** The `pointer|VALUE|v` / `pointer|CLEARED` / `pointer|ERRORED` signature of a kernel [RuntimeLaws.Computed] —
      *  the PER-ROW pointer (shared `formatPointer` form, CONFORMANCE-CORPUS-SPEC §7), shared by the Groovy and

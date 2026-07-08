@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.interpreter.conformance.Op
 import io.github.mbackschat.a12.dm.interpreter.conformance.Placement
+import io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import org.junit.jupiter.api.Assumptions.assumeTrue
@@ -78,7 +79,9 @@ class ModelShrinkTest {
         for (seed in seeds) {
             val placements = runCatching { CorpusSeeding.seedPlacements(model, seed.toLong(), MAX_ROWS) }.getOrNull() ?: continue
             val k = runCatching { CorpusEngines.groovyDynamic(kernelJson, placements, Op.Compute, CLOCK, locale) }.getOrNull() ?: continue
-            val i = runCatching { CorpusEngines.interpret(interpJson, placements, Op.Compute, CLOCK) }.getOrNull() ?: continue
+            val i = runCatching {
+                kernelComputeGranularity(CorpusEngines.interpret(interpJson, placements, Op.Compute, CLOCK), placements, model)
+            }.getOrNull() ?: continue
             val cleared = (if (clearedTag == "kernel") k else i).filter { it.endsWith("|CLEARED") }.map { it.removeSuffix("|CLEARED") }
             val valued = if (valueTag == "kernel") k else i
             val p = cleared.firstOrNull { p -> valued.any { it.startsWith("$p|VALUE") } } ?: continue
@@ -121,7 +124,9 @@ class ModelShrinkTest {
         val model = runCatching { ModelLoader.load(interpJson) }.getOrNull() ?: return false
         val placements = filterPlacements(model, cvv.placements)
         val k = runCatching { CorpusEngines.groovyDynamic(candidate, placements, Op.Compute, CLOCK, locale) }.getOrNull() ?: return false
-        val i = runCatching { CorpusEngines.interpret(interpJson, placements, Op.Compute, CLOCK) }.getOrNull() ?: return false
+        val i = runCatching {
+            kernelComputeGranularity(CorpusEngines.interpret(interpJson, placements, Op.Compute, CLOCK), placements, model)
+        }.getOrNull() ?: return false
         val cleared = if (vcv) i else k
         val valued = if (vcv) k else i
         return cleared.contains("${cvv.pointer}|CLEARED") && valued.any { it.startsWith("${cvv.pointer}|VALUE") }

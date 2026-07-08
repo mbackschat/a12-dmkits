@@ -270,6 +270,20 @@ public final class GroupEditor implements GroupReference {
         return this;
     }
 
+    /** As {@link #addComputation(NumberRef, Function)} for a STRING computed field (via {@link #str(String)})
+     *  — e.g. a concatenation target. Chains. */
+    public GroupEditor addComputation(StringRef computed, Function<Computation.Builder, Computation> body) {
+        session.addComputation(m -> body.apply(m.computation(computed)));
+        return this;
+    }
+
+    /** As {@link #addComputation(NumberRef, Function)} for any computed field kind (via {@link #field(String)})
+     *  — the general form behind the typed conveniences. Chains. */
+    public GroupEditor addComputation(FieldRef computed, Function<Computation.Builder, Computation> body) {
+        session.addComputation(m -> body.apply(m.computation(computed)));
+        return this;
+    }
+
     /**
      * BUILD a rule scoped to this group and RETURN it (the rule is <b>not</b> added) — the compose peer of
      * {@link #addRule}. {@code body} receives a {@link Rule.Builder} already scoped here; the built {@link Rule}
@@ -287,6 +301,18 @@ public final class GroupEditor implements GroupReference {
      * is derived from the ref; the session is left unchanged.
      */
     public Computation computation(NumberRef computed, Function<Computation.Builder, Computation> body) {
+        return body.apply(session.boundModel().computation(computed));
+    }
+
+    /** As {@link #computation(NumberRef, Function)} for a STRING computed field — the compose peer of
+     *  {@link #addComputation(StringRef, Function)}. */
+    public Computation computation(StringRef computed, Function<Computation.Builder, Computation> body) {
+        return body.apply(session.boundModel().computation(computed));
+    }
+
+    /** As {@link #computation(NumberRef, Function)} for any computed field kind — the compose peer of
+     *  {@link #addComputation(FieldRef, Function)}. */
+    public Computation computation(FieldRef computed, Function<Computation.Builder, Computation> body) {
         return body.apply(session.boundModel().computation(computed));
     }
 

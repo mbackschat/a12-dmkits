@@ -12,6 +12,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
 
 /**
  * L2c — the rule-side editors {@link RuleEditor} / {@link ComputationEditor}: a held reference to an
@@ -98,6 +100,30 @@ class RuleComputationEditorTest {
         s.validate();
         assertTrue(s.toJson().contains(";; effective fee equals the base fee"),
                 "the editor-authored computation carries its comment");
+    }
+
+    @Test
+    void authorsAStringComputationThroughTheEditor() {
+        // The editor's computation()/addComputation() accept the StringRef target BoundModel.computation always
+        // did (a concatenation-computed STRING field), not only NumberRef — the compose peer returns the built
+        // computation with its derived relPath, the add form lands it in the session.
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+        GroupEditor addons = s.group("/Subscription/Addons");
+        addons.addField("Code", FieldKind.STRING);
+        addons.addField("Label", FieldKind.STRING);
+        StringRef code = addons.str("Code");
+        StringRef label = addons.str("Label");
+
+        Computation composed = addons.computation(label, c -> c.name("LabelComp")
+                .calc(code.asString().plus("-X").expression())
+                .message(Dsl.en("x"), Dsl.de("x")).build());
+        assertEquals("../Label", composed.computedFieldRelPath(), "the compose peer derives the target relPath");
+
+        addons.addComputation(label, c -> c.name("LabelComp")
+                .calc(code.asString().plus("-X").expression())
+                .message(Dsl.en("x"), Dsl.de("x")).build());
+        s.validate();   // the kernel accepts the string-computed target
+        assertTrue(s.toJson().contains("LabelComp"), "the editor-authored string computation is written");
     }
 
     @Test

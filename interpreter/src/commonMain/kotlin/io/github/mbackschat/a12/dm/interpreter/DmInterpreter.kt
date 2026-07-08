@@ -614,8 +614,16 @@ class DmInterpreter @JvmOverloads constructor(
     /**
      * Run every computation over each row of its iteration scope and return each computed-field outcome
      * — the runtime twin of the kernel's `compute()`. VALUE (the expression resolved, empty-as-0 applies)
-     * / CLEARED (the expression computed nothing). ERRORED (an operand/computation error) awaits the
-     * formal-error increment.
+     * / CLEARED (the expression computed nothing) / ERRORED (the computed value is formally invalid for
+     * the target).
+     *
+     * **Reporting granularity — report-ALL, deliberately wider than the kernel's.** This returns an outcome
+     * for **every** computed instance; the kernel's `IDocumentComputationResult` reports only the **delta
+     * vs the input document** (changed values / clears of input-filled cells; KERNEL-FINDINGS "compute
+     * reporting granularity"). Report-all is the more useful library contract ("what does this field
+     * compute to?"), and result-envelope granularity is not behavior-parity territory — a comparison
+     * against a kernel-granularity expectation projects via
+     * [io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity].
      */
     fun compute(doc: Document, locale: String = "en_US"): List<Computed> =
         computeInstances(doc)

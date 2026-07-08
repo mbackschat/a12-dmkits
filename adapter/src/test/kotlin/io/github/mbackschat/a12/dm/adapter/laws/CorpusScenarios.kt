@@ -43,6 +43,7 @@ object CorpusScenarios {
         orderQtyBelowThreshold(),
         orderQtyWithinThreshold(),
         orderStockPerRow(),
+        orderNameSeedEqual(),
         orderPhantomItemRow(),
         orderDeliveryDateInPast(),
         computeCascadeSeed(),
@@ -67,6 +68,12 @@ object CorpusScenarios {
     /** `StockQty := [Count] * 10` per Items row — a per-row computation over a repeatable group. */
     private val orderStockComputeModel = model("order-stock-compute", TypedRules.inject(order, items.computation(items.num("StockQty")) {
         it.name("StockComp").calc(items.num("Count").asNumber().times(Dsl.number("10")).expression())
+            .message(Dsl.en("x")).build()
+    }))
+
+    /** `CustomerName := [ProductCode] + "-X"` on the root Order — a STRING concatenation computation. */
+    private val orderNameComputeModel = model("order-name-compute", TypedRules.inject(order, ord.computation(ord.str("CustomerName")) {
+        it.name("NameComp").calc(ord.str("ProductCode").asString().plus("-X").expression())
             .message(Dsl.en("x")).build()
     }))
 
@@ -111,6 +118,25 @@ object CorpusScenarios {
             group("/Order", 1),
             group("/Order/Items", 1, 1), field("/Order/Items/Sku", "A", 1, 1, 1), field("/Order/Items/Count", "2", 1, 1, 1),
             group("/Order/Items", 1, 2), field("/Order/Items/Sku", "B", 1, 2, 1), field("/Order/Items/Count", "3", 1, 2, 1),
+        ),
+        Op.Compute,
+    )
+
+    /**
+     * A STRING computed cell seeded with exactly the value it computes — a kernel NON-change, so
+     * `computeExpected` omits it (the kernel's change-only reporting granularity, [§7]); the report-all
+     * interpreter must project its seed-equal VALUE away on replay ([kernelComputeGranularity]) instead of
+     * false-failing. The guard for the IG47 `kernel=absent,interp=VALUE` comparison artifact.
+     */
+    private fun orderNameSeedEqual(): Family = family(
+        "compute", orderNameComputeModel,
+        CaseMeta("order-name-seed-equal", PENDING, CaseSource.CURATED, listOf("§2"),
+            tags = listOf("compute", "granularity"),
+            notes = "a computed STRING equal to its seeded input — a kernel non-change; report-all engines project (§7)"),
+        listOf(
+            group("/Order", 1),
+            field("/Order/ProductCode", "AB", 1, 1),
+            field("/Order/CustomerName", "AB-X", 1, 1),
         ),
         Op.Compute,
     )

@@ -143,6 +143,16 @@ Each `computeExpected` entry is one computed-field outcome:
 - `value` is the **exact stored-form string** the engine writes into the document. **No numeric normalization**: the stored form is itself kernel semantics — the computed string lands in the document and feeds downstream rules — so `"100.5"` vs `"100.50"` is a real divergence, not noise.
 - Sorting and multiset equality as in [§6](#6-validation-expectations--signatures).
 
+**Reporting granularity (what `computeExpected` contains).** The expectation records what the kernel's `IDocumentComputationResult` *reports*, which is **delta-vs-input**, not report-all:
+
+| outcome | reported when |
+|---|---|
+| `VALUE` | the computed value **differs from the input document's** value at that cell — a *typed*-value equality (`getComputedFieldInstancesWithChanges`) |
+| `CLEARED` | the input document had the cell **filled** (`getClearedFieldInstances`) |
+| `ERRORED` | always (`getComputedFieldInstancesWithErrors`) |
+
+On a placement-built input the cell values are raw strings, so the typed change-equality can hold only for a **STRING-kind** computed target (a number/date/boolean computes to a typed value, never equal to the raw seed string) — kernel-probe-verified, [KERNEL-FINDINGS](KERNEL-FINDINGS.md) "compute reporting granularity". A **report-all engine** (the interpreter reports every computed instance — its library contract) must **project its outcome to this granularity before comparing**: drop a `VALUE` equal to the cell's placement value when the target is string-kind, drop a `CLEARED` on a cell no placement filled, keep `ERRORED`. The reference projection is `conformance.kernelComputeGranularity`; the committed guard case is `compute/order-name-seed-equal` (a computed STRING equal to its seed → an **empty** `computeExpected` that must still PASS).
+
 ## 8. Operations
 
 | `op` | Shape | Expectation key |

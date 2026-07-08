@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.conformance.InterpreterReplay
 import io.github.mbackschat.a12.dm.interpreter.conformance.Op
 import io.github.mbackschat.a12.dm.interpreter.conformance.Placement
 import io.github.mbackschat.a12.dm.interpreter.conformance.PlacementKind
+import io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -92,7 +93,7 @@ class RealCorpusSweepTest {
                 } catch (t: Throwable) { report.evalSkip("seed-failed", file, t); continue }
                 compareValidateFull(file, kernelJson, interpJson, model, placements, seed, javaEngine, locale, report)
                 if (model.computations.isNotEmpty()) {
-                    compareCompute(file, kernelJson, interpJson, placements, seed, locale, report)
+                    compareCompute(file, kernelJson, interpJson, model, placements, seed, locale, report)
                 }
             }
         }
@@ -144,13 +145,16 @@ class RealCorpusSweepTest {
         }.onFailure { report.evalSkip("java-static-eval-failed", file, it) }
     }
 
-    private fun compareCompute(file: Path, kernelJson: String, interpJson: String, placements: List<Placement>,
-                               seed: Int, locale: java.util.Locale, report: SweepReport) {
+    private fun compareCompute(file: Path, kernelJson: String, interpJson: String, model: ModelDef,
+                               placements: List<Placement>, seed: Int, locale: java.util.Locale, report: SweepReport) {
         val k = try {
             CorpusEngines.groovyDynamic(kernelJson, placements, Op.Compute, CLOCK, locale)
         } catch (t: Throwable) { report.evalSkip("kernel-compute:" + classify(t), file, t); return }
+        // The interpreter reports EVERY computed instance; the kernel reports changes only — project the
+        // interpreter side to the kernel's granularity (kernelComputeGranularity) so a seed-equal STRING value /
+        // an unseeded clear doesn't read as a phantom `kernel=absent,interp=…` divergence (the IG47 artifact).
         val i = try {
-            CorpusEngines.interpret(interpJson, placements, Op.Compute, CLOCK)
+            kernelComputeGranularity(CorpusEngines.interpret(interpJson, placements, Op.Compute, CLOCK), placements, model)
         } catch (t: Throwable) { report.evalSkip("interp-compute:" + classify(t), file, t); return }
         report.computed()
         if (i != k) report.divergence(file, seed, "compute", k, i)

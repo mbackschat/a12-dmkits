@@ -828,6 +828,18 @@ FieldListRef lines = order.flatten("Items*/Qty");  // star aggregate, relative �
 
 **Build a `Rule`/`Computation` off the editor — with or without adding it (DG12).** `addRule(b -> …)` / `addComputation(field, b -> …)` build-AND-add to the session; `rule(b -> …): Rule` / `computation(field, b -> …): Computation` are the **compose peers** that build-and-RETURN the typed object without mutating the session. Either way the rule's error field + condition are refs and its `errorEntityRelPath()` (`"../…"`) + `render()` are **derived**, never hand-written — so a differential harness can author one typed `Rule` and feed it to two engines from a single source. (Both surfaced + filled by dogfooding the perf benchmark through the editor — DEV-API-GAPS DG11/DG12.)
 
+**A computed target is any field kind — not only a number.** The editor's `computation(…)`/`addComputation(…)` take a `NumberRef`, a `StringRef` (a concatenation target), or the general `FieldRef` — mirroring `BoundModel.computation`'s three overloads, so e.g. a computed display string authors through the same typed surface:
+
+<!-- teaser -->
+```java
+var order = s.group("/Order");
+order.addComputation(order.str("CustomerName"), c -> c.name("NameComp")
+    .calc(order.str("ProductCode").asString().plus("-X").expression())
+    .message(Dsl.en("Customer display name.")));
+```
+
+*(Surfaced by dogfooding the conformance corpus: its string-concat guard case couldn't be authored through the editor while only the `NumberRef` overload existed. Test-backed by `RuleComputationEditorTest.authorsAStringComputationThroughTheEditor`.)*
+
 The same **per-type field builders** as the from-scratch builder are on the editor too (DG1) — configure scale/bounds/pattern/enum-domain + metadata fluently while editing, instead of dropping to a hand-built `FieldTypeSpec` (a field added this way is byte-identical to one built from scratch — one shared `FieldAttrs.toField` assembly):
 
 <!-- snippet: editor-number-field -->
