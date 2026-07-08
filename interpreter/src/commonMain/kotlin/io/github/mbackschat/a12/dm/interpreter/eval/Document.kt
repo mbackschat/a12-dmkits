@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionData
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.model.FieldConstraints
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.ValuedField
 import kotlin.jvm.JvmOverloads
@@ -52,6 +53,7 @@ internal const val UNKNOWN_REP = -5
 fun ModelDef.newDocument(): Document = Document(
     kinds, declaredReps, unsignedFields, rangeConfig, dateFormats, scales,
     dateTimeFormats, datePrecisions, enumValues, enumCategories, timeFormats, baseYear,
+    fieldConstraints,
 )
 
 class Document @JvmOverloads constructor(
@@ -94,6 +96,14 @@ class Document @JvmOverloads constructor(
      *  to a year-bearing date, the partition's base-year relaxation — DateFragmentComparisonDiffTest).
      *  (Appended for positional-constructor compatibility.) */
     private val baseYear: Int? = null,
+    /** Each field's declared-constraint set (IF20/IF84) — so [resolveValue] applies the FULL formal check
+     *  (min-fractional-digits, range, length, pattern, enum-domain, …), not just the format/scale check. A
+     *  constraint-violating value then resolves to [Val.Unknown] — not-check-relevant — everywhere resolution
+     *  is used (aggregate `starCells`, the `fillScope` fill tally), matching the kernel's `isWertAngegeben`
+     *  (a `minFractionalDigits`-2 field's `"5"` parses but is `zahlFalscheAnzahlNachkommastellen`). Direct field
+     *  refs are already gated by [DmInterpreter]'s `invalid` closure; this closes the resolution paths that
+     *  bypass it. (Appended for positional-constructor compatibility.) */
+    private val fieldConstraints: Map<String, FieldConstraints> = emptyMap(),
 ) {
     private data class Placement(val path: String, val reps: List<Int>, val value: String?, val isGroup: Boolean)
 
@@ -817,7 +827,7 @@ class Document @JvmOverloads constructor(
             else -> null
         }
         if (formalError(kind, raw, scales[path], dateLikeFormat, precision, rangeConfig[path]?.second,
-                baseYear = baseYear ?: 2000) != null) return Val.Unknown
+                fieldConstraints[path] ?: FieldConstraints.NONE, baseYear = baseYear ?: 2000) != null) return Val.Unknown
         return when (kind) {
             Kind.DATE_RANGE -> rangeConfig[path]?.let { (format, sep) ->
                 parseRangeToIso(raw, format, sep)?.let { Val.Range(it.first, it.second) }
