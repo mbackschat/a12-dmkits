@@ -66,6 +66,12 @@ public record OperatorEntry(
         return semantics == null ? null : semantics.iterationRange();
     }
 
+    /** The {@code aggregateIdentity} facet claim (CATALOG-SPEC §3c), or {@code null} when the operator
+     *  is not a value-folding aggregate. */
+    public AggregateIdentityClaim aggregateIdentityClaim() {
+        return semantics == null ? null : semantics.aggregateIdentity();
+    }
+
     /** Whether rulekit builds a typed handle for this operator (vs a {@link OperatorStatus#PLANNED} stub). */
     public boolean supported() {
         return status == OperatorStatus.SUPPORTED;

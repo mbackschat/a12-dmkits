@@ -282,6 +282,41 @@ class OperatorCatalogTest {
                 "NoFieldFilled uses the INSTANTIATED default — no deviation claim");
     }
 
+    /**
+     * Every {@code semantics.aggregateIdentity} claim is well-formed: exactly one of {@code value} /
+     * {@code perKind}, known perKind tokens, a basis, and at least one executable probe
+     * (CATALOG-SPEC §3c/§5).
+     */
+    @Test
+    void everyAggregateIdentityClaimIsWellFormedAndProbed() {
+        for (OperatorEntry e : CATALOG.entries()) {
+            AggregateIdentityClaim claim = e.aggregateIdentityClaim();
+            if (claim == null) {
+                continue;
+            }
+            String at = e.id() + " aggregateIdentity";
+            assertTrue(claim.value() != null ^ !claim.perKind().isEmpty(),
+                    () -> at + ": exactly one of value / perKind");
+            claim.perKind().keySet().forEach(k -> assertTrue(KIND_TOKENS.contains(k),
+                    () -> at + ": unknown perKind token '" + k + "'"));
+            assertFalse(isBlank(claim.basis()), () -> at + ": missing basis (the lock/finding it derives from)");
+            assertFalse(claim.probes().isEmpty(), () -> at + ": a facet claim needs at least one probe");
+            claim.probes().forEach(p -> assertProbeWellFormed(at, p));
+        }
+    }
+
+    /** The ZERO-vs-NO_VALUE split (CATALOG-SPEC §3c): number aggregates fold to 0, a date fold yields no
+     *  value; the per-kind operators (Min/Max/FirstFilledValue) carry both. */
+    @Test
+    void aggregateIdentitySplitsZeroVsNoValueByKind() {
+        assertEquals(AggregateIdentity.ZERO, CATALOG.byId("Sum").orElseThrow().aggregateIdentityClaim().value());
+        assertEquals(AggregateIdentity.ZERO, CATALOG.byId("MaxValue").orElseThrow().aggregateIdentityClaim().value());
+        assertEquals(java.util.Optional.of(AggregateIdentity.ZERO),
+                CATALOG.byId("Min").orElseThrow().aggregateIdentityClaim().identityFor("number"));
+        assertEquals(java.util.Optional.of(AggregateIdentity.NO_VALUE),
+                CATALOG.byId("Min").orElseThrow().aggregateIdentityClaim().identityFor("date"));
+    }
+
     /** The two non-obvious boundary facts the dimension exists to carry (CATALOG-SPEC §3): the tolerance
      *  band is STRICT (fires only beyond N) and the date-range overlap predicates are INCLUSIVE (closed). */
     @Test

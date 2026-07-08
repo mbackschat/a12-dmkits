@@ -61,6 +61,17 @@ The consumer this serves (the §21D razor): the eval judge, to reason that `[Q] 
 
 This is a **deviation dimension** (like `emptyOperand`, but the default is not per-kind — it is the single natural `INSTANTIATED`). Only the two families that deviate carry a claim: `All`/`NotAll` (`DECLARED`) and `FieldsNotCollectivelyFilled` (`MIXED`). The **count quantifiers carry no claim** — deliberately, because DECLARED vs INSTANTIATED is *observationally identical for firing* there: an un-instantiated rep contributes no filled cell, so "is there ≥ 1 filled / are there 0 filled / how many filled" is unchanged. (The range does bite their *polarity* — the fillable declared tail — which is the `polarity` dimension, not firing.) Each claim's probe instantiates 2 of the 50 declared `Items` rows, so a DECLARED / INSTANTIATED slip flips `fires`.
 
+### 3c. The `aggregateIdentity` dimension
+
+**The question it answers:** what does a value-folding aggregate fold to over an **all-empty selection**? This is the terminal case `emptyOperand` deliberately leaves out (§4a — "one operand empty" vs "the WHOLE selection empty"). One claim per operator (`AggregateIdentityClaim`), but per **element kind** (like `emptyOperand`, `value` XOR `perKind`), vocabulary `AggregateIdentity`:
+
+| value | meaning | canonical lock |
+|---|---|---|
+| `ZERO` | the empty fold is the fillable **0** — a comparison against 0 fires | `Sum`/`MaxValue`/`MinValue`/`SumOfProducts` (IF51, KERNEL-FINDINGS §1); a NUMBER `Min`/`Max`/`FirstFilledValue` (IF80) |
+| `NO_VALUE` | the empty fold yields **no value** (a NULL date / NOT-GIVEN) — a comparison cannot fire; a computation CLEARS | a DATE `Min`/`Max` (IF58 / `DateAggregateDiffTest`, the kernel's `DateCombiner`); a DATE/STRING `FirstFilledValue` (IF83 / `FirstFilledValueKindDiffTest`) |
+
+The per-kind operators (`Min`, `Max`, `FirstFilledValue`) carry a `perKind` split (`{number: ZERO, date: NO_VALUE}`) — the very fact this dimension exists to record (`Sum(∅) = 0` **vs** a date aggregate's no-value). The consumer (judge): `Sum(∅) >= 0` always holds, but `Min(dates…) >= X` is vacuous when empty — not equivalent. Each probe pins an all-empty selection over a **non-index** field (an index field's empty cell is not-check-relevant — the invalid class, IF86, not emptiness). Populated over the seven value-folding aggregates; the counts (`NumberOf…`) carry no claim — a count of nothing is trivially 0 (obvious, and their empty-*operand* behavior is the `emptyOperand` dimension).
+
 ## 4. The `emptyOperand` dimension
 
 **The question it answers:** what does this operator do when a given operand is *empty* (a present-but-valueless field)? This is the #1 recurring semantic failure class (empty-as-0 firing, judge false-positives, incomplete lints), and the per-operator answers were already differentially locked by the WI-T campaign — the facet is their machine-readable projection.
@@ -186,8 +197,9 @@ The mechanism: an entry carries `correctives` — per-`code`, per-operand-shape 
 **WI-5b dimensions** slot in additively as single operator-level claims (§3a/§3b). Shipped so far:
 - **`boundary`** — the ten threshold/interval operators; STRICT for `<`/`>`/tolerance, INCLUSIVE for `<=`/`>=`/date-range-overlap (CLOSED).
 - **`iterationRange`** — the field-fill quantifier deviations from the INSTANTIATED default: `AllFieldsFilled`/`NotAllFieldsFilled` = DECLARED, `FieldsNotCollectivelyFilled` = MIXED (IF49).
+- **`aggregateIdentity`** — the seven value-folding aggregates' all-empty fold: `Sum`/`MaxValue`/`MinValue`/`SumOfProducts` = ZERO; `Min`/`Max`/`FirstFilledValue` = per-kind {number: ZERO, date: NO_VALUE} (IF51/IF58/IF80/IF83).
 
-`aggregateIdentity`, `polarity` follow.
+`polarity` follows.
 
 ### 9a. The WI-5a `emptyOperand` slice
 
@@ -195,6 +207,6 @@ WI-5a populated the `emptyOperand` dimension for the families its consumers touc
 
 - **`Date(d,m,y)` / `Time(h,m,s)` / `DateTime` constructions with an empty part** — kernel behavior uncharacterized (IF73 scoped them out; no corpus instance). Characterize before claiming — a facet must never state an unverified value.
 - **`RangeAsString` / `RangeAsNumber` / `FieldValueAsNumber` / `ValueAsDate` / `AddDays`-family empties** — no differential lock yet; deferred to WI-5b with fresh probes (and, where the interpreter disagrees with a fresh kernel probe, a WI-T gap row *first*).
-- The remaining dimensions (`iterationRange`, `aggregateIdentity`, `polarity`) — WI-5b (§9 above tracks what has landed).
+- The remaining dimension (`polarity`) — WI-5b (§9 above tracks what has landed).
 
 **Maintenance rules:** a new operator claim needs basis + probes in the same commit (the guards enforce it). An `operators.json` change is a **native-image re-capture trigger** ([NATIVE-IMAGE-GRAALVM §5.1](NATIVE-IMAGE-GRAALVM.md)). On a kernel bump the probes re-run against the new kernel automatically (they are ordinary CI tests — the [KERNEL-UPGRADE](KERNEL-UPGRADE.md) guardian net gains this lane for free).

@@ -18,7 +18,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record OperatorSemantics(List<EmptyOperandClaim> emptyOperand, BoundaryClaim boundary,
-        IterationRangeClaim iterationRange) {
+        IterationRangeClaim iterationRange, AggregateIdentityClaim aggregateIdentity) {
 
     public OperatorSemantics {
         emptyOperand = emptyOperand == null ? List.of() : List.copyOf(emptyOperand);

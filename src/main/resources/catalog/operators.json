@@ -1341,6 +1341,27 @@
     "validExample": { "dsl": "FieldFilled(CustomerName) And Sum(Items*/Count) > 100", "note": "fires when the order's total item count exceeds 100" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And Sum(CustomerName, ProductCode) > 0", "error": "MVK_NO_NUMBER", "fix": "Sum takes number fields" },
     "semantics": {
+      "aggregateIdentity": {
+        "value": "ZERO",
+        "basis": "IF51 / adapter.laws.MultiFieldAggregateDiffTest; KERNEL-FINDINGS §1 (NumberCombiner empty-as-0)",
+        "note": "an all-empty selection folds to the fillable 0, so Sum(∅) == 0 fires",
+        "probes": [
+          {
+            "dsl": "FieldFilled(CustomerName) And Sum(Items*/Count) == 0",
+            "errorField": "CustomerName",
+            "rows": [
+              "/Order/Items[1]",
+              "/Order/Items[2]"
+            ],
+            "empty": [
+              "/Order/Items[1]/Count",
+              "/Order/Items[2]/Count"
+            ],
+            "fires": true,
+            "note": "all Count cells empty → Sum folds to 0 → == 0 fires"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "0",
@@ -1382,6 +1403,27 @@
     "validExample": { "dsl": "FieldFilled(CustomerName) And MaxValue(Items*/Count) > 50", "note": "fires when any single line orders more than 50" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And MaxValue(CustomerName, ProductCode) > 0", "error": "MVK_NOT_SORTABLE", "fix": "MaxValue needs numbers (or dates)" },
     "semantics": {
+      "aggregateIdentity": {
+        "value": "ZERO",
+        "basis": "IF51 / KERNEL-FINDINGS §1 (an all-empty star folds to the fillable 0)",
+        "note": "an all-empty selection folds to 0, so MaxValue(∅) == 0 fires",
+        "probes": [
+          {
+            "dsl": "FieldFilled(CustomerName) And MaxValue(Items*/Count) == 0",
+            "errorField": "CustomerName",
+            "rows": [
+              "/Order/Items[1]",
+              "/Order/Items[2]"
+            ],
+            "empty": [
+              "/Order/Items[1]/Count",
+              "/Order/Items[2]/Count"
+            ],
+            "fires": true,
+            "note": "all Count cells empty → MaxValue folds to 0 → == 0 fires"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "0",
@@ -1423,6 +1465,27 @@
     "gotchas": [  ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And MinValue(Items*/Count) >= 1", "note": "fires only when every specified line count is at least 1" },
     "semantics": {
+      "aggregateIdentity": {
+        "value": "ZERO",
+        "basis": "IF51 / KERNEL-FINDINGS §1 (an all-empty star folds to the fillable 0)",
+        "note": "an all-empty selection folds to 0, so MinValue(∅) == 0 fires",
+        "probes": [
+          {
+            "dsl": "FieldFilled(CustomerName) And MinValue(Items*/Count) == 0",
+            "errorField": "CustomerName",
+            "rows": [
+              "/Order/Items[1]",
+              "/Order/Items[2]"
+            ],
+            "empty": [
+              "/Order/Items[1]/Count",
+              "/Order/Items[2]/Count"
+            ],
+            "fires": true,
+            "note": "all Count cells empty → MinValue folds to 0 → == 0 fires"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "0",
@@ -1534,6 +1597,36 @@
     "constraints": [ "one or more numeric value expressions (fields, arithmetic, …); DATE operands are accepted too (the min/max of dates — empty date operands are skipped, see the emptyOperand facet)" ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And Min([Quantity], [UnitPrice]) > 0", "note": "fires when both are positive (the smaller is above 0)" },
     "semantics": {
+      "aggregateIdentity": {
+        "perKind": {
+          "number": "ZERO",
+          "date": "NO_VALUE"
+        },
+        "basis": "number: IF51 (empty→0 substitution folds to 0); date: IF58 / adapter.laws.DateAggregateDiffTest (DateCombiner all-empty → NULL date → the comparison does not fire)",
+        "note": "the per-kind split: an all-empty NUMBER Min folds to 0 (fires == 0); an all-empty DATE Min yields NO value (a comparison cannot fire)",
+        "probes": [
+          {
+            "dsl": "FieldFilled(CustomerName) And Min([Quantity], [BackorderQuantity]) == 0",
+            "errorField": "CustomerName",
+            "empty": [
+              "/Order/Quantity",
+              "/Order/BackorderQuantity"
+            ],
+            "fires": true,
+            "note": "both empty numbers → Min(0, 0) = 0 → == 0 fires"
+          },
+          {
+            "dsl": "FieldFilled(CustomerName) And Min([OrderDate], [DeliveryDate]) >= \"01.01.1900\"",
+            "errorField": "CustomerName",
+            "empty": [
+              "/Order/OrderDate",
+              "/Order/DeliveryDate"
+            ],
+            "fires": false,
+            "note": "both empty dates → no value → >= any date cannot fire (a produced date would be >= 1900)"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "all",
@@ -1585,6 +1678,36 @@
     "constraints": [ "one or more numeric value expressions (fields, arithmetic, …); DATE operands are accepted too (the min/max of dates — empty date operands are skipped, see the emptyOperand facet)" ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And Max([Quantity], [UnitPrice]) > 100", "note": "fires when either exceeds 100" },
     "semantics": {
+      "aggregateIdentity": {
+        "perKind": {
+          "number": "ZERO",
+          "date": "NO_VALUE"
+        },
+        "basis": "number: IF51 (empty→0 substitution folds to 0); date: IF58 / adapter.laws.DateAggregateDiffTest (DateCombiner all-empty → NULL date → the comparison does not fire)",
+        "note": "the per-kind split: an all-empty NUMBER Max folds to 0 (fires == 0); an all-empty DATE Max yields NO value (a comparison cannot fire)",
+        "probes": [
+          {
+            "dsl": "FieldFilled(CustomerName) And Max([Quantity], [BackorderQuantity]) == 0",
+            "errorField": "CustomerName",
+            "empty": [
+              "/Order/Quantity",
+              "/Order/BackorderQuantity"
+            ],
+            "fires": true,
+            "note": "both empty numbers → Max(0, 0) = 0 → == 0 fires"
+          },
+          {
+            "dsl": "FieldFilled(CustomerName) And Max([OrderDate], [DeliveryDate]) >= \"01.01.1900\"",
+            "errorField": "CustomerName",
+            "empty": [
+              "/Order/OrderDate",
+              "/Order/DeliveryDate"
+            ],
+            "fires": false,
+            "note": "both empty dates → no value → >= any date cannot fire"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "all",
@@ -2729,6 +2852,31 @@
     "meaning": "The element-wise sum of products across two parallel number field lists: Σ aᵢ·bᵢ (typically two wildcard repetition lists over the same group). Both operands render as bare entity refs.",
     "constraints": [ "exactly two number fields (or wildcard repetition lists), both in the SAME repeatable group (else MVK_DIFFERENT_GROUPS); the asterisk notates their lowest repeatable layer" ],
     "validExample": { "dsl": "FieldFilled(UnitPrice) And [UnitPrice] != SumOfProducts(Items*/Count, Items*/UnitWeight)", "note": "fires when the stored price disagrees with the summed count-weighted line items (both scale 2)" },
+    "semantics": {
+      "aggregateIdentity": {
+        "value": "ZERO",
+        "basis": "IF51 / KERNEL-FINDINGS §1 (the sum identity is the fillable 0)",
+        "note": "an all-empty selection folds to 0, so SumOfProducts(∅) == 0 fires",
+        "probes": [
+          {
+            "dsl": "FieldFilled(CustomerName) And SumOfProducts(Items*/Count, Items*/UnitWeight) == 0",
+            "errorField": "CustomerName",
+            "rows": [
+              "/Order/Items[1]",
+              "/Order/Items[2]"
+            ],
+            "empty": [
+              "/Order/Items[1]/Count",
+              "/Order/Items[2]/Count",
+              "/Order/Items[1]/UnitWeight",
+              "/Order/Items[2]/UnitWeight"
+            ],
+            "fires": true,
+            "note": "all Count/UnitWeight cells empty → SumOfProducts folds to 0 → == 0 fires"
+          }
+        ]
+      }
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -2743,6 +2891,42 @@
       "a single field over a repetition list (a *-flattened scope)"
     ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And FirstFilledValue(Items*/Count) > 10", "note": "fires when the first specified line count exceeds 10" },
+    "semantics": {
+      "aggregateIdentity": {
+        "perKind": {
+          "number": "ZERO",
+          "date": "NO_VALUE"
+        },
+        "basis": "number: IF80 (NumberCombiner fillable 0 on an empty selection); date: IF83 / adapter.laws.FirstFilledValueKindDiffTest (NOT-GIVEN date → the comparison does not fire)",
+        "note": "the per-kind split (IF83, the kernel's FirstValueCombiner family): a number empty selection folds to 0 (fires == 0); a date empty selection is NOT-GIVEN (a comparison cannot fire, a computation CLEARS)",
+        "probes": [
+          {
+            "dsl": "FieldFilled(CustomerName) And FirstFilledValue(Items*/Count) == 0",
+            "errorField": "CustomerName",
+            "rows": [
+              "/Order/Items[1]",
+              "/Order/Items[2]"
+            ],
+            "empty": [
+              "/Order/Items[1]/Count",
+              "/Order/Items[2]/Count"
+            ],
+            "fires": true,
+            "note": "all Count cells empty → the fillable 0 → == 0 fires"
+          },
+          {
+            "dsl": "FieldFilled(CustomerName) And FirstFilledValue(OrderDate, DeliveryDate) >= \"01.01.1900\"",
+            "errorField": "CustomerName",
+            "empty": [
+              "/Order/OrderDate",
+              "/Order/DeliveryDate"
+            ],
+            "fires": false,
+            "note": "both empty dates → NOT-GIVEN → >= any date cannot fire"
+          }
+        ]
+      }
+    },
     "sinceKernel": "30.8.x"
   },
   {

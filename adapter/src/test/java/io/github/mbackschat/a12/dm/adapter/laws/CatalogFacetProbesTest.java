@@ -76,6 +76,14 @@ class CatalogFacetProbesTest {
                         .map(p -> probeTest(e.id() + " iterationRange", p)));
     }
 
+    @TestFactory
+    Stream<DynamicTest> everyAggregateIdentityClaimProbeHoldsOnTheKernel() {
+        return CATALOG.entries().stream()
+                .filter(e -> e.aggregateIdentityClaim() != null)
+                .flatMap(e -> e.aggregateIdentityClaim().probes().stream()
+                        .map(p -> probeTest(e.id() + " aggregateIdentity", p)));
+    }
+
     private static DynamicTest probeTest(String claim, FacetProbe probe) {
         return dynamicTest(claim + " · " + probe.dsl(), () -> {
             DraftRule draft = new DraftRule("/Order", "FacetProbeRule", "../" + probe.errorField(),
