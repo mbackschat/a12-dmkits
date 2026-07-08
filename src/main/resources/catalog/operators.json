@@ -533,6 +533,66 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "Concatenation",
+    "kind": "operator",
+    "keywords": {
+      "en": "+",
+      "de": "+"
+    },
+    "operands": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "string"
+      }
+    ],
+    "returns": "string",
+    "meaning": "String concatenation of two or more string-valued parts — [FirstName] + \" \" + [LastName]. The result is a string expression usable wherever a string is, most often one side of a comparison or a computation operation.",
+    "constraints": [
+      "parts must be string-valued: string fields, string literals, or string functions (FieldValueAsString, RangeAsString)"
+    ],
+    "gotchas": [
+      {
+        "text": "an EMPTY string field concatenates as \"\" — the concatenation IS evaluated, unlike a bare string comparison (which an empty operand suppresses); [Full] != [First] + \" \" + [Last] fires on an empty First — guard concatenated operands with AllFieldsFilled",
+        "kind": "SURPRISE"
+      },
+      {
+        "text": "a FILLED but formally-invalid operand (e.g. over maxLength) makes the whole concatenation non-evaluable — a computation CLEARS the target instead of reading the operand as \"\" (invalid is not empty)",
+        "kind": "SURPRISE"
+      },
+      {
+        "text": "the + symbol is language-independent — the same intrinsic symbol as numeric addition; the operand types decide which it is",
+        "kind": "RENDERING"
+      }
+    ],
+    "validExample": {
+      "dsl": "[CustomerName] != [ProductCode] + \"-X\"",
+      "note": "fires when CustomerName differs from ProductCode suffixed with -X"
+    },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "all",
+          "behavior": "AS_EMPTY_STRING",
+          "basis": "KERNEL-FINDINGS §2; adapter.laws.EmptyValueLawsTest.emptyStringInAConcatenationIsEvaluated; the invalid-operand contrast is IF81 / adapter.laws.ConcatInvalidOperandDiffTest",
+          "probes": [
+            {
+              "dsl": "[CustomerName] != [ProductCode] + \"X\"",
+              "errorField": "CustomerName",
+              "empty": [
+                "/Order/ProductCode"
+              ],
+              "fires": true,
+              "note": "empty ProductCode concatenates as \"\" — the comparison reads \"Acme\" != \"X\" and fires"
+            }
+          ]
+        }
+      ]
+    },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "PatternMatched",
     "opposite": ["PatternViolated"],
     "seeAlso": ["string.pattern — constrain a STRING field's format intrinsically (field config); the field-level alternative to this rule (see `schema field add`)"],
@@ -596,6 +656,46 @@
     , { "text": "no empty matches anywhere: an empty subject field never fires, and an empty FIELD ENTRY in the list can never be matched (the number 0-substitution does not apply inside value lists)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldValueIncludedInValueList(Priority, \"EXPRESS\", \"OVERNIGHT\")", "note": "true when Priority is one of the rush classes" },
     "invalidExample": { "dsl": "FieldValueIncludedInValueList(ExpressShipping, \"x\")", "error": "MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED", "fix": "value lists work on string/enum/number fields — compare a boolean with == True/False" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "NOT_EVALUATED",
+          "basis": "KERNEL-FINDINGS §8 (the membership rides the 3VL: an empty subject is UNKNOWN — for EVERY kind, including number); adapter.laws.EmptyValueLawsTest.anEmptyFieldIsNeverInAValueList",
+          "note": "the NUMBER deviation is the point: an empty number subject is NOT substituted 0 here (unlike a comparison)",
+          "probes": [
+            {
+              "dsl": "FieldValueIncludedInValueList(Quantity, 0, 5)",
+              "errorField": "Quantity",
+              "empty": [
+                "/Order/Quantity"
+              ],
+              "fires": false,
+              "note": "0 is in the list — were the empty subject read as 0, this would fire"
+            }
+          ]
+        },
+        {
+          "operand": "1",
+          "behavior": "SKIPPED",
+          "basis": "adapter.laws.EmptyValueLawsTest.anEmptyListEntryFieldNeverMatches (no 0-substitution in list entries)",
+          "probes": [
+            {
+              "dsl": "FieldValueIncludedInValueList(Quantity, [BackorderQuantity])",
+              "errorField": "Quantity",
+              "given": {
+                "/Order/Quantity": "0"
+              },
+              "empty": [
+                "/Order/BackorderQuantity"
+              ],
+              "fires": false,
+              "note": "a 0-valued subject does not match an EMPTY list-entry field"
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -615,6 +715,26 @@
     , { "text": "an empty subject field is not evaluated — 'not included' does NOT fire on absence; test absence with FieldNotFilled", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(ProductCode) And FieldValueNotIncludedInValueList(ProductCode, \"LEGACY-1\", \"LEGACY-2\")", "note": "fires when a present product code is outside the supported set" },
     "invalidExample": { "dsl": "FieldValueNotIncludedInValueList(Quantity, \"x\")", "error": "MVK_INVALID_TYPES_FOR_COMPARISON", "fix": "a number field needs integer values: FieldValueNotIncludedInValueList(Quantity, 1, 2)" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "NOT_EVALUATED",
+          "basis": "KERNEL-FINDINGS §8 (3VL — an empty subject is UNKNOWN, so neither polarity fires)",
+          "probes": [
+            {
+              "dsl": "FieldValueNotIncludedInValueList(Quantity, 5)",
+              "errorField": "Quantity",
+              "empty": [
+                "/Order/Quantity"
+              ],
+              "fires": false,
+              "note": "were the empty subject read as 0, 0 NOT-in {5} would fire"
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -633,6 +753,52 @@
     "gotchas": [  ],
     "validExample": { "dsl": "AtLeastOneFieldValueIncludedInValueList(ShippingAddress/Street, BillingAddress/PostalCode In \"unknown\", \"n/a\")", "note": "true when any address field carries a placeholder value" },
     "invalidExample": { "dsl": "AtLeastOneFieldValueIncludedInValueList(CustomerName, Quantity In \"x\")", "error": "MVK_VARYING_TYPES_NOT_ALLOWED", "fix": "list only same-type fields — here a string and a number field are mixed" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "SKIPPED",
+          "basis": "IF60 / adapter.laws.ValueListQuantifierStarDiffTest (AtLeastOne skips empty cells outright)",
+          "probes": [
+            {
+              "dsl": "FieldFilled(CustomerName) And AtLeastOneFieldValueIncludedInValueList(Items*/Count In Quantity)",
+              "errorField": "CustomerName",
+              "rows": [
+                "/Order/Items[1]",
+                "/Order/Items[2]"
+              ],
+              "given": {
+                "/Order/Items[2]/Count": "7",
+                "/Order/Quantity": "7"
+              },
+              "empty": [
+                "/Order/Items[1]/Count"
+              ],
+              "fires": true
+            }
+          ]
+        },
+        {
+          "operand": "1",
+          "behavior": "SKIPPED",
+          "basis": "IF60 / adapter.laws.ValueListQuantifierStarDiffTest (an empty VALUES member contributes nothing — never the number 0 or \"\")",
+          "probes": [
+            {
+              "dsl": "FieldFilled(CustomerName) And AtLeastOneFieldValueIncludedInValueList(Items*/Sku In ProductCode)",
+              "errorField": "CustomerName",
+              "given": {
+                "/Order/Items[1]/Sku": "A"
+              },
+              "empty": [
+                "/Order/ProductCode"
+              ],
+              "fires": false,
+              "note": "the empty values member yields an empty effective list — nothing to match"
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -648,6 +814,53 @@
     ],
     "gotchas": [  ],
     "validExample": { "dsl": "NoFieldValueIncludedInValueList(CustomerName, ProductCode In \"test\", \"demo\")", "note": "true when no test placeholders are present" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "SKIPPED",
+          "basis": "IF60 / adapter.laws.ValueListQuantifierStarDiffTest (an empty fields cell cannot match; it flags a fired No as OMISSION — a polarity fact, not a truth change)",
+          "probes": [
+            {
+              "dsl": "FieldFilled(CustomerName) And NoFieldValueIncludedInValueList(Items*/Count In Quantity)",
+              "errorField": "CustomerName",
+              "rows": [
+                "/Order/Items[1]",
+                "/Order/Items[2]"
+              ],
+              "given": {
+                "/Order/Items[2]/Count": "7",
+                "/Order/Quantity": "9"
+              },
+              "empty": [
+                "/Order/Items[1]/Count"
+              ],
+              "fires": true,
+              "note": "the empty cell cannot match, the filled 7 is not 9 — No fires (typed OMISSION); deliberately over the NON-index Count: an INDEX field's empty cell is not-check-relevant and POISONS No (the invalid class)"
+            }
+          ]
+        },
+        {
+          "operand": "1",
+          "behavior": "SKIPPED",
+          "basis": "IF60 / adapter.laws.ValueListQuantifierStarDiffTest (an empty VALUES member contributes nothing)",
+          "probes": [
+            {
+              "dsl": "FieldFilled(CustomerName) And NoFieldValueIncludedInValueList(Items*/Sku In ProductCode)",
+              "errorField": "CustomerName",
+              "given": {
+                "/Order/Items[1]/Sku": "A"
+              },
+              "empty": [
+                "/Order/ProductCode"
+              ],
+              "fires": true,
+              "note": "an empty effective list — no cell is included, so No fires"
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -662,6 +875,68 @@
     ],
     "gotchas": [  ],
     "validExample": { "dsl": "NotAllFieldValuesIncludedInValueList(CustomerName, ProductCode In \"a\", \"b\")", "note": "true unless every listed field's value is in the list" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "SKIPPED",
+          "basis": "IF60 / adapter.laws.ValueListQuantifierStarDiffTest (needs a FILLED fields cell; empty cells are skipped, not counted as not-included)",
+          "probes": [
+            {
+              "dsl": "FieldFilled(CustomerName) And NotAllFieldValuesIncludedInValueList(Items*/Count In Quantity)",
+              "errorField": "CustomerName",
+              "rows": [
+                "/Order/Items[1]",
+                "/Order/Items[2]"
+              ],
+              "given": {
+                "/Order/Items[2]/Count": "9",
+                "/Order/Quantity": "7"
+              },
+              "empty": [
+                "/Order/Items[1]/Count"
+              ],
+              "fires": true
+            },
+            {
+              "dsl": "FieldFilled(CustomerName) And NotAllFieldValuesIncludedInValueList(Items*/Count In Quantity)",
+              "errorField": "CustomerName",
+              "rows": [
+                "/Order/Items[1]",
+                "/Order/Items[2]"
+              ],
+              "given": {
+                "/Order/Quantity": "7"
+              },
+              "empty": [
+                "/Order/Items[1]/Count",
+                "/Order/Items[2]/Count"
+              ],
+              "fires": false,
+              "note": "ALL cells empty → no filled cell to be not-included → does not fire"
+            }
+          ]
+        },
+        {
+          "operand": "1",
+          "behavior": "SKIPPED",
+          "basis": "IF60 / adapter.laws.ValueListQuantifierStarDiffTest (an empty VALUES member contributes nothing)",
+          "probes": [
+            {
+              "dsl": "FieldFilled(CustomerName) And NotAllFieldValuesIncludedInValueList(Items*/Sku In ProductCode)",
+              "errorField": "CustomerName",
+              "given": {
+                "/Order/Items[1]/Sku": "A"
+              },
+              "empty": [
+                "/Order/ProductCode"
+              ],
+              "fires": true
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -681,6 +956,29 @@
     , { "text": "a listed field carrying a formal error makes the whole count non-evaluable — the rule is suppressed, the broken field is neither counted nor skipped", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "NumberOfFilledFields(CustomerName, ProductCode, Quantity) < 2", "note": "fires when fewer than two of the three are filled" },
     "invalidExample": { "dsl": "NumberOfFilledFields(CustomerName) < 1", "error": "MVK_PARAMSIZE_INVALIDN", "fix": "list at least two fields (or one group) — for a single field use FieldFilled/FieldNotFilled" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "SKIPPED",
+          "basis": "IF51 / adapter.laws.MultiFieldAggregateDiffTest (the count family tallies filled cells only)",
+          "note": "definitionally counts FILLED cells — an empty operand simply doesn't count; the RESULT is still a number that evaluates (0 over an all-empty list)",
+          "probes": [
+            {
+              "dsl": "NumberOfFilledFields(Quantity, BackorderQuantity) == 1",
+              "errorField": "Quantity",
+              "given": {
+                "/Order/BackorderQuantity": "5"
+              },
+              "empty": [
+                "/Order/Quantity"
+              ],
+              "fires": true
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -769,6 +1067,29 @@
     ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And Sum(Items*/Count) > 100", "note": "fires when the order's total item count exceeds 100" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And Sum(CustomerName, ProductCode) > 0", "error": "MVK_NO_NUMBER", "fix": "Sum takes number fields" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "AS_ZERO",
+          "basis": "KERNEL-SEMANTICS §9; adapter.laws.RepetitionLawsTest (star); IF51 / adapter.laws.MultiFieldAggregateDiffTest (multi-field)",
+          "note": "an unspecified field counts as 0 (observationally identical to skipping for a sum — unlike Min/Max, where the substitution vs skip is visible)",
+          "probes": [
+            {
+              "dsl": "Sum(Quantity, BackorderQuantity) == 5",
+              "errorField": "Quantity",
+              "given": {
+                "/Order/BackorderQuantity": "5"
+              },
+              "empty": [
+                "/Order/Quantity"
+              ],
+              "fires": true
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -787,6 +1108,33 @@
     ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And MaxValue(Items*/Count) > 50", "note": "fires when any single line orders more than 50" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And MaxValue(CustomerName, ProductCode) > 0", "error": "MVK_NOT_SORTABLE", "fix": "MaxValue needs numbers (or dates)" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "SKIPPED",
+          "basis": "KERNEL-SEMANTICS §9 (ignores unspecified fields); IF51 / adapter.laws.MultiFieldAggregateDiffTest; the all-empty identity is KERNEL-FINDINGS §1 (= 0)",
+          "probes": [
+            {
+              "dsl": "FieldFilled(CustomerName) And MaxValue(Items*/Count) == -7",
+              "errorField": "CustomerName",
+              "rows": [
+                "/Order/Items[1]",
+                "/Order/Items[2]"
+              ],
+              "given": {
+                "/Order/Items[2]/Count": "-7"
+              },
+              "empty": [
+                "/Order/Items[1]/Count"
+              ],
+              "fires": true,
+              "note": "the empty cell is skipped — were it substituted 0, the max would be 0, not -7"
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -801,6 +1149,33 @@
     ],
     "gotchas": [  ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And MinValue(Items*/Count) >= 1", "note": "fires only when every specified line count is at least 1" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "SKIPPED",
+          "basis": "KERNEL-SEMANTICS §9 (ignores unspecified fields); IF51 / adapter.laws.MultiFieldAggregateDiffTest; the all-empty identity is KERNEL-FINDINGS §1 (= 0)",
+          "probes": [
+            {
+              "dsl": "FieldFilled(CustomerName) And MinValue(Items*/Count) == 20",
+              "errorField": "CustomerName",
+              "rows": [
+                "/Order/Items[1]",
+                "/Order/Items[2]"
+              ],
+              "given": {
+                "/Order/Items[2]/Count": "20"
+              },
+              "empty": [
+                "/Order/Items[1]/Count"
+              ],
+              "fires": true,
+              "note": "the empty cell is skipped — were it substituted 0, the min would be 0, not 20"
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -883,8 +1258,47 @@
     "returns": "number",
     "meaning": "The minimum of two or more numeric value expressions — the operand-list form, distinct from the field-list MinValue (which aggregates a repetition list).",
     "gotchas": [ { "text": "an empty number operand is substituted as 0 and can WIN the Min — unlike the starred MinValue, which skips empties; guard operands with AllFieldsFilled", "kind": "SURPRISE" } ],
-    "constraints": [ "one or more numeric value expressions (fields, arithmetic, …)" ],
+    "constraints": [ "one or more numeric value expressions (fields, arithmetic, …); DATE operands are accepted too (the min/max of dates — empty date operands are skipped, see the emptyOperand facet)" ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And Min([Quantity], [UnitPrice]) > 0", "note": "fires when both are positive (the smaller is above 0)" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "all",
+          "perKind": {
+            "number": "AS_ZERO",
+            "date": "SKIPPED"
+          },
+          "basis": "number: adapter.laws.EmptyValueLawsTest.operandListMinSeesAnEmptyNumberAsZero; date: IF58 / adapter.laws.DateAggregateDiffTest (VkDate.combine skips empty operands)",
+          "note": "the per-kind split: an empty NUMBER operand is substituted 0 and can WIN the Min; an empty DATE operand is SKIPPED (the date-bearing side wins)",
+          "probes": [
+            {
+              "dsl": "Min([Quantity], [BackorderQuantity]) == 0",
+              "errorField": "Quantity",
+              "given": {
+                "/Order/BackorderQuantity": "5"
+              },
+              "empty": [
+                "/Order/Quantity"
+              ],
+              "fires": true,
+              "note": "Min(0, 5) = 0 — the empty number wins"
+            },
+            {
+              "dsl": "Min([OrderDate], [DeliveryDate]) == \"10.06.2023\"",
+              "errorField": "OrderDate",
+              "given": {
+                "/Order/OrderDate": "2023-06-10"
+              },
+              "empty": [
+                "/Order/DeliveryDate"
+              ],
+              "fires": true,
+              "note": "the empty date is skipped — the min is the one filled date"
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -895,8 +1309,45 @@
     "returns": "number",
     "meaning": "The maximum of two or more numeric value expressions — the operand-list form, distinct from the field-list MaxValue (which aggregates a repetition list).",
     "gotchas": [ { "text": "an empty number operand is substituted as 0 (it can win a Max over negatives) — unlike the starred MaxValue, which skips empties", "kind": "SURPRISE" } ],
-    "constraints": [ "one or more numeric value expressions (fields, arithmetic, …)" ],
+    "constraints": [ "one or more numeric value expressions (fields, arithmetic, …); DATE operands are accepted too (the min/max of dates — empty date operands are skipped, see the emptyOperand facet)" ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And Max([Quantity], [UnitPrice]) > 100", "note": "fires when either exceeds 100" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "all",
+          "perKind": {
+            "number": "AS_ZERO",
+            "date": "SKIPPED"
+          },
+          "basis": "number: adapter.laws.EmptyValueLawsTest (the operand-list substitution, Min's sibling); date: IF58 / adapter.laws.DateAggregateDiffTest",
+          "probes": [
+            {
+              "dsl": "Max([Quantity], [BackorderQuantity]) == 0",
+              "errorField": "Quantity",
+              "given": {
+                "/Order/BackorderQuantity": "-5"
+              },
+              "empty": [
+                "/Order/Quantity"
+              ],
+              "fires": true,
+              "note": "Max(0, -5) = 0 — the substituted 0 beats the negative value"
+            },
+            {
+              "dsl": "Max([OrderDate], [DeliveryDate]) == \"10.06.2023\"",
+              "errorField": "OrderDate",
+              "given": {
+                "/Order/OrderDate": "2023-06-10"
+              },
+              "empty": [
+                "/Order/DeliveryDate"
+              ],
+              "fires": true
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -942,6 +1393,33 @@
     "gotchas": [  ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(Items*/Sku) < 2", "note": "fires when all line items are variants of one Sku" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(CustomerName, Quantity) < 2", "error": "MVK_STRING_ENUM_AND_NON_STRING_ENUM", "fix": "list only same-type fields" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "SKIPPED",
+          "basis": "IF51 / adapter.laws.MultiFieldAggregateDiffTest (the count family tallies filled cells only)",
+          "probes": [
+            {
+              "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(Items*/Count) == 1",
+              "errorField": "CustomerName",
+              "rows": [
+                "/Order/Items[1]",
+                "/Order/Items[2]"
+              ],
+              "given": {
+                "/Order/Items[2]/Count": "20"
+              },
+              "empty": [
+                "/Order/Items[1]/Count"
+              ],
+              "fires": true,
+              "note": "the empty cell is skipped — {empty, 20} has 1 distinct value; deliberately over the NON-index Count: an INDEX field's empty cell is mandatory-empty → not-check-relevant, which POISONS the count (the invalid class, not the empty class)"
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -957,6 +1435,30 @@
       "a field may not be listed more than once (MVK_DUPLICATE_PARAM1; MVK_DUPLICATE_PARAM2 via a group)"
     ],
     "validExample": { "dsl": "FieldFilled(Quantity) And NumberOfValueInFields(0 In Quantity, BackorderQuantity) > 0", "note": "fires when at least one of the two amounts is zero" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "1",
+          "behavior": "SKIPPED",
+          "basis": "fresh kernel probe (WI-5a) — no prior differential lock; the count-family sibling of NumberOfFilledFields",
+          "note": "an empty field never holds the sought value — it is NOT read as 0 (the probe seeks 0 and the empty cell does not match)",
+          "probes": [
+            {
+              "dsl": "NumberOfValueInFields(0 In Quantity, BackorderQuantity) == 0",
+              "errorField": "Quantity",
+              "given": {
+                "/Order/BackorderQuantity": "5"
+              },
+              "empty": [
+                "/Order/Quantity"
+              ],
+              "fires": true,
+              "note": "were the empty Quantity read as 0, the count of 0-valued fields would be 1"
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1058,6 +1560,29 @@
     "constraints": [ "both operands are dates (fields or date expressions), rendered as bare entity refs" ],
     "gotchas": [ { "text": "differences are a floor, not a calendar count (DifferenceInMonths(31.01,30.03)=1); fractional offsets truncate", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) > 7", "note": "fires when delivery is more than a week after order" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "all",
+          "behavior": "AS_ZERO",
+          "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (kernel getDatumsDiff: either operand empty reads 0)",
+          "note": "EITHER operand empty makes the difference 0 and the comparison FIRES (== 0 / >= 0 shapes) — deviating from the date default; a MALFORMED operand still suppresses",
+          "probes": [
+            {
+              "dsl": "DifferenceInDays(OrderDate, DeliveryDate) == 0",
+              "errorField": "OrderDate",
+              "given": {
+                "/Order/DeliveryDate": "2023-06-05"
+              },
+              "empty": [
+                "/Order/OrderDate"
+              ],
+              "fires": true
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1070,6 +1595,28 @@
     "constraints": [ "both operands are dates" ],
     "gotchas": [ { "text": "a floor, not a calendar count (KERNEL-SEMANTICS §6)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInMonths(OrderDate, DeliveryDate) >= 1", "note": "fires when at least a month apart" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "all",
+          "behavior": "AS_ZERO",
+          "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (kernel getDatumsDiff: either operand empty reads 0)",
+          "probes": [
+            {
+              "dsl": "DifferenceInMonths(OrderDate, DeliveryDate) == 0",
+              "errorField": "OrderDate",
+              "given": {
+                "/Order/DeliveryDate": "2023-06-05"
+              },
+              "empty": [
+                "/Order/OrderDate"
+              ],
+              "fires": true
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1082,6 +1629,28 @@
     "constraints": [ "both operands are dates" ],
     "gotchas": [ { "text": "a floor; a naive age check around leap days can be off (Add* vs Difference* disagree across leap years)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInYears(OrderDate, DeliveryDate) >= 1", "note": "fires when at least a year apart" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "all",
+          "behavior": "AS_ZERO",
+          "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (kernel getDatumsDiff: either operand empty reads 0)",
+          "probes": [
+            {
+              "dsl": "DifferenceInYears(OrderDate, DeliveryDate) == 0",
+              "errorField": "OrderDate",
+              "given": {
+                "/Order/DeliveryDate": "2023-06-05"
+              },
+              "empty": [
+                "/Order/OrderDate"
+              ],
+              "fires": true
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1094,6 +1663,28 @@
     "constraints": [ "both operands are date-times (fields or date-time expressions), rendered as bare entity refs" ],
     "gotchas": [ { "text": "a floor, not a rounded count; the sign follows operand order (DifferenceIn*(a,b) = b - a)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(ScheduledAt, CompletedAt) And DifferenceInHours(ScheduledAt, CompletedAt) > 24", "note": "fires when completion is more than a day after scheduling" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "all",
+          "behavior": "AS_ZERO",
+          "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (kernel getDatumsDiff: either operand empty reads 0)",
+          "probes": [
+            {
+              "dsl": "DifferenceInHours(ScheduledAt, CompletedAt) == 0",
+              "errorField": "ScheduledAt",
+              "given": {
+                "/Order/CompletedAt": "2023-06-10T12:00:00"
+              },
+              "empty": [
+                "/Order/ScheduledAt"
+              ],
+              "fires": true
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1106,6 +1697,28 @@
     "constraints": [ "both operands are date-times" ],
     "gotchas": [ { "text": "a floor, not a rounded count", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(ScheduledAt, CompletedAt) And DifferenceInMinutes(ScheduledAt, CompletedAt) > 90", "note": "fires when more than 90 minutes elapsed" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "all",
+          "behavior": "AS_ZERO",
+          "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (kernel getDatumsDiff: either operand empty reads 0)",
+          "probes": [
+            {
+              "dsl": "DifferenceInMinutes(ScheduledAt, CompletedAt) == 0",
+              "errorField": "ScheduledAt",
+              "given": {
+                "/Order/CompletedAt": "2023-06-10T12:00:00"
+              },
+              "empty": [
+                "/Order/ScheduledAt"
+              ],
+              "fires": true
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1118,6 +1731,28 @@
     "constraints": [ "both operands are date-times" ],
     "gotchas": [ { "text": "a floor, not a rounded count", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(ScheduledAt, CompletedAt) And DifferenceInSeconds(ScheduledAt, CompletedAt) > 0", "note": "fires when completion is strictly after scheduling" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "all",
+          "behavior": "AS_ZERO",
+          "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (kernel getDatumsDiff: either operand empty reads 0)",
+          "probes": [
+            {
+              "dsl": "DifferenceInSeconds(ScheduledAt, CompletedAt) == 0",
+              "errorField": "ScheduledAt",
+              "given": {
+                "/Order/CompletedAt": "2023-06-10T12:00:00"
+              },
+              "empty": [
+                "/Order/ScheduledAt"
+              ],
+              "fires": true
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1201,6 +1836,26 @@
     "meaning": "The year component of a date, as a number.",
     "constraints": [ "the operand is a date or date-time (a field or expression), rendered as a bare entity ref" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And YearFromDate(OrderDate) < 2020", "note": "fires for orders dated before 2020" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "AS_ZERO",
+          "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (kernel getDatumsTeil: empty operand reads 0)",
+          "note": "an empty date reads year 0 and the comparison FIRES — the date family's empty-as-0 backdoor, deviating from the date default (a bare date comparison is not evaluated); a MALFORMED date still suppresses",
+          "probes": [
+            {
+              "dsl": "YearFromDate(OrderDate) < 2020",
+              "errorField": "OrderDate",
+              "empty": [
+                "/Order/OrderDate"
+              ],
+              "fires": true
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1212,6 +1867,25 @@
     "meaning": "The month component of a date (1-12), as a number.",
     "constraints": [ "the operand is a date or date-time (a field or expression)" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And MonthFromDate(OrderDate) == 12", "note": "fires for December orders" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "AS_ZERO",
+          "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (kernel getDatumsTeil: empty operand reads 0)",
+          "probes": [
+            {
+              "dsl": "MonthFromDate(OrderDate) < 1",
+              "errorField": "OrderDate",
+              "empty": [
+                "/Order/OrderDate"
+              ],
+              "fires": true
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1224,6 +1898,25 @@
     "constraints": [ "the operand is a date or date-time (a field or expression)" ],
     "gotchas": [ { "text": "rejected on a partially-known date (a DateType with a date precision other than FULL, e.g. DAY_OPTIONAL) — MVK_INVALID_DATE_TYPE; resolve it to a concrete date with ValueAsDate first. (MonthFromDate/YearFromDate/QuarterFromDate ARE permitted on a DAY_OPTIONAL date.)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And DayFromDate(OrderDate) > 28", "note": "fires for orders late in the month" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "AS_ZERO",
+          "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (kernel getDatumsTeil: empty operand reads 0)",
+          "probes": [
+            {
+              "dsl": "DayFromDate(OrderDate) < 1",
+              "errorField": "OrderDate",
+              "empty": [
+                "/Order/OrderDate"
+              ],
+              "fires": true
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1235,6 +1928,26 @@
     "meaning": "The calendar quarter of a date (1-4), as a number.",
     "constraints": [ "the operand is a date or date-time (a field or expression)" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And QuarterFromDate(OrderDate) == 4", "note": "fires for fourth-quarter orders" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "AS_ZERO",
+          "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (kernel getDatumsTeil: empty operand reads 0)",
+          "note": "empty month reads 0, so the quarter of an empty date is 0",
+          "probes": [
+            {
+              "dsl": "QuarterFromDate(OrderDate) < 1",
+              "errorField": "OrderDate",
+              "empty": [
+                "/Order/OrderDate"
+              ],
+              "fires": true
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1277,13 +1990,41 @@
     ],
     "constraints": [ "the operands are date-range fields (or a flattened repetition list of them)" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And DateRangesOverlap(CoverageWindow, Items*/ItemCoverage)", "note": "fires when the order's coverage window overlaps a line-item coverage" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "all",
+          "behavior": "SKIPPED",
+          "basis": "IF72 / adapter.laws.DateRangeOverlapSemanticsDiffTest (isWertAngegeben != TRUE cells are skipped, not unknown-suppression); adapter.laws.DateRangeOverlapLawsTest",
+          "probes": [
+            {
+              "dsl": "DateRangesOverlap(CoverageWindow, Items*/ItemCoverage)",
+              "errorField": "CoverageWindow",
+              "rows": [
+                "/Order/Items[1]",
+                "/Order/Items[2]"
+              ],
+              "given": {
+                "/Order/CoverageWindow": "01.01.2024-31.01.2024",
+                "/Order/Items[2]/ItemCoverage": "15.01.2024-20.01.2024"
+              },
+              "empty": [
+                "/Order/Items[1]/ItemCoverage"
+              ],
+              "fires": true,
+              "note": "the empty range cell is skipped; the filled pair overlaps and fires"
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
     "id": "AtLeastOneDateRangeOverlaps",
     "kind": "predicate",
     "keywords": { "en": "AtLeastOneDateRangeOverlaps", "de": "MindestensEinDatumsBereichUeberlappend" },
-    "operands": [ { "type": "date-range" } ],
+    "operands": [ { "type": "date-range" }, { "type": "date-range-list" } ],
     "returns": "boolean",
     "meaning": "True iff the first date-range field's interval overlaps at least one date-range field in the list (start and end inclusive).",
     "gotchas": [
@@ -1293,6 +2034,51 @@
     ],
     "constraints": [ "a date-range field, then In, then a date-range field list (often a flattened repetition list)" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And AtLeastOneDateRangeOverlaps(CoverageWindow IN Items*/ItemCoverage)", "note": "fires when the coverage window overlaps any line-item coverage" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "EVALUATES_FALSE",
+          "basis": "IF72 / adapter.laws.DateRangeOverlapSemanticsDiffTest (a not-filled scalar → FALSE, a definite verdict — not UNKNOWN)",
+          "probes": [
+            {
+              "dsl": "AtLeastOneDateRangeOverlaps(CoverageWindow IN Items*/ItemCoverage)",
+              "errorField": "CoverageWindow",
+              "given": {
+                "/Order/Items[1]/ItemCoverage": "01.01.2024-31.01.2024"
+              },
+              "empty": [
+                "/Order/CoverageWindow"
+              ],
+              "fires": false
+            }
+          ]
+        },
+        {
+          "operand": "1",
+          "behavior": "SKIPPED",
+          "basis": "IF72 / adapter.laws.DateRangeOverlapSemanticsDiffTest (empty list cells are skipped)",
+          "probes": [
+            {
+              "dsl": "AtLeastOneDateRangeOverlaps(CoverageWindow IN Items*/ItemCoverage)",
+              "errorField": "CoverageWindow",
+              "rows": [
+                "/Order/Items[1]",
+                "/Order/Items[2]"
+              ],
+              "given": {
+                "/Order/CoverageWindow": "01.01.2024-31.01.2024",
+                "/Order/Items[2]/ItemCoverage": "15.01.2024-20.01.2024"
+              },
+              "empty": [
+                "/Order/Items[1]/ItemCoverage"
+              ],
+              "fires": true
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1304,6 +2090,25 @@
     "meaning": "The hour-of-day component (0-23) of a time or date-time, as a number.",
     "constraints": [ "the operand is a time or date-time (a field or expression), rendered as a bare entity ref" ],
     "validExample": { "dsl": "FieldFilled(PickupTime) And HoursFromTime(PickupTime) < 9", "note": "fires for pickups before 9am" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "AS_ZERO",
+          "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (kernel getDatumsTeil: empty operand reads 0)",
+          "probes": [
+            {
+              "dsl": "HoursFromTime(PickupTime) < 1",
+              "errorField": "PickupTime",
+              "empty": [
+                "/Order/PickupTime"
+              ],
+              "fires": true
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1315,6 +2120,25 @@
     "meaning": "The minute component (0-59) of a time or date-time, as a number.",
     "constraints": [ "the operand is a time or date-time (a field or expression)" ],
     "validExample": { "dsl": "FieldFilled(PickupTime) And MinutesFromTime(PickupTime) != 0", "note": "fires when the pickup minute is not on the hour" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "AS_ZERO",
+          "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (kernel getDatumsTeil: empty operand reads 0)",
+          "probes": [
+            {
+              "dsl": "MinutesFromTime(PickupTime) < 1",
+              "errorField": "PickupTime",
+              "empty": [
+                "/Order/PickupTime"
+              ],
+              "fires": true
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1326,6 +2150,25 @@
     "meaning": "The second component (0-59) of a time or date-time, as a number.",
     "constraints": [ "the operand is a time or date-time (a field or expression)" ],
     "validExample": { "dsl": "FieldFilled(PickupTime) And SecondsFromTime(PickupTime) == 0", "note": "fires when the pickup time has no seconds offset" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "AS_ZERO",
+          "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest (kernel getDatumsTeil: empty operand reads 0)",
+          "probes": [
+            {
+              "dsl": "SecondsFromTime(PickupTime) < 1",
+              "errorField": "PickupTime",
+              "empty": [
+                "/Order/PickupTime"
+              ],
+              "fires": true
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1372,6 +2215,27 @@
     "meaning": "A NUMBER field's value coerced to its string representation — typically to compare against, or concatenate with, other strings.",
     "constraints": [ "the operand is a single Number field (no category access); a string/enum operand is rejected with MVK_NO_NUMBER" ],
     "validExample": { "dsl": "FieldFilled(Quantity) And FieldValueAsString(Quantity) == \"0\"", "note": "fires when the quantity's string form is exactly 0" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "AS_EMPTY_STRING",
+          "basis": "IF59 / adapter.laws.SemanticIndexPresenceDiffTest (an absent/empty source reads \"\")",
+          "note": "the \"\" then follows the string rules downstream: suppressed in a bare comparison, evaluated in a concatenation",
+          "probes": [
+            {
+              "dsl": "[CustomerName] != FieldValueAsString(Quantity) + \"X\"",
+              "errorField": "CustomerName",
+              "empty": [
+                "/Order/Quantity"
+              ],
+              "fires": true,
+              "note": "empty Quantity reads \"\", the concatenation evaluates to \"X\" ≠ \"Acme\" — were the source suppressed, nothing would fire"
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {

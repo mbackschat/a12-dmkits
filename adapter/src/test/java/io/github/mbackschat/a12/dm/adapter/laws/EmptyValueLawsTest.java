@@ -32,7 +32,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
  *   <tr><td>confirm</td><td>{@code [TermsConfirmed] != True}</td><td>fires — treated as {@code False}</td></tr>
  *   <tr><td>boolean</td><td>{@code [ExpressShipping] == True}</td><td>not evaluated</td></tr>
  *   <tr><td>string</td><td>{@code [ProductCode] == "ABC"}</td><td>not evaluated</td></tr>
- *   <tr><td>date</td><td>{@code DifferenceInDays(OrderDate, DeliveryDate) < 0}</td><td>not evaluated</td></tr>
+ *   <tr><td>date</td><td>{@code [OrderDate] < "10.06.2023"}</td><td>not evaluated — but the date FUNCTIONS deviate: {@code DifferenceIn*}/the extractors read an empty operand as 0 and fire (IF73)</td></tr>
  *   <tr><td>string in a <b>concatenation</b></td><td>{@code [Full] != [First] + " " + [Last]}</td><td><b>evaluated</b> — empty concats to {@code ""}</td></tr>
  * </table>
  *
@@ -209,20 +209,21 @@ class EmptyValueLawsTest {
 
     @Test
     void emptyDateIsNotEvaluated() {
-        // an empty DATE is not evaluated (like string/boolean, unlike number=0). DifferenceInDays avoids
-        // the §6 date-literal syntax: DifferenceInDays(a, b) = b - a (verified), so Delivery before Order
-        // gives a negative diff.
-        String model = RuntimeLaws.withRule(ORDER, "/Order", "DeliveryBeforeOrder", "../OrderDate",
-                "DELIVERY_BEFORE", render(Dsl.differenceInDays(m.date("/Order/OrderDate"),
-                        m.date("/Order/DeliveryDate")).lt(0)));
+        // a DIRECT comparison on an empty DATE is not evaluated (like string/boolean, unlike number=0).
+        // Deliberately a direct field-vs-literal comparison: the historical DifferenceInDays shape was
+        // RETIRED here because IF73 showed the DIFFERENCE functions deviate — an empty operand reads as
+        // diff 0 and the comparison EVALUATES (the old `< 0` assertion only held because 0 < 0 is false).
+        // The function deviation is locked by EmptyOperandFiringDiffTest + the catalog facet probes.
+        String model = RuntimeLaws.withRule(ORDER, "/Order", "OrderedBeforeJune10", "../OrderDate",
+                "ORDERED_BEFORE", render(m.date("/Order/OrderDate").before(Dsl.dateValue("10.06.2023"))));
 
-        // both dates filled, DeliveryDate before OrderDate → diff < 0 → fires
-        assertTrue(RuntimeLaws.fires(model, "DELIVERY_BEFORE", ORDER_ROW, Map.of("/Order/CustomerName", "Acme",
-                "/Order/OrderDate", "2023-06-10", "/Order/DeliveryDate", "2023-06-05")),
-                "with both dates filled the comparison evaluates and fires");
+        // filled date before the literal → fires
+        assertTrue(RuntimeLaws.fires(model, "ORDERED_BEFORE", ORDER_ROW, Map.of("/Order/CustomerName", "Acme",
+                "/Order/OrderDate", "2023-06-05")),
+                "with the date filled the comparison evaluates and fires");
         // OrderDate empty (filled row) → the date comparison is NOT evaluated → does not fire
-        assertFalse(RuntimeLaws.fires(model, "DELIVERY_BEFORE", ORDER_ROW, Set.of("/Order/OrderDate"),
-                Map.of("/Order/CustomerName", "Acme", "/Order/DeliveryDate", "2023-06-05")),
+        assertFalse(RuntimeLaws.fires(model, "ORDERED_BEFORE", ORDER_ROW, Set.of("/Order/OrderDate"),
+                Map.of("/Order/CustomerName", "Acme")),
                 "an empty date is not evaluated, so the comparison does not fire (unlike an empty number → 0)");
     }
 
