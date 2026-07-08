@@ -272,6 +272,7 @@ class RealCorpusSweepTest {
         fun modelSkip(cls: String, file: Path, t: Throwable) { modelSkips.merge(cls, 1) { a, b -> a + b } }
         fun evalSkip(cls: String, file: Path, t: Throwable) { evalSkips.merge(cls, 1) { a, b -> a + b } }
         private val divergenceClasses = LinkedHashMap<String, Int>()
+        private val computeAtomClasses = LinkedHashMap<String, Int>()
         private var divergenceCount = 0
         fun divergence(file: Path, seed: Int, op: String, kernel: List<String>, interp: List<String>) {
             divergenceCount++
@@ -287,6 +288,22 @@ class RealCorpusSweepTest {
                 else -> "interp-only (interp extra)"
             }
             divergenceClasses.merge("$op: $shape", 1) { a, b -> a + b }
+            if (op == "compute") classifyComputeAtoms(kernel, interp)
+        }
+
+        /** Per-differing-pointer OUTCOME-KIND classification for a compute divergence (the IG44 CVV instrumentation)
+         *  — the pair (kernel-side kind, interp-side kind) ∈ {VALUE, CLEARED, ERRORED, absent} for each pointer the
+         *  two engines disagree on. License-safe: it retains only the outcome KINDS + a count, never the pointer path
+         *  or the computed value (the sig is split at the FIRST `|`, discarding both). CVV = `kernel=CLEARED,interp=VALUE`. */
+        private fun classifyComputeAtoms(kernel: List<String>, interp: List<String>) {
+            fun kinds(sigs: List<String>) = sigs.associate { it.substringBefore('|') to it.substringAfter('|').substringBefore('|') }
+            val k = kinds(kernel)
+            val i = kinds(interp)
+            for (ptr in (k.keys + i.keys)) {
+                val kk = k[ptr] ?: "absent"
+                val ik = i[ptr] ?: "absent"
+                if (kk != ik) computeAtomClasses.merge("kernel=$kk,interp=$ik", 1) { a, b -> a + b }
+            }
         }
         val divergences: Int get() = divergenceCount
 
@@ -313,6 +330,10 @@ class RealCorpusSweepTest {
             if (divergenceClasses.isNotEmpty()) {
                 println("  divergence classes (shape — the WI-T triage taxonomy):")
                 divergenceClasses.entries.sortedByDescending { it.value }.forEach { (cls, n) -> println("     [$n] $cls") }
+            }
+            if (computeAtomClasses.isNotEmpty()) {
+                println("  compute atom classes (per differing pointer — kernel-kind vs interp-kind; CVV = kernel=CLEARED,interp=VALUE):")
+                computeAtomClasses.entries.sortedByDescending { it.value }.forEach { (cls, n) -> println("     [$n] $cls") }
             }
         }
     }
