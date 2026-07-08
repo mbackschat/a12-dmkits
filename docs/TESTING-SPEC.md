@@ -95,7 +95,8 @@ Consequence: the kernel is an unstable dependency, so the suite is also an **ear
 | **Structural-law guardians** | did the kernel *add/move/rename* a construct, code, slot, or category we must track? | see the guardian table below | reflective parity vs the kernel's own enums/accessors |
 | **CLI self-describing & conformance** | does the CLI describe its own verbs/params/I-O, and does every mutating verb refuse misuse with a *structured* diagnostic (not a bare fail)? | the `cli` conformance suite — see below | the live picocli tree + a derived fuzzer |
 | **Coverage harnesses** (opt-in) | what fraction of real foreign rules do we read? | `KernelMmReadCoverageTest`, `Corpus1ReadCoverageTest` | real corpora (gated; commit nothing) |
-| **Catalog examples (N7)** | is every catalog `validExample` actually kernel-valid? | `catalog/CatalogExamplesAreKernelValidTest` | real kernel |
+| **Catalog examples (N7)** | is every catalog `validExample` actually kernel-valid? | `catalog/CatalogExamplesAreKernelValidTest` (incl. the correctives' reject probes — each rejected with its code) | real kernel |
+| **Catalog facet probes** | is every catalog *facet claim* (the `semantics` machine tier + the `emptyOperandDefaults` header) true on the kernel **runtime**? Every claim carries embedded probes; each is (1) kernel-ACCEPTED and (2) fires ⟺ declared — so a facet value cannot rot ([CATALOG-SPEC §5](CATALOG-SPEC.md)) | `adapter/…/laws/CatalogFacetProbesTest` (execution) + `catalog/OperatorCatalogTest` (structural: a claim without a probe fails) | real kernel runtime (`RuntimeLaws`) |
 | **Self-sufficiency eval (N6)** | can a cold LLM author/read rules from the CLI + skill alone? | the Workflow runner | clean subagent + judge — [`EVAL-SPEC.md`](EVAL-SPEC.md) |
 
 ## The two law tiers — the distinction people conflate

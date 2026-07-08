@@ -87,6 +87,25 @@ class CatalogExamplesAreKernelValidTest {
                 }));
     }
 
+    /**
+     * The correctives' reject lane (CATALOG-SPEC §6): each operand-conditional corrective carries a probe
+     * DSL with exactly its operand shape, which the kernel must reject with the corrective's {@code code}
+     * — so a corrective can't document a trigger that no longer exists.
+     */
+    @TestFactory
+    Stream<DynamicTest> everyCorrectiveProbeIsRejectedWithItsCode() {
+        return CATALOG.entries().stream()
+                .flatMap(e -> e.correctives().stream()
+                        .map(c -> dynamicTest(e.id() + " · corrective " + c.code() + " " + c.whenOperands(), () -> {
+                            ValidationResult result = check(c.probe().dsl());
+                            assertFalse(result.ok(),
+                                    () -> e.id() + " corrective probe '" + c.probe().dsl() + "' was unexpectedly accepted");
+                            assertTrue(result.diagnostics().stream()
+                                            .anyMatch(p -> p.code().filter(c.code()::equals).isPresent()),
+                                    () -> e.id() + " corrective probe expected " + c.code() + ", got: " + result.diagnostics());
+                        })));
+    }
+
     private static ValidationResult check(String errorCondition) {
         String errorField = firstReferencedField(errorCondition);
         DraftRule rule = new DraftRule(
