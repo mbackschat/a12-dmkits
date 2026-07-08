@@ -378,6 +378,51 @@ class Interpreter(
     }
 
     /**
+     * Whether a starred INDEX-field operand carries ANY NOT-CHECK-RELEVANT cell — the kernel's field-local index
+     * errors (IF15/IF60, the VLQ [classifyVlqCell] mechanism generalized to the aggregate/count path): a
+     * mandatory-EMPTY (or absent) cell of the auto-required index field, and EVERY cell of a DUPLICATED value
+     * (`uniqueIndex`). A malformed cell is already not-check-relevant via [resolveValue] → [Val.Unknown], so it is
+     * NOT re-counted here. The kernel's shared aggregate loop `combineFeldListe` (Sum/Min/Max/NumberOfDifferentValues)
+     * and `anzahlAngegebenerFelder` (NumberOfFilledFields) return the NOT-CHECK-RELEVANT value on the FIRST such
+     * cell, so the whole aggregate is non-evaluable and the referencing rule is suppressed (`IndexAggregateDiffTest`).
+     * False for a non-index field or a clean index column.
+     */
+    private fun indexOperandNonEvaluable(c: EvalContext, path: String): Boolean {
+        if (path !in indexFields) return false
+        val cells = c.starCells(path)
+        val dups = duplicatedValues(cells)
+        return cells.any { (_, v) -> v == null || (v !is Val.Unknown && v in dups) }
+    }
+
+    /**
+     * The instantiated fill tally of a starred INDEX-field operand, index-aware: a mandatory-EMPTY/absent cell and
+     * a DUPLICATED-value cell are NOT-CHECK-RELEVANT (the kernel's `isWertAngegeben` → UNKNOWN), so they land in
+     * NEITHER `t` nor `f` (the [FillScope.hasUnknownInst] bucket) exactly like a malformed cell — never as an empty
+     * (`f`) or present (`t`) cell. This drives the fill quantifiers over an index field: `AtLeastOneFieldFilled`
+     * stops firing when every cell is not-check-relevant (a fully-duplicated index), `NoFieldFilled` stops firing
+     * when a cell is not-check-relevant (`f != n`). The DECLARED-range flags are taken from the plain [fillScope]
+     * (the un-instantiated tail dominates them). `IndexAggregateDiffTest`.
+     */
+    private fun indexStarFillScope(c: EvalContext, path: String): FillScope {
+        val declared = c.fillScope(path, isGroup = false)
+        val cells = c.starCells(path)
+        val dups = duplicatedValues(cells)
+        var t = 0
+        var n = 0
+        var unknown = false
+        for ((_, v) in cells) {
+            n++
+            when {
+                v == null -> unknown = true                 // mandatory-empty index cell → not-check-relevant
+                v is Val.Unknown -> unknown = true          // malformed → not-check-relevant
+                v in dups -> unknown = true                 // duplicated value → uniqueIndex → not-check-relevant
+                else -> t++
+            }
+        }
+        return FillScope(t, 0, n, unknown, declared.allFilledDeclared, declared.anyEmptyDeclared)
+    }
+
+    /**
      * Directional fillability of a value FUNCTION. The starred aggregates carry the kernel's `NumberCombiner`
      * directions while their tail can still grow (an empty operand or an un-instantiated tail): a `Sum` can
      * grow, and shrink only if the summed field is SIGNED; `MaxValue` can only grow; `MinValue` can only
@@ -785,7 +830,11 @@ class Interpreter(
         for (a in args) {
             val path = scopePathOf(a)
             val c = ctxOf(a)
-            val fs = c.fillScope(path, isGroup = c.declaredKind(path) == null)
+            // A starred index-field operand's instantiated tally is index-aware (mandatory-empty / duplicated
+            // cells are not-check-relevant → the UNKNOWN bucket), so a fill quantifier over an index field matches
+            // the kernel's `isWertAngegeben` (AtLeastOne stops firing on a fully-duplicated index; IF15/IF60).
+            val fs = if (a is Expr.Star && a.having == null && a.path in indexFields) indexStarFillScope(c, a.path)
+                     else c.fillScope(path, isGroup = c.declaredKind(path) == null)
             t += fs.tInst; f += fs.fInst; n += fs.nInst; unknown = unknown || fs.hasUnknownInst
             allFilled = allFilled && fs.allFilledDeclared
             anyEmpty = anyEmpty || fs.anyEmptyDeclared
@@ -1024,6 +1073,9 @@ class Interpreter(
                     if (computeMode) throw PoisonedReadException(arg.path)   // …and a POISON on the compute path (IF85)
                     return Val.Unknown
                 }
+                // An index field's not-check-relevant cell (mandatory-empty / duplicated value) makes the count
+                // non-evaluable too — `anzahlAngegebenerFelder` returns NICHT_PRUEF_REL on the first UNKNOWN cell.
+                if (indexOperandNonEvaluable(ctx, arg.path)) return Val.Unknown
                 count += cells.size
             }
             else -> {
@@ -2075,6 +2127,10 @@ class Interpreter(
             if (computeMode && ctx.starScanStates(star.path).any { it == CellState.INVALID }) {
                 throw PoisonedReadException(star.path)
             }
+            // An index field's not-check-relevant cell (mandatory-empty / duplicated value) makes the whole
+            // aggregate non-evaluable — the kernel's `combineFeldListe` returns NICHT_PRUEF_REL on the first such
+            // cell, so the referencing rule is suppressed (IF15/IF60 generalized to aggregates).
+            if (indexOperandNonEvaluable(ctx, star.path)) return listOf(Val.Unknown)
             return ctx.star(star.path)
         }
         val group = star.path.substringBeforeLast('/')
