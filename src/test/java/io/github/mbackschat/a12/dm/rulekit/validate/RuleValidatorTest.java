@@ -119,6 +119,25 @@ class RuleValidatorTest {
     }
 
     @Test
+    void attachesAFixToTheErrorFieldNotReferencedCode() {
+        // The model-level-aggregate mistake (WI-5c probe, 2026-07-09): a valid condition that never names
+        // the rule's error field → MVK_ERROR_FIELD_NOT_REFERENCED. Another orphan structural code (owned by
+        // no operator), so the enricher's structural fallback must carry the corrective, not a bare message.
+        DraftRule rule = new DraftRule(
+                "/Subscription", "UnreferencedRule", "../Tier",
+                "FieldFilled(/Subscription/Billing/BaseFee)", "UNREFERENCED", "ERROR");
+
+        ValidationResult result = new RuleValidator().check(modelJson, rule);
+
+        Diagnostic unreferenced = result.diagnostics().stream()
+                .filter(d -> d.code().filter("MVK_ERROR_FIELD_NOT_REFERENCED"::equals).isPresent())
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("expected MVK_ERROR_FIELD_NOT_REFERENCED, got: " + result.diagnostics()));
+        assertTrue(unreferenced.fix().filter(f -> !f.isBlank()).isPresent(),
+                () -> "the not-referenced code must carry a corrective fix, got: " + unreferenced);
+    }
+
+    @Test
     void validatesEnumComparisonAgainstTheKernel() {
         BoundModel m = Fixtures.subscription();
         // Tier is a text-bearing enum (BASIC/PRO/ENTERPRISE) — comparison by stored value is accepted.

@@ -12,7 +12,7 @@ import java.util.Optional;
  * <ol>
  *   <li><b>ORPHAN codes</b> — <em>no</em> operator's {@code invalidExample} documents them, so the join has
  *       nothing to attach: the placement / iteration-scope family ({@code MVK_ERROR_FIELD_NOT_IN_RULEGROUP},
- *       {@code MVK_NEG_CONDITION_IN_ITERATION}), the bare <b>syntax</b> code the parser raises with no message
+ *       {@code MVK_ERROR_FIELD_NOT_REFERENCED}, {@code MVK_NEG_CONDITION_IN_ITERATION}), the bare <b>syntax</b> code the parser raises with no message
  *       of its own ({@code MVK_UNEXPECTED_TOKEN} — the likely cause, a lowercase boolean / unquoted string /
  *       unbracketed field operand, must be inferred from the DSL's literal conventions), the
  *       <b>entity-resolution</b> code ({@code MVK_INVALID_ENTITY} — a bare/relative name that doesn't bind;
@@ -72,6 +72,15 @@ public final class StructuralKernelFix {
                     "A rule's iteration scope is the set of repeatable groups among the fields it references "
                             + "(including the error field); the error field must lie in every repeatably-referenced group, "
                             + "otherwise the per-row error has nowhere to attach."),
+            "MVK_ERROR_FIELD_NOT_REFERENCED", new Hint(
+                    "Name the rule's error field somewhere in the condition. Most often this is a model-level "
+                            + "aggregate rule whose condition only references the aggregated per-row path — reference "
+                            + "the error field by comparing the aggregate AGAINST it (`[FeeCap] < Sum(Lines*/Amount)` "
+                            + "references FeeCap) or by guarding with `FieldFilled(<the error field>) And …`.",
+                    "Every rule's error field must appear among the fields its condition references — the kernel "
+                            + "attaches the fired error to that field and rejects a condition that never names it. An "
+                            + "aggregate's starred path does not reference the (non-repeatable) error field, so "
+                            + "model-level aggregate rules hit this unless the error field is referenced explicitly."),
             "MVK_NEG_CONDITION_IN_ITERATION", new Hint(
                     "Guard the negative predicate with a positive existence check on the row: "
                             + "GroupFilled(<the repeatable group>) And <your negative condition> — so the rule fires "
