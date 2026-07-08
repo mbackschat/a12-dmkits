@@ -194,7 +194,7 @@ The mechanism: an entry carries `correctives` — per-`code`, per-operand-shape 
 
 ## 7. Serving — `dmtool operators`
 
-`dmtool operators <id>` serves the full entry including the machine tier: `semantics` (the facet claims — probes elided, they are CI detail; the per-dimension `value`/`behavior`/`perKind`, `basis`, `note` travel), the header defaults ride the bare `operators` list response as `emptyOperandDefaults` (kind → behavior), `correctives` (code, whenOperands, fix), and `gotchas` **with their `kind`**. The payload is part of the self-describing surface (CLI-SPEC §1a): a cold agent must be able to learn "an empty number fires this comparison" and "the tolerance band is strict" from the binary alone.
+`dmtool operators <id>` serves the full entry including the machine tier: `semantics` (the facet claims across **every** dimension — `emptyOperand`, `boundary`, `iterationRange`, `aggregateIdentity`, `polarity`; probes elided, they are CI detail; the per-dimension `value`/`behavior`/`perKind`, `basis`, `note` travel), the header defaults ride the bare `operators` list response as `emptyOperandDefaults` (kind → behavior), `correctives` (code, whenOperands, fix), and `gotchas` **with their `kind`**. The payload is part of the self-describing surface (CLI-SPEC §1a): a cold agent must be able to learn "an empty number fires this comparison", "the tolerance band is strict", and "`<` and `<=` differ" from the binary alone. It is also the **eval judge's ground-truth oracle** (§8) — the judge reads this block to reason about semantic equivalence.
 
 ## 8. Consumers (what makes the facets pass the §21D consumer-exists razor)
 
@@ -202,9 +202,9 @@ The mechanism: an entry carries `correctives` — per-`code`, per-operand-shape 
 |---|---|---|
 | `lint.Linter` — `RK_UNGUARDED_NUMBER_COMPARISON` | header defaults + `AS_ZERO` claims: computes the value a comparison side takes when a field inside it is empty, flags precisely (no hand-listed operator patterns) | WI-5a |
 | `lint.SpanResolver` — fix selection | `correctives` + the typed AST operand classification | WI-5a |
-| `dmtool operators` | the whole machine tier (§7) | WI-5a |
-| eval judge | facet claims as the equivalence oracle (empty-operand variants; boundary — `<` ≢ `<=`) | WI-5b |
-| facet → generated corpus cases | each claim implies conformance-corpus cases | WI-5b |
+| `dmtool operators` | the whole machine tier (§7) — all five dimensions | WI-5a (emptyOperand); WI-5b (boundary/iterationRange/aggregateIdentity/polarity) |
+| eval judge (`benchmark.workflow.js`) | the served `semantics` block as its equivalence oracle — empty-operand variants, `boundary` (`<` ≢ `<=`), `aggregateIdentity` (a date `Min`(∅) can't fire), `polarity`; wired into the rule + computation judge prompts, verify-by-execution primary. The served surface is guarded by `OperatorsVerbTest` | WI-5b |
+| facet → conformance cases | each claim's kernel-executed **probe** (§5) IS its conformance case — accepted + fires⟺declared (+ outcome for polarity) against the real kernel | WI-5b |
 
 ## 9. Population state & boundaries (WI-5a → WI-5b)
 

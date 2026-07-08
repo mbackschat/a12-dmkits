@@ -89,6 +89,43 @@ class OperatorsVerbTest {
         assertTrue(!correctives.get(0).path("fix").asText().isBlank());
     }
 
+    /**
+     * The WI-5b dimensions ride the same machine tier (CATALOG-SPEC §3a–§3d) — this is the eval judge's
+     * ground-truth source (it consults {@code operators <id>} for per-operator semantics), so the
+     * serving must expose each dimension's {@code value}/{@code perKind} + {@code basis}, probes elided.
+     */
+    @Test
+    void servesTheWi5bDimensions() throws Exception {
+        // boundary — the tolerance band is STRICT
+        JsonNode tol = sem(CliTestSupport.run("operators", "DiffersWithToleranceRange1")).path("boundary");
+        assertEquals("STRICT", tol.path("value").asText(), "boundary served");
+        assertTrue(!tol.path("basis").asText().isBlank(), "boundary basis travels");
+        assertTrue(tol.path("probes").isMissingNode(), "probes are CI detail, not consumer payload");
+
+        // iterationRange — AllFieldsFilled scans the DECLARED range
+        assertEquals("DECLARED",
+                sem(CliTestSupport.run("operators", "AllFieldsFilled")).path("iterationRange").path("value").asText());
+
+        // aggregateIdentity — Sum folds to ZERO; Min is per-kind (number ZERO, date NO_VALUE)
+        assertEquals("ZERO",
+                sem(CliTestSupport.run("operators", "Sum")).path("aggregateIdentity").path("value").asText());
+        JsonNode aiMin = sem(CliTestSupport.run("operators", "Min")).path("aggregateIdentity").path("perKind");
+        assertEquals("ZERO", aiMin.path("number").asText());
+        assertEquals("NO_VALUE", aiMin.path("date").asText());
+
+        // polarity — the date extractor is SYMMETRIC, Length is GROW_ONLY
+        assertEquals("SYMMETRIC",
+                sem(CliTestSupport.run("operators", "YearFromDate")).path("polarity").path("value").asText());
+        assertEquals("GROW_ONLY",
+                sem(CliTestSupport.run("operators", "Length")).path("polarity").path("value").asText());
+    }
+
+    /** The {@code semantics} node of an {@code operators <id>} response (asserts the call succeeded). */
+    private static JsonNode sem(CliTestSupport.Result res) throws Exception {
+        assertEquals(0, res.code(), res::err);
+        return MAPPER.readTree(res.out()).path("semantics");
+    }
+
     @Test
     void bareListCarriesTheEmptyOperandDefaults() throws Exception {
         CliTestSupport.Result res = CliTestSupport.run("operators");

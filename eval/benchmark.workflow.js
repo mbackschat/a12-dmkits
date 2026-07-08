@@ -729,8 +729,15 @@ documents fire — so a candidate that ADDS (or drops) such a guard over the gol
 equivalent to the gold. This redundancy does NOT extend to (a) NUMBER comparisons, nor (b) date/aggregate
 FUNCTIONS like \`DifferenceInDays\`/\`YearFromDate\` on an ABSENT date, which are formal errors and so genuinely
 REQUIRE the presence guard — keep flagging a real difference there.
+GROUND TRUTH (machine-readable): \`${CLI} operators <id>\` serves each operator's \`semantics\` block — consult it
+when equivalence hinges on a per-operator fact, in addition to executing. It carries: \`emptyOperand\` (the
+type-aware empty behavior above), \`boundary\` (STRICT vs INCLUSIVE — so \`< k\` and \`<= k\` are NOT equivalent,
+nor \`> k\`/\`>= k\`, unless the field's DOMAIN makes them coincide, e.g. an INTEGER field where \`< 100\` ≡ \`<= 99\`),
+\`aggregateIdentity\` (what an all-empty aggregate folds to — \`Sum(∅)=0\` fires \`==0\`, but a date \`Min\`/\`Max\` over
+an empty selection yields no value and CANNOT fire), and \`polarity\` (an empty-operand firing's value-vs-omission
+direction). Treat these as authoritative; they are the same facts the kernel enforces.
 VERIFY BY EXECUTION — the kernel is the arbiter; PREFER this over reasoning whenever equivalence hinges on a
-kernel semantic (empty operands, polarity, path resolution). You have the CLI: write 2-4 small documents to
+kernel semantic (empty operands, boundary, polarity, aggregate empty-fold, path resolution). You have the CLI: write 2-4 small documents to
 files (JSON \`{"fields":{…}}\` — a repeatable group is an array of row objects, a field its text value, \`null\`
 = present-but-empty; see \`${CLI} schema model eval\`) that exercise the fields BOTH conditions reference at their
 edges (empty vs filled, a boundary value, each enum value). For each doc run, for the GOLD then the CANDIDATE,
@@ -807,6 +814,11 @@ ADDING it over the gold's own date operands IS equivalent to the unguarded gold 
 empty NUMBER operand is substituted with 0 (the operation IS evaluated, yielding 0), so a presence guard over
 a NUMBER operand is NOT redundant: the guarded form computes nothing (cleared) while the unguarded computes 0
 — a real difference, NOT equivalent. (String CONCATENATION also evaluates: empties concat as "".)
+GROUND TRUTH: \`${CLI} operators <id>\` serves each operator's \`semantics\` — consult it as authoritative for a
+per-operator fact. Most relevant here is \`aggregateIdentity\`: an all-empty aggregate SELECTION folds to 0 for a
+NUMBER \`Sum\`/\`Min\`/\`Max\`/\`FirstFilledValue\` (the operation yields 0) but to NO value for a DATE \`Min\`/\`Max\`/
+\`FirstFilledValue\` (the computation CLEARS) — so two computations that differ only over an empty selection may
+still diverge by the operand kind. Also \`emptyOperand\` (per-operand empty behavior) and \`polarity\`.
 Reference gold: ${JSON.stringify(r.task.gold)}.
 Candidate: ${JSON.stringify({ computedField: r.out.computedField, commonPrecondition: r.out.commonPrecondition, alternatives: r.out.alternatives })}.
 Return ONLY JSON: {"equivalent": true|false, "why": "<one sentence>"}`,

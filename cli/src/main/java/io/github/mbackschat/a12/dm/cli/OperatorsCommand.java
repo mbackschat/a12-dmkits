@@ -154,27 +154,9 @@ final class OperatorsCommand extends BaseCommand {
                 gn.put("kind", x.kind().name());
             });
         }
-        // the emptyOperand facet claims (CATALOG-SPEC §4/§7) — the machine-readable empty-operand
-        // semantics; the CI-executed probes are elided (verification detail, not consumer payload)
-        if (!e.emptyOperandClaims().isEmpty()) {
-            ObjectNode sem = n.putObject("semantics");
-            ArrayNode claims = sem.putArray("emptyOperand");
-            e.emptyOperandClaims().forEach(c -> {
-                ObjectNode cn = claims.addObject();
-                cn.put("operand", c.operand());
-                if (c.behavior() != null) {
-                    cn.put("behavior", c.behavior().name());
-                }
-                if (!c.perKind().isEmpty()) {
-                    ObjectNode pk = cn.putObject("perKind");
-                    c.perKind().forEach((kind, b) -> pk.put(kind, b.name()));
-                }
-                cn.put("basis", c.basis());
-                if (c.note() != null) {
-                    cn.put("note", c.note());
-                }
-            });
-        }
+        // the semantics facets (CATALOG-SPEC §3–§4/§7) — the machine-readable per-operator semantics
+        // across every dimension; the CI-executed probes are elided (verification detail, not payload)
+        putSemantics(n, e);
         // the operand-conditional correctives (CATALOG-SPEC §6) — per operand shape, the fix for a code
         if (!e.correctives().isEmpty()) {
             ArrayNode corr = n.putArray("correctives");
@@ -201,6 +183,77 @@ final class OperatorsCommand extends BaseCommand {
             n.put("sinceKernel", e.sinceKernel());
         }
         return n;
+    }
+
+    /**
+     * Emit the {@code semantics} facet block (CATALOG-SPEC §3) — every populated dimension, probes
+     * elided. The block is created only if at least one dimension speaks, so an operator with no facet
+     * carries no empty {@code semantics} node.
+     */
+    private static void putSemantics(ObjectNode n, OperatorEntry e) {
+        boolean any = !e.emptyOperandClaims().isEmpty() || e.boundaryClaim() != null
+                || e.iterationRangeClaim() != null || e.aggregateIdentityClaim() != null
+                || e.polarityClaim() != null;
+        if (!any) {
+            return;
+        }
+        ObjectNode sem = n.putObject("semantics");
+        if (!e.emptyOperandClaims().isEmpty()) {
+            ArrayNode claims = sem.putArray("emptyOperand");
+            e.emptyOperandClaims().forEach(c -> {
+                ObjectNode cn = claims.addObject();
+                cn.put("operand", c.operand());
+                if (c.behavior() != null) {
+                    cn.put("behavior", c.behavior().name());
+                }
+                if (!c.perKind().isEmpty()) {
+                    ObjectNode pk = cn.putObject("perKind");
+                    c.perKind().forEach((kind, b) -> pk.put(kind, b.name()));
+                }
+                cn.put("basis", c.basis());
+                if (c.note() != null) {
+                    cn.put("note", c.note());
+                }
+            });
+        }
+        if (e.boundaryClaim() != null) {
+            ObjectNode b = sem.putObject("boundary");
+            b.put("value", e.boundaryClaim().value().name());
+            b.put("basis", e.boundaryClaim().basis());
+            if (e.boundaryClaim().note() != null) {
+                b.put("note", e.boundaryClaim().note());
+            }
+        }
+        if (e.iterationRangeClaim() != null) {
+            ObjectNode ir = sem.putObject("iterationRange");
+            ir.put("value", e.iterationRangeClaim().value().name());
+            ir.put("basis", e.iterationRangeClaim().basis());
+            if (e.iterationRangeClaim().note() != null) {
+                ir.put("note", e.iterationRangeClaim().note());
+            }
+        }
+        if (e.aggregateIdentityClaim() != null) {
+            ObjectNode ai = sem.putObject("aggregateIdentity");
+            if (e.aggregateIdentityClaim().value() != null) {
+                ai.put("value", e.aggregateIdentityClaim().value().name());
+            }
+            if (!e.aggregateIdentityClaim().perKind().isEmpty()) {
+                ObjectNode pk = ai.putObject("perKind");
+                e.aggregateIdentityClaim().perKind().forEach((kind, v) -> pk.put(kind, v.name()));
+            }
+            ai.put("basis", e.aggregateIdentityClaim().basis());
+            if (e.aggregateIdentityClaim().note() != null) {
+                ai.put("note", e.aggregateIdentityClaim().note());
+            }
+        }
+        if (e.polarityClaim() != null) {
+            ObjectNode p = sem.putObject("polarity");
+            p.put("value", e.polarityClaim().value().name());
+            p.put("basis", e.polarityClaim().basis());
+            if (e.polarityClaim().note() != null) {
+                p.put("note", e.polarityClaim().note());
+            }
+        }
     }
 
     private int emit(ObjectNode node) {
