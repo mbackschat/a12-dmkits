@@ -57,6 +57,7 @@ class FirstFilledValueDiffTest {
     }
 
     private val gt10 = render(Dsl.firstFilledNumber(m.flatten("/Cart/Lines*/Qty")).gt(10))
+    private val lt5 = render(Dsl.firstFilledNumber(m.flatten("/Cart/Lines*/Qty")).lt(5))
 
     // The first FILLED row decides; an earlier empty row is skipped, a later row is invisible.
     @Test fun firesOnFirstFilledSkippingEmpty() = agree(gt10, listOf(null, "30", "5"), "first filled = 30 > 10")
@@ -65,6 +66,12 @@ class FirstFilledValueDiffTest {
     @Test fun malformedAtFirstFilledSuppresses() = agree(gt10, listOf(null, "-0", "99"), "first filled = -0 (formal error) → suppressed")
     @Test fun noFilledRowDoesNotFire() = agree(gt10, listOf(null, null), "no filled Qty → no first value → not fire")
     @Test fun singleFilledRow() = agree(gt10, listOf("42"), "first filled = 42 > 10")
+
+    // IF80: NO filled value → the kernel's NumberCombiner returns the fillable 0 (not non-check-relevant), so a
+    // `< 5` FIRES (0 < 5) and is OMISSION (filling could raise it off 0). Before the fix the interpreter returned
+    // Unknown → suppressed, so this DISTINGUISHES empty-as-0 from empty-as-unknown (the `> 10` cases could not).
+    @Test fun emptyFirstFilledIsZeroSoLt5Fires() = agree(lt5, listOf<String?>(null, null), "no filled Qty → FirstFilledValue = 0 → 0 < 5 FIRES (OMISSION)")
+    @Test fun emptyFirstFilledIsZeroSoGt10DoesNotFire() = agree(gt10, listOf<String?>(), "no rows → FirstFilledValue = 0 → 0 > 10 does not fire")
 
     // Polarity: an empty row BEFORE the first filled one → OMISSION (filling it could become the new first
     // value); a first-row-filled (or only-later-empty) case → VALUE (the first value is fixed). KERNEL-FINDINGS.

@@ -1834,12 +1834,15 @@ class Interpreter(
      *  validation (or a non-star / Having operand): the plain first-filled value. */
     private fun firstFilledValue(f: Expr.Func): Val {
         val star = f.args.singleOrNull() as? Expr.Star
-        if (cellRelevant == null || star == null || star.having != null) return starVals(f).firstOrNull() ?: Val.Unknown
+        // NO filled value in the selection → the kernel's `NumberCombiner` returns the fillable 0 (`ZAHL_0`, its
+        // initial value; `first == true`), NOT non-check-relevant — the SAME empty-as-0 as its Sum/Min/Max
+        // siblings (IF80). A malformed FIRST value still arrives as Val.Unknown (rule suppressed) via [starVals].
+        if (cellRelevant == null || star == null || star.having != null) return starVals(f).firstOrNull() ?: Val.Num(DEC_ZERO)
         for ((reps, value) in ctx.starCells(star.path)) {
-            if (!cellRelevant.invoke(star.path, reps)) return Val.Unknown
+            if (!cellRelevant.invoke(star.path, reps)) return Val.Unknown   // a NON-relevant cell precedes → Unknown (partial)
             if (value != null) return value
         }
-        return Val.Unknown
+        return Val.Num(DEC_ZERO)   // all cells relevant + empty → the fillable 0
     }
 
     /** DATE-like kinds ride the kernel's date machinery (`VkDate`) — min/max over them dispatch to the

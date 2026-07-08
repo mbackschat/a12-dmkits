@@ -100,6 +100,16 @@ class ModelShrinkTest {
         System.getProperty("ig44.dump")?.let { p ->
             Files.writeString(Path.of(p), minimal)
             println("[IG44] minimal repro written to $p (scratch — do not commit)")
+            // Also dump the EXACT triggering instance (the minimal's filtered placements) so the divergence is
+            // reproducible standalone — fresh random re-seeding of the minimal misses the specific value pattern.
+            // Placements are OUR deterministic seeding (not corpus content), so this is license-safe.
+            val model = runCatching { ModelLoader.load(CorpusModelPreparer.toInterpreterJson(minimal)) }.getOrNull()
+            if (model != null) {
+                val pls = filterPlacements(model, cvv.placements)
+                val lines = pls.joinToString("\n") { "${it.kind}|${it.path}|${it.reps.joinToString(",")}|${it.value ?: ""}" }
+                Files.writeString(Path.of("$p.placements"), lines)
+                println("[IG44] minimal placements written to $p.placements")
+            }
         }
     }
 
