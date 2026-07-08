@@ -240,6 +240,84 @@ class LinterTest {
                 () -> "a guarded field-vs-aggregate comparison should not be flagged: " + linter.lint(c));
     }
 
+    // --- the FACET-DRIVEN extension (WI-5a): equality/tolerance ops, arithmetic sides, and the
+    //     AS_ZERO-through-a-function shapes (Length, the date extractors/diffs) — driven by the
+    //     catalog's emptyOperand facet (emptyOperandBehavior), no hand-listed operator patterns ---
+
+    @Test
+    void flagsAnUnguardedEqualityThatFiresOnEmpty() {
+        // [FEE] == 0 — an empty FEE reads 0, and 0 == 0 fires (the old lint skipped ==/!= entirely).
+        Diagnostic d = only(linter.lint(m.num(FEE).eq(0)), "RK_UNGUARDED_NUMBER_COMPARISON");
+        assertTrue(d.summary().contains(FEE), () -> "summary should name the field: " + d.summary());
+        // direction-awareness carries over: == 100 can't fire on empty; != 0 can't either
+        assertTrue(noLint(m.num(FEE).eq(100), "RK_UNGUARDED_NUMBER_COMPARISON"));
+        assertTrue(noLint(m.num(FEE).ne(0), "RK_UNGUARDED_NUMBER_COMPARISON"));
+        // [FEE] != 100 fires on empty (0 != 100)
+        only(linter.lint(m.num(FEE).ne(100)), "RK_UNGUARDED_NUMBER_COMPARISON");
+    }
+
+    @Test
+    void flagsAnUnguardedToleranceComparisonThatFiresOnEmpty() {
+        // [FEE] DiffersWithToleranceRange5 100 — empty reads 0, |0 − 100| > 5 fires.
+        Condition fires = m.num(FEE).asNumber().differsWithTolerance(
+                io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance.RANGE_5, Dsl.number("100"));
+        only(linter.lint(fires), "RK_UNGUARDED_NUMBER_COMPARISON");
+        // |0 − 3| is within the tolerance of 5 → an empty value can't fire it
+        Condition silent = m.num(FEE).asNumber().differsWithTolerance(
+                io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance.RANGE_5, Dsl.number("3"));
+        assertTrue(noLint(silent, "RK_UNGUARDED_NUMBER_COMPARISON"),
+                () -> "a tolerance an empty-as-0 stays within should not be flagged: " + linter.lint(silent));
+    }
+
+    @Test
+    void flagsAnUnguardedFieldInsideArithmetic() {
+        // [FEE] + 5 < 10 — empty FEE reads 0 inside arithmetic, 5 < 10 fires (the old lint missed
+        // arithmetic sides entirely).
+        Condition fires = m.num(FEE).asNumber().plus(5).lt(10);
+        Diagnostic d = only(linter.lint(fires), "RK_UNGUARDED_NUMBER_COMPARISON");
+        assertTrue(d.summary().contains(FEE), () -> "summary should name the field: " + d.summary());
+        // 0 + 5 < 3 is false — an empty value can't fire it
+        assertTrue(noLint(m.num(FEE).asNumber().plus(5).lt(3), "RK_UNGUARDED_NUMBER_COMPARISON"));
+    }
+
+    @Test
+    void flagsAnUnguardedLengthComparisonThatFiresOnEmpty() {
+        // Length(Name) < 5 — Length of an EMPTY string is 0 (the string family's empty-as-0 backdoor,
+        // the catalog's Length facet), so 0 < 5 fires on an empty Name.
+        Condition fires = Dsl.length(m.str(NAME)).lt(5);
+        Diagnostic d = only(linter.lint(fires), "RK_UNGUARDED_NUMBER_COMPARISON");
+        assertTrue(d.summary().contains(NAME), () -> "summary should name the STRING field: " + d.summary());
+        // direction-aware through the function too: Length(Name) > 5 can't fire on empty
+        assertTrue(noLint(Dsl.length(m.str(NAME)).gt(5), "RK_UNGUARDED_NUMBER_COMPARISON"));
+        // and the guard suppresses it
+        assertTrue(noLint(m.field(NAME).filled().and(Dsl.length(m.str(NAME)).lt(5)),
+                "RK_UNGUARDED_NUMBER_COMPARISON"));
+    }
+
+    @Test
+    void flagsUnguardedDateFunctionOperands() {
+        // the date family's empty-as-0 backdoor (IF73): YearFromDate(empty) is 0, so < 2020 fires
+        BoundModel order = Fixtures.order();
+        Condition year = Dsl.yearFromDate(order.date("/Order/OrderDate")).lt(2020);
+        Diagnostic d = only(linter.lint(year), "RK_UNGUARDED_NUMBER_COMPARISON");
+        assertTrue(d.summary().contains("/Order/OrderDate"),
+                () -> "summary should name the DATE field: " + d.summary());
+        assertTrue(noLint(Dsl.yearFromDate(order.date("/Order/OrderDate")).gt(2020),
+                "RK_UNGUARDED_NUMBER_COMPARISON"));
+
+        // DifferenceInDays(a, b) == 0 — EITHER operand empty makes the diff 0, so both unguarded
+        // date fields are flagged
+        Condition diff = Dsl.differenceInDays(order.date("/Order/OrderDate"),
+                order.date("/Order/DeliveryDate")).eq(0);
+        List<Diagnostic> flags = linter.lint(diff).stream()
+                .filter(x -> x.code().filter("RK_UNGUARDED_NUMBER_COMPARISON"::equals).isPresent())
+                .toList();
+        assertEquals(2, flags.size(), () -> "both empty-substitutable date operands flagged: " + flags);
+        // and < 0 can't fire on an empty operand (0 < 0 false) — the IF73-corrected mechanism
+        assertTrue(noLint(Dsl.differenceInDays(order.date("/Order/OrderDate"),
+                order.date("/Order/DeliveryDate")).lt(0), "RK_UNGUARDED_NUMBER_COMPARISON"));
+    }
+
     // --- pure-AST lint: an unguarded string CONCATENATION comparison (KERNEL-FINDINGS §2, N6 2026-06-08) ---
 
     @Test

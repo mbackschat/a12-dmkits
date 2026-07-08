@@ -240,6 +240,28 @@ class OperatorCatalogTest {
         assertTrue(claim.appliesTo(0));
     }
 
+    /** The consumer query (CATALOG-SPEC §8): claim wins over default; default fills the gaps; per-kind splits. */
+    @Test
+    void emptyOperandBehaviorResolvesClaimThenDefault() {
+        // a deviation: Length's string operand reads 0, though the string DEFAULT is not-evaluated
+        assertEquals(java.util.Optional.of(EmptyBehavior.AS_ZERO),
+                CATALOG.emptyOperandBehavior("Length", 0, io.github.mbackschat.a12.dm.core.ValueKind.STRING));
+        // no claim → the kind default (a comparison operand)
+        assertEquals(java.util.Optional.of(EmptyBehavior.AS_ZERO),
+                CATALOG.emptyOperandBehavior("LessThan", 0, io.github.mbackschat.a12.dm.core.ValueKind.NUMBER));
+        assertEquals(java.util.Optional.of(EmptyBehavior.NOT_EVALUATED),
+                CATALOG.emptyOperandBehavior("LessThan", 0, io.github.mbackschat.a12.dm.core.ValueKind.STRING));
+        // a per-kind split: the operand-list Min substitutes an empty number but skips an empty date
+        assertEquals(java.util.Optional.of(EmptyBehavior.AS_ZERO),
+                CATALOG.emptyOperandBehavior("Min", 0, io.github.mbackschat.a12.dm.core.ValueKind.NUMBER));
+        assertEquals(java.util.Optional.of(EmptyBehavior.SKIPPED),
+                CATALOG.emptyOperandBehavior("Min", 1, io.github.mbackschat.a12.dm.core.ValueKind.DATE));
+        // the membership subject deviates from the number default (3VL — not substituted 0)
+        assertEquals(java.util.Optional.of(EmptyBehavior.NOT_EVALUATED),
+                CATALOG.emptyOperandBehavior("FieldValueIncludedInValueList", 0,
+                        io.github.mbackschat.a12.dm.core.ValueKind.NUMBER));
+    }
+
     private static boolean isOperandIndex(String operand, OperatorEntry e) {
         try {
             int i = Integer.parseInt(operand);

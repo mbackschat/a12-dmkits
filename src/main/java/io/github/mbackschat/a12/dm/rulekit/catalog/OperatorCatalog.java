@@ -89,7 +89,31 @@ public final class OperatorCatalog {
      * ({@code DATE_RANGE} has no comparison/value position; {@code CUSTOM} validity is a delegated SPI).
      */
     public Optional<EmptyBehavior> defaultEmptyBehavior(ValueKind kind) {
-        String token = switch (kind) {
+        return Optional.ofNullable(kindToken(kind))
+                .map(emptyOperandDefaults::get)
+                .map(EmptyOperandDefault::behavior);
+    }
+
+    /**
+     * The <b>consumer query</b> of the {@code emptyOperand} facet (CATALOG-SPEC §8): what does
+     * {@code operatorId}'s operand at {@code operandIndex} do when it is empty and holds a value of
+     * {@code kind}? Resolution order — the operator's own facet claim covering that operand (a
+     * deviation), else the kind's header default. Empty when neither speaks (an unpopulated operator
+     * over a kind outside the defaults table) — a consumer must then stay conservative, never guess.
+     */
+    public Optional<EmptyBehavior> emptyOperandBehavior(String operatorId, int operandIndex, ValueKind kind) {
+        Optional<EmptyBehavior> claimed = byId(operatorId)
+                .stream()
+                .flatMap(e -> e.emptyOperandClaims().stream())
+                .filter(c -> c.appliesTo(operandIndex))
+                .findFirst()
+                .flatMap(c -> Optional.ofNullable(kindToken(kind)).flatMap(c::behaviorFor));
+        return claimed.or(() -> defaultEmptyBehavior(kind));
+    }
+
+    /** The catalog kind token for a {@link ValueKind} ({@code null} for the kinds outside the facet tables). */
+    private static String kindToken(ValueKind kind) {
+        return switch (kind) {
             case NUMBER -> "number";
             case STRING -> "string";
             case ENUMERATION -> "enum";
@@ -100,9 +124,6 @@ public final class OperatorCatalog {
             case DATE_TIME -> "date-time";
             case DATE_RANGE, CUSTOM, UNKNOWN -> null;
         };
-        return Optional.ofNullable(token)
-                .map(emptyOperandDefaults::get)
-                .map(EmptyOperandDefault::behavior);
     }
 
     public List<OperatorEntry> entries() {

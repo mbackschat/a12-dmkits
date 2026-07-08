@@ -9,7 +9,16 @@ import java.util.Set;
 
 import com.mgmtp.a12.model.notification.Severity;
 
+import io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior;
+import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding;
+import io.github.mbackschat.a12.dm.rulekit.dsl.LengthOf;
+import io.github.mbackschat.a12.dm.rulekit.dsl.OpListMath;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Rounding;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition;
@@ -55,6 +64,9 @@ public final class Linter {
             "FieldFilled", "GroupFilled",
             "AllFieldsFilled", "AtLeastOneFieldFilled",
             "AllGroupsFilled", "AtLeastOneGroupFilled");
+
+    /** The empty-operand facet source (CATALOG-SPEC §8) — drives the unguarded-comparison lint. */
+    private final OperatorCatalog catalog = OperatorCatalog.load();
 
     /** Lint {@code condition} with no rule context (the {@code where.rule} is left empty). */
     public List<Diagnostic> lint(Condition condition) {
@@ -307,54 +319,202 @@ public final class Linter {
         }
     }
 
+    /**
+     * The two lanes, both driven by the catalog's {@code emptyOperand} facet (CATALOG-SPEC §8):
+     *
+     * <ol>
+     *   <li><b>PRECISE</b> — for every unguarded field whose emptiness <em>injects a value</em> into a
+     *       side (the facet's {@code AS_ZERO}: a plain number field, a field inside arithmetic, or a
+     *       field behind an AS_ZERO function — {@code Length}, the date/time extractors, the
+     *       {@code DifferenceIn*} family, the operand-list {@code Min}/{@code Max}), partially evaluate
+     *       BOTH sides under "that field is empty" and flag exactly when the comparison then holds —
+     *       direction-aware over <em>all</em> comparison operators (ordering, {@code ==}/{@code !=},
+     *       the tolerance family).</li>
+     *   <li><b>ADVISORY</b> — a plain number field against an aggregate/expression whose value the
+     *       partial evaluation cannot pin (the T4 {@code [X] < Sum(…)} shape): the empty-as-0 trap is
+     *       real but unprovable, so flag it advisorily. Field-vs-field stays out of scope (both empties
+     *       substitute symmetrically; an aggregate's empty-SET identity is the {@code aggregateIdentity}
+     *       dimension, WI-5b — star/field-list scopes are not per-field guardable anyway).</li>
+     * </ol>
+     */
     private void maybeFlagComparison(ComparisonCondition cmp, Set<String> guarded, String rulePath,
             List<Diagnostic> out) {
-        if (!isOrdering(cmp.operator())) {
-            return;
+        Set<String> flagged = new HashSet<>();
+        for (FieldRef field : emptySubstitutableFields(cmp)) {
+            String path = field.path();
+            if (guarded.contains(path) || flagged.contains(path)) {
+                continue;
+            }
+            BigDecimal left = valueWhenEmpty(cmp.left(), path);
+            BigDecimal right = valueWhenEmpty(cmp.right(), path);
+            if (left != null && right != null && holds(left, cmp.operator(), right)) {
+                flagged.add(path);
+                flagUnguardedNumber(field, cmp, rulePath, out);
+            }
         }
+        // ADVISORY — a plain number field vs a side the partial evaluation can't pin (aggregate/expression).
         String leftField = numberFieldPath(cmp.left());
         String rightField = numberFieldPath(cmp.right());
-        BigDecimal leftLit = numberLiteralValue(cmp.left());
-        BigDecimal rightLit = numberLiteralValue(cmp.right());
-
-        // Case A — number field vs numeric constant: precise. Substitute 0 for the field and flag only
-        // when 0 actually fires (e.g. [X] < 100 fires; [X] > 100 doesn't).
-        if (leftField != null && rightLit != null) {
-            if (!guarded.contains(leftField) && holds(BigDecimal.ZERO, cmp.operator(), rightLit)) {
-                flagUnguardedNumber(leftField, cmp, rulePath, out);
-            }
-            return;
-        }
-        if (rightField != null && leftLit != null) {
-            if (!guarded.contains(rightField) && holds(leftLit, cmp.operator(), BigDecimal.ZERO)) {
-                flagUnguardedNumber(rightField, cmp, rulePath, out);
-            }
-            return;
-        }
-
-        // Case B — number field vs a numeric aggregate/expression (Sum/Count/Length/… — the T4 shape).
-        // The aggregate's value is unknown, so we can't prove 0 fires; but the empty-as-0 substitution is
-        // a real trap, so flag advisorily. (Field-vs-field stays out of scope — both empties default to 0
-        // symmetrically, so it rarely surprises; only an aggregate operand gets this treatment.)
-        if (leftField != null && isComplexNumberOperand(cmp.right()) && !guarded.contains(leftField)) {
-            flagUnguardedNumber(leftField, cmp, rulePath, out);
-        } else if (rightField != null && isComplexNumberOperand(cmp.left()) && !guarded.contains(rightField)) {
-            flagUnguardedNumber(rightField, cmp, rulePath, out);
+        if (leftField != null && !flagged.contains(leftField) && !guarded.contains(leftField)
+                && isComplexNumberOperand(cmp.right()) && valueWhenEmpty(cmp.right(), leftField) == null) {
+            flagUnguardedNumber(((FieldValue) cmp.left()).field(), cmp, rulePath, out);
+        } else if (rightField != null && !flagged.contains(rightField) && !guarded.contains(rightField)
+                && isComplexNumberOperand(cmp.left()) && valueWhenEmpty(cmp.left(), rightField) == null) {
+            flagUnguardedNumber(((FieldValue) cmp.right()).field(), cmp, rulePath, out);
         }
     }
 
-    private void flagUnguardedNumber(String field, ComparisonCondition cmp, String rulePath, List<Diagnostic> out) {
+    /**
+     * The fields whose emptiness injects a VALUE into this comparison — each is a candidate for the
+     * empty-fires trap. Membership is decided by the catalog facet ({@code emptyOperandBehavior} ==
+     * {@code AS_ZERO} for the node's operand at the field's position), never a hand-listed operator set.
+     * Star/field-list aggregate scopes are excluded (not per-field guardable; their empty-set identity
+     * is a different facet dimension).
+     */
+    private List<FieldRef> emptySubstitutableFields(ComparisonCondition cmp) {
+        List<FieldRef> found = new ArrayList<>();
+        collectSubstitutable(cmp.left(), found);
+        collectSubstitutable(cmp.right(), found);
+        return found;
+    }
+
+    private void collectSubstitutable(Calculation calc, List<FieldRef> found) {
+        switch (calc) {
+            case FieldValue fv -> {
+                if (defaultsToZero(fv.field().kind())) {   // the NUMBER kind default (the header table)
+                    found.add(fv.field());
+                }
+            }
+            case Arithmetic a -> {
+                collectSubstitutable(a.left(), found);
+                collectSubstitutable(a.right(), found);
+            }
+            case LengthOf l -> {
+                if (asZero("Length", 0, l.field().kind())) {
+                    found.add(l.field());
+                }
+            }
+            case DateExtraction e -> {
+                if (e.source() instanceof FieldValue fv && asZero(e.operatorId(), 0, fv.field().kind())) {
+                    found.add(fv.field());
+                }
+            }
+            case DateDifference d -> {
+                for (Calculation side : List.of(d.left(), d.right())) {
+                    if (side instanceof FieldValue fv && asZero(d.operatorId(), 0, fv.field().kind())) {
+                        found.add(fv.field());
+                    }
+                }
+            }
+            case OpListMath ol -> ol.operands().forEach(o -> collectSubstitutable(o, found));
+            case Rounding r -> collectSubstitutable(r.operand(), found);
+            case FieldRounding fr -> {
+                if (asZero(fr.operatorId(), 0, fr.field().kind())) {
+                    found.add(fr.field());
+                }
+            }
+            default -> { }
+        }
+    }
+
+    /** Whether the facet says {@code operatorId}'s operand at {@code index} reads an empty {@code kind} value as 0. */
+    private boolean asZero(String operatorId, int index, ValueKind kind) {
+        return catalog.emptyOperandBehavior(operatorId, index, kind)
+                .filter(b -> b == EmptyBehavior.AS_ZERO)
+                .isPresent();
+    }
+
+    /** Whether the kind's header default reads an empty value as 0 (a bare comparison/arithmetic operand). */
+    private boolean defaultsToZero(ValueKind kind) {
+        return catalog.defaultEmptyBehavior(kind).filter(b -> b == EmptyBehavior.AS_ZERO).isPresent();
+    }
+
+    /**
+     * Partial evaluation of {@code calc} under "the field at {@code emptyField} is empty" — the value
+     * the side takes, or {@code null} when it cannot be pinned (another field's unknown value, a
+     * star-scoped aggregate, division/power). The empty field's substitution comes from the facet
+     * ({@code AS_ZERO} → 0); every other leaf must be a literal for the evaluation to stay concrete.
+     */
+    private BigDecimal valueWhenEmpty(Calculation calc, String emptyField) {
+        return switch (calc) {
+            case NumberLiteral n -> n.value();
+            case FieldValue fv -> fv.field().path().equals(emptyField)
+                    && defaultsToZero(fv.field().kind()) ? BigDecimal.ZERO : null;
+            case Arithmetic a -> {
+                BigDecimal l = valueWhenEmpty(a.left(), emptyField);
+                BigDecimal r = valueWhenEmpty(a.right(), emptyField);
+                if (l == null || r == null) {
+                    yield null;
+                }
+                yield switch (a.op()) {
+                    case ADD -> l.add(r);
+                    case SUBTRACT -> l.subtract(r);
+                    case MULTIPLY -> l.multiply(r);
+                    // division/power have quiet non-execution edges (÷0, exponent range) — stay unknown
+                    case DIVIDE, POWER -> null;
+                };
+            }
+            case LengthOf l -> l.field().path().equals(emptyField)
+                    && asZero("Length", 0, l.field().kind()) ? BigDecimal.ZERO : null;
+            case DateExtraction e -> e.source() instanceof FieldValue fv
+                    && fv.field().path().equals(emptyField)
+                    && asZero(e.operatorId(), 0, fv.field().kind()) ? BigDecimal.ZERO : null;
+            case DateDifference d -> referencesField(d.left(), emptyField) || referencesField(d.right(), emptyField)
+                    ? (asZero(d.operatorId(), 0, ValueKind.DATE) ? BigDecimal.ZERO : null)
+                    : null;   // either operand empty → the whole difference reads 0 (IF73)
+            case OpListMath ol -> {
+                List<BigDecimal> vals = new ArrayList<>();
+                for (Calculation o : ol.operands()) {
+                    BigDecimal v = valueWhenEmpty(o, emptyField);
+                    if (v == null) {
+                        yield null;
+                    }
+                    vals.add(v);
+                }
+                yield switch (ol.op()) {
+                    case MIN -> vals.stream().min(BigDecimal::compareTo).orElseThrow();
+                    case MAX -> vals.stream().max(BigDecimal::compareTo).orElseThrow();
+                    case ABS -> vals.get(0).abs();
+                };
+            }
+            // rounding of an exact 0 is 0 in every mode; any other pinned value would need mode/places math
+            case Rounding r -> {
+                BigDecimal v = valueWhenEmpty(r.operand(), emptyField);
+                yield v != null && v.signum() == 0 ? BigDecimal.ZERO : null;
+            }
+            case FieldRounding fr -> fr.field().path().equals(emptyField)
+                    && defaultsToZero(fr.field().kind()) ? BigDecimal.ZERO : null;
+            default -> null;
+        };
+    }
+
+    private static boolean referencesField(Calculation calc, String path) {
+        return calc instanceof FieldValue fv && fv.field().path().equals(path);
+    }
+
+    private void flagUnguardedNumber(FieldRef field, ComparisonCondition cmp, String rulePath, List<Diagnostic> out) {
+        String path = field.path();
+        String summary = field.kind() == ValueKind.NUMBER && isOrdering(cmp.operator())
+                // the established wording for the classic shape (pinned by the CLI tour capture)
+                ? "'" + path + "' is a number compared with an ordering operator but its presence isn't"
+                        + " guarded — an empty number reads as 0, so the rule also fires on an empty '" + path + "'"
+                // the facet-driven shapes: equality/tolerance ops, or a field reaching the comparison
+                // through an AS_ZERO function (Length, YearFromDate, DifferenceIn*, …)
+                : "'" + path + "' feeds this comparison but its presence isn't guarded — an empty '" + path
+                        + "' still evaluates as 0 here (the operator's empty-operand semantics), making the"
+                        + " comparison hold, so the rule also fires on an empty '" + path + "'";
         out.add(new Diagnostic(Severity.WARNING, DiagnosticSource.LINT,
                 Optional.of("RK_UNGUARDED_NUMBER_COMPARISON"),
-                "'" + field + "' is a number compared with an ordering operator but its presence isn't"
-                        + " guarded — an empty number reads as 0, so the rule also fires on an empty '" + field + "'",
+                summary,
                 new Diagnostic.Where(rulePath, Optional.of(cmp.operatorId())),
-                Optional.of("decide by intent: if an empty/missing '" + field + "' should NOT trip the rule, guard"
-                        + " it — FieldFilled(" + field + ") And <the comparison>; if a missing number IS a violation"
+                Optional.of("decide by intent: if an empty/missing '" + path + "' should NOT trip the rule, guard"
+                        + " it — FieldFilled(" + path + ") And <the comparison>; if a missing value IS a violation"
                         + " (empty-as-0 should fire), the unguarded form is intentional — keep it"),
-                Optional.of("an unspecified number defaults to 0 in a comparison (KERNEL-SEMANTICS §2) — unlike an"
-                        + " empty string/date/enum, which is not evaluated — so this is only a trap when empty should"
-                        + " be NEUTRAL; an empty-as-violation rule is legitimately unguarded")));
+                Optional.of("an unspecified number defaults to 0 in a comparison (KERNEL-SEMANTICS §2), and the"
+                        + " value functions (Length, the date/time extractors, DifferenceIn*) read an empty operand"
+                        + " as 0 too — unlike a bare string/date/enum comparison, which an empty operand suppresses"
+                        + " — so this is only a trap when empty should be NEUTRAL; an empty-as-violation rule is"
+                        + " legitimately unguarded")));
     }
 
     /** A numeric operand that is neither a plain field nor a literal — an aggregate/function (Sum, Count, Length, …). */
@@ -367,26 +527,28 @@ public final class Linter {
         return op == CompareOp.LT || op == CompareOp.LE || op == CompareOp.GT || op == CompareOp.GE;
     }
 
-    /** Whether {@code l op r} holds (used to ask "would an empty field, read as 0, fire?"). */
+    /** Whether {@code l op r} holds — "would the comparison fire with the empty field substituted?" —
+     *  over ALL comparison operators (the tolerance family fires when the difference EXCEEDS its range). */
     private static boolean holds(BigDecimal l, CompareOp op, BigDecimal r) {
         int c = l.compareTo(r);
+        BigDecimal diff = l.subtract(r).abs();
         return switch (op) {
             case LT -> c < 0;
             case LE -> c <= 0;
             case GT -> c > 0;
             case GE -> c >= 0;
-            // not ordering — guarded by isOrdering, never reached
-            case EQ, NE, TOLERANCE_1, TOLERANCE_2, TOLERANCE_5, TOLERANCE_10 -> false;
+            case EQ -> c == 0;
+            case NE -> c != 0;
+            case TOLERANCE_1 -> diff.compareTo(BigDecimal.ONE) > 0;
+            case TOLERANCE_2 -> diff.compareTo(BigDecimal.valueOf(2)) > 0;
+            case TOLERANCE_5 -> diff.compareTo(BigDecimal.valueOf(5)) > 0;
+            case TOLERANCE_10 -> diff.compareTo(BigDecimal.TEN) > 0;
         };
     }
 
     private static String numberFieldPath(Calculation calc) {
         return calc instanceof FieldValue fv && fv.field().kind() == ValueKind.NUMBER
                 ? fv.field().path() : null;
-    }
-
-    private static BigDecimal numberLiteralValue(Calculation calc) {
-        return calc instanceof NumberLiteral n ? n.value() : null;
     }
 
     /**
