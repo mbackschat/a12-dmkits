@@ -54,6 +54,12 @@ public record OperatorEntry(
         return semantics == null ? List.of() : semantics.emptyOperand();
     }
 
+    /** The {@code boundary} facet claim (CATALOG-SPEC §3), or {@code null} when the operator carries
+     *  no threshold / interval endpoint (most operators). */
+    public BoundaryClaim boundaryClaim() {
+        return semantics == null ? null : semantics.boundary();
+    }
+
     /** Whether rulekit builds a typed handle for this operator (vs a {@link OperatorStatus#PLANNED} stub). */
     public boolean supported() {
         return status == OperatorStatus.SUPPORTED;

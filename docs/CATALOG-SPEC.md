@@ -26,16 +26,28 @@ The machine tier exists because three consumers demonstrably guessed wrong when 
 
 ```jsonc
 "semantics": {
-  "emptyOperand": [ /* §4 — the shipped dimension */ ]
-  // reserved, slot in additively (WI-5b): "polarity", "iterationRange", "boundary", "aggregateIdentity"
+  "emptyOperand": [ /* §4 — a LIST of per-operand claims */ ],
+  "boundary": { /* §3a — a SINGLE operator-level claim */ }
+  // reserved, slot in additively: "iterationRange", "aggregateIdentity", "polarity"
 }
 ```
 
 Design rules, fixed by the WI-5a slice:
 
-- **One key per dimension.** A dimension is a list of *claims*; adding a dimension never reshapes an existing one (`OperatorSemantics` ignores unknown keys until the field lands).
+- **One key per dimension.** Adding a dimension never reshapes an existing one (`OperatorSemantics` ignores unknown keys until the field lands). A dimension's *shape* matches its nature: `emptyOperand` is a **list** of claims (one operator can behave differently per operand position / kind); an operator-level dimension like `boundary` is a **single** claim (one value for the whole operator).
 - **Every facet value is a verified claim.** A claim carries a **`basis`** (the differential lock / KERNEL-FINDINGS or IF finding it derives from — values are *derived from locks, never invented*) and **`probes`** (kernel-executed, §5). A claim without a probe **fails the build**.
-- **Deviations only.** Type-level defaults live once in the header (§4); an operator carries a claim only where it deviates from (or per-kind refines) the operand kind's default. Absence of a claim = the defaults apply.
+- **Deviations only** (where a default exists). Type-level defaults live once in the header (§4); an operator carries an `emptyOperand` claim only where it deviates from (or per-kind refines) the operand kind's default. Absence of a claim = the defaults apply. The operator-level dimensions carry no header default — an operator states its claim iff the dimension applies to it (e.g. only threshold/interval operators carry `boundary`).
+
+### 3a. The `boundary` dimension
+
+**The question it answers:** for an operator whose semantics involve a **threshold or interval endpoint**, does the endpoint value itself satisfy the operator? One value per operator (`BoundaryClaim` = `{value, basis, note, probes}`), value vocabulary `Boundary` derived from the locks:
+
+| value | meaning | canonical lock |
+|---|---|---|
+| `STRICT` | the endpoint is **excluded** — the endpoint value does not satisfy the operator | `<`/`>` (definition); the tolerance band `DiffersWithToleranceRangeN` (`ToleranceDiffTest`: fires iff `|a − b| > N` — exactly-N does not fire) |
+| `INCLUSIVE` | the endpoint is **included** — the endpoint value satisfies the operator | `<=`/`>=` (definition); the date-range overlap predicates (IF72 / `DateRangeOverlapSemanticsDiffTest`: CLOSED intervals, `end1 ≥ start2 ∧ end2 ≥ start1`, so touching ranges overlap) |
+
+The consumer this serves (the §21D razor): the eval judge, to reason that `[Q] < 100` ≡ `[Q] <= 99` over integers but `[Q] < 100` ≢ `[Q] <= 100`, and that touching date ranges overlap. Each claim's probe pins a document whose operand sits **exactly at** the endpoint, so a STRICT/INCLUSIVE mistake flips `fires`. Populated over the ten threshold/interval operators — the four orderings (`<` `>` `<=` `>=`), the four tolerance ops, and the two date-range overlap predicates; `Equal`/`NotEqual` carry no boundary (equality has no interval endpoint).
 
 ## 4. The `emptyOperand` dimension
 
@@ -97,9 +109,9 @@ Every executable artifact in the catalog is CI-executed against the **real kerne
 |---|---|---|
 | N7 examples | `catalog.CatalogExamplesAreKernelValidTest` | every `validExample` kernel-ACCEPTED, every `invalidExample` REJECTED (with its `error` code when `MVK_*`) |
 | N7 computations | `catalog.CatalogComputationExamplesAreKernelValidTest` | every `computationExample` runs as a real computation |
-| **facet probes** | `adapter.laws.CatalogFacetProbesTest` | every `emptyOperandDefaults` and `semantics.emptyOperand` probe: the probe rule is (1) kernel-**ACCEPTED** and (2) **fires ⟺ `fires`** on the described instance, through the kernel runtime (`RuntimeLaws`) |
+| **facet probes** | `adapter.laws.CatalogFacetProbesTest` | every `emptyOperandDefaults` probe and every `semantics.*` dimension probe (`emptyOperand`, `boundary`, …): the probe rule is (1) kernel-**ACCEPTED** and (2) **fires ⟺ `fires`** on the described instance, through the kernel runtime (`RuntimeLaws`) |
 | **corrective probes** | `catalog.CatalogCorrectiveProbesTest` | every `correctives[].probe.dsl` kernel-**REJECTED with exactly its `code`** |
-| structural | `catalog.OperatorCatalogTest` | every claim: valid operand selector, behavior XOR perKind, non-blank basis, **≥ 1 probe**, well-formed probe paths; every corrective: known operand-class tokens, fix, reject probe |
+| structural | `catalog.OperatorCatalogTest` | every claim, per dimension: well-formed value (emptyOperand: valid operand selector + behavior XOR perKind; boundary: a value), non-blank basis, **≥ 1 probe**, well-formed probe paths; every corrective: known operand-class tokens, fix, reject probe |
 | keyword / construct parity | `KeywordParityTest`, `adapter.KernelConstructParityTest` | catalog ↔ lexer terminals / parsetree construct enums (unchanged) |
 
 ### 5a. The firing-probe contract (`FacetProbe`)
@@ -145,7 +157,7 @@ The mechanism: an entry carries `correctives` — per-`code`, per-operand-shape 
 
 ## 7. Serving — `dmtool operators`
 
-`dmtool operators <id>` serves the full entry including the machine tier: `semantics` (the facet claims — probes elided, they are CI detail; `behavior`/`perKind`, `basis`, `note` travel), the header defaults ride the bare `operators` list response as `emptyOperandDefaults` (kind → behavior), `correctives` (code, whenOperands, fix), and `gotchas` **with their `kind`**. The payload is part of the self-describing surface (CLI-SPEC §1a): a cold agent must be able to learn "an empty number fires this comparison" from the binary alone.
+`dmtool operators <id>` serves the full entry including the machine tier: `semantics` (the facet claims — probes elided, they are CI detail; the per-dimension `value`/`behavior`/`perKind`, `basis`, `note` travel), the header defaults ride the bare `operators` list response as `emptyOperandDefaults` (kind → behavior), `correctives` (code, whenOperands, fix), and `gotchas` **with their `kind`**. The payload is part of the self-describing surface (CLI-SPEC §1a): a cold agent must be able to learn "an empty number fires this comparison" and "the tolerance band is strict" from the binary alone.
 
 ## 8. Consumers (what makes the facets pass the §21D consumer-exists razor)
 
@@ -154,15 +166,19 @@ The mechanism: an entry carries `correctives` — per-`code`, per-operand-shape 
 | `lint.Linter` — `RK_UNGUARDED_NUMBER_COMPARISON` | header defaults + `AS_ZERO` claims: computes the value a comparison side takes when a field inside it is empty, flags precisely (no hand-listed operator patterns) | WI-5a |
 | `lint.SpanResolver` — fix selection | `correctives` + the typed AST operand classification | WI-5a |
 | `dmtool operators` | the whole machine tier (§7) | WI-5a |
-| eval judge | facet claims as the equivalence oracle for empty-operand variants | WI-5b |
+| eval judge | facet claims as the equivalence oracle (empty-operand variants; boundary — `<` ≢ `<=`) | WI-5b |
 | facet → generated corpus cases | each claim implies conformance-corpus cases | WI-5b |
 
 ## 9. Population state & boundaries (WI-5a → WI-5b)
+
+**WI-5b dimensions** slot in additively as single operator-level claims (§3a). Shipped so far: **`boundary`** — the ten threshold/interval operators (four orderings, four tolerance ops, two date-range overlaps); STRICT for `<`/`>`/tolerance, INCLUSIVE for `<=`/`>=`/date-range-overlap (CLOSED). `iterationRange`, `aggregateIdentity`, `polarity` follow.
+
+### 9a. The WI-5a `emptyOperand` slice
 
 WI-5a populated the `emptyOperand` dimension for the families its consumers touch — the comparison defaults (header), the value/count aggregates, the value functions (`Length`, the date/time extractors, the `DifferenceIn*` family, `Min`/`Max`, `FieldValueAsString`), the value-list membership + quantifier predicates, the date-range overlap predicates, and `Concatenation` (a new entry — the intrinsic `+` previously had no catalog home). The lane earned its keep immediately: probing the claims surfaced the index-field carve-out (an INDEX field's empty cell is mandatory-empty → not-check-relevant — the *invalid* class, which poisons counts and `No…ValueList`; the probes deliberately use non-index fields) **and** a real interpreter divergence ([INTERPRETER-GAPS](INTERPRETER-GAPS.md) IG55: `NumberOfDifferentValues` over an index field's empty cell — kernel suppresses, interpreter fires). Not populated, with reasons:
 
 - **`Date(d,m,y)` / `Time(h,m,s)` / `DateTime` constructions with an empty part** — kernel behavior uncharacterized (IF73 scoped them out; no corpus instance). Characterize before claiming — a facet must never state an unverified value.
 - **`RangeAsString` / `RangeAsNumber` / `FieldValueAsNumber` / `ValueAsDate` / `AddDays`-family empties** — no differential lock yet; deferred to WI-5b with fresh probes (and, where the interpreter disagrees with a fresh kernel probe, a WI-T gap row *first*).
-- The remaining §3 dimensions (`polarity`, `iterationRange`, `boundary`, `aggregateIdentity`) — WI-5b.
+- The remaining dimensions (`iterationRange`, `aggregateIdentity`, `polarity`) — WI-5b (§9 above tracks what has landed).
 
 **Maintenance rules:** a new operator claim needs basis + probes in the same commit (the guards enforce it). An `operators.json` change is a **native-image re-capture trigger** ([NATIVE-IMAGE-GRAALVM §5.1](NATIVE-IMAGE-GRAALVM.md)). On a kernel bump the probes re-run against the new kernel automatically (they are ordinary CI tests — the [KERNEL-UPGRADE](KERNEL-UPGRADE.md) guardian net gains this lane for free).

@@ -229,6 +229,37 @@ class OperatorCatalogTest {
         }
     }
 
+    /**
+     * Every {@code semantics.boundary} claim is well-formed: a value, a basis (the lock it derives
+     * from), and at least one executable probe — the operator-level analogue of the emptyOperand
+     * guard (CATALOG-SPEC §3/§5).
+     */
+    @Test
+    void everyBoundaryClaimIsWellFormedAndProbed() {
+        for (OperatorEntry e : CATALOG.entries()) {
+            BoundaryClaim claim = e.boundaryClaim();
+            if (claim == null) {
+                continue;
+            }
+            String at = e.id() + " boundary";
+            assertNotNull(claim.value(), () -> at + ": missing value");
+            assertFalse(isBlank(claim.basis()), () -> at + ": missing basis (the lock/finding it derives from)");
+            assertFalse(claim.probes().isEmpty(), () -> at + ": a facet claim needs at least one probe");
+            claim.probes().forEach(p -> assertProbeWellFormed(at, p));
+        }
+    }
+
+    /** The two non-obvious boundary facts the dimension exists to carry (CATALOG-SPEC §3): the tolerance
+     *  band is STRICT (fires only beyond N) and the date-range overlap predicates are INCLUSIVE (closed). */
+    @Test
+    void toleranceBandIsStrictAndDateRangeOverlapIsInclusive() {
+        assertEquals(Boundary.STRICT, CATALOG.byId("DiffersWithToleranceRange1").orElseThrow().boundaryClaim().value());
+        assertEquals(Boundary.STRICT, CATALOG.byId("LessThan").orElseThrow().boundaryClaim().value());
+        assertEquals(Boundary.INCLUSIVE, CATALOG.byId("LessThanOrEqual").orElseThrow().boundaryClaim().value());
+        assertEquals(Boundary.INCLUSIVE, CATALOG.byId("DateRangesOverlap").orElseThrow().boundaryClaim().value());
+        assertEquals(Boundary.INCLUSIVE, CATALOG.byId("AtLeastOneDateRangeOverlaps").orElseThrow().boundaryClaim().value());
+    }
+
     /** The worked seed (CATALOG-SPEC §4): {@code Length} deviates from the string default — empty reads 0. */
     @Test
     void lengthCarriesTheEmptyAsZeroFacet() {

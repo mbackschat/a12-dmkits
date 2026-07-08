@@ -157,6 +157,24 @@
         "probe": { "dsl": "[OrderDate] <= \"2024-12-31\"" }
       }
     ],
+    "semantics": {
+      "boundary": {
+        "value": "INCLUSIVE",
+        "basis": "KERNEL-SEMANTICS comparisons; `<=` includes the endpoint — locked by this at-boundary probe on the real kernel",
+        "note": "the endpoint value DOES satisfy `<=` (5 <= 5); the strict twin is LessThan",
+        "probes": [
+          {
+            "dsl": "[Quantity] <= 5",
+            "errorField": "Quantity",
+            "given": {
+              "/Order/Quantity": "5"
+            },
+            "fires": true,
+            "note": "5 <= 5 fires — the INCLUSIVE endpoint is included"
+          }
+        ]
+      }
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -186,6 +204,24 @@
         "probe": { "dsl": "[OrderDate] < \"2024-12-31\"" }
       }
     ],
+    "semantics": {
+      "boundary": {
+        "value": "STRICT",
+        "basis": "KERNEL-SEMANTICS comparisons; the `<` definition is strict (endpoint excluded) — locked by this at-boundary probe on the real kernel",
+        "note": "the endpoint value does NOT satisfy `<` (5 is not < 5); the inclusive twin is LessThanOrEqual",
+        "probes": [
+          {
+            "dsl": "[Quantity] < 5",
+            "errorField": "Quantity",
+            "given": {
+              "/Order/Quantity": "5"
+            },
+            "fires": false,
+            "note": "5 is not < 5 — a STRICT endpoint is excluded"
+          }
+        ]
+      }
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -215,6 +251,24 @@
         "probe": { "dsl": "[OrderDate] > \"2024-12-31\"" }
       }
     ],
+    "semantics": {
+      "boundary": {
+        "value": "STRICT",
+        "basis": "KERNEL-SEMANTICS comparisons; the `>` definition is strict (endpoint excluded) — locked by this at-boundary probe on the real kernel",
+        "note": "the endpoint value does NOT satisfy `>` (5 is not > 5); the inclusive twin is GreaterThanOrEqual",
+        "probes": [
+          {
+            "dsl": "[Quantity] > 5",
+            "errorField": "Quantity",
+            "given": {
+              "/Order/Quantity": "5"
+            },
+            "fires": false,
+            "note": "5 is not > 5 — a STRICT endpoint is excluded"
+          }
+        ]
+      }
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -244,6 +298,24 @@
         "probe": { "dsl": "[OrderDate] >= \"2024-12-31\"" }
       }
     ],
+    "semantics": {
+      "boundary": {
+        "value": "INCLUSIVE",
+        "basis": "KERNEL-SEMANTICS comparisons; `>=` includes the endpoint — locked by this at-boundary probe on the real kernel",
+        "note": "the endpoint value DOES satisfy `>=` (5 >= 5); the strict twin is GreaterThan",
+        "probes": [
+          {
+            "dsl": "[Quantity] >= 5",
+            "errorField": "Quantity",
+            "given": {
+              "/Order/Quantity": "5"
+            },
+            "fires": true,
+            "note": "5 >= 5 fires — the INCLUSIVE endpoint is included"
+          }
+        ]
+      }
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -284,6 +356,25 @@
     "gotchas": [ { "text": "fires strictly beyond the tolerance: a difference of exactly 1 is still within it and does NOT fire", "kind": "SURPRISE" } ],
     "constraints": [ "both operands are numeric (fields or expressions)" ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, BackorderQuantity) And [Quantity] DiffersWithToleranceRange1 [BackorderQuantity]", "note": "fires when the two counts differ by more than 1" },
+    "semantics": {
+      "boundary": {
+        "value": "STRICT",
+        "basis": "adapter.laws.ToleranceDiffTest (fires iff |a − b| > N; a difference exactly equal to the band does NOT fire)",
+        "note": "the band is STRICT — a difference of exactly N is within tolerance",
+        "probes": [
+          {
+            "dsl": "[Quantity] DiffersWithToleranceRange1 [BackorderQuantity]",
+            "errorField": "Quantity",
+            "given": {
+              "/Order/Quantity": "6",
+              "/Order/BackorderQuantity": "5"
+            },
+            "fires": false,
+            "note": "|6 − 5| = 1 is NOT > 1 — the STRICT band excludes the endpoint"
+          }
+        ]
+      }
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -296,6 +387,25 @@
     "gotchas": [ { "text": "fires strictly beyond the tolerance: a difference of exactly 2 is still within it and does NOT fire", "kind": "SURPRISE" } ],
     "constraints": [ "both operands are numeric (fields or expressions)" ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, BackorderQuantity) And [Quantity] DiffersWithToleranceRange2 [BackorderQuantity]", "note": "fires when the two counts differ by more than 2" },
+    "semantics": {
+      "boundary": {
+        "value": "STRICT",
+        "basis": "adapter.laws.ToleranceDiffTest (fires iff |a − b| > N)",
+        "note": "the band is STRICT — a difference of exactly 2 is within tolerance",
+        "probes": [
+          {
+            "dsl": "[Quantity] DiffersWithToleranceRange2 [BackorderQuantity]",
+            "errorField": "Quantity",
+            "given": {
+              "/Order/Quantity": "7",
+              "/Order/BackorderQuantity": "5"
+            },
+            "fires": false,
+            "note": "|7 − 5| = 2 is NOT > 2 — the STRICT band excludes the endpoint"
+          }
+        ]
+      }
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -308,6 +418,25 @@
     "gotchas": [ { "text": "fires strictly beyond the tolerance: a difference of exactly 5 is still within it and does NOT fire", "kind": "SURPRISE" } ],
     "constraints": [ "both operands are numeric (fields or expressions)" ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, BackorderQuantity) And [Quantity] DiffersWithToleranceRange5 [BackorderQuantity]", "note": "fires when the two counts differ by more than 5" },
+    "semantics": {
+      "boundary": {
+        "value": "STRICT",
+        "basis": "adapter.laws.ToleranceDiffTest (fires iff |a − b| > N)",
+        "note": "the band is STRICT — a difference of exactly 5 is within tolerance",
+        "probes": [
+          {
+            "dsl": "[Quantity] DiffersWithToleranceRange5 [BackorderQuantity]",
+            "errorField": "Quantity",
+            "given": {
+              "/Order/Quantity": "10",
+              "/Order/BackorderQuantity": "5"
+            },
+            "fires": false,
+            "note": "|10 − 5| = 5 is NOT > 5 — the STRICT band excludes the endpoint"
+          }
+        ]
+      }
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -320,6 +449,25 @@
     "gotchas": [ { "text": "fires strictly beyond the tolerance: a difference of exactly 10 is still within it and does NOT fire", "kind": "SURPRISE" } ],
     "constraints": [ "both operands are numeric (fields or expressions)" ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, BackorderQuantity) And [Quantity] DiffersWithToleranceRange10 [BackorderQuantity]", "note": "fires when the two counts differ by more than 10" },
+    "semantics": {
+      "boundary": {
+        "value": "STRICT",
+        "basis": "adapter.laws.ToleranceDiffTest (fires iff |a − b| > N)",
+        "note": "the band is STRICT — a difference of exactly 10 is within tolerance",
+        "probes": [
+          {
+            "dsl": "[Quantity] DiffersWithToleranceRange10 [BackorderQuantity]",
+            "errorField": "Quantity",
+            "given": {
+              "/Order/Quantity": "15",
+              "/Order/BackorderQuantity": "5"
+            },
+            "fires": false,
+            "note": "|15 − 5| = 10 is NOT > 10 — the STRICT band excludes the endpoint"
+          }
+        ]
+      }
+    },
     "sinceKernel": "30.8.x"
   },
   {
@@ -2047,6 +2195,26 @@
     "constraints": [ "the operands are date-range fields (or a flattened repetition list of them)" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And DateRangesOverlap(CoverageWindow, Items*/ItemCoverage)", "note": "fires when the order's coverage window overlaps a line-item coverage" },
     "semantics": {
+      "boundary": {
+        "value": "INCLUSIVE",
+        "basis": "IF72 / adapter.laws.DateRangeOverlapSemanticsDiffTest (CLOSED interval: end1 >= start2 AND end2 >= start1 — touching ranges overlap)",
+        "note": "the interval is CLOSED — ranges that touch at an endpoint overlap",
+        "probes": [
+          {
+            "dsl": "DateRangesOverlap(CoverageWindow, Items*/ItemCoverage)",
+            "errorField": "CoverageWindow",
+            "rows": [
+              "/Order/Items[1]"
+            ],
+            "given": {
+              "/Order/CoverageWindow": "01.01.2024-15.01.2024",
+              "/Order/Items[1]/ItemCoverage": "15.01.2024-31.01.2024"
+            },
+            "fires": true,
+            "note": "the two ranges touch at 15.01.2024 — CLOSED intervals overlap, so it fires"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "all",
@@ -2091,6 +2259,26 @@
     "constraints": [ "a date-range field, then In, then a date-range field list (often a flattened repetition list)" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And AtLeastOneDateRangeOverlaps(CoverageWindow IN Items*/ItemCoverage)", "note": "fires when the coverage window overlaps any line-item coverage" },
     "semantics": {
+      "boundary": {
+        "value": "INCLUSIVE",
+        "basis": "IF72 / adapter.laws.DateRangeOverlapSemanticsDiffTest (CLOSED interval — touching ranges overlap)",
+        "note": "the interval is CLOSED — the scalar range touching a list range overlaps",
+        "probes": [
+          {
+            "dsl": "AtLeastOneDateRangeOverlaps(CoverageWindow IN Items*/ItemCoverage)",
+            "errorField": "CoverageWindow",
+            "rows": [
+              "/Order/Items[1]"
+            ],
+            "given": {
+              "/Order/CoverageWindow": "01.01.2024-15.01.2024",
+              "/Order/Items[1]/ItemCoverage": "15.01.2024-31.01.2024"
+            },
+            "fires": true,
+            "note": "the scalar range touches the list range at 15.01.2024 — CLOSED intervals overlap"
+          }
+        ]
+      },
       "emptyOperand": [
         {
           "operand": "0",
