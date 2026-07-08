@@ -742,7 +742,9 @@ class DmInterpreter @JvmOverloads constructor(
         // the field's date format (IF33; `AddYears(...)` into `dd.MM.yyyy` → `30.06.2026`); a date-RANGE → the
         // field's (format, separator). An Unknown computes nothing → CLEARED.
         val rendered = when (v) {
-            is Val.Num -> v.v.display()
+            // A computed NUMBER stores in the target's form: padded to at least its `minFractionalDigits` (the
+            // kernel's shared conversion formatter — 10 → "10.00" in a min=2 field; canonical when min=0). IF82.
+            is Val.Num -> v.v.display(model.constraintsOf(comp.targetPath).minFractionalDigits ?: 0)
             is Val.Txt -> renderScalarValue(v.v, comp.targetPath)
             is Val.Bool -> v.v.toString()
             is Val.Range -> renderRange(v, comp.targetPath)

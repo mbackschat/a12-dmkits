@@ -60,6 +60,16 @@ expect class Dec : Comparable<Dec> {
 
     /** Canonical numeric rendering, trailing zeros stripped (`49.90` → `49.9`, `0` → `0`) — for computed values. */
     fun display(): String
+
+    /**
+     * STORED-form rendering of a computed value: padded to at least [minFractionalDigits] fractional digits —
+     * the kernel's `NumberConversion.convertNumberToString`/`determineFractionalDigits` rule shared by BOTH
+     * runtimes (the V1 `compute` and the modern V2 `computeModern` — they agree; IF82). The digit count is
+     * `max(stripTrailingZeros().scale(), minFractionalDigits)` (natural significant fractional digits are kept,
+     * up to the field's max; the kernel's `decimalPlacesOptional` defaults to false so `minFractionalDigits` is
+     * honored). With [minFractionalDigits] `0` this equals [display] (canonical) for every in-range value.
+     */
+    fun display(minFractionalDigits: Int): String
 }
 
 expect fun dec(value: String): Dec

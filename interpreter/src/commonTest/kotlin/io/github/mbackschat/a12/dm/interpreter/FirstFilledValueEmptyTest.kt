@@ -52,9 +52,9 @@ class FirstFilledValueEmptyTest {
     private val ff = "FirstFilledValue(Lines*/Qty)"
     private val ffHaving = "FirstFilledValue(Lines*/Qty Having FieldNotFilled(Lines/Flag))"
 
-    // The fix is the OUTCOME: empty selection → VALUE (the fillable 0), NOT CLEARED. The value renders in the
-    // interpreter's canonical decimal form (`0`, trailing zeros stripped by [io.github.mbackschat.a12.dm.interpreter.Dec.display]);
-    // the target-scaled form the kernel stores (`0.00`) is a separate value-format concern (IG53).
+    // The fix is the OUTCOME: empty selection → VALUE (the fillable 0), NOT CLEARED. This target has no
+    // `minFractionalDigits`, so the value renders canonical (`0`); a `minFractionalDigits`-≥1 target pads it to
+    // the stored form (`0.00`) via [io.github.mbackschat.a12.dm.interpreter.Dec.display] (IF82).
     @Test fun emptyRowsComputeZero() =
         assertEquals(ComputeOutcome.VALUE, outcomeOf(ff, listOf(null to null, null to null)), "no filled Qty → VALUE 0, not CLEARED")
     @Test fun emptyRowsValueIsZero() =

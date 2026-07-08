@@ -16,6 +16,7 @@ external class Big(value: String) {
     fun cmp(other: Big): Int
     fun abs(): Big
     fun round(dp: Int, rm: Int): Big   // dp = decimal places; rm = rounding mode (1 = roundHalfUp)
+    fun toFixed(dp: Int): String       // plain notation with EXACTLY dp decimal places (pads / rounds)
     override fun toString(): String   // big.js renders trailing-zero-stripped plain notation
 }
 
@@ -50,6 +51,19 @@ actual class Dec(val v: Big) : Comparable<Dec> {
         return Dec(pre.round(places, rm))
     }
     actual fun display(): String = v.toString()
+
+    actual fun display(minFractionalDigits: Int): String {
+        // The kernel's determineFractionalDigits: max(naturalScale, minFractionalDigits) — pad to the min, but
+        // keep any natural significant fractional digits (which never exceed the field's max for a valid value).
+        // big.js has no scale accessor, so read the natural scale off the canonical toString() (trailing zeros
+        // stripped, plain notation for in-range values). toFixed pads with zeros to the target width. The >15-digit
+        // cap the JVM applies is elided here — JS is not the differential-exact target (the kernel is JVM-only),
+        // and it only bites a value already ERRORED for length (the file's standing JS-edge precedent).
+        val s = v.toString()
+        val dot = s.indexOf('.')
+        val naturalScale = if (dot < 0) 0 else s.length - dot - 1
+        return v.toFixed(maxOf(naturalScale, minFractionalDigits))
+    }
 
     // VALUE equality, scale-INSENSITIVE — consistent with [compareTo] (big.js `cmp`), matching the JVM actual
     // (IF41). big.js `toString()` is the canonical trailing-zero-stripped form, so it keys a hashCode that is
