@@ -1850,15 +1850,33 @@ class Interpreter(
      *  validation (or a non-star / Having operand): the plain first-filled value. */
     private fun firstFilledValue(f: Expr.Func): Val {
         val star = f.args.singleOrNull() as? Expr.Star
-        // NO filled value in the selection → the kernel's `NumberCombiner` returns the fillable 0 (`ZAHL_0`, its
-        // initial value; `first == true`), NOT non-check-relevant — the SAME empty-as-0 as its Sum/Min/Max
-        // siblings (IF80). A malformed FIRST value still arrives as Val.Unknown (rule suppressed) via [starVals].
-        if (cellRelevant == null || star == null || star.having != null) return starVals(f).firstOrNull() ?: Val.Num(DEC_ZERO)
+        // NO filled value in the selection → the kernel's per-kind `FirstValueCombiner` returns its OWN kind's
+        // "not-given" value ([firstFilledEmpty]): a NUMBER gives the fillable 0 (`NICHT_ANGEGEBENE_ZAHL`, the
+        // empty-as-0 its Sum/Min/Max siblings give — IF80), a DATE/DATE_TIME/TIME/DATE_RANGE/STRING gives a
+        // NOT-GIVEN value → the comparison does not fire / a computation CLEARS (Val.Unknown; IF83, the IF58
+        // sibling — returning Num(0) for a date/string crashed `ValCompare` against the real value). A malformed
+        // FIRST value still arrives as Val.Unknown (rule suppressed) via [starVals].
+        if (cellRelevant == null || star == null || star.having != null) return starVals(f).firstOrNull() ?: firstFilledEmpty(f)
         for ((reps, value) in ctx.starCells(star.path)) {
             if (!cellRelevant.invoke(star.path, reps)) return Val.Unknown   // a NON-relevant cell precedes → Unknown (partial)
             if (value != null) return value
         }
-        return Val.Num(DEC_ZERO)   // all cells relevant + empty → the fillable 0
+        return firstFilledEmpty(f)   // all cells relevant + empty → the kind's not-given value
+    }
+
+    /** The empty-selection identity of a `FirstFilledValue` by its operand kind (the kernel's per-kind
+     *  `FirstValueCombiner`): NUMBER → the fillable `0`; every other kind → NOT-GIVEN ([Val.Unknown], the
+     *  comparison does not fire / a computation clears). IF83. */
+    private fun firstFilledEmpty(f: Expr.Func): Val =
+        if (firstFilledKind(f) == Kind.NUMBER) Val.Num(DEC_ZERO) else Val.Unknown
+
+    /** The declared kind of a `FirstFilledValue`'s operand (its star / field), or null when indeterminable. */
+    private fun firstFilledKind(f: Expr.Func): Kind? = f.args.firstNotNullOfOrNull { a ->
+        when (a) {
+            is Expr.Star -> ctxOf(a).declaredKind(a.path)
+            is Expr.Field -> ctxOf(a).declaredKind(a.path)
+            else -> null
+        }
     }
 
     /** DATE-like kinds ride the kernel's date machinery (`VkDate`) — min/max over them dispatch to the
