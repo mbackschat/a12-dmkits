@@ -111,8 +111,9 @@ public final class OperatorCatalog {
         return claimed.or(() -> defaultEmptyBehavior(kind));
     }
 
-    /** The catalog kind token for a {@link ValueKind} ({@code null} for the kinds outside the facet tables). */
-    private static String kindToken(ValueKind kind) {
+    /** The catalog kind token for a {@link ValueKind} ({@code null} for the kinds outside the facet tables) —
+     *  the shared vocabulary the facet claims, the correctives' {@code whenOperands}, and their consumers speak. */
+    public static String kindToken(ValueKind kind) {
         return switch (kind) {
             case NUMBER -> "number";
             case STRING -> "string";

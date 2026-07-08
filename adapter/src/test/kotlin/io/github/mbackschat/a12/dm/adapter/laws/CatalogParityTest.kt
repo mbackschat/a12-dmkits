@@ -44,6 +44,7 @@ class CatalogParityTest {
         "LessThan", "LessThanOrEqual", "GreaterThan", "GreaterThanOrEqual", // Cond.Cmp / CmpOp
         "Equal", "NotEqual",
         "Arithmetic",                                                       // Expr.Arith / ArithOp (+ - * / ^)
+        "Concatenation",                                                    // string + — the Expr.Arith ADD branch over strings (IF81's concat semantics)
         "PatternMatched", "PatternViolated",                               // Cond.Pattern
         "DiffersWithToleranceRange1", "DiffersWithToleranceRange2",        // Cond.Tolerance (|a−b| > N)
         "DiffersWithToleranceRange5", "DiffersWithToleranceRange10",

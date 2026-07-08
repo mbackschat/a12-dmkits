@@ -143,6 +143,20 @@
     "gotchas": [ { "text": "the symbol is the same in every condition language (it is not a localized keyword)", "kind": "RENDERING" } ],
     "validExample": { "dsl": "[Quantity] <= 0", "note": "fires when Quantity is zero or negative" },
     "invalidExample": { "dsl": "[CustomerName] <= [ProductCode]", "error": "MVK_INVALID_TYPE_FOR_COMPARISON", "fix": "ordering needs numbers or dates — compare strings with == / != instead; but if one side is a DATE, write the literal in German dd.MM.yyyy form (e.g. \"31.12.2024\"), not ISO \"2024-12-31\"" },
+    "correctives": [
+      {
+        "code": "MVK_INVALID_TYPE_FOR_COMPARISON",
+        "whenOperands": ["string", "string"],
+        "fix": "ordering needs numbers or dates — compare the strings with == / != instead",
+        "probe": { "dsl": "[CustomerName] <= [ProductCode]" }
+      },
+      {
+        "code": "MVK_INVALID_TYPE_FOR_COMPARISON",
+        "whenOperands": ["date", "string-literal"],
+        "fix": "one side is a DATE — write the literal in the German dd.MM.yyyy form (e.g. \"31.12.2024\"), not ISO \"2024-12-31\"",
+        "probe": { "dsl": "[OrderDate] <= \"2024-12-31\"" }
+      }
+    ],
     "sinceKernel": "30.8.x"
   },
   {
@@ -158,6 +172,20 @@
     "gotchas": [ { "text": "the symbol is the same in every condition language (it is not a localized keyword)", "kind": "RENDERING" } ],
     "validExample": { "dsl": "[Quantity] < 0", "note": "fires when Quantity is negative" },
     "invalidExample": { "dsl": "[CustomerName] < [ProductCode]", "error": "MVK_INVALID_TYPE_FOR_COMPARISON", "fix": "ordering needs numbers or dates — compare strings with == / != instead; but if one side is a DATE, write the literal in German dd.MM.yyyy form (e.g. \"31.12.2024\"), not ISO \"2024-12-31\"" },
+    "correctives": [
+      {
+        "code": "MVK_INVALID_TYPE_FOR_COMPARISON",
+        "whenOperands": ["string", "string"],
+        "fix": "ordering needs numbers or dates — compare the strings with == / != instead",
+        "probe": { "dsl": "[CustomerName] < [ProductCode]" }
+      },
+      {
+        "code": "MVK_INVALID_TYPE_FOR_COMPARISON",
+        "whenOperands": ["date", "string-literal"],
+        "fix": "one side is a DATE — write the literal in the German dd.MM.yyyy form (e.g. \"31.12.2024\"), not ISO \"2024-12-31\"",
+        "probe": { "dsl": "[OrderDate] < \"2024-12-31\"" }
+      }
+    ],
     "sinceKernel": "30.8.x"
   },
   {
@@ -173,6 +201,20 @@
     "gotchas": [ { "text": "the symbol is the same in every condition language (it is not a localized keyword)", "kind": "RENDERING" } ],
     "validExample": { "dsl": "[Quantity] > 100", "note": "fires when Quantity exceeds 100" },
     "invalidExample": { "dsl": "[CustomerName] > [ProductCode]", "error": "MVK_INVALID_TYPE_FOR_COMPARISON", "fix": "ordering needs numbers or dates — compare strings with == / != instead; but if one side is a DATE, write the literal in German dd.MM.yyyy form (e.g. \"31.12.2024\"), not ISO \"2024-12-31\"" },
+    "correctives": [
+      {
+        "code": "MVK_INVALID_TYPE_FOR_COMPARISON",
+        "whenOperands": ["string", "string"],
+        "fix": "ordering needs numbers or dates — compare the strings with == / != instead",
+        "probe": { "dsl": "[CustomerName] > [ProductCode]" }
+      },
+      {
+        "code": "MVK_INVALID_TYPE_FOR_COMPARISON",
+        "whenOperands": ["date", "string-literal"],
+        "fix": "one side is a DATE — write the literal in the German dd.MM.yyyy form (e.g. \"31.12.2024\"), not ISO \"2024-12-31\"",
+        "probe": { "dsl": "[OrderDate] > \"2024-12-31\"" }
+      }
+    ],
     "sinceKernel": "30.8.x"
   },
   {
@@ -188,6 +230,20 @@
     "gotchas": [ { "text": "the symbol is the same in every condition language (it is not a localized keyword)", "kind": "RENDERING" } ],
     "validExample": { "dsl": "[Quantity] >= 100", "note": "fires when Quantity reaches 100" },
     "invalidExample": { "dsl": "[CustomerName] >= [ProductCode]", "error": "MVK_INVALID_TYPE_FOR_COMPARISON", "fix": "ordering needs numbers or dates — compare strings with == / != instead; but if one side is a DATE, write the literal in German dd.MM.yyyy form (e.g. \"31.12.2024\"), not ISO \"2024-12-31\"" },
+    "correctives": [
+      {
+        "code": "MVK_INVALID_TYPE_FOR_COMPARISON",
+        "whenOperands": ["string", "string"],
+        "fix": "ordering needs numbers or dates — compare the strings with == / != instead",
+        "probe": { "dsl": "[CustomerName] >= [ProductCode]" }
+      },
+      {
+        "code": "MVK_INVALID_TYPE_FOR_COMPARISON",
+        "whenOperands": ["date", "string-literal"],
+        "fix": "one side is a DATE — write the literal in the German dd.MM.yyyy form (e.g. \"31.12.2024\"), not ISO \"2024-12-31\"",
+        "probe": { "dsl": "[OrderDate] >= \"2024-12-31\"" }
+      }
+    ],
     "sinceKernel": "30.8.x"
   },
   {

@@ -73,4 +73,52 @@ class SpanResolverTest {
 
         assertSame(lint, resolver.resolve(List.of(lint), c).get(0));
     }
+
+    // --- operand-aware fix selection (CATALOG-SPEC §6) — the D1 class becomes impossible where an AST exists ---
+
+    @Test
+    void selectsTheDateLiteralCorrectiveForADateVsIsoLiteral() {
+        // THE D1 SCENARIO (eval 2026-06-17): [OrderDate] <= "2024-12-31" draws
+        // MVK_INVALID_TYPE_FOR_COMPARISON, and the operand-blind catalog-join served the
+        // string-vs-string corrective ("compare strings with == / !="). With the typed AST the
+        // operands classify as date + string-literal, selecting the date-literal corrective.
+        BoundModel order = Fixtures.order();
+        Condition c = order.date("/Order/OrderDate")
+                .onOrBefore(io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.dateValue("2024-12-31"));
+
+        Diagnostic refined = resolver.resolve(List.of(kernel("MVK_INVALID_TYPE_FOR_COMPARISON")), c).get(0);
+
+        assertEquals(Optional.of("LessThanOrEqual"), refined.where().operator());
+        assertTrue(refined.fix().orElse("").contains("dd.MM.yyyy"),
+                () -> "the DATE-literal corrective must be selected: " + refined.fix());
+        assertTrue(!refined.fix().orElse("").contains("== / !="),
+                () -> "the string-vs-string corrective must NOT be served on a date trigger: " + refined.fix());
+    }
+
+    @Test
+    void selectsTheStringCorrectiveForAStringVsStringOrdering() {
+        // The other trigger of the same code: two string fields under an ordering operator. Not
+        // typed-buildable (the builder prevents it), so construct the read-shaped AST directly —
+        // exactly what a converted foreign rule would carry.
+        Condition c = new io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition(
+                new io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue(m.field("/Subscription/Addons/Name")),
+                io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp.LT,
+                new io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue(m.field("/Subscription/Billing/InvoiceEmail")));
+
+        Diagnostic refined = resolver.resolve(List.of(kernel("MVK_INVALID_TYPE_FOR_COMPARISON")), c).get(0);
+
+        assertEquals(Optional.of("LessThan"), refined.where().operator());
+        assertTrue(refined.fix().orElse("").contains("== / !="),
+                () -> "the string-vs-string corrective must be selected: " + refined.fix());
+        assertTrue(!refined.fix().orElse("").contains("dd.MM.yyyy"),
+                () -> "the date corrective must NOT be served on a string trigger: " + refined.fix());
+    }
+
+    @Test
+    void unmatchedOperandShapesKeepTheUnionFallback() {
+        // number-vs-number-literal matches no corrective → the entry-level invalidExample fix stays.
+        Condition c = m.num(FEE).lt(0);
+        Diagnostic refined = resolver.resolve(List.of(kernel("MVK_INVALID_TYPE_FOR_COMPARISON")), c).get(0);
+        assertTrue(refined.fix().isPresent(), "the fallback fix must survive an unmatched operand shape");
+    }
 }
