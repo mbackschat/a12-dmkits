@@ -324,6 +324,8 @@ Six components; the **catalog** is the language-neutral spine, the **kernel brid
 
 ## 9. The operator catalog (the spine) <a name="9-operator-catalog"></a>
 
+> **The live contract is [CATALOG-SPEC.md](CATALOG-SPEC.md)** (extracted 2026-07-08 when the semantic facets landed — entry schema, the `semantics` facet block + `emptyOperandDefaults` header, the operand-conditional `correctives`, and the verification lanes incl. the kernel-executed facet probes). This section keeps the design intent and the honesty directions.
+
 A serializable registry — one entry per kernel construct — that drives the builder, the renderer, the docs, and the LLM context. Illustrative entry shape:
 
 ```jsonc

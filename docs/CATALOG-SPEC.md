@@ -1,0 +1,167 @@
+# CATALOG-SPEC — the operator catalog: schema, semantic facets, verification lanes
+
+> **Status: shipped contract** (extracted from [PROJECT-DESIGN §9](PROJECT-DESIGN.md#9-operator-catalog) per the outgrows-its-section rule, 2026-07-08, when the WI-5a facet slice landed; §9 keeps the design intent and the honesty directions). This spec is the live contract for `src/main/resources/catalog/operators.json`, its Java model (`rulekit.catalog`), and the guards that keep it honest. The facet program context is [SEMANTICS-FORMALIZATION-PROPOSAL §9](SEMANTICS-FORMALIZATION-PROPOSAL.md).
+
+## 1. What the catalog is
+
+One bundled JSON resource — `catalog/operators.json`, loaded by `OperatorCatalog.load()` — describing **every kernel construct as data**: the language-neutral spine the typed builder, the renderer, the diagnostics enrichment, `dmtool operators`, and the LLM-facing surfaces all read from. Nothing operator-specific is hard-coded in Java.
+
+Two knowledge tiers live in the file:
+
+| tier | carrier | example |
+|---|---|---|
+| **prose for a reader** (human or LLM) | `meaning`, `constraints`, `gotchas` (kind-classified), `validExample`/`invalidExample` | "an UNSPECIFIED field counts as 0 — unlike MaxValue/MinValue" |
+| **data for a program** | the **semantics facets** (§3), the header **`emptyOperandDefaults`** (§4), the **`correctives`** (§6) | `"emptyOperand": [{"operand": "0", "behavior": "AS_ZERO", …}]` |
+
+The machine tier exists because three consumers demonstrably guessed wrong when semantics lived only in prose: the `DiagnosticEnricher` served an operand-blind fix (the D1 incident, §6), `RK_UNGUARDED_NUMBER_COMPARISON` was pattern-matched and incomplete, and the eval judge false-positived on empty-operand equivalence.
+
+## 2. The entry schema
+
+`OperatorEntry` (Jackson, `ignoreUnknown` so the JSON can grow ahead of the record). Established fields — id, `kind` (`OperatorKind`), bilingual `keywords`, `operands` (type tokens), `returns`, `meaning`, `constraints`, `gotchas` (`GotchaKind`-classified), `validExample` / `invalidExample` / `computationExample`, `status` (`SUPPORTED`/`PLANNED` — the stub policy, PROJECT-DESIGN §9), `opposite` (symmetric negation partners), `seeAlso`, `sinceKernel` — are unchanged; this spec adds two:
+
+- **`semantics`** (§3) — the per-operator facet block, one key per dimension.
+- **`correctives`** (§6) — operand-conditional fixes for kernel codes, the machine-readable refinement of `invalidExample.fix`.
+
+## 3. The `semantics` facet block
+
+```jsonc
+"semantics": {
+  "emptyOperand": [ /* §4 — the shipped dimension */ ]
+  // reserved, slot in additively (WI-5b): "polarity", "iterationRange", "boundary", "aggregateIdentity"
+}
+```
+
+Design rules, fixed by the WI-5a slice:
+
+- **One key per dimension.** A dimension is a list of *claims*; adding a dimension never reshapes an existing one (`OperatorSemantics` ignores unknown keys until the field lands).
+- **Every facet value is a verified claim.** A claim carries a **`basis`** (the differential lock / KERNEL-FINDINGS or IF finding it derives from — values are *derived from locks, never invented*) and **`probes`** (kernel-executed, §5). A claim without a probe **fails the build**.
+- **Deviations only.** Type-level defaults live once in the header (§4); an operator carries a claim only where it deviates from (or per-kind refines) the operand kind's default. Absence of a claim = the defaults apply.
+
+## 4. The `emptyOperand` dimension
+
+**The question it answers:** what does this operator do when a given operand is *empty* (a present-but-valueless field)? This is the #1 recurring semantic failure class (empty-as-0 firing, judge false-positives, incomplete lints), and the per-operator answers were already differentially locked by the WI-T campaign — the facet is their machine-readable projection.
+
+### 4a. The value vocabulary (`EmptyBehavior`)
+
+Derived from the locked findings (each value names its canonical lock), not a priori:
+
+| value | meaning | canonical lock |
+|---|---|---|
+| `AS_ZERO` | the empty operand participates as the fillable **0**; the evaluation proceeds and can fire | `EmptyValueLawsTest` (number, `Length`), `EmptyOperandFiringDiffTest` (IF73: extractors, diffs) |
+| `AS_FALSE` | participates as **False** | `EmptyValueLawsTest.emptyConfirmIsTreatedAsFalse` |
+| `AS_EMPTY_STRING` | participates as **""** | `EmptyValueLawsTest.emptyStringInAConcatenationIsEvaluated` |
+| `NOT_EVALUATED` | the enclosing comparison/predicate yields **no verdict** — cannot fire on this emptiness | `EmptyValueLawsTest` (string/boolean/date), KERNEL-FINDINGS §8 (value-list 3VL) |
+| `SKIPPED` | the operand is **dropped from the operator's set/fold**; the operator still evaluates over the rest | IF51 (`MinValue(20, ∅) == 20`), IF58 (date `Min`/`Max` operands), IF60 (VLQ cells) |
+| `EVALUATES_FALSE` | the predicate's verdict is a definite **False** (vs `NOT_EVALUATED`'s no-verdict) | IF72 (`AtLeastOneDateRangeOverlaps` empty scalar) |
+
+Deliberately **not** in this dimension: what an *all-empty selection* folds to (`Sum(∅…) = 0` vs a date aggregate's no-value) — that is the `aggregateIdentity` dimension (WI-5b); and how a *formally-invalid* (malformed / constraint-violating) operand behaves — invalidity is not emptiness (IF84/IF85's not-check-relevant machinery), a possible future dimension.
+
+### 4b. The header `emptyOperandDefaults` table
+
+The per-kind defaults (KERNEL-SEMANTICS §2's type-asymmetry table) are stated **once**, as the catalog header key `emptyOperandDefaults` — kind token → `{behavior, basis, note, probes}`:
+
+| kind token | default | the trap it encodes |
+|---|---|---|
+| `number` | `AS_ZERO` | `[Quantity] < 100` fires on an empty Quantity (0 < 100) — in a comparison *and* inside arithmetic |
+| `confirm` | `AS_FALSE` | `[TermsConfirmed] != True` fires on an empty confirm |
+| `string`, `enum`, `boolean`, `date`, `time`, `date-time` | `NOT_EVALUATED` | absence never satisfies a value test — absence needs `FieldNotFilled` |
+
+Kinds outside the table: `date-range` (no comparison/value position exists — the range predicates/functions carry their own facets), `date-fragment` (rides the `date` row — a fragment is completed to a plain date before evaluation, IF57), `custom` (validity is a delegated SPI). `OperatorCatalog.defaultEmptyBehavior(ValueKind)` is the typed lookup.
+
+The defaults hold **within a content-bearing row** — an entirely empty repeatable row is not evaluated in full validation (KERNEL-FINDINGS §2 / IF53; partial validation's relevance gate differs, IF54). The probe lane bakes this in by always probing on a filled row (§5).
+
+### 4c. A claim's shape
+
+```jsonc
+"semantics": {
+  "emptyOperand": [
+    {
+      "operand": "0",                 // "all", or a 0-based index into the entry's `operands`
+      "behavior": "AS_ZERO",          // XOR perKind — exactly one of the two
+      "perKind": { "number": "AS_ZERO", "date": "SKIPPED" },   // when the behavior varies by operand kind
+      "basis": "IF73 / adapter.laws.EmptyOperandFiringDiffTest",
+      "note": "why this deviates from the kind default",
+      "probes": [ { /* §5 */ } ]
+    }
+  ]
+}
+```
+
+`operand` selects the claim's scope — the value-list membership predicates split subject (`"0"`) vs entries (`"1"`); the variadic families use `"all"`. `perKind` exists because one operator can differ by operand kind: the operand-list `Min`/`Max` substitute an empty *number* as 0 (it can win the Min) but *skip* an empty date operand (IF58).
+
+## 5. The verification lanes — how the catalog cannot rot
+
+Every executable artifact in the catalog is CI-executed against the **real kernel**; the structural guards make the executable artifact mandatory. A claim nobody probes cannot ship.
+
+| lane | guard | what it executes |
+|---|---|---|
+| N7 examples | `catalog.CatalogExamplesAreKernelValidTest` | every `validExample` kernel-ACCEPTED, every `invalidExample` REJECTED (with its `error` code when `MVK_*`) |
+| N7 computations | `catalog.CatalogComputationExamplesAreKernelValidTest` | every `computationExample` runs as a real computation |
+| **facet probes** | `adapter.laws.CatalogFacetProbesTest` | every `emptyOperandDefaults` and `semantics.emptyOperand` probe: the probe rule is (1) kernel-**ACCEPTED** and (2) **fires ⟺ `fires`** on the described instance, through the kernel runtime (`RuntimeLaws`) |
+| **corrective probes** | `catalog.CatalogCorrectiveProbesTest` | every `correctives[].probe.dsl` kernel-**REJECTED with exactly its `code`** |
+| structural | `catalog.OperatorCatalogTest` | every claim: valid operand selector, behavior XOR perKind, non-blank basis, **≥ 1 probe**, well-formed probe paths; every corrective: known operand-class tokens, fix, reject probe |
+| keyword / construct parity | `KeywordParityTest`, `adapter.KernelConstructParityTest` | catalog ↔ lexer terminals / parsetree construct enums (unchanged) |
+
+### 5a. The firing-probe contract (`FacetProbe`)
+
+Probes are **fixture-bound to `models/order.dm.json`** (the N7 fixture — one shared vocabulary of fields covering every kind, including repeatable `Items` and date-range fields) and executed as a rule on `/Order`:
+
+| field | meaning |
+|---|---|
+| `dsl` | the probe rule's error condition (canonical EN DSL against the Order fixture) |
+| `errorField` | the rule's error field, **relative to `/Order`** (e.g. `"Quantity"`, `"Items/Count"`) — explicit by contract, no inference |
+| `rows` | extra group rows to instantiate; a path part may carry a 1-based repetition index (`"/Order/Items[2]"`); `/Order` itself is implicit |
+| `given` | filled cells, absolute path → value (same `[n]` indexing) |
+| `empty` | **instantiated-empty** cells — present but valueless, how a form renders an unfilled field |
+| `fires` | whether the rule must fire |
+
+The lane always adds the content-bearing filler `/Order/CustomerName = "Acme"` (unless the probe itself uses CustomerName), so every probe runs on a filled row — the §4b precondition. Each probe is first validated (`RuleValidator` must ACCEPT the injected rule) so a `fires: false` probe can never pass because its DSL was silently broken — the false-green trap.
+
+**Probes vs law tests — deliberately both.** The `adapter/laws` differentials lock the *engine finding*; the catalog probes lock the *catalog claim*. The two artifacts rot independently (a JSON edit doesn't touch a law test), so each carries its own executable guard; the claim's `basis` cross-references the law so the derivation is auditable and never re-derived blind.
+
+## 6. `correctives` — operand-conditional fixes (the D1 mechanism)
+
+**The incident this kills** (D1, [eval/RESULTS.md](../eval/RESULTS.md) 2026-06-17): `MVK_INVALID_TYPE_FOR_COMPARISON` is enriched by a catalog-join **by code only**, so the ordering operators' `invalidExample.fix` — written for the string-vs-string trigger ("compare strings with == / !=") — was served verbatim on a **date-vs-ISO-literal** trigger, where it is wrong (the correct move is a `dd.MM.yyyy` literal). The 2026-06-17 stopgap widened the fix *text* to a union naming both remedies; the union is honest but makes the reader do the operand analysis the tool already could.
+
+The mechanism: an entry carries `correctives` — per-`code`, per-operand-shape fixes:
+
+```jsonc
+"correctives": [
+  { "code": "MVK_INVALID_TYPE_FOR_COMPARISON",
+    "whenOperands": ["string", "string"],
+    "fix": "ordering needs numbers or dates — compare the strings with == / != instead",
+    "probe": { "dsl": "[CustomerName] < [ProductCode]" } },
+  { "code": "MVK_INVALID_TYPE_FOR_COMPARISON",
+    "whenOperands": ["date", "string-literal"],
+    "fix": "one side is a DATE — write the literal in dd.MM.yyyy form (e.g. \"31.12.2024\"), not ISO",
+    "probe": { "dsl": "[OrderDate] < \"2024-12-31\"" } }
+]
+```
+
+- **`whenOperands`** is an unordered multiset of operand-class tokens: a value-kind token (`number`, `string`, `date`, …) matches a field/expression of that kind; `string-literal` / `number-literal` match literal nodes.
+- **Selection lives in `lint.SpanResolver`** (per the S6 finding — *not* in `DiagnosticEnricher`): the read pass holds the typed `Condition` AST, pins the operator by catalog∩usage intersection, classifies the pinned node's actual operands (kinds sit on `FieldRef`, literals are typed nodes), and serves the matching corrective. No match → the entry-level `invalidExample.fix` (the union) stays the fallback. The enricher itself remains operand-blind by design — it has no AST; its union-fix stays sound.
+- **Verification:** each corrective's `probe.dsl` must be kernel-rejected with exactly `code` (§5's reject lane), and the SpanResolver selection is law-tested on the D1 scenario itself.
+
+## 7. Serving — `dmtool operators`
+
+`dmtool operators <id>` serves the full entry including the machine tier: `semantics` (the facet claims — probes elided, they are CI detail; `behavior`/`perKind`, `basis`, `note` travel), the header defaults ride the bare `operators` list response as `emptyOperandDefaults` (kind → behavior), `correctives` (code, whenOperands, fix), and `gotchas` **with their `kind`**. The payload is part of the self-describing surface (CLI-SPEC §1a): a cold agent must be able to learn "an empty number fires this comparison" from the binary alone.
+
+## 8. Consumers (what makes the facets pass the §21D consumer-exists razor)
+
+| consumer | what it reads | status |
+|---|---|---|
+| `lint.Linter` — `RK_UNGUARDED_NUMBER_COMPARISON` | header defaults + `AS_ZERO` claims: computes the value a comparison side takes when a field inside it is empty, flags precisely (no hand-listed operator patterns) | WI-5a |
+| `lint.SpanResolver` — fix selection | `correctives` + the typed AST operand classification | WI-5a |
+| `dmtool operators` | the whole machine tier (§7) | WI-5a |
+| eval judge | facet claims as the equivalence oracle for empty-operand variants | WI-5b |
+| facet → generated corpus cases | each claim implies conformance-corpus cases | WI-5b |
+
+## 9. Population state & boundaries (WI-5a → WI-5b)
+
+WI-5a populated the `emptyOperand` dimension for the families its consumers touch — the comparison defaults (header), the value/count aggregates, the value functions (`Length`, extractors, diffs, `Min`/`Max`), the value-list membership + quantifier predicates, and `Concatenation`. Not populated, with reasons:
+
+- **`Date(d,m,y)` / `Time(h,m,s)` / `DateTime` constructions with an empty part** — kernel behavior uncharacterized (IF73 scoped them out; no corpus instance). Characterize before claiming — a facet must never state an unverified value.
+- **`RangeAsString` / `RangeAsNumber` / `FieldValueAsNumber` / `ValueAsDate` / `AddDays`-family empties** — no differential lock yet; deferred to WI-5b with fresh probes (and, where the interpreter disagrees with a fresh kernel probe, a WI-T gap row *first*).
+- The remaining §3 dimensions (`polarity`, `iterationRange`, `boundary`, `aggregateIdentity`) — WI-5b.
+
+**Maintenance rules:** a new operator claim needs basis + probes in the same commit (the guards enforce it). An `operators.json` change is a **native-image re-capture trigger** ([NATIVE-IMAGE-GRAALVM §5.1](NATIVE-IMAGE-GRAALVM.md)). On a kernel bump the probes re-run against the new kernel automatically (they are ordinary CI tests — the [KERNEL-UPGRADE](KERNEL-UPGRADE.md) guardian net gains this lane for free).

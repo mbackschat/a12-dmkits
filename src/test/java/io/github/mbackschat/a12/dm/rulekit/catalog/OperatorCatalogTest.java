@@ -151,6 +151,116 @@ class OperatorCatalogTest {
                 () -> b + " should name " + a + " as its opposite");
     }
 
+    // ---- the semantics facets (CATALOG-SPEC §3–§6) ------------------------------------------------
+
+    /** The catalog kind tokens the facet machinery speaks (CATALOG-SPEC §3). */
+    private static final java.util.Set<String> KIND_TOKENS = java.util.Set.of(
+            "number", "string", "enum", "boolean", "confirm", "date", "time", "date-time", "date-range");
+
+    /** Operand-class tokens a corrective's {@code whenOperands} may use: a kind, or a literal marker. */
+    private static final java.util.Set<String> OPERAND_CLASS_TOKENS = java.util.Set.of(
+            "number", "string", "enum", "boolean", "confirm", "date", "time", "date-time", "date-range",
+            "string-literal", "number-literal");
+
+    /**
+     * The header {@code emptyOperandDefaults} table states the per-kind empty behavior ONCE
+     * (KERNEL-SEMANTICS §2's type asymmetry) — every comparable kind present, each with a basis and
+     * at least one executable probe (the facet lane runs them against the real kernel).
+     */
+    @Test
+    void headerDeclaresEmptyOperandDefaultsForEveryComparableKind() {
+        var defaults = CATALOG.emptyOperandDefaults();
+        for (String kind : java.util.List.of("number", "string", "enum", "boolean", "confirm",
+                "date", "time", "date-time")) {
+            OperatorCatalog.EmptyOperandDefault d = defaults.get(kind);
+            assertNotNull(d, () -> "emptyOperandDefaults missing kind '" + kind + "'");
+            assertNotNull(d.behavior(), () -> kind + ": default missing behavior");
+            assertFalse(isBlank(d.basis()), () -> kind + ": default missing basis");
+            assertFalse(d.probes().isEmpty(), () -> kind + ": default needs at least one probe");
+            d.probes().forEach(p -> assertProbeWellFormed(kind + " default", p));
+        }
+        // the canonical asymmetry: number reads 0, string is not evaluated (KERNEL-SEMANTICS §2)
+        assertEquals(EmptyBehavior.AS_ZERO, defaults.get("number").behavior());
+        assertEquals(EmptyBehavior.AS_FALSE, defaults.get("confirm").behavior());
+        assertEquals(EmptyBehavior.NOT_EVALUATED, defaults.get("string").behavior());
+    }
+
+    /**
+     * Every {@code semantics.emptyOperand} claim is well-formed: a valid operand selector, exactly one
+     * of {@code behavior} / {@code perKind}, a basis (the lock it derives from), and at least one
+     * executable probe — a facet value without a probe cannot ship (the no-rot lever, CATALOG-SPEC §5).
+     */
+    @Test
+    void everyEmptyOperandClaimIsWellFormedAndProbed() {
+        for (OperatorEntry e : CATALOG.entries()) {
+            for (EmptyOperandClaim claim : e.emptyOperandClaims()) {
+                String at = e.id() + " emptyOperand[" + claim.operand() + "]";
+                assertTrue("all".equals(claim.operand()) || isOperandIndex(claim.operand(), e),
+                        () -> at + ": operand must be \"all\" or a 0-based index into operands");
+                assertTrue(claim.behavior() != null ^ !claim.perKind().isEmpty(),
+                        () -> at + ": exactly one of behavior / perKind");
+                claim.perKind().keySet().forEach(k -> assertTrue(KIND_TOKENS.contains(k),
+                        () -> at + ": unknown perKind token '" + k + "'"));
+                assertFalse(isBlank(claim.basis()), () -> at + ": missing basis (the lock/finding it derives from)");
+                assertFalse(claim.probes().isEmpty(), () -> at + ": a facet claim needs at least one probe");
+                claim.probes().forEach(p -> assertProbeWellFormed(at, p));
+            }
+        }
+    }
+
+    /**
+     * Every {@code correctives} entry is well-formed: a kernel code, a non-empty operand-class match,
+     * the fix text, and a reject probe whose DSL the facet lane executes (must be rejected with the
+     * code) — so an operand-conditional fix can't document a trigger that no longer exists.
+     */
+    @Test
+    void everyCorrectiveIsWellFormedAndProbed() {
+        for (OperatorEntry e : CATALOG.entries()) {
+            for (Corrective c : e.correctives()) {
+                String at = e.id() + " corrective " + c.code();
+                assertFalse(isBlank(c.code()), () -> e.id() + ": corrective missing code");
+                assertFalse(c.whenOperands().isEmpty(), () -> at + ": whenOperands must not be empty");
+                c.whenOperands().forEach(t -> assertTrue(OPERAND_CLASS_TOKENS.contains(t),
+                        () -> at + ": unknown operand-class token '" + t + "'"));
+                assertFalse(isBlank(c.fix()), () -> at + ": missing fix");
+                assertNotNull(c.probe(), () -> at + ": missing reject probe");
+                assertFalse(isBlank(c.probe().dsl()), () -> at + ": reject probe needs a dsl");
+            }
+        }
+    }
+
+    /** The worked seed (CATALOG-SPEC §4): {@code Length} deviates from the string default — empty reads 0. */
+    @Test
+    void lengthCarriesTheEmptyAsZeroFacet() {
+        OperatorEntry length = CATALOG.byId("Length").orElseThrow();
+        assertEquals(1, length.emptyOperandClaims().size(), "Length carries one emptyOperand claim");
+        EmptyOperandClaim claim = length.emptyOperandClaims().get(0);
+        assertEquals(EmptyBehavior.AS_ZERO, claim.behavior(),
+                "Length of an empty string is 0 — the string family's empty-as-0 backdoor");
+        assertTrue(claim.appliesTo(0));
+    }
+
+    private static boolean isOperandIndex(String operand, OperatorEntry e) {
+        try {
+            int i = Integer.parseInt(operand);
+            return i >= 0 && i < e.operands().size();
+        } catch (NumberFormatException notANumber) {
+            return false;
+        }
+    }
+
+    private static void assertProbeWellFormed(String at, FacetProbe p) {
+        assertFalse(isBlank(p.dsl()), () -> at + ": probe missing dsl");
+        assertFalse(isBlank(p.errorField()), () -> at + ": probe missing errorField (explicit by contract)");
+        assertNotNull(p.fires(), () -> at + ": probe missing fires");
+        p.rows().forEach(r -> assertTrue(r.startsWith("/Order"),
+                () -> at + ": probe row '" + r + "' must be an absolute /Order path"));
+        p.given().keySet().forEach(g -> assertTrue(g.startsWith("/Order/"),
+                () -> at + ": probe given path '" + g + "' must be an absolute /Order path"));
+        p.empty().forEach(f -> assertTrue(f.startsWith("/Order/"),
+                () -> at + ": probe empty path '" + f + "' must be an absolute /Order path"));
+    }
+
     private static boolean isBlank(String s) {
         return s == null || s.isBlank();
     }

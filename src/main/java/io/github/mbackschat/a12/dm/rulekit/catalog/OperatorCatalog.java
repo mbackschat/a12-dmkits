@@ -8,8 +8,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
  * The bundled operator catalog (PROJECT-DESIGN §9), loaded from the classpath resource
@@ -25,10 +28,13 @@ public final class OperatorCatalog {
     private final List<OperatorEntry> entries;
     private final Map<String, OperatorEntry> byId;
     private final String verifiedAgainst;
+    private final Map<String, EmptyOperandDefault> emptyOperandDefaults;
 
-    private OperatorCatalog(List<OperatorEntry> entries, String verifiedAgainst) {
+    private OperatorCatalog(List<OperatorEntry> entries, String verifiedAgainst,
+            Map<String, EmptyOperandDefault> emptyOperandDefaults) {
         this.verifiedAgainst = verifiedAgainst;
         this.entries = List.copyOf(entries);
+        this.emptyOperandDefaults = Map.copyOf(emptyOperandDefaults);
         Map<String, OperatorEntry> index = new LinkedHashMap<>();
         for (OperatorEntry entry : entries) {
             if (index.put(entry.id(), entry) != null) {
@@ -47,10 +53,56 @@ public final class OperatorCatalog {
             JsonNode root = MAPPER.readTree(in);
             String verifiedAgainst = root.path("verifiedAgainst").asText(null);
             OperatorEntry[] parsed = MAPPER.treeToValue(root.path("operators"), OperatorEntry[].class);
-            return new OperatorCatalog(List.of(parsed), verifiedAgainst);
+            Map<String, EmptyOperandDefault> defaults = MAPPER.convertValue(root.path("emptyOperandDefaults"),
+                    new TypeReference<LinkedHashMap<String, EmptyOperandDefault>>() { });
+            return new OperatorCatalog(List.of(parsed), verifiedAgainst,
+                    defaults == null ? Map.of() : defaults);
         } catch (IOException e) {
             throw new UncheckedIOException("failed to read operator catalog " + RESOURCE, e);
         }
+    }
+
+    /**
+     * The per-kind <b>empty-operand default</b> — what an empty (present-but-valueless) operand of a
+     * value kind does in a comparison/value position when no operator-level facet overrides it
+     * (KERNEL-SEMANTICS §2's type-asymmetry table, stated once; CATALOG-SPEC §4). Keys are the catalog
+     * kind tokens ({@code number}, {@code string}, {@code enum}, {@code boolean}, {@code confirm},
+     * {@code date}, {@code time}, {@code date-time}).
+     */
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+    public record EmptyOperandDefault(EmptyBehavior behavior, String basis, String note,
+            List<FacetProbe> probes) {
+        public EmptyOperandDefault {
+            probes = probes == null ? List.of() : List.copyOf(probes);
+        }
+    }
+
+    /** The header {@code emptyOperandDefaults} table (kind token → default), in declaration order. */
+    public Map<String, EmptyOperandDefault> emptyOperandDefaults() {
+        return emptyOperandDefaults;
+    }
+
+    /**
+     * The default {@link EmptyBehavior} for an operand of {@code kind} — the {@code emptyOperandDefaults}
+     * lookup by typed {@link ValueKind} (a {@code DATE_FRAGMENT} rides the date row, IF57: a fragment is
+     * completed to a plain date before evaluation). Empty for the kinds outside the table
+     * ({@code DATE_RANGE} has no comparison/value position; {@code CUSTOM} validity is a delegated SPI).
+     */
+    public Optional<EmptyBehavior> defaultEmptyBehavior(ValueKind kind) {
+        String token = switch (kind) {
+            case NUMBER -> "number";
+            case STRING -> "string";
+            case ENUMERATION -> "enum";
+            case BOOLEAN -> "boolean";
+            case CONFIRM -> "confirm";
+            case DATE, DATE_FRAGMENT -> "date";
+            case TIME -> "time";
+            case DATE_TIME -> "date-time";
+            case DATE_RANGE, CUSTOM, UNKNOWN -> null;
+        };
+        return Optional.ofNullable(token)
+                .map(emptyOperandDefaults::get)
+                .map(EmptyOperandDefault::behavior);
     }
 
     public List<OperatorEntry> entries() {

@@ -34,7 +34,9 @@ public record OperatorEntry(
         OperatorStatus status,
         String sinceKernel,
         List<String> opposite,
-        List<String> seeAlso) {
+        List<String> seeAlso,
+        OperatorSemantics semantics,
+        List<Corrective> correctives) {
 
     public OperatorEntry {
         operands = operands == null ? List.of() : List.copyOf(operands);
@@ -43,6 +45,13 @@ public record OperatorEntry(
         status = status == null ? OperatorStatus.SUPPORTED : status;
         opposite = opposite == null ? List.of() : List.copyOf(opposite);
         seeAlso = seeAlso == null ? List.of() : List.copyOf(seeAlso);
+        correctives = correctives == null ? List.of() : List.copyOf(correctives);
+    }
+
+    /** The {@code emptyOperand} facet claims (CATALOG-SPEC §4) — empty when the operator follows the
+     *  per-kind defaults in the catalog header's {@code emptyOperandDefaults}. */
+    public List<EmptyOperandClaim> emptyOperandClaims() {
+        return semantics == null ? List.of() : semantics.emptyOperand();
     }
 
     /** Whether rulekit builds a typed handle for this operator (vs a {@link OperatorStatus#PLANNED} stub). */

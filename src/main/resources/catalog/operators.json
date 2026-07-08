@@ -1,5 +1,82 @@
 {
   "verifiedAgainst": "30.8.1",
+  "emptyOperandDefaults": {
+    "number": {
+      "behavior": "AS_ZERO",
+      "basis": "KERNEL-SEMANTICS §2; adapter.laws.EmptyValueLawsTest",
+      "note": "an empty number reads as the fillable 0 in any value position (comparison or arithmetic) — within a content-bearing row; the mitigation is a FieldFilled guard",
+      "probes": [
+        { "dsl": "[Quantity] < 100", "errorField": "Quantity", "empty": ["/Order/Quantity"], "fires": true,
+          "note": "empty Quantity reads 0, and 0 < 100 fires" },
+        { "dsl": "[Quantity] + 5 < 10", "errorField": "Quantity", "empty": ["/Order/Quantity"], "fires": true,
+          "note": "the substitution applies inside arithmetic too: 0 + 5 < 10 fires" }
+      ]
+    },
+    "confirm": {
+      "behavior": "AS_FALSE",
+      "basis": "KERNEL-SEMANTICS §2; adapter.laws.EmptyValueLawsTest",
+      "note": "an empty confirm reads as False — unlike boolean, whose empty is not evaluated (the §2 asymmetry)",
+      "probes": [
+        { "dsl": "[TermsConfirmed] != True", "errorField": "TermsConfirmed", "empty": ["/Order/TermsConfirmed"],
+          "fires": true, "note": "empty confirm reads False, so != True fires" }
+      ]
+    },
+    "boolean": {
+      "behavior": "NOT_EVALUATED",
+      "basis": "KERNEL-SEMANTICS §2; adapter.laws.EmptyValueLawsTest; KERNEL-FINDINGS §1 boolean three-state matrix",
+      "note": "an empty boolean leaves the comparison unevaluated — it is NOT read as False (that is confirm's behavior)",
+      "probes": [
+        { "dsl": "[ExpressShipping] == False", "errorField": "ExpressShipping", "empty": ["/Order/ExpressShipping"],
+          "fires": false, "note": "were an empty boolean read as False this would fire — it does not" }
+      ]
+    },
+    "string": {
+      "behavior": "NOT_EVALUATED",
+      "basis": "KERNEL-SEMANTICS §2; adapter.laws.EmptyValueLawsTest",
+      "note": "an empty string comparison is not evaluated (and [F] == \"\" is never satisfied — there are no empty string values); the deviations are Length (reads 0) and concatenation (reads \"\")",
+      "probes": [
+        { "dsl": "[ProductCode] == \"ABC\"", "errorField": "ProductCode", "empty": ["/Order/ProductCode"],
+          "fires": false }
+      ]
+    },
+    "enum": {
+      "behavior": "NOT_EVALUATED",
+      "basis": "KERNEL-SEMANTICS §2",
+      "note": "an empty enumeration comparison is not evaluated — absence needs FieldNotFilled, not a value test",
+      "probes": [
+        { "dsl": "[Priority] == \"STANDARD\"", "errorField": "Priority", "empty": ["/Order/Priority"],
+          "fires": false }
+      ]
+    },
+    "date": {
+      "behavior": "NOT_EVALUATED",
+      "basis": "KERNEL-SEMANTICS §2; adapter.laws.EmptyValueLawsTest",
+      "note": "an empty date comparison is not evaluated — but the date-consuming FUNCTIONS deviate: the extractors and the DifferenceIn* family read an empty operand as 0 (see their facets)",
+      "probes": [
+        { "dsl": "[OrderDate] == \"10.06.2023\"", "errorField": "OrderDate", "empty": ["/Order/OrderDate"],
+          "fires": false }
+      ]
+    },
+    "time": {
+      "behavior": "NOT_EVALUATED",
+      "basis": "KERNEL-SEMANTICS §2",
+      "note": "an empty time comparison is not evaluated; the Hours/Minutes/SecondsFromTime extractors deviate (empty reads 0)",
+      "probes": [
+        { "dsl": "[PickupTime] > \"17:00:00\"", "errorField": "PickupTime", "empty": ["/Order/PickupTime"],
+          "fires": false }
+      ]
+    },
+    "date-time": {
+      "behavior": "NOT_EVALUATED",
+      "basis": "KERNEL-SEMANTICS §2",
+      "note": "an empty date-time comparison is not evaluated; the DifferenceInHours/Minutes/Seconds functions deviate (an empty operand reads 0)",
+      "probes": [
+        { "dsl": "[ScheduledAt] == [CompletedAt]", "errorField": "ScheduledAt",
+          "given": { "/Order/CompletedAt": "2023-06-10T12:00:00" }, "empty": ["/Order/ScheduledAt"],
+          "fires": false }
+      ]
+    }
+  },
   "operators":
 [
   {
@@ -418,6 +495,20 @@
     "gotchas": [ { "text": "applying Length to a non-string field is a type error", "kind": "SURPRISE" } , { "text": "Length of an EMPTY string is 0 (evaluated!) — unlike a bare string comparison, which is skipped on empty; guard with FieldFilled to avoid firing on absent values", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "Length(CustomerName) > 10", "note": "fires when CustomerName is longer than 10 characters" },
     "invalidExample": { "dsl": "Length(Quantity) > 10", "error": "operand type", "fix": "Length needs a string field, not a number" },
+    "semantics": {
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "AS_ZERO",
+          "basis": "adapter.laws.EmptyValueLawsTest; IF73 / adapter.laws.EmptyOperandFiringDiffTest; RT-SEMANTICS BigDecimalUtils.laenge",
+          "note": "Length of an EMPTY string is 0 and the comparison EVALUATES — the string family's empty-as-0 backdoor, deviating from the string default (a bare string comparison is not evaluated)",
+          "probes": [
+            { "dsl": "Length(ProductCode) < 5", "errorField": "ProductCode", "empty": ["/Order/ProductCode"],
+              "fires": true, "note": "Length(empty) is 0, and 0 < 5 fires — guard with FieldFilled if absence must not trip the rule" }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {
