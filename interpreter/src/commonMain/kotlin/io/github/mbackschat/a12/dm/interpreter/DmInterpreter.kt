@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
+import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
@@ -15,6 +16,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.customTypeInvalidText
 import io.github.mbackschat.a12.dm.interpreter.eval.overRepetitionText
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.MANDATORY_FIELD
+import io.github.mbackschat.a12.dm.interpreter.eval.FormalErrorCode
 import io.github.mbackschat.a12.dm.interpreter.eval.formalError
 import io.github.mbackschat.a12.dm.interpreter.eval.formalErrorText
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
@@ -63,6 +65,15 @@ private val ALL_RELEVANT: Relevance = { _, _ -> true }
  *  per-operand, per-row recompute (measured: `formalErrorAt` was ~56% of `validateFull` before this memo).
  *  Created per validate call (never shared across calls), so the reused engine stays thread-safe. */
 private typealias FormalCache = MutableMap<String, MutableMap<List<Int>, String?>>   // path → reps → code (split to drop the Pair key, hot in firstSuppressor)
+
+/** The NUMBER value-domain formal-error codes that make a FILLED operand not-check-relevant → CLEAR a computation
+ *  reading it (IF76, differential-confirmed): out of min/max range, or the wrong fraction-digit count. The
+ *  digit-LENGTH / format-sanity codes (total/integer digits, leading zeros, …) are deliberately EXCLUDED — the
+ *  corpus sweep shows the kernel COMPUTES with an operand that trips those, so clearing on them over-suppresses. */
+private val NUMBER_OPERAND_CLEARS = setOf(
+    FormalErrorCode.NUMBER_TOO_SMALL, FormalErrorCode.NUMBER_TOO_BIG,
+    FormalErrorCode.TOO_FEW_DECIMALS, FormalErrorCode.TOO_MANY_DECIMALS, FormalErrorCode.NO_DECIMAL_SEPARATOR,
+)
 
 /**
  * The public entry point — evaluates a [ModelDef]'s rules over a [Document] instance, kernel-free, on
@@ -661,8 +672,23 @@ class DmInterpreter @JvmOverloads constructor(
     private fun computeInstances(doc: Document): List<Computed> {
         val out = mutableListOf<Computed>()
         val overlay = HashMap<Pair<String, List<Int>>, Val>()
+        // A computed field a PRIOR computation CLEARED — dependents must read it as EMPTY (empty-as-0 / skip), NOT
+        // the stale STORED (seeded) value the overlay would otherwise fall through to. Without this a dependent's
+        // `FieldFilled(dep)` reads the stale seed as filled and computes where the kernel (seeing dep empty) clears
+        // — a large slice of the IG44 CVV residual, AND the root of the IF76 gate's over-suppression (a cleared
+        // dependency read stale-and-invalid would wrongly trip the gate). KERNEL-FINDINGS §2 (cascade clearing).
+        val cleared = HashSet<Pair<String, List<Int>>>()
+        val emptyOf: (String) -> Val = { p -> emptyValue(model.kinds[p] ?: Kind.STRING) }
         val poisoned = HashSet<Pair<String, List<Int>>>()
         val computedTargets = model.computations.mapTo(HashSet()) { it.targetPath }
+        // A FILLED NUMBER operand whose value is out of its declared VALUE DOMAIN (min/max range, or the wrong
+        // fraction-digit count) is "not check-relevant" — the kernel computes NOTHING and CLEARS the field
+        // (IG44/IF76). Gate the compute Interpreter's operand resolution on exactly that, via [numberOperandCleared]
+        // — a malformed operand → Val.Unknown → the operation is non-evaluable → CLEARED. Deliberately NARROW: only
+        // FILLED (an empty operand — even a required one — stays empty-as-0, `nichtAngegeben` not
+        // `nichtPruefungsrelevant`), only NUMBER (the differentially-confirmed mechanism), and only the value-domain
+        // codes — NOT the digit-LENGTH / format-sanity codes (total/integer digits, …), which the corpus sweep
+        // shows the kernel computes with. Exact-by-construction: clear only on a cause the differential proves.
         for (comp in computationsInDependencyOrder()) {
             val parsed = parsedOf(comp)
             val depTargets = computationDepRefs(parsed).filter { it in computedTargets }   // its COMPUTED dependencies
@@ -673,21 +699,34 @@ class DmInterpreter @JvmOverloads constructor(
                     poisoned += targetKey   // depends on an errored value → skipped + transitively poisoned
                     continue
                 }
-                val ectx = if (overlay.isEmpty()) ctx else OverlayContext(ctx, overlay)
+                val ectx = if (overlay.isEmpty() && cleared.isEmpty()) ctx else OverlayContext(ctx, overlay, cleared, emptyOf)
                 val interp = Interpreter(ectx, clock, model.baseYear, model.indexFields, predefinedTypes,
+                    invalid = { path -> numberOperandCleared(path, ectx) },
                     customFieldTypes = customFieldTypes)
                 val v = evalComputation(parsed, interp)
                 val computed = toComputed(comp, v, targetKey.second)
                 out += computed
                 // ERRORED: report it, but poison the target and do NOT overlay — a dependent must be skipped, not
-                // computed from the bad value. A resolved VALUE overlays so dependents read the computed result.
+                // computed from the bad value. A resolved VALUE overlays so dependents read the computed result. A
+                // CLEARED (Unknown) target is recorded so dependents read it EMPTY, not the stale stored seed.
                 when {
                     computed.outcome == ComputeOutcome.ERRORED -> poisoned += targetKey
                     v !is Val.Unknown -> overlay[targetKey] = v
+                    else -> cleared += targetKey
                 }
             }
         }
         return out
+    }
+
+    /** Whether a FILLED NUMBER operand is out of its declared VALUE DOMAIN — the compute-clearing cause (IF76).
+     *  Clears only on the differentially-confirmed [NUMBER_OPERAND_CLEARS] codes (min/max range, fraction-digit
+     *  count), never the digit-length / format-sanity codes; an EMPTY operand → false (empty-as-0 applies). */
+    private fun numberOperandCleared(path: String, ctx: EvalContext): Boolean {
+        if (model.kinds[path] != Kind.NUMBER) return false
+        val raw = ctx.displayValue(path) ?: return false
+        return formalError(Kind.NUMBER, raw, model.scaleOf(path), constraints = model.constraintsOf(path),
+            legalCharset = legalCharset, baseYear = model.baseYear ?: 2000) in NUMBER_OPERAND_CLEARS
     }
 
     /**
@@ -770,27 +809,29 @@ class DmInterpreter @JvmOverloads constructor(
     private class OverlayContext(
         private val d: EvalContext,
         private val overlay: Map<Pair<String, List<Int>>, Val>,
+        private val cleared: Set<Pair<String, List<Int>>>,
+        private val emptyOf: (String) -> Val,
     ) : EvalContext by d {
         private fun overlaid(path: String): Val? = overlay[path to d.repsOf(path)]
-        override fun field(path: String): Val = overlaid(path) ?: d.field(path)
-        override fun filled(path: String): Boolean = overlaid(path)?.let { it !is Val.Unknown } ?: d.filled(path)
-        override fun displayValue(path: String): String? = when (val v = overlaid(path)) {
+        private fun isCleared(path: String): Boolean = path to d.repsOf(path) in cleared
+        // A CLEARED cascade target reads as EMPTY (kind-empty value, not filled), overriding the stored seed.
+        override fun field(path: String): Val = if (isCleared(path)) emptyOf(path) else overlaid(path) ?: d.field(path)
+        override fun filled(path: String): Boolean =
+            if (isCleared(path)) false else overlaid(path)?.let { it !is Val.Unknown } ?: d.filled(path)
+        override fun displayValue(path: String): String? = if (isCleared(path)) null else when (val v = overlaid(path)) {
             is Val.Num -> v.v.display()
             is Val.Txt -> v.v
             is Val.Bool -> v.v.toString()
             else -> d.displayValue(path)
         }
 
-        // Each row's value is the overlaid (computed) value if present, else the stored cell — so an aggregate
-        // over a computed field reads the cascade results. star = filled values (overlaid counts as filled);
-        // starAll = row-aligned (empty rows fall back to the real context's kind-empty value).
+        // Each row's value is the overlaid (computed) value if present, a CLEARED cascade cell is empty, else the
+        // stored cell — so an aggregate over a computed field reads the cascade results. star = filled values;
+        // starAll = row-aligned with empty/cleared rows as the kind-empty value.
         override fun starCells(path: String): List<Pair<List<Int>, Val?>> =
-            d.starCells(path).map { (reps, v) -> reps to (overlay[path to reps] ?: v) }
+            d.starCells(path).map { (reps, v) -> reps to (if (path to reps in cleared) null else overlay[path to reps] ?: v) }
         override fun star(path: String): List<Val> = starCells(path).mapNotNull { it.second }
-        override fun starAll(path: String): List<Val> {
-            val base = d.starAll(path)
-            return starCells(path).mapIndexed { i, (_, v) -> v ?: base[i] }
-        }
+        override fun starAll(path: String): List<Val> = starCells(path).map { (_, v) -> v ?: emptyOf(path) }
     }
 
     /** Every field/star path an expression reads — for cascade dependency ordering (incl. starred aggregates). */
