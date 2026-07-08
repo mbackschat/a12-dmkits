@@ -7598,6 +7598,12 @@
           "name": "annotations"
         },
         {
+          "name": "baseYear"
+        },
+        {
+          "name": "clearComment"
+        },
+        {
           "name": "clearRoles"
         },
         {
@@ -7613,10 +7619,16 @@
           "name": "dryRun"
         },
         {
+          "name": "fieldRefByShortName"
+        },
+        {
           "name": "labels"
         },
         {
           "name": "outputPath"
+        },
+        {
+          "name": "removeAnnotations"
         },
         {
           "name": "removeLocales"
@@ -7939,6 +7951,9 @@
       "type": "io.github.mbackschat.a12.dm.cli.group.GroupModifyCommand",
       "fields": [
         {
+          "name": "annotations"
+        },
+        {
           "name": "clearIndexField"
         },
         {
@@ -7948,16 +7963,28 @@
           "name": "dryRun"
         },
         {
+          "name": "externalDescriptions"
+        },
+        {
           "name": "group"
         },
         {
           "name": "indexField"
         },
         {
+          "name": "internalDescriptions"
+        },
+        {
+          "name": "labels"
+        },
+        {
           "name": "nonRepeatable"
         },
         {
           "name": "outputPath"
+        },
+        {
+          "name": "removeAnnotations"
         },
         {
           "name": "repeatable"
@@ -8197,6 +8224,58 @@
         },
         {
           "name": "outputPath"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.include.IncludeRenameCommand",
+      "fields": [
+        {
+          "name": "alias"
+        },
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "newAlias"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.include.IncludeSetReferenceCommand",
+      "fields": [
+        {
+          "name": "alias"
+        },
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "reference"
         },
         {
           "name": "workspace"
@@ -8724,6 +8803,9 @@
       "type": "io.github.mbackschat.a12.dm.cli.rule.RuleModifyCommand",
       "fields": [
         {
+          "name": "annotations"
+        },
+        {
           "name": "comment"
         },
         {
@@ -8733,10 +8815,19 @@
           "name": "dryRun"
         },
         {
+          "name": "externalDescriptions"
+        },
+        {
+          "name": "internalDescriptions"
+        },
+        {
           "name": "messages"
         },
         {
           "name": "outputPath"
+        },
+        {
+          "name": "removeAnnotations"
         },
         {
           "name": "rule"
@@ -9152,7 +9243,131 @@
       ]
     },
     {
+      "type": "io.github.mbackschat.a12.dm.edit.EditSession"
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentity"
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentityClaim",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentity",
+            "java.util.Map",
+            "java.lang.String",
+            "java.lang.String",
+            "java.util.List"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.rulekit.catalog.Boundary"
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.rulekit.catalog.BoundaryClaim",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "io.github.mbackschat.a12.dm.rulekit.catalog.Boundary",
+            "java.lang.String",
+            "java.lang.String",
+            "java.util.List"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.rulekit.catalog.Corrective",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String",
+            "java.util.List",
+            "java.lang.String",
+            "io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry$Example",
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior"
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.rulekit.catalog.EmptyOperandClaim",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String",
+            "io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior",
+            "java.util.Map",
+            "java.lang.String",
+            "java.lang.String",
+            "java.util.List"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.rulekit.catalog.FacetProbe",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String",
+            "java.lang.String",
+            "java.util.List",
+            "java.util.Map",
+            "java.util.List",
+            "java.lang.Boolean",
+            "io.github.mbackschat.a12.dm.rulekit.catalog.ProbeOutcome",
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.rulekit.catalog.FillPolarity"
+    },
+    {
       "type": "io.github.mbackschat.a12.dm.rulekit.catalog.GotchaKind"
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.rulekit.catalog.IterationRange"
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.rulekit.catalog.IterationRangeClaim",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "io.github.mbackschat.a12.dm.rulekit.catalog.IterationRange",
+            "java.lang.String",
+            "java.lang.String",
+            "java.util.List"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog$EmptyOperandDefault",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior",
+            "java.lang.String",
+            "java.lang.String",
+            "java.util.List"
+          ]
+        }
+      ]
     },
     {
       "type": "io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry",
@@ -9174,6 +9389,8 @@
             "io.github.mbackschat.a12.dm.rulekit.catalog.OperatorStatus",
             "java.lang.String",
             "java.util.List",
+            "java.util.List",
+            "io.github.mbackschat.a12.dm.rulekit.catalog.OperatorSemantics",
             "java.util.List"
           ]
         }
@@ -9267,7 +9484,39 @@
       ]
     },
     {
+      "type": "io.github.mbackschat.a12.dm.rulekit.catalog.OperatorSemantics",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.util.List",
+            "io.github.mbackschat.a12.dm.rulekit.catalog.BoundaryClaim",
+            "io.github.mbackschat.a12.dm.rulekit.catalog.IterationRangeClaim",
+            "io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentityClaim",
+            "io.github.mbackschat.a12.dm.rulekit.catalog.PolarityClaim"
+          ]
+        }
+      ]
+    },
+    {
       "type": "io.github.mbackschat.a12.dm.rulekit.catalog.OperatorStatus"
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.rulekit.catalog.PolarityClaim",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "io.github.mbackschat.a12.dm.rulekit.catalog.FillPolarity",
+            "java.lang.String",
+            "java.lang.String",
+            "java.util.List"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.rulekit.catalog.ProbeOutcome"
     },
     {
       "type": "java.beans.PropertyVetoException"

@@ -26,15 +26,17 @@ The machine tier exists because three consumers demonstrably guessed wrong when 
 
 ```jsonc
 "semantics": {
-  "emptyOperand": [ /* §4 — a LIST of per-operand claims */ ],
-  "boundary": { /* §3a — a SINGLE operator-level claim */ }
-  // reserved, slot in additively: "iterationRange", "aggregateIdentity", "polarity"
+  "emptyOperand": [ /* §4  — a LIST of per-operand claims */ ],
+  "boundary": { … },          /* §3a — a SINGLE operator-level claim */
+  "iterationRange": { … },    /* §3b */
+  "aggregateIdentity": { … }, /* §3c — value XOR perKind */
+  "polarity": { … }           /* §3d — probes carry an `outcome` */
 }
 ```
 
-Design rules, fixed by the WI-5a slice:
+Design rules, fixed by the WI-5a slice and held through the WI-5b dimensions:
 
-- **One key per dimension.** Adding a dimension never reshapes an existing one (`OperatorSemantics` ignores unknown keys until the field lands). A dimension's *shape* matches its nature: `emptyOperand` is a **list** of claims (one operator can behave differently per operand position / kind); an operator-level dimension like `boundary` is a **single** claim (one value for the whole operator).
+- **One key per dimension.** Adding a dimension never reshapes an existing one (`OperatorSemantics` ignores unknown keys until the field lands). A dimension's *shape* matches its nature: `emptyOperand` and `aggregateIdentity` carry per-operand / per-kind structure (`emptyOperand` a **list**; `aggregateIdentity` a `value` XOR a `perKind` map); the plain operator-level dimensions (`boundary`, `iterationRange`, `polarity`) are a **single** claim (one value for the whole operator).
 - **Every facet value is a verified claim.** A claim carries a **`basis`** (the differential lock / KERNEL-FINDINGS or IF finding it derives from — values are *derived from locks, never invented*) and **`probes`** (kernel-executed, §5). A claim without a probe **fails the build**.
 - **Deviations only** (where a default exists). Type-level defaults live once in the header (§4); an operator carries an `emptyOperand` claim only where it deviates from (or per-kind refines) the operand kind's default. Absence of a claim = the defaults apply. The operator-level dimensions carry no header default — an operator states its claim iff the dimension applies to it (e.g. only threshold/interval operators carry `boundary`).
 
