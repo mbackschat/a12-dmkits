@@ -234,12 +234,15 @@ object ModelLoader {
             else -> Requiredness.NOT_REQUIRED
         }
 
-    /** A NUMBER field's scale (`NumberType.maxFractionalDigits`), or null for a non-number field. */
+    /** A NUMBER field's scale (`NumberType.maxFractionalDigits`), or null for a non-number field. The kernel's
+     *  `NumberType.maxFractionalDigits` is a **primitive int defaulting to 0** (kernel-md-a12internal), so a
+     *  NumberType that omits it is scale-0 — an INTEGER: any decimal separator is `zahlHatDezimalTrenner`. A
+     *  null return here means "not a number field", NOT "no scale constraint" (a number is never unconstrained). */
     private fun scaleOf(fieldNode: JsonElement?): Int? {
         val type = fieldNode.path("Field").path("fieldType")
         if (type.path("type").asText() != "NumberType") return null
         val max = type.path("NumberType").path("maxFractionalDigits")
-        return if (max.isIntNode()) max.asInt(0) else null
+        return if (max.isIntNode()) max.asInt(0) else 0
     }
 
     /** Whether a NUMBER field is signed (unsigned iff `NumberType.positivesOnly`); non-number defaults to signed. */

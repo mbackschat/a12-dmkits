@@ -64,8 +64,9 @@ class ModelShrinkTest {
 
     private data class Cvv(val seed: Int, val pointer: String, val placements: List<Placement>)
 
-    // -Dig44.vcv=true flips the hunt to the OVER-suppression direction (kernel=VALUE, interp=CLEARED) — the class
-    // that grew after the IF76 fix, for characterizing a filled-operand type the kernel computes but the interp clears.
+    // -Dig44.vcv=true flips the hunt to the OVER-suppression direction (kernel=VALUE, interp=CLEARED) — the
+    // co-occurring residual (IG47), for characterizing where the interpreter clears but the kernel computes.
+    // (The IF76-era IG50 "formalError false-positive" reading of this direction was disconfirmed by IF78.)
     private val vcv = System.getProperty("ig44.vcv") == "true"
 
     /** Scan the model's seeds for a pointer that diverges in the tracked direction: default CVV (kernel CLEARED,

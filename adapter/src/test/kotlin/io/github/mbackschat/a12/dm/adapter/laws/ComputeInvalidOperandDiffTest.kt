@@ -19,12 +19,14 @@ import org.junit.jupiter.api.Test
  * (the minimal repro is an UNCONDITIONAL computation) but an operand-invalidity gap.
  *
  * The kernel treats a formally-invalid operand as **not check-relevant** → the operation is non-evaluable → the
- * computed field is **CLEARED** (computes nothing). Every [io.github.mbackschat.a12.dm.interpreter.eval.formalError]
- * cause is such an operand: a **fraction-digit** violation (min/max fractional digits), an out-of-**range** value
- * (min/max value), a bad string length/pattern, a duplicate index, a required-empty cell. Before IF76 the
- * interpreter's `compute` ran with no operand-invalidity gate (the `Interpreter` was built with the default
- * `invalid = { false }`), so it computed a bogus VALUE from the malformed operand. The fix feeds `compute` the
- * SAME `invalid` gate `validate` uses, so a malformed operand → Val.Unknown → CLEARED.
+ * computed field is **CLEARED** (computes nothing). Before IF76 the interpreter's `compute` ran with no
+ * operand-invalidity gate (`invalid = { false }`), so it computed a bogus VALUE. IF76 first gated it, but on a
+ * too-NARROW clear-set (5 value-domain codes); IF78 **generalized** it: the differential (below) proves the
+ * kernel clears on **EVERY** number formal-error class — not just range/fraction, but the integer-digit cap,
+ * zero-not-allowed, number value-string length, leading zeros, the decimal-separator-in-an-integer (the
+ * maxFractionalDigits-0-default class), the >15-digit sanity check, signed-zero, and the plus-sign. So `compute`
+ * now uses the SAME operand-invalidity gate `validate` uses (`computeFormalErrorAt` — any formal error clears);
+ * an EMPTY operand still stays empty-as-0 (even required).
  *
  * The operand is a spliced constrained field of the order fixture; the target is `UnitPrice` (seeded to a
  * sentinel so a clear is a reported CHANGE, comparable to the kernel's change-only compute report).
@@ -145,4 +147,42 @@ class ComputeInvalidOperandDiffTest {
 
     @Test fun requiredEmptyNumberOperand() =
         tri(rateReq, rateReqDef, fracOp, mapOf(QTY to "4"), "Rate empty + REQUIRED → kernel/interp must agree")
+
+    // ── IF78: the codes IF76's narrow 5-code gate EXCLUDED — the differential proves the kernel CLEARS on them
+    //    too, so they belong in the clear-set. Each operand trips exactly one format/constraint code. ──
+
+    // A scale-0 (no maxFractionalDigits) integer field with a decimal value → zahlHatDezimalTrenner. This is the
+    // maxFractionalDigits-0-default class: a NumberType that omits maxFractionalDigits is an integer.
+    private val rateInt = """{ "type": "Field", "id": "/Order/Rate", "name": "Rate", "Field": { "fieldType": {
+        "type": "NumberType", "NumberType": { "maxFractionalDigits": 0 } } } },"""
+    private val rateIntDef = FieldDef(RATE, Kind.NUMBER, scale = 0)
+    @Test fun decimalInIntegerOperandClears() =
+        tri(rateInt, rateIntDef, fracOp, mapOf(RATE to "2.5", QTY to "4"), "Rate=2.5 in scale-0 field (zahlHatDezimalTrenner) → CLEARS")
+    @Test fun leadingZerosOperandClears() =
+        tri(rateInt, rateIntDef, fracOp, mapOf(RATE to "007", QTY to "4"), "Rate=007 (zahlHatFuehrendeNullen) → CLEARS")
+    @Test fun plusSignOperandClears() =
+        tri(rateInt, rateIntDef, fracOp, mapOf(RATE to "+5", QTY to "4"), "Rate=+5 (zahlMitPlus) → CLEARS")
+    @Test fun tooManyTotalDigitsOperandClears() =
+        tri(rateInt, rateIntDef, fracOp, mapOf(RATE to "12345678901234567", QTY to "4"), "17 digits (stelligkeitZuLang) → CLEARS")
+
+    // Integer-digit cap → zahlZuvieleVorkommastellen.
+    private val rateCap = """{ "type": "Field", "id": "/Order/Rate", "name": "Rate", "Field": { "fieldType": {
+        "type": "NumberType", "NumberType": { "maxFractionalDigits": 0, "maxIntegerDigits": 3 } } } },"""
+    private val rateCapDef = FieldDef(RATE, Kind.NUMBER, scale = 0, maxIntegerDigits = 3)
+    @Test fun integerCapOperandClears() =
+        tri(rateCap, rateCapDef, fracOp, mapOf(RATE to "1234", QTY to "4"), "Rate=1234 (>3 integer digits) → CLEARS")
+
+    // zero-not-allowed → zahlIstNull.
+    private val rateNonZero = """{ "type": "Field", "id": "/Order/Rate", "name": "Rate", "Field": { "fieldType": {
+        "type": "NumberType", "NumberType": { "maxFractionalDigits": 0, "zeroNotAllowed": true } } } },"""
+    private val rateNonZeroDef = FieldDef(RATE, Kind.NUMBER, scale = 0, zeroNotAllowed = true)
+    @Test fun zeroNotAllowedOperandClears() =
+        tri(rateNonZero, rateNonZeroDef, fracOp, mapOf(RATE to "0", QTY to "4"), "Rate=0 (zahlIstNull) → CLEARS")
+
+    // number value-string length → zahlZuLang.
+    private val rateLen = """{ "type": "Field", "id": "/Order/Rate", "name": "Rate", "Field": { "fieldType": {
+        "type": "NumberType", "NumberType": { "maxFractionalDigits": 0, "maxLength": 2 } } } },"""
+    private val rateLenDef = FieldDef(RATE, Kind.NUMBER, scale = 0, numberMaxLength = 2)
+    @Test fun numberTooLongOperandClears() =
+        tri(rateLen, rateLenDef, fracOp, mapOf(RATE to "555", QTY to "4"), "Rate=555 (len 3 > maxLength 2, zahlZuLang) → CLEARS")
 }

@@ -62,6 +62,17 @@ class FieldConstraintFormalDiffTest {
     @Test fun tooManyDecimals() = agree(scoreField, scoreDef, "/Order/Score", "5.000", "3 frac > max 2 → zahlFalscheAnzahlNachkommastellen")
     @Test fun numberValid() = agree(scoreField, scoreDef, "/Order/Score", "50.00", "valid → no formal error")
 
+    // ── IF78: a NumberType with NO maxFractionalDigits is scale-0 (the kernel's primitive-int default) — an
+    //    INTEGER field: any decimal separator is zahlHatDezimalTrenner. The loader defaults scale to 0 (locked at
+    //    the loader level by `interpreter … ModelLoaderTest`); here the interp FieldDef carries scale=0 to match. ──
+    private val intField = """{ "type": "Field", "id": "/Order/Count", "name": "Count", "Field": { "fieldType": {
+        "type": "NumberType", "NumberType": { "minValue": 1, "maxValue": 99 } } } },"""
+    private val intDef = FieldDef("/Order/Count", Kind.NUMBER, scale = 0, minValue = "1", maxValue = "99")
+    @Test fun decimalInNoMaxFracFieldIsHatDezimalTrenner() =
+        agree(intField, intDef, "/Order/Count", "5.0", "decimal in a no-maxFractionalDigits field → zahlHatDezimalTrenner")
+    @Test fun integerInNoMaxFracFieldIsClean() =
+        agree(intField, intDef, "/Order/Count", "50", "integer in a no-maxFractionalDigits field → clean")
+
     // ── DEFAULT-forbidden format checks (no declaration needed; a toggle turns them off) ──
     private val plainStr = """{ "type": "Field", "id": "/Order/Note", "name": "Note", "Field": { "fieldType": {
         "type": "StringType", "StringType": { } } } },"""

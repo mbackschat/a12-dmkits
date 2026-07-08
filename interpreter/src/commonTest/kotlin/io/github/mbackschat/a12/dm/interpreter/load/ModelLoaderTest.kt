@@ -92,6 +92,25 @@ class ModelLoaderTest {
     }
 
     @Test
+    fun numberTypeWithoutMaxFractionalDigitsIsScaleZero() {
+        // The kernel's NumberType.maxFractionalDigits is a primitive int defaulting to 0, so a NumberType that
+        // omits it is scale-0 (an integer: a decimal separator is zahlHatDezimalTrenner). The loader must
+        // default to 0, NOT null (which would wrongly permit decimals). IF78. Differential: the compute/validate
+        // clearing on such a field is `adapter.laws.FieldConstraintFormalDiffTest`/`ComputeInvalidOperandDiffTest`.
+        val bare = """
+            { "header": { "id": "m", "modelType": "document" }, "content": { "modelRoot": { "rootGroups": [
+              { "type": "Group", "id": "/G", "name": "G", "Group": { "repeatability": 1, "elements": [
+                { "type": "Field", "id": "/G/N", "name": "N", "Field": { "fieldType": {
+                  "type": "NumberType", "NumberType": {} } } },
+                { "type": "Field", "id": "/G/Ranged", "name": "Ranged", "Field": { "fieldType": {
+                  "type": "NumberType", "NumberType": { "minValue": 1, "maxValue": 99 } } } } ] } } ] } } }
+        """.trimIndent()
+        val def = ModelLoader.load(bare)
+        assertEquals(0, def.fields.first { it.path == "/G/N" }.scale, "bare NumberType → scale 0")
+        assertEquals(0, def.fields.first { it.path == "/G/Ranged" }.scale, "range-only NumberType (no maxFrac) → scale 0")
+    }
+
+    @Test
     fun preservesRawNumberTextForFractionalConstraints() {
         // F1: the value is read via the tree API and NEVER round-tripped through a Double/JS number, so a
         // declared minValue of 100.50 keeps its exact literal (a Double round-trip would yield "100.5").

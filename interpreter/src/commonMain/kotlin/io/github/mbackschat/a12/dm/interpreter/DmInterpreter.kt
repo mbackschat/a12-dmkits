@@ -16,7 +16,6 @@ import io.github.mbackschat.a12.dm.interpreter.eval.customTypeInvalidText
 import io.github.mbackschat.a12.dm.interpreter.eval.overRepetitionText
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.MANDATORY_FIELD
-import io.github.mbackschat.a12.dm.interpreter.eval.FormalErrorCode
 import io.github.mbackschat.a12.dm.interpreter.eval.formalError
 import io.github.mbackschat.a12.dm.interpreter.eval.formalErrorText
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
@@ -65,15 +64,6 @@ private val ALL_RELEVANT: Relevance = { _, _ -> true }
  *  per-operand, per-row recompute (measured: `formalErrorAt` was ~56% of `validateFull` before this memo).
  *  Created per validate call (never shared across calls), so the reused engine stays thread-safe. */
 private typealias FormalCache = MutableMap<String, MutableMap<List<Int>, String?>>   // path → reps → code (split to drop the Pair key, hot in firstSuppressor)
-
-/** The NUMBER value-domain formal-error codes that make a FILLED operand not-check-relevant → CLEAR a computation
- *  reading it (IF76, differential-confirmed): out of min/max range, or the wrong fraction-digit count. The
- *  digit-LENGTH / format-sanity codes (total/integer digits, leading zeros, …) are deliberately EXCLUDED — the
- *  corpus sweep shows the kernel COMPUTES with an operand that trips those, so clearing on them over-suppresses. */
-private val NUMBER_OPERAND_CLEARS = setOf(
-    FormalErrorCode.NUMBER_TOO_SMALL, FormalErrorCode.NUMBER_TOO_BIG,
-    FormalErrorCode.TOO_FEW_DECIMALS, FormalErrorCode.TOO_MANY_DECIMALS, FormalErrorCode.NO_DECIMAL_SEPARATOR,
-)
 
 /**
  * The public entry point — evaluates a [ModelDef]'s rules over a [Document] instance, kernel-free, on
@@ -681,14 +671,12 @@ class DmInterpreter @JvmOverloads constructor(
         val emptyOf: (String) -> Val = { p -> emptyValue(model.kinds[p] ?: Kind.STRING) }
         val poisoned = HashSet<Pair<String, List<Int>>>()
         val computedTargets = model.computations.mapTo(HashSet()) { it.targetPath }
-        // A FILLED NUMBER operand whose value is out of its declared VALUE DOMAIN (min/max range, or the wrong
-        // fraction-digit count) is "not check-relevant" — the kernel computes NOTHING and CLEARS the field
-        // (IG44/IF76). Gate the compute Interpreter's operand resolution on exactly that, via [numberOperandCleared]
-        // — a malformed operand → Val.Unknown → the operation is non-evaluable → CLEARED. Deliberately NARROW: only
-        // FILLED (an empty operand — even a required one — stays empty-as-0, `nichtAngegeben` not
-        // `nichtPruefungsrelevant`), only NUMBER (the differentially-confirmed mechanism), and only the value-domain
-        // codes — NOT the digit-LENGTH / format-sanity codes (total/integer digits, …), which the corpus sweep
-        // shows the kernel computes with. Exact-by-construction: clear only on a cause the differential proves.
+        // A FILLED operand that is "not check-relevant" — formally invalid — makes a computation over it
+        // non-evaluable, so the kernel computes NOTHING and CLEARS the field (IG44/IF76, generalized IF78). This is
+        // the SAME operand-invalidity test full validation uses ([operandNotCheckRelevant] → [computeFormalErrorAt]):
+        // the differential proves the kernel clears on EVERY formal-error class (each of the 15 number codes, string
+        // length/pattern, …), not merely the value-domain subset. An EMPTY operand — even a required one — stays
+        // empty-as-0 (`nichtAngegeben`, not `nichtPruefungsrelevant`), so the gate is filled-only.
         for (comp in computationsInDependencyOrder()) {
             val parsed = parsedOf(comp)
             val depTargets = computationDepRefs(parsed).filter { it in computedTargets }   // its COMPUTED dependencies
@@ -701,7 +689,7 @@ class DmInterpreter @JvmOverloads constructor(
                 }
                 val ectx = if (overlay.isEmpty() && cleared.isEmpty()) ctx else OverlayContext(ctx, overlay, cleared, emptyOf)
                 val interp = Interpreter(ectx, clock, model.baseYear, model.indexFields, predefinedTypes,
-                    invalid = { path -> numberOperandCleared(path, ectx) },
+                    invalid = { path -> operandNotCheckRelevant(path, ectx) },
                     customFieldTypes = customFieldTypes)
                 val v = evalComputation(parsed, interp)
                 val computed = toComputed(comp, v, targetKey.second)
@@ -719,14 +707,16 @@ class DmInterpreter @JvmOverloads constructor(
         return out
     }
 
-    /** Whether a FILLED NUMBER operand is out of its declared VALUE DOMAIN — the compute-clearing cause (IF76).
-     *  Clears only on the differentially-confirmed [NUMBER_OPERAND_CLEARS] codes (min/max range, fraction-digit
-     *  count), never the digit-length / format-sanity codes; an EMPTY operand → false (empty-as-0 applies). */
-    private fun numberOperandCleared(path: String, ctx: EvalContext): Boolean {
-        if (model.kinds[path] != Kind.NUMBER) return false
-        val raw = ctx.displayValue(path) ?: return false
-        return formalError(Kind.NUMBER, raw, model.scaleOf(path), constraints = model.constraintsOf(path),
-            legalCharset = legalCharset, baseYear = model.baseYear ?: 2000) in NUMBER_OPERAND_CLEARS
+    /** Whether a FILLED operand is "not check-relevant" for a computation — the SAME test full validation uses
+     *  ([computeFormalErrorAt]): the kernel clears a computation over ANY formally-invalid filled operand — every
+     *  number formal code (range, fraction-digit, integer-cap, zero-not-allowed, length, leading-zeros, …), a
+     *  string length/pattern/enum-domain, a rejected custom type, an over-limit cell — matching both strategies
+     *  (differentially confirmed: every formal-error class clears, IF78). An EMPTY operand → false (empty-as-0
+     *  applies, even when required — the kernel's `nichtAngegeben`, IF76); duplicate-index is not tracked in
+     *  compute (empty [dup]). */
+    private fun operandNotCheckRelevant(path: String, ctx: EvalContext): Boolean {
+        if (ctx.displayValue(path) == null) return false   // empty → empty-as-0, not cleared
+        return computeFormalErrorAt(path, ctx.repsOf(path), ctx, emptySet()) != null
     }
 
     /**
