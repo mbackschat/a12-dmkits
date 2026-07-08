@@ -412,6 +412,12 @@ class Interpreter(
         // count aggregates. An empty source string still yields 0 and FIRES (unlike Length / the date extractors,
         // whose empty-operand resolution is a separate gap).
         FunctionOp.RANGE_AS_NUMBER -> Fill.of(canGrow = leafOmission(f.args[0]), canShrink = false)
+        // Length is GROW-ONLY on an empty string (`laenge`: `kannGroesserWerden = nichtAngegeben`, `kannKleiner
+        // = false`) — filling the string only lengthens it. So a fired `Length(empty) < n` is OMISSION (fillable
+        // up), while `Length(empty) > n` / `>= n` is VALUE (0 can't shrink). The date/time extractors + diffs are
+        // SYMMETRIC on an empty operand (`getDatumsTeil`/`getDatumsDiff`: grow = shrink = nichtAngegeben) — the
+        // generic `else` leaf already yields that (IF73).
+        FunctionOp.LENGTH -> Fill.of(canGrow = leafOmission(f.args[0]), canShrink = false)
         else -> leafOmission(f).let { Fill.of(it, it) }
     }
 
@@ -1386,9 +1392,9 @@ class Interpreter(
         FunctionOp.MAX_VALUE -> combine(starVals(f)) { Aggregates.max(it, minMaxEmpty(f)) }
         FunctionOp.MIN_VALUE -> combine(starVals(f)) { Aggregates.min(it, minMaxEmpty(f)) }
         FunctionOp.NUMBER_OF_DIFFERENT_VALUES -> combine(starVals(f), Aggregates::numberOfDifferentValues)
-        // DifferenceInDays(a, b) = b − a in whole days (sign = second − first), as a number. An empty or
-        // malformed date operand → Unknown (the rule typically guards it with AllFieldsFilled).
-        FunctionOp.DIFFERENCE_IN_DAYS -> {
+        // DifferenceInDays(a, b) = b − a in whole days (sign = second − first), as a number. An EMPTY date operand
+        // reads as the fillable 0 (either empty → 0, kernel getDatumsDiff) and FIRES; a MALFORMED operand → Unknown.
+        FunctionOp.DIFFERENCE_IN_DAYS -> dateDiffEmpty(f.args[0], f.args[1]) ?: run {
             val a = epochOf(f.args[0])
             val b = epochOf(f.args[1])
             if (a == null || b == null) Val.Unknown else Val.Num(dec((b - a).toString()))
@@ -1458,7 +1464,8 @@ class Interpreter(
         // |x| — Abs over an expression, AbsValue over a field; a non-numeric/Unknown operand → Unknown.
         FunctionOp.ABS, FunctionOp.ABS_VALUE -> (evalExpr(f.args[0]) as? Val.Num)?.let { Val.Num(it.v.abs()) } ?: Val.Unknown
         // The character count of a string field's value; an empty/absent (Unknown) operand → Unknown.
-        FunctionOp.LENGTH -> (evalExpr(f.args[0]) as? Val.Txt)?.let { Val.Num(dec(it.v.length)) } ?: Val.Unknown
+        FunctionOp.LENGTH -> if (emptyCheckRelevant(f.args[0])) Val.Num(DEC_ZERO)   // empty string → 0 (laenge, grow-only)
+            else (evalExpr(f.args[0]) as? Val.Txt)?.let { Val.Num(dec(it.v.length)) } ?: Val.Unknown
         // Rounding — `Round*([expr], n)` to n decimal places; the `*Value(field)` siblings to an integer (0).
         FunctionOp.ROUND_DOWN -> roundExpr(f.args, RoundMode.FLOOR)
         FunctionOp.ROUND_UP -> roundExpr(f.args, RoundMode.CEILING)
@@ -1643,21 +1650,51 @@ class Interpreter(
         return if (value.isEmpty() || e > value.length) "" else value.substring(s - 1, e)
     }
 
-    /** `DifferenceIn{Months,Years}(a, b)` → a signed whole-period count; Unknown if either date is empty. */
+    /**
+     * An operand that reads as the kernel's fillable EMPTY value (`nichtAngegeben` & check-relevant) for the
+     * value functions that coerce an unspecified operand to **0** and FIRE — `Length` (`BigDecimalUtils.laenge`),
+     * the date/time extractors (`getDatumsTeil`) and the date diffs (`getDatumsDiff`), unlike a direct comparison
+     * on an empty field (which is suppressed). A plain field ref that is not filled and not formally invalid;
+     * non-field operands (constants, constructions) are never empty here. KERNEL-FINDINGS §6, IF73.
+     */
+    private fun emptyCheckRelevant(e: Expr): Boolean =
+        e is Expr.Field && !ctxOf(e).filled(e.path) && !invalid(e.path)
+
+    /** A field operand that is formally invalid (a malformed value, or a required-but-empty field): the empty-as-0
+     *  value functions stay NON-evaluable on it (`nichtPruefungsrelevant` → `NICHT_PRUEF_REL_ZAHL`, the comparison
+     *  is suppressed) — malformed BEATS empty (checked first in `getDatumsDiff`). */
+    private fun malformedField(e: Expr): Boolean = e is Expr.Field && invalid(e.path)
+
+    /** The empty/malformed short-circuit shared by the date diffs (`getDatumsDiff`): EITHER operand malformed →
+     *  Unknown (suppress); else EITHER an empty check-relevant operand → the fillable **0** (fires; the fill is
+     *  symmetric via `funcFill`'s leaf); null when both are real values (compute the actual difference). */
+    private fun dateDiffEmpty(a: Expr, b: Expr): Val? = when {
+        malformedField(a) || malformedField(b) -> Val.Unknown
+        emptyCheckRelevant(a) || emptyCheckRelevant(b) -> Val.Num(DEC_ZERO)
+        else -> null
+    }
+
+    /** `DifferenceIn{Months,Years}(a, b)` → a signed whole-period count; an empty operand reads as the fillable 0
+     *  (either empty → 0, kernel `getDatumsDiff`); a malformed operand → Unknown (suppressed). */
     private fun dateDiff(args: List<Expr>, diff: (String, String) -> Int?): Val {
+        dateDiffEmpty(args[0], args[1])?.let { return it }
         val a = (evalExpr(args[0]) as? Val.Txt)?.v ?: return Val.Unknown
         val b = (evalExpr(args[1]) as? Val.Txt)?.v ?: return Val.Unknown
         return diff(a, b)?.let { Val.Num(dec(it)) } ?: Val.Unknown
     }
 
-    /** A number picked from a date operand's (year, month, day); Unknown when the date is empty/malformed. */
+    /** A number picked from a date operand's (year, month, day); an EMPTY date → the fillable **0** (kernel
+     *  `getDatumsTeil` — `DEFAULT_VALUE`, symmetric fill), a MALFORMED date → Unknown (suppressed). */
     private fun dateComponent(e: Expr, pick: (Int, Int, Int) -> Int): Val {
+        if (emptyCheckRelevant(e)) return Val.Num(DEC_ZERO)
         val parts = (coerceDate(evalExpr(e)) as? Val.Txt)?.let { dateParts(it.v) } ?: return Val.Unknown
         return Val.Num(dec(pick(parts.first, parts.second, parts.third)))
     }
 
-    /** A number picked from a TIME operand's (hours, minutes, seconds) `HH:mm:ss`; Unknown when empty/malformed. */
+    /** A number picked from a TIME operand's (hours, minutes, seconds) `HH:mm:ss`; an EMPTY time → the fillable
+     *  **0** (`getDatumsTeil`, symmetric fill), a MALFORMED time → Unknown (suppressed). */
     private fun timeComponent(e: Expr, pick: (Int, Int, Int) -> Int): Val {
+        if (emptyCheckRelevant(e)) return Val.Num(DEC_ZERO)
         val m = (evalExpr(e) as? Val.Txt)?.let { TIME.matchEntire(it.v) } ?: return Val.Unknown
         return Val.Num(dec(pick(m.groupValues[1].toInt(), m.groupValues[2].toInt(), m.groupValues[3].toInt())))
     }
@@ -1739,8 +1776,10 @@ class Interpreter(
     }
 
     /** `DifferenceIn{Hours,Minutes,Seconds}(a, b)` → `(epochSecond(b) − epochSecond(a)) / [unitSeconds]`,
-     *  truncated toward zero; Unknown if either date-time is absent/malformed. */
+     *  truncated toward zero; an EMPTY date-time operand reads as the fillable 0 (either empty → 0, kernel
+     *  `getDatumsDiff` via `getCalenderDiff`) and FIRES; a MALFORMED operand → Unknown (suppressed). */
     private fun dateTimeDiff(args: List<Expr>, unitSeconds: Long): Val {
+        dateDiffEmpty(args[0], args[1])?.let { return it }
         val a = (evalExpr(args[0]) as? Val.Txt)?.v?.let { epochSecond(it) } ?: return Val.Unknown
         val b = (evalExpr(args[1]) as? Val.Txt)?.v?.let { epochSecond(it) } ?: return Val.Unknown
         return Val.Num(dec(((b - a) / unitSeconds).toString()))
