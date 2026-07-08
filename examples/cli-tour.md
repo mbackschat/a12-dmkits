@@ -223,8 +223,8 @@ dmtool -m examples/models/order-ruled.dm.json rule check --field /Order/Quantity
       "rule" : "",
       "operator" : "LessThan"
     },
-    "fix" : "decide by intent: if an empty/missing '/Order/Quantity' should NOT trip the rule, guard it — FieldFilled(/Order/Quantity) And <the comparison>; if a missing number IS a violation (empty-as-0 should fire), the unguarded form is intentional — keep it",
-    "explain" : "an unspecified number defaults to 0 in a comparison (KERNEL-SEMANTICS §2) — unlike an empty string/date/enum, which is not evaluated — so this is only a trap when empty should be NEUTRAL; an empty-as-violation rule is legitimately unguarded"
+    "fix" : "decide by intent: if an empty/missing '/Order/Quantity' should NOT trip the rule, guard it — FieldFilled(/Order/Quantity) And <the comparison>; if a missing value IS a violation (empty-as-0 should fire), the unguarded form is intentional — keep it",
+    "explain" : "an unspecified number defaults to 0 in a comparison (KERNEL-SEMANTICS §2), and the value functions (Length, the date/time extractors, DifferenceIn*) read an empty operand as 0 too — unlike a bare string/date/enum comparison, which an empty operand suppresses — so this is only a trap when empty should be NEUTRAL; an empty-as-violation rule is legitimately unguarded"
   } ],
   "written" : false
 }

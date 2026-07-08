@@ -103,7 +103,7 @@ dmtool operators | jq "{verifiedAgainst, count: (.operators|length), kinds: (.op
 ```output
 {
   "verifiedAgainst": "30.8.1",
-  "count": 109,
+  "count": 110,
   "kinds": [
     "CONSTANT",
     "FUNCTION",

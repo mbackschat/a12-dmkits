@@ -58,6 +58,12 @@ final class OperatorsCommand extends BaseCommand {
         }
         ObjectNode root = MAPPER.createObjectNode();
         root.put("verifiedAgainst", catalog.verifiedAgainst());
+        // the per-kind empty-operand defaults (CATALOG-SPEC §4) — what an empty operand of each value
+        // kind does unless an operator's own `semantics.emptyOperand` facet deviates
+        if (!catalog.emptyOperandDefaults().isEmpty()) {
+            ObjectNode defaults = root.putObject("emptyOperandDefaults");
+            catalog.emptyOperandDefaults().forEach((kind, d) -> defaults.put(kind, d.behavior().name()));
+        }
         ArrayNode list = root.putArray("operators");
         catalog.entries().stream()
                 .filter(e -> kind == null || e.kind().name().equalsIgnoreCase(kind))
@@ -140,7 +146,45 @@ final class OperatorsCommand extends BaseCommand {
         }
         if (!e.gotchas().isEmpty()) {
             ArrayNode g = n.putArray("gotchas");
-            e.gotchas().forEach(x -> g.add(x.text()));
+            // each gotcha travels WITH its kind (SURPRISE/AUTHORING/RENDERING) — the kind was
+            // previously dropped, flattening the author-relevant/trivia classification
+            e.gotchas().forEach(x -> {
+                ObjectNode gn = g.addObject();
+                gn.put("text", x.text());
+                gn.put("kind", x.kind().name());
+            });
+        }
+        // the emptyOperand facet claims (CATALOG-SPEC §4/§7) — the machine-readable empty-operand
+        // semantics; the CI-executed probes are elided (verification detail, not consumer payload)
+        if (!e.emptyOperandClaims().isEmpty()) {
+            ObjectNode sem = n.putObject("semantics");
+            ArrayNode claims = sem.putArray("emptyOperand");
+            e.emptyOperandClaims().forEach(c -> {
+                ObjectNode cn = claims.addObject();
+                cn.put("operand", c.operand());
+                if (c.behavior() != null) {
+                    cn.put("behavior", c.behavior().name());
+                }
+                if (!c.perKind().isEmpty()) {
+                    ObjectNode pk = cn.putObject("perKind");
+                    c.perKind().forEach((kind, b) -> pk.put(kind, b.name()));
+                }
+                cn.put("basis", c.basis());
+                if (c.note() != null) {
+                    cn.put("note", c.note());
+                }
+            });
+        }
+        // the operand-conditional correctives (CATALOG-SPEC §6) — per operand shape, the fix for a code
+        if (!e.correctives().isEmpty()) {
+            ArrayNode corr = n.putArray("correctives");
+            e.correctives().forEach(c -> {
+                ObjectNode cn = corr.addObject();
+                cn.put("code", c.code());
+                ArrayNode when = cn.putArray("whenOperands");
+                c.whenOperands().forEach(when::add);
+                cn.put("fix", c.fix());
+            });
         }
         if (e.validExample() != null) {
             ObjectNode ex = n.putObject("validExample");

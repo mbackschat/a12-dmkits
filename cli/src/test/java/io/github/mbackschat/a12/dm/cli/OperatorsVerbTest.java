@@ -54,6 +54,51 @@ class OperatorsVerbTest {
         assertTrue(res.err().contains("no operator"), res::err);
     }
 
+    // --- the machine tier (CATALOG-SPEC §7): the emptyOperand facet, correctives, gotcha kinds ---
+
+    @Test
+    void servesTheEmptyOperandFacetAndClassifiedGotchas() throws Exception {
+        CliTestSupport.Result res = CliTestSupport.run("operators", "Length");
+        assertEquals(0, res.code(), res::err);
+        JsonNode j = MAPPER.readTree(res.out());
+        JsonNode claim = j.path("semantics").path("emptyOperand").get(0);
+        assertEquals("0", claim.path("operand").asText());
+        assertEquals("AS_ZERO", claim.path("behavior").asText(),
+                () -> "Length's empty-as-0 facet must be served: " + res.out());
+        assertTrue(!claim.path("basis").asText().isBlank(), "the claim's basis (its lock) travels");
+        assertTrue(claim.path("probes").isMissingNode(), "probes are CI detail, not consumer payload");
+        // gotchas travel WITH their kind (previously dropped)
+        JsonNode gotcha = j.path("gotchas").get(0);
+        assertTrue(!gotcha.path("text").asText().isBlank(), () -> "gotcha object with text: " + res.out());
+        assertTrue(!gotcha.path("kind").asText().isBlank(), () -> "gotcha kind travels: " + res.out());
+    }
+
+    @Test
+    void servesPerKindClaimsAndCorrectives() throws Exception {
+        CliTestSupport.Result res = CliTestSupport.run("operators", "Min");
+        assertEquals(0, res.code(), res::err);
+        JsonNode perKind = MAPPER.readTree(res.out()).path("semantics").path("emptyOperand").get(0).path("perKind");
+        assertEquals("AS_ZERO", perKind.path("number").asText());
+        assertEquals("SKIPPED", perKind.path("date").asText());
+
+        CliTestSupport.Result lt = CliTestSupport.run("operators", "LessThan");
+        assertEquals(0, lt.code(), lt::err);
+        JsonNode correctives = MAPPER.readTree(lt.out()).path("correctives");
+        assertEquals(2, correctives.size(), () -> "both operand-conditional fixes served: " + lt.out());
+        assertTrue(correctives.get(0).path("whenOperands").isArray());
+        assertTrue(!correctives.get(0).path("fix").asText().isBlank());
+    }
+
+    @Test
+    void bareListCarriesTheEmptyOperandDefaults() throws Exception {
+        CliTestSupport.Result res = CliTestSupport.run("operators");
+        assertEquals(0, res.code(), res::err);
+        JsonNode defaults = MAPPER.readTree(res.out()).path("emptyOperandDefaults");
+        assertEquals("AS_ZERO", defaults.path("number").asText());
+        assertEquals("NOT_EVALUATED", defaults.path("string").asText());
+        assertEquals("AS_FALSE", defaults.path("confirm").asText());
+    }
+
     @Test
     void filtersByKind() throws Exception {
         CliTestSupport.Result res = CliTestSupport.run("operators", "--kind", "PREDICATE");
