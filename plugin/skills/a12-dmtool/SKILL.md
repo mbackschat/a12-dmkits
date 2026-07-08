@@ -25,7 +25,7 @@ A rule is the **most expensive** way to state a constraint: a condition + error 
 The CLI is **self-describing** — explore it:
 
 - `dmtool --help` — the verb list; every command is `dmtool -m <model.json> <target> <op>` (the model is set once with `-m`, before or after the verb); `dmtool <target> <op> --help` — that op's parameters and what they mean; `dmtool manifest` — the same, machine-readable (each verb's `target`/`op` + params).
-- `dmtool operators` — the DSL operator catalog (each operator's meaning, operands, examples, and **gotchas** — read the gotchas, they often name the exact fix for a rejection); `dmtool operators <id>` — one in full.
+- `dmtool operators` — the DSL operator catalog (each operator's meaning, operands, examples, and **gotchas** — read the gotchas, they often name the exact fix for a rejection); `dmtool operators <id>` — one in full. The list's header serves the per-kind **`emptyOperandDefaults`** (how an empty field behaves in a comparison), and an entry's **`semantics`** block states its kernel-verified facets — empty-operand behavior, strict-vs-inclusive boundaries, what an all-empty aggregate folds to. Check there instead of assuming.
 - `dmtool schema <target> <op>` — the JSON an op consumes/returns (and `dmtool schema result` — the universal output envelope every verb emits).
 
 The three you lean on:
@@ -81,15 +81,9 @@ A condition is evaluated relative to the rule's **group** (its iteration scope �
 
 ## Empty values in a comparison
 
-How an **empty** (unspecified) field behaves in a comparison depends on its type — this catches people out:
+How an **empty** (unspecified) field behaves in a comparison depends on its type — the trap: an empty **number** participates as **`0`**, so `[Amount] < 100` **fires** on an empty Amount (0 < 100). The per-type table is served by the tool (the `dmtool operators` header `emptyOperandDefaults`; per-operator deviations in each entry's `semantics.emptyOperand`), and `rule check` warns (`RK_UNGUARDED_NUMBER_COMPARISON`) exactly where an empty value would fire your comparison — its `fix` names both remedies; decide by intent, guarding with `FieldFilled(…) And …` when absence shouldn't trip the rule.
 
-| Field type | Empty value in a comparison |
-|---|---|
-| **number** | substituted with **`0`** — so `[Amount] < 100` **fires** on an empty Amount (0 < 100) |
-| **confirm** | treated as **`False`** |
-| string · date · boolean · enum | the comparison is **not evaluated** (it doesn't fire, no error) |
-
-So **guard a number comparison** when an empty value shouldn't trip it — `FieldFilled(Amount) And [Amount] < 100`. (`rule check` flags the unguarded case as `RK_UNGUARDED_NUMBER_COMPARISON` — but **direction-aware**: only where the empty `0` would actually fire it, so `[Amount] < 100` is flagged while `[Amount] > 1000` is not (`0 > 1000` is false); the silence on the latter is correct, not a miss.) Two corners: the `0` substitution does **not** apply to `Min`/`Max` (empties are ignored there), and there are no empty strings, so `[F] == ""` is never true — use `FieldNotFilled(F)` to test for absence.
+One corner draws **no** warning: there are no empty-string *values* (an empty string field is just unfilled), so `[F] == ""` is never true — test absence with `FieldNotFilled(F)`.
 
 ## Per-row iteration & the negative guard
 
@@ -102,9 +96,9 @@ So **guard a number comparison** when an empty value shouldn't trip it — `Fiel
 
 When a rule reasons about **all the rows at once** (not one row), it folds the repetitions with an **aggregate**, and the **`*` wildcard is what flattens them**. Such a rule is **model-level** (it spans rows), so its error field is a **non-repeatable** field — it does **not** iterate per row.
 
-- **The `*` goes on whatever flattens the repetitions** — the **field** for a value aggregate (`Sum(Lines*/Amount)`, `NumberOfFilledFields(Lines*/Sku)`, `Min` / `Max`), or the **group itself** to count rows (`NumberOfFilledGroups(Lines*)`). A *single* repeatable group reference needs that `*`: `NumberOfFilledGroups(Lines)` without it is rejected `MVK_NO_WILDCARD`, and a `*` where the group must stay whole (`GroupFilled(Lines*)`) is rejected `MVK_NO_WILDCARDS_ALLOWED`. (Plain `GroupFilled(Group)` takes no `*` — it's the **per-row** existence guard from the section above, valid only from *inside* the iterating group, never as a model-level reference.)
+- **The `*` goes on whatever flattens the repetitions** — the **field** for a value aggregate (`Sum(Lines*/Amount)`, `NumberOfFilledFields(Lines*/Sku)`, `MaxValue` / `MinValue` — *not* the operand-list `Min`/`Max`, which take value expressions, never a starred path), or the **group itself** to count rows (`NumberOfFilledGroups(Lines*)`). A *single* repeatable group reference needs that `*`: `NumberOfFilledGroups(Lines)` without it is rejected `MVK_NO_WILDCARD`, and a `*` where the group must stay whole (`GroupFilled(Lines*)`) is rejected `MVK_NO_WILDCARDS_ALLOWED`. (Plain `GroupFilled(Group)` takes no `*` — it's the **per-row** existence guard from the section above, valid only from *inside* the iterating group, never as a model-level reference.)
 - **Pick the operator by the question:** total of the amounts → `Sum(Lines*/Amount)`; **how many rows** → `NumberOfFilledGroups(Lines*)`; how many filled instances of a field → `NumberOfFilledFields(Lines*/Sku)`. Confirm names/operands with `dmtool operators`.
-- **"No two rows share a key" → `FieldValuesNotUnique(/Group*/Key)`** (absolute starred path; error field the **key itself inside the repeated group**, e.g. `--field /Order/Items/Sku`). It validates *and persists* under the default grouping and still iterates per row (points at the offending row). The sibling `RepetitionNotUnique(Group/Key)` instead needs the rule at the repeated group's **PARENT** — pass `--group <parent>` to `rule check` **and** `rule add` (the default grouping rejects it). Reach for `FieldValuesNotUnique` first.
+- **"No two rows share a key" → `FieldValuesNotUnique(/Group*/Key)`** (absolute starred path; error field the **key itself inside the repeated group**, e.g. `--field /Order/Items/Sku`). It validates *and persists* under the default grouping and still iterates per row (points at the offending row). The sibling `RepetitionNotUnique` instead needs the rule at the repeated group's **PARENT** (`--group <parent>`; the default grouping rejects it) — its `operators` entry walks through that authoring. Reach for `FieldValuesNotUnique` first.
 - **Resolve from the rule's scope, or go absolute.** A wildcard path resolves relative to the error field's group; from a different branch a relative `Lines*/Amount` is `MVK_INVALID_ENTITY` — write the absolute `/Invoice/Lines*/Amount`. When unsure, go absolute.
 - **An aggregate is a number**, so compare it: `Sum(Lines*/Amount) > 500`, or against a field by bracketing it: `[FeeCap] < Sum(Lines*/Amount)`.
 - **`Having` filters which rows are folded:** `Sum(Lines*/Amount Having [Lines/Type] == "FEE")` sums only the fee lines.
@@ -120,21 +114,9 @@ dmtool -m invoice.json rule check --field /Invoice/FeeCap \
 
 ## Dates
 
-Date operators need **both operands present** and have a **fixed argument order** — get both right:
-
-- **Guard presence first.** A date function on a missing date is a formal error; lead with `AllFieldsFilled(DateA, DateB) And …`.
-- **A date/time *constant* is German-format and quoted** — date `"31.12.2024"` (`dd.MM.yyyy`), time `"17:00:00"`. An **ISO-style literal** (`"2024-12-31"`) is read as a *string*, so an ordering comparison is rejected as `MVK_INVALID_TYPE_FOR_COMPARISON` — the code *name* is unhelpful here, but its `fix` hint now points the right way: write the German format, **not** switch to `==`. (Often cleaner to skip the literal: compare to another date field or `Today`, or pull a part — `YearFromDate(D) < 2020`.)
-- **`DifferenceInDays(A, B)` = B − A** (same for `DifferenceInMonths` / `DifferenceInYears`): **positive when B is *later* than A.** So:
-  - "B is *before* A" → `DifferenceInDays(A, B) < 0`
-  - "B is more than N days *after* A" → `DifferenceInDays(A, B) > N`
-- Other date ops (`Today`, `AddYears`, …) — see `dmtool operators`.
-
-Example — *"a ticket must be resolved within 5 days of being raised"* (dates `/Ticket/RaisedDate`, `/Ticket/ResolvedDate`):
-```
-dmtool -m ticket.json rule check --field /Ticket/ResolvedDate \
-  --condition "AllFieldsFilled(RaisedDate, ResolvedDate) And DifferenceInDays(RaisedDate, ResolvedDate) > 5" \
-  --code RESOLVED_TOO_LATE
-```
+- **A date/time *constant* is German-format and quoted** — date `"31.12.2024"` (`dd.MM.yyyy`), time `"17:00:00"`. An **ISO-style literal** (`"2024-12-31"`) is read as a *string*, so an ordering comparison is rejected as `MVK_INVALID_TYPE_FOR_COMPARISON` — the code *name* is unhelpful here, but its `fix` hint points the right way: write the German format, **not** switch to `==`. (Often cleaner to skip the literal: compare to another date field or `Today`, or pull a part — `YearFromDate(D) < 2020`.)
+- **An empty date operand does not suppress a date function** — e.g. `DifferenceInDays` reads an empty operand as a 0-difference, so the comparison can fire on absence (each operator's `semantics.emptyOperand` facet states its behavior; the `rule check` guard warning covers these too). Lead with `AllFieldsFilled(DateA, DateB) And …` when absence shouldn't trip the rule.
+- **Argument order matters** — the `DifferenceIn*` family is directional. Take the direction from the operator's `meaning` and example (`dmtool operators DifferenceInDays`) rather than assuming it.
 
 ## Custom conditions (host-delegated)
 
@@ -166,10 +148,4 @@ Apply the same shape to your own model: find the enum + the repeatable group wit
 
 ## Reading a rejection
 
-`check` returns diagnostics with a `code` and `summary`. The frequent ones:
-- `MVK_NEG_CONDITION_IN_ITERATION` → your iterating rule has an unguarded negative; add `GroupFilled(<group>) And …`.
-- `MVK_INVALID_ENTITY` → a path doesn't resolve; bare names are relative to the iteration scope, cross-group fields need an absolute `[/…]` path.
-- `MVK_UNEXPECTED_TOKEN` → a syntax slip the kernel reports without a message of its own — most often: a **lowercase boolean** (`true`/`false` → capitalize to `True`/`False`); a **bracketing** mistake (operand *missing* its brackets `[Field] > 1000`, or *extra* brackets on a ref inside a call `DateRange([OrderDate], …)` → `DateRange(OrderDate, …)` — call args are bare); an **unquoted string** (`== OPEN` → `== "OPEN"`); or an ISO date literal (use the German `"dd.MM.yyyy"`). The enriched diagnostic's `fix` lists these.
-- `MVK_INVALID_TYPE_FOR_COMPARISON` → ordering (`<`/`>`) needs numbers or dates; compare strings/enums with `==` / `!=`.
-
-For anything else, look the operator up with `dmtool operators <id>` — its `gotchas` and `fix` fields usually say exactly what to do.
+`check` returns diagnostics with a `code` and `summary`, and the common structural/syntax codes carry an enriched **`fix`**/**`explain`** naming the exact correction (`dmtool diagnostics <code>` serves the same guidance on its own). Trust the `fix` first; for anything operator-specific, look the operator up with `dmtool operators <id>` — its `gotchas` and examples usually say exactly what to do.
