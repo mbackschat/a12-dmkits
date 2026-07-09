@@ -124,6 +124,17 @@ private fun wholePeriods(a: String, b: String, add: (String, Int) -> String?): I
 fun isRealDate(year: Int, month: Int, day: Int): Boolean = month in 1..12 && day in 1..daysInMonth(year, month)
 
 /**
+ * Whether (year, month, day) is strictly before the kernel's always-on date floor — `Constants.DATE_FROM =
+ * 16.10.1583`, "the begin of the gregorian calendar". A real calendar date earlier than that is the kernel's
+ * `datumFalsch` (FEHLER_DATUM) formal error, flagged for EVERY stored or computed date value (and a date
+ * range's start), independent of the opt-in "younger than 1900" additional check (`DATE_FROM_FOR_ADDITIONAL_CHECK`).
+ * Kernel-confirmed in BOTH strategies (groovy-dynamic runtime `FormatDefinitionDatum.dateInvalid` + java-static
+ * codegen): the boundary is exact — 1583-10-15 invalid, 1583-10-16 valid (strict `Date.before`).
+ */
+fun beforeGregorianStart(year: Int, month: Int, day: Int): Boolean =
+    year < 1583 || (year == 1583 && (month < 10 || (month == 10 && day < 16)))
+
+/**
  * Parse a **DAY_OPTIONAL** date value rendered in [format] — like [parseDateToIso] but the DAY may be the
  * sentinel `00` (day omitted). Returns `(year, month, day)` with `day == 0` for an omitted day, or null if
  * malformed (bad month, an out-of-range real day, or the format has no day component). The basis for the

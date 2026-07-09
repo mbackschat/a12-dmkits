@@ -86,6 +86,12 @@ enum class FormalErrorCode(val id: String) {
     /** A DATE value that is not `YYYY-MM-DD`. */
     DATE_FORMAT("datumFormatFalsch"),
 
+    /** A well-formed DATE value that resolves to a real calendar date but is BEFORE the kernel's always-on
+     *  floor `Constants.DATE_FROM = 1583-10-16` (the start of the Gregorian calendar). The kernel flags it
+     *  `datumFalsch` (FEHLER_DATUM) for every stored OR computed date, independent of the opt-in "< 1900"
+     *  additional check — confirmed in both strategies (IF88). */
+    DATE_TOO_EARLY("datumFalsch"),
+
     /** ANY field value with a **leading** blank — a baseline value check the kernel runs before the type format
      *  (`checkFieldValueFormat`), for every kind (string/number/date/…). IF43. */
     LEADING_BLANK("fuehrendesBlank"),
@@ -121,6 +127,11 @@ enum class FormalErrorCode(val id: String) {
 
     /** A DATE_RANGE with two valid dates, but the start is AFTER the end (start == end is allowed). */
     DATE_RANGE_INVALID("datumBereichNichtGueltig"),
+
+    /** A DATE_RANGE whose START date is before the Gregorian-calendar floor (1583-10-16) — the range sibling
+     *  of [DATE_TOO_EARLY] (`FormatDefinitionDatumBereich extends FormatDefinitionDatum`; the kernel floors the
+     *  start, and end >= start covers the end). Kernel code `datumBereichDatumFalsch` (FEHLER_DATUM_BEREICH_DATUM). */
+    DATE_RANGE_TOO_EARLY("datumBereichDatumFalsch"),
 
     // ── Declared field-type CONSTRAINT violations (IF20) — auto-fired against the field-type declaration,
     //    same `formalePruefung` mechanism as the format checks above (KERNEL-FINDINGS §3 "declared field-type
@@ -206,12 +217,19 @@ fun formalError(
         // format with real components (`completeFragmentToIso`) — a `2024-13` yyyy-MM is `datumFormatFalsch`.
         Kind.DATE -> {
             val fmt = format ?: ISO_FORMAT
-            val ok = when (datePrecision) {
-                DatePrecision.DAY_OPTIONAL -> dayOptionalParts(raw, fmt) != null
-                DatePrecision.FRAGMENT -> completeFragmentToIso(raw, fmt, baseYear) != null
-                DatePrecision.FULL -> parseDateToIso(raw, fmt) != null
+            // The resolved (year, month, day), with a partial precision's omitted day → 01 (the kernel's
+            // replaceUnknownDateParts before its date checks); null iff the value is not well-formed.
+            val parts = when (datePrecision) {
+                DatePrecision.DAY_OPTIONAL -> dayOptionalParts(raw, fmt)?.let { (y, m, d) -> Triple(y, m, if (d == 0) 1 else d) }
+                DatePrecision.FRAGMENT -> completeFragmentToIso(raw, fmt, baseYear)?.let { dateParts(it) }
+                DatePrecision.FULL -> parseDateToIso(raw, fmt)?.let { dateParts(it) }
             }
-            if (ok) null else FormalErrorCode.DATE_FORMAT
+            when {
+                parts == null -> FormalErrorCode.DATE_FORMAT
+                // The kernel's always-on Gregorian floor (IF88): a real date before 1583-10-16 is `datumFalsch`.
+                beforeGregorianStart(parts.first, parts.second, parts.third) -> FormalErrorCode.DATE_TOO_EARLY
+                else -> null
+            }
         }
         // Format well-formedness FIRST (blanks, invalid chars, signed-zero/plus, decimal-separator,
         // too-MANY decimals via scale); only a well-formed number reaches the declared-constraint checks
@@ -239,6 +257,9 @@ fun formalError(
                         when {
                             a == null || b == null -> FormalErrorCode.DATE_RANGE_FORMAT
                             a > b -> FormalErrorCode.DATE_RANGE_INVALID   // ISO strings: lexicographic == chronological
+                            // The kernel floors the range START at 1583-10-16 (IF88); end >= start covers the end.
+                            dateParts(a)?.let { (y, m, d) -> beforeGregorianStart(y, m, d) } == true ->
+                                FormalErrorCode.DATE_RANGE_TOO_EARLY
                             else -> null
                         }
                     }
@@ -397,6 +418,10 @@ fun formalErrorText(code: FormalErrorCode, locale: String, scale: Int? = null): 
     return when (code) {
         FormalErrorCode.DATE_FORMAT ->
             if (de) "Wert ist kein gültiges Datum (erwartet JJJJ-MM-TT)." else "Value is not a valid date (expected YYYY-MM-DD)."
+        FormalErrorCode.DATE_TOO_EARLY ->
+            if (de) "Datum liegt vor dem Beginn des gregorianischen Kalenders (16.10.1583)." else "Date is before the start of the Gregorian calendar (1583-10-16)."
+        FormalErrorCode.DATE_RANGE_TOO_EARLY ->
+            if (de) "Datumsbereich: Startdatum liegt vor dem 16.10.1583." else "Date range: the start date is before 1583-10-16."
         FormalErrorCode.LEADING_BLANK ->
             if (de) "Wert hat ein führendes Leerzeichen." else "Value has a leading blank."
         FormalErrorCode.TRAILING_BLANK ->
