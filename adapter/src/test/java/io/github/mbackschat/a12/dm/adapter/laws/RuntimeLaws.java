@@ -71,7 +71,7 @@ import com.mgmtp.a12.kernel.md.rt.api.IModelCodeCache;
  * reject</em>; this locks <em>fires / does-not-fire on data</em>). It runs the kernel's real
  * {@code IDocumentRtService.validateFull} over a constructed document instance and reports which rules
  * fired, so a kernel upgrade that changes a documented runtime behavior (polarity, empty-as-0, …)
- * fails loudly. Grounded in {@code ../a12-kernel-demo/KERNEL-SEMANTICS.md}.
+ * fails loudly. Grounded in {@code docs/KERNEL-SEMANTICS.md}.
  *
  * <p><b>Document construction (the V1 path — the one shared with the TypeScript runtime).</b> Each
  * entity instance needs <em>one 1-based repetition index per path part</em> (group <em>and</em> field):

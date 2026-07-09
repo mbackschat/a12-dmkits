@@ -1,6 +1,6 @@
 # Kernel-behavior findings (complementary to KERNEL-SEMANTICS.md)
 
-**This doc is the complement of `a12-kernel-demo`'s `KERNEL-SEMANTICS.md`** (the canonical kernel-truth reference; checked out here as [`../a12-kernel-demo/KERNEL-SEMANTICS.md`](../../a12-kernel-demo/KERNEL-SEMANTICS.md)). **KERNEL-SEMANTICS.md is read-only / consult-only — we never write to it** (owner policy); KERNEL-FINDINGS.md holds what it *lacks*. The two are meant to be read together: KERNEL-SEMANTICS for the canonical behavior, KERNEL-FINDINGS for the experiment-verified additions, section-numbered to mirror it so entries are easy to upstream if the owner ever chooses to.
+**This doc is the complement of [`KERNEL-SEMANTICS.md`](KERNEL-SEMANTICS.md)** (the canonical kernel-truth prose — owner-authored, integrated in-repo 2026-07-09 from `a12-kernel-demo`). The layer split stays: KERNEL-SEMANTICS holds the settled canonical behavior; KERNEL-FINDINGS holds what it *lacks* — the experiment-verified additions, section-numbered to mirror it. A new kernel fact lands HERE first (verified + test-locked); folding it into the KERNEL-SEMANTICS prose is a deliberate, separate upstream edit, not part of recording a finding.
 
 Kernel-behavior facts **verified by experiment against kernel `30.8.1`** that are *not* (yet) covered by KERNEL-SEMANTICS.md — which we **consult before each increment** and never duplicate here. Each finding is locked by a test in this repo (named per entry); rulekit's *treatment* of each fact lives in [`KERNEL-INTEGRATION-NOTES.md`](./KERNEL-INTEGRATION-NOTES.md).
 

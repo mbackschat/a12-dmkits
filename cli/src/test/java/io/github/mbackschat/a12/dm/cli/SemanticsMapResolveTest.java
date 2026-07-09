@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -45,9 +44,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  *   <li><b>Links</b> — every relative markdown link resolves to an existing file.</li>
  * </ul>
  *
- * The canonical-prose sibling ({@code ../a12-kernel-demo/KERNEL-SEMANTICS.md}) is consult-only and not
- * always checked out, so the section-title agreement check is opt-in ({@code assumeTrue}-skipped when the
- * sibling is absent), like the other sibling-checkout guardians.
+ * The canonical prose ({@code docs/KERNEL-SEMANTICS.md}, integrated in-repo 2026-07-09) is a first-class
+ * derivation surface, so the section-title agreement check runs always-on like the rest.
  *
  * <p>Runs in the dedicated {@code semanticsMapGuardTest} task with exactly its input files declared
  * (TESTING-SPEC "Tests that read repo files at runtime"), so a map/doc/corpus/test-tree edit re-runs only
@@ -59,7 +57,7 @@ class SemanticsMapResolveTest {
     private static final Path KERNEL_FINDINGS = Path.of("../docs/KERNEL-FINDINGS.md");
     private static final Path CATALOG = Path.of("../src/main/resources/catalog/operators.json");
     private static final Path CORPUS_CASES = Path.of("../corpus/cases");
-    private static final Path KERNEL_SEMANTICS_SIBLING = Path.of("../../a12-kernel-demo/KERNEL-SEMANTICS.md");
+    private static final Path KERNEL_SEMANTICS = Path.of("../docs/KERNEL-SEMANTICS.md");
     private static final List<Path> LOCK_TREES = List.of(
             Path.of("../src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws"),
             Path.of("../adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws"),
@@ -85,13 +83,12 @@ class SemanticsMapResolveTest {
                 + String.join("\n", violations));
     }
 
-    /** Opt-in (sibling checkout): each row's Area equals the canonical KERNEL-SEMANTICS section title. */
+    /** Each row's Area equals the canonical KERNEL-SEMANTICS section title (in-repo, always-on). */
     @Test
     void theAreaTitlesMatchTheCanonicalSiblingHeadings() throws IOException {
-        assumeTrue(Files.isRegularFile(KERNEL_SEMANTICS_SIBLING), "consult-only sibling not checked out — skipping");
         Map<Integer, String> canonical = new TreeMap<>();
         Matcher m = Pattern.compile("^## (\\d+)\\. (.+?)\\s*$", Pattern.MULTILINE)
-                .matcher(Files.readString(KERNEL_SEMANTICS_SIBLING));
+                .matcher(Files.readString(KERNEL_SEMANTICS));
         while (m.find()) {
             canonical.put(Integer.parseInt(m.group(1)), m.group(2));
         }

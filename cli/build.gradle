@@ -170,6 +170,7 @@ tasks.register('semanticsMapGuardTest', Test) {
     inputs.files(
             rootProject.file('docs/SEMANTICS-MAP.md'),
             rootProject.file('docs/KERNEL-FINDINGS.md'),
+            rootProject.file('docs/KERNEL-SEMANTICS.md'),
             rootProject.fileTree('src/main/resources/catalog'),
             rootProject.fileTree('corpus/cases') { include '**/*.json' },
             rootProject.fileTree('src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws'),

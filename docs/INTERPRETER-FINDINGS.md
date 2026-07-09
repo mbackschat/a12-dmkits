@@ -10,7 +10,7 @@ The numbered **design-findings** for the `:interpreter` module (the kernel-free,
 
 | the fact is about… | home | recorded as |
 |---|---|---|
-| **what the KERNEL does** — a behavior, capability, error code, limit, or extensibility surface (true regardless of our code; a kernel-team member would recognize it, and it would matter even if neither the interpreter nor dmkit existed) | [KERNEL-FINDINGS.md](KERNEL-FINDINGS.md) (write), cross-checked vs the consult-only `../a12-kernel-demo/KERNEL-SEMANTICS.md` | section-numbered to mirror KERNEL-SEMANTICS; experiment/source-verified |
+| **what the KERNEL does** — a behavior, capability, error code, limit, or extensibility surface (true regardless of our code; a kernel-team member would recognize it, and it would matter even if neither the interpreter nor dmkit existed) | [KERNEL-FINDINGS.md](KERNEL-FINDINGS.md) (write), cross-checked vs the canonical [KERNEL-SEMANTICS.md](KERNEL-SEMANTICS.md) | section-numbered to mirror KERNEL-SEMANTICS; experiment/source-verified |
 | **how the INTERPRETER reproduces / diverges from / locks it** — an engine design choice, a mechanism, a deliberate divergence, the differential that proves parity | **here** (an `IF<n>`) | cite the kernel fact in KERNEL-FINDINGS; keep only the interpreter treatment + the lock |
 | **how rulekit/modelkit (the JVM library) treats a kernel fact** | [KERNEL-INTEGRATION-NOTES.md](KERNEL-INTEGRATION-NOTES.md) | the treatment note |
 
