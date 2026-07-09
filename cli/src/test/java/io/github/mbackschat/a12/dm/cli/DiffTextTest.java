@@ -49,4 +49,17 @@ class DiffTextTest {
     void emptyChangeSetReadsAsNoChanges() throws Exception {
         assertEquals("(no changes)\n", new DiffText().render(data("[]")));
     }
+
+    @Test
+    void reordersSurfaceInTheirOwnSectionNotCollapsedIntoLow() throws Exception {
+        // MR2: a pure reorder is LOW risk but must be VISIBLE (display-order is semantic §2b), so it gets
+        // its own section with the before→after position move — not swallowed by the collapsed LOW count.
+        String out = new DiffText().render(data("""
+            [ {"element":"RULE","id":"/Order/FeeCapRule","change":"REORDERED","risk":"LOW",
+               "riskReasons":["POSITION_CHANGED"],"deltas":[{"aspect":"position","before":"1","after":"2"}]} ]"""));
+        assertTrue(out.contains("REORDERED"), () -> "a reorder section header:\n" + out);
+        assertTrue(out.contains("/Order/FeeCapRule") && out.contains("1") && out.contains("2"),
+                () -> "the reorder line shows id + position move:\n" + out);
+        assertFalse(out.contains("LOW:"), () -> "a pure reorder is NOT collapsed into the LOW count:\n" + out);
+    }
 }

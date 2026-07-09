@@ -7,7 +7,6 @@
 These are the remaining completeness gaps between the structural diff and a *complete* one (SPEC §5e).
 
 - **MR1 — precise *located* condition edit-script.** Shipped so far: `POLARITY_INVERTED` (a clean structural flip, `ConditionPolarity`, SPEC §5c) and a **coarse classification** of any other condition change (`ConditionEdit` → `CONDITION_RESTRUCTURED`/`REFERENCE_CHANGED`/`OPERATOR_CHANGED`/`THRESHOLD_CHANGED`, SPEC §5e). What remains is the **located** edit script — *which* clause/operand moved ("the `And` clause referencing X was added", "threshold 1000→2000 on [Y]") — i.e. a positional tree diff over the Condition + `Calculation` ASTs, not just the change *category*. *(SPEC §5a/§5e.)*
-- **MR2 — reorder-as-change in the renderings.** A pure element reorder is a display-order (hence semantic, SPEC §2b) change; it is a tracked change kind (SPEC §5a `element position`) but is not yet surfaced in the `md`/`text` output. *(SPEC §5f.)*
 - **MR3 — robust move/rename + simultaneous-edit matching.** The v1 matcher is conservative content-fingerprint pairing (unsure ⇒ remove+add). A similarity-based matcher (GumTree-style) would survive a rename *and* edit in the same change. *(SPEC §5.)*
 - **MR4 — relational refactor grouping.** Present a reference-rewriting refactor (rename/move that rewrote N referrers) as **one** semantic operation, not N independent edits. The pieces exist (refactors report `rewroteReferences`); the diff should fold them. *(SPEC §5a.)*
 

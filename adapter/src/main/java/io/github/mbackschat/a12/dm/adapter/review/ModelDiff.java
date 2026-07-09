@@ -30,8 +30,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
  * asymmetry (a removed/loosened rule silently accepts bad data) — a subset of the SPEC §5b taxonomy.
  * A changed rule condition is further refined from the two typed ASTs ({@link ConditionPolarity}): a
  * provable structural flip is {@code POLARITY_INVERTED} (HIGH), otherwise the honest {@code CONDITION_CHANGED}.
- * The fuller AST edit-script (which operand/clause moved), rename/move, and computations/groups are later
- * slices (MODEL-REVIEW-GAPS MR1–MR4).
+ * A pure element <b>reorder</b> within a parent is flagged {@code REORDERED} ({@code POSITION_CHANGED}, LOW —
+ * display-order is semantic, §2b), minimal and conservative so an index shift never invents a move. The
+ * fuller AST edit-script (which operand/clause moved), rename/move, and computations/groups are later
+ * slices (MODEL-REVIEW-GAPS MR1/MR3/MR4).
  */
 public record ModelDiff(List<ElementChange> changes) {
 
@@ -39,7 +41,7 @@ public record ModelDiff(List<ElementChange> changes) {
     public enum ElementKind { FIELD, RULE }
 
     /** How an element changed between the two states. */
-    public enum ChangeKind { ADDED, REMOVED, MODIFIED }
+    public enum ChangeKind { ADDED, REMOVED, MODIFIED, REORDERED }
 
     /** Risk tier — ordered so the highest reason wins ({@code HIGH} has the greatest ordinal). */
     public enum Risk { LOW, MEDIUM, HIGH }
@@ -58,9 +60,15 @@ public record ModelDiff(List<ElementChange> changes) {
         KernelAdapter baseRules = KernelAdapter.of(base);
         KernelAdapter headRules = KernelAdapter.of(head);
         List<ElementChange> changes = new ArrayList<>();
-        match(ElementKind.FIELD, fieldAspects(base), fieldAspects(head), ModelDiff::fieldReasons, changes);
-        match(ElementKind.RULE, ruleAspects(baseRules), ruleAspects(headRules),
+        Map<String, Map<String, String>> baseFields = fieldAspects(base);
+        Map<String, Map<String, String>> headFields = fieldAspects(head);
+        match(ElementKind.FIELD, baseFields, headFields, ModelDiff::fieldReasons, changes);
+        detectReorders(ElementKind.FIELD, baseFields.keySet(), headFields.keySet(), changes);
+        Map<String, Map<String, String>> baseRuleAspects = ruleAspects(baseRules);
+        Map<String, Map<String, String>> headRuleAspects = ruleAspects(headRules);
+        match(ElementKind.RULE, baseRuleAspects, headRuleAspects,
                 (change, id, deltas) -> ruleReasons(change, id, deltas, baseRules, headRules), changes);
+        detectReorders(ElementKind.RULE, baseRuleAspects.keySet(), headRuleAspects.keySet(), changes);
         return new ModelDiff(List.copyOf(changes));
     }
 
@@ -85,6 +93,109 @@ public record ModelDiff(List<ElementChange> changes) {
         }
     }
 
+    // --- reorder detection (MR2: display-order is semantic, §2b/§5a `element position`) -----------
+
+    /**
+     * Flags the common siblings whose <b>relative</b> order changed within a parent as {@code REORDERED}
+     * ({@code POSITION_CHANGED}, LOW) carrying a {@code position} before→after delta. Conservative and
+     * minimal: only the smallest set that must move (the complement of the longest common subsequence per
+     * parent) is flagged, so an add/remove that merely shifts absolute indices never invents a reorder. An
+     * element that also changed content folds the position into its existing change (never double-listed).
+     */
+    private static void detectReorders(ElementKind kind, Set<String> baseKeys, Set<String> headKeys,
+            List<ElementChange> out) {
+        Map<String, List<String>> baseByParent = commonByParent(baseKeys, headKeys);
+        Map<String, List<String>> headByParent = commonByParent(headKeys, baseKeys);
+        for (Map.Entry<String, List<String>> e : baseByParent.entrySet()) {
+            List<String> baseSeq = e.getValue();
+            List<String> headSeq = headByParent.get(e.getKey());
+            if (baseSeq.size() < 2 || baseSeq.equals(headSeq)) {
+                continue; // nothing common to reorder, or the order is unchanged
+            }
+            Set<String> anchored = longestCommonSubsequence(baseSeq, headSeq);
+            for (String id : baseSeq) {
+                if (!anchored.contains(id)) {
+                    recordReorder(kind, id, ordinal(baseSeq, id), ordinal(headSeq, id), out);
+                }
+            }
+        }
+    }
+
+    /** The ids present in BOTH sides, grouped by parent scope, in {@code primary}'s order (deterministic). */
+    private static Map<String, List<String>> commonByParent(Set<String> primary, Set<String> other) {
+        Map<String, List<String>> byParent = new LinkedHashMap<>();
+        for (String id : primary) {
+            if (other.contains(id)) {
+                byParent.computeIfAbsent(parentOf(id), k -> new ArrayList<>()).add(id);
+            }
+        }
+        return byParent;
+    }
+
+    /** The containing scope of a path/full-name — everything before the last {@code /} ({@code ""} at root). */
+    private static String parentOf(String path) {
+        int slash = path.lastIndexOf('/');
+        return slash <= 0 ? "" : path.substring(0, slash);
+    }
+
+    /** The element's 1-based position among its common siblings, as a string (for the {@code position} delta). */
+    private static String ordinal(List<String> siblings, String id) {
+        return Integer.toString(siblings.indexOf(id) + 1);
+    }
+
+    /**
+     * The set of ids kept in place by a longest common subsequence of the two sibling orders — the anchors.
+     * Both sequences are permutations of the same set here, so the complement is the minimal move set.
+     * Deterministic backtrack (prefer advancing {@code a} on ties), so the flagged element is stable.
+     */
+    private static Set<String> longestCommonSubsequence(List<String> a, List<String> b) {
+        int n = a.size();
+        int m = b.size();
+        int[][] dp = new int[n + 1][m + 1];
+        for (int i = n - 1; i >= 0; i--) {
+            for (int j = m - 1; j >= 0; j--) {
+                dp[i][j] = a.get(i).equals(b.get(j))
+                        ? 1 + dp[i + 1][j + 1]
+                        : Math.max(dp[i + 1][j], dp[i][j + 1]);
+            }
+        }
+        Set<String> lcs = new LinkedHashSet<>();
+        int i = 0;
+        int j = 0;
+        while (i < n && j < m) {
+            if (a.get(i).equals(b.get(j))) {
+                lcs.add(a.get(i));
+                i++;
+                j++;
+            } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+                i++;
+            } else {
+                j++;
+            }
+        }
+        return lcs;
+    }
+
+    /** Fold the position into an existing change for {@code id}, else add a standalone {@code REORDERED}. */
+    private static void recordReorder(ElementKind kind, String id, String before, String after,
+            List<ElementChange> out) {
+        Delta position = new Delta("position", before, after);
+        for (int i = 0; i < out.size(); i++) {
+            ElementChange c = out.get(i);
+            if (c.element() == kind && c.id().equals(id)) {
+                List<String> reasons = new ArrayList<>(c.reasons());
+                reasons.add("POSITION_CHANGED");
+                List<Delta> deltas = new ArrayList<>(c.deltas());
+                deltas.add(position);
+                out.set(i, new ElementChange(kind, id, c.change(), riskFor(reasons),
+                        List.copyOf(reasons), List.copyOf(deltas)));
+                return;
+            }
+        }
+        out.add(new ElementChange(kind, id, ChangeKind.REORDERED, Risk.LOW,
+                List.of("POSITION_CHANGED"), List.of(position)));
+    }
+
     // --- risk classification (the §5b taste: loosening > tightening) ------------------------------
 
     /** Maps a change to its reason codes — pluggable so the rule path can consult the two ASTs. */
@@ -96,8 +207,12 @@ public record ModelDiff(List<ElementChange> changes) {
     private static ElementChange classified(ElementKind kind, String id, ChangeKind change,
             List<Delta> deltas, ReasonClassifier classifier) {
         List<String> reasons = classifier.reasons(change, id, deltas);
-        Risk risk = reasons.stream().map(ModelDiff::riskOf).max(Comparator.naturalOrder()).orElse(Risk.LOW);
-        return new ElementChange(kind, id, change, risk, List.copyOf(reasons), deltas);
+        return new ElementChange(kind, id, change, riskFor(reasons), List.copyOf(reasons), deltas);
+    }
+
+    /** The change's risk tier — the max over its reason codes (loosening &gt; tightening, §5b). */
+    private static Risk riskFor(List<String> reasons) {
+        return reasons.stream().map(ModelDiff::riskOf).max(Comparator.naturalOrder()).orElse(Risk.LOW);
     }
 
     /** Field reasons: structure add/remove + the per-aspect config reasons. */
@@ -173,6 +288,7 @@ public record ModelDiff(List<ElementChange> changes) {
             case "RULE_ADDED", "CONDITION_CHANGED", "CONDITION_RESTRUCTURED", "REFERENCE_CHANGED",
                     "OPERATOR_CHANGED", "THRESHOLD_CHANGED", "CONSTRAINT_TIGHTENED", "STRUCTURE_ADDED",
                     "STRUCTURE_REMOVED", "PATTERN_CHANGED", "SEVERITY_CHANGED", "SCALE_CHANGED" -> Risk.MEDIUM;
+            // POSITION_CHANGED (a reorder) is a display-order change, not a validation loosening → LOW
             default -> Risk.LOW;
         };
     }

@@ -19,7 +19,14 @@ final class DiffText implements VerbText {
         List<JsonNode> high = new ArrayList<>();
         List<JsonNode> medium = new ArrayList<>();
         List<JsonNode> low = new ArrayList<>();
+        List<JsonNode> reordered = new ArrayList<>();
         for (JsonNode c : data.path("changes")) {
+            // a pure reorder is LOW risk but is surfaced in its own section (display-order is semantic, MR2),
+            // never swallowed by the collapsed LOW count
+            if ("REORDERED".equals(c.path("change").asText())) {
+                reordered.add(c);
+                continue;
+            }
             switch (c.path("risk").asText("")) {
                 case "HIGH" -> high.add(c);
                 case "MEDIUM" -> medium.add(c);
@@ -29,10 +36,35 @@ final class DiffText implements VerbText {
         StringBuilder sb = new StringBuilder();
         appendTier(sb, "HIGH", high);
         appendTier(sb, "MEDIUM", medium);
+        appendReorders(sb, reordered);
         if (!low.isEmpty()) {
             sb.append("LOW: ").append(low.size()).append(" low-risk change(s)\n");
         }
         return sb.isEmpty() ? "(no changes)\n" : sb.toString();
+    }
+
+    /** The reorder section: one line per moved element with its {@code position} before→after move. */
+    private static void appendReorders(StringBuilder sb, List<JsonNode> reordered) {
+        if (reordered.isEmpty()) {
+            return;
+        }
+        sb.append("REORDERED (").append(reordered.size()).append(")\n");
+        for (JsonNode c : reordered) {
+            sb.append("  ")
+                    .append(pad(c.path("element").asText().toLowerCase(Locale.ROOT), 5)).append(' ')
+                    .append(c.path("id").asText())
+                    .append("  position ").append(positionMove(c))
+                    .append('\n');
+        }
+    }
+
+    private static String positionMove(JsonNode change) {
+        for (JsonNode d : change.path("deltas")) {
+            if ("position".equals(d.path("aspect").asText())) {
+                return d.path("before").asText("?") + "→" + d.path("after").asText("?");
+            }
+        }
+        return "?";
     }
 
     private static void appendTier(StringBuilder sb, String tier, List<JsonNode> changes) {
