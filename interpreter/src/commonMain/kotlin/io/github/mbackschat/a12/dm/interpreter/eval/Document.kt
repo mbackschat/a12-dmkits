@@ -173,6 +173,12 @@ class Document @JvmOverloads constructor(
         // branch. Mirrors [attachByGroup] but filtered to groupPath's subtree, so `groupFilled` is O(1) per
         // call after a once-per-(groupPath,group) O(valued) build, not an O(valued) scan every row.
         val nonRepFilledByGroup: MutableMap<Pair<String, String>, Map<Int, Set<List<Int>>>> = HashMap()
+        // SemanticIndex `[F For "v"]` lookup maps, per (indexField, star-scope prefix) — the kernel's
+        // IndexFieldCache analog, DOCUMENT-level. Since the star-binding anchor (IF93) a same-group lookup's
+        // row domain is the WHOLE list, so a per-ROW-CONTEXT memo would duplicate one identical O(rows) map
+        // across O(rows) contexts — O(rows²) MEMORY (the perf gate's OOM). Keyed by the scope prefix, every
+        // row context (and every sibling target of the index field) shares the one map.
+        val indexRowByValue: MutableMap<Pair<String, List<Int>>, Map<String, List<Int>>> = HashMap()
     }
 
     private var cachedIndex: Index? = null
@@ -595,15 +601,15 @@ class Document @JvmOverloads constructor(
 
         /**
          * SemanticIndex `[F For "v"]`: the value of [targetPath] in the in-scope row whose sibling [indexField]
-         * cell equals [indexValue]. The kernel's `IndexFieldCache` analog — a per-context `indexValue → row`
-         * memo built ONCE per index field (first match wins, matching a scan) and reused across every reference
-         * and every rule sharing this row context, instead of an O(rows) scan **per reference** (latent
-         * O(refs·rows)). Rows of the index field's group == `starRows(targetPath)` (same group, sibling leaves),
-         * and the row reps address the leaf for any sibling, so the map is shared across sibling targets.
+         * cell equals [indexValue]. The kernel's `IndexFieldCache` analog — an `indexValue → row` memo built
+         * ONCE per (indexField, star-scope prefix) at the DOCUMENT level ([Index.indexRowByValue]) and shared
+         * across every reference, every rule, and every ROW CONTEXT of the scope (first match wins, matching a
+         * scan) — a per-context memo would duplicate the whole-list map per row since IF93 (O(rows²) memory).
+         * Rows of the index field's group == `starRows(targetPath)` (same group, sibling leaves), and the row
+         * reps address the leaf for any sibling, so the map is shared across sibling targets too.
          */
-        private val indexRowCache = HashMap<String, Map<String, List<Int>>>()
         override fun indexedCell(targetPath: String, indexField: String, indexValue: String): Val? {
-            val byValue = indexRowCache.getOrPut(indexField) {
+            val byValue = index().indexRowByValue.getOrPut(indexField to starScopePrefix(targetPath)) {
                 val m = HashMap<String, List<Int>>()
                 for (reps in starRows(targetPath)) valueAt(indexField, reps)?.value?.let { if (it !in m) m[it] = reps }
                 m
@@ -714,12 +720,22 @@ class Document @JvmOverloads constructor(
         /** Index tuples of [starPath] across every row of its deepest repeatable group ancestor in scope. The
          *  in-scope rows are fetched by prefix in O(1) (via the [Index] prefix index), not by an O(all-rows)
          *  filter — so a semantic-index / cross-level star resolved per row stays linear, not O(rows²). */
-        private fun starRows(starPath: String): List<List<Int>> {
-            val repGroup = parentGroup(starPath)
-            val common = commonPrefixLen(partsOf(repGroup), partsOf(group))
-            return rowsWithPrefix(repGroup, rowReps.take(common))
-                .map { it + 1 }   // append the field's own index (1) to address the leaf
+        // The bound-row prefix of a starred path read from this row — the `*`-marked level ALWAYS iterates
+        // fully; only levels STRICTLY ABOVE the starred group bind to this row's indices, so the shared prefix
+        // is capped at the starred group's PARENT (IF93, the same anchor rule [rowContexts] uses). A bare
+        // same-group or ancestor star from an iterating row spans ALL rows — `$` (inside a Having) is the ONLY
+        // outer-row correlation (KERNEL-SEMANTICS §9); binding the full common prefix collapsed it to the
+        // current row (fired per-row rules on every row, computed over one cell, and hid a poisoned sibling
+        // cell from a downstream aggregate — the IG44 R2 atom). A star NESTED BELOW this row keeps binding
+        // this row's indices (common < the cap) — unchanged.
+        private fun starScopePrefix(starPath: String): List<Int> {
+            val parts = partsOf(parentGroup(starPath))
+            return rowReps.take(minOf(commonPrefixLen(parts, partsOf(group)), parts.size - 1))
         }
+
+        private fun starRows(starPath: String): List<List<Int>> =
+            rowsWithPrefix(parentGroup(starPath), starScopePrefix(starPath))
+                .map { it + 1 }   // append the field's own index (1) to address the leaf
     }
 
     /**
