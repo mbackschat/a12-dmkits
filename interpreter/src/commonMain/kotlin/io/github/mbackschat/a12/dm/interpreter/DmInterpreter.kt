@@ -694,8 +694,14 @@ class DmInterpreter @JvmOverloads constructor(
         // operand — even a required one — stays empty-as-0 (`nichtAngegeben`, not `nichtPruefungsrelevant`).
         for (comp in computationsInDependencyOrder()) {
             val parsed = parsedOf(comp)
-            val scope = scopeFromRefs(computationScopeRefs(parsed) + comp.targetPath, comp.group)
-            for (ctx in doc.contextsFor(scope)) {
+            // A computation iterates where it WRITES (the target's scope), not where it is DECLARED. When neither
+            // the operands nor the target has a repeatable ancestor (an all-non-repeatable target), fall back to
+            // the TARGET's parent group — NOT `comp.group` (IF89): a computation declared in a separate,
+            // uninstantiated container group (a `*_Rules` group) targeting a field in another subtree would
+            // otherwise resolve its scope to that empty container and compute nothing, where the kernel computes
+            // the single instance at the target (non-repeatable groups are implicitly present).
+            val scope = scopeFromRefs(computationScopeRefs(parsed) + comp.targetPath, parentGroup(comp.targetPath))
+            for (ctx in doc.computeContexts(scope)) {
                 val targetKey = comp.targetPath to ctx.repsOf(comp.targetPath)
                 if (targetKey in decided) continue   // an earlier computation's non-empty outcome already won (IF87)
                 val ectx = if (overlay.isEmpty() && cleared.isEmpty() && poisoned.isEmpty()) ctx

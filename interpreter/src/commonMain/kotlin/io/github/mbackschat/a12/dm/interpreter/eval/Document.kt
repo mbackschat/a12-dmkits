@@ -268,6 +268,22 @@ class Document @JvmOverloads constructor(
     fun contextsFor(groupPath: String): List<EvalContext> =
         index().contextsByGroup.getOrPut(groupPath) { computeContextsFor(groupPath) }
 
+    /**
+     * Contexts for a COMPUTATION's iteration scope. Like [contextsFor], but when [groupPath] is
+     * **all-non-repeatable** (no repeatable ancestor, itself included) and has NO instantiated row, it still
+     * yields ONE implicit context at reps `[1,…]` — the kernel treats a non-repeatable group as always present,
+     * so an all-non-repeatable computation computes its single instance even on an uninstantiated target (IF89).
+     * A REPEATABLE scope with zero rows still yields nothing (no instance to compute), and an instantiated scope
+     * yields its real rows unchanged (so the row's `evaluated` flag / content are preserved).
+     */
+    fun computeContexts(groupPath: String): List<EvalContext> {
+        val rows = contextsFor(groupPath)
+        if (rows.isNotEmpty()) return rows
+        val segs = parts(groupPath)
+        val allNonRepeatable = (1..segs.size).none { d -> "/" + segs.take(d).joinToString("/") in declaredReps }
+        return if (allNonRepeatable) listOf(RowContext(groupPath, List(segs.size) { 1 }, false)) else emptyList()
+    }
+
     private fun computeContextsFor(groupPath: String): List<EvalContext> {
         val rows = rowsOf(groupPath)
         if (rows.isEmpty()) return emptyList()
