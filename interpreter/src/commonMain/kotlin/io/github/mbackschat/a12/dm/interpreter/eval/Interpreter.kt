@@ -387,9 +387,9 @@ class Interpreter(
      * cell, so the whole aggregate is non-evaluable and the referencing rule is suppressed (`IndexAggregateDiffTest`).
      * False for a non-index field or a clean index column.
      */
-    private fun indexOperandNonEvaluable(c: EvalContext, path: String): Boolean {
+    private fun indexOperandNonEvaluable(c: EvalContext, path: String, bindDepth: Int = -1): Boolean {
         if (path !in indexFields) return false
-        val cells = c.starCells(path)
+        val cells = c.starCells(path, bindDepth)
         val dups = duplicatedValues(cells)
         return cells.any { (_, v) -> v == null || (v !is Val.Unknown && v in dups) }
     }
@@ -443,7 +443,7 @@ class Interpreter(
         // filled one (filling it could become the new first value); else the first value is fixed → VALUE. The
         // generic fallback (any empty/short star tail → fillable) over-reports OMISSION (kernel-probed).
         FunctionOp.FIRST_FILLED_VALUE ->
-            ((f.args.singleOrNull() as? Expr.Star)?.path?.let { ctx.firstStarRowEmpty(it) } ?: false)
+            ((f.args.singleOrNull() as? Expr.Star)?.let { ctx.firstStarRowEmpty(it.path, it.bindDepth) } ?: false)
                 .let { Fill.of(it, it) }
         // The COUNT aggregates are monotonic NON-DECREASING under filling — filling a field / row / distinct value
         // can only ADD to the count, never remove one. So they grow like an UNSIGNED `Sum`: `canGrow` while a
@@ -511,11 +511,11 @@ class Interpreter(
     private fun starFill(f: Expr.Func, build: (signed: Boolean) -> Fill): Fill {
         val star = f.args.singleOrNull() as? Expr.Star ?: return leafOmission(f).let { Fill.of(it, it) }
         if (dateLike(ctx.declaredKind(star.path))) {
-            val om = ctx.starOmission(star.path) || star.having != null
+            val om = ctx.starOmission(star.path, star.bindDepth) || star.having != null
             return Fill.of(om, om)
         }
-        if (!ctx.starOmission(star.path)) return Fill.of(false, false)   // exhausted (all filled) → fixed
-        if (ctx.star(star.path).isEmpty()) return Fill.of(canGrow = true, canShrink = ctx.signed(star.path))
+        if (!ctx.starOmission(star.path, star.bindDepth)) return Fill.of(false, false)   // exhausted (all filled) → fixed
+        if (ctx.star(star.path, star.bindDepth).isEmpty()) return Fill.of(canGrow = true, canShrink = ctx.signed(star.path))
         return build(ctx.signed(star.path))
     }
 
@@ -590,10 +590,10 @@ class Interpreter(
                 // row), and EVERY cell of a duplicated value carries the uniqueIndex error (over ALL rows, not
                 // just filter-kept ones). A clean sibling field in the same row reads normally — the row is not
                 // collectively compromised. `ValueListQuantifierStarDiffTest.compromisedIndexRows`.
-                val dupIndexValues = if (e.path in indexFields) duplicatedValues(c.starCells(e.path)) else null
+                val dupIndexValues = if (e.path in indexFields) duplicatedValues(c.starCells(e.path, e.bindDepth)) else null
                 if (e.having == null) {
-                    for ((_, v) in c.starCells(e.path)) classifyVlqCell(out, v, dupIndexValues)
-                    if (c.starOmission(e.path)) out.anyEmpty = true   // un-instantiated declared tail counts as empty
+                    for ((_, v) in c.starCells(e.path, e.bindDepth)) classifyVlqCell(out, v, dupIndexValues)
+                    if (c.starOmission(e.path, e.bindDepth)) out.anyEmpty = true   // un-instantiated declared tail counts as empty
                 } else {
                     // A `Having` filter (IG48): classify ONLY rows the filter keeps (keep iff it fires TRUE — the
                     // IF72 keep-law; a malformed filter operand → UNKNOWN → drop), the same per-cell classes over
@@ -601,7 +601,7 @@ class Interpreter(
                     // (no data to filter), and a Having-bearing operand forces OMISSION on fire ([hasHaving]).
                     out.hasHaving = true
                     val group = e.path.substringBeforeLast('/')
-                    for (rc in c.rowContexts(group)) {
+                    for (rc in c.rowContexts(group, e.bindDepth)) {
                         if (!havingInterp(rc).fires(e.having)) continue
                         classifyVlqCell(out, if (rc.filled(e.path)) rc.field(e.path) else null, dupIndexValues)
                     }
@@ -721,7 +721,7 @@ class Interpreter(
 
     private fun leafOmission(e: Expr): Boolean = when (e) {
         is Expr.Field -> !ctx.filled(e.path)
-        is Expr.Star -> ctx.starOmission(e.path)
+        is Expr.Star -> ctx.starOmission(e.path, e.bindDepth)
         is Expr.Func -> e.args.any { leafOmission(it) }
         is Expr.SemanticIndex -> !semanticIndexFilled(e)
         else -> false
@@ -913,14 +913,14 @@ class Interpreter(
         for (a in args) when {
             a is Expr.Star && a.having == null -> {
                 val c = ctxOf(a)
-                for (state in c.starScanStates(a.path)) yield(filledOrPoison(a.path, state))
+                for (state in c.starScanStates(a.path, a.bindDepth)) yield(filledOrPoison(a.path, state))
                 if (declaredTail && c.fillScope(a.path, isGroup = false).anyEmptyDeclared) yield(false)
             }
             a is Expr.Star -> {
                 // A filtered star: the filter runs per row inside the scan (its reads poison row-correctly); an
                 // un-instantiated declared rep cannot pass a filter, so there is no declared tail.
                 val group = a.path.substringBeforeLast('/')
-                for (rc in ctxOf(a).rowContexts(group)) {
+                for (rc in ctxOf(a).rowContexts(group, a.bindDepth)) {
                     if (!havingInterp(rc).fires(a.having!!)) continue
                     yield(filledOrPoison(a.path, rc.cellState(a.path)))
                 }
@@ -1036,7 +1036,7 @@ class Interpreter(
      * an over-fire of `NoGroupFilled` and an under-fire of `AtLeastOneGroupFilled`; IF68.)
      */
     private fun starGroupTally(star: Expr.Star): Triple<Int, Int, Int> {
-        val rows = ctxOf(star).rowContexts(star.path)
+        val rows = ctxOf(star).rowContexts(star.path, star.bindDepth)
         val n = if (star.having == null) rows.size else rows.count { havingInterp(it).fires(star.having) }
         return Triple(n, 0, n)
     }
@@ -1050,7 +1050,7 @@ class Interpreter(
      */
     private fun filledGroupsCount(args: List<Expr>): Int {
         val star = args.singleOrNull() as? Expr.Star
-        if (star != null) return ctxOf(star).rowContexts(star.path).size
+        if (star != null) return ctxOf(star).rowContexts(star.path, star.bindDepth).size
         return args.count { ctxOf(it).groupFilled(pathOf(it)) }
     }
 
@@ -1068,15 +1068,33 @@ class Interpreter(
         var count = 0
         for (arg in args) when (arg) {
             is Expr.Star -> {
-                val cells = ctx.star(arg.path)                      // filled cells in row order (empties dropped)
-                if (cells.any { it is Val.Unknown }) {              // a malformed cell → non-evaluable
-                    if (computeMode) throw PoisonedReadException(arg.path)   // …and a POISON on the compute path (IF85)
-                    return Val.Unknown
+                if (arg.having != null) {
+                    // The count HONORS a Having filter (IF94 — the kernel's `anzahlAngegebenerFelder` rides the
+                    // same filtered iterator as every field-list aggregate; ignoring the filter over-counted).
+                    // The filter drops rows FIRST — a malformed cell in a dropped row never suppresses (kernel-
+                    // pinned) — then a KEPT row's malformed cell makes the count non-evaluable (poison in
+                    // compute). Left index-unaware like the other Having paths (IF86's no-untested-logic call).
+                    val group = arg.path.substringBeforeLast('/')
+                    for (rc in ctx.rowContexts(group, arg.bindDepth)) {
+                        if (!havingInterp(rc).fires(arg.having)) continue
+                        if (!rc.filled(arg.path)) continue
+                        if (rc.field(arg.path) is Val.Unknown) {
+                            if (computeMode) throw PoisonedReadException(arg.path)
+                            return Val.Unknown
+                        }
+                        count++
+                    }
+                } else {
+                    val cells = ctx.star(arg.path, arg.bindDepth)   // filled cells in row order (empties dropped)
+                    if (cells.any { it is Val.Unknown }) {          // a malformed cell → non-evaluable
+                        if (computeMode) throw PoisonedReadException(arg.path)   // …and a POISON on the compute path (IF85)
+                        return Val.Unknown
+                    }
+                    // An index field's not-check-relevant cell (mandatory-empty / duplicated value) makes the count
+                    // non-evaluable too — `anzahlAngegebenerFelder` returns NICHT_PRUEF_REL on the first UNKNOWN cell.
+                    if (indexOperandNonEvaluable(ctx, arg.path, arg.bindDepth)) return Val.Unknown
+                    count += cells.size
                 }
-                // An index field's not-check-relevant cell (mandatory-empty / duplicated value) makes the count
-                // non-evaluable too — `anzahlAngegebenerFelder` returns NICHT_PRUEF_REL on the first UNKNOWN cell.
-                if (indexOperandNonEvaluable(ctx, arg.path)) return Val.Unknown
-                count += cells.size
             }
             else -> {
                 val path = pathOf(arg)
@@ -1107,10 +1125,18 @@ class Interpreter(
         val group = star.path.substringBeforeLast('/')
         // Fast path: an equality self-correlation Having (`[X] == [$X]` ± a CurrentRepetition self-exclusion) is
         // a HASH JOIN — O(1) per outer row against buckets the Document builds + caches once (O(N)). This is the
-        // kernel's own linear strategy; the O(N²) scan below is the fallback for an arbitrary Having.
-        star.having?.let { parseCorrelationJoin(it, group) }?.let { return hashJoinTally(star, group, it) }
+        // kernel's own linear strategy; the O(N²) scan below is the fallback for an arbitrary Having. A
+        // MULTI-star operand (bindDepth above the leaf group's parent — IF94) takes the naive scan: the bucket
+        // cache is keyed on the single-star scope, and the correct-but-slower loop needs no new join logic.
+        if (!isMultiStar(star)) {
+            star.having?.let { parseCorrelationJoin(it, group) }?.let { return hashJoinTally(star, group, it) }
+        }
         return naiveStarQuantTally(star, group)
     }
+
+    /** Whether [star] binds ABOVE its leaf group's parent — a multi-star operand (`A* / B* / F`, IF94). */
+    private fun isMultiStar(star: Expr.Star): Boolean =
+        star.bindDepth >= 0 && star.bindDepth < star.path.trim('/').split('/').size - 2
 
     /**
      * The O(N²) inner-scan `(t, f, n)` tally of a starred filter quantifier — the general fallback for an
@@ -1122,7 +1148,7 @@ class Interpreter(
         var t = 0
         var f = 0
         var n = 0
-        for (rc in ctx.rowContexts(group)) {
+        for (rc in ctx.rowContexts(group, star.bindDepth)) {
             if (star.having != null && !havingInterp(rc).fires(star.having)) continue
             n++
             when {
@@ -1333,8 +1359,8 @@ class Interpreter(
      */
     private fun filteredStarCells(star: Expr.Star): List<Val> {
         val c = ctxOf(star)
-        if (star.having == null) return c.star(star.path)
-        return c.rowContexts(star.path.substringBeforeLast('/'))
+        if (star.having == null) return c.star(star.path, star.bindDepth)
+        return c.rowContexts(star.path.substringBeforeLast('/'), star.bindDepth)
             .filter { rc -> overlapFilterInterp(rc).fires(star.having) }
             .mapNotNull { rc -> if (rc.filled(star.path)) rc.field(star.path) else null }
     }
@@ -1806,12 +1832,14 @@ class Interpreter(
         rejectHaving(args, "SumOfProducts")
         if (computeMode) {
             for (a in args) {
-                val p = (a as Expr.Star).path
-                if (ctx.starScanStates(p).any { it == CellState.INVALID }) throw PoisonedReadException(p)
+                val st = a as Expr.Star
+                if (ctx.starScanStates(st.path, st.bindDepth).any { it == CellState.INVALID }) throw PoisonedReadException(st.path)
             }
         }
         // Resolve the two row-aligned star lists here (ctx-coupled); the Σ aᵢ·bᵢ fold is pure ([Aggregates], IF10).
-        return Aggregates.sumOfProducts(ctx.starAll((args[0] as Expr.Star).path), ctx.starAll((args[1] as Expr.Star).path))
+        return Aggregates.sumOfProducts(
+            (args[0] as Expr.Star).let { ctx.starAll(it.path, it.bindDepth) },
+            (args[1] as Expr.Star).let { ctx.starAll(it.path, it.bindDepth) })
     }
 
     /**
@@ -1905,16 +1933,23 @@ class Interpreter(
         dateDiffEmpty(args[0], args[1])?.let { return it }
         val a = (evalExpr(args[0]) as? Val.Txt)?.v ?: return Val.Unknown
         val b = (evalExpr(args[1]) as? Val.Txt)?.v ?: return Val.Unknown
-        return diff(a, b)?.let { Val.Num(dec(it)) } ?: Val.Unknown
+        return diff(dateOnly(a), dateOnly(b))?.let { Val.Num(dec(it)) } ?: Val.Unknown
     }
 
     /** A number picked from a date operand's (year, month, day); an EMPTY date → the fillable **0** (kernel
-     *  `getDatumsTeil` — `DEFAULT_VALUE`, symmetric fill), a MALFORMED date → Unknown (suppressed). */
+     *  `getDatumsTeil` — `DEFAULT_VALUE`, symmetric fill), a MALFORMED date → Unknown (suppressed). A DATE_TIME
+     *  operand extracts from its DATE part (IF95 — the kernel has no datetime format definition: the field rides
+     *  `FormatDefinitionDatum` with a time-bearing format, so `feldWertAlsDatum` accepts it). */
     private fun dateComponent(e: Expr, pick: (Int, Int, Int) -> Int): Val {
         if (emptyCheckRelevant(e)) return Val.Num(DEC_ZERO)
-        val parts = (coerceDate(evalExpr(e)) as? Val.Txt)?.let { dateParts(it.v) } ?: return Val.Unknown
+        val parts = (coerceDate(evalExpr(e)) as? Val.Txt)?.let { dateParts(dateOnly(it.v)) } ?: return Val.Unknown
         return Val.Num(dec(pick(parts.first, parts.second, parts.third)))
     }
+
+    /** The DATE part of a canonical datetime (`2024-06-25T05:21:07` → `2024-06-25`); a plain date unchanged.
+     *  The kernel's date consumers parse a DATE_TIME value with its full format and use the date part (IF95);
+     *  a garbage value stays garbage — the downstream date parse still rejects it. */
+    private fun dateOnly(v: String): String = v.substringBefore('T')
 
     /** A number picked from a TIME operand's (hours, minutes, seconds) `HH:mm:ss`; an EMPTY time → the fillable
      *  **0** (`getDatumsTeil`, symmetric fill), a MALFORMED time → Unknown (suppressed). */
@@ -2029,7 +2064,7 @@ class Interpreter(
     }
 
     /** Epoch day of a date-valued expression (ISO text), or null if empty/malformed. */
-    private fun epochOf(e: Expr): Long? = (coerceDate(evalExpr(e)) as? Val.Txt)?.let { epochDay(it.v) }
+    private fun epochOf(e: Expr): Long? = (coerceDate(evalExpr(e)) as? Val.Txt)?.let { epochDay(dateOnly(it.v)) }
 
     /** `FirstFilled(G* / f)` — the first FILLED cell's value in row order. In PARTIAL validation it is order-aware
      *  (IF42): a NON-relevant cell encountered BEFORE the first filled cell makes the result UNKNOWN (its
@@ -2044,7 +2079,7 @@ class Interpreter(
         // sibling — returning Num(0) for a date/string crashed `ValCompare` against the real value). A malformed
         // FIRST value still arrives as Val.Unknown (rule suppressed) via [starVals].
         if (cellRelevant == null || star == null || star.having != null) return starVals(f).firstOrNull() ?: firstFilledEmpty(f)
-        for ((reps, value) in ctx.starCells(star.path)) {
+        for ((reps, value) in ctx.starCells(star.path, star.bindDepth)) {
             if (!cellRelevant.invoke(star.path, reps)) return Val.Unknown   // a NON-relevant cell precedes → Unknown (partial)
             if (value != null) return value
         }
@@ -2124,17 +2159,17 @@ class Interpreter(
      *  so any formally-INVALID selected cell poisons (IF85) — the filter's own reads poison inside [havingInterp]. */
     private fun starOperandVals(star: Expr.Star): List<Val> {
         if (star.having == null) {
-            if (computeMode && ctx.starScanStates(star.path).any { it == CellState.INVALID }) {
+            if (computeMode && ctx.starScanStates(star.path, star.bindDepth).any { it == CellState.INVALID }) {
                 throw PoisonedReadException(star.path)
             }
             // An index field's not-check-relevant cell (mandatory-empty / duplicated value) makes the whole
             // aggregate non-evaluable — the kernel's `combineFeldListe` returns NICHT_PRUEF_REL on the first such
             // cell, so the referencing rule is suppressed (IF15/IF60 generalized to aggregates).
-            if (indexOperandNonEvaluable(ctx, star.path)) return listOf(Val.Unknown)
-            return ctx.star(star.path)
+            if (indexOperandNonEvaluable(ctx, star.path, star.bindDepth)) return listOf(Val.Unknown)
+            return ctx.star(star.path, star.bindDepth)
         }
         val group = star.path.substringBeforeLast('/')
-        return ctx.rowContexts(group)
+        return ctx.rowContexts(group, star.bindDepth)
             .filter { rc -> havingInterp(rc).fires(star.having) }
             .mapNotNull { rc ->
                 if (computeMode && rc.cellState(star.path) == CellState.INVALID) throw PoisonedReadException(star.path)

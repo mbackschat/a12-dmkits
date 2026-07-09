@@ -47,8 +47,11 @@ interface EvalContext {
     fun groupFilled(groupPath: String): Boolean =
         throw UnsupportedConstructException("group-filled needs the general Document context, not $this")
 
-    /** The FILLED values of a starred field across the repeatable group's rows (for aggregates). */
-    fun star(path: String): List<Val>
+    /** The FILLED values of a starred field across the repeatable group's rows (for aggregates).
+     *  [bindDepth] — the segments STRICTLY ABOVE the first `*`-marked group, the levels an iterating row binds
+     *  (IF93/IF94, [io.github.mbackschat.a12.dm.interpreter.ast.Expr.Star.bindDepth]); −1 = the leaf group's
+     *  parent (the single-star default). Applies to every star-family method below. */
+    fun star(path: String, bindDepth: Int = -1): List<Val>
 
     /**
      * The value of a starred field for **every** row of its repeatable group, in row order — an EMPTY row
@@ -56,7 +59,7 @@ interface EvalContext {
      * drops empties), this preserves **row alignment**, so two fields of the same repeatable group can be paired
      * row-by-row (`SumOfProducts`). The general [Document] resolves it; the flat spike contexts don't model rows.
      */
-    fun starAll(path: String): List<Val> =
+    fun starAll(path: String, bindDepth: Int = -1): List<Val> =
         throw UnsupportedConstructException("row-aligned star needs the general Document context, not $this")
 
     /**
@@ -66,12 +69,12 @@ interface EvalContext {
      * `OverlayContext`) — apply itself to a STARRED read (`Sum(Group* then ComputedField)`), so an aggregate over
      * a computed field sees the COMPUTED values, not the stored ones. The general [Document] resolves it.
      */
-    fun starCells(path: String): List<Pair<List<Int>, Val?>> =
+    fun starCells(path: String, bindDepth: Int = -1): List<Pair<List<Int>, Val?>> =
         throw UnsupportedConstructException("row-aligned star cells need the general Document context, not $this")
 
     /** Whether a starred aggregate over [path] could still grow (an empty operand, or an
      *  un-instantiated tail below the declared repetition) → types a fired comparison OMISSION. */
-    fun starOmission(path: String): Boolean
+    fun starOmission(path: String, bindDepth: Int = -1): Boolean
 
     /**
      * Whether a `FirstFilledValue` over [path] could be **displaced by filling** — i.e. an instantiated
@@ -81,7 +84,7 @@ interface EvalContext {
      * broad [starOmission] (any empty cell): only an empty row BEFORE the first filled one matters
      * (kernel-probed, KERNEL-FINDINGS §1 supplement). Default false (the flat spike contexts don't model rows).
      */
-    fun firstStarRowEmpty(path: String): Boolean = false
+    fun firstStarRowEmpty(path: String, bindDepth: Int = -1): Boolean = false
 
     /** The raw display value of a field (for message interpolation), or null if empty. */
     fun displayValue(path: String): String?
@@ -101,7 +104,7 @@ interface EvalContext {
 
     /** One [EvalContext] per row of [groupPath] WITHIN this context's scope — for evaluating a `Having`
      *  per-row filter inside an aggregate. Default empty (the flat spike contexts don't model rows). */
-    fun rowContexts(groupPath: String): List<EvalContext> = emptyList()
+    fun rowContexts(groupPath: String, bindDepth: Int = -1): List<EvalContext> = emptyList()
 
     /**
      * Hash-join buckets for a `$` EQUALITY-correlation `Having` over [groupPath]'s rows (IF47 perf) — keyed by
@@ -162,7 +165,7 @@ interface EvalContext {
     /** The COMPUTE-mode scan states of a starred field's cells, one per row in row order — the per-cell
      *  [cellState] twin of [starCells] (IF85). The default derives from [starCells] (a [Val.Unknown] cell reads
      *  INVALID); the general [Document] overrides with the precise formal check. */
-    fun starScanStates(path: String): List<CellState> = starCells(path).map { (_, v) ->
+    fun starScanStates(path: String, bindDepth: Int = -1): List<CellState> = starCells(path, bindDepth).map { (_, v) ->
         when {
             v == null -> CellState.EMPTY
             v is Val.Unknown -> CellState.INVALID

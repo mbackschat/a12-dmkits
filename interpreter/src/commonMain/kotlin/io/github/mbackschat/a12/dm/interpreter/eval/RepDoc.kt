@@ -50,8 +50,8 @@ class RepDoc(
         override val evaluated = outerFilled
         override fun field(path: String) = resolve(outer, path)
         override fun filled(path: String) = outer.containsKey(path)
-        override fun star(path: String) = starOf(path)
-        override fun starOmission(path: String) = starOmissionOf(path)
+        override fun star(path: String, bindDepth: Int) = starOf(path)
+        override fun starOmission(path: String, bindDepth: Int) = starOmissionOf(path)
         override fun displayValue(path: String) = outer[path]
     }
 
@@ -67,8 +67,8 @@ class RepDoc(
             override fun filled(path: String): Boolean =
                 if (path.startsWith("$itemsPath/")) row.containsKey(path) else outer.containsKey(path)
 
-            override fun star(path: String) = starOf(path)
-            override fun starOmission(path: String) = starOmissionOf(path)
+            override fun star(path: String, bindDepth: Int) = starOf(path)
+            override fun starOmission(path: String, bindDepth: Int) = starOmissionOf(path)
             override fun displayValue(path: String) =
                 if (path.startsWith("$itemsPath/")) row[path] else outer[path]
         }

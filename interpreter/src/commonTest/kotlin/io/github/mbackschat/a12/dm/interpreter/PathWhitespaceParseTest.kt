@@ -22,7 +22,7 @@ class PathWhitespaceParseTest {
 
     @Test
     fun spacedSlashInStarredPathIsAPathNotDivision() =
-        assertEquals(Expr.Star("/Order/Items/Count"), starArg("Sum(Items* / Count) > 0"))
+        assertEquals(Expr.Star("/Order/Items/Count", bindDepth = 1), starArg("Sum(Items* / Count) > 0"))
 
     @Test
     fun adjacentAndSpacedAgree() =
@@ -30,7 +30,7 @@ class PathWhitespaceParseTest {
 
     @Test
     fun spaceBeforeWildcardIsAPathNotMultiplication() =
-        assertEquals(Expr.Star("/Order/Items/Count"), starArg("Sum(Items * / Count) > 0"))
+        assertEquals(Expr.Star("/Order/Items/Count", bindDepth = 1), starArg("Sum(Items * / Count) > 0"))
 
     @Test
     fun deepSpacedPathParses() =

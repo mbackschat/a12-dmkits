@@ -123,8 +123,13 @@ sealed interface Expr {
 
     /** A starred path, e.g. `Items* / Count` — the values across repetition rows; only inside an aggregate.
      *  [having] is an optional per-row FILTER (a `… Having <cond>` clause on the starred operand): the
-     *  aggregate consumes only the rows for which the condition holds. */
-    data class Star(val path: String, val having: Cond? = null, val outer: Boolean = false) : Expr
+     *  aggregate consumes only the rows for which the condition holds. [bindDepth] is the number of path
+     *  segments STRICTLY ABOVE the first `*`-marked group (IF93/IF94): an iterating row binds only those
+     *  levels — the first starred level and everything below iterate fully (a multi-star `A* / B* / F` binds
+     *  above `A`). −1 (a hand-built node) means "the leaf group's parent" — the single-star default, where
+     *  the two coincide. */
+    data class Star(val path: String, val having: Cond? = null, val outer: Boolean = false,
+                    val bindDepth: Int = -1) : Expr
 
     /** A value-valued function, e.g. Min(a, b) (operand-list) or Sum(Star) (aggregate). */
     data class Func(val name: String, val args: List<Expr>) : Expr

@@ -899,19 +899,19 @@ class DmInterpreter @JvmOverloads constructor(
         // POISONED cell is Val.Unknown (the compute-mode readers treat it as a poisoning read), else the stored
         // cell — so an aggregate over a computed field reads the cascade results. star = filled values;
         // starAll = row-aligned with empty/cleared rows as the kind-empty value.
-        override fun starCells(path: String): List<Pair<List<Int>, Val?>> =
-            d.starCells(path).map { (reps, v) ->
+        override fun starCells(path: String, bindDepth: Int): List<Pair<List<Int>, Val?>> =
+            d.starCells(path, bindDepth).map { (reps, v) ->
                 reps to when {
                     path to reps in poisoned -> Val.Unknown
                     path to reps in cleared -> null
                     else -> overlay[path to reps] ?: v
                 }
             }
-        override fun star(path: String): List<Val> = starCells(path).mapNotNull { it.second }
-        override fun starAll(path: String): List<Val> = starCells(path).map { (_, v) -> v ?: emptyOf(path) }
-        override fun starScanStates(path: String): List<CellState> {
-            val states = d.starScanStates(path)
-            val rows = d.starCells(path)
+        override fun star(path: String, bindDepth: Int): List<Val> = starCells(path, bindDepth).mapNotNull { it.second }
+        override fun starAll(path: String, bindDepth: Int): List<Val> = starCells(path, bindDepth).map { (_, v) -> v ?: emptyOf(path) }
+        override fun starScanStates(path: String, bindDepth: Int): List<CellState> {
+            val states = d.starScanStates(path, bindDepth)
+            val rows = d.starCells(path, bindDepth)
             return states.mapIndexed { i, s ->
                 val key = path to rows[i].first
                 when {

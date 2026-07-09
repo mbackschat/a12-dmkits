@@ -34,10 +34,10 @@ class SingleRowDoc(
 
     override fun filled(path: String): Boolean = values.containsKey(path)
 
-    override fun star(path: String): List<Val> =
+    override fun star(path: String, bindDepth: Int): List<Val> =
         error("a single-row doc has no repetition for $path")
 
-    override fun starOmission(path: String): Boolean = false
+    override fun starOmission(path: String, bindDepth: Int): Boolean = false
 
     override fun displayValue(path: String): String? = values[path]
 }

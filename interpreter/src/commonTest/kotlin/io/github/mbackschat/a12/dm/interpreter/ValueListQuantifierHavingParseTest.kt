@@ -24,7 +24,7 @@ class ValueListQuantifierHavingParseTest {
         assertEquals(
             Cond.ValueListQuant(
                 ValueListQuantOp.AT_LEAST_ONE,
-                listOf(Expr.Star("/Order/Items/Sku", countFilled)),
+                listOf(Expr.Star("/Order/Items/Sku", countFilled, bindDepth = 1)),
                 listOf(Expr.StrLit("A"), Expr.StrLit("B")),
             ),
             parseCondition(
@@ -39,7 +39,7 @@ class ValueListQuantifierHavingParseTest {
             Cond.ValueListQuant(
                 ValueListQuantOp.NO,
                 listOf(Expr.Field("/Order/ProductCode")),
-                listOf(Expr.Star("/Order/Items/Sku", countFilled)),
+                listOf(Expr.Star("/Order/Items/Sku", countFilled, bindDepth = 1)),
             ),
             parseCondition(
                 """NoFieldValueIncludedInValueList(ProductCode In Items*/Sku Having FieldFilled(Items/Count))""",

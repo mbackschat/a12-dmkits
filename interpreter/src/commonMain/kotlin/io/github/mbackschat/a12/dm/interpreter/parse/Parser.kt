@@ -258,15 +258,18 @@ private class ConditionParser(private val src: String, private val base: String)
      */
     private fun pathFrom(firstSeg: String, absolute: Boolean = false, ups: Int = 0, outer: Boolean = false): Expr {
         val segs = mutableListOf(firstSeg)
-        var starred = false
-        if (skipWsAndMatch('*')) starred = true
+        var firstStar = if (skipWsAndMatch('*')) 1 else -1   // 1-based index of the FIRST `*`-marked segment
         while (skipWsAndMatch('/')) {
             segs.add(readIdent())                    // readIdent skips leading whitespace before the next segment
-            if (skipWsAndMatch('*')) starred = true
+            if (skipWsAndMatch('*') && firstStar < 0) firstStar = segs.size
         }
         val joined = segs.joinToString("/")
         val full = if (absolute) "/$joined" else "${walkUp(base, ups)}/$joined"
-        return if (starred) Expr.Star(full, outer = outer) else Expr.Field(full, outer = outer)
+        if (firstStar < 0) return Expr.Field(full, outer = outer)
+        // The segments STRICTLY ABOVE the first starred group — the levels an iterating row binds (IF93/IF94);
+        // the starred level itself (and everything below, incl. later stars) always iterates fully.
+        val bindDepth = full.trim('/').split('/').size - segs.size + firstStar - 1
+        return Expr.Star(full, outer = outer, bindDepth = bindDepth)
     }
 
     /**
@@ -357,7 +360,7 @@ private class ConditionParser(private val src: String, private val base: String)
         skipWs()
         if (!matchKeyword("Having")) return e
         val star = e as? Expr.Star ?: throw UnsupportedConstructException("Having applies to a starred operand")
-        return Expr.Star(star.path, parseOr(), star.outer)
+        return Expr.Star(star.path, parseOr(), star.outer, star.bindDepth)
     }
 
     /** Read a `@From` reference-group token raw — up to the closing `)` (a group path/name, possibly with `/`). */

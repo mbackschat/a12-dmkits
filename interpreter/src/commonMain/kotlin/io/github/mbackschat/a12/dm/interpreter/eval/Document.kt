@@ -552,16 +552,16 @@ class Document @JvmOverloads constructor(
                 // depth, match the row's prefix at that depth), but built once per (groupPath, group), not per row.
                 nonRepGroupFilledDepths(groupPath, group).any { (depth, prefixes) -> rowReps.take(depth) in prefixes }
 
-        override fun star(path: String): List<Val> =
-            starRows(path).mapNotNull { reps -> valueAt(path, reps)?.value?.let { resolveValue(path, it) } }
+        override fun star(path: String, bindDepth: Int): List<Val> =
+            starRows(path, bindDepth).mapNotNull { reps -> valueAt(path, reps)?.value?.let { resolveValue(path, it) } }
 
         // Row-aligned: one entry per group row — empty → the kind's empty value (number → 0), malformed → Unknown.
-        override fun starAll(path: String): List<Val> =
-            starRows(path).map { reps -> valueAt(path, reps)?.value?.let { resolveValue(path, it) } ?: emptyValue(kindOf(path)) }
+        override fun starAll(path: String, bindDepth: Int): List<Val> =
+            starRows(path, bindDepth).map { reps -> valueAt(path, reps)?.value?.let { resolveValue(path, it) } ?: emptyValue(kindOf(path)) }
 
         // Reps-aware (for the cascade overlay): one entry per group row, null = empty cell, malformed = Unknown.
-        override fun starCells(path: String): List<Pair<List<Int>, Val?>> =
-            starRows(path).map { reps -> reps to valueAt(path, reps)?.value?.let { resolveValue(path, it) } }
+        override fun starCells(path: String, bindDepth: Int): List<Pair<List<Int>, Val?>> =
+            starRows(path, bindDepth).map { reps -> reps to valueAt(path, reps)?.value?.let { resolveValue(path, it) } }
 
         // COMPUTE-mode read states (IF85): the precise formal check, so a well-formed day-omitted date (which
         // RESOLVES Unknown for a direct reference) reads FILLED, not INVALID — only real invalidity poisons.
@@ -570,7 +570,7 @@ class Document @JvmOverloads constructor(
             return if (formallyInvalid(path, raw)) CellState.INVALID else CellState.FILLED
         }
 
-        override fun starScanStates(path: String): List<CellState> = starRows(path).map { reps ->
+        override fun starScanStates(path: String, bindDepth: Int): List<CellState> = starRows(path, bindDepth).map { reps ->
             val raw = valueAt(path, reps)?.value
             when {
                 raw == null -> CellState.EMPTY
@@ -579,9 +579,9 @@ class Document @JvmOverloads constructor(
             }
         }
 
-        override fun starOmission(path: String): Boolean {
+        override fun starOmission(path: String, bindDepth: Int): Boolean {
             val repGroup = parentGroup(path)
-            val rows = starRows(path)
+            val rows = starRows(path, bindDepth)
             val declared = declaredReps[repGroup] ?: Int.MAX_VALUE
             return rows.size < declared || rows.any { reps -> valueAt(path, reps)?.value == null }
         }
@@ -590,8 +590,8 @@ class Document @JvmOverloads constructor(
         // value: either an instantiated empty row PRECEDES the first filled one (indexOfFirst > 0), OR there is
         // NO filled row at all (indexOfFirst == -1 → the fillable 0, the kernel's `first == true` case where both
         // kannGroesser/kannKleiner hold, IF80). Only a first-row-FILLED case (index 0) is fixed → VALUE.
-        override fun firstStarRowEmpty(path: String): Boolean =
-            starRows(path).indexOfFirst { reps -> valueAt(path, reps)?.value != null } != 0
+        override fun firstStarRowEmpty(path: String, bindDepth: Int): Boolean =
+            starRows(path, bindDepth).indexOfFirst { reps -> valueAt(path, reps)?.value != null } != 0
 
         override fun displayValue(path: String): String? = placeOf(path)?.value
 
@@ -625,8 +625,12 @@ class Document @JvmOverloads constructor(
         // (a rule iterating the same group the aggregate ranges over — the `$` outer-correlation case): scoping
         // to the full rowReps would wrongly return only this one row. A DEEPER (nested) aggregate keeps the full
         // prefix (take(n) with n ≥ this depth ≡ rowReps), so it stays scoped to this row — unchanged.
-        override fun rowContexts(groupPath: String): List<EvalContext> =
-            rowContextsScoped(groupPath, rowReps.take(partsOf(groupPath).size - 1))
+        override fun rowContexts(groupPath: String, bindDepth: Int): List<EvalContext> {
+            // The scope anchor: the group's parent, capped further at [bindDepth] for a MULTI-star operand
+            // (IF94 — the rows of `A* / B*` from an iterating row span ALL of A, not this row's A).
+            val cap = if (bindDepth >= 0) minOf(partsOf(groupPath).size - 1, bindDepth) else partsOf(groupPath).size - 1
+            return rowContextsScoped(groupPath, rowReps.take(cap))
+        }
 
         override fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String): Map<List<Val>, IntArray> =
             correlationBucketsScoped(groupPath, rowReps.take(partsOf(groupPath).size - 1), joinFields, starPath)
@@ -728,13 +732,16 @@ class Document @JvmOverloads constructor(
         // current row (fired per-row rules on every row, computed over one cell, and hid a poisoned sibling
         // cell from a downstream aggregate — the IG44 R2 atom). A star NESTED BELOW this row keeps binding
         // this row's indices (common < the cap) — unchanged.
-        private fun starScopePrefix(starPath: String): List<Int> {
+        private fun starScopePrefix(starPath: String, bindDepth: Int = -1): List<Int> {
             val parts = partsOf(parentGroup(starPath))
-            return rowReps.take(minOf(commonPrefixLen(parts, partsOf(group)), parts.size - 1))
+            // The default cap (the leaf group's parent) is the single-star rule; a MULTI-star operand caps
+            // earlier — at the FIRST `*`-marked level's parent ([bindDepth], IF94).
+            val cap = if (bindDepth >= 0) minOf(parts.size - 1, bindDepth) else parts.size - 1
+            return rowReps.take(minOf(commonPrefixLen(parts, partsOf(group)), cap))
         }
 
-        private fun starRows(starPath: String): List<List<Int>> =
-            rowsWithPrefix(parentGroup(starPath), starScopePrefix(starPath))
+        private fun starRows(starPath: String, bindDepth: Int = -1): List<List<Int>> =
+            rowsWithPrefix(parentGroup(starPath), starScopePrefix(starPath, bindDepth))
                 .map { it + 1 }   // append the field's own index (1) to address the leaf
     }
 
@@ -825,8 +832,8 @@ class Document @JvmOverloads constructor(
         // Aggregates / filters / semantic index / custom conditions are NOT valid inside a parallel iteration
         // (KERNEL-SEMANTICS §9: a filter condition may not contain a parallel iteration, and vice versa) — fail
         // loud rather than risk a silently-wrong answer.
-        override fun star(path: String): List<Val> = unsupportedInParallel()
-        override fun starOmission(path: String): Boolean = unsupportedInParallel()
+        override fun star(path: String, bindDepth: Int): List<Val> = unsupportedInParallel()
+        override fun starOmission(path: String, bindDepth: Int): Boolean = unsupportedInParallel()
         private fun unsupportedInParallel(): Nothing =
             throw UnsupportedConstructException("an aggregate/filter inside a parallel iteration is not modeled")
     }
