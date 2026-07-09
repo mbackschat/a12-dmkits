@@ -34,9 +34,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 
 The live, unfinished work as a table. (Shipped gaps are **not** recorded here — a closed gap is no longer a gap; git is the history of *what/when*, its **API-FINDINGS finding** is the *why*, and DG1–DG14 all shipped this way — a code comment citing `DEV-API-GAPS DGn` resolves via the back-referencing finding, DG11/DG12 via API-GUIDE §5c.)
 
-| Gap | Surfaced | The friction | Decision / next step |
-|---|---|---|---|
-| **Authoring exemplars teach the editor idiom** | 2026-06-26 | The authoring exemplars (API-GUIDE snippets, README samples, a few canonical tests) should use the editor relative-nav (`EditSession.read(...).group(p).num("child")` / `.flatten(...)`) *where it earns its keep* — authoring **new** structure, path-written-once. | Scoped **adoption** task; **no missing API**. By-path (`m.num("/full/path")`) stays **blessed** for referencing an already-loaded model (clearer/safer for a stateless agent), so the bulk by-path corpus is **deliberately not retrofitted**. Re-open only if the editor idiom isn't visibly winning in new *authoring* contributions. |
+**None open.** The backlog drained 2026-07-09: the four WI-T typed shapes (date `Min`/`Max`, indexed-cell presence, starred value-list, `RuleGroup`) and a computation's `errorCodesToSuppress` shipped (findings 58–61), and the editor-idiom **adoption** completed — every authoring exemplar that builds **new** structure uses the editor relative-nav (`s.group(p).addField(…)` → `p.num("child")`; the case study, README "Both kits together", Part II teaser, the `edit-session`/`editor-number-field` snippets), while the by-path corpus that only **references** an already-loaded model stays blessed and un-retrofitted (the convention itself lives in API-GUIDE §5c / finding 40, not here). A row lands here only when a friction is both surfaced **and** queued.
 
 ---
 
