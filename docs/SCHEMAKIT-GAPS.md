@@ -50,7 +50,7 @@ Constraints a12 *could* express (there is a kernel operator/structure, possibly 
 
 | Item | Decision | Re-open trigger |
 |---|---|---|
-| **Live Tier-2 validation** | The interpreter as the *real* full-rule tier (not just demonstrating carriage + complementarity) needs the DM-JSON→`ModelDef` loader, which lives in **`:cli`** (`interp.InterpreterModelLoader`); reuse-first forbids reimplementing it, and depending on `:cli` from `:schemakit` is a backwards edge. **Deferred (2026-06-28)** — live Tier-2 stays in the CLI. (Shape 5 already proves Tier-1 via a stock validator + that the cross-field rule is *carried* for Tier-2.) | a kernel-free **in-process** Tier-2 round-trip is needed → first move/expose the loader in `:interpreter`, then wire it |
+| **Live Tier-2 validation** | The interpreter as the *real* full-rule tier (not just demonstrating carriage + complementarity) needs the DM-JSON→`ModelDef` loader. *The 2026-06-28 architectural blocker is GONE* (premise updated 2026-07-09): the loader moved to **`:interpreter`** (`interpreter.load.ModelLoader`, kernel-free multiplatform — API-FINDINGS 57), so wiring is now cheap and clean. **Still deferred** — purely on consumer-exists (Shape 5 already proves Tier-1 via a stock validator + that the cross-field rule is *carried* for Tier-2). | a consumer needs a kernel-free **in-process** Tier-2 round-trip → wire `ModelLoader` + `DmInterpreter` directly |
 | **`ExternalSchemaProfile` seam** | Keep the core mapping profile **non-JSON-Schema-specific** so OpenAPI / TypeScript / SQL / Protobuf can become later import profiles (proposal §12.2 #4). No second profile is built today. | a second external-schema source is taken on → factor the JSON-Schema-specific glue behind the seam |
 
 ---
