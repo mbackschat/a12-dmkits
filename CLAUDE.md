@@ -2,6 +2,8 @@
 
 Design and rationale live under [`docs/`](docs/) — **[`docs/README.md`](docs/README.md) indexes every document** (the design, the kernel findings/notes, the CI-locked MVK ledger, the API/DSL/grammar surveys, the corpus analysis, and the API capability guide + the design-findings record). Read it to find the right doc; the conventions below stay here.
 
+**Dual-runtime note:** this file serves Claude Code (`CLAUDE.md`) and every AGENTS.md-reading agent (Codex, …) via the **`AGENTS.md → CLAUDE.md` symlink** — the nested `interpreter/` pair works the same way. Skills are shared by the **pointer-skill convention**: the canonical skill lives in `.claude/skills/`, with a same-named pointer in `.agents/skills/` (the `run-dmtool-eval` pattern). Keep instructions here tool-neutral.
+
 ## Language
 
 English is the project default: code, identifiers, comments, docs, and the **default render target** (`DslRenderer` defaults to `ConditionLanguage.EN`) are English. **German is a supported render target, not the default** — the operator catalog carries verified `de` keywords and `new DslRenderer(ConditionLanguage.DE)` renders to it. Translations are welcome; English stays canonical.
