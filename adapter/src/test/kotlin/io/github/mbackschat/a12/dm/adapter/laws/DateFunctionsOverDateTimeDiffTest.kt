@@ -90,6 +90,17 @@ class DateFunctionsOverDateTimeDiffTest {
     @Test fun emptyDateTimeExtractsTheFillableZero() =
         quad("DayFromDate(LoggedAt)", null, "VALUE|0", "an EMPTY datetime → the fillable 0 (IF73 semantics)")
 
+    // ── the TIME extractors accept a datetime operand too (its TIME part — the round-2 VCV minimal) ─────
+
+    @Test fun hoursFromDateTimeExtractsTheHour() =
+        quad("HoursFromTime(LoggedAt)", TS, "VALUE|5", "HoursFromTime over a datetime (the round-2 VCV minimal's shape)")
+
+    @Test fun minutesFromDateTimeExtractsTheMinutes() =
+        quad("MinutesFromTime(LoggedAt)", TS, "VALUE|21", "MinutesFromTime over a datetime")
+
+    @Test fun secondsFromDateTimeExtractsTheSeconds() =
+        quad("SecondsFromTime(LoggedAt)", TS, "VALUE|7", "SecondsFromTime over a datetime")
+
     // ── the date DIFFS accept datetime operands too (the same shared date resolution) ───────────────────
 
     @Test fun differenceInDaysBetweenDateTimesUsesTheDateParts() {

@@ -49,6 +49,12 @@ class DateFunctionsOverDateTimeTest {
         assertEquals(ComputeOutcome.VALUE to "2", outcome("QuarterFromDate(LoggedAt)", TS))
     }
 
+    @Test fun timeExtractorsUseTheTimePart() {
+        assertEquals(ComputeOutcome.VALUE to "5", outcome("HoursFromTime(LoggedAt)", TS))
+        assertEquals(ComputeOutcome.VALUE to "21", outcome("MinutesFromTime(LoggedAt)", TS))
+        assertEquals(ComputeOutcome.VALUE to "7", outcome("SecondsFromTime(LoggedAt)", TS))
+    }
+
     @Test fun emptyDateTimeExtractsTheFillableZero() =
         assertEquals(ComputeOutcome.VALUE to "0", outcome("DayFromDate(LoggedAt)", null))
 

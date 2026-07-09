@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.CellState
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.PoisonedReadException
+import io.github.mbackschat.a12.dm.interpreter.eval.UNKNOWN_REP
 import io.github.mbackschat.a12.dm.interpreter.eval.CUSTOM_TYPE_INVALID
 import io.github.mbackschat.a12.dm.interpreter.eval.FORMAL_RULE_PATH
 import io.github.mbackschat.a12.dm.interpreter.eval.OVER_REPETITION_CONTEXT
@@ -683,7 +684,7 @@ class DmInterpreter @JvmOverloads constructor(
         // A computed field a PRIOR computation CLEARED — dependents must read it as EMPTY (empty-as-0 / skip), NOT
         // the stale STORED (seeded) value the overlay would otherwise fall through to. Without this a dependent's
         // `FieldFilled(dep)` reads the stale seed as filled and computes where the kernel (seeing dep empty) clears
-        // — a large slice of the IG44 CVV residual, AND the root of the IF76 gate's over-suppression (a cleared
+        // — a large slice of the IF76/IF77 CVV class, AND the root of the IF76 gate's over-suppression (a cleared
         // dependency read stale-and-invalid would wrongly trip the gate). KERNEL-FINDINGS §11 (cascade clearing).
         val cleared = HashSet<Pair<String, List<Int>>>()
         val emptyOf: (String) -> Val = { p -> emptyValue(model.kinds[p] ?: Kind.STRING) }
@@ -695,7 +696,7 @@ class DmInterpreter @JvmOverloads constructor(
         val minFracOf: (String) -> Int = { p -> model.constraintsOf(p).minFractionalDigits ?: 0 }
         val poisoned = HashSet<Pair<String, List<Int>>>()
         // A FILLED operand that is "not check-relevant" — formally invalid — makes a computation over it
-        // non-evaluable (IG44/IF76, generalized IF78; poison semantics IF85). The gate is the SAME
+        // non-evaluable (IF76, generalized IF78; poison semantics IF85). The gate is the SAME
         // operand-invalidity test full validation uses ([operandNotCheckRelevant] → [computeFormalErrorAt]),
         // but on the compute path a positive test THROWS: the consult IS the kernel's poisoning read. An EMPTY
         // operand — even a required one — stays empty-as-0 (`nichtAngegeben`, not `nichtPruefungsrelevant`).
@@ -707,10 +708,14 @@ class DmInterpreter @JvmOverloads constructor(
             // uninstantiated container group (a `*_Rules` group) targeting a field in another subtree would
             // otherwise resolve its scope to that empty container and compute nothing, where the kernel computes
             // the single instance at the target (non-repeatable groups are implicitly present).
-            val scope = scopeFromRefs(computationScopeRefs(parsed) + comp.targetPath, parentGroup(comp.targetPath))
-            for (ctx in doc.computeContexts(scope)) {
+            val scopeRefs = computationScopeRefs(parsed)
+            val scope = scopeFromRefs(scopeRefs + comp.targetPath, parentGroup(comp.targetPath))
+
+            // Evaluate the computation in one instance context and record its outcome (shared by the plain and
+            // the parallel iteration arms).
+            fun computeAt(ctx: EvalContext) {
                 val targetKey = comp.targetPath to ctx.repsOf(comp.targetPath)
-                if (targetKey in decided) continue   // an earlier computation's non-empty outcome already won (IF87)
+                if (targetKey in decided) return   // an earlier computation's non-empty outcome already won (IF87)
                 val ectx = if (overlay.isEmpty() && cleared.isEmpty() && poisoned.isEmpty()) ctx
                     else OverlayContext(ctx, overlay, cleared, poisoned, emptyOf, minFracOf)
                 val interp = Interpreter(ectx, clock, model.baseYear, model.indexFields, predefinedTypes,
@@ -744,8 +749,53 @@ class DmInterpreter @JvmOverloads constructor(
                 }
                 outcomeByCell[targetKey] = computed   // a decided cell is skipped above → a value/poison overwrites a prior tentative clear
             }
+
+            // PARALLEL ITERATION for computations (IF96): operands referencing OUT-OF-SCOPE sibling repeatable
+            // groups join them to the target's scope by the shared INDEX field — the target row for key K reads
+            // each sibling's row with the SAME key (join-by-key, never physical position). Two calc-specific
+            // rules on top of the rule-side join: (1) an INVALID index in ANY joined group (a duplicated or
+            // empty key cell) marks EVERY instance of this computation "incorrectly calculated" — the kernel's
+            // CalculationCache.markFieldsUsingInvalidIndexGroupsAsIncorrectlyCalculated, deliberately "more
+            // instances than strictly necessary" — poisoned + CLEARED; (2) the calc never CREATES a repetition
+            // ("no additional repetitions should be created by calculation"): only join rows where the TARGET's
+            // row exists compute — a side-only key is skipped; an unmatched SIDE reads empty (empty-as-0).
+            // The join anchors on the TARGET's OWN scope (the calc iterates where it WRITES — IF89): the
+            // referenced out-of-scope groups are the joined SIDES, never the iteration anchor ([scope], derived
+            // from ALL refs, may resolve to a referenced side — which would collapse every join row onto one
+            // target key).
+            val targetScope = scopeFromRefs(listOf(comp.targetPath), parentGroup(comp.targetPath))
+            val parallelGroups = scopeRefs.flatMap { ancestorGroups(it).filter { g -> g in model.repeatable } }
+                .distinct().filter { it != targetScope && !targetScope.startsWith("$it/") }
+            if (parallelGroups.isNotEmpty()) {
+                val joined = (listOf(targetScope) + parallelGroups).distinct()
+                if (joined.any { g -> invalidIndexGroup(doc, g) }) {
+                    for (ctx in doc.computeContexts(targetScope)) {
+                        val targetKey = comp.targetPath to ctx.repsOf(comp.targetPath)
+                        if (targetKey in decided) continue
+                        poisoned += targetKey; cleared -= targetKey; decided += targetKey
+                        outcomeByCell[targetKey] = Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = targetKey.second)
+                    }
+                    continue
+                }
+                for (pctx in parallelIterationContexts(targetScope, parallelGroups, doc)) {
+                    val reps = pctx.repsOf(comp.targetPath)
+                    if (UNKNOWN_REP in reps) continue   // no TARGET row for this key — the calc creates none
+                    computeAt(pctx)
+                }
+                continue
+            }
+            for (ctx in doc.computeContexts(scope)) computeAt(ctx)
         }
         return outcomeByCell.values.toList()
+    }
+
+    /** Whether [group]'s index is COMPROMISED for the compute parallel join (IF96) — an instantiated row with
+     *  an EMPTY index cell, or a DUPLICATED index value. Either marks every instance of a computation joining
+     *  over [group] incorrectly calculated (`markFieldsUsingInvalidIndexGroupsAsIncorrectlyCalculated`). */
+    private fun invalidIndexGroup(doc: Document, group: String): Boolean {
+        val indexField = model.indexFields.firstOrNull { parentGroup(it) == group } ?: return false
+        val values = doc.contextsFor(group).map { it.displayValue(indexField) }
+        return values.any { it.isNullOrEmpty() } || values.size != values.distinct().size
     }
 
     /** Whether a FILLED operand is "not check-relevant" for a computation — the SAME test full validation uses

@@ -1952,10 +1952,12 @@ class Interpreter(
     private fun dateOnly(v: String): String = v.substringBefore('T')
 
     /** A number picked from a TIME operand's (hours, minutes, seconds) `HH:mm:ss`; an EMPTY time → the fillable
-     *  **0** (`getDatumsTeil`, symmetric fill), a MALFORMED time → Unknown (suppressed). */
+     *  **0** (`getDatumsTeil`, symmetric fill), a MALFORMED time → Unknown (suppressed). A DATE_TIME operand
+     *  extracts from its TIME part (IF95's time half — the kernel parses the datetime with the field's own
+     *  time-bearing format, so `HoursFromTime(<datetime>)` is legal and reads the clock time). */
     private fun timeComponent(e: Expr, pick: (Int, Int, Int) -> Int): Val {
         if (emptyCheckRelevant(e)) return Val.Num(DEC_ZERO)
-        val m = (evalExpr(e) as? Val.Txt)?.let { TIME.matchEntire(it.v) } ?: return Val.Unknown
+        val m = (evalExpr(e) as? Val.Txt)?.let { TIME.matchEntire(it.v.substringAfter('T')) } ?: return Val.Unknown
         return Val.Num(dec(pick(m.groupValues[1].toInt(), m.groupValues[2].toInt(), m.groupValues[3].toInt())))
     }
 

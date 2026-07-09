@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 
 /**
  * A **model-level delta-debugger** for the WI-T corpus triage — the document-level [FuzzDiagnostics.shrink]
- * lifted to the MODEL (INTERPRETER-GAPS IG44). Given a diverging kernel DM-JSON model and a divergence
+ * lifted to the MODEL (the IG44→IG56 drill line, INTERPRETER-GAPS). Given a diverging kernel DM-JSON model and a divergence
  * PREDICATE, it greedily removes/simplifies model elements — rules, computations, computation alternatives,
  * common/per-alternative preconditions, fields, and groups — keeping each reduction that PRESERVES the
  * divergence, until a minimal model remains. So a divergence buried in a large composite corpus model is
