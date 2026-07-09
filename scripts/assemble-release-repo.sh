@@ -26,10 +26,15 @@ rm -rf "$DEST"
 mkdir -p "$DEST/licenses"
 # 1a. the CLAUDE CODE plugin at the mirror ROOT + the public-repo README/CLAUDE.md (already EUPL-aware:
 #     per-artifact licensing + source pointer + disclaimer). Claude's marketplace.json has source "." → the
-#     repo root. AGENTS.md follows the source repo pattern: a tiny redirect to CLAUDE.md, not a second source
-#     of agent instructions.
+#     repo root. The mirror's AGENTS.md is a GENERATED tiny redirect to the mirror's own (public) CLAUDE.md —
+#     never copied from the source repo, where AGENTS.md is a SYMLINK to the internal CLAUDE.md (dual-runtime,
+#     2026-07-09): a dereferencing `cp` of that symlink would ship the internal instructions into the mirror.
 cp -Rf "$ROOT/plugin/." "$DEST/"
-cp -f  "$ROOT/AGENTS.md" "$DEST/AGENTS.md"
+cat > "$DEST/AGENTS.md" << 'AGENTS_EOF'
+# AGENTS.md
+
+This project's agent/contributor guidance lives in **[CLAUDE.md](./CLAUDE.md)** — see it for everything, including the hard rule against leaking machine-specific paths, usernames, and other local/secret data into committed files.
+AGENTS_EOF
 # 1b. the CODEX plugin under codex/ (its manifest .codex-plugin/plugin.json + AGENTS.md differ from Claude's,
 #     so it can't share the root), with its marketplace manifest at the Codex-standard location pointing back
 #     at ./codex (git-subdir). The on-demand installer rides inside skills/ (no hooks dir — there is no hook).
