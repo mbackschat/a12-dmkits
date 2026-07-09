@@ -77,9 +77,24 @@ final class DiffText implements VerbText {
                     .append(pad(c.path("change").asText(), 8)).append(' ')
                     .append(pad(c.path("element").asText().toLowerCase(Locale.ROOT), 5)).append(' ')
                     .append(c.path("id").asText())
+                    .append(relocationSuffix(c))
                     .append("  ").append(reasons(c))
                     .append('\n');
         }
+    }
+
+    /** For a RENAMED/MOVED change, the {@code → newPath} target read off its {@code path} delta; else empty. */
+    private static String relocationSuffix(JsonNode change) {
+        String kind = change.path("change").asText();
+        if (!"RENAMED".equals(kind) && !"MOVED".equals(kind)) {
+            return "";
+        }
+        for (JsonNode d : change.path("deltas")) {
+            if ("path".equals(d.path("aspect").asText())) {
+                return " → " + d.path("after").asText();
+            }
+        }
+        return "";
     }
 
     private static String reasons(JsonNode change) {

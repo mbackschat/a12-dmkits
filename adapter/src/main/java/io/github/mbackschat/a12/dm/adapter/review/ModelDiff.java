@@ -31,9 +31,11 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
  * A changed rule condition is further refined from the two typed ASTs ({@link ConditionPolarity}): a
  * provable structural flip is {@code POLARITY_INVERTED} (HIGH), otherwise the honest {@code CONDITION_CHANGED}.
  * A pure element <b>reorder</b> within a parent is flagged {@code REORDERED} ({@code POSITION_CHANGED}, LOW —
- * display-order is semantic, §2b), minimal and conservative so an index shift never invents a move. The
- * fuller AST edit-script (which operand/clause moved), rename/move, and computations/groups are later
- * slices (MODEL-REVIEW-GAPS MR1/MR3/MR4).
+ * display-order is semantic, §2b), minimal and conservative so an index shift never invents a move. A
+ * removed+added pair that is unambiguously the same element relocated (identical fingerprint + a locality
+ * match) is re-labelled {@code RENAMED}/{@code MOVED} (MR3-v1 exact-fingerprint matcher, §5) — unsure ⇒
+ * remove+add, the safe direction. The fuller AST edit-script (which operand/clause moved), the similarity
+ * matcher (rename+edit), and computations/groups are later slices (MODEL-REVIEW-GAPS MR1/MR3/MR4).
  */
 public record ModelDiff(List<ElementChange> changes) {
 
@@ -41,7 +43,7 @@ public record ModelDiff(List<ElementChange> changes) {
     public enum ElementKind { FIELD, RULE }
 
     /** How an element changed between the two states. */
-    public enum ChangeKind { ADDED, REMOVED, MODIFIED, REORDERED }
+    public enum ChangeKind { ADDED, REMOVED, MODIFIED, REORDERED, RENAMED, MOVED }
 
     /** Risk tier — ordered so the highest reason wins ({@code HIGH} has the greatest ordinal). */
     public enum Risk { LOW, MEDIUM, HIGH }
@@ -69,6 +71,7 @@ public record ModelDiff(List<ElementChange> changes) {
         match(ElementKind.RULE, baseRuleAspects, headRuleAspects,
                 (change, id, deltas) -> ruleReasons(change, id, deltas, baseRules, headRules), changes);
         detectReorders(ElementKind.RULE, baseRuleAspects.keySet(), headRuleAspects.keySet(), changes);
+        pairRenames(changes);
         return new ModelDiff(List.copyOf(changes));
     }
 
@@ -196,6 +199,90 @@ public record ModelDiff(List<ElementChange> changes) {
                 List.of("POSITION_CHANGED"), List.of(position)));
     }
 
+    // --- rename/move pairing (MR3-v1: the conservative exact-fingerprint matcher, §5) -------------
+
+    /**
+     * Re-labels a REMOVED@P + ADDED@P′ pair as {@code RENAMED}/{@code MOVED} when it is unambiguously the
+     * SAME element relocated: identical content fingerprint (the element's aspect map), exactly one↔one of
+     * that kind+fingerprint, and a locality match — same parent XOR same leaf name (what {@code field
+     * rename}/{@code field move} do). Everything else stays remove+add (unsure ⇒ the safe direction). A
+     * content edit breaks the identical-fingerprint test, so a rename+edit is left to the similarity upgrade.
+     */
+    private static void pairRenames(List<ElementChange> changes) {
+        Map<FpKey, List<ElementChange>> removed = new LinkedHashMap<>();
+        Map<FpKey, List<ElementChange>> added = new LinkedHashMap<>();
+        for (ElementChange c : changes) {
+            if (c.change() == ChangeKind.REMOVED) {
+                removed.computeIfAbsent(fpKey(c), k -> new ArrayList<>()).add(c);
+            } else if (c.change() == ChangeKind.ADDED) {
+                added.computeIfAbsent(fpKey(c), k -> new ArrayList<>()).add(c);
+            }
+        }
+        Map<ElementChange, ElementChange> replaceWith = new LinkedHashMap<>();
+        List<ElementChange> drop = new ArrayList<>();
+        for (Map.Entry<FpKey, List<ElementChange>> e : removed.entrySet()) {
+            List<ElementChange> rs = e.getValue();
+            List<ElementChange> as = added.getOrDefault(e.getKey(), List.of());
+            if (rs.size() != 1 || as.size() != 1) {
+                continue; // ambiguous (or unmatched) fingerprint → do not pair
+            }
+            ChangeKind relocation = relocationKind(rs.get(0).id(), as.get(0).id());
+            if (relocation != null) {
+                replaceWith.put(rs.get(0), relocated(rs.get(0), as.get(0), relocation));
+                drop.add(as.get(0));
+            }
+        }
+        for (int i = 0; i < changes.size(); i++) {
+            ElementChange replacement = replaceWith.get(changes.get(i));
+            if (replacement != null) {
+                changes.set(i, replacement);
+            }
+        }
+        changes.removeAll(drop);
+    }
+
+    /** Kind + content fingerprint; equality is content-based (the Map's), so identical elements bucket together. */
+    private record FpKey(ElementKind kind, Map<String, String> fingerprint) {}
+
+    /** The bucket key: an element's kind + its content fingerprint (aspect → value, read off the one-sided deltas). */
+    private static FpKey fpKey(ElementChange c) {
+        Map<String, String> fingerprint = new LinkedHashMap<>();
+        for (Delta d : c.deltas()) {
+            fingerprint.put(d.aspect(), c.change() == ChangeKind.REMOVED ? d.before() : d.after());
+        }
+        return new FpKey(c.element(), fingerprint);
+    }
+
+    /**
+     * {@code RENAMED} when only the leaf name changed (same parent), {@code MOVED} when only the parent
+     * changed (same leaf) — the two safe locality shapes; {@code null} (do not pair) when BOTH differ (too
+     * weak a signal for v1). {@code P == P′} can't occur here (it would have matched as a common element).
+     */
+    private static ChangeKind relocationKind(String base, String head) {
+        boolean sameParent = parentOf(base).equals(parentOf(head));
+        boolean sameLeaf = leafOf(base).equals(leafOf(head));
+        if (sameParent && !sameLeaf) {
+            return ChangeKind.RENAMED;
+        }
+        if (!sameParent && sameLeaf) {
+            return ChangeKind.MOVED;
+        }
+        return null;
+    }
+
+    /** The relocated element as ONE change: a {@code path} before→after delta, replacing the remove+add. */
+    private static ElementChange relocated(ElementChange removed, ElementChange added, ChangeKind kind) {
+        String reason = kind == ChangeKind.RENAMED ? "ELEMENT_RENAMED" : "ELEMENT_MOVED";
+        List<Delta> deltas = List.of(new Delta("path", removed.id(), added.id()));
+        return new ElementChange(removed.element(), removed.id(), kind, riskFor(List.of(reason)),
+                List.of(reason), deltas);
+    }
+
+    /** The last path segment (leaf name). */
+    private static String leafOf(String path) {
+        return path.substring(path.lastIndexOf('/') + 1);
+    }
+
     // --- risk classification (the §5b taste: loosening > tightening) ------------------------------
 
     /** Maps a change to its reason codes — pluggable so the rule path can consult the two ASTs. */
@@ -287,8 +374,9 @@ public record ModelDiff(List<ElementChange> changes) {
                     "POLARITY_INVERTED" -> Risk.HIGH;
             case "RULE_ADDED", "CONDITION_CHANGED", "CONDITION_RESTRUCTURED", "REFERENCE_CHANGED",
                     "OPERATOR_CHANGED", "THRESHOLD_CHANGED", "CONSTRAINT_TIGHTENED", "STRUCTURE_ADDED",
-                    "STRUCTURE_REMOVED", "PATTERN_CHANGED", "SEVERITY_CHANGED", "SCALE_CHANGED" -> Risk.MEDIUM;
-            // POSITION_CHANGED (a reorder) is a display-order change, not a validation loosening → LOW
+                    "STRUCTURE_REMOVED", "PATTERN_CHANGED", "SEVERITY_CHANGED", "SCALE_CHANGED",
+                    "ELEMENT_MOVED" -> Risk.MEDIUM;
+            // POSITION_CHANGED (a reorder) / ELEMENT_RENAMED are content-preserving, not a loosening → LOW
             default -> Risk.LOW;
         };
     }

@@ -91,6 +91,7 @@ final class ModelDiffCommand extends BaseCommand {
             int removed = 0;
             int modified = 0;
             int reordered = 0;
+            int relocated = 0;
             int highRisk = 0;
             for (ModelDiff.ElementChange change : diff.changes()) {
                 ObjectNode node = changes.addObject();
@@ -116,12 +117,14 @@ final class ModelDiffCommand extends BaseCommand {
                     case REMOVED -> removed++;
                     case MODIFIED -> modified++;
                     case REORDERED -> reordered++;
+                    case RENAMED, MOVED -> relocated++;
                 }
                 if (change.risk() == ModelDiff.Risk.HIGH) {
                     highRisk++;
                 }
             }
             String summary = added + " added, " + removed + " removed, " + modified + " modified"
+                    + (relocated > 0 ? ", " + relocated + " renamed/moved" : "")
                     + (reordered > 0 ? ", " + reordered + " reordered" : "")
                     + (highRisk > 0 ? " (" + highRisk + " high-risk)" : "");
             ResultEnvelope env = ResultEnvelope.read("model", "diff", summary, true, List.of(), data);
