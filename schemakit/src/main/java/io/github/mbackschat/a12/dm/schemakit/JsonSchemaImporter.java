@@ -226,7 +226,14 @@ public final class JsonSchemaImporter {
                                            MappingProfile profile, TranscodeReport.Builder report, boolean bundle,
                                            Set<String> breakEdges, io.github.mbackschat.a12.dm.core.ModelResolver ruleResolver) {
         Structure s = buildStructure(root, rootSchema, modelId, dialect, profile, report, bundle, breakEdges);
-        String dmJson = RuleSynthesis.apply(s.dmJson(), s.ruleNeeds(), report, ruleResolver);   // Tier A+
+        List<RuleSynthesis.Need> needs = s.ruleNeeds();
+        if (rootSchema.has(Carriage.X_RULE)) {
+            // An a12-origin schema carries its rules verbatim (Tier B); native `minItems` is the foreign-facing
+            // projection of one such carried rule, so re-synthesizing it would DUPLICATE it. Carriage is
+            // authoritative — drop the projected-keyword need (SCHEMAKIT-SPEC §4f).
+            needs = needs.stream().filter(n -> !(n instanceof RuleSynthesis.MinItemsCount)).toList();
+        }
+        String dmJson = RuleSynthesis.apply(s.dmJson(), needs, report, ruleResolver);   // Tier A+
         if (rootSchema.has(Carriage.X_RULE) || rootSchema.has(Carriage.X_COMPUTATION)) {
             ObjectNode tree = (ObjectNode) parse(dmJson);     // restore carried rules/computations (Tier B/C)
             Carriage.inject(tree, rootSchema, report);
@@ -642,7 +649,7 @@ public final class JsonSchemaImporter {
             // synthesis resolves the actual row fields post-build and skips if the group/fields didn't import.
             ctx.ruleNeeds().add(new RuleSynthesis.UniqueItems(path));
         }
-        noteMinItems(schema, name, ctx);   // minItems is not enforced (KERNEL-FINDINGS) — report it for BOTH array kinds
+        collectMinItems(schema, path, ctx);   // minItems → a NumberOfFilledGroups(G*) < N rule (both array kinds)
         collectContains(schema, path, ctx);   // contains/minContains/maxContains → a filtered-count rule (simple predicate)
         JsonNode items = schema.path("items");
         if (items.has("$ref")) {   // array of $ref items (ubiquitous in OpenAPI) — resolve before the scalar/object dispatch
@@ -837,11 +844,12 @@ public final class JsonSchemaImporter {
         }
     }
 
-    private static void noteMinItems(JsonNode schema, String name, Ctx ctx) {
-        if (schema.has("minItems")) {
-            ctx.report().diagnostic("array '" + name + "' minItems=" + schema.get("minItems").asInt()
-                    + " is NOT enforced — a12 has no clean rule form for group cardinality (KERNEL-FINDINGS). "
-                    + "TO DO: enforce the minimum row count by hand if it is required");
+    /** {@code minItems} → a synthesized {@code NumberOfFilledGroups(G*) < N} rule (SCHEMAKIT-SPEC §4f). The Need
+     *  is collected here; {@link RuleSynthesis} resolves the actual row anchor post-build and skips gracefully if
+     *  the array did not import as a repeatable group (e.g. no cap). {@code minItems <= 0} is a no-op (always met). */
+    private static void collectMinItems(JsonNode schema, String path, Ctx ctx) {
+        if (schema.has("minItems") && schema.get("minItems").asInt() >= 1) {
+            ctx.ruleNeeds().add(new RuleSynthesis.MinItemsCount(path, schema.get("minItems").asInt()));
         }
     }
 

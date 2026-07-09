@@ -4,8 +4,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.adapter.ReadResult;
+import io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.PatternCondition;
 
 import java.util.Map;
@@ -43,10 +47,40 @@ final class TierAProjection {
                 report.mapped(entry.getKey(), "properties/" + hit.fieldPath() + ".pattern",
                         TranscodeReport.Tier.TIER_A);
             });
+            findMinItemsConstraint(converted.condition()).ifPresent(hit -> {
+                ObjectNode array = navigateToField(schema, hit.groupPath());   // a property node — here the array
+                if (array == null || !"array".equals(array.path("type").asText())) {
+                    report.diagnostic("rule '" + entry.getKey() + "' would project minItems onto '" + hit.groupPath()
+                            + "', but that array is not in the exported structure");
+                    return;
+                }
+                array.put("minItems", hit.min());
+                report.mapped(entry.getKey(), "properties/" + hit.groupPath() + ".minItems",
+                        TranscodeReport.Tier.TIER_A);
+            });
         }
     }
 
     private record PatternHit(String fieldPath, String regex) {}
+
+    private record MinItemsHit(String groupPath, int min) {}
+
+    /** A group must have {@code ≥ N} rows iff a rule ERRORS on {@code NumberOfFilledGroups(G*) < N} — the
+     *  synthesized minItems shape (a single starred repeatable group, unguarded; SCHEMAKIT-SPEC §4f). */
+    private static Optional<MinItemsHit> findMinItemsConstraint(Condition condition) {
+        if (condition instanceof ComparisonCondition c && c.operator() == CompareOp.LT
+                && c.left() instanceof CountAggregate agg
+                && agg.op() == CountAggregate.CountOp.FILLED_GROUPS
+                && agg.fields().isEmpty() && agg.groups().size() == 1
+                && c.right() instanceof NumberLiteral n) {
+            return Optional.of(new MinItemsHit(agg.groups().get(0).path(), n.value().intValueExact()));
+        }
+        if (condition instanceof LogicCondition logic && logic.op() == LogicCondition.Op.AND) {
+            Optional<MinItemsHit> left = findMinItemsConstraint(logic.left());
+            return left.isPresent() ? left : findMinItemsConstraint(logic.right());
+        }
+        return Optional.empty();
+    }
 
     /** A field must MATCH a regex iff a rule ERRORS on {@code PatternViolated} — find that anywhere in an AND chain. */
     private static Optional<PatternHit> findPatternConstraint(Condition condition) {

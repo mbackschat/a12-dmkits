@@ -34,8 +34,8 @@ final class RuleSynthesis {
 
     /** A synthesized-rule request, collected during the import walk. Sealed so the synthesizer is exhaustive. */
     sealed interface Need permits ExclusiveBound, DependentRequired, ConstValue, MultipleOf, DiscriminatedRequired,
-            MultiConditionalRequired, ThenConstrained, ElseConstrained, ContainsCount, UniqueItems, ForbiddenConst,
-            ForbiddenEnum, ForbiddenPattern, ForbiddenBound, ForbiddenLength, ForbiddenAllPresent {}
+            MultiConditionalRequired, ThenConstrained, ElseConstrained, ContainsCount, MinItemsCount, UniqueItems,
+            ForbiddenConst, ForbiddenEnum, ForbiddenPattern, ForbiddenBound, ForbiddenLength, ForbiddenAllPresent {}
 
     /** One {@code if}-condition conjunct: a field pinned to a value ({@code field == value}). */
     record FieldValue(String field, String value) {}
@@ -128,6 +128,12 @@ final class RuleSynthesis {
 
     /** One {@code contains} predicate clause: a row field must satisfy a value constraint (positive match). */
     record Clause(String field, ValueConstraint constraint) {}
+
+    /** {@code minItems}: the repeatable group must have at least {@code min} rows — a {@code NumberOfFilledGroups(G*)
+     *  < min} rule (KERNEL-FINDINGS §9 "group cardinality"). Anchored IN-GROUP + unguarded (SCHEMAKIT-SPEC §4f):
+     *  it fires at 0…{@code min}-1 rows unconditionally, where a guarded outside anchoring would be suppressed
+     *  when its guard field is empty (a minItems false-negative). {@code maxItems} stays structural (repeatability). */
+    record MinItemsCount(String groupPath, int min) implements Need {}
 
     /** {@code not: {const}}: the field must NOT equal {@code value} (error fires when it does; string/number field). */
     record ForbiddenConst(String fieldPath, String value) implements Need {}
@@ -450,6 +456,31 @@ final class RuleSynthesis {
                         .message(Dsl.en("At " + (cc.min() ? "least " : "most ") + cc.bound() + " " + row
                                 + " must match: " + desc + ".")).build());
             }
+            case MinItemsCount mi -> {
+                String group = lastSegment(mi.groupPath());
+                if (!doc.isRepeating(mi.groupPath())) {
+                    report.diagnostic("minItems on '" + group + "' skipped — the array did not import as a "
+                            + "repeatable group (no maxItems / default cap)");
+                    yield Optional.empty();
+                }
+                // Anchor the error on the FIRST scalar field inside the (possibly nested) row, IN-GROUP and
+                // UNGUARDED — the count covers the error field, so it fires at 0…min-1 rows unconditionally
+                // (KERNEL-FINDINGS §9; a guarded outside anchoring would suppress when its guard field is empty).
+                Optional<String> anchor = doc.fieldPaths().stream()
+                        .filter(p -> p.startsWith(mi.groupPath() + "/") && doc.fieldKind(p).isPresent())
+                        .findFirst();
+                if (anchor.isEmpty()) {
+                    report.diagnostic("minItems on '" + group + "' skipped — the row has no scalar field to anchor "
+                            + "the error on");
+                    yield Optional.empty();
+                }
+                yield Optional.of(m.rule(m.group(parentGroup(mi.groupPath())))
+                        .name(group + "MinItems").errorField(m.field(anchor.get()))
+                        .when(Dsl.numberOfFilledGroups(m.group(mi.groupPath())).lt(mi.min()))
+                        .code("MIN_ITEMS_" + group.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
+                        .message(Dsl.en("At least " + mi.min() + " " + group + " "
+                                + (mi.min() == 1 ? "is" : "are") + " required.")).build());
+            }
             case UniqueItems u -> {
                 List<FieldRef> keys = new ArrayList<>();
                 for (String fieldPath : doc.fieldPaths()) {
@@ -601,6 +632,7 @@ final class RuleSynthesis {
             case ThenConstrained tc -> tc.groupPath() + "/" + tc.targetField();
             case ElseConstrained ec -> ec.groupPath() + "/" + ec.targetField();
             case ContainsCount cc -> cc.groupPath();
+            case MinItemsCount mi -> mi.groupPath();
             case UniqueItems u -> u.groupPath();
             case ForbiddenConst f -> f.fieldPath();
             case ForbiddenEnum f -> f.fieldPath();
@@ -631,6 +663,7 @@ final class RuleSynthesis {
             case ContainsCount cc -> "rule " + (cc.min() ? "minContains(" : "maxContains(") + cc.bound() + " × "
                     + lastSegment(cc.groupPath()) + "[" + cc.clauses().stream()
                     .map(cl -> cl.constraint().requirement(cl.field())).collect(Collectors.joining(", ")) + "])";
+            case MinItemsCount mi -> "rule minItems(" + mi.min() + " × " + lastSegment(mi.groupPath()) + ")";
             case UniqueItems u -> "rule uniqueItems(" + lastSegment(u.groupPath()) + ")";
             case ForbiddenConst f -> "rule not-const(" + lastSegment(f.fieldPath()) + " ≠ " + f.value() + ")";
             case ForbiddenEnum f -> "rule not-enum(" + lastSegment(f.fieldPath()) + " ∉ " + f.values() + ")";

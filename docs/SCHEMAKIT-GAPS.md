@@ -18,9 +18,7 @@
 
 ## 1. Open gaps
 
-- **`minItems` — a group lower-bound cardinality rule is now synthesizable (re-opened 2026-07-09).** The 2026-06-28 "no a12 row-count rule" impossibility was overturned: `NumberOfFilledGroups(G*) < N` counts one repeatable group's instantiated rows (including 0) and a minItems rule is kernel-valid and fires at 0…N−1 rows (KERNEL-FINDINGS §9 "group cardinality", corrected + differential-locked — `RootGroupCountLawsTest` / `NumberOfFilledGroupsStarDiffTest`). The importer still **reports, not enforces** `minItems` today; the synthesis (error-field anchoring choice — in-group unguarded vs guarded outside — plus the §4f fire-condition row and round-trip export) is the open work. `maxItems` stays structural (`repeatability`).
-
-Otherwise none — the prior synthesis backlog was drained 2026-06-29 (coverage in SCHEMAKIT-SPEC §4d/§4f; the feasible-but-not-worthwhile constraints sit in **§3** with re-open triggers, the impossible ones in **§4**). A gap lands here only when it is both feasible **and** queued — a reader never sees a "TODO" nobody intends to do.
+None. The `minItems` synthesis shipped 2026-07-09 (`NumberOfFilledGroups(G*) < N`, in-group anchored + unguarded, round-trip-projected — SCHEMAKIT-SPEC §4f, `MinItemsSynthesisTest`), draining the last queued item; the earlier synthesis backlog drained 2026-06-29 (coverage in SCHEMAKIT-SPEC §4d/§4f). The feasible-but-not-worthwhile constraints sit in **§3** with re-open triggers, the impossible ones in **§4**. A gap lands here only when it is both feasible **and** queued — a reader never sees a "TODO" nobody intends to do.
 
 ---
 

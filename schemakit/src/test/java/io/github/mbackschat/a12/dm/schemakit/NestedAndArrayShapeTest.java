@@ -91,7 +91,7 @@ class NestedAndArrayShapeTest {
     }
 
     @Test
-    void minItemsIsReportedHavingNoStructuralHome() {
+    void minItemsSynthesizesACardinalityRule() {
         String withMin = """
                 {
                   "type": "object",
@@ -105,9 +105,11 @@ class NestedAndArrayShapeTest {
                 """;
         JsonSchemaImporter.ImportResult imported = new JsonSchemaImporter().importSchema(withMin);
 
-        assertTrue(imported.report().diagnostics().stream().anyMatch(d -> d.contains("minItems")),
-                "minItems has no min-repetition slot in a12 — it must be reported");
-        // the group itself still imports (maxItems maps); only the minItems lower bound is deferred
+        // minItems now synthesizes a NumberOfFilledGroups(rows*) < 1 rule (KERNEL-FINDINGS §9; MinItemsSynthesisTest)
+        assertTrue(imported.report().dispositions().stream()
+                        .anyMatch(d -> d.tier() == TranscodeReport.Tier.TIER_A_PLUS && d.target().contains("minItems")),
+                "minItems is synthesized as a cardinality rule");
+        // the group itself still imports (maxItems maps to repeatability)
         assertTrue(ModelDocument.read(imported.dmJson()).isRepeating("/Root/rows"));
     }
 
