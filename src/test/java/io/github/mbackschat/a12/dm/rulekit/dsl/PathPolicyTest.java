@@ -51,7 +51,7 @@ class PathPolicyTest {
 
     @Test
     void aBareNameResolvesUpToAnAncestorGroupsField() {
-        // Kernel-verified (KERNEL-FINDINGS §paths): a bare field name resolves against the rule's group
+        // Kernel-verified (KERNEL-FINDINGS §10 (paths)): a bare field name resolves against the rule's group
         // AND its ancestors — it walks UP the hierarchy. So bare `[Tier]` from a rule scoped to
         // /Subscription/Addons binds to the ancestor /Subscription/Tier, no `../` or absolute path
         // needed. (Fed as raw condition text: the renderer would emit `../Tier` for an ancestor, but

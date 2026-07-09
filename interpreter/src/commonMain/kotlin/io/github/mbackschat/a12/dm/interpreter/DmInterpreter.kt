@@ -683,7 +683,7 @@ class DmInterpreter @JvmOverloads constructor(
         // the stale STORED (seeded) value the overlay would otherwise fall through to. Without this a dependent's
         // `FieldFilled(dep)` reads the stale seed as filled and computes where the kernel (seeing dep empty) clears
         // — a large slice of the IG44 CVV residual, AND the root of the IF76 gate's over-suppression (a cleared
-        // dependency read stale-and-invalid would wrongly trip the gate). KERNEL-FINDINGS §2 (cascade clearing).
+        // dependency read stale-and-invalid would wrongly trip the gate). KERNEL-FINDINGS §11 (cascade clearing).
         val cleared = HashSet<Pair<String, List<Int>>>()
         val emptyOf: (String) -> Val = { p -> emptyValue(model.kinds[p] ?: Kind.STRING) }
         // A computed NUMBER is STORED padded to its field's minFractionalDigits (IF82) — so a downstream read of

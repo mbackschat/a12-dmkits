@@ -13,7 +13,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Span;
  *
  * <p>Path policy (§18 fork 9, F3a): with a {@code baseGroup} set the renderer emits paths
  * <em>relative</em> to the rule's group (bare under the group, {@code ../} up to a sibling — both
- * kernel-verified, KERNEL-FINDINGS §paths), which is how {@code Rule}/{@code Computation} render;
+ * kernel-verified, KERNEL-FINDINGS §10 (paths)), which is how {@code Rule}/{@code Computation} render;
  * without one it emits absolute paths. Keyword-segment quoting and honoring read
  * {@link PathStyle} hints are the remaining refinements.
  */
@@ -65,7 +65,7 @@ public final class DslRenderer {
     /**
      * Single-quote any path segment that collides with a DSL keyword (fork #9 / F3a) — the kernel
      * rejects an unquoted keyword-named entity with {@code MVK_UNEXPECTED_TOKEN} (KERNEL-FINDINGS
-     * §paths), and {@code '<name>'} is the grammar's escape (NameOhnePunktMitQuotes). Detection uses
+     * §10, paths), and {@code '<name>'} is the grammar's escape (NameOhnePunktMitQuotes). Detection uses
      * the catalog's operator keywords; the full lexer keyword set rides the N3 parity anchor.
      */
     private String quoteKeywordSegments(String renderedPath) {

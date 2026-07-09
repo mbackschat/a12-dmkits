@@ -85,7 +85,7 @@ Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes t
 | **Field config** | `minLength`/`maxLength`/`pattern`→string config; `minimum`/`maximum`→number bounds |
 | **Rules (direct)** | `required`→requiredness; `enum`→ENUMERATION; `uniqueItems`→`RepetitionNotUnique`/`FieldValuesNotUnique`; `pattern`→`PatternViolated` |
 | **Rules (composed), built** | constraints with no field-config home become a12 *rules* — `exclusiveMinimum`/`exclusiveMaximum`, `multipleOf`, `const`, `dependentRequired`, `oneOf`/`anyOf` discriminator, `uniqueItems`, `if {f=v [and …]} then/else {required}` (incl. **multi-property** `if`), **then/else value-constraints** (`g` must satisfy `const`/`enum`/`min`/`max`/`pattern` when the `if` holds, and on the `else` — single- or multi-property), `contains`/`minContains`/`maxContains` (a simple predicate — incl. clauses on a **nested-object** field, e.g. `payment.method` → a filtered-count rule), `not {const\|enum\|pattern\|minimum\|maximum\|minLength\|maxLength}`, object-level `not {required}`. **Each keyword's exact fire condition is tabulated in §4f.** |
-| **Rules — declined** (reported, not enforced) | the *feasible-but-not-built* gaps — **nested/compound** `not`, a `contains` clause that descends into a **nested array** (nested aggregation) or an **arbitrary combinator subschema** (`oneOf`/`anyOf`/`not`) — are tracked in [`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §3 (feasible, but off the build queue on ROI). *Not-feasible* constraints (`not {type}`, `minItems`, §4c) are permanently omitted — ledger §4. |
+| **Rules — declined** (reported, not enforced) | the *feasible-but-not-built* gaps — **nested/compound** `not`, a `contains` clause that descends into a **nested array** (nested aggregation) or an **arbitrary combinator subschema** (`oneOf`/`anyOf`/`not`) — are tracked in [`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §3 (feasible, but off the build queue on ROI). *Not-feasible* constraints (`not {type}`, §4c) are permanently omitted — ledger §4; `minItems` left that class 2026-07-09 (an a12 form now exists — the starred single-group count, KERNEL-FINDINGS §9; synthesis is an open gap, [`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §1). |
 | **Carriage (export, a12↔a12)** | the full rule rides `x-a12-rule`, a computation `x-a12-computation`; `readOnly:true` marks a computed field |
 | **Two-tier validation** *(proposal §12.1)* | exported Tier-A keywords = field-local tier (any validator); `:interpreter` = full-rule tier |
 
@@ -121,7 +121,7 @@ Five cases have no static a12 representation even with a strategy; each is **omi
 4. **unbounded recursive `$ref`** — expanded to `--recursion-depth` levels (default 1), then the deeper recursion is omitted with a to-do; `--strict` / `0` omits it entirely (§4b). (Self-/cyclic *includes* are likewise rejected by the kernel — §4e.)
 5. **`not {type}`** — an a12 field has one fixed kind (structural), and there is no runtime type-check operator to negate, so "the value must not be of type X" has no rule form. *(The other `not` shapes — `const`/`enum`/`pattern`/`min`/`max`/`minLength`/`maxLength` — DO map via paired negated operators, §4f.)*
 
-The full impossibility view (these + `minItems`) is consolidated in [`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §4.
+The full impossibility view is consolidated in [`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §4. (`minItems` left it 2026-07-09 — an a12 form now exists; SCHEMAKIT-GAPS §1.)
 
 ---
 
@@ -158,7 +158,7 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | bare `number` (no `multipleOf`) | NUMBER at the default scale (a flagged guess) | strategy (profile; **imported by default**) |
 | `format: <other>` | pattern / custom field type / plain string | strategy (profile: format) |
 | recursive `$ref` | expand `--recursion-depth` levels (default 1) | strategy (profile; **imported by default**, 1 level) |
-| `minItems` | reported — **not enforced** (no a12 cardinality rule, KERNEL-FINDINGS) | omitted |
+| `minItems` | reported — **not enforced yet** (an a12 form exists since 2026-07-09 — the starred single-group count, KERNEL-FINDINGS §9; the synthesis is the open gap, [`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §1) | omitted |
 | cross-kind `type:[X,Y]` · mixed `oneOf`/`anyOf` | reported | omitted (§4c) |
 | `unevaluatedProperties` / `unevaluatedItems` | structure imports; constraint reported — **not enforced** | omitted (§4c) |
 | `$dynamicRef` / `$dynamicAnchor` | reported | omitted (§4c) |

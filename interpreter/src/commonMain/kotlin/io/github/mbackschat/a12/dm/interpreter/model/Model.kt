@@ -221,7 +221,7 @@ data class RuleDef(
 /**
  * One TIERED alternative of a [ComputationDef]: an optional [precondition] (DSL condition text) gating an
  * [operation] (DSL value-expression text). The kernel selects the first alternative whose precondition holds
- * (a null precondition always applies — the unconditional default), KERNEL-FINDINGS §2 "tiered computations".
+ * (a null precondition always applies — the unconditional default), KERNEL-FINDINGS §11 "tiered computations".
  */
 data class ComputationAlternative(val precondition: String?, val operation: String)
 
