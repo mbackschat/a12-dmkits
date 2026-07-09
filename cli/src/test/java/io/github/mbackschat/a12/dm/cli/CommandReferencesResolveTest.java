@@ -33,11 +33,14 @@ import picocli.CommandLine.Model.OptionSpec;
  * it can't drift: the set of valid verbs and the tool name both recompute from the same model that drives
  * parsing. Two reference shapes are checked across the authored user-facing text — the in-binary surface
  * ({@code src/main/java} help + diagnostics, the bundled {@code schema/*.json} + {@code verb-examples.json},
- * the operator catalog) <b>and the command-bearing markdown an agent or installer reads</b> (the source +
+ * the operator catalog), <b>the command-bearing markdown an agent or installer reads</b> (the source +
  * public READMEs, the canonical {@code skill/SKILL.md} — the N6 material-under-test, so a stale verb there
- * misleads the cold agent directly — and the Codex {@code AGENTS.md}). The {@code examples/} demos are
- * already guarded by Showboat (it <i>executes</i> them), and the skill's plugin copies by the
- * {@code sync-plugin-assets.sh --check} copy-equality gate, so guarding the canonical files suffices:
+ * misleads the cold agent directly — and the Codex {@code AGENTS.md}), <b>and the command-bearing JS an
+ * agent harness executes</b> (the eval workflow {@code benchmark.workflow.js}, whose {@code ${CLI} …}
+ * command forms are exactly where the task-17 recheck drifted post-baseline — a positional rule passed as
+ * {@code --rule}). The {@code examples/} demos are already guarded by Showboat (it <i>executes</i> them),
+ * and the skill's plugin copies by the {@code sync-plugin-assets.sh --check} copy-equality gate, so
+ * guarding the canonical files suffices:
  *
  * <ul>
  *   <li><b>Full invocations</b> — {@code dmtool [-m <model>] <target> <op> …}: the leading token must be
@@ -73,16 +76,36 @@ class CommandReferencesResolveTest {
             Path.of("../skill/SKILL.md"),
             Path.of("../plugin-codex/AGENTS.md"));
 
+    /** Command-bearing JS an agent harness EXECUTES: the eval workflow embeds {@code ${CLI} …} command
+     *  forms ({@code ${CLI}} = its {@code bin/dmtool} handle) — the exact surface where the task-17 recheck
+     *  drifted post-baseline (a positional rule passed as {@code --rule}, whose usage error the harness read
+     *  as "kernel rejected", scoring a correct capability 0/3). The in-binary text + markdown above resolve
+     *  against the live tree already; this closes the JS gap the runtime usage-error flag only backstops. */
+    private static final List<Path> JS_FILES = List.of(Path.of("../eval/benchmark.workflow.js"));
+
     /** A path/shorthand segment: a lowercase verb token (targets/ops are all lowercase, hyphens allowed). */
     private static final Pattern BAREWORD = Pattern.compile("[a-z][a-z0-9-]*");
     /** A backtick span (for the two-token shorthand check). */
     private static final Pattern BACKTICK = Pattern.compile("`([^`\\n]+)`");
     /** A long-flag token, optionally with an {@code =value} ({@code --all}, {@code --field=/X}). */
     private static final Pattern FLAG_TOKEN = Pattern.compile("(--[a-z][a-z0-9-]*)(=.*)?");
+    /** The eval workflow's CLI-handle marker (its {@code const CLI = '… bin/dmtool'}) — the literal prefix of
+     *  every JS command form, the {@code ${CLI}} analogue of the tool-name token in the text surfaces. */
+    private static final Pattern JS_CLI = Pattern.compile("\\$\\{CLI\\}");
+    /** A {@code ${…}} template placeholder (no nested braces) — a dynamic value, neutralized to {@code <v>}
+     *  so the arg stream resolves like a normal invocation carrying placeholders. */
+    private static final Pattern JS_PLACEHOLDER = Pattern.compile("\\$\\{[^{}]*\\}");
 
     /** Sanity floor: the rich help text carries dozens of {@code dmtool …} examples. A rename that leaves
      *  the literal old name in the text makes the live-name scan find ~0 — this floor catches that. */
     private static final int MIN_INVOCATIONS = 20;
+    /** Sanity floor for the JS surface, counted SEPARATELY from the tool-name count: the JS keys off the
+     *  {@code ${CLI}} variable, not the tool-name literal, so folding it into {@link #MIN_INVOCATIONS} would
+     *  let JS commands prop up the rename floor and defeat its trip-wire. This floor instead catches the JS
+     *  scan silently going dark (the handle renamed away from {@code ${CLI}}, the workflow moved/emptied).
+     *  The live workflow resolves ~66; 30 leaves ample headroom for prompt-text churn while staying a real
+     *  trip-wire. */
+    private static final int MIN_JS_INVOCATIONS = 30;
 
     @Test
     void everyCommandReferenceResolvesToALiveVerb() throws IOException {
@@ -107,10 +130,19 @@ class CommandReferencesResolveTest {
                 scanMarkdown(md, root, invocation, violations, invocationCount);
             }
         }
+        int[] jsInvocationCount = {0};
+        for (Path js : JS_FILES) {
+            if (Files.isRegularFile(js)) {
+                scanJs(js, root, violations, jsInvocationCount);
+            }
+        }
 
         assertTrue(invocationCount[0] >= MIN_INVOCATIONS,
                 () -> "found only " + invocationCount[0] + " `" + toolName + " …` command examples (floor "
                         + MIN_INVOCATIONS + ") — did the tool get renamed without updating the example text?");
+        assertTrue(jsInvocationCount[0] >= MIN_JS_INVOCATIONS,
+                () -> "found only " + jsInvocationCount[0] + " `${CLI} …` command forms in the eval workflow"
+                        + " (floor " + MIN_JS_INVOCATIONS + ") — did the CLI handle rename or the workflow move?");
         assertTrue(violations.isEmpty(),
                 () -> "command examples referencing verbs that don't exist in the live tree:\n"
                         + String.join("\n", violations));
@@ -142,6 +174,33 @@ class CommandReferencesResolveTest {
         assertEquals(1, violations.size(),
                 () -> "expected exactly the stale `rule frobnicate` to fire, got: " + violations);
         assertTrue(violations.get(0).contains("frobnicate"), violations::toString);
+    }
+
+    /** Does-fire proof for the JS surface: a stale op and a phantom flag in a {@code ${CLI} …} command must
+     *  fire (the {@code --rule} case IS the task-17 drift class), while a valid command — even piped into
+     *  {@code jq --arg} (a foreign {@code --long} the pipe must cut off) — must not. */
+    @Test
+    void theJsGuardFiresOnAStaleOpOrPhantomFlagButNotOnAValidPipedCommand(@TempDir Path dir) throws IOException {
+        CommandLine root = new CommandLine(new RootCommand());
+        Path js = dir.resolve("x.workflow.js");
+        Files.writeString(js, """
+                const CLI = 'JAVA_HOME=… bin/dmtool'
+                const ok      = `${CLI} -m ${MODEL_FILE(t)} rule read ${t.rule}`
+                const piped   = `${CLI} -m ${out} model describe | jq -c --arg p '${gold.f}' '{a:1}'`
+                const staleOp = `${CLI} -m ${m} rule frobnicate ${x} -o ${out}`
+                const badFlag = `${CLI} -m ${m} rule modify ${r} --rule ${x} -o ${out}`  // the task-17 drift
+                """);
+
+        List<String> violations = new ArrayList<>();
+        int[] count = {0};
+        scanJs(js, root, violations, count);
+
+        assertEquals(3, count[0],   // ok + piped + badFlag resolve a verb path (staleOp's op is bogus, not counted)
+                () -> "every ${CLI} command with a real verb path should count: " + count[0]);
+        assertEquals(2, violations.size(),
+                () -> "expected exactly the stale op + the phantom flag to fire (not the piped jq --arg): " + violations);
+        assertTrue(violations.stream().anyMatch(v -> v.contains("frobnicate")), violations::toString);
+        assertTrue(violations.stream().anyMatch(v -> v.contains("--rule")), violations::toString);
     }
 
     /** Does-fire proof for the flag seam (anti-rot guard #2): a phantom flag after a real verb path must
@@ -215,16 +274,54 @@ class CommandReferencesResolveTest {
             Pattern invocation, List<String> violations, int[] invocationCount) {
         Matcher m = invocation.matcher(text);
         while (m.find()) {
-            List<String> toks = tokenize(m.group(1));
-            String problem = resolveInvocation(root, toks);
-            String display = (root.getCommandName() + m.group(1)).trim();
-            if (problem == PATH_PRESENT) {
-                invocationCount[0]++;
-                checkSpanFlags(toks, firstVerbIndex(root, toks), root, file, lineNo, display, violations);
-            } else if (problem != null) {
-                violations.add(file + ":" + lineNo + " — `" + display + "` — " + problem);
+            checkInvocationArgs(m.group(1), root.getCommandName(), file, lineNo, root, violations, invocationCount);
+        }
+    }
+
+    /** Resolve one invocation's argument string (the text after the CLI marker — the tool name in the text
+     *  surfaces, {@code ${CLI}} in the JS): count it when the verb path is real, record a violation when a
+     *  bareword that should name a verb/op is stale, and flag-check trailing {@code --long} options once a
+     *  leaf op resolves. */
+    private static void checkInvocationArgs(String args, String marker, Path file, int lineNo,
+            CommandLine root, List<String> violations, int[] invocationCount) {
+        List<String> toks = tokenize(args);
+        String problem = resolveInvocation(root, toks);
+        String display = (marker + args).trim();
+        if (problem == PATH_PRESENT) {
+            invocationCount[0]++;
+            checkSpanFlags(toks, firstVerbIndex(root, toks), root, file, lineNo, display, violations);
+        } else if (problem != null) {
+            violations.add(file + ":" + lineNo + " — `" + display + "` — " + problem);
+        }
+    }
+
+    /** JS workflow surfaces ({@code eval/*.workflow.js}): commands are template literals prefixed with the
+     *  CLI handle {@code ${CLI}} (= "… bin/dmtool"), with {@code ${…}} placeholders for dynamic values and
+     *  inline code delimited by (escaped) backticks. Key off {@code ${CLI}} — the literal command marker —
+     *  take the args up to the command's end, neutralize each placeholder to {@code <v>}, and resolve +
+     *  flag-check exactly as the text surfaces do (so a stale op or a phantom flag like the task-17
+     *  {@code rule modify --rule} fires here, statically, not only via the runtime usage-error backstop). */
+    private static void scanJs(Path file, CommandLine root, List<String> violations, int[] jsInvocationCount) {
+        List<String> lines = readLines(file);
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i);
+            Matcher m = JS_CLI.matcher(line);
+            while (m.find()) {
+                checkInvocationArgs(jsCommandArgs(line.substring(m.end())), "${CLI}",
+                        file, i + 1, root, violations, jsInvocationCount);
             }
         }
+    }
+
+    /** The argument string after a {@code ${CLI}} marker: up to the (escaped) backtick that closes the
+     *  template literal / inline-code span, with each {@code ${…}} placeholder neutralized to {@code <v>}. */
+    private static String jsCommandArgs(String afterCli) {
+        int tick = afterCli.indexOf('`');
+        String args = tick >= 0 ? afterCli.substring(0, tick) : afterCli;
+        if (args.endsWith("\\")) {
+            args = args.substring(0, args.length() - 1);   // drop the inline-code escape before the backtick
+        }
+        return JS_PLACEHOLDER.matcher(args).replaceAll("<v>");
     }
 
     /** The {@code `target op`} shorthand: a two-bareword span whose first word is a real top-level verb. */
@@ -357,8 +454,8 @@ class CommandReferencesResolveTest {
     private static List<String> tokenize(String rest) {
         List<String> out = new ArrayList<>();
         for (String t : rest.trim().split("\\s+")) {
-            if (t.startsWith("#")) {
-                break;                                              // a shell comment ends the command
+            if (t.startsWith("#") || t.equals("|")) {
+                break;                                              // a shell comment or a pipe ends the command
             }
             if (!t.isEmpty()) {
                 out.add(t);

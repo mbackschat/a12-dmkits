@@ -125,7 +125,8 @@ tasks.withType(Test).configureEach {
 
 // A few guards read REPO FILES at RUNTIME that Gradle can't infer as inputs — CliTourFreshnessTest reads
 // examples/*.md; CommandReferencesResolveTest reads the source + public READMEs, skill/SKILL.md, the Codex
-// AGENTS.md, and the operator catalog; ModelLoaderParityTest reads both fixture-model roots. They run in THIS
+// AGENTS.md, the eval workflow JS, and the operator catalog; ModelLoaderParityTest reads both fixture-model
+// roots. They run in THIS
 // dedicated task with those files declared as ITS inputs, so the win is scoped: editing a demo/doc/model
 // re-runs ONLY these classes (not the ~620-test suite), and such a change can no longer go up-to-date /
 // restore from the BUILD CACHE into a FALSE GREEN locally while CI (a fresh checkout) fails. `test` dependsOn
@@ -146,6 +147,7 @@ tasks.register('docGuardTest', Test) {
             rootProject.file('plugin/README.md'),
             rootProject.file('skill/SKILL.md'),
             rootProject.file('plugin-codex/AGENTS.md'),
+            rootProject.file('eval/benchmark.workflow.js'),
             rootProject.fileTree('src/main/resources/catalog'),
             // ModelLoaderParityTest reads every fixture model in both roots.
             rootProject.fileTree('cli/src/test/resources/models') { include '**/*.json' },
