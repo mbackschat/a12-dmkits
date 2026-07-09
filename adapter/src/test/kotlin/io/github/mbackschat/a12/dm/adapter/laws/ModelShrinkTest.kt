@@ -24,6 +24,10 @@ import java.nio.file.Path
 @Tag("corpus-sweep")
 class ModelShrinkTest {
 
+    /** HOSTILE seeding (the IG56 hostile-mode atoms) — align the hunt with a `-Dcorpus.hostile=true` sweep. */
+    private val strategy = if (System.getProperty("corpus.hostile") == "true") HostileValues
+        else io.github.mbackschat.a12.dm.interpreter.gen.ValidValues
+
     private companion object {
         const val INSTANCES = 5
         const val MAX_ROWS = 2
@@ -74,7 +78,7 @@ class ModelShrinkTest {
         val (clearedTag, valueTag) = if (vcv) "interp" to "kernel" else "kernel" to "interp"
         val seeds = seedFilter?.let { listOf(it) } ?: (0 until INSTANCES).toList()
         for (seed in seeds) {
-            val placements = runCatching { CorpusSeeding.seedPlacements(model, seed.toLong(), MAX_ROWS) }.getOrNull() ?: continue
+            val placements = runCatching { CorpusSeeding.seedPlacements(model, seed.toLong(), MAX_ROWS, strategy) }.getOrNull() ?: continue
             val k = runCatching { CorpusEngines.groovyDynamic(kernelJson, placements, Op.Compute, CLOCK, locale) }.getOrNull() ?: continue
             val i = runCatching {
                 kernelComputeGranularity(CorpusEngines.interpret(interpJson, placements, Op.Compute, CLOCK), placements, model)

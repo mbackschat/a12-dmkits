@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.conformance.Op
 import io.github.mbackschat.a12.dm.interpreter.conformance.Placement
 import io.github.mbackschat.a12.dm.interpreter.conformance.PlacementKind
 import io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity
+import io.github.mbackschat.a12.dm.interpreter.gen.ValidValues
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -52,6 +53,9 @@ class RealCorpusSweepTest {
         val MAPPER = ObjectMapper()
         /** Java-static (in-memory javac) is best-effort — enable with -Dcorpus.sweep.java=true (slower). */
         val WITH_JAVA = System.getProperty("corpus.sweep.java") == "true"
+        /** HOSTILE seeding ([HostileValues] — scattered constraint-VIOLATING number cells) — enable with
+         *  -Dcorpus.hostile=true; the default stays the constraint-respecting [ValidValues] baseline. */
+        val HOSTILE = System.getProperty("corpus.hostile") == "true"
     }
 
     @Test
@@ -89,7 +93,8 @@ class RealCorpusSweepTest {
             val locale = modelLocale(kernelJson)   // the kernel rejects a locale the model doesn't declare
             for (seed in 0 until INSTANCES) {
                 val placements = try {
-                    CorpusSeeding.seedPlacements(model, seed.toLong(), MAX_ROWS)
+                    CorpusSeeding.seedPlacements(model, seed.toLong(), MAX_ROWS,
+                        if (HOSTILE) HostileValues else ValidValues)
                 } catch (t: Throwable) { report.evalSkip("seed-failed", file, t); continue }
                 compareValidateFull(file, kernelJson, interpJson, model, placements, seed, javaEngine, locale, report)
                 if (model.computations.isNotEmpty()) {

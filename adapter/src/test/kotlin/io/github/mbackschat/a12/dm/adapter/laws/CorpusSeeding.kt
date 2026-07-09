@@ -47,3 +47,36 @@ object CorpusSeeding {
     /** A deterministic RNG for a scenario ([seed]) — used by sweep strategies that need their own randomness. */
     fun rng(seed: Long): Random = Random(seed)
 }
+
+/**
+ * The opt-in HOSTILE seeding strategy (the IG56 harness-limitation closer): [ValidValues] draws
+ * constraint-RESPECTING values, so the operand-invalidity classes beyond what a model's own rules trip —
+ * total-digit overflow, leading zeros, fraction-digit violations — are differential-proven but
+ * corpus-invisible. This wrapper makes roughly every fourth NUMBER cell violate ONE of those classes
+ * (deterministic in the seed), so the sweep exercises the poison/suppression paths over real corpus rules:
+ *
+ *  - `LENGTH` — 16 digits (> 15 total, `stelligkeitZuLang`; also over any integer-cap);
+ *  - `LEADING_ZERO` — a valid number with a leading `0` (`zahlFuehrendeNull`, unless the field allows them);
+ *  - `SCALE` — one MORE fractional digit than `maxFractionalDigits` (`zahlZuvieleNachkommastellen`; a scale-0
+ *    integer field gets a decimal);
+ *  - `MIN_FRAC` — a WHOLE number into a `minFractionalDigits ≥ 1` field (`zahlFalscheAnzahlNachkommastellen`).
+ *
+ * Non-number fields (and the other three quarters of number cells) delegate to [ValidValues], so instances
+ * stay mostly-valid — the point is scattered invalid cells INSIDE otherwise-live rules, not all-dead documents.
+ * Enable on the sweep with `-Dcorpus.hostile=true`.
+ */
+object HostileValues : ValueStrategy {
+    override fun value(field: io.github.mbackschat.a12.dm.interpreter.model.FieldDef, reps: List<Int>, rnd: Random): String? {
+        if (field.kind != io.github.mbackschat.a12.dm.interpreter.model.Kind.NUMBER || rnd.nextInt(4) != 0) {
+            return ValidValues.value(field, reps, rnd)
+        }
+        val scale = field.scale ?: 0
+        return when (rnd.nextInt(4)) {
+            0 -> "9".repeat(16)                                                   // LENGTH: > 15 total digits
+            1 -> "0" + (1 + rnd.nextInt(9)) + if (scale > 0) "." + "1".repeat(scale) else ""   // LEADING_ZERO
+            2 -> (1 + rnd.nextInt(99)).toString() + "." + "1".repeat(scale + 1)   // SCALE: one frac digit too many
+            else -> if ((field.minFractionalDigits ?: 0) >= 1) (1 + rnd.nextInt(99)).toString()  // MIN_FRAC: whole
+                else "9".repeat(16)                                               // no min-frac → LENGTH again
+        }
+    }
+}

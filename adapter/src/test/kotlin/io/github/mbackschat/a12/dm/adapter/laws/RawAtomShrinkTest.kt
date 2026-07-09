@@ -45,6 +45,10 @@ class RawAtomShrinkTest {
     private val targetKernel = System.getProperty("atom.kernel", "ERRORED")
     private val targetInterp = System.getProperty("atom.interp", "VALUE")
 
+    /** HOSTILE seeding (the IG56 hostile-mode atoms) — align the hunt with a `-Dcorpus.hostile=true` sweep. */
+    private val strategy = if (System.getProperty("corpus.hostile") == "true") HostileValues
+        else io.github.mbackschat.a12.dm.interpreter.gen.ValidValues
+
     @Test
     fun findAndShrinkOneRawAtom() {
         val dir = System.getProperty("a12.corpus1.dir")
@@ -82,7 +86,7 @@ class RawAtomShrinkTest {
                          seedFilter: Int?): Atom? {
         val seeds = seedFilter?.let { listOf(it) } ?: (0 until INSTANCES).toList()
         for (seed in seeds) {
-            val placements = runCatching { CorpusSeeding.seedPlacements(model, seed.toLong(), MAX_ROWS) }.getOrNull() ?: continue
+            val placements = runCatching { CorpusSeeding.seedPlacements(model, seed.toLong(), MAX_ROWS, strategy) }.getOrNull() ?: continue
             val k = runCatching { CorpusEngines.groovyDynamic(kernelJson, placements, Op.Compute, CLOCK, locale) }.getOrNull() ?: continue
             val i = runCatching { CorpusEngines.interpret(interpJson, placements, Op.Compute, CLOCK) }.getOrNull() ?: continue
             val p = pointerMatching(k, i) ?: continue
