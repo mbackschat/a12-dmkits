@@ -33,10 +33,11 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
  * provable structural flip is {@code POLARITY_INVERTED} (HIGH), otherwise the honest {@code CONDITION_CHANGED}.
  * A pure element <b>reorder</b> within a parent is flagged {@code REORDERED} ({@code POSITION_CHANGED}, LOW —
  * display-order is semantic, §2b), minimal and conservative so an index shift never invents a move. A
- * removed+added pair that is unambiguously the same element relocated (identical fingerprint + a locality
- * match) is re-labelled {@code RENAMED}/{@code MOVED} (MR3-v1 exact-fingerprint matcher, §5) — unsure ⇒
- * remove+add, the safe direction. The fuller AST edit-script (which operand/clause moved), the similarity
- * matcher (rename+edit), and computations/groups are later slices (MODEL-REVIEW-GAPS MR1/MR3/MR4).
+ * removed+added pair that is the same element relocated is re-labelled {@code RENAMED}/{@code MOVED} by a
+ * two-layer matcher — an exact-fingerprint fast path, then a mutual-best similarity matcher that survives a
+ * rename+edit (§5) — always conservative (unsure ⇒ remove+add). A reference-rewriting refactor is folded
+ * into one {@link Refactor} (MR4, §5g). The fuller AST edit-script (which operand/clause moved) and
+ * computations/groups are later slices (MODEL-REVIEW-GAPS MR1).
  */
 public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors) {
 
@@ -83,7 +84,8 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors) {
         match(ElementKind.RULE, baseRuleAspects, headRuleAspects,
                 (change, id, deltas) -> ruleReasons(change, id, deltas, baseRules, headRules), changes);
         detectReorders(ElementKind.RULE, baseRuleAspects.keySet(), headRuleAspects.keySet(), changes);
-        pairRenames(changes);
+        pairRenames(changes, baseRules, headRules);
+        pairSimilar(changes, baseRules, headRules);
         return new ModelDiff(List.copyOf(changes), groupRefactors(changes, baseRules, headRules));
     }
 
@@ -220,7 +222,7 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors) {
      * rename}/{@code field move} do). Everything else stays remove+add (unsure ⇒ the safe direction). A
      * content edit breaks the identical-fingerprint test, so a rename+edit is left to the similarity upgrade.
      */
-    private static void pairRenames(List<ElementChange> changes) {
+    private static void pairRenames(List<ElementChange> changes, KernelAdapter base, KernelAdapter head) {
         Map<FpKey, List<ElementChange>> removed = new LinkedHashMap<>();
         Map<FpKey, List<ElementChange>> added = new LinkedHashMap<>();
         for (ElementChange c : changes) {
@@ -240,10 +242,16 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors) {
             }
             ChangeKind relocation = relocationKind(rs.get(0).id(), as.get(0).id());
             if (relocation != null) {
-                replaceWith.put(rs.get(0), relocated(rs.get(0), as.get(0), relocation));
+                replaceWith.put(rs.get(0), relocated(rs.get(0), as.get(0), relocation, base, head));
                 drop.add(as.get(0));
             }
         }
+        applyPairing(changes, replaceWith, drop);
+    }
+
+    /** Replace each paired REMOVED with its relocated change (in place, base order) and drop the paired ADDEDs. */
+    private static void applyPairing(List<ElementChange> changes,
+            Map<ElementChange, ElementChange> replaceWith, List<ElementChange> drop) {
         for (int i = 0; i < changes.size(); i++) {
             ElementChange replacement = replaceWith.get(changes.get(i));
             if (replacement != null) {
@@ -256,13 +264,20 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors) {
     /** Kind + content fingerprint; equality is content-based (the Map's), so identical elements bucket together. */
     private record FpKey(ElementKind kind, Map<String, String> fingerprint) {}
 
-    /** The bucket key: an element's kind + its content fingerprint (aspect → value, read off the one-sided deltas). */
+    /** The bucket key: an element's kind + its content fingerprint. */
     private static FpKey fpKey(ElementChange c) {
+        return new FpKey(c.element(), fingerprint(c));
+    }
+
+    /** An element's content fingerprint (aspect → value), read off the one-sided deltas of a REMOVED/ADDED change. */
+    private static Map<String, String> fingerprint(ElementChange c) {
         Map<String, String> fingerprint = new LinkedHashMap<>();
         for (Delta d : c.deltas()) {
-            fingerprint.put(d.aspect(), c.change() == ChangeKind.REMOVED ? d.before() : d.after());
+            if (!d.aspect().equals("path")) { // a relocation's path delta is not content
+                fingerprint.put(d.aspect(), c.change() == ChangeKind.REMOVED ? d.before() : d.after());
+            }
         }
-        return new FpKey(c.element(), fingerprint);
+        return fingerprint;
     }
 
     /**
@@ -282,17 +297,200 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors) {
         return null;
     }
 
-    /** The relocated element as ONE change: a {@code path} before→after delta, replacing the remove+add. */
-    private static ElementChange relocated(ElementChange removed, ElementChange added, ChangeKind kind) {
-        String reason = kind == ChangeKind.RENAMED ? "ELEMENT_RENAMED" : "ELEMENT_MOVED";
-        List<Delta> deltas = List.of(new Delta("path", removed.id(), added.id()));
-        return new ElementChange(removed.element(), removed.id(), kind, riskFor(List.of(reason)),
-                List.of(reason), deltas);
+    /**
+     * The relocated element as ONE change: a {@code path} before→after delta PLUS any content aspect deltas
+     * (so a rename+edit never hides the edit), with reasons = the relocation reason + the per-aspect reason
+     * for what else changed. For a v1 (identical-fingerprint) pair the content deltas are empty, so it reduces
+     * to a lone {@code path} delta; a similarity pair (fingerprint differs) carries the edit too.
+     */
+    private static ElementChange relocated(ElementChange removed, ElementChange added, ChangeKind kind,
+            KernelAdapter base, KernelAdapter head) {
+        List<Delta> contentDeltas = aspectDeltas(fingerprint(removed), fingerprint(added));
+        List<Delta> deltas = new ArrayList<>();
+        deltas.add(new Delta("path", removed.id(), added.id()));
+        deltas.addAll(contentDeltas);
+        List<String> reasons = new ArrayList<>();
+        reasons.add(kind == ChangeKind.RENAMED ? "ELEMENT_RENAMED" : "ELEMENT_MOVED");
+        for (Delta d : contentDeltas) {
+            reasons.add(relocationContentReason(removed.element(), removed.id(), added.id(), d, base, head));
+        }
+        return new ElementChange(removed.element(), removed.id(), kind, riskFor(reasons),
+                List.copyOf(reasons), List.copyOf(deltas));
+    }
+
+    /** The reason for one aspect that changed across a relocation — a condition is classified across the two names. */
+    private static String relocationContentReason(ElementKind element, String oldId, String newId, Delta d,
+            KernelAdapter base, KernelAdapter head) {
+        if (element == ElementKind.RULE && d.aspect().equals("condition")) {
+            return conditionReason(oldId, newId, base, head);
+        }
+        return modifiedReason(d);
     }
 
     /** The last path segment (leaf name). */
     private static String leafOf(String path) {
         return path.substring(path.lastIndexOf('/') + 1);
+    }
+
+    // --- similarity matcher (MR3: survives a rename AND edit; the fingerprint fast path handles the clean case) ---
+
+    /** Minimum score to pair, and the margin the winner must beat the runner-up by — a clear winner, not a toss-up. */
+    static final double PAIR_MIN = 0.7;
+    static final double PAIR_MARGIN = 0.2;
+    /** A pair needs a distinctive link beyond a generic type match: a similar name, or (rules) shared references. */
+    private static final double NAME_FLOOR = 0.5;
+    private static final double REF_FLOOR = 0.5;
+
+    /**
+     * The similarity upgrade: pairs a leftover REMOVED with a leftover ADDED only when they are each other's
+     * <b>mutual clear best</b> — the winner on BOTH sides, score ≥ {@link #PAIR_MIN}, and ≥ {@link #PAIR_MARGIN}
+     * above the runner-up on <em>each</em> side. Requiring the margin symmetrically means an ambiguous set
+     * (two removeds competing for one added, or vice versa) never pairs: unsure ⇒ remove+add, NEVER a wrong
+     * pair. This catches the rename+edit the exact-fingerprint fast path misses; the relocated change carries
+     * BOTH the path move and the content deltas, so the edit is never hidden.
+     */
+    private static void pairSimilar(List<ElementChange> changes, KernelAdapter base, KernelAdapter head) {
+        List<ElementChange> removed = changes.stream().filter(c -> c.change() == ChangeKind.REMOVED).toList();
+        List<ElementChange> added = changes.stream().filter(c -> c.change() == ChangeKind.ADDED).toList();
+        if (removed.isEmpty() || added.isEmpty()) {
+            return;
+        }
+        double[][] score = scoreMatrix(removed, added, base, head);
+        Map<ElementChange, ElementChange> replaceWith = new LinkedHashMap<>();
+        List<ElementChange> consumed = new ArrayList<>();
+        for (int i = 0; i < removed.size(); i++) {
+            int j = bestIndex(score[i]);
+            if (j < 0 || score[i][j] < PAIR_MIN || margin(score[i], j) < PAIR_MARGIN) {
+                continue; // no clear best on the removed side
+            }
+            double[] column = column(score, j);
+            if (bestIndex(column) != i || margin(column, i) < PAIR_MARGIN) {
+                continue; // not the mutual clear best — the added side is ambiguous
+            }
+            ElementChange r = removed.get(i);
+            ElementChange a = added.get(j);
+            ChangeKind kind = parentOf(r.id()).equals(parentOf(a.id())) ? ChangeKind.RENAMED : ChangeKind.MOVED;
+            replaceWith.put(r, relocated(r, a, kind, base, head));
+            consumed.add(a);
+        }
+        applyPairing(changes, replaceWith, consumed);
+    }
+
+    /** {@code score[i][j]} = similarity of {@code removed[i]} to {@code added[j]} ({@code -1} across kinds). */
+    private static double[][] scoreMatrix(List<ElementChange> removed, List<ElementChange> added,
+            KernelAdapter base, KernelAdapter head) {
+        List<Set<String>> refsAdded = added.stream()
+                .map(a -> a.element() == ElementKind.RULE ? refsOf(head, a.id()) : Set.<String>of()).toList();
+        double[][] score = new double[removed.size()][added.size()];
+        for (int i = 0; i < removed.size(); i++) {
+            ElementChange r = removed.get(i);
+            Set<String> refsR = r.element() == ElementKind.RULE ? refsOf(base, r.id()) : Set.of();
+            Map<String, String> fpR = fingerprint(r);
+            for (int j = 0; j < added.size(); j++) {
+                ElementChange a = added.get(j);
+                score[i][j] = a.element() == r.element()
+                        ? similarityScore(r.element(), fpR, fingerprint(a), refsR, refsAdded.get(j),
+                                leafOf(r.id()), leafOf(a.id()))
+                        : -1.0;
+            }
+        }
+        return score;
+    }
+
+    /** The index of the highest score (smallest index on a tie); {@code -1} if empty. */
+    private static int bestIndex(double[] scores) {
+        int best = -1;
+        double bestScore = Double.NEGATIVE_INFINITY;
+        for (int k = 0; k < scores.length; k++) {
+            if (scores[k] > bestScore) {
+                bestScore = scores[k];
+                best = k;
+            }
+        }
+        return best;
+    }
+
+    /** How far the best score beats the runner-up ({@code +∞} when it is the only candidate). */
+    private static double margin(double[] scores, int bestIdx) {
+        double second = Double.NEGATIVE_INFINITY;
+        for (int k = 0; k < scores.length; k++) {
+            if (k != bestIdx && scores[k] > second) {
+                second = scores[k];
+            }
+        }
+        return scores[bestIdx] - second;
+    }
+
+    private static double[] column(double[][] matrix, int j) {
+        double[] col = new double[matrix.length];
+        for (int i = 0; i < matrix.length; i++) {
+            col[i] = matrix[i][j];
+        }
+        return col;
+    }
+
+    /**
+     * Similarity of a removed element to an added candidate in [0,1], weighted toward CONTENT over name (a
+     * rename must not hide the match). Rules: reference-set overlap (the robust "same rule, edited" signal) +
+     * fingerprint overlap + name. Fields: fingerprint (kind/config) + name. Returns 0 unless a distinctive
+     * link is present (a similar name, or shared references), so a generic same-type match alone never pairs.
+     */
+    static double similarityScore(ElementKind kind, Map<String, String> fpRemoved, Map<String, String> fpAdded,
+            Set<String> refsRemoved, Set<String> refsAdded, String leafRemoved, String leafAdded) {
+        double nameSim = nameSimilarity(leafRemoved, leafAdded);
+        double fpSim = jaccard(entryKeys(fpRemoved), entryKeys(fpAdded));
+        if (kind == ElementKind.RULE) {
+            double refSim = jaccard(refsRemoved, refsAdded);
+            if (nameSim < NAME_FLOOR && refSim < REF_FLOOR) {
+                return 0.0; // no distinctive link — a generic rule match is not enough
+            }
+            return 0.5 * refSim + 0.3 * fpSim + 0.2 * nameSim;
+        }
+        if (nameSim < NAME_FLOOR) {
+            return 0.0; // a field with a dissimilar name and only a generic type match is not a pair
+        }
+        return 0.8 * fpSim + 0.2 * nameSim;
+    }
+
+    /** Aspect fingerprint as {@code key value} tokens (an aspect name carries no space, so the first space separates key from value). */
+    private static Set<String> entryKeys(Map<String, String> fingerprint) {
+        Set<String> tokens = new LinkedHashSet<>();
+        fingerprint.forEach((k, v) -> tokens.add(k + ' ' + v));
+        return tokens;
+    }
+
+    private static <T> double jaccard(Set<T> a, Set<T> b) {
+        if (a.isEmpty() && b.isEmpty()) {
+            return 1.0;
+        }
+        Set<T> intersection = new LinkedHashSet<>(a);
+        intersection.retainAll(b);
+        Set<T> union = new LinkedHashSet<>(a);
+        union.addAll(b);
+        return (double) intersection.size() / union.size();
+    }
+
+    /** Name closeness in [0,1] — {@code 1 - normalized Levenshtein}. */
+    private static double nameSimilarity(String a, String b) {
+        int max = Math.max(a.length(), b.length());
+        return max == 0 ? 1.0 : 1.0 - (double) levenshtein(a, b) / max;
+    }
+
+    private static int levenshtein(String a, String b) {
+        int[] prev = new int[b.length() + 1];
+        for (int j = 0; j <= b.length(); j++) {
+            prev[j] = j;
+        }
+        for (int i = 1; i <= a.length(); i++) {
+            int[] cur = new int[b.length() + 1];
+            cur[0] = i;
+            for (int j = 1; j <= b.length(); j++) {
+                int cost = a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1;
+                cur[j] = Math.min(Math.min(cur[j - 1] + 1, prev[j] + 1), prev[j - 1] + cost);
+            }
+            prev = cur;
+        }
+        return prev[b.length()];
     }
 
     // --- relational refactor grouping (MR4: fold a rename/move + the referrers it rewrote) --------
@@ -416,8 +614,17 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors) {
      * detector proves a flip, never sameness (that is the behavioral {@code --deep} path, SPEC §5c).
      */
     private static String conditionReason(String ruleName, KernelAdapter base, KernelAdapter head) {
-        if (base.read(ruleName) instanceof ReadResult.Converted b
-                && head.read(ruleName) instanceof ReadResult.Converted h) {
+        return conditionReason(ruleName, ruleName, base, head);
+    }
+
+    /**
+     * As above, but reads the base condition from {@code baseName} and the head condition from {@code headName}
+     * — so a <b>renamed</b> rule's condition change is still classified across the two names (an inversion or
+     * threshold move under a rename is never hidden).
+     */
+    private static String conditionReason(String baseName, String headName, KernelAdapter base, KernelAdapter head) {
+        if (base.read(baseName) instanceof ReadResult.Converted b
+                && head.read(headName) instanceof ReadResult.Converted h) {
             if (ConditionPolarity.isInversionOf(h.condition(), b.condition())) {
                 return "POLARITY_INVERTED";
             }
