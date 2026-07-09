@@ -177,6 +177,35 @@ Formal errors differ from rule errors: they use a fixed, non-customizable messag
 
 *Reference: Appendix → Validation and formal validation → Formal errors.*
 
+### The three cell states — the third one is not "empty"
+
+A field's cell has three states, not two: **empty**, **filled**, and **not-check-relevant** (the kernel's `nichtPruefungsrelevant`) — present but formally invalid. [§2](#2-non-specified-empty-values)'s substitutions are the *empty* column only; an invalid cell answers every question with "unknown", which lands differently in every position:
+
+| what asks | an empty cell | a not-check-relevant (filled-but-invalid) cell |
+|---|---|---|
+| a comparison reading the value | the per-kind substitution ([§2](#2-non-specified-empty-values)) | UNKNOWN — the branch cannot decide *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §3, locked by `FormalErrorLawsTest`)* |
+| `FieldFilled` / `FieldNotFilled` / the fill quantifiers | a definite FALSE / TRUE — the cell counts as empty | UNKNOWN — counted as **neither filled nor empty**, so e.g. `NoFieldFilled` does *not* fire over invalid cells (invalid ≠ empty) *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §3 + §1 / IF84, locked by `QuantifierMalformedDiffTest` + `StarQuantifierInvalidCellDiffTest`)* |
+| a value aggregate or count over a selection containing it | the empty cell is dropped or substituted ([§2](#2-non-specified-empty-values)) | the **whole aggregate is non-evaluable** — the enclosing rule is suppressed *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2, locked by `AggMalformedDiffTest`)* |
+| a computation reading it | the per-kind compute behaviour ([§11](#11-computations)) | the read **aborts the computing instance** — compute's poison, [§11](#11-computations) *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §11 / IF85, locked by `ComputePoisonReadDiffTest`)* |
+
+### What puts a cell in the third state
+
+More than a type-format mismatch. The same mechanism — same sentinel path, same suppression — is triggered by:
+
+- **a malformed value** — the base case above, plus the cross-kind baseline checks that run before any type format: legal charset and leading/trailing blanks *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §3 / IF43, locked by `BaselineValueFormalDiffTest`)*;
+- **a declared-constraint violation** — range, length, pattern, digit counts, enum domain: a parseable but out-of-bounds value is exactly as invalid as an unparseable one, and a value violating several checks reports the *first* in the kernel's fixed precedence *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §3 / IF20 + IF70, locked by `FieldConstraintFormalDiffTest`)*;
+- **the "required" checkbox on an empty field** ([§4](#4-the-required-property)) — for validation the required-and-empty cell is unknown like any other formal error; compute, by contrast, reads it as plainly empty *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §9 (the uniqueness-cache exclusion) + §11 (compute's view), locked by `RepetitionNotUniqueFormalKeyDiffTest` + `ComputeInvalidOperandDiffTest`)*;
+- **a duplicate index value** — the auto `uniqueIndex` check marks every participating cell, field-locally *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §4 / IF86, locked by `UniqSuppressionDiffTest` + `IndexAggregateDiffTest`)*;
+- **an over-repetition row** — an instance beyond the group's declared repeatability, which also suppresses that row's ordinary checks *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §9 / IF27, locked by `OverRepetitionDiffTest`)*.
+
+### Suppression is branch-scoped — and it reaches presence checks
+
+A formal error does not remove the whole rule; it makes the affected operand UNKNOWN and the ordinary `And`/`Or` algebra decides the rest: `healthyTrue Or [broken] > 0` still fires via its healthy branch, while `healthyTrue And [broken] > 0` is absorbed — the single-branch rule is simply the case where branch- and rule-scoped suppression look identical, and [§1](#1-truth-values-and-logical-evaluation)'s "removes a field (and the rules over it) from evaluation" reads stricter than the engine behaves *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §3, locked by `FormalErrorScopeLawsTest`)*. The unknown reaches even operators that read no value: `FieldFilled(malformed)` decides nothing *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §3, locked by `QuantifierMalformedDiffTest` + `CurrentRepetitionDiffTest`)*. And the suppression is silent from the author's viewpoint: the kernel emits its own formal-error code, attributed to the sentinel rule path `formalePruefung`, while the author's rule simply produces nothing — in a validation report the discriminator is that sentinel vs the rule's slash-path *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §3, locked by `FormalErrorLawsTest`)*.
+
+### Validation excludes; compute poisons
+
+The two operations treat the third state with opposite temperament, and the difference matters wherever computed fields chain. **Validation excludes**: an invalid cell drops out — tallies count it in neither bucket, aggregates over it go non-evaluable, referencing branches go UNKNOWN — and nothing propagates beyond the rules that reference it. **Compute poisons**: during `compute()` the invalid cells are converted so that any *read* of one throws; the reading computation instance aborts, produces no value, and the invalid mark cascades to its own dependents' reads in turn — order-dependently, because only cells an evaluation actually reads can poison it *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §11 / IF85, locked by `ComputePoisonReadDiffTest`)*. The compute side is unpacked in [§11](#11-computations).
+
 ---
 
 ## 4. The "required" property
