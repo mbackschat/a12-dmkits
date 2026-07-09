@@ -152,7 +152,7 @@ class RealCorpusSweepTest {
         } catch (t: Throwable) { report.evalSkip("kernel-compute:" + classify(t), file, t); return }
         // The interpreter reports EVERY computed instance; the kernel reports changes only — project the
         // interpreter side to the kernel's granularity (kernelComputeGranularity) so a seed-equal STRING value /
-        // an unseeded clear doesn't read as a phantom `kernel=absent,interp=…` divergence (the IG47 artifact).
+        // an unseeded clear doesn't read as a phantom `kernel=absent,interp=…` divergence (the granularity artifact).
         val i = try {
             kernelComputeGranularity(CorpusEngines.interpret(interpJson, placements, Op.Compute, CLOCK), placements, model)
         } catch (t: Throwable) { report.evalSkip("interp-compute:" + classify(t), file, t); return }

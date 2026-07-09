@@ -13,8 +13,8 @@ import org.junit.jupiter.api.Test
 import java.util.function.Consumer
 
 /**
- * Differential + tri-check (groovy-dynamic == java-static == interpreter) for the IG47 **iteration-scope**
- * atom (`kernel=VALUE,interp=absent` — the kernel computes an instance the interpreter does not), root-caused
+ * Differential + tri-check (groovy-dynamic == java-static == interpreter) for the **iteration-scope** compute
+ * atom (IF89: `kernel=VALUE,interp=absent` — the kernel computes an instance the interpreter does not), root-caused
  * by the raw-outcome isolator ([RawAtomShrinkTest]): a computation DECLARED in a separate, uninstantiated
  * container group (a `*_Rules` group) TARGETING a field in another subtree with an **all-non-repeatable** scope
  * and a **constant** operation (no operand refs to derive a scope from).

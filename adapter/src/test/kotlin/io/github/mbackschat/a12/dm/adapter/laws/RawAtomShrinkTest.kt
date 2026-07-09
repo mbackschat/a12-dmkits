@@ -12,22 +12,22 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * **WI-T IG47 raw-outcome isolator** — the tooling gap the IG47 characterization recorded: the co-occurring
- * compute atoms (`kernel=ERRORED,interp=VALUE` — the ERRORED-classification residual; `kernel=VALUE,interp=absent`
- * / `kernel=CLEARED,interp=absent` — the iteration-scope misses) cannot be cleanly isolated by [ModelShrinkTest],
- * because THAT driver diffs the kernel against the **change-only granularity-projected** interpreter side
+ * **The WI-T raw-outcome atom isolator** — the per-pointer compute-atom hunt+shrink that delivered the IF88
+ * (ERRORED-classification / Gregorian date floor) and IF89 (iteration-scope) root-causes, and now serves the
+ * IG44 residual drills. Those atoms cannot be cleanly isolated by [ModelShrinkTest], because THAT driver diffs
+ * the kernel against the **change-only granularity-projected** interpreter side
  * ([io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity]). That projection **drops a
  * seed-EQUAL interpreter VALUE** — so an `ERRORED-vs-VALUE(==seed)` atom reads as `interp=absent`, the shrink
  * predicate never matches, and the reduction drifts to a co-occurring divergence (probe-confirmed).
  *
  * This driver hunts + shrinks on the **RAW** interpreter outcome ([CorpusEngines.interpret], no granularity), so
  * a target atom class `(kernel-kind, interp-kind)` is matched per pointer exactly as the sweep measures it. The
- * atom is a PARAMETER — `-Dig47.kernel=<K>` / `-Dig47.interp=<K>` where a kind ∈ {`VALUE`,`CLEARED`,`ERRORED`,
- * `absent`} — so ONE tool serves every IG47 atom (default `ERRORED`/`VALUE`, the ERRORED-classification residual).
+ * atom is a PARAMETER — `-Datom.kernel=<K>` / `-Datom.interp=<K>` where a kind ∈ {`VALUE`,`CLEARED`,`ERRORED`,
+ * `absent`} — so ONE tool serves every atom class (default `ERRORED`/`VALUE`).
  *
  * Opt-in (`-PrunCorpusSweep`, tag `corpus-sweep`) + skip-if-absent (`-Da12.corpus1.dir`). Pin with
- * `-Dig47.model=<substring>` / `-Dig47.seed=<n>`; dump the minimal + its triggering placements to a SCRATCH file
- * with `-Dig47.dump=<scratch-file>` (never a repo path — the license boundary blocks persisting corpus content).
+ * `-Datom.model=<substring>` / `-Datom.seed=<n>`; dump the minimal + its triggering placements to a SCRATCH file
+ * with `-Datom.dump=<scratch-file>` (never a repo path — the license boundary blocks persisting corpus content).
  *
  * **License boundary:** reads the corpora in place, prints only the [ModelShrinker.redactedShape] digest + the
  * atom kinds + counts (never a path or a value). A kept divergence is re-expressed own-domain elsewhere.
@@ -42,8 +42,8 @@ class RawAtomShrinkTest {
         const val MAX_MODELS_SCANNED = 400
     }
 
-    private val targetKernel = System.getProperty("ig47.kernel", "ERRORED")
-    private val targetInterp = System.getProperty("ig47.interp", "VALUE")
+    private val targetKernel = System.getProperty("atom.kernel", "ERRORED")
+    private val targetInterp = System.getProperty("atom.interp", "VALUE")
 
     @Test
     fun findAndShrinkOneRawAtom() {
@@ -51,9 +51,9 @@ class RawAtomShrinkTest {
         assumeTrue(dir != null && Files.isDirectory(Path.of(dir)), "a12.corpus1.dir not set / absent — skipping")
         val root = Path.of(dir)
         val resolver = ReferenceResolvers.directory(root)
-        val modelFilter = System.getProperty("ig47.model")
-        val seedFilter = System.getProperty("ig47.seed")?.toIntOrNull()
-        println("\n[IG47] raw-atom hunt: target kernel=$targetKernel,interp=$targetInterp")
+        val modelFilter = System.getProperty("atom.model")
+        val seedFilter = System.getProperty("atom.seed")?.toIntOrNull()
+        println("\n[atom] raw-atom hunt: target kernel=$targetKernel,interp=$targetInterp")
 
         var scanned = 0
         for (file in CorpusShrinkSupport.documentModels(root)) {
@@ -67,11 +67,11 @@ class RawAtomShrinkTest {
             val locale = CorpusShrinkSupport.modelLocale(kernelJson)
 
             val atom = findAtom(model, kernelJson, interpJson, locale, seedFilter) ?: continue
-            println("[IG47] raw atom found (model #$scanned): seed=${atom.seed} pointer=<redacted>")
+            println("[atom] raw atom found (model #$scanned): seed=${atom.seed} pointer=<redacted>")
             shrinkAndReport(kernelJson, atom, locale)
             return
         }
-        println("[IG47] no raw kernel=$targetKernel,interp=$targetInterp atom found in $scanned scanned models" +
+        println("[atom] no raw kernel=$targetKernel,interp=$targetInterp atom found in $scanned scanned models" +
             (modelFilter?.let { " (filter=$it)" } ?: ""))
     }
 
@@ -102,19 +102,19 @@ class RawAtomShrinkTest {
 
     private fun shrinkAndReport(kernelJson: String, atom: Atom, locale: java.util.Locale) {
         val shrinker = ModelShrinker({ candidate -> stillDiverges(candidate, atom, locale) })
-        println("[IG47] seed model shape:\n" + CorpusShrinkSupport.indented(ModelShrinker.redactedShape(kernelJson)))
+        println("[atom] seed model shape:\n" + CorpusShrinkSupport.indented(ModelShrinker.redactedShape(kernelJson)))
         val minimal = shrinker.shrink(kernelJson)
-        println("[IG47] shrink spent ${shrinker.runsSpent} engine runs")
-        println("[IG47] MINIMAL model shape (license-safe — the shrink trace):\n" + CorpusShrinkSupport.indented(ModelShrinker.redactedShape(minimal)))
-        System.getProperty("ig47.dump")?.let { p ->
+        println("[atom] shrink spent ${shrinker.runsSpent} engine runs")
+        println("[atom] MINIMAL model shape (license-safe — the shrink trace):\n" + CorpusShrinkSupport.indented(ModelShrinker.redactedShape(minimal)))
+        System.getProperty("atom.dump")?.let { p ->
             Files.writeString(Path.of(p), minimal)
-            println("[IG47] minimal repro written to $p (scratch — do not commit)")
+            println("[atom] minimal repro written to $p (scratch — do not commit)")
             val model = runCatching { ModelLoader.load(CorpusModelPreparer.toInterpreterJson(minimal)) }.getOrNull()
             if (model != null) {
                 val pls = CorpusShrinkSupport.filterPlacements(model, atom.placements)
                 val lines = pls.joinToString("\n") { "${it.kind}|${it.path}|${it.reps.joinToString(",")}|${it.value ?: ""}" }
                 Files.writeString(Path.of("$p.placements"), lines)
-                println("[IG47] minimal placements written to $p.placements")
+                println("[atom] minimal placements written to $p.placements")
             }
         }
     }

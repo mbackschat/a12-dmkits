@@ -11,7 +11,8 @@ import kotlin.io.path.extension
 
 /**
  * Shared scaffolding for the WI-T corpus SHRINK drivers — [ModelShrinkTest] (the granularity-projected CVV/VCV
- * hunt, IG44) and [RawAtomShrinkTest] (the RAW-outcome per-pointer atom hunt, IG47). Kept in one place so the two
+ * hunt, IG44) and [RawAtomShrinkTest] (the RAW-outcome per-pointer atom hunt — IF88/IF89's drills, now the
+ * IG44 residual's tool). Kept in one place so the two
  * drivers don't each re-copy the corpus enumeration, the model-declared locale, the placement filter, and the
  * compute-signature outcome-kind map.
  *

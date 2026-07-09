@@ -126,7 +126,7 @@ object CorpusScenarios {
      * A STRING computed cell seeded with exactly the value it computes — a kernel NON-change, so
      * `computeExpected` omits it (the kernel's change-only reporting granularity, [§7]); the report-all
      * interpreter must project its seed-equal VALUE away on replay ([kernelComputeGranularity]) instead of
-     * false-failing. The guard for the IG47 `kernel=absent,interp=VALUE` comparison artifact.
+     * false-failing. The guard for the compute-granularity `kernel=absent,interp=VALUE` comparison artifact.
      */
     private fun orderNameSeedEqual(): Family = family(
         "compute", orderNameComputeModel,

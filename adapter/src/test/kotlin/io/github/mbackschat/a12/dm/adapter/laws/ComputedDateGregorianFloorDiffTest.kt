@@ -2,8 +2,10 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.FORMAL_RULE_PATH
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
+import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -19,7 +21,7 @@ import java.util.function.Consumer
 
 /**
  * Differential + tri-check (groovy-dynamic == java-static == interpreter) for the **kernel's always-on
- * Gregorian-calendar date floor** applied to a COMPUTED date value — the IG47 ERRORED-classification atom
+ * Gregorian-calendar date floor** applied to a COMPUTED date value — the ERRORED-classification compute atom (IF88)
  * (`kernel=ERRORED,interp=VALUE`), root-caused by the raw-outcome isolator ([RawAtomShrinkTest]) shrinking a
  * real composite model to its minimal interaction: a single unconditional `Date(day, month, century, decade)`
  * computing an ancient year.
@@ -44,6 +46,7 @@ class ComputedDateGregorianFloorDiffTest {
         const val MONTH = "/Policy/StartMonth"
         const val YEAR = "/Policy/StartYear"
         const val START = "/Policy/CoverageStart"
+        const val AD = "/Order/ApproxDate"
     }
 
     private val json = DocumentModelDraft.named("policy").locale("en_US")
@@ -125,4 +128,32 @@ class ComputedDateGregorianFloorDiffTest {
 
     @Test fun gregorianFloorDayComputes() =
         tri("16", "10", "1583", "VALUE|1583-10-16", "Date(16,10,1583)=1583-10-16 (the floor itself) → a value")
+
+    // ── The stored-value floor across a PARTIAL precision (DAY_OPTIONAL). The kernel completes an omitted
+    //    day to 01 BEFORE the floor check (`PartiallyKnownDatesUtil.replaceUnknownDateParts` runs ahead of
+    //    `dateInvalid`), so a day-omitted October 1583 is `datumFalsch` even though days 16–31 of that month
+    //    are valid — pinning the completion↔floor ORDER that the interpreter's `dayOptionalParts` day-0→01
+    //    mapping reproduces (IF88). ────────────────────────────────────────────────────────────────────────
+
+    private val order = RuntimeLaws.model("models/order.dm.json")
+    private val adDef = ModelDef(
+        listOf(FieldDef(AD, Kind.DATE, format = "dd.MM.yyyy", datePrecision = DatePrecision.DAY_OPTIONAL)),
+        emptyList(),
+    )
+
+    private fun storedAgree(value: String, expect: String?, msg: String) {
+        val k = RuntimeLaws.firedCodes(order, setOf("/Order"), mapOf(AD to value)).firstOrNull()
+        val doc = Document(adDef.kinds, adDef.declaredReps, adDef.unsignedFields, adDef.rangeConfig,
+            adDef.dateFormats, adDef.scales, adDef.dateTimeFormats, adDef.datePrecisions)
+            .group("/Order", 1).field(AD, value, 1, 1)
+        val i = DmInterpreter(adDef).validate(doc).messages.firstOrNull { it.rulePath == FORMAL_RULE_PATH }?.code
+        assertEquals(k, i, "$msg (kernel=$k interp=$i)")
+        assertEquals(expect, i, "$msg — expected code")
+    }
+
+    @Test fun dayOptionalOmittedDayInFloorMonthErrors() =
+        storedAgree("00.10.1583", "datumFalsch", "00.10.1583 completes to 01.10.1583 < the floor")
+
+    @Test fun dayOptionalOmittedDayNextMonthValid() =
+        storedAgree("00.11.1583", null, "00.11.1583 completes to 01.11.1583 ≥ the floor")
 }

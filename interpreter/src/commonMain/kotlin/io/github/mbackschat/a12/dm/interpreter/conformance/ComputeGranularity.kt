@@ -18,7 +18,8 @@ private val ROW_INDEX = Regex("""\[\d+\]""")
  * - an **ERRORED** instance unconditionally (`getComputedFieldInstancesWithErrors`).
  *
  * `DmInterpreter.compute` deliberately reports **every** computed instance — report-all is the more useful
- * library contract, and result-envelope granularity is not behavior-parity territory (the IG47 ruling) — so
+ * library contract, and result-envelope granularity is not behavior-parity territory (the compute-granularity
+ * ruling — KERNEL-FINDINGS "compute reporting granularity", CONFORMANCE-CORPUS-SPEC §7) — so
  * every comparison surface that diffs the interpreter against a kernel-granularity multiset projects through
  * this function first, diffing the interpreter's outcomes against the input placements.
  *
