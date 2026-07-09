@@ -2,7 +2,7 @@
 
 > **Provenance & role in this repo.** Owner-authored in the sibling `a12-kernel-demo` project; integrated here 2026-07-09 so this repo is self-contained — this copy is the one the docs, [SEMANTICS-MAP.md](SEMANTICS-MAP.md), and `SemanticsMapResolveTest` key on. It is the **canonical kernel-truth prose layer**: its 14 numbered sections are the `§n` taxonomy that [KERNEL-FINDINGS.md](KERNEL-FINDINGS.md) (our experiment-verified supplements), the operator-catalog facets, and the conformance corpus's `meta.sections` all mirror. The companion docs it mentions (`KERNEL-GLOSSARY.md`, `SHOWCASE.md`, `KERNEL-GRAMMAR.md`) remain in their origin projects.
 
-A reference to how the A12 validation language *evaluates*, beyond what its syntax shows: its truth model, how it treats missing values, what the "required" property means, and the numeric, date, string, enumeration, repetition, path, and computation rules that determine when a rule fires. The behaviours below are documented in the kernel's *Validation-Language guide*; each entry cites the relevant chapter/section by title.
+A reference to how the A12 validation language *evaluates*, beyond what its syntax shows: its truth model, how it treats missing values, what the "required" property means, and the numeric, date, string, enumeration, repetition, path, and computation rules that determine when a rule fires. The behaviours below are documented in the kernel's *Validation-Language guide*; each entry cites the relevant chapter/section by title. Two claim classes share the page: those guide-documented behaviours, and — in the deepening subsections — behaviours **verified by experiment or source reading against kernel `30.8.1`**, each cited inline as *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §n / IFnn, locked by `SomeTest`)*; a claim without such a citation is the guide's.
 
 Two facts frame everything else:
 
@@ -122,6 +122,42 @@ Two further points:
 - There are no empty strings: `[F] == ""` is never satisfied, even when `F` is unfilled. Use `FieldNotFilled(F)` to test for absence.
 
 *Reference: Models → Treatment of non-specified values; Appendix → Validation and formal validation → Leading and trailing spaces.*
+
+### Why the empty case decides whether a rule is right
+
+A rule spends most of its life reading empty fields — a document is validated continuously during data entry, so "operand empty" is the *normal* state, not the edge case — and the table above means the same comparison shape silently changes meaning with the field's type: `[Amount] < 100` fires on an empty amount, `[Date] > "01.01.2022"` stays quiet on an empty date. Getting the empty column wrong is therefore the most common way a rule is wrong in practice, in both directions (a rule that flags every half-entered document, or one that never fires because its operand type gets the not-evaluated pass). The operator catalog carries these answers machine-readably — the `emptyOperand` facet, with this section's per-kind table as its header defaults — and records the class as the #1 recurring semantic failure ([CATALOG-SPEC.md](CATALOG-SPEC.md) §4).
+
+### Where an operator overrides its kind's default
+
+The per-kind table is only the default; several operators put an empty operand through a different door, so the same field can get the free pass in one position and be evaluated in the next:
+
+| position | an empty operand… |
+|---|---|
+| string in a `+` **concatenation** | concatenates as `""`, so the enclosing comparison **is** evaluated — `[Full] != [First] + " " + [Last]` mis-fires on empty parts unless the operands are guarded *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2, locked by `EmptyValueLawsTest`)* |
+| `Length(F)` | reads as length **`0`**, evaluated — the string family's own empty-as-0 backdoor, needing the same `FieldFilled` guard as a number *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2, locked by `EmptyValueLawsTest`)* |
+| `PatternMatched` / `PatternViolated` | not evaluated — an empty string violates no pattern; absence needs `FieldNotFilled` *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2, locked by `EmptyValueLawsTest`)* |
+| the date/time **extractors** (`DayFromDate`, …) and the date **differences** | read as the fillable **`0`** — the enclosing comparison is evaluated and can fire *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §6 / IF73, locked by `EmptyOperandFiringDiffTest`)* |
+| **value-list membership** | an empty subject is never in any list, and an empty numeric list *entry* never matches — the `0` substitution does not apply to entries *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2/§8, locked by `EmptyValueLawsTest`)* |
+| operand-list `Min([A], [B])` / `Max(…)` | an empty NUMBER operand is substituted `0` and **competes in the fold** (`Min(0, B)` — the 0 can win); an empty DATE operand is **skipped** (the date-bearing side wins) *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2 + §6 / IF58, locked by `EmptyValueLawsTest` + `DateAggregateDiffTest`)* |
+| the field-list / starred aggregates (`Sum`, `MaxValue`, `MinValue`) | the empty cell is **dropped from the fold** — `MaxValue(-5, empty)` is `-5`, no `0` folded in; `Sum` reads it as `0`, which for a sum is the same thing *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §1 + §9, locked by `MultiFieldAggregateDiffTest` + `RepetitionLawsTest`)* |
+
+The last two rows are one design split seen from both sides: `0` is `Sum`'s neutral element but not `Min`/`Max`'s, so the aggregates must drop empties where the sum may fold them in — which makes it easy to assume the drop extends to the *all-empty* case. It does not:
+
+### What an all-empty selection folds to (the aggregate identities)
+
+One operand empty is one question (above); the **whole selection** empty — every operand empty, or a starred group with zero filled cells — is another, and each aggregate has a defined identity for it:
+
+- The NUMBER aggregates fold to the fillable **`0`**, not "undefined": `MaxValue(QTY, BQ) == 0` fires with both fields empty, and `MinValue(Items*/Count) == 0` fires on a group with no rows at all *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §1, locked by `MultiFieldAggregateDiffTest`)*. `Sum` over an all-empty list is likewise `0` *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §9, locked by `RepetitionLawsTest`)*.
+- The DATE `Min`/`Max` fold to **no value**: a comparison against an all-empty date aggregate never fires, and a computation of it clears its target *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §6 / IF58, locked by `DateAggregateDiffTest`)*.
+- `FirstFilledValue` follows its operand **kind**: an all-empty selection yields the fillable `0` for a NUMBER operand but no value (NOT-GIVEN) for a DATE or STRING operand *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §1/§3 / IF80 + IF83, locked by `FirstFilledValueKindDiffTest`)*.
+
+The identity is treacherous because it hides under most thresholds: `0` and "not evaluated" produce the same non-fire for `MaxValue(…) > 3`, so a wrong mental model survives every such rule and surfaces only where `0` itself satisfies the comparison — `MinValue(…) < 10` is the shape that finally distinguishes them *(the latency observed in [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §1, locked by `MultiFieldAggregateDiffTest`)*. The catalog carries these identities per element kind as the `aggregateIdentity` facet ([CATALOG-SPEC.md](CATALOG-SPEC.md) §3c).
+
+### The row gate — where the substitutions stop
+
+All of the above happens inside a **content-bearing row**. Under full validation an entirely empty instance is evaluated only when the condition is one that *can* fire on emptiness — a structural property of the condition, true of the negative presence family (`NoFieldFilled`, `FieldNotFilled`, `NotAllFieldsFilled`, …) and composing through `And`/`Or`; a comparison never fires on a truly blank instance, so the empty-as-0 rows above presuppose some sibling content *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2, locked by `EmptyRowGateDiffTest`)*. What counts as content has one wrinkle: an **instantiated repeatable row is itself content** — a created-but-blank repeat row *is* evaluated, so per-row empty-as-0 fires on every such row — while a non-repeatable group's bare structural presence is not *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2 / IF53, locked by `RepeatableRowContentDiffTest`)*. Partial validation overrides the gate entirely: a *relevant* instance is always evaluated, empty or even phantom — see [§12](#12-the-validation-model) *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2 / IF54, locked by `RepeatableRowContentDiffTest`)*.
+
+Emptiness is also only one of a field's two non-value states: a **filled but formally invalid** cell behaves differently from an empty one in every position above — that third state is [§3](#3-formal-errors-and-the-unknown-state)'s subject.
 
 ---
 
