@@ -12,10 +12,18 @@ public record DraftComputation(
         String name,
         String computedFieldRelPath,
         String commonPrecondition,
-        List<Alternative> alternatives) {
+        List<Alternative> alternatives,
+        List<String> errorCodesToSuppress) {
 
     public DraftComputation {
         alternatives = List.copyOf(alternatives);
+        errorCodesToSuppress = List.copyOf(errorCodesToSuppress);
+    }
+
+    /** No suppressions — the common case; keeps the pre-{@code errorCodesToSuppress} call sites unchanged. */
+    public DraftComputation(String groupPath, String name, String computedFieldRelPath,
+            String commonPrecondition, List<Alternative> alternatives) {
+        this(groupPath, name, computedFieldRelPath, commonPrecondition, alternatives, List.of());
     }
 
     public record Alternative(String precondition, String operation) {

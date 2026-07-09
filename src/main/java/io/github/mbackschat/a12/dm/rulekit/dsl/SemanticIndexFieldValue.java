@@ -10,7 +10,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * composes as an ordinary comparison operand, and the enclosing repeatable group must declare an
  * {@code indexFieldName} ({@code MVK_NO_INDEX_FIELD}, kernel-delegated). DEV-API-GAPS DG8.
  */
-public record SemanticIndexFieldValue(FieldRef field, FieldRef indexField) implements Calculation {
+public record SemanticIndexFieldValue(FieldRef field, FieldRef indexField) implements IndexedFieldValue {
 
     public String operatorId() {
         return "SemanticIndex";

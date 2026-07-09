@@ -43,6 +43,10 @@ public final class ConditionPolarity {
                     Optional.of(new FieldPresenceCondition(f.field(), !f.filled()));
             case GroupPresenceCondition g ->
                     Optional.of(new GroupPresenceCondition(g.group(), !g.filled()));
+            case RuleGroupPresenceCondition r ->
+                    Optional.of(new RuleGroupPresenceCondition(!r.filled()));
+            case IndexedPresenceCondition p ->
+                    Optional.of(new IndexedPresenceCondition(p.index(), !p.filled()));
             case PatternCondition p ->
                     Optional.of(new PatternCondition(p.field(), !p.matched(), p.regex()));
             case ValueListCondition v ->

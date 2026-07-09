@@ -48,6 +48,9 @@ class DocSnippetFreshnessTest {
     private static final String CASE_STUDY =
             "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/CaseStudyTest.java";
 
+    private static final String NEW_SHAPES =
+            "src/test/java/io/github/mbackschat/a12/dm/docsnippets/NewShapesSnippetsTest.java";
+
     private static final List<Lock> LOCKS = List.of(
             new Lock("cs-bind", "docs/API-GUIDE.md", CASE_STUDY),
             new Lock("cs-author", "docs/API-GUIDE.md", CASE_STUDY),
@@ -73,7 +76,12 @@ class DocSnippetFreshnessTest {
             new Lock("study-mirror-relative", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/MirroringRuleStudyTest.java"),
             new Lock("editor-number-field", "docs/API-GUIDE.md",
-                    "src/test/java/io/github/mbackschat/a12/dm/edit/GroupEditorTest.java"));
+                    "src/test/java/io/github/mbackschat/a12/dm/edit/GroupEditorTest.java"),
+            new Lock("date-minmax", "docs/API-GUIDE.md", NEW_SHAPES),
+            new Lock("indexed-presence", "docs/API-GUIDE.md", NEW_SHAPES),
+            new Lock("rule-group", "docs/API-GUIDE.md", NEW_SHAPES),
+            new Lock("starred-value-list", "docs/API-GUIDE.md", NEW_SHAPES),
+            new Lock("computation-suppress", "docs/API-GUIDE.md", NEW_SHAPES));
 
     /** The guide whose every {@code ```java} block must be classified — locked or teaser-marked. */
     private static final String STUDY = "docs/API-GUIDE.md";

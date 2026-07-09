@@ -487,6 +487,50 @@ static Condition scheduleConsistency(GroupInfo app) {
 
 Applied to `/Application`, `scheduleConsistency(...)` reproduces the flagship rule above **byte-for-byte** (the test asserts it), so the extraction is faithful, not a lookalike. This is the §3.2/finding-24 endgame: a team accrues a small library of **rule-shaped combinators**, and each new rule of a known shape supplies only what differs — restrained to plain functions over the shipped primitives (`agreesWith` 39, `allOf`/presence-`List` 38, relative navigation 40), no templating DSL.
 
+### 3.7 A few more operand shapes the type system steers
+
+The same handle discipline extends to operands that used to force a drop to a hand-written string. Each renders to the exact kernel-accepted stored form (locked to a kernel-run test) and stays type-safe.
+
+**Date-valued `Min`/`Max`.** `Dsl.min`/`Dsl.max` are overloaded for date operands — the result is a `DateExpr`, comparable to any date operand — so number/date mixing can't be written (the operands are dates by type). The kernel evaluates it through its `DateCombiner` (findings 58, KERNEL-FINDINGS §6):
+
+<!-- snippet: date-minmax -->
+```java
+// Min/Max over DATE operands yield a DateExpr — comparable to any date operand (KERNEL-FINDINGS §6).
+// The type system forbids number/date mixing: min(dates) accepts only date operands.
+Condition earliestBeforeCutoff =
+        Dsl.min(m.date("/Order/OrderDate"), m.date("/Order/DeliveryDate"))
+                .before(Dsl.dateValue("20.03.2026"));   // Min([A], [B]) < "20.03.2026"
+```
+
+**Presence over a semantic index.** A `forIndex(...)` value expression grows `.filled()`/`.notFilled()`, so the presence of the cell an index resolves to is authorable — rendered bare (no value brackets). It is a fail-fast corrective: only an indexed cell has a presence, so `sum(...).filled()` throws rather than emit a kernel-illegal `FieldFilled(Sum(...))` (finding 59):
+
+<!-- snippet: indexed-presence -->
+```java
+// The semantic index [Count For "SKU-1"] reads a cell; .filled()/.notFilled() test its presence.
+// (Only a forIndex(...) result carries a presence — a bare aggregate does not.)
+Condition present = m.num("/Order/Items/Count").forIndex("SKU-1").filled();
+```
+
+**The rule's own group.** `Dsl.ruleGroup()` is the self-reference to the rule's containing group (the kernel's `RegelKontext`); it renders the reserved keyword (EN `RuleGroup`, DE `RegelKontext`), never a path. On a rule iterating a repeatable group it is the "is this row present" guard — the shape behind attachment/row-content rules (finding 60):
+
+<!-- snippet: rule-group -->
+```java
+// Dsl.ruleGroup() is the rule's OWN group (the kernel's RegelKontext) — it renders the reserved
+// keyword, never a path. On a rule iterating a repeatable group it guards "is this row present".
+Condition attachment = Dsl.ruleGroup().filled()
+        .and(Dsl.notExactlyOneFieldFilled(m.num("/Order/Items/Count").field(),
+                m.num("/Order/Items/UnitWeight").field()));
+```
+
+**Starred value-list quantifiers.** The `*ValueList` quantifiers take a flattened repetition list (`BoundModel.flatten`) directly — the starred FIELDS side — the list-homogeneity kept by the `FieldOperand` type split:
+
+<!-- snippet: starred-value-list -->
+```java
+// A value-list quantifier over a flattened repetition list — the starred FIELDS side.
+Condition anyForbidden = Dsl.atLeastOneFieldValueIncludedInValueList(
+        List.of("A", "B"), m.flatten("/Order/Items*/Sku"));   // …(/Order/Items*/Sku In "A", "B")
+```
+
 ## 4. Authoring a rule end-to-end
 
 ### 4.1 The rule object — slots from typed handles
@@ -546,6 +590,21 @@ Computation tiered = m.computation(m.num("/Subscription/Billing/EffectiveFee")) 
 **The original sketch here used `.otherwise(...)` — that was kernel-illegal** (verified: mixing preconditioned and unconditional alternatives draws `MVK_ERROR_EMPTY_PRECONDITION`), so the API doesn't offer it: either one unconditional `calc(...)` or all-preconditioned `when(...).calc(...)`. Further slot rules pre-checked at `build()` with the code named: the computed field must not appear in preconditions *or* operations (`MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` — both verified), operation **kind** must match the computed field (`Calculation.kind()` — the typed AST now carries the §5b lattice), message required. Mutual exclusivity of preconditions stays the kernel/runtime's judgment; result *scale* stays the kernel's call (D13).
 
 **Cross-slot reuse for free:** `SubscriptionIdioms.paidTier(tier)` drops unchanged into a rule `errorCondition` *or* a computation `precondition` — one expression language, many slots (§5). That is the concrete payoff of combinators + the slot model.
+
+**`errorCodesToSuppress` — the kernel's model-level escape hatch.** A computation may declare codes to suppress; the builder carries them, **domain-checked** against the kernel's supported set (currently only `MVK_INVALID_COMPARE_DEC_PLACES`, the static assignment-scale gate) — an unsupported code is refused fail-fast, not written. Its sole use today is letting a *scale-mismatched* operation load (finding 61):
+
+<!-- snippet: computation-suppress -->
+```java
+// errorCodesToSuppress — the kernel's model-level escape hatch (domain-checked): it lets a
+// scale-mismatched operation load (the static assignment-scale gate, MVK_INVALID_COMPARE_DEC_PLACES).
+NumberExpr product = m.num("/Order/UnitPrice").asNumber().times(m.num("/Order/UnitPrice").asNumber());
+Computation comp = m.computation(m.num("/Order/BackorderQuantity"))
+        .name("BackorderProjection")
+        .calc(product.expression())              // scale-4 product into a scale-0 target
+        .errorCodesToSuppress("MVK_INVALID_COMPARE_DEC_PLACES")
+        .message(Dsl.en("Backorder derived from the unit price."))
+        .build();
+```
 
 ---
 

@@ -287,6 +287,10 @@ public final class RuleValidator {
 
         ObjectNode body = node.putObject("Computation");
         body.put("computedFieldRelPath", computation.computedFieldRelPath());
+        if (!computation.errorCodesToSuppress().isEmpty()) {
+            ArrayNode suppress = body.putArray("errorCodesToSuppress");
+            computation.errorCodesToSuppress().forEach(suppress::add);
+        }
         if (computation.commonPrecondition() != null) {
             body.put("commonPrecondition", computation.commonPrecondition());
         }

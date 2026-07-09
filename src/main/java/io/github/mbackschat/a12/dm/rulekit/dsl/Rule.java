@@ -77,7 +77,8 @@ public record Rule(
      * rulekit's own relative-path math. Neither is deferred.
      */
     public List<Diagnostic> deferredChecks() {
-        if (ConditionReferences.of(condition).covers(errorField.path())) {
+        if (ConditionReferences.of(condition).covers(errorField.path())
+                || ConditionReferences.referencesRuleGroup(condition)) {
             return List.of();
         }
         return List.of(Diagnostic.precheckWarning(

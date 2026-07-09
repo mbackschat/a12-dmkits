@@ -49,6 +49,20 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
         return fieldPaths.contains(fieldPath);
     }
 
+    /**
+     * Whether the condition references the rule's OWN group via the {@code RuleGroup} self-reference
+     * anywhere. Since the error field must lie under the rule's group, a self-reference always covers
+     * it — so {@link Rule#deferredChecks()} treats this as satisfying the error-field-referenced check
+     * (the kernel does, per {@code DirectiveLawsTest}), avoiding a spurious {@code MVK_ERROR_FIELD_NOT_REFERENCED}.
+     */
+    public static boolean referencesRuleGroup(Condition condition) {
+        return switch (condition) {
+            case RuleGroupPresenceCondition ignored -> true;
+            case LogicCondition l -> referencesRuleGroup(l.left()) || referencesRuleGroup(l.right());
+            default -> false;
+        };
+    }
+
     private static void collect(Condition condition, Set<String> fields, Set<String> groups) {
         switch (condition) {
             case FieldPresenceCondition f -> fields.add(f.field().path());
@@ -62,6 +76,11 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 collect(l.right(), fields, groups);
             }
             case GroupPresenceCondition g -> groups.add(g.group().path());
+            // RuleGroup is the rule's OWN group; its path is unknown here (no rule context), so it
+            // contributes no concrete reference. Rule.deferredChecks() treats it as covering the error
+            // field via referencesRuleGroup(...) below (the field is always under the rule's group).
+            case RuleGroupPresenceCondition ignored -> { }
+            case IndexedPresenceCondition p -> collect(p.index(), fields, groups);
             case GroupListPredicate p -> p.groups().forEach(g -> groups.add(g.path()));
             case PatternCondition p -> fields.add(p.field().path());
             case ValueListCondition v -> {

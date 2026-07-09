@@ -210,10 +210,34 @@ public final class Dsl {
         return new NumberExpr(new OpListMath(OpListMath.Op.MAX, operandList(first, rest)));
     }
 
+    /**
+     * {@code Min(d1, d2, …)} over <b>date</b> operands — the earliest of one or more dates, as a
+     * comparable {@link DateExpr}. The kernel evaluates it through its {@code DateCombiner}
+     * ({@code minDatum}, KERNEL-FINDINGS §6); a valueless operand is skipped. Number/date mixing is
+     * impossible: the operands are {@link DateOperand}s, so the result compares only to date operands.
+     */
+    public static DateExpr min(DateOperand first, DateOperand... rest) {
+        return new DateExpr(new OpListMath(OpListMath.Op.MIN, dateOperandList(first, rest)));
+    }
+
+    /** {@code Max(d1, d2, …)} over date operands — the latest of one or more dates ({@code maxDatum}). */
+    public static DateExpr max(DateOperand first, DateOperand... rest) {
+        return new DateExpr(new OpListMath(OpListMath.Op.MAX, dateOperandList(first, rest)));
+    }
+
     private static List<Calculation> operandList(NumberExpr first, NumberExpr... rest) {
         var ops = new ArrayList<Calculation>();
         ops.add(first.expression());
         for (NumberExpr e : rest) {
+            ops.add(e.expression());
+        }
+        return ops;
+    }
+
+    private static List<Calculation> dateOperandList(DateOperand first, DateOperand... rest) {
+        var ops = new ArrayList<Calculation>();
+        ops.add(first.expression());
+        for (DateOperand e : rest) {
             ops.add(e.expression());
         }
         return ops;
@@ -1007,6 +1031,15 @@ public final class Dsl {
     }
 
     // --- group predicates (the group twin of the field forms) ----------------------------------
+
+    /**
+     * {@code RuleGroup} (DE {@code RegelKontext}) — the self-reference to the rule's OWN group, for
+     * {@code GroupFilled(RuleGroup)} / {@code GroupNotFilled(RuleGroup)} (KERNEL-FINDINGS "Condition
+     * directives"). Renders the reserved keyword, never a path; use {@code Dsl.ruleGroup().filled()}.
+     */
+    public static RuleGroupRef ruleGroup() {
+        return new RuleGroupRef();
+    }
 
     public static Condition groupFilled(GroupRef group) {
         return new GroupPresenceCondition(group, true);

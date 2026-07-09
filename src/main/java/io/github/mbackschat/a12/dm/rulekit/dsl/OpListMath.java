@@ -44,7 +44,10 @@ public record OpListMath(Op op, List<Calculation> operands) implements Calculati
 
     @Override
     public ValueKind kind() {
-        return ValueKind.NUMBER;
+        // Abs is number-only; Min/Max carry their operands' kind (NUMBER over number expressions,
+        // DATE over date operands — the kernel's DateCombiner, KERNEL-FINDINGS §6). Operands are
+        // type-homogeneous by construction (the Dsl entry points take one operand family).
+        return op == Op.ABS ? ValueKind.NUMBER : operands.get(0).kind();
     }
 
     public String operatorId() {

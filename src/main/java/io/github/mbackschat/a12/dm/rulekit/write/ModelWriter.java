@@ -259,6 +259,10 @@ public final class ModelWriter {
 
         ObjectNode body = node.putObject("Computation");
         body.put("computedFieldRelPath", c.computedFieldRelPath());
+        if (!c.errorCodesToSuppress().isEmpty()) {
+            ArrayNode suppress = body.putArray("errorCodesToSuppress");
+            c.errorCodesToSuppress().forEach(suppress::add);
+        }
         if (c.commonPrecondition() != null) {
             body.put("commonPrecondition", c.commonPrecondition());
         }

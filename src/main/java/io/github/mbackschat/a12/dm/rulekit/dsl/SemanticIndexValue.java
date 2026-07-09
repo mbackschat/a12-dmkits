@@ -9,7 +9,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * {@code MVK_NO_INDEX_FIELD} (kernel-delegated — rulekit's index does not yet expose index-field
  * metadata). Yields the field's kind, so it composes as an ordinary comparison operand.
  */
-public record SemanticIndexValue(FieldRef field, String indexValue) implements Calculation {
+public record SemanticIndexValue(FieldRef field, String indexValue) implements IndexedFieldValue {
 
     public String operatorId() {
         return "SemanticIndex";

@@ -34,6 +34,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedPresenceCondition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RuleGroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.PatternCondition;
@@ -243,6 +245,20 @@ public final class Linter {
                     hasPositiveGuard[0] = true;
                 } else {
                     negatives.add(new String[] {"GroupNotFilled", g.group().path()});
+                }
+            }
+            case RuleGroupPresenceCondition r -> {
+                if (r.filled()) {
+                    hasPositiveGuard[0] = true;
+                } else {
+                    negatives.add(new String[] {"GroupNotFilled", "RuleGroup"});
+                }
+            }
+            case IndexedPresenceCondition p -> {
+                if (p.filled()) {
+                    hasPositiveGuard[0] = true;
+                } else {
+                    negatives.add(new String[] {"FieldNotFilled", p.index().field().path()});
                 }
             }
             case FieldListPredicate p -> hasPositiveGuard[0] |= POSITIVE_PRESENCE.contains(p.operatorId());

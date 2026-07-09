@@ -189,6 +189,8 @@ public final class DslRenderer {
             case LogicCondition l ->
                     child(l, l.left()) + " " + keyword(l.operatorId()) + " " + child(l, l.right());
             case GroupPresenceCondition g -> keyword(g.operatorId()) + "(" + path(g.group().path()) + ")";
+            case RuleGroupPresenceCondition r -> keyword(r.operatorId()) + "(" + ruleGroupKeyword() + ")";
+            case IndexedPresenceCondition p -> keyword(p.operatorId()) + "(" + indexBody(p.index()) + ")";
             case GroupListPredicate p -> keyword(p.operatorId()) + "("
                     + p.groups().stream().map(g -> path(g.path())).collect(java.util.stream.Collectors.joining(", "))
                     + ")";
@@ -332,10 +334,8 @@ public final class DslRenderer {
             case CountAggregate a -> keyword(a.operatorId()) + "(" + countOperands(a) + ")";
             case CurrentRepetition r ->
                     keyword(r.operatorId()) + "(" + (r.outer() ? "$" : "") + path(r.group().path()) + ")";
-            case SemanticIndexValue v ->
-                    "[" + path(v.field().path()) + " " + keyword(v.operatorId()) + " " + quote(v.indexValue()) + "]";
-            case SemanticIndexFieldValue v ->   // field-keyed: the key is a bare field path, not a quoted literal
-                    "[" + path(v.field().path()) + " " + keyword(v.operatorId()) + " " + path(v.indexField().path()) + "]";
+            case SemanticIndexValue v -> "[" + indexBody(v) + "]";
+            case SemanticIndexFieldValue v -> "[" + indexBody(v) + "]";
             case Today t -> keyword(t.operatorId());
             case Now n -> keyword(n.operatorId());
             case BaseYear b -> keyword(b.operatorId());
@@ -401,5 +401,27 @@ public final class DslRenderer {
         OperatorEntry entry = catalog.byId(operatorId)
                 .orElseThrow(() -> new IllegalStateException("no catalog entry for operator id: " + operatorId));
         return language == ConditionLanguage.DE ? entry.keywords().de() : entry.keywords().en();
+    }
+
+    /**
+     * The reserved self-reference keyword for the rule's own group (a grammar keyword, not an operator —
+     * so it isn't in the catalog): EN {@code RuleGroup}, DE {@code RegelKontext} (kernel lexer
+     * {@code RULE_GROUP}, verified against source).
+     */
+    private String ruleGroupKeyword() {
+        return language == ConditionLanguage.DE ? "RegelKontext" : "RuleGroup";
+    }
+
+    /**
+     * The bare {@code Field For key} body of a semantic index — the value read wraps it in {@code [ ]}
+     * ({@code [Field For key]}); a {@code FieldFilled}/{@code FieldNotFilled} presence renders it bare.
+     */
+    private String indexBody(IndexedFieldValue index) {
+        return switch (index) {
+            case SemanticIndexValue v ->   // literal key: a quoted constant
+                    path(v.field().path()) + " " + keyword(v.operatorId()) + " " + quote(v.indexValue());
+            case SemanticIndexFieldValue v ->   // field key: a bare field path, not a quoted literal
+                    path(v.field().path()) + " " + keyword(v.operatorId()) + " " + path(v.indexField().path());
+        };
     }
 }

@@ -32,11 +32,20 @@ public record Computation(
         Optional<Condition> commonPrecondition,
         List<Alternative> alternatives,
         List<LocalizedText> messages,
-        Comments comments) {
+        Comments comments,
+        List<String> errorCodesToSuppress) {
 
     public Computation {
         alternatives = List.copyOf(alternatives);
         messages = List.copyOf(messages);
+        errorCodesToSuppress = List.copyOf(errorCodesToSuppress);
+    }
+
+    /** No suppressions — keeps pre-{@code errorCodesToSuppress} constructors (e.g. read-back) unchanged. */
+    public Computation(String groupPath, String name, FieldRef computedField,
+            Optional<Condition> commonPrecondition, List<Alternative> alternatives,
+            List<LocalizedText> messages, Comments comments) {
+        this(groupPath, name, computedField, commonPrecondition, alternatives, messages, comments, List.of());
     }
 
     public record Alternative(Optional<Condition> precondition, Calculation operation) {
@@ -63,10 +72,19 @@ public record Computation(
                         .map(a -> new DraftComputation.Alternative(
                                 a.precondition().map(p -> renderer.render(p, comments)).orElse(null),
                                 renderer.render(a.operation(), comments)))
-                        .toList());
+                        .toList(),
+                errorCodesToSuppress);
     }
 
     public static final class Builder {
+
+        /**
+         * The kernel's supported {@code errorCodesToSuppress} set — currently only the static
+         * assignment-scale gate ({@code IComputation.getErrorCodesToSuppress}, KERNEL-FINDINGS; IF92).
+         * A code outside it is refused with a corrective error rather than silently written.
+         */
+        private static final java.util.Set<String> SUPPORTED_SUPPRESSIONS =
+                java.util.Set.of("MVK_INVALID_COMPARE_DEC_PLACES");
 
         private final FieldRef computedField;
         private final List<String> declaredLocales;
@@ -74,6 +92,7 @@ public record Computation(
         private Condition commonPrecondition;
         private final List<Alternative> alternatives = new ArrayList<>();
         private final List<LocalizedText> messages = new ArrayList<>();
+        private final List<String> errorCodesToSuppress = new ArrayList<>();
         private Comments comments = Comments.none();
         private String rootComment;
 
@@ -105,6 +124,23 @@ public record Computation(
 
         public Builder message(LocalizedText... texts) {
             messages.addAll(List.of(texts));
+            return this;
+        }
+
+        /**
+         * Declare {@code errorCodesToSuppress} ({@code IComputation.getErrorCodesToSuppress}) — the kernel's
+         * model-level escape hatch. Each code is domain-checked against the kernel's supported set
+         * (currently only {@code MVK_INVALID_COMPARE_DEC_PLACES}, the static assignment-scale gate that lets
+         * a scale-mismatched operation load — IF92); an unsupported code is refused fail-fast, not written.
+         */
+        public Builder errorCodesToSuppress(String... codes) {
+            for (String code : codes) {
+                if (!SUPPORTED_SUPPRESSIONS.contains(code)) {
+                    throw new IllegalArgumentException("errorCodesToSuppress only accepts the kernel's"
+                            + " supported set " + SUPPORTED_SUPPRESSIONS + " — got '" + code + "'");
+                }
+            }
+            errorCodesToSuppress.addAll(List.of(codes));
             return this;
         }
 
@@ -183,7 +219,8 @@ public record Computation(
             Comments finalComments = rootComment == null ? comments
                     : comments.before(alternatives.get(0).operation(), rootComment);
             return new Computation(groupPath, name, computedField,
-                    Optional.ofNullable(commonPrecondition), alternatives, messages, finalComments);
+                    Optional.ofNullable(commonPrecondition), alternatives, messages, finalComments,
+                    errorCodesToSuppress);
         }
 
         /** Lifts an {@code MVK_*}/{@code RK_*} code out of a precheck message when it names one. */

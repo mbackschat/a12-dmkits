@@ -1,0 +1,91 @@
+package io.github.mbackschat.a12.dm.docsnippets;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
+import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
+import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
+
+/**
+ * The canonical, runnable snippets for the typed authoring shapes closed under DEV-API-GAPS §2 — each
+ * tagged region is mirrored verbatim into {@code docs/API-GUIDE.md} and locked by
+ * {@link io.github.mbackschat.a12.dm.DocSnippetFreshnessTest}. Authored here so the guide shows code that
+ * genuinely compiles and renders against the real kernel (order fixture).
+ */
+class NewShapesSnippetsTest {
+
+    private static final BoundModel m = Fixtures.order();
+
+    @Test
+    void dateMinMaxSnippet() {
+        // tag::date-minmax[]
+        // Min/Max over DATE operands yield a DateExpr — comparable to any date operand (KERNEL-FINDINGS §6).
+        // The type system forbids number/date mixing: min(dates) accepts only date operands.
+        Condition earliestBeforeCutoff =
+                Dsl.min(m.date("/Order/OrderDate"), m.date("/Order/DeliveryDate"))
+                        .before(Dsl.dateValue("20.03.2026"));   // Min([A], [B]) < "20.03.2026"
+        // end::date-minmax[]
+        assertEquals("Min([/Order/OrderDate], [/Order/DeliveryDate]) < \"20.03.2026\"",
+                new DslRenderer().render(earliestBeforeCutoff));
+    }
+
+    @Test
+    void indexedPresenceSnippet() {
+        // tag::indexed-presence[]
+        // The semantic index [Count For "SKU-1"] reads a cell; .filled()/.notFilled() test its presence.
+        // (Only a forIndex(...) result carries a presence — a bare aggregate does not.)
+        Condition present = m.num("/Order/Items/Count").forIndex("SKU-1").filled();
+        // end::indexed-presence[]
+        assertEquals("FieldFilled(/Order/Items/Count For \"SKU-1\")", new DslRenderer().render(present));
+    }
+
+    @Test
+    void ruleGroupSnippet() {
+        // tag::rule-group[]
+        // Dsl.ruleGroup() is the rule's OWN group (the kernel's RegelKontext) — it renders the reserved
+        // keyword, never a path. On a rule iterating a repeatable group it guards "is this row present".
+        Condition attachment = Dsl.ruleGroup().filled()
+                .and(Dsl.notExactlyOneFieldFilled(m.num("/Order/Items/Count").field(),
+                        m.num("/Order/Items/UnitWeight").field()));
+        // end::rule-group[]
+        assertEquals("GroupFilled(RuleGroup) And NotExactlyOneFieldFilled(/Order/Items/Count, /Order/Items/UnitWeight)",
+                new DslRenderer().render(attachment));
+    }
+
+    @Test
+    void starredValueListSnippet() {
+        // tag::starred-value-list[]
+        // A value-list quantifier over a flattened repetition list — the starred FIELDS side.
+        Condition anyForbidden = Dsl.atLeastOneFieldValueIncludedInValueList(
+                List.of("A", "B"), m.flatten("/Order/Items*/Sku"));   // …(/Order/Items*/Sku In "A", "B")
+        // end::starred-value-list[]
+        assertEquals("AtLeastOneFieldValueIncludedInValueList(/Order/Items*/Sku In \"A\", \"B\")",
+                new DslRenderer().render(anyForbidden));
+    }
+
+    @Test
+    void computationSuppressionSnippet() {
+        // tag::computation-suppress[]
+        // errorCodesToSuppress — the kernel's model-level escape hatch (domain-checked): it lets a
+        // scale-mismatched operation load (the static assignment-scale gate, MVK_INVALID_COMPARE_DEC_PLACES).
+        NumberExpr product = m.num("/Order/UnitPrice").asNumber().times(m.num("/Order/UnitPrice").asNumber());
+        Computation comp = m.computation(m.num("/Order/BackorderQuantity"))
+                .name("BackorderProjection")
+                .calc(product.expression())              // scale-4 product into a scale-0 target
+                .errorCodesToSuppress("MVK_INVALID_COMPARE_DEC_PLACES")
+                .message(Dsl.en("Backorder derived from the unit price."))
+                .build();
+        // end::computation-suppress[]
+        assertTrue(new RuleValidator().check(Fixtures.orderJson(), comp.draft()).ok());
+    }
+}
