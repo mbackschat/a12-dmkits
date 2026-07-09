@@ -113,14 +113,14 @@ dmtool model diff examples/models/order-ruled.dm.json /tmp/postalcode-flipped.dm
 
 ### Not every condition change is dangerous — the tool classifies it
 
-A flip is HIGH, but most condition edits are routine. `model diff` reads the two ASTs and **classifies** a non-inverted change so a reviewer can triage: `CONDITION_RESTRUCTURED` (a clause was added/removed), `REFERENCE_CHANGED` (it now reads different fields), `OPERATOR_CHANGED` (an operator swapped in place), or `THRESHOLD_CHANGED` (only a literal moved) — all MEDIUM. Here we bump a date rule's threshold from `< 0` to `< -1` (same shape, same fields, one literal):
+A flip is HIGH, but most condition edits are routine. `model diff` reads the two ASTs and **classifies** a non-inverted change so a reviewer can triage: `CONDITION_RESTRUCTURED` (a clause was added/removed), `REFERENCE_CHANGED` (it now reads different fields), `OPERATOR_CHANGED` (an operator swapped in place), or `THRESHOLD_CHANGED` (only a literal moved) — all MEDIUM. On top of the coarse code it also emits a **located edit-script**: *which* clause/operand moved. Here we bump a date rule's threshold from `< 0` to `< -1` (same shape, same fields, one literal):
 
 ```bash
 cp examples/models/order-ruled.dm.json /tmp/threshold-bumped.dm.json
 dmtool -m /tmp/threshold-bumped.dm.json rule modify /Order/DeliveryNotBeforeOrder \
   --condition 'AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) < -1' >/dev/null 2>&1
 dmtool model diff examples/models/order-ruled.dm.json /tmp/threshold-bumped.dm.json \
-  | jq '.data.changes | map(select(.change=="MODIFIED")) | map({id, risk, riskReasons})'
+  | jq '.data.changes | map(select(.change=="MODIFIED")) | map({id, riskReasons, located: [.deltas[] | select(.aspect=="condition") | .conditionEdits[].summary]})'
 
 ```
 
@@ -128,15 +128,17 @@ dmtool model diff examples/models/order-ruled.dm.json /tmp/threshold-bumped.dm.j
 [
   {
     "id": "/Order/DeliveryNotBeforeOrder",
-    "risk": "MEDIUM",
     "riskReasons": [
       "THRESHOLD_CHANGED"
+    ],
+    "located": [
+      "threshold 0→-1 on DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate)"
     ]
   }
 ]
 ```
 
-→ `THRESHOLD_CHANGED` (MEDIUM): the structure and fields are untouched, only a literal moved — the tool says *what kind* of change it is, not just *that* it changed. So a reviewer scanning a large diff sees the HIGH flip first and can fast-skip the routine threshold tweaks. (The before/after condition text still rides each change's `deltas`; the precise located edit — *which* operand moved — is LEDGER MR1.)
+→ `THRESHOLD_CHANGED` (MEDIUM) says *what kind* of change; the `located` edit says *exactly which* operand moved — `threshold 0→-1` on the `DifferenceInDays` clause, not just "the condition changed". The tool flattens `And`/`Or` chains and matches operands by content, so a clause **inserted** into a chain is reported as one add (a downstream clause is never mislocated), and a pure re-association is no edit at all; a genuinely ambiguous restructure degrades to the coarse kind. So a reviewer scanning a large diff sees the HIGH flip first, then triages each routine edit by its one-line location.
 
 ### A refactor is one operation, not N edits
 

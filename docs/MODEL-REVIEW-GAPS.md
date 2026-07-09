@@ -4,9 +4,7 @@
 
 ## 1. Open — tractable, to build
 
-These are the remaining completeness gaps between the structural diff and a *complete* one (SPEC §5e).
-
-- **MR1 — precise *located* condition edit-script.** Shipped so far: `POLARITY_INVERTED` (a clean structural flip, `ConditionPolarity`, SPEC §5c) and a **coarse classification** of any other condition change (`ConditionEdit` → `CONDITION_RESTRUCTURED`/`REFERENCE_CHANGED`/`OPERATOR_CHANGED`/`THRESHOLD_CHANGED`, SPEC §5e). What remains is the **located** edit script — *which* clause/operand moved ("the `And` clause referencing X was added", "threshold 1000→2000 on [Y]") — i.e. a positional tree diff over the Condition + `Calculation` ASTs, not just the change *category*. *(SPEC §5a/§5e.)*
+The completeness gaps between the structural diff and a *complete* one (SPEC §5e). **None currently open** — the diff-completeness set (reorder-as-change, exact + similarity move/rename matching, relational refactor grouping, and the located condition edit-script) has shipped; the contract lives in [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md) §5. New gaps land here as found.
 
 ## 2. Deferred — with a re-open trigger
 

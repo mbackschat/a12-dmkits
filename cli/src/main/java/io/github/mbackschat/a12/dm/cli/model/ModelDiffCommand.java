@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.review.ModelDiff;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.model.GitBaseline.GitBaselineException;
@@ -116,6 +117,9 @@ final class ModelDiffCommand extends BaseCommand {
                     if (delta.after() != null) {
                         d.put("after", delta.after());
                     }
+                    if (delta.aspect().equals("condition")) {
+                        writeConditionEdits(d, diff.conditionEdits().get(change.id()));
+                    }
                 }
                 switch (change.change()) {
                     case ADDED -> added++;
@@ -146,6 +150,27 @@ final class ModelDiffCommand extends BaseCommand {
             return env.exitCode();
         } catch (RuntimeException e) {
             return fail("diff failed: " + e.getMessage());
+        }
+    }
+
+    /** Attach the located edit-script (MR1) to a condition delta — {@code which} clause/operand changed. */
+    private static void writeConditionEdits(ObjectNode conditionDelta, ConditionEditScript script) {
+        if (script == null) {
+            return;
+        }
+        ArrayNode edits = conditionDelta.putArray("conditionEdits");
+        for (ConditionEditScript.LocatedEdit edit : script.edits()) {
+            ObjectNode e = edits.addObject();
+            e.put("op", edit.op().name());
+            e.put("address", edit.address());
+            e.put("nodeKind", edit.nodeKind());
+            if (edit.before() != null) {
+                e.put("before", edit.before());
+            }
+            if (edit.after() != null) {
+                e.put("after", edit.after());
+            }
+            e.put("summary", edit.summary());
         }
     }
 

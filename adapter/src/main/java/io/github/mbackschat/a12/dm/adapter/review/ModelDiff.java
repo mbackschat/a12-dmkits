@@ -15,6 +15,7 @@ import io.github.mbackschat.a12.dm.adapter.ReadResult;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEdit;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionPolarity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
@@ -36,10 +37,11 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
  * removed+added pair that is the same element relocated is re-labelled {@code RENAMED}/{@code MOVED} by a
  * two-layer matcher — an exact-fingerprint fast path, then a mutual-best similarity matcher that survives a
  * rename+edit (§5) — always conservative (unsure ⇒ remove+add). A reference-rewriting refactor is folded
- * into one {@link Refactor} (MR4, §5g). The fuller AST edit-script (which operand/clause moved) and
- * computations/groups are later slices (MODEL-REVIEW-GAPS MR1).
+ * into one {@link Refactor} (§5g), and a changed condition carries a located {@link ConditionEditScript}
+ * (which clause/operand moved, §5e). Computations and groups are a later element-family slice.
  */
-public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors) {
+public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
+        Map<String, ConditionEditScript> conditionEdits) {
 
     /** The element families this slice diffs (computation/group come later). */
     public enum ElementKind { FIELD, RULE }
@@ -86,7 +88,38 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors) {
         detectReorders(ElementKind.RULE, baseRuleAspects.keySet(), headRuleAspects.keySet(), changes);
         pairRenames(changes, baseRules, headRules);
         pairSimilar(changes, baseRules, headRules);
-        return new ModelDiff(List.copyOf(changes), groupRefactors(changes, baseRules, headRules));
+        return new ModelDiff(List.copyOf(changes), groupRefactors(changes, baseRules, headRules),
+                locatedConditionEdits(changes, baseRules, headRules));
+    }
+
+    /**
+     * The located condition edit-script (MR1) per rule change that touched its condition, keyed by change id —
+     * a precise refinement over the coarse {@code riskReasons} ({@link ConditionEditScript}). The head
+     * condition is read under the rule's head name (its new name for a {@code RENAMED}/{@code MOVED} rule).
+     */
+    private static Map<String, ConditionEditScript> locatedConditionEdits(List<ElementChange> changes,
+            KernelAdapter base, KernelAdapter head) {
+        Map<String, ConditionEditScript> out = new LinkedHashMap<>();
+        for (ElementChange c : changes) {
+            // only a rule present on BOTH sides has a base→head condition to locate (an ADDED/REMOVED rule's
+            // condition is one-sided — there is nothing to diff, and reading the absent side would fail)
+            boolean bothSides = c.change() == ChangeKind.MODIFIED || c.change() == ChangeKind.RENAMED
+                    || c.change() == ChangeKind.MOVED;
+            if (c.element() != ElementKind.RULE || !bothSides
+                    || c.deltas().stream().noneMatch(d -> d.aspect().equals("condition"))) {
+                continue;
+            }
+            String headName = c.change() == ChangeKind.RENAMED || c.change() == ChangeKind.MOVED
+                    ? pathAfter(c) : c.id();
+            if (base.read(c.id()) instanceof ReadResult.Converted b
+                    && head.read(headName) instanceof ReadResult.Converted h) {
+                ConditionEditScript script = ConditionEditScript.diff(b.condition(), h.condition());
+                if (!script.edits().isEmpty()) {
+                    out.put(c.id(), script);
+                }
+            }
+        }
+        return out;
     }
 
     /** Base-order REMOVED/MODIFIED first, then head-only ADDED — deterministic for a stable input order. */

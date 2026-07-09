@@ -62,6 +62,23 @@
                 "after": {
                   "type": "string",
                   "description": "the head-side value (absent when the element is REMOVED)"
+                },
+                "conditionEdits": {
+                  "type": "array",
+                  "description": "on a `condition` delta only — the LOCATED edit-script (MR1): WHICH clause/operand changed, a precise refinement over the coarse riskReason. And/Or chains are flattened and matched by content, so a clause inserted into a chain is one ADDED (a downstream clause is never mislocated) and a pure re-association is no edit; a genuinely ambiguous restructure degrades to the coarse kind for that region.",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["op", "address", "nodeKind", "summary"],
+                    "properties": {
+                      "op": { "type": "string", "enum": ["ADDED", "REMOVED", "REPLACED"], "description": "the node/subtree was added, removed, or replaced at this address" },
+                      "address": { "type": "string", "description": "the breadcrumb of enclosing logic operators (\"\" at the root, \"And\", \"And/Or\") — stable under And/Or re-association, unlike raw left/right indices" },
+                      "nodeKind": { "type": "string", "description": "the affected node's operator id (\"?\" for a degraded coarse region)" },
+                      "before": { "type": "string", "description": "the base-side rendered subtree (absent for an ADDED clause)" },
+                      "after": { "type": "string", "description": "the head-side rendered subtree (absent for a REMOVED clause)" },
+                      "summary": { "type": "string", "description": "the human line (e.g. \"threshold 1000→2000 on [Amount]\", \"added clause: FieldFilled(Approved)\")" }
+                    }
+                  }
                 }
               }
             }

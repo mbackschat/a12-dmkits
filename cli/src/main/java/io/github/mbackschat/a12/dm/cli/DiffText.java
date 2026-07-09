@@ -114,6 +114,18 @@ final class DiffText implements VerbText {
                     .append(relocationSuffix(c))
                     .append("  ").append(reasons(c))
                     .append('\n');
+            appendConditionEdits(sb, c);
+        }
+    }
+
+    /** The located edit-script (MR1) as indented {@code ↳ <summary>} sub-lines under a changed condition. */
+    private static void appendConditionEdits(StringBuilder sb, JsonNode change) {
+        for (JsonNode d : change.path("deltas")) {
+            if ("condition".equals(d.path("aspect").asText())) {
+                for (JsonNode edit : d.path("conditionEdits")) {
+                    sb.append("      ↳ ").append(edit.path("summary").asText()).append('\n');
+                }
+            }
         }
     }
 
