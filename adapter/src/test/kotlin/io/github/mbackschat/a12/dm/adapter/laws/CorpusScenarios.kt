@@ -95,7 +95,7 @@ object CorpusScenarios {
 
     private fun orderQtyBelowThreshold(): Family = family(
         "comparison", orderQtyLowModel,
-        CaseMeta("order-qty-below-threshold", PENDING, CaseSource.CURATED, listOf("§7"),
+        CaseMeta("order-qty-below-threshold", PENDING, CaseSource.CURATED, listOf("§5"),
             tags = listOf("comparison"), notes = "a number comparison firing on a below-threshold value"),
         listOf(group("/Order", 1), field("/Order/Quantity", "5", 1, 1)),
         Op.ValidateFull,
@@ -103,7 +103,7 @@ object CorpusScenarios {
 
     private fun orderQtyWithinThreshold(): Family = family(
         "comparison", orderQtyLowModel,
-        CaseMeta("order-qty-within-threshold", PENDING, CaseSource.CURATED, listOf("§7"),
+        CaseMeta("order-qty-within-threshold", PENDING, CaseSource.CURATED, listOf("§5"),
             tags = listOf("comparison"), notes = "nothing fires — an empty expected multiset is a real assertion"),
         listOf(group("/Order", 1), field("/Order/Quantity", "20", 1, 1)),
         Op.ValidateFull,
@@ -112,7 +112,7 @@ object CorpusScenarios {
     /** A per-row computation over a repeatable group — per-row identity. */
     private fun orderStockPerRow(): Family = family(
         "compute", orderStockComputeModel,
-        CaseMeta("order-stock-per-row", PENDING, CaseSource.CURATED, listOf("§2"),
+        CaseMeta("order-stock-per-row", PENDING, CaseSource.CURATED, listOf("§9", "§11"),
             tags = listOf("compute"), notes = "a per-row computation over a repeatable group — per-row identity"),
         listOf(
             group("/Order", 1),
@@ -124,13 +124,13 @@ object CorpusScenarios {
 
     /**
      * A STRING computed cell seeded with exactly the value it computes — a kernel NON-change, so
-     * `computeExpected` omits it (the kernel's change-only reporting granularity, [§7]); the report-all
+     * `computeExpected` omits it (the kernel's change-only reporting granularity, CONFORMANCE-CORPUS-SPEC §7); the report-all
      * interpreter must project its seed-equal VALUE away on replay ([kernelComputeGranularity]) instead of
      * false-failing. The guard for the compute-granularity `kernel=absent,interp=VALUE` comparison artifact.
      */
     private fun orderNameSeedEqual(): Family = family(
         "compute", orderNameComputeModel,
-        CaseMeta("order-name-seed-equal", PENDING, CaseSource.CURATED, listOf("§2"),
+        CaseMeta("order-name-seed-equal", PENDING, CaseSource.CURATED, listOf("§11"),
             tags = listOf("compute", "granularity"),
             notes = "a computed STRING equal to its seeded input — a kernel non-change; report-all engines project (§7)"),
         listOf(
@@ -148,7 +148,7 @@ object CorpusScenarios {
      */
     private fun orderPhantomItemRow(): Family = family(
         "partial", orderStockLowModel,
-        CaseMeta("order-phantom-item-row", PENDING, CaseSource.CURATED, listOf("§13"),
+        CaseMeta("order-phantom-item-row", PENDING, CaseSource.CURATED, listOf("§12"),
             tags = listOf("partial", "phantom-row"), notes = "partial validation fires on a relevant row absent from the instance (IF54)"),
         listOf(group("/Order", 1)),
         Op.ValidatePart(listOf(RelevantPointer("/Order", listOf(1)))),
@@ -156,7 +156,7 @@ object CorpusScenarios {
 
     private fun orderDeliveryDateInPast(): Family = family(
         "clock", orderDeliveryPastModel,
-        CaseMeta("order-delivery-date-in-past", PENDING, CaseSource.CURATED, listOf("§8"),
+        CaseMeta("order-delivery-date-in-past", PENDING, CaseSource.CURATED, listOf("§6"),
             tags = listOf("clock", "dates"), notes = "a Today comparison, deterministic under the pinned clock"),
         listOf(group("/Order", 1), field("/Order/DeliveryDate", "2020-01-01", 1, 1)),
         Op.ValidateFull,
@@ -170,7 +170,7 @@ object CorpusScenarios {
         val seed = 7
         return family(
             "fuzz", model("calc-cascade", scenario.kernelModel),
-            CaseMeta("compute-cascade-seed", PENDING, CaseSource.FUZZ_SEED, listOf("§2"),
+            CaseMeta("compute-cascade-seed", PENDING, CaseSource.FUZZ_SEED, listOf("§11"),
                 tags = listOf("compute", "fuzz"), seed = seed, scenario = scenario.name,
                 notes = "a pinned computation-cascade fuzz seed"),
             record(scenario, seed), Op.Compute,
