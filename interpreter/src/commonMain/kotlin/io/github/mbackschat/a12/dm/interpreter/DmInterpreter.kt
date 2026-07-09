@@ -686,6 +686,12 @@ class DmInterpreter @JvmOverloads constructor(
         // dependency read stale-and-invalid would wrongly trip the gate). KERNEL-FINDINGS §2 (cascade clearing).
         val cleared = HashSet<Pair<String, List<Int>>>()
         val emptyOf: (String) -> Val = { p -> emptyValue(model.kinds[p] ?: Kind.STRING) }
+        // A computed NUMBER is STORED padded to its field's minFractionalDigits (IF82) — so a downstream read of
+        // a cascade-overlaid value must see that SAME stored form. Without this an integer-valued computed
+        // operand (a constant `10`, a whole-number result) reads back as `10` (0 fractional digits) and a min-2
+        // field's poison gate ([computeFormalErrorAt]) wrongly flags it `zahlFalscheAnzahlNachkommastellen` →
+        // poisons a downstream computation the kernel computes fine (IF90).
+        val minFracOf: (String) -> Int = { p -> model.constraintsOf(p).minFractionalDigits ?: 0 }
         val poisoned = HashSet<Pair<String, List<Int>>>()
         // A FILLED operand that is "not check-relevant" — formally invalid — makes a computation over it
         // non-evaluable (IG44/IF76, generalized IF78; poison semantics IF85). The gate is the SAME
@@ -705,7 +711,7 @@ class DmInterpreter @JvmOverloads constructor(
                 val targetKey = comp.targetPath to ctx.repsOf(comp.targetPath)
                 if (targetKey in decided) continue   // an earlier computation's non-empty outcome already won (IF87)
                 val ectx = if (overlay.isEmpty() && cleared.isEmpty() && poisoned.isEmpty()) ctx
-                    else OverlayContext(ctx, overlay, cleared, poisoned, emptyOf)
+                    else OverlayContext(ctx, overlay, cleared, poisoned, emptyOf, minFracOf)
                 val interp = Interpreter(ectx, clock, model.baseYear, model.indexFields, predefinedTypes,
                     // The compute gate THROWS (IF85): consulting it on a filled formally-invalid operand IS the
                     // kernel's poisoning read (validation's gate stays Boolean → the 3VL exclusion).
@@ -842,6 +848,7 @@ class DmInterpreter @JvmOverloads constructor(
         private val cleared: Set<Pair<String, List<Int>>>,
         private val poisoned: Set<Pair<String, List<Int>>>,
         private val emptyOf: (String) -> Val,
+        private val minFracOf: (String) -> Int,
     ) : EvalContext by d {
         private fun overlaid(path: String): Val? = overlay[path to d.repsOf(path)]
         private fun isCleared(path: String): Boolean = path to d.repsOf(path) in cleared
@@ -862,7 +869,9 @@ class DmInterpreter @JvmOverloads constructor(
         override fun displayValue(path: String): String? {
             poisonIfPoisoned(path)
             return if (isCleared(path)) null else when (val v = overlaid(path)) {
-                is Val.Num -> v.v.display()
+                // The STORED form of a computed number (padded to the target's minFractionalDigits, IF82/IF90) —
+                // so a downstream poison gate sees the same value the kernel stored, not an unpadded `10`.
+                is Val.Num -> v.v.display(minFracOf(path))
                 is Val.Txt -> v.v
                 is Val.Bool -> v.v.toString()
                 else -> d.displayValue(path)
