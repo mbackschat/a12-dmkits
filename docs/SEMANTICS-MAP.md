@@ -56,3 +56,29 @@ Lock-tree classes whose subject is not one kernel-semantics section — the conc
 | Cross-cutting differentials & engine seams (whole-surface, no single section) | `ValidateFullDiffTest`, `InterpreterDiffTest`, `OperatorBatteryDiffTest`, `FullMessageFuzzDiffTest`, `FuzzDiagnosticsTest`, `KernelProbeTest`, `EvalDocSeamLawsTest`, `InterpreterMultiplatformTest`, `DeterminismPropertyTest`, `UnsupportedDegradeTest` |
 | Triage / sweep instruments (opt-in, tagged) | `ModelShrinkTest`, `RawAtomShrinkTest`, `RealCorpusSweepTest`, `MinimalReplayTest` |
 | DM-JSON loader & instance seeding | `ModelLoaderTest`, `SeedGeneratorTest`, `ValidValuesConstraintTest` |
+
+## Vocabulary — recurring shorthand
+
+The cross-doc shorthand the findings, ledgers, and session reports use. This table is an **index, not a second definition** — each term's defining home is linked and carries the truth (the resolve-guard checks the links). A term earns a row only when it recurs outside its defining home.
+
+| Term | One-line meaning | Defining home |
+|---|---|---|
+| **3VL / Kleene** | the condition language's three-valued logic (TRUE / FALSE / UNKNOWN) | [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §1 |
+| **empty-as-0 / fillable 0 / NOT-GIVEN** | an unspecified NUMBER reads as a fillable 0 in comparisons/aggregates; dates/strings read NOT-GIVEN instead (per-kind) | [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §2 + [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2 supplements |
+| **not-check-relevant** | the third cell state (`nichtPruefungsrelevant`) — filled but formally invalid: excluded from fill tallies, non-evaluable in aggregates, clears/poisons compute | [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §3/§4 supplements |
+| **suppression** | a formal error on a field suppresses the rules referencing it | [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §3 |
+| **polarity: VALUE vs OMISSION** | the fired message's error-type — "what you entered is wrong" vs "filling something could change this" — decided by the directional-fill machinery | [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) §12 + [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §12 supplements |
+| **poison / poison-on-read** | compute-time invalidity propagation: reading a formally-invalid cell aborts the computing instance (order-dependently) and cascades to dependents | [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §11 supplements (interpreter treatment: IF85) |
+| **stored form** | the exact string a computed value is stored as (min-frac padding, the IF92 store path) — what downstream reads and formal checks see | [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §11 supplements |
+| **compute outcome kinds** (`VALUE`/`CLEARED`/`ERRORED`/`absent`) | what the kernel reports per computed cell | [CONFORMANCE-CORPUS-SPEC](CONFORMANCE-CORPUS-SPEC.md) §7 |
+| **change-only vs report-all (granularity)** | the kernel's compute report carries changes only (typed equality vs the input); the interpreter reports every instance — comparison surfaces project first | [CONFORMANCE-CORPUS-SPEC](CONFORMANCE-CORPUS-SPEC.md) §7 + [KERNEL-FINDINGS](KERNEL-FINDINGS.md) "compute reporting granularity" |
+| **seed-equal artifact** | the phantom `kernel=absent, interp=VALUE` unit produced by comparing report-all to change-only when a computed STRING equals its seed | [CONFORMANCE-CORPUS-SPEC](CONFORMANCE-CORPUS-SPEC.md) §7 |
+| **phantom row** | a `validatePart` relevant-set row that does not exist in the document but is still evaluated | [CONFORMANCE-CORPUS-SPEC](CONFORMANCE-CORPUS-SPEC.md) §5 + [INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) IF54 |
+| **atom** | one per-pointer `(kernel-kind, interp-kind)` divergence pair — the sweep's counting unit | [INTERPRETER-GAPS](INTERPRETER-GAPS.md) §1 drill tooling + `RawAtomShrinkTest` KDoc |
+| **CVV / VCV** | the two compute divergence directions: `kernel=CLEARED, interp=VALUE` and `kernel=VALUE, interp=CLEARED` (over-suppression) | [INTERPRETER-GAPS](INTERPRETER-GAPS.md) §1 (sweep shorthand; spelled out in the findings that use it) |
+| **kernel-only / interp-only / both-differ** | the validateFull sweep classes: fired-code units only one engine produced, or both produced differently | the `SweepReport` instrumentation (adapter test source); used across INTERPRETER-GAPS/FINDINGS |
+| **tri-check / quad-check** | one lock asserting groovy-dynamic == java-static == interpreter (a quad adds a fourth arm, e.g. a rejection control) | [CONFORMANCE-CORPUS-SPEC](CONFORMANCE-CORPUS-SPEC.md) §13 (the replay matrix) + the [archived program](archived/SEMANTICS-FORMALIZATION-PROPOSAL.md) §6.1 |
+| **anchor (groovy-dynamic)** | the production-normative kernel strategy the corpus `expected` records; a java-static divergence is recorded, never adopted | [CONFORMANCE-CORPUS-SPEC](CONFORMANCE-CORPUS-SPEC.md) §1 |
+| **dry / until-dry** | a discovery loop's stop rule: N consecutive hunts yielding nothing new | the [`run-work-program` skill](../.claude/skills/run-work-program/SKILL.md) |
+| **hostile seeding** | the sweep's opt-in constraint-VIOLATING value mode (`-Dcorpus.hostile=true`), exposing operand-invalidity classes the nice seeder can't reach | [INTERPRETER-GAPS](INTERPRETER-GAPS.md) §1 (IG56) |
+| **RNU** | `RepetitionNotUnique` — the per-row duplicate-key predicate family | [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §9 supplements |
