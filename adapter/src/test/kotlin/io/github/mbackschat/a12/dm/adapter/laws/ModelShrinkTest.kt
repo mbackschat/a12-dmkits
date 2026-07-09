@@ -1,6 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.interpreter.conformance.Op
 import io.github.mbackschat.a12.dm.interpreter.conformance.Placement
@@ -12,7 +11,6 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.extension
 
 /**
  * **WI-T IG44 driver** — find ONE compute CLEARED-vs-VALUE divergence in the (EUPL/proprietary) workspaces
@@ -31,7 +29,6 @@ class ModelShrinkTest {
         const val MAX_ROWS = 2
         const val CLOCK = "2026-07-07T12:00:00"
         const val MAX_MODELS_SCANNED = 400
-        val MAPPER = ObjectMapper()
     }
 
     @Test
@@ -44,7 +41,7 @@ class ModelShrinkTest {
         val seedFilter = System.getProperty("ig44.seed")?.toIntOrNull()
 
         var scanned = 0
-        for (file in documentModels(root)) {
+        for (file in CorpusShrinkSupport.documentModels(root)) {
             if (modelFilter != null && !file.toString().contains(modelFilter)) continue
             if (scanned >= MAX_MODELS_SCANNED) break
             val kernelJson = runCatching { CorpusModelPreparer.prepareKernelJson(Files.readString(file), resolver) }.getOrNull() ?: continue
@@ -52,7 +49,7 @@ class ModelShrinkTest {
             val model = runCatching { ModelLoader.load(interpJson) }.getOrNull() ?: continue
             if (model.computations.isEmpty()) continue
             scanned++
-            val locale = modelLocale(kernelJson)
+            val locale = CorpusShrinkSupport.modelLocale(kernelJson)
 
             val cvv = findCvv(model, kernelJson, interpJson, locale, seedFilter) ?: continue
             println("\n[IG44] CVV divergence found (model #$scanned): seed=${cvv.seed} pointer=<redacted-path>")
@@ -93,10 +90,10 @@ class ModelShrinkTest {
     private fun shrinkAndReport(kernelJson: String, cvv: Cvv, locale: java.util.Locale) {
         val predicate: (String) -> Boolean = { candidate -> stillDiverges(candidate, cvv, locale) }
         val shrinker = ModelShrinker(predicate)
-        println("[IG44] seed model shape:\n" + indent(ModelShrinker.redactedShape(kernelJson)))
+        println("[IG44] seed model shape:\n" + CorpusShrinkSupport.indented(ModelShrinker.redactedShape(kernelJson)))
         val minimal = shrinker.shrink(kernelJson)
         println("[IG44] shrink spent ${shrinker.runsSpent} engine runs")
-        println("[IG44] MINIMAL model shape (license-safe — the shrink trace):\n" + indent(ModelShrinker.redactedShape(minimal)))
+        println("[IG44] MINIMAL model shape (license-safe — the shrink trace):\n" + CorpusShrinkSupport.indented(ModelShrinker.redactedShape(minimal)))
         // WI-T investigation dump: write the minimal repro to a scratch path for in-memory root-causing (the
         // license boundary blocks PERSISTING corpus content in the repo, not investigating it — IG44). Off by
         // default; point -Dig44.dump=<scratch-file> at a session scratchpad. NEVER a repo path.
@@ -108,7 +105,7 @@ class ModelShrinkTest {
             // Placements are OUR deterministic seeding (not corpus content), so this is license-safe.
             val model = runCatching { ModelLoader.load(CorpusModelPreparer.toInterpreterJson(minimal)) }.getOrNull()
             if (model != null) {
-                val pls = filterPlacements(model, cvv.placements)
+                val pls = CorpusShrinkSupport.filterPlacements(model, cvv.placements)
                 val lines = pls.joinToString("\n") { "${it.kind}|${it.path}|${it.reps.joinToString(",")}|${it.value ?: ""}" }
                 Files.writeString(Path.of("$p.placements"), lines)
                 println("[IG44] minimal placements written to $p.placements")
@@ -122,7 +119,7 @@ class ModelShrinkTest {
     private fun stillDiverges(candidate: String, cvv: Cvv, locale: java.util.Locale): Boolean {
         val interpJson = runCatching { CorpusModelPreparer.toInterpreterJson(candidate) }.getOrNull() ?: return false
         val model = runCatching { ModelLoader.load(interpJson) }.getOrNull() ?: return false
-        val placements = filterPlacements(model, cvv.placements)
+        val placements = CorpusShrinkSupport.filterPlacements(model, cvv.placements)
         val k = runCatching { CorpusEngines.groovyDynamic(candidate, placements, Op.Compute, CLOCK, locale) }.getOrNull() ?: return false
         val i = runCatching {
             kernelComputeGranularity(CorpusEngines.interpret(interpJson, placements, Op.Compute, CLOCK), placements, model)
@@ -130,46 +127,5 @@ class ModelShrinkTest {
         val cleared = if (vcv) i else k
         val valued = if (vcv) k else i
         return cleared.contains("${cvv.pointer}|CLEARED") && valued.any { it.startsWith("${cvv.pointer}|VALUE") }
-    }
-
-    /** Keep only placements whose path still exists in [model]: a FIELD/EMPTY on a declared field, a GROUP on a
-     *  path that is still an ancestor of some field (so ancestors of surviving fields survive too). */
-    private fun filterPlacements(model: ModelDef, placements: List<Placement>): List<Placement> {
-        val fields = model.kinds.keys
-        val groups = fields.flatMap { f -> ancestorPaths(f) }.toSet()
-        return placements.filter { p ->
-            when (p.kind) {
-                io.github.mbackschat.a12.dm.interpreter.conformance.PlacementKind.GROUP -> p.path in groups
-                else -> p.path in fields
-            }
-        }
-    }
-
-    private fun ancestorPaths(fieldPath: String): List<String> {
-        val parts = fieldPath.trim('/').split('/')
-        return (1 until parts.size).map { "/" + parts.take(it).joinToString("/") }
-    }
-
-    private fun indent(s: String) = s.lines().joinToString("\n") { "    $it" }
-
-    private fun modelLocale(kernelJson: String): java.util.Locale {
-        val code = runCatching {
-            MAPPER.readTree(kernelJson).path("header").path("locales").firstOrNull()?.let {
-                if (it.isTextual) it.asText() else it.path("code").asText("")
-            } ?: ""
-        }.getOrDefault("")
-        return if (code.isEmpty()) java.util.Locale.US else java.util.Locale.forLanguageTag(code.replace('_', '-'))
-    }
-
-    private fun documentModels(root: Path): List<Path> {
-        val out = mutableListOf<Path>()
-        Files.walk(root).use { paths ->
-            paths.filter { it.extension == "json" }.sorted().forEach { f ->
-                val ok = runCatching { MAPPER.readTree(Files.readString(f)).path("header").path("modelType").asText() == "document" }
-                    .getOrDefault(false)
-                if (ok) out.add(f)
-            }
-        }
-        return out
     }
 }
