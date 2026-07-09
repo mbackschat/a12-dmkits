@@ -225,12 +225,17 @@ private class ConditionParser(private val src: String, private val base: String)
      * `..Name`** terminal (the `relativeUp` turning point): its optional `Name` label is consumed and DISCARDED
      * (it names the ancestor for validation but never changes the target — see [readRef]). The position is left
      * at the descent `/` (unconsumed) or past the run at a bare ancestor-group reference.
+     *
+     * **Whitespace after a `..` is insignificant** (the kernel's ANTLR lexer hidden channel, IF75/IF91): `.. /seg`
+     * ≡ `../seg` (a descent) and `.. Name` ≡ `..Name` (a discarded turning-point label). Skipping it here
+     * disambiguates a following descent `/` from a turning-point label after the space (IF91).
      */
     private fun readParentUps(): Int {
         var ups = 0
         while (peek() == '.' && pos + 1 < src.length && src[pos + 1] == '.') {
             pos += 2                                                              // consume ".." (one level up)
             ups++
+            skipWs()                                                             // ws after ".." is hidden-channel (IF91)
             when {
                 peek() != '/' -> { skipTurningPointLabel(); break }               // bare "..Name"/".." terminal
                 pos + 2 < src.length && src[pos + 1] == '.' && src[pos + 2] == '.' -> next()   // "/.." — another up
