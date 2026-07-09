@@ -157,13 +157,39 @@ tasks.register('docGuardTest', Test) {
         .optional()
 }
 
+// The semantics-map resolve-guard (SemanticsMapResolveTest) reads the map + KERNEL-FINDINGS + the catalog +
+// the corpus cases + the three lock-test source trees at runtime — its own dedicated task (same rationale as
+// docGuardTest, but its input set is the map's derivation surfaces, incl. TEST SOURCE TREES, which must not
+// become inputs of the broader guard task).
+tasks.register('semanticsMapGuardTest', Test) {
+    description = 'Resolve-guard for docs/SEMANTICS-MAP.md — every cited §/facet/corpus-family/test-class must derive from its live surface.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter { includeTestsMatching 'io.github.mbackschat.a12.dm.cli.SemanticsMapResolveTest' }
+    inputs.files(
+            rootProject.file('docs/SEMANTICS-MAP.md'),
+            rootProject.file('docs/KERNEL-FINDINGS.md'),
+            rootProject.fileTree('src/main/resources/catalog'),
+            rootProject.fileTree('corpus/cases') { include '**/*.json' },
+            rootProject.fileTree('src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws'),
+            rootProject.fileTree('adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws'),
+            rootProject.fileTree('adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws'),
+            rootProject.fileTree('interpreter/src/commonTest'))
+        .withPropertyName('semanticsMapSurfaces')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+        .optional()
+}
+
 tasks.named('test') {
     dependsOn 'docGuardTest'
-    // The repo-file-reading guards live in docGuardTest (with the right inputs); keep them OUT of the cacheable
-    // main suite so a docs/model-only edit can't invalidate all ~620 tests.
+    dependsOn 'semanticsMapGuardTest'
+    // The repo-file-reading guards live in docGuardTest / semanticsMapGuardTest (with the right inputs); keep
+    // them OUT of the cacheable main suite so a docs/model-only edit can't invalidate all ~620 tests.
     filter {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.CliTourFreshnessTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.CommandReferencesResolveTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.SemanticsMapResolveTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.interp.ModelLoaderParityTest'
     }
 }

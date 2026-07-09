@@ -38,7 +38,7 @@ corpus/
 | `meta.id` | yes | Unique case id, equals the file stem. |
 | `meta.kernelVersion` | yes | The kernel version the expectations were captured against (e.g. `"30.8.1"`). |
 | `meta.source` | yes | `fuzz-seed` \| `curated` \| `facet-generated`. |
-| `meta.sections` | yes | The kernel-semantics taxonomy sections this case exercises (e.g. `["§9"]` — the numbering [KERNEL-FINDINGS](KERNEL-FINDINGS.md) mirrors); the join key for the semantics navigation map. |
+| `meta.sections` | yes | The kernel-semantics taxonomy sections this case exercises (e.g. `["§9"]` — the numbering [KERNEL-FINDINGS](KERNEL-FINDINGS.md) mirrors); the join key for the [semantics navigation map](SEMANTICS-MAP.md), whose resolve-guard cross-checks it. |
 | `meta.tags` | no | Free labels (`partial`, `clock`, `phantom-row`, …). Cases with a `validatePart` op MUST carry `partial`. |
 | `meta.seed`, `meta.scenario` | no | Provenance for `fuzz-seed` cases: the generator scenario + seed that produced the instance, so a case can be regenerated. |
 | `meta.notes` | no | One human sentence on what the case pins. |
