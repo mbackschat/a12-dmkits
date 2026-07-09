@@ -138,6 +138,63 @@ dmtool model diff examples/models/order-ruled.dm.json /tmp/threshold-bumped.dm.j
 
 → `THRESHOLD_CHANGED` (MEDIUM): the structure and fields are untouched, only a literal moved — the tool says *what kind* of change it is, not just *that* it changed. So a reviewer scanning a large diff sees the HIGH flip first and can fast-skip the routine threshold tweaks. (The before/after condition text still rides each change's `deltas`; the precise located edit — *which* operand moved — is LEDGER MR1.)
 
+### A refactor is one operation, not N edits
+
+When an agent renames a field, the reference rewrite fans out: the field moves *and* every rule that read it is re-pointed. A naive diff shows that as N+1 unrelated changes — a scary pile. `model diff` folds them: it re-labels the removed+added field as one `RENAMED` (a content-preserving move — its refs were rewritten, so it's LOW, not a deletion), and groups the rewritten referrers under **one** `refactors` entry. Here we rename `/Order/OrderDate`, which the delivery-date rule reads:
+
+```bash
+cp examples/models/order-ruled.dm.json /tmp/order-renamed.dm.json
+dmtool -m /tmp/order-renamed.dm.json field rename /Order/OrderDate --to PlacedDate >/dev/null 2>&1
+dmtool model diff examples/models/order-ruled.dm.json /tmp/order-renamed.dm.json \
+  | jq '{ summary, refactors: .data.refactors, folded: (.data.changes | map({change, id, partOfRefactor})) }'
+
+```
+
+```output
+{
+  "summary": "0 added, 0 removed, 1 modified, 1 renamed/moved",
+  "refactors": [
+    {
+      "kind": "RENAME",
+      "from": "/Order/OrderDate",
+      "to": "/Order/PlacedDate",
+      "referrers": [
+        "/Order/DeliveryNotBeforeOrder"
+      ]
+    }
+  ],
+  "folded": [
+    {
+      "change": "RENAMED",
+      "id": "/Order/OrderDate",
+      "partOfRefactor": 0
+    },
+    {
+      "change": "MODIFIED",
+      "id": "/Order/DeliveryNotBeforeOrder",
+      "partOfRefactor": 0
+    }
+  ]
+}
+```
+
+→ One `refactors` entry captures the whole operation: *`/Order/OrderDate` renamed to `/Order/PlacedDate`, 1 referrer rewritten*. The overlay is **non-destructive** — the raw `RENAMED` field change and the referrer's `MODIFIED` change both still ride `data.changes` (each carrying `partOfRefactor: 0`), so a reviewer can verify the fold from the change-set itself (the trust principle, applied to the tool's *own* output). The pairing is conservative: a removed+added pair is only re-labelled when it's an unambiguous, content-identical relocation (a rename+edit — where the content also changed — is deferred to the similarity matcher, MODEL-REVIEW-SPEC §5). In `--text` the whole refactor collapses to one line:
+
+```bash
+dmtool model diff examples/models/order-ruled.dm.json /tmp/order-renamed.dm.json --text
+
+```
+
+```output
+0 added, 0 removed, 1 modified, 1 renamed/moved
+  (read · valid)
+
+REFACTORS (1)
+  ↻ RENAME /Order/OrderDate → /Order/PlacedDate  (1 referrer rewritten)
+```
+
+→ The `↻` headline says *what happened* as one operation; the referrer's individual `MODIFIED` line is folded under it (still whole in the JSON). A reviewer sees "a rename, one referrer" instead of hunting a field remove/add plus a scattered condition edit.
+
 ### The human view — `--text`
 
 JSON is the default and the machine contract, but a reviewer at the terminal wants to scan. The global `--text` flag renders the change-set **risk-sorted** — HIGH first, one line per change, LOW collapsed to a count — so the dangerous changes are read first:

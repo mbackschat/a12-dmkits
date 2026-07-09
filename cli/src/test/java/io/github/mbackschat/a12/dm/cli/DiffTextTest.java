@@ -51,6 +51,27 @@ class DiffTextTest {
     }
 
     @Test
+    void aRefactorCollapsesItsFoldedMembersUnderOneHeadline() throws Exception {
+        // MR4: the RENAMED anchor + the rewritten referrer are folded under one REFACTORS headline and must
+        // NOT also appear in their own risk tiers (the referrer is MEDIUM but is shown under the refactor).
+        String out = new DiffText().render(M.readTree("""
+            { "changes": [
+                {"element":"FIELD","id":"/Order/OrderDate","change":"RENAMED","risk":"LOW",
+                 "riskReasons":["ELEMENT_RENAMED"],"partOfRefactor":0,
+                 "deltas":[{"aspect":"path","before":"/Order/OrderDate","after":"/Order/PlacedDate"}]},
+                {"element":"RULE","id":"/Order/DeliveryRule","change":"MODIFIED","risk":"MEDIUM",
+                 "riskReasons":["REFERENCE_CHANGED"],"partOfRefactor":0,"deltas":[]} ],
+              "refactors": [
+                {"kind":"RENAME","from":"/Order/OrderDate","to":"/Order/PlacedDate",
+                 "referrers":["/Order/DeliveryRule"]} ] }"""));
+        assertTrue(out.contains("REFACTORS (1)") && out.contains("RENAME")
+                && out.contains("/Order/OrderDate → /Order/PlacedDate") && out.contains("1 referrer rewritten"),
+                () -> "a single refactor headline:\n" + out);
+        assertFalse(out.contains("MEDIUM"), () -> "the folded referrer is not also listed in its risk tier:\n" + out);
+        assertFalse(out.contains("DeliveryRule"), () -> "the folded referrer line is collapsed under the headline:\n" + out);
+    }
+
+    @Test
     void reordersSurfaceInTheirOwnSectionNotCollapsedIntoLow() throws Exception {
         // MR2: a pure reorder is LOW risk but must be VISIBLE (display-order is semantic §2b), so it gets
         // its own section with the before→after position move — not swallowed by the collapsed LOW count.

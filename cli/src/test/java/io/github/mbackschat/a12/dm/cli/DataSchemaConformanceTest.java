@@ -71,6 +71,12 @@ class DataSchemaConformanceTest {
         CliTestSupport.run("model", "new", "--id", "td", "--locale", "en_US", "--root", "R", "-o", td.toString());
         CliTestSupport.run("-m", td.toString(), "typedef", "add", "--id", "Money", "--kind", "NUMBER");
 
+        // a renamed copy of order-ruled, so `model diff` produces the refactor overlay (RENAMED + a rewritten
+        // referrer folded into `data.refactors[]`, and the referrer carries `partOfRefactor`) — MR4's shape
+        Path renamed = dir.resolve("order-renamed.dm.json");
+        Files.copy(order, renamed);
+        CliTestSupport.run("-m", renamed.toString(), "field", "rename", "/Order/OrderDate", "--to", "PlacedDate");
+
         // schemaName -> the data payloads real runs produced (one per documented mode)
         Map<String, List<JsonNode>> emitted = new LinkedHashMap<>();
         List<String> violations = new ArrayList<>();
@@ -81,6 +87,7 @@ class DataSchemaConformanceTest {
                 new Run("describe", new String[]{"-m", order.toString(), "model", "describe"}),
                 new Run("model-usage", new String[]{"-m", order.toString(), "model", "usage"}),
                 new Run("model-diff", new String[]{"model", "diff", order.toString(), sub.toString()}),
+                new Run("model-diff", new String[]{"model", "diff", order.toString(), renamed.toString()}),
                 new Run("model-report", new String[]{"-m", reportModel.toString(), "model", "report"}),
                 new Run("read", new String[]{"-m", sub.toString(), "rule", "read", CliTestSupport.RULE_FULL_NAME}),
                 new Run("read", new String[]{"-m", sub.toString(), "rule", "read"}),

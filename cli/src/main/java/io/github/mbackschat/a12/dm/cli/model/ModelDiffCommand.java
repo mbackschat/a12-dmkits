@@ -87,6 +87,7 @@ final class ModelDiffCommand extends BaseCommand {
             ModelDiff diff = ModelDiff.between(baseJson, headJson);
             ObjectNode data = MAPPER.createObjectNode();
             ArrayNode changes = data.putArray("changes");
+            java.util.Map<String, Integer> refactorOf = refactorIndexByChangeId(diff.refactors());
             int added = 0;
             int removed = 0;
             int modified = 0;
@@ -101,6 +102,10 @@ final class ModelDiffCommand extends BaseCommand {
                 node.put("risk", change.risk().name());
                 ArrayNode reasons = node.putArray("riskReasons");
                 change.reasons().forEach(reasons::add);
+                Integer refactor = refactorOf.get(change.id());
+                if (refactor != null) {
+                    node.put("partOfRefactor", refactor.intValue());
+                }
                 ArrayNode deltas = node.putArray("deltas");
                 for (ModelDiff.Delta delta : change.deltas()) {
                     ObjectNode d = deltas.addObject();
@@ -123,6 +128,15 @@ final class ModelDiffCommand extends BaseCommand {
                     highRisk++;
                 }
             }
+            ArrayNode refactors = data.putArray("refactors");
+            for (ModelDiff.Refactor refactor : diff.refactors()) {
+                ObjectNode node = refactors.addObject();
+                node.put("kind", refactor.kind().name());
+                node.put("from", refactor.from());
+                node.put("to", refactor.to());
+                ArrayNode referrers = node.putArray("referrers");
+                refactor.referrers().forEach(referrers::add);
+            }
             String summary = added + " added, " + removed + " removed, " + modified + " modified"
                     + (relocated > 0 ? ", " + relocated + " renamed/moved" : "")
                     + (reordered > 0 ? ", " + reordered + " reordered" : "")
@@ -133,5 +147,19 @@ final class ModelDiffCommand extends BaseCommand {
         } catch (RuntimeException e) {
             return fail("diff failed: " + e.getMessage());
         }
+    }
+
+    /** Maps a change id (a refactor's rename anchor {@code from}, or one of its {@code referrers}) to that
+     *  refactor's index — each folded change then carries a {@code partOfRefactor} back-pointer (first wins). */
+    private static java.util.Map<String, Integer> refactorIndexByChangeId(List<ModelDiff.Refactor> refactors) {
+        java.util.Map<String, Integer> index = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < refactors.size(); i++) {
+            ModelDiff.Refactor r = refactors.get(i);
+            index.putIfAbsent(r.from(), i);
+            for (String referrer : r.referrers()) {
+                index.putIfAbsent(referrer, i);
+            }
+        }
+        return index;
     }
 }

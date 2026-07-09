@@ -1,26 +1,34 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * The compact {@code --text} body for {@code model diff} (MODEL-REVIEW-SPEC §5f): the change-set
  * grouped by risk (HIGH → MEDIUM), one scannable line per change, with LOW collapsed to a count — so a
- * reviewer reads the dangerous changes first instead of wading through the verbose JSON tree. The full
- * detail (per-aspect deltas) stays in the JSON the headline already points at.
+ * reviewer reads the dangerous changes first instead of wading through the verbose JSON tree. A
+ * reference-rewriting refactor is collapsed under a single REFACTORS headline (its rename + rewritten
+ * referrers folded, MR4); a pure reorder gets its own section (MR2). The full detail stays in the JSON.
  */
 final class DiffText implements VerbText {
 
     @Override
     public String render(JsonNode data) {
+        Set<String> foldedIntoRefactor = refactorMemberIds(data.path("refactors"));
         List<JsonNode> high = new ArrayList<>();
         List<JsonNode> medium = new ArrayList<>();
         List<JsonNode> low = new ArrayList<>();
         List<JsonNode> reordered = new ArrayList<>();
         for (JsonNode c : data.path("changes")) {
+            // a folded refactor member is shown under the REFACTORS headline instead of its risk tier
+            if (foldedIntoRefactor.contains(c.path("id").asText())) {
+                continue;
+            }
             // a pure reorder is LOW risk but is surfaced in its own section (display-order is semantic, MR2),
             // never swallowed by the collapsed LOW count
             if ("REORDERED".equals(c.path("change").asText())) {
@@ -36,11 +44,37 @@ final class DiffText implements VerbText {
         StringBuilder sb = new StringBuilder();
         appendTier(sb, "HIGH", high);
         appendTier(sb, "MEDIUM", medium);
+        appendRefactors(sb, data.path("refactors"));
         appendReorders(sb, reordered);
         if (!low.isEmpty()) {
             sb.append("LOW: ").append(low.size()).append(" low-risk change(s)\n");
         }
         return sb.isEmpty() ? "(no changes)\n" : sb.toString();
+    }
+
+    /** The ids folded into a refactor (each rename anchor + its referrers) — shown under the headline, not a tier. */
+    private static Set<String> refactorMemberIds(JsonNode refactors) {
+        Set<String> ids = new LinkedHashSet<>();
+        for (JsonNode r : refactors) {
+            ids.add(r.path("from").asText());
+            r.path("referrers").forEach(n -> ids.add(n.asText()));
+        }
+        return ids;
+    }
+
+    /** The refactor section: one headline per grouped rename/move with the count of referrers it rewrote. */
+    private static void appendRefactors(StringBuilder sb, JsonNode refactors) {
+        if (refactors.isEmpty()) {
+            return;
+        }
+        sb.append("REFACTORS (").append(refactors.size()).append(")\n");
+        for (JsonNode r : refactors) {
+            int referrers = r.path("referrers").size();
+            sb.append("  ↻ ").append(r.path("kind").asText()).append(' ')
+                    .append(r.path("from").asText()).append(" → ").append(r.path("to").asText())
+                    .append("  (").append(referrers).append(referrers == 1 ? " referrer" : " referrers")
+                    .append(" rewritten)\n");
+        }
     }
 
     /** The reorder section: one line per moved element with its {@code position} before→after move. */

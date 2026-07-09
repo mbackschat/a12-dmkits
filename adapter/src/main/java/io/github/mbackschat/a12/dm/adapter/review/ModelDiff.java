@@ -16,6 +16,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEdit;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionPolarity;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
 
 /**
@@ -37,10 +38,21 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
  * remove+add, the safe direction. The fuller AST edit-script (which operand/clause moved), the similarity
  * matcher (rename+edit), and computations/groups are later slices (MODEL-REVIEW-GAPS MR1/MR3/MR4).
  */
-public record ModelDiff(List<ElementChange> changes) {
+public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors) {
 
     /** The element families this slice diffs (computation/group come later). */
     public enum ElementKind { FIELD, RULE }
+
+    /** Whether a relocation kept its parent (a {@code RENAME}) or its leaf name (a {@code MOVE}). */
+    public enum RefactorKind { RENAME, MOVE }
+
+    /**
+     * A reference-rewriting refactor folded into ONE semantic operation (MR4): the renamed/moved element
+     * ({@code from}→{@code to}) plus the {@code referrers} whose reference-delta is exactly that repoint. A
+     * <b>non-destructive overlay</b> — the raw {@code RENAMED}/{@code MOVED} + per-referrer {@code MODIFIED}
+     * changes stay in {@link #changes()}, so a consumer can verify the fold from the change-set itself.
+     */
+    public record Refactor(RefactorKind kind, String from, String to, List<String> referrers) {}
 
     /** How an element changed between the two states. */
     public enum ChangeKind { ADDED, REMOVED, MODIFIED, REORDERED, RENAMED, MOVED }
@@ -72,7 +84,7 @@ public record ModelDiff(List<ElementChange> changes) {
                 (change, id, deltas) -> ruleReasons(change, id, deltas, baseRules, headRules), changes);
         detectReorders(ElementKind.RULE, baseRuleAspects.keySet(), headRuleAspects.keySet(), changes);
         pairRenames(changes);
-        return new ModelDiff(List.copyOf(changes));
+        return new ModelDiff(List.copyOf(changes), groupRefactors(changes, baseRules, headRules));
     }
 
     /** Base-order REMOVED/MODIFIED first, then head-only ADDED — deterministic for a stable input order. */
@@ -281,6 +293,70 @@ public record ModelDiff(List<ElementChange> changes) {
     /** The last path segment (leaf name). */
     private static String leafOf(String path) {
         return path.substring(path.lastIndexOf('/') + 1);
+    }
+
+    // --- relational refactor grouping (MR4: fold a rename/move + the referrers it rewrote) --------
+
+    /**
+     * Folds each {@code RENAMED}/{@code MOVED} that rewrote referrers into ONE {@link Refactor}: its
+     * referrers are the {@code MODIFIED} rules whose reference-delta is <b>exactly</b> that {@code from}→{@code to}
+     * repoint (dropped {@code from}, gained {@code to}) — so a coincidental reference change (no matching
+     * relocation) is never fabricated into a refactor. A relocation with no referrer yields no group (nothing
+     * relational to fold). This is a read-only overlay: {@code changes} is left intact.
+     */
+    private static List<Refactor> groupRefactors(List<ElementChange> changes, KernelAdapter base, KernelAdapter head) {
+        Map<String, Set<String>> dropped = new LinkedHashMap<>();
+        Map<String, Set<String>> gained = new LinkedHashMap<>();
+        for (ElementChange c : changes) {
+            if (c.change() == ChangeKind.MODIFIED && c.element() == ElementKind.RULE) {
+                Set<String> b = refsOf(base, c.id());
+                Set<String> h = refsOf(head, c.id());
+                dropped.put(c.id(), difference(b, h));
+                gained.put(c.id(), difference(h, b));
+            }
+        }
+        List<Refactor> refactors = new ArrayList<>();
+        for (ElementChange c : changes) {
+            RefactorKind kind = switch (c.change()) {
+                case RENAMED -> RefactorKind.RENAME;
+                case MOVED -> RefactorKind.MOVE;
+                default -> null;
+            };
+            if (kind == null) {
+                continue;
+            }
+            String from = c.id();
+            String to = pathAfter(c);
+            List<String> referrers = new ArrayList<>();
+            for (String rule : dropped.keySet()) {
+                if (dropped.get(rule).contains(from) && gained.get(rule).contains(to)) {
+                    referrers.add(rule);
+                }
+            }
+            if (!referrers.isEmpty()) {
+                refactors.add(new Refactor(kind, from, to, List.copyOf(referrers)));
+            }
+        }
+        return List.copyOf(refactors);
+    }
+
+    /** A rule's referenced field paths (empty for an opaque/unconvertible condition — can't attribute it). */
+    private static Set<String> refsOf(KernelAdapter adapter, String ruleName) {
+        return adapter.read(ruleName) instanceof ReadResult.Converted cv
+                ? ConditionReferences.of(cv.condition()).fieldPaths()
+                : Set.of();
+    }
+
+    /** The head path carried by a relocation's {@code path} delta. */
+    private static String pathAfter(ElementChange relocation) {
+        return relocation.deltas().stream().filter(d -> d.aspect().equals("path"))
+                .map(Delta::after).findFirst().orElse(null);
+    }
+
+    private static Set<String> difference(Set<String> a, Set<String> b) {
+        Set<String> d = new LinkedHashSet<>(a);
+        d.removeAll(b);
+        return d;
     }
 
     // --- risk classification (the §5b taste: loosening > tightening) ------------------------------

@@ -5,11 +5,11 @@
   "description": "The `data` payload of `dmtool model diff <baseFile> <headFile>` (MODEL-REVIEW-SPEC §5) — a STRUCTURAL diff of two models: it parses both into the model and compares structure, so a pure reformat is never reported. `changes` lists every field and rule that was added, removed, modified, or reordered between base and head, each with the per-aspect `deltas` that changed (a rule's condition/severity/code; a field's kind and per-kind config; a reorder carries a `position` before→after delta). For an ADDED element a delta carries only `after`; for REMOVED, only `before`; for MODIFIED/REORDERED, both. Element ids are field paths or rule full names.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["changes"],
+  "required": ["changes", "refactors"],
   "properties": {
     "changes": {
       "type": "array",
-      "description": "the element-level changes (fields and rules added/removed/modified/reordered) — base order, then head-only additions",
+      "description": "the element-level changes (fields and rules added/removed/modified/reordered/renamed/moved) — base order, then head-only additions",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -39,6 +39,10 @@
             "description": "the risk reason codes — a subset of the SPEC §5b taxonomy. HIGH (silently accepts bad data): RULE_REMOVED, POLARITY_INVERTED (a rule's condition was flipped to its logical complement — it now accepts what it used to reject; detected structurally from the two ASTs), KIND_CHANGED, SEVERITY_DOWNGRADED, CONSTRAINT_LOOSENED. MEDIUM (fails loudly / undetermined direction): RULE_ADDED, CONSTRAINT_TIGHTENED, STRUCTURE_ADDED/REMOVED, PATTERN_CHANGED, SEVERITY_CHANGED, SCALE_CHANGED, and — for a non-inverted condition change, classified from the ASTs — CONDITION_RESTRUCTURED (a clause was added/removed), REFERENCE_CHANGED (it reads different fields), OPERATOR_CHANGED (an operator swapped within the same shape), THRESHOLD_CHANGED (only a literal/threshold operand moved); CONDITION_CHANGED is the fallback when the condition can't be parsed for analysis. ELEMENT_MOVED (MEDIUM — a re-homing move, a removed+added pair with identical content in a different parent). LOW: CODE_CHANGED, METADATA_CHANGED, POSITION_CHANGED (a pure reorder — the element moved within its parent; display-order is semantic but not a validation loosening), ELEMENT_RENAMED (a content-preserving rename — a removed+added pair with identical content, same parent, new name).",
             "items": { "type": "string" }
           },
+          "partOfRefactor": {
+            "type": "integer",
+            "description": "present on a change folded into a refactor (the rename/move anchor, or a rewritten referrer) — the 0-based index into `refactors`; absent on a change that is not part of a refactor"
+          },
           "deltas": {
             "type": "array",
             "description": "the aspects that differ — every aspect for ADDED/REMOVED, only the differing ones for MODIFIED; a REORDERED element carries a single `position` delta (before/after = its 1-based index among its common siblings); a RENAMED/MOVED element carries a single `path` delta (before = base path, after = new path)",
@@ -61,6 +65,29 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "refactors": {
+      "type": "array",
+      "description": "reference-rewriting refactors folded into ONE operation (MR4): each groups a rename/move with the referrers whose reference-delta is exactly that from→to repoint. A NON-DESTRUCTIVE overlay — the raw RENAMED/MOVED change and each rewritten referrer's MODIFIED change stay in `changes` (each carrying `partOfRefactor`), so the fold is verifiable from the change-set itself. Empty when the diff has no reference-rewriting refactor.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "from", "to", "referrers"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["RENAME", "MOVE"],
+            "description": "RENAME (the element kept its parent, got a new name) or MOVE (it kept its leaf name, got a new parent)"
+          },
+          "from": { "type": "string", "description": "the relocated element's base path" },
+          "to": { "type": "string", "description": "the relocated element's new (head) path" },
+          "referrers": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "the rules whose reference to `from` was rewritten to `to` (their raw MODIFIED changes remain in `changes`)"
           }
         }
       }
