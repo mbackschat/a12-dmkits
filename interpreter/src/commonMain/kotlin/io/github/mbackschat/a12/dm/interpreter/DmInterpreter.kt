@@ -26,6 +26,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.UNIQUE_INDEX
 import io.github.mbackschat.a12.dm.interpreter.eval.uniqueIndexText
 import io.github.mbackschat.a12.dm.interpreter.eval.renderDateToFormat
 import io.github.mbackschat.a12.dm.interpreter.eval.renderMessage
+import io.github.mbackschat.a12.dm.interpreter.eval.storedComputedNumber
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.Computed
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
@@ -782,9 +783,19 @@ class DmInterpreter @JvmOverloads constructor(
         // the field's date format (IF33; `AddYears(...)` into `dd.MM.yyyy` → `30.06.2026`); a date-RANGE → the
         // field's (format, separator). An Unknown computes nothing → CLEARED.
         val rendered = when (v) {
-            // A computed NUMBER stores in the target's form: padded to at least its `minFractionalDigits` (the
-            // kernel's shared conversion formatter — 10 → "10.00" in a min=2 field; canonical when min=0). IF82.
-            is Val.Num -> v.v.display(model.constraintsOf(comp.targetPath).minFractionalDigits ?: 0)
+            // A computed NUMBER stores in the target's form (the kernel's `handleBerechnetenWert` store rule,
+            // IF82/IF92): scale-19 pre-round, then — when the natural scale FITS the target's maxFractionalDigits —
+            // padded to at least its `minFractionalDigits`, UNCAPPED (10 → "10.00" in a min=2 field; a > 15-digit
+            // form stores in full and the formal check below buckets it ERRORED). A value whose natural scale
+            // does NOT fit (authorable only via the `errorCodesToSuppress` scale-gate suppression) stores
+            // length-bounded to 16 significant digits and is "fehlerhaft berechnet" — ERRORED unconditionally,
+            // feeding the same poison set as any other errored computed cell (IF85/IF40).
+            is Val.Num -> {
+                val stored = storedComputedNumber(v.v, model.constraintsOf(comp.targetPath).minFractionalDigits ?: 0,
+                    model.scaleOf(comp.targetPath) ?: Int.MAX_VALUE)
+                if (!stored.fits) return Computed(comp.targetPath, ComputeOutcome.ERRORED, stored.rendered, reps)
+                stored.rendered
+            }
             is Val.Txt -> renderScalarValue(v.v, comp.targetPath)
             is Val.Bool -> v.v.toString()
             is Val.Range -> renderRange(v, comp.targetPath)

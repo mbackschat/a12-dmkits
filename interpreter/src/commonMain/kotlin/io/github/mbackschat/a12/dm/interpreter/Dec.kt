@@ -63,13 +63,36 @@ expect class Dec : Comparable<Dec> {
 
     /**
      * STORED-form rendering of a computed value: padded to at least [minFractionalDigits] fractional digits —
-     * the kernel's `NumberConversion.convertNumberToString`/`determineFractionalDigits` rule shared by BOTH
-     * runtimes (the V1 `compute` and the modern V2 `computeModern` — they agree; IF82). The digit count is
-     * `max(stripTrailingZeros().scale(), minFractionalDigits)` (natural significant fractional digits are kept,
-     * up to the field's max; the kernel's `decimalPlacesOptional` defaults to false so `minFractionalDigits` is
-     * honored). With [minFractionalDigits] `0` this equals [display] (canonical) for every in-range value.
+     * the kernel's computed-number store rule (`CalculationController.handleBerechnetenWert`, shared by BOTH
+     * evaluation strategies; IF82/IF92). The digit count is `max(stripTrailingZeros().scale(),
+     * minFractionalDigits)` — natural significant fractional digits are kept, with **NO length cap**: a value
+     * whose stored form exceeds 15 total digits renders in FULL (and then trips `stelligkeitZuLang` in the
+     * formal check — the kernel stores the full string and marks the cell errored, it never re-rounds to fit).
+     * With [minFractionalDigits] `0` this equals [display] (canonical).
      */
     fun display(minFractionalDigits: Int): String
+
+    /**
+     * The number of significant FRACTIONAL digits — the kernel's `stripTrailingZeros().scale()` (`minScale` in
+     * `handleBerechnetenWert`): `10.50` → 1, `2.4723` → 4, `10` → 0, `100` → **−2** (a whole value's stripped
+     * scale is negative, exactly like `BigDecimal`), `0` → 0. Drives the computed-store fit test (IF92).
+     */
+    fun fractionalDigits(): Int
+
+    /**
+     * The number of significant digits of the trailing-zero-STRIPPED value — the kernel's
+     * `stripTrailingZeros().precision()`: `2.4723` → 5, `100` → 1, `0.001` → 1, `0` → 1. Drives the computed-store
+     * length-bounded arm (IF92, `BigDecimalUtils.toStringWertLaengenBeschraenkt`).
+     */
+    fun strippedPrecision(): Int
+
+    /**
+     * This value rendered at EXACTLY [scale] fractional digits (≥ 0), rounding HALF_UP when [scale] drops
+     * significant digits and zero-padding when it exceeds them — `setScale(scale, HALF_UP).toPlainString()`.
+     * The computed-store primitive (IF92): the fit arm calls it at a scale ≥ the natural scale (exact), the
+     * length-bounded arm at the 16-significant-digit bound (rounds).
+     */
+    fun displayAtScale(scale: Int): String
 }
 
 expect fun dec(value: String): Dec

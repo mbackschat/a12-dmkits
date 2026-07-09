@@ -41,15 +41,19 @@ actual class Dec(val v: BigDecimal) : Comparable<Dec> {
     actual fun display(): String = v.stripTrailingZeros().toPlainString()
 
     actual fun display(minFractionalDigits: Int): String {
-        // The kernel's determineFractionalDigits: max(naturalScale, minFractionalDigits), capped by the
-        // >15-total-digit rule (15 − integerDigits). naturalScale can be negative for a whole value (10 → 1E+1,
-        // scale −1); Math.max with a non-negative min handles it. setScale never rounds a valid value here (the
-        // target ≥ naturalScale), so HALF_UP only matters for the cap edge (a value already too big → ERRORED).
-        val naturalScale = v.stripTrailingZeros().scale()
-        val maxAllowed = maxOf(0, MAX_ALLOWED_DIGITS - (v.precision() - naturalScale))
-        val digits = minOf(maxOf(naturalScale, minFractionalDigits), maxAllowed)
+        // The kernel's computed-store fit-arm rule (`handleBerechnetenWert`): max(naturalScale, minFractionalDigits),
+        // UNCAPPED — a > 15-digit stored form renders in full (the formal check flags it; the kernel never
+        // re-rounds to fit, IF92). naturalScale can be negative for a whole value (10 → 1E+1, scale −1);
+        // Math.max with a non-negative min handles it. The target scale ≥ naturalScale, so setScale never rounds.
+        val digits = maxOf(v.stripTrailingZeros().scale(), minFractionalDigits)
         return v.setScale(digits, RoundingMode.HALF_UP).toPlainString()
     }
+
+    actual fun fractionalDigits(): Int = v.stripTrailingZeros().scale()
+
+    actual fun strippedPrecision(): Int = v.stripTrailingZeros().precision()
+
+    actual fun displayAtScale(scale: Int): String = v.setScale(scale, RoundingMode.HALF_UP).toPlainString()
 
     // VALUE equality, scale-INSENSITIVE — consistent with [compareTo] (and `BigDecimal.compareTo`, which the
     // interpreter uses everywhere numbers are compared), NOT `BigDecimal.equals` (scale-sensitive) nor object
@@ -61,9 +65,6 @@ actual class Dec(val v: BigDecimal) : Comparable<Dec> {
 
 /** The kernel's `VkBigDecimal.INTERNAL_PRECISION` — 50 significant digits, HALF_UP — for `×`, `÷` and `^`. */
 private val INTERNAL = MathContext(50, RoundingMode.HALF_UP)
-
-/** The kernel's `NumberConversion.MAX_ALLOWED_NUMBER_OF_DIGITS` — the >15-total-digit fractional-render cap. */
-private const val MAX_ALLOWED_DIGITS = 15
 
 actual fun dec(value: String): Dec = Dec(BigDecimal(value))
 actual fun decOrNull(value: String): Dec? = try { Dec(BigDecimal(value)) } catch (e: NumberFormatException) { null }

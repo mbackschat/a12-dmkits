@@ -53,17 +53,42 @@ actual class Dec(val v: Big) : Comparable<Dec> {
     actual fun display(): String = v.toString()
 
     actual fun display(minFractionalDigits: Int): String {
-        // The kernel's determineFractionalDigits: max(naturalScale, minFractionalDigits) — pad to the min, but
-        // keep any natural significant fractional digits (which never exceed the field's max for a valid value).
-        // big.js has no scale accessor, so read the natural scale off the canonical toString() (trailing zeros
-        // stripped, plain notation for in-range values). toFixed pads with zeros to the target width. The >15-digit
-        // cap the JVM applies is elided here — JS is not the differential-exact target (the kernel is JVM-only),
-        // and it only bites a value already ERRORED for length (the file's standing JS-edge precedent).
+        // The kernel's computed-store fit-arm rule (`handleBerechnetenWert`): max(naturalScale, minFractionalDigits),
+        // UNCAPPED — a > 15-digit stored form renders in full; the formal check flags it, the kernel never
+        // re-rounds to fit (IF92, matching the JVM actual). big.js has no scale accessor, so read the natural
+        // scale off the canonical toString() (trailing zeros stripped, plain notation for in-range values).
+        // toFixed pads with zeros to the target width.
         val s = v.toString()
         val dot = s.indexOf('.')
         val naturalScale = if (dot < 0) 0 else s.length - dot - 1
         return v.toFixed(maxOf(naturalScale, minFractionalDigits))
     }
+
+    /** The stripped (precision, scale) pair, mirroring `BigDecimal.stripTrailingZeros()` exactly — derived from
+     *  the canonical toString() (trailing FRACTION zeros already stripped by big.js): a fractional value's scale
+     *  is its fraction length and its precision the significant-digit count (leading zeros excluded); a WHOLE
+     *  value's trailing zeros shift the scale NEGATIVE (`100` → precision 1, scale −2), exactly like BigDecimal.
+     *  Zero is (1, 0). Plain notation assumed (the file's standing toString edge for extreme exponents). */
+    private fun strippedParts(): Pair<Int, Int> {
+        val s = v.toString().removePrefix("-")
+        val dot = s.indexOf('.')
+        if (dot >= 0) {
+            val digits = s.replace(".", "").trimStart('0')
+            return (if (digits.isEmpty()) 1 else digits.length) to (s.length - dot - 1)
+        }
+        val noLead = s.trimStart('0')
+        if (noLead.isEmpty()) return 1 to 0                       // zero
+        val trailing = noLead.length - noLead.trimEnd('0').length
+        return (noLead.length - trailing) to -trailing
+    }
+
+    actual fun fractionalDigits(): Int = strippedParts().second
+
+    actual fun strippedPrecision(): Int = strippedParts().first
+
+    // toFixed rounds with big.js's global Big.RM (the default 1 = roundHalfUp, which the interpreter never
+    // changes) and zero-pads to exactly [scale] — the setScale(scale, HALF_UP).toPlainString() twin.
+    actual fun displayAtScale(scale: Int): String = v.toFixed(scale)
 
     // VALUE equality, scale-INSENSITIVE — consistent with [compareTo] (big.js `cmp`), matching the JVM actual
     // (IF41). big.js `toString()` is the canonical trailing-zero-stripped form, so it keys a hashCode that is

@@ -145,9 +145,24 @@ public final class RuntimeLaws {
      */
     public static String withComputation(String modelJson, String groupId, String name, String computedFieldRelPath,
             String operation) {
+        return withComputation(modelJson, groupId, name, computedFieldRelPath, operation, List.of());
+    }
+
+    /**
+     * As {@link #withComputation(String, String, String, String, String)} but declaring
+     * {@code errorCodesToSuppress} ({@code IComputation.getErrorCodesToSuppress}) — the kernel's own escape
+     * hatch for the static assignment-scale gate: {@code MVK_INVALID_COMPARE_DEC_PLACES} in the list lets a
+     * computation whose operation's static scale differs from the target's load (the only way the runtime
+     * no-fit store arm is reachable on a legal model — IF92).
+     */
+    public static String withComputation(String modelJson, String groupId, String name, String computedFieldRelPath,
+            String operation, List<String> errorCodesToSuppress) {
         String op = operation.replace("\\", "\\\\").replace("\"", "\\\"");
+        String suppress = errorCodesToSuppress.isEmpty() ? ""
+                : " \"errorCodesToSuppress\": [ " + errorCodesToSuppress.stream()
+                        .map(c -> "\"" + c + "\"").collect(Collectors.joining(", ")) + " ],";
         String comp = "{ \"type\": \"Computation\", \"id\": \"" + groupId + "/" + name + "\", \"name\": \"" + name + "\","
-                + " \"Computation\": { \"computedFieldRelPath\": \"" + computedFieldRelPath + "\","
+                + " \"Computation\": { \"computedFieldRelPath\": \"" + computedFieldRelPath + "\"," + suppress
                 + " \"computationAlternatives\": [ { \"operation\": \"" + op + "\" } ],"
                 + " \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n";
         int g = modelJson.indexOf("\"id\": \"" + groupId + "\"");
