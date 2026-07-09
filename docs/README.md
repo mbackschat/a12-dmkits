@@ -49,6 +49,7 @@ What each document under `docs/` holds, so you can jump to the right one. This i
 ## Testing
 
 - **[TESTING-SPEC.md](TESTING-SPEC.md)** — the testing-approach map and the **fast path** into the whole harness: the **four tiers** (kernel-oracle JUnit · the showboat doc-drift demos · the two experience instruments — eval & probe — with their opposite intents), the one principle (the real kernel is the oracle), the kinds of test and where each lives, the **two law tiers** (accept/reject vs runtime fires/does-not-fire) that are easy to conflate, the structural-law guardians (anti-whack-a-mole), the opt-in corpus harnesses, layout conventions, and how to run each tier. The navigation layer; enforced conventions stay in [`../CLAUDE.md`](../CLAUDE.md), per-area detail in its own doc.
+- **[DOC-DISCIPLINE.md](DOC-DISCIPLINE.md)** — the **doc-workflow spec** (extracted 2026-07-09 from CLAUDE.md, which keeps the iron rules + the trigger table): where a finding lands (the finding homes, the KERNEL-SEMANTICS layer split, the source-over-jars golden rule with its traps), the kernel-coverage ledgers, every living surface's same-commit triggers (ARCHITECTURE, README, API-GUIDE, demos, index READMEs), writing style, the doc lifecycle (spec / proposal / `-GAPS` / `-LEDGER`; rationale-vs-disposition), and the full-sweep checklist.
 
 ## Experience study
 
