@@ -4,7 +4,7 @@ A portable, kernel-independent record of A12 document-model **runtime semantics 
 
 - **The contract** (case format, placement/pointer semantics, signatures, verdict rules): [`docs/CONFORMANCE-CORPUS-SPEC.md`](../docs/CONFORMANCE-CORPUS-SPEC.md).
 - **The machine-readable case shape**: [`case.schema.json`](case.schema.json).
-- **Why the program exists**: the [formalization proposal §7](../docs/SEMANTICS-FORMALIZATION-PROPOSAL.md).
+- **Why the program exists**: the [formalization proposal §7](../docs/archived/SEMANTICS-FORMALIZATION-PROPOSAL.md).
 
 ## Layout
 

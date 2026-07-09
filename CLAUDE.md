@@ -78,6 +78,20 @@ An ungated, undocumented, or untested-on-refusal refactor is not shippable. Full
 
 The drill: **reproduce → root-cause → generalize (enumerate every site of the class) → fix at the shared root → lock with a guard that covers the siblings, not just the reported case.** Worked example: P1 — a raw stack trace from a duplicate `rule add` — root-caused to `RuleValidator.check` letting a kernel conversion exception escape, a path shared by six callers; the fix went in the validator and the guard covers `computation add` too, not only the reported `rule add`. This complements the anti-whack-a-mole mining below (mine constraints proactively) and the probe's proactive loop ([`docs/PROBE-SPEC.md`](docs/PROBE-SPEC.md)).
 
+## Multi-session work programs — the hybrid model policy + review gate (graduated 2026-07-09 from the semantics-formalization program)
+
+When a work program spans many sessions, run it with **one BEST-model master session + serialized worker sessions** (one active session per worktree — always):
+
+- **The master session** (BEST model) owns the program: it keeps the program's state doc (the work-item table that carries inter-session state), mints each worker session's paste-prompt, makes contract/anchor/scope rulings, and **runs the review gate on every landing**. **The worker model is chosen per item:** a *pre-characterized* item (a named construct class + a re-runnable reproducer) runs on the cheaper REGULAR model; raw/uncharacterized divergences and semantics forks the sources cannot settle stay BEST.
+- **The hardened drill for a kernel-parity fix** (what a worker session does per item): reproduce → mechanism from BOTH kernel strategies' sources → predict + reproduce a second instance → fix at the root → differential-lock → re-run the sweep. The sweep histogram makes a wrong-locus symptom-patch mechanically visible (fixed instances leave siblings standing).
+- **Graduation is provisional until the master gate clears it.** Gate audit: mechanism-vs-symptom · locus · second-instance evidence · both-strategies confirmation · histogram delta · **locks re-run independently in the gate session**.
+- **Three gate-proven drill criteria** (each caught a real defect):
+  1. **A source-grounded-but-untested claim in a fix's DECISION LOGIC gets its differential before graduation** — a source read establishes a mechanism; only the differential establishes its interaction (the IF64 catch; again the IF88 DAY_OPTIONAL pin).
+  2. **An instrumentation correlation is a HYPOTHESIS, never a root cause — minimize before fixing** (the IG44 "tiered selection" overturning: every minimal repro was an unconditional computation; tier-ness was co-occurrence).
+  3. **Confirm a prior row's hypothesis before building on it** (the IG50 phantom / IG54 wrong-inference corrections).
+
+Track record that earned the graduation: ~30 kernel-exact mechanism fixes (IF55–IF91), ≈20 gate events, 4 gate catches, zero shipped regressions — the full record is the archived program ([`docs/archived/SEMANTICS-FORMALIZATION-PROPOSAL.md`](docs/archived/SEMANTICS-FORMALIZATION-PROPOSAL.md)).
+
 ## Interpreter: built out in-repo; separation by convention + linting (standing requirement, 2026-06-23)
 
 The **`:interpreter`** module is a Kotlin Multiplatform, native-safe rule evaluator (package `…dm.interpreter`) being **grown into the full evaluator in this repo** (decision 2026-06-23, [`docs/INTERPRETER-SPEC.md`](docs/INTERPRETER-SPEC.md) §8; impl in [`docs/INTERPRETER-ARCHITECTURE.md`](docs/INTERPRETER-ARCHITECTURE.md)) — *not* extracted to a sibling repo. The committed goal is a full-blown interpreter serving two consumers: (1) dmtool's **native image** (the `model eval`/`model compute`/`rule eval` verbs the Groovy ceiling bars — acceptance: `examples/cli-runtime.md` runs end-to-end on the native image), and (2) a **standalone Kotlin/JVM + Kotlin/JS library** for any consumer running full **and partial** validation + computations, incl. **single-rule / single-computation** eval. Correctness = agrees with the real kernel — **both its runtime AND codegen strategies** (the differential oracle verifies the runtime half; see the #1 rules §A).

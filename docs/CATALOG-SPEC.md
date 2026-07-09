@@ -1,6 +1,6 @@
 # CATALOG-SPEC — the operator catalog: schema, semantic facets, verification lanes
 
-> **Status: shipped contract** (extracted from [PROJECT-DESIGN §9](PROJECT-DESIGN.md#9-operator-catalog) per the outgrows-its-section rule, 2026-07-08, when the WI-5a facet slice landed; §9 keeps the design intent and the honesty directions). This spec is the live contract for `src/main/resources/catalog/operators.json`, its Java model (`rulekit.catalog`), and the guards that keep it honest. The facet program context is [SEMANTICS-FORMALIZATION-PROPOSAL §9](SEMANTICS-FORMALIZATION-PROPOSAL.md).
+> **Status: shipped contract** (extracted from [PROJECT-DESIGN §9](PROJECT-DESIGN.md#9-operator-catalog) per the outgrows-its-section rule, 2026-07-08, when the WI-5a facet slice landed; §9 keeps the design intent and the honesty directions). This spec is the live contract for `src/main/resources/catalog/operators.json`, its Java model (`rulekit.catalog`), and the guards that keep it honest. The facet program context is [SEMANTICS-FORMALIZATION-PROPOSAL §9](archived/SEMANTICS-FORMALIZATION-PROPOSAL.md).
 
 ## 1. What the catalog is
 

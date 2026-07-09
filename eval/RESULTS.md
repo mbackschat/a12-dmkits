@@ -18,7 +18,7 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ### 2026-07-09 02:13 CEST — WI-5c-2: full pass@3 after the facet build-out + skill migration (sonnet, k=3, 31 tasks, bare-tool)
 
-The N6 re-run for **WI-5c-2** ([SEMANTICS-FORMALIZATION-PROPOSAL](../docs/SEMANTICS-FORMALIZATION-PROPOSAL.md) §4/§6.5): does the slimmer judgment-only skill (WI-5c-1: 175→152 lines) + the richer self-describing binary (WI-5a/5b: five probe-verified facet dimensions served by `operators`, operand-aware enricher correctives) **hold or improve** the scores vs the baseline? Bare-tool (the canonical trend-line mode). `wf_7ab64f2c-03a`, **188 agents, 9.34M tokens, ~25.6 min** + a targeted task-17 re-run (`wf_d1d963ce-b1e`, 8 agents, 0.38M) after the harness fix below.
+The N6 re-run for **WI-5c-2** ([SEMANTICS-FORMALIZATION-PROPOSAL](../docs/archived/SEMANTICS-FORMALIZATION-PROPOSAL.md) §4/§6.5): does the slimmer judgment-only skill (WI-5c-1: 175→152 lines) + the richer self-describing binary (WI-5a/5b: five probe-verified facet dimensions served by `operators`, operand-aware enricher correctives) **hold or improve** the scores vs the baseline? Bare-tool (the canonical trend-line mode). `wf_7ab64f2c-03a`, **188 agents, 9.34M tokens, ~25.6 min** + a targeted task-17 re-run (`wf_d1d963ce-b1e`, 8 agents, 0.38M) after the harness fix below.
 
 **Comparison row: the 2026-06-17 00:34 baseline** (sonnet, k=3, bare-tool, 28 tasks — 23/28 clean, 76/84 runs). This run adds the three tasks that postdate it (`19` self-correction, `20` computation-comprehension, `modelkit/09` workspace-roles).
 
