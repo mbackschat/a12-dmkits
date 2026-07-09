@@ -640,17 +640,25 @@ entry below: write its \`spec\` (verbatim JSON) to its \`file\`, then run (READ-
 This re-expresses the named existing computation. On ACCEPT it prints a diff JSON {"before","after","changed",…}
 and exits 0; on REJECT it prints {"valid":false,…} and exits non-zero. Entries:
 ${JSON.stringify(entries)}
-Report every entry via the structured-output tool: one {id, valid, changed} per entry — valid = the kernel
-ACCEPTED the re-expression (exit 0, no "valid":false), changed = the diff's "changed" field (true if it
-actually differs from the current computation).`,
+Report every entry via the structured-output tool: one {id, valid, changed, usageError} per entry — valid = the
+kernel ACCEPTED the re-expression (exit 0, no "valid":false), changed = the diff's "changed" field (true if it
+actually differs from the current computation). usageError = true ONLY if the op's output is a CLI USAGE error
+(contains "Unknown option" or "Usage:") instead of a validation result — a malformed recheck COMMAND (harness/CLI
+drift), NOT an invalid candidate.`,
       { label: 'modify recheck', phase: 'Recheck',
         schema: { type: 'object', additionalProperties: false, required: ['verdicts'],
           properties: { verdicts: { type: 'array', items: {
             type: 'object', additionalProperties: false, required: ['id', 'valid', 'changed'],
-            properties: { id: { type: 'string' }, valid: { type: 'boolean' }, changed: { type: 'boolean' } } } } } } })
+            properties: { id: { type: 'string' }, valid: { type: 'boolean' }, changed: { type: 'boolean' }, usageError: { type: 'boolean' } } } } } } })
     // A modify passes the kernel gate only if accepted AND an actual change.
-    for (const v of (rescore && rescore.verdicts) || []) modAuthoritative[v.id] = v.valid && v.changed
-    if (Object.keys(modAuthoritative).length === 0) modAuthoritative = modSelfReport()
+    const modVerdicts = (rescore && rescore.verdicts) || []
+    if (modVerdicts.some(v => v.usageError)) {
+      log('⚠️ modify-computation recheck hit a CLI USAGE error — the `computation modify` recheck command drifted from the CLI; falling back to self-report. FIX the recheck command in benchmark.workflow.js.')
+      modAuthoritative = modSelfReport()
+    } else {
+      for (const v of modVerdicts) modAuthoritative[v.id] = v.valid && v.changed
+      if (Object.keys(modAuthoritative).length === 0) modAuthoritative = modSelfReport()
+    }
   } catch (e) {
     log('modify recheck failed (' + e.message + ') — falling back to agent self-report')
     modAuthoritative = modSelfReport()
@@ -669,7 +677,10 @@ if (modRuleCandidates.length) {
   const ops = modRuleCandidates.map(r => ({
     id: `${r.model}/${r.task.id}/${r.i}`,
     verb: 'modify',
-    args: [MODEL_FILE(r.task), '--rule', r.task.rule, '--condition', r.out.condition, '--dry-run', ...INCLUDE_ARGS(r.task)],
+    // `rule modify` takes the rule name as a POSITIONAL <rulePathInModel> (not a `--rule` flag) — matching
+    // `computation modify <name>` above and the prompt's own description below. Passing `--rule` is rejected as
+    // an unknown option (a picocli USAGE error), which the usageError guard below now catches loudly.
+    args: [MODEL_FILE(r.task), r.task.rule, '--condition', r.out.condition, '--dry-run', ...INCLUDE_ARGS(r.task)],
   }))
   const modRuleSelfReport = () => {
     const m = {}
@@ -685,15 +696,25 @@ non-zero exit. Steps: (1) write this JSON array verbatim to /tmp/rk-modrule-ops.
 ${JSON.stringify(ops)}
 (2) run:  ${CLI} batch /tmp/rk-modrule-ops.json
 (3) the output is a JSON array; each element echoes its "id" and carries "exit" and (on accept) result.changed.
-Report every op via the structured-output tool: one {id, valid, changed} per op — valid = (exit is 0 AND the
-result does NOT have "valid":false), changed = (result.changed === true).`,
+Report every op via the structured-output tool: one {id, valid, changed, usageError} per op — valid = (exit is 0
+AND the result does NOT have "valid":false), changed = (result.changed === true). usageError = true ONLY if the
+op's output is a CLI USAGE error (contains "Unknown option" or "Usage:") instead of a validation result — that
+means the recheck COMMAND is malformed (a harness/CLI drift), NOT that the candidate is invalid.`,
       { label: 'modify-rule recheck', phase: 'Recheck',
         schema: { type: 'object', additionalProperties: false, required: ['verdicts'],
           properties: { verdicts: { type: 'array', items: {
             type: 'object', additionalProperties: false, required: ['id', 'valid', 'changed'],
-            properties: { id: { type: 'string' }, valid: { type: 'boolean' }, changed: { type: 'boolean' } } } } } } })
-    for (const v of (rescore && rescore.verdicts) || []) modRuleAuthoritative[v.id] = v.valid && v.changed
-    if (Object.keys(modRuleAuthoritative).length === 0) modRuleAuthoritative = modRuleSelfReport()
+            properties: { id: { type: 'string' }, valid: { type: 'boolean' }, changed: { type: 'boolean' }, usageError: { type: 'boolean' } } } } } } })
+    const modRuleVerdicts = (rescore && rescore.verdicts) || []
+    if (modRuleVerdicts.some(v => v.usageError)) {
+      // CLI-interface drift: the recheck command no longer parses. Fail LOUDLY and fall back to self-report so a
+      // real capability is never SILENTLY scored 0/k (the trap that hid task 17 as `valid:false,changed:false`).
+      log('⚠️ modify-rule recheck hit a CLI USAGE error — the `rule modify` recheck command drifted from the CLI; falling back to self-report. FIX the recheck args in benchmark.workflow.js.')
+      modRuleAuthoritative = modRuleSelfReport()
+    } else {
+      for (const v of modRuleVerdicts) modRuleAuthoritative[v.id] = v.valid && v.changed
+      if (Object.keys(modRuleAuthoritative).length === 0) modRuleAuthoritative = modRuleSelfReport()
+    }
   } catch (e) {
     log('modify-rule recheck failed (' + e.message + ') — falling back to agent self-report')
     modRuleAuthoritative = modRuleSelfReport()
