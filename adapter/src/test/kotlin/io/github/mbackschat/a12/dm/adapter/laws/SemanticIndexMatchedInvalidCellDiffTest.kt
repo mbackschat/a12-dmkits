@@ -6,6 +6,11 @@ import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -49,16 +54,29 @@ class SemanticIndexMatchedInvalidCellDiffTest {
             }
         }.build().toJson()
 
-    // FieldValueAsString over an indexed ref has no typed DSL form yet (DEV-API-GAPS) — the kernel grammar
-    // shape under test is authored as the raw operation, like the IF107 sibling. PriceText isolates the
-    // FieldValueAsString read (no direct indexed operand alongside), so its column/matched-invalid arms pin
-    // THAT read site alone.
+    // The kernel grammar shapes under test — a direct indexed operand `[Items/Price For LookupKey]` and the
+    // `FieldValueAsString(Items/Price For LookupKey)` coercion — are authored through the typed rulekit surface
+    // (D11: forIndex(...) for the value, fieldValueAsString(indexedCell(...)) for the coercion) and rendered
+    // relative to /Shop. PriceText isolates the FieldValueAsString read (no direct indexed operand alongside),
+    // so its column/matched-invalid arms pin THAT read site alone. `operationsRenderToTheKernelLegalShape`
+    // pins the byte-identical rendered form.
+    private val m = BoundModel.ofJson(base)
+    private val rel = DslRenderer(ConditionLanguage.EN, "/Shop")
+    private fun op(e: Calculation) = rel.render(e)
+
+    private val labelForKey = m.str(LABEL).forIndex(m.field(KEY))                          // [Items/Label For LookupKey]
+    private val priceForKey = m.num(PRICE).forIndex(m.field(KEY))                          // [Items/Price For LookupKey]
+    private val priceAsString = Dsl.fieldValueAsString(m.num(PRICE).indexedCell(m.field(KEY)))  // FieldValueAsString(Items/Price For LookupKey)
+
+    private val infoOp = op(Dsl.text("P ").plus(labelForKey).plus(" Q ").plus(priceAsString).plus(" R").expression())
+    private val resultOp = op(priceForKey.expression())
+    private val priceTextOp = op(priceAsString.expression())
+
     private val kModel = RuntimeLaws.withComputation(
         RuntimeLaws.withComputation(
-            RuntimeLaws.withComputation(base, "/Shop", "InfoComp", "../Info",
-                "\"P \" + [Items/Label For LookupKey] + \" Q \" + FieldValueAsString(Items/Price For LookupKey) + \" R\""),
-            "/Shop", "ResultComp", "../Result", "[Items/Price For LookupKey]"),
-        "/Shop", "PriceTextComp", "../PriceText", "FieldValueAsString(Items/Price For LookupKey)")
+            RuntimeLaws.withComputation(base, "/Shop", "InfoComp", "../Info", infoOp),
+            "/Shop", "ResultComp", "../Result", resultOp),
+        "/Shop", "PriceTextComp", "../PriceText", priceTextOp)
 
     /** [rows]: (itemNo?, price?, label?) per row. Returns the tri-checked outcomes for (Info, Result, PriceText). */
     private fun triOutcomes(key: String, rows: List<Triple<String?, String?, String?>>): Triple<String, String, String> {
@@ -110,6 +128,13 @@ class SemanticIndexMatchedInvalidCellDiffTest {
             assertEquals(groovyAt(target), interpAt(target), "key=$key rows=$rows $target — kernel vs interpreter")
         }
         return Triple(groovyAt(INFO), groovyAt(RESULT), groovyAt(PRICE_TEXT))
+    }
+
+    // ── the typed authoring renders to the exact kernel-legal grammar shape (the dogfood pin) ─────────────
+    @Test fun operationsRenderToTheKernelLegalShape() {
+        assertEquals("\"P \" + [Items/Label For LookupKey] + \" Q \" + FieldValueAsString(Items/Price For LookupKey) + \" R\"", infoOp)
+        assertEquals("[Items/Price For LookupKey]", resultOp)
+        assertEquals("FieldValueAsString(Items/Price For LookupKey)", priceTextOp)
     }
 
     // ── control: matched row, every cell valid → all three computations compute ───────────────────────────

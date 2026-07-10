@@ -119,6 +119,10 @@ public final class OperatorUsage {
                 collectOperand(a.scope(), ops);
             }
             case FieldValueAsString c -> ops.add(c.operatorId());
+            case IndexedFieldValueAsString c -> {
+                ops.add(c.operatorId());     // FieldValueAsString
+                collect(c.index(), ops);     // + the SemanticIndex operand
+            }
             case RangeAsString c -> ops.add(c.operatorId());
             case FieldValueAsNumber c -> ops.add(c.operatorId());
             case RangeAsNumber c -> ops.add(c.operatorId());

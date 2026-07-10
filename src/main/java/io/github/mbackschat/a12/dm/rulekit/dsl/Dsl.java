@@ -585,6 +585,15 @@ public final class Dsl {
         return new StringExpr(new FieldValueAsString(field));
     }
 
+    /**
+     * {@code FieldValueAsString([Field For key])} — a semantically-indexed cell's value coerced to string,
+     * as a string expression. The indexed operand is an {@link IndexedCell} handle ({@code ref.indexedCell(key)},
+     * literal or field key); the peer of {@link #fieldValueAsString(FieldRef)} for the {@code For}-indexed shape.
+     */
+    public static StringExpr fieldValueAsString(IndexedCell cell) {
+        return new StringExpr(new IndexedFieldValueAsString(cell.index()));
+    }
+
     /** {@code RangeAsString(field, start, end)} — a substring of a string field, as a string expression. */
     public static StringExpr rangeAsString(FieldRef field, int start, int end) {
         return new StringExpr(new RangeAsString(field, start, end));

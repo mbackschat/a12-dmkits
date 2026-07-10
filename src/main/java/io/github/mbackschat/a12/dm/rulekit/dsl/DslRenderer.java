@@ -351,6 +351,7 @@ public final class DslRenderer {
             case DateListAggregate a -> keyword(a.operatorId()) + "(" + operand(a.scope()) + ")";
             case FirstFilledValue a -> keyword(a.operatorId()) + "(" + operand(a.scope()) + ")";
             case FieldValueAsString c -> keyword(c.operatorId()) + "(" + path(c.field().path()) + ")";
+            case IndexedFieldValueAsString c -> keyword(c.operatorId()) + "(" + indexBody(c.index()) + ")";
             case RangeAsString c -> keyword(c.operatorId()) + "(" + path(c.field().path())
                     + ", " + c.start() + ", " + c.end() + ")";
             case FieldValueAsNumber c -> keyword(c.operatorId()) + "(" + path(c.field().path()) + ")";

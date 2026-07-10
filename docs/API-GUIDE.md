@@ -513,6 +513,16 @@ Condition earliestBeforeCutoff =
 Condition present = m.num("/Order/Items/Count").indexedCell("SKU-1").filled();
 ```
 
+The same `indexedCell(...)` handle is the operand of `Dsl.fieldValueAsString`, so an indexed cell's value coerces to string — the kernel's `FieldValueAsString([Field For key])`, the peer of the plain `fieldValueAsString(field)` (D11):
+
+<!-- snippet: indexed-coercion -->
+```java
+// fieldValueAsString also takes an indexedCell(key) operand — the indexed cell's value coerced to
+// string, e.g. to splice a keyed number cell into a concatenation (the corpus shape).
+Condition c = m.str("/Order/CustomerName").eq(
+        Dsl.text("C-").plus(Dsl.fieldValueAsString(m.num("/Order/Items/Count").indexedCell("SKU-1"))));
+```
+
 **The rule's own group.** `Dsl.ruleGroup()` is the self-reference to the rule's containing group (the kernel's `RegelKontext`); it renders the reserved keyword (EN `RuleGroup`, DE `RegelKontext`), never a path. On a rule iterating a repeatable group it is the "is this row present" guard — the shape behind attachment/row-content rules (finding 60):
 
 <!-- snippet: rule-group -->

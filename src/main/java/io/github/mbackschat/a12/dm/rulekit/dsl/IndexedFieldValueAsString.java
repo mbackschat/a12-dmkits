@@ -1,0 +1,25 @@
+package io.github.mbackschat.a12.dm.rulekit.dsl;
+
+import io.github.mbackschat.a12.dm.core.ValueKind;
+
+/**
+ * {@code FieldValueAsString([Field For key])} — a semantically-indexed cell's value coerced to its string
+ * representation (the kernel {@code FieldValueAsString} over an indexed operand, the corpus concat shape;
+ * KERNEL-SEMANTICS §9). The indexed sibling of {@link FieldValueAsString}: a string-valued
+ * {@link Calculation} that composes in string comparisons and concatenations, its operand rendered as the
+ * bare {@code Field For key} index body (like the presence form, no {@code [ ]} value brackets). Build via
+ * {@link Dsl#fieldValueAsString(IndexedCell)} — the operand is an {@link IndexedCell} handle
+ * ({@code ref.indexedCell(key)}), so number/date/enum cells all coerce uniformly. Read-back is deferred
+ * for the same {@code ICalculationInfo} reason as the presence form (finding 59).
+ */
+public record IndexedFieldValueAsString(IndexedFieldValue index) implements Calculation {
+
+    @Override
+    public ValueKind kind() {
+        return ValueKind.STRING;
+    }
+
+    public String operatorId() {
+        return "FieldValueAsString";
+    }
+}

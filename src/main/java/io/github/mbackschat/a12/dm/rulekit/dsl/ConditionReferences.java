@@ -147,6 +147,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case DateListAggregate a -> collectOperand(a.scope(), fields, groups);
             case FirstFilledValue a -> collectOperand(a.scope(), fields, groups);
             case FieldValueAsString c -> fields.add(c.field().path());
+            case IndexedFieldValueAsString c -> collect(c.index(), fields, groups);
             case RangeAsString c -> fields.add(c.field().path());
             case FieldValueAsNumber c -> fields.add(c.field().path());
             case RangeAsNumber c -> fields.add(c.field().path());

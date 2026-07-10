@@ -50,6 +50,18 @@ class NewShapesSnippetsTest {
     }
 
     @Test
+    void indexedCoercionSnippet() {
+        // tag::indexed-coercion[]
+        // fieldValueAsString also takes an indexedCell(key) operand — the indexed cell's value coerced to
+        // string, e.g. to splice a keyed number cell into a concatenation (the corpus shape).
+        Condition c = m.str("/Order/CustomerName").eq(
+                Dsl.text("C-").plus(Dsl.fieldValueAsString(m.num("/Order/Items/Count").indexedCell("SKU-1"))));
+        // end::indexed-coercion[]
+        assertEquals("[/Order/CustomerName] == \"C-\" + FieldValueAsString(/Order/Items/Count For \"SKU-1\")",
+                new DslRenderer().render(c));
+    }
+
+    @Test
     void ruleGroupSnippet() {
         // tag::rule-group[]
         // Dsl.ruleGroup() is the rule's OWN group (the kernel's RegelKontext) — it renders the reserved

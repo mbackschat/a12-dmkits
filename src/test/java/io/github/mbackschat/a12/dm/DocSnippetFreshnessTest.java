@@ -79,6 +79,7 @@ class DocSnippetFreshnessTest {
                     "src/test/java/io/github/mbackschat/a12/dm/edit/GroupEditorTest.java"),
             new Lock("date-minmax", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("indexed-presence", "docs/API-GUIDE.md", NEW_SHAPES),
+            new Lock("indexed-coercion", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("rule-group", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("starred-value-list", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("computation-suppress", "docs/API-GUIDE.md", NEW_SHAPES));
