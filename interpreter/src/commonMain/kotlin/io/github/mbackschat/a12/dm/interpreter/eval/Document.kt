@@ -450,20 +450,7 @@ class Document @JvmOverloads constructor(
         groupPath: String, scopeReps: List<Int>, joinFields: List<String>, starPath: String,
     ): Map<List<Val>, IntArray> =
         correlationBucketCache.getOrPut(listOf(groupPath, scopeReps, joinFields, starPath)) {
-            val buckets = HashMap<List<Val>, IntArray>()
-            for (rc in rowContextsScoped(groupPath, scopeReps)) {
-                if (!rc.evaluated) continue                                   // all-empty row → filter row-gate excludes it
-                val key = joinFields.map { rc.field(it) }
-                if (key.any { it is Val.Unknown }) continue                   // an Unknown join value never matches via ==
-                val tfn = buckets.getOrPut(key) { IntArray(3) }
-                tfn[2]++                                                      // n = rows in this bucket
-                when {
-                    rc.presenceUnknown(starPath) -> {}                        // parallel-index 3VL → neither
-                    !rc.filled(starPath) -> tfn[1]++                          // empty → f
-                    else -> tfn[0]++                                          // present → t
-                }
-            }
-            buckets
+            correlationBucketsOf(rowContextsScoped(groupPath, scopeReps), joinFields, starPath)
         }
 
     /** Indices for a referenced path P under a row of group G: shared-prefix indices from the row, else 1. */
@@ -940,4 +927,28 @@ class Document @JvmOverloads constructor(
             return "/" + p.take(p.size - 1).joinToString("/")
         }
     }
+}
+
+/**
+ * Build the `$`-correlation hash-join buckets — per join-key: `[t, f, n]` over [rows] (`t`/`f` = the star cell
+ * present/empty, skipping a parallel-index-UNKNOWN presence; `n` = rows in the bucket; an all-empty row or an
+ * Unknown join value contributes nothing). Shared by [Document]'s cached per-scope path and the compute-cascade
+ * overlay, whose rows must READ THROUGH the overlay (a `$`-join over a computed field sees the cascade's value,
+ * not the stale stored one).
+ */
+internal fun correlationBucketsOf(rows: List<EvalContext>, joinFields: List<String>, starPath: String): Map<List<Val>, IntArray> {
+    val buckets = HashMap<List<Val>, IntArray>()
+    for (rc in rows) {
+        if (!rc.evaluated) continue                                   // all-empty row → filter row-gate excludes it
+        val key = joinFields.map { rc.field(it) }
+        if (key.any { it is Val.Unknown }) continue                   // an Unknown join value never matches via ==
+        val tfn = buckets.getOrPut(key) { IntArray(3) }
+        tfn[2]++                                                      // n = rows in this bucket
+        when {
+            rc.presenceUnknown(starPath) -> {}                        // parallel-index 3VL → neither
+            !rc.filled(starPath) -> tfn[1]++                          // empty → f
+            else -> tfn[0]++                                          // present → t
+        }
+    }
+    return buckets
 }

@@ -9,6 +9,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.eval.CellState
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
+import io.github.mbackschat.a12.dm.interpreter.eval.correlationBucketsOf
 import io.github.mbackschat.a12.dm.interpreter.eval.PoisonedReadException
 import io.github.mbackschat.a12.dm.interpreter.eval.UNKNOWN_REP
 import io.github.mbackschat.a12.dm.interpreter.eval.CUSTOM_TYPE_INVALID
@@ -972,17 +973,45 @@ class DmInterpreter @JvmOverloads constructor(
                 }
             }
         }
+
+        // A `Having` filter / group-star iteration reads the cascade too: every row context is overlay-WRAPPED,
+        // so the filter's reads (and the kept-row reads riding it — starOperandVals, filledFieldsValue, the fill
+        // quantifiers) see an overlaid value, a cleared target as EMPTY (IF77), and a poisoned one as a
+        // poisoning read (IF85) — the raw delegation read the STALE stored cell (IF98).
+        override fun rowContexts(groupPath: String, bindDepth: Int): List<EvalContext> =
+            d.rowContexts(groupPath, bindDepth).map { OverlayContext(it, overlay, cleared, poisoned, emptyOf, minFracOf) }
+
+        // The `$`-join buckets must read joined values through the overlay as well — rebuilt from the wrapped
+        // rows (the Document-side cache is scope-keyed on RAW reads; a cascade overlay is per-compute-pass).
+        override fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String): Map<List<Val>, IntArray> =
+            correlationBucketsOf(rowContexts(groupPath), joinFields, starPath)
     }
 
-    /** Every field/star path an expression reads — for cascade dependency ordering (incl. starred aggregates). */
+    /** Every field/star path an expression reads — for cascade dependency ordering: starred aggregates count,
+     *  and a star's `Having` FILTER refs count too (the filter reads the cascade — a `Sum(… Having [flag] ==
+     *  True)` over a computed flag must run after the flag's computation, IF98). */
     private fun referencedFieldPaths(expr: Expr): List<String> = when (expr) {
         is Expr.Field -> listOf(expr.path)
-        is Expr.Star -> listOf(expr.path)
+        is Expr.Star -> listOf(expr.path) + (expr.having?.let { condDepRefs(it) } ?: emptyList())
         is Expr.Func -> expr.args.flatMap { referencedFieldPaths(it) }
         is Expr.Arith -> referencedFieldPaths(expr.left) + referencedFieldPaths(expr.right)
         is Expr.EnumCategory -> listOf(expr.path)
         is Expr.SemanticIndex -> listOfNotNull(expr.path, expr.indexFieldPath)
         else -> emptyList()
+    }
+
+    /** ALL field/star refs of a condition — the cascade-DEPENDENCY view of a precondition (its quantifier/
+     *  aggregate stars and their `Having` refs count, unlike the star-free SCOPE view [nonStarredRefs]). */
+    private fun condDepRefs(cond: Cond): List<String> = when (cond) {
+        is Cond.Cmp -> referencedFieldPaths(cond.left) + referencedFieldPaths(cond.right)
+        is Cond.Tolerance -> referencedFieldPaths(cond.left) + referencedFieldPaths(cond.right)
+        is Cond.ValueListQuant -> (cond.fields + cond.values).flatMap { referencedFieldPaths(it) }
+        is Cond.And -> condDepRefs(cond.left) + condDepRefs(cond.right)
+        is Cond.Or -> condDepRefs(cond.left) + condDepRefs(cond.right)
+        is Cond.Not -> condDepRefs(cond.c)
+        is Cond.Pred -> cond.args.flatMap { referencedFieldPaths(it) }
+        is Cond.Pattern -> referencedFieldPaths(cond.value) + referencedFieldPaths(cond.pattern)
+        is Cond.Custom -> emptyList()
     }
 
     /** Render a computed [Val.Range] to the target field's `(format, separator)` (e.g. `01.06.2024-30.06.2024`);
@@ -1314,11 +1343,14 @@ class DmInterpreter @JvmOverloads constructor(
             parsed.alternatives.flatMap { condRefsOrEmpty(it.precondition) + exprRefs(it.operation) }
 
     /** All field/star refs of a whole tiered computation — its cascade DEPENDENCY input: each operation's full
-     *  refs (incl. starred, so a dependency through an aggregate over a computed field is ordered) plus each
-     *  precondition's + the common precondition's refs. */
+     *  refs (incl. starred and `Having`-filter refs, so a dependency through an aggregate over a computed field
+     *  is ordered) plus each precondition's + the common precondition's FULL refs ([condDepRefs] — a
+     *  precondition's quantifier over a computed field is a dependency too). */
     private fun computationDepRefs(parsed: ParsedComputation): List<String> =
-        condRefsOrEmpty(parsed.commonPrecondition) +
-            parsed.alternatives.flatMap { condRefsOrEmpty(it.precondition) + referencedFieldPaths(it.operation) }
+        (parsed.commonPrecondition?.let { condDepRefs(it) } ?: emptyList()) +
+            parsed.alternatives.flatMap {
+                (it.precondition?.let { p -> condDepRefs(p) } ?: emptyList()) + referencedFieldPaths(it.operation)
+            }
 
     private fun condRefsOrEmpty(cond: Cond?): List<String> = cond?.let { nonStarredRefs(it) } ?: emptyList()
 
