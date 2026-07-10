@@ -150,6 +150,21 @@ class FieldAddSpecTest {
     }
 
     @Test
+    void stringNoValueValidationRoundTripsThroughFieldRead(@TempDir Path dir) throws Exception {
+        // F4: noValueValidation (with its kernel-required lineBreaks) is a first-class string config — accepted
+        // by field add and REPORTED by field read, so it round-trips (readTypeConfig previously dropped it).
+        Path model = run(dir, """
+            {"group":"/Order","name":"Blob","kind":"STRING",
+             "string":{"lineBreaks":true,"noValueValidation":true}}""");
+        assertTrue(Files.readString(model).contains("\"noValueValidation\" : true"), "written to the model");
+
+        var read = CliTestSupport.run("-m", model.toString(), "field", "read", "/Order/Blob");
+        assertEquals(0, read.code(), read::err);
+        assertTrue(read.out().contains("noValueValidation"),
+                () -> "field read reports the noValueValidation config (round-trip): " + read.out());
+    }
+
+    @Test
     void customSpec(@TempDir Path dir) throws Exception {
         String written = Files.readString(run(dir, """
             {"group":"/Order","name":"Iban","kind":"CUSTOM","custom":{"typeName":"IbanType","minLength":15,"maxLength":34}}"""));

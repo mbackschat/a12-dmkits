@@ -535,6 +535,7 @@ public final class DocumentModelDraft {
                 copyInt(c, "minLength", b, "minLength");
                 copyInt(c, "maxLength", b, "maxLength");
                 if (c.path("lineBreaksPermitted").asBoolean(false)) b.put("lineBreaks", true);
+                if (c.path("noValueValidation").asBoolean(false)) b.put("noValueValidation", true);
                 if (c.path("alphabeticalSorting").asBoolean(false)) b.put("alphabeticalSorting", true);
                 localizedMap(c.path("errorMessage")).ifPresent(m -> b.set("patternMessages", m));
                 suggestionsMap(c.path("hintList")).ifPresent(m -> b.set("suggestions", m));
@@ -559,7 +560,19 @@ public final class DocumentModelDraft {
                     valueNode.put("value", v.path("value").asText());
                     localizedMap(v.path("label")).ifPresent(m -> valueNode.set("labels", m));
                 }
+                JsonNode categories = c.path("categories");
+                if (categories.isArray() && !categories.isEmpty()) {
+                    ArrayNode catsOut = b.putArray("categories");
+                    for (JsonNode cat : categories) {
+                        ObjectNode catOut = catsOut.addObject();
+                        catOut.put("name", cat.path("name").asText());
+                        if (cat.hasNonNull("description")) catOut.put("description", cat.get("description").asText());
+                        ArrayNode vals = catOut.putArray("values");
+                        cat.path("values").forEach(val -> vals.add(val.asText()));
+                    }
+                }
                 if (c.path("alphabeticalSorting").asBoolean(false)) b.put("alphabeticalSorting", true);
+                localizedMap(c.path("errorMessage")).ifPresent(m -> b.set("errorMessages", m));
                 out.set("enum", b);
             }
             case "DateType" -> {
