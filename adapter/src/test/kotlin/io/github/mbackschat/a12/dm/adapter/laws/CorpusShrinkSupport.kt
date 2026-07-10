@@ -8,13 +8,15 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Locale
 import kotlin.io.path.extension
+import kotlin.io.path.name
 
 /**
  * Shared scaffolding for the WI-T corpus SHRINK drivers — [ModelShrinkTest] (the granularity-projected CVV/VCV
- * hunt, IG44) and [RawAtomShrinkTest] (the RAW-outcome per-pointer atom hunt — IF88/IF89's drills, now the
- * IG44 residual's tool). Kept in one place so the two
- * drivers don't each re-copy the corpus enumeration, the model-declared locale, the placement filter, and the
- * compute-signature outcome-kind map.
+ * hunt, IG44), [RawAtomShrinkTest] (the RAW-outcome per-pointer atom hunt — IF88/IF89's drills), and
+ * [ValidateUnitShrinkTest] (the validateFull fired-code unit hunt — the IG56 drills) — plus the sweep itself
+ * ([RealCorpusSweepTest]). Kept in one place so the drivers
+ * don't each re-copy the corpus enumeration, the model-declared locale, the placement filter, the
+ * compute-signature outcome-kind/value maps, and the sweep's unsupported-rule exclusion.
  *
  * **License boundary (absolute).** Every helper reads the EUPL/proprietary corpora in place and persists NOTHING:
  * paths and values are used only to drive engines / filter placements, never surfaced. The only thing safe to
@@ -78,6 +80,50 @@ object CorpusShrinkSupport {
 
     /** The outcome kind at [pointer] in [signatures], or [ABSENT] when the engine reported nothing there. */
     fun kindAt(signatures: List<String>, pointer: String): String = kinds(signatures)[pointer] ?: ABSENT
+
+    /** The per-pointer VALUE-string map of a compute signature list (`pointer|VALUE|value` → `pointer → value`);
+     *  a CLEARED/ERRORED pointer is absent. The value-comparing complement of [kinds] — for the kind-EQUAL
+     *  `VALUE`-vs-`VALUE` diffs a kind-keyed hunt cannot see. */
+    fun values(signatures: List<String>): Map<String, String> =
+        signatures.filter { "|VALUE|" in it }.associate { it.substringBefore('|') to it.substringAfter("|VALUE|") }
+
+    /** The kernel-side validateFull signatures with the interpreter-UNSUPPORTED rules' codes excluded — the
+     *  sweep's comparison rule ([RealCorpusSweepTest]): a rule the interpreter reports unsupported (a
+     *  CustomCondition with no SPI, a construct gap) is not fired, so its code must not read as a kernel-only
+     *  divergence. A validateFull isolator MUST apply the same exclusion or it hunts phantom units. */
+    fun kernelSigsExcludingUnsupported(kernelSigs: List<String>, model: ModelDef, unsupported: List<String>): List<String> {
+        val codes = model.rules.filter { rule -> unsupported.any { it.startsWith("${rule.path}:") } }
+            .map { it.errorCode }.toSet()
+        return kernelSigs.filterNot { it.substringBefore('|') in codes }
+    }
+
+    /** Newest non-previous file per kernel-mm model dir, preferring the a12- variant, else codegen-, else none-
+     *  (mirrors KernelMmIntegrationTest — the render-variant that carries the full rule set). */
+    fun canonicalKernelMmModels(root: Path): List<Path> {
+        val result = mutableListOf<Path>()
+        Files.list(root).use { dirs ->
+            dirs.filter { Files.isDirectory(it) }.sorted().forEach { dir ->
+                var best: Path? = null
+                var bestRank = Int.MAX_VALUE
+                Files.list(dir).use { files ->
+                    files.sorted().forEach { f ->
+                        val n = f.name
+                        if (n.endsWith(".json") && !n.contains("-previous")) {
+                            val rank = when { n.startsWith("a12-") -> 0; n.startsWith("codegen-") -> 1; else -> 2 }
+                            if (rank < bestRank) { bestRank = rank; best = f }
+                        }
+                    }
+                }
+                best?.let { result.add(it) }
+            }
+        }
+        return result
+    }
+
+    /** The consult-only kernel-mm corpus root (`-Da12.kernel.mm.dir` or the sibling clone), null when absent. */
+    fun locateKernelMm(): Path? = listOfNotNull(
+        System.getProperty("a12.kernel.mm.dir"), "../a12-kernel-mm/documentModels", "../../a12-kernel-mm/documentModels",
+    ).map { Path.of(it) }.firstOrNull { Files.isDirectory(it) }
 
     private fun indent(s: String) = s.lines().joinToString("\n") { "    $it" }
 

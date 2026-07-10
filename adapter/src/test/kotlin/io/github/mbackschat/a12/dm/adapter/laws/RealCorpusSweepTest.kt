@@ -1,6 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.interpreter.conformance.InterpreterReplay
 import io.github.mbackschat.a12.dm.interpreter.conformance.Op
@@ -16,8 +15,6 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.extension
-import kotlin.io.path.name
 
 /**
  * **WI-7 — the opt-in real-corpus tri-engine sweep** (SEMANTICS-FORMALIZATION-PROPOSAL §6.7). For every model in
@@ -50,7 +47,6 @@ class RealCorpusSweepTest {
         // A fixed wall-clock instant pinned into BOTH engines (kernel currentDateForTest ⇄ interpreter EvalClock),
         // so Today/Now models evaluate deterministically instead of the interpreter refusing "needs a clock".
         const val CLOCK = "2026-07-07T12:00:00"
-        val MAPPER = ObjectMapper()
         /** Java-static (in-memory javac) is best-effort — enable with -Dcorpus.sweep.java=true (slower). */
         val WITH_JAVA = System.getProperty("corpus.sweep.java") == "true"
         /** HOSTILE seeding ([HostileValues] — scattered constraint-VIOLATING number cells) — enable with
@@ -60,9 +56,9 @@ class RealCorpusSweepTest {
 
     @Test
     fun kernelMmSweep() {
-        val root = locateKernelMm()
+        val root = CorpusShrinkSupport.locateKernelMm()
         assumeTrue(root != null, "a12-kernel-mm not present — skipping real-corpus sweep")
-        sweep("kernel-mm", root!!, canonicalKernelMmModels(root))
+        sweep("kernel-mm", root!!, CorpusShrinkSupport.canonicalKernelMmModels(root))
     }
 
     @Test
@@ -71,7 +67,7 @@ class RealCorpusSweepTest {
         assumeTrue(dir != null && Files.isDirectory(Path.of(dir)),
             "a12.corpus1.dir not set / absent — skipping workspaces sweep")
         val root = Path.of(dir)
-        sweep("workspaces", root, documentModels(root))
+        sweep("workspaces", root, CorpusShrinkSupport.documentModels(root))
     }
 
     // ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -90,7 +86,8 @@ class RealCorpusSweepTest {
             report.modelSwept(model)
 
             val javaEngine = if (WITH_JAVA) tryJavaEngine(kernelJson, file, report) else null
-            val locale = modelLocale(kernelJson)   // the kernel rejects a locale the model doesn't declare
+            // the kernel rejects a locale the model doesn't declare
+            val locale = CorpusShrinkSupport.modelLocale(kernelJson)
             for (seed in 0 until INSTANCES) {
                 val placements = try {
                     CorpusSeeding.seedPlacements(model, seed.toLong(), MAX_ROWS,
@@ -135,17 +132,16 @@ class RealCorpusSweepTest {
         // A rule the interpreter can't evaluate (a CustomCondition with no SPI, or a construct gap) is reported
         // unsupported, not fired — so exclude its code from the kernel side too (else it reads as a spurious
         // kernel-only divergence). Both engines then compare only the rules the interpreter can model.
-        val unsupportedCodes = model.rules.filter { rule -> out.unsupported.any { it.startsWith("${rule.path}:") } }
-            .map { it.errorCode }.toSet()
         out.unsupported.forEach { report.unsupportedRule(classifyReason(it)) }
-        val k = kAll.filterNot { it.substringBefore('|') in unsupportedCodes }
+        val k = CorpusShrinkSupport.kernelSigsExcludingUnsupported(kAll, model, out.unsupported)
         val i = out.signatures
         report.validated(k)
         if (i != k) report.divergence(file, seed, "validateFull", k, i)
         // java-static is a recorded characterization, never the anchor (S3) — tally a split, don't fail on it.
         if (java != null) runCatching {
-            val j = java.messagesModern(kernelDoc(placements), clockDate(), locale).map { "${it.code()}|${it.type().name}|${it.field()}" }
-                .filterNot { it.substringBefore('|') in unsupportedCodes }.sorted()
+            val jAll = java.messagesModern(kernelDoc(placements), clockDate(), locale)
+                .map { "${it.code()}|${it.type().name}|${it.field()}" }.sorted()
+            val j = CorpusShrinkSupport.kernelSigsExcludingUnsupported(jAll, model, out.unsupported)
             if (j != k) report.javaStaticSplit(file, "validateFull")
         }.onFailure { report.evalSkip("java-static-eval-failed", file, it) }
     }
@@ -168,17 +164,6 @@ class RealCorpusSweepTest {
     /** The pinned [CLOCK] as a [java.util.Date] for the java-static leg's kernel config. */
     private fun clockDate(): java.util.Date =
         java.util.Date.from(java.time.LocalDateTime.parse(CLOCK).atZone(java.time.ZoneId.systemDefault()).toInstant())
-
-    /** The model's first declared locale (`header.locales[0].code`, e.g. `en` / `de` / `en_US`) as a [java.util.Locale];
-     *  the kernel validates only against a declared locale. Falls back to [java.util.Locale.US]. */
-    private fun modelLocale(kernelJson: String): java.util.Locale {
-        val code = runCatching {
-            MAPPER.readTree(kernelJson).path("header").path("locales").firstOrNull()?.let {
-                if (it.isTextual) it.asText() else it.path("code").asText("")
-            } ?: ""
-        }.getOrDefault("")
-        return if (code.isEmpty()) java.util.Locale.US else java.util.Locale.forLanguageTag(code.replace('_', '-'))
-    }
 
     /** Replay placements into a kernel [RuntimeLaws.Doc] for the java-static leg's own instance building. */
     private fun kernelDoc(placements: List<Placement>): RuntimeLaws.Doc {
@@ -215,49 +200,6 @@ class RealCorpusSweepTest {
             .take(90).trim()
         return "${root::class.simpleName}: $msg"
     }
-
-    // ── corpus model enumeration ───────────────────────────────────────────────────────────────────────────
-
-    /** Newest non-previous file per kernel-mm model dir, preferring the a12- variant, else codegen-, else none-
-     *  (mirrors KernelMmIntegrationTest — the render-variant that carries the full rule set). */
-    private fun canonicalKernelMmModels(root: Path): List<Path> {
-        val result = mutableListOf<Path>()
-        Files.list(root).use { dirs ->
-            dirs.filter { Files.isDirectory(it) }.sorted().forEach { dir ->
-                var best: Path? = null
-                var bestRank = Int.MAX_VALUE
-                Files.list(dir).use { files ->
-                    files.sorted().forEach { f ->
-                        val n = f.name
-                        if (n.endsWith(".json") && !n.contains("-previous")) {
-                            val rank = when { n.startsWith("a12-") -> 0; n.startsWith("codegen-") -> 1; else -> 2 }
-                            if (rank < bestRank) { bestRank = rank; best = f }
-                        }
-                    }
-                }
-                best?.let { result.add(it) }
-            }
-        }
-        return result
-    }
-
-    /** Every `header.modelType == "document"` file under [root] (the evaluable models; `_TDM` libraries have no
-     *  rules but load harmlessly). */
-    private fun documentModels(root: Path): List<Path> {
-        val out = mutableListOf<Path>()
-        Files.walk(root).use { paths ->
-            paths.filter { it.extension == "json" }.sorted().forEach { f ->
-                val ok = runCatching { MAPPER.readTree(Files.readString(f)).path("header").path("modelType").asText() == "document" }
-                    .getOrDefault(false)
-                if (ok) out.add(f)
-            }
-        }
-        return out
-    }
-
-    private fun locateKernelMm(): Path? = listOfNotNull(
-        System.getProperty("a12.kernel.mm.dir"), "../a12-kernel-mm/documentModels", "../../a12-kernel-mm/documentModels",
-    ).map { Path.of(it) }.firstOrNull { Files.isDirectory(it) }
 
     // ── the report ─────────────────────────────────────────────────────────────────────────────────────────
 

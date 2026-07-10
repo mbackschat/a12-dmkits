@@ -100,8 +100,9 @@ tasks.named('test') {
     // when their property is unset.
     ['a12.kernel.mm.dir', 'a12.corpus1.dir', 'corpus.sweep.java', 'ig44.model', 'ig44.seed', 'ig44.dump',
      'ig44.vcv', 'ig47.kernel', 'ig47.interp', 'ig47.model', 'ig47.seed', 'ig47.dump',
-     'atom.kernel', 'atom.interp', 'atom.model', 'atom.seed', 'atom.dump',
-     'replay.model', 'corpus.hostile',
+     'atom.kernel', 'atom.interp', 'atom.model', 'atom.seed', 'atom.dump', 'atom.valuediff',
+     'vf.model', 'vf.seed', 'vf.side', 'vf.sig', 'vf.kernelmm', 'vf.dump',
+     'replay.model', 'replay.op', 'corpus.hostile',
      'perf.profile', 'perf.n', 'perf.edge', 'perf.edge.n', 'perf.edge.counts', 'perf.scaling', 'perf.scaling.n'].each { k ->
         if (System.getProperty(k) != null) systemProperty k, System.getProperty(k)
     }

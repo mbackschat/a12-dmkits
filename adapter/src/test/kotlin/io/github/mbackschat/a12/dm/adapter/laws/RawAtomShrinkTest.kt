@@ -25,6 +25,11 @@ import java.nio.file.Path
  * atom is a PARAMETER — `-Datom.kernel=<K>` / `-Datom.interp=<K>` where a kind ∈ {`VALUE`,`CLEARED`,`ERRORED`,
  * `absent`} — so ONE tool serves every atom class (default `ERRORED`/`VALUE`).
  *
+ * **Value-diff mode (`-Datom.valuediff=true`, the IG56 tool extension):** hunts the kind-EQUAL class a kind-keyed
+ * atom cannot see — a pointer where BOTH engines report `VALUE` but the value STRINGS differ. The shrink
+ * predicate pins the exact (kernel-value, interp-value) PAIR at the pointer, so a reduction that drifts either
+ * value — even while still differing — is rejected and the minimal stays on the found mechanism.
+ *
  * Opt-in (`-PrunCorpusSweep`, tag `corpus-sweep`) + skip-if-absent (`-Da12.corpus1.dir`). Pin with
  * `-Datom.model=<substring>` / `-Datom.seed=<n>`; dump the minimal + its triggering placements to a SCRATCH file
  * with `-Datom.dump=<scratch-file>` (never a repo path — the license boundary blocks persisting corpus content).
@@ -45,6 +50,9 @@ class RawAtomShrinkTest {
     private val targetKernel = System.getProperty("atom.kernel", "ERRORED")
     private val targetInterp = System.getProperty("atom.interp", "VALUE")
 
+    /** VALUE-vs-VALUE value-STRING diff mode — overrides the kind-pair target (both kinds are VALUE). */
+    private val valueDiff = System.getProperty("atom.valuediff") == "true"
+
     /** HOSTILE seeding (the IG56 hostile-mode atoms) — align the hunt with a `-Dcorpus.hostile=true` sweep. */
     private val strategy = if (System.getProperty("corpus.hostile") == "true") HostileValues
         else io.github.mbackschat.a12.dm.interpreter.gen.ValidValues
@@ -57,7 +65,8 @@ class RawAtomShrinkTest {
         val resolver = ReferenceResolvers.directory(root)
         val modelFilter = System.getProperty("atom.model")
         val seedFilter = System.getProperty("atom.seed")?.toIntOrNull()
-        println("\n[atom] raw-atom hunt: target kernel=$targetKernel,interp=$targetInterp")
+        println("\n[atom] raw-atom hunt: target " +
+            (if (valueDiff) "VALUE-vs-VALUE value-string diff" else "kernel=$targetKernel,interp=$targetInterp"))
 
         var scanned = 0
         for (file in CorpusShrinkSupport.documentModels(root)) {
@@ -79,9 +88,12 @@ class RawAtomShrinkTest {
             (modelFilter?.let { " (filter=$it)" } ?: ""))
     }
 
-    private data class Atom(val seed: Int, val pointer: String, val placements: List<Placement>)
+    /** [kernelValue]/[interpValue] are the pinned value strings of a [valueDiff] atom (null in kind mode). */
+    private data class Atom(val seed: Int, val pointer: String, val placements: List<Placement>,
+                            val kernelValue: String? = null, val interpValue: String? = null)
 
-    /** Scan the model's seeds for a pointer whose RAW kernel/interp outcome kinds equal the target atom. */
+    /** Scan the model's seeds for a pointer whose RAW kernel/interp outcomes match the target — the kind pair,
+     *  or in [valueDiff] mode a kind-equal `VALUE`-vs-`VALUE` pointer with differing value strings. */
     private fun findAtom(model: ModelDef, kernelJson: String, interpJson: String, locale: java.util.Locale,
                          seedFilter: Int?): Atom? {
         val seeds = seedFilter?.let { listOf(it) } ?: (0 until INSTANCES).toList()
@@ -89,6 +101,12 @@ class RawAtomShrinkTest {
             val placements = runCatching { CorpusSeeding.seedPlacements(model, seed.toLong(), MAX_ROWS, strategy) }.getOrNull() ?: continue
             val k = runCatching { CorpusEngines.groovyDynamic(kernelJson, placements, Op.Compute, CLOCK, locale) }.getOrNull() ?: continue
             val i = runCatching { CorpusEngines.interpret(interpJson, placements, Op.Compute, CLOCK) }.getOrNull() ?: continue
+            if (valueDiff) {
+                val kv = CorpusShrinkSupport.values(k)
+                val iv = CorpusShrinkSupport.values(i)
+                val p = (kv.keys intersect iv.keys).firstOrNull { kv[it] != iv[it] } ?: continue
+                return Atom(seed, p, placements, kv.getValue(p), iv.getValue(p))
+            }
             val p = pointerMatching(k, i) ?: continue
             return Atom(seed, p, placements)
         }
@@ -124,14 +142,19 @@ class RawAtomShrinkTest {
     }
 
     /** The RAW divergence predicate: over the same seeded instance (placements filtered to surviving elements),
-     *  does [candidate] still show the target atom's kernel-kind AND interp-kind at [atom.pointer] — reading the
-     *  interpreter side RAW, with NO granularity projection (the whole point of this isolator)? */
+     *  does [candidate] still show the target atom at [atom.pointer] — the kind pair, or in [valueDiff] mode the
+     *  PINNED (kernel-value, interp-value) pair — reading the interpreter side RAW, with NO granularity
+     *  projection (the whole point of this isolator)? */
     private fun stillDiverges(candidate: String, atom: Atom, locale: java.util.Locale): Boolean {
         val interpJson = runCatching { CorpusModelPreparer.toInterpreterJson(candidate) }.getOrNull() ?: return false
         val model = runCatching { ModelLoader.load(interpJson) }.getOrNull() ?: return false
         val placements = CorpusShrinkSupport.filterPlacements(model, atom.placements)
         val k = runCatching { CorpusEngines.groovyDynamic(candidate, placements, Op.Compute, CLOCK, locale) }.getOrNull() ?: return false
         val i = runCatching { CorpusEngines.interpret(interpJson, placements, Op.Compute, CLOCK) }.getOrNull() ?: return false
+        if (valueDiff) {
+            return CorpusShrinkSupport.values(k)[atom.pointer] == atom.kernelValue &&
+                CorpusShrinkSupport.values(i)[atom.pointer] == atom.interpValue
+        }
         return CorpusShrinkSupport.kindAt(k, atom.pointer) == targetKernel &&
             CorpusShrinkSupport.kindAt(i, atom.pointer) == targetInterp
     }
