@@ -1535,20 +1535,43 @@ class Interpreter(
      *     direct-field read rule IF85) — without it a concat swallowed the invalid cell as `""`.
      *
      * A clean column's no-match and a matched-but-EMPTY cell return null (the caller's empty-as-0 / not-given
-     * read), exactly like the validation read. Validation mode: both gates off — a matched-but-malformed cell
-     * stays [Val.Unknown].
+     * read), exactly like the validation read. VALIDATION mode differs from the compute whole-column marking
+     * (IF115, kernel-pinned): a match on a CLEAN key cell resolves the read no matter what the OTHER cells
+     * carry (the matched target's own malformed-ness stays [Val.Unknown] = not-check-relevant); a match on a
+     * DUPLICATED or malformed key cell, and a NO-match over a column carrying ANY not-check-relevant cell —
+     * malformed (a maybe-match), EMPTY (auto-required), or duplicated — are unresolvable → [Val.Unknown], so
+     * a direct comparison is suppressed and the concat gate ([concatOperandInvalid]) suppresses a
+     * concatenation (the kernel's `np` flag riding `VkString.add` into `isStringNotRelevant`).
      */
     private fun computeGuardedIndexCell(e: Expr.SemanticIndex): Val? {
         if (computeMode) {
-            val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
-                "SemanticIndex needs an index field on the group of ${e.path}")
-            val cells = ctx.starCells(idx)
-            val dups = duplicatedValues(cells)
-            if (cells.any { (_, v) -> v == null || v is Val.Unknown || v in dups }) throw PoisonedReadException(idx)
+            if (indexColumnInvalid(e)) throw PoisonedReadException(e.path)
+            val cell = semanticIndexCell(e)
+            if (cell is Val.Unknown) throw PoisonedReadException(e.path)
+            return cell
         }
-        val cell = semanticIndexCell(e)
-        if (computeMode && cell is Val.Unknown) throw PoisonedReadException(e.path)
-        return cell
+        val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
+            "SemanticIndex needs an index field on the group of ${e.path}")
+        val key = resolveIndexKey(e) ?: return null                      // empty/absent key → not-given
+        val matchedKey = ctx.indexedCell(idx, idx, key)                  // the index-field self-lookup
+        if (matchedKey != null) {
+            // matched on a malformed (raw-equal) or DUPLICATED key cell → not-check-relevant
+            if (matchedKey is Val.Unknown || matchedKey in duplicatedValues(ctx.starCells(idx))) return Val.Unknown
+            return ctx.indexedCell(e.path, idx, key)
+        }
+        if (indexColumnInvalid(e)) return Val.Unknown                    // unresolvable no-match
+        return null                                                      // clean no-match → not-given
+    }
+
+    /** Whether the index COLUMN of `[F For key]` carries ANY invalid cell — malformed, duplicated, or empty
+     *  (the IndexFieldCache marking, IF107): every read through the index is then poisoned (compute) or
+     *  not-check-relevant (validation, IF115). */
+    private fun indexColumnInvalid(e: Expr.SemanticIndex): Boolean {
+        val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
+            "SemanticIndex needs an index field on the group of ${e.path}")
+        val cells = ctx.starCells(idx)
+        val dups = duplicatedValues(cells)
+        return cells.any { (_, v) -> v == null || v is Val.Unknown || v in dups }
     }
 
     /** The matched CELL of `[F For key]`, or null when nothing matches — an empty/absent key field, no row
@@ -1709,13 +1732,18 @@ class Interpreter(
         else -> ""
     }
 
-    /** Whether a concat operand (possibly a nested `+` concatenation) contains a FILLED-but-formally-invalid
-     *  string field — the kernel makes the whole concatenation non-evaluable (the computed field CLEARS),
-     *  distinct from an EMPTY operand which concatenates as "" (IF81, was IG51). `filled &&` excludes a
-     *  required-empty field (empty-as-"", not cleared — kernel-probed); a constant/function operand is never
-     *  a field-invalidity site here. */
+    /** Whether a concat operand (possibly a nested `+` concatenation) contains a NOT-CHECK-RELEVANT read —
+     *  the kernel's `np` flag ORs through `VkString.add`, making the whole concatenation non-evaluable: the
+     *  computed field CLEARS / the referencing rule is suppressed (IF81/IF115). Distinct from an EMPTY
+     *  operand, which concatenates as "" (even required-empty — kernel-probed). The np reads: a
+     *  FILLED-but-formally-invalid field (`filled &&` excludes required-empty), an indexed read over an
+     *  invalid column or a matched-malformed cell ([computeGuardedIndexCell] — which POISONS in compute
+     *  mode, IF108), and a `FieldValueAsString` over either. A constant/other-function operand is never an
+     *  np site here. */
     private fun concatOperandInvalid(e: Expr): Boolean = when (e) {
         is Expr.Field -> ctxOf(e).filled(e.path) && invalid(e.path)
+        is Expr.SemanticIndex -> computeGuardedIndexCell(e) is Val.Unknown
+        is Expr.Func -> FunctionOp.byName(e.name) == FunctionOp.FIELD_VALUE_AS_STRING && concatOperandInvalid(e.args[0])
         is Expr.Arith -> e.op == ArithOp.ADD && (concatOperandInvalid(e.left) || concatOperandInvalid(e.right))
         else -> false
     }

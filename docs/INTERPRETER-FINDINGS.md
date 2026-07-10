@@ -1193,4 +1193,17 @@ The last nice-mode class ([3] polarity-flip VALUE→OMISSION) shrank to the impl
 
 **The fix.** `fill()`'s blanket exempts the entity counts (`isEntityCount`); `funcFill` routes `NumberOfFilledFields`/`NumberOfFilledGroups` to `countFill` — the counted-filtered escalation, else grow-only with `total > counted || leafOmission`. `NumberOfDifferentValues` stays under the blanket (its combiner escalates unconditionally, kernel source). A count NESTED in arithmetic with a filtered star stays blanketed — unpinned, no corpus instance.
 
-*Locked:* `adapter.laws.FilteredCountPolarityDiffTest` (7 kernel-pinned arms) + multiplatform `interpreter … FilteredCountPolarityTest` (JVM + JS). Kernel fact: KERNEL-FINDINGS §12 supplement. Fix in `commonMain` → JVM + JS. **Sweep: the nice-mode residual is expected DRY with this** (10 → 3 → 0 across IF112/IF113/IF114).
+*Locked:* `adapter.laws.FilteredCountPolarityDiffTest` (7 kernel-pinned arms) + multiplatform `interpreter … FilteredCountPolarityTest` (JVM + JS). Kernel fact: KERNEL-FINDINGS §12 supplement. Fix in `commonMain` → JVM + JS. **Sweep: the nice-mode residual is expected DRY with this** (10 → 3 → 0 across IF112/IF113/IF114 — confirmed 0 by the EXIT sweep).
+
+### IF115 — the VALIDATION-side not-check-relevant states of an indexed read: a clean match resolves; an unresolvable lookup suppresses (FIXED 2026-07-10, graduated from the IG56 EXIT hostile interp-extra class)
+
+The EXIT hostile sweep's last class ([3] interp-extra OMISSION units) shrank to the `InfosMax` concat family with a 16-digit cell in the index COLUMN and a no-match key: the kernel emits nothing (the lookup is not-check-relevant, the `np` flag ORs through `VkString.add` and `isStringNotRelevant` suppresses the comparison), the interpreter fired the implicit rule with the reads as `""`. The compute-mode gates (IF107/IF108) did not cover validation — and the first fix attempt (the compute column marking applied verbatim) was REFUTED by the differential within minutes: validation is **per-lookup**, not whole-column. The kernel-pinned matrix (9 arms):
+
+- a match on a **CLEAN key cell resolves the read** no matter what the other cells carry — a malformed cell elsewhere does not suppress (kernel fires; where compute would poison);
+- a match on a **DUPLICATED key cell** (uniqueIndex marks both cells) and, defensively, a malformed raw-equal key cell → unresolvable → suppressed;
+- a **NO-match over a column carrying any not-check-relevant cell** — malformed (a maybe-match), EMPTY (auto-required), or duplicated — → unresolvable → suppressed;
+- a **clean no-match stays the NOT-GIVEN read** (na, not np): the concat fires with `""` parts and OMISSION polarity (IF113), the sharp na-vs-np edge.
+
+**The fix.** `computeGuardedIndexCell`'s validation branch: the index-field self-lookup decides a definite match (a matched key cell is by definition filled); clean-matched → the target cell; dup/malformed-matched or unresolvable-no-match → `Val.Unknown`; clean no-match → null (not-given). `concatOperandInvalid` grew the `Expr.SemanticIndex` and `FieldValueAsString` arms so the np-Unknown suppresses a concatenation instead of being swallowed as `""` (the validation twin of IF108's compute poison, riding the same shared guarded read).
+
+*Locked:* `adapter.laws.IndexedReadSuppressionDiffTest` (the 9-arm matrix incl. the direct-comparison sibling `PRC` rule) + multiplatform `interpreter … IndexedReadSuppressionTest` (JVM + JS). Kernel fact: KERNEL-FINDINGS §11 supplement extension. Fix in `commonMain` → JVM + JS. **Sweep: with this the hostile residual is expected DRY** (3 → 0; the drill's last open class).
