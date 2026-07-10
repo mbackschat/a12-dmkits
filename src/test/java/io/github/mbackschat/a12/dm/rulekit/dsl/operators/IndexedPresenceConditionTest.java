@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.*;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
@@ -50,6 +52,35 @@ class IndexedPresenceConditionTest {
         // forIndex is kind-agnostic, so presence is too — a string-cell index reads the same way
         Condition c = m.str("/Order/Items/Sku").forIndex("SKU-1").notFilled();
         assertEquals("FieldNotFilled(/Order/Items/Sku For \"SKU-1\")", new DslRenderer().render(c));
+    }
+
+    /** A repeatable line with a cell of each remaining indexable kind (date/time/dateTime/enum). */
+    private static final BoundModel cart = BoundModel.ofJson(DocumentModelDraft.named("cart").locale("en_US")
+            .rootGroup("Cart", c -> c.group("Lines", l -> {
+                l.repeatable(20);
+                l.field("Sku", FieldKind.STRING);
+                l.dateField("DueDate", d -> { });
+                l.timeField("PickupTime", t -> { });
+                l.dateTimeField("OrderedAt", dt -> { });
+                l.enumField("Status", e -> e.value("OPEN").value("SHIPPED"));
+            })).build().toJson());
+
+    @Test
+    void presenceRendersForDateTimeAndEnumCells() {
+        // the render locks above cover num + str; forIndex is kind-agnostic, so date/time/dateTime/enum cells
+        // render the SAME bare semantic-index form — lock the remaining kinds so a per-kind regression is caught.
+        DslRenderer r = new DslRenderer();
+        assertEquals("FieldFilled(/Cart/Lines/DueDate For \"K1\")",
+                r.render(cart.date("/Cart/Lines/DueDate").forIndex("K1").filled()));
+        assertEquals("FieldNotFilled(/Cart/Lines/PickupTime For \"K1\")",
+                r.render(cart.time("/Cart/Lines/PickupTime").forIndex("K1").notFilled()));
+        assertEquals("FieldFilled(/Cart/Lines/OrderedAt For \"K1\")",
+                r.render(cart.dateTime("/Cart/Lines/OrderedAt").forIndex("K1").filled()));
+        assertEquals("FieldFilled(/Cart/Lines/Status For \"K1\")",
+                r.render(cart.enumOf("/Cart/Lines/Status").forIndex("K1").filled()));
+        // DE keyword localization holds across kinds too (the enum cell)
+        assertEquals("FeldAngegeben(/Cart/Lines/Status Fuer \"K1\")",
+                new DslRenderer(ConditionLanguage.DE).render(cart.enumOf("/Cart/Lines/Status").forIndex("K1").filled()));
     }
 
     @Test
