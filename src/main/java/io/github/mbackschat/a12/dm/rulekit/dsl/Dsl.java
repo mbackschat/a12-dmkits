@@ -564,6 +564,17 @@ public final class Dsl {
         return new NumberExpr(NumberLiteral.of(literal));
     }
 
+    /** A whole-number literal as a comparable expression — the typed peer of {@link #number(String)}
+     *  (e.g. {@code date(number(13), number(1), number(2022))}). */
+    public static NumberExpr number(long literal) {
+        return new NumberExpr(NumberLiteral.of(literal));
+    }
+
+    /** A decimal literal as a comparable expression — scale-faithful, exactly as {@link #number(String)}. */
+    public static NumberExpr number(java.math.BigDecimal literal) {
+        return new NumberExpr(new NumberLiteral(literal));
+    }
+
     /** A string literal as a string expression — e.g. a concatenation part ({@code first.plus(text(" "))}). */
     public static StringExpr text(String literal) {
         return new StringExpr(new StringLiteral(literal));

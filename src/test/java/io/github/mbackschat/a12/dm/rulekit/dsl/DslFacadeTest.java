@@ -121,6 +121,19 @@ class DslFacadeTest {
         assertEquals("Length(/Subscription/Addons/Name) > 10", new DslRenderer().render(viaDsl));
     }
 
+    @Test
+    void numberFactoryHasLongAndBigDecimalOverloads() {
+        // D5: number(String) was the only form; number(long)/number(BigDecimal) remove the
+        // stringify-the-literal friction (e.g. Dsl.date(number(13), ...)).
+        assertEquals("[/Subscription/Addons/MonthlyFee] > 13",
+                new DslRenderer().render(m.num(MONTHLY_FEE).gt(Dsl.number(13L))));
+        // BigDecimal stays scale-faithful, exactly as number(String) does.
+        assertEquals("[/Subscription/Addons/MonthlyFee] >= 0.00",
+                new DslRenderer().render(m.num(MONTHLY_FEE).ge(Dsl.number(new java.math.BigDecimal("0.00")))));
+        assertEquals(new DslRenderer().render(m.num(MONTHLY_FEE).gt(Dsl.number("13"))),
+                new DslRenderer().render(m.num(MONTHLY_FEE).gt(Dsl.number(13L))));
+    }
+
     private static Reader fixture(String classpathLocation) {
         InputStream in = DslFacadeTest.class.getClassLoader().getResourceAsStream(classpathLocation);
         assertNotNull(in, "fixture not found: " + classpathLocation);
