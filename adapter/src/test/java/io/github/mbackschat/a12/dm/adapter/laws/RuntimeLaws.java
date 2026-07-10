@@ -99,6 +99,13 @@ public final class RuntimeLaws {
     private RuntimeLaws() {
     }
 
+    /** JSON-string-escape a spliced value — quotes, backslashes, AND control characters (a stored condition can
+     *  legally carry embedded newlines/indentation, as the kernel-mm metamodels do). */
+    private static String jsonEscape(String s) {
+        return s.replace("\\", "\\\\").replace("\"", "\\\"")
+                .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");
+    }
+
     /** Load a model JSON fixture from the adapter test resources (e.g. {@code "models/order.dm.json"}). */
     public static String model(String resourcePath) {
         try (InputStream in = RuntimeLaws.class.getClassLoader().getResourceAsStream(resourcePath)) {
@@ -120,9 +127,9 @@ public final class RuntimeLaws {
     /** As {@link #withRule}, but with explicit en_US / de_DE error-message texts (for localized-text laws). */
     static String withRuleMessages(String modelJson, String groupId, String ruleName, String errorEntityRelPath,
             String errorCode, String condition, String enText, String deText) {
-        String escaped = condition.replace("\\", "\\\\").replace("\"", "\\\"");
-        String en = enText.replace("\\", "\\\\").replace("\"", "\\\"");
-        String de = deText.replace("\\", "\\\\").replace("\"", "\\\"");
+        String escaped = jsonEscape(condition);
+        String en = jsonEscape(enText);
+        String de = jsonEscape(deText);
         String rule = "{ \"type\": \"Rule\", \"id\": \"" + groupId + "/" + ruleName + "\", \"name\": \"" + ruleName + "\","
                 + " \"Rule\": { \"errorEntityRelPath\": \"" + errorEntityRelPath + "\", \"errorCode\": \"" + errorCode + "\","
                 + " \"errorCondition\": \"" + escaped + "\", \"severity\": \"ERROR\","

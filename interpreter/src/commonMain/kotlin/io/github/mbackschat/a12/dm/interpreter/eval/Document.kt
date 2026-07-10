@@ -625,15 +625,11 @@ class Document @JvmOverloads constructor(
         // (a rule iterating the same group the aggregate ranges over — the `$` outer-correlation case): scoping
         // to the full rowReps would wrongly return only this one row. A DEEPER (nested) aggregate keeps the full
         // prefix (take(n) with n ≥ this depth ≡ rowReps), so it stays scoped to this row — unchanged.
-        override fun rowContexts(groupPath: String, bindDepth: Int): List<EvalContext> {
-            // The scope anchor: the group's parent, capped further at [bindDepth] for a MULTI-star operand
-            // (IF94 — the rows of `A* / B*` from an iterating row span ALL of A, not this row's A).
-            val cap = if (bindDepth >= 0) minOf(partsOf(groupPath).size - 1, bindDepth) else partsOf(groupPath).size - 1
-            return rowContextsScoped(groupPath, rowReps.take(cap))
-        }
+        override fun rowContexts(groupPath: String, bindDepth: Int): List<EvalContext> =
+            rowContextsScoped(groupPath, groupScopePrefix(groupPath, bindDepth))
 
         override fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String): Map<List<Val>, IntArray> =
-            correlationBucketsScoped(groupPath, rowReps.take(partsOf(groupPath).size - 1), joinFields, starPath)
+            correlationBucketsScoped(groupPath, groupScopePrefix(groupPath, -1), joinFields, starPath)
 
         // A group-scoped / starred-field fill quantifier — "the fields inside the group" (recursively, the kernel
         // ExpandService → getAllContainedFields), across the two kernel ranges (IF49). See [EvalContext.fillScope].
@@ -724,18 +720,23 @@ class Document @JvmOverloads constructor(
         /** Index tuples of [starPath] across every row of its deepest repeatable group ancestor in scope. The
          *  in-scope rows are fetched by prefix in O(1) (via the [Index] prefix index), not by an O(all-rows)
          *  filter — so a semantic-index / cross-level star resolved per row stays linear, not O(rows²). */
-        // The bound-row prefix of a starred path read from this row — the `*`-marked level ALWAYS iterates
-        // fully; only levels STRICTLY ABOVE the starred group bind to this row's indices, so the shared prefix
-        // is capped at the starred group's PARENT (IF93, the same anchor rule [rowContexts] uses). A bare
-        // same-group or ancestor star from an iterating row spans ALL rows — `$` (inside a Having) is the ONLY
-        // outer-row correlation (KERNEL-SEMANTICS §9); binding the full common prefix collapsed it to the
-        // current row (fired per-row rules on every row, computed over one cell, and hid a poisoned sibling
-        // cell from a downstream aggregate — the IG44 R2 atom). A star NESTED BELOW this row keeps binding
+        // The bound-row prefix of a starred FIELD path read from this row — the leaf-group form of
+        // [groupScopePrefix] (one function owns the anchor rule; this adapter only drops the field segment).
+        private fun starScopePrefix(starPath: String, bindDepth: Int = -1): List<Int> =
+            groupScopePrefix(parentGroup(starPath), bindDepth)
+
+        // The bound-row prefix for iterating [groupPath]'s rows from this row — the `*`-marked level ALWAYS
+        // iterates fully; only levels STRICTLY ABOVE the starred group bind to this row's indices, so the
+        // shared prefix is capped at the starred group's PARENT (IF93) — earlier for a MULTI-star operand (the
+        // FIRST `*`-marked level's parent, [bindDepth], IF94) — and ONLY along the SHARED named ancestry
+        // (`commonPrefixLen`): a CROSS-SUBTREE star must not inherit this row's indices POSITIONALLY (from
+        // `Claims[2]`, a `/Settings/Regions*` scope prefix `[1,2]` addressed the nonexistent `Settings[2]` →
+        // 0 rows — under-fired counts/presence, over-fired `NoGroupFilled`; the first kernel-mm divergence).
+        // A bare same-group or ancestor star from an iterating row spans ALL rows — `$` (inside a Having) is
+        // the ONLY outer-row correlation (KERNEL-SEMANTICS §9); a star NESTED BELOW this row keeps binding
         // this row's indices (common < the cap) — unchanged.
-        private fun starScopePrefix(starPath: String, bindDepth: Int = -1): List<Int> {
-            val parts = partsOf(parentGroup(starPath))
-            // The default cap (the leaf group's parent) is the single-star rule; a MULTI-star operand caps
-            // earlier — at the FIRST `*`-marked level's parent ([bindDepth], IF94).
+        private fun groupScopePrefix(groupPath: String, bindDepth: Int): List<Int> {
+            val parts = partsOf(groupPath)
             val cap = if (bindDepth >= 0) minOf(parts.size - 1, bindDepth) else parts.size - 1
             return rowReps.take(minOf(commonPrefixLen(parts, partsOf(group)), cap))
         }
