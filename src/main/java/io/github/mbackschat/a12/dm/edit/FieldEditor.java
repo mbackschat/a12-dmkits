@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.edit;
 
 import java.util.Map;
 
+import io.github.mbackschat.a12.dm.modelkit.FieldModification;
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 import io.github.mbackschat.a12.dm.modelkit.Requiredness;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
@@ -69,6 +70,38 @@ public final class FieldEditor {
     /** Set this field's requiredness ({@link Requiredness#OPTIONAL} clears it). Chains. */
     public FieldEditor setRequiredness(Requiredness requiredness) {
         session.setRequiredness(location.path(), requiredness);
+        return this;
+    }
+
+    /** Set this field's per-locale custom REQUIRED-empty error (G23); the field must already be required and
+     *  every declared locale must be covered. Chains. */
+    public FieldEditor setRequiredErrorMessages(Map<String, String> localeToText) {
+        session.setRequiredErrorMessages(location.path(), localeToText);
+        return this;
+    }
+
+    /** Set this field's per-locale helper text (need not cover every locale, unlike a label). Chains. */
+    public FieldEditor setHelperText(Map<String, String> localeToText) {
+        session.setHelperText(location.path(), localeToText);
+        return this;
+    }
+
+    /** Set this field's {@code global} flag (shared across repetitions); {@code false} clears it. Chains. */
+    public FieldEditor setGlobal(boolean global) {
+        session.setGlobal(location.path(), global);
+        return this;
+    }
+
+    /** Set this field's {@code transient} flag (not persisted); {@code false} clears it. Chains. */
+    public FieldEditor setTransient(boolean isTransient) {
+        session.setTransient(location.path(), isTransient);
+        return this;
+    }
+
+    /** Apply a partial {@link FieldModification} (type and/or metadata) in place — nothing it carries is dropped,
+     *  absent aspects are left untouched. Chains. */
+    public FieldEditor modify(FieldModification modification) {
+        session.modifyField(location.path(), modification);
         return this;
     }
 }

@@ -106,6 +106,27 @@ public final class EditSession {
         return editStructure(d -> d.setRequiredness(fieldPath, requiredness));
     }
 
+    /** Set the per-locale custom error shown when a REQUIRED field is left empty (G23); the field must already
+     *  be required, and every declared locale must be covered. */
+    public EditSession setRequiredErrorMessages(String fieldPath, Map<String, String> localeToText) {
+        return editStructure(d -> d.setRequiredErrorMessages(fieldPath, localeToText));
+    }
+
+    /** Set a field's per-locale helper text (need not cover every locale, unlike a label). */
+    public EditSession setHelperText(String fieldPath, Map<String, String> localeToText) {
+        return editStructure(d -> d.setHelperText(fieldPath, localeToText));
+    }
+
+    /** Set a field's {@code global} flag (shared across repetitions); {@code false} clears it (the kernel default). */
+    public EditSession setGlobal(String fieldPath, boolean global) {
+        return editStructure(d -> d.setGlobal(fieldPath, global));
+    }
+
+    /** Set a field's {@code transient} flag (not persisted); {@code false} clears it (the kernel default). */
+    public EditSession setTransient(String fieldPath, boolean isTransient) {
+        return editStructure(d -> d.setTransient(fieldPath, isTransient));
+    }
+
     public EditSession setLabel(String elementPath, Map<String, String> localeToText) {
         return editStructure(d -> d.setLabel(elementPath, localeToText));
     }
@@ -236,6 +257,11 @@ public final class EditSession {
     }
 
     /** Upsert one model-level header label locale (FEATURE-GAPS). */
+    /** Rename the model itself (its {@code content.modelRoot} id / header id). */
+    public EditSession setModelId(String newId) {
+        return editStructure(d -> d.setModelId(newId));
+    }
+
     public EditSession setModelLabel(String locale, String text) {
         return editStructure(d -> d.setModelLabel(locale, text));
     }
@@ -354,6 +380,15 @@ public final class EditSession {
         String subModel = doc.extractGroupAsInclude(groupPath, reference);
         json = doc.toJson();
         return subModel;
+    }
+
+    /**
+     * Inline the include aliased {@code alias} — the inverse of {@link #extractGroupAsInclude}: fold the
+     * included model's content (supplied as {@code includedModelJson} — the caller's, since this session is
+     * resolver-agnostic) back into every mount as a real group, then drop the header reference.
+     */
+    public EditSession inlineInclude(String alias, String includedModelJson) {
+        return editStructure(d -> d.inlineInclude(alias, includedModelJson));
     }
 
     public EditSession setIncludeReference(String alias, String newReference) {

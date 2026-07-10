@@ -906,6 +906,17 @@ The same **per-type field builders** as the from-scratch builder are on the edit
 s.group("/Order").numberField("Surcharge", n -> n.fractionDigits(2).min("0"));   // configured field, mid-edit
 ```
 
+**The editor carries the full attribute surface too (F7).** Beyond *adding* structure, an editor sets every element aspect in place — the editor peers of the flat session verbs (§5b), so an existing field/group is fully configurable without re-typing its path. `GroupEditor` gains `setLabel` / `setRepeatable` / `setNonRepeatable` / `setIndexField` / `setSortFields` (alongside `setAnnotation` / `set{Internal,External}Description`); `FieldEditor` gains `setHelperText` / `setGlobal` / `setTransient` / `setRequiredErrorMessages` and `modify(FieldModification)` for a partial bundle. `EditSession` also gained `setModelId` (rename the model) and `inlineInclude(alias, includedJson)` — the inverse of `extractGroupAsInclude`, folding an include's content back into the base.
+
+<!-- teaser -->
+```java
+s.group("/Subscription/Lines").setRepeatable(50).setIndexField("Sku")               // group config, mid-edit
+    .setSortFields(List.of(new ElementDraft.SortField("Amount", SortOrder.DESC)));
+s.field("/Subscription/Addons/MonthlyFee")                                          // field config, chaining
+    .setHelperText(Map.of("en_US", "Monthly fee in EUR")).setGlobal(true);
+```
+*(Locked by `edit.EditorCompletionsTest`.)*
+
 **rulekit (rules) — the *same* refs are the scope / error-field / operands:**
 
 <!-- teaser -->

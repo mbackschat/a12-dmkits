@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.edit;
 
+import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -337,6 +339,36 @@ public final class GroupEditor implements GroupReference {
     /** Upsert one per-locale external description (end-user-facing text) on this group. Chains. */
     public GroupEditor setExternalDescription(String locale, String text) {
         session.setExternalDescription(location.path(), locale, text);
+        return this;
+    }
+
+    /** Set this group's per-locale display labels (once any locale is set, all declared ones are required). Chains. */
+    public GroupEditor setLabel(Map<String, String> localeToText) {
+        session.setLabel(location.path(), localeToText);
+        return this;
+    }
+
+    /** Make this group a repeatable list (up to {@code maxRepetitions}, ≥ 2). Chains. */
+    public GroupEditor setRepeatable(int maxRepetitions) {
+        session.setRepeatable(location.path(), maxRepetitions);
+        return this;
+    }
+
+    /** Make this group non-repeating (the single default) — the inverse of {@link #setRepeatable(int)}. Chains. */
+    public GroupEditor setNonRepeatable() {
+        session.setNonRepeatable(location.path());
+        return this;
+    }
+
+    /** Mark a direct child field as this repeatable group's row key ({@code indexField}). Chains. */
+    public GroupEditor setIndexField(String fieldName) {
+        session.setIndexField(location.path(), fieldName);
+        return this;
+    }
+
+    /** Declare this repeatable group's row {@code sortFields} (in order). Chains. */
+    public GroupEditor setSortFields(List<ElementDraft.SortField> fields) {
+        session.setSortFields(location.path(), fields);
         return this;
     }
 
