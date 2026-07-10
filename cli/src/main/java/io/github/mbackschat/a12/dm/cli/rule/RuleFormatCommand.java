@@ -40,7 +40,9 @@ final class RuleFormatCommand extends BaseCommand {
     String rule;
 
     @Option(names = "--lang", paramLabel = "<EN|DE>",
-            description = "re-emit in this keyword language (kernel-authoritative EN↔DE); omitted = the model's own language")
+            description = "re-emit in this keyword language (kernel-authoritative EN↔DE); omitted = the model's own "
+                    + "language. This is an EPHEMERAL render/keyword toggle for this call — NOT the model's stored "
+                    + "condition-language setting, which the config modify verb owns.")
     ConditionLanguage lang;
 
     @Mixin

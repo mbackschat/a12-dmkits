@@ -50,7 +50,9 @@ final class ConfigModifyCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--condition-language", paramLabel = "<code>",
-            description = "the condition language code, e.g. en_US or de_DE")
+            description = "the model's stored condition-language setting (a persistent locale code, e.g. en_US or "
+                    + "de_DE) — distinct from the ephemeral EN|DE render toggle (--lang) on the rule/computation "
+                    + "format verbs, which is not a model setting")
     String conditionLanguage;
 
     @ParamKind(ParamKind.Kind.SCALAR)
