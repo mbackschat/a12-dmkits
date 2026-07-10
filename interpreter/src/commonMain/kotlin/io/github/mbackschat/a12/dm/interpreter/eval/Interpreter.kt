@@ -321,7 +321,24 @@ class Interpreter(
      *  `kannGroesserWerden`/`kannKleinerWerden = hatVorzeichen`); a filled field or literal can't move. Every
      *  other operand (star aggregate, function, arithmetic) keeps the prior *symmetric* omission notion — so
      *  for those, `leafType` below reduces exactly to the old `leafOmission(left) || leafOmission(right)`. */
-    private fun fill(e: Expr): Fill = when (e) {
+    private fun fill(e: Expr): Fill {
+        // The kernel's combiners mark ANY `Having`-filtered result "not specified" UNCONDITIONALLY
+        // (`getValue(containsFilter)` — the DateCombiner note on [starFill] holds for every combiner), so a
+        // fired comparison consuming a filtered star is TRUE_AF → OMISSION in BOTH directions — even when the
+        // filter KEPT a filled row (kernel-pinned, IF104; the comparison twin of IF101's quantifier escalation).
+        if (hasHavingStar(e)) return Fill.of(true, true)
+        return fillOf(e)
+    }
+
+    /** Whether [e]'s tree consumes a `Having`-FILTERED star (the combiner escalation trigger, IF104). */
+    private fun hasHavingStar(e: Expr): Boolean = when (e) {
+        is Expr.Star -> e.having != null
+        is Expr.Func -> e.args.any { hasHavingStar(it) }
+        is Expr.Arith -> hasHavingStar(e.left) || hasHavingStar(e.right)
+        else -> false
+    }
+
+    private fun fillOf(e: Expr): Fill = when (e) {
         is Expr.Field -> ctxOf(e).let { c -> if (c.filled(e.path)) Fill.of(false, false) else Fill.of(true, c.signed(e.path)) }
         is Expr.Func -> funcFill(e)
         // A SemanticIndex resolves to a matched cell or (absent row / empty cell) the empty value — fillable
@@ -727,7 +744,11 @@ class Interpreter(
 
     private fun leafOmission(e: Expr): Boolean = when (e) {
         is Expr.Field -> !ctx.filled(e.path)
-        is Expr.Star -> ctx.starOmission(e.path, e.bindDepth)
+        // A `Having`-FILTERED star escalates a fired consumer to TRUE_AF unconditionally — the kernel's
+        // filtered-iterator escalation, the same rule the filtered fill quantifiers follow (IF101): even a
+        // comparison whose filter KEPT a filled row fires OMISSION (kernel-pinned, IF104). An unfiltered star
+        // keeps the kept-set omission notion ([EvalContext.starOmission]).
+        is Expr.Star -> e.having != null || ctx.starOmission(e.path, e.bindDepth)
         is Expr.Func -> e.args.any { leafOmission(it) }
         is Expr.SemanticIndex -> !semanticIndexFilled(e)
         else -> false
