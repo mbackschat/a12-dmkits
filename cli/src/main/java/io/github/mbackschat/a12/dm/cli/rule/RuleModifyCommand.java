@@ -98,6 +98,16 @@ final class RuleModifyCommand extends BaseCommand {
             description = "set a per-locale external description on the rule (repeatable)")
     Map<String, String> externalDescriptions = new LinkedHashMap<>();
 
+    // T1: the description-removal peers (the inverse of --internal-description/--external-description),
+    // matching the removal set the `meta` verb already offers.
+    @Option(names = "--remove-internal-description", paramLabel = "<locale>",
+            description = "remove the rule's internal description for a locale (repeatable)")
+    List<String> removeInternalDescriptions = new ArrayList<>();
+
+    @Option(names = "--remove-external-description", paramLabel = "<locale>",
+            description = "remove the rule's external description for a locale (repeatable)")
+    List<String> removeExternalDescriptions = new ArrayList<>();
+
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting the model)")
     String outputPath;
@@ -130,10 +140,12 @@ final class RuleModifyCommand extends BaseCommand {
             return refuse("rule", "modify", refusal.get());
         }
         boolean metadataChange = !annotations.isEmpty() || !removeAnnotations.isEmpty()
-                || !internalDescriptions.isEmpty() || !externalDescriptions.isEmpty();
+                || !internalDescriptions.isEmpty() || !externalDescriptions.isEmpty()
+                || !removeInternalDescriptions.isEmpty() || !removeExternalDescriptions.isEmpty();
         if (condition == null && severity == null && messages.isEmpty() && !metadataChange) {
             return fail("nothing to change — pass at least one of --condition, --severity, --message, "
-                    + "--annotation/--remove-annotation, --internal-description/--external-description");
+                    + "--annotation/--remove-annotation, --internal-description/--external-description "
+                    + "(and their --remove-… peers)");
         }
 
         String modifiedJson;
@@ -170,6 +182,8 @@ final class RuleModifyCommand extends BaseCommand {
                 removeAnnotations.forEach(name -> session.removeAnnotation(rule, name));
                 internalDescriptions.forEach((locale, text) -> session.setInternalDescription(rule, locale, text));
                 externalDescriptions.forEach((locale, text) -> session.setExternalDescription(rule, locale, text));
+                removeInternalDescriptions.forEach(locale -> session.removeInternalDescription(rule, locale));
+                removeExternalDescriptions.forEach(locale -> session.removeExternalDescription(rule, locale));
                 modifiedJson = session.toJson();
             }
         } catch (RuntimeException e) {

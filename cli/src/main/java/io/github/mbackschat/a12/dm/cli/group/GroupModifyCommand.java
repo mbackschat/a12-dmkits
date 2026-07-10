@@ -104,6 +104,15 @@ final class GroupModifyCommand extends BaseCommand {
             description = "set a per-locale external description (repeatable)")
     Map<String, String> externalDescriptions = new LinkedHashMap<>();
 
+    // T1: the description-removal peers, matching the removal set the `meta` verb already offers.
+    @Option(names = "--remove-internal-description", paramLabel = "<locale>",
+            description = "remove the group's internal description for a locale (repeatable)")
+    List<String> removeInternalDescriptions = new ArrayList<>();
+
+    @Option(names = "--remove-external-description", paramLabel = "<locale>",
+            description = "remove the group's external description for a locale (repeatable)")
+    List<String> removeExternalDescriptions = new ArrayList<>();
+
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting the model)")
     String outputPath;
@@ -142,7 +151,8 @@ final class GroupModifyCommand extends BaseCommand {
         boolean indexChange = indexField != null || clearIndexField;
         boolean sortChange = !sortFields.isEmpty() || clearSortFields;
         boolean metadataChange = !labels.isEmpty() || !annotations.isEmpty() || !removeAnnotations.isEmpty()
-                || !internalDescriptions.isEmpty() || !externalDescriptions.isEmpty();
+                || !internalDescriptions.isEmpty() || !externalDescriptions.isEmpty()
+                || !removeInternalDescriptions.isEmpty() || !removeExternalDescriptions.isEmpty();
         if (!repeatabilityChange && !indexChange && !sortChange && !metadataChange) {
             return fail("nothing to change — pass --repeatable/--non-repeatable, "
                     + "--index-field/--clear-index-field, --sort-field/--clear-sort-fields, and/or "
@@ -181,6 +191,8 @@ final class GroupModifyCommand extends BaseCommand {
             removeAnnotations.forEach(name -> session.removeAnnotation(group, name));
             internalDescriptions.forEach((locale, text) -> session.setInternalDescription(group, locale, text));
             externalDescriptions.forEach((locale, text) -> session.setExternalDescription(group, locale, text));
+            removeInternalDescriptions.forEach(locale -> session.removeInternalDescription(group, locale));
+            removeExternalDescriptions.forEach(locale -> session.removeExternalDescription(group, locale));
         } catch (RuntimeException e) {
             return fail(e.getMessage());
         }

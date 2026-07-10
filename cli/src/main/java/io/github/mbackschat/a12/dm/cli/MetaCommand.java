@@ -48,27 +48,32 @@ final class MetaCommand extends BaseCommand {
                     + "element's existing labels, so a one-locale edit keeps the rest")
     Map<String, String> label = new LinkedHashMap<>();
 
+    // T1: meta accepts the rule/group modify vocabulary as discoverable aliases (--internal-description,
+    // --external-description, --annotation, and the two removal peers), so an agent who learned the modify
+    // flags reaches for the same names here and they work.
     @ParamKind(ParamKind.Kind.SCALAR)
-    @Option(names = "--internal", paramLabel = "<locale>=<text>",
+    @Option(names = {"--internal", "--internal-description"}, paramLabel = "<locale>=<text>",
             description = "set the INTERNAL description — a maintenance/technical note shown read-only to Form modelers, never to end users — for a locale (repeatable), e.g. --internal en_US=\"…\"")
     Map<String, String> internal = new LinkedHashMap<>();
 
     @ParamKind(ParamKind.Kind.SCALAR)
-    @Option(names = "--external", paramLabel = "<locale>=<text>",
+    @Option(names = {"--external", "--external-description"}, paramLabel = "<locale>=<text>",
             description = "set the EXTERNAL description — the end-user-facing hint shown beside the field in the form UI — for a locale (repeatable)")
     Map<String, String> external = new LinkedHashMap<>();
 
     @ParamKind(ParamKind.Kind.SCALAR)
-    @Option(names = "--annotate", paramLabel = "<name>=<value>",
+    @Option(names = {"--annotate", "--annotation"}, paramLabel = "<name>=<value>",
             description = "set a name/value annotation (repeatable), e.g. --annotate owner=team")
     Map<String, String> annotate = new LinkedHashMap<>();
 
     @ParamKind(ParamKind.Kind.SCALAR)
-    @Option(names = "--remove-internal", paramLabel = "<locale>", description = "remove the internal description for a locale")
+    @Option(names = {"--remove-internal", "--remove-internal-description"}, paramLabel = "<locale>",
+            description = "remove the internal description for a locale")
     List<String> removeInternal = new ArrayList<>();
 
     @ParamKind(ParamKind.Kind.SCALAR)
-    @Option(names = "--remove-external", paramLabel = "<locale>", description = "remove the external description for a locale")
+    @Option(names = {"--remove-external", "--remove-external-description"}, paramLabel = "<locale>",
+            description = "remove the external description for a locale")
     List<String> removeExternal = new ArrayList<>();
 
     @ParamKind(ParamKind.Kind.SCALAR)
