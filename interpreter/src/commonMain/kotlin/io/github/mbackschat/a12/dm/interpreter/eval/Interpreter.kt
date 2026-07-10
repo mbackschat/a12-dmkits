@@ -708,6 +708,12 @@ class Interpreter(
         if (op == PredicateOp.ATLEAST_ONE_DATE_RANGE_OVERLAPS) return atLeastOneOverlap(p.args).type
         op.polarity?.let { return it }
         if (!op.countsGroups && hasFillScopeOperand(p.args)) return fillScopeType(op, fillScopeInfo(p.args))
+        // A fired quantifier over a Having-FILTERED field star is UNCONDITIONALLY escalated to TRUE_AF →
+        // OMISSION (the fill-quantifier twin of the §8 value-list rule "a Having-filtered entry escalates a
+        // fired result to TRUE_AF"): kernel-pinned in BOTH directions — NoFieldFilled fired with nothing kept
+        // AND AtLeastOneFieldFilled fired over a fully-kept FILLED row are both OMISSION (IF101). The kept-rows
+        // fillability below would type the zero-kept case VALUE (nothing to fill) — the E3 flip class.
+        if (!op.countsGroups && (p.args.singleOrNull() as? Expr.Star)?.having != null) return MsgType.OMISSION
         val (t, f, n) = quantCounts(op, p.args)
         // OMISSION iff filling more content could clear the firing. For a STARRED group operand the fix is ADDING
         // a row — (t, f, n) → (t+1, f, n+1), n is not fixed — so `NoGroupFilled(G*)` at zero rows is OMISSION
@@ -1715,9 +1721,9 @@ class Interpreter(
         FunctionOp.ROUND_DOWN -> roundExpr(f.args, RoundMode.FLOOR)
         FunctionOp.ROUND_UP -> roundExpr(f.args, RoundMode.CEILING)
         FunctionOp.ROUND_ACCOUNTING -> roundExpr(f.args, RoundMode.HALF_UP)
-        FunctionOp.ROUND_DOWN_VALUE -> roundValue(f.args, RoundMode.FLOOR)
-        FunctionOp.ROUND_UP_VALUE -> roundValue(f.args, RoundMode.CEILING)
-        FunctionOp.ROUND_ACCOUNTING_VALUE -> roundValue(f.args, RoundMode.HALF_UP)
+        FunctionOp.ROUND_DOWN_VALUE -> roundExpr(f.args, RoundMode.FLOOR)
+        FunctionOp.ROUND_UP_VALUE -> roundExpr(f.args, RoundMode.CEILING)
+        FunctionOp.ROUND_ACCOUNTING_VALUE -> roundExpr(f.args, RoundMode.HALF_UP)
         // FirstFilledValue: the first FILLED value in row order (empties already dropped by `star`). NOT
         // `combine` — a later malformed element is invisible; but if the first filled one is malformed it
         // arrives as Unknown, so the comparison is Unknown and the rule is suppressed. No filled row → Unknown.
@@ -1744,18 +1750,18 @@ class Interpreter(
         }
     }
 
-    /** `Round*([expr], n)` — round the numeric first operand to the n-decimal-places literal with [mode];
-     *  a non-numeric/Unknown value or a non-whole places operand → Unknown. */
+    /** `Round*([expr][, n])` / `Round*Value(field[, n])` — round the numeric first operand with [mode] to the
+     *  OPTIONAL decimal-places literal: the kernel grammar makes the digits optional on BOTH forms
+     *  (`rundenOperOp`/`rundenOp` — `(',' ZiffernFolge)?`), and an absent digits argument is the integer round
+     *  (places 0; kernel-pinned, IF102 — `roundExpr` crashed on the legal 1-arg form and the field form
+     *  hardcoded 0 even with a digits argument present). A non-numeric/Unknown value or a non-whole places
+     *  operand → Unknown. */
     private fun roundExpr(args: List<Expr>, mode: RoundMode): Val {
         val v = (evalExpr(args[0]) as? Val.Num)?.v ?: return Val.Unknown
-        val places = (evalExpr(args[1]) as? Val.Num)?.v?.display()?.toIntOrNull() ?: return Val.Unknown
+        val places = if (args.size < 2) 0
+            else (evalExpr(args[1]) as? Val.Num)?.v?.display()?.toIntOrNull() ?: return Val.Unknown
         return Val.Num(v.roundTo(places, mode))
     }
-
-    /** `Round*Value(field)` — round the bare field to an integer (0 places) with [mode]; the kernel's
-     *  `Math.max(0, decimalPlaces)` field form. A non-numeric/Unknown value → Unknown. */
-    private fun roundValue(args: List<Expr>, mode: RoundMode): Val =
-        (evalExpr(args[0]) as? Val.Num)?.let { Val.Num(it.v.roundTo(0, mode)) } ?: Val.Unknown
 
     /**
      * `NumberOfValueInFields(value In f1, f2, …)` — `args[0]` is the constant, `args[1..]` the bare field refs.
