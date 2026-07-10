@@ -47,8 +47,9 @@ final class FieldAddCommand extends BaseCommand {
     String specPath;
 
     @ParamKind(ParamKind.Kind.GROUP_PATH)
-    @Option(names = "--group", paramLabel = "<path>",
-            description = "the group to add the field to, by full name-path, e.g. /Order (flags mode)")
+    @Option(names = {"--group", "--parent"}, paramLabel = "<path>",
+            description = "the group to add the field to, by full name-path, e.g. /Order (flags mode). "
+                    + "--parent is the alias matching every sibling add-verb (group/include/multiselect/attachment).")
     String group;
 
     @ParamKind(ParamKind.Kind.NEW_NAME)
