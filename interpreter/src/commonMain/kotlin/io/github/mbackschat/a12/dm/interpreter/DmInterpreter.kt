@@ -22,6 +22,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.MANDATORY_FIELD
 import io.github.mbackschat.a12.dm.interpreter.eval.formalError
 import io.github.mbackschat.a12.dm.interpreter.eval.formalErrorText
+import io.github.mbackschat.a12.dm.interpreter.eval.typeFormatError
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.mandatoryFieldText
 import io.github.mbackschat.a12.dm.interpreter.eval.UNIQUE_INDEX
@@ -864,12 +865,14 @@ class DmInterpreter @JvmOverloads constructor(
 
     /** A computed value's bucket: ERRORED when it is formally INVALID for the target field (e.g. a number out of
      *  the declared range — the kernel returns the value but flags it `getComputedFieldInstancesWithErrors`, IF34);
-     *  else VALUE. The value is returned either way. Runs the SAME per-cell formal check a stored value gets. */
+     *  else VALUE. The value is returned either way. Runs the TYPE-format check only (the kernel's
+     *  `checkFieldValueFormatBasic` — a computed value skips the baseline charset/blank checks a stored INPUT
+     *  value gets, so a computed string may legally start/end with a blank). */
     private fun computedOutcome(targetPath: String, rendered: String): ComputeOutcome {
         val kind = model.kinds[targetPath] ?: return ComputeOutcome.VALUE
-        val invalid = formalError(kind, rendered, model.scaleOf(targetPath), model.dateLikeFormatOf(targetPath),
+        val invalid = typeFormatError(kind, rendered, model.scaleOf(targetPath), model.dateLikeFormatOf(targetPath),
             model.datePrecisionOf(targetPath), model.rangeSeparatorOf(targetPath), model.constraintsOf(targetPath),
-            legalCharset, model.baseYear ?: 2000) != null
+            model.baseYear ?: 2000) != null
         return if (invalid) ComputeOutcome.ERRORED else ComputeOutcome.VALUE
     }
 

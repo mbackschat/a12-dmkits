@@ -209,6 +209,24 @@ fun formalError(
     // IF43): legal charset (default BMP; [legalCharset] customizes it, e.g. DIN 91379), then leading blank, then
     // trailing blank. They pre-empt the type-specific check (a ` 2024-01-01` DATE is `fuehrendesBlank`).
     baselineValueError(raw, legalCharset)?.let { return it }
+    return typeFormatError(kind, raw, scale, format, datePrecision, rangeSep, constraints, baseYear)
+}
+
+/**
+ * The TYPE-format half of [formalError] alone — the kernel's `checkFieldValueFormatBasic` (only
+ * `IFormatDefinition.validiereFormat`, no baseline checks). This is the check a COMPUTED value gets
+ * (`CalculationController.checkField` inside every `handleBerechnetenWert` overload): a computed result may
+ * legally start/end with a blank or carry any charset — only its type format and declared constraints decide
+ * "fehlerhaft berechnet" (`FieldValueAsStringComputeDiffTest`). Stored INPUT values take [formalError] (the
+ * kernel's full `checkFieldValueFormat` = charset → leading blank → trailing blank → this).
+ */
+fun typeFormatError(
+    kind: Kind, raw: String, scale: Int? = null, format: String? = null,
+    datePrecision: DatePrecision = DatePrecision.FULL, rangeSep: String? = null,
+    constraints: FieldConstraints = FieldConstraints.NONE,
+    baseYear: Int = 2000,
+): FormalErrorCode? {
+    if (raw.isEmpty()) return null
     return when (kind) {
         // Format-aware: a value valid for the field's DECLARED format is well-formed (a `dd.MM.yyyy` field's
         // `15.06.2024` is fine — not ISO, but valid for its format). Null format defaults to ISO (KERNEL-FINDINGS

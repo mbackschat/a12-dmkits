@@ -1460,14 +1460,28 @@ class Interpreter(
 
     /** `[field For "value"]` — the field's value in the row whose index field equals the value; an absent row
      *  or empty cell reads as the kind's EMPTY value (a number → 0, fillable), matching a missing field ref.
-     *
-     *  COMPUTE mode differs on ONE kernel-pinned point (IF107): an INVALID index COLUMN — any empty,
-     *  duplicated, or malformed key cell — POISONS the reading computation even when a clean row matches (the
-     *  IndexFieldCache marking, the semantic-index analog of IF96's parallel-iteration rule). A clean column's
-     *  no-match and a matched-but-empty cell both read empty-as-0 exactly like the validation read
-     *  (kernel-pinned — the corpus minimal's CLEARED came from its invalid 16-digit cell, not the no-match). */
+     *  Compute-mode reads go through the poison gates of [computeGuardedIndexCell]. */
     private fun evalSemanticIndex(e: Expr.SemanticIndex): Val {
         val kind = ctx.declaredKind(e.path) ?: return Val.Unknown
+        return computeGuardedIndexCell(e) ?: emptyValue(kind)
+    }
+
+    /**
+     * The matched cell of `[F For key]` through the COMPUTE-mode poison gates — the ONE read path shared by the
+     * direct operand ([evalSemanticIndex]) and the `FieldValueAsString(ref For key)` coercion
+     * ([fieldValueAsString]), so the two read sites cannot diverge. Two kernel-pinned gates, in order:
+     *
+     *  1. an INVALID index COLUMN — any empty, duplicated, or malformed key cell — poisons the reading
+     *     computation even when a clean row matches (IF107; the IndexFieldCache marking, the semantic-index
+     *     analog of IF96's parallel-iteration rule);
+     *  2. a MATCHED cell that is itself FORMALLY INVALID poisons too (IF108; the indexed analog of the
+     *     direct-field read rule IF85) — without it a concat swallowed the invalid cell as `""`.
+     *
+     * A clean column's no-match and a matched-but-EMPTY cell return null (the caller's empty-as-0 / not-given
+     * read), exactly like the validation read. Validation mode: both gates off — a matched-but-malformed cell
+     * stays [Val.Unknown].
+     */
+    private fun computeGuardedIndexCell(e: Expr.SemanticIndex): Val? {
         if (computeMode) {
             val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
                 "SemanticIndex needs an index field on the group of ${e.path}")
@@ -1475,7 +1489,9 @@ class Interpreter(
             val dups = duplicatedValues(cells)
             if (cells.any { (_, v) -> v == null || v is Val.Unknown || v in dups }) throw PoisonedReadException(idx)
         }
-        return semanticIndexCell(e) ?: emptyValue(kind)
+        val cell = semanticIndexCell(e)
+        if (computeMode && cell is Val.Unknown) throw PoisonedReadException(e.path)
+        return cell
     }
 
     /** The matched CELL of `[F For key]`, or null when nothing matches — an empty/absent key field, no row
@@ -1902,19 +1918,22 @@ class Interpreter(
     }
 
     /**
-     * `FieldValueAsString(ref)` — the RAW stored value as a string; an empty/absent value reads as `""` (which
-     * a string comparison then suppresses — the kernel's `vergleicheSTRING` empty rule). A plain field reads its
-     * display value (formally invalid → Unknown). A SEMANTIC INDEX reads the one matched cell: absent row /
-     * empty cell / empty key → `""`; a malformed matched cell → Unknown. A matched DATE-like cell is
-     * unsupported — its resolved [Val] is the canonical ISO form, not the raw stored text the kernel returns
-     * (loud, not wrong). `SemanticIndexPresenceDiffTest`.
+     * `FieldValueAsString(ref)` — the RAW stored value as a string. A NOT-GIVEN read (empty/absent value,
+     * absent indexed row, empty key) is [Val.Unknown] — the not-given string, NOT `Txt("")`: a standalone
+     * computation then CLEARS (the string-copy store law, KERNEL-FINDINGS §11), a concat maps it to `""`
+     * (IF81's empty rule), and a comparison is suppressed (`vergleicheSTRING`) — each context resolves it
+     * exactly as the kernel does. COMPUTE-mode reads of a formally-INVALID cell POISON (IF85/IF108) — the
+     * indexed read through [computeGuardedIndexCell] (shared with the direct operand), the plain read via the
+     * same cellState gate as `evalExpr(Field)`; in validation both stay Unknown. A matched DATE-like indexed
+     * cell is unsupported — its resolved [Val] is the canonical ISO form, not the raw stored text the kernel
+     * returns (loud, not wrong). `SemanticIndexPresenceDiffTest`, `SemanticIndexMatchedInvalidCellDiffTest`.
      */
     private fun fieldValueAsString(arg: Expr): Val = when (arg) {
         is Expr.SemanticIndex -> {
             if (dateLike(ctx.declaredKind(arg.path)))
                 throw UnsupportedConstructException("FieldValueAsString over a date-valued semantic index is not supported")
-            when (val cell = semanticIndexCell(arg)) {
-                null -> Val.Txt("")
+            when (val cell = computeGuardedIndexCell(arg)) {
+                null -> Val.Unknown
                 is Val.Unknown -> Val.Unknown
                 is Val.Num -> Val.Txt(cell.v.display())
                 is Val.Txt -> cell
@@ -1922,7 +1941,14 @@ class Interpreter(
                 is Val.Range -> throw UnsupportedConstructException("FieldValueAsString over a date-range semantic index is not supported")
             }
         }
-        else -> pathOf(arg).let { if (invalid(it)) Val.Unknown else Val.Txt(ctx.displayValue(it) ?: "") }
+        else -> {
+            val path = pathOf(arg)
+            when {
+                computeMode && ctxOf(arg).cellState(path) == CellState.INVALID -> throw PoisonedReadException(path)
+                invalid(path) -> Val.Unknown
+                else -> ctx.displayValue(path)?.let { Val.Txt(it) } ?: Val.Unknown
+            }
+        }
     }
 
     /** `FieldValueAsNumber(field)` — the field's value parsed to a number; an EMPTY field reads as `0` (kernel
