@@ -76,12 +76,14 @@ final class ApplyCommand extends BaseCommand {
         GROUP_ADD("group", "add", Set.of("parent", "name", "repeatable")),
         GROUP_MODIFY("group", "modify", Set.of("groupPathInModel", "repeatable", "non-repeatable",
                 "index-field", "clear-index-field", "sort-field", "clear-sort-fields",
-                "label", "annotation", "remove-annotation", "internal-description", "external-description")),
+                "label", "annotation", "remove-annotation", "internal-description", "external-description",
+                "remove-internal-description", "remove-external-description")),
         GROUP_REMOVE("group", "remove", Set.of("groupPathInModel", "cascade")),
         RULE_ADD("rule", "add", Set.of("field", "group", "condition", "comment", "code", "severity", "name", "messages",
                 "allowDifferingDecimals", "annotation", "internal-description", "external-description")),
         RULE_MODIFY("rule", "modify", Set.of("rulePathInModel", "condition", "comment", "severity", "messages",
-                "annotation", "remove-annotation", "internal-description", "external-description")),
+                "annotation", "remove-annotation", "internal-description", "external-description",
+                "remove-internal-description", "remove-external-description")),
         RULE_REMOVE("rule", "remove", Set.of("rulePathInModel")),
         COMPUTATION_ADD("computation", "add", Set.of("computedField", "alternatives", "commonPrecondition", "comment", "name", "messages")),
         COMPUTATION_MODIFY("computation", "modify", Set.of("computationPathInModel", "computedField", "alternatives", "commonPrecondition", "comment", "name", "messages")),
@@ -340,7 +342,8 @@ final class ApplyCommand extends BaseCommand {
                 }
                 boolean hasMeta = op.hasNonNull("label") || op.hasNonNull("annotation")
                         || op.has("remove-annotation") || op.hasNonNull("internal-description")
-                        || op.hasNonNull("external-description");
+                        || op.hasNonNull("external-description")
+                        || op.has("remove-internal-description") || op.has("remove-external-description");
                 if (repeatable == null && !nonRepeatable && indexField == null && !clearIndex
                         && sortArgs.isEmpty() && !clearSorts && !hasMeta) {
                     throw new IllegalArgumentException("group modify needs one of repeatable / non-repeatable / "
@@ -696,16 +699,12 @@ final class ApplyCommand extends BaseCommand {
                 if (!doc.groupPaths().contains(path)) {
                     throw new IllegalArgumentException("no group '" + path + "' in the model");
                 }
-                ObjectNode data = MAPPER.createObjectNode();
-                data.put("group", path);
-                data.put("repeatable", doc.isRepeating(path));
-                yield readEnv(which, data, session);
+                // T3: the same shared shape the standalone `group read` emits (was a {group,repeatable} subset)
+                yield readEnv(which, ReadPayloads.group(doc, path), session);
             }
             case TYPEDEF_READ -> {
-                ObjectNode data = MAPPER.createObjectNode();
-                ArrayNode arr = data.putArray("typedefs");
-                ModelDocument.read(session.toJson()).typeDefinitionIds().forEach(arr::add);
-                yield readEnv(which, data, session);
+                // T3: the shared no-arg list shape (typedefs + importedFrom), was ids-only here
+                yield readEnv(which, ReadPayloads.typedefList(ModelDocument.read(session.toJson())), session);
             }
             case INCLUDE_READ -> {
                 ObjectNode data = MAPPER.createObjectNode();
@@ -716,13 +715,8 @@ final class ApplyCommand extends BaseCommand {
                 yield readEnv(which, data, session);
             }
             case CONFIG_READ -> {
-                ModelDocument.DocConfig c = ModelDocument.read(session.toJson()).config();
-                ObjectNode data = MAPPER.createObjectNode();
-                data.put("decimalSeparator", c.decimalSeparator());
-                data.put("timeZone", c.timeZone());
-                data.put("conditionLanguage", c.conditionLanguage());
-                data.put("fieldRefByShortNameAllowed", c.fieldRefByShortNameAllowed());
-                yield readEnv(which, data, session);
+                // T3: the same shared full config shape the standalone `config read` emits (was 4 scalars)
+                yield readEnv(which, ReadPayloads.config(ModelDocument.read(session.toJson())), session);
             }
         };
     }
@@ -953,6 +947,16 @@ final class ApplyCommand extends BaseCommand {
                 changed.put("externalDescription." + e.getKey(), e.getValue().asText());
                 any = true;
             }
+        }
+        for (String locale : stringValues(op, "remove-internal-description")) {
+            session.removeInternalDescription(path, locale);
+            changed.putNull("internalDescription." + locale);
+            any = true;
+        }
+        for (String locale : stringValues(op, "remove-external-description")) {
+            session.removeExternalDescription(path, locale);
+            changed.putNull("externalDescription." + locale);
+            any = true;
         }
         return any;
     }

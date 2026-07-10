@@ -1,16 +1,14 @@
 package io.github.mbackschat.a12.dm.cli.config;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ReadPayloads;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
@@ -30,8 +28,6 @@ import picocli.CommandLine.Command;
                 + "locale (the kernel enforces it on validate); register one with `config modify --add-locale`.")
 final class ConfigReadCommand extends BaseCommand {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
     @Override
     public Integer call() {
         String model = model();
@@ -46,37 +42,7 @@ final class ConfigReadCommand extends BaseCommand {
         }
         try {
             ModelDocument doc = ModelDocument.read(json);
-            ModelDocument.DocConfig c = doc.config();
-            ObjectNode data = MAPPER.createObjectNode();
-            data.put("decimalSeparator", c.decimalSeparator());
-            data.put("timeZone", c.timeZone());
-            data.put("conditionLanguage", c.conditionLanguage());
-            data.put("fieldRefByShortNameAllowed", c.fieldRefByShortNameAllowed());
-            // The allowed-character set (each entry a char or a range like " -~"); empty = all characters allowed.
-            ArrayNode supported = data.putArray("supportedCharacters");
-            c.supportedCharacters().forEach(supported::add);
-            // the model-level per-locale label (header.labels) — the read peer of `config modify --label`
-            Map<String, String> modelLabels = doc.modelLabels();
-            if (!modelLabels.isEmpty()) {
-                ObjectNode label = data.putObject("label");
-                modelLabels.forEach(label::put);
-            }
-            // the model-level comment (modelInfo.comment), if set
-            doc.modelComment().ifPresent(comment -> data.put("comment", comment));
-            // the model's base year (modelInfo.baseYear), if set — the read peer of `config modify --base-year`
-            doc.baseYear().ifPresent(year -> data.put("baseYear", year));
-            // the model-level header annotations (incl. the access-control `roles`, G26) — the read peer of
-            // `config modify --annotation`/`--role`; surfaced so a roles edit round-trips
-            Map<String, String> modelAnnotations = doc.modelAnnotations();
-            if (!modelAnnotations.isEmpty()) {
-                ObjectNode annotations = data.putObject("annotations");
-                modelAnnotations.forEach(annotations::put);
-            }
-            // The declared message locales (header.locales) drive the per-locale-message law
-            // (MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING) — surface the full set so an agent can provision a
-            // rule/computation message per locale up front. `conditionLanguage` alone doesn't reveal it.
-            ArrayNode locales = data.putArray("locales");
-            doc.locales().forEach(locales::add);
+            ObjectNode data = ReadPayloads.config(doc);   // T3: the one shared shape, same as `apply` CONFIG_READ
             ResultEnvelope env = ResultEnvelope.read("config", "read", "read document config", true, List.of(), data);
             out().print(env.toJsonString());
             return env.exitCode();

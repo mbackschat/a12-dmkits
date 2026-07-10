@@ -1,16 +1,14 @@
 package io.github.mbackschat.a12.dm.cli.group;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ReadPayloads;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
@@ -28,8 +26,6 @@ import picocli.CommandLine.Parameters;
 @Command(name = "read", mixinStandardHelpOptions = true,
         description = "Read a group's repeatability + its direct child fields into `data`.")
 final class GroupReadCommand extends BaseCommand {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Parameters(index = "0", arity = "0..1", paramLabel = "<groupPathInModel>",
             description = "the group's full name-path, e.g. /Order/BillingAddress; omit to list every group's "
@@ -65,50 +61,12 @@ final class GroupReadCommand extends BaseCommand {
                 return refuseNotFound("group", "read", RkCode.NO_SUCH_GROUP, "no group at '" + group + "'",
                         group, "pass an existing group's full name-path (see `model describe` or `group read` — no arg)");
             }
-            ObjectNode data = MAPPER.createObjectNode();
-            data.put("group", group);
-            boolean repeatable = doc.isRepeating(group);
-            data.put("repeatable", repeatable);
-            if (repeatable) {
-                data.put("maxRepetitions", doc.maxRepetitions(group));  // the numeric max rows, not just the boolean
-            }
-            // echo the index field (repetition row-key) so a `group modify --index-field` edit round-trips
-            doc.indexField(group).ifPresent(idx -> data.put("indexField", idx));
-            // echo the declared row sort fields (display/USB ordering) so a `group modify --sort-field` round-trips
-            List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.SortField> sorts = doc.sortFields(group);
-            if (!sorts.isEmpty()) {
-                ArrayNode sortFields = data.putArray("sortFields");
-                sorts.forEach(sf -> {
-                    ObjectNode n = sortFields.addObject();
-                    n.put("name", sf.fieldName());
-                    n.put("order", sf.order().name());
-                });
-            }
-            // echo the group's DIRECT child fields, so a just-built composite group (attachment / multiselect /
-            // bulk add) is confirmable through `group read` alone — without falling back to `model describe`
-            // for "what's in here" (probe 10). Direct children only (a deeper field belongs to a sub-group).
-            String prefix = group + "/";
-            ArrayNode fields = data.putArray("fields");
-            doc.fieldPaths().stream()
-                    .filter(p -> p.startsWith(prefix) && p.indexOf('/', prefix.length()) < 0)
-                    .forEach(fields::add);
-            // echo the group's metadata (G38) so a `group modify --label/--annotation/--*-description` round-trips
-            doc.labels(group).ifPresent(m -> putIfNotEmpty(data, "label", m));
-            putIfNotEmpty(data, "annotations", doc.annotations(group));
-            putIfNotEmpty(data, "internalDescription", doc.internalDescription(group));
-            putIfNotEmpty(data, "externalDescription", doc.externalDescription(group));
+            ObjectNode data = ReadPayloads.group(doc, group);   // T3: the one shared shape, same as `apply` GROUP_READ
             ResultEnvelope env = ResultEnvelope.read("group", "read", "read " + group, true, List.of(), data);
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {
             return fail("read failed: " + e.getMessage());
-        }
-    }
-
-    /** Echo a per-locale/per-name metadata map under {@code key}, only when it carries something. */
-    private static void putIfNotEmpty(ObjectNode data, String key, Map<String, String> m) {
-        if (m != null && !m.isEmpty()) {
-            data.set(key, MAPPER.valueToTree(m));
         }
     }
 }

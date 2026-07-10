@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.typedef;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ReadPayloads;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 
 import java.io.IOException;
@@ -86,17 +87,8 @@ final class TypedefReadCommand extends BaseCommand {
                 out().print(env.toJsonString());
                 return env.exitCode();
             }
-            ObjectNode data = MAPPER.createObjectNode();
-            ArrayNode arr = data.putArray("typedefs");
-            ids.forEach(arr::add);
-            // source provenance: `typedefs` are LOCAL (this model's content.typeDefinitions); a model can
-            // ALSO use type-defs IMPORTED from other models (merged by id at expand) — surface those import
-            // sources so an agent sees the full picture (resolve them to files via `model info`)
-            List<String> imports = doc.typeDefImports();
-            if (!imports.isEmpty()) {
-                ArrayNode importsArr = data.putArray("importedFrom");
-                imports.forEach(importsArr::add);
-            }
+            // T3: the shared no-arg list shape (typedefs + importedFrom), same as `apply` TYPEDEF_READ
+            ObjectNode data = ReadPayloads.typedefList(doc);
             ResultEnvelope env = ResultEnvelope.read("typedef", "read",
                     "read " + ids.size() + " local type definition(s)", true, List.of(), data);
             out().print(env.toJsonString());
