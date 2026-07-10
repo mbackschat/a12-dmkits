@@ -7,9 +7,11 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
 /**
  * The parameterless operand-list math functions — {@code Abs(value)}, {@code Min(v1, v2, …)},
  * {@code Max(v1, v2, …)} (the kernel's {@code IOpListOperation} members other than the rounding family,
- * which is {@link Rounding}). A number-valued {@link Calculation} over numeric value <em>expressions</em>
- * (distinct from the field-list {@link ListAggregate} {@code MaxValue}/{@code MinValue}, which aggregate
- * a repetition list). Operands render as values ({@code Min([A], [B])}), not bare entity refs.
+ * which is {@link Rounding}). A {@link Calculation} over value <em>expressions</em>: {@code Abs} is
+ * number-valued, while {@code Min}/{@code Max} carry their operands' kind — NUMBER over number expressions,
+ * DATE over date operands (the kernel's {@code DateCombiner}, KERNEL-FINDINGS §6); see {@link #kind()}.
+ * Distinct from the field-list {@link ListAggregate} {@code MaxValue}/{@code MinValue}, which aggregate a
+ * repetition list. Operands render as values ({@code Min([A], [B])}), not bare entity refs.
  *
  * <p>{@code Abs} takes exactly one operand; {@code Min}/{@code Max} take one or more.
  */

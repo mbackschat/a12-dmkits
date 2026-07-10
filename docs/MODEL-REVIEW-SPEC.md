@@ -99,7 +99,7 @@ A removed/loosened rule **silently accepts bad data** (invisible); a tightened/a
 |---|---|
 | **HIGH** | `POLARITY_INVERTED` · `RULE_REMOVED` · `REFERENCED_ELEMENT_REMOVED` · `SEVERITY_DOWNGRADED` · `CONSTRAINT_LOOSENED` (min/max widened, pattern relaxed, required→optional, enum value added) · `KIND_CHANGED`+`RETYPE_AFFECTS_READERS` · `OPAQUE_OR_CUSTOM_ADDED` |
 | **MEDIUM** | `RULE_ADDED` · `CONSTRAINT_TIGHTENED` · `CONDITION_CHANGED_SAME_POLARITY` · `COMPUTATION_CHANGED` · `REPEATABILITY_CHANGED` · `STRUCTURE_ADDED/REMOVED` (unreferenced) · `ELEMENT_MOVED` (a re-homing move — content preserved, but a different parent can change display/scope) |
-| **LOW** | `MESSAGE_CHANGED` · `LOCALE_ADDED` · `METADATA_CHANGED` · `CODE_RENAMED` · `POSITION_CHANGED` (a pure reorder — display-order is semantic §2b but not a validation loosening) · `ELEMENT_RENAMED` (a content-preserving rename — refs rewritten, so not a loosening) |
+| **LOW** | `MESSAGE_CHANGED` · `LOCALE_ADDED` · `METADATA_CHANGED` · `CODE_CHANGED` · `POSITION_CHANGED` (a pure reorder — display-order is semantic §2b but not a validation loosening) · `ELEMENT_RENAMED` (a content-preserving rename — refs rewritten, so not a loosening) |
 
 Risk codes are documented via `schema model diff` (the `data.findings`-code pattern, like `workspace roles`), not in `diagnostics`.
 

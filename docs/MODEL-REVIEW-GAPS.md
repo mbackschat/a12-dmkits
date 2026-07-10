@@ -4,9 +4,8 @@
 
 ## 1. Open — tractable, to build
 
-Three items from the 2026-07-10 six-component review (queued, Set F):
+Two items from the 2026-07-10 six-component review (queued, Set F):
 
-- **MR6 — SPEC/tool reason-code mismatch (doc bug).** MODEL-REVIEW-SPEC §5b names `CODE_RENAMED`; the tool and its schema both emit `CODE_CHANGED`. The tool is right (a code *change* needn't be a rename); rename in the SPEC.
 - **MR7 — `ModelReport.of` leaks a kernel type on a public dmkits surface.** The overload takes the kernel's `IDocumentModelReferenceResolver` directly — the one place the review surface makes a consumer import `com.mgmtp.*`. Add a `dm.core.ModelResolver`-based overload (the abstraction the rest of the surface uses).
 - **MR8 — `ModelDiff.between` has no resolver path (NEEDS-PROBE).** Unlike the report side, the diff entry points take no reference resolver — an includes-bearing model likely fails to bind. Probe first (an includes fixture through `model diff`), then fix or document the constraint.
 
