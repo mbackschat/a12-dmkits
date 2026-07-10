@@ -47,6 +47,21 @@ class SchemaTranscodeVerbsTest {
     }
 
     @Test
+    void theConversionFlagIsStringFormatNotFormat(@TempDir Path dir) throws Exception {
+        // T5: the string-`format` conversion strategy is --string-format, renamed from --format so it is
+        // no longer overloaded against the OUTPUT-rendering --format on workspace list/graph. Clean break.
+        Path schema = dir.resolve("order.schema.json");
+        Files.writeString(schema, ORDER_SCHEMA);
+        CliTestSupport.Result ok = CliTestSupport.run(
+                "model", "import-jsonschema", "--schema", schema.toString(), "--string-format", "IGNORE");
+        assertEquals(0, ok.code(), ok::err);
+
+        CliTestSupport.Result gone = CliTestSupport.run(
+                "model", "import-jsonschema", "--schema", schema.toString(), "--format", "IGNORE");
+        assertFalse(gone.code() == 0, () -> "the conversion --format was renamed --string-format (clean break, no alias): " + gone.err());
+    }
+
+    @Test
     void importWritesToFileWithDashOAndConfirms(@TempDir Path dir) throws Exception {
         Path schema = dir.resolve("order.schema.json");
         Files.writeString(schema, ORDER_SCHEMA);

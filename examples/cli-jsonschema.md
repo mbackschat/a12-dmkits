@@ -104,7 +104,7 @@ dmtool model import-jsonschema --schema /tmp/catalog.schema.json --strict -o /tm
 }
 ```
 
-→ Between the two extremes, per-decision flags tune each choice (`--number-scale`, `--array-of-scalar`, `--default-repeat-cap`, `--union`, `--format`, …) — each value's *implication* is in `dmtool model import-jsonschema --help` and `manifest` (see SCHEMAKIT-SPEC §4b).
+→ Between the two extremes, per-decision flags tune each choice (`--number-scale`, `--array-of-scalar`, `--default-repeat-cap`, `--union`, `--string-format`, …) — each value's *implication* is in `dmtool model import-jsonschema --help` and `manifest` (see SCHEMAKIT-SPEC §4b).
 
 ## Constraints become a12 rules
 

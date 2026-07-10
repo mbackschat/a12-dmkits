@@ -99,11 +99,13 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
     MappingProfile.UnionStrategy unionStrategy;
 
     @ParamKind(ParamKind.Kind.FREEFORM)
-    @Option(names = "--format", paramLabel = "<strategy>",
-            description = "a string format (email/uuid/…) → PATTERN (default; a standard regex where known) | "
-                    + "CUSTOM_TYPE (a custom field type named after the format) | IGNORE (plain string). Temporal "
-                    + "formats (date/date-time/time) always map to DATE/TIME kinds regardless.")
-    MappingProfile.FormatStrategy format;
+    @Option(names = "--string-format", paramLabel = "<strategy>",
+            description = "how a JSON Schema string `format` (email/uuid/…) maps → PATTERN (default; a standard "
+                    + "regex where known) | CUSTOM_TYPE (a custom field type named after the format) | IGNORE "
+                    + "(plain string). Temporal formats (date/date-time/time) always map to DATE/TIME kinds "
+                    + "regardless. (Named --string-format, not --format, to stay distinct from the output-rendering "
+                    + "--format on workspace list/graph.)")
+    MappingProfile.FormatStrategy stringFormat;
 
     @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--boolean", paramLabel = "<kind>",
@@ -230,7 +232,7 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
                 arrayOfScalar != null ? arrayOfScalar : base.arrayOfScalar(),
                 mapStrategy != null ? mapStrategy : base.mapStrategy(),
                 unionStrategy != null ? unionStrategy : base.unionStrategy(),
-                format != null ? format : base.format(),
+                stringFormat != null ? stringFormat : base.format(),
                 booleanKind != null ? booleanKind : base.booleanKind(),
                 enumLabels != null ? enumLabels : base.enumLabels(),
                 recursionDepth != null ? recursionDepth : base.recursionDepth(),
