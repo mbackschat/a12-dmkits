@@ -887,6 +887,31 @@ public final class Dsl {
         return nonEmptyFieldList(Quantifier.AT_LEAST_ONE_FIELD_FILLED, fields);
     }
 
+    /** {@code NotAllFieldsFilled(f1, …)} over a built list — the list peer of the varargs form. */
+    public static Condition notAllFieldsFilled(List<? extends FieldOperand> fields) {
+        return nonEmptyFieldList(Quantifier.NOT_ALL_FIELDS_FILLED, fields);
+    }
+
+    /** {@code FieldsNotCollectivelyFilled(f1, …)} over a built list. */
+    public static Condition fieldsNotCollectivelyFilled(List<? extends FieldOperand> fields) {
+        return nonEmptyFieldList(Quantifier.FIELDS_NOT_COLLECTIVELY_FILLED, fields);
+    }
+
+    /** {@code NotExactlyOneFieldFilled(f1, …)} over a built list. */
+    public static Condition notExactlyOneFieldFilled(List<? extends FieldOperand> fields) {
+        return nonEmptyFieldList(Quantifier.NOT_EXACTLY_ONE_FIELD_FILLED, fields);
+    }
+
+    /** {@code MoreThanOneFieldFilled(f1, …)} over a built list. */
+    public static Condition moreThanOneFieldFilled(List<? extends FieldOperand> fields) {
+        return nonEmptyFieldList(Quantifier.MORE_THAN_ONE_FIELD_FILLED, fields);
+    }
+
+    /** {@code FieldValuesNotUnique(f1, …)} over a built list. */
+    public static Condition fieldValuesNotUnique(List<? extends FieldOperand> fields) {
+        return nonEmptyFieldList(Quantifier.FIELD_VALUES_NOT_UNIQUE, fields);
+    }
+
     private static Condition nonEmptyFieldList(Quantifier quantifier, List<? extends FieldOperand> fields) {
         if (fields.isEmpty()) {
             throw new IllegalArgumentException(quantifier + " needs at least one field");
@@ -1080,10 +1105,42 @@ public final class Dsl {
         return groupList(GroupQuantifier.GROUPS_NOT_COLLECTIVELY_FILLED, first, rest);
     }
 
+    /** {@code AllGroupsFilled(g1, …)} over a built list — the group peer of {@link #allFieldsFilled(List)}. Empty list is an error. */
+    public static Condition allGroupsFilled(List<? extends GroupRef> groups) {
+        return nonEmptyGroupList(GroupQuantifier.ALL_GROUPS_FILLED, groups);
+    }
+
+    /** {@code NoGroupFilled(g1, …)} over a built list. */
+    public static Condition noGroupFilled(List<? extends GroupRef> groups) {
+        return nonEmptyGroupList(GroupQuantifier.NO_GROUP_FILLED, groups);
+    }
+
+    /** {@code AtLeastOneGroupFilled(g1, …)} over a built list. */
+    public static Condition atLeastOneGroupFilled(List<? extends GroupRef> groups) {
+        return nonEmptyGroupList(GroupQuantifier.AT_LEAST_ONE_GROUP_FILLED, groups);
+    }
+
+    /** {@code NotAllGroupsFilled(g1, …)} over a built list. */
+    public static Condition notAllGroupsFilled(List<? extends GroupRef> groups) {
+        return nonEmptyGroupList(GroupQuantifier.NOT_ALL_GROUPS_FILLED, groups);
+    }
+
+    /** {@code GroupsNotCollectivelyFilled(g1, …)} over a built list. */
+    public static Condition groupsNotCollectivelyFilled(List<? extends GroupRef> groups) {
+        return nonEmptyGroupList(GroupQuantifier.GROUPS_NOT_COLLECTIVELY_FILLED, groups);
+    }
+
     private static Condition groupList(GroupQuantifier quantifier, GroupRef first, GroupRef... rest) {
         List<GroupRef> groups = new ArrayList<>();
         groups.add(first);
         groups.addAll(List.of(rest));
         return new GroupListPredicate(quantifier, groups);
+    }
+
+    private static Condition nonEmptyGroupList(GroupQuantifier quantifier, List<? extends GroupRef> groups) {
+        if (groups.isEmpty()) {
+            throw new IllegalArgumentException(quantifier + " needs at least one group");
+        }
+        return new GroupListPredicate(quantifier, List.copyOf(groups));
     }
 }

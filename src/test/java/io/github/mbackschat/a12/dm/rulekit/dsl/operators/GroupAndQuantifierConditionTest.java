@@ -65,4 +65,32 @@ class GroupAndQuantifierConditionTest {
         assertEquals(true, m.group("/Subscription/Addons").repeating());
         assertEquals(false, m.group("/Subscription/Billing").repeating());
     }
+
+    @Test
+    void listOverloadsCompleteTheQuantifierMatrix() {
+        // D3: allOf/anyOf + allFieldsFilled/noFieldFilled/atLeastOneFieldFilled carried List peers; the rest
+        // of the field-fill family and ALL group quantifiers did not. Each List form folds like the varargs.
+        DslRenderer r = new DslRenderer();
+        FieldRef a = m.field(NAME);
+        FieldRef b = m.field(MONTHLY_FEE);
+        java.util.List<FieldRef> fields = java.util.List.of(a, b);
+        assertEquals(r.render(Dsl.notAllFieldsFilled(a, b)), r.render(Dsl.notAllFieldsFilled(fields)));
+        assertEquals(r.render(Dsl.fieldsNotCollectivelyFilled(a, b)), r.render(Dsl.fieldsNotCollectivelyFilled(fields)));
+        assertEquals(r.render(Dsl.notExactlyOneFieldFilled(a, b)), r.render(Dsl.notExactlyOneFieldFilled(fields)));
+        assertEquals(r.render(Dsl.moreThanOneFieldFilled(a, b)), r.render(Dsl.moreThanOneFieldFilled(fields)));
+        assertEquals(r.render(Dsl.fieldValuesNotUnique(a, b)), r.render(Dsl.fieldValuesNotUnique(fields)));
+
+        GroupRef g1 = m.group("/Subscription/Addons");
+        GroupRef g2 = m.group("/Subscription/Billing");
+        java.util.List<GroupRef> groups = java.util.List.of(g1, g2);
+        assertEquals(r.render(Dsl.allGroupsFilled(g1, g2)), r.render(Dsl.allGroupsFilled(groups)));
+        assertEquals(r.render(Dsl.noGroupFilled(g1, g2)), r.render(Dsl.noGroupFilled(groups)));
+        assertEquals(r.render(Dsl.atLeastOneGroupFilled(g1, g2)), r.render(Dsl.atLeastOneGroupFilled(groups)));
+        assertEquals(r.render(Dsl.notAllGroupsFilled(g1, g2)), r.render(Dsl.notAllGroupsFilled(groups)));
+        assertEquals(r.render(Dsl.groupsNotCollectivelyFilled(g1, g2)), r.render(Dsl.groupsNotCollectivelyFilled(groups)));
+
+        // an empty list is an error, matching the allFieldsFilled(List)/allOf(List) contract
+        assertThrows(IllegalArgumentException.class, () -> Dsl.moreThanOneFieldFilled(java.util.List.<FieldRef>of()));
+        assertThrows(IllegalArgumentException.class, () -> Dsl.allGroupsFilled(java.util.List.<GroupRef>of()));
+    }
 }
