@@ -462,6 +462,34 @@ public final class BoundModel {
         return computation(computed.field());
     }
 
+    public Computation.Builder computation(EnumRef computed) {
+        return computation(computed.field());
+    }
+
+    public Computation.Builder computation(BoolRef computed) {
+        return computation(computed.field());
+    }
+
+    public Computation.Builder computation(ConfirmRef computed) {
+        return computation(computed.field());
+    }
+
+    public Computation.Builder computation(DateRef computed) {
+        return computation(computed.field());
+    }
+
+    public Computation.Builder computation(TimeRef computed) {
+        return computation(computed.field());
+    }
+
+    public Computation.Builder computation(DateTimeRef computed) {
+        return computation(computed.field());
+    }
+
+    public Computation.Builder computation(DateFragmentRef computed) {
+        return computation(computed.field());
+    }
+
     public Computation.Builder computation(FieldRef computed) {
         return new Computation.Builder(computed, index.locales());
     }

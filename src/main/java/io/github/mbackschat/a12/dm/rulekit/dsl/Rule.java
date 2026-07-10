@@ -142,6 +142,22 @@ public record Rule(
             return errorField(field.field());
         }
 
+        public Builder errorField(DateRef field) {
+            return errorField(field.field());
+        }
+
+        public Builder errorField(TimeRef field) {
+            return errorField(field.field());
+        }
+
+        public Builder errorField(DateTimeRef field) {
+            return errorField(field.field());
+        }
+
+        public Builder errorField(DateFragmentRef field) {
+            return errorField(field.field());
+        }
+
         /**
          * The <b>error condition</b>: TRUE exactly when the document is <b>invalid</b>. A rule states the
          * <em>violation</em>, not the requirement — the kernel's error-scenario inversion, and there is
