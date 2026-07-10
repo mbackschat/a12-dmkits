@@ -139,6 +139,7 @@ tasks.register('docGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.CliTourFreshnessTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.CommandReferencesResolveTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.CliSpecVerbTableTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.interp.ModelLoaderParityTest'
     }
     inputs.files(
@@ -147,6 +148,7 @@ tasks.register('docGuardTest', Test) {
             rootProject.file('plugin/README.md'),
             rootProject.file('skill/SKILL.md'),
             rootProject.file('plugin-codex/AGENTS.md'),
+            rootProject.file('docs/CLI-SPEC.md'),
             rootProject.file('eval/benchmark.workflow.js'),
             rootProject.fileTree('src/main/resources/catalog'),
             // ModelLoaderParityTest reads every fixture model in both roots.
@@ -190,6 +192,7 @@ tasks.named('test') {
     filter {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.CliTourFreshnessTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.CommandReferencesResolveTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.CliSpecVerbTableTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.SemanticsMapResolveTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.interp.ModelLoaderParityTest'
     }
