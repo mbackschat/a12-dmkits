@@ -18,9 +18,9 @@
 
 ## 1. Open gaps
 
-- **Hygiene sweep (queued, Set F):** an orphaned stale Javadoc in `JsonSchemaImporter` claiming "minItems NOT enforced" (false since the 2026-07-09 synthesis) plus a second orphan; the dead empty `UNSUPPORTED_KEYWORDS` list and its reporting loop, with stale `task #n` Javadoc refs; and `TierAProjection` calling `intValueExact` on arbitrary exported rules — guard on `scale <= 0`, skip-and-report.
+_None open._
 
-Before these, the queue was empty: the `minItems` synthesis shipped 2026-07-09 (`NumberOfFilledGroups(G*) < N`, in-group anchored + unguarded, round-trip-projected — SCHEMAKIT-SPEC §4f, `MinItemsSynthesisTest`), and the earlier synthesis backlog drained 2026-06-29 (coverage in SCHEMAKIT-SPEC §4d/§4f). The feasible-but-not-worthwhile constraints sit in **§3** with re-open triggers, the impossible ones in **§4**. A gap lands here only when it is both feasible **and** queued — a reader never sees a "TODO" nobody intends to do.
+The queue is empty: the `minItems` synthesis shipped 2026-07-09 (`NumberOfFilledGroups(G*) < N`, in-group anchored + unguarded, round-trip-projected — SCHEMAKIT-SPEC §4f, `MinItemsSynthesisTest`), and the earlier synthesis backlog drained 2026-06-29 (coverage in SCHEMAKIT-SPEC §4d/§4f). The feasible-but-not-worthwhile constraints sit in **§3** with re-open triggers, the impossible ones in **§4**. A gap lands here only when it is both feasible **and** queued — a reader never sees a "TODO" nobody intends to do.
 
 ---
 

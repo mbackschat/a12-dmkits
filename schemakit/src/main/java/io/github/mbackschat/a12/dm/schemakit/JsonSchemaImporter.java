@@ -515,16 +515,9 @@ public final class JsonSchemaImporter {
         }
     }
 
-    /** Validation keywords with no dedicated handler — reported (never silently dropped); structure still imports.
-     *  The forward-looking safety net: a keyword a12 can't map and that has no specific reporter is surfaced here.
-     *  (Currently none — {@code contains}/{@code minContains}/{@code maxContains} → {@code collectContains};
-     *  {@code if}/{@code then}/{@code else} + {@code not} → {@code collectIfThen}/{@code collectNot}.) */
-    private static final List<String> UNSUPPORTED_KEYWORDS = List.of();
-
     private static void addProperty(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
                                     boolean isRequired, String groupPath, Ctx ctx) {
         String path = groupPath + "/" + name;
-        noteUnsupportedKeywords(name, schema, ctx);
         boolean required = resolveNullable(name, schema, isRequired, ctx);   // OpenAPI 3.0 nullable:true ⇒ optional
         if (schema.has("$ref")) {
             addRef(g, name, schema, required, path, ctx);
@@ -797,11 +790,6 @@ public final class JsonSchemaImporter {
     }
 
     /**
-     * {@code minItems} (a minimum row count) is NOT enforced — a12 has no clean rule form for group
-     * cardinality (the error entity controls a rule's iteration, and {@code NumberOfFilledGroups} needs ≥ 2
-     * group args — KERNEL-FINDINGS). So it is reported, never silently implied to be enforced (task #7).
-     */
-    /**
      * {@code not: {const}} / {@code not: {enum}} → a forbidding rule (SCHEMAKIT-SPEC §4); any other {@code not}
      * shape is reported, not silently dropped. The synthesis resolves the field's kind post-build (and reports
      * if the kind can't carry the constraint), so this just records the request.
@@ -830,17 +818,6 @@ public final class JsonSchemaImporter {
         } else {
             ctx.report().diagnostic("property '" + name + "' uses a 'not' that isn't a simple "
                     + "const/enum/pattern/minimum/maximum/minLength/maxLength — not mapped; add the constraint by hand");
-        }
-    }
-
-    /** Report any {@link #UNSUPPORTED_KEYWORDS} present — surfaced, not silently dropped (task #13). */
-    private static void noteUnsupportedKeywords(String name, JsonNode schema, Ctx ctx) {
-        for (String kw : UNSUPPORTED_KEYWORDS) {
-            if (schema.has(kw)) {
-                ctx.report().diagnostic("property '" + name + "' uses '" + kw + "' — not yet imported; the declared "
-                        + "structure imports but that constraint is NOT enforced. TO DO: add the equivalent a12 rule "
-                        + "by hand");
-            }
         }
     }
 
@@ -1459,7 +1436,6 @@ public final class JsonSchemaImporter {
         }
     }
 
-    /** A bare {@code number} (unbounded decimal); the MappingProfile decides its a12 scale (or omits it). */
     /** A JSON {@code number} (decimal) under the scale strategy. OMIT drops it (no field, no rules — never a
      *  silent integer coercion); INTEGER / DEFAULT_SCALE create the field at the chosen scale, then collect the
      *  numeric rules. The rule collection runs ONLY when the field exists — omitting it would leave a dangling

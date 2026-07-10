@@ -12,6 +12,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -58,6 +59,31 @@ class TierAProjectionShapeTest {
         assertTrue(exported.report().dispositions().stream()
                         .anyMatch(d -> d.tier() == TranscodeReport.Tier.TIER_A),
                 "the projection is recorded as a Tier-A disposition");
+    }
+
+    @Test
+    void aNonIntegerGroupCountBoundDoesNotCrashTheExport() throws Exception {
+        // F8 — TierAProjection called intValueExact on the NumberOfFilledGroups(G*) < N bound of ANY exported
+        // rule; a kernel-legal but non-integer bound (2.5) threw ArithmeticException, aborting the whole export.
+        String structure = DocumentModelDraft.named("Order").locale("en_US")
+                .rootGroup("Root", g -> g.group("Items", i -> {
+                    i.repeatable(10);
+                    i.field("Sku", FieldKind.STRING);
+                }))
+                .build().toJson();
+        BoundModel m = BoundModel.ofJson(structure);
+        Rule rule = m.rule(m.group("/Root"))
+                .name("MinLines").errorField(m.str("/Root/Items/Sku"))
+                .when(Dsl.numberOfFilledGroups(m.group("/Root/Items")).lt("2.5"))
+                .code("MIN_LINES").severity(Severity.ERROR).message(Dsl.en("Too few lines.")).build();
+        String dm = m.add(rule).toJson();
+
+        JsonSchemaExporter.ExportResult exported = new JsonSchemaExporter().export(dm);   // must NOT throw
+        JsonNode schema = MAPPER.readTree(exported.jsonSchema());
+        assertFalse(schema.path("properties").path("Items").has("minItems"),
+                () -> "a non-integer group-count bound is not projectable as minItems: " + exported.jsonSchema());
+        assertTrue(exported.report().diagnostics().stream().anyMatch(d -> d.contains("minItems")),
+                () -> "the skipped minItems projection is reported: " + exported.report().diagnostics());
     }
 
     @Test

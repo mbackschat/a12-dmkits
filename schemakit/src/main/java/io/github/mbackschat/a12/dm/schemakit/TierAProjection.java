@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.schemakit;
 
+import java.math.BigDecimal;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
@@ -48,13 +50,21 @@ final class TierAProjection {
                         TranscodeReport.Tier.TIER_A);
             });
             findMinItemsConstraint(converted.condition()).ifPresent(hit -> {
+                if (hit.bound().stripTrailingZeros().scale() > 0) {
+                    // a JSON Schema minItems is an integer row count; a non-integer bound has no minItems form —
+                    // skip the projection (never crash on intValueExact) and report it, the rule stays carried
+                    report.diagnostic("rule '" + entry.getKey() + "' bounds a group row-count by a non-integer ("
+                            + hit.bound().toPlainString() + ") — not projected as JSON Schema minItems; it remains "
+                            + "carried as an a12 rule");
+                    return;
+                }
                 ObjectNode array = navigateToField(schema, hit.groupPath());   // a property node — here the array
                 if (array == null || !"array".equals(array.path("type").asText())) {
                     report.diagnostic("rule '" + entry.getKey() + "' would project minItems onto '" + hit.groupPath()
                             + "', but that array is not in the exported structure");
                     return;
                 }
-                array.put("minItems", hit.min());
+                array.put("minItems", hit.bound().intValueExact());
                 report.mapped(entry.getKey(), "properties/" + hit.groupPath() + ".minItems",
                         TranscodeReport.Tier.TIER_A);
             });
@@ -63,7 +73,7 @@ final class TierAProjection {
 
     private record PatternHit(String fieldPath, String regex) {}
 
-    private record MinItemsHit(String groupPath, int min) {}
+    private record MinItemsHit(String groupPath, BigDecimal bound) {}
 
     /** A group must have {@code ≥ N} rows iff a rule ERRORS on {@code NumberOfFilledGroups(G*) < N} — the
      *  synthesized minItems shape (a single starred repeatable group, unguarded; SCHEMAKIT-SPEC §4f). */
@@ -73,7 +83,8 @@ final class TierAProjection {
                 && agg.op() == CountAggregate.CountOp.FILLED_GROUPS
                 && agg.fields().isEmpty() && agg.groups().size() == 1
                 && c.right() instanceof NumberLiteral n) {
-            return Optional.of(new MinItemsHit(agg.groups().get(0).path(), n.value().intValueExact()));
+            // keep the raw bound; the integer-ness guard + skip-and-report live at the projection site
+            return Optional.of(new MinItemsHit(agg.groups().get(0).path(), n.value()));
         }
         if (condition instanceof LogicCondition logic && logic.op() == LogicCondition.Op.AND) {
             Optional<MinItemsHit> left = findMinItemsConstraint(logic.left());
