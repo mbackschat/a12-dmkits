@@ -47,6 +47,10 @@ public final class EditSession {
     private String json;
     private final IDocumentModelReferenceResolver resolver;
 
+    /** Memoized bind of the current {@code json} (M6): reused across navigations until a write replaces {@code json}. */
+    private BoundModel cachedBoundModel;
+    private String cachedForJson;
+
     private EditSession(String json, IDocumentModelReferenceResolver resolver) {
         this.json = json;
         this.resolver = resolver;
@@ -450,9 +454,17 @@ public final class EditSession {
         return new IncludeEditor(this, alias);
     }
 
-    /** The model bound to the current state — navigation and rule edits re-read this after each edit. */
+    /** The model bound to the current state — navigation and rule edits re-read this after each edit.
+     *  Memoized per unchanged JSON (M6): a {@link BoundModel} is an immutable snapshot, so navigations
+     *  between writes reuse one kernel bind (measured ~28 ms each on a 200-field model). Every edit
+     *  reassigns {@code json} to a fresh string, so reference identity detects the change and rebinds —
+     *  snapshot semantics are unchanged. */
     BoundModel boundModel() {
-        return BoundModel.ofJson(json, resolver);
+        if (cachedBoundModel == null || json != cachedForJson) {
+            cachedBoundModel = BoundModel.ofJson(json, resolver);
+            cachedForJson = json;
+        }
+        return cachedBoundModel;
     }
 
     // --- rule / computation edits (rulekit) -----------------------------------------------------
