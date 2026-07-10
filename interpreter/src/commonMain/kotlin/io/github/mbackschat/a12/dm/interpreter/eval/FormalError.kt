@@ -262,7 +262,10 @@ fun typeFormatError(
         // does not split into exactly two parts on the separator → `datumBereichTrennerFehlt`; split but a side
         // is not a valid date for the format (incl. calendar-invalid like 31.02) → `datumBereichFormatFalsch`;
         // two valid dates but start AFTER end → `datumBereichNichtGueltig` (start == end is allowed). A malformed
-        // range also resolves to Val.Unknown, suppressing a referencing rule.
+        // range also resolves to Val.Unknown, suppressing a referencing rule. Each side parses BY THE DECLARED
+        // format, whatever its granularity — a FRAGMENT format (a `yyyy` year-range like `2024/2025`, a real
+        // workspace idiom) completes to its earliest concrete date exactly like a fragment DATE field
+        // (`FragmentRangeFormalDiffTest`).
         Kind.DATE_RANGE -> {
             if (format == null || rangeSep == null) null   // no range config → nothing to check
             else {
@@ -270,8 +273,8 @@ fun typeFormatError(
                 when {
                     parts.size != 2 -> FormalErrorCode.DATE_RANGE_SEPARATOR
                     else -> {
-                        val a = parseDateToIso(parts[0], format)
-                        val b = parseDateToIso(parts[1], format)
+                        val a = parseDateToIso(parts[0], format) ?: completeFragmentToIso(parts[0], format, baseYear)
+                        val b = parseDateToIso(parts[1], format) ?: completeFragmentToIso(parts[1], format, baseYear)
                         when {
                             a == null || b == null -> FormalErrorCode.DATE_RANGE_FORMAT
                             a > b -> FormalErrorCode.DATE_RANGE_INVALID   // ISO strings: lexicographic == chronological
