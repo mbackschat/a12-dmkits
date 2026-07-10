@@ -1266,7 +1266,7 @@ public final class JsonSchemaImporter {
                     ctx.report().structure(path, "STRING");
                 }
                 if (schema.has("const")) {   // applies to BOTH plain and formatted strings — the format path dropped it
-                    ctx.ruleNeeds().add(new RuleSynthesis.ConstValue(path, false, schema.get("const").asText()));
+                    ctx.ruleNeeds().add(new RuleSynthesis.ConstValue(path, schema.get("const").asText()));
                 }
             }
             case "boolean" -> {
@@ -1495,7 +1495,7 @@ public final class JsonSchemaImporter {
     private static void collectNumericRules(JsonNode schema, String path, Ctx ctx) {
         collectStrictBounds(schema, path, ctx);
         if (schema.has("const")) {
-            ctx.ruleNeeds().add(new RuleSynthesis.ConstValue(path, true, schema.get("const").asText()));
+            ctx.ruleNeeds().add(new RuleSynthesis.ConstValue(path, schema.get("const").asText()));
         }
         if (schema.has("multipleOf")) {
             ctx.ruleNeeds().add(new RuleSynthesis.MultipleOf(path, schema.get("multipleOf").asText()));

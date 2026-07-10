@@ -87,8 +87,10 @@ final class RuleSynthesis {
     /** {@code dependentRequired}: if {@code trigger} is present, {@code dependent} is required (same group). */
     record DependentRequired(String groupPath, String trigger, String dependent) implements Need {}
 
-    /** {@code const}: the field must equal a fixed value (no field-level const in a12 → a rule). */
-    record ConstValue(String fieldPath, boolean numeric, String value) implements Need {}
+    /** {@code const}: the field must equal a fixed value (no field-level const in a12 → a rule). The field kind is
+     *  resolved at synthesis time (like {@code not{const}} — {@link ForbiddenConst}), so a temporal/custom-typed
+     *  {@code const} is skipped-and-reported rather than forced through a string handle (SCHEMAKIT-SPEC §4a). */
+    record ConstValue(String fieldPath, String value) implements Need {}
 
     /** {@code multipleOf}: divisibility, expressed as a modulo rule (a12 has no modulo operator). */
     record MultipleOf(String fieldPath, String divisor) implements Need {}
@@ -186,14 +188,26 @@ final class RuleSynthesis {
             }
             case ConstValue c -> {
                 String field = lastSegment(c.fieldPath());
-                Condition mismatch = c.numeric()
-                        ? m.num(c.fieldPath()).filled().and(m.num(c.fieldPath()).ne(c.value()))
-                        : m.str(c.fieldPath()).filled().and(m.str(c.fieldPath()).ne(c.value()));
-                Rule.Builder b = m.rule(m.group(parentGroup(c.fieldPath()))).name(field + "Const");
-                b = c.numeric() ? b.errorField(m.num(c.fieldPath())) : b.errorField(m.str(c.fieldPath()));
-                yield Optional.of(b.when(mismatch)
-                        .code("CONST_" + field.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
-                        .message(Dsl.en(field + " must equal " + c.value() + ".")).build());
+                String code = "CONST_" + field.toUpperCase(Locale.ROOT);
+                String message = field + " must equal " + c.value() + ".";
+                yield switch (doc.fieldKind(c.fieldPath()).orElse("")) {
+                    case "STRING" -> {
+                        StringRef r = m.str(c.fieldPath());
+                        yield Optional.of(m.rule(m.group(parentGroup(c.fieldPath()))).name(field + "Const")
+                                .errorField(r).when(r.filled().and(r.ne(c.value())))
+                                .code(code).severity(Severity.ERROR).message(Dsl.en(message)).build());
+                    }
+                    case "NUMBER" -> {
+                        NumberRef r = m.num(c.fieldPath());
+                        yield Optional.of(m.rule(m.group(parentGroup(c.fieldPath()))).name(field + "Const")
+                                .errorField(r).when(r.filled().and(r.ne(c.value())))
+                                .code(code).severity(Severity.ERROR).message(Dsl.en(message)).build());
+                    }
+                    default -> {
+                        report.diagnostic("'const' on '" + field + "' skipped — only string/number fields supported");
+                        yield Optional.empty();
+                    }
+                };
             }
             case MultipleOf mo -> {
                 String field = lastSegment(mo.fieldPath());
