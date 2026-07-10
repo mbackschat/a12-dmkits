@@ -70,10 +70,36 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
     public record ElementChange(ElementKind element, String id, ChangeKind change, Risk risk,
             List<String> reasons, List<Delta> deltas) {}
 
-    /** Diff {@code headJson} against {@code baseJson} (both must be kernel-loadable). */
+    /** Diff {@code headJson} against {@code baseJson} (both must be kernel-loadable and <b>self-contained</b> —
+     *  an includes-bearing model needs a resolver overload below, else binding throws). */
     public static ModelDiff between(String baseJson, String headJson) {
-        BoundModel base = BoundModel.ofJson(baseJson);
-        BoundModel head = BoundModel.ofJson(headJson);
+        return between(BoundModel.ofJson(baseJson), BoundModel.ofJson(headJson));
+    }
+
+    /**
+     * Diff two models whose {@code include}s/imports resolve through a <b>kernel-free</b>
+     * {@link io.github.mbackschat.a12.dm.core.ModelResolver} (the mirror of {@link ModelReport}'s resolver
+     * overload — a consumer diffs a multi-model model without importing {@code com.mgmtp.*}). {@code null} = none.
+     */
+    public static ModelDiff between(String baseJson, String headJson,
+            io.github.mbackschat.a12.dm.core.ModelResolver resolver) {
+        return between(
+                resolver == null ? BoundModel.ofJson(baseJson) : BoundModel.ofJson(baseJson, resolver),
+                resolver == null ? BoundModel.ofJson(headJson) : BoundModel.ofJson(headJson, resolver));
+    }
+
+    /** Diff two models resolving {@code include}s/imports through the kernel's resolver directly (the low-level
+     *  overload; prefer the {@link io.github.mbackschat.a12.dm.core.ModelResolver} form). {@code null} = none. */
+    public static ModelDiff between(String baseJson, String headJson,
+            com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver resolver) {
+        return between(
+                resolver == null ? BoundModel.ofJson(baseJson) : BoundModel.ofJson(baseJson, resolver),
+                resolver == null ? BoundModel.ofJson(headJson) : BoundModel.ofJson(headJson, resolver));
+    }
+
+    /** The shared structural diff over two already-bound models — the entry points differ only in how each
+     *  {@link BoundModel} was resolved. */
+    private static ModelDiff between(BoundModel base, BoundModel head) {
         KernelAdapter baseRules = KernelAdapter.of(base);
         KernelAdapter headRules = KernelAdapter.of(head);
         List<ElementChange> changes = new ArrayList<>();
