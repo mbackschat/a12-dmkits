@@ -1258,8 +1258,18 @@ class DmInterpreter @JvmOverloads constructor(
         val scope = scopeFromRefs(refs, rule.group)
         val parallelGroups = refs.flatMap { ancestorGroups(it).filter { g -> g in model.repeatable } }
             .distinct().filter { it != scope && !scope.startsWith("$it/") }
-        return if (parallelGroups.isEmpty()) doc.contextsFor(scope)
-        else parallelIterationContexts(scope, parallelGroups, doc)
+        if (parallelGroups.isNotEmpty()) return parallelIterationContexts(scope, parallelGroups, doc)
+        val contexts = doc.contextsFor(scope)
+        // A rule with NO repeatable non-starred ref, declared in a container without instance content (a
+        // real-workspace `*_Rules` root referencing + erroring into OTHER roots), still evaluates ONCE — the
+        // kernel's iteration is reference-driven, and the rule fires at its ERROR ENTITY (IF103, the ordinary-
+        // rule sibling of IF100's implicit-validation anchor). Re-anchor at the error entity's parent ONLY when
+        // the declaring scope yields nothing, so every currently-anchored rule is bit-identical.
+        if (contexts.isEmpty() && scope == rule.group) {
+            val errorAnchor = parentGroup(resolveErrorPath(rule))
+            if (errorAnchor != scope) return doc.contextsFor(errorAnchor)
+        }
+        return contexts
     }
 
     /**

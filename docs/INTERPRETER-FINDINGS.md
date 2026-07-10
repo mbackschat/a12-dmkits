@@ -1089,3 +1089,11 @@ The post-IF100 sweep surfaced a NEW `interp-eval: IndexOutOfBoundsException` ski
 **The fix.** `roundExpr` handles the optional second argument (absent → 0) and the `*Value` dispatch routes through it; the separate 0-hardcoded `roundValue` is deleted.
 
 *Locked:* `adapter.laws.SingleArgRoundDiffTest` — tri-check (groovy-dynamic == java-static == interpreter): the three 1-arg operation forms, the digits-present and digits-absent field forms, and the crash context itself (a 1-arg Round inside a rule comparison) — and multiplatform `interpreter … SingleArgRoundTest` (JVM + JS). Fix in `commonMain` → JVM + JS.
+
+### IF103 — a rule with no repeatable ref evaluates ONCE at its error entity; an empty declaring container never silences it (FIXED 2026-07-10, graduated from the IG56 E3 hunt-3 minimal)
+
+The next kernel-only minimal (4 fields / 7 groups / 1 rule): a real workspace `*_Rules` container ROOT declaring "the membership end is covered by no contract" — `FieldFilled(/A/…) And AtLeastOneFieldFilled(/B star /…) And NumberOfFilledFields(/B star /… Having …) == 0` — with every reference and the error entity in OTHER roots. The kernel fired it once, OMISSION, at the error entity; the interpreter never evaluated it: `iterationContexts`' scope fallback was the DECLARING group (`scopeFromRefs(refs) ?: rule.group`), and the container had no instance content → `contextsFor` yielded nothing. Kernel iteration is REFERENCE-driven (KERNEL-SEMANTICS §9) — with no repeatable non-starred ref there is exactly ONE evaluation, and the declaring group matters only for resolving relative refs (the ordinary-rule sibling of IF100's implicit-validation anchor). Kernel fact: KERNEL-FINDINGS §9 supplement "a rule's iteration is REFERENCE-driven".
+
+**The fix (conservative — no currently-anchored rule changes).** When a no-repeatable-ref rule's declaring scope yields NO contexts, `iterationContexts` re-anchors at the error entity's parent group; every rule that had contexts before is bit-identical.
+
+*Locked:* `adapter.laws.CrossRootRuleScopeDiffTest` — tri-check (groovy-dynamic == java-static == interpreter): the empty-container cross-root fire (once, OMISSION, at the error entity), the covered-silence control, and the truly-empty-document silence — and multiplatform `interpreter … CrossRootRuleScopeTest` (JVM + JS). Fix in `commonMain` → JVM + JS.
