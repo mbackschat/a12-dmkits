@@ -5,15 +5,16 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Classifies <i>what kind</i> of change separates two condition ASTs — the coarse edit-script half of
- * {@code model diff}'s rule-logic review (MODEL-REVIEW-GAPS MR1). It answers "did the logical
+ * Classifies <i>what kind</i> of change separates two condition ASTs — the coarse category behind
+ * {@code model diff}'s rule-logic review (MODEL-REVIEW-SPEC §5e). It answers "did the logical
  * structure change, the referenced elements, an operator, or just a literal?", which is the triage a
  * reviewer wants on top of the before/after text.
  *
  * <p>Deliberately coarse and cheap: it reuses {@link ConditionReferences} for the reference set and a
  * small Condition-layer walk for the {@code operatorId} multiset + node count, so it never re-walks the
- * deep {@link Calculation} operand hierarchy. The precise, located edit script ("the {@code And} clause
- * referencing X was added") is the deferred remainder of MR1.
+ * deep {@link Calculation} operand hierarchy. The precise, <i>located</i> edit script ("the {@code And}
+ * clause referencing X was added") is {@link ConditionEditScript}, which degrades to this coarse kind
+ * where an alignment is ambiguous.
  */
 public final class ConditionEdit {
 

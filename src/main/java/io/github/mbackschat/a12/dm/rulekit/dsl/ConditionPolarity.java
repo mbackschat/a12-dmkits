@@ -5,7 +5,7 @@ import java.util.Optional;
 /**
  * The logical <b>complement</b> of a {@link Condition}, computed by exhaustive switch over the sealed
  * AST — the pure-AST primitive behind {@code model diff}'s structural {@code POLARITY_INVERTED}
- * detection (MODEL-REVIEW-SPEC §5c level 1, LEDGER MR1).
+ * detection (MODEL-REVIEW-SPEC §5c level 1).
  *
  * <p>The kernel has <b>no negation operator</b> (see {@link LogicCondition}), so a negation is pushed
  * down into the leaf polarity bits and across {@code And}/{@code Or} by De&nbsp;Morgan:
