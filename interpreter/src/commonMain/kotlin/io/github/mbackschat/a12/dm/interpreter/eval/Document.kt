@@ -179,6 +179,11 @@ class Document @JvmOverloads constructor(
         // across O(rows) contexts — O(rows²) MEMORY (the perf gate's OOM). Keyed by the scope prefix, every
         // row context (and every sibling target of the index field) shares the one map.
         val indexRowByValue: MutableMap<Pair<String, List<Int>>, Map<String, List<Int>>> = HashMap()
+        // The [IndexColumn] state per (index field, star-scope prefix) — the same DOCUMENT-level sharing as
+        // [indexRowByValue], for the same reason: the IF107/IF115 gates consult the column per LOOKUP, so a
+        // per-read rebuild is O(rows) each and a per-row indexed rule turns validateFull O(rows²) (the perf
+        // gate's semanticIndexStaysSubQuadratic hang).
+        val indexColumnByScope: MutableMap<Pair<String, List<Int>>, IndexColumn> = HashMap()
 
         /** group path → its declared field paths, recursive (the GROUP-star aggregate expansion, IF99). */
         val containedFieldsByGroup: MutableMap<String, List<String>> = HashMap()
@@ -608,6 +613,14 @@ class Document @JvmOverloads constructor(
             val raw = valueAt(targetPath, reps)?.value
             return if (!raw.isNullOrEmpty()) resolveValue(targetPath, raw) else null
         }
+
+        /** The memoized [IndexColumn] — built ONCE per (column, star-scope prefix) at the DOCUMENT level and
+         *  shared across every row context of the scope (the [Index.indexColumnByScope] twin of
+         *  [indexedCell]'s row map). Raw stored cells only — an overlay context rebuilds per read instead. */
+        override fun indexColumn(path: String, bindDepth: Int): IndexColumn =
+            index().indexColumnByScope.getOrPut(path to starScopePrefix(path, bindDepth)) {
+                IndexColumn(starCells(path, bindDepth))
+            }
 
         // Rows of groupPath in this row's SCOPE (the Having filter's per-row contexts). An aggregate/quantifier
         // over groupPath spans all rows under groupPath's PARENT (the common ancestor) — so scope to the

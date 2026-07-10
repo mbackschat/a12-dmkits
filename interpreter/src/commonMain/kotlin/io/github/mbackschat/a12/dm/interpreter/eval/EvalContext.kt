@@ -102,6 +102,12 @@ interface EvalContext {
      *  matched cell is empty (the caller then reads it as the kind's empty value). Default: unsupported. */
     fun indexedCell(targetPath: String, indexField: String, indexValue: String): Val? = null
 
+    /** The [IndexColumn] state of a starred INDEX field's column. The general [Document]'s raw row context
+     *  memoizes it per (column, star-scope prefix) at the DOCUMENT level (the kernel's `IndexFieldCache`
+     *  analog, like [indexedCell]'s row map); this default rebuilds per read — a cascade OVERLAY's view
+     *  changes as computations land, so only the RAW context may cache. */
+    fun indexColumn(path: String, bindDepth: Int = -1): IndexColumn = IndexColumn(starCells(path, bindDepth))
+
     /** One [EvalContext] per row of [groupPath] WITHIN this context's scope — for evaluating a `Having`
      *  per-row filter inside an aggregate. Default empty (the flat spike contexts don't model rows). */
     fun rowContexts(groupPath: String, bindDepth: Int = -1): List<EvalContext> = emptyList()
@@ -182,6 +188,49 @@ interface EvalContext {
 /** A cell's COMPUTE-mode read state ([EvalContext.cellState], IF85) — a visited [INVALID] cell poisons the
  *  reading computation instance ([PoisonedReadException]). */
 enum class CellState { EMPTY, FILLED, INVALID }
+
+/**
+ * The resolved state of an INDEX column ([EvalContext.indexColumn]): the [EvalContext.starCells]-aligned
+ * [cells], the [duplicated] values (each duplicate-valued cell carries the kernel's uniqueIndex error; values
+ * compare as [Val] — a Txt index compares by text), and the derived flags/tally the indexed-read gates consult
+ * (the whole-column invalid marking IF107/IF115; the index-aware quantifier/aggregate classification IF15/IF60).
+ * Everything is derived ONCE at construction so a consulting site is O(1) — the per-lookup column rebuild made
+ * every indexed read O(rows), and a `validateFull` over a per-row indexed rule O(rows²) (caught by the perf
+ * gate's `semanticIndexStaysSubQuadratic`).
+ */
+class IndexColumn(val cells: List<Pair<List<Int>, Val?>>) {
+    /** The values appearing MORE than once among [cells]. */
+    val duplicated: Set<Val>
+
+    /** Any empty, malformed, or duplicated cell — the whole-column not-check-relevant marking (IF107/IF115). */
+    val anyNotCheckRelevant: Boolean
+
+    /** Any empty or DUPLICATED cell — malformed NOT re-counted (the aggregate caller already reads a malformed
+     *  cell as [Val.Unknown], IF15/IF60). */
+    val anyEmptyOrDuplicated: Boolean
+
+    /** The count of clean cells (filled, well-formed, unique) — the index-aware fill tally's `t`. */
+    val cleanFilled: Int
+
+    init {
+        val seen = HashSet<Val>()
+        val dups = HashSet<Val>()
+        for ((_, v) in cells) if (v != null && v !is Val.Unknown && !seen.add(v)) dups += v
+        duplicated = dups
+        var invalid = false
+        var emptyOrDup = false
+        var clean = 0
+        for ((_, v) in cells) when {
+            v == null -> { invalid = true; emptyOrDup = true }
+            v is Val.Unknown -> invalid = true
+            v in dups -> { invalid = true; emptyOrDup = true }
+            else -> clean++
+        }
+        anyNotCheckRelevant = invalid
+        anyEmptyOrDuplicated = emptyOrDup
+        cleanFilled = clean
+    }
+}
 
 /**
  * The fill tally of a group-scoped / starred-field fill-quantifier operand ([EvalContext.fillScope]) — the two

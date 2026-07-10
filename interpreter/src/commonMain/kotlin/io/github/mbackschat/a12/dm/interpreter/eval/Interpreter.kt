@@ -414,15 +414,6 @@ class Interpreter(
      *  empty/absent key field for the field-keyed form, which also yields no match). */
     private fun semanticIndexFilled(e: Expr.SemanticIndex): Boolean = semanticIndexCell(e) != null
 
-    /** The values appearing MORE than once among [cells] (each duplicate-valued cell carries the kernel's
-     *  uniqueIndex error). Values compare as [Val] (typed; a Txt index compares by text). */
-    private fun duplicatedValues(cells: List<Pair<List<Int>, Val?>>): Set<Val> {
-        val seen = HashSet<Val>()
-        val dups = HashSet<Val>()
-        for ((_, v) in cells) if (v != null && v !is Val.Unknown && !seen.add(v)) dups += v
-        return dups
-    }
-
     /**
      * Whether a starred INDEX-field operand carries ANY NOT-CHECK-RELEVANT cell — the kernel's field-local index
      * errors (IF15/IF60, the VLQ [classifyVlqCell] mechanism generalized to the aggregate/count path): a
@@ -433,12 +424,8 @@ class Interpreter(
      * cell, so the whole aggregate is non-evaluable and the referencing rule is suppressed (`IndexAggregateDiffTest`).
      * False for a non-index field or a clean index column.
      */
-    private fun indexOperandNonEvaluable(c: EvalContext, path: String, bindDepth: Int = -1): Boolean {
-        if (path !in indexFields) return false
-        val cells = c.starCells(path, bindDepth)
-        val dups = duplicatedValues(cells)
-        return cells.any { (_, v) -> v == null || (v !is Val.Unknown && v in dups) }
-    }
+    private fun indexOperandNonEvaluable(c: EvalContext, path: String, bindDepth: Int = -1): Boolean =
+        path in indexFields && c.indexColumn(path, bindDepth).anyEmptyOrDuplicated
 
     /**
      * The instantiated fill tally of a starred INDEX-field operand, index-aware: a mandatory-EMPTY/absent cell and
@@ -451,21 +438,10 @@ class Interpreter(
      */
     private fun indexStarFillScope(c: EvalContext, path: String): FillScope {
         val declared = c.fillScope(path, isGroup = false)
-        val cells = c.starCells(path)
-        val dups = duplicatedValues(cells)
-        var t = 0
-        var n = 0
-        var unknown = false
-        for ((_, v) in cells) {
-            n++
-            when {
-                v == null -> unknown = true                 // mandatory-empty index cell → not-check-relevant
-                v is Val.Unknown -> unknown = true          // malformed → not-check-relevant
-                v in dups -> unknown = true                 // duplicated value → uniqueIndex → not-check-relevant
-                else -> t++
-            }
-        }
-        return FillScope(t, 0, n, unknown, declared.allFilledDeclared, declared.anyEmptyDeclared)
+        // empty → mandatory-empty, malformed, duplicated → uniqueIndex: all not-check-relevant, in neither t nor f
+        val col = c.indexColumn(path)
+        return FillScope(col.cleanFilled, 0, col.cells.size, col.anyNotCheckRelevant,
+            declared.allFilledDeclared, declared.anyEmptyDeclared)
     }
 
     /**
@@ -664,7 +640,7 @@ class Interpreter(
                 // row), and EVERY cell of a duplicated value carries the uniqueIndex error (over ALL rows, not
                 // just filter-kept ones). A clean sibling field in the same row reads normally — the row is not
                 // collectively compromised. `ValueListQuantifierStarDiffTest.compromisedIndexRows`.
-                val dupIndexValues = if (e.path in indexFields) duplicatedValues(c.starCells(e.path, e.bindDepth)) else null
+                val dupIndexValues = if (e.path in indexFields) c.indexColumn(e.path, e.bindDepth).duplicated else null
                 if (e.having == null) {
                     for ((_, v) in c.starCells(e.path, e.bindDepth)) classifyVlqCell(out, v, dupIndexValues)
                     if (c.starOmission(e.path, e.bindDepth)) out.anyEmpty = true   // un-instantiated declared tail counts as empty
@@ -1556,7 +1532,7 @@ class Interpreter(
         val matchedKey = ctx.indexedCell(idx, idx, key)                  // the index-field self-lookup
         if (matchedKey != null) {
             // matched on a malformed (raw-equal) or DUPLICATED key cell → not-check-relevant
-            if (matchedKey is Val.Unknown || matchedKey in duplicatedValues(ctx.starCells(idx))) return Val.Unknown
+            if (matchedKey is Val.Unknown || matchedKey in ctx.indexColumn(idx).duplicated) return Val.Unknown
             return ctx.indexedCell(e.path, idx, key)
         }
         if (indexColumnInvalid(e)) return Val.Unknown                    // unresolvable no-match
@@ -1565,13 +1541,11 @@ class Interpreter(
 
     /** Whether the index COLUMN of `[F For key]` carries ANY invalid cell — malformed, duplicated, or empty
      *  (the IndexFieldCache marking, IF107): every read through the index is then poisoned (compute) or
-     *  not-check-relevant (validation, IF115). */
+     *  not-check-relevant (validation, IF115). O(1) per lookup via [EvalContext.indexColumn]. */
     private fun indexColumnInvalid(e: Expr.SemanticIndex): Boolean {
         val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
             "SemanticIndex needs an index field on the group of ${e.path}")
-        val cells = ctx.starCells(idx)
-        val dups = duplicatedValues(cells)
-        return cells.any { (_, v) -> v == null || v is Val.Unknown || v in dups }
+        return ctx.indexColumn(idx).anyNotCheckRelevant
     }
 
     /** The matched CELL of `[F For key]`, or null when nothing matches — an empty/absent key field, no row

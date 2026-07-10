@@ -9,6 +9,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.eval.CellState
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
+import io.github.mbackschat.a12.dm.interpreter.eval.IndexColumn
 import io.github.mbackschat.a12.dm.interpreter.eval.correlationBucketsOf
 import io.github.mbackschat.a12.dm.interpreter.eval.PoisonedReadException
 import io.github.mbackschat.a12.dm.interpreter.eval.UNKNOWN_REP
@@ -970,6 +971,9 @@ class DmInterpreter @JvmOverloads constructor(
             }
         override fun star(path: String, bindDepth: Int): List<Val> = starCells(path, bindDepth).mapNotNull { it.second }
         override fun starAll(path: String, bindDepth: Int): List<Val> = starCells(path, bindDepth).map { (_, v) -> v ?: emptyOf(path) }
+        // NOT the raw context's document-level memo (`by d` would delegate there and read stale/raw cells):
+        // the overlay's column view changes as the cascade lands, so rebuild from THIS context's cells per read.
+        override fun indexColumn(path: String, bindDepth: Int): IndexColumn = IndexColumn(starCells(path, bindDepth))
         override fun starScanStates(path: String, bindDepth: Int): List<CellState> {
             val states = d.starScanStates(path, bindDepth)
             val rows = d.starCells(path, bindDepth)
