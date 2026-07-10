@@ -353,12 +353,18 @@ class Interpreter(
      * (`add`/`subtract`/`multiply`/`divide`/`power`) applied to the operands' resolved [fill]s, in the runtime
      * layer [ArithFill] (IF10). `×`/`÷` are SIGN-DEPENDENT so each operand's resolved value SIGN is passed;
      * `^` needs the base magnitude + exponent parity so their values are passed. A `+` over string operands is
-     * CONCATENATION, not numeric — it carries no `VkBigDecimal` fill (a fired string comparison is VALUE), so it
-     * keeps the fixed leaf. A malformed / non-numeric operand makes the whole term non-evaluable (the comparison
-     * is UNKNOWN and does not fire, so its type is discarded) → the fixed leaf, matching `INVALID_NUMBER`.
+     * CONCATENATION, not numeric — it carries the kernel's NOT-GIVEN flag instead (`VkString.add` ORs
+     * `nichtAngegeben` across the parts, and `RuntimeController.vergleicheSTRING` types a fired comparison
+     * TRUE_AF → OMISSION iff an operand carries it — IF113): fillable symmetric when ANY part is a not-given
+     * read, else the fixed leaf (a fired fully-given string comparison is VALUE). A malformed / non-numeric
+     * operand makes the whole term non-evaluable (the comparison is UNKNOWN and does not fire, so its type is
+     * discarded) → the fixed leaf, matching `INVALID_NUMBER`.
      */
     private fun arithFill(a: Expr.Arith): Fill {
-        if (a.op == ArithOp.ADD && (producesString(a.left) || producesString(a.right))) return Fill.of(false, false)
+        if (a.op == ArithOp.ADD && (producesString(a.left) || producesString(a.right))) {
+            val na = concatNotGiven(a.left) || concatNotGiven(a.right)
+            return Fill.of(na, na)
+        }
         val l = fill(a.left)
         val r = fill(a.right)
         return when (a.op) {
@@ -371,6 +377,20 @@ class Interpreter(
                 if (base == null || exp == null) Fill.of(false, false) else ArithFill.power(l, base, r, exp)
             }
         }
+    }
+
+    /** Whether a string-concat PART resolves to the kernel's NOT-GIVEN string (`VkString.nichtAngegeben`,
+     *  IF113): an EMPTY check-relevant field read, a NO-MATCH/empty-cell indexed read, a `FieldValueAsString`
+     *  over either, or a nested concat carrying one. A literal or another function value is given; a MALFORMED
+     *  part makes the comparison UNKNOWN (suppressed), so its answer here is discarded. (`Substring`/
+     *  `RangeAsString` parts preserve the flag in the kernel (`getSubstring`) but are unpinned by any
+     *  differential and absent from the corpora — extend when an instance is pinned.) */
+    private fun concatNotGiven(e: Expr): Boolean = when (e) {
+        is Expr.Field -> !ctxOf(e).filled(e.path)
+        is Expr.SemanticIndex -> semanticIndexCell(e) == null
+        is Expr.Func -> FunctionOp.byName(e.name) == FunctionOp.FIELD_VALUE_AS_STRING && concatNotGiven(e.args[0])
+        is Expr.Arith -> e.op == ArithOp.ADD && (concatNotGiven(e.left) || concatNotGiven(e.right))
+        else -> false
     }
 
     /** The resolved value SIGN (−1 / 0 / +1) of an operand — 0 for empty (empty-as-0) or a non-numeric/Unknown

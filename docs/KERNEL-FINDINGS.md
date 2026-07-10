@@ -1165,6 +1165,8 @@ A dimension KERNEL-SEMANTICS doesn't cover (it presents the logic as two-valued)
 
 *(Locked: `adapter.laws.ErrorTypeLawsTest`; the aggregate corollary — the omitted-tail typing — in `AggregateUncertaintyLawsTest`, §9 supplement above. Source: `ValidierungsErgebnis.combineUND/combineODER`, `BedingungsOperatorHelper.vergleiche`.)*
 
+**A fired STRING comparison is OMISSION iff an operand carries the NOT-GIVEN flag — and a CONCATENATION ORs the flag across its parts (source + differential, both strategies, 2026-07-10).** `RuntimeController.vergleicheSTRING(op, v1, v2, isNichtAngegeben)` types a fired `==`/`!=` `TRUE_AF` → `OMISSION_ERROR` when either operand is flagged `nichtAngegeben`, else `TRUE_WF` → `VALUE_ERROR`; `VkString.add` (the `+` concat) ORs the flags of its parts, so a concat containing ANY not-given read — an empty check-relevant field, a no-match/empty-cell semantic-index read, a not-given `FieldValueAsString`, a flag-preserving `Substring`/`RangeAsString` — keeps the whole concatenated value "not given": a fired mismatch against it is OMISSION ("filling could still change it"), even though the concatenated string itself is non-empty. A fully-given concat mismatch is VALUE. This drives the implicit computation-validation of concat operations (a stored value vs a computed concat over a no-match indexed read fires OMISSION). *(Interpreter: `arithFill`'s concat arm carries the flag (`concatNotGiven`); locked `adapter.laws.ConcatNotGivenPolarityDiffTest` + multiplatform twin; INTERPRETER-FINDINGS IF113.)*
+
 ## The pre-`checkConsistency` tiers — the write path's output contract (instrument 4, 2026-06-04)
 
 Two structural gates fire *outside* `checkConsistency`, found while scoping the F6 DM-JSON write path:
