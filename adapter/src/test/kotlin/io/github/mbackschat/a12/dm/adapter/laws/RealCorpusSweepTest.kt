@@ -258,19 +258,31 @@ class RealCorpusSweepTest {
          *  code (the interpreter's [FormalErrorCode] ids + the autogen consts — `zahl…`/`string…`/`datum…`/
          *  `mandatoryField`/`uniqueIndex`/…) is printed verbatim (it is kernel vocabulary, not corpus content);
          *  a model-AUTHORED code redacts to `rule-code`. Row position separates a first-row fire from a
-         *  row-≥2-only fire (the cross-subtree-binding signature, IF97) without leaking a pointer. */
+         *  row-≥2-only fire (the cross-subtree-binding signature, IF97) without leaking a pointer. A
+         *  `code|pointer` present on BOTH sides with different polarities is ONE polarity-FLIP (the same fire,
+         *  classified differently), not a miss + an extra — paired first so the flip class is countable. */
         private fun classifyValidateSigs(kernel: List<String>, interp: List<String>) {
-            val kSet = kernel.toSet()
-            val iSet = interp.toSet()
-            (kernel.filter { it !in iSet }.map { it to "kernel-only" } +
-                interp.filter { it !in kSet }.map { it to "interp-extra" }).forEach { (sig, side) ->
+            fun polarityByKey(sigs: List<String>) = sigs.associate { sig ->
                 val parts = sig.split('|')
-                val code = parts[0]
-                val polarity = parts.getOrElse(1) { "?" }.removeSuffix("_ERROR")
-                val pointer = parts.getOrElse(2) { "" }
+                "${parts[0]}|${parts.getOrElse(2) { "" }}" to parts.getOrElse(1) { "?" }.removeSuffix("_ERROR")
+            }
+            fun bucket(key: String, tag: String) {
+                val code = key.substringBefore('|')
+                val pointer = key.substringAfter('|')
                 val codeClass = if (code in FORMAL_CODES) code else "rule-code"
                 val rowPos = if (Regex("""\[([2-9]|\d\d+)\]""").containsMatchIn(pointer)) "row≥2" else "row1"
-                validateSigClasses.merge("$side $codeClass $polarity $rowPos", 1) { a, b -> a + b }
+                validateSigClasses.merge("$tag $codeClass $rowPos", 1) { a, b -> a + b }
+            }
+            val kSet = kernel.toSet()
+            val iSet = interp.toSet()
+            val kPol = polarityByKey(kernel.filter { it !in iSet })
+            val iPol = polarityByKey(interp.filter { it !in kSet })
+            for ((key, kp) in kPol) {
+                val ip = iPol[key]
+                if (ip != null && ip != kp) bucket(key, "polarity-flip $kp→$ip") else bucket(key, "kernel-only $kp")
+            }
+            for ((key, ip) in iPol) {
+                if (key !in kPol) bucket(key, "interp-extra $ip")
             }
         }
 
