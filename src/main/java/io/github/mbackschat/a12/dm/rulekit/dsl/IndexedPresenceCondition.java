@@ -24,7 +24,7 @@ public record IndexedPresenceCondition(IndexedFieldValue index, boolean filled) 
         if (expression instanceof IndexedFieldValue index) {
             return new IndexedPresenceCondition(index, filled);
         }
-        throw new IllegalStateException("filled()/notFilled() is only valid on an indexed field reference"
+        throw new IllegalArgumentException("filled()/notFilled() is only valid on an indexed field reference"
                 + " (forIndex(...)); FieldFilled needs a field/cell operand, not "
                 + expression.getClass().getSimpleName());
     }

@@ -87,7 +87,8 @@ class IndexedPresenceConditionTest {
     void filledOnANonIndexedExpressionIsRejected() {
         // .filled() is a fail-fast corrective: only an indexed cell reference has a presence, an
         // arbitrary aggregate/arithmetic expression does not (a kernel-illegal FieldFilled(Sum(...))).
-        assertThrows(IllegalStateException.class,
+        // D7: it is a bad-argument corrective like every sibling operand guard — IllegalArgument, not State.
+        assertThrows(IllegalArgumentException.class,
                 () -> Dsl.sum(m.flatten("/Order/Items*/Count")).filled());
     }
 
