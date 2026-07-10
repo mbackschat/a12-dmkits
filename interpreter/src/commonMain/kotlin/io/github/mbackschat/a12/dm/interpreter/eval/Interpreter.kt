@@ -1181,7 +1181,11 @@ class Interpreter(
             when {
                 rc.presenceUnknown(star.path) -> {}
                 !rc.filled(star.path) -> f++
-                invalid(star.path) -> {}
+                // filled-but-invalid, ROW-correct: the KEPT row's own cell (rc.field → resolveValue → Unknown,
+                // IF84) — the old `invalid(star.path)` resolved at the ENCLOSING rule row's reps, so a per-row
+                // rule whose OWN cell was invalid poisoned the tally of a valid KEPT row (IF105); a filter-
+                // DROPPED row's invalid cell never suppresses (the kernel filter drops first, IF94).
+                rc.field(star.path) is Val.Unknown -> {}
                 else -> t++
             }
         }
@@ -1291,6 +1295,8 @@ class Interpreter(
                 when {
                     ctx.presenceUnknown(star.path) -> {}
                     !ctx.filled(star.path) -> f--
+                    // a filled-but-INVALID own cell contributed to NEITHER bucket (IF105) — nothing to undo
+                    ctx.field(star.path) is Val.Unknown -> {}
                     else -> t--
                 }
             }

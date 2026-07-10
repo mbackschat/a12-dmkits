@@ -957,6 +957,7 @@ internal fun correlationBucketsOf(rows: List<EvalContext>, joinFields: List<Stri
         when {
             rc.presenceUnknown(starPath) -> {}                        // parallel-index 3VL → neither
             !rc.filled(starPath) -> tfn[1]++                          // empty → f
+            rc.field(starPath) is Val.Unknown -> {}                   // filled-but-INVALID → neither (IF105)
             else -> tfn[0]++                                          // present → t
         }
     }
