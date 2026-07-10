@@ -132,6 +132,16 @@ public record NumberRef(FieldRef field, int scale, boolean correlated) {
         return new NumberExpr(new SemanticIndexFieldValue(field, keyField));
     }
 
+    /** This field's indexed cell as a PRESENCE handle — {@code indexedCell(key).filled()}; see {@link FieldRef#indexedCell(String)}. */
+    public IndexedCell indexedCell(String indexValue) {
+        return field.indexedCell(indexValue);
+    }
+
+    /** The field-keyed peer — {@link FieldRef#indexedCell(FieldRef)}. */
+    public IndexedCell indexedCell(FieldRef keyField) {
+        return field.indexedCell(keyField);
+    }
+
     // --- field-vs-field comparison (finding 18) --------------------------------------------------
     // Ordering ignores scale; == / != require equal declared scale (MVK_INVALID_COMPARE_DEC_PLACES,
     // pre-checked here — verified 2026-06-04, the D13 gate made cheap since rulekit knows both scales).

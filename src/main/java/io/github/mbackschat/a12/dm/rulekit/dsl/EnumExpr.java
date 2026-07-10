@@ -9,16 +9,6 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  */
 public record EnumExpr(Calculation expression) {
 
-    /** {@code FieldFilled([Field For key])} — the presence of this indexed cell; valid only on a {@code forIndex(...)} result. */
-    public Condition filled() {
-        return IndexedPresenceCondition.of(expression, true);
-    }
-
-    /** {@code FieldNotFilled([Field For key])} — the absence of this indexed cell; valid only on a {@code forIndex(...)} result. */
-    public Condition notFilled() {
-        return IndexedPresenceCondition.of(expression, false);
-    }
-
     /** {@code <this> == "value"} — compared by stored value (the enum domain is the kernel's check). */
     public Condition is(String value) {
         return new ComparisonCondition(expression, CompareOp.EQ, new EnumValueLiteral(value));

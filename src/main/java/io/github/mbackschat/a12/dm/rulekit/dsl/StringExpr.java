@@ -10,16 +10,6 @@ import java.util.List;
  */
 public record StringExpr(Calculation expression) {
 
-    /** {@code FieldFilled([Field For key])} — the presence of this indexed cell; valid only on a {@code forIndex(...)} result. */
-    public Condition filled() {
-        return IndexedPresenceCondition.of(expression, true);
-    }
-
-    /** {@code FieldNotFilled([Field For key])} — the absence of this indexed cell; valid only on a {@code forIndex(...)} result. */
-    public Condition notFilled() {
-        return IndexedPresenceCondition.of(expression, false);
-    }
-
     /** {@code this + other} — string concatenation, flattened so {@code a + b + c} renders as one chain. */
     public StringExpr plus(StringExpr other) {
         List<Calculation> parts = new ArrayList<>();

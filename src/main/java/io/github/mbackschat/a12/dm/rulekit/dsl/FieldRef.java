@@ -51,4 +51,22 @@ public record FieldRef(String path, ValueKind kind, PathStyle styleHint, boolean
     public FieldValue value() {
         return new FieldValue(this, correlated);
     }
+
+    /**
+     * The cell this field's semantic index resolves to, as a presence handle:
+     * {@code indexedCell("SKU-1").filled()} authors {@code FieldFilled([Field For "SKU-1"])}
+     * (KERNEL-SEMANTICS §9). The literal-keyed peer of {@link #indexedCell(FieldRef)}; the cell's VALUE
+     * (for an operand slot) is a typed ref's {@code forIndex(key)} ({@link NumberRef#forIndex(String)}) instead.
+     */
+    public IndexedCell indexedCell(String indexValue) {
+        return new IndexedCell(new SemanticIndexValue(this, indexValue));
+    }
+
+    /**
+     * The FIELD-keyed peer of {@link #indexedCell(String)} — the cell whose index equals the CURRENT value
+     * of {@code keyField}: {@code indexedCell(key).filled()} authors {@code FieldFilled([Field For keyField])}.
+     */
+    public IndexedCell indexedCell(FieldRef keyField) {
+        return new IndexedCell(new SemanticIndexFieldValue(this, keyField));
+    }
 }

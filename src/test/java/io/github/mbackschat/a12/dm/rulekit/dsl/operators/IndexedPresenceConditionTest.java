@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl.operators;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -16,11 +15,13 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
  * Presence over a semantic index (DEV-API-GAPS shape (2); KERNEL-FINDINGS §9 presence / IF59):
- * {@code FieldFilled([Count For "SKU-1"])} resolves the indexed cell and tests its presence. The
- * {@code forIndex(...)} value expression grows {@code .filled()}/{@code .notFilled()}; the presence
- * renders the semantic index BARE (no value brackets). Stored form pinned by the interpreter
- * differential {@code SemanticIndexPresenceDiffTest}; this proves the typed authoring renders to it and
- * the real kernel accepts it.
+ * {@code FieldFilled([Count For "SKU-1"])} resolves the indexed cell and tests its presence. Authored
+ * through the dedicated {@link IndexedCell} handle — {@code ref.indexedCell(key).filled()}/{@code .notFilled()}
+ * (finding 62) — which renders the semantic index BARE (no value brackets). Because presence lives only on
+ * this handle (never on the value expressions), the non-cell misuse {@code sum(...).filled()} is a compile
+ * error, not a runtime throw. Stored form pinned by the interpreter differential
+ * {@code SemanticIndexPresenceDiffTest}; this proves the typed authoring renders to it and the real kernel
+ * accepts it.
  */
 class IndexedPresenceConditionTest {
 
@@ -31,9 +32,9 @@ class IndexedPresenceConditionTest {
     @Test
     void literalKeyedPresenceRendersBare() {
         // pinned by SemanticIndexPresenceDiffTest: `FieldFilled($COUNT For "SKU-1")`
-        Condition filled = m.num(COUNT).forIndex("SKU-1").filled();
+        Condition filled = m.num(COUNT).indexedCell("SKU-1").filled();
         assertEquals("FieldFilled(/Order/Items/Count For \"SKU-1\")", new DslRenderer().render(filled));
-        Condition notFilled = m.num(COUNT).forIndex("SKU-1").notFilled();
+        Condition notFilled = m.num(COUNT).indexedCell("SKU-1").notFilled();
         assertEquals("FieldNotFilled(/Order/Items/Count For \"SKU-1\")", new DslRenderer().render(notFilled));
         // DE: the "For" keyword localizes to "Fuer"; FieldFilled → FeldAngegeben
         assertEquals("FeldAngegeben(/Order/Items/Count Fuer \"SKU-1\")",
@@ -43,14 +44,14 @@ class IndexedPresenceConditionTest {
     @Test
     void fieldKeyedPresenceRendersBare() {
         // pinned by SemanticIndexPresenceDiffTest: `FieldFilled($COUNT For ProductCode)`
-        Condition c = m.num(COUNT).forIndex(m.field(PC)).filled();
+        Condition c = m.num(COUNT).indexedCell(m.field(PC)).filled();
         assertEquals("FieldFilled(/Order/Items/Count For /Order/ProductCode)", new DslRenderer().render(c));
     }
 
     @Test
     void presenceWorksAcrossKinds() {
-        // forIndex is kind-agnostic, so presence is too — a string-cell index reads the same way
-        Condition c = m.str("/Order/Items/Sku").forIndex("SKU-1").notFilled();
+        // indexedCell is kind-agnostic — a string-cell index reads the same way
+        Condition c = m.str("/Order/Items/Sku").indexedCell("SKU-1").notFilled();
         assertEquals("FieldNotFilled(/Order/Items/Sku For \"SKU-1\")", new DslRenderer().render(c));
     }
 
@@ -67,36 +68,27 @@ class IndexedPresenceConditionTest {
 
     @Test
     void presenceRendersForDateTimeAndEnumCells() {
-        // the render locks above cover num + str; forIndex is kind-agnostic, so date/time/dateTime/enum cells
-        // render the SAME bare semantic-index form — lock the remaining kinds so a per-kind regression is caught.
+        // the render locks above cover num + str; indexedCell is kind-agnostic, so date/time/dateTime/enum
+        // cells render the SAME bare semantic-index form — lock the remaining kinds so a per-kind regression is caught.
         DslRenderer r = new DslRenderer();
         assertEquals("FieldFilled(/Cart/Lines/DueDate For \"K1\")",
-                r.render(cart.date("/Cart/Lines/DueDate").forIndex("K1").filled()));
+                r.render(cart.date("/Cart/Lines/DueDate").indexedCell("K1").filled()));
         assertEquals("FieldNotFilled(/Cart/Lines/PickupTime For \"K1\")",
-                r.render(cart.time("/Cart/Lines/PickupTime").forIndex("K1").notFilled()));
+                r.render(cart.time("/Cart/Lines/PickupTime").indexedCell("K1").notFilled()));
         assertEquals("FieldFilled(/Cart/Lines/OrderedAt For \"K1\")",
-                r.render(cart.dateTime("/Cart/Lines/OrderedAt").forIndex("K1").filled()));
+                r.render(cart.dateTime("/Cart/Lines/OrderedAt").indexedCell("K1").filled()));
         assertEquals("FieldFilled(/Cart/Lines/Status For \"K1\")",
-                r.render(cart.enumOf("/Cart/Lines/Status").forIndex("K1").filled()));
+                r.render(cart.enumOf("/Cart/Lines/Status").indexedCell("K1").filled()));
         // DE keyword localization holds across kinds too (the enum cell)
         assertEquals("FeldAngegeben(/Cart/Lines/Status Fuer \"K1\")",
-                new DslRenderer(ConditionLanguage.DE).render(cart.enumOf("/Cart/Lines/Status").forIndex("K1").filled()));
-    }
-
-    @Test
-    void filledOnANonIndexedExpressionIsRejected() {
-        // .filled() is a fail-fast corrective: only an indexed cell reference has a presence, an
-        // arbitrary aggregate/arithmetic expression does not (a kernel-illegal FieldFilled(Sum(...))).
-        // D7: it is a bad-argument corrective like every sibling operand guard — IllegalArgument, not State.
-        assertThrows(IllegalArgumentException.class,
-                () -> Dsl.sum(m.flatten("/Order/Items*/Count")).filled());
+                new DslRenderer(ConditionLanguage.DE).render(cart.enumOf("/Cart/Lines/Status").indexedCell("K1").filled()));
     }
 
     @Test
     void theRealKernelAcceptsTypedIndexedPresence() {
         // round-trip mirrors SemanticIndexPresenceDiffTest: a guarded rule over the indexed cell.
         Condition c = m.str("/Order/CustomerName").filled()
-                .and(m.num(COUNT).forIndex("SKU-1").filled());
+                .and(m.num(COUNT).indexedCell("SKU-1").filled());
         String rendered = new DslRenderer().render(c);
         ValidationResult vr = new RuleValidator().check(Fixtures.orderJson(),
                 new DraftRule("/Order", "IndexedPresenceRule", "../CustomerName", rendered, "IDX", "ERROR"));

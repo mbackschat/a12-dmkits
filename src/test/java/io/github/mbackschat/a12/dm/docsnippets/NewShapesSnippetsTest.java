@@ -42,9 +42,9 @@ class NewShapesSnippetsTest {
     @Test
     void indexedPresenceSnippet() {
         // tag::indexed-presence[]
-        // The semantic index [Count For "SKU-1"] reads a cell; .filled()/.notFilled() test its presence.
-        // (Only a forIndex(...) result carries a presence — a bare aggregate does not.)
-        Condition present = m.num("/Order/Items/Count").forIndex("SKU-1").filled();
+        // indexedCell(key) is the presence handle for the cell a semantic index resolves to;
+        // .filled()/.notFilled() test its presence. (The cell's VALUE for a comparison is forIndex(key).)
+        Condition present = m.num("/Order/Items/Count").indexedCell("SKU-1").filled();
         // end::indexed-presence[]
         assertEquals("FieldFilled(/Order/Items/Count For \"SKU-1\")", new DslRenderer().render(present));
     }

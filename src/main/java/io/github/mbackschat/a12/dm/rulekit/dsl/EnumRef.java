@@ -67,6 +67,16 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
         return new EnumExpr(new SemanticIndexFieldValue(field, keyField));
     }
 
+    /** This field's indexed cell as a PRESENCE handle — {@code indexedCell(key).filled()}; see {@link FieldRef#indexedCell(String)}. */
+    public IndexedCell indexedCell(String indexValue) {
+        return field.indexedCell(indexValue);
+    }
+
+    /** The field-keyed peer — {@link FieldRef#indexedCell(FieldRef)}. */
+    public IndexedCell indexedCell(FieldRef keyField) {
+        return field.indexedCell(keyField);
+    }
+
     public Condition is(String value) {
         return compareTo(CompareOp.EQ, value);
     }

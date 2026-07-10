@@ -504,13 +504,13 @@ Condition earliestBeforeCutoff =
                 .before(Dsl.dateValue("20.03.2026"));   // Min([A], [B]) < "20.03.2026"
 ```
 
-**Presence over a semantic index.** A `forIndex(...)` value expression grows `.filled()`/`.notFilled()`, so the presence of the cell an index resolves to is authorable — rendered bare (no value brackets). It is a fail-fast corrective: only an indexed cell has a presence, so `sum(...).filled()` throws rather than emit a kernel-illegal `FieldFilled(Sum(...))` (finding 59):
+**Presence over a semantic index.** `ref.indexedCell(key)` is a dedicated handle for the cell a semantic index resolves to; `.filled()`/`.notFilled()` author its presence — rendered bare (no value brackets). Presence lives only on this handle, never on the `forIndex(...)` value expression, so the non-cell misuse `sum(...).filled()` is a compile error rather than a runtime throw (finding 62, superseding finding 59):
 
 <!-- snippet: indexed-presence -->
 ```java
-// The semantic index [Count For "SKU-1"] reads a cell; .filled()/.notFilled() test its presence.
-// (Only a forIndex(...) result carries a presence — a bare aggregate does not.)
-Condition present = m.num("/Order/Items/Count").forIndex("SKU-1").filled();
+// indexedCell(key) is the presence handle for the cell a semantic index resolves to;
+// .filled()/.notFilled() test its presence. (The cell's VALUE for a comparison is forIndex(key).)
+Condition present = m.num("/Order/Items/Count").indexedCell("SKU-1").filled();
 ```
 
 **The rule's own group.** `Dsl.ruleGroup()` is the self-reference to the rule's containing group (the kernel's `RegelKontext`); it renders the reserved keyword (EN `RuleGroup`, DE `RegelKontext`), never a path. On a rule iterating a repeatable group it is the "is this row present" guard — the shape behind attachment/row-content rules (finding 60):
