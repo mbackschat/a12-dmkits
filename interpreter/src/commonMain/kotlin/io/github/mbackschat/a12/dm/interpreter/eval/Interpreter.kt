@@ -1459,9 +1459,22 @@ class Interpreter(
     }
 
     /** `[field For "value"]` — the field's value in the row whose index field equals the value; an absent row
-     *  or empty cell reads as the kind's EMPTY value (a number → 0, fillable), matching a missing field ref. */
+     *  or empty cell reads as the kind's EMPTY value (a number → 0, fillable), matching a missing field ref.
+     *
+     *  COMPUTE mode differs on ONE kernel-pinned point (IF107): an INVALID index COLUMN — any empty,
+     *  duplicated, or malformed key cell — POISONS the reading computation even when a clean row matches (the
+     *  IndexFieldCache marking, the semantic-index analog of IF96's parallel-iteration rule). A clean column's
+     *  no-match and a matched-but-empty cell both read empty-as-0 exactly like the validation read
+     *  (kernel-pinned — the corpus minimal's CLEARED came from its invalid 16-digit cell, not the no-match). */
     private fun evalSemanticIndex(e: Expr.SemanticIndex): Val {
         val kind = ctx.declaredKind(e.path) ?: return Val.Unknown
+        if (computeMode) {
+            val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException(
+                "SemanticIndex needs an index field on the group of ${e.path}")
+            val cells = ctx.starCells(idx)
+            val dups = duplicatedValues(cells)
+            if (cells.any { (_, v) -> v == null || v is Val.Unknown || v in dups }) throw PoisonedReadException(idx)
+        }
         return semanticIndexCell(e) ?: emptyValue(kind)
     }
 
