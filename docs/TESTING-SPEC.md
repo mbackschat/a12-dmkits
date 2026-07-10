@@ -244,13 +244,13 @@ These read the **real** model corpora to measure coverage; they skip when their 
 
 ## Test tiers — the fast default vs. the heavy perf/fuzz lanes
 
-The full kernel-backed suite was ~12 min, but **two categories accounted for ~10 of it**: the **perf benchmark** (`PerfGateTest`, `@Tag("perf")`, ~8 min — the ratio regression-gate, [`INTERPRETER-PERFORMANCE.md`](INTERPRETER-PERFORMANCE.md)) and the **differential fuzzers** (the `*FuzzDiffTest` + `InterpreterKernelFuzzTest`, `@Tag("fuzz")`, ~2 min). The other ~2,000 unit/conformance tests run in ~2 min. So both heavy categories are **tagged and excluded from the default run** (`adapter/build.gradle`), dropping the routine gate to **~2–3 min**:
+The full kernel-backed suite was ~12 min, but **two categories accounted for ~10 of it**: the **perf lane** (`@Tag("perf")` — the regression gate, [`INTERPRETER-PERFORMANCE.md`](INTERPRETER-PERFORMANCE.md)) and the **differential fuzzers** (the `*FuzzDiffTest` + `InterpreterKernelFuzzTest`, `@Tag("fuzz")`, ~2 min). The other ~2,000 unit/conformance tests run in ~2 min. So both heavy categories are **tagged and excluded from the default run** (`adapter/build.gradle`), dropping the routine gate to **~2–3 min**. The perf lane is itself **two tiers** (split 2026-07-10 so the routine tier stays under an agent harness's ~10-min background-command cap): `PerfGateTest` — the sub-quadratic growth guards + the rich-model kernel canary, `scripts/perf.sh gate`, run at every landing — and `PerfBenchTest` — the kernel-ratio benchmark sweeps, `scripts/perf.sh bench`, perf-relevant checkpoints; both accept an optional method pattern (`perf.sh gate 'semanticIndex*'`) for a single-scenario re-check:
 
 | run | command | what runs |
 |---|---|---|
 | **default** (inner loop) | `./build.sh :adapter:test :cli:test` | everything **except** perf + fuzz (~2–3 min) |
 | + fuzzers | `./build.sh :adapter:test -PrunFuzz` | adds the differential fuzzers |
-| + perf | `./build.sh :adapter:test -PrunPerf` | adds the 8-min perf benchmark |
+| + perf | `./build.sh :adapter:test -PrunPerf` | adds the perf lane (BOTH tiers — gate + bench) |
 | everything | `./build.sh :adapter:test -PallTests` | both |
 
 **Nothing is dropped — CI runs them on a defined trigger:** the fuzzers on **every push/PR** (`-PrunFuzz` — correctness nets, interpreter == kernel), the perf gate **nightly + on `workflow_dispatch`** (`-PrunPerf` — a ratio gate, not a per-commit check). `GateTierWiringTest` fails the build if either lane is dropped from the CI workflow (F11 loud-detection). **Tagging rule:** a new perf benchmark gets `@Tag("perf")`, a new differential fuzzer `@Tag("fuzz")` — so it joins the right lane automatically.

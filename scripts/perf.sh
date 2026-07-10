@@ -12,8 +12,12 @@
 #   3. ONE run = self-consistent numbers (interp_ms, kernel-Java_ms and the ratio are all measured together),
 #      so an absolute column can never contradict the ratio column (the bug that motivated this).
 #
-# Usage:  scripts/perf.sh <mode> [counts]
-#   gate          PerfGateTest — the CI gate (ratio ceilings + sub-quadratic guards). No counts arg.
+# Usage:  scripts/perf.sh <mode> [counts | method-pattern]
+#   gate          PerfGateTest — the ROUTINE gate: the sub-quadratic growth guards + the rich-model kernel
+#                 canary (fast; run at every landing). Optional 2nd arg = a method pattern to run ONE check
+#                 during a drill loop, e.g.  scripts/perf.sh gate 'semanticIndex*'
+#   bench         PerfBenchTest — the KERNEL-RATIO benchmarks (per-scenario Groovy codegen + baselines; the
+#                 slow tier — run at perf-relevant checkpoints, not every landing). Same optional method pattern.
 #   crossover     rule-count sweep vs kernel-Groovy/-Java, both firing regimes.   counts default 6,12,24,48,96,192,384
 #   distributed   1-rule-per-field "wide form" sweep vs kernel (kernel codegens fine here).   counts default 192,512,1000,2000
 #   scaling       startup + row-scaling (interp-only).
@@ -41,7 +45,10 @@ run_gradle() {  # $1.. = extra gradle args; writes RAW to $out (no pipe!)
 
 case "$mode" in
     gate)
-        run_gradle --tests "*PerfGateTest" ;;
+        # counts doubles as an optional METHOD pattern: 'semanticIndex*' → --tests "*PerfGateTest.semanticIndex*"
+        run_gradle --tests "*PerfGateTest${counts:+.$counts}" ;;
+    bench)
+        run_gradle --tests "*PerfBenchTest${counts:+.$counts}" ;;
     crossover)
         run_gradle --tests "*KernelEdgeTest.ruleCountCrossover" --tests "*KernelEdgeTest.ruleCountCrossoverLowFiring" \
             -Dperf.edge=true -Dperf.edge.counts="${counts:-6,12,24,48,96,192,384}" ;;
