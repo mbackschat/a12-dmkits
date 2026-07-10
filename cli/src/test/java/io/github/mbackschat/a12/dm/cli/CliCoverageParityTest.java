@@ -49,6 +49,7 @@ class CliCoverageParityTest {
             Map.entry("setModelAnnotation", "config modify --annotation / --role"),
             Map.entry("removeModelAnnotation", "config modify --remove-annotation / --clear-roles (G35)"),
             Map.entry("setModelLabel", "config modify --label"),
+            Map.entry("setModelId", "model rename"),
             Map.entry("setBaseYear", "config modify --base-year"),
             Map.entry("setFieldRefByShortNameAllowed", "config modify --field-ref-by-short-name (G32)"),
             Map.entry("setSupportedCharacters", "config modify --supported-character"),
@@ -62,6 +63,10 @@ class CliCoverageParityTest {
             Map.entry("moveField", "field move"),
             Map.entry("setFieldType", "field modify --type / typedef"),
             Map.entry("setRequiredness", "field modify --required/--optional/--required-if"),
+            Map.entry("setRequiredErrorMessages", "field add/modify (requiredMessages in the field spec)"),
+            Map.entry("setHelperText", "field add/modify (helperText in the field spec)"),
+            Map.entry("setGlobal", "field add/modify (global in the field spec)"),
+            Map.entry("setTransient", "field add/modify (transient in the field spec)"),
             // field/group/rule metadata (polymorphic): FIELDS via field modify (FieldSpec), GROUPS via group
             // modify (G38), RULES via rule modify + rule add + apply RULE_* (G39). A rule has no label slot, so
             // setLabel stays field/group only (correct by construction).
@@ -111,6 +116,7 @@ class CliCoverageParityTest {
             Map.entry("addInclude", "include add"),
             Map.entry("removeInclude", "include remove"),
             Map.entry("mount", "include add (mount a declared include)"),
+            Map.entry("inlineInclude", "include inline"),
             Map.entry("setIncludeReference", "include set-reference"),
             Map.entry("renameInclude", "include rename"),
             // ── terminal (not a CLI-authored mutation) ──
