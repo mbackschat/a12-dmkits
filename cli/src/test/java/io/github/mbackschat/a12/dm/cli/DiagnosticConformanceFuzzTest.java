@@ -28,7 +28,8 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  * READ-projection verb's locator positional (F5) — it synthesizes a <b>domain error</b>: feed that param a
  * bogus value, fill the rest from their kinds, and assert the result is a conformant <b>structured envelope</b>
  * ({@code refused}/{@code rejected}, exit 2/1, {@code written:false}, a coded diagnostic), never a bare stderr
- * string (AP1). A new mutating OR read verb cannot escape it.
+ * string (AP1). A new verb escapes only by BOTH leaving its locator untagged AND minting a new op name
+ * outside {@link #READ_PROJECTION_OPS} — tag the {@code @ParamKind} and the net is automatic.
  *
  * <p>It must never <em>false-fail</em>: when the synthesized call is itself structurally invalid (an
  * {@code @ArgGroup} the manifest can't express, a param it can't fill), picocli prints a usage message and
