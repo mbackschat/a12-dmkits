@@ -731,14 +731,19 @@ public final class ModelDocument {
         return (ObjectNode) field.path("Field");
     }
 
-    /** Set (or clear, with {@link Requiredness#OPTIONAL}) the requiredness of an existing field. */
+    /** Set (or clear, with {@link Requiredness#OPTIONAL}) the requiredness of an existing field. A standalone
+     *  mode change mutates {@code mode} in place, so a custom required-error message already stored in the same
+     *  {@code requirednessConfig} (see {@link #setRequiredErrorMessages}) survives; clearing to OPTIONAL drops
+     *  the whole config (an optional field has no required-error message). */
     public ModelDocument setRequiredness(String fieldPath, Requiredness requiredness) {
         ObjectNode body = fieldBody(fieldPath);
         String mode = requiredness.mode();
         if (mode == null) {
             body.remove("requirednessConfig");
         } else {
-            body.putObject("requirednessConfig").put("mode", mode);
+            JsonNode existing = body.path("requirednessConfig");
+            ObjectNode config = existing.isObject() ? (ObjectNode) existing : body.putObject("requirednessConfig");
+            config.put("mode", mode);
         }
         return this;
     }
