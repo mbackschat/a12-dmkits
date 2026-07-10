@@ -305,6 +305,11 @@ public final class EditSession {
         return ModelDocument.read(json).modelAnnotations();
     }
 
+    /** Read the model's registered display locales ({@code header.locales}) — the read peer of {@link #addLocale}. */
+    public List<String> locales() {
+        return ModelDocument.read(json).locales();
+    }
+
     public EditSession setTimeZone(String timeZone) {
         return editStructure(d -> d.setTimeZone(timeZone));
     }

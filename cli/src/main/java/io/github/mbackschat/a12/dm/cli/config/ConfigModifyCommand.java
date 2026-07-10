@@ -16,12 +16,11 @@ import java.util.Map;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
-import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.edit.EditSession;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
@@ -138,10 +137,13 @@ final class ConfigModifyCommand extends BaseCommand {
         if (model == null) {
             return fail("pass -m <model.json> (before or after the verb)");
         }
-        if (decimalSeparator == null && timeZone == null && conditionLanguage == null
-                && labels.isEmpty() && annotations.isEmpty() && supportedCharacters.isEmpty() && comment == null
-                && addLocales.isEmpty() && removeLocales.isEmpty() && roles.isEmpty() && !clearRoles
-                && baseYear == null && fieldRefByShortName == null && !clearComment && removeAnnotations.isEmpty()) {
+        ConfigModification mod = ConfigModification.builder()
+                .decimalSeparator(decimalSeparator).timeZone(timeZone).conditionLanguage(conditionLanguage)
+                .labels(labels).annotations(annotations).supportedCharacters(supportedCharacters)
+                .comment(comment).clearComment(clearComment).baseYear(baseYear).fieldRefByShortName(fieldRefByShortName)
+                .addLocales(addLocales).removeLocales(removeLocales).roles(roles).clearRoles(clearRoles)
+                .removeAnnotations(removeAnnotations).build();
+        if (mod.isEmpty()) {
             return fail("nothing to change — pass at least one of --decimal-separator, --time-zone, "
                     + "--condition-language, --label, --annotation, --supported-character, --comment, --clear-comment, "
                     + "--base-year, --field-ref-by-short-name, --add-locale, --remove-locale, --role, --clear-roles, "
@@ -170,83 +172,12 @@ final class ConfigModifyCommand extends BaseCommand {
         ObjectNode changed = MAPPER.createObjectNode();
         String resultJson;
         try {
-            ModelDocument doc = ModelDocument.read(modelJson);
-            if (decimalSeparator != null) {
-                doc.setDecimalSeparator(decimalSeparator);
-                changed.put("decimalSeparator", decimalSeparator);
-            }
-            if (timeZone != null) {
-                doc.setTimeZone(timeZone);
-                changed.put("timeZone", timeZone);
-            }
-            if (conditionLanguage != null) {
-                doc.setConditionLanguage(conditionLanguage);
-                changed.put("conditionLanguage", conditionLanguage);
-            }
-            labels.forEach((locale, text) -> {
-                doc.setModelLabel(locale, text);
-                changed.put("label." + locale, text);
-            });
-            annotations.forEach((name, value) -> {
-                doc.setModelAnnotation(name, value);
-                changed.put("annotation." + name, value);
-            });
-            if (!supportedCharacters.isEmpty()) {
-                doc.setSupportedCharacters(supportedCharacters);
-                changed.put("supportedCharacters", String.join(" ", supportedCharacters));
-            }
-            if (comment != null) {
-                doc.setModelComment(comment);
-                changed.put("comment", comment);
-            }
-            if (baseYear != null) {
-                doc.setBaseYear(baseYear);
-                changed.put("baseYear", baseYear);
-            }
-            if (fieldRefByShortName != null) {
-                doc.setFieldRefByShortNameAllowed(fieldRefByShortName);
-                changed.put("fieldRefByShortNameAllowed", fieldRefByShortName);
-            }
-            if (clearComment) {
-                doc.clearModelComment();
-                changed.putNull("comment");
-            }
-            for (String name : removeAnnotations) {
-                doc.removeModelAnnotation(name);
-                changed.putNull("annotation." + name);
-            }
-            ArrayNode addedLocales = MAPPER.createArrayNode();
-            for (String code : addLocales) {
-                if (!doc.locales().contains(code)) {
-                    doc.addLocale(code);
-                    addedLocales.add(code);
-                }
-            }
-            if (!addedLocales.isEmpty()) {
-                changed.set("addedLocales", addedLocales);
-            }
-            ArrayNode removedLocales = MAPPER.createArrayNode();
-            for (String code : removeLocales) {
-                if (doc.locales().contains(code)) {
-                    doc.removeLocale(code);
-                    removedLocales.add(code);
-                }
-            }
-            if (!removedLocales.isEmpty()) {
-                changed.set("removedLocales", removedLocales);
-            }
-            if (!roles.isEmpty()) {
-                // MERGE into the comma-separated `roles` annotation (the shared G26 algorithm, T4) — a one-role
-                // edit keeps the rest, unlike a raw `--annotation roles=…` that clobbers the list
-                String joined = io.github.mbackschat.a12.dm.cli.RolesMerge.merge(doc.modelAnnotations().get("roles"), roles);
-                doc.setModelAnnotation("roles", joined);
-                changed.put("roles", joined);
-            }
-            if (clearRoles) {
-                doc.removeModelAnnotation("roles");
-                changed.putNull("roles");
-            }
-            resultJson = doc.validate(resolver).toJson();
+            // T4: the setter cascade + `changed` report is single-sourced with the `apply` CONFIG_MODIFY op.
+            // Standalone config modify was migrated off the immutable ModelDocument onto the mutable EditSession
+            // (the cleaner shape — matches `group modify`, and EditSession carries every config setter).
+            EditSession session = EditSession.read(modelJson, resolver);
+            mod.applyTo(session, changed);
+            resultJson = session.validate().toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("config", "modify", "the config change is rejected by the kernel", e);
         } catch (RuntimeException e) {

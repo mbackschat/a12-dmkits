@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 
@@ -147,17 +146,6 @@ final class GroupModifyCommand extends BaseCommand {
         if (!sortFields.isEmpty() && clearSortFields) {
             return fail("pass at most one of --sort-field <child> or --clear-sort-fields");
         }
-        boolean repeatabilityChange = repeatable != null || nonRepeatable;
-        boolean indexChange = indexField != null || clearIndexField;
-        boolean sortChange = !sortFields.isEmpty() || clearSortFields;
-        boolean metadataChange = !labels.isEmpty() || !annotations.isEmpty() || !removeAnnotations.isEmpty()
-                || !internalDescriptions.isEmpty() || !externalDescriptions.isEmpty()
-                || !removeInternalDescriptions.isEmpty() || !removeExternalDescriptions.isEmpty();
-        if (!repeatabilityChange && !indexChange && !sortChange && !metadataChange) {
-            return fail("nothing to change — pass --repeatable/--non-repeatable, "
-                    + "--index-field/--clear-index-field, --sort-field/--clear-sort-fields, and/or "
-                    + "--label/--annotation/--remove-annotation/--internal-description/--external-description");
-        }
         if (repeatable != null && repeatable < 2) {
             return fail("--repeatable <max> must be >= 2 (use --non-repeatable to make it a single group)");
         }
@@ -167,96 +155,33 @@ final class GroupModifyCommand extends BaseCommand {
         } catch (IllegalArgumentException e) {
             return fail(e.getMessage());
         }
+        // T4: the setter cascade + `changed` report is single-sourced with the `apply` GROUP_MODIFY op.
+        GroupModification mod = GroupModification.builder()
+                .repeatable(repeatable).nonRepeatable(nonRepeatable).indexField(indexField)
+                .clearIndexField(clearIndexField).sortFields(parsedSorts).clearSortFields(clearSortFields)
+                .labels(labels).annotations(annotations).removeAnnotations(removeAnnotations)
+                .internalDescriptions(internalDescriptions).externalDescriptions(externalDescriptions)
+                .removeInternalDescriptions(removeInternalDescriptions)
+                .removeExternalDescriptions(removeExternalDescriptions).build();
+        if (mod.isEmpty()) {
+            return fail("nothing to change — pass --repeatable/--non-repeatable, "
+                    + "--index-field/--clear-index-field, --sort-field/--clear-sort-fields, and/or "
+                    + "--label/--annotation/--remove-annotation/--internal-description/--external-description");
+        }
         EditSession session = EditSession.read(modelJson, resolver);
+        ObjectNode changed = MAPPER.createObjectNode();
         try {
-            if (repeatable != null) {
-                session.setRepeatable(group, repeatable);
-            } else if (nonRepeatable) {
-                session.setNonRepeatable(group);
-            }
-            if (indexField != null) {
-                session.setIndexField(group, indexField);
-            } else if (clearIndexField) {
-                session.clearIndexField(group);
-            }
-            if (!parsedSorts.isEmpty()) {
-                session.setSortFields(group, parsedSorts);
-            } else if (clearSortFields) {
-                session.clearSortFields(group);
-            }
-            if (!labels.isEmpty()) {
-                session.setLabel(group, labels);
-            }
-            annotations.forEach((name, value) -> session.setAnnotation(group, name, value));
-            removeAnnotations.forEach(name -> session.removeAnnotation(group, name));
-            internalDescriptions.forEach((locale, text) -> session.setInternalDescription(group, locale, text));
-            externalDescriptions.forEach((locale, text) -> session.setExternalDescription(group, locale, text));
-            removeInternalDescriptions.forEach(locale -> session.removeInternalDescription(group, locale));
-            removeExternalDescriptions.forEach(locale -> session.removeExternalDescription(group, locale));
+            mod.applyTo(group, session, changed);
         } catch (RuntimeException e) {
             return fail(e.getMessage());
         }
-
         String resultJson;
         try {
             resultJson = session.validate().toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("group", "modify", "the change left the model invalid", e);
         }
-        ObjectNode changed = MAPPER.createObjectNode();
-        changed.put("group", group);
-        List<String> summaryParts = new ArrayList<>();
-        if (repeatabilityChange) {
-            changed.put("repeatable", repeatable != null);
-            if (repeatable != null) {
-                changed.put("maxRepetitions", repeatable);
-                summaryParts.add("repeatable (max " + repeatable + ")");
-            } else {
-                summaryParts.add("non-repeating");
-            }
-        }
-        if (indexField != null) {
-            changed.put("indexField", indexField);
-            summaryParts.add("index field " + indexField);
-        } else if (clearIndexField) {
-            changed.putNull("indexField");
-            summaryParts.add("index field cleared");
-        }
-        if (!parsedSorts.isEmpty()) {
-            ArrayNode sortArr = changed.putArray("sortFields");
-            List<String> labels = new ArrayList<>();
-            for (ElementDraft.SortField sf : parsedSorts) {
-                ObjectNode n = sortArr.addObject();
-                n.put("name", sf.fieldName());
-                n.put("order", sf.order().name());
-                labels.add(sf.fieldName() + " " + sf.order().name().toLowerCase(java.util.Locale.ROOT));
-            }
-            summaryParts.add("sort by " + String.join(", ", labels));
-        } else if (clearSortFields) {
-            changed.putArray("sortFields");
-            summaryParts.add("sort fields cleared");
-        }
-        labels.forEach((locale, text) -> {
-            changed.put("label." + locale, text);
-            summaryParts.add("label[" + locale + "]");
-        });
-        annotations.forEach((name, value) -> {
-            changed.put("annotation." + name, value);
-            summaryParts.add("annotation " + name);
-        });
-        removeAnnotations.forEach(name -> {
-            changed.putNull("annotation." + name);
-            summaryParts.add("annotation " + name + " removed");
-        });
-        internalDescriptions.forEach((locale, text) -> {
-            changed.put("internalDescription." + locale, text);
-            summaryParts.add("internal-description[" + locale + "]");
-        });
-        externalDescriptions.forEach((locale, text) -> {
-            changed.put("externalDescription." + locale, text);
-            summaryParts.add("external-description[" + locale + "]");
-        });
-        String summary = "set " + group + ": " + String.join(", ", summaryParts);
+        String summary = "set " + group + ": " + String.join(", ", mod.summaryParts());
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("group", "modify", "would have " + summary, changed);
             out().print(env.toJsonString());

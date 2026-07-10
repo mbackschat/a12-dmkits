@@ -1,7 +1,9 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import io.github.mbackschat.a12.dm.cli.computation.ComputationSpec;
+import io.github.mbackschat.a12.dm.cli.config.ConfigModification;
 import io.github.mbackschat.a12.dm.cli.field.FieldSpec;
+import io.github.mbackschat.a12.dm.cli.group.GroupModification;
 import io.github.mbackschat.a12.dm.cli.group.SortFieldArg;
 
 import java.io.IOException;
@@ -9,9 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -74,10 +74,7 @@ final class ApplyCommand extends BaseCommand {
         FIELD_MODIFY("field", "modify", FieldSpec.MODIFY_KEYS),
         FIELD_REMOVE("field", "remove", Set.of("fieldPathInModel")),
         GROUP_ADD("group", "add", Set.of("parent", "name", "repeatable")),
-        GROUP_MODIFY("group", "modify", Set.of("groupPathInModel", "repeatable", "non-repeatable",
-                "index-field", "clear-index-field", "sort-field", "clear-sort-fields",
-                "label", "annotation", "remove-annotation", "internal-description", "external-description",
-                "remove-internal-description", "remove-external-description")),
+        GROUP_MODIFY("group", "modify", withLocator("groupPathInModel", GroupModification.DIRECTIVE_KEYS)),
         GROUP_REMOVE("group", "remove", Set.of("groupPathInModel", "cascade")),
         RULE_ADD("rule", "add", Set.of("field", "group", "condition", "comment", "code", "severity", "name", "messages",
                 "allowDifferingDecimals", "annotation", "internal-description", "external-description")),
@@ -97,9 +94,7 @@ final class ApplyCommand extends BaseCommand {
         INCLUDE_SET_REFERENCE("include", "set-reference", Set.of("alias", "reference")),
         INCLUDE_RENAME("include", "rename", Set.of("alias", "to")),
         INCLUDE_REMOVE("include", "remove", Set.of("alias")),
-        CONFIG_MODIFY("config", "modify", Set.of("decimal-separator", "time-zone", "condition-language",
-                "label", "annotation", "comment", "clear-comment", "add-locale", "remove-locale", "role", "clear-roles",
-                "supported-character", "base-year", "field-ref-by-short-name", "remove-annotation")),
+        CONFIG_MODIFY("config", "modify", ConfigModification.KEYS),
         FIELD_RENAME("field", "rename", Set.of("fieldPathInModel", "to")),
         FIELD_MOVE("field", "move", Set.of("fieldPathInModel", "to")),
         GROUP_RENAME("group", "rename", Set.of("groupPathInModel", "to")),
@@ -135,6 +130,13 @@ final class ApplyCommand extends BaseCommand {
                 }
             }
             return null;
+        }
+
+        /** The op's valid keys: a locator plus a modification value object's own directive keys (T4 single-source). */
+        private static Set<String> withLocator(String locator, Set<String> directiveKeys) {
+            Set<String> keys = new java.util.HashSet<>(directiveKeys);
+            keys.add(locator);
+            return Set.copyOf(keys);
         }
     }
 
@@ -317,77 +319,26 @@ final class ApplyCommand extends BaseCommand {
                 yield staged(which, changed, session);
             }
             case GROUP_MODIFY -> {
-                // the same repeatability (G15) + index-field (G24) edits as the standalone `group modify`
+                // the same repeatability (G15) + index-field (G24) + metadata (G38) edits as the standalone
+                // `group modify` — the setter cascade + `changed` report is single-sourced through
+                // GroupModification (T4); only the exclusivity/empty guards' apply-worded messages live here.
                 String path = req(op, "groupPathInModel");
-                Integer repeatable = op.hasNonNull("repeatable") ? op.get("repeatable").asInt() : null;
-                boolean nonRepeatable = op.path("non-repeatable").asBoolean(false);
-                String indexField = op.hasNonNull("index-field") ? op.get("index-field").asText() : null;
-                boolean clearIndex = op.path("clear-index-field").asBoolean(false);
-                List<String> sortArgs = new ArrayList<>();
-                JsonNode sortNode = op.get("sort-field");
-                if (sortNode != null && sortNode.isArray()) {
-                    sortNode.forEach(n -> sortArgs.add(n.asText()));
-                } else if (sortNode != null) {
-                    sortArgs.add(sortNode.asText());   // a bare scalar also binds (the repeatable-key convention)
-                }
-                boolean clearSorts = op.path("clear-sort-fields").asBoolean(false);
-                if (repeatable != null && nonRepeatable) {
+                GroupModification mod = GroupModification.fromJson(op);
+                if (mod.repeatable() != null && mod.nonRepeatable()) {
                     throw new IllegalArgumentException("group modify: pass at most one of repeatable / non-repeatable");
                 }
-                if (indexField != null && clearIndex) {
+                if (mod.indexField() != null && mod.clearIndexField()) {
                     throw new IllegalArgumentException("group modify: pass at most one of index-field / clear-index-field");
                 }
-                if (!sortArgs.isEmpty() && clearSorts) {
+                if (!mod.sortFields().isEmpty() && mod.clearSortFields()) {
                     throw new IllegalArgumentException("group modify: pass at most one of sort-field / clear-sort-fields");
                 }
-                boolean hasMeta = op.hasNonNull("label") || op.hasNonNull("annotation")
-                        || op.has("remove-annotation") || op.hasNonNull("internal-description")
-                        || op.hasNonNull("external-description")
-                        || op.has("remove-internal-description") || op.has("remove-external-description");
-                if (repeatable == null && !nonRepeatable && indexField == null && !clearIndex
-                        && sortArgs.isEmpty() && !clearSorts && !hasMeta) {
+                if (mod.isEmpty()) {
                     throw new IllegalArgumentException("group modify needs one of repeatable / non-repeatable / "
                             + "index-field / clear-index-field / sort-field / clear-sort-fields / label / "
                             + "annotation / remove-annotation / internal-description / external-description");
                 }
-                if (repeatable != null) {
-                    session.setRepeatable(path, repeatable);
-                    changed.put("repeatable", true);
-                } else if (nonRepeatable) {
-                    session.setNonRepeatable(path);
-                    changed.put("repeatable", false);
-                }
-                if (indexField != null) {
-                    session.setIndexField(path, indexField);
-                    changed.put("indexField", indexField);
-                } else if (clearIndex) {
-                    session.clearIndexField(path);
-                    changed.putNull("indexField");
-                }
-                if (!sortArgs.isEmpty()) {
-                    var parsed = SortFieldArg.parseAll(sortArgs);
-                    session.setSortFields(path, parsed);
-                    ArrayNode sortArr = changed.putArray("sortFields");
-                    parsed.forEach(sf -> {
-                        ObjectNode n = sortArr.addObject();
-                        n.put("name", sf.fieldName());
-                        n.put("order", sf.order().name());
-                    });
-                } else if (clearSorts) {
-                    session.clearSortFields(path);
-                    changed.putArray("sortFields");
-                }
-                // group metadata (G38) — label is group-specific, the rest is the shared element-metadata helper
-                if (op.hasNonNull("label")) {
-                    Map<String, String> labelMap = new LinkedHashMap<>();
-                    op.get("label").fields().forEachRemaining(e -> {
-                        labelMap.put(e.getKey(), e.getValue().asText());
-                        changed.put("label." + e.getKey(), e.getValue().asText());
-                    });
-                    session.setLabel(path, labelMap);
-                }
-                metadataOps(op, session, path, changed);
-                changed.put("group", path);
+                mod.applyTo(path, session, changed);
                 yield staged(which, changed, session);
             }
             case GROUP_REMOVE -> {
@@ -577,83 +528,15 @@ final class ApplyCommand extends BaseCommand {
                 yield staged(which, changed, session);
             }
             case CONFIG_MODIFY -> {
-                if (op.hasNonNull("decimal-separator")) {
-                    session.setDecimalSeparator(op.get("decimal-separator").asText());
-                    changed.put("decimalSeparator", op.get("decimal-separator").asText());
-                }
-                if (op.hasNonNull("time-zone")) {
-                    session.setTimeZone(op.get("time-zone").asText());
-                    changed.put("timeZone", op.get("time-zone").asText());
-                }
-                if (op.hasNonNull("condition-language")) {
-                    session.setConditionLanguage(op.get("condition-language").asText());
-                    changed.put("conditionLanguage", op.get("condition-language").asText());
-                }
-                if (op.hasNonNull("label")) {
-                    op.get("label").fields().forEachRemaining(e -> {
-                        session.setModelLabel(e.getKey(), e.getValue().asText());
-                        changed.put("label." + e.getKey(), e.getValue().asText());
-                    });
-                }
-                if (op.hasNonNull("annotation")) {
-                    op.get("annotation").fields().forEachRemaining(e -> {
-                        session.setModelAnnotation(e.getKey(), e.getValue().asText());
-                        changed.put("annotation." + e.getKey(), e.getValue().asText());
-                    });
-                }
-                if (op.hasNonNull("comment")) {
-                    session.setModelComment(op.get("comment").asText());
-                    changed.put("comment", op.get("comment").asText());
-                }
-                if (op.has("supported-character")) {
-                    // parity with `config modify --supported-character` (a repeatable flag): REPLACES the whole
-                    // allowed-character set; a scalar binds like a 1-element list (Issue A)
-                    List<String> chars = stringValues(op, "supported-character");
-                    session.setSupportedCharacters(chars);
-                    changed.put("supportedCharacters", String.join(" ", chars));
-                }
-                for (String code : stringValues(op, "add-locale")) {
-                    session.addLocale(code);           // idempotent; a scalar "de_DE" binds like ["de_DE"] (Issue A)
-                    changed.put("addedLocale." + code, true);
-                }
-                for (String code : stringValues(op, "remove-locale")) {
-                    session.removeLocale(code);
-                    changed.put("removedLocale." + code, true);
-                }
-                if (op.has("role")) {
-                    // MERGE into the comma-separated `roles` annotation (the shared G26 algorithm, T4);
-                    // a scalar "admin" binds like ["admin"] (Issue A)
-                    String joined = RolesMerge.merge(session.modelAnnotations().get("roles"), stringValues(op, "role"));
-                    session.setModelAnnotation("roles", joined);
-                    changed.put("roles", joined);
-                }
-                if (op.path("clear-roles").asBoolean(false)) {
-                    session.removeModelAnnotation("roles");
-                    changed.putNull("roles");
-                }
-                if (op.hasNonNull("base-year")) {
-                    int year = op.get("base-year").asInt();
-                    session.setBaseYear(year);
-                    changed.put("baseYear", year);
-                }
-                if (op.hasNonNull("field-ref-by-short-name")) {
-                    boolean allowed = op.get("field-ref-by-short-name").asBoolean();
-                    session.setFieldRefByShortNameAllowed(allowed);
-                    changed.put("fieldRefByShortNameAllowed", allowed);
-                }
-                if (op.path("clear-comment").asBoolean(false)) {
-                    session.clearModelComment();
-                    changed.putNull("comment");
-                }
-                for (String name : stringValues(op, "remove-annotation")) {
-                    session.removeModelAnnotation(name);
-                    changed.putNull("annotation." + name);
-                }
-                if (changed.isEmpty()) {
+                // the setter cascade + `changed` report is single-sourced with the standalone `config modify`
+                // through ConfigModification (T4); only the empty-guard's apply-worded message lives here.
+                ConfigModification mod = ConfigModification.fromJson(op);
+                if (mod.isEmpty()) {
                     throw new IllegalArgumentException("config modify needs one of decimal-separator, time-zone, "
                             + "condition-language, label, annotation, comment, clear-comment, add-locale, remove-locale, "
                             + "role, clear-roles, supported-character, base-year, field-ref-by-short-name, remove-annotation");
                 }
+                mod.applyTo(session, changed);
                 yield staged(which, changed, session);
             }
             case FIELD_RENAME -> applyRefactor(session, resolver,
