@@ -327,7 +327,7 @@ static Condition sameAddress(Address x, Address y) {
 m.rule(g).when(warehouseAddr.filled().and(sameAddress(warehouse, sender).or(sameAddress(warehouse, buyer)))) …
 ```
 
-`agreesWith` ships the most-repeated mirroring idiom as a one-call ref combinator on `StringRef`, `NumberRef`, and `EnumRef` (number inherits the equal-scale gate; enum compares by stored value via `is`). It's written — and its polarity reviewed — **once**, not per pair. **Field-vs-field equality** (`a.eq(b)`) underneath landed for string + number (finding 18); **enum-vs-enum** (`EnumRef.is(EnumRef)`/`isNot(EnumRef)`). `sameAddress` is then just `agreesWith` zipped over the fields and folded with `allOf(List)` (38) — the full worked rebuild is the **Study, §3.6**. (Later: a `sameAddress(GroupRef, GroupRef)` that zips like-named fields via the model index — Level-2 navigation.)
+`agreesWith` ships the most-repeated mirroring idiom as a one-call ref combinator on every value ref — `StringRef`, `NumberRef`, `EnumRef`, and the temporal refs `DateRef`/`TimeRef`/`DateTimeRef` (number inherits the equal-scale gate; enum compares by stored value via `is`; the temporal refs use their own date/time/date-time equality). It's written — and its polarity reviewed — **once**, not per pair. **Field-vs-field equality** (`a.eq(b)`) underneath landed for string + number (finding 18); **enum-vs-enum** (`EnumRef.is(EnumRef)`/`isNot(EnumRef)`). `sameAddress` is then just `agreesWith` zipped over the fields and folded with `allOf(List)` (38) — the full worked rebuild is the **Study, §3.6**. (Later: a `sameAddress(GroupRef, GroupRef)` that zips like-named fields via the model index — Level-2 navigation.)
 
 ### 3.5 n-ary composition
 

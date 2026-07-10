@@ -61,4 +61,36 @@ class FieldAgreementTest {
                 .or(Dsl.noFieldFilled(tier.field(), declared.field()));
         assertEquals(new DslRenderer().render(hand), new DslRenderer().render(tier.agreesWith(declared)));
     }
+
+    @Test
+    void temporalAgreementUsesTemporalEquality() {
+        // D8: agreesWith existed on string/number/enum but not the temporal refs. It uses each ref's
+        // own (date/time/date-time) equality underneath, so the null-safe idiom composes there too.
+        String json = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("schedule").locale("en_US")
+                .rootGroup("Schedule", s -> s
+                        .dateField("Start", d -> { }).dateField("Confirmed", d -> { })
+                        .timeField("Open", t -> { }).timeField("Requested", t -> { })
+                        .dateTimeField("Planned", dt -> { }).dateTimeField("Actual", dt -> { }))
+                .build().toJson();
+        BoundModel sm = BoundModel.ofJson(json);
+        DslRenderer r = new DslRenderer();
+
+        var startD = sm.date("/Schedule/Start");
+        var confD = sm.date("/Schedule/Confirmed");
+        var handD = Dsl.allFieldsFilled(startD.field(), confD.field()).and(startD.eq(confD))
+                .or(Dsl.noFieldFilled(startD.field(), confD.field()));
+        assertEquals(r.render(handD), r.render(startD.agreesWith(confD)));
+
+        var openT = sm.time("/Schedule/Open");
+        var reqT = sm.time("/Schedule/Requested");
+        var handT = Dsl.allFieldsFilled(openT.field(), reqT.field()).and(openT.eq(reqT))
+                .or(Dsl.noFieldFilled(openT.field(), reqT.field()));
+        assertEquals(r.render(handT), r.render(openT.agreesWith(reqT)));
+
+        var planDt = sm.dateTime("/Schedule/Planned");
+        var actDt = sm.dateTime("/Schedule/Actual");
+        var handDt = Dsl.allFieldsFilled(planDt.field(), actDt.field()).and(planDt.eq(actDt))
+                .or(Dsl.noFieldFilled(planDt.field(), actDt.field()));
+        assertEquals(r.render(handDt), r.render(planDt.agreesWith(actDt)));
+    }
 }

@@ -36,6 +36,15 @@ public record DateTimeRef(FieldRef field, boolean correlated) implements DateTim
     }
 
     /**
+     * Null-safe field agreement: both filled and equal, <em>or</em> both empty — the date-time peer of
+     * {@link DateRef#agreesWith(DateRef)}, using date-time equality underneath (D8).
+     */
+    public Condition agreesWith(DateTimeRef other) {
+        return Dsl.allFieldsFilled(field, other.field).and(eq(other))
+                .or(Dsl.noFieldFilled(field, other.field));
+    }
+
+    /**
      * {@code [field For "indexValue"]} — the semantic index: this field's value in the repetition whose
      * index field equals {@code indexValue}, as a comparable date-time. The enclosing repeatable group must
      * declare an {@code indexFieldName} (else {@code MVK_NO_INDEX_FIELD}). (DEV-API-GAPS DG15.)
