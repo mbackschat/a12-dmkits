@@ -4,7 +4,13 @@
 
 ## 1. Open — tractable, to build
 
-The completeness gaps between the structural diff and a *complete* one (SPEC §5e). **None currently open** — the diff-completeness set (reorder-as-change, exact + similarity move/rename matching, relational refactor grouping, and the located condition edit-script) has shipped; the contract lives in [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md) §5. New gaps land here as found.
+Three items from the 2026-07-10 six-component review (queued, Set F):
+
+- **MR6 — SPEC/tool reason-code mismatch (doc bug).** MODEL-REVIEW-SPEC §5b names `CODE_RENAMED`; the tool and its schema both emit `CODE_CHANGED`. The tool is right (a code *change* needn't be a rename); rename in the SPEC.
+- **MR7 — `ModelReport.of` leaks a kernel type on a public dmkits surface.** The overload takes the kernel's `IDocumentModelReferenceResolver` directly — the one place the review surface makes a consumer import `com.mgmtp.*`. Add a `dm.core.ModelResolver`-based overload (the abstraction the rest of the surface uses).
+- **MR8 — `ModelDiff.between` has no resolver path (NEEDS-PROBE).** Unlike the report side, the diff entry points take no reference resolver — an includes-bearing model likely fails to bind. Probe first (an includes fixture through `model diff`), then fix or document the constraint.
+
+The diff-completeness set itself (reorder-as-change, exact + similarity move/rename matching, relational refactor grouping, the located condition edit-script) shipped — the contract lives in [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md) §5. New gaps land here as found.
 
 ## 2. Deferred — with a re-open trigger
 

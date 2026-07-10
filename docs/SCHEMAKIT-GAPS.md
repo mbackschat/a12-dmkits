@@ -18,7 +18,10 @@
 
 ## 1. Open gaps
 
-None. The `minItems` synthesis shipped 2026-07-09 (`NumberOfFilledGroups(G*) < N`, in-group anchored + unguarded, round-trip-projected — SCHEMAKIT-SPEC §4f, `MinItemsSynthesisTest`), draining the last queued item; the earlier synthesis backlog drained 2026-06-29 (coverage in SCHEMAKIT-SPEC §4d/§4f). The feasible-but-not-worthwhile constraints sit in **§3** with re-open triggers, the impossible ones in **§4**. A gap lands here only when it is both feasible **and** queued — a reader never sees a "TODO" nobody intends to do.
+- **`const` on a temporal/custom-typed field ABORTS the whole import (bug — violates the importer's own §4a contract).** Surfaced 2026-07-10 (six-component review, verified by reading). `JsonSchemaImporter` emits a `ConstValue` term for any string-typed `const` — including `format: date`/`time` and custom-typed fields — but `RuleSynthesis`'s `ConstValue` case is the only sibling case without a field-kind guard, so the synthesized rule reaches `BoundModel` construction, throws, and nothing catches it: the CLI fails the **entire** import. SCHEMAKIT-SPEC §4a says import never refuses — an unmappable constraint is skipped-and-reported (exactly how `ForbiddenConst` behaves). Fix (queued, Set F): kind-guard + skip-and-report, plus a law locking the never-refuses contract for this class.
+- **Hygiene sweep (queued, Set F):** an orphaned stale Javadoc in `JsonSchemaImporter` claiming "minItems NOT enforced" (false since the 2026-07-09 synthesis) plus a second orphan; the dead empty `UNSUPPORTED_KEYWORDS` list and its reporting loop, with stale `task #n` Javadoc refs; and `TierAProjection` calling `intValueExact` on arbitrary exported rules — guard on `scale <= 0`, skip-and-report.
+
+Before these, the queue was empty: the `minItems` synthesis shipped 2026-07-09 (`NumberOfFilledGroups(G*) < N`, in-group anchored + unguarded, round-trip-projected — SCHEMAKIT-SPEC §4f, `MinItemsSynthesisTest`), and the earlier synthesis backlog drained 2026-06-29 (coverage in SCHEMAKIT-SPEC §4d/§4f). The feasible-but-not-worthwhile constraints sit in **§3** with re-open triggers, the impossible ones in **§4**. A gap lands here only when it is both feasible **and** queued — a reader never sees a "TODO" nobody intends to do.
 
 ---
 
