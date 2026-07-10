@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -162,7 +163,7 @@ public final class ModelWriter {
      */
     public static String replaceComputation(String modelJson, String computationFullName,
             DraftComputation computation, List<LocalizedText> messages) {
-        return preserveComputationComments(modelJson, computationFullName,
+        return preserveComputationMetadata(modelJson, computationFullName,
                 addComputation(removeComputation(modelJson, computationFullName), computation, messages));
     }
 
@@ -179,21 +180,28 @@ public final class ModelWriter {
     /**
      * Returns {@code modelJson} with the computation at {@code computationFullName} replaced by
      * {@code computation} (F8 #3 write-back) — remove the old element, add the re-expressed one. The old
-     * computation's leading {@code ;;} comments (on its common precondition and its first operation) are
-     * preserved by default, the computation peer of {@link #replaceCondition}.
+     * computation's leading {@code ;;} comments (on its common precondition and its first operation) <b>and its
+     * element-level metadata</b> (annotations, internalDescription, externalDescription) are preserved by
+     * default, the computation peer of {@link #replaceCondition} (which mutates in place and so never loses them).
      */
     public static String replaceComputation(String modelJson, String computationFullName, Computation computation) {
-        return preserveComputationComments(modelJson, computationFullName,
+        return preserveComputationMetadata(modelJson, computationFullName,
                 addComputation(removeComputation(modelJson, computationFullName), computation));
     }
 
+    /** The top-level slots {@link #computationNode} reconstructs; every OTHER slot on the old element is metadata
+     *  ({@code annotations}/{@code internalDescription}/…) the rebuild would drop, so it is carried over. */
+    private static final Set<String> REBUILT_COMPUTATION_SLOTS = Set.of("type", "id", "name", "Computation");
+
     /**
-     * Carry the old computation's leading {@code ;;} comments onto the rebuilt one — the common
-     * precondition and the first operation (the slots a whole-computation comment lands on; per-alternative
-     * matching across a re-expression is positional and out of scope). Best-effort: any parse hiccup leaves
-     * the rebuilt model as-is.
+     * Carry the old computation's leading {@code ;;} comments AND its element-level metadata onto the rebuilt one.
+     * {@code replaceComputation} is remove-old + add-rebuilt, and {@link #computationNode} reconstructs only
+     * {@code type}/{@code id}/{@code name} and the {@code Computation} body — so without this, the element's
+     * comments (on its common precondition and first operation) and its metadata (annotations,
+     * internalDescription, externalDescription) would be lost. Best-effort: any parse hiccup leaves the rebuilt
+     * model as-is.
      */
-    private static String preserveComputationComments(String oldModel, String fullName, String newModel) {
+    private static String preserveComputationMetadata(String oldModel, String fullName, String newModel) {
         try {
             ObjectNode oldComp = DmJson.findElement(MAPPER.readTree(oldModel), "Computation", fullName);
             ObjectNode newRoot = (ObjectNode) MAPPER.readTree(newModel);
@@ -201,6 +209,7 @@ public final class ModelWriter {
             if (oldComp == null || newComp == null) {
                 return newModel;
             }
+            carryElementMetadata(oldComp, newComp);
             JsonNode oldBody = oldComp.path("Computation");
             ObjectNode newBody = (ObjectNode) newComp.path("Computation");
             carryLeading(oldBody, newBody, "commonPrecondition");
@@ -213,6 +222,17 @@ public final class ModelWriter {
         } catch (IOException e) {
             return newModel;
         }
+    }
+
+    /** Copy every non-rebuilt top-level slot from the old element node onto the rebuilt one (annotations,
+     *  internalDescription, externalDescription, and any future element-level metadata) — leaving the rebuilt
+     *  {@code type}/{@code id}/{@code name}/{@code Computation} authoritative. */
+    private static void carryElementMetadata(ObjectNode oldElement, ObjectNode newElement) {
+        oldElement.fields().forEachRemaining(e -> {
+            if (!REBUILT_COMPUTATION_SLOTS.contains(e.getKey()) && !newElement.has(e.getKey())) {
+                newElement.set(e.getKey(), e.getValue());
+            }
+        });
     }
 
     /** Preserve the leading {@code ;;} comment of {@code slot} from {@code oldNode} onto {@code newNode}. */

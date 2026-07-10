@@ -172,6 +172,66 @@ class RuleComputationEditorTest {
     }
 
     @Test
+    void preservesAComputationsElementMetadataOnModify() {
+        // F2 — replaceComputation is remove-old + add-rebuilt, and the rebuilt node only carries the slots
+        // computationNode writes: element-level metadata (annotations, internalDescription) was silently lost.
+        // The rule-modify sibling mutates in place and never loses it — the fix brings computation to parity.
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+        GroupEditor billing = s.group("/Subscription/Billing");
+        NumberRef baseFee = billing.num("BaseFee");
+        NumberRef effectiveFee = billing.num("EffectiveFee");
+        billing.addComputation(effectiveFee, c -> c.name("EffFeeComp")
+                .calc(baseFee.value()).message(Dsl.en("equals base"), Dsl.de("entspricht Basis")).build());
+        s.setInternalDescription("/Subscription/Billing/EffFeeComp", "en", "Legacy pricing note — do not drop.");
+        s.setAnnotation("/Subscription/Billing/EffFeeComp", "owner", "billing-team");
+        s.validate();
+
+        // re-express the formula via the typed builder — the metadata must ride along
+        s.computation("/Subscription/Billing/EffFeeComp")
+                .modify(m -> m.computation(m.num("/Subscription/Billing/EffectiveFee"))
+                        .name("EffFeeComp")
+                        .calc(NumberLiteral.of("9.99"))
+                        .message(Dsl.en("flat"), Dsl.de("pauschal")).build());
+        s.validate();
+
+        String json = s.toJson();
+        assertTrue(json.contains("9.99"), "the new formula is applied");
+        assertTrue(json.contains("Legacy pricing note — do not drop."),
+                () -> "the internalDescription survives the computation modify: " + json);
+        assertTrue(json.contains("billing-team"),
+                () -> "the annotation survives the computation modify: " + json);
+    }
+
+    @Test
+    void preservesARulesElementMetadataOnModify() {
+        // the in-place sibling — rule modify mutates the node, so metadata was never at risk; locked here so the
+        // metadata-survives-modify contract covers BOTH the rule and computation modify paths.
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+        GroupEditor addons = s.group("/Subscription/Addons");
+        addons.addField("Discount", FieldKind.NUMBER);
+        NumberRef discount = addons.num("Discount");
+        addons.addRule(r -> r.name("DiscountNonNeg").errorField(discount)
+                .when(discount.filled().and(discount.lt(0)))
+                .code("D_NEG").severity(Severity.ERROR)
+                .message(Dsl.en("neg"), Dsl.de("neg")).build());
+        s.setInternalDescription("/Subscription/Addons/DiscountNonNeg", "en", "Compliance note — keep me.");
+        s.setAnnotation("/Subscription/Addons/DiscountNonNeg", "owner", "risk-team");
+        s.validate();
+
+        s.rule("/Subscription/Addons/DiscountNonNeg").modify(m -> {
+            NumberRef d = m.num("/Subscription/Addons/Discount");
+            return d.filled().and(d.lt(-5));
+        });
+        s.validate();
+
+        String json = s.toJson();
+        assertTrue(json.contains("Compliance note — keep me."),
+                () -> "the internalDescription survives the rule modify: " + json);
+        assertTrue(json.contains("risk-team"),
+                () -> "the annotation survives the rule modify: " + json);
+    }
+
+    @Test
     void modifiesAComputationsFormulaByHeldReference() {
         EditSession s = EditSession.read(Fixtures.subscriptionJson());
         GroupEditor billing = s.group("/Subscription/Billing");
