@@ -621,18 +621,9 @@ final class ApplyCommand extends BaseCommand {
                     changed.put("removedLocale." + code, true);
                 }
                 if (op.has("role")) {
-                    // MERGE into the comma-separated `roles` annotation (G26 semantics)
-                    java.util.LinkedHashSet<String> merged = new java.util.LinkedHashSet<>();
-                    String existing = session.modelAnnotations().get("roles");
-                    if (existing != null && !existing.isBlank()) {
-                        for (String r : existing.split(",")) {
-                            if (!r.isBlank()) {
-                                merged.add(r.trim());
-                            }
-                        }
-                    }
-                    merged.addAll(stringValues(op, "role"));    // scalar "admin" binds like ["admin"] (Issue A)
-                    String joined = String.join(",", merged);
+                    // MERGE into the comma-separated `roles` annotation (the shared G26 algorithm, T4);
+                    // a scalar "admin" binds like ["admin"] (Issue A)
+                    String joined = RolesMerge.merge(session.modelAnnotations().get("roles"), stringValues(op, "role"));
                     session.setModelAnnotation("roles", joined);
                     changed.put("roles", joined);
                 }

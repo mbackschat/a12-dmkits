@@ -236,19 +236,9 @@ final class ConfigModifyCommand extends BaseCommand {
                 changed.set("removedLocales", removedLocales);
             }
             if (!roles.isEmpty()) {
-                // MERGE into the comma-separated `roles` annotation (dedupe, keep order) — a one-role edit
-                // keeps the rest (the G17 rule), unlike a raw `--annotation roles=…` that clobbers the list
-                java.util.LinkedHashSet<String> merged = new java.util.LinkedHashSet<>();
-                String existing = doc.modelAnnotations().get("roles");
-                if (existing != null && !existing.isBlank()) {
-                    for (String r : existing.split(",")) {
-                        if (!r.isBlank()) {
-                            merged.add(r.trim());
-                        }
-                    }
-                }
-                merged.addAll(roles);
-                String joined = String.join(",", merged);
+                // MERGE into the comma-separated `roles` annotation (the shared G26 algorithm, T4) — a one-role
+                // edit keeps the rest, unlike a raw `--annotation roles=…` that clobbers the list
+                String joined = io.github.mbackschat.a12.dm.cli.RolesMerge.merge(doc.modelAnnotations().get("roles"), roles);
                 doc.setModelAnnotation("roles", joined);
                 changed.put("roles", joined);
             }
