@@ -11,6 +11,10 @@ import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.edit.EditSession;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.context.ModelCard;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
@@ -32,6 +36,25 @@ class ModelReportTest {
                 .code("FEE_CAP").severity(Severity.ERROR)
                 .message(en("Monthly fee too high."), de("Monatsgebühr zu hoch.")).build();
         return m.add(rule).toJson();
+    }
+
+    @Test
+    void assemblesAnIncludesBearingModelThroughTheKernelFreeResolver() {
+        // MR7 — the review surface accepts a dm.core.ModelResolver, so a consumer resolves includes without
+        // importing com.mgmtp.*; the mount can only bind if the resolver was threaded through.
+        ModelResolver resolver = id -> "pricelist".equals(id)
+                ? DocumentModelDraft.named("pricelist").locale("en_US")
+                        .rootGroup("Pricelist", p -> p.field("Currency", FieldKind.STRING)).build().toJson()
+                : null;
+        EditSession s = EditSession.read(DocumentModelDraft.named("catalog").locale("en_US")
+                .rootGroup("Catalog", c -> c.field("StoreName", FieldKind.STRING)).build().toJson(), resolver);
+        s.addInclude("pricelist", "pricelist", "/Catalog", "Retail");
+        String mounted = s.toJson();
+
+        ModelReport r = ModelReport.of(mounted, resolver);   // dm.core.ModelResolver overload — no kernel import
+        assertEquals("catalog", r.identity().id());
+        assertTrue(r.structure().groups().stream().anyMatch(g -> g.path().equals("/Catalog/Retail")),
+                () -> "the mounted include's group appears in the assembled structure: " + r.structure().groups());
     }
 
     @Test

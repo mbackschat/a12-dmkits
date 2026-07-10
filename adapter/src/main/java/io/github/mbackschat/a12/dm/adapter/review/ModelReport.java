@@ -62,13 +62,29 @@ public record ModelReport(Identity identity, ModelCard structure, Usage usage,
 
     /** Assemble the comprehension view of {@code modelJson} (a self-contained, kernel-loadable model). */
     public static ModelReport of(String modelJson) {
-        return of(modelJson, null);
+        return of(modelJson, BoundModel.ofJson(modelJson));
     }
 
-    /** Assemble the comprehension view, resolving {@code include}s/imports through {@code resolver} (or none). */
+    /**
+     * Assemble the comprehension view, resolving {@code include}s/imports through a <b>kernel-free</b>
+     * {@link io.github.mbackschat.a12.dm.core.ModelResolver} — the abstraction the rest of the dmkits surface
+     * uses (a {@code id → DM-JSON} SAM), so a consumer need not import {@code com.mgmtp.*}. {@code null} = none.
+     */
+    public static ModelReport of(String modelJson, io.github.mbackschat.a12.dm.core.ModelResolver resolver) {
+        return of(modelJson, resolver == null ? BoundModel.ofJson(modelJson) : BoundModel.ofJson(modelJson, resolver));
+    }
+
+    /** Assemble the comprehension view, resolving {@code include}s/imports through the kernel's resolver directly
+     *  (the low-level overload; prefer the {@link io.github.mbackschat.a12.dm.core.ModelResolver} form to keep
+     *  {@code com.mgmtp.*} out of the caller). {@code null} = none. */
     public static ModelReport of(String modelJson,
             com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver resolver) {
-        BoundModel model = resolver == null ? BoundModel.ofJson(modelJson) : BoundModel.ofJson(modelJson, resolver);
+        return of(modelJson, resolver == null ? BoundModel.ofJson(modelJson) : BoundModel.ofJson(modelJson, resolver));
+    }
+
+    /** The shared assembly over an already-bound model — the three public overloads differ only in how the
+     *  {@link BoundModel} was resolved. */
+    private static ModelReport of(String modelJson, BoundModel model) {
         ModelDocument doc = ModelDocument.read(modelJson);
         Identity identity = new Identity(doc.id(), doc.modelType(), doc.modelVersion(), doc.locales());
         ModelContext context = new ModelContext(model);
