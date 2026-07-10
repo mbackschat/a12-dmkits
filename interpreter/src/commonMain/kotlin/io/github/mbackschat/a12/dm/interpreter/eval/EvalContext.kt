@@ -106,6 +106,11 @@ interface EvalContext {
      *  per-row filter inside an aggregate. Default empty (the flat spike contexts don't model rows). */
     fun rowContexts(groupPath: String, bindDepth: Int = -1): List<EvalContext> = emptyList()
 
+    /** The declared FIELD paths inside [groupPath], recursively incl. nested subgroups (the kernel
+     *  `ExpandService` → `getAllContainedFields`) — how a GROUP operand of a value aggregate expands (IF99).
+     *  Empty when [groupPath] contains no fields (or the context doesn't model structure). */
+    fun containedFields(groupPath: String): List<String> = emptyList()
+
     /**
      * Hash-join buckets for a `$` EQUALITY-correlation `Having` over [groupPath]'s rows (IF47 perf) — keyed by
      * the [joinFields]' value tuple, each bucket an `[t, f, n]` tally of [starPath]'s fill across the rows in it

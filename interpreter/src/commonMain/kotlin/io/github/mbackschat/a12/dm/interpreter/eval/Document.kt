@@ -179,6 +179,9 @@ class Document @JvmOverloads constructor(
         // across O(rows) contexts — O(rows²) MEMORY (the perf gate's OOM). Keyed by the scope prefix, every
         // row context (and every sibling target of the index field) shares the one map.
         val indexRowByValue: MutableMap<Pair<String, List<Int>>, Map<String, List<Int>>> = HashMap()
+
+        /** group path → its declared field paths, recursive (the GROUP-star aggregate expansion, IF99). */
+        val containedFieldsByGroup: MutableMap<String, List<String>> = HashMap()
     }
 
     private var cachedIndex: Index? = null
@@ -614,6 +617,13 @@ class Document @JvmOverloads constructor(
         // prefix (take(n) with n ≥ this depth ≡ rowReps), so it stays scoped to this row — unchanged.
         override fun rowContexts(groupPath: String, bindDepth: Int): List<EvalContext> =
             rowContextsScoped(groupPath, groupScopePrefix(groupPath, bindDepth))
+
+        // The declared fields under a group path, recursively — sorted for determinism (the aggregates a GROUP
+        // operand expands to are order-insensitive). Memoized in the Index alongside the other per-group maps.
+        override fun containedFields(groupPath: String): List<String> =
+            index().containedFieldsByGroup.getOrPut(groupPath) {
+                kinds.keys.filter { it.startsWith("$groupPath/") }.sorted()
+            }
 
         override fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String): Map<List<Val>, IntArray> =
             correlationBucketsScoped(groupPath, groupScopePrefix(groupPath, -1), joinFields, starPath)

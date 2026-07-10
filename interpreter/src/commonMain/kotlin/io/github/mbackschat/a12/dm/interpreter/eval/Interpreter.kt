@@ -2160,6 +2160,15 @@ class Interpreter(
      *  COMPUTE mode: a value aggregate reads ALL its selected cells (the kernel feeds every row to the combiner),
      *  so any formally-INVALID selected cell poisons (IF85) — the filter's own reads poison inside [havingInterp]. */
     private fun starOperandVals(star: Expr.Star): List<Val> {
+        // A GROUP star (`Sum(Lines*)` — no field segment) expands to the group's contained FIELDS, recursively
+        // (the kernel ExpandService → getAllContainedFields, exactly like the fill quantifiers — IF49/IF51),
+        // each field's cells collected with the same star semantics (bindDepth + Having preserved; IF99).
+        if (ctxOf(star).declaredKind(star.path) == null) {
+            val contained = ctxOf(star).containedFields(star.path)
+            if (contained.isNotEmpty()) {
+                return contained.flatMap { starOperandVals(Expr.Star(it, star.having, star.outer, star.bindDepth)) }
+            }
+        }
         if (star.having == null) {
             if (computeMode && ctx.starScanStates(star.path, star.bindDepth).any { it == CellState.INVALID }) {
                 throw PoisonedReadException(star.path)

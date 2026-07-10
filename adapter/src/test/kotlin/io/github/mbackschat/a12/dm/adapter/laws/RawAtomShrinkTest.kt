@@ -84,7 +84,8 @@ class RawAtomShrinkTest {
             shrinkAndReport(kernelJson, atom, locale)
             return
         }
-        println("[atom] no raw kernel=$targetKernel,interp=$targetInterp atom found in $scanned scanned models" +
+        val target = if (valueDiff) "VALUE-vs-VALUE value-diff" else "kernel=$targetKernel,interp=$targetInterp"
+        println("[atom] no raw $target atom found in $scanned scanned models" +
             (modelFilter?.let { " (filter=$it)" } ?: ""))
     }
 
