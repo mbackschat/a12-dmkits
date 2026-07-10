@@ -1323,8 +1323,15 @@ class DmInterpreter @JvmOverloads constructor(
 
     /** The deepest repeatable group ancestor of any [refs] path, else [defaultGroup]. */
     private fun scopeFromRefs(refs: List<String>, defaultGroup: String): String =
-        refs.flatMap { ref -> ancestorGroups(ref).filter { it in model.repeatable } }
-            .maxByOrNull { it.count { c -> c == '/' } }
+        refs.flatMap { ref ->
+            // ancestor-or-SELF: a bare GROUP reference (a group-scope quantifier arg — legal un-starred on an
+            // indexed repeatable group) is itself an iteration anchor: the kernel iterates the rule PER ROW of
+            // the referenced repeatable group and judges each row's cells (the bare-group
+            // FieldsNotCollectivelyFilled idiom — kernel-pinned per-row fire set + pointers, IF106). The error
+            // entity is NOT an anchor (the kernel-captured corpus cases pin that), only the references are.
+            (ancestorGroups(ref) + listOfNotNull(ref.takeIf { model.kinds[ref] == null }))
+                .filter { it in model.repeatable }
+        }.maxByOrNull { it.count { c -> c == '/' } }
             ?: defaultGroup
 
     /** Every non-starred field-reference path in the condition (Star refs are aggregates, excluded). */
