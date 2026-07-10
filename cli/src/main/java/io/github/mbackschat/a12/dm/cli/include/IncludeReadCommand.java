@@ -1,12 +1,17 @@
 package io.github.mbackschat.a12.dm.cli.include;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ParamKind;
+import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
+import io.github.mbackschat.a12.dm.cli.SafetyChecks;
+import io.github.mbackschat.a12.dm.cli.SafetyGate;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -29,6 +34,7 @@ final class IncludeReadCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.INCLUDE_ALIAS)
     @Parameters(index = "0", arity = "0..1", paramLabel = "<alias>",
             description = "an include's alias to read just that one; omit to list every declared include "
                     + "(or address it with --include / --alias)")
@@ -55,14 +61,18 @@ final class IncludeReadCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         try {
-            List<ModelDocument.Include> incs = ModelDocument.read(json).includes();
+            ModelDocument doc = ModelDocument.read(json);
+            List<ModelDocument.Include> incs = doc.includes();
             if (alias != null) {
-                ModelDocument.Include one = incs.stream()
-                        .filter(i -> alias.equals(i.alias())).findFirst().orElse(null);
-                if (one == null) {
-                    return fail("no include with alias '" + alias + "' — includes: "
-                            + incs.stream().map(ModelDocument.Include::alias).toList());
+                // an unknown alias is a coded, structured refusal (AP1), consistent with the read family.
+                Optional<Refusal> refusal = new SafetyGate()
+                        .require(SafetyChecks.includeExists(doc, alias))
+                        .firstFailure();
+                if (refusal.isPresent()) {
+                    return refuse("include", "read", refusal.get());
                 }
+                ModelDocument.Include one = incs.stream()
+                        .filter(i -> alias.equals(i.alias())).findFirst().orElseThrow();
                 ObjectNode data = MAPPER.createObjectNode();
                 data.put("alias", one.alias()).put("reference", one.reference());
                 ResultEnvelope env = ResultEnvelope.read("include", "read",

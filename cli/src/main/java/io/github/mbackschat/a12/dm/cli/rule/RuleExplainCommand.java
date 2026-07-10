@@ -1,19 +1,24 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
-import io.github.mbackschat.a12.dm.cli.ModelPaths;
+import io.github.mbackschat.a12.dm.cli.ParamKind;
+import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
+import io.github.mbackschat.a12.dm.cli.SafetyChecks;
+import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Parameters;
@@ -29,6 +34,7 @@ import picocli.CommandLine.Parameters;
         description = "Project a rule's condition as a structured explanation (operators, tree, refs, gloss).")
 final class RuleExplainCommand extends BaseCommand {
 
+    @ParamKind(ParamKind.Kind.RULE_PATH)
     @Parameters(index = "0", paramLabel = "<rulePathInModel>",
             description = "the rule's full name — its slash-path in the model, e.g. /Order/SomeRule")
     String rule;
@@ -51,9 +57,20 @@ final class RuleExplainCommand extends BaseCommand {
         try {
             BoundModel bound = BoundModel.ofJson(json, workspace.resolverFor(model));
             KernelAdapter adapter = KernelAdapter.of(bound);
-            String problem = ModelPaths.ruleProblem(adapter.ruleFullNames(), adapter.computationFullNames(), rule);
-            if (problem != null) {
-                return fail(problem);
+            // a computation named where a rule is expected gets a structured refusal that redirects to the
+            // computation-aware verb (a calculated field is not a validation rule), instead of the bare "not a rule".
+            if (adapter.computationFullNames().contains(rule)) {
+                return refuseNotFound("rule", "explain", RkCode.NO_SUCH_RULE,
+                        "'" + rule + "' is a computation, not a validation rule — refusing", rule,
+                        "use `computation explain " + rule + "` — it is a computation (a calculated field), not a rule");
+            }
+            // an unknown rule is a coded, structured refusal (AP1 — never a bare stderr error), exactly as
+            // `rule deps`/`rule remove` gate it; the read family is held to this by ReadMissingTargetEnvelopeTest.
+            Optional<Refusal> refusal = new SafetyGate()
+                    .require(SafetyChecks.ruleExists(adapter, rule))
+                    .firstFailure();
+            if (refusal.isPresent()) {
+                return refuse("rule", "explain", refusal.get());
             }
             ObjectNode data = RuleExplainData.build(adapter, bound, rule);
             String summary = RuleExplainData.isOpaque(data) ? rule + " is Opaque (not modeled)" : "explained " + rule;

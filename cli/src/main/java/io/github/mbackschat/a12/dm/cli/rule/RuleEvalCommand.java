@@ -3,8 +3,11 @@ package io.github.mbackschat.a12.dm.cli.rule;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.CustomSupportOptions;
 import io.github.mbackschat.a12.dm.cli.DocInstance;
-import io.github.mbackschat.a12.dm.cli.ModelPaths;
+import io.github.mbackschat.a12.dm.cli.ParamKind;
+import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
+import io.github.mbackschat.a12.dm.cli.SafetyChecks;
+import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
 
@@ -12,6 +15,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -43,6 +49,7 @@ final class RuleEvalCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.RULE_PATH)
     @Parameters(index = "0", paramLabel = "<rulePathInModel>",
             description = "the rule's full name — its slash-path in the model, e.g. /Order/SomeRule")
     String rule;
@@ -100,12 +107,21 @@ final class RuleEvalCommand extends BaseCommand {
                 Locale locale = Locale.forLanguageTag(localeTag.replace('_', '-'));
                 BoundModel bound = BoundModel.ofJson(json, workspace.resolverFor(modelPath));
                 KernelAdapter adapter = KernelAdapter.of(bound);
-                String problem = ModelPaths.ruleProblem(adapter.ruleFullNames(), adapter.computationFullNames(), rule);
-                if (problem != null) {
-                    return fail(problem);
+                // an unknown rule is a coded, structured refusal (AP1), consistent with the read family.
+                Optional<Refusal> refusal = new SafetyGate()
+                        .require(SafetyChecks.ruleExists(adapter, rule))
+                        .firstFailure();
+                if (refusal.isPresent()) {
+                    return refuse("rule", "eval", refusal.get());
                 }
                 data = data(adapter.testRule(rule, fields, locale, !noComputations));
             } else {
+                // same structured refusal in the DEFAULT (kernel-free) path — the interpreter otherwise throws
+                // "no such rule", which would surface as a bare error.
+                if (!InterpreterEngine.ruleFullNames(json).contains(rule)) {
+                    return refuseNotFound("rule", "eval", RkCode.NO_SUCH_RULE,
+                            "rule '" + rule + "' does not exist — refusing", rule, RkCode.NO_SUCH_RULE.fix());
+                }
                 data = InterpreterEngine.ruleTestData(json, fields, localeTag, rule,
                         customSupport.predefinedTypes(), customSupport.customConditions(),
                         customSupport.customFieldTypes(), !noComputations);

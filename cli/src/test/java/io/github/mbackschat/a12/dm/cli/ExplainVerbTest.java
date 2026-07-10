@@ -63,8 +63,10 @@ class ExplainVerbTest {
         var res = CliTestSupport.run("-m", modelWithRuleAndComputation(dir).toString(),
                 "rule", "explain", CliTestSupport.COMPUTATION_FULL_NAME);
         assertNotEquals(0, res.code(), "a computation is not a validation rule");
-        assertTrue(res.err().contains("computation explain"),
-                () -> "redirects to the `computation explain` verb: " + res.err());
+        JsonNode j = MAPPER.readTree(res.out());   // structured refusal (F5), not a bare stderr line
+        assertEquals("refused", j.path("outcome").asText(), () -> "a structured refusal: " + res.out());
+        assertTrue(j.path("diagnostics").path(0).path("fix").asText().contains("computation explain"),
+                () -> "the fix redirects to the `computation explain` verb: " + res.out());
     }
 
     @Test

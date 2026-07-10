@@ -3,7 +3,11 @@ package io.github.mbackschat.a12.dm.cli.model;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.CustomSupportOptions;
 import io.github.mbackschat.a12.dm.cli.DocInstance;
+import io.github.mbackschat.a12.dm.cli.ParamKind;
+import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
+import io.github.mbackschat.a12.dm.cli.SafetyChecks;
+import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
 
@@ -13,7 +17,9 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
+import java.util.Optional;
+
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -53,6 +59,7 @@ final class ModelEvalCommand extends BaseCommand {
             description = "the document INSTANCE (field data) — a nested JSON tree under \"fields\". See `schema model eval`.")
     String instance;
 
+    @ParamKind(ParamKind.Kind.RULE_PATH)
     @Option(names = "--rule", paramLabel = "<rulePathInModel>",
             description = "narrow the report to an EXISTING rule (its full slash-path)")
     String ruleId;
@@ -175,9 +182,12 @@ final class ModelEvalCommand extends BaseCommand {
                     }
                     evalJson = new RuleValidator().inject(modelJson, draft);
                 } else if (ruleId != null) {
-                    Set<String> rules = KernelAdapter.ofJson(modelJson, resolver).ruleFullNames();
-                    if (!rules.contains(ruleId)) {
-                        return fail("'" + ruleId + "' is not a rule in this model — rules: " + rules);
+                    // an unknown --rule is a coded, structured refusal (AP1), consistent with the read family.
+                    Optional<Refusal> refusal = new SafetyGate()
+                            .require(SafetyChecks.ruleExists(KernelAdapter.ofJson(modelJson, resolver), ruleId))
+                            .firstFailure();
+                    if (refusal.isPresent()) {
+                        return refuse("model", "eval", refusal.get());
                     }
                 }
                 KernelAdapter ka = KernelAdapter.ofJson(evalJson, resolver);
@@ -189,6 +199,12 @@ final class ModelEvalCommand extends BaseCommand {
                         customSupport.predefinedTypes(), customSupport.customConditions(),
                         customSupport.customFieldTypes(), !noComputations);
             } else {
+                // same structured refusal in the DEFAULT (kernel-free) path for an unknown --rule narrowing —
+                // otherwise it would silently report the missing rule as fired:false.
+                if (ruleId != null && !InterpreterEngine.ruleFullNames(modelJson).contains(ruleId)) {
+                    return refuseNotFound("model", "eval", RkCode.NO_SUCH_RULE,
+                            "rule '" + ruleId + "' does not exist — refusing", ruleId, RkCode.NO_SUCH_RULE.fix());
+                }
                 data = InterpreterEngine.evalData(modelJson, fields, localeTag, ruleId,
                         customSupport.predefinedTypes(), customSupport.customConditions(),
                         customSupport.customFieldTypes(), !noComputations);

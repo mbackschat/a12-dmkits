@@ -1,13 +1,18 @@
 package io.github.mbackschat.a12.dm.cli.computation;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ParamKind;
+import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
+import io.github.mbackschat.a12.dm.cli.SafetyChecks;
+import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,6 +38,7 @@ final class ComputationExplainCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.COMPUTATION_PATH)
     @Parameters(index = "0", paramLabel = "<computationPathInModel>",
             description = "the computation's full name — its slash-path in the model, e.g. /Order/TotalComp")
     String computation;
@@ -55,9 +61,12 @@ final class ComputationExplainCommand extends BaseCommand {
         try {
             BoundModel bound = BoundModel.ofJson(json, workspace.resolverFor(model));
             KernelAdapter adapter = KernelAdapter.of(bound);
-            if (!adapter.computationFullNames().contains(computation)) {
-                return fail("'" + computation + "' is not a computation in this model — computations: "
-                        + adapter.computationFullNames());
+            // an unknown computation is a coded, structured refusal (AP1), consistent with the read family.
+            Optional<Refusal> refusal = new SafetyGate()
+                    .require(SafetyChecks.computationExists(adapter, computation))
+                    .firstFailure();
+            if (refusal.isPresent()) {
+                return refuse("computation", "explain", refusal.get());
             }
             ReadComputation read = adapter.readComputation(computation);
             JsonNode data;

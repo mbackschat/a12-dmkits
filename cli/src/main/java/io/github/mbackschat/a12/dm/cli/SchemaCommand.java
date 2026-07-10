@@ -93,9 +93,11 @@ final class SchemaCommand extends BaseCommand {
      * Verbs for which {@code schema <verb>} serves <b>no</b> directional contract — because they do not return
      * the result envelope. Two reasons, mapped here as the single source of truth (read by {@link
      * ManifestCommand} to decide the schema pointer, and by {@code CliConformanceMatrixTest} as the reasoned
-     * exemption ledger): the four <b>self-describing</b> verbs emit their own JSON (run them to see it), and
-     * {@code export}/{@code where-used} return a <b>rendered artifact</b> / a <b>custom payload</b> rather than
-     * the {@code {outcome,…}} envelope. Everything else is an envelope op with a discoverable contract.
+     * exemption ledger): the five <b>self-describing</b> verbs ({@code manifest}/{@code schema}/{@code operators}/
+     * {@code patterns}/{@code diagnostics}) emit their own JSON (run them to see it), and {@code export} plus the
+     * {@code model} artifact verbs ({@code new}/{@code seed}/{@code import-jsonschema}/{@code export-jsonschema})
+     * emit a <b>rendered artifact</b> rather than the {@code {outcome,…}} envelope. Everything else is an
+     * envelope op with a discoverable contract.
      */
     static final Map<String, String> CONTRACT_EXEMPT = Map.of(
             "manifest", "emits the verb/param map itself — run it",
@@ -114,7 +116,7 @@ final class SchemaCommand extends BaseCommand {
 
     /** Leaf op-names whose verb returns a read payload in the envelope's {@code data}. */
     private static final Set<String> READ_OPS =
-            Set.of("read", "explain", "deps", "format", "test", "describe", "usage", "validate", "eval", "compute", "meta");
+            Set.of("read", "explain", "deps", "format", "describe", "usage", "eval", "compute", "meta");
 
     @Parameters(arity = "0..*", paramLabel = "<schema>",
             description = "result | diagnostic (structures), or a verb's directional contract "

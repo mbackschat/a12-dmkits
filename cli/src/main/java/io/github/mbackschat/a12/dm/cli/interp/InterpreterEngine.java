@@ -41,6 +41,13 @@ public final class InterpreterEngine {
     private InterpreterEngine() {
     }
 
+    /** The full names of the rules the interpreter can see in {@code modelJson} — kernel-free, so the runtime
+     *  verbs can gate an unknown {@code --rule} with a structured refusal in their DEFAULT (interpreter) path,
+     *  exactly as the {@code --kernel} path gates it via the kernel adapter. */
+    public static List<String> ruleFullNames(String modelJson) {
+        return InterpreterModelLoader.load(modelJson).getRules().stream().map(RuleDef::getPath).toList();
+    }
+
     /** {@code model eval} over the whole model (optionally narrowing the {@code rule} verdict to {@code targetRule}).
      *  {@code applyComputations} runs the form-engine flow (compute → apply → validate, the default); false is the
      *  bare {@code validateFull} ({@code --no-computations}). */

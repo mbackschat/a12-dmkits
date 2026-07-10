@@ -203,7 +203,10 @@ class EvalDocVerbTest {
                 { "fields": { "Order": { "Quantity": "1" } } }""");
         var res = CliTestSupport.runKernel("-m", model.toString(), "model", "eval", "--instance", d.toString(), "--rule", "/Order/Nope");
         assertNotEquals(0, res.code(), "an unknown rule is an error");
-        assertTrue(res.err().contains("/Order/Nope"), () -> "names the bad rule: " + res.err());
+        JsonNode j = MAPPER.readTree(res.out());   // structured refusal (F5), not a bare stderr line
+        assertEquals("refused", j.path("outcome").asText(), () -> "an unknown --rule is a structured refusal: " + res.out());
+        assertEquals("RK_NO_SUCH_RULE", j.path("diagnostics").path(0).path("code").asText(),
+                () -> "carries RK_NO_SUCH_RULE: " + res.out());
     }
 
     @Test

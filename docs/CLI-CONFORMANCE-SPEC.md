@@ -21,7 +21,7 @@ The home of the *safety-gate* contract is [`CLI-SPEC.md`](CLI-SPEC.md) §6; the 
 
 ### 1. The diagnostic contract (diagnosis)
 
-> A **domain error** of any mutating verb is a **structured envelope** — `outcome ∈ {refused, rejected}`, exit `2`/`1`, `written:false` — carrying **≥1 diagnostic with `code` + `where` + `fix`**, and the `code` **resolves in the diagnostic registry**.
+> A **domain error** of any mutating verb — and of any locator-bearing **read** verb (a not-found target) — is a **structured envelope** — `outcome ∈ {refused, rejected}`, exit `2`/`1`, `written:false` — carrying **≥1 diagnostic with `code` + `where` + `fix`**, and the `code` **resolves in the diagnostic registry**.
 
 - **Domain error** = the CLI syntax parsed, the model loaded, the op was attempted, and a model-level precondition failed (not-found, collision, type mismatch, kernel reject, …). These MUST be structured.
 - **Usage / IO errors** (bad CLI syntax, missing/unreadable `-m`) MAY stay plain text — they are picocli/IO concerns, not domain diagnoses.
@@ -46,7 +46,7 @@ A cold agent learns the whole surface from the tool:
 
 | gate | proves |
 |---|---|
-| **diagnostic-conformance fuzzer** | for every mutating verb (derived from the live tree), every synthesized **domain error** is a conformant structured envelope — code+where+fix, code∈registry, exit/outcome consistent, `written:false`. A new verb **cannot escape it.** Kills AP1/AP2/AP4. |
+| **diagnostic-conformance fuzzer** | for every mutating verb — and every READ-projection verb's locator positional, regardless of `@ParamKind` (F5) — derived from the live tree, every synthesized **domain error** is a conformant structured envelope — code+where+fix, code∈registry, exit/outcome consistent, `written:false`. A new mutating OR read verb **cannot escape it.** Kills AP1/AP2/AP4. |
 | **registry parity** (no-rot) | every `RK_*` code the tool can emit resolves to a registry entry — **compile-time** via the typed `RkCode` enum + an exhaustiveness test, so an un-catalogued code can't ship. `MVK_*` ride `MVK-LEDGER`/`MvkLedgerTest`. |
 | **single-source derivation** (no-drift) | the `diagnostics` verb, the `manifest` diagnostic info, the `diagnostic.schema` enum/examples, and the API Javadoc all **derive from the one registry** — a guard forbids a second hand-authored copy of a code's meaning. |
 | **conformance matrix** (`CliConformanceMatrixTest`) | the single **derived** per-verb gate (folds the old completeness check): every verb is described, every param is described, every **envelope** verb advertises a `schema` pointer that *resolves to real JSON*, and every verb is **demonstrated** (a worked example in `manifest`). One row per verb, one column per obligation — so a new verb can't ship under-surfaced, and a newly-learned anti-pattern is a one-column change. Kills AP5/AP6. |
