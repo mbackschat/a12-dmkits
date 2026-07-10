@@ -2146,6 +2146,21 @@ class Interpreter(
      *  validation (or a non-star / Having operand): the plain first-filled value. */
     private fun firstFilledValue(f: Expr.Func): Val {
         val star = f.args.singleOrNull() as? Expr.Star
+        // COMPUTE mode over an unfiltered star: the kernel's `FirstValueCombiner.addValue` IGNORES every cell
+        // once the first FILLED value is captured — an INVALID cell poisons the computation only BEFORE the
+        // first given cell (`nonRelevantFieldBeforeFirstGiven`); an invalid TAIL cell is invisible (IF111).
+        // The generic any-invalid star poison ([starOperandVals]) is the OTHER combiners' rule (Sum/Min/Max
+        // consume every row) and over-suppressed this one. An index-field operand keeps the conservative
+        // whole-column gate (its per-cell not-relevant states — duplicates, mandatory-empty — are a column
+        // property; no corpus unit distinguishes the orders).
+        if (computeMode && star != null && star.having == null) {
+            if (indexOperandNonEvaluable(ctx, star.path, star.bindDepth)) return Val.Unknown
+            for ((_, value) in ctxOf(star).starCells(star.path, star.bindDepth)) {
+                if (value is Val.Unknown) throw PoisonedReadException(star.path)
+                if (value != null) return value
+            }
+            return firstFilledEmpty(f)
+        }
         // NO filled value in the selection → the kernel's per-kind `FirstValueCombiner` returns its OWN kind's
         // "not-given" value ([firstFilledEmpty]): a NUMBER gives the fillable 0 (`NICHT_ANGEGEBENE_ZAHL`, the
         // empty-as-0 its Sum/Min/Max siblings give — IF80), a DATE/DATE_TIME/TIME/DATE_RANGE/STRING gives a
