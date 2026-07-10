@@ -274,8 +274,15 @@ class DmInterpreter @JvmOverloads constructor(
     private fun implicitComputationRuleDef(comp: ComputationDef): RuleDef? {
         val name = comp.name ?: return null
         if (comp.alternatives.isEmpty()) return null
-        val node = "${comp.group}/$name"
-        return RuleDef(node, comp.group, "FieldFilled(${comp.targetPath}) And <implicit validation of $name>",
+        // Anchored at the TARGET's parent group, NOT the declaring group — the kernel's rule-from-computation
+        // fires at the error entity (the computed field), so a computation declared in an EMPTY container (a
+        // `*_Rules` root targeting another subtree/root) must not be row-gated away by its declaring group's
+        // lack of content (IF100 — the validation twin of IF89's "a computation iterates where it WRITES").
+        // A cross-group REPEATABLE target never reaches the runtime (codegen-rejected,
+        // MVK_ERROR_FIELD_NOT_IN_RULEGROUP), so the anchor move changes no per-row iteration.
+        val group = parentGroup(comp.targetPath)
+        val node = "$group/$name"
+        return RuleDef(node, group, "FieldFilled(${comp.targetPath}) And <implicit validation of $name>",
             name, relativePath(node, comp.targetPath))
     }
 
