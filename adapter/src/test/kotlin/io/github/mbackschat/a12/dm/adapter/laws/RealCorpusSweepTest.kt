@@ -47,6 +47,15 @@ class RealCorpusSweepTest {
         // A fixed wall-clock instant pinned into BOTH engines (kernel currentDateForTest ⇄ interpreter EvalClock),
         // so Today/Now models evaluate deterministically instead of the interpreter refusing "needs a clock".
         const val CLOCK = "2026-07-07T12:00:00"
+        /** The KERNEL-GENERIC message codes (formal checks + the autogen rules) — safe to print verbatim in the
+         *  validateFull signature classifier; anything else is a model-authored `rule-code`. */
+        val FORMAL_CODES: Set<String> =
+            io.github.mbackschat.a12.dm.interpreter.eval.FormalErrorCode.entries.map { it.id }.toSet() +
+                setOf(io.github.mbackschat.a12.dm.interpreter.eval.MANDATORY_FIELD,
+                    io.github.mbackschat.a12.dm.interpreter.eval.UNIQUE_INDEX,
+                    io.github.mbackschat.a12.dm.interpreter.eval.CUSTOM_TYPE_INVALID,
+                    io.github.mbackschat.a12.dm.interpreter.eval.OVER_REPETITION_ROW,
+                    io.github.mbackschat.a12.dm.interpreter.eval.OVER_REPETITION_CONTEXT)
         /** Java-static (in-memory javac) is best-effort — enable with -Dcorpus.sweep.java=true (slower). */
         val WITH_JAVA = System.getProperty("corpus.sweep.java") == "true"
         /** HOSTILE seeding ([HostileValues] — scattered constraint-VIOLATING number cells) — enable with
@@ -224,6 +233,7 @@ class RealCorpusSweepTest {
         fun evalSkip(cls: String, file: Path, t: Throwable) { evalSkips.merge(cls, 1) { a, b -> a + b } }
         private val divergenceClasses = LinkedHashMap<String, Int>()
         private val computeAtomClasses = LinkedHashMap<String, Int>()
+        private val validateSigClasses = LinkedHashMap<String, Int>()
         private var divergenceCount = 0
         fun divergence(file: Path, seed: Int, op: String, kernel: List<String>, interp: List<String>) {
             divergenceCount++
@@ -240,6 +250,28 @@ class RealCorpusSweepTest {
             }
             divergenceClasses.merge("$op: $shape", 1) { a, b -> a + b }
             if (op == "compute") classifyComputeAtoms(kernel, interp)
+            if (op == "validateFull") classifyValidateSigs(kernel, interp)
+        }
+
+        /** Per-SIGNATURE classification of a validateFull divergence (the IG56 E3 instrumentation) — each sig on
+         *  exactly one side, bucketed license-safe: side × code class × polarity × row position. A KERNEL-GENERIC
+         *  code (the interpreter's [FormalErrorCode] ids + the autogen consts — `zahl…`/`string…`/`datum…`/
+         *  `mandatoryField`/`uniqueIndex`/…) is printed verbatim (it is kernel vocabulary, not corpus content);
+         *  a model-AUTHORED code redacts to `rule-code`. Row position separates a first-row fire from a
+         *  row-≥2-only fire (the cross-subtree-binding signature, IF97) without leaking a pointer. */
+        private fun classifyValidateSigs(kernel: List<String>, interp: List<String>) {
+            val kSet = kernel.toSet()
+            val iSet = interp.toSet()
+            (kernel.filter { it !in iSet }.map { it to "kernel-only" } +
+                interp.filter { it !in kSet }.map { it to "interp-extra" }).forEach { (sig, side) ->
+                val parts = sig.split('|')
+                val code = parts[0]
+                val polarity = parts.getOrElse(1) { "?" }.removeSuffix("_ERROR")
+                val pointer = parts.getOrElse(2) { "" }
+                val codeClass = if (code in FORMAL_CODES) code else "rule-code"
+                val rowPos = if (Regex("""\[([2-9]|\d\d+)\]""").containsMatchIn(pointer)) "row≥2" else "row1"
+                validateSigClasses.merge("$side $codeClass $polarity $rowPos", 1) { a, b -> a + b }
+            }
         }
 
         /** Per-differing-pointer OUTCOME-KIND classification for a compute divergence (the IG44 CVV instrumentation)
@@ -285,6 +317,10 @@ class RealCorpusSweepTest {
             if (computeAtomClasses.isNotEmpty()) {
                 println("  compute atom classes (per differing pointer — kernel-kind vs interp-kind; CVV = kernel=CLEARED,interp=VALUE):")
                 computeAtomClasses.entries.sortedByDescending { it.value }.forEach { (cls, n) -> println("     [$n] $cls") }
+            }
+            if (validateSigClasses.isNotEmpty()) {
+                println("  validateFull signature classes (per one-sided sig — side × code class × polarity × row position):")
+                validateSigClasses.entries.sortedByDescending { it.value }.forEach { (cls, n) -> println("     [$n] $cls") }
             }
         }
     }
