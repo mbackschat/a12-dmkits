@@ -170,6 +170,8 @@ m.flatten("/S/Billing*/BaseFee")       // fails fast — Billing is not repeatab
 
 Each erased mistake corresponds to a **kernel-verified** rejection code (see `KERNEL-INTEGRATION-NOTES.md`) — the type system is the documentation.
 
+**Equality-verb naming (the one convention worth stating).** `eq`/`ne` are the *consistent* equality verbs — every value ref (`NumberRef`, `StringRef`, the date/time refs, and now `EnumRef`/`CategoryRef` and their expressions) accepts them, so cross-type generic code reads one way. On enums `is`/`isNot` stay as the **domain-natural** reading (`tier.is("PRO")`), so both forms render identically — pick whichever reads best. `BoolRef` (`isTrue`/`isFalse`) and `ConfirmRef` (`confirmed`/`notConfirmed`) are the **deliberate exception**: they compare only to a *fixed constant*, not an arbitrary value, so they carry no `eq`/`ne` — a generic `== value` would re-open the kernel-illegal `confirm == False` (`MVK_INVALID_COMPARE_TO_YES`) the type erases.
+
 ## 3. Combinators & parameterization — the reuse study
 
 ### 3.1 Parameterized fragments are ordinary methods

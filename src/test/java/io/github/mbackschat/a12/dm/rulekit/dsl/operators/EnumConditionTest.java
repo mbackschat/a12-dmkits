@@ -31,6 +31,31 @@ class EnumConditionTest {
     }
 
     @Test
+    void eqNeAreTheConsistentEqualityVerbsAlongsideIsIsNot() {
+        // D1: eq/ne are the equality verbs shared with the number/string/date refs; enum/category keep
+        // is/isNot as the domain-natural reading. Both render identically across every overload.
+        DslRenderer r = new DslRenderer();
+        EnumRef tier = m.enumOf("/Subscription/Tier");
+        assertEquals(r.render(tier.is("PRO")), r.render(tier.eq("PRO")));
+        assertEquals(r.render(tier.isNot("PRO")), r.render(tier.ne("PRO")));
+
+        BoundModel a = approvals();
+        EnumRef req = a.enumOf("/Approval/Requested");
+        EnumRef granted = a.enumOf("/Approval/Granted");
+        assertEquals(r.render(req.is(granted)), r.render(req.eq(granted)));
+        assertEquals(r.render(req.isNot(granted)), r.render(req.ne(granted)));
+
+        EnumExpr expr = tier.forIndex("K");   // an enum expression (semantic index) — render-only here
+        assertEquals(r.render(tier.is(expr)), r.render(tier.eq(expr)));
+        assertEquals(r.render(expr.is("PRO")), r.render(expr.eq("PRO")));
+        assertEquals(r.render(expr.isNot("PRO")), r.render(expr.ne("PRO")));
+
+        CategoryRef pricing = tier.category("Pricing");
+        assertEquals(r.render(pricing.is("PAID")), r.render(pricing.eq("PAID")));
+        assertEquals(r.render(pricing.isNot("PAID")), r.render(pricing.ne("PAID")));
+    }
+
+    @Test
     void rendersEnumCategoryNavigation() {
         // Corpus item 3: [Field -> Category] compares against the CATEGORY's value domain.
         Condition c = m.enumOf("/Subscription/Tier").category("Pricing").is("PAID");

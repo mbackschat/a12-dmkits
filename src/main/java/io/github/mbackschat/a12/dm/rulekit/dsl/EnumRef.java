@@ -106,6 +106,38 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
         return new ComparisonCondition(value(), CompareOp.NE, other.expression());
     }
 
+    // --- eq/ne: the equality verbs shared with the number/string/date refs (D1). is/isNot above stay as
+    //     the domain-natural enum reading; eq/ne give cross-type uniformity. bool/confirm are the
+    //     deliberate exception (their target is a fixed constant, not an arbitrary value) — API-GUIDE §6.
+
+    /** {@code [field] == "value"} — the eq peer of {@link #is(String)}. */
+    public Condition eq(String value) {
+        return is(value);
+    }
+
+    /** {@code [field] != "value"} — the ne peer of {@link #isNot(String)}. */
+    public Condition ne(String value) {
+        return isNot(value);
+    }
+
+    /** {@code [this] == [other]} — the eq peer of {@link #is(EnumRef)}. */
+    public Condition eq(EnumRef other) {
+        return is(other);
+    }
+
+    public Condition ne(EnumRef other) {
+        return isNot(other);
+    }
+
+    /** {@code [this] == <enum expression>} — the eq peer of {@link #is(EnumExpr)}. */
+    public Condition eq(EnumExpr other) {
+        return is(other);
+    }
+
+    public Condition ne(EnumExpr other) {
+        return isNot(other);
+    }
+
     private Condition compareTo(CompareOp op, String value) {
         if (!allowedValues.contains(value)) {
             throw new IllegalArgumentException(

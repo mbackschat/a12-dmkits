@@ -50,6 +50,27 @@ public record CategoryRef(FieldRef field, String name, List<String> values, bool
         return new ComparisonCondition(access(), CompareOp.NE, other.access());
     }
 
+    // --- eq/ne: the equality verbs shared with the value refs (D1); is/isNot above stay as the
+    //     domain-natural category reading.
+
+    /** {@code [field -> name] == value} — the eq peer of {@link #is(String)}. */
+    public Condition eq(String value) {
+        return is(value);
+    }
+
+    /** {@code [field -> name] != value} — the ne peer of {@link #isNot(String)}. */
+    public Condition ne(String value) {
+        return isNot(value);
+    }
+
+    public Condition eq(CategoryRef other) {
+        return is(other);
+    }
+
+    public Condition ne(CategoryRef other) {
+        return isNot(other);
+    }
+
     private Condition compareTo(CompareOp op, String value) {
         if (!values.contains(value)) {
             throw new IllegalArgumentException("'" + value + "' is not a value of category '" + name

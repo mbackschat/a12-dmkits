@@ -45,4 +45,31 @@ public record EnumExpr(Calculation expression) {
     public Condition isNot(EnumExpr other) {
         return new ComparisonCondition(expression, CompareOp.NE, other.expression());
     }
+
+    // --- eq/ne: the equality verbs shared with the value refs (D1); is/isNot above stay as the
+    //     domain-natural enum reading.
+
+    public Condition eq(String value) {
+        return is(value);
+    }
+
+    public Condition ne(String value) {
+        return isNot(value);
+    }
+
+    public Condition eq(EnumRef other) {
+        return is(other);
+    }
+
+    public Condition ne(EnumRef other) {
+        return isNot(other);
+    }
+
+    public Condition eq(EnumExpr other) {
+        return is(other);
+    }
+
+    public Condition ne(EnumExpr other) {
+        return isNot(other);
+    }
 }
