@@ -39,12 +39,12 @@ public final class DmJson {
 
     /** The {@code elements} array of the group at the absolute {@code groupPath}, or {@code null}. */
     public static ArrayNode groupElements(JsonNode root, String groupPath) {
-        return elementsOf(root.path("content").path("modelRoot").path("rootGroups"), groupPath);
+        return elementsOf(root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS), groupPath);
     }
 
     /** Depth-first search for an element of {@code type} (e.g. {@code "Rule"}) by its {@code id}, or {@code null}. */
     public static ObjectNode findElement(JsonNode root, String type, String id) {
-        return searchElements(root.path("content").path("modelRoot").path("rootGroups"), type, id);
+        return searchElements(root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS), type, id);
     }
 
     private static ObjectNode searchElements(JsonNode elements, String type, String id) {
@@ -52,12 +52,12 @@ public final class DmJson {
             return null;
         }
         for (JsonNode node : elements) {
-            String nodeType = node.path("type").asText();
-            if (type.equals(nodeType) && id.equals(node.path("id").asText())) {
+            if (type.equals(node.path(DmKeys.TYPE).asText()) && id.equals(node.path(DmKeys.ID).asText())) {
                 return (ObjectNode) node;
             }
-            if ("Group".equals(nodeType)) {
-                ObjectNode found = searchElements(node.path("Group").path("elements"), type, id);
+            if (ElementType.GROUP.matches(node)) {
+                ObjectNode found = searchElements(
+                        node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS), type, id);
                 if (found != null) {
                     return found;
                 }
@@ -71,18 +71,18 @@ public final class DmJson {
             return null;
         }
         for (JsonNode node : groups) {
-            if (!"Group".equals(node.path("type").asText())) {
+            if (!ElementType.GROUP.matches(node)) {
                 continue;
             }
-            JsonNode elements = node.path("Group").path("elements");
-            if (groupPath.equals(node.path("id").asText())) {
+            JsonNode elements = node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS);
+            if (groupPath.equals(node.path(DmKeys.ID).asText())) {
                 if (elements.isArray()) {
                     return (ArrayNode) elements;
                 }
                 // a childless group may serialize WITHOUT its (empty) `elements` array — the kernel omits it;
                 // treat the id-match as an empty container and materialize the array so callers can append.
-                if (node.path("Group") instanceof ObjectNode group) {
-                    return group.putArray("elements");
+                if (node.path(ElementType.GROUP.wireName()) instanceof ObjectNode group) {
+                    return group.putArray(DmKeys.ELEMENTS);
                 }
                 return null;
             }

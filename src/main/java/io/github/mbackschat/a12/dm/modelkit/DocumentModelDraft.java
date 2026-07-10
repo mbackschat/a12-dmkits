@@ -17,6 +17,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.dm.core.DmKeys;
+import io.github.mbackschat.a12.dm.core.ElementType;
+
 /**
  * modelkit M1 — a typed builder for document-model <b>structure</b>, the peer of rulekit's rule
  * builder (fork #8 / ARCHITECTURE §5.2; rationale in {@code docs/PROJECT-DESIGN.md} §21). Author a
@@ -116,74 +119,74 @@ public final class DocumentModelDraft {
     public String toJson() {
         ObjectNode root = MAPPER.createObjectNode();
 
-        ObjectNode header = root.putObject("header");
-        header.put("id", id);
-        header.put("modelType", "document");
+        ObjectNode header = root.putObject(DmKeys.HEADER);
+        header.put(DmKeys.ID, id);
+        header.put(DmKeys.MODEL_TYPE, DmKeys.DOCUMENT);
         header.put("modelVersion", MODEL_VERSION);
-        ArrayNode locs = header.putArray("locales");
-        locales.forEach(code -> locs.addObject().put("code", code));
-        ArrayNode labelArr = header.putArray("labels");
-        labels.forEach((loc, text) -> labelArr.addObject().put("locale", loc).put("text", text));
-        ArrayNode annoArr = header.putArray("annotations");
-        annotations.forEach(a -> annoArr.addObject().put("name", a.name()).put("value", a.value()));
+        ArrayNode locs = header.putArray(DmKeys.LOCALES);
+        locales.forEach(code -> locs.addObject().put(DmKeys.CODE, code));
+        ArrayNode labelArr = header.putArray(DmKeys.LABELS);
+        labels.forEach((loc, text) -> labelArr.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, text));
+        ArrayNode annoArr = header.putArray(DmKeys.ANNOTATIONS);
+        annotations.forEach(a -> annoArr.addObject().put(DmKeys.NAME, a.name()).put(DmKeys.VALUE, a.value()));
         checkMountReferences();
-        ArrayNode refs = header.putArray("modelReferences");
+        ArrayNode refs = header.putArray(DmKeys.MODEL_REFERENCES);
         for (Include inc : includes) {
             refs.addObject()
-                    .put("alias", inc.alias())
-                    .put("modelType", "document")
-                    .put("purpose", "include")
-                    .put("reference", inc.reference());
+                    .put(DmKeys.ALIAS, inc.alias())
+                    .put(DmKeys.MODEL_TYPE, DmKeys.DOCUMENT)
+                    .put(DmKeys.PURPOSE, "include")
+                    .put(DmKeys.REFERENCE, inc.reference());
         }
         for (String importRef : typeDefImports) {
             // a type-def import: purpose "typeDefinitions" (kernel PURPOSE_4_ONLY_TYPE_DEFS) — merged by id, not mounted
             refs.addObject()
-                    .put("alias", importRef)
-                    .put("modelType", "document")
-                    .put("purpose", "typeDefinitions")
-                    .put("reference", importRef);
+                    .put(DmKeys.ALIAS, importRef)
+                    .put(DmKeys.MODEL_TYPE, DmKeys.DOCUMENT)
+                    .put(DmKeys.PURPOSE, "typeDefinitions")
+                    .put(DmKeys.REFERENCE, importRef);
         }
 
-        ObjectNode content = root.putObject("content");
-        ObjectNode info = content.putObject("modelInfo");
-        info.put("name", id);
+        ObjectNode content = root.putObject(DmKeys.CONTENT);
+        ObjectNode info = content.putObject(DmKeys.MODEL_INFO);
+        info.put(DmKeys.NAME, id);
         info.put("variant", "cockpit");
         info.put("revision", "Arbeitsversion");
         if (baseYear != null) {
             // the model-level base year (handles year-less date inputs and enables the BaseYear point-in-time)
-            info.put("baseYear", String.valueOf(baseYear));
+            info.put(DmKeys.BASE_YEAR, String.valueOf(baseYear));
         }
         if (comment != null) {
-            info.put("comment", comment);   // a free-text model-level note (IDocumentModelInfo.getComment)
+            info.put(DmKeys.COMMENT, comment);   // a free-text model-level note (IDocumentModelInfo.getComment)
         }
         info.put("immutable", false);
-        ObjectNode config = content.putObject("modelConfig");
-        config.put("decimalSeparator", ".");
-        config.put("timeZone", "Europe/Berlin");
+        ObjectNode config = content.putObject(DmKeys.MODEL_CONFIG);
+        config.put(DmKeys.DECIMAL_SEPARATOR, ".");
+        config.put(DmKeys.TIME_ZONE, "Europe/Berlin");
         // Condition KEYWORD language is independent of the DISPLAY locale (see DEFAULT_CONDITION_LANGUAGE).
-        config.putObject("conditionLanguage").put("code", DEFAULT_CONDITION_LANGUAGE);
-        config.put("fieldRefByShortNameAllowed", true);
+        config.putObject(DmKeys.CONDITION_LANGUAGE).put(DmKeys.CODE, DEFAULT_CONDITION_LANGUAGE);
+        config.put(DmKeys.FIELD_REF_BY_SHORT_NAME_ALLOWED, true);
         if (!supportedCharacters.isEmpty()) {
             // the allowed-character set: each entry a char or a range like " -~"; empty = all of Unicode-Plane-0
-            ArrayNode chars = config.putArray("supportedCharacters");
+            ArrayNode chars = config.putArray(DmKeys.SUPPORTED_CHARACTERS);
             supportedCharacters.forEach(chars::add);
         }
 
         checkTypeDefReferences();
         if (!typeDefs.isEmpty()) {
-            ArrayNode defs = content.putArray("typeDefinitions");
+            ArrayNode defs = content.putArray(DmKeys.TYPE_DEFINITIONS);
             for (TypeDefDecl def : typeDefs) {
                 ObjectNode node = defs.addObject();
-                node.put("id", def.id());
-                node.put("name", def.id());
+                node.put(DmKeys.ID, def.id());
+                node.put(DmKeys.NAME, def.id());
                 writeAnnotations(node, def.annotations());
-                writeLocalizedText(node, "internalDescription", def.internalDescription());
-                writeLocalizedText(node, "externalDescription", def.externalDescription());
-                writeFieldType(node.putObject("fieldType"), def.type(), locales);
+                writeLocalizedText(node, DmKeys.INTERNAL_DESCRIPTION, def.internalDescription());
+                writeLocalizedText(node, DmKeys.EXTERNAL_DESCRIPTION, def.externalDescription());
+                writeFieldType(node.putObject(DmKeys.FIELD_TYPE), def.type(), locales);
             }
         }
 
-        ArrayNode roots = content.putObject("modelRoot").putArray("rootGroups");
+        ArrayNode roots = content.putObject(DmKeys.MODEL_ROOT).putArray(DmKeys.ROOT_GROUPS);
         rootGroups.forEach(group -> roots.add(groupNode(group, "", locales)));
 
         try {
@@ -197,15 +200,15 @@ public final class DocumentModelDraft {
     static ObjectNode groupNode(ElementDraft.Group group, String parentPath, List<String> locales) {
         String path = parentPath + "/" + group.name();
         ObjectNode node = MAPPER.createObjectNode();
-        node.put("type", "Group");
-        node.put("id", path);
-        node.put("name", group.name());
+        node.put(DmKeys.TYPE, ElementType.GROUP.wireName());
+        node.put(DmKeys.ID, path);
+        node.put(DmKeys.NAME, group.name());
         writeAnnotations(node, group.annotations());
         // internal/external description are element-level (alongside annotations), uniform with fields (IDescribed)
-        writeLocalizedText(node, "internalDescription", group.meta().internalDescription());
-        writeLocalizedText(node, "externalDescription", group.meta().externalDescription());
-        ObjectNode body = node.putObject("Group");
-        body.put("repeatability", group.repeatability());
+        writeLocalizedText(node, DmKeys.INTERNAL_DESCRIPTION, group.meta().internalDescription());
+        writeLocalizedText(node, DmKeys.EXTERNAL_DESCRIPTION, group.meta().externalDescription());
+        ObjectNode body = node.putObject(ElementType.GROUP.wireName());
+        body.put(DmKeys.REPEATABILITY, group.repeatability());
         // the display label (ILabeled) lives in the Group body, like a field's — verified against real models
         writeLabel(body, group.meta().labels(), locales, "group '" + group.name() + "'");
         if (group.usageType() != null) {
@@ -213,19 +216,19 @@ public final class DocumentModelDraft {
             body.put("usageType", group.usageType());
         }
         if (group.indexFieldName() != null) {
-            body.put("indexFieldName", group.indexFieldName());
+            body.put(DmKeys.INDEX_FIELD_NAME, group.indexFieldName());
         }
         if (!group.sortFields().isEmpty()) {
             // FEATURE-GAPS G28: each sort field is {"name": <relative child path>, "order": ASC|DESC}
             // (the kernel's GroupSortFieldMixin maps the field ref to "name"; the Order enum to "order").
-            ArrayNode sortFields = body.putArray("sortFields");
+            ArrayNode sortFields = body.putArray(DmKeys.SORT_FIELDS);
             for (ElementDraft.SortField sf : group.sortFields()) {
                 ObjectNode sortNode = sortFields.addObject();
-                sortNode.put("name", sf.fieldName());
-                sortNode.put("order", sf.order().name());
+                sortNode.put(DmKeys.NAME, sf.fieldName());
+                sortNode.put(DmKeys.ORDER, sf.order().name());
             }
         }
-        ArrayNode elements = body.putArray("elements");
+        ArrayNode elements = body.putArray(DmKeys.ELEMENTS);
         for (ElementDraft element : group.elements()) {
             elements.add(switch (element) {
                 case ElementDraft.Group sub -> groupNode(sub, path, locales);
@@ -241,16 +244,16 @@ public final class DocumentModelDraft {
     // package-private: reused by ModelDocument when emitting a template group's mandated rules
     static ObjectNode ruleNode(ElementDraft.Rule rule, String parentPath) {
         ObjectNode node = MAPPER.createObjectNode();
-        node.put("type", "Rule");
-        node.put("id", parentPath + "/" + rule.name());
-        node.put("name", rule.name());
-        ObjectNode body = node.putObject("Rule");
+        node.put(DmKeys.TYPE, ElementType.RULE.wireName());
+        node.put(DmKeys.ID, parentPath + "/" + rule.name());
+        node.put(DmKeys.NAME, rule.name());
+        ObjectNode body = node.putObject(ElementType.RULE.wireName());
         body.put("errorEntityRelPath", rule.errorEntityRelPath());
         body.put("errorCode", rule.errorCode());
         body.put("errorCondition", rule.errorCondition());
         body.put("severity", rule.severity());
-        ArrayNode messages = body.putArray("errorMessage");
-        rule.messages().forEach((loc, text) -> messages.addObject().put("locale", loc).put("text", text));
+        ArrayNode messages = body.putArray(DmKeys.ERROR_MESSAGE);
+        rule.messages().forEach((loc, text) -> messages.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, text));
         return node;
     }
 
@@ -258,14 +261,14 @@ public final class DocumentModelDraft {
     // package-private: reused by ModelDocument (M10+ include editing)
     static ObjectNode mountNode(ElementDraft.Mount mount, String parentPath) {
         ObjectNode node = MAPPER.createObjectNode();
-        node.put("type", "Group");
-        node.put("id", parentPath + "/" + mount.name());
-        node.put("name", mount.name());
+        node.put(DmKeys.TYPE, ElementType.GROUP.wireName());
+        node.put(DmKeys.ID, parentPath + "/" + mount.name());
+        node.put(DmKeys.NAME, mount.name());
         writeAnnotations(node, mount.annotations());
-        ObjectNode body = node.putObject("Group");
+        ObjectNode body = node.putObject(ElementType.GROUP.wireName());
         MountOptions options = mount.options();
-        body.put("repeatability", options.repeatability());
-        body.put("modelAlias", mount.alias());
+        body.put(DmKeys.REPEATABILITY, options.repeatability());
+        body.put(DmKeys.MODEL_ALIAS, mount.alias());
         // includeLevel sits on the mount group beside modelAlias; omit SINGLE_RG (the kernel default-absent, A12K-3234)
         if (options.includeLevel() == IncludeLevel.MODEL_ROOT) {
             body.put("includeLevel", "MODEL_ROOT");
@@ -283,19 +286,19 @@ public final class DocumentModelDraft {
     // package-private: reused by ModelDocument (M8 structure edits) so the node shape lives once
     static ObjectNode fieldNode(ElementDraft.Field field, String parentPath, List<String> locales) {
         ObjectNode node = MAPPER.createObjectNode();
-        node.put("type", "Field");
-        node.put("id", parentPath + "/" + field.name());
-        node.put("name", field.name());
+        node.put(DmKeys.TYPE, ElementType.FIELD.wireName());
+        node.put(DmKeys.ID, parentPath + "/" + field.name());
+        node.put(DmKeys.NAME, field.name());
         FieldMeta meta = field.meta();
         writeAnnotations(node, meta.annotations());
         // internal/external description are element-level (alongside annotations), per the kernel serializer
-        writeLocalizedText(node, "internalDescription", meta.internalDescription());
-        writeLocalizedText(node, "externalDescription", meta.externalDescription());
-        ObjectNode body = node.putObject("Field");
-        writeFieldType(body.putObject("fieldType"), field.type(), locales);
+        writeLocalizedText(node, DmKeys.INTERNAL_DESCRIPTION, meta.internalDescription());
+        writeLocalizedText(node, DmKeys.EXTERNAL_DESCRIPTION, meta.externalDescription());
+        ObjectNode body = node.putObject(ElementType.FIELD.wireName());
+        writeFieldType(body.putObject(DmKeys.FIELD_TYPE), field.type(), locales);
         String mode = field.requiredness().mode();
         if (mode != null) {
-            body.putObject("requirednessConfig").put("mode", mode);
+            body.putObject(DmKeys.REQUIREDNESS_CONFIG).put("mode", mode);
         }
         writeLabel(body, meta.labels(), locales, "field '" + field.name() + "'");
         // global / transient flags + helperText live inside the Field body (kernel FieldSerializer)
@@ -326,8 +329,8 @@ public final class DocumentModelDraft {
                 throw new IllegalArgumentException(elementDesc + " label is missing declared locale '" + loc + "'");
             }
         }
-        ArrayNode label = body.putArray("label");
-        locales.forEach(loc -> label.addObject().put("locale", loc).put("text", labels.get(loc)));
+        ArrayNode label = body.putArray(DmKeys.LABEL);
+        locales.forEach(loc -> label.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, labels.get(loc)));
     }
 
     /** Emit an optional per-locale text slot as {@code key: [{locale, text}]} (omitted when empty). */
@@ -336,7 +339,7 @@ public final class DocumentModelDraft {
             return;
         }
         ArrayNode array = target.putArray(key);
-        textByLocale.forEach((loc, text) -> array.addObject().put("locale", loc).put("text", text));
+        textByLocale.forEach((loc, text) -> array.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, text));
     }
 
     /** Emit element-level {@code annotations: [{name, value}]} (omitted when none). */
@@ -344,16 +347,16 @@ public final class DocumentModelDraft {
         if (annotations.isEmpty()) {
             return;
         }
-        ArrayNode array = elementNode.putArray("annotations");
+        ArrayNode array = elementNode.putArray(DmKeys.ANNOTATIONS);
         for (ElementDraft.Annotation a : annotations) {
-            array.addObject().put("name", a.name()).put("value", a.value());
+            array.addObject().put(DmKeys.NAME, a.name()).put(DmKeys.VALUE, a.value());
         }
     }
 
     /** Write the {@code type} discriminator plus its inner config block. */
     // package-private: reused by ModelDocument (M10+ type-definition editing)
     static void writeFieldType(ObjectNode fieldType, FieldTypeSpec spec, List<String> locales) {
-        fieldType.put("type", spec.jsonType());
+        fieldType.put(DmKeys.TYPE, spec.jsonType());
         writeTypeConfig(fieldType, spec, locales);
     }
 
@@ -369,9 +372,9 @@ public final class DocumentModelDraft {
                     // A per-locale override (patternMessages) wins for its locale; the single patternMessage is the
                     // fallback for the rest — so a bilingual model can carry a localized pattern error (G23).
                     if (s.pattern() != null) {
-                        ArrayNode messages = inner.putArray("errorMessage");
-                        locales.forEach(loc -> messages.addObject().put("locale", loc)
-                                .put("text", s.patternMessages().getOrDefault(loc, s.patternMessage())));
+                        ArrayNode messages = inner.putArray(DmKeys.ERROR_MESSAGE);
+                        locales.forEach(loc -> messages.addObject().put(DmKeys.LOCALE, loc)
+                                .put(DmKeys.TEXT, s.patternMessages().getOrDefault(loc, s.patternMessage())));
                     }
                     if (s.minLength() != null) {
                         inner.put("minLength", s.minLength());
@@ -396,8 +399,8 @@ public final class DocumentModelDraft {
                         ArrayNode hintList = inner.putArray("hintList");
                         s.suggestions().forEach((loc, vals) -> {
                             ObjectNode entry = hintList.addObject();
-                            entry.put("locale", loc);
-                            ArrayNode values = entry.putArray("values");
+                            entry.put(DmKeys.LOCALE, loc);
+                            ArrayNode values = entry.putArray(DmKeys.VALUES);
                             vals.forEach(values::add);
                         });
                     }
@@ -446,7 +449,7 @@ public final class DocumentModelDraft {
             case FieldTypeSpec.DateFragmentSpec df ->
                     fieldType.putObject("DateFragmentType").put("formatOfFragment", df.fragmentFormat());
             case FieldTypeSpec.TypeDefRef ref ->
-                    fieldType.putObject("TypeDefType").put("typeDefinitionId", ref.typeDefinitionId());
+                    fieldType.putObject("TypeDefType").put(DmKeys.TYPE_DEFINITION_ID, ref.typeDefinitionId());
             case FieldTypeSpec.BooleanSpec b -> { /* bare */ }
             case FieldTypeSpec.ConfirmSpec c -> { /* bare */ }
             case FieldTypeSpec.EnumSpec e -> {
@@ -468,24 +471,24 @@ public final class DocumentModelDraft {
                     }
                 }
                 ObjectNode enumeration = fieldType.putObject("EnumerationType");
-                ArrayNode values = enumeration.putArray("values");
+                ArrayNode values = enumeration.putArray(DmKeys.VALUES);
                 for (FieldTypeSpec.EnumValue v : e.values()) {
                     ObjectNode valueNode = values.addObject();
-                    valueNode.put("value", v.value());
+                    valueNode.put(DmKeys.VALUE, v.value());
                     if (!v.labels().isEmpty()) {
-                        ArrayNode labels = valueNode.putArray("label");
-                        locales.forEach(loc -> labels.addObject().put("locale", loc).put("text", v.labels().get(loc)));
+                        ArrayNode labels = valueNode.putArray(DmKeys.LABEL);
+                        locales.forEach(loc -> labels.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, v.labels().get(loc)));
                     }
                 }
                 if (!e.categories().isEmpty()) {
                     ArrayNode categories = enumeration.putArray("categories");
                     for (FieldTypeSpec.EnumCategory c : e.categories()) {
                         ObjectNode categoryNode = categories.addObject();
-                        categoryNode.put("name", c.name());
+                        categoryNode.put(DmKeys.NAME, c.name());
                         if (c.description() != null) {
-                            categoryNode.put("description", c.description());   // editor note; kernel tolerates it
+                            categoryNode.put(DmKeys.DESCRIPTION, c.description());   // editor note; kernel tolerates it
                         }
-                        ArrayNode catValues = categoryNode.putArray("values");
+                        ArrayNode catValues = categoryNode.putArray(DmKeys.VALUES);
                         c.values().forEach(catValues::add);
                     }
                 }
@@ -495,17 +498,17 @@ public final class DocumentModelDraft {
                 if (!e.invalidValueMessages().isEmpty()) {
                     // G23: per-locale invalid-value text — written verbatim (the kernel requires every declared
                     // locale to be covered, like the enum value labels)
-                    ArrayNode messages = enumeration.putArray("errorMessage");
-                    e.invalidValueMessages().forEach((loc, text) -> messages.addObject().put("locale", loc).put("text", text));
+                    ArrayNode messages = enumeration.putArray(DmKeys.ERROR_MESSAGE);
+                    e.invalidValueMessages().forEach((loc, text) -> messages.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, text));
                 } else if (e.invalidValueMessage() != null) {
                     // the single-text shorthand, expanded across every declared locale (the kernel's localized map)
-                    ArrayNode messages = enumeration.putArray("errorMessage");
-                    locales.forEach(loc -> messages.addObject().put("locale", loc).put("text", e.invalidValueMessage()));
+                    ArrayNode messages = enumeration.putArray(DmKeys.ERROR_MESSAGE);
+                    locales.forEach(loc -> messages.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, e.invalidValueMessage()));
                 }
             }
             case FieldTypeSpec.CustomSpec cf -> {
                 ObjectNode inner = fieldType.putObject("CustomFieldType");
-                inner.put("name", cf.name());
+                inner.put(DmKeys.NAME, cf.name());
                 if (cf.minLength() != null) {
                     inner.put("minLength", cf.minLength());
                 }
@@ -526,7 +529,7 @@ public final class DocumentModelDraft {
      */
     static ObjectNode readTypeConfig(JsonNode fieldType) {
         ObjectNode out = MAPPER.createObjectNode();
-        String type = fieldType.path("type").asText("");
+        String type = fieldType.path(DmKeys.TYPE).asText("");
         JsonNode c = fieldType.path(type);   // the config lives under the discriminator key
         switch (type) {
             case "StringType" -> {
@@ -537,7 +540,7 @@ public final class DocumentModelDraft {
                 if (c.path("lineBreaksPermitted").asBoolean(false)) b.put("lineBreaks", true);
                 if (c.path("noValueValidation").asBoolean(false)) b.put("noValueValidation", true);
                 if (c.path("alphabeticalSorting").asBoolean(false)) b.put("alphabeticalSorting", true);
-                localizedMap(c.path("errorMessage")).ifPresent(m -> b.set("patternMessages", m));
+                localizedMap(c.path(DmKeys.ERROR_MESSAGE)).ifPresent(m -> b.set("patternMessages", m));
                 suggestionsMap(c.path("hintList")).ifPresent(m -> b.set("suggestions", m));
                 if (!b.isEmpty()) out.set("string", b);
             }
@@ -554,25 +557,25 @@ public final class DocumentModelDraft {
             }
             case "EnumerationType" -> {
                 ObjectNode b = MAPPER.createObjectNode();
-                ArrayNode values = b.putArray("values");
-                for (JsonNode v : c.path("values")) {
+                ArrayNode values = b.putArray(DmKeys.VALUES);
+                for (JsonNode v : c.path(DmKeys.VALUES)) {
                     ObjectNode valueNode = values.addObject();
-                    valueNode.put("value", v.path("value").asText());
-                    localizedMap(v.path("label")).ifPresent(m -> valueNode.set("labels", m));
+                    valueNode.put(DmKeys.VALUE, v.path(DmKeys.VALUE).asText());
+                    localizedMap(v.path(DmKeys.LABEL)).ifPresent(m -> valueNode.set(DmKeys.LABELS, m));
                 }
                 JsonNode categories = c.path("categories");
                 if (categories.isArray() && !categories.isEmpty()) {
                     ArrayNode catsOut = b.putArray("categories");
                     for (JsonNode cat : categories) {
                         ObjectNode catOut = catsOut.addObject();
-                        catOut.put("name", cat.path("name").asText());
-                        if (cat.hasNonNull("description")) catOut.put("description", cat.get("description").asText());
-                        ArrayNode vals = catOut.putArray("values");
-                        cat.path("values").forEach(val -> vals.add(val.asText()));
+                        catOut.put(DmKeys.NAME, cat.path(DmKeys.NAME).asText());
+                        if (cat.hasNonNull(DmKeys.DESCRIPTION)) catOut.put(DmKeys.DESCRIPTION, cat.get(DmKeys.DESCRIPTION).asText());
+                        ArrayNode vals = catOut.putArray(DmKeys.VALUES);
+                        cat.path(DmKeys.VALUES).forEach(val -> vals.add(val.asText()));
                     }
                 }
                 if (c.path("alphabeticalSorting").asBoolean(false)) b.put("alphabeticalSorting", true);
-                localizedMap(c.path("errorMessage")).ifPresent(m -> b.set("errorMessages", m));
+                localizedMap(c.path(DmKeys.ERROR_MESSAGE)).ifPresent(m -> b.set("errorMessages", m));
                 out.set("enum", b);
             }
             case "DateType" -> {
@@ -604,12 +607,12 @@ public final class DocumentModelDraft {
             }
             case "CustomFieldType" -> {
                 ObjectNode b = MAPPER.createObjectNode();
-                copyText(c, "name", b, "typeName");
+                copyText(c, DmKeys.NAME, b, "typeName");
                 copyInt(c, "minLength", b, "minLength");
                 copyInt(c, "maxLength", b, "maxLength");
                 if (!b.isEmpty()) out.set("custom", b);
             }
-            case "TypeDefType" -> out.put("typedef", c.path("typeDefinitionId").asText());
+            case "TypeDefType" -> out.put("typedef", c.path(DmKeys.TYPE_DEFINITION_ID).asText());
             default -> { /* a bare type (BOOLEAN/CONFIRM) carries no surfaceable config */ }
         }
         return out;
@@ -636,7 +639,7 @@ public final class DocumentModelDraft {
         }
         ObjectNode map = MAPPER.createObjectNode();
         for (JsonNode entry : array) {
-            map.put(entry.path("locale").asText(), entry.path("text").asText());
+            map.put(entry.path(DmKeys.LOCALE).asText(), entry.path(DmKeys.TEXT).asText());
         }
         return Optional.of(map);
     }
@@ -648,8 +651,8 @@ public final class DocumentModelDraft {
         }
         ObjectNode map = MAPPER.createObjectNode();
         for (JsonNode entry : array) {
-            ArrayNode values = map.putArray(entry.path("locale").asText());
-            entry.path("values").forEach(v -> values.add(v.asText()));
+            ArrayNode values = map.putArray(entry.path(DmKeys.LOCALE).asText());
+            entry.path(DmKeys.VALUES).forEach(v -> values.add(v.asText()));
         }
         return Optional.of(map);
     }

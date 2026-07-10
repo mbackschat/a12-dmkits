@@ -20,6 +20,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 
 import io.github.mbackschat.a12.dm.core.DmJson;
+import io.github.mbackschat.a12.dm.core.DmKeys;
+import io.github.mbackschat.a12.dm.core.ElementType;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
@@ -80,7 +82,7 @@ public final class ModelDocument {
     // --- header ---------------------------------------------------------------------------------
 
     public String id() {
-        return root.path("header").path("id").asText();
+        return root.path(DmKeys.HEADER).path(DmKeys.ID).asText();
     }
 
     /**
@@ -93,24 +95,24 @@ public final class ModelDocument {
         if (newId == null || newId.isBlank()) {
             throw new IllegalArgumentException("a model id must be non-empty");
         }
-        ((ObjectNode) root.path("header")).put("id", newId);
+        ((ObjectNode) root.path(DmKeys.HEADER)).put(DmKeys.ID, newId);
         return this;
     }
 
     public String modelVersion() {
-        return root.path("header").path("modelVersion").asText();
+        return root.path(DmKeys.HEADER).path("modelVersion").asText();
     }
 
     /** The {@code header.modelType} discriminator ({@code "document"} for document/type-def-import models). */
     public String modelType() {
-        return root.path("header").path("modelType").asText();
+        return root.path(DmKeys.HEADER).path(DmKeys.MODEL_TYPE).asText();
     }
 
     /** The declared locale codes, in document order. */
     public List<String> locales() {
         List<String> out = new ArrayList<>();
-        for (JsonNode l : root.path("header").path("locales")) {
-            out.add(l.path("code").asText());
+        for (JsonNode l : root.path(DmKeys.HEADER).path(DmKeys.LOCALES)) {
+            out.add(l.path(DmKeys.CODE).asText());
         }
         return out;
     }
@@ -122,16 +124,16 @@ public final class ModelDocument {
      * {@code validate} after this rejects until each carries the locale's message (G16).
      */
     public ModelDocument addLocale(String code) {
-        ObjectNode header = (ObjectNode) root.path("header");
-        ArrayNode locales = header.path("locales").isArray()
-                ? (ArrayNode) header.get("locales")
-                : header.putArray("locales");
+        ObjectNode header = (ObjectNode) root.path(DmKeys.HEADER);
+        ArrayNode locales = header.path(DmKeys.LOCALES).isArray()
+                ? (ArrayNode) header.get(DmKeys.LOCALES)
+                : header.putArray(DmKeys.LOCALES);
         for (JsonNode l : locales) {
-            if (code.equals(l.path("code").asText())) {
+            if (code.equals(l.path(DmKeys.CODE).asText())) {
                 return this;   // already declared
             }
         }
-        locales.addObject().put("code", code);
+        locales.addObject().put(DmKeys.CODE, code);
         return this;
     }
 
@@ -142,16 +144,16 @@ public final class ModelDocument {
      * kernel-valid. Fails fast on removing the <b>last</b> locale (a model needs at least one).
      */
     public ModelDocument removeLocale(String code) {
-        JsonNode header = root.path("header");
-        if (!header.path("locales").isArray()) {
+        JsonNode header = root.path(DmKeys.HEADER);
+        if (!header.path(DmKeys.LOCALES).isArray()) {
             return this;
         }
-        ArrayNode locales = (ArrayNode) header.get("locales");
-        if (locales.size() == 1 && code.equals(locales.path(0).path("code").asText())) {
+        ArrayNode locales = (ArrayNode) header.get(DmKeys.LOCALES);
+        if (locales.size() == 1 && code.equals(locales.path(0).path(DmKeys.CODE).asText())) {
             throw new IllegalArgumentException("cannot remove the last locale '" + code
                     + "' — a model needs at least one declared locale");
         }
-        filterArray((ObjectNode) header, "locales", "code", code);
+        filterArray((ObjectNode) header, DmKeys.LOCALES, DmKeys.CODE, code);
         return this;
     }
 
@@ -160,10 +162,10 @@ public final class ModelDocument {
      *  kernel adds are excluded here — read those via {@link #transitiveIncludes()}. */
     public List<Include> includes() {
         List<Include> out = new ArrayList<>();
-        for (JsonNode r : root.path("header").path("modelReferences")) {
-            String purpose = r.path("purpose").asText();
+        for (JsonNode r : root.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES)) {
+            String purpose = r.path(DmKeys.PURPOSE).asText();
             if (INCLUDE_PURPOSE.equals(purpose) || purpose.isEmpty()) {
-                out.add(new Include(r.path("alias").asText(), r.path("reference").asText()));
+                out.add(new Include(r.path(DmKeys.ALIAS).asText(), r.path(DmKeys.REFERENCE).asText()));
             }
         }
         return out;
@@ -174,9 +176,9 @@ public final class ModelDocument {
      *  {@link #includes()} (DG6/A12K-3234). */
     public List<Include> transitiveIncludes() {
         List<Include> out = new ArrayList<>();
-        for (JsonNode r : root.path("header").path("modelReferences")) {
-            if (TRANSITIVE_INCLUDE_PURPOSE.equals(r.path("purpose").asText())) {
-                out.add(new Include(r.path("alias").asText(), r.path("reference").asText()));
+        for (JsonNode r : root.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES)) {
+            if (TRANSITIVE_INCLUDE_PURPOSE.equals(r.path(DmKeys.PURPOSE).asText())) {
+                out.add(new Include(r.path(DmKeys.ALIAS).asText(), r.path(DmKeys.REFERENCE).asText()));
             }
         }
         return out;
@@ -189,9 +191,9 @@ public final class ModelDocument {
      */
     public List<String> typeDefImports() {
         List<String> out = new ArrayList<>();
-        for (JsonNode r : root.path("header").path("modelReferences")) {
-            if (IMPORT_PURPOSE.equals(r.path("purpose").asText())) {
-                out.add(r.path("reference").asText());
+        for (JsonNode r : root.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES)) {
+            if (IMPORT_PURPOSE.equals(r.path(DmKeys.PURPOSE).asText())) {
+                out.add(r.path(DmKeys.REFERENCE).asText());
             }
         }
         return out;
@@ -201,42 +203,42 @@ public final class ModelDocument {
 
     /** The model-level document configuration (content {@code modelConfig}). */
     public DocConfig config() {
-        JsonNode c = root.path("content").path("modelConfig");
+        JsonNode c = root.path(DmKeys.CONTENT).path(DmKeys.MODEL_CONFIG);
         List<String> supported = new ArrayList<>();
-        for (JsonNode ch : c.path("supportedCharacters")) {
+        for (JsonNode ch : c.path(DmKeys.SUPPORTED_CHARACTERS)) {
             supported.add(ch.asText());
         }
         return new DocConfig(
-                c.path("decimalSeparator").asText(),
-                c.path("timeZone").asText(),
-                c.path("conditionLanguage").path("code").asText(),
-                c.path("fieldRefByShortNameAllowed").asBoolean(),
+                c.path(DmKeys.DECIMAL_SEPARATOR).asText(),
+                c.path(DmKeys.TIME_ZONE).asText(),
+                c.path(DmKeys.CONDITION_LANGUAGE).path(DmKeys.CODE).asText(),
+                c.path(DmKeys.FIELD_REF_BY_SHORT_NAME_ALLOWED).asBoolean(),
                 List.copyOf(supported));
     }
 
     /** The number of validation rules declared anywhere in the element tree (kernel-free count). */
     public int ruleCount() {
-        return countByType("Rule");
+        return countByType(ElementType.RULE.wireName());
     }
 
     /** The number of computations declared anywhere in the element tree (kernel-free count). */
     public int computationCount() {
-        return countByType("Computation");
+        return countByType(ElementType.COMPUTATION.wireName());
     }
 
     private int countByType(String type) {
         int[] count = {0};
-        countByType(root.path("content").path("modelRoot").path("rootGroups"), type, count);
+        countByType(root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS), type, count);
         return count[0];
     }
 
     private static void countByType(JsonNode elements, String type, int[] count) {
         for (JsonNode el : elements) {
-            if (type.equals(el.path("type").asText())) {
+            if (type.equals(el.path(DmKeys.TYPE).asText())) {
                 count[0]++;
             }
-            if ("Group".equals(el.path("type").asText())) {
-                countByType(el.path("Group").path("elements"), type, count);
+            if (ElementType.GROUP.matches(el)) {
+                countByType(el.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS), type, count);
             }
         }
     }
@@ -244,17 +246,17 @@ public final class ModelDocument {
     /** The ids of the reusable type definitions declared on the model, in document order. */
     public List<String> typeDefinitionIds() {
         List<String> out = new ArrayList<>();
-        for (JsonNode t : root.path("content").path("typeDefinitions")) {
-            out.add(t.path("id").asText());
+        for (JsonNode t : root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS)) {
+            out.add(t.path(DmKeys.ID).asText());
         }
         return out;
     }
 
     /** The field-type discriminator of the type definition {@code id} (e.g. {@code NumberType}), if declared. */
     public Optional<String> typeDefinitionType(String id) {
-        for (JsonNode t : root.path("content").path("typeDefinitions")) {
-            if (id.equals(t.path("id").asText())) {
-                return Optional.ofNullable(t.path("fieldType").path("type").asText(null));
+        for (JsonNode t : root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS)) {
+            if (id.equals(t.path(DmKeys.ID).asText())) {
+                return Optional.ofNullable(t.path(DmKeys.FIELD_TYPE).path(DmKeys.TYPE).asText(null));
             }
         }
         return Optional.empty();
@@ -315,7 +317,7 @@ public final class ModelDocument {
         if (field == null) {
             return Optional.empty();
         }
-        return Optional.ofNullable(field.path("Field").path("fieldType").path("type").asText(null));
+        return Optional.ofNullable(field.path(ElementType.FIELD.wireName()).path(DmKeys.FIELD_TYPE).path(DmKeys.TYPE).asText(null));
     }
 
     /**
@@ -330,8 +332,8 @@ public final class ModelDocument {
         if (field == null) {
             return Optional.empty();
         }
-        JsonNode fieldType = field.path("Field").path("fieldType");
-        if (!fieldType.hasNonNull("type")) {
+        JsonNode fieldType = field.path(ElementType.FIELD.wireName()).path(DmKeys.FIELD_TYPE);
+        if (!fieldType.hasNonNull(DmKeys.TYPE)) {
             return Optional.empty();
         }
         return Optional.of(kindOf(fieldType));
@@ -340,9 +342,9 @@ public final class ModelDocument {
     /** Map a stored {@code fieldType} node to its clean {@link ValueKind} name, following a typedef reference
      *  to its underlying discriminator first (a dangling/empty reference is honestly {@code UNKNOWN}). */
     private String kindOf(JsonNode fieldType) {
-        String discriminator = fieldType.path("type").asText(null);
+        String discriminator = fieldType.path(DmKeys.TYPE).asText(null);
         if ("TypeDefType".equals(discriminator)) {
-            String typeDefId = fieldType.path("TypeDefType").path("typeDefinitionId").asText(null);
+            String typeDefId = fieldType.path("TypeDefType").path(DmKeys.TYPE_DEFINITION_ID).asText(null);
             discriminator = typeDefId == null ? null : typeDefinitionType(typeDefId).orElse(null);
         }
         return ValueKind.fromKernelType(discriminator).name();
@@ -361,7 +363,7 @@ public final class ModelDocument {
         if (field == null) {
             return Optional.empty();
         }
-        JsonNode fieldType = field.path("Field").path("fieldType");
+        JsonNode fieldType = field.path(ElementType.FIELD.wireName()).path(DmKeys.FIELD_TYPE);
         if (fieldType.isMissingNode()) {
             return Optional.empty();
         }
@@ -378,7 +380,7 @@ public final class ModelDocument {
         return fieldConfig(fieldPath)
                 .map(config -> {
                     List<String> values = new ArrayList<>();
-                    config.path("enum").path("values").forEach(v -> values.add(v.path("value").asText()));
+                    config.path("enum").path(DmKeys.VALUES).forEach(v -> values.add(v.path(DmKeys.VALUE).asText()));
                     return values;
                 })
                 .orElseGet(List::of);
@@ -490,19 +492,19 @@ public final class ModelDocument {
             return Optional.empty();
         }
         return Optional.of(Requiredness.fromMode(
-                field.path("Field").path("requirednessConfig").path("mode").asText(null)));
+                field.path(ElementType.FIELD.wireName()).path(DmKeys.REQUIREDNESS_CONFIG).path("mode").asText(null)));
     }
 
     /** Whether the group at {@code groupPath} is repeatable (repeatability &gt; 1). */
     public boolean isRepeating(String groupPath) {
         JsonNode group = locate(groupPath, true);
-        return group != null && group.path("Group").path("repeatability").asInt(1) > 1;
+        return group != null && group.path(ElementType.GROUP.wireName()).path(DmKeys.REPEATABILITY).asInt(1) > 1;
     }
 
     /** The group's maximum repetitions — the repeatability count ({@code 1} = non-repeatable). */
     public int maxRepetitions(String groupPath) {
         JsonNode group = locate(groupPath, true);
-        return group == null ? 1 : group.path("Group").path("repeatability").asInt(1);
+        return group == null ? 1 : group.path(ElementType.GROUP.wireName()).path(DmKeys.REPEATABILITY).asInt(1);
     }
 
     // --- structure edits (M8) — surgical mutations of the source tree; validate() is the kernel gate -
@@ -542,7 +544,7 @@ public final class ModelDocument {
         if (field == null) {
             throw new IllegalArgumentException("no field at path: " + fieldPath);
         }
-        DocumentModelDraft.writeFieldType(((ObjectNode) field.path("Field")).putObject("fieldType"),
+        DocumentModelDraft.writeFieldType(((ObjectNode) field.path(ElementType.FIELD.wireName())).putObject(DmKeys.FIELD_TYPE),
                 type, locales());
         return this;
     }
@@ -553,13 +555,13 @@ public final class ModelDocument {
      */
     public ModelDocument setLabel(String elementPath, Map<String, String> localeToText) {
         ObjectNode payload = elementPayload(elementPath);
-        ArrayNode label = payload.putArray("label");
+        ArrayNode label = payload.putArray(DmKeys.LABEL);
         for (String loc : locales()) {
             if (!localeToText.containsKey(loc)) {
                 throw new IllegalArgumentException("label for " + elementPath
                         + " is missing the declared locale '" + loc + "'");
             }
-            label.addObject().put("locale", loc).put("text", localeToText.get(loc));
+            label.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, localeToText.get(loc));
         }
         return this;
     }
@@ -567,22 +569,22 @@ public final class ModelDocument {
     /** Set a name/value annotation on any element — field, group, or rule (replacing any same-named entry). */
     public ModelDocument setAnnotation(String elementPath, String name, String value) {
         ObjectNode element = metaElement(elementPath);
-        ArrayNode annotations = element.has("annotations")
-                ? (ArrayNode) element.get("annotations")
-                : element.putArray("annotations");
+        ArrayNode annotations = element.has(DmKeys.ANNOTATIONS)
+                ? (ArrayNode) element.get(DmKeys.ANNOTATIONS)
+                : element.putArray(DmKeys.ANNOTATIONS);
         for (JsonNode a : annotations) {
-            if (name.equals(a.path("name").asText())) {
-                ((ObjectNode) a).put("value", value);
+            if (name.equals(a.path(DmKeys.NAME).asText())) {
+                ((ObjectNode) a).put(DmKeys.VALUE, value);
                 return this;
             }
         }
-        annotations.addObject().put("name", name).put("value", value);
+        annotations.addObject().put(DmKeys.NAME, name).put(DmKeys.VALUE, value);
         return this;
     }
 
     /** Remove the annotation named {@code name} from the element at {@code elementPath} (no-op if absent). */
     public ModelDocument removeAnnotation(String elementPath, String name) {
-        filterArray(metaElement(elementPath), "annotations", "name", name);
+        filterArray(metaElement(elementPath), DmKeys.ANNOTATIONS, DmKeys.NAME, name);
         return this;
     }
 
@@ -592,25 +594,25 @@ public final class ModelDocument {
      * text for an existing locale.
      */
     public ModelDocument setInternalDescription(String elementPath, String locale, String text) {
-        upsertLocalized(metaElement(elementPath), "internalDescription", locale, text);
+        upsertLocalized(metaElement(elementPath), DmKeys.INTERNAL_DESCRIPTION, locale, text);
         return this;
     }
 
     /** Upsert one per-locale {@code externalDescription} entry on the element at {@code elementPath} (end-user text). */
     public ModelDocument setExternalDescription(String elementPath, String locale, String text) {
-        upsertLocalized(metaElement(elementPath), "externalDescription", locale, text);
+        upsertLocalized(metaElement(elementPath), DmKeys.EXTERNAL_DESCRIPTION, locale, text);
         return this;
     }
 
     /** Remove the {@code internalDescription} entry for {@code locale} from the element at {@code elementPath}. */
     public ModelDocument removeInternalDescription(String elementPath, String locale) {
-        filterArray(metaElement(elementPath), "internalDescription", "locale", locale);
+        filterArray(metaElement(elementPath), DmKeys.INTERNAL_DESCRIPTION, DmKeys.LOCALE, locale);
         return this;
     }
 
     /** Remove the {@code externalDescription} entry for {@code locale} from the element at {@code elementPath}. */
     public ModelDocument removeExternalDescription(String elementPath, String locale) {
-        filterArray(metaElement(elementPath), "externalDescription", "locale", locale);
+        filterArray(metaElement(elementPath), DmKeys.EXTERNAL_DESCRIPTION, DmKeys.LOCALE, locale);
         return this;
     }
 
@@ -618,12 +620,12 @@ public final class ModelDocument {
     private static void upsertLocalized(ObjectNode element, String key, String locale, String text) {
         ArrayNode array = element.has(key) ? (ArrayNode) element.get(key) : element.putArray(key);
         for (JsonNode e : array) {
-            if (locale.equals(e.path("locale").asText())) {
-                ((ObjectNode) e).put("text", text);
+            if (locale.equals(e.path(DmKeys.LOCALE).asText())) {
+                ((ObjectNode) e).put(DmKeys.TEXT, text);
                 return;
             }
         }
-        array.addObject().put("locale", locale).put("text", text);
+        array.addObject().put(DmKeys.LOCALE, locale).put(DmKeys.TEXT, text);
     }
 
     /** Drop every entry of {@code element[key]} whose {@code matchField} equals {@code matchValue}; remove the array if it empties. */
@@ -647,62 +649,62 @@ public final class ModelDocument {
 
     /** Upsert one model-level header <b>label</b> locale (the model-level peer of {@link #setLabel}). */
     public ModelDocument setModelLabel(String locale, String text) {
-        ArrayNode labels = headerArray("labels");
+        ArrayNode labels = headerArray(DmKeys.LABELS);
         for (JsonNode l : labels) {
-            if (locale.equals(l.path("locale").asText())) {
-                ((ObjectNode) l).put("text", text);
+            if (locale.equals(l.path(DmKeys.LOCALE).asText())) {
+                ((ObjectNode) l).put(DmKeys.TEXT, text);
                 return this;
             }
         }
-        labels.addObject().put("locale", locale).put("text", text);
+        labels.addObject().put(DmKeys.LOCALE, locale).put(DmKeys.TEXT, text);
         return this;
     }
 
     /** Upsert a model-level header <b>annotation</b> (replacing any existing entry with the same name). */
     public ModelDocument setModelAnnotation(String name, String value) {
-        ArrayNode annotations = headerArray("annotations");
+        ArrayNode annotations = headerArray(DmKeys.ANNOTATIONS);
         for (JsonNode a : annotations) {
-            if (name.equals(a.path("name").asText())) {
-                ((ObjectNode) a).put("value", value);
+            if (name.equals(a.path(DmKeys.NAME).asText())) {
+                ((ObjectNode) a).put(DmKeys.VALUE, value);
                 return this;
             }
         }
-        annotations.addObject().put("name", name).put("value", value);
+        annotations.addObject().put(DmKeys.NAME, name).put(DmKeys.VALUE, value);
         return this;
     }
 
     /** Remove the model-level header annotation named {@code name} (no-op if absent; drops the array if it empties). */
     public ModelDocument removeModelAnnotation(String name) {
-        JsonNode header = root.path("header");
+        JsonNode header = root.path(DmKeys.HEADER);
         if (header.isObject()) {
-            filterArray((ObjectNode) header, "annotations", "name", name);
+            filterArray((ObjectNode) header, DmKeys.ANNOTATIONS, DmKeys.NAME, name);
         }
         return this;
     }
 
     /** Set the model-level {@code comment} ({@code modelInfo.comment} — a free-text model description/note). */
     public ModelDocument setModelComment(String text) {
-        modelInfo().put("comment", text);
+        modelInfo().put(DmKeys.COMMENT, text);
         return this;
     }
 
     /** Remove the model-level {@code comment}. */
     public ModelDocument clearModelComment() {
-        modelInfo().remove("comment");
+        modelInfo().remove(DmKeys.COMMENT);
         return this;
     }
 
     /** The model-level {@code comment} ({@code modelInfo.comment}), if set. */
     public Optional<String> modelComment() {
-        JsonNode comment = root.path("content").path("modelInfo").path("comment");
+        JsonNode comment = root.path(DmKeys.CONTENT).path(DmKeys.MODEL_INFO).path(DmKeys.COMMENT);
         return comment.isTextual() ? Optional.of(comment.asText()) : Optional.empty();
     }
 
     /** The model-level header <b>annotations</b> as a name→value map (the read peer of {@link #setModelAnnotation}). */
     public Map<String, String> modelAnnotations() {
         Map<String, String> out = new java.util.LinkedHashMap<>();
-        for (JsonNode a : root.path("header").path("annotations")) {
-            out.put(a.path("name").asText(), a.path("value").asText());
+        for (JsonNode a : root.path(DmKeys.HEADER).path(DmKeys.ANNOTATIONS)) {
+            out.put(a.path(DmKeys.NAME).asText(), a.path(DmKeys.VALUE).asText());
         }
         return out;
     }
@@ -710,15 +712,15 @@ public final class ModelDocument {
     /** The model-level header <b>labels</b> as a locale→text map (the read peer of {@link #setModelLabel}). */
     public Map<String, String> modelLabels() {
         Map<String, String> out = new java.util.LinkedHashMap<>();
-        for (JsonNode l : root.path("header").path("labels")) {
-            out.put(l.path("locale").asText(), l.path("text").asText());
+        for (JsonNode l : root.path(DmKeys.HEADER).path(DmKeys.LABELS)) {
+            out.put(l.path(DmKeys.LOCALE).asText(), l.path(DmKeys.TEXT).asText());
         }
         return out;
     }
 
     /** The header's {@code key} array, created if absent. */
     private ArrayNode headerArray(String key) {
-        ObjectNode header = (ObjectNode) root.path("header");
+        ObjectNode header = (ObjectNode) root.path(DmKeys.HEADER);
         return header.has(key) ? (ArrayNode) header.get(key) : header.putArray(key);
     }
 
@@ -728,7 +730,7 @@ public final class ModelDocument {
         if (field == null) {
             throw new IllegalArgumentException("no field at path: " + fieldPath);
         }
-        return (ObjectNode) field.path("Field");
+        return (ObjectNode) field.path(ElementType.FIELD.wireName());
     }
 
     /** Set (or clear, with {@link Requiredness#OPTIONAL}) the requiredness of an existing field. A standalone
@@ -739,10 +741,10 @@ public final class ModelDocument {
         ObjectNode body = fieldBody(fieldPath);
         String mode = requiredness.mode();
         if (mode == null) {
-            body.remove("requirednessConfig");
+            body.remove(DmKeys.REQUIREDNESS_CONFIG);
         } else {
-            JsonNode existing = body.path("requirednessConfig");
-            ObjectNode config = existing.isObject() ? (ObjectNode) existing : body.putObject("requirednessConfig");
+            JsonNode existing = body.path(DmKeys.REQUIREDNESS_CONFIG);
+            ObjectNode config = existing.isObject() ? (ObjectNode) existing : body.putObject(DmKeys.REQUIREDNESS_CONFIG);
             config.put("mode", mode);
         }
         return this;
@@ -756,13 +758,13 @@ public final class ModelDocument {
      */
     public ModelDocument setRequiredErrorMessages(String fieldPath, Map<String, String> localeToText) {
         ObjectNode body = fieldBody(fieldPath);
-        JsonNode rc = body.path("requirednessConfig");
+        JsonNode rc = body.path(DmKeys.REQUIREDNESS_CONFIG);
         if (!rc.isObject()) {
             throw new IllegalArgumentException("a required error message needs " + fieldPath
                     + " to be required first (set required:true or \"ifParentPresent\")");
         }
-        ArrayNode messages = ((ObjectNode) rc).putArray("errorMessage");
-        localeToText.forEach((loc, text) -> messages.addObject().put("locale", loc).put("text", text));
+        ArrayNode messages = ((ObjectNode) rc).putArray(DmKeys.ERROR_MESSAGE);
+        localeToText.forEach((loc, text) -> messages.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, text));
         return this;
     }
 
@@ -770,7 +772,7 @@ public final class ModelDocument {
     public ModelDocument setHelperText(String fieldPath, Map<String, String> localeToText) {
         ObjectNode body = fieldBody(fieldPath);
         ArrayNode helper = body.putArray("helperText");
-        localeToText.forEach((loc, text) -> helper.addObject().put("locale", loc).put("text", text));
+        localeToText.forEach((loc, text) -> helper.addObject().put(DmKeys.LOCALE, loc).put(DmKeys.TEXT, text));
         return this;
     }
 
@@ -838,13 +840,13 @@ public final class ModelDocument {
      */
     public Optional<Map<String, String>> labels(String elementPath) {
         return findElement(elementPath)
-                .map(el -> localizedOf((ObjectNode) el.path(el.path("type").asText()), "label"));
+                .map(el -> localizedOf((ObjectNode) el.path(el.path(DmKeys.TYPE).asText()), DmKeys.LABEL));
     }
 
     /** The typed payload object ({@code "Field"} or {@code "Group"}) of the element at {@code path}. */
     private ObjectNode elementPayload(String path) {
         ObjectNode element = element(path);
-        return (ObjectNode) element.path(element.path("type").asText());
+        return (ObjectNode) element.path(element.path(DmKeys.TYPE).asText());
     }
 
     /**
@@ -855,12 +857,12 @@ public final class ModelDocument {
      * one metadata API ({@link #setInternalDescription} / {@link #setAnnotation} / …) covers them all.
      */
     private ObjectNode metaElement(String pathOrTypeDefId) {
-        ObjectNode found = findByPath(root.path("content").path("modelRoot").path("rootGroups"), "", pathOrTypeDefId);
+        ObjectNode found = findByPath(root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS), "", pathOrTypeDefId);
         if (found != null) {
             return found;
         }
-        for (JsonNode td : root.path("content").path("typeDefinitions")) {
-            if (pathOrTypeDefId.equals(td.path("id").asText())) {
+        for (JsonNode td : root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS)) {
+            if (pathOrTypeDefId.equals(td.path(DmKeys.ID).asText())) {
                 return (ObjectNode) td;
             }
         }
@@ -872,11 +874,11 @@ public final class ModelDocument {
      * type definition by id. The pre-check for the metadata edit verbs (so a bogus reference refuses cleanly).
      */
     public boolean describableExists(String pathOrTypeDefId) {
-        if (findByPath(root.path("content").path("modelRoot").path("rootGroups"), "", pathOrTypeDefId) != null) {
+        if (findByPath(root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS), "", pathOrTypeDefId) != null) {
             return true;
         }
-        for (JsonNode td : root.path("content").path("typeDefinitions")) {
-            if (pathOrTypeDefId.equals(td.path("id").asText())) {
+        for (JsonNode td : root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS)) {
+            if (pathOrTypeDefId.equals(td.path(DmKeys.ID).asText())) {
                 return true;
             }
         }
@@ -885,19 +887,19 @@ public final class ModelDocument {
 
     /** Read an element's per-locale {@code internalDescription}/{@code externalDescription} (the metadata read verbs). */
     public Map<String, String> internalDescription(String pathOrTypeDefId) {
-        return localizedOf(metaElement(pathOrTypeDefId), "internalDescription");
+        return localizedOf(metaElement(pathOrTypeDefId), DmKeys.INTERNAL_DESCRIPTION);
     }
 
     /** Read an element's external description, by locale. */
     public Map<String, String> externalDescription(String pathOrTypeDefId) {
-        return localizedOf(metaElement(pathOrTypeDefId), "externalDescription");
+        return localizedOf(metaElement(pathOrTypeDefId), DmKeys.EXTERNAL_DESCRIPTION);
     }
 
     /** Read an element's annotations as a name→value map. */
     public Map<String, String> annotations(String pathOrTypeDefId) {
         Map<String, String> out = new java.util.LinkedHashMap<>();
-        for (JsonNode a : metaElement(pathOrTypeDefId).path("annotations")) {
-            out.put(a.path("name").asText(), a.path("value").asText());
+        for (JsonNode a : metaElement(pathOrTypeDefId).path(DmKeys.ANNOTATIONS)) {
+            out.put(a.path(DmKeys.NAME).asText(), a.path(DmKeys.VALUE).asText());
         }
         return out;
     }
@@ -905,19 +907,19 @@ public final class ModelDocument {
     private static Map<String, String> localizedOf(ObjectNode element, String key) {
         Map<String, String> out = new java.util.LinkedHashMap<>();
         for (JsonNode e : element.path(key)) {
-            out.put(e.path("locale").asText(), e.path("text").asText());
+            out.put(e.path(DmKeys.LOCALE).asText(), e.path(DmKeys.TEXT).asText());
         }
         return out;
     }
 
     private static ObjectNode findByPath(JsonNode container, String prefix, String target) {
         for (JsonNode node : container) {
-            String path = prefix + "/" + node.path("name").asText();
+            String path = prefix + "/" + node.path(DmKeys.NAME).asText();
             if (path.equals(target)) {
                 return (ObjectNode) node;
             }
-            if ("Group".equals(node.path("type").asText())) {
-                ObjectNode inner = findByPath(node.path("Group").path("elements"), path, target);
+            if (ElementType.GROUP.matches(node)) {
+                ObjectNode inner = findByPath(node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS), path, target);
                 if (inner != null) {
                     return inner;
                 }
@@ -979,13 +981,13 @@ public final class ModelDocument {
 
     /** Remove the field at {@code fieldPath}. Fails fast if no field is there. */
     public ModelDocument removeField(String fieldPath) {
-        removeElement(fieldPath, "Field");
+        removeElement(fieldPath, ElementType.FIELD.wireName());
         return this;
     }
 
     /** Remove the group at {@code groupPath} (and everything under it). Fails fast if no group is there. */
     public ModelDocument removeGroup(String groupPath) {
-        removeElement(groupPath, "Group");
+        removeElement(groupPath, ElementType.GROUP.wireName());
         return this;
     }
 
@@ -998,7 +1000,7 @@ public final class ModelDocument {
         if (group == null) {
             throw new IllegalArgumentException("no group at path: " + groupPath);
         }
-        ((ObjectNode) group.path("Group")).put("repeatability", maxRepetitions);
+        ((ObjectNode) group.path(ElementType.GROUP.wireName())).put(DmKeys.REPEATABILITY, maxRepetitions);
         return this;
     }
 
@@ -1008,14 +1010,14 @@ public final class ModelDocument {
         if (group == null) {
             throw new IllegalArgumentException("no group at path: " + groupPath);
         }
-        ((ObjectNode) group.path("Group")).put("repeatability", 1);
+        ((ObjectNode) group.path(ElementType.GROUP.wireName())).put(DmKeys.REPEATABILITY, 1);
         return this;
     }
 
     /** The group's index field (repetition row-key), if one is set. Fails fast if no group is there. */
     public Optional<String> indexField(String groupPath) {
         ObjectNode body = groupBody(groupPath);
-        return Optional.ofNullable(body.path("indexFieldName").asText(null));
+        return Optional.ofNullable(body.path(DmKeys.INDEX_FIELD_NAME).asText(null));
     }
 
     /**
@@ -1026,13 +1028,13 @@ public final class ModelDocument {
      */
     public ModelDocument setIndexField(String groupPath, String fieldName) {
         ObjectNode body = groupBody(groupPath);
-        if (body.path("repeatability").asInt(1) <= 1) {
+        if (body.path(DmKeys.REPEATABILITY).asInt(1) <= 1) {
             throw new IllegalArgumentException("an index field needs a repeatable group; " + groupPath
                     + " is not repeatable");
         }
         boolean childField = false;
-        for (JsonNode e : body.path("elements")) {
-            if ("Field".equals(e.path("type").asText()) && fieldName.equals(e.path("name").asText())) {
+        for (JsonNode e : body.path(DmKeys.ELEMENTS)) {
+            if (ElementType.FIELD.matches(e) && fieldName.equals(e.path(DmKeys.NAME).asText())) {
                 childField = true;
                 break;
             }
@@ -1041,22 +1043,22 @@ public final class ModelDocument {
             throw new IllegalArgumentException("index field '" + fieldName
                     + "' is not a direct child field of " + groupPath);
         }
-        body.put("indexFieldName", fieldName);
+        body.put(DmKeys.INDEX_FIELD_NAME, fieldName);
         return this;
     }
 
     /** Clear the group's index field (no-op if none). Fails fast if no group is there. */
     public ModelDocument clearIndexField(String groupPath) {
-        groupBody(groupPath).remove("indexFieldName");
+        groupBody(groupPath).remove(DmKeys.INDEX_FIELD_NAME);
         return this;
     }
 
     /** The group's declared row sort fields (display/USB ordering), in declared order; empty if none. */
     public List<ElementDraft.SortField> sortFields(String groupPath) {
         List<ElementDraft.SortField> out = new ArrayList<>();
-        for (JsonNode n : groupBody(groupPath).path("sortFields")) {
-            out.add(new ElementDraft.SortField(n.path("name").asText(),
-                    SortOrder.valueOf(n.path("order").asText("ASC"))));
+        for (JsonNode n : groupBody(groupPath).path(DmKeys.SORT_FIELDS)) {
+            out.add(new ElementDraft.SortField(n.path(DmKeys.NAME).asText(),
+                    SortOrder.valueOf(n.path(DmKeys.ORDER).asText("ASC"))));
         }
         return out;
     }
@@ -1070,14 +1072,14 @@ public final class ModelDocument {
      */
     public ModelDocument setSortFields(String groupPath, List<ElementDraft.SortField> fields) {
         ObjectNode body = groupBody(groupPath);
-        if (body.path("repeatability").asInt(1) <= 1) {
+        if (body.path(DmKeys.REPEATABILITY).asInt(1) <= 1) {
             throw new IllegalArgumentException("sort fields need a repeatable group; " + groupPath
                     + " is not repeatable");
         }
         for (ElementDraft.SortField sf : fields) {
             boolean childField = false;
-            for (JsonNode e : body.path("elements")) {
-                if ("Field".equals(e.path("type").asText()) && sf.fieldName().equals(e.path("name").asText())) {
+            for (JsonNode e : body.path(DmKeys.ELEMENTS)) {
+                if (ElementType.FIELD.matches(e) && sf.fieldName().equals(e.path(DmKeys.NAME).asText())) {
                     childField = true;
                     break;
                 }
@@ -1087,18 +1089,18 @@ public final class ModelDocument {
                         + "' is not a direct child field of " + groupPath);
             }
         }
-        ArrayNode arr = body.putArray("sortFields");
+        ArrayNode arr = body.putArray(DmKeys.SORT_FIELDS);
         for (ElementDraft.SortField sf : fields) {
             ObjectNode n = arr.addObject();
-            n.put("name", sf.fieldName());
-            n.put("order", sf.order().name());
+            n.put(DmKeys.NAME, sf.fieldName());
+            n.put(DmKeys.ORDER, sf.order().name());
         }
         return this;
     }
 
     /** Clear the group's declared row sort fields (no-op if none). Fails fast if no group is there. */
     public ModelDocument clearSortFields(String groupPath) {
-        groupBody(groupPath).remove("sortFields");
+        groupBody(groupPath).remove(DmKeys.SORT_FIELDS);
         return this;
     }
 
@@ -1108,35 +1110,35 @@ public final class ModelDocument {
         if (group == null) {
             throw new IllegalArgumentException("no group at path: " + groupPath);
         }
-        return (ObjectNode) group.path("Group");
+        return (ObjectNode) group.path(ElementType.GROUP.wireName());
     }
 
     // --- doc config (content.modelConfig) -------------------------------------------------------
 
     /** Set the decimal separator (e.g. {@code "."} or {@code ","} — the comma-vs-point concern). */
     public ModelDocument setDecimalSeparator(String separator) {
-        modelConfig().put("decimalSeparator", separator);
+        modelConfig().put(DmKeys.DECIMAL_SEPARATOR, separator);
         return this;
     }
 
     /** Set the model's time zone (e.g. {@code "Europe/Berlin"}, {@code "UTC"}). */
     public ModelDocument setTimeZone(String timeZone) {
-        modelConfig().put("timeZone", timeZone);
+        modelConfig().put(DmKeys.TIME_ZONE, timeZone);
         return this;
     }
 
     /** Set the condition language code (e.g. {@code "en_US"}, {@code "de_DE"}). */
     public ModelDocument setConditionLanguage(String localeCode) {
         ObjectNode config = modelConfig();
-        JsonNode cl = config.path("conditionLanguage");
-        ObjectNode node = cl.isObject() ? (ObjectNode) cl : config.putObject("conditionLanguage");
-        node.put("code", localeCode);
+        JsonNode cl = config.path(DmKeys.CONDITION_LANGUAGE);
+        ObjectNode node = cl.isObject() ? (ObjectNode) cl : config.putObject(DmKeys.CONDITION_LANGUAGE);
+        node.put(DmKeys.CODE, localeCode);
         return this;
     }
 
     /** Allow (or forbid) short-name field references where unique — the {@code modelConfig} flag. */
     public ModelDocument setFieldRefByShortNameAllowed(boolean allowed) {
-        modelConfig().put("fieldRefByShortNameAllowed", allowed);
+        modelConfig().put(DmKeys.FIELD_REF_BY_SHORT_NAME_ALLOWED, allowed);
         return this;
     }
 
@@ -1147,9 +1149,9 @@ public final class ModelDocument {
      */
     public ModelDocument setSupportedCharacters(List<String> chars) {
         ObjectNode config = modelConfig();
-        config.remove("supportedCharacters");
+        config.remove(DmKeys.SUPPORTED_CHARACTERS);
         if (!chars.isEmpty()) {
-            ArrayNode array = config.putArray("supportedCharacters");
+            ArrayNode array = config.putArray(DmKeys.SUPPORTED_CHARACTERS);
             chars.forEach(array::add);
         }
         return this;
@@ -1157,14 +1159,14 @@ public final class ModelDocument {
 
     /** Set the model base year ({@code modelInfo.baseYear}) — resolves year-less dates / the BaseYear point-in-time. */
     public ModelDocument setBaseYear(int year) {
-        modelInfo().put("baseYear", String.valueOf(year));
+        modelInfo().put(DmKeys.BASE_YEAR, String.valueOf(year));
         return this;
     }
 
     /** The model's base year ({@code modelInfo.baseYear}), if set — the read peer of {@link #setBaseYear}
      *  (the kernel stores it as a string, so tolerate both textual and numeric). */
     public Optional<Integer> baseYear() {
-        JsonNode by = root.path("content").path("modelInfo").path("baseYear");
+        JsonNode by = root.path(DmKeys.CONTENT).path(DmKeys.MODEL_INFO).path(DmKeys.BASE_YEAR);
         if (by.isInt()) {
             return Optional.of(by.asInt());
         }
@@ -1179,7 +1181,7 @@ public final class ModelDocument {
     }
 
     private ObjectNode modelConfig() {
-        JsonNode config = root.path("content").path("modelConfig");
+        JsonNode config = root.path(DmKeys.CONTENT).path(DmKeys.MODEL_CONFIG);
         if (!config.isObject()) {
             throw new IllegalStateException("model has no content.modelConfig object");
         }
@@ -1187,7 +1189,7 @@ public final class ModelDocument {
     }
 
     private ObjectNode modelInfo() {
-        JsonNode info = root.path("content").path("modelInfo");
+        JsonNode info = root.path(DmKeys.CONTENT).path(DmKeys.MODEL_INFO);
         if (!info.isObject()) {
             throw new IllegalStateException("model has no content.modelInfo object");
         }
@@ -1203,13 +1205,13 @@ public final class ModelDocument {
 
     /** Declare a reusable type definition {@code id} over a fully-configured {@code type} (scale, pattern, enum, …). */
     public ModelDocument addTypeDefinition(String id, FieldTypeSpec type) {
-        JsonNode tds = root.path("content").path("typeDefinitions");
+        JsonNode tds = root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS);
         ArrayNode array = tds.isArray() ? (ArrayNode) tds
-                : ((ObjectNode) root.path("content")).putArray("typeDefinitions");
+                : ((ObjectNode) root.path(DmKeys.CONTENT)).putArray(DmKeys.TYPE_DEFINITIONS);
         ObjectNode node = array.addObject();
-        node.put("id", id);
-        node.put("name", id);
-        DocumentModelDraft.writeFieldType(node.putObject("fieldType"), type, locales());
+        node.put(DmKeys.ID, id);
+        node.put(DmKeys.NAME, id);
+        DocumentModelDraft.writeFieldType(node.putObject(DmKeys.FIELD_TYPE), type, locales());
         return this;
     }
 
@@ -1220,11 +1222,11 @@ public final class ModelDocument {
 
     /** Re-configure the underlying type of the type definition {@code id}; fails fast if absent. */
     public ModelDocument setTypeDefinitionType(String id, FieldTypeSpec type) {
-        JsonNode tds = root.path("content").path("typeDefinitions");
+        JsonNode tds = root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS);
         if (tds.isArray()) {
             for (JsonNode td : tds) {
-                if (id.equals(td.path("id").asText())) {
-                    DocumentModelDraft.writeFieldType(((ObjectNode) td).putObject("fieldType"), type, locales());
+                if (id.equals(td.path(DmKeys.ID).asText())) {
+                    DocumentModelDraft.writeFieldType(((ObjectNode) td).putObject(DmKeys.FIELD_TYPE), type, locales());
                     return this;
                 }
             }
@@ -1239,8 +1241,8 @@ public final class ModelDocument {
     public List<String> fieldsUsingTypeDefinition(String id) {
         List<String> out = new ArrayList<>();
         walk((path, node, isGroup) -> {
-            if (!isGroup && id.equals(node.path("Field").path("fieldType")
-                    .path("TypeDefType").path("typeDefinitionId").asText(null))) {
+            if (!isGroup && id.equals(node.path(ElementType.FIELD.wireName()).path(DmKeys.FIELD_TYPE)
+                    .path("TypeDefType").path(DmKeys.TYPE_DEFINITION_ID).asText(null))) {
                 out.add(path);
             }
         });
@@ -1255,7 +1257,7 @@ public final class ModelDocument {
         if (field == null) {
             throw new IllegalArgumentException("no field at: " + fieldPath);
         }
-        ((ObjectNode) field).put("name", newName).put("id", renamePath(fieldPath, newName));
+        ((ObjectNode) field).put(DmKeys.NAME, newName).put(DmKeys.ID, renamePath(fieldPath, newName));
         return this;
     }
 
@@ -1269,7 +1271,7 @@ public final class ModelDocument {
         if (group == null) {
             throw new IllegalArgumentException("no group at: " + groupPath);
         }
-        ((ObjectNode) group).put("name", newName);
+        ((ObjectNode) group).put(DmKeys.NAME, newName);
         reprefixIds(group, groupPath, renamePath(groupPath, newName));
         return this;
     }
@@ -1277,10 +1279,10 @@ public final class ModelDocument {
     /** Rename the rule at {@code ruleFullName} to {@code newName} (its name + id). Fails fast if absent. */
     public ModelDocument renameRule(String ruleFullName, String newName) {
         ObjectNode rule = findById(ruleFullName);
-        if (rule == null || !"Rule".equals(rule.path("type").asText())) {
+        if (rule == null || !ElementType.RULE.matches(rule)) {
             throw new IllegalArgumentException("no rule at: " + ruleFullName);
         }
-        rule.put("name", newName).put("id", renamePath(ruleFullName, newName));
+        rule.put(DmKeys.NAME, newName).put(DmKeys.ID, renamePath(ruleFullName, newName));
         return this;
     }
 
@@ -1299,7 +1301,7 @@ public final class ModelDocument {
         if (node == null) {
             throw new IllegalArgumentException("no field at: " + fieldPath);
         }
-        relocate(node, fieldPath, newParentPath, "Field");
+        relocate(node, fieldPath, newParentPath, ElementType.FIELD.wireName());
         return this;
     }
 
@@ -1320,7 +1322,7 @@ public final class ModelDocument {
             throw new IllegalArgumentException(
                     "cannot move group " + groupPath + " into itself or its own subtree: " + newParentPath);
         }
-        relocate(node, groupPath, newParentPath, "Group");
+        relocate(node, groupPath, newParentPath, ElementType.GROUP.wireName());
         return this;
     }
 
@@ -1347,21 +1349,20 @@ public final class ModelDocument {
         if (!(element instanceof ObjectNode obj)) {
             return;
         }
-        String id = obj.path("id").asText(null);
+        String id = obj.path(DmKeys.ID).asText(null);
         if (id != null && (id.equals(oldPrefix) || id.startsWith(oldPrefix + "/"))) {
-            obj.put("id", newPrefix + id.substring(oldPrefix.length()));
+            obj.put(DmKeys.ID, newPrefix + id.substring(oldPrefix.length()));
         }
-        String type = obj.path("type").asText();
-        if ("Group".equals(type)) {
-            for (JsonNode child : obj.path("Group").path("elements")) {
+        if (ElementType.GROUP.matches(obj)) {
+            for (JsonNode child : obj.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)) {
                 reprefixIds(child, oldPrefix, newPrefix);
             }
-        } else if ("Rule".equals(type) && obj.path("Rule") instanceof ObjectNode rule) {
+        } else if (ElementType.RULE.matches(obj) && obj.path(ElementType.RULE.wireName()) instanceof ObjectNode rule) {
             // a carried rule's ABSOLUTE condition operands must re-base to the new root too (probe 01-de
             // Finding 6) — else the sub-model references the old foreign root (MVK_INVALID_ROOT_GROUP). The
             // errorEntityRelPath is relative ('../X') so it rides along unchanged.
             reprefixText(rule, "errorCondition", oldPrefix, newPrefix);
-        } else if ("Computation".equals(type) && obj.path("Computation") instanceof ObjectNode comp) {
+        } else if (ElementType.COMPUTATION.matches(obj) && obj.path(ElementType.COMPUTATION.wireName()) instanceof ObjectNode comp) {
             reprefixText(comp, "commonPrecondition", oldPrefix, newPrefix);
             for (JsonNode alt : comp.path("computationAlternatives")) {
                 if (alt instanceof ObjectNode altObj) {
@@ -1388,7 +1389,7 @@ public final class ModelDocument {
     /** Find any element (field/group/rule/computation) by its full-name id; {@code null} if absent. */
     private ObjectNode findById(String id) {
         ObjectNode[] found = {null};
-        for (JsonNode rootGroup : root.path("content").path("modelRoot").path("rootGroups")) {
+        for (JsonNode rootGroup : root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS)) {
             findById(rootGroup, id, found);
         }
         return found[0];
@@ -1398,12 +1399,12 @@ public final class ModelDocument {
         if (found[0] != null) {
             return;
         }
-        if (node instanceof ObjectNode obj && id.equals(obj.path("id").asText(null))) {
+        if (node instanceof ObjectNode obj && id.equals(obj.path(DmKeys.ID).asText(null))) {
             found[0] = obj;
             return;
         }
-        if ("Group".equals(node.path("type").asText())) {
-            for (JsonNode child : node.path("Group").path("elements")) {
+        if (ElementType.GROUP.matches(node)) {
+            for (JsonNode child : node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)) {
                 findById(child, id, found);
             }
         }
@@ -1416,15 +1417,15 @@ public final class ModelDocument {
      * collision with an existing id is the caller's gate to refuse, with {@link #validate()} as backstop.
      */
     public ModelDocument renameTypeDefinition(String oldId, String newId) {
-        JsonNode tds = root.path("content").path("typeDefinitions");
+        JsonNode tds = root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS);
         boolean renamed = false;
         if (tds.isArray()) {
             for (JsonNode td : tds) {
-                if (oldId.equals(td.path("id").asText())) {
+                if (oldId.equals(td.path(DmKeys.ID).asText())) {
                     ObjectNode node = (ObjectNode) td;
-                    node.put("id", newId);
-                    if (oldId.equals(node.path("name").asText())) {
-                        node.put("name", newId);   // a default name (== id) tracks the rename; a custom one stays
+                    node.put(DmKeys.ID, newId);
+                    if (oldId.equals(node.path(DmKeys.NAME).asText())) {
+                        node.put(DmKeys.NAME, newId);   // a default name (== id) tracks the rename; a custom one stays
                     }
                     renamed = true;
                 }
@@ -1434,9 +1435,9 @@ public final class ModelDocument {
             throw new IllegalArgumentException("no type definition with id: " + oldId);
         }
         walk((path, node, isGroup) -> {
-            JsonNode ref = node.path("Field").path("fieldType").path("TypeDefType");
-            if (!isGroup && oldId.equals(ref.path("typeDefinitionId").asText(null))) {
-                ((ObjectNode) ref).put("typeDefinitionId", newId);
+            JsonNode ref = node.path(ElementType.FIELD.wireName()).path(DmKeys.FIELD_TYPE).path("TypeDefType");
+            if (!isGroup && oldId.equals(ref.path(DmKeys.TYPE_DEFINITION_ID).asText(null))) {
+                ((ObjectNode) ref).put(DmKeys.TYPE_DEFINITION_ID, newId);
             }
         });
         return this;
@@ -1450,13 +1451,13 @@ public final class ModelDocument {
      */
     public ModelDocument extractTypeDefinition(String newId, List<String> fieldPaths) {
         JsonNode shared = sharedConcreteFieldType(fieldPaths);
-        JsonNode tds = root.path("content").path("typeDefinitions");
+        JsonNode tds = root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS);
         ArrayNode array = tds.isArray() ? (ArrayNode) tds
-                : ((ObjectNode) root.path("content")).putArray("typeDefinitions");
+                : ((ObjectNode) root.path(DmKeys.CONTENT)).putArray(DmKeys.TYPE_DEFINITIONS);
         ObjectNode td = array.addObject();
-        td.put("id", newId);
-        td.put("name", newId);
-        td.set("fieldType", shared.deepCopy());
+        td.put(DmKeys.ID, newId);
+        td.put(DmKeys.NAME, newId);
+        td.set(DmKeys.FIELD_TYPE, shared.deepCopy());
         for (String fieldPath : fieldPaths) {
             setFieldType(fieldPath, new FieldTypeSpec.TypeDefRef(newId));
         }
@@ -1487,8 +1488,8 @@ public final class ModelDocument {
             if (field == null) {
                 throw new IllegalArgumentException("no field at: " + fieldPath);
             }
-            JsonNode fieldType = field.path("Field").path("fieldType");
-            if ("TypeDefType".equals(fieldType.path("type").asText())) {
+            JsonNode fieldType = field.path(ElementType.FIELD.wireName()).path(DmKeys.FIELD_TYPE);
+            if ("TypeDefType".equals(fieldType.path(DmKeys.TYPE).asText())) {
                 throw new IllegalArgumentException(fieldPath + " is already typed by a definition");
             }
             if (shared == null) {
@@ -1511,9 +1512,9 @@ public final class ModelDocument {
             throw new IllegalArgumentException("no type definition with id: " + id);
         }
         walk((path, node, isGroup) -> {
-            JsonNode fieldType = node.path("Field").path("fieldType");
-            if (!isGroup && id.equals(fieldType.path("TypeDefType").path("typeDefinitionId").asText(null))) {
-                ((ObjectNode) node.path("Field")).set("fieldType", underlying.deepCopy());
+            JsonNode fieldType = node.path(ElementType.FIELD.wireName()).path(DmKeys.FIELD_TYPE);
+            if (!isGroup && id.equals(fieldType.path("TypeDefType").path(DmKeys.TYPE_DEFINITION_ID).asText(null))) {
+                ((ObjectNode) node.path(ElementType.FIELD.wireName())).set(DmKeys.FIELD_TYPE, underlying.deepCopy());
             }
         });
         removeTypeDefinition(id);
@@ -1521,11 +1522,11 @@ public final class ModelDocument {
     }
 
     private JsonNode typeDefinitionFieldType(String id) {
-        JsonNode tds = root.path("content").path("typeDefinitions");
+        JsonNode tds = root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS);
         if (tds.isArray()) {
             for (JsonNode td : tds) {
-                if (id.equals(td.path("id").asText())) {
-                    return td.path("fieldType");
+                if (id.equals(td.path(DmKeys.ID).asText())) {
+                    return td.path(DmKeys.FIELD_TYPE);
                 }
             }
         }
@@ -1550,7 +1551,7 @@ public final class ModelDocument {
         if (group == null) {
             return Optional.empty();
         }
-        String alias = group.path("Group").path("modelAlias").asText(null);
+        String alias = group.path(ElementType.GROUP.wireName()).path(DmKeys.MODEL_ALIAS).asText(null);
         return alias == null || alias.isBlank() ? Optional.empty() : Optional.of(alias);
     }
 
@@ -1559,10 +1560,10 @@ public final class ModelDocument {
     /** Declare a model include: a header {@code modelReference} aliased {@code alias} → {@code reference}. */
     public ModelDocument addInclude(String alias, String reference) {
         modelReferences().addObject()
-                .put("alias", alias)
-                .put("modelType", "document")
-                .put("purpose", "include")
-                .put("reference", reference);
+                .put(DmKeys.ALIAS, alias)
+                .put(DmKeys.MODEL_TYPE, DmKeys.DOCUMENT)
+                .put(DmKeys.PURPOSE, "include")
+                .put(DmKeys.REFERENCE, reference);
         return this;
     }
 
@@ -1575,10 +1576,10 @@ public final class ModelDocument {
      */
     public ModelDocument addImport(String reference) {
         modelReferences().addObject()
-                .put("alias", reference)
-                .put("modelType", "document")
-                .put("purpose", IMPORT_PURPOSE)
-                .put("reference", reference);
+                .put(DmKeys.ALIAS, reference)
+                .put(DmKeys.MODEL_TYPE, DmKeys.DOCUMENT)
+                .put(DmKeys.PURPOSE, IMPORT_PURPOSE)
+                .put(DmKeys.REFERENCE, reference);
         return this;
     }
 
@@ -1590,8 +1591,8 @@ public final class ModelDocument {
      */
     public ModelDocument removeImport(String reference) {
         boolean present = false;
-        for (JsonNode r : root.path("header").path("modelReferences")) {
-            if (IMPORT_PURPOSE.equals(r.path("purpose").asText()) && reference.equals(r.path("reference").asText())) {
+        for (JsonNode r : root.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES)) {
+            if (IMPORT_PURPOSE.equals(r.path(DmKeys.PURPOSE).asText()) && reference.equals(r.path(DmKeys.REFERENCE).asText())) {
                 present = true;
                 break;
             }
@@ -1599,24 +1600,24 @@ public final class ModelDocument {
         if (!present) {
             throw new IllegalArgumentException("no type-definition import for '" + reference + "'");
         }
-        JsonNode header = root.path("header");
+        JsonNode header = root.path(DmKeys.HEADER);
         ArrayNode kept = MAPPER.createArrayNode();
-        for (JsonNode r : header.path("modelReferences")) {
-            boolean isThisImport = IMPORT_PURPOSE.equals(r.path("purpose").asText())
-                    && reference.equals(r.path("reference").asText());
+        for (JsonNode r : header.path(DmKeys.MODEL_REFERENCES)) {
+            boolean isThisImport = IMPORT_PURPOSE.equals(r.path(DmKeys.PURPOSE).asText())
+                    && reference.equals(r.path(DmKeys.REFERENCE).asText());
             if (!isThisImport) {
                 kept.add(r);
             }
         }
-        ((ObjectNode) header).set("modelReferences", kept);
+        ((ObjectNode) header).set(DmKeys.MODEL_REFERENCES, kept);
         return this;
     }
 
     /** The header's {@code modelReferences} array, created if absent. */
     private ArrayNode modelReferences() {
-        JsonNode refs = root.path("header").path("modelReferences");
+        JsonNode refs = root.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES);
         return refs.isArray() ? (ArrayNode) refs
-                : ((ObjectNode) root.path("header")).putArray("modelReferences");
+                : ((ObjectNode) root.path(DmKeys.HEADER)).putArray(DmKeys.MODEL_REFERENCES);
     }
 
     /** Mount a declared include at {@code parentPath} as a group named {@code name} (a {@code modelAlias} group). */
@@ -1668,24 +1669,24 @@ public final class ModelDocument {
         if (group == null) {
             throw new IllegalArgumentException("no group at: " + groupPath);
         }
-        String mountName = group.path("name").asText();   // the base mount keeps this — preserves composed paths
+        String mountName = group.path(DmKeys.NAME).asText();   // the base mount keeps this — preserves composed paths
         String subRoot = (rootName != null && !rootName.isBlank()) ? rootName : mountName;
 
         // the sub-model: the base envelope, its own id, no inherited includes, one root = the rebased subtree.
         ObjectNode sub = root.deepCopy();
-        ObjectNode subHeader = (ObjectNode) sub.path("header");
-        subHeader.put("id", reference);
-        subHeader.putArray("modelReferences");   // empty (not absent — the kernel expects a list), no inherited includes
+        ObjectNode subHeader = (ObjectNode) sub.path(DmKeys.HEADER);
+        subHeader.put(DmKeys.ID, reference);
+        subHeader.putArray(DmKeys.MODEL_REFERENCES);   // empty (not absent — the kernel expects a list), no inherited includes
         // the deep-copy carried the parent's modelInfo.name — rename it for the new sub-model (else an
         // extracted "address" sub-model stays named "person"; probe P4).
-        JsonNode subInfo = sub.path("content").path("modelInfo");
+        JsonNode subInfo = sub.path(DmKeys.CONTENT).path(DmKeys.MODEL_INFO);
         if (subInfo.isObject()) {
-            ((ObjectNode) subInfo).put("name", reference);
+            ((ObjectNode) subInfo).put(DmKeys.NAME, reference);
         }
         ObjectNode subGroup = group.deepCopy();
-        subGroup.put("name", subRoot);   // the sub-model root's own name (= the group's, unless rootName overrides)
+        subGroup.put(DmKeys.NAME, subRoot);   // the sub-model root's own name (= the group's, unless rootName overrides)
         reprefixIds(subGroup, groupPath, "/" + subRoot);
-        ((ObjectNode) sub.path("content").path("modelRoot")).putArray("rootGroups").add(subGroup);
+        ((ObjectNode) sub.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT)).putArray(DmKeys.ROOT_GROUPS).add(subGroup);
         String subModelJson;
         try {
             subModelJson = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(sub);
@@ -1709,12 +1710,12 @@ public final class ModelDocument {
      */
     public ModelDocument inlineInclude(String alias, String includedModelJson) {
         ModelDocument included = read(includedModelJson);
-        JsonNode includedRoot = included.root.path("content").path("modelRoot").path("rootGroups").path(0);
+        JsonNode includedRoot = included.root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS).path(0);
         if (includedRoot.isMissingNode()) {
             throw new IllegalArgumentException("included model has no root group for alias: " + alias);
         }
-        String includedRootId = includedRoot.path("id").asText();
-        JsonNode includedElements = includedRoot.path("Group").path("elements");
+        String includedRootId = includedRoot.path(DmKeys.ID).asText();
+        JsonNode includedElements = includedRoot.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS);
         boolean[] folded = {false};
         inlineMounts(rootGroups(), alias, includedRootId, includedElements, folded);
         if (!folded[0]) {
@@ -1727,22 +1728,22 @@ public final class ModelDocument {
     private void inlineMounts(JsonNode elements, String alias, String includedRootId, JsonNode includedElements,
             boolean[] folded) {
         for (JsonNode element : elements) {
-            if (!"Group".equals(element.path("type").asText())) {
+            if (!ElementType.GROUP.matches(element)) {
                 continue;
             }
-            ObjectNode body = (ObjectNode) element.path("Group");
-            if (alias.equals(body.path("modelAlias").asText(null))) {
-                String mountPath = element.path("id").asText();
-                body.remove("modelAlias");
-                ArrayNode destination = body.putArray("elements");
+            ObjectNode body = (ObjectNode) element.path(ElementType.GROUP.wireName());
+            if (alias.equals(body.path(DmKeys.MODEL_ALIAS).asText(null))) {
+                String mountPath = element.path(DmKeys.ID).asText();
+                body.remove(DmKeys.MODEL_ALIAS);
+                ArrayNode destination = body.putArray(DmKeys.ELEMENTS);
                 for (JsonNode child : includedElements) {
                     JsonNode copy = child.deepCopy();
                     reprefixIds(copy, includedRootId, mountPath);
                     destination.add(copy);
                 }
                 folded[0] = true;
-            } else if (body.path("elements").isArray()) {
-                inlineMounts(body.path("elements"), alias, includedRootId, includedElements, folded);
+            } else if (body.path(DmKeys.ELEMENTS).isArray()) {
+                inlineMounts(body.path(DmKeys.ELEMENTS), alias, includedRootId, includedElements, folded);
             }
         }
     }
@@ -1751,7 +1752,7 @@ public final class ModelDocument {
     public List<String> mountsOfInclude(String alias) {
         List<String> out = new ArrayList<>();
         walk((path, node, isGroup) -> {
-            if (isGroup && alias.equals(node.path("Group").path("modelAlias").asText(null))) {
+            if (isGroup && alias.equals(node.path(ElementType.GROUP.wireName()).path(DmKeys.MODEL_ALIAS).asText(null))) {
                 out.add(path);
             }
         });
@@ -1760,11 +1761,11 @@ public final class ModelDocument {
 
     /** Remove the type definition {@code id}. Fails fast if absent; {@link #validate()} catches a field still using it. */
     public ModelDocument removeTypeDefinition(String id) {
-        JsonNode tds = root.path("content").path("typeDefinitions");
+        JsonNode tds = root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS);
         if (tds.isArray()) {
             ArrayNode array = (ArrayNode) tds;
             for (int i = 0; i < array.size(); i++) {
-                if (id.equals(array.get(i).path("id").asText())) {
+                if (id.equals(array.get(i).path(DmKeys.ID).asText())) {
                     array.remove(i);
                     return this;
                 }
@@ -1780,11 +1781,11 @@ public final class ModelDocument {
      */
     public ModelDocument removeInclude(String alias) {
         boolean removed = false;
-        JsonNode refs = root.path("header").path("modelReferences");
+        JsonNode refs = root.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES);
         if (refs.isArray()) {
             ArrayNode array = (ArrayNode) refs;
             for (int i = array.size() - 1; i >= 0; i--) {
-                if (alias.equals(array.get(i).path("alias").asText())) {
+                if (alias.equals(array.get(i).path(DmKeys.ALIAS).asText())) {
                     array.remove(i);
                     removed = true;
                 }
@@ -1800,11 +1801,11 @@ public final class ModelDocument {
 
     /** Re-point the include {@code alias} at a different referenced model — the mounts, keyed by alias, are untouched. */
     public ModelDocument setIncludeReference(String alias, String newReference) {
-        JsonNode refs = root.path("header").path("modelReferences");
+        JsonNode refs = root.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES);
         if (refs.isArray()) {
             for (JsonNode ref : refs) {
-                if (alias.equals(ref.path("alias").asText())) {
-                    ((ObjectNode) ref).put("reference", newReference);
+                if (alias.equals(ref.path(DmKeys.ALIAS).asText())) {
+                    ((ObjectNode) ref).put(DmKeys.REFERENCE, newReference);
                     return this;
                 }
             }
@@ -1819,11 +1820,11 @@ public final class ModelDocument {
      */
     public ModelDocument renameInclude(String oldAlias, String newAlias) {
         boolean renamed = false;
-        JsonNode refs = root.path("header").path("modelReferences");
+        JsonNode refs = root.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES);
         if (refs.isArray()) {
             for (JsonNode ref : refs) {
-                if (oldAlias.equals(ref.path("alias").asText())) {
-                    ((ObjectNode) ref).put("alias", newAlias);
+                if (oldAlias.equals(ref.path(DmKeys.ALIAS).asText())) {
+                    ((ObjectNode) ref).put(DmKeys.ALIAS, newAlias);
                     renamed = true;
                 }
             }
@@ -1838,15 +1839,15 @@ public final class ModelDocument {
 
     private void renameMounts(ArrayNode elements, String oldAlias, String newAlias, boolean[] any) {
         for (JsonNode el : elements) {
-            if (!"Group".equals(el.path("type").asText())) {
+            if (!ElementType.GROUP.matches(el)) {
                 continue;
             }
-            ObjectNode body = (ObjectNode) el.path("Group");
-            if (oldAlias.equals(body.path("modelAlias").asText())) {
-                body.put("modelAlias", newAlias);
+            ObjectNode body = (ObjectNode) el.path(ElementType.GROUP.wireName());
+            if (oldAlias.equals(body.path(DmKeys.MODEL_ALIAS).asText())) {
+                body.put(DmKeys.MODEL_ALIAS, newAlias);
                 any[0] = true;
-            } else if (body.path("elements").isArray()) {
-                renameMounts((ArrayNode) body.path("elements"), oldAlias, newAlias, any);
+            } else if (body.path(DmKeys.ELEMENTS).isArray()) {
+                renameMounts((ArrayNode) body.path(DmKeys.ELEMENTS), oldAlias, newAlias, any);
             }
         }
     }
@@ -1854,15 +1855,15 @@ public final class ModelDocument {
     private void removeMounts(ArrayNode elements, String alias, boolean[] any) {
         for (int i = elements.size() - 1; i >= 0; i--) {
             JsonNode el = elements.get(i);
-            if (!"Group".equals(el.path("type").asText())) {
+            if (!ElementType.GROUP.matches(el)) {
                 continue;
             }
-            JsonNode body = el.path("Group");
-            if (alias.equals(body.path("modelAlias").asText())) {
+            JsonNode body = el.path(ElementType.GROUP.wireName());
+            if (alias.equals(body.path(DmKeys.MODEL_ALIAS).asText())) {
                 elements.remove(i);
                 any[0] = true;
-            } else if (body.path("elements").isArray()) {
-                removeMounts((ArrayNode) body.path("elements"), alias, any);
+            } else if (body.path(DmKeys.ELEMENTS).isArray()) {
+                removeMounts((ArrayNode) body.path(DmKeys.ELEMENTS), alias, any);
             }
         }
     }
@@ -1894,7 +1895,7 @@ public final class ModelDocument {
     }
 
     private ArrayNode rootGroups() {
-        JsonNode rg = root.path("content").path("modelRoot").path("rootGroups");
+        JsonNode rg = root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS);
         if (!rg.isArray()) {
             throw new IllegalStateException("model has no content.modelRoot.rootGroups array");
         }
@@ -1922,7 +1923,7 @@ public final class ModelDocument {
         ArrayNode container = parent.isEmpty() ? rootGroups() : containerElements(parent);
         for (int i = 0; i < container.size(); i++) {
             JsonNode n = container.get(i);
-            if (type.equals(n.path("type").asText()) && path.equals(n.path("id").asText())) {
+            if (type.equals(n.path(DmKeys.TYPE).asText()) && path.equals(n.path(DmKeys.ID).asText())) {
                 container.remove(i);
                 return;
             }
@@ -1933,20 +1934,19 @@ public final class ModelDocument {
     // --- tree walk ------------------------------------------------------------------------------
 
     private void walk(ElementVisitor visitor) {
-        for (JsonNode rg : root.path("content").path("modelRoot").path("rootGroups")) {
+        for (JsonNode rg : root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS)) {
             walk(rg, "", visitor);
         }
     }
 
     private void walk(JsonNode node, String prefix, ElementVisitor visitor) {
-        String type = node.path("type").asText();
-        String path = prefix + "/" + node.path("name").asText();
-        if ("Group".equals(type)) {
+        String path = prefix + "/" + node.path(DmKeys.NAME).asText();
+        if (ElementType.GROUP.matches(node)) {
             visitor.visit(path, node, true);
-            for (JsonNode child : node.path("Group").path("elements")) {
+            for (JsonNode child : node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)) {
                 walk(child, path, visitor);
             }
-        } else if ("Field".equals(type)) {
+        } else if (ElementType.FIELD.matches(node)) {
             visitor.visit(path, node, false);
         }
         // Other element kinds (Rule/Computation/…) are not enumerated here — they are rulekit's, and
