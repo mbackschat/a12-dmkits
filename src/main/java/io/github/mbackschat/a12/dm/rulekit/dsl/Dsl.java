@@ -19,7 +19,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * candidate for splitting (a single static import is the whole point; see ARCHITECTURE §2). Read it by
  * section; the sections, in file order, are:
  * <ol>
- *   <li>presence &amp; pattern — {@code fieldFilled}, {@code patternMatched}, {@code length}</li>
+ *   <li>presence &amp; pattern — {@code fieldFilled}, {@code matches}, {@code length}</li>
  *   <li>filled-count aggregates — {@code numberOfFilledFields}, {@code sum}, {@code maxValue}, rounding-of-field</li>
  *   <li>operand-list math &amp; rounding — {@code abs}, {@code min}/{@code max}, {@code roundDown}/{@code roundUp}</li>
  *   <li>date/time family — {@code today}, {@code dateValue}, differences, extractions, constructions, shifts</li>
@@ -56,13 +56,13 @@ public final class Dsl {
         return field.length();
     }
 
-    /** {@code [field] PatternMatched "regex"} — anchored whole-value match. */
-    public static Condition patternMatched(StringRef field, String regex) {
+    /** {@code [field] PatternMatched "regex"} — anchored whole-value match; the factory peer of {@link StringRef#matches}. */
+    public static Condition matches(StringRef field, String regex) {
         return field.matches(regex);
     }
 
-    /** {@code [field] PatternViolated "regex"} — anchored whole-value non-match. */
-    public static Condition patternViolated(StringRef field, String regex) {
+    /** {@code [field] PatternViolated "regex"} — anchored whole-value non-match; the factory peer of {@link StringRef#violates}. */
+    public static Condition violates(StringRef field, String regex) {
         return field.violates(regex);
     }
 

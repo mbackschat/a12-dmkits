@@ -30,6 +30,16 @@ class PatternConditionTest {
     }
 
     @Test
+    void dslFactoryUsesTheSameVerbPairAsTheFluentForm() {
+        // D6: the factory was patternMatched/patternViolated while the fluent form was matches/violates
+        // — one concept, two names. Unified on matches/violates across both forms.
+        assertEquals(new DslRenderer().render(m.str(NAME).matches("[A-Z].*")),
+                new DslRenderer().render(Dsl.matches(m.str(NAME), "[A-Z].*")));
+        assertEquals(new DslRenderer().render(m.str(NAME).violates("[A-Z].*")),
+                new DslRenderer().render(Dsl.violates(m.str(NAME), "[A-Z].*")));
+    }
+
+    @Test
     void patternHandleFailsFastOnAJavaInvalidRegex() {
         // Necessary-condition pre-check for MVK_INVALID_PATTERN: anything Java's Pattern rejects,
         // the kernel rejects too. The kernel's *portable-subset* gate (e.g. lookbehind is rejected
