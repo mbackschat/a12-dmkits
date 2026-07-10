@@ -16,7 +16,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * field ({@code MVK_WILDCARDS_REQUIRED} — satisfied structurally, since only {@code FieldListRef}
  * offers it).
  */
-public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Condition> filter, boolean outer)
+public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Condition> filter, boolean correlated)
         implements FieldOperand {
 
     public FieldListRef(FieldRef field, List<GroupRef> flattened) {
@@ -38,8 +38,9 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
     /**
      * This list as the {@code $} outer-iteration correlation ({@code $Group*}{@code /field}, D13) — the
      * value side of an entity-valued value-list inside a {@code Having} filter binds to the outer iteration.
+     * The one correlation verb shared with the value refs and {@link FieldRef#outer()} (was {@code asOuter()}).
      */
-    public FieldListRef asOuter() {
+    public FieldListRef outer() {
         return new FieldListRef(field, flattened, filter, true);
     }
 
@@ -52,7 +53,7 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
      */
     public FieldListRef having(Condition filter) {
         rejectForbiddenInFilter(filter);
-        return new FieldListRef(field, flattened, Optional.of(filter), outer);
+        return new FieldListRef(field, flattened, Optional.of(filter), correlated);
     }
 
     private static void rejectForbiddenInFilter(Condition c) {

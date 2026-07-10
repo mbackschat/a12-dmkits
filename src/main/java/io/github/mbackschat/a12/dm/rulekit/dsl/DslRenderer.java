@@ -179,7 +179,7 @@ public final class DslRenderer {
     public String render(Condition condition) {
         return switch (condition) {
             case FieldPresenceCondition f ->
-                    keyword(f.operatorId()) + "(" + (f.field().outer() ? "$" : "") + path(f.field().path()) + ")";
+                    keyword(f.operatorId()) + "(" + (f.field().correlated() ? "$" : "") + path(f.field().path()) + ")";
             case FieldListPredicate p -> keyword(p.operatorId()) + "("
                     + p.fields().stream().map(this::operand)
                             .collect(java.util.stream.Collectors.joining(", "))
@@ -280,7 +280,7 @@ public final class DslRenderer {
     private String operand(FieldOperand op) {
         // a $ outer-iteration correlation on a bare reference (D13): NoFieldFilled($a, $b), or the value
         // side of an entity-valued value-list ($Group*/field). Applies to both FieldRef and FieldListRef.
-        String dollar = (op instanceof FieldRef fr && fr.outer()) || (op instanceof FieldListRef fl && fl.outer())
+        String dollar = (op instanceof FieldRef fr && fr.correlated()) || (op instanceof FieldListRef fl && fl.correlated())
                 ? "$" : "";
         if (op instanceof FieldListRef list && list.filter().isPresent()) {
             return dollar + path(list.renderedPath()) + " " + keyword("Having") + " " + render(list.filter().get());

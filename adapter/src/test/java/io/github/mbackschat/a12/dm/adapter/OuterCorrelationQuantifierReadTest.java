@@ -75,8 +75,8 @@ class OuterCorrelationQuantifierReadTest {
                         Dsl.currentRepetition(m.group("/Schedule/Slots"))
                                 .ne(Dsl.currentRepetition(m.group("/Schedule/Slots"), true))
                                 .and(Dsl.noFieldFilled(
-                                        m.field("/Schedule/Slots/Start").asOuter(),
-                                        m.field("/Schedule/Slots/End").asOuter())))));
+                                        m.field("/Schedule/Slots/Start").outer(),
+                                        m.field("/Schedule/Slots/End").outer())))));
 
         Rule rule = m.rule(m.group("/Schedule/Slots")).name("PresenceCorr")
                 .errorField(m.field("/Schedule/Slots/Start")).when(authored)
@@ -111,7 +111,7 @@ class OuterCorrelationQuantifierReadTest {
                 m.num("/Survey/Filters/Total").ne(
                         Dsl.sum(m.flatten("/Survey/Responses*/Score").having(
                                 Dsl.atLeastOneFieldValueIncludedInValueList(
-                                        java.util.List.of(m.flatten("/Survey/Filters/Allowed*/Code").asOuter()),
+                                        java.util.List.of(m.flatten("/Survey/Filters/Allowed*/Code").outer()),
                                         m.field("/Survey/Responses/Tag"))))));
 
         Rule rule = m.rule(m.group("/Survey/Filters")).name("ValueListCorr")

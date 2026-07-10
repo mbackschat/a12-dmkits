@@ -35,4 +35,14 @@ class CorrelationConditionTest {
                         + " == [$/Subscription/Addons/Name]) > 0",
                 new DslRenderer(ConditionLanguage.DE).render(Dsl.sum(fees).gt(0)));
     }
+
+    @Test
+    void fieldRefAndFieldListShareTheOuterVerbWithTheValueRefs() {
+        // D2: the bare-operand correlation builder is outer() on FieldRef/FieldListRef too (was asOuter()),
+        // so the whole ref family names the one $ concept the same way.
+        assertEquals("NoFieldFilled($/Subscription/Addons/Name)",
+                new DslRenderer().render(Dsl.noFieldFilled(m.field("/Subscription/Addons/Name").outer())));
+        assertEquals("NoFieldFilled($/Subscription/Addons*/MonthlyFee)",
+                new DslRenderer().render(Dsl.noFieldFilled(m.flatten("/Subscription/Addons*/MonthlyFee").outer())));
+    }
 }

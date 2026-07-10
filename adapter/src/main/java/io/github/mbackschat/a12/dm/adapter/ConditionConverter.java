@@ -317,7 +317,7 @@ final class ConditionConverter {
             // outer-marked field operands so the $ survives — else the count-check refuses the conversion.
             if (entities.stream().anyMatch(IEntityId::isOuter)) {
                 FieldOperand[] ops = entities.stream()
-                        .map(e -> e.isOuter() ? model.field(e.getFullName()).asOuter() : model.field(e.getFullName()))
+                        .map(e -> e.isOuter() ? model.field(e.getFullName()).outer() : model.field(e.getFullName()))
                         .toArray(FieldOperand[]::new);
                 FieldOperand[] rest = Arrays.copyOfRange(ops, 1, ops.length);
                 return switch (name) {
@@ -552,7 +552,7 @@ final class ConditionConverter {
         FieldOperand op = isWildcard(entity)
                 ? model.flatten(reconstructStarPath(entity)) : model.field(entity.getFullName());
         if (entity.isOuter()) {   // $ correlation (D13): e.g. the value side of an entity-valued value-list
-            op = (op instanceof FieldListRef list) ? list.asOuter() : ((FieldRef) op).asOuter();
+            op = (op instanceof FieldListRef list) ? list.outer() : ((FieldRef) op).outer();
         }
         return op;
     }

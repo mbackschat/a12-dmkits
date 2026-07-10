@@ -9,7 +9,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * read references remember their authored notation. Obtain handles from {@link BoundModel}
  * (always {@link PathStyle#CANONICAL}); the read converter constructs the hinted form.
  */
-public record FieldRef(String path, ValueKind kind, PathStyle styleHint, boolean outer) implements FieldOperand {
+public record FieldRef(String path, ValueKind kind, PathStyle styleHint, boolean correlated) implements FieldOperand {
 
     /** A builder-made reference — no authored style; the renderer decides the path form. */
     public FieldRef(String path, ValueKind kind) {
@@ -23,8 +23,9 @@ public record FieldRef(String path, ValueKind kind, PathStyle styleHint, boolean
     /**
      * This reference as the {@code $} outer-iteration correlation ({@code $path}, D13) — for use as a
      * bare operand inside a {@code Having} filter (e.g. {@code NoFieldFilled($a, $b)}). Legal only there.
+     * The one correlation verb shared with the value refs ({@link NumberRef#outer()}, …).
      */
-    public FieldRef asOuter() {
+    public FieldRef outer() {
         return new FieldRef(path, kind, styleHint, true);
     }
 
@@ -48,6 +49,6 @@ public record FieldRef(String path, ValueKind kind, PathStyle styleHint, boolean
 
     /** This field's value as an operand ({@code [path]}; {@code [$path]} if outer-correlated). */
     public FieldValue value() {
-        return new FieldValue(this, outer);
+        return new FieldValue(this, correlated);
     }
 }
