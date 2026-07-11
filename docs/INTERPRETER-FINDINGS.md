@@ -730,7 +730,7 @@ Two defects in the date-range-overlap predicates, both surfaced by the real-corp
 
 *Locked:* `adapter.laws.DateRangeOverlapSemanticsDiffTest` (13 cases: self-pair, list-internal pair, invalid-range, the 6 keep-law variants incl. malformed-drops, ALODRO scalar-vs-list + empty-scalar, both polarities — each a groovy-dynamic == java-static == interpreter tri-check) + `FieldValuesNotUniqueDiffTest`'s Having cases; multiplatform `interpreter.DateRangeOverlapTest` (JVM+JS, parser + eval). Kernel facts: KERNEL-FINDINGS §6 supplement "date-range overlap".
 
-**Sweep delta.** workspaces held at **314** — the `DateRangesOverlap` `$`-Having rules now PARSE and AGREE with the kernel (the "`CurrentRepetition(RuleGroup)`-Having miss" class closed: no interp parse-failure skip, no new divergence; `validateFull both-sides-differ` still 53). Zero net instance movement (the IG69/IF71 pattern) — the corrected instances co-occur with the residual IG44/IG47 compute-side divergences, which IG42 does not touch. kernel-mm **0**.
+**Sweep delta.** workspaces held at **314** — the `DateRangesOverlap` `$`-Having rules now PARSE and AGREE with the kernel (the "`CurrentRepetition(RuleGroup)`-Having miss" class closed: no interp parse-failure skip, no new divergence; `validateFull both-sides-differ` still 53). Zero net instance movement (the IF69/IF71 pattern) — the corrected instances co-occur with the residual IG44/IG47 compute-side divergences, which IG42 does not touch. kernel-mm **0**.
 
 ### IF73 — the value functions return the kernel's fillable **0** on an EMPTY operand and FIRE: `Length` (grow-only), the date/time extractors + date diffs (symmetric) (FIXED 2026-07-08, graduated from IG46)
 

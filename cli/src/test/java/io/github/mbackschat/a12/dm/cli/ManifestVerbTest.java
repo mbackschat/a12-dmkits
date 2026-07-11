@@ -31,7 +31,7 @@ class ManifestVerbTest {
             "computation add", "computation read", "computation explain", "computation format",
             "computation modify", "computation remove",
             "field add", "field modify", "field read", "field remove", "field rename", "field move",
-            "group add", "group multiselect", "group attachment", "group read", "group remove",
+            "group add", "group multiselect", "group attachment", "group read", "group modify", "group remove",
             "group rename", "group move", "group extract",
             "typedef add", "typedef read", "typedef remove", "typedef rename", "typedef extract", "typedef inline",
             "typedef import", "typedef unimport",

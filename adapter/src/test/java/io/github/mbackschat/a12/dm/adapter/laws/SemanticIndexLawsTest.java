@@ -55,14 +55,17 @@ class SemanticIndexLawsTest {
     }
 
     @Test
-    void aMissingIndexValueIsNotEvaluated() {
-        // no row carries Sku "SKU-1" → the reference resolves to no instance → not evaluated
+    void aMissingIndexValueReadsTheKindsEmptyValue() {
+        // no row carries Sku "SKU-1" → the indexed read yields the kind's EMPTY value (number → 0,
+        // OMISSION) and the comparison IS evaluated — this rule's `> 0` threshold simply doesn't fire
+        // on 0 (KERNEL-FINDINGS §9, corrected 2026-07-11: the earlier "not evaluated" reading couldn't
+        // be distinguished by a `> 0` threshold alone).
         RuntimeLaws.Doc doc = RuntimeLaws.doc().group("/Order", 1)
                 .field("/Order/CustomerName", "Acme", 1, 1)
                 .group("/Order/Items", 1, 1)
                 .field("/Order/Items/Sku", "SKU-9", 1, 1, 1)
                 .field("/Order/Items/Count", "5", 1, 1, 1);
         assertFalse(RuntimeLaws.fires(model(), "SKU1_COUNT", doc),
-                "no row carries the index value — the comparison is not evaluated, no fire");
+                "no row carries the index value — the read is the empty 0, which this > 0 rule doesn't fire on");
     }
 }
