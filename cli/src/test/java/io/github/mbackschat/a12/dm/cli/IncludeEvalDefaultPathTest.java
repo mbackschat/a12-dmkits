@@ -1,0 +1,154 @@
+package io.github.mbackschat.a12.dm.cli;
+
+import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
+
+/**
+ * A4 (decoupling Stage 2) — the silent-includes-drop defect is closed on the DEFAULT (kernel-free interpreter)
+ * eval path. Before this, {@code model eval}/{@code rule eval}/{@code model compute} handed the RAW model to the
+ * interpreter, which does not expand includes, so an includes-bearing model lost its mounted content and a rule
+ * over a mounted field silently mis-reported. Now the CLI pre-expands kernel-free (via {@code ModelReader}), so
+ * the default path agrees with {@code --kernel}. When an INCLUDED model carries its own rules (which would need
+ * relativization the assembly layer doesn't do yet, IG67), the default path <b>refuses loudly</b> rather than
+ * mis-evaluate. Own domain (an insurance policy including a benefits sub-model).
+ */
+class IncludeEvalDefaultPathTest {
+
+    private static final ObjectMapper M = new ObjectMapper();
+
+    /** The included benefits sub-model: a Coverage amount + a Kind, no rules. */
+    private static String benefits() {
+        return DocumentModelDraft.named("benefits").locale("en_US")
+                .rootGroup("Benefits", b -> b
+                        .numberField("Coverage", n -> n.fractionDigits(2))
+                        .field("Kind", FieldKind.STRING))
+                .build().toJson();
+    }
+
+    /** benefits + a rule of its OWN (references the included root) — the relativization-refusal case. */
+    private static String benefitsWithRule() {
+        BoundModel m = BoundModel.ofJson(benefits());
+        return m.add(m.rule(m.group("/Benefits")).name("CoveragePositive")
+                .errorField(m.num("/Benefits/Coverage").field())
+                .when(m.num("/Benefits/Coverage").filled().and(m.num("/Benefits/Coverage").lt(0)))
+                .code("COV_NEG").severity(Severity.ERROR)
+                .message(en("Coverage must not be negative.")).build()).toJson();
+    }
+
+    /** A policy mounting benefits at /Policy/Cover, with a BASE rule over the mounted Coverage field. */
+    private static String policyWithBaseRule(ModelResolver resolver) {
+        String policy = DocumentModelDraft.named("policy").locale("en_US")
+                .include("benefits", "benefits")
+                .rootGroup("Policy", p -> p
+                        .field("PolicyNo", FieldKind.STRING)
+                        .mount("Cover", "benefits"))
+                .build().toJson();
+        BoundModel m = BoundModel.ofJson(policy, resolver);
+        return m.add(m.rule(m.group("/Policy")).name("CoverageCapped")
+                .errorField(m.num("/Policy/Cover/Coverage").field())
+                .when(m.num("/Policy/Cover/Coverage").filled().and(m.num("/Policy/Cover/Coverage").gt(100000)))
+                .code("COV_CAP").severity(Severity.ERROR)
+                .message(en("Coverage exceeds the cap.")).build()).toJson();
+    }
+
+    private static ModelResolver benefitsResolver(String benefitsJson) {
+        return ref -> "benefits".equals(ref) ? benefitsJson : null;
+    }
+
+    /** Write the base model + its included model to {@code dir}; return the base model path. */
+    private static Path workspace(Path dir, String baseJson, String includedJson) throws IOException {
+        Files.writeString(dir.resolve("benefits.dm.json"), includedJson);
+        Path base = dir.resolve("policy.dm.json");
+        Files.writeString(base, baseJson);
+        return base;
+    }
+
+    private static Path instance(Path dir, String coverage) throws IOException {
+        Path f = dir.resolve("doc.json");
+        Files.writeString(f, "{ \"fields\": { \"Policy\": { \"Cover\": { \"Coverage\": \"" + coverage + "\" } } } }");
+        return f;
+    }
+
+    private static boolean fired(String out, String code) throws Exception {
+        JsonNode j = M.readTree(out);
+        for (JsonNode c : j.path("data").path("fired")) {
+            if (code.equals(c.asText())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Test
+    void aRuleOverAMountedFieldFiresOnTheDefaultPathJustLikeTheKernel(@TempDir Path dir) throws Exception {
+        String benefits = benefits();
+        Path model = workspace(dir, policyWithBaseRule(benefitsResolver(benefits)), benefits);
+        Path doc = instance(dir, "250000.00");   // over the 100000 cap
+
+        CliTestSupport.Result def = CliTestSupport.run(
+                "-m", model.toString(), "model", "eval", "--instance", doc.toString());
+        CliTestSupport.Result ker = CliTestSupport.runKernel(
+                "-m", model.toString(), "model", "eval", "--instance", doc.toString());
+
+        assertEquals(0, def.code(), () -> "default eval succeeds: " + def.out() + def.err());
+        assertTrue(fired(def.out(), "COV_CAP"),
+                () -> "the base rule sees the MOUNTED field on the default path (was silently dropped): " + def.out());
+        assertEquals(fired(ker.out(), "COV_CAP"), fired(def.out(), "COV_CAP"),
+                () -> "the default path agrees with --kernel");
+    }
+
+    @Test
+    void aCompliantMountedValueFiresNothingOnTheDefaultPath(@TempDir Path dir) throws Exception {
+        String benefits = benefits();
+        Path model = workspace(dir, policyWithBaseRule(benefitsResolver(benefits)), benefits);
+        Path doc = instance(dir, "50000.00");   // under the cap
+
+        CliTestSupport.Result def = CliTestSupport.run(
+                "-m", model.toString(), "model", "eval", "--instance", doc.toString());
+        assertEquals(0, def.code(), () -> def.out() + def.err());
+        assertTrue(!fired(def.out(), "COV_CAP"), () -> "a compliant mounted value fires nothing: " + def.out());
+    }
+
+    @Test
+    void anIncludedModelsOwnRulesRefuseLoudlyOnTheDefaultPathButNotUnderKernel(@TempDir Path dir) throws Exception {
+        String benefits = benefitsWithRule();
+        String policy = DocumentModelDraft.named("policy").locale("en_US")
+                .include("benefits", "benefits")
+                .rootGroup("Policy", p -> p.field("PolicyNo", FieldKind.STRING).mount("Cover", "benefits"))
+                .build().toJson();
+        Path model = workspace(dir, policy, benefits);
+        Path doc = instance(dir, "50000.00");
+
+        CliTestSupport.Result def = CliTestSupport.run(
+                "-m", model.toString(), "model", "eval", "--instance", doc.toString());
+        assertNotEquals(0, def.code(), () -> "the default path refuses an included-model rule: " + def.out());
+        JsonNode j = M.readTree(def.out());
+        assertEquals("refused", j.path("outcome").asText(), () -> "a structured refusal: " + def.out());
+        assertEquals("RK_INTERPRETER_INCLUDE_RULES_UNSUPPORTED", j.path("diagnostics").path(0).path("code").asText(),
+                () -> "carries the coded refusal: " + def.out());
+        assertTrue(!j.path("diagnostics").path(0).path("fix").asText().isBlank(), "carries a corrective fix");
+
+        // the kernel path handles the include (it relativizes) — it must NOT refuse
+        CliTestSupport.Result ker = CliTestSupport.runKernel(
+                "-m", model.toString(), "model", "eval", "--instance", doc.toString());
+        assertEquals(0, ker.code(), () -> "--kernel evaluates the included-model rule fine: " + ker.out() + ker.err());
+    }
+}

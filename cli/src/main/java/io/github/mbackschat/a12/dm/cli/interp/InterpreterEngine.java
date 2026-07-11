@@ -24,6 +24,8 @@ import io.github.mbackschat.a12.dm.interpreter.model.Severity;
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule;
 import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome;
 import io.github.mbackschat.a12.dm.interpreter.model.Verdict;
+import io.github.mbackschat.a12.dm.core.ModelReader;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 /**
  * The interpreter-backed engine behind the runtime verbs' DEFAULT path ({@code model eval} / {@code model
@@ -39,6 +41,26 @@ public final class InterpreterEngine {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private InterpreterEngine() {
+    }
+
+    /**
+     * Pre-expand a model for the kernel-free interpreter path (decoupling Stage 2 / A4): mount includes and
+     * resolve imported type-definitions <em>kernel-free</em> via {@link ModelReader}, so an includes-bearing
+     * model is evaluated with its mounted content present — closing the silent-includes-drop defect (the raw
+     * model handed straight to {@link InterpreterModelLoader} lost the mount). The returned DM-JSON is
+     * self-contained + name-path-keyed, which the interpreter's loader already evaluates correctly.
+     *
+     * <p>When the mount brings in an <b>included model's own</b> rules/computations — whose conditions the
+     * kernel would relativize but the assembly layer does not yet (IG67) — this throws
+     * {@link IncludeRelativizationException} so the verb refuses loudly rather than mis-evaluate.
+     */
+    public static String expandForEval(String modelJson, ModelResolver resolver) {
+        ModelReader reader = ModelReader.expand(modelJson, resolver);
+        List<String> needsRewrite = reader.includedRulesNeedingRelativization();
+        if (!needsRewrite.isEmpty()) {
+            throw new IncludeRelativizationException(needsRewrite);
+        }
+        return reader.toJson();
     }
 
     /** The full names of the rules the interpreter can see in {@code modelJson} — kernel-free, so the runtime

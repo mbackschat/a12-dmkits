@@ -9,7 +9,9 @@ import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.SafetyChecks;
 import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
+import io.github.mbackschat.a12.dm.cli.interp.IncludeRelativizationException;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
+import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -165,6 +167,24 @@ final class ModelEvalCommand extends BaseCommand {
             targetRule = effectiveGroup + "/" + name;
         }
 
+        // The DEFAULT (interpreter) path pre-expands the model kernel-free so an includes-bearing model is
+        // evaluated with its mounted content present (decoupling Stage 2 / A4 — was silently dropped). The
+        // --kernel path expands internally, so it keeps the raw modelJson.
+        String interpJson = modelJson;
+        if (!useKernel) {
+            try {
+                interpJson = InterpreterEngine.expandForEval(modelJson, resolver);
+            } catch (IncludeRelativizationException e) {
+                return refusePrecheck("model", "eval", RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED,
+                        e.getMessage(), model, RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED.fix());
+            } catch (UnresolvedReferenceException e) {
+                return refusePrecheck("model", "eval", RkCode.UNRESOLVED_REFERENCE, e.getMessage(), model,
+                        RkCode.UNRESOLVED_REFERENCE.fix());
+            } catch (RuntimeException e) {
+                return fail("cannot expand model: " + e.getMessage());
+            }
+        }
+
         ObjectNode data;
         try {
             if (useKernel) {
@@ -194,18 +214,18 @@ final class ModelEvalCommand extends BaseCommand {
                 data = kernelEvalData(noComputations ? ka.evaluate(fields, locale) : ka.evaluateApplied(fields, locale),
                         targetRule);
             } else if (candidate) {
-                data = InterpreterEngine.evalCandidateData(modelJson, fields, localeTag,
+                data = InterpreterEngine.evalCandidateData(interpJson, fields, localeTag,
                         effectiveGroup, name, errorEntityRelPath, condition, code, severity,
                         customSupport.predefinedTypes(), customSupport.customConditions(),
                         customSupport.customFieldTypes(), !noComputations);
             } else {
                 // same structured refusal in the DEFAULT (kernel-free) path for an unknown --rule narrowing —
                 // otherwise it would silently report the missing rule as fired:false.
-                if (ruleId != null && !InterpreterEngine.ruleFullNames(modelJson).contains(ruleId)) {
+                if (ruleId != null && !InterpreterEngine.ruleFullNames(interpJson).contains(ruleId)) {
                     return refuseNotFound("model", "eval", RkCode.NO_SUCH_RULE,
                             "rule '" + ruleId + "' does not exist — refusing", ruleId, RkCode.NO_SUCH_RULE.fix());
                 }
-                data = InterpreterEngine.evalData(modelJson, fields, localeTag, ruleId,
+                data = InterpreterEngine.evalData(interpJson, fields, localeTag, ruleId,
                         customSupport.predefinedTypes(), customSupport.customConditions(),
                         customSupport.customFieldTypes(), !noComputations);
             }

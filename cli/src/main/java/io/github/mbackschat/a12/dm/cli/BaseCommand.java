@@ -108,6 +108,15 @@ public abstract class BaseCommand implements Callable<Integer> {
      * The read verb has already detected non-existence; this only emits (exit 2, nothing written).
      */
     protected int refuseNotFound(String target, String op, RkCode code, String summary, String path, String fix) {
+        return refusePrecheck(target, op, code, summary, path, fix);
+    }
+
+    /**
+     * Emit a coded {@code refused} envelope for a precheck the CLI itself detected (not a kernel diagnostic): a
+     * structured {@code RK_*} code, an optional {@code where.path}, and a corrective {@code fix}, so an agent
+     * reads it like the rest of the surface — never a plain-text {@code fail}. Exit 2, nothing written.
+     */
+    protected int refusePrecheck(String target, String op, RkCode code, String summary, String path, String fix) {
         Diagnostic diagnostic = Diagnostic.precheck(Optional.of(code.code()), summary,
                 Diagnostic.Where.path(path), Optional.of(fix), Optional.empty());
         return refuse(target, op, new Refusal(summary, null, diagnostic));

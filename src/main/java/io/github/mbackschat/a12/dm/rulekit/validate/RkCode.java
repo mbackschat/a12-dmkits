@@ -91,6 +91,13 @@ public enum RkCode {
     NAME_EXISTS(Severity.ERROR, DiagnosticSource.PRECHECK,
             "the chosen new name/id collides with an existing sibling field/group or declared id.",
             "choose a name not already used by a sibling, or rename/remove the existing one first."),
+    INTERPRETER_INCLUDE_RULES_UNSUPPORTED(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "the default (kernel-free interpreter) evaluation path cannot yet evaluate rules/computations that come "
+                    + "from an INCLUDED model — mounting drops the included model's root-group name, so their "
+                    + "conditions need relativizing, which the kernel-free assembly layer does not yet perform "
+                    + "(INTERPRETER-GAPS IG67). Evaluating them unchanged could silently mis-report, so the tool refuses.",
+            "run with --kernel on the JVM (the kernel expands + relativizes the include), or author the rules on the "
+                    + "INCLUDING model referencing the mounted fields (those evaluate on the default path)."),
     MOUNT_NOT_EDITABLE(Severity.ERROR, DiagnosticSource.PRECHECK,
             "the target group mounts an include (it has a modelAlias); adding a local child element would make the kernel use the local elements and STOP expanding the include, silently discarding the mounted content — valid but not what was meant.",
             "add the element to the included model instead (edit that model's structure), or choose a non-mount group."),

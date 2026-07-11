@@ -9,7 +9,9 @@ import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.SafetyChecks;
 import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
+import io.github.mbackschat.a12.dm.cli.interp.IncludeRelativizationException;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
+import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 
 import java.io.IOException;
 import java.util.List;
@@ -116,13 +118,25 @@ final class RuleEvalCommand extends BaseCommand {
                 }
                 data = data(adapter.testRule(rule, fields, locale, !noComputations));
             } else {
+                // pre-expand kernel-free so an includes-bearing model evaluates with its mounted content
+                // present (decoupling Stage 2 / A4); refuse loudly on included-model rules needing relativization.
+                String interpJson;
+                try {
+                    interpJson = InterpreterEngine.expandForEval(json, workspace.resolverFor(modelPath));
+                } catch (IncludeRelativizationException e) {
+                    return refusePrecheck("rule", "eval", RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED,
+                            e.getMessage(), modelPath, RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED.fix());
+                } catch (UnresolvedReferenceException e) {
+                    return refusePrecheck("rule", "eval", RkCode.UNRESOLVED_REFERENCE, e.getMessage(), modelPath,
+                            RkCode.UNRESOLVED_REFERENCE.fix());
+                }
                 // same structured refusal in the DEFAULT (kernel-free) path — the interpreter otherwise throws
                 // "no such rule", which would surface as a bare error.
-                if (!InterpreterEngine.ruleFullNames(json).contains(rule)) {
+                if (!InterpreterEngine.ruleFullNames(interpJson).contains(rule)) {
                     return refuseNotFound("rule", "eval", RkCode.NO_SUCH_RULE,
                             "rule '" + rule + "' does not exist — refusing", rule, RkCode.NO_SUCH_RULE.fix());
                 }
-                data = InterpreterEngine.ruleTestData(json, fields, localeTag, rule,
+                data = InterpreterEngine.ruleTestData(interpJson, fields, localeTag, rule,
                         customSupport.predefinedTypes(), customSupport.customConditions(),
                         customSupport.customFieldTypes(), !noComputations);
             }
