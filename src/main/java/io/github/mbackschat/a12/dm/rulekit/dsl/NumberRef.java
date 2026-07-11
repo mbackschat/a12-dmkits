@@ -117,7 +117,7 @@ public record NumberRef(FieldRef field, int scale, boolean correlated) {
      * {@code [field For "indexValue"]} — the semantic index (slice 7f): this field's value in the
      * repetition whose index field equals {@code indexValue}. Comparable as a number expression.
      * The enclosing repeatable group must declare an {@code indexFieldName} (else the kernel reports
-     * {@code MVK_NO_INDEX_FIELD} — kernel-delegated).
+     * {@code MVK_NO_INDEX_FIELD} — kernel-delegated). catalog:SemanticIndex
      */
     public NumberExpr forIndex(String indexValue) {
         return new NumberExpr(new SemanticIndexValue(field, indexValue));
@@ -228,13 +228,13 @@ public record NumberRef(FieldRef field, int scale, boolean correlated) {
     /**
      * {@code FieldValueIncludedInValueList(field, n1, …)} — membership in a literal list. The
      * {@code long} signature is the kernel law: value-list numbers are integer literals only
-     * (a decimal is a grammar-level parse error — KERNEL-FINDINGS).
+     * (a decimal is a grammar-level parse error — KERNEL-FINDINGS). catalog:FieldValueIncludedInValueList
      */
     public Condition in(long first, long... rest) {
         return new ValueListCondition(field, true, integerValues(first, rest));
     }
 
-    /** {@code FieldValueNotIncludedInValueList(field, n1, …)} — integer literals only (see {@link #in}). */
+    /** {@code FieldValueNotIncludedInValueList(field, n1, …)} — integer literals only (see {@link #in}). catalog:FieldValueNotIncludedInValueList */
     public Condition notIn(long first, long... rest) {
         return new ValueListCondition(field, false, integerValues(first, rest));
     }

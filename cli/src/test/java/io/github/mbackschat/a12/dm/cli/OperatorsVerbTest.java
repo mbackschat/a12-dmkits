@@ -48,6 +48,27 @@ class OperatorsVerbTest {
     }
 
     @Test
+    void servesTheDslAuthoringBridge() throws Exception {
+        // G3: an operator's full view names the Java entry point(s) that render it — SemanticIndex names
+        // BOTH arms (the presence/coercion handle + the value read), so an agent crosses from operator to call.
+        JsonNode si = MAPPER.readTree(CliTestSupport.run("operators", "SemanticIndex").out());
+        java.util.Set<String> members = new java.util.HashSet<>();
+        for (JsonNode m : si.path("dslEntry")) {
+            members.add(m.asText());
+        }
+        assertTrue(members.contains("semanticIndex") && members.contains("forIndex"),
+                () -> "SemanticIndex names both arms: " + si.path("dslEntry"));
+
+        // a constant with no standalone factory serves an explicit empty list + a dslEntryNote reason,
+        // never a silent absence.
+        JsonNode t = MAPPER.readTree(CliTestSupport.run("operators", "True").out());
+        assertTrue(t.path("dslEntry").isArray() && t.path("dslEntry").isEmpty(),
+                () -> "True has no factory — explicit empty dslEntry: " + t);
+        assertTrue(!t.path("dslEntryNote").asText().isBlank(),
+                () -> "True's empty dslEntry carries its reason: " + t);
+    }
+
+    @Test
     void unknownOperatorFails() {
         CliTestSupport.Result res = CliTestSupport.run("operators", "NoSuchOp");
         assertEquals(2, res.code());

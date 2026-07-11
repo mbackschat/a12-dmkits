@@ -43,25 +43,27 @@ public final class Dsl {
     private Dsl() {
     }
 
+    /** {@code FieldFilled(field)} — the field currently holds a value; the factory peer of {@link FieldRef#filled}. catalog:FieldFilled */
     public static Condition fieldFilled(FieldRef field) {
         return new FieldPresenceCondition(field, true);
     }
 
+    /** {@code FieldNotFilled(field)} — the field is empty; the factory peer of {@link FieldRef#notFilled}. catalog:FieldNotFilled */
     public static Condition fieldNotFilled(FieldRef field) {
         return new FieldPresenceCondition(field, false);
     }
 
-    /** {@code Length(field)} as a comparable numeric expression. */
+    /** {@code Length(field)} as a comparable numeric expression. catalog:Length */
     public static NumberExpr length(StringRef field) {
         return field.length();
     }
 
-    /** {@code [field] PatternMatched "regex"} — anchored whole-value match; the factory peer of {@link StringRef#matches}. */
+    /** {@code [field] PatternMatched "regex"} — anchored whole-value match; the factory peer of {@link StringRef#matches}. catalog:PatternMatched */
     public static Condition matches(StringRef field, String regex) {
         return field.matches(regex);
     }
 
-    /** {@code [field] PatternViolated "regex"} — anchored whole-value non-match; the factory peer of {@link StringRef#violates}. */
+    /** {@code [field] PatternViolated "regex"} — anchored whole-value non-match; the factory peer of {@link StringRef#violates}. catalog:PatternViolated */
     public static Condition violates(StringRef field, String regex) {
         return field.violates(regex);
     }
@@ -70,7 +72,7 @@ public final class Dsl {
 
     /**
      * {@code NumberOfFilledFields(f1, f2, …)} — ≥2 fields by signature; kinds may be mixed.
-     * Operands may be flattened repetition lists ({@link BoundModel#flatten}).
+     * Operands may be flattened repetition lists ({@link BoundModel#flatten}). catalog:NumberOfFilledFields
      */
     public static NumberExpr numberOfFilledFields(FieldOperand first, FieldOperand second, FieldOperand... rest) {
         var fields = new java.util.ArrayList<FieldOperand>();
@@ -99,80 +101,80 @@ public final class Dsl {
         return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS, java.util.List.of(), groups));
     }
 
-    /** {@code Sum(…)} over number fields/repetition lists — unspecified fields count as 0 (§9). */
+    /** {@code Sum(…)} over number fields/repetition lists — unspecified fields count as 0 (§9). catalog:Sum */
     public static NumberExpr sum(FieldOperand first, FieldOperand... rest) {
         return listAggregate(ListAggregate.AggOp.SUM, first, rest);
     }
 
-    /** {@code SumOfProducts(a, b)} — Σ aᵢ·bᵢ over two parallel number field lists. */
+    /** {@code SumOfProducts(a, b)} — Σ aᵢ·bᵢ over two parallel number field lists. catalog:SumOfProducts */
     public static NumberExpr sumOfProducts(FieldOperand left, FieldOperand right) {
         return new NumberExpr(new SumOfProducts(left, right));
     }
 
-    /** {@code RoundDownValue(field)} — the field's value rounded down to an integer. */
+    /** {@code RoundDownValue(field)} — the field's value rounded down to an integer. catalog:RoundDownValue */
     public static NumberExpr roundDownValue(NumberRef field) {
         return new NumberExpr(new FieldRounding(FieldRounding.Mode.ROUND_DOWN, field.field()));
     }
 
-    /** {@code RoundUpValue(field)} — the field's value rounded up to an integer. */
+    /** {@code RoundUpValue(field)} — the field's value rounded up to an integer. catalog:RoundUpValue */
     public static NumberExpr roundUpValue(NumberRef field) {
         return new NumberExpr(new FieldRounding(FieldRounding.Mode.ROUND_UP, field.field()));
     }
 
-    /** {@code RoundAccountingValue(field)} — the field's value rounded to an integer (banker's rounding). */
+    /** {@code RoundAccountingValue(field)} — the field's value rounded to an integer (banker's rounding). catalog:RoundAccountingValue */
     public static NumberExpr roundAccountingValue(NumberRef field) {
         return new NumberExpr(new FieldRounding(FieldRounding.Mode.ROUND_ACCOUNTING, field.field()));
     }
 
-    /** {@code AbsValue(field)} — the absolute value of the field. */
+    /** {@code AbsValue(field)} — the absolute value of the field. catalog:AbsValue */
     public static NumberExpr absValue(NumberRef field) {
         return new NumberExpr(new FieldRounding(FieldRounding.Mode.ABS, field.field()));
     }
 
-    /** {@code MaxValue(…)} over number fields/repetition lists — unspecified fields are ignored. */
+    /** {@code MaxValue(…)} over number fields/repetition lists — unspecified fields are ignored. catalog:MaxValue */
     public static NumberExpr maxValue(FieldOperand first, FieldOperand... rest) {
         return listAggregate(ListAggregate.AggOp.MAX_VALUE, first, rest);
     }
 
-    /** {@code MinValue(…)} over number fields/repetition lists — unspecified fields are ignored. */
+    /** {@code MinValue(…)} over number fields/repetition lists — unspecified fields are ignored. catalog:MinValue */
     public static NumberExpr minValue(FieldOperand first, FieldOperand... rest) {
         return listAggregate(ListAggregate.AggOp.MIN_VALUE, first, rest);
     }
 
-    /** {@code MaxValue(…)} over a date repetition list — the latest specified date (a date operand). */
+    /** {@code MaxValue(…)} over a date repetition list — the latest specified date (a date operand). catalog:MaxValue */
     public static DateExpr latestOf(FieldListRef dateScope) {
         return new DateExpr(new DateListAggregate(DateListAggregate.Mode.LATEST, dateScope));
     }
 
-    /** {@code MinValue(…)} over a date repetition list — the earliest specified date (a date operand). */
+    /** {@code MinValue(…)} over a date repetition list — the earliest specified date (a date operand). catalog:MinValue */
     public static DateExpr earliestOf(FieldListRef dateScope) {
         return new DateExpr(new DateListAggregate(DateListAggregate.Mode.EARLIEST, dateScope));
     }
 
-    /** {@code FirstFilledValue(…)} over a number repetition list — the first specified value, as a number. */
+    /** {@code FirstFilledValue(…)} over a number repetition list — the first specified value, as a number. catalog:FirstFilledValue */
     public static NumberExpr firstFilledNumber(FieldListRef numberScope) {
         requireKind(numberScope, io.github.mbackschat.a12.dm.core.ValueKind.NUMBER, "firstFilledNumber");
         return new NumberExpr(new FirstFilledValue(numberScope));
     }
 
-    /** {@code FirstFilledValue(…)} over a date repetition list — the first specified value, as a date. */
+    /** {@code FirstFilledValue(…)} over a date repetition list — the first specified value, as a date. catalog:FirstFilledValue */
     public static DateExpr firstFilledDate(FieldListRef dateScope) {
         requireKind(dateScope, io.github.mbackschat.a12.dm.core.ValueKind.DATE, "firstFilledDate");
         return new DateExpr(new FirstFilledValue(dateScope));
     }
 
-    /** {@code NumberOfFilledGroups(/RootGroup*)} — the count of a repeatable root group's filled repetitions. */
+    /** {@code NumberOfFilledGroups(/RootGroup*)} — the count of a repeatable root group's filled repetitions. catalog:NumberOfFilledGroups */
     public static NumberExpr numberOfFilledRootGroups(GroupRef rootGroup) {
         return new NumberExpr(new RootGroupCount(rootGroup));
     }
 
-    /** {@code FirstFilledValue(…)} over a string repetition list — the first specified value, as a string. */
+    /** {@code FirstFilledValue(…)} over a string repetition list — the first specified value, as a string. catalog:FirstFilledValue */
     public static StringExpr firstFilledString(FieldListRef stringScope) {
         requireKind(stringScope, io.github.mbackschat.a12.dm.core.ValueKind.STRING, "firstFilledString");
         return new StringExpr(new FirstFilledValue(stringScope));
     }
 
-    /** {@code FirstFilledValue(…)} over an enum repetition list — the first specified value, as an enum. */
+    /** {@code FirstFilledValue(…)} over an enum repetition list — the first specified value, as an enum. catalog:FirstFilledValue */
     public static EnumExpr firstFilledEnum(FieldListRef enumScope) {
         requireKind(enumScope, io.github.mbackschat.a12.dm.core.ValueKind.ENUMERATION, "firstFilledEnum");
         return new EnumExpr(new FirstFilledValue(enumScope));
@@ -195,17 +197,17 @@ public final class Dsl {
 
     // --- operand-list math (over numeric value expressions) ------------------------------------
 
-    /** {@code Abs(value)} — the absolute value of a numeric expression (e.g. {@code Abs([A] - [B])}). */
+    /** {@code Abs(value)} — the absolute value of a numeric expression (e.g. {@code Abs([A] - [B])}). catalog:Abs */
     public static NumberExpr abs(NumberExpr value) {
         return new NumberExpr(new OpListMath(OpListMath.Op.ABS, List.of(value.expression())));
     }
 
-    /** {@code Min(v1, v2, …)} — the minimum of one or more numeric expressions. */
+    /** {@code Min(v1, v2, …)} — the minimum of one or more numeric expressions. catalog:Min */
     public static NumberExpr min(NumberExpr first, NumberExpr... rest) {
         return new NumberExpr(new OpListMath(OpListMath.Op.MIN, operandList(first, rest)));
     }
 
-    /** {@code Max(v1, v2, …)} — the maximum of one or more numeric expressions. */
+    /** {@code Max(v1, v2, …)} — the maximum of one or more numeric expressions. catalog:Max */
     public static NumberExpr max(NumberExpr first, NumberExpr... rest) {
         return new NumberExpr(new OpListMath(OpListMath.Op.MAX, operandList(first, rest)));
     }
@@ -245,29 +247,29 @@ public final class Dsl {
 
     // --- rounding (operand-list, over an arbitrary numeric expression) -------------------------
 
-    /** {@code RoundDown(expr, n)} — round a numeric expression down to {@code n} decimal places. */
+    /** {@code RoundDown(expr, n)} — round a numeric expression down to {@code n} decimal places. catalog:RoundDown */
     public static NumberExpr roundDown(NumberExpr operand, int decimalPlaces) {
         return new NumberExpr(new Rounding(Rounding.Mode.DOWN, operand.expression(), decimalPlaces));
     }
 
-    /** {@code RoundUp(expr, n)} — round a numeric expression up to {@code n} decimal places. */
+    /** {@code RoundUp(expr, n)} — round a numeric expression up to {@code n} decimal places. catalog:RoundUp */
     public static NumberExpr roundUp(NumberExpr operand, int decimalPlaces) {
         return new NumberExpr(new Rounding(Rounding.Mode.UP, operand.expression(), decimalPlaces));
     }
 
-    /** {@code RoundAccounting(expr, n)} — round a numeric expression to {@code n} decimal places (commercial rounding). */
+    /** {@code RoundAccounting(expr, n)} — round a numeric expression to {@code n} decimal places (commercial rounding). catalog:RoundAccounting */
     public static NumberExpr roundAccounting(NumberExpr operand, int decimalPlaces) {
         return new NumberExpr(new Rounding(Rounding.Mode.ACCOUNTING, operand.expression(), decimalPlaces));
     }
 
     // --- date family (item 9) — Today, differences (→ number), shifts (→ date) ----------------
 
-    /** {@code Today} — the current date constant (DE {@code Heute}). */
+    /** {@code Today} — the current date constant (DE {@code Heute}). catalog:Today */
     public static DateExpr today() {
         return new DateExpr(new Today());
     }
 
-    /** {@code Now} — the current date-time (DE {@code Jetzt}); the date-time sibling of {@link #today()}. */
+    /** {@code Now} — the current date-time (DE {@code Jetzt}); the date-time sibling of {@link #today()}. catalog:Now */
     public static DateTimeExpr now() {
         return new DateTimeExpr(new Now());
     }
@@ -275,13 +277,13 @@ public final class Dsl {
     /**
      * {@code BaseYear} — the model's configured base year (DE {@code Basisjahr}), as a comparable date
      * (the start of the base year). Only valid in a model declaring a base year. To compare it as the
-     * year <em>number</em>, use {@link #baseYearNumber()}.
+     * year <em>number</em>, use {@link #baseYearNumber()}. catalog:BaseYear
      */
     public static DateExpr baseYear() {
         return new DateExpr(new BaseYear());
     }
 
-    /** {@code BaseYear} as the year <em>number</em> — for a numeric comparison against a number field. */
+    /** {@code BaseYear} as the year <em>number</em> — for a numeric comparison against a number field. catalog:BaseYear */
     public static NumberExpr baseYearNumber() {
         return new NumberExpr(new BaseYear());
     }
@@ -317,70 +319,72 @@ public final class Dsl {
         return timeValue(time.format(TIME_LITERAL_FORMAT));
     }
 
-    /** {@code DifferenceInDays(a, b)} — a numeric date difference (a floor, not a calendar count). */
+    /** {@code DifferenceInDays(a, b)} — a numeric date difference (a floor, not a calendar count). catalog:DifferenceInDays */
     public static NumberExpr differenceInDays(TemporalOperand a, TemporalOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.DAYS, a.expression(), b.expression()));
     }
 
+    /** {@code DifferenceInMonths(a, b)} — the whole-months date difference, as a number (a floor, not rounded). catalog:DifferenceInMonths */
     public static NumberExpr differenceInMonths(TemporalOperand a, TemporalOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.MONTHS, a.expression(), b.expression()));
     }
 
+    /** {@code DifferenceInYears(a, b)} — the whole-years date difference, as a number (a floor, not rounded). catalog:DifferenceInYears */
     public static NumberExpr differenceInYears(TemporalOperand a, TemporalOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.YEARS, a.expression(), b.expression()));
     }
 
-    /** {@code DifferenceInHours(dt1, dt2)} — the whole-hours difference between two date-times, as a number. */
+    /** {@code DifferenceInHours(dt1, dt2)} — the whole-hours difference between two date-times, as a number. catalog:DifferenceInHours */
     public static NumberExpr differenceInHours(TemporalOperand a, TemporalOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.HOURS, a.expression(), b.expression()));
     }
 
-    /** {@code DifferenceInMinutes(dt1, dt2)} — the whole-minutes difference between two date-times. */
+    /** {@code DifferenceInMinutes(dt1, dt2)} — the whole-minutes difference between two date-times. catalog:DifferenceInMinutes */
     public static NumberExpr differenceInMinutes(TemporalOperand a, TemporalOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.MINUTES, a.expression(), b.expression()));
     }
 
-    /** {@code DifferenceInSeconds(dt1, dt2)} — the whole-seconds difference between two date-times. */
+    /** {@code DifferenceInSeconds(dt1, dt2)} — the whole-seconds difference between two date-times. catalog:DifferenceInSeconds */
     public static NumberExpr differenceInSeconds(TemporalOperand a, TemporalOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.SECONDS, a.expression(), b.expression()));
     }
 
-    /** {@code YearFromDate(date)} — the year component of a date (or date-time) as a number. */
+    /** {@code YearFromDate(date)} — the year component of a date (or date-time) as a number. catalog:YearFromDate */
     public static NumberExpr yearFromDate(TemporalOperand date) {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.YEAR, date.expression()));
     }
 
-    /** {@code MonthFromDate(date)} — the month component (1-12) as a number. */
+    /** {@code MonthFromDate(date)} — the month component (1-12) as a number. catalog:MonthFromDate */
     public static NumberExpr monthFromDate(TemporalOperand date) {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.MONTH, date.expression()));
     }
 
-    /** {@code DayFromDate(date)} — the day-of-month component as a number. */
+    /** {@code DayFromDate(date)} — the day-of-month component as a number. catalog:DayFromDate */
     public static NumberExpr dayFromDate(TemporalOperand date) {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.DAY, date.expression()));
     }
 
-    /** {@code QuarterFromDate(date)} — the calendar quarter (1-4) as a number. */
+    /** {@code QuarterFromDate(date)} — the calendar quarter (1-4) as a number. catalog:QuarterFromDate */
     public static NumberExpr quarterFromDate(TemporalOperand date) {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.QUARTER, date.expression()));
     }
 
-    /** {@code HoursFromTime(time)} — the hour-of-day component (0-23) of a time (or date-time) as a number. */
+    /** {@code HoursFromTime(time)} — the hour-of-day component (0-23) of a time (or date-time) as a number. catalog:HoursFromTime */
     public static NumberExpr hoursFromTime(TemporalOperand time) {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.HOURS, time.expression()));
     }
 
-    /** {@code MinutesFromTime(time)} — the minute component (0-59) as a number. */
+    /** {@code MinutesFromTime(time)} — the minute component (0-59) as a number. catalog:MinutesFromTime */
     public static NumberExpr minutesFromTime(TemporalOperand time) {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.MINUTES, time.expression()));
     }
 
-    /** {@code SecondsFromTime(time)} — the second component (0-59) as a number. */
+    /** {@code SecondsFromTime(time)} — the second component (0-59) as a number. catalog:SecondsFromTime */
     public static NumberExpr secondsFromTime(TemporalOperand time) {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.SECONDS, time.expression()));
     }
 
-    /** {@code Date(day, month, year)} — construct a date from numeric components (a comparable date). */
+    /** {@code Date(day, month, year)} — construct a date from numeric components (a comparable date). catalog:Date */
     public static DateExpr date(NumberExpr day, NumberExpr month, NumberExpr year) {
         return new DateExpr(new DateConstruction(day.expression(), month.expression(), year.expression()));
     }
@@ -394,7 +398,7 @@ public final class Dsl {
     /**
      * {@code Time("10", "30", "50")} — construct a time-of-day from hour/minute/second constants (a
      * comparable time). The kernel takes the components as quoted constants here (a bracketed value
-     * {@code [H]} is rejected); for field components use {@link #time(FieldRef, FieldRef, FieldRef)}.
+     * {@code [H]} is rejected); for field components use {@link #time(FieldRef, FieldRef, FieldRef)}. catalog:Time
      */
     public static TimeExpr time(String hour, String minute, String second) {
         return new TimeExpr(new TimeConstruction(new StringLiteral(hour), new StringLiteral(minute),
@@ -406,7 +410,7 @@ public final class Dsl {
         return new TimeExpr(new TimeConstruction(new FieldValue(hour), new FieldValue(minute), new FieldValue(second)));
     }
 
-    /** {@code DateTime(date, time)} — combine a date and a time into a comparable date-time. */
+    /** {@code DateTime(date, time)} — combine a date and a time into a comparable date-time. catalog:DateTime */
     public static DateTimeExpr dateTime(DateOperand date, TimeOperand time) {
         return new DateTimeExpr(new DateTimeConstruction(date.expression(), time.expression()));
     }
@@ -415,18 +419,18 @@ public final class Dsl {
      * {@code DateRange(start, end)} — construct a date-range value from two dates (the kernel's
      * {@code IDateRangeConstructionOperation}). Computation-only: its sole legal home is a computation
      * operation assigning a {@code DATE_RANGE} field (it has no condition use site — see
-     * {@link DateRangeConstruction}).
+     * {@link DateRangeConstruction}). catalog:DateRange
      */
     public static DateRangeConstruction dateRange(DateOperand start, DateOperand end) {
         return new DateRangeConstruction(start.expression(), end.expression());
     }
 
-    /** {@code Valid(dateConstruct)} — true iff the constructed date is a real calendar date. */
+    /** {@code Valid(dateConstruct)} — true iff the constructed date is a real calendar date. catalog:Valid */
     public static Condition valid(DateOperand dateConstruct) {
         return new DateValidity(true, dateConstruct.expression());
     }
 
-    /** {@code Invalid(dateConstruct)} — true iff the constructed date is not a real calendar date. */
+    /** {@code Invalid(dateConstruct)} — true iff the constructed date is not a real calendar date. catalog:Invalid */
     public static Condition invalid(DateOperand dateConstruct) {
         return new DateValidity(false, dateConstruct.expression());
     }
@@ -436,13 +440,13 @@ public final class Dsl {
      * predefined custom field type {@code typeName} (e.g. {@code "IBAN"}, {@code "Steuernummer"}). The
      * field must be STRING or ENUMERATION. <b>The type name is not validated at model-check time</b> — the
      * predefined types are a runtime client-SPI, so a wrong name only fails at evaluation (see
-     * {@link CustomTypeValidity}).
+     * {@link CustomTypeValidity}). catalog:ValidType
      */
     public static Condition validType(FieldRef field, String typeName) {
         return customTypeValidity(true, field, typeName);
     }
 
-    /** {@code Invalid(field, "TypeName")} — the negation of {@link #validType} (the field is NOT a valid {@code typeName}). */
+    /** {@code Invalid(field, "TypeName")} — the negation of {@link #validType} (the field is NOT a valid {@code typeName}). catalog:InvalidType */
     public static Condition invalidType(FieldRef field, String typeName) {
         return customTypeValidity(false, field, typeName);
     }
@@ -455,12 +459,12 @@ public final class Dsl {
         return new CustomTypeValidity(valid, field, typeName);
     }
 
-    /** {@code StartOfDateRange(range)} — the start bound of a date-range, as a comparable date. */
+    /** {@code StartOfDateRange(range)} — the start bound of a date-range, as a comparable date. catalog:StartOfDateRange */
     public static DateExpr startOfDateRange(DateRangeRef range) {
         return new DateExpr(new DateRangeBound(DateRangeBound.Bound.START, range.expression()));
     }
 
-    /** {@code EndOfDateRange(range)} — the end bound of a date-range, as a comparable date. */
+    /** {@code EndOfDateRange(range)} — the end bound of a date-range, as a comparable date. catalog:EndOfDateRange */
     public static DateExpr endOfDateRange(DateRangeRef range) {
         return new DateExpr(new DateRangeBound(DateRangeBound.Bound.END, range.expression()));
     }
@@ -468,51 +472,53 @@ public final class Dsl {
     /**
      * {@code StartOfDateRange(BaseYear)} — 01.01 of the model's base year, as a comparable date. The kernel
      * treats {@code BaseYear} as a date range spanning the reference year, so it is the one point-in-time
-     * usable as a date-range source (needs a declared base year, else {@code MVK_NO_BASE_YEAR}).
+     * usable as a date-range source (needs a declared base year, else {@code MVK_NO_BASE_YEAR}). catalog:StartOfDateRange
      */
     public static DateExpr startOfBaseYear() {
         return new DateExpr(new DateRangeBound(DateRangeBound.Bound.START, new BaseYear()));
     }
 
-    /** {@code EndOfDateRange(BaseYear)} — 31.12 of the model's base year, as a comparable date. */
+    /** {@code EndOfDateRange(BaseYear)} — 31.12 of the model's base year, as a comparable date. catalog:EndOfDateRange */
     public static DateExpr endOfBaseYear() {
         return new DateExpr(new DateRangeBound(DateRangeBound.Bound.END, new BaseYear()));
     }
 
     /**
      * {@code ValueAsDate(field, FirstDay)} — the earliest concrete date of a partially known date field
-     * (a {@code DateType} with a date precision other than FULL), as a comparable date.
+     * (a {@code DateType} with a date precision other than FULL), as a comparable date. catalog:ValueAsDate
      */
     public static DateExpr valueAsDateFirstDay(FieldRef partiallyKnownDate) {
         return new DateExpr(new ValueAsDate(partiallyKnownDate, true));
     }
 
-    /** {@code ValueAsDate(field, LastDay)} — the latest concrete date of a partially known date field. */
+    /** {@code ValueAsDate(field, LastDay)} — the latest concrete date of a partially known date field. catalog:ValueAsDate */
     public static DateExpr valueAsDateLastDay(FieldRef partiallyKnownDate) {
         return new DateExpr(new ValueAsDate(partiallyKnownDate, false));
     }
 
     /** {@code DateFromDateTime(dt)} — the date part of a date-time, as a comparable date. Accepts any
-     *  {@link DateTimeOperand}: a date-time field OR a {@code DateTime(date, time)} construction (DG9). */
+     *  {@link DateTimeOperand}: a date-time field OR a {@code DateTime(date, time)} construction (DG9). catalog:DateFromDateTime */
     public static DateExpr dateFromDateTime(DateTimeOperand dateTime) {
         return new DateExpr(new DateTimePart(DateTimePart.Unit.DATE, dateTime.expression()));
     }
 
     /** {@code TimeFromDateTime(dt)} — the time-of-day part of a date-time, as a comparable time. Accepts any
-     *  {@link DateTimeOperand}: a date-time field OR a {@code DateTime(date, time)} construction (DG9). */
+     *  {@link DateTimeOperand}: a date-time field OR a {@code DateTime(date, time)} construction (DG9). catalog:TimeFromDateTime */
     public static TimeExpr timeFromDateTime(DateTimeOperand dateTime) {
         return new TimeExpr(new DateTimePart(DateTimePart.Unit.TIME, dateTime.expression()));
     }
 
-    /** {@code AddDays(date, n)} — shifts a date by an integer constant, yielding a date (comparable). */
+    /** {@code AddDays(date, n)} — shifts a date by an integer constant, yielding a date (comparable). catalog:AddDays */
     public static DateExpr addDays(TemporalOperand date, long amount) {
         return addDays(date, number(Long.toString(amount)));
     }
 
+    /** {@code AddMonths(date, n)} — shifts a date by an integer constant number of months, yielding a date. catalog:AddMonths */
     public static DateExpr addMonths(TemporalOperand date, long amount) {
         return addMonths(date, number(Long.toString(amount)));
     }
 
+    /** {@code AddYears(date, n)} — shifts a date by an integer constant number of years, yielding a date. catalog:AddYears */
     public static DateExpr addYears(TemporalOperand date, long amount) {
         return addYears(date, number(Long.toString(amount)));
     }
@@ -533,15 +539,17 @@ public final class Dsl {
     /** {@code AddHours(dateTime, n)} — shifts a date-time by {@code n} hours, yielding a **date-time**
      *  ({@code n} may be negative). Returns a {@link DateTimeExpr} (a sub-day shift is a date-time, matching
      *  {@code DateShift.Unit.HOURS}'s declared kind), so it composes as a date-time operand — comparisons AND
-     *  {@code dateFromDateTime}/{@code timeFromDateTime} (DG9). */
+     *  {@code dateFromDateTime}/{@code timeFromDateTime} (DG9). catalog:AddHours */
     public static DateTimeExpr addHours(TemporalOperand dateTime, long amount) {
         return addHours(dateTime, number(Long.toString(amount)));
     }
 
+    /** {@code AddMinutes(dateTime, n)} — shifts a date-time by an integer constant number of minutes ({@code n} may be negative). catalog:AddMinutes */
     public static DateTimeExpr addMinutes(TemporalOperand dateTime, long amount) {
         return addMinutes(dateTime, number(Long.toString(amount)));
     }
 
+    /** {@code AddSeconds(dateTime, n)} — shifts a date-time by an integer constant number of seconds ({@code n} may be negative). catalog:AddSeconds */
     public static DateTimeExpr addSeconds(TemporalOperand dateTime, long amount) {
         return addSeconds(dateTime, number(Long.toString(amount)));
     }
@@ -580,7 +588,7 @@ public final class Dsl {
         return new StringExpr(new StringLiteral(literal));
     }
 
-    /** {@code FieldValueAsString(field)} — a field's value coerced to its string form, as a string expression. */
+    /** {@code FieldValueAsString(field)} — a field's value coerced to its string form, as a string expression. catalog:FieldValueAsString */
     public static StringExpr fieldValueAsString(FieldRef field) {
         return new StringExpr(new FieldValueAsString(field));
     }
@@ -594,27 +602,27 @@ public final class Dsl {
         return new StringExpr(new IndexedFieldValueAsString(cell.index()));
     }
 
-    /** {@code RangeAsString(field, start, end)} — a substring of a string field, as a string expression. */
+    /** {@code RangeAsString(field, start, end)} — a substring of a string field, as a string expression. catalog:RangeAsString */
     public static StringExpr rangeAsString(FieldRef field, int start, int end) {
         return new StringExpr(new RangeAsString(field, start, end));
     }
 
-    /** {@code FieldValueAsNumber(field)} — a string/enum field's value coerced to a number (it must always convert). */
+    /** {@code FieldValueAsNumber(field)} — a string/enum field's value coerced to a number (it must always convert). catalog:FieldValueAsNumber */
     public static NumberExpr fieldValueAsNumber(FieldRef field) {
         return new NumberExpr(new FieldValueAsNumber(field));
     }
 
-    /** {@code RangeAsNumber(field, start, end)} — a substring of a string field read as a number (non-numeric → 0). */
+    /** {@code RangeAsNumber(field, start, end)} — a substring of a string field read as a number (non-numeric → 0). catalog:RangeAsNumber */
     public static NumberExpr rangeAsNumber(FieldRef field, int start, int end) {
         return new NumberExpr(new RangeAsNumber(field, start, end));
     }
 
-    /** {@code CustomCondition <Name>} — the app-defined escape hatch (KERNEL-SEMANTICS §14). */
+    /** {@code CustomCondition <Name>} — the app-defined escape hatch (KERNEL-SEMANTICS §14). catalog:CustomCondition */
     public static Condition customCondition(String name) {
         return new CustomConditionRef(name);
     }
 
-    /** {@code CurrentRepetition(group)} — the group's current iteration index, as a number expression. */
+    /** {@code CurrentRepetition(group)} — the group's current iteration index, as a number expression. catalog:CurrentRepetition */
     public static NumberExpr currentRepetition(GroupRef group) {
         return new NumberExpr(new CurrentRepetition(group));
     }
@@ -631,7 +639,7 @@ public final class Dsl {
     /**
      * {@code NumberOfValueInFields(value IN f1, f2, …)} — the count of the listed fields equal to a
      * boolean constant (e.g. {@code NumberOfValueInFields(True IN OptInA, OptInB, OptInC)}). The kernel
-     * needs at least two fields (or a group).
+     * needs at least two fields (or a group). catalog:NumberOfValueInFields
      */
     public static NumberExpr numberOfValueInFields(boolean value, FieldOperand first, FieldOperand second,
             FieldOperand... rest) {
@@ -658,7 +666,7 @@ public final class Dsl {
         return fields;
     }
 
-    /** {@code NumberOfDifferentValues(…)} — distinct-value count over type-homogeneous operands. */
+    /** {@code NumberOfDifferentValues(…)} — distinct-value count over type-homogeneous operands. catalog:NumberOfDifferentValues */
     public static NumberExpr numberOfDifferentValues(FieldOperand first, FieldOperand... rest) {
         var fields = new java.util.ArrayList<FieldOperand>();
         fields.add(first);
@@ -668,7 +676,7 @@ public final class Dsl {
 
     /**
      * {@code NumberOfFilledGroups(group*)} — counts the filled repetitions of one repeatable group (the
-     * wildcard scope). The group must repeat; for distinct groups use the ≥2-group form.
+     * wildcard scope). The group must repeat; for distinct groups use the ≥2-group form. catalog:NumberOfFilledGroups
      */
     public static NumberExpr numberOfFilledGroups(GroupRef repeatableGroup) {
         if (!repeatableGroup.repeating()) {
@@ -693,16 +701,19 @@ public final class Dsl {
     // erased); the enum variants domain-check every value against every field (the kernel's
     // MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY pre-checked).
 
+    /** {@code AtLeastOneFieldValueIncludedInValueList(f1, f2 In "v1", "v2")} — at least one listed field's value is in the value list. catalog:AtLeastOneFieldValueIncludedInValueList */
     public static Condition atLeastOneFieldValueIncludedInValueList(
             java.util.List<String> values, StringRef first, StringRef... rest) {
         return stringListQuantifier(ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED, values, first, rest);
     }
 
+    /** {@code NoFieldValueIncludedInValueList(f1, f2 In "v1", "v2")} — none of the listed fields' values is in the value list. catalog:NoFieldValueIncludedInValueList */
     public static Condition noFieldValueIncludedInValueList(
             java.util.List<String> values, StringRef first, StringRef... rest) {
         return stringListQuantifier(ValueListQuantifier.NO_FIELD_VALUE_INCLUDED, values, first, rest);
     }
 
+    /** {@code NotAllFieldValuesIncludedInValueList(f1, f2 In "v1", "v2")} — at least one listed field's value is NOT in the value list. catalog:NotAllFieldValuesIncludedInValueList */
     public static Condition notAllFieldValuesIncludedInValueList(
             java.util.List<String> values, StringRef first, StringRef... rest) {
         return stringListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, first, rest);
@@ -723,7 +734,7 @@ public final class Dsl {
         return enumListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, first, rest);
     }
 
-    /** {@code DateRangesOverlap(r1, r2, …)} — true iff the date ranges of the listed fields overlap. */
+    /** {@code DateRangesOverlap(r1, r2, …)} — true iff the date ranges of the listed fields overlap. catalog:DateRangesOverlap */
     public static Condition dateRangesOverlap(FieldOperand first, FieldOperand... rest) {
         var fields = new java.util.ArrayList<FieldOperand>();
         fields.add(first);
@@ -731,7 +742,7 @@ public final class Dsl {
         return new FieldListPredicate(Quantifier.DATE_RANGES_OVERLAP, fields);
     }
 
-    /** {@code AtLeastOneDateRangeOverlaps(range IN r1, r2, …)} — {@code range} overlaps at least one listed range. */
+    /** {@code AtLeastOneDateRangeOverlaps(range IN r1, r2, …)} — {@code range} overlaps at least one listed range. catalog:AtLeastOneDateRangeOverlaps */
     public static Condition atLeastOneDateRangeOverlaps(FieldOperand range, FieldOperand first, FieldOperand... rest) {
         var values = new java.util.ArrayList<FieldOperand>();
         values.add(first);
@@ -833,36 +844,42 @@ public final class Dsl {
 
     // --- field-list quantifiers — at least one field by signature ------------------------------
 
+    /** {@code AllFieldsFilled(f1, f2, …)} — every listed field is filled (≥1 by signature; also over {@code List} / {@code Group*} scopes). catalog:AllFieldsFilled */
     public static Condition allFieldsFilled(FieldOperand first, FieldOperand... rest) {
         return fieldList(Quantifier.ALL_FIELDS_FILLED, first, rest);
     }
 
+    /** {@code NoFieldFilled(f1, f2, …)} — none of the listed fields is filled. catalog:NoFieldFilled */
     public static Condition noFieldFilled(FieldOperand first, FieldOperand... rest) {
         return fieldList(Quantifier.NO_FIELD_FILLED, first, rest);
     }
 
+    /** {@code AtLeastOneFieldFilled(f1, f2, …)} — at least one of the listed fields is filled. catalog:AtLeastOneFieldFilled */
     public static Condition atLeastOneFieldFilled(FieldOperand first, FieldOperand... rest) {
         return fieldList(Quantifier.AT_LEAST_ONE_FIELD_FILLED, first, rest);
     }
 
+    /** {@code NotAllFieldsFilled(f1, f2, …)} — at least one of the listed fields is empty. catalog:NotAllFieldsFilled */
     public static Condition notAllFieldsFilled(FieldOperand first, FieldOperand... rest) {
         return fieldList(Quantifier.NOT_ALL_FIELDS_FILLED, first, rest);
     }
 
+    /** {@code FieldsNotCollectivelyFilled(f1, f2, …)} — the listed fields are partially filled (some but not all). catalog:FieldsNotCollectivelyFilled */
     public static Condition fieldsNotCollectivelyFilled(FieldOperand first, FieldOperand... rest) {
         return fieldList(Quantifier.FIELDS_NOT_COLLECTIVELY_FILLED, first, rest);
     }
 
+    /** {@code NotExactlyOneFieldFilled(f1, f2, …)} — the count of filled fields among those listed is not exactly one. catalog:NotExactlyOneFieldFilled */
     public static Condition notExactlyOneFieldFilled(FieldOperand first, FieldOperand... rest) {
         return fieldList(Quantifier.NOT_EXACTLY_ONE_FIELD_FILLED, first, rest);
     }
 
-    /** {@code MoreThanOneFieldFilled(f1, f2, …)} — true when two or more of the listed fields are filled. */
+    /** {@code MoreThanOneFieldFilled(f1, f2, …)} — true when two or more of the listed fields are filled. catalog:MoreThanOneFieldFilled */
     public static Condition moreThanOneFieldFilled(FieldOperand first, FieldOperand... rest) {
         return fieldList(Quantifier.MORE_THAN_ONE_FIELD_FILLED, first, rest);
     }
 
-    /** {@code FieldValuesNotUnique(f1, f2, …)} — true when the listed values are not all distinct. */
+    /** {@code FieldValuesNotUnique(f1, f2, …)} — true when the listed values are not all distinct. catalog:FieldValuesNotUnique */
     public static Condition fieldValuesNotUnique(FieldOperand first, FieldOperand... rest) {
         return fieldList(Quantifier.FIELD_VALUES_NOT_UNIQUE, first, rest);
     }
@@ -871,7 +888,7 @@ public final class Dsl {
      * {@code RepetitionNotUnique(key1, key2, …)} — duplicate-key detection over repetitions
      * (KERNEL-SEMANTICS §9). Scope with {@link RepetitionNotUniqueCondition#from from(group)}
      * ({@code @From}). Keys are plain {@link FieldRef}s by signature — groups and starred lists
-     * are unrepresentable here.
+     * are unrepresentable here. catalog:RepetitionNotUnique
      */
     public static RepetitionNotUniqueCondition repetitionNotUnique(FieldRef first, FieldRef... rest) {
         List<FieldRef> keys = new ArrayList<>();
@@ -1038,7 +1055,7 @@ public final class Dsl {
 
     // --- n-ary composition (study finding 10) ---------------------------------------------------
 
-    /** And-fold: {@code allOf(a, b, c)} renders {@code a And b And c} (no redundant parentheses). */
+    /** And-fold: {@code allOf(a, b, c)} renders {@code a And b And c} (no redundant parentheses). catalog:And */
     public static Condition allOf(Condition first, Condition second, Condition... rest) {
         Condition folded = first.and(second);
         for (Condition c : rest) {
@@ -1047,7 +1064,7 @@ public final class Dsl {
         return folded;
     }
 
-    /** Or-fold: {@code anyOf(a, b, c)} renders {@code a Or b Or c}; parenthesized when mixed with And. */
+    /** Or-fold: {@code anyOf(a, b, c)} renders {@code a Or b Or c}; parenthesized when mixed with And. catalog:Or */
     public static Condition anyOf(Condition first, Condition second, Condition... rest) {
         Condition folded = first.or(second);
         for (Condition c : rest) {
@@ -1086,30 +1103,37 @@ public final class Dsl {
         return new RuleGroupRef();
     }
 
+    /** {@code GroupFilled(group)} — the group is present (for a repeatable group: the row exists); the peer of {@link GroupRef#filled}. catalog:GroupFilled */
     public static Condition groupFilled(GroupRef group) {
         return new GroupPresenceCondition(group, true);
     }
 
+    /** {@code GroupNotFilled(group)} — the group is absent; negative conditions on a repeatable group need guarding (§5). catalog:GroupNotFilled */
     public static Condition groupNotFilled(GroupRef group) {
         return new GroupPresenceCondition(group, false);
     }
 
+    /** {@code AllGroupsFilled(g1, g2, …)} — every listed group is present. catalog:AllGroupsFilled */
     public static Condition allGroupsFilled(GroupRef first, GroupRef... rest) {
         return groupList(GroupQuantifier.ALL_GROUPS_FILLED, first, rest);
     }
 
+    /** {@code NoGroupFilled(g1, g2, …)} — none of the listed groups is present. catalog:NoGroupFilled */
     public static Condition noGroupFilled(GroupRef first, GroupRef... rest) {
         return groupList(GroupQuantifier.NO_GROUP_FILLED, first, rest);
     }
 
+    /** {@code AtLeastOneGroupFilled(g1, g2, …)} — at least one of the listed groups is present. catalog:AtLeastOneGroupFilled */
     public static Condition atLeastOneGroupFilled(GroupRef first, GroupRef... rest) {
         return groupList(GroupQuantifier.AT_LEAST_ONE_GROUP_FILLED, first, rest);
     }
 
+    /** {@code NotAllGroupsFilled(g1, g2, …)} — at least one of the listed groups is absent. catalog:NotAllGroupsFilled */
     public static Condition notAllGroupsFilled(GroupRef first, GroupRef... rest) {
         return groupList(GroupQuantifier.NOT_ALL_GROUPS_FILLED, first, rest);
     }
 
+    /** {@code GroupsNotCollectivelyFilled(g1, g2, …)} — the listed groups are partially present (some but not all). catalog:GroupsNotCollectivelyFilled */
     public static Condition groupsNotCollectivelyFilled(GroupRef first, GroupRef... rest) {
         return groupList(GroupQuantifier.GROUPS_NOT_COLLECTIVELY_FILLED, first, rest);
     }

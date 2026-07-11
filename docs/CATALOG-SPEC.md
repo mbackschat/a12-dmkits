@@ -21,6 +21,7 @@ The machine tier exists because three consumers demonstrably guessed wrong when 
 
 - **`semantics`** (§3) — the per-operator facet block, one key per dimension.
 - **`correctives`** (§6) — operand-conditional fixes for kernel codes, the machine-readable refinement of `invalidExample.fix`.
+- **`dslEntry` / `dslEntryNote`** (§7a, G3) — the DSL authoring entry point(s): the rulekit Java method name(s) that render this operator, so a consumer crosses from "which operator" to "which call". **Derived, not hand-authored** — the single source of truth is a `catalog:<Id>` marker on each authoring method's Javadoc; the JSON is that map's shipped projection, locked by a two-way guard (§5). A constant with no standalone factory (`True`/`False`/`FirstDay`/`LastDay` — emitted only as a comparison operand or a keyword inside another op) carries an explicit empty `dslEntry` + a `dslEntryNote` reason, never a silent absence.
 
 ## 3. The `semantics` facet block
 
@@ -151,6 +152,7 @@ Every executable artifact in the catalog is CI-executed against the **real kerne
 | **corrective probes** | `catalog.CatalogCorrectiveProbesTest` | every `correctives[].probe.dsl` kernel-**REJECTED with exactly its `code`** |
 | structural | `catalog.OperatorCatalogTest` | every claim, per dimension: well-formed value (emptyOperand/aggregateIdentity: valid selector + value XOR perKind; boundary/iterationRange/polarity: a value; polarity additionally: every probe pins an `outcome` and `fires: true`), non-blank basis, **≥ 1 probe**, well-formed probe paths; every corrective: known operand-class tokens, fix, reject probe |
 | keyword / construct parity | `KeywordParityTest`, `adapter.KernelConstructParityTest` | catalog ↔ lexer terminals / parsetree construct enums (unchanged) |
+| catalog ↔ DSL bridge (G3) | `catalog.DslCatalogBridgeTest` | the `dslEntry` map ⟺ the code-side `catalog:<Id>` markers (bidirectional **set-equality**, read through the loaded record); every member **resolves** to a public authoring method; every operator is mapped **or** an explicit empty + `dslEntryNote` with no marker (absence is impossible). On mismatch it **dumps** the marker-derived projection — author by derivation, never hand-author twice |
 
 ### 5a. The firing-probe contract (`FacetProbe`)
 
@@ -196,7 +198,17 @@ The mechanism: an entry carries `correctives` — per-`code`, per-operand-shape 
 
 ## 7. Serving — `dmtool operators`
 
-`dmtool operators <id>` serves the full entry including the machine tier: `semantics` (the facet claims across **every** dimension — `emptyOperand`, `boundary`, `iterationRange`, `aggregateIdentity`, `polarity`; probes elided, they are CI detail; the per-dimension `value`/`behavior`/`perKind`, `basis`, `note` travel), the header defaults ride the bare `operators` list response as `emptyOperandDefaults` (kind → behavior), `correctives` (code, whenOperands, fix), and `gotchas` **with their `kind`**. The payload is part of the self-describing surface (CLI-SPEC §1a): a cold agent must be able to learn "an empty number fires this comparison", "the tolerance band is strict", and "`<` and `<=` differ" from the binary alone. It is also the **eval judge's ground-truth oracle** (§8) — the judge reads this block to reason about semantic equivalence.
+`dmtool operators <id>` serves the full entry including the machine tier: `semantics` (the facet claims across **every** dimension — `emptyOperand`, `boundary`, `iterationRange`, `aggregateIdentity`, `polarity`; probes elided, they are CI detail; the per-dimension `value`/`behavior`/`perKind`, `basis`, `note` travel), the header defaults ride the bare `operators` list response as `emptyOperandDefaults` (kind → behavior), `correctives` (code, whenOperands, fix), `gotchas` **with their `kind`**, and the **`dslEntry`** authoring bridge (§7a). The payload is part of the self-describing surface (CLI-SPEC §1a): a cold agent must be able to learn "an empty number fires this comparison", "the tolerance band is strict", and "`<` and `<=` differ" from the binary alone. It is also the **eval judge's ground-truth oracle** (§8) — the judge reads this block to reason about semantic equivalence.
+
+### 7a. The `dslEntry` authoring bridge (G3)
+
+The catalog answers "what does operator X mean?"; `dslEntry` closes the reverse dead-end — "which rulekit call authors X?" — for the developer/agent driving the typed API. It is **derived-complete over all 110 operators** with a single source of truth and a two-way guard:
+
+- **Source of truth = code.** Each public authoring method carries a `catalog:<Id>` marker in its Javadoc (a `differsWithTolerance` renders four tolerance ops, so a marker may name several ids comma-separated; interface default methods — `Condition.and`/`or` — are covered too). The marker sits beside render-tested code, so the mapping lives where it's provably correct.
+- **`dslEntry` in `operators.json` = the projection.** Populated by **author-by-derivation**: the guard (`DslCatalogBridgeTest`) dumps the marker-derived `id → {method}` map; that dump is injected into the JSON. The two are then locked by bidirectional set-equality — they cannot drift, and the map is never hand-authored twice.
+- **All 110, no silent gap.** An operator with no standalone factory — the constants `True`/`False` (emitted as a boolean/confirm comparison operand or in `NumberOfValueInFields`) and the `ValueAsDate` day keywords `FirstDay`/`LastDay` — carries an explicit empty `dslEntry` + a `dslEntryNote` reason and **no** marker; the guard enforces that pairing, so "unmapped" is always either a real method set or an explained absence.
+
+`operators <id>` serves `dslEntry` (and `dslEntryNote` when present), so the bridge is discoverable from the binary. `operators` is `CONTRACT_EXEMPT` (it renders a catalog payload, not the result envelope), so serving it is additive — no schema change.
 
 ## 8. Consumers (what makes the facets pass the §21D consumer-exists razor)
 

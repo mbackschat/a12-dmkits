@@ -39,10 +39,12 @@ public record FieldRef(String path, ValueKind kind, PathStyle styleHint, boolean
         return path;
     }
 
+    /** {@code FieldFilled([path])} — this field currently holds a value. catalog:FieldFilled */
     public Condition filled() {
         return new FieldPresenceCondition(this, true);
     }
 
+    /** {@code FieldNotFilled([path])} — this field is empty. catalog:FieldNotFilled */
     public Condition notFilled() {
         return new FieldPresenceCondition(this, false);
     }
@@ -56,7 +58,7 @@ public record FieldRef(String path, ValueKind kind, PathStyle styleHint, boolean
      * The cell this field's semantic index resolves to, as a presence handle:
      * {@code semanticIndex("SKU-1").filled()} authors {@code FieldFilled([Field For "SKU-1"])}
      * (KERNEL-SEMANTICS §9). The literal-keyed peer of {@link #semanticIndex(FieldRef)}; the cell's VALUE
-     * (for an operand slot) is a typed ref's {@code forIndex(key)} ({@link NumberRef#forIndex(String)}) instead.
+     * (for an operand slot) is a typed ref's {@code forIndex(key)} ({@link NumberRef#forIndex(String)}) instead. catalog:SemanticIndex
      */
     public SemanticIndex semanticIndex(String indexValue) {
         return new SemanticIndex(new SemanticIndexValue(this, indexValue));

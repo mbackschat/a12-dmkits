@@ -129,6 +129,17 @@ final class OperatorsCommand extends BaseCommand {
         ArrayNode operands = n.putArray("operands");
         e.operands().forEach(o -> operands.add(o.type()));
         n.put("meaning", e.meaning());
+        // the DSL authoring entry point(s) — the Java method(s) that render this operator (G3), so an
+        // agent driving rulekit can cross from "which operator" to "which call". The constants with no
+        // standalone factory (True/False/FirstDay/LastDay) serve an explicit empty list + a dslEntryNote
+        // reason — "we checked; here is why there is no factory" — never a silent absence.
+        if (!e.dslEntry().isEmpty() || e.dslEntryNote() != null) {
+            ArrayNode de = n.putArray("dslEntry");
+            e.dslEntry().forEach(de::add);
+        }
+        if (e.dslEntryNote() != null) {
+            n.put("dslEntryNote", e.dslEntryNote());
+        }
         if (!e.opposite().isEmpty()) {
             ArrayNode opp = n.putArray("opposite");
             e.opposite().forEach(opp::add);

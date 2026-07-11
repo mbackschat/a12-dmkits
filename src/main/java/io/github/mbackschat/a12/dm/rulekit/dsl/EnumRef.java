@@ -35,7 +35,7 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
         return new FieldValue(field, correlated);
     }
 
-    /** The category named {@code name} — fails fast if the model declares no such category. */
+    /** The category named {@code name} — fails fast if the model declares no such category. catalog:EnumCategory */
     public CategoryRef category(String name) {
         List<String> values = categories.get(name);
         if (values == null) {
@@ -77,10 +77,12 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
         return field.semanticIndex(keyField);
     }
 
+    /** {@code [field] == "value"} — enum equality by stored value (domain-checked at build). catalog:Equal */
     public Condition is(String value) {
         return compareTo(CompareOp.EQ, value);
     }
 
+    /** {@code [field] != "value"} — enum inequality by stored value (domain-checked at build). catalog:NotEqual */
     public Condition isNot(String value) {
         return compareTo(CompareOp.NE, value);
     }

@@ -22,10 +22,12 @@ public sealed interface Condition
     /** The catalog operator-id this node applies — the renderer's only source of keywords. */
     String operatorId();
 
+    /** {@code a And b} — logical conjunction; {@link Dsl#allOf} folds a flat {@code And} chain. catalog:And */
     default Condition and(Condition other) {
         return new LogicCondition(LogicCondition.Op.AND, this, other);
     }
 
+    /** {@code a Or b} — logical disjunction; {@link Dsl#anyOf} folds a flat {@code Or} chain. catalog:Or */
     default Condition or(Condition other) {
         return new LogicCondition(LogicCondition.Op.OR, this, other);
     }

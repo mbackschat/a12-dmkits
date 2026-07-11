@@ -16,12 +16,12 @@ public record BoolRef(FieldRef field) {
         return field.notFilled();
     }
 
-    /** {@code [field] == True}. */
+    /** {@code [field] == True}. catalog:Equal */
     public Condition isTrue() {
         return new ComparisonCondition(field.value(), CompareOp.EQ, new BoolLiteral(true));
     }
 
-    /** {@code [field] == False}. */
+    /** {@code [field] == False}. catalog:Equal */
     public Condition isFalse() {
         return new ComparisonCondition(field.value(), CompareOp.EQ, new BoolLiteral(false));
     }
@@ -29,13 +29,13 @@ public record BoolRef(FieldRef field) {
     /**
      * {@code [field] != True} — the inequality direction, kept distinct from {@link #isFalse()} for
      * faithful round-trip (real models write both). For a <em>filled</em> boolean it coincides with
-     * {@code == False}, but an unset boolean leaves either comparison not-evaluated (§5b).
+     * {@code == False}, but an unset boolean leaves either comparison not-evaluated (§5b). catalog:NotEqual
      */
     public Condition isNotTrue() {
         return new ComparisonCondition(field.value(), CompareOp.NE, new BoolLiteral(true));
     }
 
-    /** {@code [field] != False} — the inequality peer of {@link #isTrue()}. */
+    /** {@code [field] != False} — the inequality peer of {@link #isTrue()}. catalog:NotEqual */
     public Condition isNotFalse() {
         return new ComparisonCondition(field.value(), CompareOp.NE, new BoolLiteral(false));
     }

@@ -81,6 +81,7 @@
 [
   {
     "id": "FieldFilled",
+    "dslEntry": ["fieldFilled", "filled"],
     "opposite": ["FieldNotFilled"],
     "kind": "predicate",
     "keywords": { "en": "FieldFilled", "de": "FeldAngegeben" },
@@ -95,6 +96,7 @@
   },
   {
     "id": "FieldNotFilled",
+    "dslEntry": ["fieldNotFilled", "notFilled"],
     "opposite": ["FieldFilled"],
     "kind": "predicate",
     "keywords": { "en": "FieldNotFilled", "de": "FeldNichtAngegeben" },
@@ -108,6 +110,7 @@
   },
   {
     "id": "And",
+    "dslEntry": ["allOf", "and"],
     "kind": "operator",
     "keywords": { "en": "And", "de": "Und" },
     "operands": [ { "type": "boolean" }, { "type": "boolean" } ],
@@ -120,6 +123,7 @@
   },
   {
     "id": "Or",
+    "dslEntry": ["anyOf", "or"],
     "kind": "operator",
     "keywords": { "en": "Or", "de": "Oder" },
     "operands": [ { "type": "boolean" }, { "type": "boolean" } ],
@@ -132,6 +136,7 @@
   },
   {
     "id": "LessThanOrEqual",
+    "dslEntry": ["le"],
     "opposite": ["GreaterThan"],
     "seeAlso": ["number.min / number.max — a NUMBER field's intrinsic value bounds (field config); the field-level alternative to a comparison rule (see `schema field add`)"],
     "kind": "operator",
@@ -179,6 +184,7 @@
   },
   {
     "id": "LessThan",
+    "dslEntry": ["lt"],
     "opposite": ["GreaterThanOrEqual"],
     "seeAlso": ["number.min / number.max — a NUMBER field's intrinsic value bounds (field config); the field-level alternative to a comparison rule (see `schema field add`)"],
     "kind": "operator",
@@ -226,6 +232,7 @@
   },
   {
     "id": "GreaterThan",
+    "dslEntry": ["gt"],
     "opposite": ["LessThanOrEqual"],
     "seeAlso": ["number.min / number.max — a NUMBER field's intrinsic value bounds (field config); the field-level alternative to a comparison rule (see `schema field add`)"],
     "kind": "operator",
@@ -273,6 +280,7 @@
   },
   {
     "id": "GreaterThanOrEqual",
+    "dslEntry": ["ge"],
     "opposite": ["LessThan"],
     "seeAlso": ["number.min / number.max — a NUMBER field's intrinsic value bounds (field config); the field-level alternative to a comparison rule (see `schema field add`)"],
     "kind": "operator",
@@ -320,6 +328,7 @@
   },
   {
     "id": "Equal",
+    "dslEntry": ["confirmed", "eq", "is", "isFalse", "isTrue"],
     "opposite": ["NotEqual"],
     "kind": "operator",
     "keywords": { "en": "==", "de": "==" },
@@ -334,6 +343,7 @@
   },
   {
     "id": "NotEqual",
+    "dslEntry": ["isNot", "isNotFalse", "isNotTrue", "ne", "notConfirmed"],
     "opposite": ["Equal"],
     "kind": "operator",
     "keywords": { "en": "!=", "de": "!=" },
@@ -348,6 +358,7 @@
   },
   {
     "id": "DiffersWithToleranceRange1",
+    "dslEntry": ["differsWithTolerance"],
     "kind": "operator",
     "keywords": { "en": "DiffersWithToleranceRange1", "de": "UngleichMitToleranz1" },
     "operands": [ { "type": "number" }, { "type": "number" } ],
@@ -379,6 +390,7 @@
   },
   {
     "id": "DiffersWithToleranceRange2",
+    "dslEntry": ["differsWithTolerance"],
     "kind": "operator",
     "keywords": { "en": "DiffersWithToleranceRange2", "de": "UngleichMitToleranz2" },
     "operands": [ { "type": "number" }, { "type": "number" } ],
@@ -410,6 +422,7 @@
   },
   {
     "id": "DiffersWithToleranceRange5",
+    "dslEntry": ["differsWithTolerance"],
     "kind": "operator",
     "keywords": { "en": "DiffersWithToleranceRange5", "de": "UngleichMitToleranz5" },
     "operands": [ { "type": "number" }, { "type": "number" } ],
@@ -441,6 +454,7 @@
   },
   {
     "id": "DiffersWithToleranceRange10",
+    "dslEntry": ["differsWithTolerance"],
     "kind": "operator",
     "keywords": { "en": "DiffersWithToleranceRange10", "de": "UngleichMitToleranz10" },
     "operands": [ { "type": "number" }, { "type": "number" } ],
@@ -472,6 +486,7 @@
   },
   {
     "id": "AllFieldsFilled",
+    "dslEntry": ["allFieldsFilled"],
     "opposite": ["NotAllFieldsFilled"],
     "kind": "predicate",
     "keywords": { "en": "AllFieldsFilled", "de": "AlleFelderAngegeben" },
@@ -508,6 +523,7 @@
   },
   {
     "id": "NoFieldFilled",
+    "dslEntry": ["noFieldFilled"],
     "opposite": ["AtLeastOneFieldFilled"],
     "kind": "predicate",
     "keywords": { "en": "NoFieldFilled", "de": "KeinFeldAngegeben" },
@@ -520,6 +536,7 @@
   },
   {
     "id": "AtLeastOneFieldFilled",
+    "dslEntry": ["atLeastOneFieldFilled"],
     "opposite": ["NoFieldFilled"],
     "kind": "predicate",
     "keywords": { "en": "AtLeastOneFieldFilled", "de": "MindestensEinFeldAngegeben" },
@@ -532,6 +549,7 @@
   },
   {
     "id": "NotAllFieldsFilled",
+    "dslEntry": ["notAllFieldsFilled"],
     "opposite": ["AllFieldsFilled"],
     "kind": "predicate",
     "keywords": { "en": "NotAllFieldsFilled", "de": "NichtAlleFelderOderKeinFeldAngegeben" },
@@ -568,6 +586,7 @@
   },
   {
     "id": "FieldsNotCollectivelyFilled",
+    "dslEntry": ["fieldsNotCollectivelyFilled"],
     "kind": "predicate",
     "keywords": { "en": "FieldsNotCollectivelyFilled", "de": "FelderNichtGemeinsamAngegeben" },
     "operands": [ { "type": "field-list" } ],
@@ -603,6 +622,7 @@
   },
   {
     "id": "NotExactlyOneFieldFilled",
+    "dslEntry": ["notExactlyOneFieldFilled"],
     "kind": "predicate",
     "keywords": { "en": "NotExactlyOneFieldFilled", "de": "NichtGenauEinFeldAngegeben" },
     "operands": [ { "type": "field-list" } ],
@@ -614,6 +634,7 @@
   },
   {
     "id": "MoreThanOneFieldFilled",
+    "dslEntry": ["moreThanOneFieldFilled"],
     "kind": "predicate",
     "keywords": { "en": "MoreThanOneFieldFilled", "de": "MehrAlsEinFeldAngegeben" },
     "operands": [ { "type": "field-list" } ],
@@ -625,6 +646,7 @@
   },
   {
     "id": "GroupFilled",
+    "dslEntry": ["filled", "groupFilled"],
     "opposite": ["GroupNotFilled"],
     "kind": "predicate",
     "keywords": { "en": "GroupFilled", "de": "KontextAngegeben" },
@@ -639,6 +661,7 @@
   },
   {
     "id": "GroupNotFilled",
+    "dslEntry": ["groupNotFilled", "notFilled"],
     "opposite": ["GroupFilled"],
     "kind": "predicate",
     "keywords": { "en": "GroupNotFilled", "de": "KontextNichtAngegeben" },
@@ -652,6 +675,7 @@
   },
   {
     "id": "AllGroupsFilled",
+    "dslEntry": ["allGroupsFilled"],
     "opposite": ["NotAllGroupsFilled"],
     "kind": "predicate",
     "keywords": { "en": "AllGroupsFilled", "de": "AlleKontexteAngegeben" },
@@ -665,6 +689,7 @@
   },
   {
     "id": "NoGroupFilled",
+    "dslEntry": ["noGroupFilled"],
     "opposite": ["AtLeastOneGroupFilled"],
     "kind": "predicate",
     "keywords": { "en": "NoGroupFilled", "de": "KeinKontextAngegeben" },
@@ -678,6 +703,7 @@
   },
   {
     "id": "AtLeastOneGroupFilled",
+    "dslEntry": ["atLeastOneGroupFilled"],
     "opposite": ["NoGroupFilled"],
     "kind": "predicate",
     "keywords": { "en": "AtLeastOneGroupFilled", "de": "MindestensEinKontextAngegeben" },
@@ -691,6 +717,7 @@
   },
   {
     "id": "NotAllGroupsFilled",
+    "dslEntry": ["notAllGroupsFilled"],
     "opposite": ["AllGroupsFilled"],
     "kind": "predicate",
     "keywords": { "en": "NotAllGroupsFilled", "de": "NichtAlleOderKeinKontextAngegeben" },
@@ -704,6 +731,7 @@
   },
   {
     "id": "GroupsNotCollectivelyFilled",
+    "dslEntry": ["groupsNotCollectivelyFilled"],
     "kind": "predicate",
     "keywords": { "en": "GroupsNotCollectivelyFilled", "de": "KontexteNichtGemeinsamAngegeben" },
     "operands": [ { "type": "group-list" } ],
@@ -716,6 +744,7 @@
   },
   {
     "id": "EnumCategory",
+    "dslEntry": ["category"],
     "seeAlso": ["enum.categories — the field config that declares the categories this operator reads (see `schema field add`)"],
     "kind": "path-op",
     "keywords": { "en": "->", "de": "->" },
@@ -730,6 +759,8 @@
   },
   {
     "id": "True",
+    "dslEntry": [],
+    "dslEntryNote": "No standalone factory — the True constant is emitted as the constant operand of a boolean/confirm comparison (BoolRef.isTrue / ConfirmRef.confirmed) or NumberOfValueInFields(true IN …).",
     "opposite": ["False"],
     "kind": "constant",
     "keywords": { "en": "True", "de": "Wahr" },
@@ -744,6 +775,8 @@
   },
   {
     "id": "False",
+    "dslEntry": [],
+    "dslEntryNote": "No standalone factory — the False constant is emitted as the constant operand of a boolean comparison (BoolRef.isFalse) or NumberOfValueInFields(false IN …).",
     "opposite": ["True"],
     "kind": "constant",
     "keywords": { "en": "False", "de": "Falsch" },
@@ -758,6 +791,7 @@
   },
   {
     "id": "Length",
+    "dslEntry": ["length"],
     "seeAlso": ["string.minLength / string.maxLength — a STRING field's intrinsic length bounds (field config); the field-level alternative to a Length comparison rule (see `schema field add`)"],
     "kind": "function",
     "keywords": { "en": "Length", "de": "Laenge" },
@@ -803,6 +837,7 @@
   },
   {
     "id": "Arithmetic",
+    "dslEntry": ["dividedBy", "minus", "plus", "times", "toThePowerOf"],
     "kind": "operator",
     "keywords": { "en": "+", "de": "+" },
     "operands": [ { "type": "number" }, { "type": "number" } ],
@@ -824,6 +859,7 @@
   },
   {
     "id": "Concatenation",
+    "dslEntry": ["plus"],
     "kind": "operator",
     "keywords": {
       "en": "+",
@@ -884,6 +920,7 @@
   },
   {
     "id": "PatternMatched",
+    "dslEntry": ["matches"],
     "opposite": ["PatternViolated"],
     "seeAlso": ["string.pattern — constrain a STRING field's format intrinsically (field config); the field-level alternative to this rule (see `schema field add`)"],
     "kind": "operator",
@@ -907,6 +944,7 @@
   },
   {
     "id": "PatternViolated",
+    "dslEntry": ["violates"],
     "opposite": ["PatternMatched"],
     "seeAlso": ["string.pattern — constrain a STRING field's format intrinsically (field config); the field-level alternative to this rule (see `schema field add`)"],
     "kind": "operator",
@@ -928,6 +966,7 @@
   },
   {
     "id": "FieldValueIncludedInValueList",
+    "dslEntry": ["in"],
     "opposite": ["FieldValueNotIncludedInValueList"],
     "seeAlso": ["enum.values — restrict a field to a value set as an ENUM (field config); the field-level alternative to a value-list rule (see `schema field add`)"],
     "kind": "predicate",
@@ -990,6 +1029,7 @@
   },
   {
     "id": "FieldValueNotIncludedInValueList",
+    "dslEntry": ["notIn"],
     "opposite": ["FieldValueIncludedInValueList"],
     "seeAlso": ["enum.values — restrict a field to a value set as an ENUM (field config); the field-level alternative to a value-list rule (see `schema field add`)"],
     "kind": "predicate",
@@ -1029,6 +1069,7 @@
   },
   {
     "id": "AtLeastOneFieldValueIncludedInValueList",
+    "dslEntry": ["atLeastOneFieldValueIncludedInValueList"],
     "opposite": ["NoFieldValueIncludedInValueList"],
     "kind": "predicate",
     "keywords": { "en": "AtLeastOneFieldValueIncludedInValueList", "de": "MindestensEinFeldWertInWerteListe" },
@@ -1093,6 +1134,7 @@
   },
   {
     "id": "NoFieldValueIncludedInValueList",
+    "dslEntry": ["noFieldValueIncludedInValueList"],
     "opposite": ["AtLeastOneFieldValueIncludedInValueList"],
     "kind": "predicate",
     "keywords": { "en": "NoFieldValueIncludedInValueList", "de": "KeinFeldWertInWerteListe" },
@@ -1155,6 +1197,7 @@
   },
   {
     "id": "NotAllFieldValuesIncludedInValueList",
+    "dslEntry": ["notAllFieldValuesIncludedInValueList"],
     "kind": "predicate",
     "keywords": { "en": "NotAllFieldValuesIncludedInValueList", "de": "NichtAlleFeldWerteInWerteListe" },
     "operands": [ { "type": "homogeneous-field-list" }, { "type": "literal-list" } ],
@@ -1231,6 +1274,7 @@
   },
   {
     "id": "NumberOfFilledFields",
+    "dslEntry": ["numberOfFilledFields"],
     "kind": "function",
     "keywords": { "en": "NumberOfFilledFields", "de": "AnzahlAngegebenerFelder" },
     "operands": [ { "type": "field-list-or-groups" } ],
@@ -1291,6 +1335,7 @@
   },
   {
     "id": "NumberOfFilledGroups",
+    "dslEntry": ["numberOfFilledGroups", "numberOfFilledRootGroups"],
     "kind": "function",
     "keywords": { "en": "NumberOfFilledGroups", "de": "AnzahlAngegebenerKontexte" },
     "operands": [ { "type": "group-list" } ],
@@ -1324,6 +1369,7 @@
   },
   {
     "id": "RepetitionNotUnique",
+    "dslEntry": ["repetitionNotUnique"],
     "kind": "predicate",
     "keywords": { "en": "RepetitionNotUnique", "de": "WiederholungNichtEindeutig" },
     "operands": [ { "type": "repeatable-key-fields" }, { "type": "from-scope", "optional": true } ],
@@ -1347,6 +1393,7 @@
   },
   {
     "id": "FromScope",
+    "dslEntry": ["from"],
     "kind": "path-op",
     "keywords": { "en": "@From", "de": "@Von" },
     "operands": [ { "type": "repeatable-group" } ],
@@ -1360,6 +1407,7 @@
   },
   {
     "id": "FieldValuesNotUnique",
+    "dslEntry": ["fieldValuesNotUnique"],
     "kind": "predicate",
     "keywords": { "en": "FieldValuesNotUnique", "de": "FeldWerteNichtEindeutig" },
     "operands": [ { "type": "field-list" } ],
@@ -1376,6 +1424,7 @@
   },
   {
     "id": "Sum",
+    "dslEntry": ["sum"],
     "kind": "function",
     "keywords": { "en": "Sum", "de": "Summe" },
     "operands": [ { "type": "number-field-list" } ],
@@ -1439,6 +1488,7 @@
   },
   {
     "id": "MaxValue",
+    "dslEntry": ["latestOf", "maxValue"],
     "kind": "function",
     "keywords": { "en": "MaxValue", "de": "MaxWert" },
     "operands": [ { "type": "number-field-list" } ],
@@ -1505,6 +1555,7 @@
   },
   {
     "id": "MinValue",
+    "dslEntry": ["earliestOf", "minValue"],
     "kind": "function",
     "keywords": { "en": "MinValue", "de": "MinWert" },
     "operands": [ { "type": "number-field-list" } ],
@@ -1567,6 +1618,7 @@
   },
   {
     "id": "RoundDown",
+    "dslEntry": ["roundDown"],
     "kind": "function",
     "keywords": { "en": "RoundDown", "de": "Abrunden" },
     "operands": [ { "type": "number" }, { "type": "decimal-places" } ],
@@ -1583,6 +1635,7 @@
   },
   {
     "id": "RoundDownValue",
+    "dslEntry": ["roundDownValue"],
     "kind": "function",
     "keywords": { "en": "RoundDownValue", "de": "AbrundenWert" },
     "operands": [ { "type": "number" } ],
@@ -1594,6 +1647,7 @@
   },
   {
     "id": "RoundUpValue",
+    "dslEntry": ["roundUpValue"],
     "kind": "function",
     "keywords": { "en": "RoundUpValue", "de": "AufrundenWert" },
     "operands": [ { "type": "number" } ],
@@ -1605,6 +1659,7 @@
   },
   {
     "id": "RoundAccountingValue",
+    "dslEntry": ["roundAccountingValue"],
     "kind": "function",
     "keywords": { "en": "RoundAccountingValue", "de": "RundenWert" },
     "operands": [ { "type": "number" } ],
@@ -1616,6 +1671,7 @@
   },
   {
     "id": "AbsValue",
+    "dslEntry": ["absValue"],
     "kind": "function",
     "keywords": { "en": "AbsValue", "de": "AbsWert" },
     "operands": [ { "type": "number" } ],
@@ -1627,6 +1683,7 @@
   },
   {
     "id": "Abs",
+    "dslEntry": ["abs"],
     "kind": "function",
     "keywords": { "en": "Abs", "de": "Abs" },
     "operands": [ { "type": "number" } ],
@@ -1639,6 +1696,7 @@
   },
   {
     "id": "Min",
+    "dslEntry": ["min"],
     "kind": "function",
     "keywords": { "en": "Min", "de": "Min" },
     "operands": [ { "type": "number" }, { "type": "number" } ],
@@ -1720,6 +1778,7 @@
   },
   {
     "id": "Max",
+    "dslEntry": ["max"],
     "kind": "function",
     "keywords": { "en": "Max", "de": "Max" },
     "operands": [ { "type": "number" }, { "type": "number" } ],
@@ -1799,6 +1858,7 @@
   },
   {
     "id": "RoundUp",
+    "dslEntry": ["roundUp"],
     "kind": "function",
     "keywords": { "en": "RoundUp", "de": "Aufrunden" },
     "operands": [ { "type": "number" }, { "type": "decimal-places" } ],
@@ -1813,6 +1873,7 @@
   },
   {
     "id": "RoundAccounting",
+    "dslEntry": ["roundAccounting"],
     "kind": "function",
     "keywords": { "en": "RoundAccounting", "de": "Runden" },
     "operands": [ { "type": "number" }, { "type": "decimal-places" } ],
@@ -1827,6 +1888,7 @@
   },
   {
     "id": "NumberOfDifferentValues",
+    "dslEntry": ["numberOfDifferentValues"],
     "kind": "function",
     "keywords": { "en": "NumberOfDifferentValues", "de": "AnzahlVerschiedenerWerte" },
     "operands": [ { "type": "homogeneous-field-list" } ],
@@ -1885,6 +1947,7 @@
   },
   {
     "id": "NumberOfValueInFields",
+    "dslEntry": ["numberOfValueInFields"],
     "kind": "function",
     "keywords": { "en": "NumberOfValueInFields", "de": "AnzahlWertInFeldliste" },
     "operands": [ { "type": "literal" }, { "type": "field-list" } ],
@@ -1924,6 +1987,7 @@
   },
   {
     "id": "Having",
+    "dslEntry": ["having"],
     "kind": "path-op",
     "keywords": { "en": "Having", "de": "Mit" },
     "operands": [ { "type": "repetition-list" }, { "type": "filter-condition" } ],
@@ -1942,6 +2006,7 @@
   },
   {
     "id": "CurrentRepetition",
+    "dslEntry": ["currentRepetition"],
     "kind": "function",
     "keywords": { "en": "CurrentRepetition", "de": "AktuelleWiederholung" },
     "operands": [ { "type": "group" } ],
@@ -1961,6 +2026,7 @@
   },
   {
     "id": "CustomCondition",
+    "dslEntry": ["customCondition"],
     "kind": "predicate",
     "keywords": { "en": "CustomCondition", "de": "ApplikationsBedingung" },
     "operands": [ { "type": "name" } ],
@@ -1979,6 +2045,7 @@
   },
   {
     "id": "SemanticIndex",
+    "dslEntry": ["forIndex", "semanticIndex"],
     "kind": "path-op",
     "keywords": { "en": "For", "de": "Fuer" },
     "operands": [ { "type": "field" }, { "type": "index-value" } ],
@@ -2000,6 +2067,7 @@
   },
   {
     "id": "Today",
+    "dslEntry": ["today"],
     "kind": "constant",
     "keywords": { "en": "Today", "de": "Heute" },
     "operands": [],
@@ -2013,6 +2081,7 @@
   },
   {
     "id": "DifferenceInDays",
+    "dslEntry": ["differenceInDays"],
     "kind": "function",
     "keywords": { "en": "DifferenceInDays", "de": "DifferenzInTagen" },
     "operands": [ { "type": "date" }, { "type": "date" } ],
@@ -2066,6 +2135,7 @@
   },
   {
     "id": "DifferenceInMonths",
+    "dslEntry": ["differenceInMonths"],
     "kind": "function",
     "keywords": { "en": "DifferenceInMonths", "de": "DifferenzInMonaten" },
     "operands": [ { "type": "date" }, { "type": "date" } ],
@@ -2118,6 +2188,7 @@
   },
   {
     "id": "DifferenceInYears",
+    "dslEntry": ["differenceInYears"],
     "kind": "function",
     "keywords": { "en": "DifferenceInYears", "de": "DifferenzInJahren" },
     "operands": [ { "type": "date" }, { "type": "date" } ],
@@ -2170,6 +2241,7 @@
   },
   {
     "id": "DifferenceInHours",
+    "dslEntry": ["differenceInHours"],
     "kind": "function",
     "keywords": { "en": "DifferenceInHours", "de": "DifferenzInStunden" },
     "operands": [ { "type": "date-time" }, { "type": "date-time" } ],
@@ -2222,6 +2294,7 @@
   },
   {
     "id": "DifferenceInMinutes",
+    "dslEntry": ["differenceInMinutes"],
     "kind": "function",
     "keywords": { "en": "DifferenceInMinutes", "de": "DifferenzInMinuten" },
     "operands": [ { "type": "date-time" }, { "type": "date-time" } ],
@@ -2274,6 +2347,7 @@
   },
   {
     "id": "DifferenceInSeconds",
+    "dslEntry": ["differenceInSeconds"],
     "kind": "function",
     "keywords": { "en": "DifferenceInSeconds", "de": "DifferenzInSekunden" },
     "operands": [ { "type": "date-time" }, { "type": "date-time" } ],
@@ -2326,6 +2400,7 @@
   },
   {
     "id": "AddDays",
+    "dslEntry": ["addDays"],
     "kind": "function",
     "keywords": { "en": "AddDays", "de": "AddiereTage" },
     "operands": [ { "type": "date" }, { "type": "integer" } ],
@@ -2338,6 +2413,7 @@
   },
   {
     "id": "AddMonths",
+    "dslEntry": ["addMonths"],
     "kind": "function",
     "keywords": { "en": "AddMonths", "de": "AddiereMonate" },
     "operands": [ { "type": "date" }, { "type": "integer" } ],
@@ -2350,6 +2426,7 @@
   },
   {
     "id": "AddYears",
+    "dslEntry": ["addYears"],
     "kind": "function",
     "keywords": { "en": "AddYears", "de": "AddiereJahre" },
     "operands": [ { "type": "date" }, { "type": "integer" } ],
@@ -2362,6 +2439,7 @@
   },
   {
     "id": "AddHours",
+    "dslEntry": ["addHours"],
     "kind": "function",
     "keywords": { "en": "AddHours", "de": "AddiereStunden" },
     "operands": [ { "type": "date-time" }, { "type": "integer" } ],
@@ -2374,6 +2452,7 @@
   },
   {
     "id": "AddMinutes",
+    "dslEntry": ["addMinutes"],
     "kind": "function",
     "keywords": { "en": "AddMinutes", "de": "AddiereMinuten" },
     "operands": [ { "type": "date-time" }, { "type": "integer" } ],
@@ -2386,6 +2465,7 @@
   },
   {
     "id": "AddSeconds",
+    "dslEntry": ["addSeconds"],
     "kind": "function",
     "keywords": { "en": "AddSeconds", "de": "AddiereSekunden" },
     "operands": [ { "type": "date-time" }, { "type": "integer" } ],
@@ -2398,6 +2478,7 @@
   },
   {
     "id": "YearFromDate",
+    "dslEntry": ["yearFromDate"],
     "kind": "function",
     "keywords": { "en": "YearFromDate", "de": "JahrAusDatum" },
     "operands": [ { "type": "date" } ],
@@ -2446,6 +2527,7 @@
   },
   {
     "id": "MonthFromDate",
+    "dslEntry": ["monthFromDate"],
     "kind": "function",
     "keywords": { "en": "MonthFromDate", "de": "MonatAusDatum" },
     "operands": [ { "type": "date" } ],
@@ -2493,6 +2575,7 @@
   },
   {
     "id": "DayFromDate",
+    "dslEntry": ["dayFromDate"],
     "kind": "function",
     "keywords": { "en": "DayFromDate", "de": "TagAusDatum" },
     "operands": [ { "type": "date" } ],
@@ -2541,6 +2624,7 @@
   },
   {
     "id": "QuarterFromDate",
+    "dslEntry": ["quarterFromDate"],
     "kind": "function",
     "keywords": { "en": "QuarterFromDate", "de": "QuartalAusDatum" },
     "operands": [ { "type": "date" } ],
@@ -2589,6 +2673,7 @@
   },
   {
     "id": "StartOfDateRange",
+    "dslEntry": ["startOfBaseYear", "startOfDateRange"],
     "kind": "function",
     "keywords": { "en": "StartOfDateRange", "de": "StartAusDatumBereich" },
     "operands": [ { "type": "date-range" } ],
@@ -2602,6 +2687,7 @@
   },
   {
     "id": "EndOfDateRange",
+    "dslEntry": ["endOfBaseYear", "endOfDateRange"],
     "kind": "function",
     "keywords": { "en": "EndOfDateRange", "de": "EndeAusDatumBereich" },
     "operands": [ { "type": "date-range" } ],
@@ -2615,6 +2701,7 @@
   },
   {
     "id": "DateRangesOverlap",
+    "dslEntry": ["dateRangesOverlap"],
     "kind": "predicate",
     "keywords": { "en": "DateRangesOverlap", "de": "DatumsBereicheUeberlappend" },
     "operands": [ { "type": "date-range" } ],
@@ -2679,6 +2766,7 @@
   },
   {
     "id": "AtLeastOneDateRangeOverlaps",
+    "dslEntry": ["atLeastOneDateRangeOverlaps"],
     "kind": "predicate",
     "keywords": { "en": "AtLeastOneDateRangeOverlaps", "de": "MindestensEinDatumsBereichUeberlappend" },
     "operands": [ { "type": "date-range" }, { "type": "date-range-list" } ],
@@ -2760,6 +2848,7 @@
   },
   {
     "id": "HoursFromTime",
+    "dslEntry": ["hoursFromTime"],
     "kind": "function",
     "keywords": { "en": "HoursFromTime", "de": "StundenAusZeit" },
     "operands": [ { "type": "time" } ],
@@ -2807,6 +2896,7 @@
   },
   {
     "id": "MinutesFromTime",
+    "dslEntry": ["minutesFromTime"],
     "kind": "function",
     "keywords": { "en": "MinutesFromTime", "de": "MinutenAusZeit" },
     "operands": [ { "type": "time" } ],
@@ -2854,6 +2944,7 @@
   },
   {
     "id": "SecondsFromTime",
+    "dslEntry": ["secondsFromTime"],
     "kind": "function",
     "keywords": { "en": "SecondsFromTime", "de": "SekundenAusZeit" },
     "operands": [ { "type": "time" } ],
@@ -2901,6 +2992,7 @@
   },
   {
     "id": "DateFromDateTime",
+    "dslEntry": ["dateFromDateTime"],
     "kind": "function",
     "keywords": { "en": "DateFromDateTime", "de": "DatumAusDateTime" },
     "operands": [ { "type": "date-time" } ],
@@ -2912,6 +3004,7 @@
   },
   {
     "id": "TimeFromDateTime",
+    "dslEntry": ["timeFromDateTime"],
     "kind": "function",
     "keywords": { "en": "TimeFromDateTime", "de": "ZeitAusDateTime" },
     "operands": [ { "type": "date-time" } ],
@@ -2923,6 +3016,7 @@
   },
   {
     "id": "RangeAsString",
+    "dslEntry": ["rangeAsString"],
     "kind": "function",
     "keywords": { "en": "RangeAsString", "de": "BereichAlsString" },
     "operands": [ { "type": "string" }, { "type": "range-start" }, { "type": "range-end" } ],
@@ -2936,6 +3030,7 @@
   },
   {
     "id": "FieldValueAsString",
+    "dslEntry": ["fieldValueAsString"],
     "kind": "function",
     "keywords": { "en": "FieldValueAsString", "de": "FeldWertAlsString" },
     "operands": [ { "type": "number-field" } ],
@@ -2968,6 +3063,7 @@
   },
   {
     "id": "RangeAsNumber",
+    "dslEntry": ["rangeAsNumber"],
     "kind": "function",
     "keywords": { "en": "RangeAsNumber", "de": "BereichAlsZahl" },
     "operands": [ { "type": "string" }, { "type": "range-start" }, { "type": "range-end" } ],
@@ -3000,6 +3096,7 @@
   },
   {
     "id": "FieldValueAsNumber",
+    "dslEntry": ["fieldValueAsNumber"],
     "kind": "function",
     "keywords": { "en": "FieldValueAsNumber", "de": "FeldWertAlsZahl" },
     "operands": [ { "type": "string-enum-or-number-field" } ],
@@ -3011,6 +3108,7 @@
   },
   {
     "id": "ValueAsDate",
+    "dslEntry": ["valueAsDateFirstDay", "valueAsDateLastDay"],
     "kind": "function",
     "keywords": { "en": "ValueAsDate", "de": "WertAlsDatum" },
     "operands": [ { "type": "field" }, { "type": "day-specification" } ],
@@ -3025,6 +3123,8 @@
   },
   {
     "id": "FirstDay",
+    "dslEntry": [],
+    "dslEntryNote": "No standalone factory — the FirstDay keyword is emitted inside ValueAsDate(field, FirstDay); author it via Dsl.valueAsDateFirstDay.",
     "kind": "constant",
     "keywords": { "en": "FirstDay", "de": "ErsterTag" },
     "operands": [],
@@ -3036,6 +3136,8 @@
   },
   {
     "id": "LastDay",
+    "dslEntry": [],
+    "dslEntryNote": "No standalone factory — the LastDay keyword is emitted inside ValueAsDate(field, LastDay); author it via Dsl.valueAsDateLastDay.",
     "kind": "constant",
     "keywords": { "en": "LastDay", "de": "LetzterTag" },
     "operands": [],
@@ -3047,6 +3149,7 @@
   },
   {
     "id": "Date",
+    "dslEntry": ["date"],
     "kind": "function",
     "keywords": { "en": "Date", "de": "Datum" },
     "operands": [ { "type": "number" }, { "type": "number" }, { "type": "number" } ],
@@ -3058,6 +3161,7 @@
   },
   {
     "id": "Time",
+    "dslEntry": ["time"],
     "kind": "function",
     "keywords": { "en": "Time", "de": "Zeit" },
     "operands": [ { "type": "number" }, { "type": "number" }, { "type": "number" } ],
@@ -3069,6 +3173,7 @@
   },
   {
     "id": "DateTime",
+    "dslEntry": ["dateTime"],
     "kind": "function",
     "keywords": { "en": "DateTime", "de": "DateTime" },
     "operands": [ { "type": "date" }, { "type": "time" } ],
@@ -3081,6 +3186,7 @@
   },
   {
     "id": "Now",
+    "dslEntry": ["now"],
     "kind": "constant",
     "keywords": { "en": "Now", "de": "Jetzt" },
     "returns": "date-time",
@@ -3095,6 +3201,7 @@
   },
   {
     "id": "BaseYear",
+    "dslEntry": ["baseYear", "baseYearNumber"],
     "kind": "constant",
     "keywords": { "en": "BaseYear", "de": "Referenzjahr" },
     "returns": "date",
@@ -3105,6 +3212,7 @@
   },
   {
     "id": "Valid",
+    "dslEntry": ["valid"],
     "opposite": ["Invalid"],
     "kind": "predicate",
     "keywords": { "en": "Valid", "de": "Gueltig" },
@@ -3117,6 +3225,7 @@
   },
   {
     "id": "Invalid",
+    "dslEntry": ["invalid"],
     "opposite": ["Valid"],
     "kind": "predicate",
     "keywords": { "en": "Invalid", "de": "Ungueltig" },
@@ -3130,6 +3239,7 @@
   },
   {
     "id": "ValidType",
+    "dslEntry": ["validType"],
     "opposite": ["InvalidType"],
     "kind": "predicate",
     "keywords": { "en": "Valid", "de": "Gueltig" },
@@ -3143,6 +3253,7 @@
   },
   {
     "id": "InvalidType",
+    "dslEntry": ["invalidType"],
     "opposite": ["ValidType"],
     "kind": "predicate",
     "keywords": { "en": "Invalid", "de": "Ungueltig" },
@@ -3156,6 +3267,7 @@
   },
   {
     "id": "SumOfProducts",
+    "dslEntry": ["sumOfProducts"],
     "kind": "function",
     "keywords": { "en": "SumOfProducts", "de": "SummeVonProdukten" },
     "operands": [ { "type": "number" }, { "type": "number" } ],
@@ -3192,6 +3304,7 @@
   },
   {
     "id": "FirstFilledValue",
+    "dslEntry": ["firstFilledDate", "firstFilledEnum", "firstFilledNumber", "firstFilledString"],
     "kind": "function",
     "keywords": { "en": "FirstFilledValue", "de": "ErsterAngegebenerWert" },
     "operands": [ { "type": "field-list" } ],
@@ -3242,6 +3355,7 @@
   },
   {
     "id": "DateRange",
+    "dslEntry": ["dateRange"],
     "kind": "function",
     "keywords": { "en": "DateRange", "de": "DatumBereich" },
     "operands": [ { "type": "date" }, { "type": "date" } ],

@@ -49,7 +49,7 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
      * The kernel forbids certain constructs inside a filter condition (KERNEL-SEMANTICS §9): the
      * representable ones — {@code RepetitionNotUnique} and a nested {@code Having} — are pre-checked
      * here ({@code MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION}); the rest (CustomCondition,
-     * semantic index, parallel iteration) stay kernel-delegated.
+     * semantic index, parallel iteration) stay kernel-delegated. catalog:Having
      */
     public FieldListRef having(Condition filter) {
         rejectForbiddenInFilter(filter);

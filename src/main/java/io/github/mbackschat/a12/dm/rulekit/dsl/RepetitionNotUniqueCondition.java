@@ -22,7 +22,7 @@ public record RepetitionNotUniqueCondition(List<FieldRef> keys, Optional<GroupRe
         }
     }
 
-    /** Scopes the uniqueness check to each repetition of {@code reference} ({@code @From}). */
+    /** Scopes the uniqueness check to each repetition of {@code reference} ({@code @From}). catalog:FromScope */
     public RepetitionNotUniqueCondition from(GroupRef reference) {
         if (!reference.repeating()) {
             throw new IllegalArgumentException("the @From reference group must be repeatable: "

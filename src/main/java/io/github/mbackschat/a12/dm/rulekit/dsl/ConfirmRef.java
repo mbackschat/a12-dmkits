@@ -18,12 +18,12 @@ public record ConfirmRef(FieldRef field) {
         return field.notFilled();
     }
 
-    /** {@code [field] == True}. */
+    /** {@code [field] == True}. catalog:Equal */
     public Condition confirmed() {
         return new ComparisonCondition(field.value(), CompareOp.EQ, new BoolLiteral(true));
     }
 
-    /** {@code [field] != True} — the kernel-legal "not confirmed" (no {@code == False} for confirm). */
+    /** {@code [field] != True} — the kernel-legal "not confirmed" (no {@code == False} for confirm). catalog:NotEqual */
     public Condition notConfirmed() {
         return new ComparisonCondition(field.value(), CompareOp.NE, new BoolLiteral(true));
     }

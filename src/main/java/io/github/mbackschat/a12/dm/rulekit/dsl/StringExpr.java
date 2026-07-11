@@ -10,7 +10,7 @@ import java.util.List;
  */
 public record StringExpr(Calculation expression) {
 
-    /** {@code this + other} — string concatenation, flattened so {@code a + b + c} renders as one chain. */
+    /** {@code this + other} — string concatenation, flattened so {@code a + b + c} renders as one chain. catalog:Concatenation */
     public StringExpr plus(StringExpr other) {
         List<Calculation> parts = new ArrayList<>();
         addParts(parts, this.expression);

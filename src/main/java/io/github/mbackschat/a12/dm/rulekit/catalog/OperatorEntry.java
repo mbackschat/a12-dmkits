@@ -16,6 +16,12 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * logical complement under three-valued / formal-error semantics (a field with a formal error is removed
  * from evaluation, so {@code FieldFilled} and {@code FieldNotFilled} are not exhaustive — see their gotcha).
  *
+ * <p>{@code dslEntry} names the rulekit authoring method(s) that render this operator (G3, the
+ * catalog→Java bridge); {@code dslEntryNote} explains an empty one (a constant with no standalone
+ * factory). It is <b>derived, not hand-authored</b> — the source of truth is the {@code catalog:<Id>}
+ * markers in the DSL Javadoc, and {@code DslCatalogBridgeTest} keeps the projection in lockstep
+ * (CATALOG-SPEC §7a). Do not edit it by hand; re-derive from the guard's dump.
+ *
  * <p>Unknown JSON fields are ignored so the on-disk schema can grow ahead of this record.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -36,7 +42,9 @@ public record OperatorEntry(
         List<String> opposite,
         List<String> seeAlso,
         OperatorSemantics semantics,
-        List<Corrective> correctives) {
+        List<Corrective> correctives,
+        List<String> dslEntry,
+        String dslEntryNote) {
 
     public OperatorEntry {
         operands = operands == null ? List.of() : List.copyOf(operands);
@@ -46,6 +54,7 @@ public record OperatorEntry(
         opposite = opposite == null ? List.of() : List.copyOf(opposite);
         seeAlso = seeAlso == null ? List.of() : List.copyOf(seeAlso);
         correctives = correctives == null ? List.of() : List.copyOf(correctives);
+        dslEntry = dslEntry == null ? List.of() : List.copyOf(dslEntry);
     }
 
     /** The {@code emptyOperand} facet claims (CATALOG-SPEC §4) — empty when the operator follows the

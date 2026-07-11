@@ -19,12 +19,12 @@ public record GroupRef(String path, boolean repeating) implements GroupReference
         return this;
     }
 
-    /** {@code GroupFilled(path)}. */
+    /** {@code GroupFilled(path)}. catalog:GroupFilled */
     public Condition filled() {
         return new GroupPresenceCondition(this, true);
     }
 
-    /** {@code GroupNotFilled(path)} — negative conditions on repeatable groups need guarding (§5). */
+    /** {@code GroupNotFilled(path)} — negative conditions on repeatable groups need guarding (§5). catalog:GroupNotFilled */
     public Condition notFilled() {
         return new GroupPresenceCondition(this, false);
     }
