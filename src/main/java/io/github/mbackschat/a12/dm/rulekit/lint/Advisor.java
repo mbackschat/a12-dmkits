@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import com.mgmtp.a12.model.notification.Severity;
+import io.github.mbackschat.a12.dm.core.Severity;
 
 import io.github.mbackschat.a12.dm.rulekit.catalog.GotchaKind;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;

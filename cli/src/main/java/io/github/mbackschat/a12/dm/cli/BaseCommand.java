@@ -15,7 +15,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.model.notification.RankedNotification;
+import io.github.mbackschat.a12.dm.core.Notification;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
@@ -199,7 +199,7 @@ public abstract class BaseCommand implements Callable<Integer> {
      */
     static ResultEnvelope kernelRejectionEnvelope(String target, String op, String summary, ModelConsistencyException e) {
         List<Diagnostic> diagnostics = new ArrayList<>();
-        for (RankedNotification n : e.notifications()) {
+        for (Notification n : e.notifications()) {
             diagnostics.add(KernelDiagnostics.enriched(n, null));
         }
         if (diagnostics.isEmpty()) {

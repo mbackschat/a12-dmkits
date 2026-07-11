@@ -15,7 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
-import com.mgmtp.a12.model.notification.RankedNotification;
+import io.github.mbackschat.a12.dm.core.Notification;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
@@ -121,7 +121,7 @@ final class WorkspaceCheckCommand extends BaseCommand {
             valid = true;
         } catch (ModelConsistencyException e) {
             valid = false;
-            for (RankedNotification n : e.notifications()) {
+            for (Notification n : e.notifications()) {
                 diagnostics.add(KernelDiagnostics.enriched(n, null));
             }
         } catch (RuntimeException e) {

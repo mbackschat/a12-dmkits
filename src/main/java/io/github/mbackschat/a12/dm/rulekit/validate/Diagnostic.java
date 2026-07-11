@@ -4,8 +4,8 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.mgmtp.a12.model.notification.RankedNotification;
-import com.mgmtp.a12.model.notification.Severity;
+import io.github.mbackschat.a12.dm.core.Notification;
+import io.github.mbackschat.a12.dm.core.Severity;
 
 /**
  * One structured finding about a rule, modelled on LSP's {@code Diagnostic} so the same shape serves
@@ -122,11 +122,11 @@ public record Diagnostic(
      * from the message when present; {@code fix}/{@code explain} stay empty until
      * {@link DiagnosticEnricher} joins the catalog.
      */
-    static Diagnostic fromKernel(RankedNotification notification, String rulePath) {
-        String message = notification.getMessage() == null ? "" : notification.getMessage();
+    static Diagnostic fromKernel(Notification notification, String rulePath) {
+        String message = notification.message() == null ? "" : notification.message();
         Matcher matcher = MVK.matcher(message);
         Optional<String> code = matcher.find() ? Optional.of(matcher.group()) : Optional.empty();
-        return new Diagnostic(notification.getSeverity(), DiagnosticSource.KERNEL, code, message,
+        return new Diagnostic(notification.severity(), DiagnosticSource.KERNEL, code, message,
                 Where.rule(rulePath), Optional.empty(), Optional.empty());
     }
 

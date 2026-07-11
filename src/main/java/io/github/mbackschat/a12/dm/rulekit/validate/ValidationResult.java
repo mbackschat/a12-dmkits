@@ -5,7 +5,7 @@ import java.util.List;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.model.notification.Severity;
+import io.github.mbackschat.a12.dm.core.Severity;
 
 /**
  * The outcome of a ground-truth check: {@code ok} iff the kernel reported no {@code ERROR}-severity

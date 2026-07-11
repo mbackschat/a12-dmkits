@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import com.mgmtp.a12.model.notification.Severity;
+import io.github.mbackschat.a12.dm.core.Severity;
 
 import io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;

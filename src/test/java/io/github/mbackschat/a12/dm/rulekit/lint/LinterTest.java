@@ -7,7 +7,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import com.mgmtp.a12.model.notification.Severity;
+import io.github.mbackschat.a12.dm.core.Severity;
 
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;

@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.mgmtp.a12.model.notification.Severity;
+import io.github.mbackschat.a12.dm.core.Severity;
 
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;

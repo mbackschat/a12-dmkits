@@ -10,7 +10,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.mgmtp.a12.model.notification.RankedNotification;
+import io.github.mbackschat.a12.dm.core.Notification;
+import io.github.mbackschat.a12.dm.core.Severity;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -59,7 +60,7 @@ final class ModelCheckCommand extends BaseCommand {
             valid = true;
         } catch (ModelConsistencyException e) {
             valid = false;
-            for (RankedNotification n : e.notifications()) {
+            for (Notification n : e.notifications()) {
                 diagnostics.add(KernelDiagnostics.enriched(n, null));
             }
         }
@@ -68,7 +69,7 @@ final class ModelCheckCommand extends BaseCommand {
         // version differs from this build's reference but the kernel still accepted it.
         diagnostics = ModelVersion.classify(json, diagnostics);
 
-        long errors = diagnostics.stream().filter(d -> d.severity() == com.mgmtp.a12.model.notification.Severity.ERROR).count();
+        long errors = diagnostics.stream().filter(d -> d.severity() == Severity.ERROR).count();
         String summary = valid ? "model is valid" : "model has " + errors + " error(s)";
         ResultEnvelope env = ResultEnvelope.read("model", "check", summary, valid, diagnostics, null);
         out().print(env.toJsonString());

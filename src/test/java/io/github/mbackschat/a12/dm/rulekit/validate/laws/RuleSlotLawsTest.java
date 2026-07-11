@@ -35,7 +35,7 @@ class RuleSlotLawsTest {
     }
 
     private static void assertCode(ModelConsistencyException ex, String code) {
-        assertTrue(ex.notifications().stream().anyMatch(n -> n.getMessage().contains(code)),
+        assertTrue(ex.notifications().stream().anyMatch(n -> n.message().contains(code)),
                 () -> "expected " + code + ", kernel said: " + ex.getMessage());
     }
 

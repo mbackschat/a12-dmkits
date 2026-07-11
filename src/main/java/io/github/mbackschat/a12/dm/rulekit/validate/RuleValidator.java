@@ -21,6 +21,7 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.model.notification.RankedNotification;
 
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
+import io.github.mbackschat.a12.dm.core.KernelNotifications;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 
 /**
@@ -159,7 +160,7 @@ public final class RuleValidator {
             IDocumentModel model = serializer.deserialize(new StringReader(injected));
             service.expand(model, resolver);
             service.checkConsistency(model, (RankedNotification n) ->
-                    diagnostics.add(enricher.enrich(Diagnostic.fromKernel(n, rulePath))));
+                    diagnostics.add(enricher.enrich(Diagnostic.fromKernel(KernelNotifications.toCore(n), rulePath))));
         } catch (IOException e) {
             throw new UncheckedIOException("failed to deserialize the rule-injected model", e);
         }

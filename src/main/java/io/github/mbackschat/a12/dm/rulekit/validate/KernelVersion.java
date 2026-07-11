@@ -3,7 +3,8 @@ package io.github.mbackschat.a12.dm.rulekit.validate;
 import java.util.Optional;
 
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-import com.mgmtp.a12.model.notification.Severity;
+
+import io.github.mbackschat.a12.dm.core.Severity;
 
 /**
  * Runtime kernel-version awareness (F11). rulekit's catalog is verified against a floor version (the

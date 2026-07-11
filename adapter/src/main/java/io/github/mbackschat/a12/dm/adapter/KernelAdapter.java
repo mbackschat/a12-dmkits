@@ -42,6 +42,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
+import io.github.mbackschat.a12.dm.core.KernelNotifications;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 
@@ -269,7 +270,8 @@ public final class KernelAdapter {
      */
     public ValidationResult diagnose(String ruleFullName) {
         List<Diagnostic> diagnostics = new ArrayList<>();
-        mvk.hasValidConditionText(rule(ruleFullName), p -> diagnostics.add(KernelDiagnostics.enriched(p, ruleFullName)));
+        mvk.hasValidConditionText(rule(ruleFullName),
+                p -> diagnostics.add(KernelDiagnostics.enriched(KernelNotifications.toCore(p), ruleFullName)));
         return ValidationResult.of(diagnostics);
     }
 
@@ -283,7 +285,7 @@ public final class KernelAdapter {
     public ValidationResult diagnose(String ruleFullName, String candidateConditionText) {
         List<Diagnostic> diagnostics = new ArrayList<>();
         mvk.parseConditionNoExpand(rule(ruleFullName), candidateConditionText,
-                p -> diagnostics.add(KernelDiagnostics.enriched(p, ruleFullName)));
+                p -> diagnostics.add(KernelDiagnostics.enriched(KernelNotifications.toCore(p), ruleFullName)));
         return ValidationResult.of(diagnostics);
     }
 

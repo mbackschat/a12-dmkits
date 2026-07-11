@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
-import com.mgmtp.a12.model.notification.Severity;
+import io.github.mbackschat.a12.dm.core.Severity;
 
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource;

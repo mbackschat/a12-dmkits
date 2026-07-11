@@ -56,7 +56,7 @@ public final class ModelLoader {
             }
         });
         if (!errors.isEmpty()) {
-            throw new ModelConsistencyException(errors);
+            throw new ModelConsistencyException(errors.stream().map(KernelNotifications::toCore).toList());
         }
         return model;
     }

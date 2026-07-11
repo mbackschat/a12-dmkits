@@ -2,7 +2,7 @@ package io.github.mbackschat.a12.dm.rulekit.validate;
 
 import java.util.Optional;
 
-import com.mgmtp.a12.model.notification.Severity;
+import io.github.mbackschat.a12.dm.core.Severity;
 
 /**
  * The {@code RK_*} diagnostic vocabulary — rulekit/structure codes — as a typed enum that <b>is</b> the
