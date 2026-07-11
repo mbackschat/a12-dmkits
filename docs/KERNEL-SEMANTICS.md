@@ -6,7 +6,7 @@ A reference to how the A12 validation language *evaluates*, beyond what its synt
 
 Two facts frame everything else:
 
-- **A rule states the *error* condition.** Its condition is written so that `true` means the data is invalid. `FieldNotFilled(CustomerName)` is the rule "the customer name is missing."
+- **A rule states the *error* condition — and that polarity is fixed.** Its condition is written so that `true` means the data is invalid. `FieldNotFilled(CustomerName)` is the rule "the customer name is missing." No slot or configuration flips this: the rule's single condition slot is `errorCondition`, severity is message metadata ([§12](#12-the-validation-model)), and there is no assertion/requirement form — so a requirement must be authored as its *violation*, and a positively-written requirement is structurally valid but encodes the opposite rule, a mistake the kernel cannot catch *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) "Rule-condition polarity is fixed")*.
 - **Rules and computations share one language**, so the same operators and treatments apply to computed fields.
 
 **Scope:** this covers how the *validation language* evaluates. The developer/runtime side — the `DocumentV2` API, the `validateFull`/`validatePart` call surface, mapping, code-generation targets, and model include/expansion — is out of scope except where it changes evaluation (touched in [§12](#12-the-validation-model)). Authoring/grammar pitfalls (path syntax, keyword-name escaping, `Date()` operand formats) live in `KERNEL-GRAMMAR.md`.
@@ -23,7 +23,7 @@ Which operators are legal on a field, and how a missing or mismatched value beha
 |---|---|---|---|
 | **String** | `pattern`, min/max length | string | `Length` counts Unicode combining sequences as several characters; a `pattern` requires an accompanying error text; the basis for `Custom`. |
 | **Number** | **scale** = max fractional digits; min/max value; `trait` = amount / percent / permille | number | Scale **gates `==`/`!=`** (mismatched scale is a *parse-time* error — round one side first); an unspecified number is substituted with **`0`** in comparisons (but *ignored* by min/max); orderable with `< > <= >=`. |
-| **Boolean** | True / False / unset | boolean | Three states; an unspecified value leaves a comparison **not evaluated**; `[F] == True` is **not** the same as `FieldFilled(F)`. |
+| **Boolean** | True / False / unset | boolean | Three states; an unspecified value leaves a comparison **not evaluated**; compares only to `True`/`False` or another Boolean; `[F] == True` is **not** the same as `FieldFilled(F)`. |
 | **Confirm** | True / unset (a checkbox) | confirm | Distinct from Boolean: an unspecified value is treated as **`False`** in comparisons; compares only to another Confirm or the constant `True`. |
 | **Enumeration** | `values`; *with* or *without* localized **texts**; **categories** | enum value | Compared by the **stored value**, not the display text (`[Country]=="F"`); a *text-bearing* enum cannot be compared with a plain string or a *textless* enum; `->` reads a value's **category** attribute. |
 | **Date** | `format`; `datePrecision` = full / day- / month- / year-optional | date | Constants are `DD.MM.YYYY` (day-first); a **string literal matching that format parses as a date** (so it breaks string concatenation); precision gates `DayFromDate`/`MonthFromDate`/… and `ValueAsDate`. |
@@ -43,7 +43,7 @@ Which operators are legal on a field, and how a missing or mismatched value beha
 
 ### Two-valued connectives over data that can be "unknown"
 
-The logical operators `And` / `Or` and the predicates are two-valued: a condition is satisfied or not. However, the *data* a condition reads can be in a third state — **unknown** — when a field carries a formal error (see [§4](#4-the-required-property) and [§12](#12-the-validation-model)). A field in that state cannot be evaluated by any rule. The logic itself never produces a third value; "unknown" instead removes a field (and the rules over it) from evaluation.
+The logical operators `And` / `Or` and the predicates are two-valued: a condition is satisfied or not. However, the *data* a condition reads can be in a third state — **unknown** — when a field carries a formal error (see [§4](#4-the-required-property) and [§12](#12-the-validation-model)). A field in that state cannot be evaluated by any rule. The logic itself never produces a third value; "unknown" instead makes each operand that reads the field undecidable, and the ordinary `And`/`Or` algebra decides how far that reaches — branch-scoped, not rule-scoped ([§3](#3-formal-errors-and-the-unknown-state)) *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §3, locked by `FormalErrorScopeLawsTest`)*.
 
 *Reference: Operators and language constructs → Logical operators; Appendix → Validation and formal validation → Formal errors.*
 
@@ -77,6 +77,8 @@ Consequences: `[Flag] == True` is not equivalent to `FieldFilled(Flag)`, and `[F
 
 For a `Confirm` field (a checkbox with the single value `True`), an unspecified value is treated as `False` in comparisons. For a `Boolean` field, an unspecified value leaves the comparison *not evaluated* (see [§2](#2-non-specified-empty-values)). The same comparison form therefore yields different results depending on the field type.
 
+At the stored-value tier the split repeats: a boolean's value token is lowercase `true`/`false` — any other token is a formal error ([§3](#3-formal-errors-and-the-unknown-state)) — while a confirm accepts only `true` or unspecified; a stored `false` on a confirm is itself a formal error, consistent with "a checkbox whose single value is True". "Not confirmed" is written `[Confirm] != True` *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §1 + §2, locked by `BooleanConfirmLawsTest` + `EmptyValueLawsTest`)*.
+
 *Reference: Models → Field types → Confirm; Models → Treatment of non-specified values.*
 
 ### There is no generic negation operator
@@ -93,6 +95,13 @@ NotExactlyOneFieldFilled(A, B, C)   ;; satisfied for 0 filled AND for 2+ filled
 Choosing the wrong member of a pair changes which documents the rule reports.
 
 *Reference: Preface → Kernel Language; Predicate language constructs for Field lists.*
+
+### How the fill quantifiers count — group scopes and the two iteration ranges
+
+- **A group operand means "the fields inside the group", recursively.** A field-fill quantifier over a group expands to a field-list quantifier over every descendant field, through nested subgroups; a repeatable group in the operand carries its `*` onto each descendant, and a mixed group+field operand list is legal *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §1 / IF49, locked by `GroupScopedFieldFillDiffTest`)*. A **value aggregate** (`Sum`, `MinValue`, `MaxValue`, `NumberOfDifferentValues`) over a starred group expands the same way — every contained field's values, recursively *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §1 / IF99, locked by `GroupStarValueAggregateDiffTest`)*.
+- **Two iteration ranges over a starred scope.** `AllFieldsFilled` and `NotAllFieldsFilled` walk the **full declared range** — up to the group's `repeatability`, an un-instantiated repetition reading *empty* — so `AllFieldsFilled(G*)` holds only when every *declared* repetition is filled. `AtLeastOneFieldFilled`, `NoFieldFilled`, `MoreThanOneFieldFilled`, and `NotExactlyOneFieldFilled` clamp to the **instantiated** rows. `FieldsNotCollectivelyFilled` mixes the two (≥ 1 filled over the instantiated rows AND ≥ 1 empty over the declared range). On a non-repeatable scope the ranges coincide *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §1 / IF49, locked by `GroupScopedFieldFillDiffTest`)*.
+- **The group quantifiers admit a starred single group only for the count-zero / count-≥1 members.** `NoGroupFilled(G*)` and `AtLeastOneGroupFilled(G*)` count the group's **instantiated repetitions** — a created-but-empty row counts as a filled group (a row is content, [§9](#9-repetition-iteration-and-cross-array-evaluation)); a fired `NoGroupFilled(G*)` at zero rows types OMISSION, a fired `AtLeastOneGroupFilled(G*)` VALUE. The `AllGroupsFilled` / `NotAllGroupsFilled` / `GroupsNotCollectivelyFilled` family rejects the asterisk *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §1 / IF68 + IF46, locked by `StarredGroupQuantifierDiffTest` + `GroupQuantifierLawsTest`)*.
+- **A formally-invalid cell counts in neither bucket.** A present-but-invalid cell ([§3](#3-formal-errors-and-the-unknown-state)) is neither filled nor empty in a fill tally, and any invalid element makes a value aggregate non-evaluable *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §1 + §3 / IF84, locked by `StarQuantifierInvalidCellDiffTest`)*.
 
 ---
 
@@ -138,6 +147,7 @@ The per-kind table is only the default; several operators put an empty operand t
 | `PatternMatched` / `PatternViolated` | not evaluated — an empty string violates no pattern; absence needs `FieldNotFilled` *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2, locked by `EmptyValueLawsTest`)* |
 | the date/time **extractors** (`DayFromDate`, …) and the date **differences** | read as the fillable **`0`** — the enclosing comparison is evaluated and can fire *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §6 / IF73, locked by `EmptyOperandFiringDiffTest`)* |
 | **value-list membership** | an empty subject is never in any list, and an empty numeric list *entry* never matches — the `0` substitution does not apply to entries *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2/§8, locked by `EmptyValueLawsTest`)* |
+| the **count family** (`NumberOfFilledFields`, `NumberOfValueInFields`, …) | an empty cell is never counted — `NumberOfValueInFields(0 In …)` does **not** count an empty number as a match for `0` — but it keeps the count growable, typing a fired comparison OMISSION *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2, locked by `NumberOfValueInFieldsDiffTest` + `FilledCountLawsTest`)* |
 | operand-list `Min([A], [B])` / `Max(…)` | an empty NUMBER operand is substituted `0` and **competes in the fold** (`Min(0, B)` — the 0 can win); an empty DATE operand is **skipped** (the date-bearing side wins) *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2 + §6 / IF58, locked by `EmptyValueLawsTest` + `DateAggregateDiffTest`)* |
 | the field-list / starred aggregates (`Sum`, `MaxValue`, `MinValue`) | the empty cell is **dropped from the fold** — `MaxValue(-5, empty)` is `-5`, no `0` folded in; `Sum` reads it as `0`, which for a sum is the same thing *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §1 + §9, locked by `MultiFieldAggregateDiffTest` + `RepetitionLawsTest`)* |
 
@@ -212,7 +222,7 @@ More than a type-format mismatch. The same mechanism — same sentinel path, sam
 
 ### Suppression is branch-scoped — and it reaches presence checks
 
-A formal error does not remove the whole rule; it makes the affected operand UNKNOWN and the ordinary `And`/`Or` algebra decides the rest: `healthyTrue Or [broken] > 0` still fires via its healthy branch, while `healthyTrue And [broken] > 0` is absorbed — the single-branch rule is simply the case where branch- and rule-scoped suppression look identical, and [§1](#1-truth-values-and-logical-evaluation)'s "removes a field (and the rules over it) from evaluation" reads stricter than the engine behaves *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §3, locked by `FormalErrorScopeLawsTest`)*. The unknown reaches even operators that read no value: `FieldFilled(malformed)` decides nothing *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §3, locked by `QuantifierMalformedDiffTest` + `CurrentRepetitionDiffTest`)*. And the suppression is silent from the author's viewpoint: the kernel emits its own formal-error code, attributed to the sentinel rule path `formalePruefung`, while the author's rule simply produces nothing — in a validation report the discriminator is that sentinel vs the rule's slash-path *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §3, locked by `FormalErrorLawsTest`)*.
+A formal error does not remove the whole rule; it makes the affected operand UNKNOWN and the ordinary `And`/`Or` algebra decides the rest: `healthyTrue Or [broken] > 0` still fires via its healthy branch, while `healthyTrue And [broken] > 0` is absorbed — the single-branch rule is simply the case where branch- and rule-scoped suppression look identical *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §3, locked by `FormalErrorScopeLawsTest`)*. The unknown reaches even operators that read no value: `FieldFilled(malformed)` decides nothing *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §3, locked by `QuantifierMalformedDiffTest` + `CurrentRepetitionDiffTest`)*. And the suppression is silent from the author's viewpoint: the kernel emits its own formal-error code, attributed to the sentinel rule path `formalePruefung`, while the author's rule simply produces nothing — in a validation report the discriminator is that sentinel vs the rule's slash-path *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §3, locked by `FormalErrorLawsTest`)*.
 
 ### Validation excludes; compute poisons
 
@@ -457,6 +467,8 @@ Validation and computation are **separate operations**: `validateFull` never com
 | **filled but formally invalid** | CLEARED — and the target is poisoned for dependents (below) *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §11 / IF76 + IF78, locked by `ComputeInvalidOperandDiffTest`)* | CLEARED + poison — the rule is type-agnostic *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §11 / IF78)* | CLEARED + poison *(verified: IF81, locked by `ConcatInvalidOperandDiffTest`)* |
 
 The guard consequence cuts both ways: over DATE operands an `AllFieldsFilled` precondition is *redundant* — a false precondition clears exactly as the unevaluated operation does *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2, locked by `DateRangeComputationLawsTest`)* — while over a NUMBER operand the same guard *changes behaviour*: guarded clears where unguarded computes `0` *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §11, locked by `ComputeDocVerbTest`)*.
+
+The STRING column above is the *concatenation* position's. A **bare string copy** (`X = [S]`, one operand, no `+`) of an empty operand computes nothing — CLEARED, never a stored `""` *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2, locked by `StringCopyComputeDiffTest`)*. The `FieldValueAsString` coercion of a not-given read follows the same per-context split — a standalone copy CLEARS (the store path treats an empty string value as "no calculation was done"), a concatenation gets `""`; the coercion's operand must be a NUMBER/AMOUNT field (a string copies bare) *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §11 / IF109, locked by `FieldValueAsStringComputeDiffTest`)*.
 
 ### Two kinds of "no value" — the empty cascade vs the poison
 
