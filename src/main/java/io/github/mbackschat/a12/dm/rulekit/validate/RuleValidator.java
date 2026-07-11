@@ -15,13 +15,13 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.model.notification.RankedNotification;
 
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.core.KernelNotifications;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 
 /**
@@ -56,14 +56,14 @@ public final class RuleValidator {
      * Check {@code rule} against a model whose {@code include}d / typedef-imported models are resolved by
      * {@code resolver} (F-RES) — the multi-file-application path (use {@link ReferenceResolvers#directory}).
      */
-    public ValidationResult check(String modelJson, DraftRule rule, IDocumentModelReferenceResolver resolver) {
+    public ValidationResult check(String modelJson, DraftRule rule, ModelResolver resolver) {
         return checkDraft(modelJson, rule.groupPath(), rule.name(), "rule",
                 () -> inject(modelJson, rule), resolver);
     }
 
     /** Check {@code computation} against a model whose references are resolved by {@code resolver} (F-RES). */
     public ValidationResult check(String modelJson, DraftComputation computation,
-            IDocumentModelReferenceResolver resolver) {
+            ModelResolver resolver) {
         return checkDraft(modelJson, computation.groupPath(), computation.name(), "computation",
                 () -> inject(modelJson, computation), resolver);
     }
@@ -79,7 +79,7 @@ public final class RuleValidator {
      * that turns any residual conversion error into a rejection too.
      */
     private ValidationResult checkDraft(String modelJson, String groupPath, String name, String kind,
-            Supplier<String> injector, IDocumentModelReferenceResolver resolver) {
+            Supplier<String> injector, ModelResolver resolver) {
         String fullName = groupPath + "/" + name;
         Optional<Diagnostic> precheck = addPrecheck(modelJson, groupPath, name, kind);
         if (precheck.isPresent()) {
@@ -150,7 +150,7 @@ public final class RuleValidator {
     }
 
     private ValidationResult checkInjected(String injected, String rulePath,
-            IDocumentModelReferenceResolver resolver) {
+            ModelResolver resolver) {
 
         IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
         IDocumentModelService service = FACTORY.createDocumentModelService();
@@ -158,7 +158,7 @@ public final class RuleValidator {
         List<Diagnostic> diagnostics = new ArrayList<>();
         try {
             IDocumentModel model = serializer.deserialize(new StringReader(injected));
-            service.expand(model, resolver);
+            service.expand(model, ReferenceResolvers.of(resolver));
             service.checkConsistency(model, (RankedNotification n) ->
                     diagnostics.add(enricher.enrich(Diagnostic.fromKernel(KernelNotifications.toCore(n), rulePath))));
         } catch (IOException e) {

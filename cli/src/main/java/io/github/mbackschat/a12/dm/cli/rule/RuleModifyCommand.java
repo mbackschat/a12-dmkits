@@ -20,7 +20,7 @@ import java.util.Optional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.adapter.ReadResult;
@@ -130,7 +130,7 @@ final class RuleModifyCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         }
-        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
+        ModelResolver resolver = workspace.resolverFor(model);
         // the rule-exists gate runs first, so a missing rule gets the structured RK_NO_SUCH_RULE refusal
         // regardless of which edit args were passed (CLI-CONFORMANCE-SPEC)
         Optional<Refusal> refusal = new SafetyGate()

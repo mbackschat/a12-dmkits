@@ -17,7 +17,7 @@ import java.util.Optional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
@@ -60,7 +60,7 @@ final class TypedefInlineCommand extends BaseCommand {
             return 2;
         }
         ModelDocument doc = ModelDocument.read(modelJson);
-        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
+        ModelResolver resolver = workspace.resolverFor(model);
         Optional<Refusal> refusal = new SafetyGate()
                 .require(SafetyChecks.typedefExists(doc, id))
                 .firstFailure();

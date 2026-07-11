@@ -16,7 +16,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
@@ -132,7 +132,7 @@ final class WorkspaceListCommand extends BaseCommand {
 
     /** Kernel-validate each model, resolving its references against the whole directory tree. */
     private Map<String, Boolean> validateAll(Path root, List<Workspace.Model> models) {
-        IDocumentModelReferenceResolver resolver = ReferenceResolvers.directory(root);
+        ModelResolver resolver = ReferenceResolvers.directory(root);
         Map<String, Boolean> out = new LinkedHashMap<>();
         for (Workspace.Model m : models) {
             boolean valid;

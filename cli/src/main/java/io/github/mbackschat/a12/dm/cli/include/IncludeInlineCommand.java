@@ -15,7 +15,7 @@ import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
@@ -75,7 +75,7 @@ final class IncludeInlineCommand extends BaseCommand {
             return fail("cannot resolve the included model '" + reference + "' — pass -w <dir>");
         }
 
-        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
+        ModelResolver resolver = workspace.resolverFor(model);
         String resultJson;
         try {
             doc.inlineInclude(alias, includedJson.get());

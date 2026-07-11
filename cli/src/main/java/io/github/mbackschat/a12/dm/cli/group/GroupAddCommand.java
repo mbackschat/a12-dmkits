@@ -15,7 +15,7 @@ import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
@@ -70,7 +70,7 @@ final class GroupAddCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         }
-        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
+        ModelResolver resolver = workspace.resolverFor(model);
         String target = parent + "/" + name;
         ModelDocument doc = ModelDocument.read(modelJson);
         if (!parent.isEmpty()) {   // "" = a new root group, which has no parent to check

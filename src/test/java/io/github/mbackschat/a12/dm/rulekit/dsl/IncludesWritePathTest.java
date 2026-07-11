@@ -5,13 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.StringReader;
 
 import org.junit.jupiter.api.Test;
 
-import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.Fixtures;
 
@@ -32,15 +29,10 @@ class IncludesWritePathTest {
     private static final String INCLUDED_PRICE = "/Storefront/Inventory/ListPrice";
 
     /** Resolves the "catalog" reference to the catalog model (read-only — never written). */
-    private static IDocumentModelReferenceResolver resolver() {
-        IDocumentModelSerializer serializer = new DocumentModelServiceFactory().createDocumentModelSerializer();
+    private static ModelResolver resolver() {
         return reference -> {
             if ("catalog".equals(reference)) {
-                try {
-                    return serializer.deserialize(new StringReader(CATALOG));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                return CATALOG;
             }
             throw new IllegalStateException("unknown reference: " + reference);
         };

@@ -12,7 +12,7 @@ import java.nio.file.Path;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.cli.field.FieldSpec;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
@@ -81,7 +81,7 @@ final class TypedefAddCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         }
-        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
+        ModelResolver resolver = workspace.resolverFor(model);
         ModelDocument doc = ModelDocument.read(modelJson);
 
         try {

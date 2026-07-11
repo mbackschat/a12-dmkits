@@ -24,7 +24,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.adapter.EvalMessage;
 import io.github.mbackschat.a12.dm.adapter.EvalResult;
@@ -144,7 +144,7 @@ final class ModelEvalCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read document: " + e.getMessage());
         }
-        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
+        ModelResolver resolver = workspace.resolverFor(model);
 
         // Resolve a candidate's group + error relpath (engine-independent).
         String effectiveGroup = group;

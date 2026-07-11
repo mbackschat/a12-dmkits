@@ -3,7 +3,7 @@ package io.github.mbackschat.a12.dm.cli;
 import java.nio.file.Path;
 import java.util.List;
 
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import picocli.CommandLine.Command;
@@ -34,7 +34,7 @@ public final class WorkspaceOption {
     CommandSpec mixee;
 
     /** The reference resolver for a model loaded from {@code modelPath}, over the {@link #roots(String) roots}. */
-    public IDocumentModelReferenceResolver resolverFor(String modelPath) {
+    public ModelResolver resolverFor(String modelPath) {
         return ReferenceResolvers.directory(roots(modelPath).toArray(Path[]::new));
     }
 

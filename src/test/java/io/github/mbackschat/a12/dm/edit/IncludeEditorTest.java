@@ -4,13 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.StringReader;
-
 import org.junit.jupiter.api.Test;
 
-import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
@@ -23,9 +19,6 @@ import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
  * deferred — it ripples to every mount; see PROJECT-DESIGN §18.7.)
  */
 class IncludeEditorTest {
-
-    private static final IDocumentModelSerializer SERIALIZER =
-            new DocumentModelServiceFactory().createDocumentModelSerializer();
 
     @Test
     void mountsAgainAndRemovesAnIncludeByHeldReference() {
@@ -81,15 +74,11 @@ class IncludeEditorTest {
                 .toJson();
     }
 
-    private static IDocumentModelReferenceResolver resolver() {
+    private static ModelResolver resolver() {
         String catalogJson = catalogModel();
         return reference -> {
             if (reference.startsWith("catalog")) {   // resolves "catalog" and "catalog-v2"
-                try {
-                    return SERIALIZER.deserialize(new StringReader(catalogJson));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                return catalogJson;
             }
             throw new IllegalStateException("unknown reference: " + reference);
         };

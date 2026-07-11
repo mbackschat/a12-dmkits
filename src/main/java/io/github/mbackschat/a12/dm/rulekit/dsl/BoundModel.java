@@ -4,6 +4,7 @@ import java.util.Arrays;
 
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
@@ -18,10 +19,9 @@ public final class BoundModel {
     // DM-JSON — writes edit it and never the kernel's expanded model, so includes/modelReferences are
     // preserved verbatim, never inlined. The resolver is kept so re-binding a model with includes works.
     private final String sourceJson;
-    private final com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver resolver;
+    private final ModelResolver resolver;
 
-    private BoundModel(ModelIndex index, String sourceJson,
-            com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver resolver) {
+    private BoundModel(ModelIndex index, String sourceJson, ModelResolver resolver) {
         this.index = index;
         this.sourceJson = sourceJson;
         this.resolver = resolver;
@@ -34,7 +34,7 @@ public final class BoundModel {
     /**
      * Bind from <em>self-contained</em> DM-JSON, retaining the source so the model can be
      * {@link #add(Rule) written} back (F6). For a model with includes / {@code modelReferences}, use
-     * {@link #ofJson(String, com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver)}.
+     * {@link #ofJson(String, ModelResolver)}.
      */
     public static BoundModel ofJson(String modelJson) {
         return ofJson(modelJson,
@@ -42,24 +42,18 @@ public final class BoundModel {
     }
 
     /**
-     * Bind from DM-JSON with a {@code resolver} for includes / type-def imports, retaining both so
-     * the write path round-trips an included model correctly (loads → expands against the resolver →
-     * {@code checkConsistency}). The retained source is the unexpanded authored JSON, so
+     * Bind from DM-JSON with a <b>kernel-free</b> {@link ModelResolver} ({@code id → DM-JSON}) for includes /
+     * type-def imports — the common multi-model case without touching {@code com.mgmtp.a12.kernel.*} —
+     * retaining both so the write path round-trips an included model correctly (loads → expands against the
+     * resolver → {@code checkConsistency}). The retained source is the unexpanded authored JSON, so
      * {@link #toJson()} / {@link #writeTo} preserve the includes rather than inlining them.
      */
-    public static BoundModel ofJson(String modelJson,
-            com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver resolver) {
+    public static BoundModel ofJson(String modelJson, ModelResolver resolver) {
         try (var reader = new java.io.StringReader(modelJson)) {
             return new BoundModel(ModelIndex.of(ModelLoader.load(reader, resolver)), modelJson, resolver);
         } catch (java.io.IOException e) {
             throw new java.io.UncheckedIOException("failed to bind model from JSON", e);
         }
-    }
-
-    /** Bind with a <b>kernel-free</b> {@link io.github.mbackschat.a12.dm.core.ModelResolver} ({@code id → DM-JSON})
-     *  for includes / type-def imports — the common multi-model case without touching {@code com.mgmtp.a12.kernel.*}. */
-    public static BoundModel ofJson(String modelJson, io.github.mbackschat.a12.dm.core.ModelResolver resolver) {
-        return ofJson(modelJson, io.github.mbackschat.a12.dm.core.ReferenceResolvers.of(resolver));
     }
 
     /** Bind from a DM-JSON file on disk — sugar for {@code ofJson(Files.readString(path))}. The source is
@@ -78,8 +72,7 @@ public final class BoundModel {
      * condition / references before it would validate). Makes <b>no validity promise</b>; never use it for the
      * write path. See {@link ModelLoader#expandOnly}.
      */
-    public static BoundModel ofJsonLenient(String modelJson,
-            com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver resolver) {
+    public static BoundModel ofJsonLenient(String modelJson, ModelResolver resolver) {
         try (var reader = new java.io.StringReader(modelJson)) {
             return new BoundModel(ModelIndex.of(ModelLoader.expandOnly(reader, resolver)), modelJson, resolver);
         } catch (java.io.IOException e) {
@@ -179,7 +172,7 @@ public final class BoundModel {
      * the kernel adapter) expands the model against the <em>same</em> resolver. Null for a binding made
      * directly from a {@code ModelIndex} (no source JSON); non-null whenever {@link #toJson()} works.
      */
-    public com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver resolver() {
+    public ModelResolver resolver() {
         return resolver;
     }
 

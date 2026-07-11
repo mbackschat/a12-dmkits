@@ -6,9 +6,8 @@ import java.io.StringReader;
 
 import org.junit.jupiter.api.Test;
 
-import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
@@ -20,8 +19,6 @@ import io.github.mbackschat.a12.dm.core.ModelLoader;
  * must read back as repeating. Own domain (an order mounting an address sub-form three times).
  */
 class IncludeRepeatabilityTest {
-
-    private static final DocumentModelServiceFactory FACTORY = new DocumentModelServiceFactory();
 
     /** The reusable included sub-form. */
     private static String addressModel() {
@@ -40,14 +37,10 @@ class IncludeRepeatabilityTest {
                 .build().toJson();
     }
 
-    private static IDocumentModelReferenceResolver resolver() {
+    private static ModelResolver resolver() {
         return reference -> {
             if ("address".equals(reference)) {
-                try {
-                    return FACTORY.createDocumentModelSerializer().deserialize(new StringReader(addressModel()));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                return addressModel();
             }
             throw new IllegalStateException("unknown reference: " + reference);
         };

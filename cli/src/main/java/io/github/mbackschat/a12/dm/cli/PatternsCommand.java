@@ -12,7 +12,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.cli.field.FieldSpec;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
@@ -153,7 +153,7 @@ final class PatternsCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         }
-        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
+        ModelResolver resolver = workspace.resolverFor(model);
 
         PatternEntry.Instantiation inst;
         BoundModel bound;
@@ -175,7 +175,7 @@ final class PatternsCommand extends BaseCommand {
 
     /** Scaffold a RULE pattern — build the rule-spec, auto-check, and (with --apply) persist via {@code addRule}. */
     private Integer scaffoldRule(PatternEntry pattern, PatternEntry.RuleInstantiation inst,
-            BoundModel bound, String modelJson, IDocumentModelReferenceResolver resolver, String model) {
+            BoundModel bound, String modelJson, ModelResolver resolver, String model) {
         String errorField = inst.errorField();
         int slash = errorField.lastIndexOf('/');
         String group = errorField.substring(0, slash);
@@ -233,7 +233,7 @@ final class PatternsCommand extends BaseCommand {
      * is a rule concept; a fired computation's code is its own name, so it is not used here.)
      */
     private Integer scaffoldComputation(PatternEntry pattern, PatternEntry.ComputationInstantiation inst,
-            BoundModel bound, String modelJson, IDocumentModelReferenceResolver resolver, String model) {
+            BoundModel bound, String modelJson, ModelResolver resolver, String model) {
         Computation computation = inst.computation();
         DraftComputation built = computation.draft();
         String compName = name != null ? name : built.name();
@@ -299,7 +299,7 @@ final class PatternsCommand extends BaseCommand {
      * message overrides are rule concepts and do not apply — a field carries its own config.
      */
     private Integer scaffoldField(PatternEntry pattern, PatternEntry.FieldInstantiation inst,
-            String modelJson, IDocumentModelReferenceResolver resolver, String model) {
+            String modelJson, ModelResolver resolver, String model) {
         ObjectNode fieldSpec = MAPPER.createObjectNode();
         fieldSpec.put("group", inst.group());
         fieldSpec.put("name", inst.name());

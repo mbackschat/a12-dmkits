@@ -4,9 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver
 import com.mgmtp.a12.model.notification.RankedNotification
 import com.mgmtp.a12.model.notification.Severity
+import io.github.mbackschat.a12.dm.core.ModelResolver
+import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import java.io.StringReader
 import java.io.StringWriter
 
@@ -46,11 +47,11 @@ object CorpusModelPreparer {
 
     /** Kernel legs: deserialize → `expand(resolver)` → serialize to self-contained DM-JSON (opaque ids +
      *  `TypeDefType` refs preserved; includes folded, imported typedefs embedded). */
-    fun prepareKernelJson(rawJson: String, resolver: IDocumentModelReferenceResolver): String {
+    fun prepareKernelJson(rawJson: String, resolver: ModelResolver): String {
         val serializer = FACTORY.createDocumentModelSerializer()
         val service = FACTORY.createDocumentModelService()
         val model = serializer.deserialize(StringReader(rawJson))
-        service.expand(model, resolver)
+        service.expand(model, ReferenceResolvers.of(resolver))
         val sw = StringWriter()
         val errors = mutableListOf<RankedNotification>()
         serializer.serialize(model, sw) { n -> if (n.severity == Severity.ERROR) errors.add(n) }

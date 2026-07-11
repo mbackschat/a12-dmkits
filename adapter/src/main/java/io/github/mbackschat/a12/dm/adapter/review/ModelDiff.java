@@ -88,15 +88,6 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
                 resolver == null ? BoundModel.ofJson(headJson) : BoundModel.ofJson(headJson, resolver));
     }
 
-    /** Diff two models resolving {@code include}s/imports through the kernel's resolver directly (the low-level
-     *  overload; prefer the {@link io.github.mbackschat.a12.dm.core.ModelResolver} form). {@code null} = none. */
-    public static ModelDiff between(String baseJson, String headJson,
-            com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver resolver) {
-        return between(
-                resolver == null ? BoundModel.ofJson(baseJson) : BoundModel.ofJson(baseJson, resolver),
-                resolver == null ? BoundModel.ofJson(headJson) : BoundModel.ofJson(headJson, resolver));
-    }
-
     /** The shared structural diff over two already-bound models — the entry points differ only in how each
      *  {@link BoundModel} was resolved. */
     private static ModelDiff between(BoundModel base, BoundModel head) {

@@ -7,8 +7,7 @@ import java.io.StringReader;
 
 import org.junit.jupiter.api.Test;
 
-import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 
@@ -19,8 +18,6 @@ import io.github.mbackschat.a12.dm.core.ModelLoader;
  * single-root rule are likewise the kernel's job on expand; modelkit doesn't re-implement them.)
  */
 class IncludeConstraintsTest {
-
-    private static final DocumentModelServiceFactory FACTORY = new DocumentModelServiceFactory();
 
     /** An included sub-form declaring an extra locale (de_DE) the base below does not. */
     private static String bilingualAddress() {
@@ -46,14 +43,10 @@ class IncludeConstraintsTest {
                 .build().toJson();
     }
 
-    private static IDocumentModelReferenceResolver resolver(String addressJson) {
+    private static ModelResolver resolver(String addressJson) {
         return reference -> {
             if ("address".equals(reference)) {
-                try {
-                    return FACTORY.createDocumentModelSerializer().deserialize(new StringReader(addressJson));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                return addressJson;
             }
             throw new IllegalStateException("unknown reference: " + reference);
         };

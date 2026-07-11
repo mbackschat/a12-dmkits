@@ -5,14 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.StringReader;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
-import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
@@ -37,9 +34,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
  * under {@code /Order/Shipping}, with an {@code order} rule reaching into the mount.
  */
 class ExtractAsIncludeProbeTest {
-
-    private static final IDocumentModelSerializer SERIALIZER =
-            new DocumentModelServiceFactory().createDocumentModelSerializer();
 
     private static final String INCLUDED_POSTAL = "/Order/Shipping/PostalCode";
     /** The sub-model's own rule, addressed at its mounted full-name. */
@@ -66,15 +60,11 @@ class ExtractAsIncludeProbeTest {
                 .toJson();
     }
 
-    private static IDocumentModelReferenceResolver resolver() {
+    private static ModelResolver resolver() {
         String includedJson = shippingJson();
         return reference -> {
             if ("shipping".equals(reference)) {
-                try {
-                    return SERIALIZER.deserialize(new StringReader(includedJson));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                return includedJson;
             }
             throw new IllegalStateException("unknown reference: " + reference);
         };

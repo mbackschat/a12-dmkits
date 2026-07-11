@@ -17,7 +17,7 @@ import java.util.Optional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
@@ -67,7 +67,7 @@ final class GroupRemoveCommand extends BaseCommand {
         if (modelJson == null) {
             return 2;
         }
-        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
+        ModelResolver resolver = workspace.resolverFor(model);
         Optional<Refusal> notFound = new SafetyGate()
                 .require(SafetyChecks.exists(ModelDocument.read(modelJson), group, true))
                 .firstFailure();

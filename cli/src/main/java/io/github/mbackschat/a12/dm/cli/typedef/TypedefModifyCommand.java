@@ -13,7 +13,7 @@ import java.util.Optional;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.cli.field.FieldSpec;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
@@ -81,7 +81,7 @@ final class TypedefModifyCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         }
-        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
+        ModelResolver resolver = workspace.resolverFor(model);
         ModelDocument doc = ModelDocument.read(modelJson);
         // the existence precheck runs BEFORE the --kind/spec arg-combo check, so a missing typedef always
         // gives the structured RK_NO_SUCH_TYPEDEF (not a bare usage error) regardless of the other args.

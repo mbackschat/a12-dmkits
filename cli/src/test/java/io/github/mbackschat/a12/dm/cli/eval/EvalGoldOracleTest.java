@@ -16,7 +16,7 @@ import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -551,7 +551,7 @@ class EvalGoldOracleTest {
      * tree (resolved on the classpath) for a multi-file task, else self-contained. The directory is found
      * via the classloader, so it points at the copied test resources on disk.
      */
-    private static IDocumentModelReferenceResolver resolverFor(JsonNode task) {
+    private static ModelResolver resolverFor(JsonNode task) {
         if (!task.hasNonNull("includeDir")) {
             return ReferenceResolvers.selfContained();
         }

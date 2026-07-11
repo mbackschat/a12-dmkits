@@ -17,13 +17,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
-
 import io.github.mbackschat.a12.dm.core.DmJson;
 import io.github.mbackschat.a12.dm.core.DmKeys;
 import io.github.mbackschat.a12.dm.core.ElementType;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
@@ -1877,8 +1876,9 @@ public final class ModelDocument {
         return validate(ReferenceResolvers.selfContained());
     }
 
-    /** As {@link #validate()}, resolving includes / type-def imports via {@code resolver}. */
-    public ModelDocument validate(IDocumentModelReferenceResolver resolver) {
+    /** As {@link #validate()}, resolving includes / type-def imports via a <b>kernel-free</b>
+     *  {@link ModelResolver} ({@code id → DM-JSON}). */
+    public ModelDocument validate(ModelResolver resolver) {
         try {
             ModelLoader.load(new StringReader(toJson()), resolver);
         } catch (ModelConsistencyException e) {

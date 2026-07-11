@@ -2,13 +2,9 @@ package io.github.mbackschat.a12.dm.edit;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.StringReader;
-
 import org.junit.jupiter.api.Test;
 
-import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
@@ -26,9 +22,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
  * {@code rulekit.dsl.IncludesTypedefsRuleTest}; this adds the two-location + included-rules story.)
  */
 class MultiModelTest {
-
-    private static final IDocumentModelSerializer SERIALIZER =
-            new DocumentModelServiceFactory().createDocumentModelSerializer();
 
     /** The shared model — a price list that carries its OWN rule (list price not negative). */
     private static String pricelist() {
@@ -58,14 +51,10 @@ class MultiModelTest {
                 .build().toJson();
     }
 
-    private static IDocumentModelReferenceResolver resolver(String pricelistJson) {
+    private static ModelResolver resolver(String pricelistJson) {
         return reference -> {
             if ("pricelist".equals(reference)) {
-                try {
-                    return SERIALIZER.deserialize(new StringReader(pricelistJson));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                return pricelistJson;
             }
             throw new IllegalStateException("unknown reference: " + reference);
         };
@@ -73,7 +62,7 @@ class MultiModelTest {
 
     @Test
     void includesARuledModelAtTwoLocationsAndRulesOverItsFields() {
-        IDocumentModelReferenceResolver resolver = resolver(pricelist());
+        ModelResolver resolver = resolver(pricelist());
         EditSession s = EditSession.read(catalogStructure(), resolver);
 
         // include the shared price list at TWO locations

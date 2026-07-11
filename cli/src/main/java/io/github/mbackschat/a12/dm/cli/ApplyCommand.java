@@ -20,7 +20,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.Notification;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
@@ -173,7 +173,7 @@ final class ApplyCommand extends BaseCommand {
         if (!ops.isArray()) {
             return fail("the ops file must be a JSON array of op-records");
         }
-        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
+        ModelResolver resolver = workspace.resolverFor(model);
         EditSession session = EditSession.read(modelJson, resolver);
 
         ArrayNode results = MAPPER.createArrayNode();
@@ -252,7 +252,7 @@ final class ApplyCommand extends BaseCommand {
      * (→ rollback). {@code Op.of} is non-null here — {@link #validateArgs} has already rejected an unknown
      * {@code target}/{@code op}; the switch is a compiler-checked exhaustive expression over {@link Op}.
      */
-    private Applied dispatch(EditSession session, JsonNode op, IDocumentModelReferenceResolver resolver) {
+    private Applied dispatch(EditSession session, JsonNode op, ModelResolver resolver) {
         Op which = Op.of(op);
         ObjectNode changed = MAPPER.createObjectNode();
         return switch (which) {
@@ -629,7 +629,7 @@ final class ApplyCommand extends BaseCommand {
      * precondition throws {@link RefactorRefused} → the loop rolls the whole sequence back, nothing written.
      * Validation is deferred to the one terminal gate (apply's invariant), like every other op.
      */
-    private Applied applyRefactor(EditSession session, IDocumentModelReferenceResolver resolver, StructureRefactor r) {
+    private Applied applyRefactor(EditSession session, ModelResolver resolver, StructureRefactor r) {
         String modelJson = session.toJson();
         ModelDocument doc = ModelDocument.read(modelJson);
         KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);

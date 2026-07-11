@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
 
 import io.github.mbackschat.a12.dm.core.ModelLoader;
@@ -58,21 +58,17 @@ class IncludeExcludeRulesTest {
                 .build().toJson();
     }
 
-    private static IDocumentModelReferenceResolver resolver(String pricelistJson) {
+    private static ModelResolver resolver(String pricelistJson) {
         return reference -> {
             if ("pricelist".equals(reference)) {
-                try {
-                    return SERIALIZER.deserialize(new StringReader(pricelistJson));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                return pricelistJson;
             }
             throw new IllegalStateException("unknown reference: " + reference);
         };
     }
 
     /** Serialize the model after the kernel has expanded the mount (rules inline into the expanded form). */
-    private static String expanded(String baseJson, IDocumentModelReferenceResolver resolver) throws Exception {
+    private static String expanded(String baseJson, ModelResolver resolver) throws Exception {
         IDocumentModel model = ModelLoader.load(new StringReader(baseJson), resolver);
         StringWriter out = new StringWriter();
         SERIALIZER.serialize(model, out, n -> { });
@@ -81,7 +77,7 @@ class IncludeExcludeRulesTest {
 
     @Test
     void aPlainMountCarriesTheIncludedModelsRule() throws Exception {
-        IDocumentModelReferenceResolver resolver = resolver(pricelist());
+        ModelResolver resolver = resolver(pricelist());
         String base = ModelDocument.read(catalogStructure())
                 .addInclude("pricelist", "pricelist")
                 .mount("/Catalog", "Prices", "pricelist")
@@ -93,7 +89,7 @@ class IncludeExcludeRulesTest {
 
     @Test
     void excludeRulesDropsTheIncludedModelsRuleButKeepsItsFields() throws Exception {
-        IDocumentModelReferenceResolver resolver = resolver(pricelist());
+        ModelResolver resolver = resolver(pricelist());
         String base = ModelDocument.read(catalogStructure())
                 .addInclude("pricelist", "pricelist")
                 .mount("/Catalog", "Prices", "pricelist", MountOptions.single().excludingRules())
@@ -108,7 +104,7 @@ class IncludeExcludeRulesTest {
 
     @Test
     void excludeRulesIsSettableThroughTheIncludeEditor() throws Exception {
-        IDocumentModelReferenceResolver resolver = resolver(pricelist());
+        ModelResolver resolver = resolver(pricelist());
         EditSession s = EditSession.read(catalogStructure(), resolver);
         s.addInclude("pricelist", "pricelist");
         s.include("pricelist").mount("/Catalog", "Prices", MountOptions.single().excludingRules());

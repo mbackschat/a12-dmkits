@@ -9,8 +9,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 
@@ -27,15 +26,10 @@ class IncludeLevelTest {
                 .build().toJson();
     }
 
-    private static IDocumentModelReferenceResolver resolver() {
+    private static ModelResolver resolver() {
         return reference -> {
             if ("address".equals(reference)) {
-                try {
-                    return new DocumentModelServiceFactory().createDocumentModelSerializer()
-                            .deserialize(new StringReader(addressModel()));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                return addressModel();
             }
             throw new IllegalStateException("unknown reference: " + reference);
         };

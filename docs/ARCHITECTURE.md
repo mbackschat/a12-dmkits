@@ -131,18 +131,21 @@ Internally `commonMain` is **layered into subpackages** under `dm.interpreter`: 
 
 The root project is four package groups: a shared `dm.core`, the two sibling kits (`dm.rulekit`, `dm.modelkit`), and the `dm.edit` orchestration above them.
 
-### 3.1 `dm.core` — the shared substrate (9 files)
+### 3.1 `dm.core` — the shared substrate (15 files)
 
-The DSL-free foundation both kits stand on. No rulekit or modelkit dependency.
+The DSL-free foundation both kits stand on. No rulekit or modelkit dependency. It **owns the vocabulary the kits' public surface speaks** — the reference-resolver type and the diagnostic types are ours, not the kernel's, so a consumer never has to import `com.mgmtp.*` to name them (kernel-decoupling stage 1, [KERNEL-DECOUPLING-PROPOSAL](KERNEL-DECOUPLING-PROPOSAL.md); the mapping to kernel types happens at the two named boundary seams below and, from stage 3, behind the SPI).
 
 | Class | Role |
 |---|---|
 | `ModelIndex` | the kernel-expanded model index — group tree, field kinds, number scale, repeatability, enum domains |
-| `ModelLoader` | binds DM-JSON → a kernel `IDocumentModel` (via the public facade), the entry to the index |
-| `ModelResolver` / `ReferenceResolvers` | include resolution — the `-w` workspace / reference-resolver seam |
+| `ModelLoader` | binds DM-JSON → a kernel `IDocumentModel` (via the public facade), the entry to the index; takes a `ModelResolver` |
+| `ModelResolver` | **the** include-resolution type — a kernel-free `id → DM-JSON` SAM; every kit signature that resolves references speaks it (never the kernel resolver) |
+| `ReferenceResolvers` | `ModelResolver` factories (`selfContained`/`directory`) + the one kernel **bridge** `of(ModelResolver)` — the only kernel-typed member (retires into the backend at stage 3) |
+| `Severity`, `Notification` | the owned **diagnostic vocabulary** (INFO/WARNING/ERROR; severity + message) — a kit `Diagnostic`/`ValidationResult`/`ModelConsistencyException` carries these, never a kernel `RankedNotification`/`Severity` |
+| `KernelNotifications` | the single kernel→ours notification boundary mapper (interim seam; moves to the SPI at stage 3) |
 | `DmJson` | the generic, DSL-free DM-JSON **write** primitive (Jackson tree surgery, include-preserving) — shared by both kits |
-| `ModelConsistencyException` | the one type a kernel rejection (load-time or write-time) surfaces as |
-| `ValueKind`, `Suggest`, `ModelFormat` | value-type taxonomy, did-you-mean suggestions, the DM-JSON format-version reference |
+| `ModelConsistencyException` | the one type a kernel rejection (load-time or write-time) surfaces as — carries our `Notification`s |
+| `ValueKind`, `Suggest`, `ModelFormat`, … | value-type taxonomy (now kernel-free — classification of a kernel `IFieldType` lives on `ModelIndex`), did-you-mean suggestions, the DM-JSON format reference, `DmKeys`/`ElementType`/`UnresolvedReferenceException` |
 
 ### 3.2 `dm.rulekit` — the rule & computation DSL
 

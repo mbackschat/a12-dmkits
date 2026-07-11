@@ -14,7 +14,7 @@ import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
@@ -65,7 +65,7 @@ final class IncludeRenameCommand extends BaseCommand {
         }
         StructureRefactor refactor = StructureRefactor.includeRename(alias, newAlias);
         ModelDocument doc = ModelDocument.read(modelJson);
-        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
+        ModelResolver resolver = workspace.resolverFor(model);
         KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
 
         // the refactor safety gate (CLI-SPEC §6): check before we change anything, refuse with diagnostics.

@@ -16,7 +16,12 @@ import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
 
-/** Factory methods for the kernel's {@link IDocumentModelReferenceResolver}. */
+/**
+ * Factory methods for {@link ModelResolver} ({@code id → DM-JSON}, our kernel-free resolver type) plus the
+ * one bridge {@link #of(ModelResolver)} that adapts a {@code ModelResolver} to the kernel's
+ * {@link IDocumentModelReferenceResolver} where expansion needs it. The bridge is the only kernel-typed
+ * member; it retires into the backend at kernel-decoupling stage 3.
+ */
 public final class ReferenceResolvers {
 
     private ReferenceResolvers() {
@@ -27,7 +32,7 @@ public final class ReferenceResolvers {
      * imported type-definitions. If expansion ever asks it to resolve a reference, it fails fast
      * with an actionable message rather than silently indexing a half-resolved model.
      */
-    public static IDocumentModelReferenceResolver selfContained() {
+    public static ModelResolver selfContained() {
         return reference -> {
             throw new IllegalStateException(
                     "model references a separate model (\"" + reference + "\") but was treated as "
@@ -60,33 +65,29 @@ public final class ReferenceResolvers {
      * A resolver that loads referenced models from one or more directory trees (F-RES) — what a
      * multi-file application needs: its rules {@code include} other document models and import
      * type-definitions ({@code _TDM}) by reference. The kernel's {@code expand} and
-     * {@code extractImportedTypeDefinitions} both call {@link IDocumentModelReferenceResolver#getDocumentModel}
-     * with the target's <em>model id</em>, so this indexes every <b>document model</b> in the trees by
-     * {@code header.id} and serves it on demand.
+     * {@code extractImportedTypeDefinitions} both resolve the target's <em>model id</em> (via the
+     * {@link #of(ModelResolver) bridge}), so this indexes every <b>document model</b> in the trees by
+     * {@code header.id} and serves its DM-JSON on demand.
      *
      * <p><b>Document-model detection is by {@code header.modelType == "document"}</b>, not a filename
      * convention — the trees also hold {@code form}/{@code overview}/{@code tree}/… models that are not
      * resolvable through this (document-only) interface. A {@code _TDM} type-definition model is itself
      * {@code modelType: "document"}, so the one id-keyed index covers both {@code include} and
-     * {@code typeDefinitions} references. Each {@code getDocumentModel} deserializes a <em>fresh</em>
-     * model instance (expansion mutates in place, so a shared instance would corrupt repeated includes).
+     * {@code typeDefinitions} references. Handing back the authored text (not a shared parsed model) keeps
+     * each expansion's deserialize independent (expansion mutates in place, so a shared instance would
+     * corrupt repeated includes). An unknown id fails fast with an actionable message.
      *
      * @throws UncheckedIOException if a tree can't be walked
      */
-    public static IDocumentModelReferenceResolver directory(Path... roots) {
+    public static ModelResolver directory(Path... roots) {
         Map<String, String> modelsById = indexDocumentModels(roots);
-        IDocumentModelSerializer serializer = new DocumentModelServiceFactory().createDocumentModelSerializer();
         return reference -> {
             String json = modelsById.get(reference);
             if (json == null) {
                 throw new UnresolvedReferenceException(reference, "no document model with id \"" + reference + "\" found in "
                         + modelsById.size() + " indexed models under " + java.util.Arrays.toString(roots));
             }
-            try {
-                return serializer.deserialize(new StringReader(json));
-            } catch (IOException e) {
-                throw new UnresolvedReferenceException(reference, "failed to deserialize referenced model \"" + reference + "\"", e);
-            }
+            return json;
         };
     }
 

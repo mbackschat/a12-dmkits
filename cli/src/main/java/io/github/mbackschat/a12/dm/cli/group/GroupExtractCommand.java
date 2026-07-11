@@ -9,19 +9,16 @@ import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
 import java.io.IOException;
-import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import picocli.CommandLine.Command;
@@ -43,8 +40,6 @@ import picocli.CommandLine.Parameters;
 final class GroupExtractCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final IDocumentModelSerializer SERIALIZER =
-            new DocumentModelServiceFactory().createDocumentModelSerializer();
 
     @ParamKind(ParamKind.Kind.GROUP_PATH)
     @Parameters(index = "0", paramLabel = "<groupPathInModel>", description = "the group to extract")
@@ -82,7 +77,7 @@ final class GroupExtractCommand extends BaseCommand {
             return 2;
         }
         ModelDocument doc = ModelDocument.read(modelJson);
-        IDocumentModelReferenceResolver dirResolver = workspace.resolverFor(model);
+        ModelResolver dirResolver = workspace.resolverFor(model);
 
         Optional<Refusal> refusal = new SafetyGate()
                 .require(SafetyChecks.exists(doc, group, true))
@@ -101,17 +96,8 @@ final class GroupExtractCommand extends BaseCommand {
         }
         String baseJson = doc.toJson();
 
-        // validate the composed pair BEFORE writing — serve the sub-model from memory, delegate other refs.
-        IDocumentModelReferenceResolver composed = ref -> {
-            if (reference.equals(ref)) {
-                try {
-                    return SERIALIZER.deserialize(new StringReader(subModel));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            return dirResolver.getDocumentModel(ref);
-        };
+        // validate the composed pair BEFORE writing — serve the sub-model (id → DM-JSON) from memory, delegate other refs.
+        ModelResolver composed = ref -> reference.equals(ref) ? subModel : dirResolver.resolve(ref);
         try {
             EditSession.read(baseJson, composed).validate();
         } catch (ModelConsistencyException e) {

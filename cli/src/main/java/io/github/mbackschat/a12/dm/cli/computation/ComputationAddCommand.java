@@ -12,7 +12,7 @@ import java.nio.file.Path;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -77,7 +77,7 @@ final class ComputationAddCommand extends BaseCommand {
         if (!parsed.ok()) {
             return fail(parsed.error());
         }
-        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
+        ModelResolver resolver = workspace.resolverFor(model);
         // G5: proactive author-time lints (forbidden constructs, overlapping preconditions) — they ride the
         // envelope whether the kernel accepts (as WARNINGs alongside APPLIED) or rejects (with the diagnostics).
         List<Diagnostic> lints = new ComputationLinter().lint(parsed.draft());

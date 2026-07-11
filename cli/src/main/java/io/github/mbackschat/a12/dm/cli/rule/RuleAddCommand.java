@@ -16,7 +16,7 @@ import java.util.Optional;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -108,7 +108,7 @@ final class RuleAddCommand extends BaseCommand {
             return fail("field " + field + " must be inside the rule group " + group);
         }
         String errorEntityRelPath = "../" + field.substring(group.length() + 1);
-        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
+        ModelResolver resolver = workspace.resolverFor(model);
 
         ValidationResult check = new RuleValidator().check(modelJson,
                 new DraftRule(group, name, errorEntityRelPath, condition, code, severity), resolver);
@@ -156,7 +156,7 @@ final class RuleAddCommand extends BaseCommand {
     /** Apply the optional rule metadata keys ({@code annotation} / {@code internal-description} /
      *  {@code external-description}, each an object) from the spec via {@link EditSession}; a no-op when absent. */
     private static String applyMetadata(String json, String rulePath, JsonNode spec,
-            IDocumentModelReferenceResolver resolver) {
+            ModelResolver resolver) {
         if (!spec.hasNonNull("annotation") && !spec.hasNonNull("internal-description")
                 && !spec.hasNonNull("external-description")) {
             return json;

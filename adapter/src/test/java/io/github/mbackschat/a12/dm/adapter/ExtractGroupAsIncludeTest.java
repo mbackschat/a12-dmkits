@@ -5,13 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.StringReader;
-
 import org.junit.jupiter.api.Test;
 
-import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
@@ -28,9 +24,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
  * external rule reaching into the (now mounted) subtree still resolves, and the composed pair validates.
  */
 class ExtractGroupAsIncludeTest {
-
-    private static final IDocumentModelSerializer SERIALIZER =
-            new DocumentModelServiceFactory().createDocumentModelSerializer();
 
     /** /Order { OrderDate, Shipping { Zip, City } } + an internal rule (relative) + an external rule into Shipping. */
     private static String orderJson() {
@@ -66,13 +59,9 @@ class ExtractGroupAsIncludeTest {
         assertFalse(baseJson.contains("CityNeedsZip"), "...and left the base");
         assertTrue(baseJson.contains("ZipFormat"), "the external rule stays in the base");
 
-        IDocumentModelReferenceResolver resolver = reference -> {
+        ModelResolver resolver = reference -> {
             if ("shipping".equals(reference)) {
-                try {
-                    return SERIALIZER.deserialize(new StringReader(subModel));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                return subModel;
             }
             throw new IllegalStateException("unknown reference: " + reference);
         };

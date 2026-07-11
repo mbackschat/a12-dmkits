@@ -8,10 +8,8 @@ import java.io.StringReader;
 
 import org.junit.jupiter.api.Test;
 
-import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
@@ -25,9 +23,6 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * modelkit. Own domain (a showroom including a pricelist).
  */
 class IncludeTest {
-
-    private static final IDocumentModelSerializer SERIALIZER =
-            new DocumentModelServiceFactory().createDocumentModelSerializer();
 
     private static DocumentModelDraft pricelist() {
         return DocumentModelDraft.named("pricelist").locale("en_US")
@@ -47,15 +42,11 @@ class IncludeTest {
     }
 
     /** Resolves the "pricelist" reference to the modelkit-authored pricelist (read-only). */
-    private static IDocumentModelReferenceResolver resolver() {
+    private static ModelResolver resolver() {
         String includedJson = pricelist().toJson();
         return reference -> {
             if ("pricelist".equals(reference)) {
-                try {
-                    return SERIALIZER.deserialize(new StringReader(includedJson));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                return includedJson;
             }
             throw new IllegalStateException("unknown reference: " + reference);
         };

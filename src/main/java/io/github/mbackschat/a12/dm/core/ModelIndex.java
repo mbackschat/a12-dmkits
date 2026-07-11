@@ -11,10 +11,18 @@ import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
 import com.mgmtp.a12.kernel.md.model.api.IElement;
 import com.mgmtp.a12.kernel.md.model.api.IField;
 import com.mgmtp.a12.kernel.md.model.api.IGroup;
+import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IBooleanType;
+import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IConfirmType;
+import com.mgmtp.a12.kernel.md.model.api.fieldtypes.ICustomFieldType;
+import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateFragmentType;
+import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateRangeType;
+import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateTimeType;
+import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IEnumerationType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IFieldType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.INumberType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IStringType;
+import com.mgmtp.a12.kernel.md.model.api.fieldtypes.ITimeType;
 
 /**
  * A queryable index over a fully-expanded DocumentModel — the foundation everything else binds to
@@ -79,7 +87,7 @@ public final class ModelIndex {
 
     /** The {@link ValueKind} of the field at {@code fieldPath} (type-definitions resolved). */
     public ValueKind kindOf(String fieldPath) {
-        return ValueKind.of(effectiveType(field(fieldPath)));
+        return valueKind(effectiveType(field(fieldPath)));
     }
 
     /**
@@ -101,7 +109,7 @@ public final class ModelIndex {
         IFieldType type = effectiveType(field(fieldPath));
         if (!(type instanceof INumberType number)) {
             throw new IllegalArgumentException(
-                    fieldPath + " is not a number field (kind=" + ValueKind.of(type) + ")");
+                    fieldPath + " is not a number field (kind=" + valueKind(type) + ")");
         }
         return number.getMaxFractionalDigits();
     }
@@ -148,7 +156,7 @@ public final class ModelIndex {
         IFieldType type = effectiveType(field(fieldPath));
         if (!(type instanceof IEnumerationType enumeration)) {
             throw new IllegalArgumentException(
-                    fieldPath + " is not an enumeration field (kind=" + ValueKind.of(type) + ")");
+                    fieldPath + " is not an enumeration field (kind=" + valueKind(type) + ")");
         }
         return enumeration.getValues().stream().map(IEnumerationType.IEnumValue::getValue).toList();
     }
@@ -164,7 +172,7 @@ public final class ModelIndex {
         IFieldType type = effectiveType(field(fieldPath));
         if (!(type instanceof IEnumerationType enumeration)) {
             throw new IllegalArgumentException(
-                    fieldPath + " is not an enumeration field (kind=" + ValueKind.of(type) + ")");
+                    fieldPath + " is not an enumeration field (kind=" + valueKind(type) + ")");
         }
         Map<String, List<String>> categories = new LinkedHashMap<>();
         for (IEnumerationType.IEnumCategory category : enumeration.getCategories()) {
@@ -223,6 +231,50 @@ public final class ModelIndex {
 
     private static IFieldType effectiveType(IField field) {
         return field.getEffectiveType().orElseGet(field::getFieldType);
+    }
+
+    /**
+     * Classify an (already type-def-resolved) kernel {@link IFieldType} into a {@link ValueKind}. The kernel
+     * exposes no readable type tag ({@code IFieldType} is a bare marker), so the kind is recovered by dispatch
+     * on the concrete public subtype. Order is subtype-first: {@code IDateTimeType} and {@code ITimeType} both
+     * extend {@code IDateType}, so they must be tested before it. (Lives here, on the kernel-typed index,
+     * rather than on the kernel-free {@link ValueKind} enum.)
+     */
+    private static ValueKind valueKind(IFieldType type) {
+        if (type instanceof IDateTimeType) {
+            return ValueKind.DATE_TIME;
+        }
+        if (type instanceof ITimeType) {
+            return ValueKind.TIME;
+        }
+        if (type instanceof IDateType) {
+            return ValueKind.DATE;
+        }
+        if (type instanceof IDateFragmentType) {
+            return ValueKind.DATE_FRAGMENT;
+        }
+        if (type instanceof IDateRangeType) {
+            return ValueKind.DATE_RANGE;
+        }
+        if (type instanceof INumberType) {
+            return ValueKind.NUMBER;
+        }
+        if (type instanceof IStringType) {
+            return ValueKind.STRING;
+        }
+        if (type instanceof IEnumerationType) {
+            return ValueKind.ENUMERATION;
+        }
+        if (type instanceof IConfirmType) {
+            return ValueKind.CONFIRM;
+        }
+        if (type instanceof IBooleanType) {
+            return ValueKind.BOOLEAN;
+        }
+        if (type instanceof ICustomFieldType) {
+            return ValueKind.CUSTOM;
+        }
+        return ValueKind.UNKNOWN;
     }
 
     /**

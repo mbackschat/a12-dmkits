@@ -7,9 +7,7 @@ import java.io.StringReader;
 
 import org.junit.jupiter.api.Test;
 
-import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 
@@ -23,9 +21,6 @@ import io.github.mbackschat.a12.dm.core.ModelLoader;
  */
 class TypeDefModelImportTest {
 
-    private static final IDocumentModelSerializer SERIALIZER =
-            new DocumentModelServiceFactory().createDocumentModelSerializer();
-
     /** The provider: a type-def-only model carrying a {@code Sku} string type and a {@code Money} number type. */
     private static String catalogTypes() {
         return DocumentModelDraft.typeDefModel("catalogtypes").locale("en_US")
@@ -34,14 +29,10 @@ class TypeDefModelImportTest {
                 .build().toJson();
     }
 
-    private static IDocumentModelReferenceResolver resolver(String providerJson) {
+    private static ModelResolver resolver(String providerJson) {
         return reference -> {
             if ("catalogtypes".equals(reference)) {
-                try {
-                    return SERIALIZER.deserialize(new StringReader(providerJson));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                return providerJson;
             }
             throw new IllegalStateException("unknown reference: " + reference);
         };
@@ -59,7 +50,7 @@ class TypeDefModelImportTest {
 
     @Test
     void aConsumerImportsAndUsesTheTypeDefsThroughTheKernel_authoredFromScratch() throws Exception {
-        IDocumentModelReferenceResolver resolver = resolver(catalogTypes());
+        ModelResolver resolver = resolver(catalogTypes());
         // author the consumer from scratch: import + a field typed by an imported id (no local declaration)
         String consumer = DocumentModelDraft.named("catalog").locale("en_US")
                 .importTypeDefs("catalogtypes")
@@ -77,7 +68,7 @@ class TypeDefModelImportTest {
 
     @Test
     void aConsumerImportsThroughTheEditPath() throws Exception {
-        IDocumentModelReferenceResolver resolver = resolver(catalogTypes());
+        ModelResolver resolver = resolver(catalogTypes());
         String base = DocumentModelDraft.named("catalog").locale("en_US")
                 .rootGroup("Catalog", c -> c.field("StoreName", FieldKind.STRING))
                 .build().toJson();

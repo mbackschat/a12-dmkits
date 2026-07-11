@@ -9,10 +9,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
-
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
@@ -45,13 +44,13 @@ import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 public final class EditSession {
 
     private String json;
-    private final IDocumentModelReferenceResolver resolver;
+    private final ModelResolver resolver;
 
     /** Memoized bind of the current {@code json} (M6): reused across navigations until a write replaces {@code json}. */
     private BoundModel cachedBoundModel;
     private String cachedForJson;
 
-    private EditSession(String json, IDocumentModelReferenceResolver resolver) {
+    private EditSession(String json, ModelResolver resolver) {
         this.json = json;
         this.resolver = resolver;
     }
@@ -61,15 +60,11 @@ public final class EditSession {
         return new EditSession(dmJson, ReferenceResolvers.selfContained());
     }
 
-    /** Start a session over a model with includes / type-def imports, resolved via {@code resolver}. */
-    public static EditSession read(String dmJson, IDocumentModelReferenceResolver resolver) {
+    /** Start a session over a model with includes / type-def imports, resolved via a <b>kernel-free</b>
+     *  {@link ModelResolver} ({@code id → DM-JSON}) — the common multi-model case without touching
+     *  {@code com.mgmtp.a12.kernel.*}. */
+    public static EditSession read(String dmJson, ModelResolver resolver) {
         return new EditSession(dmJson, resolver);
-    }
-
-    /** Start a session resolving references via a <b>kernel-free</b> {@link io.github.mbackschat.a12.dm.core.ModelResolver}
-     *  ({@code id → DM-JSON}) — the common multi-model case without touching {@code com.mgmtp.a12.kernel.*}. */
-    public static EditSession read(String dmJson, io.github.mbackschat.a12.dm.core.ModelResolver resolver) {
-        return new EditSession(dmJson, ReferenceResolvers.of(resolver));
     }
 
     // --- structure edits (modelkit) -------------------------------------------------------------

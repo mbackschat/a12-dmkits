@@ -5,16 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.StringReader;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
-import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
@@ -39,8 +36,6 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 class IncludesTypedefsReadTest {
 
     private static final DslRenderer RENDER = new DslRenderer(ConditionLanguage.EN);
-    private static final IDocumentModelSerializer SERIALIZER =
-            new DocumentModelServiceFactory().createDocumentModelSerializer();
 
     private static final String TYPEDEF_FIELD = "/Storefront/ProductSku";
     private static final String INCLUDED_FIELD = "/Storefront/Prices/ListPrice";
@@ -64,15 +59,11 @@ class IncludesTypedefsReadTest {
                 .build();
     }
 
-    private static IDocumentModelReferenceResolver resolver() {
+    private static ModelResolver resolver() {
         String includedJson = pricelist().toJson();
         return reference -> {
             if ("pricelist".equals(reference)) {
-                try {
-                    return SERIALIZER.deserialize(new StringReader(includedJson));
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                return includedJson;
             }
             throw new IllegalStateException("unknown reference: " + reference);
         };

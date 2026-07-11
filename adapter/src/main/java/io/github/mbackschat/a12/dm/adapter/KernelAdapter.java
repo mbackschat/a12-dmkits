@@ -23,7 +23,6 @@ import com.mgmtp.a12.kernel.md.model.a12internal.DocumentModel;
 import com.mgmtp.a12.kernel.md.model.a12internal.services.DocumentModelService;
 import com.mgmtp.a12.kernel.md.model.a12internal.services.ElementContainer;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.kernel.md.serializer.model.internal.service.ExternalDocumentModelSerializerService;
@@ -45,6 +44,7 @@ import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.core.KernelNotifications;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -127,7 +127,7 @@ public final class KernelAdapter {
 
     /** Open an adapter over a rulekit {@link BoundModel} (via its DM-JSON — the public boundary). */
     public static KernelAdapter of(BoundModel model) {
-        IDocumentModelReferenceResolver resolver =
+        ModelResolver resolver =
                 model.resolver() != null ? model.resolver() : ReferenceResolvers.selfContained();
         return new KernelAdapter(buildService(model.toJson(), resolver), model);
     }
@@ -143,17 +143,17 @@ public final class KernelAdapter {
      * MVK-service bootstrap (here) and the {@link BoundModel} index expand against the same resolver,
      * so a rule referencing an included model's field reads instead of failing to load.
      */
-    public static KernelAdapter ofJson(String modelJson, IDocumentModelReferenceResolver resolver) {
+    public static KernelAdapter ofJson(String modelJson, ModelResolver resolver) {
         return new KernelAdapter(buildService(modelJson, resolver), BoundModel.ofJson(modelJson, resolver));
     }
 
     /** Deserialize + expand the DM-JSON (public path), convert to internal, and bootstrap the MVK service. */
-    private static IMVK_Service buildService(String modelJson, IDocumentModelReferenceResolver resolver) {
+    private static IMVK_Service buildService(String modelJson, ModelResolver resolver) {
         IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
         IDocumentModelService service = FACTORY.createDocumentModelService();
         try {
             IDocumentModel pub = serializer.deserialize(new StringReader(modelJson));
-            service.expand(pub, resolver);
+            service.expand(pub, ReferenceResolvers.of(resolver));
             String variant = service.extractUsedVariants(pub).stream().findFirst().orElse("");
             DocumentModel intern = ExternalDocumentModelSerializerService.getInternDocumentModel(pub);
             return new DocumentModelService().getMvkServiceForModel(intern, variant, SILENT);
@@ -773,7 +773,7 @@ public final class KernelAdapter {
 
     /** Build the runtime service + the document instance from the nested {@code fields} tree (model-aware walk). */
     private DocRuntime prepare(Map<String, Object> fields) {
-        IDocumentModelReferenceResolver resolver =
+        ModelResolver resolver =
                 model.resolver() != null ? model.resolver() : ReferenceResolvers.selfContained();
         IDocumentModel expanded;
         try {

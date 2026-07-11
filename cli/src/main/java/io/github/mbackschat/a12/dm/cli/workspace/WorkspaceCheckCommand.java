@@ -14,7 +14,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.Notification;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
@@ -73,7 +73,7 @@ final class WorkspaceCheckCommand extends BaseCommand {
             return fail("scan failed: " + e.getMessage());
         }
         // every model resolves its references against the whole tree (multi-file models stay valid).
-        IDocumentModelReferenceResolver resolver = ReferenceResolvers.directory(root);
+        ModelResolver resolver = ReferenceResolvers.directory(root);
 
         ObjectNode data = MAPPER.createObjectNode();
         data.put("root", dir);
@@ -107,7 +107,7 @@ final class WorkspaceCheckCommand extends BaseCommand {
     private record ModelVerdict(boolean valid, List<Diagnostic> diagnostics) {}
 
     /** Validate one model through the real kernel, capturing its rich diagnostics — the {@code model check} path. */
-    private ModelVerdict validateOne(Path root, IDocumentModelReferenceResolver resolver, Workspace.Model m) {
+    private ModelVerdict validateOne(Path root, ModelResolver resolver, Workspace.Model m) {
         List<Diagnostic> diagnostics = new ArrayList<>();
         boolean valid;
         String json;

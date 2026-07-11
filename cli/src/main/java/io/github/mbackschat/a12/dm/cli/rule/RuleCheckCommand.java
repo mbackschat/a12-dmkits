@@ -15,7 +15,7 @@ import java.util.Optional;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.rulekit.context.ModelContext;
@@ -98,7 +98,7 @@ final class RuleCheckCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         }
-        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
+        ModelResolver resolver = workspace.resolverFor(model);
 
         // Pre-flight: --field/--group name a path INSIDE the model, not a file (both start with '/').
         // Best-effort — if the model can't bind standalone (e.g. unresolved includes), defer to the kernel.
@@ -157,7 +157,7 @@ final class RuleCheckCommand extends BaseCommand {
      * {@code note}, never a failure.
      */
     private ObjectNode errorFieldSuggestions(String json, String effectiveGroup, String errorEntityRelPath,
-            IDocumentModelReferenceResolver resolver) {
+            ModelResolver resolver) {
         ObjectNode data = MAPPER.createObjectNode();
         data.put("field", field);
         String candidateFullName = effectiveGroup + "/" + name;

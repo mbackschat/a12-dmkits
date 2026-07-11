@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
+import io.github.mbackschat.a12.dm.core.ModelResolver
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import io.github.mbackschat.a12.dm.interpreter.conformance.InterpreterReplay
 import io.github.mbackschat.a12.dm.interpreter.conformance.Op
@@ -120,7 +121,7 @@ class RealCorpusSweepTest {
         }
     }
 
-    private fun prepare(file: Path, resolver: com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver,
+    private fun prepare(file: Path, resolver: ModelResolver,
                         report: SweepReport): String? = try {
         CorpusModelPreparer.prepareKernelJson(Files.readString(file), resolver)
     } catch (t: Throwable) { report.modelSkip("prepare-failed", file, t); null }

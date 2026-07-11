@@ -7,7 +7,6 @@ import java.util.List;
 
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.model.notification.RankedNotification;
@@ -30,7 +29,7 @@ public final class ModelLoader {
     /**
      * Load a <em>self-contained</em> model — one with no {@code include}d models or imported
      * type-definitions. If the model does reference a separate artifact, this fails fast with an
-     * actionable message pointing at {@link #load(Reader, IDocumentModelReferenceResolver)}.
+     * actionable message pointing at {@link #load(Reader, ModelResolver)}.
      */
     public static IDocumentModel loadSelfContained(Reader reader) throws IOException {
         return load(reader, ReferenceResolvers.selfContained());
@@ -42,12 +41,12 @@ public final class ModelLoader {
      *
      * @throws ModelConsistencyException if the expanded model has {@code ERROR}-severity problems
      */
-    public static IDocumentModel load(Reader reader, IDocumentModelReferenceResolver resolver) throws IOException {
+    public static IDocumentModel load(Reader reader, ModelResolver resolver) throws IOException {
         IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
         IDocumentModelService service = FACTORY.createDocumentModelService();
 
         IDocumentModel model = serializer.deserialize(reader);
-        service.expand(model, resolver);
+        service.expand(model, ReferenceResolvers.of(resolver));
 
         List<RankedNotification> errors = new ArrayList<>();
         service.checkConsistency(model, notification -> {
@@ -68,12 +67,12 @@ public final class ModelLoader {
      * <em>says</em> (its parsed conditions, references, structure) before it would pass validation. It makes
      * <b>no validity promise</b> — never use it for the write path (which round-trips through {@link #load}).
      */
-    public static IDocumentModel expandOnly(Reader reader, IDocumentModelReferenceResolver resolver)
+    public static IDocumentModel expandOnly(Reader reader, ModelResolver resolver)
             throws IOException {
         IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
         IDocumentModelService service = FACTORY.createDocumentModelService();
         IDocumentModel model = serializer.deserialize(reader);
-        service.expand(model, resolver);
+        service.expand(model, ReferenceResolvers.of(resolver));
         return model;
     }
 }

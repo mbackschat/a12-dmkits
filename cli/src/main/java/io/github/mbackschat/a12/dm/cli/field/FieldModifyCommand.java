@@ -19,7 +19,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
@@ -81,7 +81,7 @@ final class FieldModifyCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         }
-        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
+        ModelResolver resolver = workspace.resolverFor(model);
         ModelDocument doc = ModelDocument.read(modelJson);
 
         String fieldPath;
@@ -165,7 +165,7 @@ final class FieldModifyCommand extends BaseCommand {
      * refusal — a kind change with only kind-agnostic readers (e.g. {@code FieldFilled}) is fine, and the
      * kernel re-validate authoritatively rejects any that genuinely break.
      */
-    private static List<Diagnostic> reTypeAdvisories(String modelJson, IDocumentModelReferenceResolver resolver,
+    private static List<Diagnostic> reTypeAdvisories(String modelJson, ModelResolver resolver,
             String fieldPath, String oldType, String newType) {
         if (oldType == null || oldType.equals(newType)) {
             return List.of();
