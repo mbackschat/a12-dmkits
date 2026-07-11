@@ -14,6 +14,8 @@ import java.util.Set;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -54,12 +56,16 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 public final class ModelReader {
 
     /**
-     * Numbers are parsed as {@link BigDecimal}, not {@code double} — so a declared {@code minValue}/{@code
-     * maxValue}'s exact scale survives (the kernel preserves it; the CLI renders it verbatim). A plain mapper
-     * parses {@code 0.00} to a {@code double} and drops the scale to {@code 0.0}.
+     * Numbers are parsed as {@link BigDecimal} with trailing zeros PRESERVED — so a declared {@code minValue}/
+     * {@code maxValue} reads back at the authored literal's exact scale, matching the kernel (which keeps the
+     * literal verbatim; the CLI renders it as-is). A plain mapper drops {@code 50.00} to a {@code double}
+     * {@code 50.0}, and {@code USE_BIG_DECIMAL_FOR_FLOATS} alone still strips ({@code 50.00} → {@code 5E+1})
+     * unless {@code STRIP_TRAILING_BIGDECIMAL_ZEROES} is disabled.
      */
-    private static final ObjectMapper MAPPER =
-            new ObjectMapper().enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    private static final ObjectMapper MAPPER = JsonMapper.builder()
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
+            .build();
 
     /** Included rules/computations we mounted but did NOT rewrite (see {@link #includedRulesNeedingRelativization}). */
     private final ObjectNode expanded;
