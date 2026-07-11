@@ -330,7 +330,7 @@ This is **distinct from the opt-in "younger than 1900" additional check** (`Cons
 3. **`relativeToParent`** → `GroupFilled(parent) And FieldNotFilled(field)`.
 4. **Index fields are auto-required** — a group's `indexFieldName` gets an auto-generated mandatory rule with `relativeTo = parent` (i.e. `relativeToParent` semantics), on top of any explicit requiredness. So an instantiated repeatable row with an empty index field fires `mandatoryField` on it.
 
-The **gotcha resolves by the parent's repeatability** (the `GroupFilled` split, §9 below): for a **repeatable** parent a *created-but-empty* row already counts as filled (the row index is content) → the field IS required; for a **non-repeatable** parent a filled descendant counts. **What "a filled descendant" means was refined 2026-07-06 (runtime-probed): it includes an INSTANTIATED repeatable descendant ROW, not only a valued field** — `Quantity` (required `relativeToParent`, parent the non-repeatable `/Order`) becomes required as soon as a `/Order/Items` row is instantiated (even all-empty), and is *not* required when `/Order` has no content at all. So this is the SAME "content" notion as the §9 `GroupFilled` operator (line 67) — requiredness and `GroupFilled` share it (they diverge only in that requiredness's *absolute* mode ignores it). And the "unknown" is **branch-scoped, not whole-rule** (§3 refinement): a required-empty operand makes its *comparison* unknown, so `[ReqNum] < 100` is suppressed but `[ReqNum] < 100 Or <true>` still fires. *(Interpreter parity locked: `adapter.laws.RequirednessDiffTest` — both modes, the repeatable-row gate incl. the instantiated-repeatable-child-fills-a-non-rep-parent case, the unconditional-absolute case, and the index field; the branch-scoped unknown for format errors by `adapter.laws.SuppressionDiffTest`.)*
+The **gotcha resolves by the parent's repeatability** (the `GroupFilled` split, §9 below): for a **repeatable** parent a *created-but-empty* row already counts as filled (the row index is content) → the field IS required; for a **non-repeatable** parent a filled descendant counts. **What "a filled descendant" means was refined 2026-07-06 (runtime-probed): it includes an INSTANTIATED repeatable descendant ROW, not only a valued field** — `Quantity` (required `relativeToParent`, parent the non-repeatable `/Order`) becomes required as soon as a `/Order/Items` row is instantiated (even all-empty), and is *not* required when `/Order` has no content at all. So this is the SAME "content" notion as the §9 `GroupFilled` operator — requiredness and `GroupFilled` share it (they diverge only in that requiredness's *absolute* mode ignores it). And the "unknown" is **branch-scoped, not whole-rule** (§3 refinement): a required-empty operand makes its *comparison* unknown, so `[ReqNum] < 100` is suppressed but `[ReqNum] < 100 Or <true>` still fires. *(Interpreter parity locked: `adapter.laws.RequirednessDiffTest` — both modes, the repeatable-row gate incl. the instantiated-repeatable-child-fills-a-non-rep-parent case, the unconditional-absolute case, and the index field; the branch-scoped unknown for format errors by `adapter.laws.SuppressionDiffTest`.)*
 
 ## §4/§8 supplement — field-level custom error messages live in a per-locale `errorMessage` array (source-verified, 2026-06-21)
 
@@ -653,7 +653,9 @@ rulekit's treatment of this kernel fact (detail: KERNEL-INTEGRATION-NOTES "Condi
 
 ## §6 supplement — the date family (corpus item 9 slice 9a, 2026-06-04 experiments)
 
-`Today` (DE `Heute`), `DifferenceInDays|Months|Years` (DE `DifferenzIn{Tagen,Monaten,Jahren}`), `AddDays|Months|Years` (DE `Addiere{Tage,Monate,Jahre}`):
+> Fold: folded → §2 + §6.
+
+(The empty-operand coercion row and the literal/arithmetic behaviors are canonical in §2's override table and §6; the bare-vs-bracketed authoring rule, the rejection codes, and the implementation/treatment log stay here.) `Today` (DE `Heute`), `DifferenceInDays|Months|Years` (DE `DifferenzIn{Tagen,Monaten,Jahren}`), `AddDays|Months|Years` (DE `Addiere{Tage,Monate,Jahre}`):
 
 - **Date ordering needs no scale machinery** — dates have no scale (unlike the scale-gated numeric field-vs-field, §finding 18), so `[A] < [B]` / `[A] == [B]` between two date fields validates directly. `[Date] >= Today` and date-vs-date `==`/ordering all work.
 - **`Today` composes everywhere** — as a comparison operand (`[OrderDate] >= Today`) and as a function operand (`DifferenceInDays(OrderDate, Today)`).
@@ -670,7 +672,9 @@ rulekit's treatment of this kernel fact (detail: KERNEL-INTEGRATION-NOTES "Condi
 
 ### §6 supplement — malformed date-ish VALUES: the `datumBereich*` code trio, calendar validity, malformed TIME/DATE_TIME (probe, 2026-06-25)
 
-What the formal check emits for a malformed date-family **value** (all probe-verified; each suppresses a referencing rule like any formal error):
+> Fold: folded → §3 + §6.
+
+(The formal-error class and the fragment-range completion are canonical in §3 and §6; the specific codes and side-parse rules stay as evidence.) What the formal check emits for a malformed date-family **value** (all probe-verified; each suppresses a referencing rule like any formal error):
 
 - **DATE_RANGE — three distinct codes:** **`datumBereichTrennerFehlt`** when the value does not split into two on the declared separator; **`datumBereichFormatFalsch`** when a side is not a valid date for the format (including a calendar-invalid side); **`datumBereichNichtGueltig`** when the start is *after* the end — `start == end` is **allowed** (a one-day range).
 - **Calendar validity is checked for every stored date** — the day must exist in its month (Gregorian leap Februarys): `2021-02-31`, non-leap `2023-02-29`, `2024-04-31` are all **`datumFormatFalsch`**, for DATE, DATE_TIME, and each side of a DATE_RANGE.
@@ -682,6 +686,8 @@ What the formal check emits for a malformed date-family **value** (all probe-ver
 *(Interpreter treatment: INTERPRETER-FINDINGS IF8/IF12 — `formalError(DATE_RANGE …)`, `parseRangeToIso`, calendar-checking `buildIso`. Locked: `adapter.laws.DateRangeFormalDiffTest` (trio + `calendarInvalidPlainDateMatchesKernel`) + `TimeDateTimeFormalDiffTest` (formal message + suppression).)*
 
 ### §6 supplement — date-range overlap: `DateRangesOverlap` any-pair, `AtLeastOneDateRangeOverlaps` scalar-vs-list, the predicate-arg `Having` keep-law, filter-derived polarity (probe + source, 2026-07-08)
+
+> Fold: folded → §6.
 
 Clean-roomed from `RuntimeController.datumsBereicheUeberlappend` / `mindestensEinDatumsBereichUeberlappendFL` + `DatumBereich.ueberlappt`, and (for the filter) the codegen `CodeGenFilterCondition` (a compiled boolean); confirmed on BOTH kernel strategies (groovy-dynamic == java-static).
 
@@ -695,6 +701,8 @@ Clean-roomed from `RuntimeController.datumsBereicheUeberlappend` / `mindestensEi
 *(Locked: `adapter.laws.DateRangeOverlapSemanticsDiffTest` — every point above as a groovy-dynamic == java-static == interpreter tri-check — plus `FieldValuesNotUniqueDiffTest`'s Having cases; multiplatform `interpreter.DateRangeOverlapTest` (JVM+JS). Interpreter treatment: INTERPRETER-FINDINGS IF72.)*
 
 ### §6 supplement — DATE/DATERANGE/TIME field *format strings* are a fixed lowercase allowlist, locale-independent (probe 08, 2026-06-22)
+
+> Fold: not-foldable — authoring-tier format-declaration rules (what `field add`/consistency accepts), outside the evaluation scope.
 
 A field's declared date **format** must be a **lowercase Java date pattern** from a **fixed allowed set** — and that set is **independent of the model's display locale AND its `conditionLanguage`** (verified: `en_US` and `de_DE` conditionLanguage accept the identical set). The A12 editor's UPPERCASE preset labels (`YYYY-MM-DD`, `MM/MM`, …) are display labels, **rejected** as `format` values (`The date range format is invalid` / `The date format is invalid` — a kernel rejection carrying **no code and empty `where`**). Verified by `field add` against fresh `en_US`- and `de_DE`-conditionLanguage models:
 
@@ -710,11 +718,15 @@ A field's declared date **format** must be a **lowercase Java date pattern** fro
 
 ### §6 supplement — `Now` is a date-time; its date-field rejection is a CODE-GENERATION check, not a parse check (probe, 2026-06-24)
 
+> Fold: folded → §6.
+
 `Now` (DE `Jetzt`) is the current **date-time** — the date-time sibling of `Today`. It compares only to an operand whose **date format carries a time component** (a `DateTimeType` field like `ScheduledAt`, `yyyy-MM-dd'T'HH:mm:ss`). Comparing `Now` to a plain **date** field is **rejected** — the kernel's `CheckVergleichsBedingungImpl.checkDateType` requires the two operands' formats to be consistent (`formatsConsistentRegardingFormat`), and a date format (no time) vs a date-time format (with time) is not.
 
-The non-obvious part — and the trap: **that rejection fires at CODE GENERATION, not at the parser consistency check.** Probed: `[OrderDate] >= Now` (a `DateType` field) **passes** `RuleValidator.check` (the parse/consistency phase) but throws `DocumentValidationException … while generating code: … [MVK_INVALID_COMPARE_TO_DATE]` once the model is compiled. By contrast a *number*-vs-`Now` mismatch (`[Quantity] >= Now`) is caught at the **parse** phase (like the `Today` number case, line 288). Consequence: the N7 catalog harness (`CatalogExamplesAreKernelValidTest`, which runs only `RuleValidator.check`) **cannot** verify a codegen-only `invalidExample` — the `Now` catalog entry therefore uses the parse-rejected number mismatch as its executable `invalidExample`, and documents the date-field rejection in prose. *(Interpreter side: `Now` reuses the injected `EvalClock` — `EvalClock.now`, an ISO `yyyy-MM-dd'T'HH:mm:ss` — exactly as `Today` reuses `EvalClock.today`; `Kind.DATE_TIME` canonicalizes a date-time field to ISO text so the comparison stays lexicographic-chronological. Locked: `adapter.laws.NowDiffTest` (FAR-instant firing + polarity) + `InterpreterMultiplatformTest.nowConstantResolvesToInjectedClock` (exact-instant boundary, JVM+JS).)*
+The non-obvious part — and the trap: **that rejection fires at CODE GENERATION, not at the parser consistency check.** Probed: `[OrderDate] >= Now` (a `DateType` field) **passes** `RuleValidator.check` (the parse/consistency phase) but throws `DocumentValidationException … while generating code: … [MVK_INVALID_COMPARE_TO_DATE]` once the model is compiled. By contrast a *number*-vs-`Now` mismatch (`[Quantity] >= Now`) is caught at the **parse** phase (like the `Today` number case in the §6 date-family supplement). Consequence: the N7 catalog harness (`CatalogExamplesAreKernelValidTest`, which runs only `RuleValidator.check`) **cannot** verify a codegen-only `invalidExample` — the `Now` catalog entry therefore uses the parse-rejected number mismatch as its executable `invalidExample`, and documents the date-field rejection in prose. *(Interpreter side: `Now` reuses the injected `EvalClock` — `EvalClock.now`, an ISO `yyyy-MM-dd'T'HH:mm:ss` — exactly as `Today` reuses `EvalClock.today`; `Kind.DATE_TIME` canonicalizes a date-time field to ISO text so the comparison stays lexicographic-chronological. Locked: `adapter.laws.NowDiffTest` (FAR-instant firing + polarity) + `InterpreterMultiplatformTest.nowConstantResolvesToInjectedClock` (exact-instant boundary, JVM+JS).)*
 
 ### §6 supplement — date-time sub-unit arithmetic: day-carry on add, TRUNCATE-toward-zero on difference (probe, 2026-06-24)
+
+> Fold: folded → §6.
 
 The date-time arithmetic family over DATE_TIME operands — `AddHours`/`AddMinutes`/`AddSeconds` and `DifferenceInHours`/`DifferenceInMinutes`/`DifferenceInSeconds` — reduces to integer **seconds since epoch**, so:
 
@@ -725,7 +737,9 @@ The date-time arithmetic family over DATE_TIME operands — `AddHours`/`AddMinut
 
 ### §6 supplement — `Date(...)` construction value + `Valid`/`Invalid` 3VL & polarity (probe, 2026-06-24)
 
-Runtime semantics of the date construction family (the catalog/DSL modeling is the earlier line ~294 note; this is the *evaluation* behavior, probe-confirmed):
+> Fold: folded → §6.
+
+Runtime semantics of the date construction family (the catalog/DSL modeling is the §6 date-family supplement above; this is the *evaluation* behavior, probe-confirmed):
 
 - **`Date(day, month, year)` of an UNREAL date is NON-EVALUABLE** — it does **not** roll over and does **not** keep an out-of-range value. Probed: with all parts present and valid numbers but `(31, 2, 2024)`, every extractor (`YearFromDate`/`MonthFromDate`/`DayFromDate`) over `Date(...)` returns no value (the guarding rule does not fire, no code). So the constructor yields a value only when the date is a **real calendar date**; otherwise Unknown.
 - **`Valid(Date(...))` = all parts present (non-empty) ∧ all well-formed ∧ the date is real.** Fires VALUE.
@@ -739,6 +753,8 @@ So the interpreter classifies a `Date(...)` construction as REAL / UNREAL_PRESEN
 **4-arg century form `Date(day, month, century, year)`** (probe-verified 2026-06-26): the year is split into a 2-digit century + 2-digit year, full year = `century*100 + year` (`Date(15,6,20,24)` → 2024). The grammar accepts up to 4 `datumParam` (`datumKonstrukt`), and the runtime evaluates it as a real date through the same REAL/UNREAL/HAS_EMPTY/MALFORMED classification. **Operand constraints:** each `Date` param must be a **field reference** (integer literals are rejected), and the field must carry a **date-compatible NumberType range** or the model fails to build (`MVK_WRONG_DATE_FORMAT_FOR_OP`). Interpreter: arity-flexible `analyzeDate` (IF31); locked by `adapter.laws.Date4ArgConstructionDiffTest`.
 
 ### §6 supplement — `BaseYear` is polymorphic by the other operand: base-year-START date vs the year number (probe, 2026-06-24)
+
+> Fold: folded → §6.
 
 `BaseYear` (DE `Referenzjahr`) is the model's configured base year (`content.modelInfo.baseYear`, e.g. `2020`) — the third point-in-time constant alongside `Today`/`Now` (kernel `PointInTimeOperationName`). It is **polymorphic, resolved by the comparison's OTHER operand** (probe-confirmed against the order fixture's `baseYear = 2020`):
 
@@ -756,7 +772,9 @@ VALUE polarity (a constant, not fillable). It is **model config, not the clock**
 
 ### §6 supplement — a quoted date LITERAL is typed by its own SYNTAX, not by context (probe, 2026-06-24)
 
-A German-format date literal (`"15.06.2024"`, `dd.MM.yyyy`) is typed a **DATE constant by the kernel from its own syntax** — NOT by the operand it is compared to (clarifies line ~292). Probed decisively: `[CustomerName(string)] == "15.06.2024"` is **rejected** with `MVK_INVALID_COMPARE_TO_DATE` (string vs a date constant) — so there is no valid "string field vs a `dd.MM.yyyy` literal" comparison. Confirmed behaviors the interpreter must match:
+> Fold: folded → §6.
+
+A German-format date literal (`"15.06.2024"`, `dd.MM.yyyy`) is typed a **DATE constant by the kernel from its own syntax** — NOT by the operand it is compared to (clarifies the earlier date-literal family note above). Probed decisively: `[CustomerName(string)] == "15.06.2024"` is **rejected** with `MVK_INVALID_COMPARE_TO_DATE` (string vs a date constant) — so there is no valid "string field vs a `dd.MM.yyyy` literal" comparison. Confirmed behaviors the interpreter must match:
 
 - A `dd.MM.yyyy` literal compares chronologically to a DATE field even though the field's stored format differs (`[OrderDate(yyyy-MM-dd)] == "15.06.2024"` fires for `2024-06-15`).
 - The literal also rides in **argument position** — `DifferenceInDays(OrderDate, "01.01.2022")` (the second arg is the date constant).
@@ -765,6 +783,8 @@ A German-format date literal (`"15.06.2024"`, `dd.MM.yyyy`) is typed a **DATE co
 **Interpreter consequence:** since a date literal in a *valid* comparison always faces a date, the interpreter canonicalizes a `dd.MM.yyyy` `StrLit` to ISO exactly where it is used as a date — opposite a date-producing operand (`Interpreter.evalCmpOperand` + `producesDate`, which reads the new `EvalContext.declaredKind`) and inside the date functions' date-arg reads (`coerceDate` in `epochOf`/`dateComponent`/`dateShift`). An ISO-format literal (`"2022-01-01"`) is a string (kernel `MVK_INVALID_TYPE_FOR_COMPARISON`), so `coerceDate` only rewrites the German form. The **omitted-year** form (`"13.07."`, day.month., trailing dot) IS modeled (IF52): it is a **reference-year** feature — the kernel injects the model's `baseYear`, so `"13.07."` means `13.07.<baseYear>` (probe-confirmed: on `baseYear = 2020`, `[OrderDate] > "13.07."` fires for 2024/2020-07-20 but not 2019-07-20 or 2020-07-10 — exactly `baseYear`, **not** a floor). A model with NO base year **rejects** it at validation (`MVK_INVALID_COMPARE_TO_DATE`), so the interpreter only sees it with a base year present; `coerceDate` appends `baseYear` before the ISO parse. *(Locked: `adapter.laws.DateLiteralDiffTest` — ==, ordering, arg-position, the value-list non-canonicalization guard — + `adapter.laws.OmittedYearDateDiffTest` for the omitted-year base-year injection.)*
 
 ### §6 supplement — partial dates: the `00.MM.yyyy` form and `ValueAsDate`/`FirstDay`/`LastDay` (probe, 2026-06-24)
+
+> Fold: folded → §6.
 
 A `DateType` with `datePrecision: DAY_OPTIONAL` (the order fixture's `ApproxDate`, `dd.MM.yyyy`) may omit the **day** — stored as the sentinel **`00` in the day position** (`00.06.2024`). Probe-confirmed:
 
@@ -776,7 +796,9 @@ A `DateType` with `datePrecision: DAY_OPTIONAL` (the order fixture's `ApproxDate
 
 ### §6 supplement — `AddYears`/`AddMonths` calendar corrections (runtime, 2026-06-10, RT-semantics drain)
 
-KERNEL-SEMANTICS §6 notes the shifts "disagree across leap years"; the drained source (`BedingungsOperatorHelper.addiereJahre/addiereMonate`) pins the exact corrections, both probe-confirmed:
+> Fold: folded → §6.
+
+KERNEL-SEMANTICS §6 carries the exact corrections; the drained source (`BedingungsOperatorHelper.addiereJahre/addiereMonate`) pins the exact corrections, both probe-confirmed:
 
 - **`AddYears` corrects the Feb-28 boundary**: a Feb-28 in a non-leap year shifted into a leap year lands on the **leap day** — `28.02.1999 + 1 year = 29.02.2000`, *not* the plain-`Calendar.add` answer `28.02.2000`.
 - **`AddMonths` clamps end-of-month overflow**: `31.01.2008 + 1 month = 29.02.2008` — clamped to the shorter month's last day, never a carry into March.
@@ -784,6 +806,8 @@ KERNEL-SEMANTICS §6 notes the shifts "disagree across leap years"; the drained 
 *(Locked: `adapter.laws.DateArithmeticLawsTest`.)*
 
 ### §6 supplement — date ranges are closed intervals: touching ranges overlap (runtime, 2026-06-10, RT-semantics drain)
+
+> Fold: folded → §6.
 
 `DateRangesOverlap` / `AtLeastOneDateRangeOverlaps` treat both the start **and** the end day as belonging to the range (`DatumBereich.ueberlappt`: overlap ⇔ `end1 ≥ start2 ∧ end2 ≥ start1`). Consequences, both probe-locked:
 
@@ -797,21 +821,27 @@ KERNEL-SEMANTICS §6 notes the shifts "disagree across leap years"; the drained 
 
 ### §6 supplement — partially-known-date extraction gating + the *FromDate date-time source (source + probe, 2026-06-17)
 
+> Fold: not-foldable — authoring-tier gating (parse/consistency codes over precision × operator), outside the evaluation scope; the datetime-source acceptance is canonical in §6.
+
 `DayFromDate`/`MonthFromDate`/`YearFromDate`/`QuarterFromDate` (and `AddDays`) accept a **DateTime** source, not only a Date (kernel date table: "X can be Date or DateTime") — `DifferenceInDays`/`AddYears`/`AddMonths` stay Date-only. On a **partially-known date** (a `DateType` carrying a `datePrecision` other than FULL): **`DayFromDate` is rejected outright** — `MVK_INVALID_DATE_TYPE` (probed on a DAY_OPTIONAL field; distinct from `ValueAsDate`'s `MVK_INVALID_DATE_TYPE_FOR_OP`) — while `MonthFromDate`/`YearFromDate`/`QuarterFromDate` are **accepted on a DAY_OPTIONAL** date (probed). The finer precision gradient (BA L4123-4125: Month only DAY_OPTIONAL; Year DAY/MONTH_OPTIONAL; Quarter only DAY_OPTIONAL) is BA-stated and awaits a MONTH/YEAR_OPTIONAL fixture to lock. **Add\* on a date fragment is gated by the format's granularity** — `AddDays` needs a day, `AddMonths` a month, `AddYears` a year, else **`MVK_WRONG_DATE_FORMAT_FOR_OP`** (probed: `AddMonths(MM-fragment)` and `AddYears(yyyy-fragment)` accept, `AddDays(MM-fragment)` rejects; BA L4076-4091). **Source:** the extract gating is `CheckDatumExtractOpImpl` → `DateUtils.checkOperationConsistentToPartialKnown` (rejects extracting the field's *optional* component → `MVK_INVALID_DATE_TYPE`); the Add\* granularity is `CheckDatumAddOpImpl.check` → `DateUtils.checkOperationConsistentToDateFormat`, gated on `format.hasComponent(dateFragment)` → `MVK_WRONG_DATE_FORMAT_FOR_OP`. *(Locked: `validate.laws.DateExtractionLawsTest` + `validate.laws.DateFragmentArithmeticLawsTest`.)*
 
 ### §6 supplement — Valid/Invalid over a constructed date are NOT complements (runtime, 2026-06-17)
 
+> Fold: folded → §6.
+
 `Valid(Date(...))` fires only when **all referenced parts are specified AND** they form a real calendar date; `Invalid(Date(...))` fires when the date is impossible (e.g. 31 February) **OR any referenced part is unspecified**. So they are **not logical complements** — an unspecified part fires `Invalid` but not `Valid` (runtime-verified). To fire `Invalid` only on a *complete-but-impossible* date, prefix `AllFieldsFilled(...)`. (BA "Valid or invalid dates"; corrects the catalog's earlier "Invalid = negation of Valid".) *(Locked: `adapter.laws.DateValidityLawsTest`.)*
 
-**The BA's "1583 Gregorian floor" (L3833) is NOT observed at runtime (probed 2026-06-17, not locked).** BA says a `Date(...)` is invalid if "the resulting day is before 16 October 1583", but `Invalid(Date(1,1,1500))` does **not** fire — the runtime (`validateFull`) treats `01.01.1500` as a valid constructed date (verified with a wide-year fixture; the same rule fires correctly for an impossible date, so the mechanism works). So the floor is **not a runtime Date-construct criterion in 30.8.1**; if enforced at all it is at another layer (a field-level formal error on a pre-1583 value, or the editor), which this pass did not verify. (A 4th BA-vs-source/runtime discrepancy found this review, after `INVALID_INTERVAL`, the semantic-index operator, and the fragment-comparison code.)
+**The BA's "1583 Gregorian floor" (L3833) is NOT a runtime `Date(...)`-construct criterion (probed 2026-06-17, probe-evidence).** `Invalid(Date(1,1,1500))` does **not** fire — the runtime treats `01.01.1500` as a valid constructed date (the same rule fires for an impossible date, so the mechanism works). The floor **is** enforced — at the *value* tier: the later §3 supplement ("a DATE value has an always-on lower bound", 2026-07-09) verified and locked the formal check on stored/computed values (`datumFalsch`, `ComputedDateGregorianFloorDiffTest`). (A 4th BA-vs-source/runtime discrepancy found this review, after `INVALID_INTERVAL`, the semantic-index operator, and the fragment-comparison code.)
 
 ### §6 supplement — date-fragment comparability partition (probe-confirmed, 2026-06-17)
+
+> Fold: folded → §6.
 
 Without a base year, two date(-fragment) values compare (`==`/`!=`/ordering) **only if both carry a year or neither does** — a year-bearing fragment/full date and a non-year fragment are incomparable, rejected with **`MVK_INVALID_COMPARE_TO_DATE`** ("only allowed to compare dates with other fitting dates"). Probed: `[YearOnly:yyyy] == [FullDate]` accepts; `[MonthOnly:MM] == [YearOnly:yyyy]` rejects. **Note the code:** a *direct comparison* gives `MVK_INVALID_COMPARE_TO_DATE`, **not** the BA's `MVK_DATE_WITH_AND_WITHOUT_YEAR` (that is the `DifferenceIn…`/overlap-op code for mixed-year args). A declared **base year** relaxes the partition (a missing year reads as the base year — BA L4069-4074, not probed here). (Source `CheckVergleichsBedingungImpl.checkDateType` → `DateFormat.formatsConsistentRegardingFormat(fmt1, fmt2, hasBaseYear())`; the same method also fires `MVK_INVALID_COMPARE_TO_DATE` for a BASE_YEAR vs a non-date-specification operand — confirming the code is this comparison path's, not the `DifferenceIn…` path's.) *(Locked: `validate.laws.DateFragmentComparabilityLawsTest`.)*
 
 **rulekit treatment — a date fragment IS a `DateOperand` (read + author, 2026-07-05).** Because the kernel collapses a fragment to a plain `Date` for parse/check/render/compare, `DateFragmentRef` is a full `DateOperand` (not the earlier "source-only" kind): it compares with all six operators against a date field, another fragment, `Date(...)`, `Today`/`Now`, `Base Year`, or a date expression, rendering as a bare `[field]`. F10 read converts a fragment comparison through the same date machinery — on the left (`fieldValueComparison` `case DATE_FRAGMENT`) and as a right/date operand (`convertDateOperand`, which previously threw `IllegalArgumentException: … is not a date field (kind=DATE_FRAGMENT)` when a fragment sat in a date-operand slot). rulekit does **not** re-enforce the year-class partition on read — the kernel already accepted the rule. *(Locked: `adapter.DateFragmentComparisonReadTest` — kernel-valid + round-trip for fragment-vs-date, date-vs-fragment, and fragment-vs-fragment.)*
 
-**§6 supplement — date-fragment RUNTIME completion: earliest concrete date, base-year for the year (probe-confirmed, 2026-07-07).** The *evaluation* companion to the comparability partition above (that is the authoring gate; this is what a valid fragment then does at runtime). A `DateFragmentType` value is stored in its `formatOfFragment` (one of `yyyy-MM`, `yyyy`, `MM`, `MM-dd`); when the runtime reads a fragment field for a comparison / `Add*` / extraction it **completes the missing components to the *earliest* concrete date** and compares as a plain `Date`:
+**§6 supplement — date-fragment RUNTIME completion: earliest concrete date, base-year for the year (probe-confirmed, 2026-07-07 — canonical §6).** The *evaluation* companion to the comparability partition above (that is the authoring gate; this is what a valid fragment then does at runtime). A `DateFragmentType` value is stored in its `formatOfFragment` (one of `yyyy-MM`, `yyyy`, `MM`, `MM-dd`); when the runtime reads a fragment field for a comparison / `Add*` / extraction it **completes the missing components to the *earliest* concrete date** and compares as a plain `Date`:
 
 - **missing MONTH → `01`, missing DAY → `01`, missing YEAR → the model base year** (`modelInfo.baseYear`, default 2000). Probed by comparing against a full DATE field of a known value: `[CardExpiry:yyyy-MM = "2024-06"] == [Full = "2024-06-01"]` **fires** (not `2024-06-15`); `[WarrantyYear:yyyy = "2024"] == [Full = "2024-01-01"]` fires (not `2024-06-15`); `[SaleWindow:MM-dd = "06-01"] == [BillMonth:MM = "06"]` fires (`MM` completes day → `01`).
 - The **base year is observable**: with `modelInfo.baseYear = 2024`, `[BillMonth:MM = "06"] == [Full = "2024-06-01"]` fires but `== "2023-06-01"` does not (the year-less fragment completes its year to the *declared* base year, which is also what makes it comparable to a year-bearing date — the partition's base-year relaxation).
@@ -821,7 +851,9 @@ Without a base year, two date(-fragment) values compare (`==`/`!=`/ordering) **o
 
 ### §6 supplement — TIME and DATE_TIME value kinds (implemented 2026-06-07)
 
-**`TIME` is orderable exactly like `DATE`** (no scale, no D13 machinery): `[ServiceWindowStart] >= [ServiceWindowEnd]` is kernel-valid (a time field vs another time field). Modeled as `TimeRef`/`TimeOperand`/`TimeExpr`, obtained from `BoundModel.time(path)`; the same six order operators as dates. Time constant literals (`"17:00:00"`) are implemented (family 1, see the §6 supplement above).
+> Fold: folded → §6.
+
+(The kernel truths — TIME orderable like DATE, DATE_TIME decomposing via the extraction lattice — are canonical in §6/the field-types table; the modeling/treatment log stays.) **`TIME` is orderable exactly like `DATE`** (no scale, no D13 machinery): `[ServiceWindowStart] >= [ServiceWindowEnd]` is kernel-valid (a time field vs another time field). Modeled as `TimeRef`/`TimeOperand`/`TimeExpr`, obtained from `BoundModel.time(path)`; the same six order operators as dates. Time constant literals (`"17:00:00"`) are implemented (family 1, see the §6 supplement above).
 
 **`DATE_TIME` decomposes into its parts and components** — the kernel's `DateExtractionOperationName` covers the whole lattice, and **the extractions accept a `DATE_TIME` source, not only their nominal kind** (verified against the workspace `DateTimeValues_DM` model, where a single `DateTimeType Source` feeds every extraction):
 
@@ -842,7 +874,9 @@ rulekit models the numeric ones as `DateExtraction` (kind NUMBER), the part-extr
 
 ## §6 supplement — min/max over DATES ride a dedicated `DateCombiner`: NULL-date empty identity, valueless-operand skip, symmetric omission (source + differential, 2026-07-07)
 
-The kernel dispatches `Min`/`Max`/`MinValue`/`MaxValue` **statically by operand type onto two combiner families** — numbers → `NumberCombiner` (`min`/`minWert`), dates → **`DateCombiner`** (`minDatum`/`minWertDatum`; the only non-number family — min/max over strings is not authorable) — and the two differ in three observable ways:
+> Fold: folded → §2 + §12.
+
+(The NULL-date empty identity is canonical in §2 "aggregate identities"; the symmetric date polarity in §12's directional machinery; the combiner-dispatch mechanism stays as evidence.) The kernel dispatches `Min`/`Max`/`MinValue`/`MaxValue` **statically by operand type onto two combiner families** — numbers → `NumberCombiner` (`min`/`minWert`), dates → **`DateCombiner`** (`minDatum`/`minWertDatum`; the only non-number family — min/max over strings is not authorable) — and the two differ in three observable ways:
 
 - **Empty identity.** The number combiner seeds `0` (§1 supplement — `MaxValue()` over all-empty == 0). The date combiner seeds `VkDate.NULL_DATE` — *no value* — and `BedingungsOperatorHelper.vergleicheDATUM` returns **false when either side's date is null**, so a comparison against an all-empty (or zero-row) date aggregate **never fires** (`FALSE_OR_UNKNOWN`), and a computation of it **clears** the target.
 - **Operand-list emptiness.** `minDatum(d1, d2)`'s `VkDate.combine` **keeps the date-bearing side** when the other operand is valueless — an empty date operand is SKIPPED (`Min([OrderDate], [DeliveryDate])` with `OrderDate` empty is `DeliveryDate`), unlike the number form where an empty operand arrives as the substituted `0` and COUNTS. A malformed / required-empty date operand is nicht-prüfungsrelevant → the whole aggregate is suppressed.
@@ -950,6 +984,8 @@ A starred operand read from an ITERATING row (a per-row rule, or a per-row compu
 **…and a MULTI-star operand binds at the FIRST `*`-marked level; `NumberOfFilledFields` honors a `Having` filter (differential, both strategies, 2026-07-09).** For `A* / B* / F` read from an iterating row, only the levels strictly above **A** (the first star) bind — a per-`B`-row read spans ALL of `A`'s rows (kernel-pinned for a filtered count AND an unfiltered `Sum`). And the count aggregate `NumberOfFilledFields(star Having <cond>)` consumes only filter-kept rows, exactly like the value aggregates (`anzahlAngegebenerFelder` rides the same filtered `EntityIterator`): the filter drops rows FIRST — a malformed cell in a dropped row does not suppress the count — and a KEPT row's malformed cell makes the count non-evaluable. A `$`-correlated filter (`[X] == [$X]`) resolves against the computing/iterating row, giving the "count my duplicates across the whole list" idiom real corpus models use. *(Interpreter: `Expr.Star.bindDepth` threaded through the star family; the count gained the filtered loop; locked `adapter.laws.MultiStarFilteredCountDiffTest` + multiplatform `interpreter … MultiStarFilteredCountTest`; INTERPRETER-FINDINGS IF94.)*
 
 ## §6 supplement — DATE_TIME rides the DATE format definition: the date extractors + date diffs accept a datetime operand (source + differential, both strategies, 2026-07-09)
+
+> Fold: folded → §6.
 
 The kernel has **no datetime-specific format definition** — a DATE_TIME field is a `FormatDefinitionDatum` whose format string carries the time (`yyyy-MM-dd'T'HH:mm:ss`), so `feldWertAlsDatum` parses the full value into a `VkDate` and every date consumer sees its DATE part: `DayFromDate`/`MonthFromDate`/`YearFromDate`/`QuarterFromDate` extract from a datetime operand (an EMPTY datetime → the fillable 0), and the date DIFFS accept datetimes (`DifferenceInDays(dt1, dt2)` = the whole-day date-part difference — the times are ignored). The date-ARITHMETIC family is NOT reachable over a datetime: `AddYears(datetimeField, n)` is REJECTED at codegen ("Wrong date format") — parity by construction. *(Interpreter: a `dateOnly` normalization at the three pinned consumers — extractors, `DifferenceInDays`, `DifferenceInMonths`/`Years`; locked `adapter.laws.DateFunctionsOverDateTimeDiffTest` + multiplatform `interpreter … DateFunctionsOverDateTimeTest`; INTERPRETER-FINDINGS IF95.)*
 
