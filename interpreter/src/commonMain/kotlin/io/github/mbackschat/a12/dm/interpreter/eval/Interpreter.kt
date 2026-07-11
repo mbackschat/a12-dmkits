@@ -254,8 +254,7 @@ class Interpreter(
         is Cond.And -> {
             val a = evalTyped(c.left)
             val b = evalTyped(c.right)
-            val type = if (a.type == MsgType.OMISSION || b.type == MsgType.OMISSION) MsgType.OMISSION else MsgType.VALUE
-            Res.of(Kleene.and(a.truth, b.truth), type)
+            Res.of(Kleene.and(a.truth, b.truth), andType(a, b))
         }
         is Cond.Or -> {
             val a = evalTyped(c.left)
@@ -294,9 +293,9 @@ class Interpreter(
             val a = evalTypedLazy(c.left)
             val b = evalTypedLazy(c.right)
             val truth = Kleene.and(a.truth, b.truth)
-            // type read only when truth==TRUE ⟹ both a,b TRUE ⟹ both types real (not the placeholder).
-            val type = if (truth == Tri.TRUE && (a.type == MsgType.OMISSION || b.type == MsgType.OMISSION)) MsgType.OMISSION else MsgType.VALUE
-            Res.of(truth, type)
+            // type read only when truth==TRUE ⟹ both a,b TRUE ⟹ both types real (not the placeholder) — the
+            // SAME [andType] combine the eager walk uses, gated by the lazy skip (like the Or branch below).
+            Res.of(truth, if (truth == Tri.TRUE) andType(a, b) else MsgType.VALUE)
         }
         is Cond.Or -> {
             val a = evalTypedLazy(c.left)
@@ -306,6 +305,12 @@ class Interpreter(
         }
         is Cond.Not -> evalTyped(c.c).let { Res.of(Kleene.not(it.truth), it.type) }   // dead path: full typing keeps Not sound
     }
+
+    /** And: a fillable (OMISSION) branch makes the whole error fillable — OMISSION if EITHER operand is
+     *  OMISSION, else VALUE (kernel: `ValidierungsErgebnis.combineUND`). Shared by [evalTyped] (unconditional)
+     *  and [evalTypedLazy] (read only on a TRUE And, which forces both operands TRUE — their types real). */
+    private fun andType(a: Res, b: Res): MsgType =
+        if (a.type == MsgType.OMISSION || b.type == MsgType.OMISSION) MsgType.OMISSION else MsgType.VALUE
 
     /** Or: among the branches that are TRUE, a VALUE branch convicts → VALUE; else OMISSION. */
     private fun orType(a: Res, b: Res): MsgType {
