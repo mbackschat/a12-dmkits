@@ -4,6 +4,32 @@ All notable changes to the **publicly released `dmtool` artifacts** — the nati
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/) plus **A12 Kernel compatibility metadata** (the kernel each release targets is recorded per entry, never folded into the version string).
 
+## [Unreleased]
+
+The built-in evaluation engine reaches full kernel parity on real-world corpora, and the authoring surface gets a consistency pass — one breaking flag rename.
+
+### Changed
+
+- **BREAKING:** `model import-jsonschema --format` is renamed **`--string-format`** — it selects the string-conversion strategy, while `--format` elsewhere selects output rendering; the two concepts now have distinct names.
+- `apply`-embedded `group`/`config`/`typedef read` ops now return the **full standalone-verb payload** (they previously returned a reduced subset), so a read inside a transaction is as informative as the standalone read.
+- `rule modify`/`group modify` gained metadata-removal flags and `meta` accepts the modify-family flag names — the two verb families now share one metadata vocabulary.
+
+### Added
+
+- **`dmtool operators <id>` now names its DSL entry points** (`dslEntry`) for every one of the 110 operators — the catalog→code bridge, machine-verified against the source so it cannot drift — alongside the machine tier shipped earlier in the wave (empty-operand facets, operand-matched correctives, defaults, and kind-classified gotchas).
+- **Include verbs:** `include set-reference` (re-point a mount) and `include rename`.
+- **Element metadata everywhere:** group-level metadata on `group modify` (+ read echo), rule-level annotations & descriptions on `rule add`/`rule modify`/`apply` (+ read echo).
+- **Config family completed:** `config modify --base-year`, model-level label echo, and the remaining config read/modify gaps, held closed by a mechanical coverage guard.
+- `field add --parent` alias (matching every sibling add-verb; `--group` remains accepted).
+- JSON-Schema import synthesizes **`minItems`** on repeatable groups as a `NumberOfFilledGroups` rule.
+
+### Fixed
+
+- **The built-in evaluation engine (`rule eval` / `model eval`) now matches the A12 kernel bit-for-bit on two real-world corpora** — a 107-model industry workspace set and the kernel's 15 canonical metamodels — at **zero divergences in both benign and hostile value seeding**, closing a ~45-finding semantics campaign (computation cascades, semantic-index reads, Having-filtered quantifiers, date/number edge semantics, polarity of fired comparisons over invalid values, and more). A quadratic blow-up on indexed validation of large repetition lists was also removed.
+- Read/query verbs (`rule explain`/`format`, `computation explain`/`format`, `include read`, and both engines of `rule eval`/`model eval` on an unknown rule) now return a **structured, coded refusal** on a missing target instead of a bare error line.
+- JSON-Schema import: a `const` on a date/time/custom-typed field no longer aborts the import — it is skipped and reported, like every other unmappable constraint.
+- `field read`/`typedef read` report every written type-config slot (string no-value-validation, enum categories, enum invalid-value message), and `computation modify` no longer drops element metadata.
+
 ## [0.8.2] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
 A platform-coverage patch release on the 0.8.x surface — no change to the model operations themselves.
