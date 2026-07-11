@@ -31,7 +31,7 @@ Which operators are legal on a field, and how a missing or mismatched value beha
 | **Time** *(extends Date)* | — | time | The operand for `HoursFromTime` / `MinutesFromTime` / `SecondsFromTime`. |
 | **DateFragment** | `formatOfFragment` = `MM` / `yyyy` / `yyyy-MM` / `MM-dd` | partial date | A deliberately *imprecise* date; comparable only by the **year-presence rule** (or globally via a model **Base Year**); the fragment format decides which `Add*` apply. *(Editor: import-only.)* |
 | **DateRange** | `format` (`MM` … `yyyy-MM-dd`); separator `/` | date-range | Supports only `==` / `!=` (**no ordering**); cannot be nested in another construct; `DateRangesOverlap` treats endpoints as inclusive. |
-| **Custom** | `name`; min/max length | string-equivalent | Treated as a **string** in rule conditions; `Valid(F, "Name")` / `Invalid(...)` runs the project's registered validator for that custom type. |
+| **Custom** | `name`; min/max length | string-equivalent | Treated as a **string** in rule conditions; `Valid(F, "Name")` / `Invalid(...)` runs the project's registered validator for that custom type. A declared Custom field's **whole** formal check — length bounds included — is delegated to that validator (the bounds are hints); with none registered, a *filled* custom cell fails the entire validation call. |
 | **TypeDefinition** | references a reusable type definition by id | the underlying type's value | **Delegates** to the referenced type — its legality *is* that underlying type's, and is known only after the model is **expanded** (includes/type-defs resolved). |
 | **Unspecified** *(experimental)* | — | — | Documented as "not a data type" — an intermediary/decoration, not used as a rule operand. |
 
@@ -146,7 +146,7 @@ The per-kind table is only the default; several operators put an empty operand t
 | `Length(F)` | reads as length **`0`**, evaluated — the string family's own empty-as-0 backdoor, needing the same `FieldFilled` guard as a number *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2, locked by `EmptyValueLawsTest`)* |
 | `PatternMatched` / `PatternViolated` | not evaluated — an empty string violates no pattern; absence needs `FieldNotFilled` *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2, locked by `EmptyValueLawsTest`)* |
 | the date/time **extractors** (`DayFromDate`, …) and the date **differences** | read as the fillable **`0`** — the enclosing comparison is evaluated and can fire *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §6 / IF73, locked by `EmptyOperandFiringDiffTest`)* |
-| **value-list membership** | an empty subject is never in any list, and an empty numeric list *entry* never matches — the `0` substitution does not apply to entries *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2/§8, locked by `EmptyValueLawsTest`)* |
+| **value-list membership** | an empty subject makes membership UNKNOWN — *neither* the included nor the not-included form fires — and an empty numeric list *entry* never matches (the `0` substitution does not apply to entries) *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2/§8, locked by `EmptyValueLawsTest` + `ValueListDiffTest`)* |
 | the **count family** (`NumberOfFilledFields`, `NumberOfValueInFields`, …) | an empty cell is never counted — `NumberOfValueInFields(0 In …)` does **not** count an empty number as a match for `0` — but it keeps the count growable, typing a fired comparison OMISSION *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2, locked by `NumberOfValueInFieldsDiffTest` + `FilledCountLawsTest`)* |
 | operand-list `Min([A], [B])` / `Max(…)` | an empty NUMBER operand is substituted `0` and **competes in the fold** (`Min(0, B)` — the 0 can win); an empty DATE operand is **skipped** (the date-bearing side wins) *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2 + §6 / IF58, locked by `EmptyValueLawsTest` + `DateAggregateDiffTest`)* |
 | the field-list / starred aggregates (`Sum`, `MaxValue`, `MinValue`) | the empty cell is **dropped from the fold** — `MaxValue(-5, empty)` is `-5`, no `0` folded in; `Sum` reads it as `0`, which for a sum is the same thing *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §1 + §9, locked by `MultiFieldAggregateDiffTest` + `RepetitionLawsTest`)* |
@@ -284,6 +284,8 @@ By default `==` and `!=` are not permitted between two numbers whose maximum dec
 
 The maximum scale can grow during multiplication (e.g. two 3-decimal factors yield a 6-decimal product), which is what makes the first form fail. A documented rewrite for an exact comparison is `[F] <= [G] And [G] <= [F]`.
 
+Three verified boundaries of the gate: it applies to **field/expression operands only** — a numeric **literal** is scale-exempt (`== 0`, `== 0.00`, `<= 0.000` are all accepted against any scale), so scale-explicit literals are a rendering nicety, not a correctness requirement; **ordering** (`<`, `<=`, `>`, `>=`) is scale-exempt even field-vs-field; and an expression's *derived* scale is what the gate sees (division and power derive an unknown scale, the `?` in the message), so wrap in a rounding or suppress. **Strings** compare field-vs-field with `==`/`!=` only — ordering draws `MVK_INVALID_TYPE_FOR_COMPARISON` *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §5, locked by `NumberLawsTest`)*.
+
 The scale check is the one diagnostic you can waive inline: begin the rule condition with `@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)` to allow an `==`/`!=` across differing scales (e.g. comparing a checksum). It is the **only** suppressible code — naming any other (`@SuppressWarning(MVK_…)`) raises `MVK_INVALID_SUPPRESSED_WARNING`.
 
 *Reference: Operators and language constructs → Comparison operations → Comparing numbers; Appendix → Parser messages → Arithmetic.*
@@ -320,7 +322,14 @@ A division by zero is not executed; the comparison containing it evaluates to `f
 
 - At most one division per calculation without grouping braces: `{ [G] / [F] } / 2`. Powers cannot be nested without brackets.
 - Input numbers may have at most 15 digits (checked before each validation); internal arithmetic uses higher precision.
-- Tolerance comparisons exist only at fixed thresholds (`DiffersWithToleranceRange1/2/5/10`) and are satisfied when the difference is **outside** the tolerance.
+- A Number field's scale is **always bounded** — there is no unbounded-scale decimal: a model that omits `maxFractionalDigits` gets scale `0`, never unbounded, never rejected *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §5, locked by `modelkit.NumberScaleKernelLawTest`)*.
+- Tolerance comparisons exist only at fixed thresholds (`DiffersWithToleranceRange1/2/5/10`) and are satisfied when the difference is **strictly outside** the tolerance — `|a − b| > N`, a difference of exactly `N` does not fire. An empty numeric operand reads `0` ([§2](#2-non-specified-empty-values)); a fired tolerance comparison types like `==` (either operand's fill can close the band) *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §5, locked by `ToleranceComparisonLawsTest` + `ToleranceDiffTest`)*.
+
+### Internal precision — the scale-19 comparison rescale and the 50-digit arithmetic cap
+
+- Every NUMBER **comparison** (ordering, equality, tolerance) rescales both operands to **scale 19 `HALF_UP`** before comparing; `min`/`max` *selection* stays full-precision *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §5, locked by `PrecisionDiffTest`)*.
+- Arithmetic `×`/`÷`/`^` rounds to a **50-digit `MathContext`** (`+`/`−` stay exact) — reachable through high-scale multiplication, and what makes `÷` terminate at all *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §5, locked by `ArithmeticDiffTest` + `DivPowDiffTest`)*.
+- A scale-19 `HALF_UP` pre-round precedes every target-scale rounding: `RoundDown([q]/3*3, 0) == [q]` fires for `q = 1` because the internal `0.99…9` pre-rounds to `1` before the floor *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §5, locked by `RoundingLawsTest`)*.
 
 *Reference: Arithmetic operations → Accuracy of arithmetic operations; Operators and language constructs → Comparison operations.*
 
@@ -379,7 +388,7 @@ Invalid(Date(Day, Month, Year))   ;; fires on 31.11, 30.02, an unfilled part, �
 ## 7. Strings and patterns
 
 - String length counts Unicode combining sequences as multiple characters, so one visible glyph can occupy several characters of a length limit.
-- `PatternMatched` / `PatternViolated` evaluate the **whole** value (anchored), use only the regular-expression subset portable across the target languages, and can be a performance/security risk if written to backtrack (e.g. `(a+)+`).
+- `PatternMatched` / `PatternViolated` evaluate the **whole** value (anchored), use only the regular-expression subset portable across the target languages, and can be a performance/security risk if written to backtrack (e.g. `(a+)+`). The portable subset is **enforced, not advisory**: a Java-valid lookbehind is rejected with `MVK_INVALID_PATTERN`, so a Java-side `Pattern.compile` pre-check is a necessary condition only *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §7, locked by `PatternLawsTest`)*. A fired pattern comparison is always a VALUE error (there is no fillable branch), and an empty string violates no pattern ([§2](#2-non-specified-empty-values)) *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §2, locked by `EmptyValueLawsTest`)*.
 - `+` is overloaded — numeric **addition** between Number operands, string **concatenation** between strings. The guide documents no general operand-dispatch rule beyond one pitfall: a string literal shaped like a date parses as a *date constant* and so cannot be concatenated (see [§6](#6-dates-and-time)).
 
 *Reference: Models → Field types → String; Operators and language constructs → String operations; Miscellaneous → PatternMatched and PatternViolated.*
@@ -389,8 +398,19 @@ Invalid(Date(Day, Month, Year))   ;; fires on 31.11, 30.02, an unfilled part, �
 ## 8. Enumerations
 
 - Rule conditions compare the stored enumeration **value**, not the displayed text: write `[Country] == "F"`, not `[Country] == "France"`.
-- An enumeration that defines localized texts cannot be compared with a plain string or with an enumeration that has no texts; comparing two text-bearing enumerations also requires their values and texts to be mutually consistent.
-- Enumeration values can carry named category attributes, read with the `->` operator: `[Country -> AdministrationArea] != "EU"`.
+- An enumeration that defines localized texts cannot be compared with a plain string or with an enumeration that has no texts; comparing two text-bearing enumerations also requires their values and texts to be mutually consistent. A plain string ↔ *texts-less* enum comparison **is** allowed — the presence of display texts, not the stored value, governs comparability *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §8, locked by `EnumComparabilityLawsTest`)*.
+- Enumeration values can carry named category attributes, read with the `->` operator: `[Country -> AdministrationArea] != "EU"`. The category mapping is **positional** (`values[i]` categorizes enum value *i*) and many-to-one — the comparison fires for *every* value sharing the category value; an empty enum rides the not-evaluated track, category hop or not *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §8, locked by `EnumCategoryLawsTest` + `EnumCategoryDiffTest`)*.
+
+### The value-list quantifiers — per-cell classification, and the `No` poison asymmetry
+
+`AtLeastOne` / `No` / `NotAll` `…FieldValue(s)IncludedInValueList(f1, f2 In v1, …)` expand **both** sides per cell (a starred entry contributes one cell per instantiated row) and classify each by the three-way state — filled / empty / not-check-relevant (UNKNOWN, [§3](#3-formal-errors-and-the-unknown-state)):
+
+- **`AtLeastOne`** fires iff some filled cell's value is in the set; empty and UNKNOWN cells and members are skipped outright; an empty value *set* → no fire. Fired polarity VALUE.
+- **`No`** fires iff no filled cell's value is in the set — including when nothing is filled at all (the sole member that can fire empty); an UNKNOWN fields-cell **or** values member **poisons** it (no fire). Fired polarity OMISSION on any empty fields-cell, un-instantiated declared tail, or empty values member — else VALUE.
+- **`NotAll`** needs a filled fields-cell and fires iff some filled cell's value is *not* in the set; an UNKNOWN values member poisons, an UNKNOWN fields-cell is merely skipped — the `No`-vs-`NotAll` asymmetry; OMISSION only on the values side's account.
+- An empty values **member** contributes nothing to the set (never a substituted `0`) but flags a fired `No`/`NotAll` OMISSION. A `Having` filter is accepted on either side, drops rows **before** the per-cell classification, and escalates a fired result to OMISSION unconditionally ([§12](#12-the-validation-model)).
+
+*(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §8 / IF60 + IF74, locked by `ValueListQuantifierDiffTest` + `ValueListQuantifierStarDiffTest` + `EntityValueListDiffTest` + `ValueListQuantifierHavingDiffTest`)*
 
 *Reference: Operators and language constructs → Comparison operations → Comparing strings and enumerations; The Field value operator.*
 
@@ -572,5 +592,9 @@ FieldFilled(id) And CustomCondition NotReverse
 ```
 
 Two constraints: a `CustomCondition` is **forbidden in computation rules** and **inside filter (`Having`) conditions**. And, like any predicate, it doesn't exempt the rule from the error-field rule ([§9](#9-repetition-iteration-and-cross-array-evaluation)) — here the `FieldFilled(id)` conjunct references the error field.
+
+At runtime, `CustomCondition X` fires iff the registered implementation returns `true`, on an evaluated row only ([§2](#2-non-specified-empty-values)'s row gate — it does not fire on an all-empty row), with VALUE polarity; a formal error on the fields the rule references suppresses it like any operator ([§3](#3-formal-errors-and-the-unknown-state)), and a bare `CustomCondition X` referencing no field is rejected (`MVK_ERROR_FIELD_NOT_REFERENCED`) *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) "CustomCondition — a runtime CLIENT SPI", locked by `CustomConditionDiffTest`)*.
+
+Custom **conditions** and custom **field types** are the kernel's only custom hooks — there is no custom *computation* or function: a computation's operation vocabulary is closed, and `CustomCondition` (the one hook that could reach a computation) is barred there *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) "Custom-extensibility surface")*.
 
 *Reference: CustomCondition; Computation Rules (intro); Rules → Rules and repeatability → Filter operator.*

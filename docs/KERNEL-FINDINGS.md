@@ -350,6 +350,8 @@ Source-read from the kernel (`IField.IRequirednessConfig.getErrorMessage`, `Fiel
 
 ## §5 supplement — numeric literals are exempt from the scale check
 
+> Fold: folded → §5.
+
 The `==`/`!=` decimal-scale gate applies to **field/expression operands only**. Against a scale-2 field, `== 0`, `== 0.0`, `== 0.00`, `!= 0`, and `<= 0.000` are all accepted — only field-vs-field/expression comparisons of differing declared scale draw `MVK_INVALID_COMPARE_DEC_PLACES`. Consequence: scale-explicit literals (`0.00`) are a rendering-fidelity nicety, not a correctness requirement. *(Locked: `validate.laws.NumberLawsTest`.)*
 
 **Field-vs-field comparison (finding 18, verified 2026-06-04).** Comparing two *fields* (not just field-vs-literal): **strings** compare with `==`/`!=` only (ordering → `MVK_INVALID_TYPE_FOR_COMPARISON`, "only for numbers, amounts and dates"); **numbers** — the scale gate is **`==`/`!=`-only**: equal-scale fields compare freely, different-scale fields draw `MVK_INVALID_COMPARE_DEC_PLACES` ("max fractional digits of lhs(0) and rhs(2) differ"), but **ordering (`< <= > >=`) is scale-exempt** (verified: `[Quantity(0)] < [UnitPrice(2)]` validates; source `CheckVergleichsBedingungImpl.checkNumberComparison` — the scale check runs only when `isUnEqualsComparison`, comparing the two `getMaxFractionalDigits`; a `null` (derived/unknown) scale is the `"?"` in the message, source-read 2026-06-17). String-vs-number → `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING`. rulekit: `StringRef.eq/ne(StringRef)` and `NumberRef.{lt,le,gt,ge,eq,ne}(NumberRef)` — the number `eq`/`ne` **pre-check equal scale** (the D13 gate made cheap, since the index knows both scales), ordering does not. **Enum-vs-enum is now implemented** (`EnumRef.is/isNot(EnumRef)`, compared by stored value; type-compatibility stays the kernel's call) — KERNEL-SEMANTICS §8, locked by `adapter.EnumFieldComparisonReadTest`. An arithmetic **expression** carries a *derived* scale — **multiplication raises it** (a scale-2 × scale-2 expression is scale 4, division/power are unknown), so `[x] == [a] * [b]` can draw `MVK_INVALID_COMPARE_DEC_PLACES` **even when every field shares a scale**; wrap the expression in `RoundAccounting(expr, n)`, or waive the check with `@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)` at the start of the condition (source-read 2026-06-17). *(Also locked: `validate.laws.NumberLawsTest.fieldVsFieldScaleGateAppliesToEqualityOnly`/`stringFieldVsFieldEqualityIsAccepted`/`multiplicationRaisesScaleSoEqualityRejectsEvenWithMatchingFieldScales` + `RenderConditionTest`.)*
@@ -359,6 +361,8 @@ The `==`/`!=` decimal-scale gate applies to **field/expression operands only**. 
 **Runtime semantics (interpreter, probe 2026-06-24).** Fires iff `|a − b| > N` — the band is **STRICT**: a difference *exactly* equal to N does NOT fire (`Range1` on diff 1 → no, diff 2 → yes; `Range5` on diff 5 → no, diff 6 → yes). An **empty** numeric operand reads as **0** (empty-as-0, like any comparison — `[Quantity=9] DiffersWithToleranceRange1 [empty]` → `|9−0|=9 > 1` fires); a **malformed** operand suppresses the rule. Polarity is **EQ-like** (kernel-probed message type): both operands present → **VALUE**; an empty (fillable) operand whose filling could close the gap → **OMISSION**. The interpreter models it as a dedicated `Cond.Tolerance` AST node (NOT a desugar to `Abs([a]−[b]) > N`): the two differ in **polarity** — Tolerance is EQ-like (either operand moving closes the band), a `> N` desugar would be GT-like (only the left shrinking), so a desugar mis-types even now. *(Historically the desugar was also fill-INVISIBLE — `leafOmission` didn't recurse into `Expr.Arith`; that half is moot since IF69/IF71 made `fill` propagate through arithmetic AND `Abs`, but the EQ-vs-GT polarity gap stands, so the dedicated node remains correct.)* Polarity reuses the EQ `fill`-based rule. *(Locked: `adapter.laws.ToleranceDiffTest` — firing + polarity in one assertion — + a fuzz rule `DT` = `[Qty] DiffersWithToleranceRange5 [Price]`.)*
 
 ## §5 supplement — a NUMBER field type is ALWAYS scale-bounded; `maxFractionalDigits` is mandatory (no unbounded decimal) (source + metamodel + probe, 2026-06-28)
+
+> Fold: folded → §5.
 
 An a12 `NumberType` carries a **mandatory** decimal scale — there is **no unbounded-scale decimal**. Three independent oracles agree:
 
@@ -370,11 +374,15 @@ Consequences: modelkit emitting `maxFractionalDigits` with a `null → 0` defaul
 
 ## §5 supplement — power-operator parse laws + the quiet non-execution edges (source-read + 2026-06-17)
 
+> Fold: folded → §5.
+
 The `^` power operator (parser `CheckOperationImpl`): **unparenthesized nesting is rejected** — `a ^ b ^ c` draws `MVK_TOO_MANY_POW_FOR_CALC` (nest via grouping); the **exponent must have no decimal places** — a scale-0 field or integer literal is accepted, a decimal-scale field (or an unknown-scale expression) draws `MVK_INVALID_NUMBER_FOR_EXP` (`checkNoFractionalDigitsInExponent`). Arithmetic sub-expressions group with **curly braces `{ }`**, and precedence is `^` → `*`/`/` → `+`/`-`. **Runtime (BA "Power Operator", source-read but not yet law-locked here):** `a ^ b` is *not executed* — so a rule using it silently does not fire — when `b` is outside `[-1000, 1000]` or for `0` raised to a negative power, the same quiet behavior as division by zero. *(Locked: `validate.laws.NumberLawsTest.powerOperatorRejectsUnparenthesizedNesting` / `powerExponentMustHaveNoDecimalPlaces` for the validation side; the runtime non-execution edges are now locked by `adapter.laws.DivPowDiffTest` — `powZeroToNegativeIsQuiet` (`0` to a negative power) and `powExponentOutOfRangeIsQuiet` (`|exp| > 1000`), both quiet like division by zero, interp == kernel.)*
 
 ## §7 supplement — pattern-comparison slot rules and the portable-subset gate (2026-06-04 experiments)
 
-`PatternMatched`/`PatternViolated` (DE: `WieMuster`/`NichtWieMuster`) are grammar-level *infix comparison operators* (`vglOp` alternatives like `==`), but their slot rules are far stricter than the grammar:
+> Fold: folded → §7.
+
+(The enforced portable subset is canonical in §7; the slot rules below stay as authoring evidence.) `PatternMatched`/`PatternViolated` (DE: `WieMuster`/`NichtWieMuster`) are grammar-level *infix comparison operators* (`vglOp` alternatives like `==`), but their slot rules are far stricter than the grammar:
 
 - **Left side: a bare string field value only.** A non-string field (number, enum, boolean) → **`MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON`** ("only allowed for string values" — note: *enums are not pattern-comparable* even though they compare to strings with `==`). A string *expression* (e.g. concatenation) → **`MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON`** ("only allowed with a field value as first parameter"). A constant → the general **`MVK_INVALID_COMPARE_TO_CONST`**.
 - **Right side: a string constant only.** A field reference → **`MVK_MISSING_CONST_IN_PATTERN_COMP`**; a number constant → `MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON`.
@@ -385,19 +393,27 @@ The `^` power operator (parser `CheckOperationImpl`): **unparenthesized nesting 
 
 ## §7 supplement — string-literal escaping is quote-doubling, not backslashes
 
+> Fold: not-foldable — concrete-syntax/grammar tier; the canonical doc defers grammar pitfalls to the origin project's grammar doc.
+
 The condition lexer's rule is `StringLiteral : '"' ( '""' | ~["] )* '"'` — an embedded quote is **doubled** (`"say ""hi"""`), and **backslash is a plain character** (no escape sequences; regex classes like `\d` are written as-is). Backslash-escaping a quote (`\"`) is a parse error (`MVK_UNEXPECTED_TOKEN`). Found while building the pattern operators: rulekit's renderer had C-style escaping and would have emitted wrong regexes for any pattern containing `\` — fixed and locked. *(Locked: `validate.laws.PatternLawsTest` + `RenderConditionTest.quotesStringLiteralsTheKernelWay`.)*
 
 ## §8 supplement — a category's `description` is an editor-level note the kernel tolerates (probe + source, 2026-06-21)
+
+> Fold: not-foldable — an editor/tooling model attribute the kernel ignores; no evaluation behavior.
 
 An enumeration category's **optional `description`** (SME 1133 — "an optional description can be set") is **not** modeled by the kernel core: both `IEnumerationType.getCategoryValues()` and the a12internal `IEnumerationDataTable` expose categories as `name → values` only. A `description` key on a category node is **tolerated** by `checkConsistency` (probe: injected into a category, `model check` → `valid: true`, no diagnostic) — it's an editor/tool attribute the kernel ignores. Per the owner rule (*what's editable is part of the model, unless workspace-related*), it belongs **in the model** (the category node), not workspace settings — so rulekit writes it there (`EnumCategory.description`), preserved by the generic-tree round-trip and harmless to the kernel. *(Locked: `cli.field.FieldAddSpecTest.enumCategoryCarriesAnOptionalDescription`.)*
 
 ## §8 supplement — `FieldValueIncludedInValueList` rides the 3VL: an empty operand is UNKNOWN (runtime, 2026-06-23)
 
-`FieldValueIncludedInValueList(field, m1, m2, …)` tests membership of the field's value in the literal list; `FieldValueNotIncludedInValueList` is its negation. **On an empty (value-less) field the check is UNKNOWN, not "absent from the list"** — so NEITHER form fires on an empty field (the `Not` form does *not* fire just because the field is empty). It rides the same three-valued track as an empty comparison operand (§1/§2): an un-evaluable operand makes the predicate UNKNOWN, and a rule fires only on TRUE. Verified at runtime against the kernel. *(Locked: `adapter.laws.ValueListDiffTest`.)*
+> Fold: folded → §2.
+
+On an empty field the membership check is UNKNOWN, not "absent from the list" — NEITHER form fires (the `Not` form does not fire just because the field is empty); canonical in §2's override table (value-list membership row). *(Locked: `adapter.laws.ValueListDiffTest`.)*
 
 The **authoring-side** constraints are already in the MVK ledger, not repeated here: members are type-matched to the field — number field → number literals, string/enum → string literals; mixing them is `MVK_INVALID_TYPES_FOR_COMPARISON` (ledger: *erased*), and a boolean/confirm field has no value-list (`MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED`, ledger: *erased*). For `GroupFilled`/`GroupNotFilled`: a repeatable group reference needs the `*` aggregate form (`MVK_NO_WILDCARD`, ledger: *kernel-delegated*) and the error field must be referenced — a `GroupFilled(G)` reference covers `G`'s members *indirectly* (`MVK_ERROR_FIELD_NOT_REFERENCED`, ledger: *pre-checked*).
 
 ## §8 supplement — enum-category codes and the positional mapping
+
+> Fold: folded → §8.
 
 In DM-JSON, a category's `values` list pairs **positionally** with the enumeration's `values` (entry *i* categorizes enum value *i*); the comparison domain is the category's distinct value set. Codes: comparing to one of the *enum's own* values instead of a *category* value → **`MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`**; an unknown category name → **`MVK_CATEGORY_UNKOWN`** (the kernel's spelling); `->` on a non-enumeration field → **`MVK_NO_ENUMERATION`**. Curiosity: `[Enum -> Category] == [Enum]` (category vs. plain enum field) is *accepted*. *(Locked: N7 `EnumCategory` examples + `dsl.operators.EnumConditionTest`.)*
 
@@ -407,6 +423,8 @@ In DM-JSON, a category's `values` list pairs **positionally** with the enumerati
 
 ## §8 supplement — predefined-type validity (`ValidType`/`InvalidType`) is a runtime CLIENT SPI, not kernel-core behavior (probe + source, 2026-06-24)
 
+> Fold: not-foldable — client-SPI registration/wiring mechanics (the operator form itself is canonical in §6/the field-types table).
+
 `Valid(field, "EMail")` / `Invalid(field, "IBAN")` validate the field's value against a **predefined custom field type**. The type name is a free string-literal operand and is **NOT checked at `checkConsistency`** (the model accepts any string). The reason is structural: the predefined types are a **runtime client SPI** — `IPredefinedType` ("*intended to be implemented by clients … Predefined types are project specific … The runtime must include the code for the validation*"), with `ValidationStrategy ∈ {NONE, NOT_SUPPORTED, PROVIDED_VALIDATION_CODE, LENGTH_AND_PATTERN_CHECK}`. The codegen emits a call into client-provided runtime methods; the kernel CORE ships **no** "EMail"/"IBAN" validators.
 
 **The differential needs a registered type — and CAN have one (probe-confirmed).** With NO registered `IPredefinedType` the bare kernel is a **degenerate no-op** — `Valid` AND `Invalid` **both fire on ANY filled value** (`alice@example.com` and `not-an-email` indistinguishable). But the kernel exposes a registration SPI, `CustomFieldTypeService.getInstanceV2().registerV2(factory)` (a `ServiceLoader`-free static registry of `ICustomFieldTypeFactory` → `ICustomFieldValidator`; the runtime path the oracle uses consults it). **Registering a factory for `"EMail"` makes the oracle do a REAL check** (probed: `Valid` fires only on a valid e-mail, `Invalid` only on an invalid one, empty → neither — VALUE polarity). The kernel core itself ships only the German set (`kernel-rt/kernel-core-customfieldtype-impl`: IBAN/BIC/Steuernummer — EUPL, reference-only, never vendored).
@@ -415,7 +433,9 @@ In DM-JSON, a category's `values` list pairs **positionally** with the enumerati
 
 ## CustomCondition — a runtime CLIENT SPI with TWO API levels; the interpreter must support it (probe + source, 2026-06-24)
 
-`CustomCondition <Name>` delegates the whole fire/don't-fire decision to **client/host code**, resolved by **name** at runtime (like the predefined types — a client SPI, not kernel-core behavior). The kernel's own metamodels use it heavily (MM_Rule/MM_Field/MM_Computation/MM_Typedef…), and the owner confirms real project models use it heavily — so the interpreter MUST support it (decided 2026-06-24).
+> Fold: folded → §14.
+
+(The runtime semantics — fires iff `check` returns true, on an evaluated row, VALUE polarity, formal-error suppression, the bare-form rejection — are canonical in §14; the SPI levels, registration, and oracle wiring below stay as the evidence and treatment record.) `CustomCondition <Name>` delegates the whole fire/don't-fire decision to **client/host code**, resolved by **name** at runtime (like the predefined types — a client SPI, not kernel-core behavior). The kernel's own metamodels use it heavily (MM_Rule/MM_Field/MM_Computation/MM_Typedef…), and the owner confirms real project models use it heavily — so the interpreter MUST support it (decided 2026-06-24).
 
 **Two API levels** (this is the key fork):
 - **Core / classic** — `com.mgmtp.a12.kernel.core.rt.a12internal.validation.ICustomCondition` (formerly `IApplicationCondition`): `boolean check(IData data, Set<IIdentifier> relevant, Set<IIdentifier> formallyIncorrect, IIdentifier errorField)`. `IData` = `getValue(IIdentifier)`/`getValueForDisplay`/`iterator`/`identifierToString`; `IIdentifier` = `getName()` (path, ≥2 parts) + `getIndices()` (long[] reps) + `getUsb()`. A constructible `IdentifierImpl(name, long[])` exists in `kernel-core-utils`. The kernel's own metamodel conditions (`CheckEnumOrCategoryValue`, `CheckStringPattern`, `CheckHintList`) implement THIS level.
@@ -435,6 +455,8 @@ In DM-JSON, a category's `values` list pairs **positionally** with the enumerati
 
 ## Custom-extensibility surface — the kernel registers exactly TWO custom things (conditions + field types); there is NO custom computation/function (source-verified 2026-06-26)
 
+> Fold: folded → §14.
+
 The umbrella over the two SPI findings above (§8 predefined-type validity, and CustomCondition): the kernel's **project-facing extension API** — `kernel-md-facade/.../DocumentRtCustomExtensionService` — exposes exactly **two** custom-registration hooks, `registerCustomConditions(ICustomConditionFactory)` and `registerCustomFieldTypes(ICustomFieldTypeFactory)` (each with a `…V2`). **There is no `registerCustomComputations`/`registerCustomFunction`/`registerCalculation` — a custom *computation* is not a kernel concept.** Corroborated four independent ways:
 
 - **German-source sweep** (`.java` + `.g4`): the only `Applikations*` construct is `ApplikationsBedingung` (= CustomCondition). No `ApplikationsBerechnung`/`-Funktion`.
@@ -445,6 +467,8 @@ The umbrella over the two SPI findings above (§8 predefined-type validity, and 
 So the kernel's custom escape hatches are for **conditions** and **field types** only. (Challenged + re-verified 2026-06-26 across kernel source, BA/semantics docs, the grammar, and this registration API.) rulekit/CLI treatment: a computation's operation is the closed `Calculation` sealed set; the interpreter's treatment (an unknown function fails loud) is INTERPRETER-FINDINGS IF22.
 
 ## §8 supplement — a CUSTOM-typed field is validated by FULL DELEGATION to a registered validator; an unregistered one THROWS (source-verified 2026-06-26)
+
+> Fold: folded → the field-types table.
 
 How the kernel validates a field declared with a **`CustomFieldType{name, minLength?, maxLength?}`** at `validateFull` (the sibling of the §8 `Valid`/`Invalid` *operator* — this is the *declared-field* form). Source: `FormatDefinitionVordefiniert.validiereFormat` (+ its TS twin `FormatDefinitionVordefiniert.ts`, byte-identical):
 
@@ -515,11 +539,13 @@ A rule can, *in the metamodel*, carry **custom-ref error entities** (`MM_Common_
 
 ## §8 supplement — the ==/!= string-enum compatibility matrix (display-texts, probe-confirmed 2026-06-17)
 
-## §8 supplement — the ==/!= string-enum compatibility matrix (display-texts, probe-confirmed 2026-06-17)
+> Fold: folded → §8.
 
 For `==`/`!=` between string/enum fields (BA L1712-1742): an enumeration whose values carry **display texts** is incomparable with a plain **string** and with a **texts-less** enum — both draw **`MVK_INVALID_COMPARE_ENUM_TO_STRING`** ("not allowed to compare enumerations with display values to strings or to enumerations without display values"). A **string ↔ texts-less enum** comparison IS allowed, and **two texts-bearing enums** compare when their value→text maps agree on the overlap (BA: a shared value with mismatched texts — or a shared text with mismatched values — makes them incomparable). So the *presence of display texts*, not just the stored value, governs comparability. (Source `CheckVergleichsBedingungImpl.checkEnumVsStringType` + `checkEnumValuesWithoutCategories`, both gated on `FieldUtils.isEnumWithDisplayValues`; a category comparison is exempt.) *(Locked: `validate.laws.EnumComparabilityLawsTest`.)*
 
 ## §8 supplement — three enum-ish kinds: "extensible enum" is an IStringType quality, NOT a field type (source-verified 2026-06-17)
+
+> Fold: not-foldable — a type-system/model-structure classification (what is a field type vs a client-SPI quality), outside the evaluation scope.
 
 Three distinct concepts, easy to conflate:
 
@@ -530,6 +556,8 @@ Three distinct concepts, easy to conflate:
 (The model/editor metamodel `MM_Common` carries an "ExtensibleEnumerationType" config — maxLength/displayValues — and form-model/UI notions like `fieldConfigurationEntry`/`externalEnumeration` exist, but those are **tooling/FM layers outside rulekit's DM-JSON scope**, not runtime DM field types.) *(Corrects an earlier draft that wrongly called extensible enums "un-buildable" and cited `IEnumerationType.isExtensible` — it conflated the extensible `IStringType` quality with the dynamic/table-backed enum.)*
 
 ## §8 supplement — table-backed (dynamic) enums are NOT DM-JSON-serializable ⇒ `ValueNotConsistent` is un-buildable (2026-06-08)
+
+> Fold: not-foldable — a serialization/infrastructure limit (what a self-contained DM-JSON can express), outside the evaluation scope.
 
 `ValueNotConsistent(enumField <toOp> col1, col2, …)` (DE `WertNichtKonsistent`) checks a row's dependent columns against a **table-backed** enumeration. The checker (`CheckFieldAndValueListConditionImpl`) requires its first operand to be an enum field **with a table reference** (`IEnumerationType.getTableName()`/`getDependentColumns()` present), and verifies the dependent-param arity against the column count (value checks are skipped when the runtime data table is absent).
 
@@ -571,6 +599,8 @@ The naive star-omission notion (`starOmission`: any empty cell / short tail) is 
 **Fill propagates through ARITHMETIC — an empty operand keeps the result fillable (source `VkBigDecimal`, differential 2026-07-07).** The directional fill (`kannGroesserWerden`/`kannKleinerWerden`) is a property of the *value*, and every arithmetic operation carries it forward, so `[F] != [A] + [B]` with `B` an empty (fillable) field types the fired comparison **OMISSION** (the RHS can still grow) — not VALUE. Each op propagates differently (`VkBigDecimal.add`/`subtract`/`multiply`/`divide`/`power`): `+` combines both directions; `−` **flips the subtrahend** (`a−b` grows if `a` grows or `b` shrinks); `×`/`÷` are **SIGN-DEPENDENT** (`produktKannGroesser/KleinerWerden` — a factor pushes the product up by growing when the other factor is positive / shrinking when it is negative; `÷` is `a × (1/b)`); `^` follows `powCanChange` (base magnitude vs 0/1/−1 and exponent parity). This rides the SAME runtime `VkBigDecimal` in both strategies (codegen emits calls to it) ⟹ codegen-parity. **The VALUE FUNCTIONS carry the flags too**, each via its own `VkBigDecimal` op: `setScale` (the `Round*` family) **PRESERVES** them exactly; `abs` **TRANSFORMS** them with the value sign (`g'=g∨s`, `s'=(pos∧s)∨(neg∧g)` — `|x|` grows off either direction, shrinks only toward 0); `min`/`max` (operand-list `Min`/`Max`) **COMBINE** directionally (min shrinks via either operand, grows via the smaller; max mirrors); `bereichAlsZahl` (`RangeAsNumber`) is **GROW-ONLY** (`kannKleiner=false`, value ≥ 0). So `RoundAccounting(<fillable arith>, n)` / `AbsValue(…)` / `Min(…)` / `RangeAsNumber(…)` are likewise fillable. **The starred NUMBER aggregates' omitted-tail fill is directional per combiner** (`NumberCombiner`): `Sum` is `(canGrow = true, canShrink = signed)` — the shrink half is `hatVorzeichen`; `MaxValue` is `(true, false)`; `MinValue` is `(false, true)` — so an unsigned `Sum(G*/f) >= 0` fired over empties types **VALUE** while the signed twin types OMISSION. *(Locked `adapter.laws.AggDirectionalPolarityDiffTest`; interpreter `funcFill`, INTERPRETER-FINDINGS IF9.)* *(Interpreter treatment IF69 for arithmetic + IF71 for the value functions: `ArithFill` + `Interpreter.fill(Expr.Arith)`/`funcFill`; differential-locked `adapter.laws.ArithmeticFillPolarityDiffTest`/`FunctionFillPolarityDiffTest` + multiplatform `interpreter.ArithmeticFillTest`/`FunctionFillTest`.)*
 
 ## §5 supplement — tolerance boundary + comparison rescaling (runtime, 2026-06-10, RT-semantics drain)
+
+> Fold: folded → §5.
 
 - **`DiffersWithToleranceRange{N}` fires strictly beyond the tolerance**: satisfied iff `|a − b| > N` — a difference of *exactly* N is still within tolerance and does **not** fire, in either direction. The boundary is the trap a modeller would guess either way. *(Locked: `adapter.laws.ToleranceComparisonLawsTest`.)*
 - **Source-read precision policy** (`VkBigDecimal`): a NUMBER **comparison** rescales both operands to scale 19 `HALF_UP` before comparing — and this is **`BedingungsOperatorHelper.vergleiche` (lines 164-167), not `VkBigDecimal.compareTo`** (which is plain): so the rescale applies to **all** comparison ops `<`/`>`/`<=`/`>=`/`==`/`!=`, but **NOT to `min`/`max` selection**, which the kernel does at full precision via `VkBigDecimal.compareTo` (`SummeCombiner`/`MinWertCombiner` etc.). Separately, **arithmetic `×`/`÷`/`^` rounds to `MathContext(50)` `HALF_UP`** (`INTERNAL_PRECISION`). The kernel team's note was "no legal model surfaces the scale-19 rounding (field scales cap far below 19)" — but **multiplying two high-scale fields exceeds it** (scale-10 × scale-10 → scale-20), so the rounding *is* reachable through an expression, and `÷` is non-terminating without the MathContext at all. **Interpreter status: reproduced in full.** The comparison scale-19 rounding rides `Dec.scale19` (comparison ops only — `min`/`max` stay full-precision), and the `MathContext(50)` arithmetic cap now applies to **all three of `×`/`÷`/`^`** (`Dec.times`/`div`/`pow` on the JVM actual, the differential-exact target; `+`/`-` stay exact, as the kernel does not cap them). `×` was the last uncapped operator — a 26-digit × 26-digit → 52-digit product lost its last 2 digits in the kernel but not the interpreter, until `Dec.times` took the same `INTERNAL` `MathContext`. *(Interpreter-locked: `adapter.laws.PrecisionDiffTest` — the scale-19 comparison boundary; `adapter.laws.ArithmeticDiffTest.multiplicationCapsAtMathContext50LikeTheKernel` — the `×` cap; `adapter.laws.DivPowDiffTest` — `÷`/`^`. Kernel side not separately law-locked — no rulekit consumer.)*
@@ -925,7 +955,9 @@ The kernel has **no datetime-specific format definition** — a DATE_TIME field 
 
 ## §8 supplement — the value-list membership family (2026-06-04 experiments)
 
-Five operators in two grammar shapes, not covered by KERNEL-SEMANTICS. **Shape A** `FieldValueIncludedInValueList(field, v1, …)` / `FieldValueNotIncludedInValueList(…)` (DE: `FeldWertInWerteListe`/`FeldWertNichtInWerteListe`); **shape B** `AtLeastOne|No|NotAllFieldValue(s)IncludedInValueList(f1, f2 In v1, …)` (DE: `MindestensEin…`/`Kein…`/`NichtAlle…`; `In` is a language-independent grammar literal like the symbols). Slot rules:
+> Fold: folded → §8 + §12.
+
+(The shape-B quantifier runtime semantics and the `Having` escalation family are canonical in §8 "The value-list quantifiers" and §12; the authoring slot rules and per-arm evidence stay here.) Five operators in two grammar shapes. **Shape A** `FieldValueIncludedInValueList(field, v1, …)` / `FieldValueNotIncludedInValueList(…)` (DE: `FeldWertInWerteListe`/`FeldWertNichtInWerteListe`); **shape B** `AtLeastOne|No|NotAllFieldValue(s)IncludedInValueList(f1, f2 In v1, …)` (DE: `MindestensEin…`/`Kein…`/`NichtAlle…`; `In` is a language-independent grammar literal like the symbols). Slot rules:
 
 - **Only string, enum, and number fields participate** — a boolean/confirm field draws **`MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED`** ("only allowed to use string fields, enumerations or numbers (including amounts)").
 - **Numeric values are integer literals only** — the grammar's value-list `number` is `'-'? digits`; a decimal (`10.50`) is a *parse error* (`MVK_UNEXPECTED_TOKEN`), even against a scale-2 field. Negative integers are fine.
