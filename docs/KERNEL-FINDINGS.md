@@ -167,31 +167,30 @@ The kernel has two validation modes (BA "Full Validation and Partial Validation"
 
 ## §3 supplement — a fired message's `getErrorText` is the *interpolated* end-user text (runtime, 2026-06-14)
 
-The kernel's `IMessage.getErrorText()` returns the message **with its interpolation tokens already resolved** against the evaluated document — *not* the authored template. Its javadoc is explicit: `$<fieldname>$` is replaced by the field identifier's display string and `$<field.value>$` by the field's display value (both keeping the `$`-sign; no other substitution). Verified at runtime: a rule whose `errorMessage` is `"Discount of $Discount.value$ must not be negative."`, fired on `Discount = -5` (scale-2), yields `getErrorText()` = `"Discount of -5.00 must not be negative."` — the value token resolved, no raw `$…$` left.
+> Fold: folded → §13.
 
-**Consequence for us:** the BA's real deliverable is the text the end-user reads, and only the runtime can produce it (it depends on the data). So `KernelAdapter.evaluate` surfaces it on every `EvalMessage.message()`, and the CLI returns it as `data.messages[].message` (`model eval`) and `data.message` (`rule eval`, when fired) — closing the loop from "did it fire" to "here is exactly what the user will see" (FEATURE-GAPS G1). *(Locked: `adapter.MessageInterpolationTest`; CLI surfacing by `cli.RuleTestVerbTest.firesOnAViolatingInstance`.)*
+`IMessage.getErrorText()` returns the message with its tokens already resolved against the evaluated document, not the authored template (`$<fieldname>$` → the display string, `$<field.value>$` → the display value; no other substitution). Only the runtime can produce it. Treatment: `KernelAdapter.evaluate` surfaces it per message; the CLI returns it as `data.messages[].message` / `data.message` (FEATURE-GAPS G1). *(Locked: `adapter.MessageInterpolationTest`; CLI surfacing by `cli.RuleTestVerbTest.firesOnAViolatingInstance`.)*
 
 ## §3 supplement — `$field$` is the field's *display name*, and the kernel sources it from a caller-supplied `ILabelProvider` (runtime, 2026-06-23)
 
-The `$<fieldname>$` token (above) resolves to the field's **display string** via the runtime's `identifierToString`. Where that string comes from is the finding: the kernel **does not read the model's field label** for it — it calls the **`ILabelProvider` the caller registers** (`IDocumentDynamicServiceConfig.getLabelProvider()`; `ILabelProvider.getLabel(IField, Locale)`, javadoc: *"the caller has to provide an implementation"*). The provider receives the `IField` — which **does** carry the model label (`IField.getLabel(): Map<Locale,String>`, via `ILabeled`) and the name (`getName()`) — so a faithful provider returns the label for the locale, falling back to the name.
+> Fold: folded → §13.
 
-**With NO provider configured, the kernel emits a path+index debug fallback** — verified: `$Quantity$` on `/Order/Quantity[1][1]` → **`/Order/Quantity/1.1`** (the `fullName/idx.idx` form), the same class of `toString` leak as the pointer channel. A registered provider overrides it: returning `"X"` → `$Quantity$` renders `X` (verified). Empirically, **no shipped A12 model surveyed populates field labels** (the A12 Tools workspaces all have empty `labels`/blank `text`), so in practice `$field$` resolves to the field **name**.
-
-**Consequence for us:** both engines wire the same **label-for-locale-else-name** resolver — `KernelAdapter`'s `IDocumentDynamicServiceConfig` (so `--kernel` no longer leaks the path+index string) and the interpreter's `ModelDef.labelOf` (`renderMessage`'s name pass) — and the differential `RuntimeLaws` harness wires the matching provider so the comparison is label-to-label. For our label-free corpus both yield the name. *(Locked: `adapter.laws.DisplayNameDiffTest`; value tier by `LocalizedMessageDiffTest`.)*
+The token resolves via the caller-registered `ILabelProvider` (`IDocumentDynamicServiceConfig.getLabelProvider()`), not a direct model-label read; a faithful provider returns label-for-locale-else-name. With NO provider the kernel emits the `fullName/idx.idx` path+index debug fallback (verified); surveyed shipped models leave labels empty, so in practice the name shows. Treatment: both engines and the `RuntimeLaws` harness wire the label-for-locale-else-name resolver, so comparisons are label-to-label. *(Locked: `adapter.laws.DisplayNameDiffTest`; value tier by `LocalizedMessageDiffTest`.)*
 
 ## §3 supplement — a formal error silently suppresses the author's rule (runtime, 2026-06-06)
 
-KERNEL-SEMANTICS §3: a value violating its data-type config produces a **formal error**, and while it stands the field is **"unknown"** and cannot be evaluated in any rule. Verified at runtime with the **trap consequence made explicit**: a malformed value doesn't just raise the formal error — it **silently suppresses** an author rule that references the field (the rule's condition is never evaluated, so it does not fire, even when the would-be value clearly violates it). The kernel emits its own formal-error code; the author's code stays quiet.
+> Fold: folded → §3.
 
-Observed for `[UnitPrice] > 5` (UnitPrice scale-2) in a filled row: `"10.00"` → the author rule fires; `"10.999"` (three decimals) → **`zahlFalscheAnzahlNachkommastellen`**, author rule **not** fired; `"abc"` → **`zahlHatUngueltigeZeichen`**, not fired; a string `" ABC "` → **`fuehrendesBlank`** (leading-space formal error). These runtime formal-error codes are German internal identifiers (not `MVK_*`); they're locked as the observed contract so a kernel change surfaces in the build. *(Locked: `adapter.laws.FormalErrorLawsTest`.)*
+All four claims are canonical in §3 ("Suppression is branch-scoped — and it reaches presence checks"); the evidence skeleton:
 
-A formal error is **attributed to a sentinel rule path** — the runtime message reports `rulePath = "formalePruefung"` (not the author rule, and not empty). So in the `model eval` output the discriminator between an author-rule violation and a kernel formal check is the **leading `/`**: an author rule's `rule` is its slash-path (`/Order/X`), a formal check's is `formalePruefung`. *(Verified 2026-06-09: `Quantity` scale-0 `"1.5"` → `zahlHatDezimalTrenner` with `rule = formalePruefung`; locked: `cli.EvalDocVerbTest.aFormalErrorIsReportedAsAKernelCheck`.)*
-
-**Refinement (2026-06-10, RT-semantics drain — probe-corrected): the suppression is *branch-scoped*, not rule-scoped.** The unknown state makes the affected *comparison* evaluate to false-or-unknown; the ordinary `And`/`Or` three-state algebra then decides the rule. So `healthyTrue Or [broken] > 0` **still fires** via its healthy branch — a formal error does not take the whole rule out — while `healthyTrue And [broken] > 0` is absorbed (the single-branch case above, where branch- and rule-scoped look identical). KERNEL-SEMANTICS §1's "removes the rules over it from evaluation" reads stricter than the engine behaves. *(Locked: `adapter.laws.FormalErrorScopeLawsTest`.)*
-
-**Refinement (2026-06-24, fuzz-caught): even a *presence* check on a not-check-relevant field is UNKNOWN — not just value-reading operators.** `RuntimeController.isWertAngegeben` (which backs `FieldFilled`/`FieldNotFilled` AND the field-list quantifiers) returns **UNKNOWN** when the field is **not check-relevant** (`!isPruefungsRelevant`), i.e. present-but-formally-invalid (a malformed value, a duplicate index) — only then TRUE/FALSE by filled. So `FieldFilled(malformedQty) And CurrentRepetition(Lines) > 2` does **NOT** fire (the `FieldFilled` operand is UNKNOWN → the `And` is UNKNOWN), even though `FieldFilled` reads no value and `CurrentRepetition` reads no value either. The interpreter previously matched the formal suppression only through **value-reading** operands (a malformed `[Qty]` → Unknown); a presence-only reference to a malformed field wrongly stayed TRUE and fired. Fixed at the presence check: `Interpreter.filledTri` is three-valued (empty → FALSE, present-but-invalid → UNKNOWN, present-valid → TRUE). The **field-list quantifiers share `isWertAngegeben`**, so a malformed operand makes e.g. `AllFieldsFilled` not-TRUE there too — fixed at the same root: `quantCount` is now a 3-state tally `(t = TRUE, f = FALSE)` with UNKNOWN counted in neither, and each quantifier's firing reads `(t, f, n)` (`AllFieldsFilled` `t==n`, `NoFieldFilled` `f==n`, `AtLeastOne` `t≥1`, `MoreThanOne` `t≥2`, `NotAll` `f≥1`, `NotExactlyOne` `f==n ∨ t≥2`, `FieldsNotCollectively` `t≥1 ∧ f≥1`) — reducing to the binary count law when no operand is UNKNOWN. (The kernel forbids the *negative* quantifiers — `NotAll`/`NoField`/`NotExactlyOne` — from **iterating** a repeatable group, `MVK_NEG_CONDITION_IN_ITERATION`, since they'd fire on empty repetitions; the malformed-operand parity is tested on the non-repeatable `/Order`.) *(Caught by the fuzz on `CurrentRepetition`; locked: `adapter.laws.CurrentRepetitionDiffTest.malformedErrorFieldAtFiringRow` + `adapter.laws.QuantifierMalformedDiffTest`.)*
+- **The silent suppression** — a malformed value raises only the kernel's own formal-error code; a referencing author rule never fires. Observed codes: `zahlFalscheAnzahlNachkommastellen`, `zahlHatUngueltigeZeichen`, `fuehrendesBlank` — German internal identifiers, not `MVK_*`, locked as the observed contract. *(Locked: `adapter.laws.FormalErrorLawsTest`.)*
+- **The sentinel attribution** — a formal error reports `rulePath = "formalePruefung"`; an author rule's is its slash-path — the discriminator in a validation report. *(Verified 2026-06-09; locked: `cli.EvalDocVerbTest.aFormalErrorIsReportedAsAKernelCheck`.)*
+- **Branch-scoped, not rule-scoped** (RT-semantics drain, probe-corrected 2026-06-10): `healthyTrue Or [broken] > 0` still fires; the `And` twin is absorbed. *(Locked: `adapter.laws.FormalErrorScopeLawsTest`.)*
+- **Even a presence check is UNKNOWN on a not-check-relevant field** (fuzz-caught 2026-06-24): `isWertAngegeben` backs `FieldFilled`/`FieldNotFilled` AND the fill quantifiers, so a malformed operand makes them undecidable — the quantifier tally counts UNKNOWN in neither bucket. *(Interpreter fixed at the shared root — `filledTri` + the 3-state `quantCount`; locked: `adapter.laws.CurrentRepetitionDiffTest.malformedErrorFieldAtFiringRow` + `QuantifierMalformedDiffTest`.)*
 
 ## §3 supplement — two more NUMBER sign formal errors: signed-zero and leading-plus (runtime, 2026-06-23)
+
+> Fold: folded → §3.
 
 Surfaced by the **differential fuzz net** (`adapter.perf.InterpreterKernelFuzzTest` — random valid documents, assert interp == kernel), which fed a `-0`:
 
@@ -203,7 +202,9 @@ Both ride `formalePruefung` (the sentinel rule path) like the other formal error
 
 ## §3 supplement — BASELINE value checks run for EVERY kind before the type format: charset + leading/trailing blank (probe + source, 2026-06-26)
 
-`FormalChecker.checkFieldValueFormat` runs three baseline checks on **every filled field value**, regardless of kind (string/number/date/…), **before** the type-specific format check — and they **pre-empt** it:
+> Fold: folded → §3.
+
+(The charset half reconciles with the "`modelConfig.supportedCharacters` is enforced at runtime" finding below: the *model-level* slot IS DM-JSON-declarable and runtime-enforced; what is not declarable is a *per-field* charset — the BMP default below is the no-slot case.) `FormalChecker.checkFieldValueFormat` runs three baseline checks on **every filled field value**, regardless of kind (string/number/date/…), **before** the type-specific format check — and they **pre-empt** it:
 
 - **legal charset** → **`ZeichenNichtImZeichensatz`**. The legal set is `metaData.getLegalCodepoints()` — a **programming-language/codegen** config (`MetaModelImpl`, the codegen target's restricted charset; cf. the codegen `MVK_INVALID_CHAR_IN_RESTRICTED_CHARSET` "not permitted for the programming language"). It is **NOT a DM-JSON field/model property** (no `charset` key on `StringType`/`IStringType` in 30.8.1). With none configured — a plain DM-JSON model — the **default legal charset is the BMP** (`0x0000-0xFFFF`; `CharsetUtil`: "empty list ≡ 0x0000-0xFFFF"). So **any supplementary-plane character** (a UTF-16 surrogate, e.g. an emoji `😀` U+1F600) is illegal; BMP chars (`é`/`ü`/`€`/`™`/CJK) are legal. Probe-confirmed on a plain string field.
 - **leading blank** → **`fuehrendesBlank`**; **trailing blank** → **`nachfolgendesBlank`** (distinct codes). Probe-confirmed across STRING, NUMBER, and DATE — and they pre-empt the type check (a ` 2024-01-01` DATE is `fuehrendesBlank`, not a date-format error).
@@ -213,6 +214,8 @@ Order: charset → leading → trailing → (type format). This **corrects** the
 **Is the charset customizable? Yes — but at the CODEGEN/PROJECT level, not via the DM model.** A restricted charset *can* be declared (`KernelUtils.validateCharset`/`simplifyCharset` process a `restrictedCharset`), and the legal codepoints are **baked into the generated meta-model** by the codegen templates (`CodeGenMetaModel.st`) from the project's programming-language config — they do NOT travel with the DM-JSON model. The real-world case is a standard restricted set such as **DIN 91379** (the EU public-administration / e-government character set for names & addresses) — far NARROWER than the BMP: it would make `中文`/many symbols illegal. The probe confirms a DM-JSON model gets the **full-BMP default, NOT DIN** (`é`/`ü`/`€`/`™`/`中文` all legal), so a project-configured DIN charset is genuinely a separate input. A model loaded purely from DM-JSON (the interpreter's path **and** the dynamic-codegen `RuntimeLaws` differential) gets the BMP default, and the interpreter's BMP check matches the kernel for every such model. **That trigger has FIRED:** the interpreter carries the **`LegalCharset` SPI** (IF43 — default BMP, matching the DM-JSON-only kernel; a consumer-supplied set such as DIN 91379 is enforced instead), the `legalCodepoints` half of the customization-surface parity rule. *(Interpreter: a single cross-kind `baselineValueError` in `eval/FormalError.kt`, IF43; locked `adapter.laws.BaselineValueFormalDiffTest`.)*
 
 ## §3 supplement — DECLARED field-type CONSTRAINTS are formal errors too (range / length / pattern / digit-count / enum-domain), source + probe-verified 2026-06-25
+
+> Fold: folded → §3.
 
 The format checks above (decimals, invalid chars, blanks, signed-zero) test whether a value is *well-formed for its kind*. But the kernel's `validateFull` **also** auto-validates the value against the field type's **declared constraints** — and these ride the **same `formalePruefung` mechanism**: an out-of-constraint value is a formal error, the field becomes **"unknown"**, and a referencing author rule is **suppressed** (branch-scoped, §3 / IF17). No rule is involved — the kernel emits these purely from the field-type declaration.
 
@@ -243,6 +246,8 @@ This is the same class as §94/§98 (format-error suppression) — only the trig
 
 ## §3 supplement — the two DISTINCT number-digit checks: generic `stelligkeitZuLang` (> 15 total) vs the integer-cap `zahlZuvieleVorkommastellen` (source + probe-verified 2026-07-07)
 
+> Fold: folded → §3.
+
 Corrects the earlier attribution (which wrongly gave `trait:"amount"` its own `stelligkeitZuLang` code). There are **two** independent digit checks, with different triggers, codes, and precedence:
 
 | check | trigger | code | when it runs |
@@ -255,6 +260,8 @@ Corrects the earlier attribution (which wrongly gave `trait:"amount"` its own `s
 **STRING `noValueValidation` DISABLES the whole string format check** (source + probe-verified 2026-06-26). When `StringType.noValueValidation:true`, the kernel's `FormatDefinitionString.validiereFormat` returns `Valid` *immediately* — pattern, length, and the default newline check are all skipped. The key is MVK-constrained: it **forbids** `pattern`/`minLength` (`MVK_STRING_TYPE_PARAMS_INCONSISTENT` — only `maxLength` may accompany it) and **requires** `lineBreaksPermitted:true` (`MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK`). So on a *kernel-valid* model the single observable runtime effect is that a declared **`maxLength` is NOT enforced** (a longer value is clean). Reachable on shipped A12 Tools StringType fields (Country/City/Person). The interpreter models it — INTERPRETER-FINDINGS IF29.
 
 ## §3 supplement — the full NUMBER formal-error PRECEDENCE order (source `FormatDefinitionZahl.validiereFormat`, 2026-07-07)
+
+> Fold: folded → §3.
 
 The number format checks fire in ONE fixed sequence (the kernel returns on the first failure), so a value matching several reports the FIRST in this order. Extends the digit-check note above with the whole ladder:
 
@@ -280,9 +287,13 @@ Two traps this order encodes (probe-verified, IF70): **zero-not-allowed (10) fir
 
 ## §3 supplement — a DATE value is stored and formal-checked in the field's DECLARED format, not ISO (runtime, 2026-06-23)
 
+> Fold: folded → §6.
+
 Also surfaced by the **fuzz net**. A `DateType` field's value is the date **rendered in that field's `format`** — `OrderDate` (`yyyy-MM-dd`) holds `2024-06-15`, but `ApproxDate` (`dd.MM.yyyy`) holds `15.06.2024`. The formal check is **against the declared format**: a value in the field's own format is well-formed; a value in a *different* format is `datumFormatFalsch` (verified both ways — `ApproxDate = "2024-06-15"` → `datumFormatFalsch`; `OrderDate = "15.06.2024"` → `datumFormatFalsch`). So there is **no single canonical wire format** — a consumer must read each field's `format` to parse/validate its dates (the same is already known for `DateRangeType`, IF12). The interpreter canonicalizes every date to ISO internally via the declared format. *(Locked: `adapter.laws.PlainDateDiffTest`.)*
 
 ## §3 supplement — a DATE value has an always-on lower bound: `Constants.DATE_FROM = 1583-10-16` (source + differential, 2026-07-09)
+
+> Fold: folded → §6.
 
 A well-formed date VALUE that resolves to a **real calendar date before 1583-10-16** ("the begin of the gregorian calendar") is the formal error **`datumFalsch`** (`FEHLER_DATUM`) — for **every** DATE field, stored or computed, with **no** opt-in required. Source: `FormatDefinitionDatum.validiereFormat` calls `dateInvalid(date) = date.before(getDateFrom(Constants.DATE_FROM))` unconditionally (after the format/calendar parse), where `Constants.DATE_FROM = "16.10.1583"`. A **DATE_RANGE** floors its **start** the same way (`FormatDefinitionDatumBereich extends FormatDefinitionDatum`, `datumBereichDatumFalsch` / `FEHLER_DATUM_BEREICH_DATUM`; end ≥ start covers the end).
 
@@ -290,7 +301,9 @@ This is **distinct from the opt-in "younger than 1900" additional check** (`Cons
 
 ## §6 supplement — the RUNTIME tolerates any date `format`, but AUTHORING (SME) accepts only 3 canonical ones (source-verified 2026-07-07)
 
-Two consumers read a date-ish field's `format`, and they disagree — a **runtime-lenient / authoring-strict** split that the conformance corpus tripped over when its models had to become SME-openable.
+> Fold: folded → §6.
+
+(The runtime-lenient half is canonical in §6 — a value parses by its field's declared format; the SME-openability split below is the authoring/tooling evidence.) Two consumers read a date-ish field's `format`, and they disagree — a **runtime-lenient / authoring-strict** split that the conformance corpus tripped over when its models had to become SME-openable.
 
 - **Kernel RUNTIME** (`IDocumentRtService`, the JVM differential's oracle): `format` is *the pattern to parse stored values with*. Any pattern works — `dd.MM.yyyy` is a first-class German format (`STANDARD_DE_DATE_FORMAT`/`DATUM_FORMAT` in the runtime), so a field declaring `format: "dd.MM.yyyy"` with values like `15.06.2024` validates and evaluates normally. This is why our `order` fixture's `ApproxDate`/`ItemCoverage`/`CoverageWindow` (German format, `-` range separator) have always passed the differential (locked by the date DiffTests — legitimate coverage of the runtime's format flexibility; see the §3-supplement finding above).
 - **AUTHORING / SME** (the `simple-model-editor` model deserializer): `format` is *an enum of the canonical A12 storage formats*. Its field-type mapping is a hard `switch` that accepts **only** `yyyy-MM-dd`, `yyyy-MM-dd'T'HH:mm:ss`, `HH:mm:ss` (for Date / DateTime+Time / DateRange alike) and otherwise **`throw new Error("unsupported date format: …")`** — so a model with `dd.MM.yyyy` in `format` *evaluates fine but cannot be opened in the SME*. A localized **display** format is not stored in `format` at all; it belongs in the sibling `notInDCustomFormat` (and a non-`/` range separator in `notInDCustomRangeSeparator`) — the A12 default range separator is `/` (kernel `FieldTypeConstants.A12_DATE_RANGE_SEPARATOR`). The mechanism is verified from the SME source and re-expressed here (license-safe — behavior, not code).
@@ -299,7 +312,9 @@ Two consumers read a date-ish field's `format`, and they disagree — a **runtim
 
 ## §4 supplement — the "required" property and its two modes (runtime, 2026-06-06)
 
-The field-editor "required" checkbox is encoded in DM-JSON as `Field.requirednessConfig: {mode: …}` (kernel enum `IRequirednessConfig.Mode`). An unfilled required field raises the `mandatoryField` **formal error**, so the field is **"unknown"** (§3). The two modes — and the gotcha the BA docs flag — verified at runtime:
+> Fold: folded → §4.
+
+(The generated-rule shape, the content notion behind "parent filled", the index auto-requirement, and the branch-scoped unknown are canonical in §4 "The generated rule, precisely"; the DM-JSON mode encoding and probe detail stay here as evidence.) The field-editor "required" checkbox is encoded in DM-JSON as `Field.requirednessConfig: {mode: …}` (kernel enum `IRequirednessConfig.Mode`). An unfilled required field raises the `mandatoryField` **formal error**, so the field is **"unknown"** (§3). The two modes — and the gotcha the BA docs flag — verified at runtime:
 
 | mode (DM-JSON) | BA "Only if parent filled" | when required |
 |---|---|---|
@@ -318,6 +333,8 @@ The field-editor "required" checkbox is encoded in DM-JSON as `Field.requirednes
 The **gotcha resolves by the parent's repeatability** (the `GroupFilled` split, §9 below): for a **repeatable** parent a *created-but-empty* row already counts as filled (the row index is content) → the field IS required; for a **non-repeatable** parent a filled descendant counts. **What "a filled descendant" means was refined 2026-07-06 (runtime-probed): it includes an INSTANTIATED repeatable descendant ROW, not only a valued field** — `Quantity` (required `relativeToParent`, parent the non-repeatable `/Order`) becomes required as soon as a `/Order/Items` row is instantiated (even all-empty), and is *not* required when `/Order` has no content at all. So this is the SAME "content" notion as the §9 `GroupFilled` operator (line 67) — requiredness and `GroupFilled` share it (they diverge only in that requiredness's *absolute* mode ignores it). And the "unknown" is **branch-scoped, not whole-rule** (§3 refinement): a required-empty operand makes its *comparison* unknown, so `[ReqNum] < 100` is suppressed but `[ReqNum] < 100 Or <true>` still fires. *(Interpreter parity locked: `adapter.laws.RequirednessDiffTest` — both modes, the repeatable-row gate incl. the instantiated-repeatable-child-fills-a-non-rep-parent case, the unconditional-absolute case, and the index field; the branch-scoped unknown for format errors by `adapter.laws.SuppressionDiffTest`.)*
 
 ## §4/§8 supplement — field-level custom error messages live in a per-locale `errorMessage` array (source-verified, 2026-06-21)
+
+> Fold: not-foldable — a DM-JSON model-structure/serialization fact (where the custom texts live), outside the evaluation scope.
 
 A field carries **two** kinds of custom validation error text, both the "Use Default Error Messages" deselected case (SME 840, 1123) — and both are stored the same way: a per-locale `errorMessage` array `[{locale, text}]`.
 
@@ -837,23 +854,19 @@ The behavioral half is canonical (§2's count-family override row; §12's grow-o
 
 ## §4 supplement — index-field uniqueness: `uniqueIndex` flags EVERY duplicate participant, scoped per parent (runtime, 2026-06-23)
 
-A repeatable group's `indexFieldName` is auto-checked for uniqueness (fuzz-found, with the duplicate-key pool). The kernel emits **`uniqueIndex`** on **every** row whose (non-empty) index value duplicates another's — not all-but-first: `[A, A, B]` flags rows 1 AND 2; `[X, X, X]` flags all three; `B` (unique) is clean. An **empty/absent** index value is excluded from the check — it is a requiredness concern, so it gets `mandatoryField` instead (`[A, , A]` → `uniqueIndex` on the two A-rows + `mandatoryField` on the empty). Uniqueness is **scoped per parent**: the same `PartId` under two *different* Lines does NOT clash (each Line is its own scope). It is a VALUE error (you change a value to fix it) and rides an autogenerated rule (like the mandatory check). *(Locked: `adapter.laws.UniquenessDiffTest`.)*
+> Fold: folded → §4.
 
-**The uniqueIndex error also makes the field "unknown" for any author rule referencing it — branch-scoped, exactly like a formal error (2026-06-24, fuzz-found).** Probed: with a duplicate `ItemId`, a rule `FieldFilled(ItemId) And Length(ItemId) > 0` fires only `uniqueIndex` (the `Length` rule is **suppressed** — the duplicate index value is non-evaluable); but a rule on a *sibling* field on the same duplicate rows (`[Price] > 0`) **still fires** (+ `uniqueIndex`). So a duplicate index is operand-level "unknown" — it suppresses rules that read THAT field, not the whole row (the same branch-scoped behavior as `datumFormatFalsch` / a malformed value). *(Locked: `adapter.laws.UniqSuppressionDiffTest`.)*
+Canonical in §4 "The index field's auto-generated checks"; the evidence skeleton: `uniqueIndex` fires on **every** duplicate participant (`[A, A, B]` flags rows 1 AND 2), per **parent-row** scope, VALUE-typed, via an autogenerated rule; an empty index value is excluded and draws `mandatoryField` instead (fuzz-found, duplicate-key pool). *(Locked: `adapter.laws.UniquenessDiffTest`.)*
 
-**…and it makes an AGGREGATE / COUNT over a starred index field NON-EVALUABLE too — the whole aggregate is suppressed, not just the direct reference (differential + source, 2026-07-08).** An index field's not-check-relevant cell — a mandatory-EMPTY/absent cell (the auto-required index, line 289) OR a DUPLICATED value (`uniqueIndex`) — makes an aggregate/count over `Group* / indexField` non-evaluable, exactly as a malformed cell does (line 51). The kernel's shared aggregate loop `RuntimeController.combineFeldListe` (`summe` / `minWert` / `maxWert` / `anzahlUnterschiedlicheWerte`) returns `getNonRelevantValue()` (`VkBigDecimal.NICHT_PRUEF_REL_ZAHL`) on the FIRST cell where `!isPruefungsRelevant`, and the count `anzahlAngegebenerFelder` returns `NICHT_PRUEF_REL_ZAHL` on the first UNKNOWN cell — so `NumberOfDifferentValues`/`Sum`/`MinValue`/`MaxValue`/`NumberOfFilledFields` over an index field with an empty or duplicated cell do **not fire** (even `>= 0` does not). The fill quantifiers (`isWertAngegeben` → UNKNOWN) count such a cell in NEITHER `t` nor `f`, so `AtLeastOneFieldFilled` stops firing when EVERY cell is not-check-relevant (a fully-duplicated index). Both strategies share these runtime methods ⟹ codegen-parity. An **index field can be numeric** (differentially confirmed — a `Sum` over an index field is authorable). *(Locked: `adapter.laws.IndexAggregateDiffTest` + `interpreter … IndexAggregateTest`; INTERPRETER-FINDINGS IF86.)*
+**The uniqueIndex error is operand-level "unknown", branch-scoped (fuzz-found 2026-06-24):** rules reading the duplicated field are suppressed; a sibling field's rule on the same rows still fires. *(Locked: `adapter.laws.UniqSuppressionDiffTest`.)*
+
+**…and it makes an AGGREGATE / COUNT over a starred index field NON-EVALUABLE too (differential + source, 2026-07-08).** An index field's not-check-relevant cell — mandatory-empty OR duplicated — suppresses an aggregate/count over `Group* / indexField` exactly as a malformed cell does: the shared loop `RuntimeController.combineFeldListe` (and the count `anzahlAngegebenerFelder`) returns `NICHT_PRUEF_REL_ZAHL` on the first such cell; the fill quantifiers count it in neither bucket. Both strategies share these runtime methods ⟹ codegen-parity. An index field can be numeric (a `Sum` over one is authorable). *(IF86; locked: `adapter.laws.IndexAggregateDiffTest` + `interpreter … IndexAggregateTest`.)*
 
 ## §4 supplement — `FieldValuesNotUnique`: a duplicate among the operands' values, plain-list OR starred (probe, 2026-06-24)
 
-The author-written sibling of `uniqueIndex` (the auto index check above). It has **two operand shapes, identical in semantics** (both kernel-probed): a **plain field list** `FieldValuesNotUnique(f1, f2, …)` — distinctness across named sibling fields — and a **starred** operand `FieldValuesNotUnique(Items* / Count)` — distinctness across the repetition's ROWS (the no-`--group` alternative to `RepetitionNotUnique`, on a *non-index* field; on an index field the auto `uniqueIndex` fires first and suppresses it). Probed semantics:
+> Fold: folded → §9.
 
-- **Fires iff two of the operands' values are EQUAL** — i.e. the present values are not all distinct. A VALUE error (you change a value to fix it; the clashing operands are already filled, so there is nothing to "fill"). With 3+ values, any one duplicate pair fires.
-- **Empties are skipped** — an absent value contributes nothing, so **two empties are NOT a duplicate** (plain `(_, _)`/`(5, _)` and starred rows `5,_,9` all do not fire; starred `5,_,5` DOES — the two 5s duplicate, the empty row dropped). Only present values compare.
-- **Equality is the typed comparison** — numbers compare **numerically** (`Quantity = 5` scale-0 vs `UnitPrice = 5.00` scale-2 → equal → fires, *not* a string compare); strings compare as strings (`"AB" == "AB"`). It accepts string fields as well as numeric ones.
-- **A filled-but-formally-invalid operand suppresses** the rule (non-evaluable, like every other operator — `(abc, 5)`, or a malformed row, → only the `zahl…` formal error, the `FieldValuesNotUnique` rule goes quiet).
-- The error field, as for any rule, must be **referenced in the condition** or codegen rejects it (`MVK_ERROR_FIELD_NOT_REFERENCED`).
-
-*(Locked: `adapter.laws.FieldValuesNotUniqueDiffTest` — plain + starred — + a fuzz rule `FU` = `FieldValuesNotUnique(Qty, Price)`. Interpreter: `PredicateOp.FIELD_VALUES_NOT_UNIQUE`, `Interpreter.fieldValuesNotUnique` — collects plain-field + starred-row values, O(k²) pairwise `eq`.)*
+Canonical in §9 "Other repetition rules"; the evidence skeleton: two operand shapes with identical semantics — a plain field list (distinctness across named siblings) and a starred operand (distinctness across a repetition's rows; the no-`--group` alternative to `RepetitionNotUnique` on a non-index field — on an index field the auto `uniqueIndex` fires first and suppresses it). Fires iff two present values are EQUAL (typed comparison — scale-0 `5` equals scale-2 `5.00`), VALUE-typed; empties are skipped (two empties are not a duplicate); a formally-invalid operand suppresses; the error field must be referenced (`MVK_ERROR_FIELD_NOT_REFERENCED`). *(Locked: `adapter.laws.FieldValuesNotUniqueDiffTest` — plain + starred — + a fuzz rule `FU`.)*
 
 ## §9 supplement — `RepetitionNotUnique`: per-row cross-row composite-key uniqueness (probe, 2026-06-24)
 
@@ -1236,12 +1249,9 @@ So a one-line "locale superset" note is ambiguous about direction; the constrain
 
 ## A group's index field auto-generates its uniqueness + mandatory rules (2026-06-13)
 
-Declaring a repeatable group's **index field** (`indexFieldName`) is all the authoring needed — the kernel **auto-generates** two validation rules for it (no rule a model has to carry), per the kernel-team BA doc (§"Index Fields"):
+> Fold: folded → §4.
 
-- **unique within each iteration**: `RepetitionNotUnique(indexField)`;
-- **mandatory when the group is filled**: `GroupFilled(group) And FieldNotFilled(indexField)`.
-
-Confirmed empirically against the runtime: two repeatable rows sharing an index value fire where distinct values don't, and a filled row with an empty index value fires too. Consequence for rulekit: modelkit's `indexField(name)` only emits `indexFieldName` — it must **not** also emit the pair (the kernel would double them). *(Locked: `adapter.laws.IndexFieldLawsTest` — differential, so it doesn't depend on the generated rules' kernel-internal error codes.)*
+Declaring `indexFieldName` is all the authoring needed — the kernel auto-generates the uniqueness and mandatory checks (canonical §4 "The index field's auto-generated checks"); modelkit's `indexField(name)` must **not** also emit the pair (the kernel would double them). *(BA §"Index Fields", runtime-confirmed; locked: `adapter.laws.IndexFieldLawsTest` — differential, so it doesn't depend on the generated rules' kernel-internal error codes.)*
 
 ## The DM-JSON deserializer ignores unknown field-config keys — a round-trip must read the value *back* (2026-06-13)
 
