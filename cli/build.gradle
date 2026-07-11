@@ -164,11 +164,16 @@ tasks.register('docGuardTest', Test) {
 // docGuardTest, but its input set is the map's derivation surfaces, incl. TEST SOURCE TREES, which must not
 // become inputs of the broader guard task).
 tasks.register('semanticsMapGuardTest', Test) {
-    description = 'Resolve-guard for docs/SEMANTICS-MAP.md — every cited §/facet/corpus-family/test-class must derive from its live surface.'
+    description = 'Resolve-guard for docs/SEMANTICS-MAP.md + the KERNEL-FINDINGS↔KERNEL-SEMANTICS fold contract — every cited §/facet/corpus-family/test-class derives from its live surface, and every finding carries a valid fold-status.'
     group = 'verification'
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
-    filter { includeTestsMatching 'io.github.mbackschat.a12.dm.cli.SemanticsMapResolveTest' }
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.SemanticsMapResolveTest'
+        // The fold-status contract between the two kernel docs (DOC-DISCIPLINE §1) reads exactly two of
+        // this task's declared inputs (KERNEL-FINDINGS + KERNEL-SEMANTICS), so it rides the same lane.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.KernelDocsFoldContractTest'
+    }
     inputs.files(
             rootProject.file('docs/SEMANTICS-MAP.md'),
             rootProject.file('docs/KERNEL-FINDINGS.md'),
@@ -194,6 +199,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.CommandReferencesResolveTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.CliSpecVerbTableTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.SemanticsMapResolveTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.KernelDocsFoldContractTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.interp.ModelLoaderParityTest'
     }
 }
