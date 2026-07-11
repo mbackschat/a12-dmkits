@@ -53,6 +53,38 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    dependsOn 'docGuardTest'
+    // The repo-file-reading guards run in docGuardTest (with those files as its inputs); keep them out of
+    // the broad suite so a doc/marker-only edit can't leave a stale-green `test` (TESTING-SPEC "Tests that
+    // read repo files at runtime").
+    filter {
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
+    }
+}
+
+// Two root-project guards read REPO FILES at RUNTIME that Gradle can't infer as test inputs:
+// DocSnippetFreshnessTest reads docs/API-GUIDE.md (its test-source side is covered — a region edit changes
+// bytecode), and DslCatalogBridgeTest reads the dsl package's `catalog:<Id>` Javadoc markers — which compile
+// to IDENTICAL bytecode, so a marker-only edit would leave the plain `test` task up-to-date and skip the very
+// guard the edit needs (the false-green trap). They run HERE with those files declared as THIS task's inputs;
+// `test` dependsOn this, so CI and a plain `:test` always drive both.
+tasks.register('docGuardTest', Test) {
+    description = 'Freshness/bridge guards that read repo docs + dsl sources at runtime (split out so such an edit re-runs only these).'
+    group = 'verification'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
+    }
+    inputs.files(
+            file('docs/API-GUIDE.md'),
+            fileTree('src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl') { include '**/*.java' },
+            fileTree('src/main/resources/catalog'))
+        .withPropertyName('guardReadRepoFiles')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
 }
 
 // Autonomous doc-snippet sync: rewrites every locked ```java fence in the docs from its canonical test
