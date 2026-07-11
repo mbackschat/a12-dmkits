@@ -4,12 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.StringReader;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.core.ModelIndex;
-import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
@@ -35,7 +33,7 @@ class TypeDefAndDateTypesTest {
 
     private static ModelIndex index(DocumentModelDraft draft) {
         try {
-            return ModelIndex.of(ModelLoader.loadSelfContained(new StringReader(draft.toJson())));
+            return ModelIndex.ofSelfContained(draft.toJson());
         } catch (Exception e) {
             throw new RuntimeException("emitted DM-JSON failed checkConsistency:\n" + draft.toJson(), e);
         }

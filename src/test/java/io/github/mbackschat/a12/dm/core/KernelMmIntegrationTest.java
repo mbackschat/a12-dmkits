@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
-import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -41,8 +40,8 @@ class KernelMmIntegrationTest {
 
         for (Path file : canonicalModels(root)) {
             models++;
-            try (Reader reader = Files.newBufferedReader(file)) {
-                ModelIndex index = ModelIndex.of(ModelLoader.loadSelfContained(reader));
+            try {
+                ModelIndex index = ModelIndex.ofSelfContained(Files.readString(file));
                 for (String path : index.fieldPaths().toList()) {
                     fields++;
                     kinds.merge(index.kindOf(path), 1, Integer::sum);

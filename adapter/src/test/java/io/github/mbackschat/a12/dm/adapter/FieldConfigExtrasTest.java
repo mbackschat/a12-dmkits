@@ -1,10 +1,8 @@
-package io.github.mbackschat.a12.dm.modelkit;
+package io.github.mbackschat.a12.dm.adapter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.io.StringReader;
 
 import org.junit.jupiter.api.Test;
 
@@ -14,8 +12,8 @@ import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IFieldType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.INumberType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IStringType;
 
-import io.github.mbackschat.a12.dm.core.ModelIndex;
-import io.github.mbackschat.a12.dm.core.ModelLoader;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.NumberTrait;
 
 /**
  * Field-config completeness sweep (FEATURE-GAPS). Each slot is verified by a <b>kernel read-back</b>,
@@ -24,11 +22,14 @@ import io.github.mbackschat.a12.dm.core.ModelLoader;
  * kernel's typed field-type API ({@code INumberType}/{@code IStringType}/…) proves the engine <em>honored</em>
  * what we emitted. ({@code trait}/unit is deferred — its runtime ({@code "amount"}) vs metamodel
  * ({@code AmountWith[out]Cent}) representation is inconsistent; see KERNEL-FINDINGS.)
+ *
+ * <p>Re-homed to {@code :adapter} at decoupling Stage 2 (the kernel-honored-slot read-back is a kernel-oracle
+ * verification, now on {@code KernelModelOracle}); {@code dm.core.ModelIndex} is kernel-free.
  */
 class FieldConfigExtrasTest {
 
-    private static IFieldType fieldTypeAfterRoundTrip(DocumentModelDraft draft, String path) throws Exception {
-        return ModelIndex.of(ModelLoader.loadSelfContained(new StringReader(draft.toJson()))).fieldType(path);
+    private static IFieldType fieldTypeAfterRoundTrip(DocumentModelDraft draft, String path) {
+        return KernelModelOracle.ofSelfContained(draft.toJson()).fieldType(path);
     }
 
     private static DocumentModelDraft.Builder permit() {

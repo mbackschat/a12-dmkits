@@ -50,10 +50,13 @@ public final class BoundModel {
      */
     public static BoundModel ofJson(String modelJson, ModelResolver resolver) {
         try (var reader = new java.io.StringReader(modelJson)) {
-            return new BoundModel(ModelIndex.of(ModelLoader.load(reader, resolver)), modelJson, resolver);
+            // R3 — the real-kernel consistency gate (deserialize → expand → checkConsistency); throws on ERROR.
+            // The returned kernel model is discarded: the index/read surface is kernel-free (decoupling Stage 2).
+            ModelLoader.load(reader, resolver);
         } catch (java.io.IOException e) {
             throw new java.io.UncheckedIOException("failed to bind model from JSON", e);
         }
+        return new BoundModel(ModelIndex.of(modelJson, resolver), modelJson, resolver);
     }
 
     /** Bind from a DM-JSON file on disk — sugar for {@code ofJson(Files.readString(path))}. The source is
@@ -70,14 +73,12 @@ public final class BoundModel {
      * Bind <b>without</b> the kernel consistency gate (expand-only) — for <em>read-only</em> inspection of a
      * model that may be inconsistent (e.g. a candidate rule whose error field is not yet valid, G4: read its
      * condition / references before it would validate). Makes <b>no validity promise</b>; never use it for the
-     * write path. See {@link ModelLoader#expandOnly}.
+     * write path — the kernel-free reader expands (includes / imported type-defs) and indexes, no consistency gate.
      */
     public static BoundModel ofJsonLenient(String modelJson, ModelResolver resolver) {
-        try (var reader = new java.io.StringReader(modelJson)) {
-            return new BoundModel(ModelIndex.of(ModelLoader.expandOnly(reader, resolver)), modelJson, resolver);
-        } catch (java.io.IOException e) {
-            throw new java.io.UncheckedIOException("failed to bind model from JSON (lenient)", e);
-        }
+        // No consistency gate — the kernel-free reader expands (includes / imported type-defs) and indexes;
+        // it makes no validity promise, exactly as the expand-only path did (Stage 2).
+        return new BoundModel(ModelIndex.of(modelJson, resolver), modelJson, resolver);
     }
 
     // --- write path (F6) — every write yields a NEW binding (snapshot semantics, F0) -----------
@@ -392,20 +393,19 @@ public final class BoundModel {
         return new GroupInfo(this, path, index.nameOf(path), index.isRepeating(path));
     }
 
-    /** A field's element-level annotations, read back through the kernel {@link com.mgmtp.a12.kernel.md.model.api.IField}
-     *  (the slot the silent-ignore deserializer would otherwise hide). Backs {@link FieldInfo#annotations()}. */
+    /** A field's element-level annotations, read back kernel-free through the {@link ModelIndex} (the slot the
+     *  silent-ignore deserializer would otherwise hide). Backs {@link FieldInfo#annotations()}. */
     java.util.List<Annotation> annotationsOf(String fieldPath) {
-        return map(index.field(fieldPath).getAnnotations());
+        return map(index.annotationsOf(fieldPath));
     }
 
-    /** A group's element-level annotations (kernel {@link com.mgmtp.a12.kernel.md.model.api.IGroup}). Backs
-     *  {@link GroupInfo#annotations()}. */
+    /** A group's element-level annotations (kernel-free, via {@link ModelIndex}). Backs {@link GroupInfo#annotations()}. */
     java.util.List<Annotation> annotationsOfGroup(String groupPath) {
-        return map(index.group(groupPath).getAnnotations());
+        return map(index.annotationsOfGroup(groupPath));
     }
 
-    private static java.util.List<Annotation> map(java.util.List<com.mgmtp.a12.model.header.Annotation> as) {
-        return as.stream().map(a -> new Annotation(a.getName(), a.getValue())).toList();
+    private static java.util.List<Annotation> map(java.util.List<io.github.mbackschat.a12.dm.core.Annotation> as) {
+        return as.stream().map(a -> new Annotation(a.name(), a.value())).toList();
     }
 
     /** A typed boolean handle ({@code isTrue()}/{@code isFalse()}). Throws if not a boolean field. */

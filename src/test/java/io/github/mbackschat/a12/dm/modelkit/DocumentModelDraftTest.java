@@ -55,8 +55,9 @@ class DocumentModelDraftTest {
     @Test
     void emitsAModelTheKernelAccepts_checkConsistency() {
         // loadSelfContained runs deserialize → expand → checkConsistency, throwing on any ERROR
-        IDocumentModel model = load(boutique().toJson());
-        ModelIndex index = ModelIndex.of(model);
+        String json = boutique().toJson();
+        load(json);   // the kernel-acceptance gate; the index is kernel-free (decoupling Stage 2)
+        ModelIndex index = ModelIndex.ofSelfContained(json);
 
         // fields resolve by name-path, with the kinds we declared
         assertEquals(ValueKind.STRING, index.kindOf("/Boutique/BoutiqueName"));
@@ -101,7 +102,9 @@ class DocumentModelDraftTest {
                         .field("B", FieldKind.BOOLEAN)
                         .field("C", FieldKind.CONFIRM))
                 .build();
-        ModelIndex index = ModelIndex.of(load(m.toJson()));
+        String json = m.toJson();
+        load(json);
+        ModelIndex index = ModelIndex.ofSelfContained(json);
         assertEquals(ValueKind.STRING, index.kindOf("/Root/S"));
         assertEquals(ValueKind.NUMBER, index.kindOf("/Root/N"));
         assertEquals(ValueKind.DATE, index.kindOf("/Root/D"));

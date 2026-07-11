@@ -6,8 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -16,7 +14,6 @@ import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
-import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 
@@ -33,9 +30,7 @@ class NavigationTest {
 
     @BeforeAll
     static void bind() throws Exception {
-        try (Reader reader = fixture("models/subscription.dm.json")) {
-            m = BoundModel.of(ModelIndex.of(ModelLoader.loadSelfContained(reader)));
-        }
+        m = BoundModel.of(ModelIndex.ofSelfContained(fixture("models/subscription.dm.json")));
     }
 
     @Test
@@ -202,9 +197,12 @@ class NavigationTest {
         assertEquals(m.flattenGroup("/Subscription/Addons*"), sub.flattenGroup("Addons*"));
     }
 
-    private static Reader fixture(String classpathLocation) {
-        InputStream in = NavigationTest.class.getClassLoader().getResourceAsStream(classpathLocation);
-        assertNotNull(in, "fixture not found: " + classpathLocation);
-        return new InputStreamReader(in, StandardCharsets.UTF_8);
+    private static String fixture(String classpathLocation) {
+        try (InputStream in = NavigationTest.class.getClassLoader().getResourceAsStream(classpathLocation)) {
+            assertNotNull(in, "fixture not found: " + classpathLocation);
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
     }
 }

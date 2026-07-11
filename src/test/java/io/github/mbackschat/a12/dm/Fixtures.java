@@ -1,13 +1,10 @@
 package io.github.mbackschat.a12.dm;
 
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
-import io.github.mbackschat.a12.dm.core.ModelLoader;
 
 /**
  * The committed test models, loaded once — so a new family-focused test file costs a few lines,
@@ -61,11 +58,8 @@ public final class Fixtures {
     }
 
     private static BoundModel bind(String classpathLocation) {
-        try (Reader reader = new InputStreamReader(stream(classpathLocation), StandardCharsets.UTF_8)) {
-            return BoundModel.of(ModelIndex.of(ModelLoader.loadSelfContained(reader)));
-        } catch (Exception e) {
-            throw new IllegalStateException("cannot load fixture " + classpathLocation, e);
-        }
+        // read-only binding over the kernel-free index (decoupling Stage 2; the fixtures are known-valid)
+        return BoundModel.of(ModelIndex.ofSelfContained(json(classpathLocation)));
     }
 
     private static InputStream stream(String classpathLocation) {

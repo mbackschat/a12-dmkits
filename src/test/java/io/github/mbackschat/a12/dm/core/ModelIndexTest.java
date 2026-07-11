@@ -7,8 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -27,16 +25,17 @@ class ModelIndexTest {
     private static ModelIndex index;
 
     @BeforeAll
-    static void loadIndex() throws Exception {
-        try (Reader reader = fixture("models/subscription.dm.json")) {
-            index = ModelIndex.of(ModelLoader.loadSelfContained(reader));
-        }
+    static void loadIndex() {
+        index = ModelIndex.ofSelfContained(fixture("models/subscription.dm.json"));
     }
 
-    private static Reader fixture(String classpathLocation) {
-        InputStream in = ModelIndexTest.class.getClassLoader().getResourceAsStream(classpathLocation);
-        assertNotNull(in, "test fixture not found on classpath: " + classpathLocation);
-        return new InputStreamReader(in, StandardCharsets.UTF_8);
+    private static String fixture(String classpathLocation) {
+        try (InputStream in = ModelIndexTest.class.getClassLoader().getResourceAsStream(classpathLocation)) {
+            assertNotNull(in, "test fixture not found on classpath: " + classpathLocation);
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
     }
 
     @Test

@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.modelkit;
+package io.github.mbackschat.a12.dm.adapter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -11,19 +11,20 @@ import org.junit.jupiter.api.Test;
 import com.mgmtp.a12.kernel.md.model.api.IGroup;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
-import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 
 /**
  * The <b>Multi-Select</b> group template (FEATURE-GAPS). A {@code usageType: "multi-select"} group
  * holds exactly one repeatable enum/string field (each row = one selection). The kernel's
  * {@code MultiSelectGroupRule} validates it at {@code checkConsistency} (KERNEL-FINDINGS), so a correct
- * template <em>loads</em> and a malformed one is <em>rejected</em> — the kernel is the oracle.
+ * template <em>loads</em> and a malformed one is <em>rejected</em> — the kernel is the oracle. Re-homed to
+ * {@code :adapter} at decoupling Stage 2; {@code dm.core.ModelIndex} is kernel-free.
  */
 class MultiSelectTemplateTest {
 
-    private static ModelIndex load(String json) throws Exception {
-        return ModelIndex.of(ModelLoader.loadSelfContained(new StringReader(json)));
+    private static KernelModelOracle load(String json) {
+        return KernelModelOracle.ofSelfContained(json);
     }
 
     @Test
@@ -35,7 +36,7 @@ class MultiSelectTemplateTest {
                                 .maxRows(3)))
                 .build().toJson();
 
-        ModelIndex index = load(json);   // kernel-valid → MultiSelectGroupRule passed
+        KernelModelOracle index = load(json);   // kernel-valid → MultiSelectGroupRule passed
         IGroup group = index.group("/Product/Conditions");
         assertEquals("multi-select", group.getUsageType().orElse(null), "the usageType marker round-trips");
         assertTrue(index.isRepeating("/Product/Conditions"), "a multi-select is a repeatable group");

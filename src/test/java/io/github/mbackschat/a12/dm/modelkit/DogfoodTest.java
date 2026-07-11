@@ -5,7 +5,6 @@ import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.StringReader;
 import java.util.List;
 import java.util.Set;
 
@@ -14,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.ModelDrafts;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
-import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
@@ -29,7 +27,7 @@ class DogfoodTest {
 
     private static ModelIndex index(String json) {
         try {
-            return ModelIndex.of(ModelLoader.loadSelfContained(new StringReader(json)));
+            return ModelIndex.ofSelfContained(json);
         } catch (Exception e) {
             throw new RuntimeException("DM-JSON failed checkConsistency:\n" + json, e);
         }

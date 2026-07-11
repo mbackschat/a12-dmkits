@@ -1,10 +1,9 @@
-package io.github.mbackschat.a12.dm.modelkit;
+package io.github.mbackschat.a12.dm.adapter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.StringReader;
 import java.util.Locale;
 import java.util.Map;
 
@@ -12,20 +11,22 @@ import org.junit.jupiter.api.Test;
 
 import com.mgmtp.a12.kernel.md.model.api.IGroup;
 
-import io.github.mbackschat.a12.dm.core.ModelIndex;
-import io.github.mbackschat.a12.dm.core.ModelLoader;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 
 /**
  * A group's per-locale display <b>label</b> (the kernel's {@code ILabeled}, which {@code IGroup} carries via
  * {@code IEntity} — the same interface a field's label comes from). Authored on the group builder, uniform
  * with a field label, and — once present — required to cover every declared locale. Verified by kernel
  * read-back ({@code IGroup.getLabel()}), since the DM-JSON deserializer ignores unknown keys (KERNEL-FINDINGS),
- * so a clean load alone proves nothing.
+ * so a clean load alone proves nothing. Re-homed to {@code :adapter} at decoupling Stage 2 (kernel-oracle
+ * verification); {@code dm.core.ModelIndex} is kernel-free.
  */
 class GroupLabelTest {
 
-    private static ModelIndex load(String json) throws Exception {
-        return ModelIndex.of(ModelLoader.loadSelfContained(new StringReader(json)));
+    private static KernelModelOracle load(String json) {
+        return KernelModelOracle.ofSelfContained(json);
     }
 
     @Test

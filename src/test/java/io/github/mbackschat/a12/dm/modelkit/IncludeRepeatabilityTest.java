@@ -6,11 +6,9 @@ import java.io.StringReader;
 
 import org.junit.jupiter.api.Test;
 
-import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-import io.github.mbackschat.a12.dm.core.ModelResolver;
-
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 /**
  * Include <b>repeatability</b> (FEATURE-GAPS): a mount can carry a repeatability > 1,
@@ -48,8 +46,9 @@ class IncludeRepeatabilityTest {
 
     @Test
     void aRepeatableMountExpandsToARepeatingGroup() throws Exception {
-        IDocumentModel model = ModelLoader.load(new StringReader(orderWithRepeatableMount()), resolver());
-        ModelIndex index = ModelIndex.of(model);
+        String json = orderWithRepeatableMount();
+        ModelLoader.load(new StringReader(json), resolver());   // kernel gate: expand + checkConsistency (R3)
+        ModelIndex index = ModelIndex.of(json, resolver());     // kernel-free include expansion (Stage 2)
         assertTrue(index.isRepeating("/Order/ShipTo"),
                 "a mount with repeatability > 1 must expand to a repeating group");
     }

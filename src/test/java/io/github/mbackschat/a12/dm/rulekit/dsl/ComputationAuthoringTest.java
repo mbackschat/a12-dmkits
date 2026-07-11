@@ -9,8 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
@@ -18,7 +16,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.core.ModelIndex;
-import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -43,9 +40,7 @@ class ComputationAuthoringTest {
             assertNotNull(in);
             modelJson = new String(in.readAllBytes(), StandardCharsets.UTF_8);
         }
-        try (Reader reader = fixture("models/subscription.dm.json")) {
-            m = BoundModel.of(ModelIndex.of(ModelLoader.loadSelfContained(reader)));
-        }
+        m = BoundModel.of(ModelIndex.ofSelfContained(modelJson));
     }
 
     @Test
@@ -185,9 +180,4 @@ class ComputationAuthoringTest {
         assertThrows(IllegalStateException.class, builder::build);
     }
 
-    private static Reader fixture(String classpathLocation) {
-        InputStream in = ComputationAuthoringTest.class.getClassLoader().getResourceAsStream(classpathLocation);
-        assertNotNull(in, "fixture not found: " + classpathLocation);
-        return new InputStreamReader(in, StandardCharsets.UTF_8);
-    }
 }

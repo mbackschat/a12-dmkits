@@ -781,7 +781,9 @@ public final class KernelAdapter {
         } catch (IOException e) {
             throw new UncheckedIOException("failed to load the model for evaluation", e);
         }
-        ModelIndex index = ModelIndex.of(expanded);
+        // The structural index (group paths / repeatability / field-ness) is kernel-free (decoupling Stage 2);
+        // it re-expands the authored JSON and is parity-locked to the kernel's expansion (ModelIndexParityTest).
+        ModelIndex index = ModelIndex.of(model.toJson(), resolver);
         IDocumentModelResolver modelResolver = id -> expanded;
         DocumentServiceFactory dsf = new DocumentServiceFactory(modelResolver);
         IDocumentRtService rt = new DocumentRtServiceFactory(modelResolver).createDocumentRtService(dynamicConfig());

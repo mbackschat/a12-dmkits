@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.modelkit;
+package io.github.mbackschat.a12.dm.adapter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -12,8 +12,9 @@ import org.junit.jupiter.api.Test;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IStringType;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
-import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
+import io.github.mbackschat.a12.dm.modelkit.AttachmentRule;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 
 /**
  * The <b>Attachment</b> group template (FEATURE-GAPS). A {@code usageType: "attachment"} group carries
@@ -21,7 +22,8 @@ import io.github.mbackschat.a12.dm.core.ModelLoader;
  * the model's condition language), and a {@code content} field with {@code noValueValidation} +
  * {@code lineBreaksPermitted}. The generator emits all of it; the kernel's {@code AttachmentGroupRule}
  * validates it at {@code checkConsistency} (KERNEL-FINDINGS), so a correct template <em>loads</em> — the
- * standing proof that the emitted rule strings round-trip byte-for-byte (R1).
+ * standing proof that the emitted rule strings round-trip byte-for-byte (R1). Re-homed to {@code :adapter} at
+ * decoupling Stage 2 (kernel-oracle verification); {@code dm.core.ModelIndex} is kernel-free.
  */
 class AttachmentTemplateTest {
 
@@ -29,11 +31,11 @@ class AttachmentTemplateTest {
             "original_filename", "internal_filename", "content", "attachment_id",
             "size", "mime_type", "category", "description");
 
-    private static ModelIndex load(String json) throws Exception {
-        return ModelIndex.of(ModelLoader.loadSelfContained(new StringReader(json)));
+    private static KernelModelOracle load(String json) {
+        return KernelModelOracle.ofSelfContained(json);
     }
 
-    private static List<String> fieldNames(ModelIndex index, String groupPath) {
+    private static List<String> fieldNames(KernelModelOracle index, String groupPath) {
         return index.fieldPaths(groupPath).map(p -> p.substring(p.lastIndexOf('/') + 1)).sorted().toList();
     }
 
@@ -43,7 +45,7 @@ class AttachmentTemplateTest {
                 .attachmentGroup("Invoice", a -> { })
                 .build().toJson();
 
-        ModelIndex index = load(json);   // kernel-valid → AttachmentGroupRule passed (the 8 fields + 4 rule strings)
+        KernelModelOracle index = load(json);   // kernel-valid → AttachmentGroupRule passed (the 8 fields + 4 rule strings)
         assertEquals("attachment", index.group("/Invoice").getUsageType().orElse(null));
         assertEquals(ATTACHMENT_FIELDS.stream().sorted().toList(), fieldNames(index, "/Invoice"),
                 "the 8 canonical attachment fields are present");
@@ -70,7 +72,7 @@ class AttachmentTemplateTest {
                         .categories("CONTRACT", "RECEIPT")
                         .message(AttachmentRule.MIME_TYPE, "en_US", "Pick a content type."))
                 .build().toJson();
-        ModelIndex index = load(json);
+        KernelModelOracle index = load(json);
         assertTrue(index.isRepeating("/Invoice"), "a list of attachments is repeatable");
         assertEquals(ATTACHMENT_FIELDS.stream().sorted().toList(), fieldNames(index, "/Invoice"));
     }

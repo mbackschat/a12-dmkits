@@ -8,11 +8,9 @@ import java.io.StringReader;
 
 import org.junit.jupiter.api.Test;
 
-import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-import io.github.mbackschat.a12.dm.core.ModelResolver;
-
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
@@ -55,13 +53,13 @@ class IncludeTest {
     @Test
     void anIncludedModelExpandsAndItsFieldsResolveUnderTheMount() {
         String json = showroom().toJson();
-        IDocumentModel model;
         try {
-            model = ModelLoader.load(new StringReader(json), resolver());
+            ModelLoader.load(new StringReader(json), resolver());   // kernel gate: expand + checkConsistency (R3)
         } catch (Exception e) {
             throw new RuntimeException("emitted DM-JSON failed to expand/checkConsistency:\n" + json, e);
         }
-        ModelIndex index = ModelIndex.of(model);
+        // the include is expanded by the kernel-free reader (decoupling Stage 2)
+        ModelIndex index = ModelIndex.of(json, resolver());
         // base field
         assertEquals(ValueKind.STRING, index.kindOf("/Showroom/Name"));
         // included fields resolve at the mount name-path (included root group "Pricelist" dropped, §10)

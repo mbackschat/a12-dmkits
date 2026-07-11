@@ -1,29 +1,30 @@
-package io.github.mbackschat.a12.dm.modelkit;
+package io.github.mbackschat.a12.dm.adapter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.io.StringReader;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
 import com.mgmtp.a12.kernel.md.model.api.IGroup;
 
-import io.github.mbackschat.a12.dm.core.ModelIndex;
-import io.github.mbackschat.a12.dm.core.ModelLoader;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.modelkit.SortOrder;
 
 /**
  * Group sort fields (FEATURE-GAPS G28): a repeatable group can declare ordered row {@code sortFields}
  * (each a direct-child field + ASC/DESC). Verified by a <b>kernel read-back</b> — the deserializer ignores
  * unknown keys, so only reading {@code IGroup.getSortFields()} back proves the engine honored what we emit.
  * (Display/USB-only at runtime — the interpreter ignores sort order, INTERPRETER-FINDINGS IF22 — so this is
- * an authoring + read-fidelity feature, not an eval one.)
+ * an authoring + read-fidelity feature, not an eval one.) Re-homed to {@code :adapter} at decoupling Stage 2
+ * (kernel-oracle verification); {@code dm.core.ModelIndex} is kernel-free.
  */
 class GroupSortFieldTest {
 
-    private static IGroup groupAfterRoundTrip(DocumentModelDraft draft, String path) throws Exception {
-        return ModelIndex.of(ModelLoader.loadSelfContained(new StringReader(draft.toJson()))).group(path);
+    private static IGroup groupAfterRoundTrip(DocumentModelDraft draft, String path) {
+        return KernelModelOracle.ofSelfContained(draft.toJson()).group(path);
     }
 
     @Test

@@ -59,20 +59,4 @@ public final class ModelLoader {
         }
         return model;
     }
-
-    /**
-     * Deserialize + expand <b>without</b> the consistency gate — for <em>read-only</em> inspection of a model
-     * that may be inconsistent (e.g. a candidate rule whose error field is not yet valid, G4). Unlike
-     * {@link #load}, it never throws on {@code ERROR}-severity problems, so the caller can read what the model
-     * <em>says</em> (its parsed conditions, references, structure) before it would pass validation. It makes
-     * <b>no validity promise</b> — never use it for the write path (which round-trips through {@link #load}).
-     */
-    public static IDocumentModel expandOnly(Reader reader, ModelResolver resolver)
-            throws IOException {
-        IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
-        IDocumentModelService service = FACTORY.createDocumentModelService();
-        IDocumentModel model = serializer.deserialize(reader);
-        service.expand(model, ReferenceResolvers.of(resolver));
-        return model;
-    }
 }

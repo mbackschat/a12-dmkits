@@ -4,8 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.Test;
@@ -21,8 +19,8 @@ import org.junit.jupiter.api.Test;
 class ModelIndexNamePathTest {
 
     private static ModelIndex index(String resource) {
-        try (Reader r = new InputStreamReader(open(resource), StandardCharsets.UTF_8)) {
-            return ModelIndex.of(ModelLoader.loadSelfContained(r));
+        try (InputStream in = open(resource)) {
+            return ModelIndex.ofSelfContained(new String(in.readAllBytes(), StandardCharsets.UTF_8));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

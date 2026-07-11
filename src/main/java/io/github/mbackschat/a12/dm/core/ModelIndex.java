@@ -1,103 +1,65 @@
 package io.github.mbackschat.a12.dm.core;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 
-import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-import com.mgmtp.a12.kernel.md.model.api.IElement;
-import com.mgmtp.a12.kernel.md.model.api.IField;
-import com.mgmtp.a12.kernel.md.model.api.IGroup;
-import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IBooleanType;
-import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IConfirmType;
-import com.mgmtp.a12.kernel.md.model.api.fieldtypes.ICustomFieldType;
-import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateFragmentType;
-import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateRangeType;
-import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateTimeType;
-import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateType;
-import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IEnumerationType;
-import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IFieldType;
-import com.mgmtp.a12.kernel.md.model.api.fieldtypes.INumberType;
-import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IStringType;
-import com.mgmtp.a12.kernel.md.model.api.fieldtypes.ITimeType;
+import com.fasterxml.jackson.databind.JsonNode;
 
 /**
- * A queryable index over a fully-expanded DocumentModel — the foundation everything else binds to
- * (PROJECT-DESIGN §5a / F0). Maps each element's absolute path to its model node so the AST, renderer,
- * and pre-checks can resolve paths, operand kinds, and repetition structure.
+ * A queryable, <b>kernel-free</b> index over a fully-expanded DocumentModel — the foundation everything else
+ * binds to (PROJECT-DESIGN §5a / F0). Maps each element's absolute <b>name-path</b> to its model node so the
+ * AST, renderer, and pre-checks can resolve paths, operand kinds, and repetition structure.
  *
- * <p>Build via {@link #of(IDocumentModel)} on a model already expanded + consistency-checked by
- * {@link ModelLoader}. Lookups fail fast with {@link IllegalArgumentException} on an unknown path or
- * a path that resolves to the wrong kind of node.
+ * <p>The typed view over the {@link ModelReader} (kernel-decoupling Stage 2): the reader parses, expands
+ * includes, resolves imported type-definitions to effective concrete types, and indexes by name-path — all
+ * without the kernel; this class projects that into rulekit's {@link ValueKind}/config vocabulary. The kernel
+ * still runs the consistency gate ({@code checkConsistency}, R3) behind {@link ModelLoader#load} — a caller
+ * that needs both binds through {@code BoundModel.ofJson}, which gates <em>and</em> indexes.
+ *
+ * <p>Lookups fail fast with {@link IllegalArgumentException} on an unknown path or a path that resolves to the
+ * wrong kind of node.
  */
 public final class ModelIndex {
 
-    private final IDocumentModel model;
-    private final Map<String, IElement> byPath;
+    private final ModelReader reader;
 
-    private ModelIndex(IDocumentModel model, Map<String, IElement> byPath) {
-        this.model = model;
-        this.byPath = byPath;
+    private ModelIndex(ModelReader reader) {
+        this.reader = reader;
     }
 
-    /** Index an already-expanded, consistency-checked model (see {@link ModelLoader}). */
-    public static ModelIndex of(IDocumentModel expandedModel) {
-        Map<String, IElement> byPath = new LinkedHashMap<>();
-        index(expandedModel.getContent().getDocumentModelRoot(), "", byPath);
-        return new ModelIndex(expandedModel, byPath);
+    /** Index a model from DM-JSON, expanding includes / imported type-definitions against {@code resolver}. */
+    public static ModelIndex of(String dmJson, ModelResolver resolver) {
+        return new ModelIndex(ModelReader.expand(dmJson, resolver));
     }
 
-    /**
-     * Key every element by its <b>name-path</b> — the join of {@code getName()} segments, which is the
-     * path a rule condition references ({@code getFullName()}) and the form the renderer/handles use.
-     * <b>Not</b> {@code getId()}: an element's id is an opaque identifier (often a hash) that equals
-     * the path only in models authored that way (e.g. rulekit's own fixtures); real-world models —
-     * the kernel-mm metamodels, the A12 Tools apps — carry id ≠ name, so keying by id resolved ~0% of
-     * their references (F-IDX).
-     */
-    private static void index(IGroup group, String prefix, Map<String, IElement> byPath) {
-        for (IElement element : group.getElements()) {
-            String path = prefix + "/" + element.getName();
-            byPath.put(path, element);
-            if (element instanceof IGroup childGroup) {
-                index(childGroup, path, byPath);
-            }
-        }
+    /** Index a <em>self-contained</em> model (no includes / imported type-definitions). */
+    public static ModelIndex ofSelfContained(String dmJson) {
+        return of(dmJson, ReferenceResolvers.selfContained());
     }
 
-    /** The underlying expanded model. */
-    public IDocumentModel model() {
-        return model;
+    /** Index an already-expanded {@link ModelReader}. */
+    public static ModelIndex of(ModelReader reader) {
+        return new ModelIndex(reader);
     }
 
     /**
-     * The model's declared locales (header {@code locales}, e.g. {@code en_US}) — any valid Java
-     * locale code is possible, EN/DE are <em>not</em> special here. Error messages must cover every
-     * declared locale ({@code MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING} — verified); rulekit
-     * additionally rejects messages for <em>undeclared</em> locales (the kernel tolerates them
-     * silently, which usually hides a typo or dead text).
+     * The model's declared locales (header {@code locales}, e.g. {@code en_US}) — any valid Java locale code is
+     * possible, EN/DE are <em>not</em> special here. Error messages must cover every declared locale
+     * ({@code MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING}); rulekit additionally rejects messages for
+     * <em>undeclared</em> locales (the kernel tolerates them silently, which usually hides a typo or dead text).
      */
     public List<String> locales() {
-        List<java.util.Locale> locales = model.getHeader().getLocales();
-        return locales == null ? List.of() : locales.stream().map(java.util.Locale::toString).toList();
+        return reader.locales();
     }
 
     /** The {@link ValueKind} of the field at {@code fieldPath} (type-definitions resolved). */
     public ValueKind kindOf(String fieldPath) {
-        return valueKind(effectiveType(field(fieldPath)));
-    }
-
-    /**
-     * The kernel's resolved {@link IFieldType} for the field at {@code fieldPath} (type-definitions
-     * resolved) — the typed read-back surface (cast to {@code INumberType}/{@code IStringType}/… for a
-     * slot's value). Used to confirm the engine <em>honored</em> an authored field-config slot, which a
-     * load alone can't (the deserializer ignores unknown keys).
-     */
-    public IFieldType fieldType(String fieldPath) {
-        return effectiveType(field(fieldPath));
+        return ValueKind.fromKernelType(fieldTypeNode(fieldPath).path(DmKeys.TYPE).asText(null));
     }
 
     /**
@@ -106,208 +68,239 @@ public final class ModelIndex {
      * @throws IllegalArgumentException if the field is not a number
      */
     public int numberScale(String fieldPath) {
-        IFieldType type = effectiveType(field(fieldPath));
-        if (!(type instanceof INumberType number)) {
+        JsonNode number = numberTypeOf(fieldPath);
+        if (number == null) {
             throw new IllegalArgumentException(
-                    fieldPath + " is not a number field (kind=" + valueKind(type) + ")");
+                    fieldPath + " is not a number field (kind=" + kindOf(fieldPath) + ")");
         }
-        return number.getMaxFractionalDigits();
+        // NumberType.maxFractionalDigits is a primitive int defaulting to 0 (kernel) — a NumberType that omits
+        // it is scale-0 (an integer).
+        return number.path("maxFractionalDigits").asInt(0);
     }
 
     /**
-     * The declared inclusive lower bound of the number field at {@code fieldPath} ({@code minimum}), or empty
+     * The declared inclusive lower bound of the number field at {@code fieldPath} ({@code minValue}), or empty
      * when the field is not a number or no bound is declared. A read-only config accessor (no throw on a
      * non-number, so callers can probe any field) — see {@link #numberMax}/{@link #stringMinLength}/etc.
      */
     public Optional<BigDecimal> numberMin(String fieldPath) {
-        return effectiveType(field(fieldPath)) instanceof INumberType n ? n.getMinValue() : Optional.empty();
+        return numberBound(fieldPath, "minValue");
     }
 
-    /** The declared inclusive upper bound ({@code maximum}) of the number field, or empty (see {@link #numberMin}). */
+    /** The declared inclusive upper bound ({@code maxValue}) of the number field, or empty (see {@link #numberMin}). */
     public Optional<BigDecimal> numberMax(String fieldPath) {
-        return effectiveType(field(fieldPath)) instanceof INumberType n ? n.getMaxValue() : Optional.empty();
+        return numberBound(fieldPath, "maxValue");
     }
 
     /** The declared {@code minLength} of the string field, or empty when not a string / unset. */
     public OptionalInt stringMinLength(String fieldPath) {
-        return effectiveType(field(fieldPath)) instanceof IStringType s
-                ? s.getMinLength().stream().mapToInt(Integer::intValue).findFirst() : OptionalInt.empty();
+        return stringInt(fieldPath, "minLength");
     }
 
     /** The declared {@code maxLength} of the string field, or empty when not a string / unset. */
     public OptionalInt stringMaxLength(String fieldPath) {
-        return effectiveType(field(fieldPath)) instanceof IStringType s
-                ? s.getMaxLength().stream().mapToInt(Integer::intValue).findFirst() : OptionalInt.empty();
+        return stringInt(fieldPath, "maxLength");
     }
 
     /** The declared regex {@code pattern} of the string field, or empty when not a string / no pattern. */
     public Optional<String> stringPattern(String fieldPath) {
-        return effectiveType(field(fieldPath)) instanceof IStringType s
-                ? s.getPattern().filter(p -> !p.isEmpty()) : Optional.empty();
+        JsonNode string = stringTypeOf(fieldPath);
+        if (string == null) {
+            return Optional.empty();
+        }
+        String pattern = string.path("pattern").asText("");
+        return pattern.isEmpty() ? Optional.empty() : Optional.of(pattern);
     }
 
     /**
-     * The allowed stored values of the enumeration field at {@code fieldPath} (the enum domain).
-     * Enums compare by stored value, never display text (§5b), so these are the values to compare to.
+     * The allowed stored values of the enumeration field at {@code fieldPath} (the enum domain). Enums compare
+     * by stored value, never display text (§5b), so these are the values to compare to.
      *
      * @throws IllegalArgumentException if the field is not an enumeration
      */
     public List<String> enumValues(String fieldPath) {
-        IFieldType type = effectiveType(field(fieldPath));
-        if (!(type instanceof IEnumerationType enumeration)) {
-            throw new IllegalArgumentException(
-                    fieldPath + " is not an enumeration field (kind=" + valueKind(type) + ")");
+        JsonNode enumeration = requireEnum(fieldPath);
+        List<String> values = new ArrayList<>();
+        for (JsonNode v : enumeration.path("values")) {
+            values.add(v.path(DmKeys.VALUE).asText());
         }
-        return enumeration.getValues().stream().map(IEnumerationType.IEnumValue::getValue).toList();
+        return values;
     }
 
     /**
-     * The categories of the enumeration field at {@code fieldPath}: category name → its distinct
-     * category values (the model maps positionally — {@code categories[c].values[i]} pairs with
-     * enum {@code values[i]}; the comparison domain is the distinct set).
+     * The categories of the enumeration field at {@code fieldPath}: category name → its distinct category values
+     * (the model maps positionally — {@code categories[c].values[i]} pairs with enum {@code values[i]}; the
+     * comparison domain is the distinct set).
      *
      * @throws IllegalArgumentException if the field is not an enumeration
      */
     public Map<String, List<String>> enumCategories(String fieldPath) {
-        IFieldType type = effectiveType(field(fieldPath));
-        if (!(type instanceof IEnumerationType enumeration)) {
-            throw new IllegalArgumentException(
-                    fieldPath + " is not an enumeration field (kind=" + valueKind(type) + ")");
-        }
+        JsonNode enumeration = requireEnum(fieldPath);
         Map<String, List<String>> categories = new LinkedHashMap<>();
-        for (IEnumerationType.IEnumCategory category : enumeration.getCategories()) {
-            categories.put(category.getName(), category.getValues().stream().distinct().toList());
+        for (JsonNode category : enumeration.path("categories")) {
+            List<String> distinct = new ArrayList<>();
+            for (JsonNode v : category.path("values")) {
+                String value = v.asText();
+                if (!distinct.contains(value)) {
+                    distinct.add(value);
+                }
+            }
+            categories.put(category.path(DmKeys.NAME).asText(), distinct);
         }
         return categories;
     }
 
     /** Whether the group at {@code groupPath} can repeat (repeatability other than exactly 1). */
     public boolean isRepeating(String groupPath) {
-        return group(groupPath).getRepeatability() != 1;
+        return maxRepetitions(groupPath) != 1;
     }
 
     /** The group's maximum repetitions — the repeatability count ({@code 1} = non-repeatable). */
     public int maxRepetitions(String groupPath) {
-        return group(groupPath).getRepeatability();
+        return groupNode(groupPath).path(ElementType.GROUP.wireName()).path(DmKeys.REPEATABILITY).asInt(1);
     }
 
     // --- navigation (Level 1, study finding 9): streams of facts in model order -----------------
 
     /** Paths of all fields, in model order. */
     public java.util.stream.Stream<String> fieldPaths() {
-        return byPath.entrySet().stream()
-                .filter(e -> e.getValue() instanceof IField)
-                .map(Map.Entry::getKey);
+        return reader.paths().stream().filter(this::isField);
     }
 
     /** Paths of all groups (root groups included), in model order. */
     public java.util.stream.Stream<String> groupPaths() {
-        return byPath.entrySet().stream()
-                .filter(e -> e.getValue() instanceof IGroup)
-                .map(Map.Entry::getKey);
+        return reader.paths().stream().filter(this::isGroup);
     }
 
     /** Paths of the fields directly contained in the group at {@code groupPath}, in model order. */
     public java.util.stream.Stream<String> fieldPaths(String groupPath) {
-        return group(groupPath).getElements().stream()
-                .filter(IField.class::isInstance)
-                .map(e -> groupPath + "/" + e.getName());
+        List<String> paths = new ArrayList<>();
+        for (JsonNode child : groupNode(groupPath).path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)) {
+            if (ElementType.FIELD.matches(child)) {
+                paths.add(groupPath + "/" + child.path(DmKeys.NAME).asText());
+            }
+        }
+        return paths.stream();
     }
 
     /** Whether a field exists at {@code path} (the non-throwing peek behind {@code fieldAt}). */
     public boolean isField(String path) {
-        return byPath.get(path) instanceof IField;
+        return ElementType.FIELD.matches(nodeOrMissing(path));
     }
 
     /** Whether a group exists at {@code path} (the non-throwing peek behind {@code groupAt}). */
     public boolean isGroup(String path) {
-        return byPath.get(path) instanceof IGroup;
+        return ElementType.GROUP.matches(nodeOrMissing(path));
     }
 
     /** The element's short name (last path segment, as modeled). */
     public String nameOf(String path) {
-        return require(path).getName();
-    }
-
-    private static IFieldType effectiveType(IField field) {
-        return field.getEffectiveType().orElseGet(field::getFieldType);
+        return require(path).path(DmKeys.NAME).asText();
     }
 
     /**
-     * Classify an (already type-def-resolved) kernel {@link IFieldType} into a {@link ValueKind}. The kernel
-     * exposes no readable type tag ({@code IFieldType} is a bare marker), so the kind is recovered by dispatch
-     * on the concrete public subtype. Order is subtype-first: {@code IDateTimeType} and {@code ITimeType} both
-     * extend {@code IDateType}, so they must be tested before it. (Lives here, on the kernel-typed index,
-     * rather than on the kernel-free {@link ValueKind} enum.)
+     * The element-level {@link Annotation annotations} of the field at {@code fieldPath} — the slot the
+     * silent-ignore deserializer would otherwise hide. Backs rulekit's annotation read-back.
      */
-    private static ValueKind valueKind(IFieldType type) {
-        if (type instanceof IDateTimeType) {
-            return ValueKind.DATE_TIME;
-        }
-        if (type instanceof ITimeType) {
-            return ValueKind.TIME;
-        }
-        if (type instanceof IDateType) {
-            return ValueKind.DATE;
-        }
-        if (type instanceof IDateFragmentType) {
-            return ValueKind.DATE_FRAGMENT;
-        }
-        if (type instanceof IDateRangeType) {
-            return ValueKind.DATE_RANGE;
-        }
-        if (type instanceof INumberType) {
-            return ValueKind.NUMBER;
-        }
-        if (type instanceof IStringType) {
-            return ValueKind.STRING;
-        }
-        if (type instanceof IEnumerationType) {
-            return ValueKind.ENUMERATION;
-        }
-        if (type instanceof IConfirmType) {
-            return ValueKind.CONFIRM;
-        }
-        if (type instanceof IBooleanType) {
-            return ValueKind.BOOLEAN;
-        }
-        if (type instanceof ICustomFieldType) {
-            return ValueKind.CUSTOM;
-        }
-        return ValueKind.UNKNOWN;
+    public List<Annotation> annotationsOf(String fieldPath) {
+        return annotations(fieldNode(fieldPath));
     }
 
-    /**
-     * The kernel's {@link IField} at {@code fieldPath} — the typed read-back surface for field-level metadata
-     * (its {@code isGlobal()}/{@code isTransient()}/{@code getHelperText()} and, via {@code IElement}, the
-     * internal/external descriptions). The same purpose as {@link #fieldType}: confirm the engine honored an
-     * authored slot the silent-ignore deserializer would otherwise hide (KERNEL-FINDINGS).
-     */
-    public IField field(String path) {
-        if (require(path) instanceof IField field) {
-            return field;
-        }
-        throw new IllegalArgumentException("not a field: " + path);
+    /** The element-level {@link Annotation annotations} of the group at {@code groupPath}. */
+    public List<Annotation> annotationsOfGroup(String groupPath) {
+        return annotations(groupNode(groupPath));
     }
 
-    /**
-     * The kernel's {@link IGroup} at {@code groupPath} — the typed read-back surface for group-level slots
-     * the silent-ignore deserializer would otherwise hide, e.g. {@code getUsageType()} (the attachment /
-     * multi-select template marker). The group peer of {@link #field}.
-     */
-    public IGroup group(String path) {
-        if (require(path) instanceof IGroup group) {
-            return group;
+    // --- node access + config readers (over the reader's expanded, typedef-inlined nodes) --------
+
+    private static List<Annotation> annotations(JsonNode element) {
+        List<Annotation> out = new ArrayList<>();
+        for (JsonNode a : element.path(DmKeys.ANNOTATIONS)) {
+            out.add(new Annotation(a.path(DmKeys.NAME).asText(), a.path(DmKeys.VALUE).asText()));
         }
-        throw new IllegalArgumentException("not a group: " + path);
+        return out;
     }
 
-    private IElement require(String path) {
-        IElement element = byPath.get(path);
+    /** The (effective, typedef-inlined) {@code Field.fieldType} node of the field at {@code fieldPath}. */
+    private JsonNode fieldTypeNode(String fieldPath) {
+        return fieldNode(fieldPath).path(ElementType.FIELD.wireName()).path(DmKeys.FIELD_TYPE);
+    }
+
+    /** The {@code <Kind>Type} config block of a field whose effective type matches {@code discriminator}, else null. */
+    private JsonNode typeBlockOf(String fieldPath, String discriminator) {
+        JsonNode fieldType = fieldTypeNode(fieldPath);
+        return discriminator.equals(fieldType.path(DmKeys.TYPE).asText()) ? fieldType.path(discriminator) : null;
+    }
+
+    private JsonNode numberTypeOf(String fieldPath) {
+        return typeBlockOf(fieldPath, "NumberType");
+    }
+
+    private JsonNode stringTypeOf(String fieldPath) {
+        return typeBlockOf(fieldPath, "StringType");
+    }
+
+    private JsonNode requireEnum(String fieldPath) {
+        JsonNode enumeration = typeBlockOf(fieldPath, "EnumerationType");
+        if (enumeration == null) {
+            throw new IllegalArgumentException(
+                    fieldPath + " is not an enumeration field (kind=" + kindOf(fieldPath) + ")");
+        }
+        return enumeration;
+    }
+
+    private Optional<BigDecimal> numberBound(String fieldPath, String key) {
+        JsonNode number = numberTypeOf(fieldPath);
+        if (number == null) {
+            return Optional.empty();
+        }
+        JsonNode bound = number.path(key);
+        if (bound.isMissingNode() || bound.isNull()) {
+            return Optional.empty();
+        }
+        return Optional.of(bound.isTextual() ? new BigDecimal(bound.asText()) : bound.decimalValue());
+    }
+
+    private OptionalInt stringInt(String fieldPath, String key) {
+        JsonNode string = stringTypeOf(fieldPath);
+        if (string == null) {
+            return OptionalInt.empty();
+        }
+        JsonNode value = string.path(key);
+        return value.isInt() || value.isIntegralNumber() ? OptionalInt.of(value.asInt()) : OptionalInt.empty();
+    }
+
+    // --- element resolution (name-path keyed; fail-fast with a hint) ------------------------------
+
+    /** The field element node at {@code fieldPath}. */
+    private JsonNode fieldNode(String fieldPath) {
+        JsonNode node = require(fieldPath);
+        if (!ElementType.FIELD.matches(node)) {
+            throw new IllegalArgumentException("not a field: " + fieldPath);
+        }
+        return node;
+    }
+
+    /** The group element node at {@code groupPath}. */
+    private JsonNode groupNode(String groupPath) {
+        JsonNode node = require(groupPath);
+        if (!ElementType.GROUP.matches(node)) {
+            throw new IllegalArgumentException("not a group: " + groupPath);
+        }
+        return node;
+    }
+
+    private JsonNode require(String path) {
+        JsonNode element = reader.element(path);
         if (element == null) {
             throw new IllegalArgumentException("no element at path: " + path
-                    + Suggest.hint(path, byPath.keySet()));
+                    + Suggest.hint(path, reader.paths()));
         }
         return element;
+    }
+
+    private JsonNode nodeOrMissing(String path) {
+        JsonNode element = reader.element(path);
+        return element == null ? com.fasterxml.jackson.databind.node.MissingNode.getInstance() : element;
     }
 }

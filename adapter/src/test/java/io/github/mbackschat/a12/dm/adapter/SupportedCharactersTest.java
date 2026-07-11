@@ -1,18 +1,15 @@
-package io.github.mbackschat.a12.dm.modelkit;
+package io.github.mbackschat.a12.dm.adapter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.StringReader;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-
-import io.github.mbackschat.a12.dm.core.ModelIndex;
-import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.edit.EditSession;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 
 /**
  * Config: <b>supported characters</b> (FEATURE-GAPS) — the {@code modelConfig}
@@ -26,9 +23,9 @@ import io.github.mbackschat.a12.dm.edit.EditSession;
  */
 class SupportedCharactersTest {
 
-    private static List<String> supportedCharactersAfterRoundTrip(String json) throws Exception {
-        IDocumentModel model = ModelLoader.loadSelfContained(new StringReader(json));
-        return ModelIndex.of(model).model().getContent().getDocumentModelConfig().getSupportedCharacters();
+    private static List<String> supportedCharactersAfterRoundTrip(String json) {
+        return KernelModelOracle.ofSelfContained(json).model()
+                .getContent().getDocumentModelConfig().getSupportedCharacters();
     }
 
     @Test
