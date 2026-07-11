@@ -196,8 +196,9 @@ Formal errors differ from rule errors: they use a fixed, non-customizable messag
 | **cell** | one field value at a given repetition (a repeated field's value in one row) | *field value* (`FeldWert`) at a *repetition* (`Kontext`/`Kontextnummer`); the kernel has **no single noun** for the pair | a terse row×column shorthand for "a repetition's field value" |
 | **cell state** | a value's three-way evaluability: empty · filled · not-check-relevant | the kernel's separate **predicates** — `isWertAngegeben` (specified/filled), not-specified (empty), `nichtPruefungsrelevant` (not check-relevant); **not** a named kernel type | names the 3-way taxonomy the kernel leaves as loose predicates (`CellState`) |
 | **(index) column** | a field's values across all repetitions of its group | "the field's values across the repetitions"; **no single kernel noun** (the uniqueness/aggregate scans operate over it) | the scan unit for uniqueness + starred aggregates (`IndexColumn`) |
+| **row** | one repetition of a repeatable group (the instance holding that repetition's field values) | *repetition* (`Kontext`/`Kontextnummer`); German `Zeile` survives in kernel identifiers (`zuGrosseZeile`, the legacy `ZeileNichtEindeutig`) | reads naturally beside "cell"/"column"; used throughout both docs |
 
-Everything below uses "cell" per this declaration.
+Everything below uses "cell" and "row" per this declaration.
 
 ### The three cell states — the third one is not "empty"
 
