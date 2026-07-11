@@ -504,23 +504,23 @@ Condition earliestBeforeCutoff =
                 .before(Dsl.dateValue("20.03.2026"));   // Min([A], [B]) < "20.03.2026"
 ```
 
-**Presence over a semantic index.** `ref.indexedCell(key)` is a dedicated handle for the cell a semantic index resolves to; `.filled()`/`.notFilled()` author its presence — rendered bare (no value brackets). Presence lives only on this handle, never on the `forIndex(...)` value expression, so the non-cell misuse `sum(...).filled()` is a compile error rather than a runtime throw (finding 62, superseding finding 59):
+**Presence over a semantic index.** `ref.semanticIndex(key)` is a dedicated handle for a semantic index (`[Field For key]`); `.filled()`/`.notFilled()` author its presence — rendered bare (no value brackets). Presence lives only on this handle, never on the `forIndex(...)` value expression, so the non-index misuse `sum(...).filled()` is a compile error rather than a runtime throw (finding 63, superseding finding 59):
 
 <!-- snippet: indexed-presence -->
 ```java
-// indexedCell(key) is the presence handle for the cell a semantic index resolves to;
+// semanticIndex(key) is the presence handle for the cell a semantic index resolves to;
 // .filled()/.notFilled() test its presence. (The cell's VALUE for a comparison is forIndex(key).)
-Condition present = m.num("/Order/Items/Count").indexedCell("SKU-1").filled();
+Condition present = m.num("/Order/Items/Count").semanticIndex("SKU-1").filled();
 ```
 
-The same `indexedCell(...)` handle is the operand of `Dsl.fieldValueAsString`, so an indexed cell's value coerces to string — the kernel's `FieldValueAsString([Field For key])`, the peer of the plain `fieldValueAsString(field)` (D11):
+The same `semanticIndex(...)` handle is the operand of `Dsl.fieldValueAsString`, so an indexed cell's value coerces to string — the kernel's `FieldValueAsString([Field For key])`, the peer of the plain `fieldValueAsString(field)` (D11):
 
 <!-- snippet: indexed-coercion -->
 ```java
-// fieldValueAsString also takes an indexedCell(key) operand — the indexed cell's value coerced to
+// fieldValueAsString also takes an semanticIndex(key) operand — the indexed cell's value coerced to
 // string, e.g. to splice a keyed number cell into a concatenation (the corpus shape).
 Condition c = m.str("/Order/CustomerName").eq(
-        Dsl.text("C-").plus(Dsl.fieldValueAsString(m.num("/Order/Items/Count").indexedCell("SKU-1"))));
+        Dsl.text("C-").plus(Dsl.fieldValueAsString(m.num("/Order/Items/Count").semanticIndex("SKU-1"))));
 ```
 
 **The rule's own group.** `Dsl.ruleGroup()` is the self-reference to the rule's containing group (the kernel's `RegelKontext`); it renders the reserved keyword (EN `RuleGroup`, DE `RegelKontext`), never a path. On a rule iterating a repeatable group it is the "is this row present" guard — the shape behind attachment/row-content rules (finding 60):

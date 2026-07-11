@@ -17,8 +17,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
  * {@code FieldValueAsString([Field For key])} over an indexed cell (DEV-API-GAPS D11; KERNEL-SEMANTICS §9).
- * The operand is an {@link io.github.mbackschat.a12.dm.rulekit.dsl.IndexedCell} handle
- * ({@code ref.indexedCell(key)}) fed to {@link Dsl#fieldValueAsString(io.github.mbackschat.a12.dm.rulekit.dsl.IndexedCell)},
+ * The operand is an {@link io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex} handle
+ * ({@code ref.semanticIndex(key)}) fed to {@link Dsl#fieldValueAsString(io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex)},
  * the indexed peer of the plain {@code fieldValueAsString(field)} coercion. Rendered form pinned by the
  * interpreter differential {@code SemanticIndexMatchedInvalidCellDiffTest}; this proves the typed authoring
  * renders to it and the real kernel accepts it.
@@ -31,7 +31,7 @@ class IndexedFieldValueAsStringTest {
 
     @Test
     void literalKeyedCoercionRendersBareIndexBody() {
-        Condition c = Dsl.fieldValueAsString(m.num(COUNT).indexedCell("SKU-1")).eq("5");
+        Condition c = Dsl.fieldValueAsString(m.num(COUNT).semanticIndex("SKU-1")).eq("5");
         assertEquals("FieldValueAsString(/Order/Items/Count For \"SKU-1\") == \"5\"",
                 new DslRenderer().render(c));
         // DE: the operator + the "For" keyword localize
@@ -41,7 +41,7 @@ class IndexedFieldValueAsStringTest {
 
     @Test
     void fieldKeyedCoercionRendersBareIndexBody() {
-        Condition c = Dsl.fieldValueAsString(m.num(COUNT).indexedCell(m.field(PC))).eq("5");
+        Condition c = Dsl.fieldValueAsString(m.num(COUNT).semanticIndex(m.field(PC))).eq("5");
         assertEquals("FieldValueAsString(/Order/Items/Count For /Order/ProductCode) == \"5\"",
                 new DslRenderer().render(c));
     }
@@ -50,7 +50,7 @@ class IndexedFieldValueAsStringTest {
     void composesInAConcatenation() {
         // the corpus shape: a coerced indexed number cell spliced into a string concat
         Condition c = m.str("/Order/CustomerName").eq(
-                Dsl.text("C-").plus(Dsl.fieldValueAsString(m.num(COUNT).indexedCell("SKU-1"))));
+                Dsl.text("C-").plus(Dsl.fieldValueAsString(m.num(COUNT).semanticIndex("SKU-1"))));
         assertEquals("[/Order/CustomerName] == \"C-\" + FieldValueAsString(/Order/Items/Count For \"SKU-1\")",
                 new DslRenderer().render(c));
     }
@@ -59,7 +59,7 @@ class IndexedFieldValueAsStringTest {
     void theRealKernelAcceptsTypedIndexedCoercion() {
         // mirrors SemanticIndexPresenceDiffTest.fieldValueAsStringOverIndexedCell — a guarded rule.
         Condition c = m.str("/Order/CustomerName").filled()
-                .and(Dsl.fieldValueAsString(m.num(COUNT).indexedCell("SKU-1")).eq("5"));
+                .and(Dsl.fieldValueAsString(m.num(COUNT).semanticIndex("SKU-1")).eq("5"));
         String rendered = new DslRenderer().render(c);
         ValidationResult vr = new RuleValidator().check(Fixtures.orderJson(),
                 new DraftRule("/Order", "IndexedCoercionRule", "../CustomerName", rendered, "IDX", "ERROR"));

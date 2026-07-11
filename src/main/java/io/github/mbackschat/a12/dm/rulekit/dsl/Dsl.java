@@ -587,10 +587,10 @@ public final class Dsl {
 
     /**
      * {@code FieldValueAsString([Field For key])} — a semantically-indexed cell's value coerced to string,
-     * as a string expression. The indexed operand is an {@link IndexedCell} handle ({@code ref.indexedCell(key)},
+     * as a string expression. The indexed operand is an {@link SemanticIndex} handle ({@code ref.semanticIndex(key)},
      * literal or field key); the peer of {@link #fieldValueAsString(FieldRef)} for the {@code For}-indexed shape.
      */
-    public static StringExpr fieldValueAsString(IndexedCell cell) {
+    public static StringExpr fieldValueAsString(SemanticIndex cell) {
         return new StringExpr(new IndexedFieldValueAsString(cell.index()));
     }
 

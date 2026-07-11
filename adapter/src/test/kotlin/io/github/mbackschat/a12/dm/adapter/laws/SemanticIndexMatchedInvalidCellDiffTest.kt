@@ -56,7 +56,7 @@ class SemanticIndexMatchedInvalidCellDiffTest {
 
     // The kernel grammar shapes under test — a direct indexed operand `[Items/Price For LookupKey]` and the
     // `FieldValueAsString(Items/Price For LookupKey)` coercion — are authored through the typed rulekit surface
-    // (D11: forIndex(...) for the value, fieldValueAsString(indexedCell(...)) for the coercion) and rendered
+    // (D11: forIndex(...) for the value, fieldValueAsString(semanticIndex(...)) for the coercion) and rendered
     // relative to /Shop. PriceText isolates the FieldValueAsString read (no direct indexed operand alongside),
     // so its column/matched-invalid arms pin THAT read site alone. `operationsRenderToTheKernelLegalShape`
     // pins the byte-identical rendered form.
@@ -66,7 +66,7 @@ class SemanticIndexMatchedInvalidCellDiffTest {
 
     private val labelForKey = m.str(LABEL).forIndex(m.field(KEY))                          // [Items/Label For LookupKey]
     private val priceForKey = m.num(PRICE).forIndex(m.field(KEY))                          // [Items/Price For LookupKey]
-    private val priceAsString = Dsl.fieldValueAsString(m.num(PRICE).indexedCell(m.field(KEY)))  // FieldValueAsString(Items/Price For LookupKey)
+    private val priceAsString = Dsl.fieldValueAsString(m.num(PRICE).semanticIndex(m.field(KEY)))  // FieldValueAsString(Items/Price For LookupKey)
 
     private val infoOp = op(Dsl.text("P ").plus(labelForKey).plus(" Q ").plus(priceAsString).plus(" R").expression())
     private val resultOp = op(priceForKey.expression())

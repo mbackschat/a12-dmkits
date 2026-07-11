@@ -67,14 +67,14 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
         return new EnumExpr(new SemanticIndexFieldValue(field, keyField));
     }
 
-    /** This field's indexed cell as a PRESENCE handle — {@code indexedCell(key).filled()}; see {@link FieldRef#indexedCell(String)}. */
-    public IndexedCell indexedCell(String indexValue) {
-        return field.indexedCell(indexValue);
+    /** This field's semantic index as a PRESENCE handle — {@code semanticIndex(key).filled()}; see {@link FieldRef#semanticIndex(String)}. */
+    public SemanticIndex semanticIndex(String indexValue) {
+        return field.semanticIndex(indexValue);
     }
 
-    /** The field-keyed peer — {@link FieldRef#indexedCell(FieldRef)}. */
-    public IndexedCell indexedCell(FieldRef keyField) {
-        return field.indexedCell(keyField);
+    /** The field-keyed peer — {@link FieldRef#semanticIndex(FieldRef)}. */
+    public SemanticIndex semanticIndex(FieldRef keyField) {
+        return field.semanticIndex(keyField);
     }
 
     public Condition is(String value) {

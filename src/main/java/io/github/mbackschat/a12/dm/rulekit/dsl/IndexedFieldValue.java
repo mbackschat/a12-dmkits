@@ -5,8 +5,8 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * literal-keyed {@link SemanticIndexValue} or the field-keyed {@link SemanticIndexFieldValue}. Beyond
  * being a comparable {@link Calculation} value ({@code ref.forIndex(key)}), an indexed cell has a
  * <em>presence</em> — so it grows {@code FieldFilled}/{@code FieldNotFilled} via
- * {@link IndexedPresenceCondition}, authored through the dedicated {@link IndexedCell} handle
- * ({@code ref.indexedCell(key).filled()} / {@code .notFilled()}).
+ * {@link IndexedPresenceCondition}, authored through the dedicated {@link SemanticIndex} handle
+ * ({@code ref.semanticIndex(key).filled()} / {@code .notFilled()}).
  */
 public sealed interface IndexedFieldValue extends Calculation permits SemanticIndexValue, SemanticIndexFieldValue {
 
