@@ -92,6 +92,8 @@ A DATE-family operation over an empty operand is not evaluated: the computed fie
 
 ## §11 supplement — compute(): an out-of-range value is ERRORED; a computation reading an errored dependency is SKIPPED (runtime, 2026-06-26)
 
+> Fold: folded → §11.
+
 Two compute() facts, both probe-confirmed via `IDocumentRtService.compute`:
 
 - **An out-of-range computed value is ERRORED, value returned.** When the computed value is not valid for the target field (e.g. a number above its `maxValue`), the kernel returns the value but flags the instance in **`getComputedFieldInstancesWithErrors()`** rather than `…WithChanges()`. So `T (maxValue 999) := [A]` with `A = 5000` yields `T = 5000`, errored. *(Interpreter: `ComputeOutcome.ERRORED`; locked `adapter.laws.ComputeErrorBucketDiffTest`, INTERPRETER-FINDINGS IF34.)*
@@ -112,6 +114,8 @@ A **computed NUMBER stores PADDED to the target's `minFractionalDigits` — and 
 **The computed-NUMBER store path in full — scale-19 pre-round, an UNCAPPED fit render, a length-bounded no-fit arm; the stored form is never re-rounded to fit the 15-digit check** (source + quad-differential, 2026-07-09). `CalculationController.handleBerechnetenWert(VkBigDecimal, id)` — both strategies — does, in order: **(1)** `setScale(19, HALF_UP)` (`VkBigDecimal.DEFAULT_SCALE` — observable only for a quotient/product whose scale exceeds 19); **(2)** if the value's natural (stripped) scale **fits** the target's `maxFractionalDigits`: render at `max(naturalScale, minFractionalDigits)` with **NO length cap**, run the formal check on that string (`checkField`), and store it — so a computed `RoundAccounting(product-of-many, 2)` worth `354027231847478.01` (17 digits) stores in FULL, trips `stelligkeitZuLang` (>15 digits, sign excluded), and the cell is **ERRORED with the full value** (`getComputedFieldInstancesWithErrors` carries it); **(3)** if the natural scale does **not fit** (`minScale > maxNachkommaMeta`): render length-bounded to **16 significant digits** (`BigDecimalUtils.toStringWertLaengenBeschraenkt(v19, 16)` — ≤ 16 significant digits → canonical; longer → `setScale(max(0, 16 − integerDigits), HALF_UP)`), store it, and mark **"fehlerhaft berechnet" unconditionally** (ERRORED even when the bounded string is formally valid — e.g. a scale-4 product `2.4723` into a maxFrac-2 target). The no-fit arm is reachable on a legal model **only** through the computation's **`errorCodesToSuppress: ["MVK_INVALID_COMPARE_DEC_PLACES"]`** (`IComputation.getErrorCodesToSuppress` — the kernel's own model-level escape hatch for the static assignment-scale gate); without it the codegen REJECTS a scale-mismatched assignment — the gate is an **ERROR** for computations, riding the implicit `[target] != <op>` comparison check (differentially pinned: `[A]*[B]` of scale-2 operands has static scale **4**, a bare division static scale **"?"**, both rejected into a scale-2 target). *(Interpreter: `storedComputedNumber` (commonMain) reproduces all three steps and `toComputed` reports a no-fit cell ERRORED into the IF85 poison set; locked `adapter.laws.ComputedNumberDigitOverflowDiffTest` — a QUAD-check incl. the suppressed no-fit arm and the rejected-without-suppression control — and multiplatform `interpreter … ComputedNumberDigitOverflowTest`; INTERPRETER-FINDINGS IF92.)*
 
 ## §11 supplement — TIERED computations: alternatives are selected in order by precondition; `commonPrecondition` gates the whole (source + probe-verified 2026-06-25)
+
+> Fold: folded → §11.
 
 A computation is a **list of `computationAlternatives`**, each an optional `precondition` + an `operation` (the value expression), optionally under a whole-computation `commonPrecondition`. The kernel codegen (`CodeGenCalculationAlternative.st`) emits, per alternative in order, `if (<precondition>) { handleValue(<operation>); continue; }` — so the runtime **evaluates alternatives top-to-bottom and the FIRST whose precondition holds supplies the value**; an alternative with no precondition always applies (an unconditional default); if **none** holds the field is **cleared** (computes nothing). A `commonPrecondition` guards the whole computation (false ⇒ cleared). This is the kernel's "tiered computation" feature.
 
@@ -141,6 +145,8 @@ The **interpreter models this in full** (fixed 2026-06-26, INTERPRETER-FINDINGS 
 
 ## §11 supplement — compute reporting granularity — VALUES are change-only (TYPED equality), CLEARED is input-filled-only, ERRORED is unconditional (source + probe, 2026-07-08)
 
+> Fold: folded → §11.
+
 What `compute()` *reports* is a **delta against the input document**, not a report-all (source: `DocumentComputationResultImpl.init` + the `IDocumentComputationResult` javadoc; probe-verified on the modern `compute(DocumentV2, config)` path):
 
 - **`getComputedFieldInstancesWithChanges` (→ VALUE)** — only instances whose computed value **differs from the input document's value at that cell**, compared as **typed values**: `fieldValuesEqual(originalV2Value, computedV2Value)` = `Objects.equals` (with a `Date[]` array special case). Two consequences: **(1)** on a **placement/harness-built** instance the cell values are raw *strings*, so the equality can hold **only for a STRING-kind computed target** (a number/date/boolean computes to `BigDecimal`/`Instant`/`Boolean` — never equal to the raw seed string) — probe: a scale-0 number seeded `20`, computing `20`, is **reported** (`String "20"` ≠ `BigDecimal 20`), while a string seeded `AB-X`, computing `AB-X`, is **absent**; **(2)** on a properly **typed** input (a kernel-deserialized document), `BigDecimal.equals` is **scale-sensitive**, so a computed `7.00` over a stored `7` is a *change* (the stored FORM is part of the equality) — this resolves the IG44-era granularity probe (its `VALUE(7)`-with-seed-`7` case was reported not for a form difference but because a number never types-equal a harness seed string).
@@ -151,9 +157,13 @@ What `compute()` *reports* is a **delta against the input document**, not a repo
 
 ## §9/§11 supplement — computations PARALLEL-ITERATE over sibling indexed groups; an invalid index anywhere marks every instance incorrectly calculated (source + differential, both strategies, 2026-07-09)
 
+> Fold: folded → §11.
+
 A computation whose operands reference OUT-OF-SCOPE sibling repeatable groups (all joined groups carrying the same-named INDEX field) runs the §9 parallel iteration: the target row keyed K reads each sibling's row with the SAME key — join-by-key, never physical row position (differentially pinned with scrambled row orders). An **unmatched side reads EMPTY** (empty-as-0 for a missing key row and for a wholly-uninstantiated side group — the calc still computes). Two calc-specific rules: the calc **never creates a repetition** (`CalculationController.isWiederholungGesetzt` — "no additional repetitions should be created by calculation"; a side-only key computes nothing), and an **INVALID index in ANY joined group** (a duplicated or empty key cell, target or side) marks **EVERY instance** of the computation "incorrectly calculated" — `CalculationCache.markFieldsUsingInvalidIndexGroupsAsIncorrectlyCalculated`, deliberately *"marking more field instances as invalid than strictly necessary"* — so even clean-keyed instances CLEAR (and poison dependents). Both strategies agree (tri-checked). *(Interpreter: the compute path reuses the rule-side `parallelIterationContexts` anchored on the TARGET's scope + an `invalidIndexGroup` all-instances guard; locked `adapter.laws.ComputeParallelIterationDiffTest` + multiplatform `interpreter … ComputeParallelIterationTest`; INTERPRETER-FINDINGS IF96.)*
 
 ## §11/§12 supplement — validateFull does NOT run computations — validate and compute are separate operations (runtime, 2026-06-09)
+
+> Fold: folded → §11.
 
 The kernel keeps **validation** (`IDocumentRtService.validateFull`) and **computation** (`compute`) as distinct, independently-invoked operations — confirmed in the kernel dev docs (`a12-kernel/documentation/_merged/kernel-dev.md` §"Validating a document / Computations on a document": *"the use of validation and computation is very similar, therefore only one is described"*, and the worked sequence `validateFull(doc)` … `compute(doc)` … `result.appliedTo(doc)`). There is **no combined call**: `validateFull` validates the document's values **as-is** and does **not** compute computed fields first, and `compute` returns a *result* (the input is never mutated — applying it back via `appliedTo`/`apply` is a separate, opt-in step the consumer orchestrates).
 
@@ -162,6 +172,8 @@ The kernel keeps **validation** (`IDocumentRtService.validateFull`) and **comput
 **Consequence for us:** a *bare* `validateFull` sees a **computed field** as whatever the instance supplies — **empty** if absent (verified: `FieldFilled(CoverageWindow)` does **not** fire when only the `DateRange` operands are present), so a required-or-referenced computed field false-fires `mandatoryField` / misses its value. The **form-engine** answer applies the computation first. So our runtime-validate verbs **compose by default**: `model eval` / `rule eval` run **compute → applyTo → validateFull** (the form-engine flow), and **`--no-computations`** drops to the bare `validateFull`. The interpreter mirrors `applyTo` as the clean-room `DmInterpreter.applyComputations(doc)` (VALUE set, ERRORED/CLEARED emptied — INTERPRETER-FINDINGS IF45), the kernel `--kernel` path as `KernelAdapter.evaluateApplied`. `model compute` stays the pure `compute` (what does a field compute to?); the document file is never mutated by any verb (read-only — `compute`/eval report, never write `--instance`). The **engine-level** `DmInterpreter.validate == validateFull` parity stays foundational (the differentials rest on it); the *composed* path has its own differential. *(Locked: `adapter.laws.EvalDocSeamLawsTest.validationDoesNotRunComputations` (the engine split) + `adapter.laws.ComputeApplyDiffTest` (interp compute-then-validate == kernel `compute().applyTo().validateFull()`).)*
 
 ## §12 supplement — Full vs Partial validation — `model eval` is FULL; partial may skip `*`-all-reps + `Having` rules (BA appendix, prose-only, 2026-06-17)
+
+> Fold: folded → §12.
 
 The kernel has two validation modes (BA "Full Validation and Partial Validation", L5303-5321). **Full validation** — our `model eval` = `validateFull` — formal-validates all fields and evaluates every rule. **Partial validation** is a page-level pre-check over an app-specified *relevant-field* set: it guarantees never to report an error fixable only *outside* that set, but **does NOT guarantee complete checking of the relevant fields** — some checks are skipped (performance/simplicity). Named skip examples: rules referencing **all repetitions** via `*` when only some are relevant (explicitly incl. `NotAllFieldsFilled`, `FieldsNotCollectivelyFilled`), and **`Having`-filter** rules. The exact skip-set is an **unstable implementation detail** (may change any release; projects must not depend on it). **Consequence:** every law we lock and every catalog example we ship is *full-validation* behaviour — a rule that fires under full validation may *not* fire under a partial page pre-check. **Prose-only by design** (the skip-set is explicitly unstable — nothing to formalize/lock). Related: the mandatory-"star" in a field's label (BA "the star method") is a *separate decidable heuristic* over a fixed allow-list of presence constructs — a UI affordance outside rulekit's scope.
 
@@ -482,6 +494,8 @@ This is the kernel truth behind the interpreter's treatment (auto-validate each 
 
 ## §12 supplement — Partial validation (`validatePart`) — rule-gating + 3VL relevance (source + probe-confirmed 2026-06-24)
 
+> Fold: folded → §12.
+
 `validatePart(DocumentV2, Set<DocumentMultiPointer> relevantEntities, DocumentProcessingConfig)` validates only a *part* of the document. The contract (kernel javadoc on `IDocumentRtService.validatePart`, probe-confirmed) is two mechanisms:
 
 - **Rule-gating by the error field.** A validation rule is **executed only if its error-field instance is in the relevant set** (this includes the auto-generated formal/mandatory/unique field checks, whose error field is the field itself). So a rule whose error field is not relevant simply does not run — no message.
@@ -582,6 +596,8 @@ So the kernel is **tolerant of an older same-major model and fail-fast on a newe
 
 ## §1/§3 supplement — value-vs-omission typing is DIRECTIONAL and sign-aware (source + runtime, 2026-06-23)
 
+> Fold: folded → §12.
+
 A fired comparison is an OMISSION error (`TRUE_AF`) only when filling an operand **in the breaking direction** could clear it (`BedingungsOperatorHelper.vergleiche`): `GT`/`GE` → `left.kannKleinerWerden || right.kannGroesserWerden`; `LT`/`LE` → the mirror; `EQ` → any operand can move; `NE` → directional on which side is larger (`getFehlerFuerNE`). The per-operand fillability of an **empty number** is asymmetric: `kannGroesserWerden = true` (always fillable larger) but **`kannKleinerWerden = hatVorzeichen`** — fillable smaller only if the field is **signed** (`RuntimeController.feldWertAlsZahl`, TS twin `BigDecimalUtils.makeDecimalFromNonEmptyString`).
 
 - **The sign trigger is `NumberType.positivesOnly`, NOT `minValue`** (the trap): a field with `minValue:1` is still *signed* (probed — `[BirthDay] >= 0` empty types OMISSION); only `positivesOnly:true` makes it unsigned (`[StockOnHand:positivesOnly] >= 0` empty types **VALUE**). `minValue` is a range constraint, independent of `hatVorzeichen`.
@@ -630,6 +646,8 @@ Two more edges of the §2 empty-value table (all three now canonical in §2's ov
 
 ## Condition directives — `@SuppressWarning` + `RuleGroup` (2026-06-10, grammar-ledger drain)
 
+> Fold: folded → §5 + §10.
+
 Two raw-DSL forms the grammar carries outside the operator surface (productions `preamble` / `regelKontextEntity`), both probe-verified; rulekit authors neither but the read path may meet them:
 
 - **`@SuppressWarning(NAME)`** (DE `@UnterdrueckeWarnung`) prefixes a condition and suppresses exactly **one** supported warning: `MVK_INVALID_COMPARE_DEC_PLACES` — i.e. it is the kernel's own escape hatch for the field-vs-field **equality scale gate** (§5 finding 18). `@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) [Quantity] == [UnitPrice]` validates across scales 0 vs 2. Any other name is rejected — with the quirk that the diagnostic's *code* is the attempted name itself (`MVK_INVALID_SUPPRESSED_WARNING` supplies only the message text). Treatment note: rulekit's `NumberRef.eq/ne` *pre-check* equal scale — a raw-DSL rule using the directive is therefore kernel-legal but not typed-builder-expressible; the directive matters for read tolerance, not authoring.
@@ -639,6 +657,8 @@ Two raw-DSL forms the grammar carries outside the operator surface (productions 
 
 ## Condition lexing — keyword case-variant families; whitespace rides a hidden channel; a bare name is never an arithmetic operand (source `LexerTerminals_en` + grammar, differential-locked 2026-07-06/09)
 
+> Fold: not-foldable — concrete-syntax/lexer tier; the canonical doc defers grammar shape to the origin project's grammar doc.
+
 Three lexer/grammar-tier facts about the condition DSL's concrete syntax (they have no KERNEL-SEMANTICS home — the canonical doc defers grammar shape; clean-room from the lexer terminals + the ANTLR grammar, behavior-locked):
 
 - **Keyword case variants are FIXED per-keyword token families, not case-folding.** `LexerTerminals_en` enumerates each accepted spelling: `And`/`and`/`AND` (UND), `Or`/`or`/`OR` (ODER), `In`/`in`/`IN`, `to`/`To`/`TO` (ZU, the `ValueNotConsistent` range form). Arbitrary mixed case (`aNd`, `oR`) stays **rejected** — a parser that case-folds would over-accept. *(Interpreter: a `KEYWORD_VARIANTS` table, INTERPRETER-FINDINGS IF55; locked `interpreter … KeywordCaseVariantParseTest` (JVM+JS) + the 100%-parse `adapter.laws.ParserCorpusSweepTest`.)*
@@ -646,6 +666,8 @@ Three lexer/grammar-tier facts about the condition DSL's concrete syntax (they h
 - **A bare identifier is never an arithmetic operand**, so `/` and `*` after a bare path segment are always PATH syntax (separator / wildcard), never division/multiplication: the grammar's arithmetic atoms (`einfacheOperation`) are **bracketed** `[entity]` references, constants, or named functions — a bare name cannot start one. This is what makes the whitespace insensitivity above unambiguous.
 
 ## Condition comments — `;;` line comments are concrete syntax: tolerated; rulekit authors them and preserves the leading one (grammar + 2026-06-12)
+
+> Fold: not-foldable — concrete-syntax tier + rulekit treatment record; comments are not carried in the parsed AST, so there is no evaluation claim.
 
 The condition lexer defines comments — `Base_ConditionLexer.Comment: ';;' ~('\r'|'\n')* …` — so `;;` begins a **line comment** (continued across lines that each restart with `;;`), parsed *around* a `teilBedingung` (GRAMMAR-LEDGER). So the kernel **validates a commented condition** — comments are read-tolerated. But a comment is **concrete syntax not carried in the parsed AST**: the kernel ships `ConditionFormatter.stripComments` to remove it, and rulekit's typed AST stores none.
 
@@ -887,6 +909,8 @@ rulekit models the numeric ones as `DateExtraction` (kind NUMBER), the part-extr
 Comparison **typing** stays static and nominal: a quoted literal beside a date-valued min/max is a DATE literal (`"20.03.2026"`), and no date/text-vs-number comparison is authorable at all (`MVK_INVALID_COMPARE_TO_DATE` / `MVK_INVALID_TYPE_FOR_COMPARISON`) — so a runtime date-vs-number pair can only ever be evaluator-made, never input-legal. *(Interpreter: kind-aware fold identity + `minMaxOperandVals` + the `starFill` date branch + `producesDate` over the min/max family; locked by `adapter.laws.DateAggregateDiffTest` incl. a codegen tri-check — IF58.)*
 
 ## §14 supplement — CustomCondition's two forbidden contexts (corpus item 8, 2026-06-04 experiments)
+
+> Fold: folded → §14.
 
 `CustomCondition <Name>` (DE `ApplikationsBedingung`; grammar `applikationsBedingung: 'ApplikationsBedingung' nameOhnePunkt`) is a bare predicate — a host-registered name, no operands. KERNEL-SEMANTICS §14 names two bans; both verified and now **pre-checked** (the constructs are representable):
 
@@ -1261,6 +1285,8 @@ The aggregate combiners track whether their result *could still change if more f
 
 ## §11 supplement — computation alternatives and the calculated-field ban
 
+> Fold: folded → §11.
+
 - **Alternatives are all-or-nothing about preconditions**: either a single alternative *without* a precondition, or several that *all* carry one — mixing a precondition-less "otherwise" in is rejected with **`MVK_ERROR_EMPTY_PRECONDITION`**. The default branch must be an explicit complementary precondition (as the demo's `BonusComp` does with `[WeekPay] < 500`).
 - The computed field may not be referenced in preconditions **nor in operations** — both directions draw the same **`MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD`** (KERNEL-SEMANTICS §11 states the precondition half). **The ban is on a *direct field* reference, not the field's containing group** (BA-doc cross-check, 2026-06-08): guarding a *repeatable* computed field with `GroupFilled`/`CurrentRepetition` on its **containing group** is kernel-legal — it's exactly the BA doc's current-repetition pattern (`CurrentRepetition(RuleGroup) == 1 → "…"` where the computed field lives in `RuleGroup`). rulekit's pre-check therefore uses **exact field-match** (`ConditionReferences.referencesField`), not the group-prefix `covers()` it uses for the rule error-field check — the earlier `covers()` over-rejected this valid shape.
 - A wrong-kind operation (string expression into a number computed field) is **`MVK_INVALID_COMPARE_TO_ENUM_OR_STRING`**.
@@ -1272,6 +1298,8 @@ The aggregate combiners track whether their result *could still change if more f
 
 ## §11/§12 supplement — every computation is ALSO a validation rule (runtime, 2026-06-17)
 
+> Fold: folded → §11.
+
 The kernel auto-generates, per computation, an **implicit validation rule** `FieldFilled(F) And [F] != <term>` — so `validateFull` fires when a document's **stored** computed value disagrees with what the computation would produce. Probed deterministically with `CoverageWindow = DateRange(OrderDate, DeliveryDate)`: a stored `CoverageWindow` differing from the computed range fires; an agreeing one does not. **The fired errorCode is the computation's own name** (`CoverageWindowComp`). This is the mechanism behind the BA's two "Computation Rules as Validation Rules" self-fire traps: computing **`Now` into a field** self-fires (time elapses between the compute and validate steps), and **copying a precise date into a coarser date field** self-fires (the fragment's missing day/month read as `01`, so `[F] != [G]`). Authoring guidance: don't compute `Now` into a field; rebuild a coarse date with `Date("1","1",YearFromDate(G))` rather than copying it. *(Locked: `adapter.laws.ComputationValidationLawsTest`; the `Now`/precise-coarse cases are BA-described instances of the locked general mechanism.)*
 
 **…and the generated rule is ANCHORED AT THE TARGET — an empty declaring container does not silence it (differential, both strategies, 2026-07-10).** The rule-from-computation fires at the **error entity (the computed field)** in the TARGET's scope, independent of the declaring group's instance content: a computation declared in an empty `*_Rules` container root, targeting `/Person/WeeklyWorkhours` in ANOTHER root (a real-workspace shape), still fires `<name>|OMISSION|/Person[1]/WeeklyWorkhours` when the stored value disagrees with the applicable tier's term (groovy-dynamic == java-static). A CROSS-GROUP computation into a **repeatable** target is unreachable — codegen-rejected with `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` ("the error field is not in the rule group, but the condition specifies iteration"), even for a star-free condition — so only non-repeatable cross-group targets reach the runtime. *(Interpreter: the synthetic rule anchors at the target's parent group — the IF89 write-scope rule's validation twin; locked `adapter.laws.ImplicitComputationValidationScopeDiffTest` + multiplatform `interpreter … ImplicitComputationValidationScopeTest`; INTERPRETER-FINDINGS IF100.)*
@@ -1281,6 +1309,8 @@ The kernel auto-generates, per computation, an **implicit validation rule** `Fie
 **Where the implicit rule FIRES — the pointer follows the computed field, even across subtrees and roots (differential, both strategies, 2026-07-07).** The generated rule's error entity is the computed FIELD's absolute location: the kernel resolves the DM-JSON `computedFieldRelPath` from the computation NODE (so `../../header/modelType` reaches a *sibling root*), independent of the computation's iteration group. On a multi-root (`header`+`content`) or sibling-subtree model the message therefore lands at the target's own pointer (e.g. `/header[1]/modelType`), never at a path mangled relative to the declaring group. *(Interpreter: INTERPRETER-FINDINGS IF66 — the general relative-path resolution to the absolute target; locked `adapter.laws.MultiRootComputationPointerDiffTest` — cross-root + sibling-subtree + compute pointer + a static-JAVA tri-check.)*
 
 ## §12 supplement — every fired message is typed value-vs-omission (runtime, 2026-06-10, RT-semantics drain)
+
+> Fold: folded → §12.
 
 A dimension KERNEL-SEMANTICS doesn't cover (it presents the logic as two-valued): every message `validateFull` raises carries a **`MessageType`** — `OMISSION_ERROR` when the rule could be satisfied by *filling* one or more additional fields, `VALUE_ERROR` when only changing a value can satisfy it. Public surface: `IMessage.getMessageType()` (kernel-md-runtime-api). Internally this is the three-state `ValidierungsErgebnis` (`TRUE_WF` / `TRUE_AF` / `FALSE_OR_UNKNOWN`) whose whole public algebra is `combineUND`/`combineODER` — there is **no negation combinator** on it (the DSL likewise has no generic `Not`, KERNEL-SEMANTICS §1):
 
@@ -1575,6 +1605,8 @@ The kernel's `IDocumentModelSerializer` **omits the `Group.elements` array entir
 Consequence for any code that *inserts into* a group by walking the JSON: "no `elements` array" must be read as "an empty container," not "no such group." It bit `field`/`group move` **into a freshly-added empty group**: the move rewrites references through the kernel serializer first (dropping the destination's empty `elements`), then the node relocation looked up the destination's `elements` and found none → a spurious "no group at path". rulekit's treatment (materialize the empty array on a matched childless group) lives in `KERNEL-INTEGRATION-NOTES.md`. *(Locked: `MoveVerbTest.movesAFieldIntoAChildlessGroup` + `ApplyRefactorTest.theGateSeesPriorOpsEffects_moveIntoAJustAddedGroup`.)*
 
 ## §13 supplement — the message-locale law
+
+> Fold: not-foldable — authoring/model-structure locale laws (declaration coverage, blank texts, duplicates), outside the evaluation scope.
 
 Header `locales` are **arbitrary** valid Java locale codes (`fr_FR` is fine; a malformed code like `en_us` fails at *deserialization* — "Invalid locale format" — before any consistency check). English/German are not special here; only the *condition keyword* language is limited to the EN/DE bundles.
 
