@@ -7987,6 +7987,12 @@
           "name": "removeAnnotations"
         },
         {
+          "name": "removeExternalDescriptions"
+        },
+        {
+          "name": "removeInternalDescriptions"
+        },
+        {
           "name": "repeatable"
         },
         {
@@ -8468,9 +8474,6 @@
           "name": "enumLabels"
         },
         {
-          "name": "format"
-        },
-        {
           "name": "mapStrategy"
         },
         {
@@ -8490,6 +8493,9 @@
         },
         {
           "name": "strict"
+        },
+        {
+          "name": "stringFormat"
         },
         {
           "name": "unionStrategy"
@@ -8828,6 +8834,12 @@
         },
         {
           "name": "removeAnnotations"
+        },
+        {
+          "name": "removeExternalDescriptions"
+        },
+        {
+          "name": "removeInternalDescriptions"
         },
         {
           "name": "rule"
@@ -9391,7 +9403,9 @@
             "java.util.List",
             "java.util.List",
             "io.github.mbackschat.a12.dm.rulekit.catalog.OperatorSemantics",
-            "java.util.List"
+            "java.util.List",
+            "java.util.List",
+            "java.lang.String"
           ]
         }
       ]
