@@ -146,7 +146,7 @@ The DSL-free foundation both kits stand on. No rulekit or modelkit dependency.
 
 ### 3.2 `dm.rulekit` — the rule & computation DSL
 
-The typed condition/computation language: author, render (EN/DE), read back, validate against the real kernel. Six sub-packages, strictly acyclic (verified by import sweep); `dsl` is the hub.
+The typed condition/computation language: author, render (EN/DE), read back, validate against the real kernel. Six sub-packages; `dsl` is the hub. **Not acyclic**: `{dsl, catalog, validate, write}` form one strongly connected component (jdeps over the built jar, 2026-07-11 — `catalog.BuiltInPattern` → dsl while `DslRenderer` → catalog; `dsl.BoundModel` → `write.ModelWriter` via fully-qualified references no import sweep sees, while `ModelWriter` → dsl types; dsl builders → `validate.Diagnostic` while `validate.DiagnosticEnricher` → catalog). `lint`/`context` sit above the SCC, `core` below — so rulekit ships as one unit; see [KERNEL-DECOUPLING-PROPOSAL.md](KERNEL-DECOUPLING-PROPOSAL.md) §1b.
 
 ```
             ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
