@@ -29,6 +29,12 @@ Kernel-behavior facts **verified by experiment against kernel `30.8.1`**; we **c
 
 *(Provenance: source sweep of `DocumentModelExpandService`, `TypeDefCache`, `Field.getEffectiveType`, `EntityReferenceResolverVisitor`, `DocumentModelRoot`, `ElementUtils`, kernel 30.8.1, 2026-07-11. Clean-room reimplemented kernel-free as `dm.core.ModelReader`; locked `core.ModelReaderTest`. The differential-vs-the-kernel bar is met by the Stage-2 parity net (`adapter.ModelIndexParityTest`); the kernel remains the oracle behind it; R3 `checkConsistency` untouched.)*
 
+## §5 supplement — a NumberType's minValue/maxValue read back at the field's DECLARED SCALE (parity-surfaced 2026-07-12)
+
+> Fold: not-foldable — a read-back representation fact, outside KERNEL-SEMANTICS's evaluation scope.
+
+The kernel's `INumberType.getMinValue()`/`getMaxValue()` return the bound **scaled to the field's `maxFractionalDigits`**, not at the authored literal's scale: a bound authored `0` (or `0.0`) on a `maxFractionalDigits: 2` field reads back **`0.00`**. Surfaced by the Stage-2 parity net (`adapter.ModelIndexParityTest`) — the kernel-free reader initially returned the raw literal (`0`) and diverged. The kernel-free `dm.core.ModelIndex.numberMin/numberMax` matches by `setScale(maxFractionalDigits)`; a valid model's bound never has more fractional digits than the field's scale, so this only pads, never rounds. *(Provenance: differential vs the live kernel over authored own-domain fixtures + the `a12-kernel-mm` corpus, kernel 30.8.1, 2026-07-12. Locked `adapter.ModelIndexParityTest`.)*
+
 ## §1 supplement — Boolean/Confirm comparability codes
 
 > Fold: folded → §1.

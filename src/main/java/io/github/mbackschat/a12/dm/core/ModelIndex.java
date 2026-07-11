@@ -258,7 +258,11 @@ public final class ModelIndex {
         if (bound.isMissingNode() || bound.isNull()) {
             return Optional.empty();
         }
-        return Optional.of(bound.isTextual() ? new BigDecimal(bound.asText()) : bound.decimalValue());
+        BigDecimal value = bound.isTextual() ? new BigDecimal(bound.asText()) : bound.decimalValue();
+        // The kernel returns a bound at the field's declared scale (maxFractionalDigits) — `0` on a scale-2
+        // field reads back as `0.00`. Match it so the read-back is representation-identical.
+        int scale = number.path("maxFractionalDigits").asInt(0);
+        return Optional.of(value.setScale(scale, java.math.RoundingMode.HALF_UP));
     }
 
     private OptionalInt stringInt(String fieldPath, String key) {

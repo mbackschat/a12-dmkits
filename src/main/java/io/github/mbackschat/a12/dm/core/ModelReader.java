@@ -11,7 +11,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -50,6 +52,14 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * ({@code adapter.laws.CorpusModelPreparer}). {@link ModelIndex} is the typed view over it.
  */
 public final class ModelReader {
+
+    /**
+     * Numbers are parsed as {@link BigDecimal}, not {@code double} — so a declared {@code minValue}/{@code
+     * maxValue}'s exact scale survives (the kernel preserves it; the CLI renders it verbatim). A plain mapper
+     * parses {@code 0.00} to a {@code double} and drops the scale to {@code 0.0}.
+     */
+    private static final ObjectMapper MAPPER =
+            new ObjectMapper().enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
 
     /** Included rules/computations we mounted but did NOT rewrite (see {@link #includedRulesNeedingRelativization}). */
     private final ObjectNode expanded;
@@ -92,7 +102,7 @@ public final class ModelReader {
     /** The expanded, self-contained, name-path-keyed DM-JSON — the interpreter-ready form (A4 pre-expansion). */
     public String toJson() {
         try {
-            return DmJson.MAPPER.writeValueAsString(expanded);
+            return MAPPER.writeValueAsString(expanded);
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             throw new IllegalStateException("failed to emit expanded DM-JSON", e);
         }
@@ -274,7 +284,7 @@ public final class ModelReader {
             boolean attachment = "attachment".equals(body.path("usageType").asText());
             JsonNode elements = body.path(DmKeys.ELEMENTS);
             if (!attachment && elements.isArray()) {
-                ArrayNode filtered = DmJson.MAPPER.createArrayNode();
+                ArrayNode filtered = MAPPER.createArrayNode();
                 for (JsonNode child : elements) {
                     ObjectNode kept = filterRulesAndComputations((ObjectNode) child, excludeRules, excludeComputations);
                     if (kept != null) {
@@ -409,7 +419,7 @@ public final class ModelReader {
 
     private static ObjectNode parse(String dmJson) {
         try {
-            if (DmJson.MAPPER.readTree(dmJson) instanceof ObjectNode root) {
+            if (MAPPER.readTree(dmJson) instanceof ObjectNode root) {
                 return root;
             }
             throw new IllegalArgumentException("DM-JSON root is not a JSON object");
@@ -424,7 +434,7 @@ public final class ModelReader {
             throw new UnresolvedReferenceException(reference, "no model resolved for reference \"" + reference + "\"");
         }
         try {
-            if (DmJson.MAPPER.readTree(json) instanceof ObjectNode root) {
+            if (MAPPER.readTree(json) instanceof ObjectNode root) {
                 return root;
             }
             throw new UnresolvedReferenceException(reference, "resolved model \"" + reference + "\" is not a JSON object");
