@@ -81,6 +81,10 @@ class DmInterpreter @JvmOverloads constructor(
     /** The auto-check emitter + formal-status oracle — the call-invariant I2 seam collaborator (IF117). */
     private val checks = AutoChecks(model, legalCharset, predefinedTypes, customFieldTypes)
 
+    /** The iteration-scope machinery + the RepetitionNotUnique evaluator — call-invariant I2 seam collaborators (IF117). */
+    private val scopes = IterationScopes(model)
+    private val rnuEval = RepetitionNotUniqueEvaluator(model, scopes)
+
     /**
      * **Parse once, reuse across calls** — the prepare-once optimization (INTERPRETER-PERFORMANCE.md "the
      * interpreter's two goals"). Each rule's condition / computation's expression is parsed to an AST exactly
@@ -213,8 +217,8 @@ class DmInterpreter @JvmOverloads constructor(
             validationConfig(isRelevant, customRelevant, starRelevant), checks)
         for (rule in model.rules) {
             try {
-                val rnu = repetitionNotUnique(rule)
-                messages += if (rnu != null) repetitionNotUniqueMessages(rule, rnu, pass)
+                val rnu = rnuEval.recognize(rule, condAstOf(rule))
+                messages += if (rnu != null) rnuEval.messages(rule, rnu, pass)
                 else messagesFor(rule, pass)
             } catch (e: UnsupportedConstructException) {
                 unsupported += UnsupportedRule(rule.path, e.message ?: "unsupported construct")
@@ -287,157 +291,6 @@ class DmInterpreter @JvmOverloads constructor(
         val body = parsed.alternatives.map(::alternative).reduce { l, r -> Cond.Or(l, r) }
         val guarded = parsed.commonPrecondition?.let { Cond.And(it, body) } ?: body
         return Cond.And(Cond.Pred("FieldFilled", listOf(fExpr)), guarded)
-    }
-
-    /** A recognized `RepetitionNotUnique` rule: its key field paths, the optional `@From` reference-group ref,
-     *  and the optional [guard] — the conjunction of the OTHER top-level conjuncts when the RNU predicate is
-     *  one conjunct of an And-tree (null when RNU is the whole condition). */
-    private data class RnuRule(val keys: List<String>, val fromScope: String?, val guard: Cond?)
-
-    /**
-     * If [rule]'s condition is `[<guard> And] RepetitionNotUnique(key, … [@From ref])` — the RNU predicate
-     * standing alone OR as exactly ONE top-level conjunct of an And-tree — its keys, the optional `@From` ref,
-     * and the guard (the AND of the remaining conjuncts, or null); else null (a normal rule, handled per-row).
-     *
-     * The kernel evaluates RepetitionNotUnique as a **per-row 3VL predicate** whose duplicate cache is built
-     * over the full scope **independent of the guard** — confirmed in BOTH strategies: the runtime
-     * `RuntimeController.wiederholungNichtEindeutig` builds the cache once (`isInitialised`) over all rows in
-     * `ermittleWiederholungenMitDuplikaten`, then per-row returns TRUE_WF/TRUE_AF/FALSE_OR_UNKNOWN; the codegen
-     * `EntityListCondition.st` emits a call to that same method with a per-rule `RepetitionNotUniqueErrorCache`.
-     * So a guard is just a separate conjunct combined by the ordinary 3VL And ([repetitionNotUniqueMessages]
-     * gates each duplicate row by it).
-     *
-     * Recognition stays STRICT — degrade loud (IF61), never silently wrong — returning null when the shape is
-     * NOT this per-row-predicate-under-And form: RNU under an `Or` or nested below a non-`And` (never appears as
-     * a top-level conjunct → 0 found), more than one RNU conjunct, a group/asterisk (non-`Expr.Field`) key (the
-     * kernel forbids those), or a guard whose iteration scope is DEEPER than the keys' group (an iteration
-     * granularity we don't model). None of these occurs in the real corpora; each is handled loud not wrong.
-     */
-    private fun repetitionNotUnique(rule: RuleDef): RnuRule? {
-        val conjuncts = flattenAnd(condAstOf(rule))
-        val rnuPreds = conjuncts.filter { it is Cond.Pred && it.name == "RepetitionNotUnique" }
-        if (rnuPreds.size != 1) return null                              // 0 → not an RNU rule; >1 → unmodeled
-        val pred = rnuPreds[0] as Cond.Pred
-        val guards = conjuncts.filter { it !== pred }
-        if (guards.any { containsRepetitionNotUnique(it) }) return null  // RNU nested in another conjunct — unmodeled
-        // The parser appends an `@From:<ref>` StrLit marker as the last arg when `@From` is present.
-        val fromScope = (pred.args.lastOrNull() as? Expr.StrLit)?.v?.takeIf { it.startsWith("@From:") }?.removePrefix("@From:")
-        val keyArgs = if (fromScope != null) pred.args.dropLast(1) else pred.args
-        val keys = keyArgs.map { (it as? Expr.Field)?.path ?: return null }.ifEmpty { return null }
-        val guard = guards.reduceOrNull { a, b -> Cond.And(a, b) }
-        if (guard != null && !guardScopeWithinKeyGroup(guard, rule, keys.first())) return null
-        return RnuRule(keys, fromScope, guard)
-    }
-
-    /** Flatten a top-level `And`-tree into its conjuncts; a non-`And` node is a single conjunct. */
-    private fun flattenAnd(cond: Cond): List<Cond> =
-        if (cond is Cond.And) flattenAnd(cond.left) + flattenAnd(cond.right) else listOf(cond)
-
-    /** Whether a `RepetitionNotUnique` predicate appears anywhere within [cond] (any nesting/boolean position). */
-    private fun containsRepetitionNotUnique(cond: Cond): Boolean = when (cond) {
-        is Cond.Pred -> cond.name == "RepetitionNotUnique"
-        is Cond.And -> containsRepetitionNotUnique(cond.left) || containsRepetitionNotUnique(cond.right)
-        is Cond.Or -> containsRepetitionNotUnique(cond.left) || containsRepetitionNotUnique(cond.right)
-        is Cond.Not -> containsRepetitionNotUnique(cond.c)
-        else -> false
-    }
-
-    /** The guard's iteration scope must be the keys' repeatable group or ABOVE it, so each key row uniquely
-     *  determines the guard's row (RNU iterates the key group; a deeper/sibling guard would need a different
-     *  iteration granularity — unmodeled, degrade loud). */
-    private fun guardScopeWithinKeyGroup(guard: Cond, rule: RuleDef, firstKey: String): Boolean {
-        val keyGroup = parentGroup(firstKey)
-        val guardScope = scopeFromRefs(nonStarredRefs(guard), rule.group)
-        return keyGroup == guardScope || keyGroup.startsWith("$guardScope/")
-    }
-
-    /**
-     * The scope prefix length: the rep-prefix length of the **reference group's PARENT** row. The reference
-     * group is the `@From` ref when given ([rnu].fromScope), else the **basic version** default — the first
-     * repeatable group below the rule group on the key path (BA "basic version", Situation 2). So a key two
-     * repeatable levels deep (`/Project/Milestones/Tasks/Effort`, rule at `/Project`) is by default checked
-     * across ALL milestones (scope = the `/Project` row); `@From Milestones/Tasks` narrows it to per-milestone.
-     */
-    private fun scopePrefixLen(rule: RuleDef, rnu: RnuRule): Int {
-        if (rnu.fromScope != null) return resolveGroupRef(rnu.fromScope, rule.group).trim('/').split('/').size - 1
-        val parts = rnu.keys.first().trim('/').split('/')
-        var d = rule.group.trim('/').split('/').size + 1     // first group strictly below the rule group
-        while (d < parts.size && "/" + parts.take(d).joinToString("/") !in model.repeatable) d++
-        return d - 1                                          // parent(referenceGroup) depth
-    }
-
-    /** Resolve a `@From` reference-group ref to an absolute group path — the `RuleGroup` keyword (the rule's
-     *  group), an absolute `/…` path, or a path relative to the rule group (handling leading `..` segments). */
-    private fun resolveGroupRef(ref: String, ruleGroup: String): String {
-        if (ref == "RuleGroup") return ruleGroup
-        if (ref.startsWith("/")) return ref
-        val segs = ruleGroup.trim('/').split('/').toMutableList()
-        for (s in ref.split('/')) when {
-            s == ".." -> if (segs.isNotEmpty()) segs.removeAt(segs.size - 1)
-            s.isNotEmpty() -> segs.add(s)
-        }
-        return "/" + segs.joinToString("/")
-    }
-
-    /**
-     * `RepetitionNotUnique(keys…)` — one [Message] per repetition row whose (composite) key DUPLICATES another
-     * row's within the same parent-row scope (kernel-probed): empties match empties among participants, an
-     * **all-empty** key row is skipped, and a duplicate whose key has an empty (fillable) component is
-     * **OMISSION** (else VALUE). The rule sits at the parent and iterates the keys' repeatable group.
-     */
-    private fun repetitionNotUniqueMessages(rule: RuleDef, rnu: RnuRule, pass: ValidationPass): List<Message> {
-        val keys = rnu.keys
-        val repGroup = parentGroup(keys.first())     // the keys' shared repeatable group (kernel: keys on one path)
-        val errorPath = resolveErrorPath(rule)
-        val scopeLen = scopePrefixLen(rule, rnu)
-        data class Row(val ctx: EvalContext, val reps: List<Int>, val key: List<String?>)
-        val rows = pass.doc.contextsFor(repGroup).mapNotNull { ctx ->
-            // A key cell that is FORMALLY INVALID (kernel `isWertAngegeben == UNKNOWN`) drops the WHOLE row from
-            // the duplicate cache — exactly the kernel's getWerteOrNullIfEinFeldNichtPruefungsRelevant (any UNKNOWN
-            // key cell → returns null → the row is `continue`-skipped). A cell is UNKNOWN whenever it is marked
-            // `fehlerhaft` (not check-relevant), which is EVERY [formalErrorAt] cause: a bad FORMAT, a custom-type
-            // rejection, a duplicate-INDEX (`uniqueIndex`) cell, an over-repetition cell, AND a required-EMPTY
-            // cell — the kernel's mandatory check is a PRELIMINARY autogen rule (`isPreliminary` → `preliminaryError`
-            // → `markFieldAsInvalidForValidation`) that runs BEFORE the RNU rule builds its cache, so a required-
-            // empty key cell is UNKNOWN, not a valid empty participant. (This corrects IF64's original
-            // MANDATORY_FIELD carve-out — the composite-key required-empty differential proved the kernel drops
-            // the row; IF64 corrected 2026-07-07.) Contrast an OPTIONAL-empty key cell: NOT required → `formalErrorAt` is null →
-            // `isWertAngegeben == FALSE` → a null key component → a valid empty participant (the OMISSION case).
-            // Exclusion is per-KEY-CELL: a formal error on a NON-key field of the same row does not drop it (the
-            // kernel checks only the key `entityList`).
-            if (keys.any { k -> pass.formalErrorAt(k, ctx.repsOf(k), ctx) != null })
-                return@mapNotNull null
-            Row(ctx, ctx.repsOf(errorPath), keys.map { ctx.displayValue(it)?.takeIf { v -> v.isNotEmpty() } })
-        }
-        val out = mutableListOf<Message>()
-        rows.filter { row -> row.key.any { it != null } }      // participant: at least one key field is filled
-            // Partial validation: only RELEVANT rows participate in duplicate detection — the kernel builds its
-            // duplicate cache from the relevant fields only, so a relevant row whose duplicate PARTNER is not
-            // relevant is NOT flagged (IF39, the sibling of the uniqueIndex case). Full: every row (ALL_RELEVANT).
-            .filter { row -> pass.isRelevant(errorPath, row.reps) }
-            .groupBy { it.reps.take(scopeLen) }                // scope: per reference-group parent row (basic version)
-            .forEach { (_, scope) ->
-                val dups = scope.groupingBy { it.key }.eachCount().filterValues { it > 1 }.keys
-                for (row in scope.filter { it.key in dups }) {
-                    // RepetitionNotUnique's own polarity: OMISSION when a (fillable) key component is empty, else VALUE.
-                    val rnuType = if (row.key.any { it == null }) MsgType.OMISSION else MsgType.VALUE
-                    // A combined `<guard> And RepetitionNotUnique(key)`: the guard is a SEPARATE per-row 3VL
-                    // conjunct (the duplicate cache above is guard-independent, matching the kernel). The And fires
-                    // only if the guard also fires, and its polarity combines by the Cond.And rule (OMISSION if
-                    // either operand is OMISSION). A guard that is FALSE/UNKNOWN for this row suppresses it.
-                    val type = if (rnu.guard == null) rnuType else {
-                        val guardType = pass.interpreterFor(row.ctx, errorPath)
-                            .firedType(rnu.guard) ?: continue
-                        if (rnuType == MsgType.OMISSION || guardType == MsgType.OMISSION) MsgType.OMISSION else MsgType.VALUE
-                    }
-                    val text = rule.messages[pass.locale]?.let { renderMessage(it, rule.group, row.ctx) { p -> model.labelOf(p, pass.locale) } } ?: ""
-                    val referenced = keys.map { formatPointer(it, row.ctx.repsOf(it)) }
-                    val fillToFix = if (type == MsgType.OMISSION) referenced else emptyList()
-                    out += Message(rule.errorCode, rule.path, formatPointer(errorPath, row.reps),
-                        rule.severity, type, text, referenced, fillToFix)
-                }
-            }
-        return out
     }
 
     /**
@@ -555,7 +408,7 @@ class DmInterpreter @JvmOverloads constructor(
             // otherwise resolve its scope to that empty container and compute nothing, where the kernel computes
             // the single instance at the target (non-repeatable groups are implicitly present).
             val scopeRefs = computationScopeRefs(parsed)
-            val scope = scopeFromRefs(scopeRefs + comp.targetPath, parentGroup(comp.targetPath))
+            val scope = scopes.scopeFromRefs(scopeRefs + comp.targetPath, parentGroup(comp.targetPath))
 
             // Evaluate the computation in one instance context and record its outcome (shared by the plain and
             // the parallel iteration arms).
@@ -608,7 +461,7 @@ class DmInterpreter @JvmOverloads constructor(
             // referenced out-of-scope groups are the joined SIDES, never the iteration anchor ([scope], derived
             // from ALL refs, may resolve to a referenced side — which would collapse every join row onto one
             // target key).
-            val targetScope = scopeFromRefs(listOf(comp.targetPath), parentGroup(comp.targetPath))
+            val targetScope = scopes.scopeFromRefs(listOf(comp.targetPath), parentGroup(comp.targetPath))
             val parallelGroups = scopeRefs.flatMap { ancestorGroups(it).filter { g -> g in model.repeatable } }
                 .distinct().filter { it != targetScope && !targetScope.startsWith("$it/") }
             if (parallelGroups.isNotEmpty()) {
@@ -622,7 +475,7 @@ class DmInterpreter @JvmOverloads constructor(
                     }
                     continue
                 }
-                for (pctx in parallelIterationContexts(targetScope, parallelGroups, doc)) {
+                for (pctx in scopes.parallelIterationContexts(targetScope, parallelGroups, doc)) {
                     val reps = pctx.repsOf(comp.targetPath)
                     if (UNKNOWN_REP in reps) continue   // no TARGET row for this key — the calc creates none
                     computeAt(pctx)
@@ -742,33 +595,6 @@ class DmInterpreter @JvmOverloads constructor(
         return ordered
     }
 
-    /** Every field/star path an expression reads — for cascade dependency ordering: starred aggregates count,
-     *  and a star's `Having` FILTER refs count too (the filter reads the cascade — a `Sum(… Having [flag] ==
-     *  True)` over a computed flag must run after the flag's computation, IF98). */
-    private fun referencedFieldPaths(expr: Expr): List<String> = when (expr) {
-        is Expr.Field -> listOf(expr.path)
-        is Expr.Star -> listOf(expr.path) + (expr.having?.let { condDepRefs(it) } ?: emptyList())
-        is Expr.Func -> expr.args.flatMap { referencedFieldPaths(it) }
-        is Expr.Arith -> referencedFieldPaths(expr.left) + referencedFieldPaths(expr.right)
-        is Expr.EnumCategory -> listOf(expr.path)
-        is Expr.SemanticIndex -> listOfNotNull(expr.path, expr.indexFieldPath)
-        else -> emptyList()
-    }
-
-    /** ALL field/star refs of a condition — the cascade-DEPENDENCY view of a precondition (its quantifier/
-     *  aggregate stars and their `Having` refs count, unlike the star-free SCOPE view [nonStarredRefs]). */
-    private fun condDepRefs(cond: Cond): List<String> = when (cond) {
-        is Cond.Cmp -> referencedFieldPaths(cond.left) + referencedFieldPaths(cond.right)
-        is Cond.Tolerance -> referencedFieldPaths(cond.left) + referencedFieldPaths(cond.right)
-        is Cond.ValueListQuant -> (cond.fields + cond.values).flatMap { referencedFieldPaths(it) }
-        is Cond.And -> condDepRefs(cond.left) + condDepRefs(cond.right)
-        is Cond.Or -> condDepRefs(cond.left) + condDepRefs(cond.right)
-        is Cond.Not -> condDepRefs(cond.c)
-        is Cond.Pred -> cond.args.flatMap { referencedFieldPaths(it) }
-        is Cond.Pattern -> referencedFieldPaths(cond.value) + referencedFieldPaths(cond.pattern)
-        is Cond.Custom -> emptyList()
-    }
-
     /** Render a computed [Val.Range] to the target field's `(format, separator)` (e.g. `01.06.2024-30.06.2024`);
      *  ISO `start/end` fallback when the target declares no range config or an endpoint is malformed. */
     private fun renderRange(v: Val.Range, targetPath: String): String {
@@ -831,7 +657,7 @@ class DmInterpreter @JvmOverloads constructor(
         val ast = condAstOf(rule)
         val refs = nonStarredRefs(ast).distinct()
         val errorPath = resolveErrorPath(rule)
-        return iterationContexts(rule, ast, pass.doc).map { ctx ->
+        return scopes.iterationContexts(rule, ast, pass.doc).map { ctx ->
             // Partial validation: the kernel runs a rule only if its error-field instance is relevant — else
             // the rule is NOT executed for this row (no message, not a suppression). Full validation: always.
             if (!pass.isRelevant(errorPath, ctx.repsOf(errorPath))) return@map RowOutcome.Passed
@@ -868,126 +694,6 @@ class DmInterpreter @JvmOverloads constructor(
         }
     }
 
-    /**
-     * The contexts a rule is evaluated over. The normal case: one per row of its iteration **scope** — the
-     * **deepest repeatable group** that is an ancestor of any *non-aggregated* field reference (a starred ref
-     * is an aggregate and collapses the repetition, so it does NOT force iteration); with no repeatable ref, the
-     * scope is the rule's declared [RuleDef.group]. This is the kernel law (KERNEL-FINDINGS §9 supplement,
-     * `IterationLawsTest`): the iteration scope is the set of *referenced* repeatable fields, NOT the rule's node
-     * placement — a rule at `/Order` reaching into `/Order/Items` iterates the Items rows.
-     *
-     * **Parallel iteration** — when the condition references TWO (or more) NON-nested repeatable groups per-row
-     * (siblings, neither an ancestor of the other), the kernel iterates them JOINTLY as an outer join keyed by a
-     * shared index field (KERNEL-SEMANTICS §9). [parallelIterationContexts] builds that join; an unsupported
-     * parallel shape (non-sibling depth, missing / mismatched index field) fails loud (reported unsupported),
-     * never silently wrong.
-     */
-    private fun iterationContexts(rule: RuleDef, ast: Cond, doc: Document): List<EvalContext> {
-        val refs = nonStarredRefs(ast)
-        val scope = scopeFromRefs(refs, rule.group)
-        val parallelGroups = refs.flatMap { ancestorGroups(it).filter { g -> g in model.repeatable } }
-            .distinct().filter { it != scope && !scope.startsWith("$it/") }
-        if (parallelGroups.isNotEmpty()) return parallelIterationContexts(scope, parallelGroups, doc)
-        val contexts = doc.contextsFor(scope)
-        // A rule with NO repeatable non-starred ref, declared in a container without instance content (a
-        // real-workspace `*_Rules` root referencing + erroring into OTHER roots), still evaluates ONCE — the
-        // kernel's iteration is reference-driven, and the rule fires at its ERROR ENTITY (IF103, the ordinary-
-        // rule sibling of IF100's implicit-validation anchor). Re-anchor at the error entity's parent ONLY when
-        // the declaring scope yields nothing, so every currently-anchored rule is bit-identical.
-        if (contexts.isEmpty() && scope == rule.group) {
-            val errorAnchor = parentGroup(resolveErrorPath(rule))
-            if (errorAnchor != scope) return doc.contextsFor(errorAnchor)
-        }
-        return contexts
-    }
-
-    /**
-     * Build the parallel-iteration outer-join contexts: the joined groups (the [scope] group + the
-     * [parallelGroups]) iterated jointly over the union of their shared index field's values (delegated to
-     * [Document.parallelContexts]). Each joined group must carry the **same-named** index field. Non-repeatable
-     * intermediates between the common ancestor and a joined group are transparent — sibling, wrapped, and
-     * asymmetric-depth groups all qualify (the kernel renders the wrappers `[1]`). A *repeatable* non-indexed
-     * intermediate above ONE joined group is a **frame**: the kernel iterates it normally and joins inside each
-     * frame row (the `/Plan/X/A ⋈ B` case), supported via the `frameGroup` argument. The one **unsupported
-     * shape** is a repeatable frame above MORE THAN ONE joined group (an exotic multi-frame cross-product),
-     * which throws [UnsupportedConstructException] (→ rule reported unsupported, loud-not-wrong). An **invalid**
-     * index (duplicate/empty) is NOT declined — modeled exactly: the compromised group's unmatched references
-     * read 3VL UNKNOWN (KERNEL-FINDINGS §9), and the auto checks still emit `uniqueIndex`/`mandatoryField`.
-     */
-    private fun parallelIterationContexts(scope: String, parallelGroups: List<String>, doc: Document): List<EvalContext> {
-        val joined = (listOf(scope) + parallelGroups).distinct()
-        val commonParent = commonAncestor(joined)
-        val parentDepth = pathParts(commonParent).size
-        val indexNames = joined.map { g ->
-            val indexField = model.indexFields.firstOrNull { parentGroup(it) == g }
-                ?: throw UnsupportedConstructException("parallel iteration group $g has no index field")
-            pathParts(indexField).last()
-        }.distinct()
-        if (indexNames.size != 1) {
-            throw UnsupportedConstructException(
-                "parallel-iterated groups must share one index field name, found $indexNames")
-        }
-        // A "framed" joined group sits under a repeatable non-indexed ancestor (strictly between the common
-        // ancestor and it) — the kernel iterates that frame normally and joins inside each frame row (the
-        // `/Plan/X/A ⋈ B` case). At most ONE joined group may be framed; a frame above two joined groups is an
-        // exotic cross-product, not modeled → loud decline.
-        fun frameAncestors(g: String) = ancestorGroups(g).filter { pathParts(it).size > parentDepth && it in model.repeatable }
-        val framed = joined.filter { frameAncestors(it).isNotEmpty() }
-        if (framed.size > 1) {
-            throw UnsupportedConstructException(
-                "parallel iteration with repeatable frames above multiple joined groups ($framed) is not modeled")
-        }
-        val frameGroup = framed.firstOrNull()
-        val deepestFrame = frameGroup?.let { g -> frameAncestors(g).maxByOrNull { pathParts(it).size } }
-        return doc.parallelContexts(joined, indexNames.single(), commonParent, frameGroup, deepestFrame)
-    }
-
-    /** The deepest common ancestor group path of [groups] (their longest shared path prefix). */
-    private fun commonAncestor(groups: List<String>): String {
-        val partsList = groups.map { pathParts(it) }
-        var n = 0
-        while (n < partsList.minOf { it.size } && partsList.all { it[n] == partsList[0][n] }) n++
-        return "/" + partsList[0].take(n).joinToString("/")
-    }
-
-    /** The deepest repeatable group ancestor of any [refs] path, else [defaultGroup]. */
-    private fun scopeFromRefs(refs: List<String>, defaultGroup: String): String =
-        refs.flatMap { ref ->
-            // ancestor-or-SELF: a bare GROUP reference (a group-scope quantifier arg — legal un-starred on an
-            // indexed repeatable group) is itself an iteration anchor: the kernel iterates the rule PER ROW of
-            // the referenced repeatable group and judges each row's cells (the bare-group
-            // FieldsNotCollectivelyFilled idiom — kernel-pinned per-row fire set + pointers, IF106). The error
-            // entity is NOT an anchor (the kernel-captured corpus cases pin that), only the references are.
-            (ancestorGroups(ref) + listOfNotNull(ref.takeIf { model.kinds[ref] == null }))
-                .filter { it in model.repeatable }
-        }.maxByOrNull { it.count { c -> c == '/' } }
-            ?: defaultGroup
-
-    /** Every non-starred field-reference path in the condition (Star refs are aggregates, excluded). */
-    private fun nonStarredRefs(cond: Cond): List<String> = when (cond) {
-        is Cond.Cmp -> exprRefs(cond.left) + exprRefs(cond.right)
-        is Cond.Tolerance -> exprRefs(cond.left) + exprRefs(cond.right)
-        is Cond.ValueListQuant -> (cond.fields + cond.values).flatMap { exprRefs(it) }
-        is Cond.And -> nonStarredRefs(cond.left) + nonStarredRefs(cond.right)
-        is Cond.Or -> nonStarredRefs(cond.left) + nonStarredRefs(cond.right)
-        is Cond.Not -> nonStarredRefs(cond.c)
-        is Cond.Pred -> cond.args.flatMap { exprRefs(it) }
-        is Cond.Pattern -> exprRefs(cond.value) + exprRefs(cond.pattern)
-        is Cond.Custom -> emptyList()   // the name references no field in the text — the rule is guarded by a field ref
-    }
-
-    private fun exprRefs(expr: Expr): List<String> = when (expr) {
-        is Expr.Field -> listOf(expr.path)
-        is Expr.Func -> expr.args.flatMap { exprRefs(it) }   // Star args excluded → drop through
-        is Expr.Arith -> exprRefs(expr.left) + exprRefs(expr.right)
-        is Expr.EnumCategory -> listOf(expr.path)            // `[field -> cat]` references the enum field
-        // `[F For keyField]`: the KEY field is a per-row ref (drives iteration + is a referenced field); the
-        // target `F` is an absolute semantic lookup (a specific repetition), not a per-row ref. A literal key
-        // (`[F For "v"]`) references no field.
-        is Expr.SemanticIndex -> expr.indexFieldPath?.let { listOf(it) } ?: emptyList()
-        else -> emptyList()
-    }
-
     /** Non-starred refs of a whole tiered computation — its iteration SCOPE input: each operation's non-starred
      *  expr refs plus each precondition's + the common precondition's refs (a starred aggregate is evaluated
      *  WITHIN the scope, so it does not drive it — mirrors the single-operation `exprRefs` use). */
@@ -1004,8 +710,6 @@ class DmInterpreter @JvmOverloads constructor(
             parsed.alternatives.flatMap {
                 (it.precondition?.let { p -> condDepRefs(p) } ?: emptyList()) + referencedFieldPaths(it.operation)
             }
-
-    private fun condRefsOrEmpty(cond: Cond?): List<String> = cond?.let { nonStarredRefs(it) } ?: emptyList()
 
     /**
      * Build the [Relevance] predicate from a relevant-entity set: an instance `(path, reps)` is relevant iff
