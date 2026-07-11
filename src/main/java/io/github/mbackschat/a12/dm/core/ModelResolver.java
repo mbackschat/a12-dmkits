@@ -11,6 +11,12 @@ package io.github.mbackschat.a12.dm.core;
 @FunctionalInterface
 public interface ModelResolver {
 
-    /** The DM-JSON of the model referenced by {@code modelId}, or {@code null} if this resolver has none. */
+    /**
+     * The DM-JSON of the model referenced by {@code modelId}, or {@code null} if this resolver has none —
+     * a {@code null} lets the downstream load report the missing reference. An implementation MAY instead
+     * throw a diagnostic when a miss is an error for it: {@link ReferenceResolvers#directory} fail-fasts on
+     * an unresolved id (a referenced-but-absent model in an indexed directory is a hard error), whereas the
+     * map/lambda resolvers return {@code null}.
+     */
     String resolve(String modelId);
 }
