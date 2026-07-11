@@ -125,6 +125,25 @@ Hold these from day one and extraction (§8) stays cheap.
 
 **Extraction to a sibling repo remains a *future option*, no longer a prerequisite.** Do it **only if** the interpreter earns an independent life — a non-dmtool consumer needs its own release cadence, or it ships as standalone OSS with its own issue tracker. Because §7's hygiene is lint-enforced from day one, that extraction stays a *lift* (move the module + its tests, point dmtool at the published dep), not a rewrite — so deferring it costs nothing.
 
+### 8a. The north star — the interpreter as the sole runtime EVAL engine; retire `--kernel` eval (decided 2026-07-11, "Scope A")
+
+**Committed end-state:** the interpreter becomes a **100% drop-in for the kernel's runtime EVALUATION path** — `model eval` / `rule eval` / `model compute`, including the JVM `--kernel` behavior — so the **`--kernel` eval flag is retired** and evaluation is interpreter-only on every target (native and JVM): one engine, no "use `--kernel` for fidelity" caveat, no default-vs-`--kernel` divergence surface.
+
+**Scope — EVALUATION only (the distinction that must never collapse).** This covers the kernel's *evaluation* role: running rules/computations against document data. It does **not** cover the kernel's *consistency / MVK acceptance* role — `rule check`, `model check`, add-time validation (`checkConsistency` / `RuleValidator`), the F4 "the real kernel accepts this" guarantee. That role stays **kernel-backed** (the [decoupling](KERNEL-DECOUPLING-PROPOSAL.md) `ConsistencyOracle` port, R3). So **dmtool keeps bundling the kernel even after `--kernel` eval is gone** — the backend serves three runtime uses (the MVK oracle, the read-back seam, and today's `--kernel` eval), and this goal retires only the third. Reproducing the MVK oracle clean-room so the kernel could leave the runtime *entirely* ("Scope B") is a **separate, deferred question** — out of this goal; never fold it in.
+
+**What "drop-in" requires — the eval surface:**
+- **(a) model ASSEMBLY parity** — expand includes (`modelReferences`), resolve typedef imports and effective types, differentially proven against the kernel's own expand. *This is today's gap* (the CLI eval path `ModelEvalCommand → InterpreterEngine` takes raw JSON — the silent-includes-drop defect) and is exactly [decoupling Stage 2](KERNEL-DECOUPLING-PROPOSAL.md).
+- **(b) evaluate / compute / formal-check parity** — at 0 differential divergences on both corpora, nice + hostile, today.
+- **(c) messages** — interpolated + localized (EN/DE), differentially locked today.
+- **(d) the customization surface** — custom conditions/field types, charset, clock (see [`../interpreter/CLAUDE.md`](../interpreter/CLAUDE.md) "Customization-surface parity").
+- **(e) output-shape parity** — or a documented-accepted difference (the `field` pointer is the resolved path, not the kernel's verbose pointer object).
+
+**The removal gate — the compatibility certificate.** `--kernel` eval is retired only when a documented **certificate** shows the whole eval surface **green-or-documented-equivalent**: every kernel eval-path capability enumerated, its interpreter parity status, the exact differential/lock that proves it, and its residual — plus a **coverage argument** that the differential *spans* the surface (0-divergences-on-a-corpus is not proof-on-all-inputs; the fuzz + `CatalogParityTest` + the renderer-modifier coverage carry this, made explicit for a decision this irreversible). After removal the kernel remains the **`:adapter` differential oracle** — verification is never kernel-free.
+
+**The one residual that may never reach zero-consumer-input:** custom-construct *implementations* (external logic) — the interpreter needs the impl supplied via its SPI; the certificate characterizes this boundary rather than claiming to erase it.
+
+Open tracking: [INTERPRETER-GAPS.md](INTERPRETER-GAPS.md) IG67.
+
 ## 9. Verification — the differential oracle we already have
 
 The acceptance criterion is the user's own: **the interpreter is correct iff it agrees with the kernel.** The harness already exists:
