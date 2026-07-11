@@ -53,16 +53,22 @@ class DmInterpreter @JvmOverloads constructor(
      *  so the declarative per-cell path stays monomorphic ([CustomFieldType]'s KDoc; `CustomTypePerfTest`). A
      *  custom-typed cell whose name is in NEITHER registry is reported unsupported (the lenient degrade). */
     private val customFieldTypes: Map<String, CustomFieldType> = emptyMap(),
-    /** The legal character set field values are validated against — the kernel's project-level restricted charset
-     *  ([LegalCharset], IF43). **Default [LegalCharset.BMP]** (the kernel's DM-JSON runtime default: an emoji /
-     *  supplementary-plane char is illegal). A consumer running the kernel with a narrower programming-language
-     *  charset (e.g. **DIN 91379**) supplies the matching set here so the interpreter enforces the SAME restriction
-     *  — the interpreter must expose every kernel customization to be 100% compatible. */
+    /** The consumer-supplied legal character set field values are validated against — the SPI for a project charset
+     *  the DM-JSON does NOT carry (e.g. **DIN 91379**, the EU public-administration set), IF43. **Default
+     *  [LegalCharset.BMP]** (the kernel's runtime default: an emoji / supplementary-plane char is illegal). This is
+     *  the FALLBACK: when the model itself declares `modelConfig.supportedCharacters` ([ModelDef.legalCharset],
+     *  IF120) that model-declared slot takes precedence (it is what the kernel bakes into codegen and enforces), and
+     *  this SPI applies only when the model declares none. The interpreter must expose every kernel customization to
+     *  be 100% compatible. */
     private val legalCharset: LegalCharset = LegalCharset.BMP,
 ) {
 
+    /** The effective legal charset: the model-declared `supportedCharacters` ([ModelDef.legalCharset], IF120) when
+     *  present, else the consumer-supplied [legalCharset] SPI. */
+    private val effectiveLegalCharset: LegalCharset = model.legalCharset ?: legalCharset
+
     /** The auto-check emitter + formal-status oracle — the call-invariant I2 seam collaborator (IF117). */
-    private val checks = AutoChecks(model, legalCharset, predefinedTypes, customFieldTypes)
+    private val checks = AutoChecks(model, effectiveLegalCharset, predefinedTypes, customFieldTypes)
 
     /** The iteration-scope machinery + the RepetitionNotUnique evaluator — call-invariant I2 seam collaborators (IF117). */
     private val scopes = IterationScopes(model)

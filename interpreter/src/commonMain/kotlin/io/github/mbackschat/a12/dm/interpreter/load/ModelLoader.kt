@@ -13,6 +13,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.Requiredness
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
@@ -59,10 +60,14 @@ object ModelLoader {
         val baseYear = if (by.isEmpty()) null else by.trim().toIntOrNull()
         // content.modelConfig.fieldRefByShortNameAllowed (default false) — enables the bare cross-group
         // short-name resolution the condition parser applies (IF119).
-        val shortNameRefs = root.path("content").path("modelConfig")
-            .path("fieldRefByShortNameAllowed").asBoolean(false)
+        val modelConfig = root.path("content").path("modelConfig")
+        val shortNameRefs = modelConfig.path("fieldRefByShortNameAllowed").asBoolean(false)
+        // content.modelConfig.supportedCharacters (a list of single chars / "X-Y" ranges) — the model-declared
+        // legal charset the kernel enforces at runtime (ZeichenNichtImZeichensatz); empty/absent → no restriction (IF120).
+        val legalCharset = LegalCharset.ofSupportedCharacters(
+            modelConfig.path("supportedCharacters").elements().mapNotNull { it.asTextOrNull() })
         return ModelDef(sink.fields, sink.rules, sink.comps, sink.repeatable, sink.declaredReps, sink.indexFields,
-            baseYear, fieldRefByShortNameAllowed = shortNameRefs)
+            baseYear, fieldRefByShortNameAllowed = shortNameRefs, legalCharset = legalCharset)
     }
 
     /** The mutable accumulators of one [load] pass — insertion-ordered to match the DM-JSON document order. */

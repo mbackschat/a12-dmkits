@@ -333,6 +333,13 @@ data class ModelDef(
      *  serialized condition retains (so an expanded model reaching the interpreter still carries the bare
      *  short name). Feeds [fieldsByShortName] / [entityPaths] into the parser's resolver (IF119). */
     val fieldRefByShortNameAllowed: Boolean = false,
+    /** The model-declared legal charset (`content.modelConfig.supportedCharacters`), or null when the model
+     *  declares none. The kernel bakes this slot into the generated code's legal codepoints and enforces it at
+     *  runtime (`ZeichenNichtImZeichensatz`); [io.github.mbackschat.a12.dm.interpreter.load.ModelLoader] reads it
+     *  via [LegalCharset.ofSupportedCharacters]. When present it takes precedence over the consumer-supplied
+     *  charset SPI ([io.github.mbackschat.a12.dm.interpreter.DmInterpreter]); when null the SPI (default
+     *  [LegalCharset.BMP]) applies (IF120). */
+    val legalCharset: LegalCharset? = null,
 ) {
     val kinds: Map<String, Kind> = fields.associate { it.path to it.kind }
     val repeatable: Set<String> = repeatableGroups + declaredReps.keys

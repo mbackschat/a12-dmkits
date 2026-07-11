@@ -1,15 +1,22 @@
 package io.github.mbackschat.a12.dm.interpreter.model
 
 /**
- * The legal character set a field value's characters are validated against — the interpreter's API surface for the
- * kernel's project-level restricted charset (`metaData.getLegalCodepoints`, IF43). A value containing a code point
- * this set rejects is a formal error (`ZeichenNichtImZeichensatz`), exactly as the kernel's `FormalChecker` reports.
+ * The legal character set a field value's characters are validated against — the effective legal charset the
+ * kernel's `FormalChecker` enforces via `metaData.getLegalCodepoints` (IF43/IF120). A value containing a code
+ * point this set rejects is a formal error (`ZeichenNichtImZeichensatz`), exactly as the kernel reports.
  *
- * **Default [BMP].** A DM-JSON model carries NO charset (it's a codegen/programming-language config, not a model
- * property), so the kernel's runtime default — and the differential — is the Basic Multilingual Plane
- * (`0x0000-0xFFFF`); any supplementary-plane character (an emoji, U+1F600, …) is illegal. A consumer that runs
- * the kernel with a NARROWER project charset — e.g. **DIN 91379** (the EU public-administration set) — supplies
- * the matching [LegalCharset] (via [ofRanges]) so the interpreter enforces the same restriction.
+ * **Two sources, one effective charset.** (1) The DM-JSON **model** can declare it via
+ * `content.modelConfig.supportedCharacters` — the kernel bakes that list into the generated code's legal
+ * codepoints (`ExternalDocumentModelService` → `CodeGeneratorParameters`), so it is a real *runtime* constraint;
+ * [ModelLoader] reads it into [io.github.mbackschat.a12.dm.interpreter.model.ModelDef.legalCharset] via
+ * [ofSupportedCharacters] (IF120). (2) A consumer running the kernel with a project charset the DM-JSON does NOT
+ * carry — e.g. **DIN 91379** (the EU public-administration set) — supplies the matching [LegalCharset] (via
+ * [ofRanges]) as the interpreter's SPI. The model-declared slot takes precedence; the SPI is the fallback when
+ * the model declares none.
+ *
+ * **Default [BMP].** When neither source restricts (an empty/absent `supportedCharacters` and no SPI), the
+ * kernel's runtime default — and the differential — is the Basic Multilingual Plane (`0x0000-0xFFFF`); any
+ * supplementary-plane character (an emoji, U+1F600, …) is illegal, all BMP chars are legal.
  *
  * **Performance:** [allows] is on the formal-error HOT path (per code point of every valued field). This is a
  * `final class` (NOT a SAM `fun interface`), so the call is monomorphic and JIT-inlined; a custom charset
@@ -41,5 +48,23 @@ class LegalCharset private constructor(
 
         /** A charset from explicit inclusive code-point [ranges] (e.g. a DIN-91379 allow-list, or ASCII `0..0x7F`). */
         fun ofRanges(vararg ranges: IntRange): LegalCharset = LegalCharset(isBmp = false, ranges = ranges.toList())
+
+        /**
+         * Build the model's legal charset from a DM-JSON `modelConfig.supportedCharacters` list (IF120). Each entry
+         * is either a single character or an inclusive `"X-Y"` range — the kernel's rule (`CharsetUtil.parse`) is
+         * `length == 3 && charAt(1) == '-'` ⇒ the range `[X..Y]`, else each of the entry's characters is a singleton.
+         * An **empty/absent** list means "no model restriction" (the kernel's default) → `null` (the caller uses the
+         * SPI or [BMP]). (A supplementary-plane or combined-grapheme entry — the rare A12K-3445 case, absent from real
+         * charsets — is approximated by its UTF-16 units; realistic sets are BMP singletons + ranges.)
+         */
+        fun ofSupportedCharacters(entries: List<String>): LegalCharset? {
+            if (entries.isEmpty()) return null
+            val ranges = mutableListOf<IntRange>()
+            for (entry in entries) {
+                if (entry.length == 3 && entry[1] == '-') ranges += entry[0].code..entry[2].code
+                else for (ch in entry) ranges += ch.code..ch.code
+            }
+            return LegalCharset(isBmp = false, ranges = ranges)
+        }
     }
 }
