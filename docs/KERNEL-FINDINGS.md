@@ -1681,6 +1681,12 @@ The kernel's `IDocumentModelSerializer` **omits the `Group.elements` array entir
 
 Consequence for any code that *inserts into* a group by walking the JSON: "no `elements` array" must be read as "an empty container," not "no such group." It bit `field`/`group move` **into a freshly-added empty group**: the move rewrites references through the kernel serializer first (dropping the destination's empty `elements`), then the node relocation looked up the destination's `elements` and found none → a spurious "no group at path". rulekit's treatment (materialize the empty array on a matched childless group) lives in `KERNEL-INTEGRATION-NOTES.md`. *(Locked: `MoveVerbTest.movesAFieldIntoAChildlessGroup` + `ApplyRefactorTest.theGateSeesPriorOpsEffects_moveIntoAJustAddedGroup`.)*
 
+## §13 supplement — unspecified-value interpolation (`0` for numbers) + the interpolated-field-in-condition law (differential + probe, 2026-07-12)
+
+> Fold: folded → §13.
+
+`$Field.value$` of an **unspecified** value interpolates **`0` for a NUMBER** and an **empty string** for every other kind (KERNEL-SEMANTICS §13, guide-stated → now differential-locked, graduates IG64). Probed via a `FieldNotFilled(Field)` rule (fires *because* the field is empty) whose message interpolates that field: the kernel's `getErrorText` renders `Qty is 0.` for an unspecified number and `Name [].` for an unspecified string. **Also surfaced (a separate model-validity law):** a field interpolated in a rule's error text **must be referenced in the rule's condition** — otherwise `checkConsistency`/codegen rejects the model with `INVALID_FIELD` ("the referenced field '…' is … not used in the rule condition"). *(Locked: `adapter.laws.UnspecifiedValueInterpolationDiffTest` — kernel vs interpreter for an unspecified number + string; multiplatform `interpreter … UnspecifiedInterpolationTest`. Interpreter fix: `renderMessage` substitutes the kind's empty display — `0` for NUMBER, `""` otherwise — INTERPRETER-FINDINGS IF121.)*
+
 ## §13 supplement — the message-locale law
 
 > Fold: not-foldable — authoring/model-structure locale laws (declaration coverage, blank texts, duplicates), outside the evaluation scope.

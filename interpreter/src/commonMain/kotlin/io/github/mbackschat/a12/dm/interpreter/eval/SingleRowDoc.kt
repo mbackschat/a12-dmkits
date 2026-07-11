@@ -40,4 +40,6 @@ class SingleRowDoc(
     override fun starOmission(path: String, bindDepth: Int): Boolean = false
 
     override fun displayValue(path: String): String? = values[path]
+
+    override fun declaredKind(path: String): Kind? = kinds[path]
 }
