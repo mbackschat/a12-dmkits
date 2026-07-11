@@ -6,6 +6,17 @@ Kernel-behavior facts **verified by experiment against kernel `30.8.1`** that ar
 
 > **What lands HERE vs INTERPRETER-FINDINGS (the routing rule + decision test).** This doc holds **kernel truths** — a behavior, capability, error code, limit, or extensibility surface that is true *regardless of our code*. How the **interpreter** reproduces/diverges-from/locks such a truth is an `IF<n>` in [`INTERPRETER-FINDINGS.md`](INTERPRETER-FINDINGS.md) (which cites the kernel fact here); how **rulekit/modelkit** treats it is in [`KERNEL-INTEGRATION-NOTES.md`](KERNEL-INTEGRATION-NOTES.md). **Decision test:** *"Would this fact be true, and worth recording, even if our interpreter and dmkit did not exist?"* → **yes ⇒ here.** The full three-home table + the worked mis-file lesson live in the INTERPRETER-FINDINGS header.
 
+## Terminology — the kernel has NO "cell" noun; a repetition's value is a `FeldWert` / "field value" (source-verified 2026-07-11)
+
+Establishing the kernel's own vocabulary for the concepts our code/docs call a **"cell"** (Package V; source: the consult-only `../a12-kernel` checkout + the merged BA/dev docs `documentation/_merged/kernel-{ba,dev}.md`):
+
+- **"cell" is not kernel vocabulary.** Zero source hits for `Zelle`/`cell` in `a12-kernel/**/*.java` (the one hit is an unrelated SVG asset `withFieldValue.svg`). It is entirely a **house metaphor** (row × column of a repetition).
+- **One value of a (possibly repeated) field = a *field value*** — kernel `FeldWert`/`Feldwert` (≈330 source hits) / English **"field value"** (≈74 in the merged docs). A specific repetition is a **`Kontext`/`Kontextnummer`** ("context number") / English **"repetition"** (≈370 in the merged docs). The kernel has **no single noun** for "the field value at a given repetition" — it says *a repetition's field value*.
+- **The value-STATE taxonomy** our `CellState` bundles (empty / filled / not-check-relevant) maps to kernel **predicates**, not a named type: **specified** = `isWertAngegeben` ("value specified", filled; English "specified value") · **not specified** = empty · **not check-relevant** = `nichtPruefungsrelevant` (the third, formally-invalid/"unknown" state — §3). The bundling into one state type is ours.
+- **A repetition COLUMN** (our `IndexColumn` — a field's values across all repetitions) likewise has **no single kernel noun**; it is "the field's values across the repetitions".
+
+Consequence for Package V: the concepts are real and kernel-grounded, but the *noun* "cell" is ours. Where the kernel has a term ("field value", "repetition", the state predicates) we adopt it on agent-facing surfaces; where it doesn't ("cell" as a bundled shorthand), the surviving house term is **declared once** in the [`KERNEL-SEMANTICS.md`](KERNEL-SEMANTICS.md) house↔kernel vocabulary table rather than left implicit. *(No behavior; a vocabulary finding. License: mechanism/vocabulary learned from source, no expression copied.)*
+
 ## §1 supplement — Boolean/Confirm comparability codes
 
 The Boolean≠Confirm split is enforced at parse time with distinct codes: a Boolean compares only to `True`/`False` or another Boolean — anything else (e.g. a string) is **`MVK_INVALID_COMPARE_TO_YESNO`**; a Confirm compares only to `True` or another Confirm — `[Confirm] == False` and Boolean↔Confirm cross-comparisons are **`MVK_INVALID_COMPARE_TO_YES`**. "Not confirmed" is written `[Confirm] != True` (an unset confirm counts as not confirmed). *(Locked: `validate.laws.BooleanConfirmLawsTest`.)*

@@ -177,9 +177,21 @@ Formal errors differ from rule errors: they use a fixed, non-customizable messag
 
 *Reference: Appendix → Validation and formal validation → Formal errors.*
 
+### House ↔ kernel vocabulary — "cell" is our coinage (declared here, once)
+
+"Cell" is a **house term**, not kernel vocabulary — the kernel has no `Zelle`/`cell` noun (source-verified; [KERNEL-FINDINGS](KERNEL-FINDINGS.md) "Terminology"). It is a compact row×column shorthand we use in the semantics/interpreter layer; this table is its **single point of declaration**, so every surviving use maps to the kernel's own wording. Agent-facing surfaces (the operator catalog, published schema, diagnostics, the skill, API-GUIDE) do **not** use the house noun — they use the kernel wording in the right-hand column.
+
+| house term | denotes | kernel's wording / nearest construct | why coined |
+|---|---|---|---|
+| **cell** | one field value at a given repetition (a repeated field's value in one row) | *field value* (`FeldWert`) at a *repetition* (`Kontext`/`Kontextnummer`); the kernel has **no single noun** for the pair | a terse row×column shorthand for "a repetition's field value" |
+| **cell state** | a value's three-way evaluability: empty · filled · not-check-relevant | the kernel's separate **predicates** — `isWertAngegeben` (specified/filled), not-specified (empty), `nichtPruefungsrelevant` (not check-relevant); **not** a named kernel type | names the 3-way taxonomy the kernel leaves as loose predicates (`CellState`) |
+| **(index) column** | a field's values across all repetitions of its group | "the field's values across the repetitions"; **no single kernel noun** (the uniqueness/aggregate scans operate over it) | the scan unit for uniqueness + starred aggregates (`IndexColumn`) |
+
+Everything below uses "cell" per this declaration.
+
 ### The three cell states — the third one is not "empty"
 
-A field's cell has three states, not two: **empty**, **filled**, and **not-check-relevant** (the kernel's `nichtPruefungsrelevant`) — present but formally invalid. [§2](#2-non-specified-empty-values)'s substitutions are the *empty* column only; an invalid cell answers every question with "unknown", which lands differently in every position:
+A field's cell (a repetition's field value — see the vocabulary table above) has three states, not two: **empty**, **filled**, and **not-check-relevant** (the kernel's `nichtPruefungsrelevant`) — present but formally invalid. [§2](#2-non-specified-empty-values)'s substitutions are the *empty* column only; an invalid cell answers every question with "unknown", which lands differently in every position:
 
 | what asks | an empty cell | a not-check-relevant (filled-but-invalid) cell |
 |---|---|---|

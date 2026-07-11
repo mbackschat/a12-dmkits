@@ -22,7 +22,7 @@ dmtool -m examples/models/payment-customtype.dm.json model describe \
 
 ## Without the type: a bad value slips through — but is SURFACED
 
-Here is a clearly-malformed IBAN. With no definition for the `Iban` type, the engine can't validate it — but instead of silently passing (which would read as "all good"), it reports the cell under **`data.unsupported`**, so you know it was *not* checked.
+Here is a clearly-malformed IBAN. With no definition for the `Iban` type, the engine can't validate it — but instead of silently passing (which would read as "all good"), it reports the value under **`data.unsupported`**, so you know it was *not* checked.
 
 ```bash
 cat > /tmp/ct-bad.json <<'JSON'
@@ -48,7 +48,7 @@ dmtool -m examples/models/payment-customtype.dm.json \
 
 ## Supply the type: now it validates
 
-`--predefined-types <file>` supplies a declarative registry — length bounds and a regex — for the custom type. The format constraint is now enforced: the bad IBAN fires `customFieldTypeInvalid`, attributed to the offending cell.
+`--predefined-types <file>` supplies a declarative registry — length bounds and a regex — for the custom type. The format constraint is now enforced: the bad IBAN fires `customFieldTypeInvalid`, attributed to the offending value.
 
 ```bash
 cat > /tmp/ct-types.json <<'JSON'

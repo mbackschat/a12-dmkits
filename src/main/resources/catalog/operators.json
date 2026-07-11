@@ -594,7 +594,7 @@
               "/Order/Items[2]/Sku": "B"
             },
             "fires": true,
-            "note": "both instantiated rows filled, but the declared tail is empty → instantiated-≥1-filled AND declared-≥1-empty → fires (a pure-INSTANTIATED reading needs an empty instantiated cell, so it would NOT fire)"
+            "note": "both instantiated rows filled, but the declared tail is empty → instantiated-≥1-filled AND declared-≥1-empty → fires (a pure-INSTANTIATED reading needs an empty instantiated value, so it would NOT fire)"
           }
         ]
       }
@@ -1048,7 +1048,7 @@
         {
           "operand": "0",
           "behavior": "SKIPPED",
-          "basis": "IF60 / adapter.laws.ValueListQuantifierStarDiffTest (AtLeastOne skips empty cells outright)",
+          "basis": "IF60 / adapter.laws.ValueListQuantifierStarDiffTest (AtLeastOne skips empty values outright)",
           "probes": [
             {
               "dsl": "FieldFilled(CustomerName) And AtLeastOneFieldValueIncludedInValueList(Items*/Count In Quantity)",
@@ -1109,7 +1109,7 @@
         {
           "operand": "0",
           "behavior": "SKIPPED",
-          "basis": "IF60 / adapter.laws.ValueListQuantifierStarDiffTest (an empty fields cell cannot match; it flags a fired No as OMISSION — a polarity fact, not a truth change)",
+          "basis": "IF60 / adapter.laws.ValueListQuantifierStarDiffTest (an empty fields value cannot match; it flags a fired No as OMISSION — a polarity fact, not a truth change)",
           "probes": [
             {
               "dsl": "FieldFilled(CustomerName) And NoFieldValueIncludedInValueList(Items*/Count In Quantity)",
@@ -1126,7 +1126,7 @@
                 "/Order/Items[1]/Count"
               ],
               "fires": true,
-              "note": "the empty cell cannot match, the filled 7 is not 9 — No fires (typed OMISSION); deliberately over the NON-index Count: an INDEX field's empty cell is not-check-relevant and POISONS No (the invalid class)"
+              "note": "the empty value cannot match, the filled 7 is not 9 — No fires (typed OMISSION); deliberately over the NON-index Count: an INDEX field's empty value is not-check-relevant and POISONS No (the invalid class)"
             }
           ]
         },
@@ -1145,7 +1145,7 @@
                 "/Order/ProductCode"
               ],
               "fires": true,
-              "note": "an empty effective list — no cell is included, so No fires"
+              "note": "an empty effective list — no value is included, so No fires"
             }
           ]
         }
@@ -1170,7 +1170,7 @@
         {
           "operand": "0",
           "behavior": "SKIPPED",
-          "basis": "IF60 / adapter.laws.ValueListQuantifierStarDiffTest (needs a FILLED fields cell; empty cells are skipped, not counted as not-included)",
+          "basis": "IF60 / adapter.laws.ValueListQuantifierStarDiffTest (needs a FILLED fields value; empty values are skipped, not counted as not-included)",
           "probes": [
             {
               "dsl": "FieldFilled(CustomerName) And NotAllFieldValuesIncludedInValueList(Items*/Count In Quantity)",
@@ -1203,7 +1203,7 @@
                 "/Order/Items[2]/Count"
               ],
               "fires": false,
-              "note": "ALL cells empty → no filled cell to be not-included → does not fire"
+              "note": "ALL values empty → no filled value to be not-included → does not fire"
             }
           ]
         },
@@ -1269,8 +1269,8 @@
         {
           "operand": "0",
           "behavior": "SKIPPED",
-          "basis": "IF51 / adapter.laws.MultiFieldAggregateDiffTest (the count family tallies filled cells only)",
-          "note": "definitionally counts FILLED cells — an empty operand simply doesn't count; the RESULT is still a number that evaluates (0 over an all-empty list)",
+          "basis": "IF51 / adapter.laws.MultiFieldAggregateDiffTest (the count family tallies filled values only)",
+          "note": "definitionally counts FILLED values — an empty operand simply doesn't count; the RESULT is still a number that evaluates (0 over an all-empty list)",
           "probes": [
             {
               "dsl": "NumberOfFilledFields(Quantity, BackorderQuantity) == 1",
@@ -1409,7 +1409,7 @@
               "/Order/Items[2]/Count"
             ],
             "fires": true,
-            "note": "all Count cells empty → Sum folds to 0 → == 0 fires"
+            "note": "all Count values empty → Sum folds to 0 → == 0 fires"
           }
         ]
       },
@@ -1471,7 +1471,7 @@
               "/Order/Items[2]/Count"
             ],
             "fires": true,
-            "note": "all Count cells empty → MaxValue folds to 0 → == 0 fires"
+            "note": "all Count values empty → MaxValue folds to 0 → == 0 fires"
           }
         ]
       },
@@ -1495,7 +1495,7 @@
                 "/Order/Items[1]/Count"
               ],
               "fires": true,
-              "note": "the empty cell is skipped — were it substituted 0, the max would be 0, not -7"
+              "note": "the empty value is skipped — were it substituted 0, the max would be 0, not -7"
             }
           ]
         }
@@ -1533,7 +1533,7 @@
               "/Order/Items[2]/Count"
             ],
             "fires": true,
-            "note": "all Count cells empty → MinValue folds to 0 → == 0 fires"
+            "note": "all Count values empty → MinValue folds to 0 → == 0 fires"
           }
         ]
       },
@@ -1557,7 +1557,7 @@
                 "/Order/Items[1]/Count"
               ],
               "fires": true,
-              "note": "the empty cell is skipped — were it substituted 0, the min would be 0, not 20"
+              "note": "the empty value is skipped — were it substituted 0, the min would be 0, not 20"
             }
           ]
         }
@@ -1859,7 +1859,7 @@
         {
           "operand": "0",
           "behavior": "SKIPPED",
-          "basis": "IF51 / adapter.laws.MultiFieldAggregateDiffTest (the count family tallies filled cells only)",
+          "basis": "IF51 / adapter.laws.MultiFieldAggregateDiffTest (the count family tallies filled values only)",
           "probes": [
             {
               "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(Items*/Count) == 1",
@@ -1875,7 +1875,7 @@
                 "/Order/Items[1]/Count"
               ],
               "fires": true,
-              "note": "the empty cell is skipped — {empty, 20} has 1 distinct value; deliberately over the NON-index Count: an INDEX field's empty cell is mandatory-empty → not-check-relevant, which POISONS the count (the invalid class, not the empty class)"
+              "note": "the empty value is skipped — {empty, 20} has 1 distinct value; deliberately over the NON-index Count: an INDEX field's empty value is mandatory-empty → not-check-relevant, which POISONS the count (the invalid class, not the empty class)"
             }
           ]
         }
@@ -1902,7 +1902,7 @@
           "operand": "1",
           "behavior": "SKIPPED",
           "basis": "fresh kernel probe (WI-5a) — no prior differential lock; the count-family sibling of NumberOfFilledFields",
-          "note": "an empty field never holds the sought value — it is NOT read as 0 (the probe seeks 0 and the empty cell does not match)",
+          "note": "an empty field never holds the sought value — it is NOT read as 0 (the probe seeks 0 and the empty value does not match)",
           "probes": [
             {
               "dsl": "NumberOfValueInFields(0 In Quantity, BackorderQuantity) == 0",
@@ -2619,11 +2619,11 @@
     "keywords": { "en": "DateRangesOverlap", "de": "DatumsBereicheUeberlappend" },
     "operands": [ { "type": "date-range" } ],
     "returns": "boolean",
-    "meaning": "True iff ANY PAIR among ALL the listed date-range fields' filled ranges overlaps (start and end inclusive) — every operand's cells join ONE set and it fires on the first overlapping pair; there is no distinguished 'first' operand.",
+    "meaning": "True iff ANY PAIR among ALL the listed date-range fields' filled ranges overlaps (start and end inclusive) — every operand's values join ONE set and it fires on the first overlapping pair; there is no distinguished 'first' operand.",
     "gotchas": [
       { "text": "ranges are closed intervals: periods that merely TOUCH (one ends the day the other starts) overlap — seamless periods must start the day after the previous end", "kind": "SURPRISE" },
-      { "text": "ANY-PAIR among ALL operands (NOT a first-vs-rest test): DateRangesOverlap(X, Group*/Y) fires even when X is disjoint from every Y but two Y rows overlap EACH OTHER. And the SAME cell reached via a scalar ref AND via the star — a per-row rule's DateRangesOverlap(Period, ../Group*/Period) — overlaps ITSELF, so it fires on EVERY filled row (there is no self-exclusion). Empty/malformed cells are skipped; an INVALID range (start after end) never overlaps anything.", "kind": "SURPRISE" },
-      { "text": "polarity is FILTER-derived, not fill-derived: the error is an OMISSION (fillable) iff a filled cell of a Having-filtered operand was processed at or before the firing pair (operand order), else a VALUE error. A Having filter IS legal on a rep-list operand and is applied per cell (keep iff the filter is TRUE; a $-correlation term there has no enclosing iteration so it is trivially satisfied → keeps every row).", "kind": "SURPRISE" }
+      { "text": "ANY-PAIR among ALL operands (NOT a first-vs-rest test): DateRangesOverlap(X, Group*/Y) fires even when X is disjoint from every Y but two Y rows overlap EACH OTHER. And the SAME value reached via a scalar ref AND via the star — a per-row rule's DateRangesOverlap(Period, ../Group*/Period) — overlaps ITSELF, so it fires on EVERY filled row (there is no self-exclusion). Empty/malformed values are skipped; an INVALID range (start after end) never overlaps anything.", "kind": "SURPRISE" },
+      { "text": "polarity is FILTER-derived, not fill-derived: the error is an OMISSION (fillable) iff a filled value of a Having-filtered operand was processed at or before the firing pair (operand order), else a VALUE error. A Having filter IS legal on a rep-list operand and is applied per value (keep iff the filter is TRUE; a $-correlation term there has no enclosing iteration so it is trivially satisfied → keeps every row).", "kind": "SURPRISE" }
     ],
     "constraints": [ "the operands are date-range fields (or a flattened repetition list of them)" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And DateRangesOverlap(CoverageWindow, Items*/ItemCoverage)", "note": "fires when the order's coverage window overlaps a line-item coverage" },
@@ -2652,7 +2652,7 @@
         {
           "operand": "all",
           "behavior": "SKIPPED",
-          "basis": "IF72 / adapter.laws.DateRangeOverlapSemanticsDiffTest (isWertAngegeben != TRUE cells are skipped, not unknown-suppression); adapter.laws.DateRangeOverlapLawsTest",
+          "basis": "IF72 / adapter.laws.DateRangeOverlapSemanticsDiffTest (isWertAngegeben != TRUE values are skipped, not unknown-suppression); adapter.laws.DateRangeOverlapLawsTest",
           "probes": [
             {
               "dsl": "DateRangesOverlap(CoverageWindow, Items*/ItemCoverage)",
@@ -2669,7 +2669,7 @@
                 "/Order/Items[1]/ItemCoverage"
               ],
               "fires": true,
-              "note": "the empty range cell is skipped; the filled pair overlaps and fires"
+              "note": "the empty range value is skipped; the filled pair overlaps and fires"
             }
           ]
         }
@@ -2687,7 +2687,7 @@
     "gotchas": [
       { "text": "ranges are closed intervals: periods sharing one boundary day count as overlapping", "kind": "SURPRISE" },
       { "text": "SELF-MEMBERSHIP in a per-row rule: AtLeastOneDateRangeOverlaps(Period IN Group*/Period) from a rule iterating over Group flattens ALL rows' periods INCLUDING the current row's, so the current Period overlaps ITSELF and the rule fires on EVERY row (rule check still says valid:true — it is a semantic trap, not a syntax error; there is no self-exclusion). For 'no two rows overlap', author a MODEL-LEVEL rule with DateRangesOverlap(/Group*/Period) over the single flattened list (error field a non-repeatable field, referenced via a FieldFilled guard) — it fires ONCE for the document instead of per row.", "kind": "SURPRISE" },
-      { "text": "genuinely SCALAR-vs-LIST (unlike DateRangesOverlap's any-pair set): the single first range is compared against each list cell and is NOT itself a set member, so two LIST cells overlapping each other do NOT fire (only the scalar-vs-list overlap does); a not-filled/malformed scalar → no fire (not unknown-suppression). Polarity is FILTER-derived: OMISSION iff the MATCHED list operand carries a Having, else a VALUE error.", "kind": "SURPRISE" }
+      { "text": "genuinely SCALAR-vs-LIST (unlike DateRangesOverlap's any-pair set): the single first range is compared against each list value and is NOT itself a set member, so two LIST values overlapping each other do NOT fire (only the scalar-vs-list overlap does); a not-filled/malformed scalar → no fire (not unknown-suppression). Polarity is FILTER-derived: OMISSION iff the MATCHED list operand carries a Having, else a VALUE error.", "kind": "SURPRISE" }
     ],
     "constraints": [ "a date-range field, then In, then a date-range field list (often a flattened repetition list)" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And AtLeastOneDateRangeOverlaps(CoverageWindow IN Items*/ItemCoverage)", "note": "fires when the coverage window overlaps any line-item coverage" },
@@ -2734,7 +2734,7 @@
         {
           "operand": "1",
           "behavior": "SKIPPED",
-          "basis": "IF72 / adapter.laws.DateRangeOverlapSemanticsDiffTest (empty list cells are skipped)",
+          "basis": "IF72 / adapter.laws.DateRangeOverlapSemanticsDiffTest (empty list values are skipped)",
           "probes": [
             {
               "dsl": "AtLeastOneDateRangeOverlaps(CoverageWindow IN Items*/ItemCoverage)",
@@ -3183,7 +3183,7 @@
               "/Order/Items[2]/UnitWeight"
             ],
             "fires": true,
-            "note": "all Count/UnitWeight cells empty → SumOfProducts folds to 0 → == 0 fires"
+            "note": "all Count/UnitWeight values empty → SumOfProducts folds to 0 → == 0 fires"
           }
         ]
       }
@@ -3223,7 +3223,7 @@
               "/Order/Items[2]/Count"
             ],
             "fires": true,
-            "note": "all Count cells empty → the fillable 0 → == 0 fires"
+            "note": "all Count values empty → the fillable 0 → == 0 fires"
           },
           {
             "dsl": "FieldFilled(CustomerName) And FirstFilledValue(OrderDate, DeliveryDate) >= \"01.01.1900\"",

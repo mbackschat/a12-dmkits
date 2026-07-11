@@ -62,7 +62,7 @@ public final class CustomSupportOptions {
             description = "a directory of project JS custom-field-type impls (<Name>.js, exporting "
                     + "validate(value)); run via the same Node worker so an imperative custom field type "
                     + "(a checksum) validates instead of being reported unsupported. Needs `node`; if absent, "
-                    + "the cell stays unsupported. Interpreter-only.")
+                    + "the value stays unsupported. Interpreter-only.")
     String customFieldTypesJsDir;
 
     /**
@@ -101,7 +101,7 @@ public final class CustomSupportOptions {
 
     /**
      * The project's JS custom field types ({@code --custom-field-types-js <dir>}), worker-backed and keyed by
-     * name; empty when the flag is absent (a custom-typed cell then stays unsupported unless covered by
+     * name; empty when the flag is absent (a custom-typed value then stays unsupported unless covered by
      * {@code --predefined-types}).
      *
      * @throws IllegalArgumentException if the directory can't be listed (mapped to a {@code fail()})

@@ -508,17 +508,17 @@ Condition earliestBeforeCutoff =
 
 <!-- snippet: indexed-presence -->
 ```java
-// semanticIndex(key) is the presence handle for the cell a semantic index resolves to;
-// .filled()/.notFilled() test its presence. (The cell's VALUE for a comparison is forIndex(key).)
+// semanticIndex(key) is the presence handle for the field value a semantic index resolves to;
+// .filled()/.notFilled() test its presence. (The VALUE for a comparison is forIndex(key).)
 Condition present = m.num("/Order/Items/Count").semanticIndex("SKU-1").filled();
 ```
 
-The same `semanticIndex(...)` handle is the operand of `Dsl.fieldValueAsString`, so an indexed cell's value coerces to string — the kernel's `FieldValueAsString([Field For key])`, the peer of the plain `fieldValueAsString(field)` (D11):
+The same `semanticIndex(...)` handle is the operand of `Dsl.fieldValueAsString`, so a semantic index's field value coerces to string — the kernel's `FieldValueAsString([Field For key])`, the peer of the plain `fieldValueAsString(field)` (D11):
 
 <!-- snippet: indexed-coercion -->
 ```java
-// fieldValueAsString also takes an semanticIndex(key) operand — the indexed cell's value coerced to
-// string, e.g. to splice a keyed number cell into a concatenation (the corpus shape).
+// fieldValueAsString also takes a semanticIndex(key) operand — the indexed field value coerced to
+// string, e.g. to splice a keyed number value into a concatenation (the corpus shape).
 Condition c = m.str("/Order/CustomerName").eq(
         Dsl.text("C-").plus(Dsl.fieldValueAsString(m.num("/Order/Items/Count").semanticIndex("SKU-1"))));
 ```

@@ -29,13 +29,13 @@
     },
     "unsupported": {
       "type": "array",
-      "description": "present only when the engine could NOT evaluate some construct — a CustomCondition with no registered impl, or a custom-typed cell with no --predefined-types entry. Reported here, NOT silently absent from `fired` (which would read as a clean pass) — G29. `--strict-custom` turns a non-empty `unsupported` into a refusal (exit 2).",
+      "description": "present only when the engine could NOT evaluate some construct — a CustomCondition with no registered impl, or a custom-typed value with no --predefined-types entry. Reported here, NOT silently absent from `fired` (which would read as a clean pass) — G29. `--strict-custom` turns a non-empty `unsupported` into a refusal (exit 2).",
       "items": {
         "type": "object",
         "required": ["name", "reason"],
         "additionalProperties": false,
         "properties": {
-          "name": { "type": "string", "description": "the rule's slash-path (a CustomCondition rule) or the cell's instance pointer (an unregistered custom type)" },
+          "name": { "type": "string", "description": "the rule's slash-path (a CustomCondition rule) or the value's instance pointer (an unregistered custom type)" },
           "reason": { "type": "string", "description": "why it couldn't be evaluated" }
         }
       }

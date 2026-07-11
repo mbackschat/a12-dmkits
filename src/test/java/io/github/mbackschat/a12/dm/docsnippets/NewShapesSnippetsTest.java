@@ -42,8 +42,8 @@ class NewShapesSnippetsTest {
     @Test
     void indexedPresenceSnippet() {
         // tag::indexed-presence[]
-        // semanticIndex(key) is the presence handle for the cell a semantic index resolves to;
-        // .filled()/.notFilled() test its presence. (The cell's VALUE for a comparison is forIndex(key).)
+        // semanticIndex(key) is the presence handle for the field value a semantic index resolves to;
+        // .filled()/.notFilled() test its presence. (The VALUE for a comparison is forIndex(key).)
         Condition present = m.num("/Order/Items/Count").semanticIndex("SKU-1").filled();
         // end::indexed-presence[]
         assertEquals("FieldFilled(/Order/Items/Count For \"SKU-1\")", new DslRenderer().render(present));
@@ -52,8 +52,8 @@ class NewShapesSnippetsTest {
     @Test
     void indexedCoercionSnippet() {
         // tag::indexed-coercion[]
-        // fieldValueAsString also takes an semanticIndex(key) operand — the indexed cell's value coerced to
-        // string, e.g. to splice a keyed number cell into a concatenation (the corpus shape).
+        // fieldValueAsString also takes a semanticIndex(key) operand — the indexed field value coerced to
+        // string, e.g. to splice a keyed number value into a concatenation (the corpus shape).
         Condition c = m.str("/Order/CustomerName").eq(
                 Dsl.text("C-").plus(Dsl.fieldValueAsString(m.num("/Order/Items/Count").semanticIndex("SKU-1"))));
         // end::indexed-coercion[]

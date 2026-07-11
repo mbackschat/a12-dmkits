@@ -186,7 +186,10 @@ interface EvalContext {
 }
 
 /** A cell's COMPUTE-mode read state ([EvalContext.cellState], IF85) — a visited [INVALID] cell poisons the
- *  reading computation instance ([PoisonedReadException]). */
+ *  reading computation instance ([PoisonedReadException]). "Cell" (a repetition's field value) is a HOUSE
+ *  term — the kernel has no cell noun; it is declared once in KERNEL-SEMANTICS "House ↔ kernel vocabulary",
+ *  where these states map to the kernel predicates FILLED=`wertAngegeben`, EMPTY=not-specified,
+ *  INVALID=`nichtPruefungsrelevant`. */
 enum class CellState { EMPTY, FILLED, INVALID }
 
 /**
