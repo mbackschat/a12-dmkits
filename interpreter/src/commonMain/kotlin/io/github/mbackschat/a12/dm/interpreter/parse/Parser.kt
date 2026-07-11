@@ -393,7 +393,7 @@ private class ConditionParser(private val src: String, private val base: String,
     /** Read a `@From` reference-group token raw — up to the closing `)` (a group path/name, possibly with `/`). */
     private fun readGroupRef(): String {
         val start = pos
-        while (peek() != ')' && peek() != ' ') next()
+        while (peek() != ')' && peek() != '\u0000') next()
         return src.substring(start, pos).trim()
     }
 
