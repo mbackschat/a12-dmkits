@@ -713,17 +713,8 @@ class Document @JvmOverloads constructor(
             override fun fields(): List<FieldPointer> = index().valued.map { FieldPointer(it.path, it.reps) }
         }
 
-        // EnumCategory `[field -> Category]`: map the enum field's stored value to its category value by its
-        // POSITION in the enum's value list. An empty enum or an out-of-enum value yields no comparison value
-        // (Unknown → the rule does not fire / is suppressed, matching the kernel's empty-string compare /
-        // formal-error-suppression on a value not in the enumeration).
-        override fun enumCategory(path: String, category: String): Val {
-            val raw = valueAt(path, reps(path))?.value
-            if (raw.isNullOrEmpty()) return Val.Unknown
-            val idx = (enumValues[path] ?: return Val.Unknown).indexOf(raw)
-            if (idx < 0) return Val.Unknown
-            return enumCategories[path]?.get(category)?.getOrNull(idx)?.let { Val.Txt(it) } ?: Val.Unknown
-        }
+        override fun enumCategory(path: String, category: String): Val =
+            enumCategoryOf(path, category, valueAt(path, reps(path))?.value)
 
         override fun repsOf(path: String): List<Int> = reps(path)
 
@@ -832,13 +823,8 @@ class Document @JvmOverloads constructor(
             else throw UnsupportedConstructException(
                 "group-filled on a non-parallel group ($groupPath) inside a parallel iteration is not modeled")
 
-        override fun enumCategory(path: String, category: String): Val {
-            val raw = resolved(path)
-            if (raw.isNullOrEmpty()) return Val.Unknown
-            val idx = (enumValues[path] ?: return Val.Unknown).indexOf(raw)
-            if (idx < 0) return Val.Unknown
-            return enumCategories[path]?.get(category)?.getOrNull(idx)?.let { Val.Txt(it) } ?: Val.Unknown
-        }
+        override fun enumCategory(path: String, category: String): Val =
+            enumCategoryOf(path, category, resolved(path))
 
         // Aggregates / filters / semantic index / custom conditions are NOT valid inside a parallel iteration
         // (KERNEL-SEMANTICS §9: a filter condition may not contain a parallel iteration, and vice versa) — fail
@@ -865,6 +851,21 @@ class Document @JvmOverloads constructor(
     }
 
     private fun kindOf(path: String): Kind = kinds[path] ?: error("no kind declared for $path")
+
+    /**
+     * EnumCategory `[field -> Category]`: map an enum field's [raw] stored value to its [category] value by its
+     * POSITION in the enum's value list. An empty enum / an out-of-enum value / no such category yields no
+     * comparison value (Unknown → the rule does not fire / is suppressed, matching the kernel's empty-string
+     * compare / formal-error-suppression on a value not in the enumeration). The shared core of both row
+     * contexts' `enumCategory` — [RowContext] and [ParallelRowContext] differ ONLY in how they read the raw
+     * value (bound-reps lookup vs the parallel-join resolution), which each passes in as [raw].
+     */
+    private fun enumCategoryOf(path: String, category: String, raw: String?): Val {
+        if (raw.isNullOrEmpty()) return Val.Unknown
+        val idx = (enumValues[path] ?: return Val.Unknown).indexOf(raw)
+        if (idx < 0) return Val.Unknown
+        return enumCategories[path]?.get(category)?.getOrNull(idx)?.let { Val.Txt(it) } ?: Val.Unknown
+    }
 
     /**
      * A present raw value → typed [Val], format-aware. A [Kind.DATE_RANGE] value is parsed to a [Val.Range] of
