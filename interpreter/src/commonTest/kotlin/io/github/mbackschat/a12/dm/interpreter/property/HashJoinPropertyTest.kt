@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter.property
 
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
+import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import kotlin.test.Test
@@ -32,7 +33,7 @@ class HashJoinPropertyTest {
         val failures = mutableListOf<String>()
         for (seed in PropertySupport.SEEDS) {
             for (ctx in PropertySupport.singleRep.document(seed).contextsFor("/Cart/Lines")) {
-                val both = Interpreter(ctx, indexFields = model.indexFields).correlationTallyBothWays(star) ?: continue
+                val both = Interpreter(ctx, EvalConfig(indexFields = model.indexFields)).correlationTallyBothWays(star) ?: continue
                 checks++
                 if (both.first != both.second) failures += "seed=$seed hash=${both.first} naive=${both.second}"
             }

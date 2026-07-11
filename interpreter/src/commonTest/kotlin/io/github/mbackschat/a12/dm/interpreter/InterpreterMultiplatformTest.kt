@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter
 import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
+import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.RepDoc
 import io.github.mbackschat.a12.dm.interpreter.eval.SingleRowDoc
@@ -171,7 +172,7 @@ class InterpreterMultiplatformTest {
         val dateKinds = mapOf(od to Kind.DATE)
         val clock = EvalClock(today = "2025-06-23")
         fun fires(date: String, cond: String) =
-            Interpreter(SingleRowDoc("/Order", mapOf(od to date), dateKinds), clock)
+            Interpreter(SingleRowDoc("/Order", mapOf(od to date), dateKinds), EvalConfig(clock = clock))
                 .fires(parseCondition(cond, "/Order"))
         assertTrue(fires("2025-06-23", "[OrderDate] == Today"), "an order dated today equals Today")
         assertFalse(fires("2025-06-22", "[OrderDate] == Today"), "the day before does not equal Today")
@@ -188,7 +189,7 @@ class InterpreterMultiplatformTest {
         val dtKinds = mapOf(sa to Kind.DATE_TIME)
         val clock = EvalClock(today = "2025-06-23", now = "2025-06-23T12:00:00")
         fun fires(instant: String, cond: String) =
-            Interpreter(SingleRowDoc("/Order", mapOf(sa to instant), dtKinds), clock)
+            Interpreter(SingleRowDoc("/Order", mapOf(sa to instant), dtKinds), EvalConfig(clock = clock))
                 .fires(parseCondition(cond, "/Order"))
         assertTrue(fires("2025-06-23T12:00:00", "[ScheduledAt] == Now"), "the same instant equals Now")
         assertFalse(fires("2025-06-23T11:59:59", "[ScheduledAt] == Now"), "a second earlier does not equal Now")

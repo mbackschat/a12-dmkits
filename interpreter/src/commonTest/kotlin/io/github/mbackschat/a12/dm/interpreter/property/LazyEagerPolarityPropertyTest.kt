@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.property
 
+import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import kotlin.test.Test
@@ -23,7 +24,7 @@ class LazyEagerPolarityPropertyTest {
             for (seed in PropertySupport.SEEDS) {
                 for (ctx in a.scenario.document(seed).contextsFor(a.group)) {
                     checks++
-                    if (!Interpreter(ctx, indexFields = a.scenario.model.indexFields).lazyEagerConsistent(cond)) {
+                    if (!Interpreter(ctx, EvalConfig(indexFields = a.scenario.model.indexFields)).lazyEagerConsistent(cond)) {
                         failures += "${a.scenario.name} '${a.text}' seed=$seed"
                     }
                 }

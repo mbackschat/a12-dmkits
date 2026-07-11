@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.PoisonedReadException
 import io.github.mbackschat.a12.dm.interpreter.eval.UNKNOWN_REP
@@ -534,6 +535,7 @@ class DmInterpreter @JvmOverloads constructor(
         val repGroup = parentGroup(keys.first())     // the keys' shared repeatable group (kernel: keys on one path)
         val errorPath = resolveErrorPath(rule)
         val scopeLen = scopePrefixLen(rule, rnu)
+        val config = validationConfig(isRelevant, customRelevant, starRelevant)   // reused across the guard evals
         data class Row(val ctx: EvalContext, val reps: List<Int>, val key: List<String?>)
         val rows = doc.contextsFor(repGroup).mapNotNull { ctx ->
             // A key cell that is FORMALLY INVALID (kernel `isWertAngegeben == UNKNOWN`) drops the WHOLE row from
@@ -570,7 +572,7 @@ class DmInterpreter @JvmOverloads constructor(
                     // only if the guard also fires, and its polarity combines by the Cond.And rule (OMISSION if
                     // either operand is OMISSION). A guard that is FALSE/UNKNOWN for this row suppresses it.
                     val type = if (rnu.guard == null) rnuType else {
-                        val guardType = interpreterFor(row.ctx, errorPath, dup, cache, isRelevant, customRelevant, starRelevant)
+                        val guardType = interpreterFor(row.ctx, config, errorPath, dup, cache, isRelevant)
                             .firedType(rnu.guard) ?: continue
                         if (rnuType == MsgType.OMISSION || guardType == MsgType.OMISSION) MsgType.OMISSION else MsgType.VALUE
                     }
@@ -703,6 +705,11 @@ class DmInterpreter @JvmOverloads constructor(
         // poisons a downstream computation the kernel computes fine (IF90).
         val minFracOf: (String) -> Int = { p -> model.constraintsOf(p).minFractionalDigits ?: 0 }
         val poisoned = HashSet<Pair<String, List<Int>>>()
+        // The compute-invariant config, built once for every instance's Interpreter (computeMode; no
+        // CustomCondition / relevance seams on the compute path). Only the per-instance `invalid` poison gate
+        // varies (it closes over the instance context), so it stays an Interpreter constructor arg.
+        val computeConfig = EvalConfig(clock, model.baseYear, model.indexFields, predefinedTypes,
+            customFieldTypes = customFieldTypes, computeMode = true)
         // A FILLED operand that is "not check-relevant" — formally invalid — makes a computation over it
         // non-evaluable (IF76, generalized IF78; poison semantics IF85). The gate is the SAME
         // operand-invalidity test full validation uses ([operandNotCheckRelevant] → [computeFormalErrorAt]),
@@ -726,11 +733,10 @@ class DmInterpreter @JvmOverloads constructor(
                 if (targetKey in decided) return   // an earlier computation's non-empty outcome already won (IF87)
                 val ectx = if (overlay.isEmpty() && cleared.isEmpty() && poisoned.isEmpty()) ctx
                     else OverlayContext(ctx, overlay, cleared, poisoned, emptyOf, minFracOf)
-                val interp = Interpreter(ectx, clock, model.baseYear, model.indexFields, predefinedTypes,
+                val interp = Interpreter(ectx, computeConfig,
                     // The compute gate THROWS (IF85): consulting it on a filled formally-invalid operand IS the
                     // kernel's poisoning read (validation's gate stays Boolean → the 3VL exclusion).
-                    invalid = { path -> if (operandNotCheckRelevant(path, ectx)) throw PoisonedReadException(path) else false },
-                    customFieldTypes = customFieldTypes, computeMode = true)
+                    invalid = { path -> if (operandNotCheckRelevant(path, ectx)) throw PoisonedReadException(path) else false })
                 // A read of a formally-invalid cell — an input field, or a POISONED computed dependency — aborts
                 // this instance (IF85, the kernel's CalculationFieldException → "fehlerhaft berechnet"): it skips
                 // the remaining alternatives, produces no value (reported CLEARED under the report-all contract;
@@ -970,28 +976,33 @@ class DmInterpreter @JvmOverloads constructor(
             .filterIsInstance<RowOutcome.Fired>().map { it.message }
 
     /**
+     * The invariant [EvalConfig] for one validate call — the bundle every rule's per-row [Interpreter] shares,
+     * built ONCE (not per row). The relevance seams carry the partial-validation set: [EvalConfig.cellRelevant]
+     * is per-cell relevance for `FirstFilled`'s order-aware gate (IF42; null in full validation so the gate is
+     * skipped and the flat-spike `RepDoc` path is untouched), [EvalConfig.starRelevant] whether an all-rows
+     * aggregate's star is wildcard-relevant (IF42), [EvalConfig.customRelevant] the set a `CustomCondition` sees
+     * (null in full, the caller's set + globals in partial — IF38).
+     */
+    private fun validationConfig(isRelevant: Relevance, customRelevant: Set<FieldPointer>?,
+            starRelevant: ((String) -> Boolean)?): EvalConfig =
+        EvalConfig(clock, model.baseYear, model.indexFields, predefinedTypes, customConditions, customFieldTypes,
+            cellRelevant = if (isRelevant === ALL_RELEVANT) null else { path, reps -> isRelevant(path, reps) },
+            starRelevant = starRelevant, customRelevant = customRelevant)
+
+    /**
      * The per-row [Interpreter] used to evaluate a rule condition at [ctx] — the single construction point shared
      * by [rowOutcomes] (the whole condition) and [repetitionNotUniqueMessages] (a RepetitionNotUnique rule's
-     * guard conjunct). A formally-invalid / (in partial) non-relevant referenced field resolves to Val.Unknown
-     * via [invalid]; [cellRelevant]/[customRelevant]/[starRelevant] carry the partial-validation relevance seams.
+     * guard conjunct). [config] is the call-invariant bundle ([validationConfig], built once); the two per-row
+     * inputs are supplied here: the error-field pointer, and the `invalid` gate by which a formally-invalid /
+     * (in partial) non-relevant referenced field resolves to Val.Unknown.
      */
-    private fun interpreterFor(ctx: EvalContext, errorPath: String, dup: Set<Pair<String, List<Int>>>,
-            cache: FormalCache, isRelevant: Relevance, customRelevant: Set<FieldPointer>?,
-            starRelevant: ((String) -> Boolean)?): Interpreter =
-        Interpreter(ctx, clock, model.baseYear, model.indexFields, predefinedTypes,
-            customConditions, FieldPointer(errorPath, ctx.repsOf(errorPath)),
+    private fun interpreterFor(ctx: EvalContext, config: EvalConfig, errorPath: String,
+            dup: Set<Pair<String, List<Int>>>, cache: FormalCache, isRelevant: Relevance): Interpreter =
+        Interpreter(ctx, config, FieldPointer(errorPath, ctx.repsOf(errorPath)),
             invalid = { path ->
                 val reps = ctx.repsOf(path)   // computed once, reused for the formal check AND relevance
                 formalErrorAt(path, reps, ctx, dup, cache) != null || !isRelevant(path, reps)
-            },
-            // Partial validation only: per-cell relevance, for FirstFilled's order-aware gate (IF42); null in
-            // full validation, so the gate is skipped entirely (the flat-spike `RepDoc` path is untouched).
-            cellRelevant = if (isRelevant === ALL_RELEVANT) null else { path, reps -> isRelevant(path, reps) },
-            // The relevant set a CustomCondition sees — null in full, the caller's set + globals in partial (IF38).
-            customRelevant = customRelevant,
-            // Partial validation only: whether an all-rows aggregate's star is wildcard-relevant (IF42).
-            starRelevant = starRelevant,
-            customFieldTypes = customFieldTypes)
+            })
 
     /** The per-row outcome of one rule: fired (with its message), passed, or suppressed (which field/code). */
     private sealed interface RowOutcome {
@@ -1006,6 +1017,7 @@ class DmInterpreter @JvmOverloads constructor(
         val ast = condAstOf(rule)
         val refs = nonStarredRefs(ast).distinct()
         val errorPath = resolveErrorPath(rule)
+        val config = validationConfig(isRelevant, customRelevant, starRelevant)   // once per rule, reused per row
         return iterationContexts(rule, ast, doc).map { ctx ->
             // Partial validation: the kernel runs a rule only if its error-field instance is relevant — else
             // the rule is NOT executed for this row (no message, not a suppression). Full validation: always.
@@ -1017,7 +1029,7 @@ class DmInterpreter @JvmOverloads constructor(
             // referenced field instance that is NOT relevant is also unknown — the same 3VL yields the kernel's
             // suppression (`And` suppresses, `Or` with a relevant-true operand still fires). The custom-condition
             // registry + the row's error-field pointer ride along for a `CustomCondition X` leaf.
-            val interp = interpreterFor(ctx, errorPath, dup, cache, isRelevant, customRelevant, starRelevant)
+            val interp = interpreterFor(ctx, config, errorPath, dup, cache, isRelevant)
             // ONE typed walk per row (the fired MsgType, or null if it doesn't fire) — firedType != null ⟺ the
             // rule fires (truth == TRUE), and the value IS the polarity. The walk is LAZY-polarity: it skips the
             // VALUE/OMISSION typing on non-firing nodes (the kernel types only firing rows), measured faster in

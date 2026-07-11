@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter.property
 
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
+import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Kleene
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
@@ -46,10 +47,10 @@ class KleeneMonotonicityPropertyTest {
             val indexFields = a.scenario.model.indexFields
             for (seed in PropertySupport.SEEDS) {
                 for (ctx in a.scenario.document(seed).contextsFor(a.group)) {
-                    val base = Interpreter(ctx, indexFields = indexFields).eval(cond)
+                    val base = Interpreter(ctx, EvalConfig(indexFields = indexFields)).eval(cond)
                     for (p in fields) {
                         checks++
-                        val routed = Interpreter(ctx, indexFields = indexFields, invalid = { it == p }).eval(cond)
+                        val routed = Interpreter(ctx, EvalConfig(indexFields = indexFields), invalid = { it == p }).eval(cond)
                         if (routed != base && routed != Tri.UNKNOWN) {
                             failures += "${a.scenario.name} '${a.text}' route=$p seed=$seed base=$base routed=$routed"
                         }

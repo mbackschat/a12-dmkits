@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.dec
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
@@ -73,7 +74,7 @@ class EmptyRowAppendPropertyTest {
         val expr = parseExpression("NumberOfFilledGroups(Lines*)", "/Cart")
         for (k in 0..6) {
             val ctx = docWith(k).contextsFor("/Cart").single()
-            assertEquals(Val.Num(dec(k)), Interpreter(ctx, indexFields = model.indexFields).evalExpression(expr),
+            assertEquals(Val.Num(dec(k)), Interpreter(ctx, EvalConfig(indexFields = model.indexFields)).evalExpression(expr),
                 "NumberOfFilledGroups(Lines*) must equal the instantiated row count (k=$k)")
         }
     }

@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.dec
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.eval.Aggregates
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
+import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -87,7 +88,7 @@ class AggregateIdentityPropertyTest {
     }
 
     private fun evalExpr(model: ModelDef, ctx: EvalContext, text: String, base: String): Val =
-        Interpreter(ctx, indexFields = model.indexFields).evalExpression(parseExpression(text, base))
+        Interpreter(ctx, EvalConfig(indexFields = model.indexFields)).evalExpression(parseExpression(text, base))
 
     /** The distinct key mirroring [Aggregates.numberOfDifferentValues] (typed, scale-insensitive numbers). */
     private fun key(v: Val): String = when (v) {

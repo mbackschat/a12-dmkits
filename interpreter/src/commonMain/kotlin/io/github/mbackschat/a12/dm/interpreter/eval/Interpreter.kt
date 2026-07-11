@@ -15,7 +15,6 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
-import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
@@ -33,22 +32,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
  */
 class Interpreter(
     private val ctx: EvalContext,
-    private val clock: EvalClock? = null,
-    /** The model's configured base year (the kernel's `modelInfo.baseYear`), or null when the model declares
-     *  none — the value of the `BaseYear` point-in-time constant. Model config, supplied by [DmInterpreter]
-     *  from the [io.github.mbackschat.a12.dm.interpreter.model.ModelDef] (NOT from the clock). */
-    private val baseYear: Int? = null,
-    /** Repeatable groups' index-field paths (the kernel's `indexFieldName`s) — the `SemanticIndex`
-     *  (`[field For "value"]`) lookup resolves a group's index field from this. Supplied by [DmInterpreter]. */
-    private val indexFields: Set<String> = emptySet(),
-    /** The consumer-supplied predefined-type registry (the kernel's `IPredefinedType` client SPI) — the
-     *  validation domain for `Valid(field, "Name")` / `Invalid(field, "Name")`. An unregistered type name →
-     *  the rule is reported unsupported (fail-fast). Supplied by [DmInterpreter]; default empty. */
-    private val predefinedTypes: Map<String, PredefinedType> = emptyMap(),
-    /** Consumer-supplied custom conditions (the kernel's `ICustomCondition` SPI, cross-platform), keyed by name —
-     *  the validation domain for `CustomCondition X`. An unregistered name → the rule is reported unsupported.
-     *  Supplied by [DmInterpreter]; default empty. */
-    private val customConditions: Map<String, CustomCondition> = emptyMap(),
+    /** The per-call configuration carried unchanged across the whole validate/compute and every sub-interpreter —
+     *  the invariant bundle (clock, baseYear, indexFields, the SPIs, the partial-validation relevance seams,
+     *  computeMode). See [EvalConfig]; the two per-row inputs ([customErrorField], [invalid]) stay separate. */
+    private val config: EvalConfig = EvalConfig(),
     /** The current rule's error-field pointer (its `errorEntityRelPath` resolved to the row's reps) — the
      *  `errorField` a custom condition's `check` receives. Null outside a rule eval (a computation / `Having`
      *  sub-eval), where `CustomCondition` cannot appear. */
@@ -62,27 +49,6 @@ class Interpreter(
      * which has no formal-error increment yet). [DmInterpreter] supplies it from the model + context.
      */
     private val invalid: (String) -> Boolean = { false },
-    /** Partial validation only: whether a star-aggregate CELL at `(path, reps)` is relevant. A starred aggregate
-     *  with ANY non-relevant cell evaluates to [Val.Unknown] — the kernel treats the aggregate as non-evaluable
-     *  under a subset relevant set (it does NOT apply directional 3VL to the non-relevant cells, kernel-probed;
-     *  IF35). **Null in full validation** — the gate is skipped entirely (no `starCells` call, so the flat-spike
-     *  `RepDoc` context is unaffected). [DmInterpreter] supplies it only for partial validation. */
-    private val cellRelevant: ((String, List<Int>) -> Boolean)? = null,
-    /** Partial validation only: whether an ALL-ROWS aggregate's starred path is **wildcard-relevant** — the
-     *  kernel evaluates `Sum`/`Max`/`Min`/`NumberOfDifferentValues`/`SumOfProducts` only when the relevant set
-     *  WILDCARDS the starred level; concrete per-row enumeration (even of all rows) is NOT enough (IF42).
-     *  `FirstFilled` does NOT use this (it is order-aware via [cellRelevant]). **Null in full validation.** */
-    private val starRelevant: ((String) -> Boolean)? = null,
-    /** Partial validation only: the relevant entity set passed to a [CustomCondition]'s `check` (the kernel's
-     *  `relevantEntities` — `MainValidatorController` feeds it `getAllPruefungsrelevanteEntitiesExtern`). **Null
-     *  in full validation** (the kernel passes `null` there, "all relevant"); a partial validation supplies the
-     *  caller's relevant entities + the auto-added global fields, wildcards preserved. So a relevance-aware
-     *  custom condition can return false when its fields are not relevant (IF38). [DmInterpreter] supplies it. */
-    private val customRelevant: Set<FieldPointer>? = null,
-    /** Consumer-supplied CODE-BASED custom field types (the kernel's `ICustomFieldType` SPI) — the imperative tail
-     *  of `Valid(field, "Name")` / `Invalid(field, "Name")`, consulted ONLY after [predefinedTypes] misses (so that
-     *  declarative path stays monomorphic). Supplied by [DmInterpreter]; default empty. */
-    private val customFieldTypes: Map<String, CustomFieldType> = emptyMap(),
     /** The ENCLOSING iteration's context for `$` outer-correlation refs (KERNEL-FINDINGS §"$ correlation"):
      *  set only while evaluating a `Having` filter, so a `$`-marked ref inside the filter resolves against the
      *  row the aggregate/quantifier is iterating FROM, not the inner filtered row. Null at top level (a `$`
@@ -93,21 +59,21 @@ class Interpreter(
      *  ref is UNBOUND and resolves to UNKNOWN (the kernel then keeps the cell: keep-law = not-FALSE keeps),
      *  rather than binding to [outer] or throwing. Set only by [overlapFilterInterp] (KERNEL-FINDINGS §6, IF72). */
     private val outerUnbound: Boolean = false,
-    /**
-     * COMPUTE-mode evaluation semantics (IF85 — the kernel's calculation path, which differs from validation):
-     * - a read of a formally-invalid cell POISONS the computation instance ([PoisonedReadException]) instead of
-     *   the three-valued "not check-relevant" exclusion — the [invalid] gate THROWS (supplied by
-     *   `DmInterpreter.computeInstances`), a star cell resolving to [Val.Unknown] throws at its read site;
-     * - the field-fill quantifiers SCAN their cells in row order with the kernel's per-operator stop
-     *   ([computeFillQuantifier]) — a cell after the deciding one is never read, so it cannot poison;
-     * - `And` short-circuits a not-TRUE left (FALSE and UNKNOWN alike — the generated `isKnownAndTrue`
-     *   collapse), `Or` a TRUE left;
-     * - a quantifier/aggregate `Having` keeps only TRUE rows (the 2-valued collapse — validation's not-FALSE
-     *   keep-law does not apply on the compute path).
-     * False (the default) = validation semantics, unchanged.
-     */
-    private val computeMode: Boolean = false,
 ) {
+
+    // The config bundle destructured into the fields the walk reads — keeps every internal reference and its
+    // direct-field read speed unchanged while the constructor stays small ([EvalConfig]); the config object
+    // itself is allocated once per call and reused by [havingInterp]/[overlapFilterInterp], not per row.
+    private val clock = config.clock
+    private val baseYear = config.baseYear
+    private val indexFields = config.indexFields
+    private val predefinedTypes = config.predefinedTypes
+    private val customConditions = config.customConditions
+    private val customFieldTypes = config.customFieldTypes
+    private val cellRelevant = config.cellRelevant
+    private val starRelevant = config.starRelevant
+    private val customRelevant = config.customRelevant
+    private val computeMode = config.computeMode
 
     /** The context a node resolves against: the enclosing (`outer`) iteration for a `$`-marked ref, else [ctx]. */
     private fun ctxOf(node: Expr): EvalContext = when {
@@ -144,17 +110,13 @@ class Interpreter(
     /** A sub-interpreter for a `Having` filter row [rc], carrying the SAME config and setting the enclosing
      *  iteration ([ctx]) as its `outer` — so a `$`-marked ref in the filter resolves against this row. */
     private fun havingInterp(rc: EvalContext): Interpreter =
-        Interpreter(rc, clock, baseYear, indexFields, predefinedTypes, customConditions, customErrorField, invalid,
-            cellRelevant = cellRelevant, starRelevant = starRelevant, customRelevant = customRelevant,
-            customFieldTypes = customFieldTypes, outer = ctx, computeMode = computeMode)
+        Interpreter(rc, config, customErrorField, invalid, outer = ctx)
 
     /** A sub-interpreter for the overlap predicates' `Having` filter row [rc] — like [havingInterp] but with NO
      *  outer binding ([outerUnbound]): a plain boolean predicate's rep-list arg has no enclosing iteration, so a
      *  `$` term in its filter is unbound → UNKNOWN → the cell is KEPT (keep-law: not-FALSE keeps; KERNEL-FINDINGS §6). */
     private fun overlapFilterInterp(rc: EvalContext): Interpreter =
-        Interpreter(rc, clock, baseYear, indexFields, predefinedTypes, customConditions, customErrorField, invalid,
-            cellRelevant = cellRelevant, starRelevant = starRelevant, customRelevant = customRelevant,
-            customFieldTypes = customFieldTypes, outer = null, outerUnbound = true, computeMode = computeMode)
+        Interpreter(rc, config, customErrorField, invalid, outer = null, outerUnbound = true)
 
     fun fires(cond: Cond): Boolean = eval(cond) == Tri.TRUE
 
