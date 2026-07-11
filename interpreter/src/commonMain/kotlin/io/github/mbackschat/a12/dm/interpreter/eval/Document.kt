@@ -905,8 +905,12 @@ class Document @JvmOverloads constructor(
         if (formallyInvalid(path, raw)) return Val.Unknown
         val precision = datePrecisions[path] ?: DatePrecision.FULL
         return when (kind) {
+            // A FRAGMENT-format range (`yyyy` year-range) completes its two endpoints ASYMMETRICALLY —
+            // start to the interval's earliest date, end to its latest (IF118) — so a rule reading it
+            // evaluates instead of going Unknown; a full-format range is unchanged. The base year fills a
+            // year-less fragment endpoint (a `MM`/`MM-dd` range), matching the kernel's completion.
             Kind.DATE_RANGE -> rangeConfig[path]?.let { (format, sep) ->
-                parseRangeToIso(raw, format, sep)?.let { Val.Range(it.first, it.second) }
+                parseRangeToIso(raw, format, sep, baseYear ?: 2000)?.let { Val.Range(it.first, it.second) }
             } ?: Val.Unknown
             // A DATE field canonicalizes to ISO, precision-aware:
             //  - FRAGMENT: the format carries only some components — complete the rest to the earliest concrete

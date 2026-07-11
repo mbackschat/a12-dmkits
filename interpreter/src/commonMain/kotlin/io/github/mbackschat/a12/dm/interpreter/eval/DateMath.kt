@@ -209,14 +209,43 @@ private fun iso(y: Int, m: Int, d: Int): String =
  * padding (the kernel's canonical, e.g. `01.06.2021-30.06.2021`) — into a pair of ISO `yyyy-MM-dd` dates, or
  * null when it doesn't match (a malformed range, the kernel's `datumBereichFormatFalsch`). The two halves are
  * matched as one anchored regex, so a [sep] that also appears inside [format] stays unambiguous.
+ *
+ * **Per-side FRAGMENT completion is ASYMMETRIC (IF118, KERNEL-FINDINGS §6).** When [format] is a fragment —
+ * carrying only some of y/M/d (a `yyyy` year-range like `2024/2025`, a real workspace idiom) — the two
+ * endpoints are completed to concrete dates by OPPOSITE interval rules, exactly as the kernel's
+ * `RuntimeController.datesAndFormatsToDateRange` splits `DateInterval.INTERVAL_START` / `INTERVAL_END` across
+ * `DateAndFormat.addMonthAndDay`: the START endpoint fills a missing month → `01` and a missing day → `01`
+ * (the earliest date), the END endpoint fills a missing month → `12` and a missing day → the completed
+ * month's LAST day (the latest date); a missing year is [baseYear] on both. So `2024/2025` (format `yyyy`) →
+ * `2024-01-01 .. 2025-12-31` — the widest interval the endpoints denote. A full-format range (`dd.MM.yyyy`,
+ * every component present) completes to itself on both sides, so this is a no-op there.
  */
-fun parseRangeToIso(raw: String, format: String, sep: String): Pair<String, String>? {
+fun parseRangeToIso(raw: String, format: String, sep: String, baseYear: Int = 2000): Pair<String, String>? {
     val (frag, comps) = dateFragment(format) ?: return null
     val m = Regex("^$frag${Regex.escape(sep)}$frag$").matchEntire(raw) ?: return null
     val g = m.groupValues.drop(1)
-    val start = buildIso(g.take(comps.size), comps) ?: return null
-    val end = buildIso(g.drop(comps.size), comps) ?: return null
+    val start = buildRangeEndpoint(g.take(comps.size), comps, baseYear, end = false) ?: return null
+    val end = buildRangeEndpoint(g.drop(comps.size), comps, baseYear, end = true) ?: return null
     return start to end
+}
+
+/**
+ * Assemble the ISO `yyyy-MM-dd` for ONE endpoint of a date range from its fragment's captured [values] in
+ * [comps] order, completing the components the [comps] don't carry per the kernel's per-side interval rule
+ * (see [parseRangeToIso]): a missing YEAR → [baseYear]; a missing MONTH → `01` (start) or `12` (end); a
+ * missing DAY → `01` (start) or the completed month's last day (end). A PRESENT-but-out-of-range component
+ * → null (the caller's [resolveValue] gates a formally-invalid range to Unknown before this runs, so this is
+ * defensive). The END day is filled AFTER the month, so a missing-month end lands on Dec 31 and a `yyyy-MM`
+ * end on that month's real last day (leap-aware).
+ */
+private fun buildRangeEndpoint(values: List<String>, comps: List<Char>, baseYear: Int, end: Boolean): String? {
+    var y = baseYear; var mo = -1; var d = -1
+    comps.forEachIndexed { i, c -> val v = values[i].toInt(); when (c) { 'y' -> y = v; 'M' -> mo = v; 'd' -> d = v } }
+    if (mo == -1) mo = if (end) 12 else 1                          // missing month → interval bound
+    if (mo < 1 || mo > 12) return null                            // a PRESENT month must be real
+    if (d == -1) d = if (end) daysInMonth(y, mo) else 1           // missing day → interval bound (leap-aware)
+    if (d < 1 || d > daysInMonth(y, mo)) return null              // a PRESENT day must be real
+    return iso(y, mo, d)
 }
 
 /**
