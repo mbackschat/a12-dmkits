@@ -26,6 +26,22 @@ object ValCompare {
         else -> error("incomparable values $l vs $r")
     }
 
+    /**
+     * The kernel's typed value EQUALITY (`==`/`!=`, value-list membership, `FieldValuesNotUnique`): NUMBERS are
+     * rounded to scale 19 first (`compareScaled19`, so `5` == `5.00` and equality agrees with [language]), STRINGS
+     * and BOOLS compare by themselves, and a DATE_RANGE pair is equal iff both endpoints match (endpoint equality,
+     * the kernel's range compare — IF32). A cross-kind or otherwise-incomparable pair is NOT equal (false), never a
+     * throw — matching the kernel, which never treats mismatched kinds as equal. AST-walk-agnostic runtime
+     * semantics: the strategy resolves both operands to [Val]s and calls this.
+     */
+    fun equal(l: Val, r: Val): Boolean = when {
+        l is Val.Num && r is Val.Num -> l.v.compareScaled19(r.v) == 0
+        l is Val.Txt && r is Val.Txt -> l.v == r.v
+        l is Val.Bool && r is Val.Bool -> l.v == r.v
+        l is Val.Range && r is Val.Range -> l.start == r.start && l.end == r.end
+        else -> false
+    }
+
     /** Orders comparable values for `min`/`max` selection: numbers numerically (full precision), text lexicographically. */
     val ORDER: Comparator<Val> = Comparator { a, b ->
         when {

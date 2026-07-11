@@ -45,16 +45,24 @@ object Aggregates {
      */
     fun numberOfDifferentValues(values: List<Val>): Val {
         val seen = HashSet<String>(values.size * 2)
-        for (v in values) seen.add(distinctKey(v))
+        for (v in values) seen.add(distinctKeyOrNull(v)
+            ?: error("NumberOfDifferentValues over a non-comparable value: $v"))
         return Val.Num(dec(seen.size))
     }
 
-    /** The canonical distinct-key of a resolved value (see [numberOfDifferentValues]). */
-    private fun distinctKey(v: Val): String = when (v) {
+    /**
+     * The canonical typed distinct-/equality-key of a resolved value, or null for a non-comparable one — NUMBERS
+     * by their scale-19 form (scale-insensitive, so `49.90` ≡ `49.9`), STRINGS/BOOLS by themselves, each with a
+     * type prefix so no cross-type collision. The SINGLE source shared by [numberOfDifferentValues] and the
+     * interpreter's `FieldValuesNotUnique` duplicate detection — both must key identically so distinctness and
+     * duplicate-detection agree, and both are kernel-value-equality-consistent (a [Val.Range] never compares
+     * equal, so it has no key → null; the count aggregate treats that as a model error, the duplicate scan skips it).
+     */
+    fun distinctKeyOrNull(v: Val): String? = when (v) {
         is Val.Num -> "N" + v.v.scale19().display()
         is Val.Txt -> "S" + v.v
         is Val.Bool -> "B" + v.v
-        else -> error("NumberOfDifferentValues over a non-comparable value: $v")
+        else -> null
     }
 
     /**

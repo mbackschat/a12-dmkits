@@ -698,7 +698,7 @@ class Interpreter(
         ValueListQuantOp.AT_LEAST_ONE -> {
             val values = vlqSide(c.values)
             if (values.present.isEmpty()) Tri.FALSE
-            else Tri.of(vlqSide(c.fields).present.any { p -> values.present.any { eq(p, it) } })
+            else Tri.of(vlqSide(c.fields).present.any { p -> values.present.any { ValCompare.equal(p, it) } })
         }
         ValueListQuantOp.NO -> {
             val values = vlqSide(c.values)
@@ -706,7 +706,7 @@ class Interpreter(
             else {
                 val fields = vlqSide(c.fields)
                 if (fields.anyUnknown) Tri.UNKNOWN
-                else Tri.of(fields.present.none { p -> values.present.any { eq(p, it) } })
+                else Tri.of(fields.present.none { p -> values.present.any { ValCompare.equal(p, it) } })
             }
         }
         ValueListQuantOp.NOT_ALL -> {
@@ -715,7 +715,7 @@ class Interpreter(
             else {
                 val values = vlqSide(c.values)
                 if (values.anyUnknown) Tri.UNKNOWN
-                else Tri.of(fields.present.any { p -> values.present.none { eq(p, it) } })
+                else Tri.of(fields.present.any { p -> values.present.none { ValCompare.equal(p, it) } })
             }
         }
     }
@@ -1347,7 +1347,7 @@ class Interpreter(
     private fun valueInList(args: List<Expr>): Tri {
         val v = evalExpr(args[0])
         if (v is Val.Unknown) return Tri.UNKNOWN
-        return Tri.of(args.drop(1).any { eq(v, evalExpr(it)) })
+        return Tri.of(args.drop(1).any { ValCompare.equal(v, evalExpr(it)) })
     }
 
     /**
@@ -1461,8 +1461,8 @@ class Interpreter(
         // string *field* already arrives as Unknown (handled above); this covers the non-field empty strings.
         if ((l is Val.Txt && l.v.isEmpty()) || (r is Val.Txt && r.v.isEmpty())) return Tri.UNKNOWN
         return when (c.op) {
-            CmpOp.EQ -> Tri.of(eq(l, r))
-            CmpOp.NE -> Tri.of(!eq(l, r))
+            CmpOp.EQ -> Tri.of(ValCompare.equal(l, r))
+            CmpOp.NE -> Tri.of(!ValCompare.equal(l, r))
             CmpOp.LT -> Tri.of(ValCompare.language(l, r) < 0)
             CmpOp.LE -> Tri.of(ValCompare.language(l, r) <= 0)
             CmpOp.GT -> Tri.of(ValCompare.language(l, r) > 0)
@@ -1892,7 +1892,7 @@ class Interpreter(
             if (!ctx.filled(path)) continue          // empty → not counted (kernel: b == FALSE)
             val v = evalExpr(args[i])
             if (v is Val.Unknown) return Val.Unknown // a filled-but-malformed operand → non-evaluable
-            if (eq(v, target)) count++
+            if (ValCompare.equal(v, target)) count++
         }
         return Val.Num(dec(count))
     }
@@ -1926,18 +1926,14 @@ class Interpreter(
             }
         }
         // O(n) duplicate detection via canonical keys. The starred operand collects ONE value per row, so the
-        // old O(n²) pairwise `eq` scan went quadratic on a large repetition list (confirmed super-linear; the
-        // kernel memoizes this via its RepetitionNotUniqueErrorCache). The key matches [eq]: numbers by their
-        // scale-19 form (`compareScaled19` equality — scale-insensitive, exact past 19 digits), strings/bools by
-        // themselves (the prefix prevents cross-type collision); a `Range` never `eq`-matches, so it's skipped.
+        // old O(n²) pairwise equality scan went quadratic on a large repetition list (confirmed super-linear; the
+        // kernel memoizes this via its RepetitionNotUniqueErrorCache). The key is [Aggregates.distinctKeyOrNull]
+        // — the SAME keying `NumberOfDifferentValues` uses (numbers scale-19-insensitive, strings/bools by
+        // themselves), so distinctness and duplicate-detection agree; a `Range`/other never compares equal → no
+        // key → skipped (it cannot form a duplicate).
         val seen = HashSet<String>(values.size * 2)
         for (v in values) {
-            val k = when (v) {
-                is Val.Num -> "N" + v.v.scale19().display()
-                is Val.Txt -> "S" + v.v
-                is Val.Bool -> "B" + v.v
-                else -> continue   // Range / other: never eq → cannot form a duplicate
-            }
+            val k = Aggregates.distinctKeyOrNull(v) ?: continue
             if (!seen.add(k)) return Tri.TRUE
         }
         return Tri.FALSE
@@ -2351,17 +2347,6 @@ class Interpreter(
     private fun pathOf(e: Expr): String = (e as? Expr.Field)?.path
         ?: throw UnsupportedConstructException("unsupported operand ${e::class.simpleName} in a field-reference position")
     private fun num(v: Val): Dec = (v as? Val.Num)?.v ?: error("expected a number, got $v")
-
-    private fun eq(l: Val, r: Val): Boolean = when {
-        // NUMBER equality rounds both to scale 19 HALF_UP, like the comparison ops (the kernel's `vergleiche`).
-        l is Val.Num && r is Val.Num -> l.v.compareScaled19(r.v) == 0
-        l is Val.Txt && r is Val.Txt -> l.v == r.v
-        l is Val.Bool && r is Val.Bool -> l.v == r.v
-        // A DATE_RANGE pair is equal iff both endpoints match (the implicit computation-validation of a
-        // date-range computed field compares two ranges; the kernel uses endpoint equality). IF32.
-        l is Val.Range && r is Val.Range -> l.start == r.start && l.end == r.end
-        else -> false
-    }
 
     private companion object {
         /** The entity-count ops whose filtered fill follows the kernel count rule (IF114), not the
