@@ -131,21 +131,22 @@ Internally `commonMain` is **layered into subpackages** under `dm.interpreter`: 
 
 The root project is four package groups: a shared `dm.core`, the two sibling kits (`dm.rulekit`, `dm.modelkit`), and the `dm.edit` orchestration above them.
 
-### 3.1 `dm.core` — the shared substrate (15 files)
+### 3.1 `dm.core` — the shared substrate
 
-The DSL-free foundation both kits stand on. No rulekit or modelkit dependency. It **owns the vocabulary the kits' public surface speaks** — the reference-resolver type and the diagnostic types are ours, not the kernel's, so a consumer never has to import `com.mgmtp.*` to name them (kernel-decoupling stage 1, [KERNEL-DECOUPLING-PROPOSAL](KERNEL-DECOUPLING-PROPOSAL.md); the mapping to kernel types happens at the two named boundary seams below and, from stage 3, behind the SPI).
+The DSL-free foundation both kits stand on. No rulekit or modelkit dependency. It **owns the vocabulary the kits' public surface speaks** — the reference-resolver type and the diagnostic types are ours, not the kernel's, so a consumer never has to import `com.mgmtp.*` to name them (kernel-decoupling stages 1–2, [KERNEL-DECOUPLING-PROPOSAL](KERNEL-DECOUPLING-PROPOSAL.md); the mapping to kernel types happens at the one named boundary seam below and, from stage 3, behind the SPI). **Model *assembly + indexing* is now kernel-free** (stage 2): `ModelReader` expands + indexes without the kernel; the kernel is consulted only for the *consistency gate* (`ModelLoader.load`, R3).
 
 | Class | Role |
 |---|---|
-| `ModelIndex` | the kernel-expanded model index — group tree, field kinds, number scale, repeatability, enum domains |
-| `ModelLoader` | binds DM-JSON → a kernel `IDocumentModel` (via the public facade), the entry to the index; takes a `ModelResolver` |
+| `ModelReader` | the **kernel-free assembly layer** (stage 2): parse DM-JSON → **expand includes** (mount the included root group's children under the pre-existing `modelAlias` group; `includeLevel`; `excludeRules`/`excludeComputations`) → **resolve imported type-definitions to effective concrete types** → index by **name-path**. A clean-room reimplementation of the kernel's `expand` (KERNEL-FINDINGS "DocumentModel expansion"); emits self-contained, name-path-keyed DM-JSON (`toJson()`, the interpreter-ready form the CLI eval path pre-expands through) |
+| `ModelIndex` | the **kernel-free typed view** over `ModelReader` — group tree, field kinds, number scale/bounds, string length/pattern, repeatability, enum domains, element annotations. The retired kernel-typed accessors (`model()`/`fieldType()`, and the kernel returns of `field()`/`group()`) are gone; parity-locked to the kernel by `adapter.ModelIndexParityTest` |
+| `ModelLoader` | the **kernel consistency gate** (R3): `deserialize → expand → checkConsistency` on the real kernel, throwing on ERROR. `BoundModel`/`ModelDocument`/`EditSession` call it to gate, then index kernel-free via `ModelReader`; takes a `ModelResolver` |
 | `ModelResolver` | **the** include-resolution type — a kernel-free `id → DM-JSON` SAM; every kit signature that resolves references speaks it (never the kernel resolver) |
-| `ReferenceResolvers` | `ModelResolver` factories (`selfContained`/`directory`) + the one kernel **bridge** `of(ModelResolver)` — the only kernel-typed member (retires into the backend at stage 3) |
-| `Severity`, `Notification` | the owned **diagnostic vocabulary** (INFO/WARNING/ERROR; severity + message) — a kit `Diagnostic`/`ValidationResult`/`ModelConsistencyException` carries these, never a kernel `RankedNotification`/`Severity` |
+| `ReferenceResolvers` | `ModelResolver` factories (`selfContained`/`directory`) + the one kernel **bridge** `of(ModelResolver)` — the only kernel-typed member, used by `ModelLoader`'s gate (retires into the backend at stage 3) |
+| `Severity`, `Notification`, `Annotation` | owned value vocabulary — the **diagnostics** (INFO/WARNING/ERROR; severity + message; a kit `Diagnostic`/`ValidationResult`/`ModelConsistencyException` carries these, never a kernel `RankedNotification`/`Severity`) and an element's **annotation** (name/value, read kernel-free off `ModelIndex`) |
 | `KernelNotifications` | the single kernel→ours notification boundary mapper (interim seam; moves to the SPI at stage 3) |
 | `DmJson` | the generic, DSL-free DM-JSON **write** primitive (Jackson tree surgery, include-preserving) — shared by both kits |
 | `ModelConsistencyException` | the one type a kernel rejection (load-time or write-time) surfaces as — carries our `Notification`s |
-| `ValueKind`, `Suggest`, `ModelFormat`, … | value-type taxonomy (now kernel-free — classification of a kernel `IFieldType` lives on `ModelIndex`), did-you-mean suggestions, the DM-JSON format reference, `DmKeys`/`ElementType`/`UnresolvedReferenceException` |
+| `ValueKind`, `Suggest`, `ModelFormat`, … | value-type taxonomy (kernel-free — from the stored DM-JSON discriminator), did-you-mean suggestions, the DM-JSON format reference, `DmKeys`/`ElementType`/`UnresolvedReferenceException` |
 
 ### 3.2 `dm.rulekit` — the rule & computation DSL
 
