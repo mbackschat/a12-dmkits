@@ -11,22 +11,10 @@ import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.PoisonedReadException
 import io.github.mbackschat.a12.dm.interpreter.eval.UNKNOWN_REP
-import io.github.mbackschat.a12.dm.interpreter.eval.CUSTOM_TYPE_INVALID
-import io.github.mbackschat.a12.dm.interpreter.eval.FORMAL_RULE_PATH
 import io.github.mbackschat.a12.dm.interpreter.eval.OverlayContext
-import io.github.mbackschat.a12.dm.interpreter.eval.OVER_REPETITION_CONTEXT
-import io.github.mbackschat.a12.dm.interpreter.eval.OVER_REPETITION_ROW
-import io.github.mbackschat.a12.dm.interpreter.eval.customTypeInvalidText
-import io.github.mbackschat.a12.dm.interpreter.eval.overRepetitionText
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.MANDATORY_FIELD
-import io.github.mbackschat.a12.dm.interpreter.eval.formalError
-import io.github.mbackschat.a12.dm.interpreter.eval.formalErrorText
 import io.github.mbackschat.a12.dm.interpreter.eval.typeFormatError
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
-import io.github.mbackschat.a12.dm.interpreter.eval.mandatoryFieldText
-import io.github.mbackschat.a12.dm.interpreter.eval.UNIQUE_INDEX
-import io.github.mbackschat.a12.dm.interpreter.eval.uniqueIndexText
 import io.github.mbackschat.a12.dm.interpreter.eval.renderDateToFormat
 import io.github.mbackschat.a12.dm.interpreter.eval.renderMessage
 import io.github.mbackschat.a12.dm.interpreter.eval.storedComputedNumber
@@ -44,11 +32,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedTypeRegistry
 import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
-import io.github.mbackschat.a12.dm.interpreter.model.Requiredness
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleResult
-import io.github.mbackschat.a12.dm.interpreter.model.Severity
 import io.github.mbackschat.a12.dm.interpreter.model.Suppression
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
 import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome
@@ -56,20 +42,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.Verdict
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import io.github.mbackschat.a12.dm.interpreter.parse.parseExpression
 import kotlin.jvm.JvmOverloads
-
-/** Whether a field/group instance `(path, reps)` is relevant — full validation: always; partial: in the
- *  relevant set. Gates which rules run and which referenced fields are UNKNOWN. See [DmInterpreter.validatePart]. */
-private typealias Relevance = (String, List<Int>) -> Boolean
-
-/** The full-validation relevance: every instance is relevant. */
-private val ALL_RELEVANT: Relevance = { _, _ -> true }
-
-/** Per-validation memo of [DmInterpreter.formalErrorAt] keyed by `(path, reps)` → the field instance's
- *  unknown code (format / mandatory / duplicate-index) or null when usable. The document is immutable during a
- *  validation, so a field instance's status is stable — computing it once per distinct instance replaces the
- *  per-operand, per-row recompute (measured: `formalErrorAt` was ~56% of `validateFull` before this memo).
- *  Created per validate call (never shared across calls), so the reused engine stays thread-safe. */
-private typealias FormalCache = MutableMap<String, MutableMap<List<Int>, String?>>   // path → reps → code (split to drop the Pair key, hot in firstSuppressor)
 
 /**
  * The public entry point — evaluates a [ModelDef]'s rules over a [Document] instance, kernel-free, on
@@ -105,6 +77,9 @@ class DmInterpreter @JvmOverloads constructor(
      *  — the interpreter must expose every kernel customization to be 100% compatible. */
     private val legalCharset: LegalCharset = LegalCharset.BMP,
 ) {
+
+    /** The auto-check emitter + formal-status oracle — the call-invariant I2 seam collaborator (IF117). */
+    private val checks = AutoChecks(model, legalCharset, predefinedTypes, customFieldTypes)
 
     /**
      * **Parse once, reuse across calls** — the prepare-once optimization (INTERPRETER-PERFORMANCE.md "the
@@ -225,19 +200,22 @@ class DmInterpreter @JvmOverloads constructor(
      */
     private fun validateWith(doc: Document, locale: String, isRelevant: Relevance,
             customRelevant: Set<FieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null): ValidationOutcome {
-        val dup = duplicateIndexCells(doc, isRelevant)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
+        val dup = checks.duplicateIndexCells(doc, isRelevant)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
         // Custom-type unsupported is collected up front (cells whose type is in NEITHER registry); formalErrors
         // ADDS to it any REGISTERED code-based type whose validate() can't run (a JS worker down / errored), so
         // that degrades to unsupported per cell rather than crashing the whole validation.
-        val unsupported = customTypeUnsupported(doc, isRelevant).toMutableList()
-        val messages = (formalErrors(doc, locale, isRelevant, unsupported) + mandatoryErrors(doc, locale, isRelevant)
-                + uniquenessMessages(dup, locale, isRelevant) + overRepetitionMessages(doc, locale, isRelevant)).toMutableList()
-        val cache: FormalCache = HashMap()   // memo across ALL rules of this validation (the doc is immutable here)
+        val unsupported = checks.customTypeUnsupported(doc, isRelevant).toMutableList()
+        val messages = (checks.formalErrors(doc, locale, isRelevant, unsupported) + checks.mandatoryErrors(doc, locale, isRelevant)
+                + checks.uniquenessMessages(dup, locale, isRelevant) + checks.overRepetitionMessages(doc, locale, isRelevant)).toMutableList()
+        // The per-call seam (IF117): the formal-status memo spans ALL rules of this validation (the doc is
+        // immutable here), and the EvalConfig is built once for the whole call.
+        val pass = ValidationPass(doc, locale, isRelevant, dup,
+            validationConfig(isRelevant, customRelevant, starRelevant), checks)
         for (rule in model.rules) {
             try {
                 val rnu = repetitionNotUnique(rule)
-                messages += if (rnu != null) repetitionNotUniqueMessages(rule, rnu, doc, locale, dup, cache, isRelevant, customRelevant, starRelevant)
-                else messagesFor(rule, doc, locale, dup, cache, isRelevant, customRelevant, starRelevant)
+                messages += if (rnu != null) repetitionNotUniqueMessages(rule, rnu, pass)
+                else messagesFor(rule, pass)
             } catch (e: UnsupportedConstructException) {
                 unsupported += UnsupportedRule(rule.path, e.message ?: "unsupported construct")
             }
@@ -249,7 +227,7 @@ class DmInterpreter @JvmOverloads constructor(
         // just the degenerate single-unconditional one (IF65). Evaluated through the same rule machinery.
         for (implicit in implicitComputationAst.keys) {
             try {
-                messages += messagesFor(implicit, doc, locale, dup, cache, isRelevant, customRelevant, starRelevant)
+                messages += messagesFor(implicit, pass)
             } catch (e: UnsupportedConstructException) {
                 unsupported += UnsupportedRule(implicit.errorEntityRelPath, e.message ?: "unsupported computation validation")
             }
@@ -287,17 +265,6 @@ class DmInterpreter @JvmOverloads constructor(
             name, relativePath(node, comp.targetPath))
     }
 
-    /** The `../…`-form relative path FROM rule element [from] TO absolute [target], matching [resolveErrorPath]'s
-     *  convention: one `../` per [from] segment above the two paths' common prefix, then [target]'s remaining tail.
-     *  Correct whether [target] is a descendant of [from]'s group, a sibling subtree, or in another root. */
-    private fun relativePath(from: String, target: String): String {
-        val f = pathParts(from)
-        val t = pathParts(target)
-        var common = 0
-        while (common < f.size && common < t.size && f[common] == t[common]) common++
-        return "../".repeat(f.size - common) + t.drop(common).joinToString("/")
-    }
-
     /**
      * The implicit computation-validation condition AST, built directly from [comp]'s already-parsed alternatives
      * ([parsedOf]) — mirroring the kernel's `ComputationAlternativesJoiner.join()` (md-model
@@ -321,116 +288,6 @@ class DmInterpreter @JvmOverloads constructor(
         val guarded = parsed.commonPrecondition?.let { Cond.And(it, body) } ?: body
         return Cond.And(Cond.Pred("FieldFilled", listOf(fExpr)), guarded)
     }
-
-    /**
-     * One formal-error [Message] per malformed filled field, document-wide — the runtime twin of the
-     * kernel's `formalePruefung` checks. Channels match the kernel exactly (code, [FORMAL_RULE_PATH], field
-     * pointer, ERROR, VALUE); the human text is the interpreter's own wording ([formalErrorText]), not the
-     * kernel's German bundle (KERNEL-INTEGRATION-NOTES "Formal-error message text").
-     */
-    private fun formalErrors(doc: Document, locale: String, isRelevant: Relevance,
-            customUnsupported: MutableList<UnsupportedRule>): List<Message> =
-        doc.valuedFields().filter { isRelevant(it.path, it.reps) }.mapNotNull { vf ->
-            val kind = model.kinds[vf.path] ?: return@mapNotNull null
-            // An over-limit cell is "unknown": it carries zuGrosseKontextnummer (the over-repetition pass), not a
-            // format/constraint error — the kernel stops at the over-limit index and skips the field's other checks.
-            if (overLimitLevel(vf.path, vf.reps) != null) return@mapNotNull null
-            val scale = model.scaleOf(vf.path)
-            val code = formalError(kind, vf.raw, scale, model.dateLikeFormatOf(vf.path), model.datePrecisionOf(vf.path),
-                    model.rangeSeparatorOf(vf.path), model.constraintsOf(vf.path), legalCharset, model.baseYear ?: 2000)
-            if (code != null) {
-                return@mapNotNull Message(code.id, FORMAL_RULE_PATH, formatPointer(vf.path, vf.reps), Severity.ERROR,
-                    MsgType.VALUE, formalErrorText(code, locale, scale))
-            }
-            // A registered custom field type that rejects the value (the implicit per-cell `Valid(field, type)`).
-            // A CODE-BASED type whose validate() can't run (a JS worker down / errored) throws here → degrade the
-            // cell to unsupported instead of crashing the whole validation (mirrors the per-rule tolerance).
-            try {
-                if (customTypeRejected(vf.path, vf.raw)) {
-                    Message(CUSTOM_TYPE_INVALID, FORMAL_RULE_PATH, formatPointer(vf.path, vf.reps), Severity.ERROR,
-                        MsgType.VALUE, customTypeInvalidText(locale))
-                } else {
-                    null
-                }
-            } catch (e: UnsupportedConstructException) {
-                customUnsupported += UnsupportedRule(formatPointer(vf.path, vf.reps),
-                    e.message ?: "custom field type could not be evaluated")
-                null
-            }
-        }
-
-    /**
-     * One `mandatoryField` [Message] per required-but-empty field instance — the runtime twin of the
-     * kernel's autogenerated mandatory rules (KERNEL-FINDINGS §4). The polarity is always OMISSION (filling
-     * the field clears it) and the pointer is the field itself. Two shapes, mirroring the kernel's
-     * `relativeTo = lowestRepeatableGroupPath`:
-     * - **unconditionally** required (mode [Requiredness.ABSOLUTE] with no repeatable ancestor): the field
-     *   has exactly one canonical instance (all path parts non-repeatable → indices all 1); the kernel flags
-     *   it even on an un-instantiated document, so it is checked directly via [Document.filledAt], not
-     *   [Document.contextsFor].
-     * - otherwise (absolute under a repeatable ancestor, or relative-to-parent): checked per instantiated row
-     *   of the field's [emissionScope], gated by [requiredEmpty]'s `GroupFilled(relativeTo)`.
-     */
-    private fun mandatoryErrors(doc: Document, locale: String, isRelevant: Relevance): List<Message> {
-        val out = mutableListOf<Message>()
-        for (path in model.requiredFieldPaths) {
-            if (model.requirednessOf(path) == Requiredness.ABSOLUTE && lowestRepeatableAncestor(path) == null) {
-                val reps = List(pathParts(path).size) { 1 }
-                if (!doc.filledAt(path, reps) && isRelevant(path, reps)) out += mandatoryMessage(path, reps, locale)
-            } else {
-                for (ctx in doc.contextsFor(emissionScope(path))) {
-                    val r = ctx.repsOf(path)
-                    // An over-limit row's mandatory check is suppressed (it carries the over-repetition code instead).
-                    if (requiredEmpty(path, ctx) && isRelevant(path, r) && overLimitLevel(path, r) == null) {
-                        out += mandatoryMessage(path, r, locale)
-                    }
-                }
-            }
-        }
-        return out
-    }
-
-    /**
-     * One `uniqueIndex` [Message] per repeatable row whose index-field value DUPLICATES another row's within
-     * the same parent scope — the runtime twin of the kernel's auto index-field uniqueness check
-     * (KERNEL-FINDINGS). The kernel flags **every** row sharing a duplicated value (not all-but-first); an
-     * empty index value is excluded (it is a requiredness concern → [mandatoryErrors]). Scoped per parent: a
-     * nested group's uniqueness is within one parent row (Parts within a Line), not across all rows globally —
-     * the scope key is the index field's reps minus its own + the group-row index ([List.dropLast] of 2).
-     */
-    /**
-     * The `(indexFieldPath, reps)` cells whose value DUPLICATES another row's in the same parent scope — the
-     * source for both the `uniqueIndex` messages ([uniquenessMessages]) AND the suppression: a duplicate index
-     * is **"unknown"** for any rule referencing it ([formalErrorAt]), branch-scoped exactly like a formal error
-     * (verified: a rule on the dup field is suppressed; a rule on a sibling field still fires). Computed once
-     * per evaluation and threaded, not recomputed per operand.
-     */
-    private fun duplicateIndexCells(doc: Document, isRelevant: Relevance = ALL_RELEVANT): Set<Pair<String, List<Int>>> {
-        val out = mutableSetOf<Pair<String, List<Int>>>()
-        for (indexField in model.indexFields) {
-            val rows = doc.contextsFor(parentGroup(indexField)).mapNotNull { ctx ->
-                val reps = ctx.repsOf(indexField)
-                if (overLimitLevel(indexField, reps) != null) return@mapNotNull null   // over-limit rows are suppressed
-                // Partial validation: only RELEVANT cells participate in duplicate detection — the kernel builds its
-                // index cache from the relevant fields only (`ValidationCommand.befuelleCacheMitRelevantenFeldern`),
-                // so a relevant row whose duplicate PARTNER is not relevant is NOT flagged (IF39). Full: all cells.
-                if (!isRelevant(indexField, reps)) return@mapNotNull null
-                ctx.displayValue(indexField)?.takeIf { it.isNotEmpty() }?.let { reps to it }
-            }
-            rows.groupBy { it.first.dropLast(2) }.forEach { (_, scope) ->
-                val duplicated = scope.groupingBy { it.second }.eachCount().filterValues { it > 1 }.keys
-                for ((reps, _) in scope.filter { it.second in duplicated }) out += indexField to reps
-            }
-        }
-        return out
-    }
-
-    /** One `uniqueIndex` [Message] per duplicate-index cell (the kernel flags every participant). */
-    private fun uniquenessMessages(dup: Set<Pair<String, List<Int>>>, locale: String, isRelevant: Relevance): List<Message> =
-        dup.filter { (path, reps) -> isRelevant(path, reps) }.map { (path, reps) ->
-            Message(UNIQUE_INDEX, uniqueRulePath(path), formatPointer(path, reps), Severity.ERROR, MsgType.VALUE,
-                uniqueIndexText(locale))
-        }
 
     /** A recognized `RepetitionNotUnique` rule: its key field paths, the optional `@From` reference-group ref,
      *  and the optional [guard] — the conjunction of the OTHER top-level conjuncts when the RNU predicate is
@@ -528,16 +385,13 @@ class DmInterpreter @JvmOverloads constructor(
      * **all-empty** key row is skipped, and a duplicate whose key has an empty (fillable) component is
      * **OMISSION** (else VALUE). The rule sits at the parent and iterates the keys' repeatable group.
      */
-    private fun repetitionNotUniqueMessages(rule: RuleDef, rnu: RnuRule, doc: Document, locale: String,
-            dup: Set<Pair<String, List<Int>>>, cache: FormalCache, isRelevant: Relevance = ALL_RELEVANT,
-            customRelevant: Set<FieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null): List<Message> {
+    private fun repetitionNotUniqueMessages(rule: RuleDef, rnu: RnuRule, pass: ValidationPass): List<Message> {
         val keys = rnu.keys
         val repGroup = parentGroup(keys.first())     // the keys' shared repeatable group (kernel: keys on one path)
         val errorPath = resolveErrorPath(rule)
         val scopeLen = scopePrefixLen(rule, rnu)
-        val config = validationConfig(isRelevant, customRelevant, starRelevant)   // reused across the guard evals
         data class Row(val ctx: EvalContext, val reps: List<Int>, val key: List<String?>)
-        val rows = doc.contextsFor(repGroup).mapNotNull { ctx ->
+        val rows = pass.doc.contextsFor(repGroup).mapNotNull { ctx ->
             // A key cell that is FORMALLY INVALID (kernel `isWertAngegeben == UNKNOWN`) drops the WHOLE row from
             // the duplicate cache — exactly the kernel's getWerteOrNullIfEinFeldNichtPruefungsRelevant (any UNKNOWN
             // key cell → returns null → the row is `continue`-skipped). A cell is UNKNOWN whenever it is marked
@@ -551,7 +405,7 @@ class DmInterpreter @JvmOverloads constructor(
             // `isWertAngegeben == FALSE` → a null key component → a valid empty participant (the OMISSION case).
             // Exclusion is per-KEY-CELL: a formal error on a NON-key field of the same row does not drop it (the
             // kernel checks only the key `entityList`).
-            if (keys.any { k -> formalErrorAt(k, ctx.repsOf(k), ctx, dup, cache) != null })
+            if (keys.any { k -> pass.formalErrorAt(k, ctx.repsOf(k), ctx) != null })
                 return@mapNotNull null
             Row(ctx, ctx.repsOf(errorPath), keys.map { ctx.displayValue(it)?.takeIf { v -> v.isNotEmpty() } })
         }
@@ -560,7 +414,7 @@ class DmInterpreter @JvmOverloads constructor(
             // Partial validation: only RELEVANT rows participate in duplicate detection — the kernel builds its
             // duplicate cache from the relevant fields only, so a relevant row whose duplicate PARTNER is not
             // relevant is NOT flagged (IF39, the sibling of the uniqueIndex case). Full: every row (ALL_RELEVANT).
-            .filter { row -> isRelevant(errorPath, row.reps) }
+            .filter { row -> pass.isRelevant(errorPath, row.reps) }
             .groupBy { it.reps.take(scopeLen) }                // scope: per reference-group parent row (basic version)
             .forEach { (_, scope) ->
                 val dups = scope.groupingBy { it.key }.eachCount().filterValues { it > 1 }.keys
@@ -572,11 +426,11 @@ class DmInterpreter @JvmOverloads constructor(
                     // only if the guard also fires, and its polarity combines by the Cond.And rule (OMISSION if
                     // either operand is OMISSION). A guard that is FALSE/UNKNOWN for this row suppresses it.
                     val type = if (rnu.guard == null) rnuType else {
-                        val guardType = interpreterFor(row.ctx, config, errorPath, dup, cache, isRelevant)
+                        val guardType = pass.interpreterFor(row.ctx, errorPath)
                             .firedType(rnu.guard) ?: continue
                         if (rnuType == MsgType.OMISSION || guardType == MsgType.OMISSION) MsgType.OMISSION else MsgType.VALUE
                     }
-                    val text = rule.messages[locale]?.let { renderMessage(it, rule.group, row.ctx) { p -> model.labelOf(p, locale) } } ?: ""
+                    val text = rule.messages[pass.locale]?.let { renderMessage(it, rule.group, row.ctx) { p -> model.labelOf(p, pass.locale) } } ?: ""
                     val referenced = keys.map { formatPointer(it, row.ctx.repsOf(it)) }
                     val fillToFix = if (type == MsgType.OMISSION) referenced else emptyList()
                     out += Message(rule.errorCode, rule.path, formatPointer(errorPath, row.reps),
@@ -584,29 +438,6 @@ class DmInterpreter @JvmOverloads constructor(
                 }
             }
         return out
-    }
-
-    private fun mandatoryMessage(path: String, reps: List<Int>, locale: String): Message {
-        val ptr = formatPointer(path, reps)
-        return Message(MANDATORY_FIELD, mandatoryRulePath(path), ptr, Severity.ERROR, MsgType.OMISSION,
-            mandatoryFieldText(locale), listOf(ptr), listOf(ptr))
-    }
-
-    /**
-     * Whether the field at [path] is required-but-empty in [ctx] — the kernel's `mandatoryField` condition
-     * AND the trigger that makes the field "unknown" for rule evaluation ([formalErrorAt]). Empty plus the
-     * mode's gate: [Requiredness.ABSOLUTE] is unconditional with no repeatable ancestor, else gated by the
-     * lowest repeatable ancestor being a live row; [Requiredness.RELATIVE_TO_PARENT] is gated by the
-     * immediate parent being filled. Both gates ride [EvalContext.groupFilled] (repeatable = row exists,
-     * non-repeatable = a descendant is filled).
-     */
-    private fun requiredEmpty(path: String, ctx: EvalContext): Boolean {
-        if (ctx.filled(path)) return false
-        return when (model.requirednessOf(path)) {
-            Requiredness.NOT_REQUIRED -> false
-            Requiredness.RELATIVE_TO_PARENT -> ctx.groupFilled(parentGroup(path))
-            Requiredness.ABSOLUTE -> lowestRepeatableAncestor(path)?.let { ctx.groupFilled(it) } ?: true
-        }
     }
 
     /**
@@ -821,7 +652,7 @@ class DmInterpreter @JvmOverloads constructor(
      *  compute (empty [dup]). */
     private fun operandNotCheckRelevant(path: String, ctx: EvalContext): Boolean {
         if (ctx.displayValue(path) == null) return false   // empty → empty-as-0, not cleared
-        return computeFormalErrorAt(path, ctx.repsOf(path), ctx, emptySet()) != null
+        return checks.computeFormalErrorAt(path, ctx.repsOf(path), ctx, emptySet()) != null
     }
 
     /**
@@ -957,7 +788,10 @@ class DmInterpreter @JvmOverloads constructor(
         else iso
 
     private fun evalRule(rule: RuleDef, doc: Document, locale: String): RuleResult {
-        val rows = rowOutcomes(rule, doc, locale, duplicateIndexCells(doc), HashMap())
+        // A single-rule pass (fresh formal-status memo, everything relevant) — the testRule/evalCandidate shape.
+        val pass = ValidationPass(doc, locale, ALL_RELEVANT, checks.duplicateIndexCells(doc),
+            validationConfig(ALL_RELEVANT, null, null), checks)
+        val rows = rowOutcomes(rule, pass)
         rows.firstNotNullOfOrNull { it as? RowOutcome.Fired }?.let {
             return RuleResult(rule.path, Verdict.FIRED, it.message.text, it.message.type)
         }
@@ -969,11 +803,8 @@ class DmInterpreter @JvmOverloads constructor(
     }
 
     /** Every firing of one rule across its iteration-scope rows, as [Message]s (suppressed rows produce none). */
-    private fun messagesFor(rule: RuleDef, doc: Document, locale: String, dup: Set<Pair<String, List<Int>>>,
-            cache: FormalCache, isRelevant: Relevance = ALL_RELEVANT,
-            customRelevant: Set<FieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null): List<Message> =
-        rowOutcomes(rule, doc, locale, dup, cache, isRelevant, customRelevant, starRelevant)
-            .filterIsInstance<RowOutcome.Fired>().map { it.message }
+    private fun messagesFor(rule: RuleDef, pass: ValidationPass): List<Message> =
+        rowOutcomes(rule, pass).filterIsInstance<RowOutcome.Fired>().map { it.message }
 
     /**
      * The invariant [EvalConfig] for one validate call — the bundle every rule's per-row [Interpreter] shares,
@@ -989,21 +820,6 @@ class DmInterpreter @JvmOverloads constructor(
             cellRelevant = if (isRelevant === ALL_RELEVANT) null else { path, reps -> isRelevant(path, reps) },
             starRelevant = starRelevant, customRelevant = customRelevant)
 
-    /**
-     * The per-row [Interpreter] used to evaluate a rule condition at [ctx] — the single construction point shared
-     * by [rowOutcomes] (the whole condition) and [repetitionNotUniqueMessages] (a RepetitionNotUnique rule's
-     * guard conjunct). [config] is the call-invariant bundle ([validationConfig], built once); the two per-row
-     * inputs are supplied here: the error-field pointer, and the `invalid` gate by which a formally-invalid /
-     * (in partial) non-relevant referenced field resolves to Val.Unknown.
-     */
-    private fun interpreterFor(ctx: EvalContext, config: EvalConfig, errorPath: String,
-            dup: Set<Pair<String, List<Int>>>, cache: FormalCache, isRelevant: Relevance): Interpreter =
-        Interpreter(ctx, config, FieldPointer(errorPath, ctx.repsOf(errorPath)),
-            invalid = { path ->
-                val reps = ctx.repsOf(path)   // computed once, reused for the formal check AND relevance
-                formalErrorAt(path, reps, ctx, dup, cache) != null || !isRelevant(path, reps)
-            })
-
     /** The per-row outcome of one rule: fired (with its message), passed, or suppressed (which field/code). */
     private sealed interface RowOutcome {
         data class Fired(val message: Message) : RowOutcome
@@ -1011,17 +827,14 @@ class DmInterpreter @JvmOverloads constructor(
         data class Suppressed(val suppression: Suppression) : RowOutcome
     }
 
-    private fun rowOutcomes(rule: RuleDef, doc: Document, locale: String, dup: Set<Pair<String, List<Int>>>,
-            cache: FormalCache, isRelevant: Relevance = ALL_RELEVANT,
-            customRelevant: Set<FieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null): List<RowOutcome> {
+    private fun rowOutcomes(rule: RuleDef, pass: ValidationPass): List<RowOutcome> {
         val ast = condAstOf(rule)
         val refs = nonStarredRefs(ast).distinct()
         val errorPath = resolveErrorPath(rule)
-        val config = validationConfig(isRelevant, customRelevant, starRelevant)   // once per rule, reused per row
-        return iterationContexts(rule, ast, doc).map { ctx ->
+        return iterationContexts(rule, ast, pass.doc).map { ctx ->
             // Partial validation: the kernel runs a rule only if its error-field instance is relevant — else
             // the rule is NOT executed for this row (no message, not a suppression). Full validation: always.
-            if (!isRelevant(errorPath, ctx.repsOf(errorPath))) return@map RowOutcome.Passed
+            if (!pass.isRelevant(errorPath, ctx.repsOf(errorPath))) return@map RowOutcome.Passed
             // A formally-invalid referenced field resolves to Val.Unknown (NOT a whole-rule skip): the 3VL
             // propagates it, so a bare comparison goes UNKNOWN but `… Or <true>` still FIRES — matching the
             // kernel's operand-level "not check-relevant" behavior (verified). A duplicate-index field is
@@ -1029,7 +842,7 @@ class DmInterpreter @JvmOverloads constructor(
             // referenced field instance that is NOT relevant is also unknown — the same 3VL yields the kernel's
             // suppression (`And` suppresses, `Or` with a relevant-true operand still fires). The custom-condition
             // registry + the row's error-field pointer ride along for a `CustomCondition X` leaf.
-            val interp = interpreterFor(ctx, config, errorPath, dup, cache, isRelevant)
+            val interp = pass.interpreterFor(ctx, errorPath)
             // ONE typed walk per row (the fired MsgType, or null if it doesn't fire) — firedType != null ⟺ the
             // rule fires (truth == TRUE), and the value IS the polarity. The walk is LAZY-polarity: it skips the
             // VALUE/OMISSION typing on non-firing nodes (the kernel types only firing rows), measured faster in
@@ -1039,7 +852,7 @@ class DmInterpreter @JvmOverloads constructor(
             val firedType = interp.firedType(ast)
             if (firedType != null) {
                 val type = firedType
-                val text = rule.messages[locale]?.let { renderMessage(it, rule.group, ctx) { p -> model.labelOf(p, locale) } } ?: ""
+                val text = rule.messages[pass.locale]?.let { renderMessage(it, rule.group, ctx) { p -> model.labelOf(p, pass.locale) } } ?: ""
                 val referenced = refs.map { formatPointer(it, ctx.repsOf(it)) }
                 // refOmissionErrorResponsible: for an OMISSION error the kernel attaches ALL the operands the
                 // omission depends on (verified — both the filled and the empty operand of an And), so filling/
@@ -1050,116 +863,9 @@ class DmInterpreter @JvmOverloads constructor(
             } else {
                 // Not fired: a formally-invalid operand means the rule was NOT cleanly evaluated → SUPPRESSED
                 // (the `rule eval` third verdict), naming the offending field/code; else a clean PASSED.
-                firstSuppressor(refs, ctx, dup, cache)?.let { RowOutcome.Suppressed(it) } ?: RowOutcome.Passed
+                pass.firstSuppressor(refs, ctx)?.let { RowOutcome.Suppressed(it) } ?: RowOutcome.Passed
             }
         }
-    }
-
-    /** The first referenced field that is "unknown" in [ctx] (malformed value, required-empty, or duplicate index), else null. */
-    private fun firstSuppressor(refs: List<String>, ctx: EvalContext, dup: Set<Pair<String, List<Int>>>, cache: FormalCache): Suppression? =
-        refs.firstNotNullOfOrNull { path -> formalErrorAt(path, ctx.repsOf(path), ctx, dup, cache)?.let { Suppression(path, it) } }
-
-    /**
-     * The "unknown-operand" code of the field instance at [path] in [ctx], or null when the field is usable.
-     * The single source for "is this operand unknown?" (fed to the [Interpreter] → Val.Unknown, and to
-     * [firstSuppressor] → the suppressor name), covering all three kernel causes: a present value's **format**
-     * ([formalError]); an empty **required** value ([requiredEmpty] → [MANDATORY_FIELD]); and a **duplicate
-     * index** value ([UNIQUE_INDEX], the [dup] cells) — a duplicate-index field is unknown for any rule
-     * referencing it, branch-scoped exactly like a formal error (verified, KERNEL-FINDINGS §4 supplement).
-     */
-    private fun formalErrorAt(path: String, reps: List<Int>, ctx: EvalContext, dup: Set<Pair<String, List<Int>>>, cache: FormalCache): String? {
-        val inner = cache.getOrPut(path) { HashMap() }
-        inner[reps]?.let { return it }
-        if (inner.containsKey(reps)) return null   // memoized "usable" (null) — distinct from "not yet computed"
-        val v = computeFormalErrorAt(path, reps, ctx, dup)
-        inner[reps] = v
-        return v
-    }
-
-    /** The uncached formal/mandatory/duplicate-index check — the single source for "is this operand unknown?".
-     *  Wrapped by [formalErrorAt]'s [FormalCache] (the document is immutable during a validation). [reps] is the
-     *  resolved instance of [path] (passed in, not recomputed — `repsOf` allocates and the caller already has it). */
-    private fun computeFormalErrorAt(path: String, reps: List<Int>, ctx: EvalContext, dup: Set<Pair<String, List<Int>>>): String? {
-        // An over-limit cell (its row exceeds a declared `repeatability`) is "unknown" — it carries the
-        // over-repetition code, suppressing any rule that references it AND its own format/required/unique checks,
-        // exactly as the kernel skips an over-limit instance's ordinary checks (KERNEL-FINDINGS "over-repetition").
-        if (overLimitLevel(path, reps) != null) return OVER_REPETITION_CONTEXT
-        val raw = ctx.displayValue(path)
-        if (raw != null) {
-            val kind = model.kinds[path] ?: return null
-            formalError(kind, raw, model.scaleOf(path), model.dateLikeFormatOf(path), model.datePrecisionOf(path),
-                model.rangeSeparatorOf(path), model.constraintsOf(path), legalCharset, model.baseYear ?: 2000)?.id?.let { return it }
-            if (customTypeRejected(path, raw)) return CUSTOM_TYPE_INVALID
-            return if (path to reps in dup) UNIQUE_INDEX else null
-        }
-        return if (requiredEmpty(path, ctx)) MANDATORY_FIELD else null
-    }
-
-    /** Whether the filled value [raw] at [path] is REJECTED by the field's declared custom field type — i.e. the
-     *  field IS custom-typed, its type IS registered in [predefinedTypes], and the value fails the type's `accepts`
-     *  check (the implicit per-cell `Valid(field, type)`). An UNregistered custom type returns false here (no
-     *  formal error): the value is then used leniently as a plain string and the cell is reported by
-     *  [customTypeUnsupported] instead (the kernel throws without a validator; the interpreter degrades). */
-    private fun customTypeRejected(path: String, raw: String): Boolean {
-        val typeName = model.customTypeOf(path) ?: return false
-        predefinedTypes[typeName]?.let { return !it.accepts(raw) }       // declarative: monomorphic, unchanged
-        customFieldTypes[typeName]?.let { return !it.validate(raw) }     // code-based: reached only for a code type
-        return false                                                     // unregistered → unsupported, not rejected
-    }
-
-    /** Filled cells whose declared custom field type has NO registered validator — reported [ValidationOutcome.unsupported]
-     *  (the kernel throws "Unable to invoke validation" here; the interpreter degrades: it reports the cell and uses
-     *  the value leniently as a plain string, so the rest of the document can still be validated / test-run). */
-    private fun customTypeUnsupported(doc: Document, isRelevant: Relevance): List<UnsupportedRule> =
-        doc.valuedFields().filter { isRelevant(it.path, it.reps) }.mapNotNull { vf ->
-            val typeName = model.customTypeOf(vf.path) ?: return@mapNotNull null
-            if (typeName in predefinedTypes || typeName in customFieldTypes) null
-            else UnsupportedRule(formatPointer(vf.path, vf.reps), "custom field type '$typeName' has no registered validator")
-        }
-
-    /** The path-part index of the OUTERMOST repeatable group whose row index in [reps] exceeds its declared
-     *  `repeatability` ([ModelDef.declaredReps]), or null when within all declared bounds — the over-repetition
-     *  test (KERNEL-FINDINGS "over-repetition errors", the kernel's `FormalChecker.checkIndicesLessOrEqualThanMax`). */
-    private fun overLimitLevel(path: String, reps: List<Int>): Int? {
-        if (model.declaredReps.isEmpty()) return null
-        val parts = pathParts(path)
-        for (k in parts.indices) {
-            val max = model.declaredReps["/" + parts.take(k + 1).joinToString("/")] ?: continue
-            if (k < reps.size && reps[k] > max) return k
-        }
-        return null
-    }
-
-    /**
-     * The STRUCTURAL over-repetition messages (KERNEL-FINDINGS "over-repetition errors"; the kernel's
-     * `FormalChecker`): each entity instance whose repetition index exceeds the declared `repeatability` is
-     * flagged — a **field** inside an over-limit repeatable ancestor (the over-limit level is *intermediate*) →
-     * `zuGrosseKontextnummer` (full field pointer); a **repeatable group row** whose OWN index is over the cap →
-     * `zuGrosseZeile` (group pointer — [formatPointer] omits the group's own trailing index). One VALUE message
-     * per over-limit instance. An over-limit instance is "unknown": [computeFormalErrorAt] suppresses rules over
-     * it and [formalErrors] skips its format check (it carries the over-repetition code instead).
-     */
-    private fun overRepetitionMessages(doc: Document, locale: String, isRelevant: Relevance): List<Message> {
-        if (model.declaredReps.isEmpty()) return emptyList()
-        val out = mutableListOf<Message>()
-        for (vf in doc.valuedFields()) {
-            if (overLimitLevel(vf.path, vf.reps) != null && isRelevant(vf.path, vf.reps)) {
-                out += Message(OVER_REPETITION_CONTEXT, FORMAL_RULE_PATH, formatPointer(vf.path, vf.reps),
-                    Severity.ERROR, MsgType.VALUE, overRepetitionText(locale, row = false))
-            }
-        }
-        for (group in model.declaredReps.keys) {
-            val ownLevel = pathParts(group).size - 1
-            for (ctx in doc.contextsFor(group)) {
-                val row = ctx.repsOf(group)
-                val lvl = overLimitLevel(group, row) ?: continue
-                if (!isRelevant(group, row)) continue
-                val isRow = lvl == ownLevel
-                out += Message(if (isRow) OVER_REPETITION_ROW else OVER_REPETITION_CONTEXT, FORMAL_RULE_PATH,
-                    formatPointer(group, row), Severity.ERROR, MsgType.VALUE, overRepetitionText(locale, isRow))
-            }
-        }
-        return out
     }
 
     /**
@@ -1300,48 +1006,6 @@ class DmInterpreter @JvmOverloads constructor(
             }
 
     private fun condRefsOrEmpty(cond: Cond?): List<String> = cond?.let { nonStarredRefs(it) } ?: emptyList()
-
-    private fun ancestorGroups(fieldPath: String): List<String> {
-        val parts = fieldPath.trim('/').split('/')
-        return (1 until parts.size).map { "/" + parts.take(it).joinToString("/") }
-    }
-
-    private fun pathParts(path: String): List<String> = path.trim('/').split('/')
-
-    /** The field's immediate parent group, e.g. `/Order/Items/Count` → `/Order/Items`. */
-    private fun parentGroup(path: String): String = "/" + pathParts(path).dropLast(1).joinToString("/")
-
-    /** The field's topmost group (its root), e.g. `/Order/Items/Count` → `/Order`. */
-    private fun rootGroupOf(path: String): String = "/" + pathParts(path).first()
-
-    /** The deepest repeatable ancestor group of [path] (the kernel's `lowestRepeatableGroupPath`), or null. */
-    private fun lowestRepeatableAncestor(path: String): String? =
-        ancestorGroups(path).filter { it in model.repeatable }.maxByOrNull { it.count { c -> c == '/' } }
-
-    /** The iteration scope a `mandatoryField` is checked over: the deepest repeatable ancestor (per-row), else
-     *  the field's always-instantiated root group (a single context). */
-    private fun emissionScope(path: String): String = lowestRepeatableAncestor(path) ?: rootGroupOf(path)
-
-    /** The kernel's autogenerated mandatory-rule path for [path] — `<parent>/vk_vk<field>_req`. */
-    private fun mandatoryRulePath(path: String): String = "${parentGroup(path)}/vk_vk${pathParts(path).last()}_req"
-
-    /** The autogenerated uniqueness-rule path for an index [path] — `<parent>/vk_vk<field>_unique`. */
-    private fun uniqueRulePath(path: String): String = "${parentGroup(path)}/vk_vk${pathParts(path).last()}_unique"
-
-    /**
-     * Resolve the rule's error-entity relative path to an absolute path. The relpath is relative to the
-     * rule **node** (`rule.path`), so `../DeliveryDate` on `/Order/DeliveryNotBeforeOrder` pops the node
-     * name → `/Order`, then appends → `/Order/DeliveryDate` (a sibling field in the rule's own group).
-     */
-    private fun resolveErrorPath(rule: RuleDef): String {
-        var base = rule.path
-        var rel = rule.errorEntityRelPath
-        while (rel.startsWith("../")) {
-            base = base.substringBeforeLast('/', "")
-            rel = rel.removePrefix("../")
-        }
-        return if (rel.isEmpty()) base else "$base/$rel"
-    }
 
     /**
      * Build the [Relevance] predicate from a relevant-entity set: an instance `(path, reps)` is relevant iff
