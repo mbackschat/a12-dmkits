@@ -327,9 +327,37 @@ data class ModelDef(
      *  the value of the `BaseYear` point-in-time constant (a model that uses `BaseYear` without one is a
      *  kernel `MVK_NO_BASE_YEAR` error, so a valid model always carries it). */
     val baseYear: Int? = null,
+    /** The kernel's `modelConfig.fieldRefByShortNameAllowed` (**default false**, matching the kernel). When
+     *  true, a bare `[Name]` ref that does NOT resolve against its declaring group falls back to a model-wide
+     *  UNIQUE field short name — the kernel's condition-parser resolution (`CheckIdNameRefImpl`), which the
+     *  serialized condition retains (so an expanded model reaching the interpreter still carries the bare
+     *  short name). Feeds [fieldsByShortName] / [entityPaths] into the parser's resolver (IF119). */
+    val fieldRefByShortNameAllowed: Boolean = false,
 ) {
     val kinds: Map<String, Kind> = fields.associate { it.path to it.kind }
     val repeatable: Set<String> = repeatableGroups + declaredReps.keys
+
+    /** Field SHORT NAME (last path segment) → the field paths carrying it — the kernel's `shortName2FullName`,
+     *  **fields only** (`flattenToStream().filter(isField)`). A bare ref not found in its declaring group
+     *  resolves here iff EXACTLY ONE match; >1 is a kernel `MVK_FIELDNAME_NOT_UNIQUE` reject (so no valid
+     *  model reaches the interpreter with an ambiguous bare cross-group ref), 0 stays unresolved (IF119). */
+    val fieldsByShortName: Map<String, List<String>> =
+        fields.groupBy({ it.path.trimEnd('/').substringAfterLast('/') }, { it.path })
+
+    /** Every declared ENTITY path (field OR group) — the set that gives the DECLARING GROUP precedence over the
+     *  model-wide short-name fallback (matching the kernel's `getEntity`-first order): a bare `[Name]` whose
+     *  `base/Name` candidate is already a known field/group is used as-is, never short-name-resolved. Covers
+     *  fields, their ancestor groups, repeatable groups, and rule/computation anchor groups + targets (IF119). */
+    val entityPaths: Set<String> = buildSet {
+        fun addWithAncestors(path: String) {
+            val parts = path.trim('/').split('/').filter { it.isNotEmpty() }
+            for (i in 1..parts.size) add("/" + parts.take(i).joinToString("/"))
+        }
+        fields.forEach { addWithAncestors(it.path) }
+        repeatable.forEach { addWithAncestors(it) }
+        rules.forEach { addWithAncestors(it.group) }
+        computations.forEach { addWithAncestors(it.group); addWithAncestors(it.targetPath) }
+    }
 
     /** Paths of the model's `global` fields ([FieldDef.global]). In **partial** validation the kernel's
      *  md-runtime-service auto-adds every global field (all reps) to the relevant set, so a global field's

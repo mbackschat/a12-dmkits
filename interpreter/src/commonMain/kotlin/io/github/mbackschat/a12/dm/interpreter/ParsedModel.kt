@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.interpreter.parse.RefResolver
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import io.github.mbackschat.a12.dm.interpreter.parse.parseExpression
 
@@ -25,6 +26,23 @@ internal class ParsedAlternative(val precondition: Cond?, val operation: Expr)
 internal class ParsedModel(private val model: ModelDef) {
 
     /**
+     * The parser's bare-ref resolver, model-aware: `base/name` is used as-is when it is already a declared
+     * entity (the kernel's `getEntity`-first, declaring-group precedence); else, iff the model's
+     * `fieldRefByShortNameAllowed` is on, it resolves to a UNIQUE model-wide field short name — the kernel's
+     * `CheckIdNameRefImpl` fallback (KERNEL-FINDINGS §10; IF119). An ambiguous (>1) short name is a kernel
+     * reject (no valid model reaches here with one); a 0-match stays `base/name` (the loud "no kind declared"
+     * failure, never a silent wrong value). Shared across every rule/computation parse of this model.
+     */
+    private val refResolver = RefResolver { base, name ->
+        val candidate = "$base/$name"
+        when {
+            candidate in model.entityPaths -> candidate
+            model.fieldRefByShortNameAllowed -> model.fieldsByShortName[name]?.singleOrNull() ?: candidate
+            else -> candidate
+        }
+    }
+
+    /**
      * **Parse once, reuse across calls** — the prepare-once optimization (INTERPRETER-PERFORMANCE.md "the
      * interpreter's two goals"). Each rule's condition / computation's expression is parsed to an AST exactly
      * ONCE, on first use, then cached for every subsequent `validateFull`/`compute`/`testRule` call and every
@@ -37,7 +55,7 @@ internal class ParsedModel(private val model: ModelDef) {
      * a race. A candidate rule not in the model (an ad-hoc [evalCandidate]) falls back to a one-off parse.
      */
     private val ruleCondAst: Map<RuleDef, Lazy<Cond>> =
-        model.rules.associateWith { r -> lazy { parseCondition(r.conditionText, r.group) } }
+        model.rules.associateWith { r -> lazy { parseCondition(r.conditionText, r.group, refResolver) } }
 
     private val compParsedAst: Map<ComputationDef, Lazy<ParsedComputation>> =
         model.computations.associateWith { c -> lazy { parseComputation(c) } }
@@ -51,14 +69,14 @@ internal class ParsedModel(private val model: ModelDef) {
         model.computations.mapNotNull { c -> implicitComputationRuleDef(c)?.let { it to lazy { implicitComputationCond(c) } } }.toMap()
 
     private fun parseComputation(c: ComputationDef): ParsedComputation = ParsedComputation(
-        c.commonPrecondition?.let { parseCondition(it, c.group) },
-        c.alternatives.map { ParsedAlternative(it.precondition?.let { p -> parseCondition(p, c.group) }, parseExpression(it.operation, c.group)) },
+        c.commonPrecondition?.let { parseCondition(it, c.group, refResolver) },
+        c.alternatives.map { ParsedAlternative(it.precondition?.let { p -> parseCondition(p, c.group, refResolver) }, parseExpression(it.operation, c.group, refResolver)) },
     )
 
     /** The parsed condition AST for [rule] — cached for a model rule or an implicit computation-validation rule;
      *  a one-off parse for an ad-hoc candidate. */
     fun condAstOf(rule: RuleDef): Cond =
-        ruleCondAst[rule]?.value ?: implicitComputationAst[rule]?.value ?: parseCondition(rule.conditionText, rule.group)
+        ruleCondAst[rule]?.value ?: implicitComputationAst[rule]?.value ?: parseCondition(rule.conditionText, rule.group, refResolver)
 
     /** The parsed form of [comp] (a model computation) — cached. */
     fun parsedOf(comp: ComputationDef): ParsedComputation = compParsedAst.getValue(comp).value

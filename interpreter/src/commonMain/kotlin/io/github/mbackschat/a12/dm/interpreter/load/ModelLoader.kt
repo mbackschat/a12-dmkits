@@ -57,7 +57,12 @@ object ModelLoader {
         // The model's base year (content.modelInfo.baseYear, a string) — the value of the BaseYear constant.
         val by = root.path("content").path("modelInfo").path("baseYear").asText()
         val baseYear = if (by.isEmpty()) null else by.trim().toIntOrNull()
-        return ModelDef(sink.fields, sink.rules, sink.comps, sink.repeatable, sink.declaredReps, sink.indexFields, baseYear)
+        // content.modelConfig.fieldRefByShortNameAllowed (default false) — enables the bare cross-group
+        // short-name resolution the condition parser applies (IF119).
+        val shortNameRefs = root.path("content").path("modelConfig")
+            .path("fieldRefByShortNameAllowed").asBoolean(false)
+        return ModelDef(sink.fields, sink.rules, sink.comps, sink.repeatable, sink.declaredReps, sink.indexFields,
+            baseYear, fieldRefByShortNameAllowed = shortNameRefs)
     }
 
     /** The mutable accumulators of one [load] pass — insertion-ordered to match the DM-JSON document order. */

@@ -24,12 +24,31 @@ import io.github.mbackschat.a12.dm.interpreter.ast.ValueListQuantOp
  * `primary := "(" or ")" | expr (cmpOp expr)? | predicateCall`. Keyword case variants (And/and/AND, …),
  * `;;` comments, `..Name` turning-point paths, and the `For` semantic-index suffix on bare args are handled.
  */
-fun parseCondition(text: String, base: String): Cond = ConditionParser(text, base).parse()
+fun parseCondition(text: String, base: String, resolver: RefResolver = DEFAULT_RESOLVER): Cond =
+    ConditionParser(text, base, resolver).parse()
 
 /** Parse a value expression (a computation's right-hand side), paths relative to [base]. */
-fun parseExpression(text: String, base: String): Expr = ConditionParser(text, base).parseTopExpr()
+fun parseExpression(text: String, base: String, resolver: RefResolver = DEFAULT_RESOLVER): Expr =
+    ConditionParser(text, base, resolver).parseTopExpr()
 
-private class ConditionParser(private val src: String, private val base: String) {
+/**
+ * Resolves a **bare, relative, single-segment** reference (`[Name]` / a bare `Name` arg) to its absolute
+ * field/group path. The default absolutizes against the rule's group ([base]/[name]) — the historical
+ * behavior, and correct for a same-group ref. A **model-aware** resolver (supplied by [ParsedModel]) adds the
+ * kernel's `fieldRefByShortNameAllowed` fallback: when `base/name` is not a declared entity AND the flag is
+ * on, resolve to a UNIQUE model-wide field short name (KERNEL-FINDINGS §10; IF119). Only bare single-segment
+ * refs reach here — an absolute (`/x`), a `..`-relative, a multi-segment (`a/b`), or a starred (`Name*`) ref
+ * is resolved structurally and never short-name-substituted, matching the kernel (`!isAbsolutPath()`, fields
+ * only, no wildcard).
+ */
+fun interface RefResolver {
+    fun resolve(base: String, name: String): String
+}
+
+/** The declaring-group-only resolver — `base/name`, the pre-IF119 behavior; used when no model is supplied. */
+val DEFAULT_RESOLVER: RefResolver = RefResolver { base, name -> "$base/$name" }
+
+private class ConditionParser(private val src: String, private val base: String, private val resolver: RefResolver) {
 
     private var pos = 0
 
@@ -264,7 +283,15 @@ private class ConditionParser(private val src: String, private val base: String)
             if (skipWsAndMatch('*') && firstStar < 0) firstStar = segs.size
         }
         val joined = segs.joinToString("/")
-        val full = if (absolute) "/$joined" else "${walkUp(base, ups)}/$joined"
+        // A BARE, relative, single-segment, unstarred ref (`[Name]` / bare `Name` arg) goes through the
+        // resolver — which may resolve it model-wide by unique short name (IF119); every other shape
+        // (absolute, `..`-relative, multi-segment, starred) is absolutized structurally, matching the
+        // kernel's short-name fallback gate (`!isAbsolutPath()`, single leaf, no wildcard).
+        val full = when {
+            absolute -> "/$joined"
+            ups == 0 && segs.size == 1 && firstStar < 0 -> resolver.resolve(base, joined)
+            else -> "${walkUp(base, ups)}/$joined"
+        }
         if (firstStar < 0) return Expr.Field(full, outer = outer)
         // The segments STRICTLY ABOVE the first starred group — the levels an iterating row binds (IF93/IF94);
         // the starred level itself (and everything below, incl. later stars) always iterates fully.

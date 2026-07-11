@@ -1,5 +1,8 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -8,6 +11,44 @@ import org.junit.jupiter.api.Test;
  * wildcard-propagation rule.
  */
 class PathLawsTest {
+
+    // Cross-group short-name resolution (IF119): a catalog with two sibling subgroups. `Sku`/`Region` are
+    // UNIQUE short names; a second model gives both subgroups a field named `Code` (an AMBIGUOUS short name).
+    private static final String UNIQUE = DocumentModelDraft.named("catalog-shortnames").locale("en_US")
+            .rootGroup("Catalog", c -> c
+                    .group("Warehouse", w -> w.field("Sku", FieldKind.STRING))
+                    .group("Store", s -> s.field("Region", FieldKind.STRING)))
+            .build().toJson();
+    private static final String UNIQUE_FLAG_OFF =
+            ModelDocument.read(UNIQUE).setFieldRefByShortNameAllowed(false).toJson();
+    private static final String AMBIGUOUS = DocumentModelDraft.named("catalog-ambiguous").locale("en_US")
+            .rootGroup("Catalog", c -> c
+                    .group("Warehouse", w -> w.field("Code", FieldKind.STRING))
+                    .group("Store", s -> s.field("Code", FieldKind.STRING)))
+            .build().toJson();
+
+    @Test
+    void aUniqueCrossGroupShortNameResolvesWhenTheFlagIsOn() {
+        // rule in /Catalog references bare [Sku] (a field in the sibling /Catalog/Warehouse); the model's
+        // fieldRefByShortNameAllowed (default on) lets it resolve model-wide since the name is unique.
+        KernelLaws.acceptsModel(UNIQUE, "/Catalog", "../Warehouse/Sku", "FieldFilled(Sku)");
+    }
+
+    @Test
+    void aCrossGroupShortNameIsRejectedWhenTheFlagIsOff() {
+        // with the flag off, the bare cross-group name has no model-wide fallback → the declaring-group
+        // candidate /Catalog/Sku does not exist → MVK_INVALID_ENTITY.
+        KernelLaws.rejectsModel(UNIQUE_FLAG_OFF, "/Catalog", "../Warehouse/Sku", "FieldFilled(Sku)",
+                "MVK_INVALID_ENTITY");
+    }
+
+    @Test
+    void anAmbiguousShortNameIsRejectedAsNotUnique() {
+        // `Code` exists in BOTH subgroups → the short name does not suffice → MVK_FIELDNAME_NOT_UNIQUE
+        // (the kernel rejects; it never picks one). This is why the interpreter resolves ONLY a unique match.
+        KernelLaws.rejectsModel(AMBIGUOUS, "/Catalog", "../Warehouse/Code", "FieldFilled(Code)",
+                "MVK_FIELDNAME_NOT_UNIQUE");
+    }
 
     @Test
     void anOuterWildcardRequiresEveryRepeatableGroupBelowItToAlsoWildcard() {
