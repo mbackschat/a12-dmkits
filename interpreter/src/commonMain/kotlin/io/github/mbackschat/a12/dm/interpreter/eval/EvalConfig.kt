@@ -35,8 +35,10 @@ class EvalConfig(
      *  of `Valid(field, "Name")` / `Invalid(field, "Name")`, consulted ONLY after [predefinedTypes] misses (so that
      *  declarative path stays monomorphic). Default empty. */
     val customFieldTypes: Map<String, CustomFieldType> = emptyMap(),
-    /** Partial validation only: whether a star-aggregate CELL at `(path, reps)` is relevant. A starred aggregate
-     *  with ANY non-relevant cell evaluates to [io.github.mbackschat.a12.dm.interpreter.ast.Val.Unknown] — the
+    /** Partial validation only: whether a star-aggregate CELL at `(path, reps)` is relevant — "cell" being the
+     *  declared house term for a repetition's field value (the House ↔ kernel vocabulary table in
+     *  docs/KERNEL-SEMANTICS.md). A starred aggregate with ANY non-relevant cell evaluates to
+     *  [io.github.mbackschat.a12.dm.interpreter.ast.Val.Unknown] — the
      *  kernel treats the aggregate as non-evaluable under a subset relevant set (it does NOT apply directional 3VL
      *  to the non-relevant cells, kernel-probed; IF35). **Null in full validation** — the gate is skipped entirely
      *  (no `starCells` call, so the flat-spike `RepDoc` context is unaffected). */
