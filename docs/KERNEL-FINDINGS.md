@@ -501,6 +501,8 @@ The oracle path is the modern `validatePart(DocumentV2, …, config)` (`RuntimeL
 
 ## §9 supplement — `validateFull` also emits STRUCTURAL over-repetition errors — `zuGrosseZeile` / `zuGrosseKontextnummer` (model-fuzz finding, 2026-06-24)
 
+> Fold: folded → §9.
+
 A document instance with **more rows than the group's declared `repeatability`** (or a repetition index beyond it) is flagged by the kernel's `validateFull` with **`zuGrosseZeile`** ("row too large" — the repeatable group) and **`zuGrosseKontextnummer`** ("context number too large" — each over-limit field instance), as VALUE errors; these also **suppress** the ordinary checks (uniqueIndex/mandatory/rules) on the over-limit rows. This is a **structural/consistency** check on the document's *shape*, not a rule-evaluation result — the kernel runtime emits it alongside rule firings. The model-fuzz harness (E) surfaced it by generating documents whose row counts exceeded a low declared repeatability.
 
 The check is per **entity instance** (`FormalChecker.checkIndicesLessOrEqualThanMax`): walk the instance's repetition indices against the per-level declared maxima; the first level over its max emits — the instance's **own** (innermost) over-limit level → `zuGrosseZeile`, an **intermediate** (ancestor) over-limit level → `zuGrosseKontextnummer` — then stops. So a repeatable **group** row whose own index is over → `zuGrosseZeile` (the group entity, its own trailing index omitted in the pointer); a **field** inside an over-limit ancestor → `zuGrosseKontextnummer` (full field pointer). (A third sibling, `FEHLER_LAUFENDE_NR_ZU_GROSS`, rides the USB/multi-form form counter — out of a single-document model's scope.) Interpreter treatment: now **modeled** (emission + suppression), INTERPRETER-FINDINGS IF27.
@@ -934,6 +936,8 @@ Canonical in §9 "Other repetition rules"; the evidence skeleton: two operand sh
 
 ## §9 supplement — `RepetitionNotUnique`: per-row cross-row composite-key uniqueness (probe, 2026-06-24)
 
+> Fold: folded → §9.
+
 The author-written **cross-ROW** uniqueness rule (vs `FieldValuesNotUnique`'s value-list, and the auto `uniqueIndex`). The rule sits at the **PARENT** group and iterates the keys' repeatable group; the error field is **inside** the repeated group, so it emits **one message per offending row**. Probed semantics:
 
 - **Fires per row whose (composite) key DUPLICATES another row's** within the parent-row scope — `Count [5,5]` flags both rows (2 messages); `[5,7,5]` flags rows 1 & 3, not 2; `[5,7]` and a single row → none. A **composite** key is the tuple: `(Count,Weight) [(5,1),(5,2)]` distinct → none, `[(5,1),(5,1)]` → both flagged.
@@ -948,6 +952,8 @@ The author-written **cross-ROW** uniqueness rule (vs `FieldValuesNotUnique`'s va
 
 ## §9 supplement — `SemanticIndex` (`[field For "value"]`): keyed row lookup, absent → empty value (probe, 2026-06-24)
 
+> Fold: folded → §10.
+
 `[Field For "value"]` is the value of `Field` in the repetition whose **index field** equals `"value"` (the kernel's "semantic index" — by the index field, not the positional row number). Probed:
 
 - A matched, **filled** cell yields its value — `[Items/Count For "SKU-1"]` is the `Count` of the Items row with `Sku == "SKU-1"`; `== 5` / `> 0` fire as VALUE.
@@ -956,6 +962,8 @@ The author-written **cross-ROW** uniqueness rule (vs `FieldValuesNotUnique`'s va
 *(Interpreter: `Expr.SemanticIndex(path, indexValue)` (parsed in the `[...]` atom via a `For "…"` clause); `EvalContext.indexedCell` scans the target's repetition rows in scope for the sibling index match, returning the resolved cell or null (→ the kind's empty value). The group's index field is resolved from the threaded `indexFields`; the polarity rides the standard `fill` (fillable iff the cell is absent/empty). Locked: `adapter.laws.SemanticIndexDiffTest` — matched value, other key, and the empty/missing OMISSION cases.)*
 
 ## §9 supplement — `SemanticIndex` PRESENCE: absent row ≡ empty cell (FALSE), malformed cell / invalid key → UNKNOWN (source + differential, 2026-07-07)
+
+> Fold: folded → §10.
 
 An indexed ref is also a legal **presence operand** — `FieldFilled(Count For "SKU-1")`, `FieldNotFilled(…)`, or an operand of a fill quantifier (`AllFieldsFilled(Count For "K", Other)`) — and `FieldValueAsString(field For key)` reads through it. The kernel compiles `FieldFilled`/`FieldNotFilled` as one-operand `AllFieldsFilled`/`NoFieldFilled`; the indexed ref resolves to AT MOST ONE cell (`ValidationCache.resolveSemanticIndex` → `IndexFieldCache.lookup`, first match wins) whose presence is the ordinary `isWertAngegeben` 3-state:
 
@@ -967,11 +975,15 @@ An indexed ref is also a legal **presence operand** — `FieldFilled(Count For "
 
 ## §9 supplement — `Having`: a per-row filter on a starred aggregate (probe, 2026-06-24)
 
+> Fold: folded → §9.
+
 `Sum(Items* / Count Having <cond>)` (and the other aggregates) consume **only the rows for which `<cond>` holds** — the filter is evaluated per repetition row before the aggregate. Probed: rows (UnitWeight, Count) `(1,3),(2,10),(1,4)` with `Having [Items/UnitWeight] == 1` → the aggregate sees only the W==1 rows → `Sum == 7` (the unfiltered Sum is 17); `> 5` fires, `> 7` does not; `Having [...] == 9` (no matching rows) → `Sum == 0` fires. Polarity is the aggregate's own (Sum over a growable repetition → OMISSION). The filter is a full condition over the row's fields. (Filter on a non-index field — filtering on the index field with repeated values trips `uniqueIndex` + suppresses.)
 
 *(Interpreter: `Expr.Star` gained an optional `having: Cond?` (parsed from a `Having` clause on the starred operand in `readArgs`); `Interpreter.starVals` evaluates the filter in each per-row context (`EvalContext.rowContexts` → the Document's scoped `RowContext`s) and keeps the matching rows' filled values. Locked: `adapter.laws.HavingDiffTest`.)*
 
 ## §9 supplement — the star-binding anchor: the `*`-marked level ALWAYS iterates fully; only levels STRICTLY ABOVE the star bind to the enclosing row (differential, both strategies, 2026-07-09)
+
+> Fold: folded → §9.
 
 A starred operand read from an ITERATING row (a per-row rule, or a per-row computation's operand/precondition) enumerates its rows by binding the enclosing iteration's indices only for the repeatable levels **strictly above the starred group** — the `*`-marked level itself (and anything below) always iterates its **full** range. So a bare **same-group star** (`MaxValue(../Pricing* / Helper) == [Helper]` in a per-row rule ON Pricing — the BA "predecessors" shape without the filter) spans **ALL rows**, not the current one: only the max row(s) fire. An **ancestor star** read from a deeper row (`MaxValue(../../Pricing* / Helper)` per Tier row) spans all Pricing rows, not the row's own ancestor. A star **nested below** the iterating row (`Sum(Items* / Amount)` per Order row) still binds the Order row — the standard cross-level case, unchanged. This is coherent with the `$` design (KERNEL-SEMANTICS §9): `$` inside a `Having` is the ONLY outer-row correlation — a bare star never correlates. Differentially pinned in BOTH modes and BOTH strategies (groovy-dynamic == java-static): validation per-row fire sets AND per-row computation preconditions agree. Compute-side corollary (the IG44 R2 atom): the all-rows span makes a per-row dependent's aggregate READ a poisoned sibling cell — one poisoned cell aborts every row's dependent ("fehlerhaft berechnet"), where an own-row collapse would hide it. *(Interpreter: `Document.RowContext.starRows` caps the shared prefix at the starred group's parent — the same anchor `rowContexts` always used; locked `adapter.laws.ComputeStarAggregatePoisonDiffTest` + multiplatform `interpreter … SameGroupStarBindingTest`; INTERPRETER-FINDINGS IF93.)*
 
@@ -1025,10 +1037,14 @@ The kernel has **no datetime-specific format definition** — a DATE_TIME field 
 
 ## field-level numeric functions + mixed-scope field-fill (corpus tail, 2026-06-07)
 
+> Fold: folded → §1.
+
 - **Field-level rounding/abs** — `RoundDownValue(f)`/`RoundUpValue(f)`/`RoundAccountingValue(f)` (round a field's value to an integer) and `AbsValue(f)` (absolute value): the kernel's `FieldIdOperationWithParameters` numeric ops, **distinct from the operand-list `RoundDown(expr, n)`** (which carries explicit decimal places). They take a single field and render it bare; the grammar's decimal-places argument is OPTIONAL here too (`rundenOp: name '(' entitySpec (',' ZiffernFolge)? ')'` — `RoundAccountingValue(f, 2)` is legal and rounds to 2 places; absent → the integer round; IF102). Modeled as `FieldRounding`; locked by `adapter.FieldRoundingReadTest` + `adapter.laws.SingleArgRoundDiffTest`.
 - **A field-fill quantifier accepts a *mixed* group+field scope** — `FieldsNotCollectivelyFilled(Section, Other/Note)` (a group operand alongside a field): the kernel expands each group to its contained fields. Read makes that explicit (a field-list quantifier over the flattened fields); locked by `adapter.MixedScopeFieldFillReadTest`.
 
 ## numeric coercions (family 4, 2026-06-07)
+
+> Fold: folded → §2.
 
 The number twins of the string coercions (`FieldIdOperationName`): `FieldValueAsNumber(field)` (DE `FeldWertAlsZahl`) and `RangeAsNumber(field, start, end)` (DE `BereichAlsZahl`, an `IFieldIdOperationWithParameters` carrying a **0-based** start — rendered 1-based, like `RangeAsString`). Both return a number, so they compose into comparisons/arithmetic. Two distinct convertibility rules:
 - **`RangeAsNumber` tolerates any string field** — a non-numeric substring (or an empty field) yields **0**, not an error (so `RangeAsNumber(ShipmentRef, 1, 2) == 0` is valid against a plain string field).
@@ -1044,9 +1060,13 @@ Modeled as `FieldValueAsNumber`/`RangeAsNumber` (Calculation, kind NUMBER), the 
 
 ## operand-list math: Abs / Min / Max (family 5, 2026-06-07)
 
+> Fold: folded → §2.
+
 The kernel's `IOpListOperation` (`OpListOperationName`) has two groups: the rounding family (`RoundDown`/`RoundUp`/`RoundAccounting`, modeled as `Rounding`, which carry decimal places) and the parameterless **`Abs`/`Min`/`Max`** (DE keywords are the untranslated `Abs`/`Min`/`Max`). These operate on numeric **value expressions**, not field/repetition lists — so they are distinct from the field-list aggregates `MaxValue`/`MinValue` (`EntityListOperation`, modeled as `ListAggregate`): `Max([A], [B])` is the per-row max of two values; `MaxValue(Items*/x)` is the max over a repetition list. `Abs` takes exactly one operand (`Abs([A] - [B])`, equivalent to `AbsValue` when the operand is a bare field); `Min`/`Max` take one or more. Operands render as values (`Min([A], [B])`), not bare entity refs. Modeled as `OpListMath` (Calculation, kind NUMBER); authored via `Dsl.abs`/`Dsl.min`/`Dsl.max`. *(Locked: `adapter.ArithmeticReadTest.roundTripsOperandListMath` + BA-corpus `AbsDiff`/`MinOf`/`MaxOf`; N7 catalog examples for `Abs`/`Min`/`Max`.)*
 
 ## NumberOfValueInFields (family 6, 2026-06-07)
+
+> Fold: folded → §2.
 
 `NumberOfValueInFields(value IN f1, f2, …)` (DE `AnzahlWertInFeldliste`) — the count of the listed fields whose value equals a constant (the kernel `EntityListOperationName.NumberOfValueInFields`, carried as an **`IEntityListOperationWithValue`**: the constant rides on `getConstantOperation()`, the fields on `getEntityList()`). Returns a number. The constant is type-flexible — a **boolean** (`True IN OptInA, OptInB, OptInC`, an `IBoolConstantOperation`), a **number**, a **string**, or a **date** (an `IConstantOperation` typed by `getType()`). The kernel requires **at least two fields** (or at least one group): a single field draws `MVK_PARAMSIZE_INVALIDN`. The `IEntityListOperationWithValue` is a subtype of `IEntityListOperation`, so the converter intercepts it at the top of `convertAggregate` (before the name switch, which would otherwise reject it). Modeled as `NumberOfValueInFields` (Calculation, kind NUMBER) carrying the constant as a literal `Calculation` (BoolLiteral/NumberLiteral/StringLiteral/DateLiteral) + the field operands; the `In` is a grammar literal (like the value-list `In`). Authored via `Dsl.numberOfValueInFields`. *(Locked: `adapter.FilledCountReadTest.roundTripsNumberOfValueInFields` + BA-corpus `NumValueInFields`; N7 catalog example.)*
 
@@ -1056,6 +1076,8 @@ The kernel's `IOpListOperation` (`OpListOperationName`) has two groups: the roun
 - **Date-range bound extraction** — `StartOfDateRange(range)`/`EndOfDateRange(range)` (the kernel's `IDateRangeExtractionOperation`) yield the interval's bound **dates**, which compare or feed a date component extraction (`DayFromDate(EndOfDateRange(range))`). A `DATE_RANGE` field is an interval of two dates; a **valid kernel format** pairs a single date format with a `rangeSeparator` that can't be confused with it (e.g. `dd.MM.yyyy` + `-`; `yyyy-MM-dd` + `-` is ambiguous and rejected). Modeled as `DateRangeBound` (a DATE-valued Calculation) + `DateRangeRef` source (`BoundModel.dateRange`). The **overlap predicates** are modeled too: `DateRangesOverlap(r1, r2, …)` (a field-list predicate, reusing `FieldListPredicate`) and `AtLeastOneDateRangeOverlaps(range IN r1, r2, …)` (a field-vs-field-list predicate, reusing `FieldListEntityListCondition`). All locked by `adapter.DateRangeReadTest`. The `BaseYear` point-in-time as a range source (`StartOfDateRange(BaseYear)` = 01.01, `EndOfDateRange(BaseYear)` = 31.12 of the reference year) is also modeled — `Dsl.startOfBaseYear()`/`endOfBaseYear()`, §6 supplement, `adapter.PointInTimeSourceReadTest`.
 
 ## §9 supplement — per-row iteration + aggregation of missing rows (runtime, 2026-06-06)
+
+> Fold: folded → §9.
 
 The first **runtime** (fires/does-not-fire) checks of §9, via the multi-row `RuntimeLaws.Doc` builder:
 
@@ -1071,6 +1093,8 @@ The first **runtime** (fires/does-not-fire) checks of §9, via the multi-row `Ru
   - **Topology laws (probed 2026-06-25):** non-repeatable **intermediate** groups between the join and the keyed groups are transparent — wrapped and asymmetric-depth shapes are valid, and the kernel renders the transparent level as `[1]` in the pointer; a **repeatable non-indexed FRAME** above exactly ONE joined group is kernel-valid too. The probed **invalid** shapes: a repeatable frame above the non-error joined group → `MVK_NO_WILDCARD`; an **indexed** repeatable intermediate → `MVK_MULTIPLE_INDEX_FIELDS`; a negative operator over a frame → `MVK_NEG_CONDITION_IN_ITERATION`; a joined group **without an index field** is rejected (no key to join on). *(Locked via `adapter.laws.ParallelIterationDiffTest`'s shape matrix; interpreter treatment IF19.)*
 
 ## §9 supplement — a rule/computation's ITERATION SCOPE is its set of referenced repeatable fields, not its node placement (corrected + matrix-verified, 2026-06-21)
+
+> Fold: folded → §9.
 
 > **Correction (2026-06-21):** an earlier note here claimed a `field move` *into or out of* a repeatable group is rejected `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` and motivated a planned "co-move the bound rule/computation" enhancement. A full directional matrix (authored via `rule add`/`computation add`, validated through the kernel) shows that was **directionally wrong** and the enhancement is a **non-goal**. The verified truth follows.
 
@@ -1088,13 +1112,19 @@ So a `field move` is rejected **only** when it would genuinely split a rule/comp
 
 ## §9 supplement — the kernel tolerates an index field on a non-repeatable group (probe-observed, 2026-06-21)
 
+> Fold: not-foldable — a structural tolerance we deliberately refuse to consume (prose-only by design); no canonical evaluation claim.
+
 A group's `indexFieldName` (the repetition row-key) is **not** kernel-gated on repeatability: a `repeatability: 1` (single) group carrying an `indexFieldName` that names a direct-child field passes `checkConsistency` (probed via raw DM-JSON + `model check` → `valid: true`). But it is a **degenerate** row-key — with no repetitions, the uniqueness check (`RepetitionNotUnique`) it would arm is vacuous and parallel iteration has nothing to iterate. So **modelkit/CLI deliberately forbid it** (`ModelDocument.setIndexField` / `group modify --index-field` require a repeatable group): the index field only earns its keep on a repetition list. **Prose-only by design** (the consumer for the kernel-tolerance fact is nobody — we refuse the degenerate case; *our* behavior is locked by `GroupModifyVerbTest.indexFieldOnANonRepeatableGroupIsRejected`, the G24 surface). This resolves the SME 1184 question (the non-repeatable allowance) — the kernel allows it, we don't, on purpose.
 
 ## §9 supplement — field/group predicates are type-directional
 
+> Fold: not-foldable — authoring-tier type-direction codes; the enclosing-group-reference half is canonical in §9's error-field rule.
+
 `GroupFilled(field)` → **`MVK_NO_FIELDS_ALLOWED`** ("Only groups or root groups are allowed"); `FieldFilled(group)` → **`MVK_NO_GROUPS_ALLOWED`**. Also re-confirmed experimentally: an enclosing group reference (`GroupFilled(G)`) satisfies the error-field-referenced rule for a field inside `G` — a bare `GroupFilled(ShippingAddress)` condition with error field `ShippingAddress/Street` validates. *(Locked: N7 `GroupFilled`/`FieldFilled` invalid examples + `RuleAuthoringTest.acceptsAnEnclosingGroupReferenceAsErrorFieldReference`.)*
 
 ## §9 supplement — repeatability interactions (2026-06-04 experiments)
+
+> Fold: not-foldable — authoring-tier rejection codes; the guarded-negativity and asterisk laws they evidence are canonical in §9/§10.
 
 - **`MVK_NEG_CONDITION_IN_ITERATION` triggers on iteration × unguarded negativity** — reproduced: with the error field under repeatable `Addons` (the rule iterates), both `GroupNotFilled(Addons)` and a bare `FieldNotFilled(Addons/MonthlyFee)` are rejected; the guarded form `GroupFilled(Addons) And FieldNotFilled(Addons/MonthlyFee)` passes. The trigger is the *rule's iteration* (error-field position) combined with a negative condition — not the predicate's group argument per se.
 - **A repeatable group referenced from a *non-iterating* rule needs the asterisk** — `FieldFilled(Tier) And GroupNotFilled(Addons)` with error field `Tier` is rejected with **`MVK_NO_WILDCARD`** ("Missing specification of an asterisk for 'Addons'"). A previously unknown law; pre-checkable once the iteration model lands (rulekit knows both the error-field iteration and the group's repeatability).
@@ -1104,6 +1134,8 @@ A group's `indexFieldName` (the repetition row-key) is **not** kernel-gated on r
 
 ## §9 supplement — `GroupFilled` splits on repeatability (source-read `GroupFillCache` + differential, 2026-06-23)
 
+> Fold: folded → §9.
+
 `GroupFilled(G)` is **not** one rule — it depends on whether `G` is repeatable (kernel `GroupFillCache` / `ValidationCache`):
 
 - **Repeatable `G`**: a row is filled once it is **instantiated** — creating the row is itself content (the repetition index is meaningful). A *created-but-empty* repeat row → `GroupFilled` **TRUE**. (A filled descendant also instantiates the row, so "row exists" subsumes "descendant filled".)
@@ -1112,6 +1144,8 @@ A group's `indexFieldName` (the repetition row-key) is **not** kernel-gated on r
 This is why the `relativeToParent` requiredness gotcha (§4) flips by parent repeatability, and it resolves the earlier "GroupFilled on an empty created repeat row" open edge (interpreter was descendant-filled-only; now matches). *(Interpreter parity locked via the requiredness gate: `adapter.laws.RequirednessDiffTest` (the created-empty-repeat-row case fires `mandatoryField`; the non-repeatable empty-parent case does not).)*
 
 ## §9 supplement — wildcard slot laws (slice 7a, 2026-06-04 experiments)
+
+> Fold: not-foldable — authoring-tier slot laws (which slots accept a star); the propagation and negativity laws they evidence are canonical in §9/§10.
 
 The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds a **repetition list**; whether it is legal depends purely on the *slot*:
 
@@ -1131,6 +1165,8 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 
 ## §9 supplement — `CurrentRepetition` + the index-field/semantic-index cluster (slices 7e/7f, 2026-06-04 experiments; retitled 2026-06-10 — the constant-form semantic index IS supported, only the entity/`$` forms stay kernel-delegated)
 
+> Fold: folded → §10.
+
 `CurrentRepetition` (DE `AktuelleWiederholung`; grammar `groupOp: 'AktuelleWiederholung' '(' entitySpec ')'`) is a **numeric expression** — the current iteration index of a group.
 
 - **Takes a group, not a field** — a field argument → **`MVK_NO_FIELDS_ALLOWED`** ("Only groups or root groups are allowed"). Structural: `Dsl.currentRepetition(GroupRef)`.
@@ -1146,7 +1182,7 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 
 *(Locked: N7 `SemanticIndex` valid + `MVK_NO_INDEX_FIELD` invalid; `dsl.operators.IterationConditionTest` (render) + `validate.laws.IterationLawsTest.parallelIterationOverIndexKeyedGroupsIsSupportedNotBlocked`.)*
 
-**Runtime resolution (2026-06-10, RT-semantics drain):** `[Items/Count For "SKU-1"]` reads the `Count` of exactly the row whose index field (`Sku`) carries `"SKU-1"` — siblings are not read — and when **no row carries the index value, the comparison is not evaluated** (no fire), it does not fall back to the empty-number 0-substitution. *(Locked: `adapter.laws.SemanticIndexLawsTest`.)*
+**Runtime resolution (2026-06-10, RT-semantics drain; the no-match half CORRECTED by the 2026-06-24 probe):** `[Items/Count For "SKU-1"]` reads the `Count` of exactly the row whose index field (`Sku`) carries `"SKU-1"` — siblings are not read. The drain's original "no matching row ⇒ not evaluated" reading was **under-determined**: its lock compares `> 0`, a threshold where "reads 0" and "not evaluated" coincide; the 2026-06-24 `== 0` probe (the §9 SemanticIndex supplement above) separates them — a no-match reads the kind's **empty value** (empty-as-0 for a number) and fires OMISSION. *(Locked: `adapter.laws.SemanticIndexLawsTest` (row selection) + `SemanticIndexDiffTest` (the no-match empty read). NB `SemanticIndexLawsTest`'s in-code comment still words the no-match case as "not evaluated" — assertion-neutral but misleading; flagged for the next code-touching set.)*
 
 **Operator-context restrictions + a BA-doc correction (source + probe, 2026-06-17).** The semantic index is **accepted inside `NumberOfFilledFields`** but **rejected inside `NumberOfFilledGroups` and `RepetitionNotUnique`** (`MVK_SEMANTIC_INDEX_NOT_ALLOWED`; source `CheckFeldListenAnzahlOpImpl` calls `checkNoSemanticIndex` in the `AnzahlAngegebenerKontexte` branch only, and `CheckWiederholungBedingungImpl`), and **rejected under a starred enclosing group** (`MVK_SEMANTIC_INDEX_AND_WILDCARD`). This **contradicts the BA reference** (L902, "not supported for `NumberOfFilledFields` and `RepetitionNotUnique`") — a *Felder/Kontexte* slip in the prose: the kernel rejects it for `NumberOfFilledGroups`, not `NumberOfFilledFields`. *(Locked: `validate.laws.SemanticIndexSlotLawsTest`.)*
 
@@ -1154,9 +1190,13 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 
 ## §9 supplement — parallel iteration forbids a pure-negative condition (probe, 2026-06-17)
 
+> Fold: folded → §9.
+
 In a **parallel iteration** (a rule referencing two repeatable groups that share an index field), a **pure negative** condition is rejected with **`MVK_PARALLEL_ITERATION_INVALID`** — `NoFieldFilled(/Shipment/Lines/OrderedQty, /Shipment/Picks/PickedQty)` over the two index-keyed groups fails (probed on the logistics fixture). BA L919: a negative is allowed in a parallel iteration only **combined with a positive** condition (else it would require a value for every joined iteration) — the positive-bearing `FieldsNotCollectivelyFilled` form *is* accepted (locked alongside). Note the code is the parallel-specific `MVK_PARALLEL_ITERATION_INVALID`, **not** the ordinary-iteration `MVK_NEG_CONDITION_IN_ITERATION`. (Source `ParserService` raises it when `IterationNotValidVisitor.testParallelIteration` returns false — the `IterationType.PARALLEL` traversal whose `erlaubt` flag encodes the positive-required rule; the check is short-circuited for non-parallel conditions.) *(Locked: `validate.laws.IterationLawsTest.aPureNegativeInParallelIterationIsRejected`.)*
 
 ## §9 supplement — the `Having` filter and `$` correlation (slice 7d, 2026-06-04 experiments)
+
+> Fold: folded → §9.
 
 `Having` (DE `Mit`; grammar: `'Mit' bedingung` on an `entitySpec`) filters a `*`-repetition list before an aggregate/quantifier consumes it; `$` (`DOLLAR`, language-independent) pins a reference to the rule's outer repetition inside a filter.
 
@@ -1171,6 +1211,8 @@ In a **parallel iteration** (a rule referencing two repeatable groups that share
 
 ## §9 supplement — list-aggregate slot laws (slice 7c, 2026-06-04 experiments)
 
+> Fold: not-foldable — authoring-tier slot laws; the missing-row semantics they accompany are canonical in §9.
+
 `Sum`/`MaxValue`/`MinValue` (DE `Summe`/`MaxWert`/`MinWert`; grammar `feldListenOp` — its sibling `SumOfProducts` is now implemented, `adapter.SumOfProductsReadTest`; `FirstFilledValue` is implemented for number/date/string/enum, `adapter.FirstFilledValueReadTest`) and `NumberOfDifferentValues` (DE `AnzahlVerschiedenerWerte`; third member of the count family):
 
 - **Param law is shared with the count aggregates** — more than one field or a group (`MVK_PARAMSIZE_INVALIDN`); **a single flattened (`*`) operand satisfies it** (it expands to many fields), so `Sum(Items*/Count)` is the canonical shape. Mixed starred + plain operands and mixed scales are legal.
@@ -1182,6 +1224,8 @@ In a **parallel iteration** (a rule referencing two repeatable groups that share
 *(Locked: N7 examples of all four operators incl. three invalids; the pre-checks live in `ListAggregate`/`CountAggregate` — `dsl.operators.AggregateConditionTest`. The date variant of Max/Min landed with the date family — `DateListAggregate` via `Dsl.latestOf`/`earliestOf`, locked `adapter.DateAggregateReadTest` (stale "rides item 9" flipped 2026-06-10).)*
 
 ## §9 supplement — aggregate uncertainty + `FirstFilledValue` prefix sensitivity (runtime, 2026-06-10, RT-semantics drain)
+
+> Fold: folded → §12.
 
 The aggregate combiners track whether their result *could still change if more fields were filled*, and that uncertainty is observable through the message typing (§12 supplement below). Drained from `Combiner`/`NumberCombiner`/`FirstValueCombiner`/`NumberOfDifferentValuesCombiner`:
 
@@ -1196,11 +1240,15 @@ The aggregate combiners track whether their result *could still change if more f
 
 ## §9 supplement — SumOfProducts same-group requirement (source + probe, 2026-06-17)
 
+> Fold: folded → §9.
+
 `SumOfProducts(A*, B*)` requires its two repeatable number fields to live in the **same group** — fields from two different repeatable groups draw **`MVK_DIFFERENT_GROUPS`** (source `CheckEntityListenUtils.checkAllEntitiesInSameGroup`; probed: `SumOfProducts(Items*/Count, Items*/UnitWeight)` accepts, `SumOfProducts(Lines*/OrderedQty, Picks*/PickedQty)` across logistics' two repeatable groups rejects). BA adds (source-read, not separately probed): both operands must be Number with at least one repeatable layer, and the asterisk may notate only the lowest repeatable layer. *(Locked: `validate.laws.SumOfProductsLawsTest`.)*
 
 **Runtime semantics + interpreter status (2026-06-24).** Source-read `RuntimeController.summeVonProdukten`: it **zips the two fields' row iterators** and sums `aᵢ·bᵢ` per row (`while both hasNext`) — both fields share the group, so the rows align. Each cell is `feldWertAlsZahl`, so an **empty cell reads as 0** (its product is 0). A malformed cell is suppressed by the formal mechanism (the rule references the field). The interpreter reproduces this with a new **row-aligned star accessor** `EvalContext.starAll(path)` (one entry per group row, empty → the kind's empty value, malformed → Unknown) — `Interpreter.sumOfProducts` pairs the two `starAll` lists and yields Unknown if any cell is Unknown. *(Interpreter-locked: `adapter.laws.SumOfProductsDiffTest` — the row-alignment catcher (26 vs a mis-paired 22) + empty-as-0 + malformed-suppression, against the live kernel; the fuzz net adds a `SumOfProducts` rule — `PerfCatalog.fuzz()`.)*
 
 ## §9 supplement — `RepetitionNotUnique` slot laws (slice 7b, 2026-06-04 experiments)
+
+> Fold: not-foldable — authoring-tier slot laws (key shapes, placement codes); the runtime semantics are canonical in §9 "RepetitionNotUnique, precisely".
 
 - **The rule sits at the parent**: every key field must have at least one repeatable group **between the rule group and the field** (or sit directly in a repeatable root group) — `RepetitionNotUnique(Addons/Name)` from *inside* `Addons` draws **`MVK_REPEATABLE_GROUP_MISSING`**; the same condition from the parent validates. Position-dependent → kernel-delegated, not pre-checked.
 - **Keys are plain fields**: a group argument → `MVK_NO_GROUPS_ALLOWED`; a starred path → `MVK_NO_WILDCARDS_ALLOWED` (the iteration is implicit). **Composite keys** (several key fields) are legal. A key mixing in a non-repeatable field (e.g. `Tier`) → `MVK_REPEATABLE_GROUP_MISSING` for that field.
@@ -1506,6 +1554,8 @@ Read-only mining of the sibling `a12-kernel-mm` canonical set (own-words summary
 
 ## §10 supplement — the model-include (`modelAlias`) mechanism + the mount-suffix path (2026-06-04)
 
+> Fold: not-foldable — model include/expansion mechanics, explicitly outside the canonical doc's scope.
+
 How a DM includes another (the workspace `purpose:"include"` scheme, adapted to our own domain in `storefront.dm.json` → `catalog.dm.json`):
 
 - **Header**: `modelReferences: [{alias, modelType:"document", purpose:"include", reference:<includedModelId>}]`.
@@ -1577,11 +1627,15 @@ rulekit treatment: the `structure` package emits all of the above; modelkit's ow
 
 ## §10 supplement — relative path forms accepted in conditions (fork #9, 2026-06-04 probe)
 
+> Fold: folded → §10.
+
 Conditions accept paths **relative to the rule's group**, not only absolute — verified against the kernel: a bare segment for a field directly under the rule group (`FieldFilled(MonthlyFee)` at `/Subscription/Addons`), the bracketed value form (`[MonthlyFee]`), and `../` parent navigation to a sibling group's field (`FieldFilled(../Tier)` from `/Subscription/Addons`). All kernel-accepted (computation operations too). **Bare names also resolve *upward* (verified 2026-06-05 via `cli check`):** a bare segment not found directly under the rule group is looked up in **ancestor** groups — `[Tier]` from a rule scoped to `/Subscription/Addons` binds to the ancestor `/Subscription/Tier` (**no `../` needed**), exactly like `[/Subscription/Tier]`; a name found nowhere (`[Bogus]`) is `MVK_INVALID_ENTITY`. So a bare cross-(ancestor-)group reference works without `../`; `../` only matters to reach a different branch. *(This caught an eval judge out — it assumed bare = the rule group only and false-flagged correct candidates; RESULTS.md 2026-06-05 19:06.)* Descending *relatively* into a **repeatable** subgroup still hits the wildcard law (`MVK_NO_WILDCARD`) — that is the iteration rule, orthogonal to the path form. rulekit's renderer now renders rule/computation conditions relative to their group (the authoring norm — `DslRenderer` with a base group); standalone `DslRenderer.render` stays absolute, and absolute remains valid (KERNEL-INTEGRATION-NOTES). **Keyword-segment quoting (the other fork-9 half, verified 2026-06-04 probe):** a path segment whose name collides with a DSL keyword is a **parse error** unquoted — `FieldFilled(Length)` (and even absolute `FieldFilled(/Subscription/Length)`) → **`MVK_UNEXPECTED_TOKEN`** — and is escaped by **single-quoting that segment**: `FieldFilled('Length')` / `FieldFilled(/Subscription/'Length')` validate (grammar `NameOhnePunktMitQuotes : '\'' STR (STR|DIGIT)* '\''`). rulekit's renderer now single-quotes any segment matching a catalog operator keyword (per segment, `*` suffix preserved); the **full** lexer keyword set (beyond the operators rulekit catalogs) rides the N3 parity anchor. *(Locked: `dsl.PathPolicyTest`.)*
 
 **`..Name` (named-ancestor / turning-point) paths — the label names, it never navigates (clean-room from `CheckRelativeUpImpl`, 2026-07-06):** in a `..Name/rest` path the up-count comes ONLY from the number of `..` tokens; the trailing `Name` merely **names the ancestor landed on** — the kernel validates the name against that ancestor (`MVK_INVALID_ENTITY` on mismatch) but it never changes the target, so a matching `..Name/rest` resolves exactly like `../rest`. *(Interpreter: INTERPRETER-FINDINGS IF55; behavior-locked against the real kernel by `adapter.laws.NamedAncestorPathDiffTest` + parse-locked by `interpreter … NamedAncestorPathParseTest` (JVM+JS).)*
 
 ## §9 supplement — group cardinality (minItems-style "at least N rows") IS expressible via the starred single-group count (probe + source 2026-06-28, CORRECTED 2026-07-09)
+
+> Fold: folded → §9.
 
 The JSON-Schema `minItems`/`maxItems` analog — "a repeatable group must have at least/at most N rows". The 2026-06-28 analysis concluded it had no rule form; **the starred single-group count (landed 2026-07-06, IF46) overturned that** — see the correction below. The two component facts remain true (both live-probe-verified 2026-06-28 against the public facade; group repeatability itself is a structural **max only**, no min slot — see §4):
 
