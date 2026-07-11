@@ -17,6 +17,14 @@ java {
     }
 }
 
+// Ratchet (A12K-3589 / docs/TESTING-SPEC "no deprecated-kernel-API" guardian): a kernel API MARKED FOR REMOVAL
+// cannot compile in this kernel-facing module. Only the `removal` lint (not `deprecation`) is treated as an
+// error, so a new call to a removal-scheduled kernel API fails the build while plain-@Deprecated APIs (incl.
+// Jackson's) still compile. See docs/KERNEL-INTEGRATION-NOTES.md "A12K-3589 kernel-API removal surface".
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['-Xlint:removal', '-Werror']
+}
+
 dependencies {
     // core engine — BoundModel/ModelContext + the model index. Brings kernel-md-facade transitively.
     implementation project(':')

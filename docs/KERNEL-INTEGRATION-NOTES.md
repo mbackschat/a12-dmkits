@@ -130,6 +130,26 @@ The kernel validates/computes a document by **generating code per model** and ru
   So: the dynamic path is Groovy-only and cannot be swapped (the provider hard-types Groovy), but the **static path runs precompiled Java** — generate Java source, compile it in-memory (`javax.tools.JavaCompiler`), hand the rt-service a `ClassLoader` over the compiled classes via an `IDocumentStaticServiceConfig`, and `validateFull` produces an identical `IMessage` list executing Java instead of Groovy.
 - **Version caution** (kernel-dev.md, 🔥): generated code's *runtime artifacts must match the generator's kernel version*. We pin `30.8.1` and `:adapter` already depends on that kernel, so the generated Java's runtime deps are on the test classpath by construction.
 
+## A12K-3589 kernel-API removal surface + the retirement + the ratchet (2026-07-11, `30.8.1`)
+
+Kernel `30.8.1` marks a set of runtime-service APIs `@Deprecated(since = "30.6.0", forRemoval = true)` under ticket **A12K-3589** — they *will be deleted* in a future kernel, so a call to any of them is a compile-break time-bomb. We retired every one we called and locked the class shut. Read this on a [`KERNEL-UPGRADE`](KERNEL-UPGRADE.md): the removal ticket is expected to land, and this table is the before/after.
+
+**The forRemoval surface (what 30.8.1 will delete) → the non-forRemoval replacement we now use:**
+
+| retired (forRemoval, A12K-3589) | replacement used | note |
+|---|---|---|
+| `IDocumentRtService.validateFull(IDocument, Locale)` | `validateFull(DocumentV2, DocumentProcessingConfig)` | convert V1→V2 first (below); config = locale only |
+| `IDocumentRtService.compute(IDocument, Locale)` | `compute(DocumentV2, DocumentProcessingConfig)` | same |
+| `IDocumentComputationResult.applyTo(IDocument)` (plain `@Deprecated` 30.0.0, *not* forRemoval — retired opportunistically) | `DocumentV2 applyTo(DocumentV2)` | **`DocumentV2` is immutable** (package `…apiV2.immutable`) — `applyTo` RETURNS the applied document, it does not mutate in place; validate the *returned* instance (the compute→apply→validate flow in `KernelAdapter.evaluateApplied` / `RuntimeLaws.messagesAfterCompute`) |
+| `CustomFieldTypeService` (whole class) + `ICustomFieldTypeService` (whole interface) — the *static* custom-field-type registry | `DocumentProcessingConfig.builder(locale).customFieldTypeFactory(factory)` — the **per-call** `ICustomFieldTypeFactory` | the **ICustomFieldTypeService successor**: `FormatDefinitionVordefiniert.getCustomFieldValidator` calls `factory.createCustomFieldValidator(name)` when the config factory is non-null, falling back to the (also-forRemoval) static `CustomFieldTypeService.getInstance()` only when null. So threading the factory through the config fully replaces static registration. Locked by `adapter.laws.CustomFieldTypeBoundsDiffTest` (no more per-test register/clean) |
+| `DocumentProcessingConfig.additionalInformation()` | — (never called) | its data is carried by the factory now |
+
+`DocumentProcessingConfig.builder(locale).build()` is the behavioral twin of the old locale-only path: its builder defaults are **null** custom-condition/field-type factories (⇒ static-registry fallback preserved), **empty** `additionalInformation`, and **no** `currentDateForTest` (real current date). So the migration is behavior-neutral — proven by the full `:adapter:test` (differential + fuzz) forced fresh plus both corpus sweeps (the oracle is `KernelAdapter`/`RuntimeLaws`, so any drift would surface there).
+
+**The V1→V2 bridge, deliberately retained (plain `@Deprecated`, *not* forRemoval).** The modern calls need a `DocumentV2`; we still build the document with the V1 `IDocumentFactory` (`createDocument`/`createGroupInstance`/`createFieldInstance`) and convert via `DocumentServiceFactory.createDocumentV1V2Converter().ofDocumentV1(...)`. That whole V1 construction API **and** the converter are plain-`@Deprecated` (superseded by a V2-native builder) but **NOT** forRemoval, so they are not a time-bomb and the ratchet leaves them alone. Migrating them to the V2-native builder is a **separate, larger effort** (it rewrites the oracle's document construction, and even the natural bridge — the converter — is deprecated), tracked as a follow-up; it is out of scope for the A12K-3589 retirement.
+
+**The ratchet (anti-recurrence).** The kernel-facing modules (`:` / `:adapter` / `:cli`, main + test) compile with **`-Xlint:removal -Werror`** — only the `removal` lint is promoted to an error, so a *new* call to any forRemoval kernel API cannot compile, while the retained plain-`@Deprecated` V1 API (and Jackson's `fields()`) still compiles. Proven to fire (a `CustomFieldTypeService` reference fails the build) and proven zero on the current tree. Kotlin diff tests reach the kernel only through the Java `RuntimeLaws` oracle, so the Java ratchet covers them. Guardian row: [`TESTING-SPEC.md`](TESTING-SPEC.md) structural-law guardians.
+
 ## DM-JSON shape (for hand-authoring fixtures)
 
 - Top level: `header` (id, modelVersion, locales, `modelReferences`) + `content` (`modelInfo`, `modelConfig`, `modelRoot.rootGroups[]`).

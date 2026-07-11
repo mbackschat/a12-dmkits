@@ -58,9 +58,11 @@ import java.util.stream.Collectors;
 import com.mgmtp.a12.kernel.md.document.api.IDocument;
 import com.mgmtp.a12.kernel.md.document.api.services.IDocumentFactory;
 import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer;
+import com.mgmtp.a12.kernel.md.document.apiV2.immutable.DocumentV2;
 import com.mgmtp.a12.kernel.md.facade.DocumentRtServiceFactory;
 import com.mgmtp.a12.kernel.md.facade.DocumentServiceFactory;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelResolver;
+import com.mgmtp.a12.kernel.md.rt.api.DocumentProcessingConfig;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentComputationResult;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentDynamicServiceConfig;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentModelIdProvider;
@@ -643,7 +645,7 @@ public final class KernelAdapter {
      */
     public EvalResult evaluate(Map<String, Object> fields, Locale locale) {
         DocRuntime runtime = prepare(fields);
-        return toEvalResult(runtime.rt().validateFull(runtime.document(), locale));
+        return toEvalResult(runtime.rt().validateFull(runtime.document(), config(locale)));
     }
 
     /**
@@ -654,14 +656,14 @@ public final class KernelAdapter {
      * required-but-computed field is filled by its computation before the required check runs (no false
      * {@code mandatoryField}). The {@code --kernel} engine's compose path, the peer of the interpreter's
      * {@link DmInterpreter#applyComputations} + {@code validate} that is the {@code model eval} default.
-     * Uses the deprecated in-place {@code applyTo(IDocument)} (the {@code IDocument} runtime seam this adapter
-     * is built on); the document is freshly prepared per call, so the in-place mutation is local.
+     * Uses the modern {@code applyTo(DocumentV2)}: {@link DocumentV2} is immutable, so {@code applyTo} returns a
+     * NEW document (the applied one) rather than mutating in place, and that returned instance is validated.
      */
-    @SuppressWarnings("deprecation")
     public EvalResult evaluateApplied(Map<String, Object> fields, Locale locale) {
         DocRuntime runtime = prepare(fields);
-        runtime.rt().compute(runtime.document(), locale).applyTo(runtime.document());
-        return toEvalResult(runtime.rt().validateFull(runtime.document(), locale));
+        DocumentProcessingConfig config = config(locale);
+        DocumentV2 applied = runtime.rt().compute(runtime.document(), config).applyTo(runtime.document());
+        return toEvalResult(runtime.rt().validateFull(applied, config));
     }
 
     /** Map a kernel {@link IDocumentValidationResult} to the JDK-only {@link EvalResult} (shared by both paths). */
@@ -745,7 +747,7 @@ public final class KernelAdapter {
      */
     public ComputeResult compute(Map<String, Object> fields, Locale locale) {
         DocRuntime runtime = prepare(fields);
-        IDocumentComputationResult result = runtime.rt().compute(runtime.document(), locale);
+        IDocumentComputationResult result = runtime.rt().compute(runtime.document(), config(locale));
         List<ComputedField> computed = new ArrayList<>();
         result.getComputedFieldInstancesWithChanges()
                 .forEach(c -> computed.add(new ComputedField(c.getPath(), "value", c.getStringValue())));
@@ -756,8 +758,15 @@ public final class KernelAdapter {
         return new ComputeResult(computed);
     }
 
-    /** The kernel runtime service + the built document instance, shared by {@link #evaluate}/{@link #compute}. */
-    private record DocRuntime(IDocumentRtService rt, IDocument document) {
+    /** The kernel runtime service + the built (immutable {@link DocumentV2}) instance, shared by {@link #evaluate}/{@link #compute}. */
+    private record DocRuntime(IDocumentRtService rt, DocumentV2 document) {
+    }
+
+    /** The modern per-call processing config: just the locale (no custom factories, real current date) — the
+     *  behavioral twin of the retired {@code validateFull(IDocument, Locale)} form, whose builder defaults are
+     *  null factories + empty additional-info + no clock override. */
+    private static DocumentProcessingConfig config(Locale locale) {
+        return DocumentProcessingConfig.builder(locale).build();
     }
 
     /** Build the runtime service + the document instance from the nested {@code fields} tree (model-aware walk). */
@@ -772,13 +781,15 @@ public final class KernelAdapter {
         }
         ModelIndex index = ModelIndex.of(expanded);
         IDocumentModelResolver modelResolver = id -> expanded;
+        DocumentServiceFactory dsf = new DocumentServiceFactory(modelResolver);
         IDocumentRtService rt = new DocumentRtServiceFactory(modelResolver).createDocumentRtService(dynamicConfig());
-        IDocumentFactory df = new DocumentServiceFactory(modelResolver).createDocumentFactory();
+        IDocumentFactory df = dsf.createDocumentFactory();
 
         IDocument document = df.createDocument(modelId(model.toJson()));
         Set<String> groupPaths = index.groupPaths().collect(Collectors.toCollection(HashSet::new));
         buildInstances(fields, "", new int[0], index, groupPaths, df, document);
-        return new DocRuntime(rt, document);
+        // Convert the built V1 instance to the immutable DocumentV2 the modern rt-service consumes (once, per prepare).
+        return new DocRuntime(rt, dsf.createDocumentV1V2Converter().ofDocumentV1(document));
     }
 
     /**

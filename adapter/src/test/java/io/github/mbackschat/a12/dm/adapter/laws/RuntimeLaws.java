@@ -35,6 +35,7 @@ import javax.tools.SimpleJavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 
+import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeFactory;
 import com.mgmtp.a12.kernel.md.document.api.IDocument;
 import com.mgmtp.a12.kernel.md.document.api.services.IDocumentFactory;
 import com.mgmtp.a12.kernel.md.document.apiV2.DocumentMultiPointer;
@@ -360,13 +361,15 @@ public final class RuntimeLaws {
         return d;
     }
 
-    /** Run the kernel's {@code validateFull} over the instance, in the given locale. */
+    /** Run the kernel's {@code validateFull} over the instance, in the given locale (the modern {@link DocumentV2}
+     *  + {@link DocumentProcessingConfig} path — the deprecated {@code validateFull(IDocument, Locale)} form is gone). */
     private static IDocumentValidationResult validate(String modelJson, Doc doc, Locale locale) {
         IDocumentModel model = expandedModel(modelJson);
         IDocumentModelResolver resolver = id -> model;
+        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
         IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        IDocumentFactory df = new DocumentServiceFactory(resolver).createDocumentFactory();
-        return rt.validateFull(buildInstance(modelJson, df, doc), locale);
+        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
+        return rt.validateFull(v2, config(null, locale));
     }
 
     /** Evaluate an explicit document instance; return every message (code + pointer) the kernel raised. */
@@ -409,6 +412,25 @@ public final class RuntimeLaws {
     static List<Msg> messages(String modelJson, Doc doc, Map<String, ICustomCondition> customConditions) {
         return validateWithConditions(modelJson, doc, customConditions).getMessages().stream()
                 .map(RuntimeLaws::toMsg).toList();
+    }
+
+    /**
+     * Modern-path validation with a custom-FIELD-TYPE factory — threads {@code fieldTypeFactory} through
+     * {@code DocumentProcessingConfig.customFieldTypeFactory}, the per-call successor to the removed static
+     * {@code CustomFieldTypeService} registration (A12K-3589). The kernel's {@code FormatDefinitionVordefiniert}
+     * calls {@code fieldTypeFactory.createCustomFieldValidator(name)} to auto-validate a custom-typed cell (the
+     * implicit per-cell {@code Valid(field, type)}); a rejected cell reads as "unknown". Mirrors
+     * {@link #validateWithConditions} for the field-type SPI.
+     */
+    static List<Msg> messages(String modelJson, Doc doc, ICustomFieldTypeFactory fieldTypeFactory) {
+        IDocumentModel model = expandedModel(modelJson);
+        IDocumentModelResolver resolver = id -> model;
+        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
+        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
+        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
+        DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US)
+                .customFieldTypeFactory(fieldTypeFactory).build();
+        return rt.validateFull(v2, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
     }
 
     /** Whether {@code errorCode} fires under the modern custom-condition path. */
@@ -497,18 +519,19 @@ public final class RuntimeLaws {
     static List<Computed> compute(String modelJson, Doc doc) {
         IDocumentModel model = expandedModel(modelJson);
         IDocumentModelResolver resolver = id -> model;
+        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
         IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        IDocumentFactory df = new DocumentServiceFactory(resolver).createDocumentFactory();
-        return computeDetail(rt, buildInstance(modelJson, df, doc));
+        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
+        return computeDetail(rt, v2);
     }
 
     /**
      * Map a {@code compute()} run over {@code instance} to its value/cleared/errored detail — shared by the
-     * Groovy {@link #compute(String, Doc)} and the {@link JavaKernelEngine#compute(IDocument)} tri-differential
+     * Groovy {@link #compute(String, Doc)} and the {@link JavaKernelEngine#compute(DocumentV2)} tri-differential
      * path, so both codegen strategies report compute outcomes at the same granularity as the interpreter.
      */
-    private static List<Computed> computeDetail(IDocumentRtService rt, IDocument instance) {
-        return computeDetailOf(rt.compute(instance, Locale.US));
+    private static List<Computed> computeDetail(IDocumentRtService rt, DocumentV2 instance) {
+        return computeDetailOf(rt.compute(instance, config(null, Locale.US)));
     }
 
     /** Map a {@link IDocumentComputationResult} to its value/cleared/errored detail — shared by the legacy
@@ -605,17 +628,19 @@ public final class RuntimeLaws {
      * instances (KERNEL-FINDINGS "validateFull does NOT run computations" + {@code IDocumentComputationResult}) —
      * then full validation runs over the applied document. This is the oracle for {@link DmInterpreter#applyComputations}
      * + {@code validate} (the {@code model eval} default), the apply-computed-back step the interpreter mirrors.
-     * Uses the deprecated in-place {@code applyTo(IDocument)} (the {@code IDocument} seam this harness builds on).
+     * Uses the modern {@link com.mgmtp.a12.kernel.md.rt.api.IDocumentComputationResult#applyTo(DocumentV2)
+     * applyTo(DocumentV2)}: {@link DocumentV2} is immutable, so {@code applyTo} RETURNS a new document (it does not
+     * mutate in place like the old {@code applyTo(IDocument)}), and the returned instance is what gets validated.
      */
-    @SuppressWarnings("deprecation")
     static List<Msg> messagesAfterCompute(String modelJson, Doc doc, Locale locale) {
         IDocumentModel model = expandedModel(modelJson);
         IDocumentModelResolver resolver = id -> model;
+        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
         IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        IDocumentFactory df = new DocumentServiceFactory(resolver).createDocumentFactory();
-        IDocument d = buildInstance(modelJson, df, doc);
-        rt.compute(d, locale).applyTo(d);   // apply computed values back: changes set, errored/cleared emptied
-        return rt.validateFull(d, locale).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
+        DocumentProcessingConfig config = config(null, locale);
+        DocumentV2 applied = rt.compute(v2, config).applyTo(v2);   // changes set, errored/cleared emptied — new immutable doc
+        return rt.validateFull(applied, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
     }
 
     /** Whether the rule with {@code errorCode} fires for the given explicit instance. */
@@ -632,19 +657,22 @@ public final class RuntimeLaws {
     public static final class KernelEngine {
         private final String modelJson;
         private final IDocumentRtService rt;
+        private final DocumentServiceFactory dsf;
         private final IDocumentFactory df;
 
         KernelEngine(String modelJson) {
             this.modelJson = modelJson;
             IDocumentModel model = expandedModel(modelJson);
             IDocumentModelResolver resolver = id -> model;
+            this.dsf = new DocumentServiceFactory(resolver);
             this.rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-            this.df = new DocumentServiceFactory(resolver).createDocumentFactory();
+            this.df = dsf.createDocumentFactory();
         }
 
-        /** Build the kernel {@link IDocument} for {@code doc} once — do this OUTSIDE the timed region. */
-        public IDocument instance(Doc doc) {
-            return buildInstance(modelJson, df, doc);
+        /** Build the kernel {@link DocumentV2} for {@code doc} once — including the V1-&gt;V2 conversion, so it is
+         *  OUTSIDE the timed region (V2 is immutable, so reusing one instance across timed runs has no aliasing hazard). */
+        public DocumentV2 instance(Doc doc) {
+            return dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, df, doc));
         }
 
         /**
@@ -653,13 +681,13 @@ public final class RuntimeLaws {
          * <em>multiset</em>: a per-row rule firing on K rows yields K copies, and the interpreter must
          * produce the same K — catching a per-row firing mismatch a code-set would hide.
          */
-        public List<String> firedCodesSorted(IDocument instance) {
-            return rt.validateFull(instance, Locale.US).getMessages().stream()
+        public List<String> firedCodesSorted(DocumentV2 instance) {
+            return rt.validateFull(instance, config(null, Locale.US)).getMessages().stream()
                     .map(IMessage::getErrorCode).sorted().toList();
         }
 
         /** Every computed-field outcome for an already-built instance, normalized + <b>sorted</b> (the B7 compute payload). */
-        public List<String> computeOutcomesSorted(IDocument instance) {
+        public List<String> computeOutcomesSorted(DocumentV2 instance) {
             return computeSorted(rt, instance);
         }
     }
@@ -676,9 +704,8 @@ public final class RuntimeLaws {
      * {@code Computed.targetPath}. The compared instance leaves the computed field empty in the seed, so the
      * kernel reports every row as a change (its result set is "with changes", not all rows).
      */
-    @SuppressWarnings("removal")
-    private static List<String> computeSorted(IDocumentRtService rt, IDocument instance) {
-        IDocumentComputationResult r = rt.compute(instance, Locale.US);
+    private static List<String> computeSorted(IDocumentRtService rt, DocumentV2 instance) {
+        IDocumentComputationResult r = rt.compute(instance, config(null, Locale.US));
         List<String> out = new ArrayList<>();
         r.getComputedFieldInstancesWithChanges().forEach(c -> out.add(normComputedPath(c.getPath()) + "|" + c.getStringValue().orElse("")));
         r.getComputedFieldInstancesWithErrors().forEach(c -> out.add(normComputedPath(c.getPath()) + "|ERR"));
@@ -723,20 +750,20 @@ public final class RuntimeLaws {
             this.df = dsf.createDocumentFactory();
         }
 
-        /** Build the kernel {@link IDocument} for {@code doc} once — do this OUTSIDE the timed region. */
-        public IDocument instance(Doc doc) {
-            return buildInstance(modelJson, df, doc);
+        /** Build the kernel {@link DocumentV2} for {@code doc} once — including the V1-&gt;V2 conversion, OUTSIDE the
+         *  timed region (the static rt-service consumes {@link DocumentV2} just like the dynamic one). */
+        public DocumentV2 instance(Doc doc) {
+            return dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, df, doc));
         }
 
         /** Every fired error code for an already-built instance, <b>sorted</b> — the multiset (see {@link KernelEngine}). */
-        @SuppressWarnings("removal")
-        public List<String> firedCodesSorted(IDocument instance) {
-            return rt.validateFull(instance, Locale.US).getMessages().stream()
+        public List<String> firedCodesSorted(DocumentV2 instance) {
+            return rt.validateFull(instance, config(null, Locale.US)).getMessages().stream()
                     .map(IMessage::getErrorCode).sorted().toList();
         }
 
         /** Every computed-field outcome for an already-built instance, normalized + <b>sorted</b> (the B7 compute payload). */
-        public List<String> computeOutcomesSorted(IDocument instance) {
+        public List<String> computeOutcomesSorted(DocumentV2 instance) {
             return computeSorted(rt, instance);
         }
 
@@ -746,30 +773,28 @@ public final class RuntimeLaws {
          * {@link RuntimeLaws#messages(String, Doc)}. So the static-JAVA codegen strategy is diffed against the
          * interpreter and the Groovy-dynamic strategy at the SAME granularity (polarity + row, not codes-only).
          */
-        @SuppressWarnings("removal")
-        List<Msg> messages(IDocument instance) {
-            return rt.validateFull(instance, Locale.US).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        List<Msg> messages(DocumentV2 instance) {
+            return rt.validateFull(instance, config(null, Locale.US)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
         }
 
         /** Every computed-field outcome (value / cleared / errored) for an already-built instance — the compute
          *  tri-differential payload, mirroring the Groovy {@link RuntimeLaws#compute(String, Doc)}. */
-        List<Computed> compute(IDocument instance) {
+        List<Computed> compute(DocumentV2 instance) {
             return computeDetail(rt, instance);
         }
 
         /**
          * Partial validation over the static-JAVA codegen path — the {@code validatePart} twin of {@link #messages}
-         * for the WI-1 tri-differential. Converts the built instance to {@link DocumentV2} (the modern-path
-         * requirement the static rt-service shares with the dynamic one) and runs {@code validatePart} for the
-         * given relevant entities, returning the same {@code code|type|pointer} signatures. Whether the static
-         * path supports this at all is what {@code JavaStaticPartialBaselineDiffTest} pins.
+         * for the WI-1 tri-differential. The already-{@link DocumentV2} instance (the modern-path requirement the
+         * static rt-service shares with the dynamic one) is run through {@code validatePart} for the given relevant
+         * entities, returning the same {@code code|type|pointer} signatures. Whether the static path supports this
+         * at all is what {@code JavaStaticPartialBaselineDiffTest} pins.
          */
         List<Msg> messagesPart(Doc doc, Set<Relevant> relevant) {
-            DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(instance(doc));
+            DocumentV2 v2 = instance(doc);
             Set<DocumentMultiPointer> relevantPointers = relevant.stream()
                     .map(r -> DocumentMultiPointer.of(r.path(), r.reps())).collect(Collectors.toSet());
-            DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US).build();
-            return rt.validatePart(v2, relevantPointers, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+            return rt.validatePart(v2, relevantPointers, config(null, Locale.US)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
         }
 
         // ---- modern clock-pinnable path (the corpus tri-verification's java-static leg, §9) ----------
@@ -781,16 +806,14 @@ public final class RuntimeLaws {
 
         /** As {@link #messagesModern(Doc, Date)} but at an explicit locale (the sweep's model-declared locale). */
         List<Msg> messagesModern(Doc doc, Date clock, Locale locale) {
-            DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(instance(doc));
-            return rt.validateFull(v2, config(clock, locale)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+            return rt.validateFull(instance(doc), config(clock, locale)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
         }
 
         /** Static-JAVA {@code validatePart(DocumentV2, relevant, config)} — clock-pinnable. */
         List<Msg> messagesPartModern(Doc doc, Set<Relevant> relevant, Date clock) {
-            DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(instance(doc));
             Set<DocumentMultiPointer> rel = relevant.stream()
                     .map(r -> DocumentMultiPointer.of(r.path(), r.reps())).collect(Collectors.toSet());
-            return rt.validatePart(v2, rel, config(clock)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+            return rt.validatePart(instance(doc), rel, config(clock)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
         }
 
         /** Static-JAVA {@code compute(DocumentV2, config)} — clock-pinnable. */
@@ -800,8 +823,7 @@ public final class RuntimeLaws {
 
         /** As {@link #computeModern(Doc, Date)} but at an explicit locale (the sweep's model-declared locale). */
         List<Computed> computeModern(Doc doc, Date clock, Locale locale) {
-            DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(instance(doc));
-            return computeDetailOf(rt.compute(v2, config(clock, locale)));
+            return computeDetailOf(rt.compute(instance(doc), config(clock, locale)));
         }
     }
 

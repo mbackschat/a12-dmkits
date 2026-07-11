@@ -1,6 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import com.mgmtp.a12.kernel.core.customfieldtype.CustomFieldTypeService
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeCheckError
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeFactory
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeValidationParam
@@ -16,9 +15,7 @@ import io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.util.Optional
 import java.util.function.Consumer
@@ -33,6 +30,10 @@ import java.util.function.Consumer
  * bit-for-bit with the kernel; an **accepted** cell lets the rule evaluate. (The per-cell formal MESSAGE codes
  * differ by design — the kernel emits the validator's project-specific key, the interpreter its own
  * `customFieldTypeInvalid` — so we compare the referencing rule's firing, the kernel-faithful observable.)
+ *
+ * The kernel side registers the validator through the modern per-call `DocumentProcessingConfig.customFieldTypeFactory`
+ * (the [ICustomFieldTypeFactory] threaded via [RuntimeLaws.messages]) — the successor to the removed static
+ * `CustomFieldTypeService` registration (A12K-3589); no static registry, so no per-test register/clean lifecycle.
  */
 class CustomFieldTypeBoundsDiffTest {
 
@@ -58,9 +59,6 @@ class CustomFieldTypeBoundsDiffTest {
             })
     }
 
-    @BeforeEach fun register() = CustomFieldTypeService.getInstanceV2().registerV2(factory)
-    @AfterEach fun cleanup() = CustomFieldTypeService.getInstanceV2().cleanRegistry()
-
     private fun iDoc() = Document(kinds = def.kinds, scales = def.scales)
 
     // A value-reading rule over the custom field, authored through the typed DSL: `BoundModel.custom(...)` returns a
@@ -74,7 +72,7 @@ class CustomFieldTypeBoundsDiffTest {
         val rdef = def.copy(rules = listOf(RuleDef("/Order/R", "/Order", cond, "R", "../Code")))
         val kDoc = RuntimeLaws.doc().group("/Order", 1).field(CODE, value, 1, 1)
         val iDoc = iDoc().group("/Order", 1).field(CODE, value, 1, 1)
-        val kFired = RuntimeLaws.messages(ruleModel, kDoc).any { it.code() == "R" }
+        val kFired = RuntimeLaws.messages(ruleModel, kDoc, factory).any { it.code() == "R" }
         val iFired = DmInterpreter(rdef, predefinedTypes = codeType).validateFull(iDoc).any { it.code == "R" }
         assertEquals(kFired, iFired, "$msg  (kernel=$kFired interp=$iFired)")
     }
