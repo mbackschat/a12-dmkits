@@ -68,6 +68,44 @@ class IncludeEvalDefaultPathTest {
                 .message(en("Coverage exceeds the cap.")).build()).toJson();
     }
 
+    /** benefitsWithRule, but the rule names its field by an ABSOLUTE path ([/Benefits/Coverage]) — depth 0
+     *  under the mount, so the relativizer must rewrite it to the relative [Coverage]. */
+    private static String benefitsWithAbsoluteRule() {
+        return benefitsWithRule()
+                .replace("FieldFilled(Coverage)", "FieldFilled(/Benefits/Coverage)")
+                .replace("[Coverage] < 0", "[/Benefits/Coverage] < 0");
+    }
+
+    /** A benefits sub-model with a Tier subgroup whose OWN rule references the root field by an ABSOLUTE path
+     *  ([/Benefits/Amount]) — depth 1 below the mount, so the relativizer must produce ../Amount. */
+    private static String nestedBenefitsWithAbsoluteRule() {
+        String nested = DocumentModelDraft.named("benefits").locale("en_US")
+                .rootGroup("Benefits", b -> b
+                        .numberField("Amount", n -> n.fractionDigits(2))
+                        .group("Tier", t -> t.numberField("Value", n -> n.fractionDigits(2))))
+                .build().toJson();
+        BoundModel m = BoundModel.ofJson(nested);
+        // The rule lives in the Tier subgroup and reads its own Value — but by an ABSOLUTE path naming the root
+        // (/Benefits/Tier/Value). At depth 1 the relativizer must produce ../Tier/Value for it to resolve post-mount.
+        String withRule = m.add(m.rule(m.group("/Benefits/Tier")).name("ValuePositive")
+                .errorField(m.num("/Benefits/Tier/Value").field())
+                .when(m.num("/Benefits/Tier/Value").filled().and(m.num("/Benefits/Tier/Value").lt(0)))
+                .code("VAL_NEG").severity(Severity.ERROR)
+                .message(en("Value must not be negative.")).build()).toJson();
+        // modelkit renders Value as a relative sibling ([Value]); make it ABSOLUTE so the depth-1 rewrite is exercised.
+        return withRule
+                .replace("FieldFilled(Value)", "FieldFilled(/Benefits/Tier/Value)")
+                .replace("[Value] < 0", "[/Benefits/Tier/Value] < 0");
+    }
+
+    /** A policy mounting the benefits sub-model at /Policy/Cover (no base rule). */
+    private static String policyMountingBenefitsAtCover() {
+        return DocumentModelDraft.named("policy").locale("en_US")
+                .include("benefits", "benefits")
+                .rootGroup("Policy", p -> p.field("PolicyNo", FieldKind.STRING).mount("Cover", "benefits"))
+                .build().toJson();
+    }
+
     private static ModelResolver benefitsResolver(String benefitsJson) {
         return ref -> "benefits".equals(ref) ? benefitsJson : null;
     }
@@ -81,8 +119,12 @@ class IncludeEvalDefaultPathTest {
     }
 
     private static Path instance(Path dir, String coverage) throws IOException {
+        return instanceField(dir, "Coverage", coverage);
+    }
+
+    private static Path instanceField(Path dir, String field, String value) throws IOException {
         Path f = dir.resolve("doc.json");
-        Files.writeString(f, "{ \"fields\": { \"Policy\": { \"Cover\": { \"Coverage\": \"" + coverage + "\" } } } }");
+        Files.writeString(f, "{ \"fields\": { \"Policy\": { \"Cover\": { \"" + field + "\": \"" + value + "\" } } } }");
         return f;
     }
 
@@ -149,5 +191,49 @@ class IncludeEvalDefaultPathTest {
                 () -> "the mounted included model's OWN rule fires on the default path: " + def.out());
         assertEquals(fired(ker.out(), "COV_NEG"), fired(def.out(), "COV_NEG"),
                 () -> "the default path agrees with --kernel on the included rule");
+    }
+
+    @Test
+    void anIncludedRuleWithAnAbsolutePathIsRelativizedAndEvaluatesLikeTheKernel(@TempDir Path dir) throws Exception {
+        String benefits = benefitsWithAbsoluteRule();
+        assertTrue(benefits.contains("[/Benefits/Coverage]"), "the fixture rule uses an absolute path");
+        Path model = workspace(dir, policyMountingBenefitsAtCover(), benefits);
+        Path doc = instance(dir, "-5.00");   // negative → the included rule fires (once its absolute ref is relativized)
+
+        // /Benefits/Coverage names the root group that vanishes on mount; the assembly layer rewrites it to the
+        // relative [Coverage] (depth 0), so the default path resolves it against /Policy/Cover and matches --kernel.
+        CliTestSupport.Result def = CliTestSupport.run(
+                "-m", model.toString(), "model", "eval", "--instance", doc.toString());
+        CliTestSupport.Result ker = CliTestSupport.runKernel(
+                "-m", model.toString(), "model", "eval", "--instance", doc.toString());
+
+        assertEquals(0, def.code(), () -> "the default path evaluates the relativized absolute rule: " + def.out() + def.err());
+        assertTrue(fired(def.out(), "COV_NEG"), () -> "the relativized absolute reference fires: " + def.out());
+        assertEquals(fired(ker.out(), "COV_NEG"), fired(def.out(), "COV_NEG"), () -> "matches --kernel: " + def.out());
+    }
+
+    @Test
+    void aNestedIncludedRuleWithAnAbsolutePathIsRelativizedByDepthLikeTheKernel(@TempDir Path dir) throws Exception {
+        String benefits = nestedBenefitsWithAbsoluteRule();
+        assertTrue(benefits.contains("[/Benefits/Tier/Value]"), "the fixture rule uses an absolute path");
+        Path model = workspace(dir, policyMountingBenefitsAtCover(), benefits);
+        Path doc = tierValueInstance(dir, "-5.00");   // negative → the depth-1 nested rule fires
+
+        // The rule lives one group deep (/Benefits/Tier), so /Benefits/Tier/Value must relativize to ../Tier/Value —
+        // the depth-1 form — for the interpreter to resolve it against the rule's post-mount group /Policy/Cover/Tier.
+        CliTestSupport.Result def = CliTestSupport.run(
+                "-m", model.toString(), "model", "eval", "--instance", doc.toString());
+        CliTestSupport.Result ker = CliTestSupport.runKernel(
+                "-m", model.toString(), "model", "eval", "--instance", doc.toString());
+
+        assertEquals(0, def.code(), () -> "the default path evaluates the depth-1 relativized rule: " + def.out() + def.err());
+        assertTrue(fired(def.out(), "VAL_NEG"), () -> "the depth-1 relativized reference fires: " + def.out());
+        assertEquals(fired(ker.out(), "VAL_NEG"), fired(def.out(), "VAL_NEG"), () -> "matches --kernel: " + def.out());
+    }
+
+    private static Path tierValueInstance(Path dir, String value) throws IOException {
+        Path f = dir.resolve("doc.json");
+        Files.writeString(f, "{ \"fields\": { \"Policy\": { \"Cover\": { \"Tier\": { \"Value\": \"" + value + "\" } } } } }");
+        return f;
     }
 }

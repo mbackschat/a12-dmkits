@@ -132,21 +132,56 @@ class ModelReaderTest {
     }
 
     @Test
-    void flagsAMountedIncludedRuleWhoseConditionUsesAnAbsolutePath() {
-        // An included rule naming the included root group ABSOLUTELY ([/Benefits/Coverage]) DOES need rewriting —
-        // that path mis-resolves once /Benefits vanishes on mount — so it is signalled for relativization.
+    void relativizesAMountedIncludedRuleWithADescendingAbsolutePath() {
+        // An included rule naming the included root group ABSOLUTELY ([/Benefits/Coverage]) is rewritten to its
+        // relative post-mount form ([Coverage], depth 0) — so it evaluates and needs NO relativization signal.
         ModelReader reader = ModelReader.expand(policyIncludingBenefits(false), absoluteBenefitsResolver());
+        assertTrue(reader.includedRulesNeedingRelativization().isEmpty(),
+                () -> "the absolute ref is relativized, not flagged: " + reader.includedRulesNeedingRelativization());
+        assertFalse(reader.toJson().contains("[/Benefits/Coverage]"), "the absolute reference is gone from the condition");
+        assertTrue(reader.toJson().contains("[Coverage] < 0"), () -> "the condition is now relative: " + reader.toJson());
+    }
+
+    @Test
+    void flagsAResidualBareRootGroupAbsoluteReferenceItCannotRelativize() {
+        // A BARE /Benefits group reference (no descent) is a residual the relativizer leaves as-is — still flagged
+        // so the consumer refuses rather than mis-evaluate.
+        ModelReader reader = ModelReader.expand(policyIncludingBenefits(false), bareGroupRefBenefitsResolver());
         assertEquals(List.of("CoveragePositive"), reader.includedRulesNeedingRelativization());
     }
 
     @Test
     void excludeRulesDropsMountedIncludedRulesAndClearsTheRelativizationSignal() {
-        // The absolute-path rule WOULD be flagged; excludeRules drops it, so the signal is cleared.
-        ModelReader reader = ModelReader.expand(policyIncludingBenefits(true), absoluteBenefitsResolver());
+        // The bare-group-ref rule WOULD be flagged (a residual); excludeRules drops it, so the signal is cleared.
+        ModelReader reader = ModelReader.expand(policyIncludingBenefits(true), bareGroupRefBenefitsResolver());
         assertTrue(reader.paths().contains("/Policy/Benefits/Coverage"), "the mounted field survives");
         assertTrue(reader.includedRulesNeedingRelativization().isEmpty(),
                 "excludeRules drops the mounted rule, so nothing needs relativization");
         assertFalse(reader.toJson().contains("CoveragePositive"), "the excluded rule is gone from the expanded form");
+    }
+
+    @Test
+    void relativizesRootGroupAbsolutePathsByDepthLeavingEverythingElse() {
+        // /RootGroup/rest at depth D → ("../" * D) + rest — the descending absolute forms the rewriter handles:
+        assertEquals("[Coverage] < 0",
+                ModelReader.relativizeRootGroupAbsolutePaths("[/Benefits/Coverage] < 0", "Benefits", 0));
+        assertEquals("[../Coverage] < 0",
+                ModelReader.relativizeRootGroupAbsolutePaths("[/Benefits/Coverage] < 0", "Benefits", 1));
+        assertEquals("Sum(Lines*/Amount) > 0",
+                ModelReader.relativizeRootGroupAbsolutePaths("Sum(/Benefits/Lines*/Amount) > 0", "Benefits", 0));
+        assertEquals("Max([a], ../../Cap) > 0",
+                ModelReader.relativizeRootGroupAbsolutePaths("Max([a], /Benefits/Cap) > 0", "Benefits", 2));
+        // left verbatim — a division, a relative ref, a DIFFERENT root, a BARE group ref, an OUTER absolute:
+        assertEquals("[Total] / [Count] > 1",
+                ModelReader.relativizeRootGroupAbsolutePaths("[Total] / [Count] > 1", "Benefits", 0));
+        assertEquals("[Coverage] < 0",
+                ModelReader.relativizeRootGroupAbsolutePaths("[Coverage] < 0", "Benefits", 3));
+        assertEquals("[/Other/x] == True",
+                ModelReader.relativizeRootGroupAbsolutePaths("[/Other/x] == True", "Benefits", 0));
+        assertEquals("GroupFilled(/Benefits)",
+                ModelReader.relativizeRootGroupAbsolutePaths("GroupFilled(/Benefits)", "Benefits", 0));
+        assertEquals("[$/Benefits/x] == True",
+                ModelReader.relativizeRootGroupAbsolutePaths("[$/Benefits/x] == True", "Benefits", 1));
     }
 
     // ── the absolute-path detector (the relativization trigger) ──────────────────────────────────────────
@@ -218,6 +253,17 @@ class ModelReaderTest {
 
     private static ModelResolver absoluteBenefitsResolver() {
         String benefits = benefitsModelAbsolute();
+        return ref -> "benefits".equals(ref) ? benefits : null;
+    }
+
+    /** benefitsModel, but the rule uses a BARE absolute group reference ({@code GroupFilled(/Benefits)}) — a
+     *  residual the relativizer does not rewrite (no descent), so it stays flagged. */
+    private static String benefitsModelBareGroupRef() {
+        return benefitsModel().replace("[Coverage] < 0", "GroupFilled(/Benefits)");
+    }
+
+    private static ModelResolver bareGroupRefBenefitsResolver() {
+        String benefits = benefitsModelBareGroupRef();
         return ref -> "benefits".equals(ref) ? benefits : null;
     }
 

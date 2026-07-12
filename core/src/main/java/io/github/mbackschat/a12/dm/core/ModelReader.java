@@ -234,6 +234,7 @@ public final class ModelReader {
                 .path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS);
 
         List<JsonNode> toMount = new ArrayList<>();
+        String rootGroupName = null;   // SINGLE_RG only: the vanishing included-root-group name the relativizer strips
         if (modelRoot) {
             // MODEL_ROOT: every top-level group becomes a child of the mount (keeping its own name).
             includedRootGroups.forEach(toMount::add);
@@ -241,6 +242,7 @@ public final class ModelReader {
             // SINGLE_RG (default): the single root group's children become the mount's children; the root group
             // itself is discarded — only its usageType is copied onto the mount group.
             JsonNode includedRootGroup = includedRootGroups.get(0);
+            rootGroupName = includedRootGroup.path(DmKeys.NAME).asText();
             JsonNode usageType = includedRootGroup.path(ElementType.GROUP.wireName()).path("usageType");
             if (!usageType.isMissingNode()) {
                 mountBody.set("usageType", usageType);
@@ -253,6 +255,12 @@ public final class ModelReader {
             ObjectNode kept = filterRulesAndComputations((ObjectNode) child, excludeRules, excludeComputations);
             if (kept != null) {
                 mountElements.add(kept);
+                // Relativize the included rules/computations that name the (now-vanished) root group by an
+                // absolute path — SINGLE_RG only; a direct child is at depth 0 below the mount. MODEL_ROOT
+                // absolute refs (which keep the top-group name) are a narrow residual, left for the refusal path.
+                if (!modelRoot && rootGroupName != null && !rootGroupName.isEmpty()) {
+                    relativizeMountedConditions(kept, rootGroupName, 0);
+                }
                 recordIncludedRulesNeedingRelativization(kept, warnings);
             }
         }
@@ -303,14 +311,13 @@ public final class ModelReader {
         return node;
     }
 
-    /** Record a mounted included rule/computation ONLY if its condition carries an <b>absolute-path</b> reference
-     *  — the one reference form that mis-resolves once the included root group's name vanishes on mount. Every
-     *  <em>relative</em> form (downward `[Coverage]`, `..`-upward, or a root-turning-point label the resolver
-     *  discards) resolves against the rule's post-mount group unchanged, so the kernel rewrites <em>nothing</em>
-     *  for it ({@code EntityPathsRelativizer}'s relative-downward short-circuit) and the reader carries it
-     *  verbatim — kernel-exact (KERNEL-FINDINGS "DocumentModel expansion"). An absolute-bearing condition still
-     *  needs the rewrite, so it is recorded and a correctness-critical consumer refuses on it rather than
-     *  mis-evaluate (A4 / IG67). */
+    /** Record a mounted included rule/computation ONLY if its condition <b>still</b> carries an absolute-path
+     *  reference AFTER {@link #relativizeMountedConditions} has run — i.e. a <b>residual</b> the relativizer does
+     *  not rewrite: a bare {@code /RootGroup} group reference, an outer-correlated {@code [$/…]}, or a MODEL_ROOT
+     *  include's absolute ref. The common SINGLE_RG {@code /RootGroup/rest} reference is rewritten to its relative
+     *  post-mount form and needs no signal; every relative reference already resolves against the rule's post-mount
+     *  group unchanged (KERNEL-FINDINGS "DocumentModel expansion"). A recorded residual makes a correctness-critical
+     *  consumer refuse rather than mis-evaluate (A4 / IG67). */
     private static void recordIncludedRulesNeedingRelativization(JsonNode node, List<String> warnings) {
         ElementType type = ElementType.of(node);
         if (type == ElementType.RULE) {
@@ -347,27 +354,124 @@ public final class ModelReader {
      * <em>starts</em> a reference: immediately after {@code [}, {@code (}, {@code ,}, {@code $}, or at the text
      * start (ignoring whitespace), and followed by an identifier char. A division {@code /} (after {@code ]} /
      * {@code )} / a digit) or a descent {@code /} inside a relative path (after an identifier / {@code *}) is
-     * NOT a reference start, so neither is flagged. Package-private for a focused unit test.
+     * NOT a reference start, so neither is flagged. After the relativizer has run, this reports only the
+     * <b>residual</b> absolutes it does not rewrite (a bare {@code /RootGroup} group ref, an outer-correlated
+     * {@code [$/…]}, or a MODEL_ROOT include). Package-private for a focused unit test.
      */
     static boolean conditionHasAbsolutePathRef(String condition) {
         for (int i = 0; i < condition.length(); i++) {
-            if (condition.charAt(i) != '/') {
-                continue;
-            }
-            char next = i + 1 < condition.length() ? condition.charAt(i + 1) : '\0';
-            if (!(Character.isLetter(next) || next == '_')) {
-                continue;   // not the start of a path segment — a division or a stray slash
-            }
-            int j = i - 1;
-            while (j >= 0 && Character.isWhitespace(condition.charAt(j))) {
-                j--;
-            }
-            char prev = j < 0 ? '\0' : condition.charAt(j);
-            if (prev == '\0' || prev == '[' || prev == '(' || prev == ',' || prev == '$') {
-                return true;   // "/Ident" at a reference-start position → an absolute path
+            if (isAbsolutePathStart(condition, i)) {
+                return true;
             }
         }
         return false;
+    }
+
+    // ── included-rule relativization (the kernel's include-mount condition rewrite) ───────────────────────────
+
+    /**
+     * Rewrite the absolute-path references that name the vanished included root group in a mounted rule's /
+     * computation's condition(s) to their <b>relative</b> post-mount form, so they resolve against the rule's
+     * post-mount group — the kernel's include relativization (KERNEL-FINDINGS "DocumentModel expansion").
+     * SINGLE_RG only: a reference {@code /RootGroup/rest} in an element at [depth] below the mount becomes
+     * {@code ("../" * depth) + rest}; every relative reference already resolves correctly and is untouched.
+     * An absolute reference this does NOT rewrite (a bare {@code /RootGroup} group ref, an outer-correlated
+     * {@code [$/…]}) survives and is reported by {@link #recordIncludedRulesNeedingRelativization} so the
+     * consumer refuses rather than mis-evaluate. Recurses into groups, incrementing the depth.
+     */
+    private static void relativizeMountedConditions(JsonNode node, String rootGroupName, int depth) {
+        ElementType type = ElementType.of(node);
+        if (type == ElementType.RULE) {
+            rewriteConditionKey((ObjectNode) node.path(ElementType.RULE.wireName()), "errorCondition", rootGroupName, depth);
+        } else if (type == ElementType.COMPUTATION) {
+            ObjectNode body = (ObjectNode) node.path(ElementType.COMPUTATION.wireName());
+            rewriteConditionKey(body, "commonPrecondition", rootGroupName, depth);
+            for (JsonNode alt : body.path("computationAlternatives")) {
+                if (alt instanceof ObjectNode altObj) {
+                    rewriteConditionKey(altObj, "precondition", rootGroupName, depth);
+                    rewriteConditionKey(altObj, "operation", rootGroupName, depth);
+                }
+            }
+        } else if (type == ElementType.GROUP) {
+            for (JsonNode child : node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)) {
+                relativizeMountedConditions(child, rootGroupName, depth + 1);
+            }
+        }
+    }
+
+    private static void rewriteConditionKey(ObjectNode body, String key, String rootGroupName, int depth) {
+        if (!body.hasNonNull(key)) {
+            return;
+        }
+        String cond = body.path(key).asText("");
+        String rewritten = relativizeRootGroupAbsolutePaths(cond, rootGroupName, depth);
+        if (!rewritten.equals(cond)) {
+            body.put(key, rewritten);
+        }
+    }
+
+    /**
+     * Replace each {@code /<rootGroupName>/rest} absolute reference in [condition] with {@code ("../" * depth) +
+     * rest} (the depth-{@code depth} relative form), leaving every other token — relative refs, divisions,
+     * literals, and any absolute ref that does not descend from the root group — verbatim. Package-private for a
+     * focused unit test.
+     */
+    static String relativizeRootGroupAbsolutePaths(String condition, String rootGroupName, int depth) {
+        StringBuilder out = new StringBuilder(condition.length());
+        boolean changed = false;
+        int i = 0;
+        while (i < condition.length()) {
+            // Only a "plain" absolute-ref '/' (not outer-correlated: prev char is not '$') is rewritable — an
+            // outer '$/…' is left as a documented residual for the refusal path.
+            if (isAbsolutePathStart(condition, i) && prevSignificant(condition, i) != '$') {
+                int segStart = i + 1;
+                int segEnd = segStart;
+                while (segEnd < condition.length() && isIdentPart(condition.charAt(segEnd))) {
+                    segEnd++;
+                }
+                boolean hasDescent = segEnd < condition.length() && condition.charAt(segEnd) == '/';
+                if (hasDescent && condition.substring(segStart, segEnd).equals(rootGroupName)) {
+                    out.append("../".repeat(depth));   // "/RootGroup/" → ("../" * depth); the descent '/' is consumed
+                    i = segEnd + 1;
+                    changed = true;
+                    continue;
+                }
+            }
+            out.append(condition.charAt(i));
+            i++;
+        }
+        return changed ? out.toString() : condition;
+    }
+
+    /** Whether {@code s.charAt(i)} is a '/' that STARTS an absolute entity reference: followed by an identifier
+     *  start, and preceded (skipping whitespace) by a reference-opening char ({@code [ ( , $}) or the text start. */
+    private static boolean isAbsolutePathStart(String s, int i) {
+        if (i >= s.length() || s.charAt(i) != '/') {
+            return false;
+        }
+        char next = i + 1 < s.length() ? s.charAt(i + 1) : '\0';
+        if (!isIdentStart(next)) {
+            return false;
+        }
+        char prev = prevSignificant(s, i);
+        return prev == '\0' || prev == '[' || prev == '(' || prev == ',' || prev == '$';
+    }
+
+    /** The nearest non-whitespace char before index {@code i}, or {@code '\0'} at the text start. */
+    private static char prevSignificant(String s, int i) {
+        int j = i - 1;
+        while (j >= 0 && Character.isWhitespace(s.charAt(j))) {
+            j--;
+        }
+        return j < 0 ? '\0' : s.charAt(j);
+    }
+
+    private static boolean isIdentStart(char c) {
+        return Character.isLetter(c) || c == '_';
+    }
+
+    private static boolean isIdentPart(char c) {
+        return Character.isLetterOrDigit(c) || c == '_';
     }
 
     // ── effective types (typedef inlining) ────────────────────────────────────────────────────────────────
