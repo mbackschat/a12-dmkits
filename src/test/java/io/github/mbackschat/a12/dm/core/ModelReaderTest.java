@@ -119,21 +119,54 @@ class ModelReaderTest {
     // ── include exclude flags + the relativization signal (A4 guard) ─────────────────────────────────────
 
     @Test
-    void carriesMountedIncludedRulesAndSignalsThemForRelativization() {
+    void carriesAMountedRelativeIncludedRuleWithoutARelativizationSignal() {
         ModelReader reader = ModelReader.expand(policyIncludingBenefits(false), benefitsResolver());
         assertTrue(reader.paths().contains("/Policy/Benefits/Coverage"), () -> "paths: " + reader.paths());
-        // the mounted included rule is carried verbatim (its condition is not relativized) — signalled so a
-        // correctness-critical consumer refuses rather than mis-evaluates (A4 / IG67).
+        // The mounted rule references its field by a RELATIVE path ([Coverage]); such a reference resolves against
+        // the rule's post-mount group unchanged, so the kernel rewrites nothing (EntityPathsRelativizer's
+        // relative-downward short-circuit) — the reader carries it verbatim with NO relativization signal, and
+        // the interpreter evaluates it kernel-exact (KERNEL-FINDINGS "DocumentModel expansion").
+        assertTrue(reader.includedRulesNeedingRelativization().isEmpty(),
+                () -> "a relative included rule needs no relativization: " + reader.includedRulesNeedingRelativization());
+        assertTrue(reader.toJson().contains("CoveragePositive"), "the mounted rule is carried in the expanded form");
+    }
+
+    @Test
+    void flagsAMountedIncludedRuleWhoseConditionUsesAnAbsolutePath() {
+        // An included rule naming the included root group ABSOLUTELY ([/Benefits/Coverage]) DOES need rewriting —
+        // that path mis-resolves once /Benefits vanishes on mount — so it is signalled for relativization.
+        ModelReader reader = ModelReader.expand(policyIncludingBenefits(false), absoluteBenefitsResolver());
         assertEquals(List.of("CoveragePositive"), reader.includedRulesNeedingRelativization());
     }
 
     @Test
     void excludeRulesDropsMountedIncludedRulesAndClearsTheRelativizationSignal() {
-        ModelReader reader = ModelReader.expand(policyIncludingBenefits(true), benefitsResolver());
+        // The absolute-path rule WOULD be flagged; excludeRules drops it, so the signal is cleared.
+        ModelReader reader = ModelReader.expand(policyIncludingBenefits(true), absoluteBenefitsResolver());
         assertTrue(reader.paths().contains("/Policy/Benefits/Coverage"), "the mounted field survives");
         assertTrue(reader.includedRulesNeedingRelativization().isEmpty(),
                 "excludeRules drops the mounted rule, so nothing needs relativization");
         assertFalse(reader.toJson().contains("CoveragePositive"), "the excluded rule is gone from the expanded form");
+    }
+
+    // ── the absolute-path detector (the relativization trigger) ──────────────────────────────────────────
+
+    @Test
+    void detectsAbsolutePathReferencesButNotDivisionOrDescentOrRelative() {
+        // absolute references — a '/' that STARTS a reference (after [ ( , $, or at the start):
+        assertTrue(ModelReader.conditionHasAbsolutePathRef("[/Benefits/Coverage] < 0"), "bracketed absolute");
+        assertTrue(ModelReader.conditionHasAbsolutePathRef("Sum(/Benefits/Lines*/Amount) > 0"), "function-arg absolute");
+        assertTrue(ModelReader.conditionHasAbsolutePathRef("Max(a, /Benefits/Cap) > 0"), "second-arg absolute");
+        assertTrue(ModelReader.conditionHasAbsolutePathRef("[$/Benefits/Coverage] == True"), "outer-correlated absolute");
+        assertTrue(ModelReader.conditionHasAbsolutePathRef("/Benefits/Coverage > 0"), "leading absolute");
+        assertTrue(ModelReader.conditionHasAbsolutePathRef("Sum( /Benefits/Amount ) > 0"), "absolute after whitespace");
+        // NOT absolute — division, descent inside a relative path, relative/outer-relative, RuleGroup:
+        assertFalse(ModelReader.conditionHasAbsolutePathRef("[Coverage] < 0"), "relative-downward");
+        assertFalse(ModelReader.conditionHasAbsolutePathRef("[Total] / [Count] > 1"), "division after ]");
+        assertFalse(ModelReader.conditionHasAbsolutePathRef("FieldFilled(Address/Street)"), "descent in a relative path");
+        assertFalse(ModelReader.conditionHasAbsolutePathRef("[../Coverage] < 0"), "relative-upward");
+        assertFalse(ModelReader.conditionHasAbsolutePathRef("[$Sibling/Flag] == True"), "outer-correlated relative");
+        assertFalse(ModelReader.conditionHasAbsolutePathRef("GroupFilled(RuleGroup) and FieldNotFilled(name)"), "no path at all");
     }
 
     // ── failure modes ─────────────────────────────────────────────────────────────────────────────────────
@@ -174,6 +207,17 @@ class ModelReaderTest {
 
     private static ModelResolver benefitsResolver() {
         String benefits = benefitsModel();
+        return ref -> "benefits".equals(ref) ? benefits : null;
+    }
+
+    /** benefitsModel, but the rule names its field by an ABSOLUTE path ({@code [/Benefits/Coverage]}) — the one
+     *  reference form that needs relativizing on mount (the {@code /Benefits} root group vanishes). */
+    private static String benefitsModelAbsolute() {
+        return benefitsModel().replace("[Coverage] < 0", "[/Benefits/Coverage] < 0");
+    }
+
+    private static ModelResolver absoluteBenefitsResolver() {
+        String benefits = benefitsModelAbsolute();
         return ref -> "benefits".equals(ref) ? benefits : null;
     }
 

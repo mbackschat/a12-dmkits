@@ -303,16 +303,71 @@ public final class ModelReader {
         return node;
     }
 
-    /** Record any mounted included rule/computation (whose condition the kernel would relativize) so a
-     *  correctness-critical consumer can refuse rather than mis-evaluate (A4 / IG67). */
+    /** Record a mounted included rule/computation ONLY if its condition carries an <b>absolute-path</b> reference
+     *  — the one reference form that mis-resolves once the included root group's name vanishes on mount. Every
+     *  <em>relative</em> form (downward `[Coverage]`, `..`-upward, or a root-turning-point label the resolver
+     *  discards) resolves against the rule's post-mount group unchanged, so the kernel rewrites <em>nothing</em>
+     *  for it ({@code EntityPathsRelativizer}'s relative-downward short-circuit) and the reader carries it
+     *  verbatim — kernel-exact (KERNEL-FINDINGS "DocumentModel expansion"). An absolute-bearing condition still
+     *  needs the rewrite, so it is recorded and a correctness-critical consumer refuses on it rather than
+     *  mis-evaluate (A4 / IG67). */
     private static void recordIncludedRulesNeedingRelativization(JsonNode node, List<String> warnings) {
         ElementType type = ElementType.of(node);
-        if (type == ElementType.RULE || type == ElementType.COMPUTATION) {
-            warnings.add(node.path(DmKeys.NAME).asText());
+        if (type == ElementType.RULE) {
+            if (conditionHasAbsolutePathRef(node.path(ElementType.RULE.wireName()).path("errorCondition").asText(""))) {
+                warnings.add(node.path(DmKeys.NAME).asText());
+            }
+        } else if (type == ElementType.COMPUTATION) {
+            if (computationHasAbsolutePathRef(node.path(ElementType.COMPUTATION.wireName()))) {
+                warnings.add(node.path(DmKeys.NAME).asText());
+            }
         } else if (type == ElementType.GROUP) {
             node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)
                     .forEach(child -> recordIncludedRulesNeedingRelativization(child, warnings));
         }
+    }
+
+    /** Whether any of a computation's condition texts — the common precondition and each alternative's
+     *  precondition/operation — carries an absolute-path reference (see {@link #conditionHasAbsolutePathRef}). */
+    private static boolean computationHasAbsolutePathRef(JsonNode computationBody) {
+        if (conditionHasAbsolutePathRef(computationBody.path("commonPrecondition").asText(""))) {
+            return true;
+        }
+        for (JsonNode alt : computationBody.path("computationAlternatives")) {
+            if (conditionHasAbsolutePathRef(alt.path("precondition").asText(""))
+                    || conditionHasAbsolutePathRef(alt.path("operation").asText(""))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Whether a stored condition text contains an <b>absolute-path</b> entity reference — a {@code /} that
+     * <em>starts</em> a reference: immediately after {@code [}, {@code (}, {@code ,}, {@code $}, or at the text
+     * start (ignoring whitespace), and followed by an identifier char. A division {@code /} (after {@code ]} /
+     * {@code )} / a digit) or a descent {@code /} inside a relative path (after an identifier / {@code *}) is
+     * NOT a reference start, so neither is flagged. Package-private for a focused unit test.
+     */
+    static boolean conditionHasAbsolutePathRef(String condition) {
+        for (int i = 0; i < condition.length(); i++) {
+            if (condition.charAt(i) != '/') {
+                continue;
+            }
+            char next = i + 1 < condition.length() ? condition.charAt(i + 1) : '\0';
+            if (!(Character.isLetter(next) || next == '_')) {
+                continue;   // not the start of a path segment — a division or a stray slash
+            }
+            int j = i - 1;
+            while (j >= 0 && Character.isWhitespace(condition.charAt(j))) {
+                j--;
+            }
+            char prev = j < 0 ? '\0' : condition.charAt(j);
+            if (prev == '\0' || prev == '[' || prev == '(' || prev == ',' || prev == '$') {
+                return true;   // "/Ident" at a reference-start position → an absolute path
+            }
+        }
+        return false;
     }
 
     // ── effective types (typedef inlining) ────────────────────────────────────────────────────────────────

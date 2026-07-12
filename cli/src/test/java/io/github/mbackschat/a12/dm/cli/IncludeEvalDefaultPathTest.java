@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.cli;
 
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -128,27 +127,27 @@ class IncludeEvalDefaultPathTest {
     }
 
     @Test
-    void anIncludedModelsOwnRulesRefuseLoudlyOnTheDefaultPathButNotUnderKernel(@TempDir Path dir) throws Exception {
+    void anIncludedModelsOwnRelativeRuleEvaluatesOnTheDefaultPathLikeTheKernel(@TempDir Path dir) throws Exception {
         String benefits = benefitsWithRule();
         String policy = DocumentModelDraft.named("policy").locale("en_US")
                 .include("benefits", "benefits")
                 .rootGroup("Policy", p -> p.field("PolicyNo", FieldKind.STRING).mount("Cover", "benefits"))
                 .build().toJson();
         Path model = workspace(dir, policy, benefits);
-        Path doc = instance(dir, "50000.00");
+        Path doc = instance(dir, "-5.00");   // negative → the included model's OWN rule (Coverage must not be negative) fires
 
+        // The included rule references its field RELATIVELY ([Coverage]); the assembly layer carries it verbatim
+        // (no relativization needed) and the interpreter resolves [Coverage] against the rule's POST-MOUNT group
+        // /Policy/Cover — so the default path evaluates the mounted included rule, matching --kernel (was: refused).
         CliTestSupport.Result def = CliTestSupport.run(
                 "-m", model.toString(), "model", "eval", "--instance", doc.toString());
-        assertNotEquals(0, def.code(), () -> "the default path refuses an included-model rule: " + def.out());
-        JsonNode j = M.readTree(def.out());
-        assertEquals("refused", j.path("outcome").asText(), () -> "a structured refusal: " + def.out());
-        assertEquals("RK_INTERPRETER_INCLUDE_RULES_UNSUPPORTED", j.path("diagnostics").path(0).path("code").asText(),
-                () -> "carries the coded refusal: " + def.out());
-        assertTrue(!j.path("diagnostics").path(0).path("fix").asText().isBlank(), "carries a corrective fix");
-
-        // the kernel path handles the include (it relativizes) — it must NOT refuse
         CliTestSupport.Result ker = CliTestSupport.runKernel(
                 "-m", model.toString(), "model", "eval", "--instance", doc.toString());
-        assertEquals(0, ker.code(), () -> "--kernel evaluates the included-model rule fine: " + ker.out() + ker.err());
+
+        assertEquals(0, def.code(), () -> "the default path evaluates the included rule (no longer refuses): " + def.out() + def.err());
+        assertTrue(fired(def.out(), "COV_NEG"),
+                () -> "the mounted included model's OWN rule fires on the default path: " + def.out());
+        assertEquals(fired(ker.out(), "COV_NEG"), fired(def.out(), "COV_NEG"),
+                () -> "the default path agrees with --kernel on the included rule");
     }
 }
