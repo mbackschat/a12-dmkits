@@ -1,0 +1,155 @@
+public enum io.github.mbackschat.a12.dm.schemakit.Dialect
+  public static final io.github.mbackschat.a12.dm.schemakit.Dialect AUTO
+  public static final io.github.mbackschat.a12.dm.schemakit.Dialect JSON_SCHEMA
+  public static final io.github.mbackschat.a12.dm.schemakit.Dialect OPENAPI_30
+  public static final io.github.mbackschat.a12.dm.schemakit.Dialect OPENAPI_31
+  public boolean isOpenApi()
+  public boolean isOpenApi30()
+  public static io.github.mbackschat.a12.dm.schemakit.Dialect valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.schemakit.Dialect[] values()
+
+public final class io.github.mbackschat.a12.dm.schemakit.JsonSchemaExporter
+  public JsonSchemaExporter()
+  public io.github.mbackschat.a12.dm.schemakit.JsonSchemaExporter.ExportResult export(java.lang.String)
+  public io.github.mbackschat.a12.dm.schemakit.JsonSchemaExporter.ExportResult export(java.lang.String, io.github.mbackschat.a12.dm.schemakit.Dialect, boolean)
+
+public static record io.github.mbackschat.a12.dm.schemakit.JsonSchemaExporter.ExportResult
+  public ExportResult(java.lang.String, io.github.mbackschat.a12.dm.schemakit.TranscodeReport)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String jsonSchema()
+  public io.github.mbackschat.a12.dm.schemakit.TranscodeReport report()
+  public final java.lang.String toString()
+
+public final class io.github.mbackschat.a12.dm.schemakit.JsonSchemaImporter
+  public JsonSchemaImporter()
+  public io.github.mbackschat.a12.dm.schemakit.JsonSchemaImporter.BundleResult importBundle(java.lang.String, io.github.mbackschat.a12.dm.schemakit.MappingProfile, io.github.mbackschat.a12.dm.schemakit.Dialect)
+  public io.github.mbackschat.a12.dm.schemakit.JsonSchemaImporter.ImportResult importSchema(java.lang.String)
+  public io.github.mbackschat.a12.dm.schemakit.JsonSchemaImporter.ImportResult importSchema(java.lang.String, io.github.mbackschat.a12.dm.schemakit.MappingProfile)
+  public io.github.mbackschat.a12.dm.schemakit.JsonSchemaImporter.ImportResult importSchema(java.lang.String, io.github.mbackschat.a12.dm.schemakit.MappingProfile, io.github.mbackschat.a12.dm.schemakit.Dialect, java.lang.String)
+
+public static record io.github.mbackschat.a12.dm.schemakit.JsonSchemaImporter.BundleResult
+  public BundleResult(java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.schemakit.JsonSchemaImporter.ImportResult>)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.schemakit.JsonSchemaImporter.ImportResult> models()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.schemakit.JsonSchemaImporter.ImportResult
+  public ImportResult(java.lang.String, io.github.mbackschat.a12.dm.schemakit.TranscodeReport)
+  public java.lang.String dmJson()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.schemakit.TranscodeReport report()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.schemakit.MappingProfile
+  public MappingProfile(io.github.mbackschat.a12.dm.schemakit.MappingProfile.NumberScale, int, io.github.mbackschat.a12.dm.schemakit.MappingProfile.ArrayOfScalar, io.github.mbackschat.a12.dm.schemakit.MappingProfile.MapStrategy, io.github.mbackschat.a12.dm.schemakit.MappingProfile.UnionStrategy, io.github.mbackschat.a12.dm.schemakit.MappingProfile.FormatStrategy, io.github.mbackschat.a12.dm.schemakit.MappingProfile.BooleanKind, io.github.mbackschat.a12.dm.schemakit.MappingProfile.EnumLabels, int, int)
+  public io.github.mbackschat.a12.dm.schemakit.MappingProfile.ArrayOfScalar arrayOfScalar()
+  public io.github.mbackschat.a12.dm.schemakit.MappingProfile.BooleanKind booleanKind()
+  public int defaultRepeatCap()
+  public int defaultScale()
+  public static io.github.mbackschat.a12.dm.schemakit.MappingProfile defaults()
+  public io.github.mbackschat.a12.dm.schemakit.MappingProfile.EnumLabels enumLabels()
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.schemakit.MappingProfile.FormatStrategy format()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.schemakit.MappingProfile.MapStrategy mapStrategy()
+  public io.github.mbackschat.a12.dm.schemakit.MappingProfile.NumberScale numberScale()
+  public int recursionDepth()
+  public static io.github.mbackschat.a12.dm.schemakit.MappingProfile strict()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.schemakit.MappingProfile.UnionStrategy unionStrategy()
+  public io.github.mbackschat.a12.dm.schemakit.MappingProfile withArrayOfScalar(io.github.mbackschat.a12.dm.schemakit.MappingProfile.ArrayOfScalar)
+  public io.github.mbackschat.a12.dm.schemakit.MappingProfile withBooleanKind(io.github.mbackschat.a12.dm.schemakit.MappingProfile.BooleanKind)
+  public io.github.mbackschat.a12.dm.schemakit.MappingProfile withDefaultRepeatCap(int)
+  public io.github.mbackschat.a12.dm.schemakit.MappingProfile withFormat(io.github.mbackschat.a12.dm.schemakit.MappingProfile.FormatStrategy)
+  public io.github.mbackschat.a12.dm.schemakit.MappingProfile withMapStrategy(io.github.mbackschat.a12.dm.schemakit.MappingProfile.MapStrategy)
+  public io.github.mbackschat.a12.dm.schemakit.MappingProfile withNumberScale(io.github.mbackschat.a12.dm.schemakit.MappingProfile.NumberScale, int)
+  public io.github.mbackschat.a12.dm.schemakit.MappingProfile withRecursionDepth(int)
+  public io.github.mbackschat.a12.dm.schemakit.MappingProfile withUnionStrategy(io.github.mbackschat.a12.dm.schemakit.MappingProfile.UnionStrategy)
+
+public static enum io.github.mbackschat.a12.dm.schemakit.MappingProfile.ArrayOfScalar
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.ArrayOfScalar MULTI_SELECT
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.ArrayOfScalar OMIT
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.ArrayOfScalar REPEATABLE_SINGLE
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.ArrayOfScalar VALUE_LIST
+  public static io.github.mbackschat.a12.dm.schemakit.MappingProfile.ArrayOfScalar valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.schemakit.MappingProfile.ArrayOfScalar[] values()
+
+public static enum io.github.mbackschat.a12.dm.schemakit.MappingProfile.BooleanKind
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.BooleanKind BOOLEAN
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.BooleanKind CONFIRM
+  public static io.github.mbackschat.a12.dm.schemakit.MappingProfile.BooleanKind valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.schemakit.MappingProfile.BooleanKind[] values()
+
+public static enum io.github.mbackschat.a12.dm.schemakit.MappingProfile.EnumLabels
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.EnumLabels BLANK
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.EnumLabels DERIVE
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.EnumLabels X_ENUM_NAMES
+  public static io.github.mbackschat.a12.dm.schemakit.MappingProfile.EnumLabels valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.schemakit.MappingProfile.EnumLabels[] values()
+
+public static enum io.github.mbackschat.a12.dm.schemakit.MappingProfile.FormatStrategy
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.FormatStrategy CUSTOM_TYPE
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.FormatStrategy IGNORE
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.FormatStrategy PATTERN
+  public static io.github.mbackschat.a12.dm.schemakit.MappingProfile.FormatStrategy valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.schemakit.MappingProfile.FormatStrategy[] values()
+
+public static enum io.github.mbackschat.a12.dm.schemakit.MappingProfile.MapStrategy
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.MapStrategy IGNORE
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.MapStrategy OMIT
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.MapStrategy REPEATABLE_KEY_VALUE
+  public static io.github.mbackschat.a12.dm.schemakit.MappingProfile.MapStrategy valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.schemakit.MappingProfile.MapStrategy[] values()
+
+public static enum io.github.mbackschat.a12.dm.schemakit.MappingProfile.NumberScale
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.NumberScale DEFAULT_SCALE
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.NumberScale INTEGER
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.NumberScale OMIT
+  public static io.github.mbackschat.a12.dm.schemakit.MappingProfile.NumberScale valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.schemakit.MappingProfile.NumberScale[] values()
+
+public static enum io.github.mbackschat.a12.dm.schemakit.MappingProfile.UnionStrategy
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.UnionStrategy FIRST_VARIANT
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.UnionStrategy OMIT
+  public static final io.github.mbackschat.a12.dm.schemakit.MappingProfile.UnionStrategy SUPERSET_RULE
+  public static io.github.mbackschat.a12.dm.schemakit.MappingProfile.UnionStrategy valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.schemakit.MappingProfile.UnionStrategy[] values()
+
+public record io.github.mbackschat.a12.dm.schemakit.TranscodeReport
+  public TranscodeReport(java.util.List<io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Disposition>, java.util.List<java.lang.String>)
+  public static io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Builder builder()
+  public java.util.List<java.lang.String> diagnostics()
+  public java.util.List<io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Disposition> dispositions()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public final java.lang.String toString()
+
+public static final class io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Builder
+  public Builder()
+  public io.github.mbackschat.a12.dm.schemakit.TranscodeReport build()
+  public io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Builder diagnostic(java.lang.String)
+  public io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Builder mapped(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Tier)
+  public io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Builder omit(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Builder structure(java.lang.String, java.lang.String)
+
+public static record io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Disposition
+  public Disposition(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Tier)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String source()
+  public java.lang.String target()
+  public io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Tier tier()
+  public final java.lang.String toString()
+
+public static enum io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Tier
+  public static final io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Tier CARRIED
+  public static final io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Tier COMPUTATION
+  public static final io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Tier OMITTED
+  public static final io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Tier STRUCTURE
+  public static final io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Tier TIER_A
+  public static final io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Tier TIER_A_PLUS
+  public static io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Tier valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.schemakit.TranscodeReport.Tier[] values()

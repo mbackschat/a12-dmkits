@@ -1,0 +1,2479 @@
+public enum io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentity
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentity NO_VALUE
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentity ZERO
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentity valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentity[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentityClaim
+  public AggregateIdentityClaim(io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentity, java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentity>, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.FacetProbe>)
+  public java.lang.String basis()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentity> identityFor(java.lang.String)
+  public java.lang.String note()
+  public java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentity> perKind()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.FacetProbe> probes()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentity value()
+
+public enum io.github.mbackschat.a12.dm.rulekit.catalog.Boundary
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.Boundary INCLUSIVE
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.Boundary STRICT
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.Boundary valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.Boundary[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.catalog.BoundaryClaim
+  public BoundaryClaim(io.github.mbackschat.a12.dm.rulekit.catalog.Boundary, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.FacetProbe>)
+  public java.lang.String basis()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String note()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.FacetProbe> probes()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.Boundary value()
+
+public sealed enum io.github.mbackschat.a12.dm.rulekit.catalog.BuiltInPattern implements io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.BuiltInPattern AT_LEAST_ONE_OF
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.BuiltInPattern BOUNDED_NUMBER
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.BuiltInPattern DATE_ORDER
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.BuiltInPattern FORMATTED_STRING
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.BuiltInPattern MUTUALLY_EXCLUSIVE
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.BuiltInPattern REQUIRED_WHEN
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.BuiltInPattern SUM_OF_LINE_ITEMS
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.BuiltInPattern TIERED_AMOUNT
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.BuiltInPattern VALUE_SET_ENUM
+  public java.util.Map<java.lang.String, java.lang.String> example()
+  public java.lang.String id()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternKind kind()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam> params()
+  public java.lang.String polarityNote()
+  public java.lang.String skeleton()
+  public java.lang.String summary()
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.BuiltInPattern valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.BuiltInPattern[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.catalog.Corrective
+  public Corrective(java.lang.String, java.util.List<java.lang.String>, java.lang.String, io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.Example, java.lang.String)
+  public java.lang.String code()
+  public final boolean equals(java.lang.Object)
+  public java.lang.String fix()
+  public final int hashCode()
+  public java.lang.String note()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.Example probe()
+  public final java.lang.String toString()
+  public java.util.List<java.lang.String> whenOperands()
+
+public enum io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior AS_EMPTY_STRING
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior AS_FALSE
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior AS_ZERO
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior EVALUATES_FALSE
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior NOT_EVALUATED
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior SKIPPED
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.catalog.EmptyOperandClaim
+  public EmptyOperandClaim(java.lang.String, io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior, java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior>, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.FacetProbe>)
+  public boolean appliesTo(int)
+  public java.lang.String basis()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior behavior()
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior> behaviorFor(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String note()
+  public java.lang.String operand()
+  public java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior> perKind()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.FacetProbe> probes()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.catalog.FacetProbe
+  public FacetProbe(java.lang.String, java.lang.String, java.util.List<java.lang.String>, java.util.Map<java.lang.String, java.lang.String>, java.util.List<java.lang.String>, java.lang.Boolean, io.github.mbackschat.a12.dm.rulekit.catalog.ProbeOutcome, java.lang.String)
+  public java.lang.String dsl()
+  public java.util.List<java.lang.String> empty()
+  public final boolean equals(java.lang.Object)
+  public java.lang.String errorField()
+  public java.lang.Boolean fires()
+  public java.util.Map<java.lang.String, java.lang.String> given()
+  public final int hashCode()
+  public java.lang.String note()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.ProbeOutcome outcome()
+  public java.util.List<java.lang.String> rows()
+  public final java.lang.String toString()
+
+public enum io.github.mbackschat.a12.dm.rulekit.catalog.FillPolarity
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.FillPolarity GROW_ONLY
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.FillPolarity SYMMETRIC
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.FillPolarity valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.FillPolarity[] values()
+
+public enum io.github.mbackschat.a12.dm.rulekit.catalog.GotchaKind
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.GotchaKind AUTHORING
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.GotchaKind RENDERING
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.GotchaKind SURPRISE
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.GotchaKind valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.GotchaKind[] values()
+
+public enum io.github.mbackschat.a12.dm.rulekit.catalog.IterationRange
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.IterationRange DECLARED
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.IterationRange INSTANTIATED
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.IterationRange MIXED
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.IterationRange valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.IterationRange[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.catalog.IterationRangeClaim
+  public IterationRangeClaim(io.github.mbackschat.a12.dm.rulekit.catalog.IterationRange, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.FacetProbe>)
+  public java.lang.String basis()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String note()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.FacetProbe> probes()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.IterationRange value()
+
+public final class io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry> byId(java.lang.String)
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry> byKeyword(java.lang.String)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry> byKind(io.github.mbackschat.a12.dm.rulekit.catalog.OperatorKind)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry> byReturns(java.lang.String)
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior> defaultEmptyBehavior(io.github.mbackschat.a12.dm.core.ValueKind)
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior> emptyOperandBehavior(java.lang.String, int, io.github.mbackschat.a12.dm.core.ValueKind)
+  public java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog.EmptyOperandDefault> emptyOperandDefaults()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry> entries()
+  public static java.lang.String kindToken(io.github.mbackschat.a12.dm.core.ValueKind)
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog load()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry> operatorsForError(java.lang.String)
+  public int size()
+  public java.lang.String verifiedAgainst()
+
+public static record io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog.EmptyOperandDefault
+  public EmptyOperandDefault(io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.FacetProbe>)
+  public java.lang.String basis()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior behavior()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String note()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.FacetProbe> probes()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry
+  public OperatorEntry(java.lang.String, io.github.mbackschat.a12.dm.rulekit.catalog.OperatorKind, io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.Keywords, java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.Operand>, java.lang.String, java.lang.String, java.util.List<java.lang.String>, java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.Gotcha>, io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.Example, io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.InvalidExample, io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.ComputationExample, io.github.mbackschat.a12.dm.rulekit.catalog.OperatorStatus, java.lang.String, java.util.List<java.lang.String>, java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.catalog.OperatorSemantics, java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.Corrective>, java.util.List<java.lang.String>, java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentityClaim aggregateIdentityClaim()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.BoundaryClaim boundaryClaim()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.ComputationExample computationExample()
+  public java.util.List<java.lang.String> constraints()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.Corrective> correctives()
+  public java.util.List<java.lang.String> dslEntry()
+  public java.lang.String dslEntryNote()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.EmptyOperandClaim> emptyOperandClaims()
+  public final boolean equals(java.lang.Object)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.Gotcha> gotchas()
+  public final int hashCode()
+  public java.lang.String id()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.InvalidExample invalidExample()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.IterationRangeClaim iterationRangeClaim()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.Keywords keywords()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.OperatorKind kind()
+  public java.lang.String meaning()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.Operand> operands()
+  public java.util.List<java.lang.String> opposite()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.PolarityClaim polarityClaim()
+  public java.lang.String returns()
+  public java.util.List<java.lang.String> seeAlso()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.OperatorSemantics semantics()
+  public java.lang.String sinceKernel()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.OperatorStatus status()
+  public boolean supported()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.Example validExample()
+
+public static record io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.ComputationExample
+  public ComputationExample(java.lang.String, java.lang.String, java.lang.String)
+  public java.lang.String computedField()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String note()
+  public java.lang.String operation()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.Example
+  public Example(java.lang.String, java.lang.String)
+  public java.lang.String dsl()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String note()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.Gotcha
+  public Gotcha(java.lang.String, io.github.mbackschat.a12.dm.rulekit.catalog.GotchaKind)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.GotchaKind kind()
+  public java.lang.String text()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.InvalidExample
+  public InvalidExample(java.lang.String, java.lang.String, java.lang.String)
+  public java.lang.String dsl()
+  public final boolean equals(java.lang.Object)
+  public java.lang.String error()
+  public java.lang.String fix()
+  public final int hashCode()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.Keywords
+  public Keywords(java.lang.String, java.lang.String)
+  public java.lang.String de()
+  public java.lang.String en()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.Operand
+  public Operand(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public final java.lang.String toString()
+  public java.lang.String type()
+
+public enum io.github.mbackschat.a12.dm.rulekit.catalog.OperatorKind
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.OperatorKind AGGREGATE
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.OperatorKind CONSTANT
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.OperatorKind FUNCTION
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.OperatorKind OPERATOR
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.OperatorKind PATH_OP
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.OperatorKind PREDICATE
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.OperatorKind STRUCTURAL
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.OperatorKind fromJson(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.OperatorKind valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.OperatorKind[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.catalog.OperatorSemantics
+  public OperatorSemantics(java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.EmptyOperandClaim>, io.github.mbackschat.a12.dm.rulekit.catalog.BoundaryClaim, io.github.mbackschat.a12.dm.rulekit.catalog.IterationRangeClaim, io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentityClaim, io.github.mbackschat.a12.dm.rulekit.catalog.PolarityClaim)
+  public io.github.mbackschat.a12.dm.rulekit.catalog.AggregateIdentityClaim aggregateIdentity()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.BoundaryClaim boundary()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.EmptyOperandClaim> emptyOperand()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.IterationRangeClaim iterationRange()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.PolarityClaim polarity()
+  public final java.lang.String toString()
+
+public enum io.github.mbackschat.a12.dm.rulekit.catalog.OperatorStatus
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.OperatorStatus PLANNED
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.OperatorStatus SUPPORTED
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.OperatorStatus valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.OperatorStatus[] values()
+
+public final class io.github.mbackschat.a12.dm.rulekit.catalog.PatternCatalog
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry> byId(java.lang.String)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry> entries()
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.PatternCatalog load()
+  public int size()
+
+public interface io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry
+  public abstract java.util.Map<java.lang.String, java.lang.String> example()
+  public abstract java.lang.String id()
+  public abstract io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.Instantiation instantiate(io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel, java.util.Map<java.lang.String, java.lang.String>)
+  public abstract io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternKind kind()
+  public abstract java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam> params()
+  public abstract java.lang.String polarityNote()
+  public abstract java.lang.String skeleton()
+  public abstract java.lang.String summary()
+
+public static record io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.ComputationInstantiation implements io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.Instantiation
+  public ComputationInstantiation(io.github.mbackschat.a12.dm.rulekit.dsl.Computation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation computation()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.FieldInstantiation implements io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.Instantiation
+  public FieldInstantiation(java.lang.String, java.lang.String, java.lang.String, java.util.Map<java.lang.String, java.lang.Object>)
+  public java.util.Map<java.lang.String, java.lang.Object> config()
+  public final boolean equals(java.lang.Object)
+  public java.lang.String group()
+  public final int hashCode()
+  public java.lang.String kind()
+  public java.lang.String name()
+  public final java.lang.String toString()
+
+public static sealed interface io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.Instantiation
+
+public static enum io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternKind
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternKind COMPUTATION
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternKind FIELD
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternKind RULE
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternKind valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternKind[] values()
+
+public static record io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam
+  public PatternParam(java.lang.String, io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind, java.lang.String)
+  public java.lang.String doc()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind kind()
+  public java.lang.String name()
+  public final java.lang.String toString()
+
+public static enum io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind DATE_FIELD
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind EQUATABLE_FIELD
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind FIELD
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind FIELD_FLATTEN
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind FIELD_LIST
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind GROUP
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind NAME
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind NUMBER_FIELD
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind VALUE
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind[] values()
+
+public static record io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.RuleInstantiation implements io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.Instantiation
+  public RuleInstantiation(java.lang.String, java.lang.String, java.lang.String)
+  public java.lang.String condition()
+  public final boolean equals(java.lang.Object)
+  public java.lang.String errorField()
+  public final int hashCode()
+  public java.lang.String suggestedCode()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.catalog.PolarityClaim
+  public PolarityClaim(io.github.mbackschat.a12.dm.rulekit.catalog.FillPolarity, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.FacetProbe>)
+  public java.lang.String basis()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String note()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.FacetProbe> probes()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.catalog.FillPolarity value()
+
+public enum io.github.mbackschat.a12.dm.rulekit.catalog.ProbeOutcome
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.ProbeOutcome OMISSION
+  public static final io.github.mbackschat.a12.dm.rulekit.catalog.ProbeOutcome VALUE
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.ProbeOutcome valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.catalog.ProbeOutcome[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation
+  public ComputationExplanation(java.lang.String, java.lang.String, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation>, java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Alternative>, java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Message>, java.lang.String)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Alternative> alternatives()
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation> commonPrecondition()
+  public java.lang.String computedField()
+  public java.lang.String computedFieldKind()
+  public final boolean equals(java.lang.Object)
+  public java.lang.String gloss()
+  public final int hashCode()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Message> messages()
+  public java.lang.String toJson()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Alternative
+  public Alternative(java.util.Optional<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation>, io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.OperationExplanation)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.OperationExplanation operation()
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation> precondition()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Message
+  public Message(java.lang.String, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String locale()
+  public java.lang.String text()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.OperationExplanation
+  public OperationExplanation(java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation.Operator>, java.util.List<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation.Reference>)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation.Operator> operators()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation.Reference> references()
+  public java.lang.String text()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.context.FieldMatch
+  public FieldMatch(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.context.FieldMatch.How)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.context.FieldMatch.How how()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String name()
+  public java.lang.String path()
+  public final java.lang.String toString()
+
+public static enum io.github.mbackschat.a12.dm.rulekit.context.FieldMatch.How
+  public static final io.github.mbackschat.a12.dm.rulekit.context.FieldMatch.How EXACT_NAME
+  public static final io.github.mbackschat.a12.dm.rulekit.context.FieldMatch.How EXACT_PATH
+  public static final io.github.mbackschat.a12.dm.rulekit.context.FieldMatch.How FUZZY
+  public static final io.github.mbackschat.a12.dm.rulekit.context.FieldMatch.How SUBSTRING
+  public static io.github.mbackschat.a12.dm.rulekit.context.FieldMatch.How valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.context.FieldMatch.How[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.context.ModelCard
+  public ModelCard(java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ModelCard.Field>, java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ModelCard.Group>, java.util.List<java.lang.String>)
+  public final boolean equals(java.lang.Object)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ModelCard.Field> fields()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.context.ModelCard.Group> groups()
+  public final int hashCode()
+  public java.util.List<java.lang.String> locales()
+  public java.lang.String toJson()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.context.ModelCard.Field
+  public Field(java.lang.String, java.lang.String, java.lang.String, java.util.Optional<java.lang.Integer>, java.util.Optional<java.math.BigDecimal>, java.util.Optional<java.math.BigDecimal>, java.util.OptionalInt, java.util.OptionalInt, java.util.Optional<java.lang.String>, java.util.List<java.lang.String>)
+  public java.util.List<java.lang.String> enumValues()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String kind()
+  public java.util.Optional<java.math.BigDecimal> max()
+  public java.util.OptionalInt maxLength()
+  public java.util.Optional<java.math.BigDecimal> min()
+  public java.util.OptionalInt minLength()
+  public java.lang.String name()
+  public java.lang.String path()
+  public java.util.Optional<java.lang.String> pattern()
+  public java.util.Optional<java.lang.Integer> scale()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.context.ModelCard.Group
+  public Group(java.lang.String, boolean, int)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public int maxRepetitions()
+  public java.lang.String path()
+  public boolean repeatable()
+  public final java.lang.String toString()
+
+public final class io.github.mbackschat.a12.dm.rulekit.context.ModelContext
+  public ModelContext(io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel)
+  public io.github.mbackschat.a12.dm.rulekit.context.ModelCard describe()
+  public java.util.List<java.lang.String> errorFieldCandidates(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public java.util.List<java.lang.String> errorFieldCandidates(java.util.Set<java.lang.String>)
+  public io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation explain(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation explainComputation(io.github.mbackschat.a12.dm.rulekit.dsl.Computation)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.context.FieldMatch> find(java.lang.String)
+
+public record io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation
+  public RuleExplanation(java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation.Operator>, java.util.List<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation.Reference>, boolean, java.util.Optional<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation.Node, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public java.lang.String gloss()
+  public final int hashCode()
+  public boolean iterates()
+  public java.util.Optional<java.lang.String> iterationGroup()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation.Operator> operators()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation.Reference> references()
+  public java.lang.String text()
+  public java.lang.String toJson()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation.Node tree()
+
+public static record io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation.Node
+  public Node(java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation.Node>)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation.Node> children()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String operator()
+  public java.lang.String text()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation.Operator
+  public Operator(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<java.lang.String>)
+  public final boolean equals(java.lang.Object)
+  public java.util.List<java.lang.String> gotchas()
+  public final int hashCode()
+  public java.lang.String id()
+  public java.lang.String keyword()
+  public java.lang.String kind()
+  public java.lang.String meaning()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation.Reference
+  public Reference(java.lang.String, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String kind()
+  public java.lang.String path()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.Annotation
+  public Annotation(java.lang.String, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String name()
+  public final java.lang.String toString()
+  public java.lang.String value()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public Arithmetic(io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic.Op, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation left()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic.Op op()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation right()
+  public final java.lang.String toString()
+
+public static enum io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic.Op
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic.Op ADD
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic.Op DIVIDE
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic.Op MULTIPLY
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic.Op POWER
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic.Op SUBTRACT
+  public java.lang.String symbol()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic.Op valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic.Op[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.BaseYear implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public BaseYear()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.BoolLiteral implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public BoolLiteral(boolean)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+  public boolean value()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef
+  public BoolRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isFalse()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isNotFalse()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isNotTrue()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isTrue()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
+  public final java.lang.String toString()
+
+public final class io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+  public io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel add(io.github.mbackschat.a12.dm.rulekit.dsl.Computation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel add(io.github.mbackschat.a12.dm.rulekit.dsl.Rule)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition allFieldsFilled(java.lang.String[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldFilled(java.lang.String[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef bool(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.DateFragmentRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.DateRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.StringRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder computation(io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef confirm(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.StringRef custom(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateRef date(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateFragmentRef dateFragment(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef dateRange(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeRef dateTime(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef enumOf(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field(java.lang.String)
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo> fieldAt(java.lang.String)
+  public java.util.stream.Stream<io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo> fields()
+  public java.util.stream.Stream<io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo> fields(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldsNotCollectivelyFilled(java.lang.String[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef flatten(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef flattenGroup(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef group(java.lang.String)
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.GroupInfo> groupAt(java.lang.String)
+  public java.util.stream.Stream<io.github.mbackschat.a12.dm.rulekit.dsl.GroupInfo> groups()
+  public boolean iteratesForErrorField(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel load(java.nio.file.Path)
+  public java.util.List<java.lang.String> locales()
+  public int maxRepetitions(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition moreThanOneFieldFilled(java.lang.String[])
+  public java.util.Optional<java.lang.String> nearestRepeatableAncestor(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldFilled(java.lang.String[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllFieldsFilled(java.lang.String[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notExactlyOneFieldFilled(java.lang.String[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef num(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel of(io.github.mbackschat.a12.dm.core.ModelIndex)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel ofJson(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel ofJson(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel ofJsonLenient(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel removeComputation(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel removeRule(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel replaceComputation(java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Computation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel replaceCondition(java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public io.github.mbackschat.a12.dm.core.ModelResolver resolver()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder rule(io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.StringRef str(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef time(java.lang.String)
+  public java.lang.String toJson()
+  public io.github.mbackschat.a12.dm.core.Verification verification()
+  public void writeTo(java.nio.file.Path)
+
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public abstract io.github.mbackschat.a12.dm.core.ValueKind kind()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef
+  public CategoryRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.lang.String, java.util.List<java.lang.String>)
+  public CategoryRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.lang.String, java.util.List<java.lang.String>, boolean)
+  public boolean correlated()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition is(io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition is(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isNot(io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isNot(java.lang.String)
+  public java.lang.String name()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef outer()
+  public final java.lang.String toString()
+  public java.util.List<java.lang.String> values()
+
+public final class io.github.mbackschat.a12.dm.rulekit.dsl.Comments
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Comments after(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Comments after(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Comments before(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Comments before(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String)
+  public boolean isEmpty()
+  public static java.lang.String leadingCommentBlock(java.lang.String)
+  public static java.util.Optional<java.lang.String> leadingCommentOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Comments none()
+  public static java.lang.String preserveLeading(java.lang.String, java.lang.String)
+  public static java.lang.String withLeadingComment(java.lang.String, java.lang.String)
+
+public enum io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp EQ
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp GE
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp GT
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp LE
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp LT
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp NE
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp TOLERANCE_1
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp TOLERANCE_10
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp TOLERANCE_2
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp TOLERANCE_5
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp> complement()
+  public java.lang.String operatorId()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public ComparisonCondition(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation left()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp operator()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation right()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.Computation
+  public Computation(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Alternative>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>, io.github.mbackschat.a12.dm.rulekit.dsl.Comments)
+  public Computation(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Alternative>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>, io.github.mbackschat.a12.dm.rulekit.dsl.Comments, java.util.List<java.lang.String>)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Alternative> alternatives()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Comments comments()
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition> commonPrecondition()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef computedField()
+  public java.lang.String computedFieldRelPath()
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation draft()
+  public final boolean equals(java.lang.Object)
+  public java.util.List<java.lang.String> errorCodesToSuppress()
+  public java.lang.String groupPath()
+  public final int hashCode()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText> messages()
+  public java.lang.String name()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Alternative
+  public Alternative(java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation operation()
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition> precondition()
+  public final java.lang.String toString()
+
+public static final class io.github.mbackschat.a12.dm.rulekit.dsl.Computation.AlternativeBuilder
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+
+public static final class io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation build()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder comment(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder comment(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder comment(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder commonPrecondition(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder errorCodesToSuppress(java.lang.String[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder message(io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder name(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.AlternativeBuilder when(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.Concatenation implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public Concatenation(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation>)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation> parts()
+  public final java.lang.String toString()
+
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition and(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public abstract java.lang.String operatorId()
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition or(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition transform(java.util.function.UnaryOperator<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>)
+
+public final class io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEdit
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEdit.Kind classify(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+
+public static enum io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEdit.Kind
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEdit.Kind OPERAND
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEdit.Kind OPERATOR
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEdit.Kind REFERENCES
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEdit.Kind STRUCTURE
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEdit.Kind valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEdit.Kind[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript
+  public ConditionEditScript(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript.LocatedEdit>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript diff(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript.LocatedEdit> edits()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript.LocatedEdit
+  public LocatedEdit(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript.Op, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String)
+  public java.lang.String address()
+  public java.lang.String after()
+  public java.lang.String before()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String nodeKind()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript.Op op()
+  public java.lang.String summary()
+  public final java.lang.String toString()
+
+public static enum io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript.Op
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript.Op ADDED
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript.Op REMOVED
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript.Op REPLACED
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript.Op valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript.Op[] values()
+
+public enum io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage DE
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage EN
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage[] values()
+
+public final class io.github.mbackschat.a12.dm.rulekit.dsl.ConditionPolarity
+  public static java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition> complement(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public static boolean isInversionOf(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences
+  public ConditionReferences(java.util.Set<java.lang.String>, java.util.Set<java.lang.String>)
+  public boolean covers(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public java.util.Set<java.lang.String> fieldPaths()
+  public java.util.Set<java.lang.String> groupPaths()
+  public final int hashCode()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences of(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences of(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public boolean referencesField(java.lang.String)
+  public static boolean referencesRuleGroup(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef
+  public ConfirmRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition confirmed()
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notConfirmed()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public CountAggregate(io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate.CountOp, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
+  public final boolean equals(java.lang.Object)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand> fields()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef> groups()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate.CountOp op()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public static enum io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate.CountOp
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate.CountOp DIFFERENT_VALUES
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate.CountOp FILLED_FIELDS
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate.CountOp FILLED_GROUPS
+  public java.lang.String operatorId()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate.CountOp valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate.CountOp[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.CurrentRepetition implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public CurrentRepetition(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
+  public CurrentRepetition(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, boolean)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef group()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public boolean outer()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.CustomConditionRef implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public CustomConditionRef(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String name()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.CustomTypeValidity implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public CustomTypeValidity(boolean, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public final int hashCode()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+  public java.lang.String typeName()
+  public boolean valid()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public DateConstruction(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public DateConstruction(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation>)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation day()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation month()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation year1()
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation> year2()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public DateDifference(io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference.Unit, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation left()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation right()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference.Unit unit()
+
+public static enum io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference.Unit
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference.Unit DAYS
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference.Unit HOURS
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference.Unit MINUTES
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference.Unit MONTHS
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference.Unit SECONDS
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference.Unit YEARS
+  public java.lang.String operatorId()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference.Unit valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference.Unit[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr implements io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand
+  public DateExpr(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
+  public final int hashCode()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public DateExtraction(io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction.Unit, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation source()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction.Unit unit()
+
+public static enum io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction.Unit
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction.Unit DAY
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction.Unit HOURS
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction.Unit MINUTES
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction.Unit MONTH
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction.Unit QUARTER
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction.Unit SECONDS
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction.Unit YEAR
+  public java.lang.String operatorId()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction.Unit valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction.Unit[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateFragmentRef implements io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand
+  public DateFragmentRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public DateFragmentRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, boolean)
+  public boolean correlated()
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateFragmentRef outer()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public DateListAggregate(io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate.Mode, io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate.Mode mode()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef scope()
+  public final java.lang.String toString()
+
+public static enum io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate.Mode
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate.Mode EARLIEST
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate.Mode LATEST
+  public java.lang.String operatorId()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate.Mode valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate.Mode[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateLiteral implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public DateLiteral(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public final java.lang.String toString()
+  public java.lang.String value()
+
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand extends io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition after(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition before(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition onOrAfter(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition onOrBefore(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeBound implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public DateRangeBound(io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeBound.Bound, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeBound.Bound bound()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation source()
+  public final java.lang.String toString()
+
+public static enum io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeBound.Bound
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeBound.Bound END
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeBound.Bound START
+  public java.lang.String operatorId()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeBound.Bound valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeBound.Bound[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeConstruction implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public DateRangeConstruction(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation end()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation start()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef
+  public DateRangeRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public DateRangeRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, boolean)
+  public boolean correlated()
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef outer()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateRef implements io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand
+  public DateRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public DateRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, boolean)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition agreesWith(io.github.mbackschat.a12.dm.rulekit.dsl.DateRef)
+  public boolean correlated()
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr forIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr forIndex(java.lang.String)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateRef outer()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(java.lang.String)
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateShift implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public DateShift(io.github.mbackschat.a12.dm.rulekit.dsl.DateShift.Unit, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation amount()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation date()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateShift.Unit unit()
+
+public static enum io.github.mbackschat.a12.dm.rulekit.dsl.DateShift.Unit
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateShift.Unit DAYS
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateShift.Unit HOURS
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateShift.Unit MINUTES
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateShift.Unit MONTHS
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateShift.Unit SECONDS
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateShift.Unit YEARS
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateShift.Unit valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateShift.Unit[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeConstruction implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public DateTimeConstruction(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation date()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation time()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr implements io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand
+  public DateTimeExpr(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
+  public final int hashCode()
+  public final java.lang.String toString()
+
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand extends io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition after(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand)
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition before(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand)
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand)
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand)
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition onOrAfter(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand)
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition onOrBefore(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand)
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateTimePart implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public DateTimePart(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimePart.Unit, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation source()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateTimePart.Unit unit()
+
+public static enum io.github.mbackschat.a12.dm.rulekit.dsl.DateTimePart.Unit
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateTimePart.Unit DATE
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.DateTimePart.Unit TIME
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimePart.Unit valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimePart.Unit[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeRef implements io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand
+  public DateTimeRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public DateTimeRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, boolean)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition agreesWith(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeRef)
+  public boolean correlated()
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr forIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr forIndex(java.lang.String)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeRef outer()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(java.lang.String)
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.DateValidity implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public DateValidity(boolean, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation dateConstruct()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+  public boolean valid()
+
+public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr abs(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr absValue(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr addDays(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr addDays(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, long)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr addHours(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr addHours(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, long)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr addMinutes(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr addMinutes(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, long)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr addMonths(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr addMonths(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, long)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr addSeconds(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr addSeconds(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, long)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr addYears(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr addYears(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, long)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition allFieldsFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition allFieldsFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition allFieldsFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition allGroupsFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition allGroupsFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition allOf(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.dsl.Condition[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition allOf(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition anyOf(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.dsl.Condition[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition anyOf(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneDateRangeOverlaps(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldValueIncludedInValueList(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef, io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.StringRef, io.github.mbackschat.a12.dm.rulekit.dsl.StringRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneGroupFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneGroupFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr baseYear()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr baseYearNumber()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr currentRepetition(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr currentRepetition(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, boolean)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition customCondition(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr date(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr date(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr dateFromDateTime(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeConstruction dateRange(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition dateRangesOverlap(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr dateTime(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr dateValue(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr dateValue(java.time.LocalDate)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr dayFromDate(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText de(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr differenceInDays(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr differenceInHours(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr differenceInMinutes(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr differenceInMonths(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr differenceInSeconds(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr differenceInYears(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr earliestOf(io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText en(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr endOfBaseYear()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr endOfDateRange(io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public static java.lang.String fieldLabel(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldNotFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public static java.lang.String fieldValue(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr fieldValueAsNumber(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr fieldValueAsString(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr fieldValueAsString(io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldValuesNotUnique(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldValuesNotUnique(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldsNotCollectivelyFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldsNotCollectivelyFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldsNotCollectivelyFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr firstFilledDate(io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr firstFilledEnum(io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr firstFilledNumber(io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr firstFilledString(io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupNotFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupsNotCollectivelyFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupsNotCollectivelyFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr hoursFromTime(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition invalid(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition invalidType(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr latestOf(io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr length(io.github.mbackschat.a12.dm.rulekit.dsl.StringRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition matches(io.github.mbackschat.a12.dm.rulekit.dsl.StringRef, java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr max(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr max(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr maxValue(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr min(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand, io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr min(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr minValue(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr minutesFromTime(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr monthFromDate(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition moreThanOneFieldFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition moreThanOneFieldFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition moreThanOneFieldFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldValueIncludedInValueList(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef, io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.StringRef, io.github.mbackschat.a12.dm.rulekit.dsl.StringRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noGroupFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noGroupFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllFieldValuesIncludedInValueList(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllFieldValuesIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef, io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllFieldValuesIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllFieldValuesIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.StringRef, io.github.mbackschat.a12.dm.rulekit.dsl.StringRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllFieldsFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllFieldsFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllFieldsFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllGroupsFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllGroupsFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notExactlyOneFieldFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notExactlyOneFieldFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notExactlyOneFieldFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr now()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr number(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr number(java.math.BigDecimal)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr number(long)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfDifferentValues(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledFields(io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledFields(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledFields(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledGroups(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledGroups(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfFilledRootGroups(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfValueInFields(boolean, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfValueInFields(java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr numberOfValueInFields(long, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr quarterFromDate(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr rangeAsNumber(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, int, int)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr rangeAsString(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, int, int)
+  public static java.lang.String repetitionIndex(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition repetitionNotUnique(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr roundAccounting(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, int)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr roundAccountingValue(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr roundDown(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, int)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr roundDownValue(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr roundUp(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr, int)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr roundUpValue(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.RuleGroupRef ruleGroup()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr secondsFromTime(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr startOfBaseYear()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr startOfDateRange(io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr sum(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr sumOfProducts(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr text(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText text(java.lang.String, java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr time(java.lang.String, java.lang.String, java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr timeFromDateTime(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr timeValue(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr timeValue(java.time.LocalTime)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr today()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition valid(io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition validType(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr valueAsDateFirstDay(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr valueAsDateLastDay(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition violates(io.github.mbackschat.a12.dm.rulekit.dsl.StringRef, java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr yearFromDate(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand)
+
+public final class io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+  public DslRenderer()
+  public DslRenderer(io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog, io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage)
+  public DslRenderer(io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog, io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage, java.lang.String)
+  public DslRenderer(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage)
+  public DslRenderer(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage, java.lang.String)
+  public java.lang.String render(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public java.lang.String render(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Comments)
+  public java.lang.String render(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public java.lang.String render(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.dsl.Comments)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer.Rendered renderWithSpans(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+
+public static record io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer.Rendered
+  public Rendered(java.lang.String, java.util.Map<io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.validate.Span>)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.util.Map<io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.validate.Span> spans()
+  public java.lang.String text()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public EnumCategoryAccess(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.lang.String)
+  public EnumCategoryAccess(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.lang.String, boolean)
+  public java.lang.String category()
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public boolean outer()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr
+  public EnumExpr(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition is(io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition is(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition is(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isNot(io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isNot(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isNot(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(java.lang.String)
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef
+  public EnumRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.List<java.lang.String>, java.util.Map<java.lang.String, java.util.List<java.lang.String>>)
+  public EnumRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.List<java.lang.String>, java.util.Map<java.lang.String, java.util.List<java.lang.String>>, boolean)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition agreesWith(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
+  public java.util.List<java.lang.String> allowedValues()
+  public java.util.Map<java.lang.String, java.util.List<java.lang.String>> categories()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef category(java.lang.String)
+  public boolean correlated()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr forIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr forIndex(java.lang.String)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition in(java.lang.String, java.lang.String[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition is(io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition is(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition is(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isNot(io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isNot(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isNot(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notIn(java.lang.String, java.lang.String[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef outer()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(java.lang.String)
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumValueLiteral implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public EnumValueLiteral(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public final java.lang.String toString()
+  public java.lang.String value()
+
+public final class io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Annotation> annotation(java.lang.String)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Annotation> annotations()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef asBool()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef asConfirm()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef asEnum()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef asNum()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.StringRef asStr()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef group()
+  public java.lang.String groupPath()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.util.OptionalInt maxLength()
+  public java.util.OptionalInt minLength()
+  public java.lang.String name()
+  public java.util.Optional<java.math.BigDecimal> numberMax()
+  public java.util.Optional<java.math.BigDecimal> numberMin()
+  public java.lang.String path()
+  public java.util.Optional<java.lang.String> pattern()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef ref()
+  public int scale()
+  public java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListEntityListCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public FieldListEntityListCondition(io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
+  public final boolean equals(java.lang.Object)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand> fields()
+  public final int hashCode()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier quantifier()
+  public final java.lang.String toString()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand> valueFields()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListPredicate implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public FieldListPredicate(io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
+  public final boolean equals(java.lang.Object)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand> fields()
+  public final int hashCode()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier quantifier()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef implements io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
+  public FieldListRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
+  public FieldListRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>)
+  public FieldListRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>, boolean)
+  public boolean correlated()
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public java.lang.String fieldPath()
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition> filter()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef> flattened()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef having(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef outer()
+  public java.lang.String renderedPath()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListValueListCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public FieldListValueListCondition(io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation>)
+  public final boolean equals(java.lang.Object)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand> fields()
+  public final int hashCode()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier quantifier()
+  public final java.lang.String toString()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation> values()
+
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
+  public abstract java.lang.String fieldPath()
+  public abstract io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public abstract java.lang.String renderedPath()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public FieldPresenceCondition(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, boolean)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public boolean filled()
+  public final int hashCode()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef implements io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
+  public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind)
+  public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle)
+  public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle, boolean)
+  public boolean correlated()
+  public final boolean equals(java.lang.Object)
+  public java.lang.String fieldPath()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef outer()
+  public java.lang.String path()
+  public java.lang.String renderedPath()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle styleHint()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue value()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public FieldRounding(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding.Mode, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding.Mode mode()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public static enum io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding.Mode
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding.Mode ABS
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding.Mode ROUND_ACCOUNTING
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding.Mode ROUND_DOWN
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding.Mode ROUND_UP
+  public java.lang.String operatorId()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding.Mode valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding.Mode[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public FieldValue(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public FieldValue(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, boolean)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public boolean outer()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsNumber implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public FieldValueAsNumber(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsString implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public FieldValueAsString(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledValue implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public FirstFilledValue(io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef scope()
+  public final java.lang.String toString()
+
+public final class io.github.mbackschat.a12.dm.rulekit.dsl.GroupInfo
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Annotation> annotation(java.lang.String)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Annotation> annotations()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef bool(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef confirm(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateRef date(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateFragmentRef dateFragment(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef dateRange(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeRef dateTime(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef enumOf(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef flatten(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef flattenGroup(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef group(java.lang.String)
+  public int maxRepetitions()
+  public java.lang.String name()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef num(java.lang.String)
+  public java.lang.String path()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef ref()
+  public boolean repeating()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.StringRef str(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef time(java.lang.String)
+  public java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupListPredicate implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public GroupListPredicate(io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
+  public final boolean equals(java.lang.Object)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef> groups()
+  public final int hashCode()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier quantifier()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef
+  public GroupListRef(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
+  public final boolean equals(java.lang.Object)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef> flattened()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef group()
+  public final int hashCode()
+  public java.lang.String path()
+  public java.lang.String renderedPath()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public GroupPresenceCondition(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, boolean)
+  public final boolean equals(java.lang.Object)
+  public boolean filled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef group()
+  public final int hashCode()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public enum io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier ALL_GROUPS_FILLED
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier AT_LEAST_ONE_GROUP_FILLED
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier GROUPS_NOT_COLLECTIVELY_FILLED
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier NOT_ALL_GROUPS_FILLED
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier NO_GROUP_FILLED
+  public java.lang.String operatorId()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef implements io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference
+  public GroupRef(java.lang.String, boolean)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
+  public java.lang.String path()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef ref()
+  public boolean repeating()
+  public final java.lang.String toString()
+
+public interface io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef ref()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupScopedFieldFill implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public GroupScopedFieldFill(io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef>)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier quantifier()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef> scopes()
+  public final java.lang.String toString()
+
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue extends io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public abstract java.lang.String operatorId()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValueAsString implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public IndexedFieldValueAsString(io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue index()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.IndexedPresenceCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public IndexedPresenceCondition(io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue, boolean)
+  public final boolean equals(java.lang.Object)
+  public boolean filled()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue index()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.LengthOf implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public LengthOf(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public ListAggregate(io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate.AggOp, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate.AggOp op()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand> operands()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public static enum io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate.AggOp
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate.AggOp MAX_VALUE
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate.AggOp MIN_VALUE
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate.AggOp SUM
+  public java.lang.String operatorId()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate.AggOp valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate.AggOp[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText
+  public LocalizedText(java.lang.String, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String locale()
+  public java.lang.String text()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public LogicCondition(io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition.Op, io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition left()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition.Op op()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition right()
+  public final java.lang.String toString()
+
+public static enum io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition.Op
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition.Op AND
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition.Op OR
+  public java.lang.String operatorId()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition.Op valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition.Op[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.Now implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public Now()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
+  public NumberExpr(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition differsWithTolerance(io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr dividedBy(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(java.math.BigDecimal)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(long)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ge(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ge(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ge(java.math.BigDecimal)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ge(long)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition gt(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition gt(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition gt(java.math.BigDecimal)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition gt(long)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition le(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition le(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition le(java.math.BigDecimal)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition le(long)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition lt(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition lt(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition lt(java.math.BigDecimal)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition lt(long)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr minus(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr minus(long)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(java.math.BigDecimal)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(long)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr plus(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr plus(long)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr times(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr toThePowerOf(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public NumberLiteral(java.math.BigDecimal)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral of(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral of(long)
+  public final java.lang.String toString()
+  public java.math.BigDecimal value()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.NumberOfValueInFields implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public NumberOfValueInFields(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
+  public final boolean equals(java.lang.Object)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand> fields()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation value()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef
+  public NumberRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, int)
+  public NumberRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, int, boolean)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition agreesWith(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr asNumber()
+  public boolean correlated()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition differsWithTolerance(io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance, io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(java.math.BigDecimal)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(long)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr forIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr forIndex(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ge(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ge(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ge(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ge(java.math.BigDecimal)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ge(long)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition gt(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition gt(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition gt(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition gt(java.math.BigDecimal)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition gt(long)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition in(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef, io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition in(long, long[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition le(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition le(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition le(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition le(java.math.BigDecimal)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition le(long)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition lt(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition lt(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition lt(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition lt(java.math.BigDecimal)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition lt(long)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(java.math.BigDecimal)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(long)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notIn(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef, io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notIn(long, long[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef outer()
+  public int scale()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(java.lang.String)
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue value()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.OpListMath implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public OpListMath(io.github.mbackschat.a12.dm.rulekit.dsl.OpListMath.Op, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation>)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.OpListMath.Op op()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation> operands()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public static enum io.github.mbackschat.a12.dm.rulekit.dsl.OpListMath.Op
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.OpListMath.Op ABS
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.OpListMath.Op MAX
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.OpListMath.Op MIN
+  public java.lang.String operatorId()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.OpListMath.Op valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.OpListMath.Op[] values()
+
+public final class io.github.mbackschat.a12.dm.rulekit.dsl.OperatorUsage
+  public static java.util.Set<java.lang.String> of(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public static java.util.Set<java.lang.String> of(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+
+public enum io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle ABSOLUTE
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle CANONICAL
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle RELATIVE
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle SHORT
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.PatternCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public PatternCondition(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, boolean, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public final int hashCode()
+  public boolean matched()
+  public java.lang.String operatorId()
+  public java.lang.String regex()
+  public final java.lang.String toString()
+
+public enum io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier ALL_FIELDS_FILLED
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier AT_LEAST_ONE_FIELD_FILLED
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier DATE_RANGES_OVERLAP
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier FIELDS_NOT_COLLECTIVELY_FILLED
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier FIELD_VALUES_NOT_UNIQUE
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier MORE_THAN_ONE_FIELD_FILLED
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier NOT_ALL_FIELDS_FILLED
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier NOT_EXACTLY_ONE_FIELD_FILLED
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier NO_FIELD_FILLED
+  public java.lang.String operatorId()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsNumber implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public RangeAsNumber(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, int, int)
+  public int end()
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public int start()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsString implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public RangeAsString(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, int, int)
+  public int end()
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public int start()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.RenderedDiff
+  public RenderedDiff(java.lang.String, java.lang.String, boolean, java.util.List<java.lang.String>)
+  public java.lang.String after()
+  public java.lang.String before()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.RenderedDiff between(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.RenderedDiff between(java.lang.String, java.lang.String, java.util.List<java.lang.String>)
+  public boolean changed()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.util.List<java.lang.String> lossiness()
+  public java.lang.String toJson()
+  public final java.lang.String toString()
+  public java.lang.String unified()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public RepetitionNotUniqueCondition(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef>, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition from(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
+  public final int hashCode()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef> keys()
+  public java.lang.String operatorId()
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef> scope()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.RootGroupCount implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public RootGroupCount(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef rootGroup()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.Rounding implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public Rounding(io.github.mbackschat.a12.dm.rulekit.dsl.Rounding.Mode, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, int)
+  public int decimalPlaces()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rounding.Mode mode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation operand()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public static enum io.github.mbackschat.a12.dm.rulekit.dsl.Rounding.Mode
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Rounding.Mode ACCOUNTING
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Rounding.Mode DOWN
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Rounding.Mode UP
+  public java.lang.String operatorId()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Rounding.Mode valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Rounding.Mode[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.Rule
+  public Rule(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Severity, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>, io.github.mbackschat.a12.dm.rulekit.dsl.Comments)
+  public java.lang.String code()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Comments comments()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition condition()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> deferredChecks()
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftRule draft()
+  public final boolean equals(java.lang.Object)
+  public java.lang.String errorEntityRelPath()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef errorField()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef group()
+  public final int hashCode()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText> messages()
+  public java.lang.String name()
+  public java.lang.String render()
+  public java.lang.String render(io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Severity severity()
+  public final java.lang.String toString()
+
+public static final class io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule build()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder code(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder comment(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder comment(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder commentAfter(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder commentAfter(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder errorField(io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder errorField(io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder errorField(io.github.mbackschat.a12.dm.rulekit.dsl.DateFragmentRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder errorField(io.github.mbackschat.a12.dm.rulekit.dsl.DateRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder errorField(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder errorField(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder errorField(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder errorField(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder errorField(io.github.mbackschat.a12.dm.rulekit.dsl.StringRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder errorField(io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder message(io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder name(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder severity(io.github.mbackschat.a12.dm.rulekit.dsl.Severity)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Rule.Builder when(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.RuleGroupPresenceCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public RuleGroupPresenceCondition(boolean)
+  public final boolean equals(java.lang.Object)
+  public boolean filled()
+  public final int hashCode()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.RuleGroupRef
+  public RuleGroupRef()
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex
+  public SemanticIndex(io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue index()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexFieldValue implements io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue
+  public SemanticIndexFieldValue(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef indexField()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexValue implements io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValue
+  public SemanticIndexValue(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public final int hashCode()
+  public java.lang.String indexValue()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public enum io.github.mbackschat.a12.dm.rulekit.dsl.Severity
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Severity ERROR
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Severity INFO
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Severity WARNING
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Severity valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Severity[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr
+  public StringExpr(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr plus(io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr plus(java.lang.String)
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public StringLiteral(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public final java.lang.String toString()
+  public java.lang.String value()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.StringRef
+  public StringRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public StringRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, boolean)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition agreesWith(io.github.mbackschat.a12.dm.rulekit.dsl.StringRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr asString()
+  public boolean correlated()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(io.github.mbackschat.a12.dm.rulekit.dsl.StringRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr forIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr forIndex(java.lang.String)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition in(io.github.mbackschat.a12.dm.rulekit.dsl.StringRef, io.github.mbackschat.a12.dm.rulekit.dsl.StringRef[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition in(java.lang.String, java.lang.String[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr length()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition matches(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(io.github.mbackschat.a12.dm.rulekit.dsl.StringRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notIn(io.github.mbackschat.a12.dm.rulekit.dsl.StringRef, io.github.mbackschat.a12.dm.rulekit.dsl.StringRef[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notIn(java.lang.String, java.lang.String[])
+  public io.github.mbackschat.a12.dm.rulekit.dsl.StringRef outer()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(java.lang.String)
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition violates(java.lang.String)
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.SumOfProducts implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public SumOfProducts(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand left()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand right()
+  public final java.lang.String toString()
+
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.TimeConstruction implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public TimeConstruction(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation hour()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation minute()
+  public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation second()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr implements io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand
+  public TimeExpr(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
+  public final int hashCode()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.TimeLiteral implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public TimeLiteral(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public final java.lang.String toString()
+  public java.lang.String value()
+
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand extends io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition after(io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand)
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition before(io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand)
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand)
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand)
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition onOrAfter(io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand)
+  public default io.github.mbackschat.a12.dm.rulekit.dsl.Condition onOrBefore(io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand)
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef implements io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand
+  public TimeRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public TimeRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, boolean)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition agreesWith(io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef)
+  public boolean correlated()
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation expression()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr forIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr forIndex(java.lang.String)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition notFilled()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef outer()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(java.lang.String)
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.Today implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public Today()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public enum io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance RANGE_1
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance RANGE_10
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance RANGE_2
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance RANGE_5
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.ValueAsDate implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+  public ValueAsDate(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, boolean)
+  public java.lang.String dayKeywordId()
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public boolean firstDay()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.ValueListCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+  public ValueListCondition(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, boolean, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation>)
+  public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public final int hashCode()
+  public boolean included()
+  public java.lang.String operatorId()
+  public final java.lang.String toString()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation> values()
+
+public enum io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier AT_LEAST_ONE_DATE_RANGE_OVERLAPS
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier AT_LEAST_ONE_FIELD_VALUE_INCLUDED
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier NOT_ALL_FIELD_VALUES_INCLUDED
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier NO_FIELD_VALUE_INCLUDED
+  public java.lang.String operatorId()
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier[] values()
+
+public final class io.github.mbackschat.a12.dm.rulekit.lint.Advisor
+  public Advisor()
+  public Advisor(io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog)
+  public static final java.lang.String GOTCHA_CODE
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> advise(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> advise(java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+
+public final class io.github.mbackschat.a12.dm.rulekit.lint.ComputationDiagnostics
+  public ComputationDiagnostics()
+  public ComputationDiagnostics(io.github.mbackschat.a12.dm.rulekit.validate.KernelVersion)
+  public io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult diagnose(io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel, io.github.mbackschat.a12.dm.rulekit.dsl.Computation)
+
+public final class io.github.mbackschat.a12.dm.rulekit.lint.ComputationLinter
+  public ComputationLinter()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> lint(io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation)
+
+public final class io.github.mbackschat.a12.dm.rulekit.lint.Linter
+  public Linter()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> lint(io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel, io.github.mbackschat.a12.dm.rulekit.dsl.Rule)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> lint(io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> lint(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> lint(java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+
+public final class io.github.mbackschat.a12.dm.rulekit.lint.RuleDiagnostics
+  public RuleDiagnostics()
+  public RuleDiagnostics(io.github.mbackschat.a12.dm.rulekit.validate.KernelVersion)
+  public io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult diagnose(io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel, io.github.mbackschat.a12.dm.rulekit.dsl.Rule)
+
+public final class io.github.mbackschat.a12.dm.rulekit.lint.SpanResolver
+  public SpanResolver()
+  public SpanResolver(io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> resolve(java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic>, io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> resolve(java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic>, io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String)
+
+public sealed interface io.github.mbackschat.a12.dm.rulekit.read.ReadComputation
+  public default boolean isConverted()
+
+public static record io.github.mbackschat.a12.dm.rulekit.read.ReadComputation.Converted implements io.github.mbackschat.a12.dm.rulekit.read.ReadComputation
+  public Converted(io.github.mbackschat.a12.dm.rulekit.dsl.Computation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation computation()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.read.ReadComputation.Opaque implements io.github.mbackschat.a12.dm.rulekit.read.ReadComputation
+  public Opaque(java.lang.String, java.lang.String)
+  public java.lang.String canonicalText()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String reason()
+  public final java.lang.String toString()
+
+public sealed interface io.github.mbackschat.a12.dm.rulekit.read.ReadResult
+  public default boolean isConverted()
+
+public static record io.github.mbackschat.a12.dm.rulekit.read.ReadResult.Converted implements io.github.mbackschat.a12.dm.rulekit.read.ReadResult
+  public Converted(io.github.mbackschat.a12.dm.rulekit.dsl.Condition)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Condition condition()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.read.ReadResult.Opaque implements io.github.mbackschat.a12.dm.rulekit.read.ReadResult
+  public Opaque(java.lang.String, java.lang.String)
+  public java.lang.String canonicalText()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String reason()
+  public final java.lang.String toString()
+
+public class io.github.mbackschat.a12.dm.rulekit.spi.BackendRequiredException extends java.lang.RuntimeException
+  public BackendRequiredException(java.lang.String)
+
+public interface io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack
+  public abstract java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.rulekit.read.ReadResult> readAll(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
+
+public final class io.github.mbackschat.a12.dm.rulekit.spi.ReadBackends
+  public static java.util.Optional<io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack> current()
+  public static void override(io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack)
+  public static io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack require()
+  public static void reset()
+
+public record io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic
+  public Diagnostic(io.github.mbackschat.a12.dm.core.Severity, io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource, java.util.Optional<java.lang.String>, java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where, java.util.Optional<java.lang.String>, java.util.Optional<java.lang.String>)
+  public java.util.Optional<java.lang.String> code()
+  public final boolean equals(java.lang.Object)
+  public java.util.Optional<java.lang.String> explain()
+  public java.util.Optional<java.lang.String> fix()
+  public final int hashCode()
+  public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic internal(java.util.Optional<java.lang.String>, java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where, java.util.Optional<java.lang.String>)
+  public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic precheck(java.util.Optional<java.lang.String>, java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where, java.util.Optional<java.lang.String>, java.util.Optional<java.lang.String>)
+  public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic precheckWarning(java.util.Optional<java.lang.String>, java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where, java.util.Optional<java.lang.String>, java.util.Optional<java.lang.String>)
+  public io.github.mbackschat.a12.dm.core.Severity severity()
+  public io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource source()
+  public java.lang.String summary()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where where()
+
+public static record io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where
+  public Where(java.lang.String, java.util.Optional<java.lang.String>)
+  public Where(java.lang.String, java.util.Optional<java.lang.String>, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.validate.Span>)
+  public Where(java.lang.String, java.util.Optional<java.lang.String>, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.validate.Span>, java.util.Optional<java.lang.String>, java.util.Optional<java.lang.String>)
+  public java.util.Optional<java.lang.String> arg()
+  public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where arg(java.lang.String, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.util.Optional<java.lang.String> operator()
+  public java.util.Optional<java.lang.String> path()
+  public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where path(java.lang.String)
+  public java.lang.String rule()
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.validate.Span> span()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic.Where withSpan(io.github.mbackschat.a12.dm.rulekit.validate.Span)
+
+public enum io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource ENVIRONMENT
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource INTERNAL
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource KERNEL
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource LINT
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource PRECHECK
+  public static io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource[] values()
+
+public record io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
+  public DraftComputation(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative>)
+  public DraftComputation(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative>, java.util.List<java.lang.String>)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative> alternatives()
+  public java.lang.String commonPrecondition()
+  public java.lang.String computedFieldRelPath()
+  public final boolean equals(java.lang.Object)
+  public java.util.List<java.lang.String> errorCodesToSuppress()
+  public java.lang.String groupPath()
+  public final int hashCode()
+  public java.lang.String name()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative
+  public Alternative(java.lang.String, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String operation()
+  public java.lang.String precondition()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
+  public DraftRule(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public java.lang.String errorCode()
+  public java.lang.String errorCondition()
+  public java.lang.String errorEntityRelPath()
+  public java.lang.String groupPath()
+  public final int hashCode()
+  public java.lang.String name()
+  public java.lang.String severity()
+  public final java.lang.String toString()
+
+public final class io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics
+  public static io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic enriched(io.github.mbackschat.a12.dm.core.Notification, java.lang.String)
+
+public record io.github.mbackschat.a12.dm.rulekit.validate.KernelVersion
+  public KernelVersion(java.util.Optional<java.lang.String>, java.lang.String)
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> advisory()
+  public static io.github.mbackschat.a12.dm.rulekit.validate.KernelVersion current(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public boolean isSkewed()
+  public java.util.Optional<java.lang.String> runtime()
+  public static java.lang.String runtimeVersion()
+  public final java.lang.String toString()
+  public java.lang.String verifiedFloor()
+
+public final class io.github.mbackschat.a12.dm.rulekit.validate.ModelVersion
+  public static final java.lang.String REFERENCE
+  public static java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> classify(java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic>)
+  public static java.util.Optional<java.lang.String> declared(java.lang.String)
+  public static boolean isVersionMismatch(java.lang.String)
+
+public class io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException extends java.lang.IllegalStateException
+  public PrecheckException(io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic)
+  public io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic diagnostic()
+  public static io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException notFound(io.github.mbackschat.a12.dm.rulekit.validate.RkCode, java.lang.String)
+
+public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode APPLY_OP_FAILED
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ATTACHMENT_LOCALE_UNSUPPORTED
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode COMPUTATION_FORBIDDEN_CONSTRUCT
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode COMPUTATION_OVERLAPPING_PRECONDITIONS
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode CONTRADICTORY_PRESENCE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode ERROR_FIELD_OUTSIDE_GROUP
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode GOTCHA
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INCOMPLETE_RULE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INTERNAL_ERROR
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INTERPRETER_INCLUDE_RULES_UNSUPPORTED
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INVALID_CONFIG_VALUE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INVALID_VALUE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INVERTED_REQUIREDNESS
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode KERNEL_VERSION_SKEW
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MODEL_VERSION_INCOMPATIBLE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MODEL_VERSION_SKEW
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MOUNT_NOT_EDITABLE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MOVE_INTO_SELF
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode MULTISELECT_MIN_ROWS
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NAME_EXISTS
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NEG_CONDITION_IN_ITERATION
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NO_KERNEL_BACKEND
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NO_SUCH_COMPUTATION
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NO_SUCH_ELEMENT
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NO_SUCH_FIELD
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NO_SUCH_GROUP
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NO_SUCH_INCLUDE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NO_SUCH_RULE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode NO_SUCH_TYPEDEF
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode OUTWARD_REFERENCE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode PRESENCE_NOT_COMPLEMENTARY
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode REDUNDANT_OPERAND
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode REFERENCED
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode REPEATABLE_INCLUDE_ROOT
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode RETYPE_AFFECTS_READERS
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode TYPE_MISMATCH
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNGUARDED_NUMBER_COMPARISON
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNGUARDED_STRING_CONCAT
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNKNOWN_ARG
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNKNOWN_OP
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode UNRESOLVED_REFERENCE
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode WRONG_BATCH_KIND
+  public static java.util.Optional<io.github.mbackschat.a12.dm.rulekit.validate.RkCode> byCode(java.lang.String)
+  public java.lang.String code()
+  public java.lang.String fix()
+  public java.lang.String meaning()
+  public io.github.mbackschat.a12.dm.core.Severity severity()
+  public io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource source()
+  public static io.github.mbackschat.a12.dm.rulekit.validate.RkCode valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.validate.RkCode[] values()
+
+public final class io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
+  public RuleValidator()
+  public io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult check(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation)
+  public io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult check(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation, io.github.mbackschat.a12.dm.core.ModelResolver)
+  public io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult check(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftRule)
+  public io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult check(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftRule, io.github.mbackschat.a12.dm.core.ModelResolver)
+  public java.lang.String inject(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftRule)
+
+public record io.github.mbackschat.a12.dm.rulekit.validate.Span
+  public Span(int, int)
+  public int end()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public int start()
+  public final java.lang.String toString()
+
+public final class io.github.mbackschat.a12.dm.rulekit.validate.StructuralKernelFix
+  public static java.util.Optional<io.github.mbackschat.a12.dm.rulekit.validate.StructuralKernelFix.Hint> forCode(java.lang.String)
+  public static java.util.Optional<io.github.mbackschat.a12.dm.rulekit.validate.StructuralKernelFix.Hint> forMessage(java.lang.String)
+
+public static record io.github.mbackschat.a12.dm.rulekit.validate.StructuralKernelFix.Hint
+  public Hint(java.lang.String, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public java.lang.String explain()
+  public java.lang.String fix()
+  public final int hashCode()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult
+  public ValidationResult(boolean, java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic>, io.github.mbackschat.a12.dm.core.Verification)
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic> diagnostics()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public static io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult of(java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic>)
+  public static io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult of(java.util.List<io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic>, io.github.mbackschat.a12.dm.core.Verification)
+  public boolean ok()
+  public java.lang.String toJson()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.core.Verification verification()
+
+public final class io.github.mbackschat.a12.dm.rulekit.write.ModelWriter
+  public static java.lang.String addComputation(java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Computation)
+  public static java.lang.String addComputation(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
+  public static java.lang.String addRule(java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Rule)
+  public static java.lang.String addRule(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
+  public static java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText> readMessages(java.lang.String, java.lang.String)
+  public static java.lang.String removeComputation(java.lang.String, java.lang.String)
+  public static java.lang.String removeRule(java.lang.String, java.lang.String)
+  public static java.lang.String replaceComputation(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Computation)
+  public static java.lang.String replaceComputation(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
+  public static java.lang.String replaceCondition(java.lang.String, java.lang.String, java.lang.String)
+  public static java.lang.String replaceMessages(java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
+  public static java.lang.String replaceSeverity(java.lang.String, java.lang.String, java.lang.String)

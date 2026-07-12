@@ -1,0 +1,186 @@
+public record io.github.mbackschat.a12.dm.core.Annotation
+  public Annotation(java.lang.String, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String name()
+  public final java.lang.String toString()
+  public java.lang.String value()
+
+public final class io.github.mbackschat.a12.dm.core.Backends
+  public static java.util.Optional<io.github.mbackschat.a12.dm.core.spi.BackendInfo> backendInfo()
+  public static java.util.Optional<io.github.mbackschat.a12.dm.core.spi.ConsistencyOracle> consistencyOracle()
+  public static boolean hasBackend()
+  public static void override(io.github.mbackschat.a12.dm.core.spi.ConsistencyOracle, io.github.mbackschat.a12.dm.core.spi.BackendInfo)
+  public static void reset()
+  public static io.github.mbackschat.a12.dm.core.Verification verification()
+
+public final class io.github.mbackschat.a12.dm.core.DmJson
+  public static com.fasterxml.jackson.databind.node.ObjectNode findElement(com.fasterxml.jackson.databind.JsonNode, java.lang.String, java.lang.String)
+  public static com.fasterxml.jackson.databind.node.ArrayNode groupElements(com.fasterxml.jackson.databind.JsonNode, java.lang.String)
+  public static java.lang.String insertIntoGroup(java.lang.String, java.lang.String, com.fasterxml.jackson.databind.node.ObjectNode)
+
+public final class io.github.mbackschat.a12.dm.core.DmKeys
+  public static final java.lang.String ALIAS
+  public static final java.lang.String ANNOTATIONS
+  public static final java.lang.String BASE_YEAR
+  public static final java.lang.String CODE
+  public static final java.lang.String COMMENT
+  public static final java.lang.String CONDITION_LANGUAGE
+  public static final java.lang.String CONTENT
+  public static final java.lang.String DECIMAL_SEPARATOR
+  public static final java.lang.String DESCRIPTION
+  public static final java.lang.String DOCUMENT
+  public static final java.lang.String ELEMENTS
+  public static final java.lang.String ERROR_MESSAGE
+  public static final java.lang.String EXTERNAL_DESCRIPTION
+  public static final java.lang.String FIELD_REF_BY_SHORT_NAME_ALLOWED
+  public static final java.lang.String FIELD_TYPE
+  public static final java.lang.String HEADER
+  public static final java.lang.String ID
+  public static final java.lang.String INCLUDE
+  public static final java.lang.String INDEX_FIELD_NAME
+  public static final java.lang.String INTERNAL_DESCRIPTION
+  public static final java.lang.String LABEL
+  public static final java.lang.String LABELS
+  public static final java.lang.String LOCALE
+  public static final java.lang.String LOCALES
+  public static final java.lang.String MODEL_ALIAS
+  public static final java.lang.String MODEL_CONFIG
+  public static final java.lang.String MODEL_INFO
+  public static final java.lang.String MODEL_REFERENCES
+  public static final java.lang.String MODEL_ROOT
+  public static final java.lang.String MODEL_TYPE
+  public static final java.lang.String NAME
+  public static final java.lang.String ORDER
+  public static final java.lang.String PURPOSE
+  public static final java.lang.String REFERENCE
+  public static final java.lang.String REPEATABILITY
+  public static final java.lang.String REQUIREDNESS_CONFIG
+  public static final java.lang.String ROOT_GROUPS
+  public static final java.lang.String SORT_FIELDS
+  public static final java.lang.String SUPPORTED_CHARACTERS
+  public static final java.lang.String TEXT
+  public static final java.lang.String TIME_ZONE
+  public static final java.lang.String TYPE
+  public static final java.lang.String TYPE_DEFINITIONS
+  public static final java.lang.String TYPE_DEFINITION_ID
+  public static final java.lang.String VALUE
+  public static final java.lang.String VALUES
+
+public enum io.github.mbackschat.a12.dm.core.ElementType
+  public static final io.github.mbackschat.a12.dm.core.ElementType COMPUTATION
+  public static final io.github.mbackschat.a12.dm.core.ElementType FIELD
+  public static final io.github.mbackschat.a12.dm.core.ElementType GROUP
+  public static final io.github.mbackschat.a12.dm.core.ElementType RULE
+  public static io.github.mbackschat.a12.dm.core.ElementType fromWire(java.lang.String)
+  public boolean matches(com.fasterxml.jackson.databind.JsonNode)
+  public static io.github.mbackschat.a12.dm.core.ElementType of(com.fasterxml.jackson.databind.JsonNode)
+  public static io.github.mbackschat.a12.dm.core.ElementType valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.core.ElementType[] values()
+  public java.lang.String wireName()
+
+public class io.github.mbackschat.a12.dm.core.ModelConsistencyException extends java.lang.RuntimeException
+  public ModelConsistencyException(java.lang.String, java.lang.Throwable)
+  public ModelConsistencyException(java.util.List<io.github.mbackschat.a12.dm.core.Notification>)
+  public static io.github.mbackschat.a12.dm.core.ModelConsistencyException notKernelValid(java.lang.Throwable)
+  public java.util.List<io.github.mbackschat.a12.dm.core.Notification> notifications()
+
+public final class io.github.mbackschat.a12.dm.core.ModelFormat
+  public static final java.lang.String VERSION
+
+public final class io.github.mbackschat.a12.dm.core.ModelIndex
+  public java.util.List<io.github.mbackschat.a12.dm.core.Annotation> annotationsOf(java.lang.String)
+  public java.util.List<io.github.mbackschat.a12.dm.core.Annotation> annotationsOfGroup(java.lang.String)
+  public java.util.Map<java.lang.String, java.util.List<java.lang.String>> enumCategories(java.lang.String)
+  public java.util.List<java.lang.String> enumValues(java.lang.String)
+  public java.util.stream.Stream<java.lang.String> fieldPaths()
+  public java.util.stream.Stream<java.lang.String> fieldPaths(java.lang.String)
+  public java.util.stream.Stream<java.lang.String> groupPaths()
+  public boolean isField(java.lang.String)
+  public boolean isGroup(java.lang.String)
+  public boolean isRepeating(java.lang.String)
+  public io.github.mbackschat.a12.dm.core.ValueKind kindOf(java.lang.String)
+  public java.util.List<java.lang.String> locales()
+  public int maxRepetitions(java.lang.String)
+  public java.lang.String nameOf(java.lang.String)
+  public java.util.Optional<java.math.BigDecimal> numberMax(java.lang.String)
+  public java.util.Optional<java.math.BigDecimal> numberMin(java.lang.String)
+  public int numberScale(java.lang.String)
+  public static io.github.mbackschat.a12.dm.core.ModelIndex of(io.github.mbackschat.a12.dm.core.ModelReader)
+  public static io.github.mbackschat.a12.dm.core.ModelIndex of(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
+  public static io.github.mbackschat.a12.dm.core.ModelIndex ofSelfContained(java.lang.String)
+  public java.util.OptionalInt stringMaxLength(java.lang.String)
+  public java.util.OptionalInt stringMinLength(java.lang.String)
+  public java.util.Optional<java.lang.String> stringPattern(java.lang.String)
+
+public final class io.github.mbackschat.a12.dm.core.ModelLoader
+  public static void loadAndCheck(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
+  public static void loadSelfContained(java.lang.String)
+
+public final class io.github.mbackschat.a12.dm.core.ModelReader
+  public static io.github.mbackschat.a12.dm.core.ModelReader expand(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
+  public java.util.List<java.lang.String> includedRulesNeedingRelativization()
+  public java.util.List<java.lang.String> locales()
+  public java.lang.String toJson()
+
+public interface io.github.mbackschat.a12.dm.core.ModelResolver
+  public abstract java.lang.String resolve(java.lang.String)
+
+public record io.github.mbackschat.a12.dm.core.Notification
+  public Notification(io.github.mbackschat.a12.dm.core.Severity, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String message()
+  public io.github.mbackschat.a12.dm.core.Severity severity()
+  public final java.lang.String toString()
+
+public final class io.github.mbackschat.a12.dm.core.ReferenceResolvers
+  public static io.github.mbackschat.a12.dm.core.ModelResolver directory(java.nio.file.Path[])
+  public static java.util.Optional<java.lang.String> documentModelJson(java.lang.String, java.nio.file.Path[])
+  public static io.github.mbackschat.a12.dm.core.ModelResolver selfContained()
+
+public enum io.github.mbackschat.a12.dm.core.Severity
+  public static final io.github.mbackschat.a12.dm.core.Severity ERROR
+  public static final io.github.mbackschat.a12.dm.core.Severity INFO
+  public static final io.github.mbackschat.a12.dm.core.Severity WARNING
+  public static io.github.mbackschat.a12.dm.core.Severity valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.core.Severity[] values()
+
+public final class io.github.mbackschat.a12.dm.core.Suggest
+  public static java.lang.String hint(java.lang.String, java.util.Collection<java.lang.String>)
+  public static java.util.Optional<java.lang.String> nearest(java.lang.String, java.util.Collection<java.lang.String>)
+
+public final class io.github.mbackschat.a12.dm.core.UnresolvedReferenceException extends java.lang.RuntimeException
+  public UnresolvedReferenceException(java.lang.String, java.lang.String)
+  public UnresolvedReferenceException(java.lang.String, java.lang.String, java.lang.Throwable)
+  public java.lang.String reference()
+
+public enum io.github.mbackschat.a12.dm.core.ValueKind
+  public static final io.github.mbackschat.a12.dm.core.ValueKind BOOLEAN
+  public static final io.github.mbackschat.a12.dm.core.ValueKind CONFIRM
+  public static final io.github.mbackschat.a12.dm.core.ValueKind CUSTOM
+  public static final io.github.mbackschat.a12.dm.core.ValueKind DATE
+  public static final io.github.mbackschat.a12.dm.core.ValueKind DATE_FRAGMENT
+  public static final io.github.mbackschat.a12.dm.core.ValueKind DATE_RANGE
+  public static final io.github.mbackschat.a12.dm.core.ValueKind DATE_TIME
+  public static final io.github.mbackschat.a12.dm.core.ValueKind ENUMERATION
+  public static final io.github.mbackschat.a12.dm.core.ValueKind NUMBER
+  public static final io.github.mbackschat.a12.dm.core.ValueKind STRING
+  public static final io.github.mbackschat.a12.dm.core.ValueKind TIME
+  public static final io.github.mbackschat.a12.dm.core.ValueKind UNKNOWN
+  public static io.github.mbackschat.a12.dm.core.ValueKind fromKernelType(java.lang.String)
+  public static io.github.mbackschat.a12.dm.core.ValueKind valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.core.ValueKind[] values()
+
+public enum io.github.mbackschat.a12.dm.core.Verification
+  public static final io.github.mbackschat.a12.dm.core.Verification KERNEL_CONFIRMED
+  public static final io.github.mbackschat.a12.dm.core.Verification STRUCTURAL_ONLY
+  public static io.github.mbackschat.a12.dm.core.Verification valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.core.Verification[] values()
+
+public interface io.github.mbackschat.a12.dm.core.spi.BackendInfo
+  public abstract java.lang.String name()
+  public abstract java.lang.String version()
+
+public interface io.github.mbackschat.a12.dm.core.spi.ConsistencyOracle
+  public abstract java.util.List<io.github.mbackschat.a12.dm.core.Notification> checkConsistency(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)

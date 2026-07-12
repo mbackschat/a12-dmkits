@@ -1,0 +1,795 @@
+public enum io.github.mbackschat.a12.dm.modelkit.AttachmentRule
+  public static final io.github.mbackschat.a12.dm.modelkit.AttachmentRule EXACTLY_ONE_SOURCE
+  public static final io.github.mbackschat.a12.dm.modelkit.AttachmentRule INTERNAL_FILENAME
+  public static final io.github.mbackschat.a12.dm.modelkit.AttachmentRule MIME_TYPE
+  public static final io.github.mbackschat.a12.dm.modelkit.AttachmentRule SIZE_WITH_CONTENT
+  public static io.github.mbackschat.a12.dm.modelkit.AttachmentRule valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.modelkit.AttachmentRule[] values()
+
+public final class io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder extends io.github.mbackschat.a12.dm.modelkit.FieldAttrs<io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder>
+  public CustomFieldBuilder()
+  public io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder maxLength(int)
+  public io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder minLength(int)
+  protected io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
+  public io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder type(java.lang.String)
+
+public final class io.github.mbackschat.a12.dm.modelkit.DateFieldBuilder extends io.github.mbackschat.a12.dm.modelkit.FieldAttrs<io.github.mbackschat.a12.dm.modelkit.DateFieldBuilder>
+  public DateFieldBuilder()
+  public io.github.mbackschat.a12.dm.modelkit.DateFieldBuilder datePrecision(io.github.mbackschat.a12.dm.modelkit.DatePrecision)
+  public io.github.mbackschat.a12.dm.modelkit.DateFieldBuilder format(java.lang.String)
+  protected io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
+
+public final class io.github.mbackschat.a12.dm.modelkit.DateFragmentFieldBuilder extends io.github.mbackschat.a12.dm.modelkit.FieldAttrs<io.github.mbackschat.a12.dm.modelkit.DateFragmentFieldBuilder>
+  public DateFragmentFieldBuilder()
+  public io.github.mbackschat.a12.dm.modelkit.DateFragmentFieldBuilder fragmentFormat(java.lang.String)
+  protected io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
+
+public enum io.github.mbackschat.a12.dm.modelkit.DatePrecision
+  public static final io.github.mbackschat.a12.dm.modelkit.DatePrecision DAY_OPTIONAL
+  public static final io.github.mbackschat.a12.dm.modelkit.DatePrecision FULL
+  public static final io.github.mbackschat.a12.dm.modelkit.DatePrecision MONTH_OPTIONAL
+  public static final io.github.mbackschat.a12.dm.modelkit.DatePrecision YEAR_OPTIONAL
+  public java.lang.String jsonValue()
+  public static io.github.mbackschat.a12.dm.modelkit.DatePrecision valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.modelkit.DatePrecision[] values()
+
+public final class io.github.mbackschat.a12.dm.modelkit.DateRangeFieldBuilder extends io.github.mbackschat.a12.dm.modelkit.FieldAttrs<io.github.mbackschat.a12.dm.modelkit.DateRangeFieldBuilder>
+  public DateRangeFieldBuilder()
+  public io.github.mbackschat.a12.dm.modelkit.DateRangeFieldBuilder format(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.DateRangeFieldBuilder separator(java.lang.String)
+  protected io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
+
+public final class io.github.mbackschat.a12.dm.modelkit.DateTimeFieldBuilder extends io.github.mbackschat.a12.dm.modelkit.FieldAttrs<io.github.mbackschat.a12.dm.modelkit.DateTimeFieldBuilder>
+  public DateTimeFieldBuilder()
+  public io.github.mbackschat.a12.dm.modelkit.DateTimeFieldBuilder format(java.lang.String)
+  protected io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
+
+public final class io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+  public java.lang.String id()
+  public static io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder named(java.lang.String)
+  public java.lang.String toJson()
+  public static io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder typeDefModel(java.lang.String)
+
+public static final class io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.AttachmentBuilder
+  public AttachmentBuilder()
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.AttachmentBuilder allowedMimeTypes(java.lang.String[])
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.AttachmentBuilder annotation(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.AttachmentBuilder categories(java.lang.String[])
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.AttachmentBuilder maxSizeBytes(long)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.AttachmentBuilder message(io.github.mbackschat.a12.dm.modelkit.AttachmentRule, java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.AttachmentBuilder repeatable(int)
+
+public static final class io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder annotation(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder attachmentGroup(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.AttachmentBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder baseYear(int)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft build()
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder comment(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder importTypeDefs(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder include(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder label(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder locale(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder multiSelectGroup(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder rootGroup(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder supportedCharacters(java.lang.String[])
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.Builder typeDef(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder>)
+
+public static final class io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder extends io.github.mbackschat.a12.dm.modelkit.ElementMeta<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder>
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder customField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder dateField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DateFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder dateFragmentField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DateFragmentFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder dateRangeField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DateRangeFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder dateTimeField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DateTimeFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder enumField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder field(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldKind)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder field(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldKind, io.github.mbackschat.a12.dm.modelkit.Requiredness)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder group(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder indexField(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder label(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder mount(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder mount(java.lang.String, java.lang.String, int)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder mount(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.modelkit.MountOptions)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder multiSelectGroup(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder numberField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder repeatable(int)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder sortField(java.lang.String, io.github.mbackschat.a12.dm.modelkit.SortOrder)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder stringField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder timeField(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.TimeFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder typedefField(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder typedefField(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.modelkit.Requiredness)
+
+public static final class io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder
+  public MultiSelectBuilder()
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder annotation(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder enumField(java.lang.String, java.lang.String[])
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder maxRows(int)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder required()
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder requiredIfParentPresent()
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder stringField(java.lang.String)
+
+public static final class io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder extends io.github.mbackschat.a12.dm.modelkit.ElementMeta<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder>
+  public TypeDefBuilder()
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder enumeration(java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder number(java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TypeDefBuilder string(java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder>)
+
+public sealed interface io.github.mbackschat.a12.dm.modelkit.ElementDraft
+  public abstract java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation> annotations()
+  public abstract java.lang.String name()
+
+public static record io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation
+  public Annotation(java.lang.String, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String name()
+  public final java.lang.String toString()
+  public java.lang.String value()
+
+public static record io.github.mbackschat.a12.dm.modelkit.ElementDraft.Field implements io.github.mbackschat.a12.dm.modelkit.ElementDraft
+  public Field(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec, io.github.mbackschat.a12.dm.modelkit.Requiredness)
+  public Field(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec, io.github.mbackschat.a12.dm.modelkit.Requiredness, io.github.mbackschat.a12.dm.modelkit.FieldMeta)
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation> annotations()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.modelkit.FieldMeta meta()
+  public java.lang.String name()
+  public io.github.mbackschat.a12.dm.modelkit.Requiredness requiredness()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec type()
+
+public static record io.github.mbackschat.a12.dm.modelkit.ElementDraft.Group implements io.github.mbackschat.a12.dm.modelkit.ElementDraft
+  public Group(java.lang.String, int, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft>, io.github.mbackschat.a12.dm.modelkit.GroupMeta)
+  public Group(java.lang.String, int, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft>, java.lang.String, io.github.mbackschat.a12.dm.modelkit.GroupMeta)
+  public Group(java.lang.String, int, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft>, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.SortField>, io.github.mbackschat.a12.dm.modelkit.GroupMeta)
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation> annotations()
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft> elements()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String indexFieldName()
+  public io.github.mbackschat.a12.dm.modelkit.GroupMeta meta()
+  public java.lang.String name()
+  public int repeatability()
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.SortField> sortFields()
+  public final java.lang.String toString()
+  public java.lang.String usageType()
+
+public static record io.github.mbackschat.a12.dm.modelkit.ElementDraft.Mount implements io.github.mbackschat.a12.dm.modelkit.ElementDraft
+  public Mount(java.lang.String, java.lang.String, int, java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation>)
+  public Mount(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.modelkit.MountOptions, java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation>)
+  public Mount(java.lang.String, java.lang.String, java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation>)
+  public java.lang.String alias()
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation> annotations()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String name()
+  public io.github.mbackschat.a12.dm.modelkit.MountOptions options()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.modelkit.ElementDraft.Rule implements io.github.mbackschat.a12.dm.modelkit.ElementDraft
+  public Rule(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.Map<java.lang.String, java.lang.String>)
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation> annotations()
+  public final boolean equals(java.lang.Object)
+  public java.lang.String errorCode()
+  public java.lang.String errorCondition()
+  public java.lang.String errorEntityRelPath()
+  public final int hashCode()
+  public java.util.Map<java.lang.String, java.lang.String> messages()
+  public java.lang.String name()
+  public java.lang.String severity()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.modelkit.ElementDraft.SortField
+  public SortField(java.lang.String, io.github.mbackschat.a12.dm.modelkit.SortOrder)
+  public final boolean equals(java.lang.Object)
+  public java.lang.String fieldName()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.modelkit.SortOrder order()
+  public final java.lang.String toString()
+
+public abstract class io.github.mbackschat.a12.dm.modelkit.ElementMeta<SELF extends io.github.mbackschat.a12.dm.modelkit.ElementMeta<SELF>>
+  public ElementMeta()
+  public SELF annotation(java.lang.String, java.lang.String)
+  public SELF externalDescription(java.lang.String, java.lang.String)
+  public SELF internalDescription(java.lang.String, java.lang.String)
+
+public final class io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder extends io.github.mbackschat.a12.dm.modelkit.FieldAttrs<io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder>
+  public EnumFieldBuilder()
+  public io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder alphabeticalSorting()
+  public io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder category(java.lang.String, java.lang.String[])
+  public io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder invalidValueMessage(java.lang.String)
+  protected io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
+  public io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder value(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder value(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.LabelBuilder>)
+
+public abstract class io.github.mbackschat.a12.dm.modelkit.FieldAttrs<SELF extends io.github.mbackschat.a12.dm.modelkit.FieldAttrs<SELF>> extends io.github.mbackschat.a12.dm.modelkit.ElementMeta<SELF>
+  public FieldAttrs()
+  public SELF global()
+  public SELF helperText(java.lang.String, java.lang.String)
+  public SELF label(java.lang.String, java.lang.String)
+  public SELF notPersisted()
+  public SELF required()
+  public SELF requiredIfParentPresent()
+  protected abstract io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
+  public io.github.mbackschat.a12.dm.modelkit.ElementDraft.Field toField(java.lang.String)
+
+public enum io.github.mbackschat.a12.dm.modelkit.FieldKind
+  public static final io.github.mbackschat.a12.dm.modelkit.FieldKind BOOLEAN
+  public static final io.github.mbackschat.a12.dm.modelkit.FieldKind CONFIRM
+  public static final io.github.mbackschat.a12.dm.modelkit.FieldKind DATE
+  public static final io.github.mbackschat.a12.dm.modelkit.FieldKind NUMBER
+  public static final io.github.mbackschat.a12.dm.modelkit.FieldKind STRING
+  public java.lang.String jsonType()
+  public static io.github.mbackschat.a12.dm.modelkit.FieldKind valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.modelkit.FieldKind[] values()
+
+public record io.github.mbackschat.a12.dm.modelkit.FieldMeta
+  public FieldMeta(java.util.Map<java.lang.String, java.lang.String>, java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation>, boolean, boolean, java.util.Map<java.lang.String, java.lang.String>, java.util.Map<java.lang.String, java.lang.String>, java.util.Map<java.lang.String, java.lang.String>)
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation> annotations()
+  public static io.github.mbackschat.a12.dm.modelkit.FieldMeta.Builder builder()
+  public final boolean equals(java.lang.Object)
+  public java.util.Map<java.lang.String, java.lang.String> externalDescription()
+  public boolean global()
+  public final int hashCode()
+  public java.util.Map<java.lang.String, java.lang.String> helperText()
+  public java.util.Map<java.lang.String, java.lang.String> internalDescription()
+  public java.util.Map<java.lang.String, java.lang.String> labels()
+  public static io.github.mbackschat.a12.dm.modelkit.FieldMeta none()
+  public boolean notPersisted()
+  public final java.lang.String toString()
+
+public static final class io.github.mbackschat.a12.dm.modelkit.FieldMeta.Builder
+  public Builder()
+  public io.github.mbackschat.a12.dm.modelkit.FieldMeta.Builder annotations(java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation>)
+  public io.github.mbackschat.a12.dm.modelkit.FieldMeta build()
+  public io.github.mbackschat.a12.dm.modelkit.FieldMeta.Builder externalDescription(java.util.Map<java.lang.String, java.lang.String>)
+  public io.github.mbackschat.a12.dm.modelkit.FieldMeta.Builder global(boolean)
+  public io.github.mbackschat.a12.dm.modelkit.FieldMeta.Builder helperText(java.util.Map<java.lang.String, java.lang.String>)
+  public io.github.mbackschat.a12.dm.modelkit.FieldMeta.Builder internalDescription(java.util.Map<java.lang.String, java.lang.String>)
+  public io.github.mbackschat.a12.dm.modelkit.FieldMeta.Builder labels(java.util.Map<java.lang.String, java.lang.String>)
+  public io.github.mbackschat.a12.dm.modelkit.FieldMeta.Builder notPersisted(boolean)
+
+public record io.github.mbackschat.a12.dm.modelkit.FieldModification
+  public FieldModification(java.util.Optional<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec>, java.util.Optional<io.github.mbackschat.a12.dm.modelkit.Requiredness>, java.util.Optional<java.util.Map<java.lang.String, java.lang.String>>, java.util.Optional<java.util.Map<java.lang.String, java.lang.String>>, java.util.Optional<java.util.Map<java.lang.String, java.lang.String>>, java.util.Optional<java.util.Map<java.lang.String, java.lang.String>>, java.util.Optional<java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation>>, java.util.Optional<java.lang.Boolean>, java.util.Optional<java.lang.Boolean>, java.util.Optional<java.util.Map<java.lang.String, java.lang.String>>)
+  public java.util.Optional<java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation>> annotations()
+  public static io.github.mbackschat.a12.dm.modelkit.FieldModification.Builder builder()
+  public java.util.List<java.lang.String> changedAspects()
+  public final boolean equals(java.lang.Object)
+  public java.util.Optional<java.util.Map<java.lang.String, java.lang.String>> externalDescription()
+  public java.util.Optional<java.lang.Boolean> global()
+  public final int hashCode()
+  public java.util.Optional<java.util.Map<java.lang.String, java.lang.String>> helperText()
+  public java.util.Optional<java.util.Map<java.lang.String, java.lang.String>> internalDescription()
+  public boolean isEmpty()
+  public java.util.Optional<java.lang.Boolean> isTransient()
+  public java.util.Optional<java.util.Map<java.lang.String, java.lang.String>> label()
+  public java.util.Optional<java.util.Map<java.lang.String, java.lang.String>> requiredMessages()
+  public java.util.Optional<io.github.mbackschat.a12.dm.modelkit.Requiredness> requiredness()
+  public final java.lang.String toString()
+  public java.util.Optional<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec> type()
+
+public static final class io.github.mbackschat.a12.dm.modelkit.FieldModification.Builder
+  public Builder()
+  public io.github.mbackschat.a12.dm.modelkit.FieldModification.Builder annotations(java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation>)
+  public io.github.mbackschat.a12.dm.modelkit.FieldModification build()
+  public io.github.mbackschat.a12.dm.modelkit.FieldModification.Builder externalDescription(java.util.Map<java.lang.String, java.lang.String>)
+  public io.github.mbackschat.a12.dm.modelkit.FieldModification.Builder global(java.lang.Boolean)
+  public io.github.mbackschat.a12.dm.modelkit.FieldModification.Builder helperText(java.util.Map<java.lang.String, java.lang.String>)
+  public io.github.mbackschat.a12.dm.modelkit.FieldModification.Builder internalDescription(java.util.Map<java.lang.String, java.lang.String>)
+  public io.github.mbackschat.a12.dm.modelkit.FieldModification.Builder isTransient(java.lang.Boolean)
+  public io.github.mbackschat.a12.dm.modelkit.FieldModification.Builder label(java.util.Map<java.lang.String, java.lang.String>)
+  public io.github.mbackschat.a12.dm.modelkit.FieldModification.Builder requiredMessages(java.util.Map<java.lang.String, java.lang.String>)
+  public io.github.mbackschat.a12.dm.modelkit.FieldModification.Builder requiredness(io.github.mbackschat.a12.dm.modelkit.Requiredness)
+  public io.github.mbackschat.a12.dm.modelkit.FieldModification.Builder type(io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec)
+
+public sealed interface io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
+  public abstract java.lang.String jsonType()
+
+public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.BooleanSpec implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
+  public BooleanSpec()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String jsonType()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.ConfirmSpec implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
+  public ConfirmSpec()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String jsonType()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.CustomSpec implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
+  public CustomSpec(java.lang.String, java.lang.Integer, java.lang.Integer)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String jsonType()
+  public java.lang.Integer maxLength()
+  public java.lang.Integer minLength()
+  public java.lang.String name()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.DateFragmentSpec implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
+  public DateFragmentSpec(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public java.lang.String fragmentFormat()
+  public final int hashCode()
+  public java.lang.String jsonType()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.DateRangeSpec implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
+  public DateRangeSpec(java.lang.String, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public java.lang.String format()
+  public final int hashCode()
+  public java.lang.String jsonType()
+  public java.lang.String separator()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.DateSpec implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
+  public DateSpec(java.lang.String, java.lang.String)
+  public java.lang.String datePrecision()
+  public final boolean equals(java.lang.Object)
+  public java.lang.String format()
+  public final int hashCode()
+  public java.lang.String jsonType()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.DateTimeSpec implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
+  public DateTimeSpec(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public java.lang.String format()
+  public final int hashCode()
+  public java.lang.String jsonType()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumCategory
+  public EnumCategory(java.lang.String, java.util.List<java.lang.String>)
+  public EnumCategory(java.lang.String, java.util.List<java.lang.String>, java.lang.String)
+  public java.lang.String description()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String name()
+  public final java.lang.String toString()
+  public java.util.List<java.lang.String> values()
+
+public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumSpec implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
+  public EnumSpec(java.util.List<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumValue>, java.util.List<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumCategory>)
+  public EnumSpec(java.util.List<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumValue>, java.util.List<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumCategory>, boolean, java.lang.String)
+  public EnumSpec(java.util.List<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumValue>, java.util.List<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumCategory>, boolean, java.lang.String, java.util.Map<java.lang.String, java.lang.String>)
+  public boolean alphabeticalSorting()
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumCategory> categories()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String invalidValueMessage()
+  public java.util.Map<java.lang.String, java.lang.String> invalidValueMessages()
+  public java.lang.String jsonType()
+  public final java.lang.String toString()
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumValue> values()
+
+public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumValue
+  public EnumValue(java.lang.String, java.util.Map<java.lang.String, java.lang.String>)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.util.Map<java.lang.String, java.lang.String> labels()
+  public final java.lang.String toString()
+  public java.lang.String value()
+
+public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.NumberSpec implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
+  public NumberSpec(java.lang.Integer, java.lang.Integer, java.math.BigDecimal, java.math.BigDecimal, boolean, boolean, io.github.mbackschat.a12.dm.modelkit.NumberTrait)
+  public NumberSpec(java.lang.Integer, java.math.BigDecimal, java.math.BigDecimal)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String jsonType()
+  public boolean leadingZerosAllowed()
+  public java.lang.Integer maxFractionalDigits()
+  public java.math.BigDecimal maxValue()
+  public java.lang.Integer minFractionalDigits()
+  public java.math.BigDecimal minValue()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.modelkit.NumberTrait trait()
+  public boolean zeroNotAllowed()
+
+public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.StringSpec implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
+  public StringSpec(java.lang.Integer, java.lang.Integer, java.lang.String, java.lang.String)
+  public StringSpec(java.lang.Integer, java.lang.Integer, java.lang.String, java.lang.String, boolean, boolean, java.util.Map<java.lang.String, java.util.List<java.lang.String>>)
+  public StringSpec(java.lang.Integer, java.lang.Integer, java.lang.String, java.lang.String, boolean, boolean, java.util.Map<java.lang.String, java.util.List<java.lang.String>>, boolean)
+  public StringSpec(java.lang.Integer, java.lang.Integer, java.lang.String, java.lang.String, boolean, boolean, java.util.Map<java.lang.String, java.util.List<java.lang.String>>, boolean, java.util.Map<java.lang.String, java.lang.String>)
+  public boolean alphabeticalSorting()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String jsonType()
+  public boolean lineBreaksPermitted()
+  public java.lang.Integer maxLength()
+  public java.lang.Integer minLength()
+  public boolean noValueValidation()
+  public java.lang.String pattern()
+  public java.lang.String patternMessage()
+  public java.util.Map<java.lang.String, java.lang.String> patternMessages()
+  public java.util.Map<java.lang.String, java.util.List<java.lang.String>> suggestions()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.TimeSpec implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
+  public TimeSpec(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public java.lang.String format()
+  public final int hashCode()
+  public java.lang.String jsonType()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.TypeDefRef implements io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec
+  public TypeDefRef(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String jsonType()
+  public final java.lang.String toString()
+  public java.lang.String typeDefinitionId()
+
+public record io.github.mbackschat.a12.dm.modelkit.GroupMeta
+  public GroupMeta(java.util.Map<java.lang.String, java.lang.String>, java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation>, java.util.Map<java.lang.String, java.lang.String>, java.util.Map<java.lang.String, java.lang.String>)
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation> annotations()
+  public static io.github.mbackschat.a12.dm.modelkit.GroupMeta.Builder builder()
+  public final boolean equals(java.lang.Object)
+  public java.util.Map<java.lang.String, java.lang.String> externalDescription()
+  public final int hashCode()
+  public java.util.Map<java.lang.String, java.lang.String> internalDescription()
+  public java.util.Map<java.lang.String, java.lang.String> labels()
+  public static io.github.mbackschat.a12.dm.modelkit.GroupMeta none()
+  public final java.lang.String toString()
+
+public static final class io.github.mbackschat.a12.dm.modelkit.GroupMeta.Builder
+  public Builder()
+  public io.github.mbackschat.a12.dm.modelkit.GroupMeta.Builder annotations(java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation>)
+  public io.github.mbackschat.a12.dm.modelkit.GroupMeta build()
+  public io.github.mbackschat.a12.dm.modelkit.GroupMeta.Builder externalDescription(java.util.Map<java.lang.String, java.lang.String>)
+  public io.github.mbackschat.a12.dm.modelkit.GroupMeta.Builder internalDescription(java.util.Map<java.lang.String, java.lang.String>)
+  public io.github.mbackschat.a12.dm.modelkit.GroupMeta.Builder labels(java.util.Map<java.lang.String, java.lang.String>)
+
+public enum io.github.mbackschat.a12.dm.modelkit.IncludeLevel
+  public static final io.github.mbackschat.a12.dm.modelkit.IncludeLevel MODEL_ROOT
+  public static final io.github.mbackschat.a12.dm.modelkit.IncludeLevel SINGLE_RG
+  public static io.github.mbackschat.a12.dm.modelkit.IncludeLevel valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.modelkit.IncludeLevel[] values()
+
+public final class io.github.mbackschat.a12.dm.modelkit.LabelBuilder
+  public LabelBuilder()
+  public io.github.mbackschat.a12.dm.modelkit.LabelBuilder label(java.lang.String, java.lang.String)
+
+public final class io.github.mbackschat.a12.dm.modelkit.ModelDocument
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument addAttachmentGroup(java.lang.String, java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.AttachmentBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument addField(java.lang.String, io.github.mbackschat.a12.dm.modelkit.ElementDraft.Field)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument addField(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldKind)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument addField(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument addGroup(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument addImport(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument addInclude(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument addLocale(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument addMultiSelectGroup(java.lang.String, java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.MultiSelectBuilder>)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument addRepeatableGroup(java.lang.String, java.lang.String, int)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument addTypeDefinition(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldKind)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument addTypeDefinition(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument addTypedefField(java.lang.String, java.lang.String, java.lang.String)
+  public java.util.Map<java.lang.String, java.lang.String> annotations(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument applyModification(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldModification)
+  public java.util.Optional<java.lang.Integer> baseYear()
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument clearIndexField(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument clearModelComment()
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument clearSortFields(java.lang.String)
+  public int computationCount()
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument.DocConfig config()
+  public boolean describableExists(java.lang.String)
+  public java.util.List<java.lang.String> enumValues(java.lang.String)
+  public java.util.Map<java.lang.String, java.lang.String> externalDescription(java.lang.String)
+  public java.lang.String extractGroupAsInclude(java.lang.String, java.lang.String)
+  public java.lang.String extractGroupAsInclude(java.lang.String, java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument extractTypeDefinition(java.lang.String, java.util.List<java.lang.String>)
+  public java.util.Optional<com.fasterxml.jackson.databind.node.ObjectNode> fieldConfig(java.lang.String)
+  public java.util.Optional<java.lang.String> fieldKind(java.lang.String)
+  public java.util.OptionalInt fieldMaxFractionalDigits(java.lang.String)
+  public java.util.OptionalInt fieldMaxLength(java.lang.String)
+  public java.util.Optional<java.math.BigDecimal> fieldMaxValue(java.lang.String)
+  public java.util.OptionalInt fieldMinLength(java.lang.String)
+  public java.util.Optional<java.math.BigDecimal> fieldMinValue(java.lang.String)
+  public java.util.List<java.lang.String> fieldPaths()
+  public java.util.Optional<java.lang.String> fieldPattern(java.lang.String)
+  public java.util.Optional<java.lang.String> fieldType(java.lang.String)
+  public boolean fieldsShareConcreteType(java.util.List<java.lang.String>)
+  public java.util.List<java.lang.String> fieldsUsingTypeDefinition(java.lang.String)
+  public java.util.List<java.lang.String> groupPaths()
+  public java.lang.String id()
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.ModelDocument.Include> includes()
+  public java.util.Optional<java.lang.String> indexField(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument inlineInclude(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument inlineTypeDefinition(java.lang.String)
+  public java.util.Map<java.lang.String, java.lang.String> internalDescription(java.lang.String)
+  public boolean isRepeating(java.lang.String)
+  public java.util.Optional<java.util.Map<java.lang.String, java.lang.String>> labels(java.lang.String)
+  public java.util.List<java.lang.String> locales()
+  public int maxRepetitions(java.lang.String)
+  public java.util.Map<java.lang.String, java.lang.String> modelAnnotations()
+  public java.util.Optional<java.lang.String> modelComment()
+  public java.util.Map<java.lang.String, java.lang.String> modelLabels()
+  public java.lang.String modelType()
+  public java.lang.String modelVersion()
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument mount(java.lang.String, java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument mount(java.lang.String, java.lang.String, java.lang.String, int)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument mount(java.lang.String, java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.modelkit.MountOptions)
+  public java.util.Optional<java.lang.String> mountAliasAt(java.lang.String)
+  public java.util.List<java.lang.String> mountsOfInclude(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument moveField(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument moveGroup(java.lang.String, java.lang.String)
+  public static io.github.mbackschat.a12.dm.modelkit.ModelDocument read(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument removeAnnotation(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument removeExternalDescription(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument removeField(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument removeGroup(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument removeImport(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument removeInclude(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument removeInternalDescription(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument removeLocale(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument removeModelAnnotation(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument removeTypeDefinition(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument renameField(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument renameGroup(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument renameInclude(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument renameRule(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument renameTypeDefinition(java.lang.String, java.lang.String)
+  public java.util.Optional<io.github.mbackschat.a12.dm.modelkit.Requiredness> requiredness(java.lang.String)
+  public int ruleCount()
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setAnnotation(java.lang.String, java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setBaseYear(int)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setConditionLanguage(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setDecimalSeparator(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setExternalDescription(java.lang.String, java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setFieldRefByShortNameAllowed(boolean)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setFieldType(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setGlobal(java.lang.String, boolean)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setHelperText(java.lang.String, java.util.Map<java.lang.String, java.lang.String>)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setIncludeReference(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setIndexField(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setInternalDescription(java.lang.String, java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setLabel(java.lang.String, java.util.Map<java.lang.String, java.lang.String>)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setModelAnnotation(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setModelComment(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setModelId(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setModelLabel(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setNonRepeatable(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setRepeatable(java.lang.String, int)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setRequiredErrorMessages(java.lang.String, java.util.Map<java.lang.String, java.lang.String>)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setRequiredness(java.lang.String, io.github.mbackschat.a12.dm.modelkit.Requiredness)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setSortFields(java.lang.String, java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.SortField>)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setSupportedCharacters(java.util.List<java.lang.String>)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setTimeZone(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setTransient(java.lang.String, boolean)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setTypeDefinitionType(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldKind)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument setTypeDefinitionType(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec)
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.SortField> sortFields(java.lang.String)
+  public java.lang.String toJson()
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.ModelDocument.Include> transitiveIncludes()
+  public java.util.List<java.lang.String> typeDefImports()
+  public java.util.Optional<com.fasterxml.jackson.databind.node.ObjectNode> typeDefinitionConfig(java.lang.String)
+  public java.util.List<java.lang.String> typeDefinitionIds()
+  public java.util.Optional<java.lang.String> typeDefinitionKind(java.lang.String)
+  public java.util.OptionalInt typeDefinitionMaxFractionalDigits(java.lang.String)
+  public java.util.OptionalInt typeDefinitionMaxLength(java.lang.String)
+  public java.util.Optional<java.math.BigDecimal> typeDefinitionMaxValue(java.lang.String)
+  public java.util.OptionalInt typeDefinitionMinLength(java.lang.String)
+  public java.util.Optional<java.math.BigDecimal> typeDefinitionMinValue(java.lang.String)
+  public java.util.Optional<java.lang.String> typeDefinitionPattern(java.lang.String)
+  public java.util.Optional<java.lang.String> typeDefinitionType(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument validate()
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument validate(io.github.mbackschat.a12.dm.core.ModelResolver)
+
+public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.DocConfig
+  public DocConfig(java.lang.String, java.lang.String, java.lang.String, boolean, java.util.List<java.lang.String>)
+  public java.lang.String conditionLanguage()
+  public java.lang.String decimalSeparator()
+  public final boolean equals(java.lang.Object)
+  public boolean fieldRefByShortNameAllowed()
+  public final int hashCode()
+  public java.util.List<java.lang.String> supportedCharacters()
+  public java.lang.String timeZone()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.Include
+  public Include(java.lang.String, java.lang.String)
+  public java.lang.String alias()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String reference()
+  public final java.lang.String toString()
+
+public record io.github.mbackschat.a12.dm.modelkit.MountOptions
+  public MountOptions(int, boolean, boolean, io.github.mbackschat.a12.dm.modelkit.IncludeLevel)
+  public io.github.mbackschat.a12.dm.modelkit.MountOptions asModelRoot()
+  public final boolean equals(java.lang.Object)
+  public boolean excludeComputations()
+  public boolean excludeRules()
+  public io.github.mbackschat.a12.dm.modelkit.MountOptions excludingComputations()
+  public io.github.mbackschat.a12.dm.modelkit.MountOptions excludingRules()
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.modelkit.IncludeLevel includeLevel()
+  public int repeatability()
+  public static io.github.mbackschat.a12.dm.modelkit.MountOptions repeatable(int)
+  public static io.github.mbackschat.a12.dm.modelkit.MountOptions single()
+  public final java.lang.String toString()
+
+public final class io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder extends io.github.mbackschat.a12.dm.modelkit.FieldAttrs<io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder>
+  public NumberFieldBuilder()
+  public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder fractionDigits(int)
+  public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder fractionDigits(int, int)
+  public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder leadingZerosAllowed()
+  public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder max(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder min(java.lang.String)
+  protected io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
+  public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder unit(io.github.mbackschat.a12.dm.modelkit.NumberTrait)
+  public io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder zeroNotAllowed()
+
+public enum io.github.mbackschat.a12.dm.modelkit.NumberTrait
+  public static final io.github.mbackschat.a12.dm.modelkit.NumberTrait AMOUNT
+  public static final io.github.mbackschat.a12.dm.modelkit.NumberTrait PERCENT
+  public static final io.github.mbackschat.a12.dm.modelkit.NumberTrait PERMILLE
+  public java.lang.String json()
+  public static io.github.mbackschat.a12.dm.modelkit.NumberTrait valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.modelkit.NumberTrait[] values()
+
+public enum io.github.mbackschat.a12.dm.modelkit.Requiredness
+  public static final io.github.mbackschat.a12.dm.modelkit.Requiredness OPTIONAL
+  public static final io.github.mbackschat.a12.dm.modelkit.Requiredness REQUIRED
+  public static final io.github.mbackschat.a12.dm.modelkit.Requiredness REQUIRED_IF_PARENT_PRESENT
+  public static io.github.mbackschat.a12.dm.modelkit.Requiredness valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.modelkit.Requiredness[] values()
+
+public record io.github.mbackschat.a12.dm.modelkit.RolesFile
+  public RolesFile(java.util.List<io.github.mbackschat.a12.dm.modelkit.RolesFile.Role>)
+  public boolean defines(java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.util.Set<java.lang.String> names()
+  public static io.github.mbackschat.a12.dm.modelkit.RolesFile parse(java.lang.String)
+  public java.util.Optional<io.github.mbackschat.a12.dm.modelkit.RolesFile.Role> role(java.lang.String)
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.RolesFile.Role> roles()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.modelkit.RolesFile.Role
+  public Role(java.lang.String, java.lang.String, java.util.List<java.lang.String>)
+  public java.util.List<java.lang.String> accessRights()
+  public java.lang.String description()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String name()
+  public final java.lang.String toString()
+
+public enum io.github.mbackschat.a12.dm.modelkit.SortOrder
+  public static final io.github.mbackschat.a12.dm.modelkit.SortOrder ASC
+  public static final io.github.mbackschat.a12.dm.modelkit.SortOrder DESC
+  public static io.github.mbackschat.a12.dm.modelkit.SortOrder valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.modelkit.SortOrder[] values()
+
+public final class io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder extends io.github.mbackschat.a12.dm.modelkit.FieldAttrs<io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder>
+  public StringFieldBuilder()
+  public io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder alphabeticalSorting()
+  public io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder lineBreaks()
+  public io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder maxLength(int)
+  public io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder minLength(int)
+  public io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder noValueValidation()
+  public io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder pattern(java.lang.String, java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder patternMessage(java.lang.String, java.lang.String)
+  protected io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
+  public io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder suggestions(java.lang.String, java.lang.String[])
+
+public final class io.github.mbackschat.a12.dm.modelkit.TimeFieldBuilder extends io.github.mbackschat.a12.dm.modelkit.FieldAttrs<io.github.mbackschat.a12.dm.modelkit.TimeFieldBuilder>
+  public TimeFieldBuilder()
+  public io.github.mbackschat.a12.dm.modelkit.TimeFieldBuilder format(java.lang.String)
+  protected io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
+
+public record io.github.mbackschat.a12.dm.modelkit.UsersFile
+  public UsersFile(java.util.List<io.github.mbackschat.a12.dm.modelkit.UsersFile.User>)
+  public boolean anyoneHolds(java.lang.String)
+  public java.util.Set<java.lang.String> authorities()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public static io.github.mbackschat.a12.dm.modelkit.UsersFile parse(java.lang.String)
+  public static io.github.mbackschat.a12.dm.modelkit.UsersFile.User parseUser(java.lang.String)
+  public final java.lang.String toString()
+  public java.util.Optional<io.github.mbackschat.a12.dm.modelkit.UsersFile.User> user(java.lang.String)
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.UsersFile.User> users()
+
+public static record io.github.mbackschat.a12.dm.modelkit.UsersFile.User
+  public User(java.lang.String, java.util.List<java.lang.String>)
+  public java.util.List<java.lang.String> authorities()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public final java.lang.String toString()
+  public java.lang.String username()
+
+public final class io.github.mbackschat.a12.dm.modelkit.Workspace
+  public static io.github.mbackschat.a12.dm.modelkit.Workspace.Model index(io.github.mbackschat.a12.dm.modelkit.ModelDocument, java.lang.String, java.util.Map<java.lang.String, java.lang.String>)
+  public static java.util.List<io.github.mbackschat.a12.dm.modelkit.Workspace.Edge> inheritanceEdges(java.util.List<io.github.mbackschat.a12.dm.modelkit.Workspace.Model>)
+  public static java.util.List<io.github.mbackschat.a12.dm.modelkit.Workspace.Model> scan(java.nio.file.Path, boolean)
+
+public static record io.github.mbackschat.a12.dm.modelkit.Workspace.Edge
+  public Edge(java.lang.String, java.lang.String, boolean)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public boolean resolved()
+  public java.lang.String subtype()
+  public java.lang.String supertype()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.modelkit.Workspace.Model
+  public Model(java.lang.String, java.lang.String, java.lang.String, java.lang.String, boolean, java.util.List<java.lang.String>, java.util.List<java.lang.String>, java.util.List<java.lang.String>, java.util.List<java.lang.String>, java.util.List<io.github.mbackschat.a12.dm.modelkit.Workspace.Reference>, java.util.List<io.github.mbackschat.a12.dm.modelkit.Workspace.Reference>, java.util.List<java.lang.String>, int, int)
+  public final boolean equals(java.lang.Object)
+  public int fields()
+  public int groups()
+  public final int hashCode()
+  public java.lang.String id()
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.Workspace.Reference> includes()
+  public boolean isAbstract()
+  public java.lang.String label()
+  public java.util.List<java.lang.String> locales()
+  public java.lang.String modelType()
+  public java.lang.String path()
+  public java.util.List<java.lang.String> providesTypedefs()
+  public java.util.List<java.lang.String> roles()
+  public java.util.List<java.lang.String> subTypes()
+  public java.util.List<java.lang.String> superTypes()
+  public final java.lang.String toString()
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.Workspace.Reference> typedefImports()
+
+public static record io.github.mbackschat.a12.dm.modelkit.Workspace.Reference
+  public Reference(java.lang.String, java.lang.String, java.lang.String)
+  public java.lang.String alias()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String ref()
+  public java.lang.String resolvedPath()
+  public final java.lang.String toString()
+
+public final class io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles
+  public static java.util.List<io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding> check(java.util.List<io.github.mbackschat.a12.dm.modelkit.Workspace.Model>, io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.Resolution)
+  public static java.util.List<java.nio.file.Path> discoverRoles(java.nio.file.Path)
+  public static io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.Resolution resolve(java.nio.file.Path, java.util.Optional<java.nio.file.Path>, java.util.Optional<java.nio.file.Path>)
+
+public static record io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.Resolution
+  public Resolution(java.util.List<java.nio.file.Path>, java.util.Optional<io.github.mbackschat.a12.dm.modelkit.RolesFile>, java.util.List<java.nio.file.Path>, java.util.Optional<io.github.mbackschat.a12.dm.modelkit.UsersFile>)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public boolean multipleRolesFiles()
+  public java.util.Optional<io.github.mbackschat.a12.dm.modelkit.RolesFile> roles()
+  public java.util.List<java.nio.file.Path> rolesFiles()
+  public boolean rolesFound()
+  public final java.lang.String toString()
+  public java.util.Optional<io.github.mbackschat.a12.dm.modelkit.UsersFile> users()
+  public java.util.List<java.nio.file.Path> usersFiles()
+  public boolean usersFound()
+
+public static record io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding
+  public RoleFinding(io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Severity, io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Code, java.lang.String, java.lang.String, java.util.Optional<java.lang.String>, java.util.Optional<java.lang.String>, java.util.Optional<java.lang.String>, java.util.Optional<java.lang.String>)
+  public io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Code code()
+  public final boolean equals(java.lang.Object)
+  public java.lang.String fix()
+  public final int hashCode()
+  public java.lang.String message()
+  public java.util.Optional<java.lang.String> modelId()
+  public java.util.Optional<java.lang.String> modelPath()
+  public java.util.Optional<java.lang.String> role()
+  public io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Severity severity()
+  public final java.lang.String toString()
+  public java.util.Optional<java.lang.String> username()
+
+public static enum io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Code
+  public static final io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Code MISSING_ROLE_ASSIGNMENT
+  public static final io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Code MULTIPLE_ROLES_FILES
+  public static final io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Code NO_ROLES_FILE
+  public static final io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Code ORPHAN_ROLE
+  public static final io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Code UNDEFINED_AUTHORITY
+  public static final io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Code UNDEFINED_ROLE
+  public static final io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Code UNREACHABLE_MODEL
+  public static io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Code valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Code[] values()
+
+public static enum io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Severity
+  public static final io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Severity INFO
+  public static final io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Severity WARNING
+  public static io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Severity valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding.Severity[] values()
