@@ -54,7 +54,7 @@ class ModelDocumentTest {
     void roundTripStaysKernelValid() throws Exception {
         String out = ModelDocument.read(Fixtures.json("models/subscription.dm.json")).toJson();
         // the written-back self-contained model still loads + checks-consistent through the real kernel
-        ModelLoader.loadSelfContained(new StringReader(out));
+        ModelLoader.loadSelfContained(out);
     }
 
     @Test

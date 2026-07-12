@@ -36,7 +36,7 @@ class NumberScaleKernelLawTest {
         String json = DocumentModelDraft.named("Probe").locale("en_US")
                 .rootGroup("G", g -> g.numberField("N", n -> { }))   // no scale set → modelkit defaults to 0
                 .build().toJson();
-        assertDoesNotThrow(() -> ModelLoader.loadSelfContained(new StringReader(json)));
+        assertDoesNotThrow(() -> ModelLoader.loadSelfContained(json));
     }
 
     @Test
@@ -49,7 +49,7 @@ class NumberScaleKernelLawTest {
         assertEquals(1, stripKey(tree, "maxFractionalDigits"), "the fixture must have exactly one scale to strip");
 
         // No 'unbounded scale' exists in a12: the slot-less number is accepted, defaulting scale to 0.
-        assertDoesNotThrow(() -> ModelLoader.loadSelfContained(new StringReader(tree.toString())));
+        assertDoesNotThrow(() -> ModelLoader.loadSelfContained(tree.toString()));
     }
 
     private static int stripKey(JsonNode node, String key) {

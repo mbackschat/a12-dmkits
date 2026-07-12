@@ -20,9 +20,14 @@ java {
 }
 
 // Ratchet (A12K-3589 / docs/TESTING-SPEC "no deprecated-kernel-API" guardian): a kernel API MARKED FOR REMOVAL
-// cannot compile in this kernel-facing module. Only the `removal` lint (not `deprecation`) is treated as an
+// cannot compile in a kernel-facing compilation. Only the `removal` lint (not `deprecation`) is treated as an
 // error, so a new call to a removal-scheduled kernel API fails the build while plain-@Deprecated APIs (incl.
 // Jackson's) still compile. See docs/KERNEL-INTEGRATION-NOTES.md "A12K-3589 kernel-API removal surface".
+//
+// Kernel-decoupling stage 3: the KITS' MAIN source is now kernel-free (zero com.mgmtp — held by
+// verifyKitPurity), so compileJava faces no kernel API and the ratchet is a no-op there. It still guards
+// compileTestJava, where the kernel-oracle tests keep the kernel on the classpath (the kernel stays the
+// oracle in every test — verification unchanged). Left on withType(JavaCompile) so that test coverage holds.
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += ['-Xlint:removal', '-Werror']
 }
@@ -37,12 +42,11 @@ ext.kernelVersion = '30.8.1'
 ext.a12Distribution = '2025.06-ext5'
 
 dependencies {
-    // Public consumer surface only (D9 / N8). The facade transitively provides the public
-    // IDocumentModel, IDocumentModelService (expand / checkConsistency — the §11 validate seam),
-    // and the DM-JSON serializer. Kernel types appear in rulekit's own public API, hence `api`.
-    // Deliberately NOT kernel-md-model / kernel-md-a12internal: those carry the internal-tier
-    // `betterbuilders` the proposal excludes.
-    api "com.mgmtp.a12.kernel:kernel-md-facade:${kernelVersion}"
+    // Kernel-decoupling stage 3 (the decisive cut): the kits' MAIN source imports ZERO com.mgmtp — the
+    // kernel lives behind narrow SPI ports (dm.core.spi.*, dm.rulekit.spi.*) that the :adapter backend
+    // implements + registers via ServiceLoader. So there is NO kernel dependency in the kits' compile
+    // classpath anymore; the old `api kernel-md-facade` edge is deleted. This is what unblocks the
+    // Maven-Central publish (RELEASE-SPEC §8/§11). verifyKitPurity fails the build on any kernel import.
 
     // The operator catalog (PROJECT-DESIGN §9) is a bundled JSON resource parsed at load time.
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
@@ -53,6 +57,15 @@ dependencies {
     // modelkit (the structure builder) now lives in this module's `dm.modelkit` package (folded in
     // 2026-06-09 — D10 superseded). Its dogfood fixtures (ModelDrafts) + tests are in this project's
     // test set; the `dm.modelkit ⊥ dm.rulekit` boundary is held by `SiblingBoundaryTest`.
+
+    // The kernel stays the oracle in TESTS (kernel-decoupling: verification unchanged). Test scope only —
+    // MAIN is kernel-free. :adapter supplies the real ConsistencyOracle/BackendInfo ServiceLoader providers
+    // (so the kernel gate actually runs in kernel-oracle tests: BoundModel.ofJson / RuleValidator.check /
+    // the include/typedef constraint tests all get KERNEL_CONFIRMED); kernel-md-facade gives those tests the
+    // kernel types they read directly (IDocumentModel, the serializer). This is the sanctioned non-leaking
+    // pattern (KERNEL-DECOUPLING-PROPOSAL §3a: rootTest → adapterMain → rootMain is acyclic).
+    testImplementation project(':adapter')
+    testImplementation "com.mgmtp.a12.kernel:kernel-md-facade:${kernelVersion}"
 
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'

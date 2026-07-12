@@ -137,7 +137,7 @@ final class WorkspaceListCommand extends BaseCommand {
         for (Workspace.Model m : models) {
             boolean valid;
             try {
-                ModelLoader.load(new StringReader(Files.readString(root.resolve(m.path()))), resolver);
+                ModelLoader.loadAndCheck(Files.readString(root.resolve(m.path())), resolver);
                 valid = true;
             } catch (IOException | RuntimeException invalid) {
                 valid = false;

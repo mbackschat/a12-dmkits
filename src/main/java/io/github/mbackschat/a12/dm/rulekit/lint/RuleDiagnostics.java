@@ -80,7 +80,6 @@ public final class RuleDiagnostics {
             out.add(d);
         }
 
-        boolean ok = out.stream().noneMatch(d -> d.severity() == Severity.ERROR);
-        return new ValidationResult(ok, out);
+        return ValidationResult.of(out);
     }
 }

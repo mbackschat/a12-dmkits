@@ -1880,10 +1880,10 @@ public final class ModelDocument {
      *  {@link ModelResolver} ({@code id → DM-JSON}). */
     public ModelDocument validate(ModelResolver resolver) {
         try {
-            ModelLoader.load(new StringReader(toJson()), resolver);
+            ModelLoader.loadAndCheck(toJson(), resolver);
         } catch (ModelConsistencyException e) {
             throw e; // checkConsistency tier — already the uniform "model invalid" type
-        } catch (IOException | RuntimeException e) {
+        } catch (RuntimeException e) {
             // deserialize/expand tier (e.g. a duplicate element id surfaces as IllegalArgumentException):
             // funnel into the same type so a caller sees one "invalid edit" signal regardless of tier — and
             // SURFACE the underlying cause's message via the shared factory (probe 04: a bare "not

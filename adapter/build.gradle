@@ -35,10 +35,14 @@ tasks.withType(JavaCompile).configureEach {
 def kernelVersion = '30.8.1'
 
 dependencies {
-    // rulekit core — BoundModel/Rule/Dsl + ReferenceResolvers; brings kernel-md-facade + the public
-    // model API transitively (api). Kernel public types are fine here; the internal tier below is
-    // confined to this module and never leaks into a public adapter signature (boundary conversion).
+    // rulekit core — BoundModel/Rule/Dsl + ReferenceResolvers. Kernel-decoupling stage 3: root ':' is now
+    // kernel-free, so the kernel-md-facade this module needs (DocumentModelServiceFactory, IDocumentModel,
+    // IDocumentModelService = expand/checkConsistency, the DM-JSON serializer, and the a12-base
+    // model-consistency Notification/Severity types it brings transitively) is declared HERE now, not
+    // inherited via ':'. This module IS the kernel backend (it implements the SPI ports), so kernel types
+    // are expected — the N8 boundary keeps them off public signatures.
     api project(':')
+    implementation "com.mgmtp.a12.kernel:kernel-md-facade:${kernelVersion}"
 
     // The a12internal *read* tier — adapter-only (core must never depend on these per N8/D15):
     implementation "com.mgmtp.a12.kernel:kernel-core-tool-api:${kernelVersion}"      // IMVK_Service, IRuleParser, IConditionFormatter, IRuleMetaInformation, ado.IRule/IEntity/IEC, IProblemReporter

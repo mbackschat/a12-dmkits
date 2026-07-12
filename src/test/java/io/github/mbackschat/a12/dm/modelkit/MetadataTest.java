@@ -32,7 +32,7 @@ class MetadataTest {
 
     private static void load(String json) {
         try {
-            ModelLoader.loadSelfContained(new StringReader(json));
+            ModelLoader.loadSelfContained(json);
         } catch (Exception e) {
             throw new RuntimeException("emitted DM-JSON failed checkConsistency:\n" + json, e);
         }

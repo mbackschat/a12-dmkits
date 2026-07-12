@@ -2,9 +2,9 @@ package io.github.mbackschat.a12.dm.rulekit.validate;
 
 import java.util.Optional;
 
-import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-
+import io.github.mbackschat.a12.dm.core.Backends;
 import io.github.mbackschat.a12.dm.core.Severity;
+import io.github.mbackschat.a12.dm.core.spi.BackendInfo;
 
 /**
  * Runtime kernel-version awareness (F11). rulekit's catalog is verified against a floor version (the
@@ -18,6 +18,10 @@ import io.github.mbackschat.a12.dm.core.Severity;
  * authoring (rulekit binds only the public surface), so the worst case is an unmodeled operator or
  * a catalog fix/gotcha keyed to the floor. When the runtime version can't be read, it stays silent
  * (bias to no false alarm).
+ *
+ * <p>The running version is read through the {@link BackendInfo} port (kernel-decoupling stage 3), so this
+ * class imports no kernel type. No backend ⇒ no runtime version ⇒ no skew advisory — there is nothing to
+ * skew against, and the degraded-mode marker carries the "no backend" fact instead.
  */
 public record KernelVersion(Optional<String> runtime, String verifiedFloor) {
 
@@ -30,10 +34,10 @@ public record KernelVersion(Optional<String> runtime, String verifiedFloor) {
         return new KernelVersion(Optional.ofNullable(runtimeVersion()), verifiedFloor);
     }
 
-    /** The running kernel's {@code Implementation-Version}, or {@code null} when it can't be read. */
+    /** The running kernel's {@code Implementation-Version} (via the {@link BackendInfo} port), or
+     *  {@code null} when no backend is present or the version can't be read. */
     public static String runtimeVersion() {
-        Package pkg = IDocumentModel.class.getPackage();
-        return pkg == null ? null : pkg.getImplementationVersion();
+        return Backends.backendInfo().map(BackendInfo::version).orElse(null);
     }
 
     /** True when the running kernel is known and differs from the verified floor. */

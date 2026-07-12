@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.validate;
 
 import java.io.IOException;
-import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,16 +12,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
-import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
-import com.mgmtp.a12.model.notification.RankedNotification;
 
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
-import io.github.mbackschat.a12.dm.core.KernelNotifications;
+import io.github.mbackschat.a12.dm.core.Backends;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.core.Notification;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
+import io.github.mbackschat.a12.dm.core.Verification;
+import io.github.mbackschat.a12.dm.core.spi.ConsistencyOracle;
 
 /**
  * Ground-truth rule check (PROJECT-DESIGN §11, line 3). Injects a {@link DraftRule} into the model as
@@ -38,7 +35,6 @@ import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
  */
 public final class RuleValidator {
 
-    private static final DocumentModelServiceFactory FACTORY = new DocumentModelServiceFactory();
     private final ObjectMapper mapper = new ObjectMapper();
     private final DiagnosticEnricher enricher = new DiagnosticEnricher(OperatorCatalog.load());
 
@@ -151,20 +147,32 @@ public final class RuleValidator {
 
     private ValidationResult checkInjected(String injected, String rulePath,
             ModelResolver resolver) {
-
-        IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
-        IDocumentModelService service = FACTORY.createDocumentModelService();
-
+        Optional<ConsistencyOracle> oracle = Backends.consistencyOracle();
         List<Diagnostic> diagnostics = new ArrayList<>();
-        try {
-            IDocumentModel model = serializer.deserialize(new StringReader(injected));
-            service.expand(model, ReferenceResolvers.of(resolver));
-            service.checkConsistency(model, (RankedNotification n) ->
-                    diagnostics.add(enricher.enrich(Diagnostic.fromKernel(KernelNotifications.toCore(n), rulePath))));
-        } catch (IOException e) {
-            throw new UncheckedIOException("failed to deserialize the rule-injected model", e);
+        if (oracle.isEmpty()) {
+            // Degraded (STRUCTURAL_ONLY, KERNEL-DECOUPLING-PROPOSAL §2c): the authoritative kernel gate did
+            // not run, so no MVK verdict is fabricated — the structural prechecks above already ran, and this
+            // one ENVIRONMENT advisory makes the posture explicit. ok() stays "no ERROR among the checks that
+            // ran"; verification() is what keeps it from ever reading as kernel-green.
+            diagnostics.add(noKernelBackend(rulePath));
+            return ValidationResult.of(diagnostics, Verification.STRUCTURAL_ONLY);
         }
-        return ValidationResult.of(diagnostics);
+        for (Notification n : oracle.get().checkConsistency(injected, resolver)) {
+            diagnostics.add(enricher.enrich(Diagnostic.fromKernel(n, rulePath)));
+        }
+        return ValidationResult.of(diagnostics, Verification.KERNEL_CONFIRMED);
+    }
+
+    /** The single {@code RK_NO_KERNEL_BACKEND} advisory (INFO/ENVIRONMENT — never gates {@code ok}). */
+    private static Diagnostic noKernelBackend(String rulePath) {
+        return new Diagnostic(
+                RkCode.NO_KERNEL_BACKEND.severity(),
+                RkCode.NO_KERNEL_BACKEND.source(),
+                Optional.of(RkCode.NO_KERNEL_BACKEND.code()),
+                RkCode.NO_KERNEL_BACKEND.meaning(),
+                Diagnostic.Where.path(rulePath),
+                Optional.of(RkCode.NO_KERNEL_BACKEND.fix()),
+                Optional.empty());
     }
 
     /**

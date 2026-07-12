@@ -64,7 +64,7 @@ class MultiSelectTemplateTest {
         assertTrue(tampered.contains("\"repeatability\" : 1"), "the tamper applied");
 
         ModelConsistencyException ex = assertThrows(ModelConsistencyException.class,
-                () -> ModelLoader.loadSelfContained(new StringReader(tampered)));
+                () -> ModelLoader.loadSelfContained(tampered));
         assertTrue(ex.getMessage().toLowerCase().contains("multi") || ex.getMessage().contains("MULTI_SELECT"),
                 () -> "the kernel rejects a non-repeatable multi-select: " + ex.getMessage());
     }

@@ -3,8 +3,10 @@ package io.github.mbackschat.a12.dm.edit;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
 
 import org.junit.jupiter.api.Test;
 
@@ -12,8 +14,8 @@ import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
+import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 
-import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
@@ -67,9 +69,19 @@ class IncludeExcludeRulesTest {
         };
     }
 
-    /** Serialize the model after the kernel has expanded the mount (rules inline into the expanded form). */
+    /** Serialize the model after the kernel has expanded the mount (rules inline into the expanded form). This
+     *  is a kernel-EXPANSION oracle test, so it drives the kernel directly (the kits' loader is now kernel-free
+     *  and no longer hands back the expanded {@code IDocumentModel}). */
     private static String expanded(String baseJson, ModelResolver resolver) throws Exception {
-        IDocumentModel model = ModelLoader.load(new StringReader(baseJson), resolver);
+        IDocumentModelService service = new DocumentModelServiceFactory().createDocumentModelService();
+        IDocumentModel model = SERIALIZER.deserialize(new StringReader(baseJson));
+        service.expand(model, ref -> {
+            try {
+                return SERIALIZER.deserialize(new StringReader(resolver.resolve(ref)));
+            } catch (IOException e) {
+                throw new UncheckedIOException("failed to deserialize resolved model \"" + ref + "\"", e);
+            }
+        });
         StringWriter out = new StringWriter();
         SERIALIZER.serialize(model, out, n -> { });
         return out.toString();

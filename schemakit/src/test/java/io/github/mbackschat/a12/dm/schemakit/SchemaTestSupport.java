@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 
 import java.io.IOException;
-import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,14 +22,12 @@ final class SchemaTestSupport {
 
     private SchemaTestSupport() {}
 
-    /** Assert the kernel accepts a DM-JSON model — via the public facade ({@link ModelLoader}, the dm.core gate). */
+    /** Assert the kernel accepts a DM-JSON model — via the dm.core consistency gate ({@link ModelLoader}). */
     static void assertKernelAccepts(String dmJson) {
         try {
-            ModelLoader.loadSelfContained(new StringReader(dmJson));
+            ModelLoader.loadSelfContained(dmJson);
         } catch (ModelConsistencyException e) {
             fail("kernel rejected the imported model: " + e.getMessage());
-        } catch (IOException e) {
-            fail("could not load the imported model: " + e.getMessage());
         }
     }
 

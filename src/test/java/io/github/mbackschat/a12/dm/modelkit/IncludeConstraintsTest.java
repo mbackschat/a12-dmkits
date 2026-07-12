@@ -56,7 +56,7 @@ class IncludeConstraintsTest {
     void theKernelRejectsAnIncludeMissingABaseLocale() {
         // base declares en_US + de_DE; the included model declares only en_US → it can't cover de_DE → rejected
         assertThrows(Exception.class,
-                () -> ModelLoader.load(new StringReader(orderIncluding("en_US", "de_DE")), resolver(monolingualAddress())),
+                () -> ModelLoader.loadAndCheck(orderIncluding("en_US", "de_DE"), resolver(monolingualAddress())),
                 "an include must declare a superset of the base's locales (it must cover every base locale)");
     }
 
@@ -64,7 +64,7 @@ class IncludeConstraintsTest {
     void anIncludeCoveringTheBaseLocalesLoadsCleanly() {
         // base en_US only; the included model declares en_US (+de_DE extra) → it covers en_US → fine
         assertDoesNotThrow(
-                () -> ModelLoader.load(new StringReader(orderIncluding("en_US")), resolver(bilingualAddress())),
+                () -> ModelLoader.loadAndCheck(orderIncluding("en_US"), resolver(bilingualAddress())),
                 "an include that covers the base's locales (extra locales are harmless) is fine");
     }
 }

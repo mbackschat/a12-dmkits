@@ -60,7 +60,6 @@ public final class ComputationDiagnostics {
         out.addAll(validator.check(model.toJson(), computation.draft()).diagnostics());
         out.addAll(linter.lint(computation.draft()));
 
-        boolean ok = out.stream().noneMatch(d -> d.severity() == Severity.ERROR);
-        return new ValidationResult(ok, out);
+        return ValidationResult.of(out);
     }
 }

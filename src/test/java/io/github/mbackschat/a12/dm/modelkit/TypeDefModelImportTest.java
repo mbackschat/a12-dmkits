@@ -41,7 +41,7 @@ class TypeDefModelImportTest {
     @Test
     void aTypeDefOnlyModelIsKernelValidStandalone() throws Exception {
         String provider = catalogTypes();
-        ModelLoader.loadSelfContained(new StringReader(provider));   // kernel-valid with no root groups
+        ModelLoader.loadSelfContained(provider);   // kernel-valid with no root groups
         ModelDocument doc = ModelDocument.read(provider);
         assertTrue(doc.groupPaths().isEmpty(), "a type-def-only model has no groups");
         assertEquals(java.util.List.of("Sku", "Money"), doc.typeDefinitionIds(),
@@ -59,7 +59,7 @@ class TypeDefModelImportTest {
                         .typedefField("Price", "Money"))
                 .build().toJson();
         // the kernel resolves the imported types at expand and the consumer is valid
-        ModelLoader.load(new StringReader(consumer), resolver);
+        ModelLoader.loadAndCheck(consumer, resolver);
         ModelDocument doc = ModelDocument.read(consumer);
         assertEquals(java.util.List.of("catalogtypes"), doc.typeDefImports(),
                 "the import is declared as purpose=typeDefinitions, not an include");

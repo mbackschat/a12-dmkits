@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.core;
 
 import java.io.IOException;
-import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -11,16 +10,12 @@ import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
-import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
 
 /**
- * Factory methods for {@link ModelResolver} ({@code id → DM-JSON}, our kernel-free resolver type) plus the
- * one bridge {@link #of(ModelResolver)} that adapts a {@code ModelResolver} to the kernel's
- * {@link IDocumentModelReferenceResolver} where expansion needs it. The bridge is the only kernel-typed
- * member; it retires into the backend at kernel-decoupling stage 3.
+ * Factory methods for {@link ModelResolver} ({@code id → DM-JSON}, our kernel-free resolver type). Every
+ * method here is kernel-free (Jackson only); the kernel-side bridge that adapts a {@code ModelResolver} to
+ * the kernel's own resolver moved into the backend at kernel-decoupling stage 3, so this class — and all of
+ * {@code dm.core} — imports no {@code com.mgmtp.a12.kernel.*} type.
  */
 public final class ReferenceResolvers {
 
@@ -41,32 +36,11 @@ public final class ReferenceResolvers {
     }
 
     /**
-     * Bridge a <b>kernel-free</b> {@link ModelResolver} ({@code id → DM-JSON}) to the kernel's
-     * {@link IDocumentModelReferenceResolver} — so a dev resolves includes/type-def imports from their own
-     * store (a map, a service) without touching {@code com.mgmtp.a12.kernel.*}. Each reference deserializes a
-     * <em>fresh</em> model (expansion mutates in place). A {@code null} from the resolver fails fast.
-     */
-    public static IDocumentModelReferenceResolver of(ModelResolver resolver) {
-        IDocumentModelSerializer serializer = new DocumentModelServiceFactory().createDocumentModelSerializer();
-        return reference -> {
-            String json = resolver.resolve(reference);
-            if (json == null) {
-                throw new UnresolvedReferenceException(reference, "no model resolved for reference \"" + reference + "\"");
-            }
-            try {
-                return serializer.deserialize(new StringReader(json));
-            } catch (IOException e) {
-                throw new UnresolvedReferenceException(reference, "failed to deserialize resolved model \"" + reference + "\"", e);
-            }
-        };
-    }
-
-    /**
      * A resolver that loads referenced models from one or more directory trees (F-RES) — what a
      * multi-file application needs: its rules {@code include} other document models and import
      * type-definitions ({@code _TDM}) by reference. The kernel's {@code expand} and
-     * {@code extractImportedTypeDefinitions} both resolve the target's <em>model id</em> (via the
-     * {@link #of(ModelResolver) bridge}), so this indexes every <b>document model</b> in the trees by
+     * {@code extractImportedTypeDefinitions} both resolve the target's <em>model id</em> (through the
+     * backend's resolver bridge), so this indexes every <b>document model</b> in the trees by
      * {@code header.id} and serves its DM-JSON on demand.
      *
      * <p><b>Document-model detection is by {@code header.modelType == "document"}</b>, not a filename

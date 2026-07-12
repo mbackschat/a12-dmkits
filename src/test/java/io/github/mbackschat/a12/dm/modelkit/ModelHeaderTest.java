@@ -34,7 +34,7 @@ class ModelHeaderTest {
                 .rootGroup("Permit", p -> p.field("Ref", FieldKind.STRING))
                 .build().toJson();
 
-        ModelLoader.loadSelfContained(new StringReader(json));   // kernel-valid
+        ModelLoader.loadSelfContained(json);   // kernel-valid
 
         // the kernel reads the header label/annotation and writes them back — they survive its round-trip
         IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
@@ -96,7 +96,7 @@ class ModelHeaderTest {
 
     /** Deserialize → serialize through the kernel's own serializer (what survives is what the kernel actually read). */
     private static String kernelRoundTrip(String json) throws Exception {
-        ModelLoader.loadSelfContained(new StringReader(json));   // kernel-valid
+        ModelLoader.loadSelfContained(json);   // kernel-valid
         IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
         IDocumentModel model = serializer.deserialize(new StringReader(json));
         StringWriter out = new StringWriter();

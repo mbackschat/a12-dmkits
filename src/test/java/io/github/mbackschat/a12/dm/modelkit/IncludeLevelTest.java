@@ -59,7 +59,7 @@ class IncludeLevelTest {
                 .rootGroup("Order", o -> o.mount("ShipTo", "address", MountOptions.single().asModelRoot()))
                 .build().toJson();
         // loading runs expand + checkConsistency — a throw would mean the kernel rejects includeLevel
-        ModelLoader.load(new StringReader(model), resolver());
+        ModelLoader.loadAndCheck(model, resolver());
     }
 
     @Test

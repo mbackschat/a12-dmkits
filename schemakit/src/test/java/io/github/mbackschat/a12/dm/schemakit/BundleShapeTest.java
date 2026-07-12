@@ -1,10 +1,8 @@
 package io.github.mbackschat.a12.dm.schemakit;
 
 import io.github.mbackschat.a12.dm.core.ModelLoader;
-import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
 import org.junit.jupiter.api.Test;
-
-import java.io.StringReader;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -114,11 +112,13 @@ class BundleShapeTest {
     }
 
     private static void assertKernelAcceptsBundle(JsonSchemaImporter.BundleResult bundle) {
-        var resolver = ReferenceResolvers.of(
-                id -> bundle.models().containsKey(id) ? bundle.models().get(id).dmJson() : null);
+        // A plain kernel-free ModelResolver (id → DM-JSON); the consistency gate resolves it through the
+        // ConsistencyOracle backend (:adapter, on the schemakit test runtime classpath — the real kernel).
+        ModelResolver resolver =
+                id -> bundle.models().containsKey(id) ? bundle.models().get(id).dmJson() : null;
         bundle.models().forEach((id, result) -> {
             try {
-                ModelLoader.load(new StringReader(result.dmJson()), resolver);
+                ModelLoader.loadAndCheck(result.dmJson(), resolver);
             } catch (Exception e) {
                 fail("bundle model '" + id + "' did not load against the bundle resolver: " + e.getMessage());
             }

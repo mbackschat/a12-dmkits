@@ -54,7 +54,7 @@ class IncludeTest {
     void anIncludedModelExpandsAndItsFieldsResolveUnderTheMount() {
         String json = showroom().toJson();
         try {
-            ModelLoader.load(new StringReader(json), resolver());   // kernel gate: expand + checkConsistency (R3)
+            ModelLoader.loadAndCheck(json, resolver());   // kernel gate: expand + checkConsistency (R3)
         } catch (Exception e) {
             throw new RuntimeException("emitted DM-JSON failed to expand/checkConsistency:\n" + json, e);
         }

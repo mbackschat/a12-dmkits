@@ -557,10 +557,10 @@ public final class EditSession {
     /** The kernel gate: re-bind the whole model (deserialize → expand → checkConsistency), once. */
     public EditSession validate() {
         try {
-            ModelLoader.load(new StringReader(json), resolver);
+            ModelLoader.loadAndCheck(json, resolver);
         } catch (ModelConsistencyException e) {
             throw e;
-        } catch (IOException | RuntimeException e) {
+        } catch (RuntimeException e) {
             // deserialize/expand tier — surface the cause via the shared factory (probe 07: the terminal
             // gate used to drop it, unlike the per-edit gate; one factory keeps them from drifting).
             throw ModelConsistencyException.notKernelValid(e);

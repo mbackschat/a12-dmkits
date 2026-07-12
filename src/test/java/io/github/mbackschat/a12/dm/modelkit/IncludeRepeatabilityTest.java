@@ -47,7 +47,7 @@ class IncludeRepeatabilityTest {
     @Test
     void aRepeatableMountExpandsToARepeatingGroup() throws Exception {
         String json = orderWithRepeatableMount();
-        ModelLoader.load(new StringReader(json), resolver());   // kernel gate: expand + checkConsistency (R3)
+        ModelLoader.loadAndCheck(json, resolver());   // kernel gate: expand + checkConsistency (R3)
         ModelIndex index = ModelIndex.of(json, resolver());     // kernel-free include expansion (Stage 2)
         assertTrue(index.isRepeating("/Order/ShipTo"),
                 "a mount with repeatability > 1 must expand to a repeating group");

@@ -51,7 +51,7 @@ class SpanResolverTest {
         assertEquals(new io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer().render(c).length(),
                 refined.where().span().get().end());
 
-        String json = new io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult(false, List.of(refined)).toJson();
+        String json = io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult.of(List.of(refined)).toJson();
         assertTrue(json.contains("\"span\""), json);
     }
 

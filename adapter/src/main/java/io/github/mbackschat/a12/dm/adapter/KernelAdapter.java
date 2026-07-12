@@ -40,10 +40,9 @@ import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
 import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
-import io.github.mbackschat.a12.dm.core.KernelNotifications;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
-import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 import java.util.Arrays;
@@ -153,7 +152,7 @@ public final class KernelAdapter {
         IDocumentModelService service = FACTORY.createDocumentModelService();
         try {
             IDocumentModel pub = serializer.deserialize(new StringReader(modelJson));
-            service.expand(pub, ReferenceResolvers.of(resolver));
+            service.expand(pub, KernelResolvers.of(resolver));
             String variant = service.extractUsedVariants(pub).stream().findFirst().orElse("");
             DocumentModel intern = ExternalDocumentModelSerializerService.getInternDocumentModel(pub);
             return new DocumentModelService().getMvkServiceForModel(intern, variant, SILENT);
@@ -775,12 +774,7 @@ public final class KernelAdapter {
     private DocRuntime prepare(Map<String, Object> fields) {
         ModelResolver resolver =
                 model.resolver() != null ? model.resolver() : ReferenceResolvers.selfContained();
-        IDocumentModel expanded;
-        try {
-            expanded = ModelLoader.load(new StringReader(model.toJson()), resolver);
-        } catch (IOException e) {
-            throw new UncheckedIOException("failed to load the model for evaluation", e);
-        }
+        IDocumentModel expanded = loadExpanded(model.toJson(), resolver);
         // The structural index (group paths / repeatability / field-ness) is kernel-free (decoupling Stage 2);
         // it re-expands the authored JSON and is parity-locked to the kernel's expansion (ModelIndexParityTest).
         ModelIndex index = ModelIndex.of(model.toJson(), resolver);
@@ -794,6 +788,34 @@ public final class KernelAdapter {
         buildInstances(fields, "", new int[0], index, groupPaths, df, document);
         // Convert the built V1 instance to the immutable DocumentV2 the modern rt-service consumes (once, per prepare).
         return new DocRuntime(rt, dsf.createDocumentV1V2Converter().ofDocumentV1(document));
+    }
+
+    /**
+     * Deserialize → expand(resolver) → the consistency gate, returning the expanded kernel model the runtime
+     * build needs. This is the backend's own copy of the old {@code ModelLoader.load} (which is now the
+     * kernel-free {@code loadAndCheck} gate): the runtime-eval path needs the expanded {@code IDocumentModel}
+     * object, which is a kernel type the gate no longer hands back. Keeps the {@code ERROR}-throws behaviour
+     * exactly (behaviour-neutral for dmtool).
+     */
+    private static IDocumentModel loadExpanded(String modelJson, ModelResolver resolver) {
+        IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
+        IDocumentModelService service = FACTORY.createDocumentModelService();
+        try {
+            IDocumentModel expanded = serializer.deserialize(new StringReader(modelJson));
+            service.expand(expanded, KernelResolvers.of(resolver));
+            java.util.List<io.github.mbackschat.a12.dm.core.Notification> errors = new java.util.ArrayList<>();
+            service.checkConsistency(expanded, n -> {
+                if (n.getSeverity() == com.mgmtp.a12.model.notification.Severity.ERROR) {
+                    errors.add(KernelNotifications.toCore(n));
+                }
+            });
+            if (!errors.isEmpty()) {
+                throw new ModelConsistencyException(errors);
+            }
+            return expanded;
+        } catch (IOException e) {
+            throw new UncheckedIOException("failed to load the model for evaluation", e);
+        }
     }
 
     /**

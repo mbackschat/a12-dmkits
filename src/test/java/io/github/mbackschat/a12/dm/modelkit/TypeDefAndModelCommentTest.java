@@ -50,7 +50,7 @@ class TypeDefAndModelCommentTest {
                 .rootGroup("Order", g -> g.typedefField("Total", "Money"))
                 .build().toJson();
 
-        ModelLoader.loadSelfContained(new StringReader(json));   // kernel-valid
+        ModelLoader.loadSelfContained(json);   // kernel-valid
         assertEquals("a demo order model", ModelDocument.read(json).modelComment().orElse(null));
         String round = kernelRoundTrip(json);
         assertTrue(round.contains("a currency amount"), () -> "type-def description survives: " + round);

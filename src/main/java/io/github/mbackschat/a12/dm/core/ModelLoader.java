@@ -1,62 +1,57 @@
 package io.github.mbackschat.a12.dm.core;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
-import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
-import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
-import com.mgmtp.a12.model.notification.RankedNotification;
-import com.mgmtp.a12.model.notification.Severity;
+import io.github.mbackschat.a12.dm.core.spi.ConsistencyOracle;
 
 /**
- * Loads a DocumentModel from DM-JSON into the fully-expanded, consistency-checked form rulekit
- * binds to (PROJECT-DESIGN §5a / F0). The pipeline is: {@code deserialize → expand(resolver) →
- * checkConsistency}, failing fast on any {@code ERROR}-severity notification.
+ * The consistency gate (PROJECT-DESIGN §5a / F0): confirm a model is valid before rulekit binds to it. The
+ * kernel-decoupling puts the real kernel behind a {@link ConsistencyOracle} port, so this class carries
+ * <b>no kernel import</b> — it resolves the backend through {@link Backends} and stays kernel-free.
  *
- * <p>Uses only the public kernel surface ({@code kernel-md-facade}); no internal-tier dependency.
+ * <p>Two postures (KERNEL-DECOUPLING-PROPOSAL §2c):
+ * <ul>
+ *   <li><b>backend present</b> ({@link Verification#KERNEL_CONFIRMED}, dmtool always): deserialize →
+ *       expand(resolver) → the real kernel's {@code checkConsistency}, failing fast on any {@code ERROR}.</li>
+ *   <li><b>no backend</b> ({@link Verification#STRUCTURAL_ONLY}): the kernel-free {@link ModelReader}
+ *       expands the model (throwing on malformed JSON / an unresolvable reference — the structural gate),
+ *       and <b>no MVK verdict is fabricated</b>. A consumer learns the posture via {@link Backends#verification()}.</li>
+ * </ul>
  */
 public final class ModelLoader {
-
-    private static final DocumentModelServiceFactory FACTORY = new DocumentModelServiceFactory();
 
     private ModelLoader() {
     }
 
     /**
-     * Load a <em>self-contained</em> model — one with no {@code include}d models or imported
-     * type-definitions. If the model does reference a separate artifact, this fails fast with an
-     * actionable message pointing at {@link #load(Reader, ModelResolver)}.
+     * Run the consistency gate over a <em>self-contained</em> model (no includes / imported type-defs). If
+     * the model does reference a separate artifact, this fails fast (the self-contained resolver refuses).
+     * Sugar for {@link #loadAndCheck(String, ModelResolver)} with {@link ReferenceResolvers#selfContained()}.
      */
-    public static IDocumentModel loadSelfContained(Reader reader) throws IOException {
-        return load(reader, ReferenceResolvers.selfContained());
+    public static void loadSelfContained(String dmJson) {
+        loadAndCheck(dmJson, ReferenceResolvers.selfContained());
     }
 
     /**
-     * Deserialize the model, expand it against {@code resolver} (resolving includes / type-def
-     * imports), and check the expanded model's consistency. The returned model is expanded in place.
-     *
-     * @throws ModelConsistencyException if the expanded model has {@code ERROR}-severity problems
+     * Run the consistency gate over {@code dmJson}, resolving includes / type-def imports via
+     * {@code resolver}. Backend present: throws {@link ModelConsistencyException} on any {@code ERROR}-severity
+     * notification. No backend: performs the structural expand only (still throws on a structural failure),
+     * never a fabricated verdict.
      */
-    public static IDocumentModel load(Reader reader, ModelResolver resolver) throws IOException {
-        IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
-        IDocumentModelService service = FACTORY.createDocumentModelService();
-
-        IDocumentModel model = serializer.deserialize(reader);
-        service.expand(model, ReferenceResolvers.of(resolver));
-
-        List<RankedNotification> errors = new ArrayList<>();
-        service.checkConsistency(model, notification -> {
-            if (notification.getSeverity() == Severity.ERROR) {
-                errors.add(notification);
-            }
-        });
-        if (!errors.isEmpty()) {
-            throw new ModelConsistencyException(errors.stream().map(KernelNotifications::toCore).toList());
+    public static void loadAndCheck(String dmJson, ModelResolver resolver) {
+        Optional<ConsistencyOracle> oracle = Backends.consistencyOracle();
+        if (oracle.isEmpty()) {
+            // Degraded (structural-only): the kernel-free reader is the structural gate — it throws on
+            // malformed JSON or an unresolvable reference; it makes no consistency/MVK promise.
+            ModelReader.expand(dmJson, resolver);
+            return;
         }
-        return model;
+        List<Notification> errors = oracle.get().checkConsistency(dmJson, resolver).stream()
+                .filter(n -> n.severity() == Severity.ERROR)
+                .toList();
+        if (!errors.isEmpty()) {
+            throw new ModelConsistencyException(errors);
+        }
     }
 }

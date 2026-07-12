@@ -45,10 +45,13 @@ class DocumentModelDraftTest {
     }
 
     private static IDocumentModel load(String json) {
+        ModelLoader.loadSelfContained(json);   // the kernel-acceptance gate (checkConsistency via the backend)
         try {
-            return ModelLoader.loadSelfContained(new StringReader(json));
+            // Also hand back the kernel model for the serialize round-trip below (self-contained → no expand).
+            return new DocumentModelServiceFactory().createDocumentModelSerializer()
+                    .deserialize(new StringReader(json));
         } catch (Exception e) {
-            throw new RuntimeException("emitted DM-JSON failed checkConsistency:\n" + json, e);
+            throw new RuntimeException("emitted DM-JSON failed to parse:\n" + json, e);
         }
     }
 

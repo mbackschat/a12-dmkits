@@ -95,7 +95,7 @@ class AttachmentTemplateTest {
                 "GroupFilled(RuleGroup) and FieldNotFilled(original_filename)");
         assertTrue(tampered.contains("FieldNotFilled(original_filename)"), "the tamper applied");
         ModelConsistencyException ex = assertThrows(ModelConsistencyException.class,
-                () -> ModelLoader.loadSelfContained(new StringReader(tampered)));
+                () -> ModelLoader.loadSelfContained(tampered));
         assertTrue(ex.getMessage().toUpperCase().contains("ATTACHMENT"),
                 () -> "the kernel rejects an attachment missing a mandated rule: " + ex.getMessage());
     }

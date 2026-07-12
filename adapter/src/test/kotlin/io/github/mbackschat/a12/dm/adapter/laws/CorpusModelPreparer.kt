@@ -7,7 +7,6 @@ import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory
 import com.mgmtp.a12.model.notification.RankedNotification
 import com.mgmtp.a12.model.notification.Severity
 import io.github.mbackschat.a12.dm.core.ModelResolver
-import io.github.mbackschat.a12.dm.core.ReferenceResolvers
 import java.io.StringReader
 import java.io.StringWriter
 
@@ -51,7 +50,13 @@ object CorpusModelPreparer {
         val serializer = FACTORY.createDocumentModelSerializer()
         val service = FACTORY.createDocumentModelService()
         val model = serializer.deserialize(StringReader(rawJson))
-        service.expand(model, ReferenceResolvers.of(resolver))
+        // Inline kernel-resolver bridge (the core ReferenceResolvers.of bridge moved into :adapter behind the
+        // ConsistencyOracle port at kernel-decoupling stage 3; this preparer is in the .laws subpackage and
+        // just needs a one-off kernel resolver for expand).
+        service.expand(model) { ref ->
+            val json = resolver.resolve(ref) ?: throw IllegalStateException("unresolved reference: $ref")
+            serializer.deserialize(StringReader(json))
+        }
         val sw = StringWriter()
         val errors = mutableListOf<RankedNotification>()
         serializer.serialize(model, sw) { n -> if (n.severity == Severity.ERROR) errors.add(n) }

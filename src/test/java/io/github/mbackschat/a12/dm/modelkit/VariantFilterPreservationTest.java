@@ -43,7 +43,7 @@ class VariantFilterPreservationTest {
 
     @Test
     void existingModelWithVariantFilterLoadsThroughTheKernel() throws Exception {
-        assertDoesNotThrow(() -> ModelLoader.loadSelfContained(new StringReader(modelWithVariantFilter())));
+        assertDoesNotThrow(() -> ModelLoader.loadSelfContained(modelWithVariantFilter()));
     }
 
     @Test

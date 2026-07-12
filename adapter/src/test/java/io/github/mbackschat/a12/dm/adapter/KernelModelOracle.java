@@ -10,10 +10,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
 import com.mgmtp.a12.kernel.md.model.api.IElement;
 import com.mgmtp.a12.kernel.md.model.api.IField;
 import com.mgmtp.a12.kernel.md.model.api.IGroup;
+import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IBooleanType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IConfirmType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.ICustomFieldType;
@@ -27,7 +29,6 @@ import com.mgmtp.a12.kernel.md.model.api.fieldtypes.INumberType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IStringType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.ITimeType;
 
-import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.core.ValueKind;
@@ -35,7 +36,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
 /**
  * The <b>kernel-as-oracle</b> name-path index — the preserved kernel-typed read-back that
  * {@code dm.core.ModelIndex} carried before the decoupling Stage 2 pivot made it kernel-free. It loads a model
- * through the REAL kernel ({@code deserialize → expand → checkConsistency}) and exposes the kernel's
+ * through the REAL kernel ({@code deserialize → expand}) and exposes the kernel's
  * {@link IField}/{@link IGroup}/{@link IFieldType}/{@link IDocumentModel} by name-path, so the kernel-honored-slot
  * verification tests (a slot the silent-ignore deserializer would otherwise hide is only proven honored by
  * reading it back through the kernel's typed getter) keep proving exactly what they proved — now on the
@@ -43,6 +44,8 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * reader against ({@code ModelIndexParityTest}). Lives in {@code :adapter} test scope only; never shipped.
  */
 final class KernelModelOracle {
+
+    private static final DocumentModelServiceFactory FACTORY = new DocumentModelServiceFactory();
 
     private final IDocumentModel model;
     private final Map<String, IElement> byPath;
@@ -60,7 +63,9 @@ final class KernelModelOracle {
     /** Load + index a model through the real kernel, resolving includes / imported type-defs against {@code resolver}. */
     static KernelModelOracle of(String dmJson, ModelResolver resolver) {
         try {
-            IDocumentModel model = ModelLoader.load(new StringReader(dmJson), resolver);
+            IDocumentModelService service = FACTORY.createDocumentModelService();
+            IDocumentModel model = FACTORY.createDocumentModelSerializer().deserialize(new StringReader(dmJson));
+            service.expand(model, KernelResolvers.of(resolver));
             Map<String, IElement> byPath = new LinkedHashMap<>();
             index(model.getContent().getDocumentModelRoot(), "", byPath);
             return new KernelModelOracle(model, byPath);

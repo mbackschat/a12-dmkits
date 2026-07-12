@@ -2,10 +2,12 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.util.Arrays;
 
+import io.github.mbackschat.a12.dm.core.Backends;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ValueKind;
+import io.github.mbackschat.a12.dm.core.Verification;
 
 /**
  * The entry point for authoring against a specific model (L2a runtime binding — §5a). It hands out
@@ -20,15 +22,19 @@ public final class BoundModel {
     // preserved verbatim, never inlined. The resolver is kept so re-binding a model with includes works.
     private final String sourceJson;
     private final ModelResolver resolver;
+    // The verification mode captured at bind time (a property of the binding, KERNEL-DECOUPLING-PROPOSAL
+    // §2b): KERNEL_CONFIRMED only for a gated ofJson bind with a backend present; STRUCTURAL_ONLY otherwise.
+    private final Verification verification;
 
-    private BoundModel(ModelIndex index, String sourceJson, ModelResolver resolver) {
+    private BoundModel(ModelIndex index, String sourceJson, ModelResolver resolver, Verification verification) {
         this.index = index;
         this.sourceJson = sourceJson;
         this.resolver = resolver;
+        this.verification = verification;
     }
 
     public static BoundModel of(ModelIndex index) {
-        return new BoundModel(index, null, null);
+        return new BoundModel(index, null, null, Verification.STRUCTURAL_ONLY);
     }
 
     /**
@@ -49,14 +55,12 @@ public final class BoundModel {
      * {@link #toJson()} / {@link #writeTo} preserve the includes rather than inlining them.
      */
     public static BoundModel ofJson(String modelJson, ModelResolver resolver) {
-        try (var reader = new java.io.StringReader(modelJson)) {
-            // R3 — the real-kernel consistency gate (deserialize → expand → checkConsistency); throws on ERROR.
-            // The returned kernel model is discarded: the index/read surface is kernel-free (decoupling Stage 2).
-            ModelLoader.load(reader, resolver);
-        } catch (java.io.IOException e) {
-            throw new java.io.UncheckedIOException("failed to bind model from JSON", e);
-        }
-        return new BoundModel(ModelIndex.of(modelJson, resolver), modelJson, resolver);
+        // R3 — the consistency gate, routed through the kernel backend when present (deserialize → expand →
+        // checkConsistency; throws on ERROR). With no backend it degrades to a STRUCTURAL_ONLY expand — no
+        // MVK verdict is fabricated — and the binding carries that mode (KERNEL-DECOUPLING-PROPOSAL §2c). The
+        // index/read surface is kernel-free either way (decoupling Stage 2).
+        ModelLoader.loadAndCheck(modelJson, resolver);
+        return new BoundModel(ModelIndex.of(modelJson, resolver), modelJson, resolver, Backends.verification());
     }
 
     /** Bind from a DM-JSON file on disk — sugar for {@code ofJson(Files.readString(path))}. The source is
@@ -77,8 +81,9 @@ public final class BoundModel {
      */
     public static BoundModel ofJsonLenient(String modelJson, ModelResolver resolver) {
         // No consistency gate — the kernel-free reader expands (includes / imported type-defs) and indexes;
-        // it makes no validity promise, exactly as the expand-only path did (Stage 2).
-        return new BoundModel(ModelIndex.of(modelJson, resolver), modelJson, resolver);
+        // it makes no validity promise, exactly as the expand-only path did (Stage 2). It never ran the
+        // kernel, so the binding is STRUCTURAL_ONLY regardless of whether a backend is present.
+        return new BoundModel(ModelIndex.of(modelJson, resolver), modelJson, resolver, Verification.STRUCTURAL_ONLY);
     }
 
     // --- write path (F6) — every write yields a NEW binding (snapshot semantics, F0) -----------
@@ -175,6 +180,17 @@ public final class BoundModel {
      */
     public ModelResolver resolver() {
         return resolver;
+    }
+
+    /**
+     * How this binding was verified (KERNEL-DECOUPLING-PROPOSAL §2c): {@link Verification#KERNEL_CONFIRMED}
+     * when a kernel backend arbitrated the {@link #ofJson(String, ModelResolver) gated} bind, else
+     * {@link Verification#STRUCTURAL_ONLY} (no backend, or a lenient/index-only binding). dmtool always
+     * bundles the backend, so a gated bind there is always {@code KERNEL_CONFIRMED}; a library consumer
+     * without the backend gets {@code STRUCTURAL_ONLY} and must not read a successful bind as kernel-valid.
+     */
+    public Verification verification() {
+        return verification;
     }
 
     /** A generic handle to the field at {@code path} (any kind). Throws if the path is not a field. */
