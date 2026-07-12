@@ -150,21 +150,20 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.CliSpecVerbTableTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.interp.ModelLoaderParityTest'
     }
-    inputs.files(
-            rootProject.fileTree('examples') { include '**/*.md' },
-            rootProject.file('README.md'),
-            rootProject.file('plugin/README.md'),
-            rootProject.file('skill/SKILL.md'),
-            rootProject.file('plugin-codex/AGENTS.md'),
-            rootProject.file('docs/CLI-SPEC.md'),
-            rootProject.file('eval/benchmark.workflow.js'),
-            rootProject.fileTree('src/main/resources/catalog'),
+    // guardInputs (root ext, kernel-decoupling §3b #17) declares these runtime-read files as inputs AND fails
+    // loudly if any tree goes empty — so a moved folder can't silently turn this guard into a false green.
+    rootProject.guardInputs(it, [
+            'examples/*.md'      : rootProject.fileTree('examples') { include '**/*.md' },
+            'README.md'          : rootProject.file('README.md'),
+            'plugin/README.md'   : rootProject.file('plugin/README.md'),
+            'skill/SKILL.md'     : rootProject.file('skill/SKILL.md'),
+            'plugin-codex/AGENTS.md': rootProject.file('plugin-codex/AGENTS.md'),
+            'docs/CLI-SPEC.md'   : rootProject.file('docs/CLI-SPEC.md'),
+            'eval workflow'      : rootProject.file('eval/benchmark.workflow.js'),
+            'operator catalog'   : rootProject.fileTree('src/main/resources/catalog'),
             // ModelLoaderParityTest reads every fixture model in both roots.
-            rootProject.fileTree('cli/src/test/resources/models') { include '**/*.json' },
-            rootProject.fileTree('examples/models') { include '**/*.json' })
-        .withPropertyName('guardReadRepoFiles')
-        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
-        .optional()
+            'cli test models'    : rootProject.fileTree('cli/src/test/resources/models') { include '**/*.json' },
+            'examples/models'    : rootProject.fileTree('examples/models') { include '**/*.json' }])
 }
 
 // The semantics-map resolve-guard (SemanticsMapResolveTest) reads the map + KERNEL-FINDINGS + the catalog +
@@ -182,19 +181,18 @@ tasks.register('semanticsMapGuardTest', Test) {
         // this task's declared inputs (KERNEL-FINDINGS + KERNEL-SEMANTICS), so it rides the same lane.
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.KernelDocsFoldContractTest'
     }
-    inputs.files(
-            rootProject.file('docs/SEMANTICS-MAP.md'),
-            rootProject.file('docs/KERNEL-FINDINGS.md'),
-            rootProject.file('docs/KERNEL-SEMANTICS.md'),
-            rootProject.fileTree('src/main/resources/catalog'),
-            rootProject.fileTree('corpus/cases') { include '**/*.json' },
-            rootProject.fileTree('src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws'),
-            rootProject.fileTree('adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws'),
-            rootProject.fileTree('adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws'),
-            rootProject.fileTree('interpreter/src/commonTest'))
-        .withPropertyName('semanticsMapSurfaces')
-        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
-        .optional()
+    // guardInputs (root ext, kernel-decoupling §3b #17): declare the map's derivation surfaces as inputs AND
+    // fail loudly if any lock tree / catalog / corpus goes empty (a moved folder must not silence this guard).
+    rootProject.guardInputs(it, [
+            'docs/SEMANTICS-MAP.md'   : rootProject.file('docs/SEMANTICS-MAP.md'),
+            'docs/KERNEL-FINDINGS.md' : rootProject.file('docs/KERNEL-FINDINGS.md'),
+            'docs/KERNEL-SEMANTICS.md': rootProject.file('docs/KERNEL-SEMANTICS.md'),
+            'operator catalog'        : rootProject.fileTree('src/main/resources/catalog'),
+            'corpus cases'            : rootProject.fileTree('corpus/cases') { include '**/*.json' },
+            'validate/laws lock tree' : rootProject.fileTree('src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws'),
+            'adapter/laws (java)'     : rootProject.fileTree('adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws'),
+            'adapter/laws (kotlin)'   : rootProject.fileTree('adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws'),
+            'interpreter commonTest'  : rootProject.fileTree('interpreter/src/commonTest')])
 }
 
 tasks.named('test') {

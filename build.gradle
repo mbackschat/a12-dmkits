@@ -84,6 +84,34 @@ tasks.named('test') {
     }
 }
 
+// --- Guard-input non-empty assertion (kernel-decoupling §3b #17, the silent-empty-fileTree class-fix) -----
+// A guard task that READS repo files at runtime declares them as `.optional()` fileTree inputs so an edit
+// re-runs only that guard. The trap: a moved/renamed folder silently EMPTIES such an input, and the guard
+// then goes green while checking NOTHING (a false green that only an expensive probe would ever catch). This
+// helper declares the inputs AND adds a doFirst that FAILS LOUDLY when any named tree is empty/missing — so
+// every future folder move is caught by a build failure, not a silent pass. Defined on the root project's
+// `ext` so `:cli`/`:adapter` reach it as `rootProject.guardInputs(...)` (root configures first). Applies to
+// EVERY `.optional()`-fileTree guard (root docGuardTest, cli docGuardTest + semanticsMapGuardTest, adapter
+// corpusReplayTest) — the whole class, not just this reorg's moves.
+ext.guardInputs = { Test task, Map<String, ?> named ->
+    task.inputs.files(named.values().toArray())
+        .withPropertyName('guardReadRepoFiles')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+        .optional()
+    task.doFirst {
+        def empty = named.findAll { name, v ->
+            (v instanceof File) ? !v.exists() : task.project.files(v).isEmpty()
+        }
+        if (empty) {
+            throw new GradleException(
+                "${task.name}: guarded runtime-read input(s) ${empty.keySet()} are EMPTY or MISSING — a moved " +
+                "or renamed folder likely silenced this guard while it checked nothing (kernel-decoupling §3b " +
+                "#17, the silent-empty-fileTree false-green class). Re-point the guard's fileTree to the moved " +
+                "location; a guard must never run against an empty input.")
+        }
+    }
+}
+
 // Two root-project guards read REPO FILES at RUNTIME that Gradle can't infer as test inputs:
 // DocSnippetFreshnessTest reads docs/API-GUIDE.md (its test-source side is covered — a region edit changes
 // bytecode), and DslCatalogBridgeTest reads the dsl package's `catalog:<Id>` Javadoc markers — which compile
@@ -100,12 +128,10 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
     }
-    inputs.files(
-            file('docs/API-GUIDE.md'),
-            fileTree('src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl') { include '**/*.java' },
-            fileTree('src/main/resources/catalog'))
-        .withPropertyName('guardReadRepoFiles')
-        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    guardInputs(it, [
+            'docs/API-GUIDE.md': file('docs/API-GUIDE.md'),
+            'dsl sources'      : fileTree('src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl') { include '**/*.java' },
+            'operator catalog' : fileTree('src/main/resources/catalog')])
 }
 
 // Autonomous doc-snippet sync: rewrites every locked ```java fence in the docs from its canonical test

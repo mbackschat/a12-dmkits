@@ -150,8 +150,7 @@ tasks.register('corpusReplayTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusReplayTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusSchemaGuardTest'
     }
-    inputs.files(rootProject.fileTree('corpus') { include '**/*.json' })
-        .withPropertyName('corpusFiles')
-        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
-        .optional()
+    // guardInputs (root ext, kernel-decoupling §3b #17): the committed corpus is this guard's runtime input —
+    // declare it AND fail loudly if it goes empty, so a moved corpus tree can't silence the replay guard.
+    rootProject.guardInputs(it, ['conformance corpus': rootProject.fileTree('corpus') { include '**/*.json' }])
 }
