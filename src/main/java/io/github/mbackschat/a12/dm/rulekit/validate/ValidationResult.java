@@ -17,7 +17,7 @@ import io.github.mbackschat.a12.dm.core.Verification;
  * kernel backend it is {@link Verification#KERNEL_CONFIRMED}; without one it is
  * {@link Verification#STRUCTURAL_ONLY} and {@code ok()} reflects only the structural prechecks that ran —
  * so a consumer must consult {@code verification()} before reading {@code ok()} as kernel-green, and a
- * {@code STRUCTURAL_ONLY} result carries an {@code RK_NO_KERNEL_BACKEND} advisory. dmtool always bundles
+ * {@code STRUCTURAL_ONLY} result carries an {@code RK_NO_KERNEL_BACKEND} advisory. The CLI always bundles
  * the backend, so it always reports {@code KERNEL_CONFIRMED}.
  */
 public record ValidationResult(boolean ok, List<Diagnostic> diagnostics, Verification verification) {

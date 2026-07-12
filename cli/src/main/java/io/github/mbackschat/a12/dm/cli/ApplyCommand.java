@@ -601,7 +601,7 @@ final class ApplyCommand extends BaseCommand {
     /** An edit op's per-op envelope — its mutation is {@code staged} until the terminal gate commits the sequence. */
     private static Applied staged(Op which, ObjectNode changed, EditSession session) {
         return new Applied(new ResultEnvelope(which.target, which.op, ResultEnvelope.Outcome.STAGED,
-                "staged " + which.label(), changed, null, List.of(), null, false, null), session);
+                "staged " + which.label(), changed, null, List.of(), null, false, null, null), session);
     }
 
     /** The clean ValueKind name of a just-staged field, read back from the session — the SAME resolver
@@ -645,7 +645,7 @@ final class ApplyCommand extends BaseCommand {
         ArrayNode refs = changed.putArray("rewroteReferences");
         rewrote.forEach(refs::add);
         return new Applied(new ResultEnvelope(r.target(), r.op(), ResultEnvelope.Outcome.STAGED,
-                "staged " + r.target() + " " + r.op(), changed, null, List.of(), null, false, null), next);
+                "staged " + r.target() + " " + r.op(), changed, null, List.of(), null, false, null, null), next);
     }
 
     /**
@@ -749,7 +749,7 @@ final class ApplyCommand extends BaseCommand {
     private ResultEnvelope argRejection(JsonNode op, int index, List<Diagnostic> diagnostics) {
         return new ResultEnvelope(op.path("target").asText(), op.path("op").asText(),
                 ResultEnvelope.Outcome.REJECTED, "op " + index + " has an invalid arg — sequence rolled back",
-                null, null, diagnostics, null, false, null);
+                null, null, diagnostics, null, false, null, null);
     }
 
 
@@ -874,7 +874,7 @@ final class ApplyCommand extends BaseCommand {
                 Optional.of("fix this op and re-run; the whole sequence rolled back (nothing was written)"),
                 Optional.empty());
         return new ResultEnvelope(target, name, ResultEnvelope.Outcome.REJECTED,
-                "op " + index + " failed — sequence rolled back", null, null, List.of(d), null, false, null);
+                "op " + index + " failed — sequence rolled back", null, null, List.of(d), null, false, null, null);
     }
 
     /** The terminal gate rejected the committed sequence — surface the kernel's diagnostics; nothing written. */
@@ -888,6 +888,6 @@ final class ApplyCommand extends BaseCommand {
                     new Diagnostic.Where((String) null, Optional.empty()), Optional.empty(), Optional.empty()));
         }
         return new ResultEnvelope("model", "validate", ResultEnvelope.Outcome.REJECTED,
-                "the terminal kernel gate rejected the sequence — rolled back", null, null, diagnostics, false, false, null);
+                "the terminal kernel gate rejected the sequence — rolled back", null, null, diagnostics, false, false, null, null);
     }
 }

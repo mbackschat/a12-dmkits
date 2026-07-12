@@ -144,7 +144,7 @@ public enum RkCode {
     // --- environment / version (advisory or fail-fast) ------------------------------------------
     NO_KERNEL_BACKEND(Severity.INFO, DiagnosticSource.ENVIRONMENT,
             "no kernel backend is on the classpath, so the authoritative consistency/MVK gate did not run — this result reflects the structural prechecks that ran, not a kernel-confirmed verdict (verification=STRUCTURAL_ONLY). ok() means only 'no ERROR among the checks that ran' and must never be read as kernel-green.",
-            "add the kernel backend (dmtool bundles it; a library consumer adds the :adapter module) to obtain KERNEL_CONFIRMED validation — typed authoring and structural reads are fully available without it."),
+            "add the kernel backend (the CLI bundles it; a library consumer adds the :adapter module) to obtain KERNEL_CONFIRMED validation — typed authoring and structural reads are fully available without it."),
     KERNEL_VERSION_SKEW(Severity.INFO, DiagnosticSource.ENVIRONMENT,
             "the running kernel is newer than the catalog's verified floor — safe (rulekit binds only the public surface), an advisory only.",
             "no action required; re-stamp the catalog `verifiedAgainst` to silence it."),

@@ -12,6 +12,7 @@
     "outcome": { "type": "string", "enum": ["applied", "preview", "refused", "rejected", "read", "staged", "error"], "description": "the execution result class; `error` = the tool itself failed (an unexpected throwable caught at the boundary, exit 70), distinct from `rejected` (input rejected, exit 1)" },
     "ok": { "type": "boolean", "description": "the operation executed as asked (outcome in applied | preview | read | staged); false for refused | rejected | error" },
     "valid": { "type": "boolean", "description": "validate/check (and after a mutating op): the subject model is kernel-valid — distinct from `ok`" },
+    "verification": { "type": "string", "enum": ["KERNEL_CONFIRMED", "STRUCTURAL_ONLY"], "description": "(check/validate verdicts) how the verdict was reached: KERNEL_CONFIRMED = the kernel backend arbitrated (the CLI always bundles it); STRUCTURAL_ONLY = no backend, so `valid` reflects structural prechecks only and must NOT be read as kernel-green (a library-consumer posture; the CLI surfaces it for visibility)" },
     "summary": { "type": "string", "description": "one human-readable line (the agent's quick read / log line)" },
     "changed": { "type": "object", "description": "(mutations) the delta on success — e.g. {added, kind}, a refactor's rewritten references" },
     "data": { "description": "(reads/queries) the op's payload — explanation tree, model card, fired-list, …; shape is op-specific (see `schema <target> <op>`)" },

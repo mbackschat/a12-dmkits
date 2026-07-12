@@ -141,7 +141,8 @@ final class RuleCheckCommand extends BaseCommand {
         ValidationResult merged = ValidationResult.of(findings);
         ResultEnvelope env = ResultEnvelope.read("rule", "check",
                 merged.ok() ? "candidate is kernel-valid" : "candidate has " + findings.size() + " finding(s)",
-                merged.ok(), findings, data);
+                merged.ok(), findings, data)
+                .withVerification(merged.verification());
         out().print(env.toJsonString());
         return env.exitCode();
     }

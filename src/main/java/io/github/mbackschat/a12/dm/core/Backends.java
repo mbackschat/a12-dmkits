@@ -64,7 +64,7 @@ public final class Backends {
 
     /**
      * The verification mode this environment yields: {@link Verification#KERNEL_CONFIRMED} when a backend is
-     * present (dmtool always), else {@link Verification#STRUCTURAL_ONLY}. The single truth every gate stamps
+     * present (the CLI always), else {@link Verification#STRUCTURAL_ONLY}. The single truth every gate stamps
      * onto its result, so "kernel-green" can never be read without a backend behind it.
      */
     public static Verification verification() {

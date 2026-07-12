@@ -71,7 +71,8 @@ final class ModelCheckCommand extends BaseCommand {
 
         long errors = diagnostics.stream().filter(d -> d.severity() == Severity.ERROR).count();
         String summary = valid ? "model is valid" : "model has " + errors + " error(s)";
-        ResultEnvelope env = ResultEnvelope.read("model", "check", summary, valid, diagnostics, null);
+        ResultEnvelope env = ResultEnvelope.read("model", "check", summary, valid, diagnostics, null)
+                .withVerification(io.github.mbackschat.a12.dm.core.Backends.verification());
         out().print(env.toJsonString());
         return env.exitCode();
     }

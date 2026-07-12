@@ -39,7 +39,7 @@ public final class ReadBackends {
         return current().orElseThrow(() -> new BackendRequiredException(
                 "condition read-back requires a kernel backend, but none is on the classpath — read-back "
                         + "parses a stored condition into a typed AST, which has no structural-only fallback. "
-                        + "Add the kernel backend (dmtool bundles it; a library consumer adds the :adapter "
+                        + "Add the kernel backend (the CLI bundles it; a library consumer adds the :adapter "
                         + "module) to read conditions back; typed authoring and model reads work without it."));
     }
 

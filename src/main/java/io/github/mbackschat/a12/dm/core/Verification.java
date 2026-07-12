@@ -8,7 +8,7 @@ package io.github.mbackschat.a12.dm.core;
  *
  * <ul>
  *   <li>{@link #KERNEL_CONFIRMED} — the kernel {@link io.github.mbackschat.a12.dm.core.spi.ConsistencyOracle}
- *       backend was on the classpath and arbitrated the consistency gate (the only mode dmtool ever reports,
+ *       backend was on the classpath and arbitrated the consistency gate (the only mode the CLI ever reports,
  *       since it always bundles the backend).</li>
  *   <li>{@link #STRUCTURAL_ONLY} — no backend was discovered, so only our own structural prechecks + the
  *       kernel-free reader ran; <b>no MVK verdict is fabricated</b>. A result in this mode may still be

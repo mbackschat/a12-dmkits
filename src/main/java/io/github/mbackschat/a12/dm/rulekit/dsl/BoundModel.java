@@ -185,7 +185,7 @@ public final class BoundModel {
     /**
      * How this binding was verified (KERNEL-DECOUPLING-PROPOSAL §2c): {@link Verification#KERNEL_CONFIRMED}
      * when a kernel backend arbitrated the {@link #ofJson(String, ModelResolver) gated} bind, else
-     * {@link Verification#STRUCTURAL_ONLY} (no backend, or a lenient/index-only binding). dmtool always
+     * {@link Verification#STRUCTURAL_ONLY} (no backend, or a lenient/index-only binding). The CLI always
      * bundles the backend, so a gated bind there is always {@code KERNEL_CONFIRMED}; a library consumer
      * without the backend gets {@code STRUCTURAL_ONLY} and must not read a successful bind as kernel-valid.
      */

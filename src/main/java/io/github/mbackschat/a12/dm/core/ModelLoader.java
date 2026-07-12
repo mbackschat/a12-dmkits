@@ -12,7 +12,7 @@ import io.github.mbackschat.a12.dm.core.spi.ConsistencyOracle;
  *
  * <p>Two postures (KERNEL-DECOUPLING-PROPOSAL §2c):
  * <ul>
- *   <li><b>backend present</b> ({@link Verification#KERNEL_CONFIRMED}, dmtool always): deserialize →
+ *   <li><b>backend present</b> ({@link Verification#KERNEL_CONFIRMED}, the CLI always): deserialize →
  *       expand(resolver) → the real kernel's {@code checkConsistency}, failing fast on any {@code ERROR}.</li>
  *   <li><b>no backend</b> ({@link Verification#STRUCTURAL_ONLY}): the kernel-free {@link ModelReader}
  *       expands the model (throwing on malformed JSON / an unresolvable reference — the structural gate),
