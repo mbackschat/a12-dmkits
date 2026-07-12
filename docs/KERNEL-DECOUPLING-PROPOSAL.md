@@ -129,8 +129,10 @@ a12-dmkits/
   interpreter/  (exists, KMP)              → published  (Maven + npm, own coordinates — INTERPRETER-SPEC §7)
   adapter/      (exists, UNMOVED)          → the kernel backend; NOT published (ruling 2)
   cli/          (exists)                   → dmtool; bundles everything incl. the backend
-  (root)        pure aggregator — no source sets, no `api kernel-md-facade`
+  (root)        aggregator + the cross-kit integration-test host (src/test + src/noBackendTest; NO main jar, no `api kernel-md-facade`) — owner ruling 2026-07-12, "Option 1"
 ```
+
+**Test-tree placement (owner ruling 2026-07-12).** The MAIN split is clean, but the ~150 tests are *irreducibly cross-kit* (`StudySnippetsTest` spans all four kits; shared `Fixtures`/`ModelDrafts` span the siblings; 9 rulekit tests — incl. 3 `validate/laws` — build models via modelkit). Rather than move them (three destinations, maximum silent-empty-fileTree exposure) or split them per-kit (which would re-introduce a `modelkit-test → rulekit` edge, weakening the graduated sibling boundary), **root keeps its `src/test` + `src/noBackendTest` and hosts the integration suite** (`testImplementation` the four kits + the `:adapter` oracle + `kernel-md-facade`). Zero test files move; `validate/laws` stays at root, so `SemanticsMapResolveTest`/`semanticsMapGuardTest` are untouched; only the catalog resource + the `dm.rulekit.dsl` guard fileTrees re-point. Root ships no jar (only the `dmkits` aggregator POM), so this is not a publishing surface — the "pure aggregator" letter is traded for eliminating the 150-file move on the program's most path-fragile stage.
 
 Plus an aggregator POM `…:dmkits` depending on the four kit artifacts, preserving the coordinate RELEASE-SPEC §8 already documents (ruling 1). **Packages never rename — only files move.** That single rule keeps stable: every FQCN-keyed Gradle test filter (`:adapter`'s CorpusReplay include/exclude), the SEMANTICS-MAP's simple-name test cites, reflection/native metadata, and every `import` in consumer snippets.
 
