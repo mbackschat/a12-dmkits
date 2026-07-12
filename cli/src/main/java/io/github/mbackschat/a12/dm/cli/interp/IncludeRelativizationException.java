@@ -3,11 +3,13 @@ package io.github.mbackschat.a12.dm.cli.interp;
 import java.util.List;
 
 /**
- * The kernel-free interpreter eval path (decoupling Stage 2 / A4) mounted an <b>included</b> model's own
- * rules/computations, whose conditions the kernel would relativize (the included root-group name is dropped on
- * mount) but the kernel-free assembly layer does not yet rewrite (INTERPRETER-GAPS IG67). Rather than feed
- * possibly-mis-resolved conditions to the engine — a silent-wrong-result — the eval verbs refuse loudly with
- * {@code RK_INTERPRETER_INCLUDE_RULES_UNSUPPORTED}. The {@code --kernel} path (JVM) is unaffected.
+ * The kernel-free interpreter eval path (decoupling Stage 2) mounted an <b>included</b> model's own
+ * rule/computation whose condition uses a <b>rare reference shape</b> the kernel-free assembly layer does not
+ * yet relativize — a MODEL_ROOT-absolute ref, a bare {@code /RG} group reference, or an outer-correlated
+ * {@code [$/…]} absolute ref (mounting drops the included root-group name; INTERPRETER-GAPS IG67, the G1′
+ * accepted caveat). Relative and single-root-group-absolute included conditions ARE relativized and evaluate on
+ * the default path; only these rare shapes refuse loudly with {@code RK_INTERPRETER_INCLUDE_RULES_UNSUPPORTED}
+ * rather than risk a silent-wrong-result.
  */
 public final class IncludeRelativizationException extends RuntimeException {
 
@@ -15,7 +17,8 @@ public final class IncludeRelativizationException extends RuntimeException {
 
     IncludeRelativizationException(List<String> rules) {
         super("cannot evaluate " + rules.size() + " rule(s)/computation(s) from an included model on the "
-                + "default (interpreter) path without relativization: " + rules);
+                + "default path — a rare reference shape needs relativization the assembly layer does not yet "
+                + "perform: " + rules);
         this.rules = List.copyOf(rules);
     }
 
