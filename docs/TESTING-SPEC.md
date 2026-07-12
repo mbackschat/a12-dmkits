@@ -58,7 +58,7 @@ Two parts of tier 1 are **not** lifecycle stages: **modelkit structure** (the fi
 | **`:interpreter`** (spike) | a **second**, native-safe evaluator implementation — validated *differentially* against the kernel | `interpreter/src/commonTest/…` + the Kotlin `*DiffTest.kt` in `adapter/src/test/…` (option C) |
 | **`:cli`** | the `dmtool` verb surface — I/O contract, self-describe, conformance, diagnostics | `cli/src/test/…` |
 
-modelkit folded into the root `:` (2026-06-09 — no longer a `:modelkit` module). The aggregate `./gradlew test` runs core + rulekit + modelkit; **`:adapter:test` and `:cli:test` are separate** (the adapter is the opt-in kernel-coupling tier, kept out of core's `:test`). The full per-kind breakdown + oracle is the kinds-of-test table below.
+Since the Stage-4 module cut the kits are their own modules (`:core`/`:rulekit`/`:modelkit`/`:edit`), but their *main* is what moved — the cross-kit integration tests stay at root `src/test`, so root `:` is the test host. The aggregate `./gradlew test` runs that root suite (over all four kits, via the `:adapter` oracle at test scope); the kit modules' own `:test` are no-source; **`:adapter:test` and `:cli:test` are separate** (the adapter is the opt-in kernel-coupling tier, kept out of the root suite). The full per-kind breakdown + oracle is the kinds-of-test table below.
 
 ### eval vs probe — same agents, opposite questions
 
