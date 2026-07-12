@@ -123,3 +123,70 @@ tasks.register('syncDocSnippets', Test) {
     }
     outputs.upToDateWhen { false }
 }
+
+// --- Kit purity, locked (kernel-decoupling stage 3; mirrors :interpreter's verifyInterpreterPurity) ------
+// After stage 3 the kits (dm.core / dm.rulekit.* / dm.modelkit / dm.edit) import ZERO kernel types — the
+// kernel lives behind the SPI ports (dm.core.spi.* / dm.rulekit.spi.*) that :adapter implements. This guard
+// is the decoupling's regression net: it fails the build if any kit `src/main` file names a `com.mgmtp.*`
+// type in CODE (imports OR fully-qualified references — the FQ form is what an import-only sweep missed for
+// BoundModel before). Javadoc/line comments are stripped first, so the prose that legitimately mentions
+// `com.mgmtp.a12.kernel.*` (to explain the boundary) is not a violation. Test scope is out of scope on
+// purpose — the kernel stays the oracle in tests.
+def verifyKitPurity = tasks.register('verifyKitPurity') {
+    group = 'verification'
+    description = 'Fail if any kit src/main file imports or references com.mgmtp.* (the decoupling regression net).'
+    def mainSrc = file('src/main/java')
+    inputs.dir(mainSrc)
+    doLast {
+        def violations = []
+        if (mainSrc.exists()) {
+            mainSrc.eachFileRecurse { f ->
+                if (!f.name.endsWith('.java')) return
+                // Strip block comments (incl. Javadoc) then line comments; any surviving com.mgmtp is real code.
+                def code = f.text.replaceAll(/(?s)\/\*.*?\*\//, '').replaceAll(/(?m)\/\/.*$/, '')
+                (code =~ /com\.mgmtp\.[\w.]+/).each { hit ->
+                    violations << "src/main/java/…/${f.name}: ${hit}".toString()
+                }
+            }
+        }
+        if (violations) {
+            throw new GradleException(
+                "kit purity violated — the kits (core/rulekit/modelkit/edit) MAIN source must name no kernel\n" +
+                "type; the kernel lives behind the SPI ports :adapter implements (kernel-decoupling stage 3).\n" +
+                "Offending com.mgmtp references:\n  " + violations.join('\n  '))
+        }
+    }
+}
+tasks.named('check') { dependsOn verifyKitPurity }
+
+// --- The no-backend lane (kernel-decoupling §2c; the Stage-3 acceptance bar) -----------------------------
+// Run the kits with NO backend on the classpath — a Maven-Central consumer's posture — and prove the §2c
+// degraded contract row by row (STRUCTURAL_ONLY, RK_NO_KERNEL_BACKEND, NO fake green, read-back fails fast).
+// Wiring (the design fork the master ruled): a DEDICATED source set + Test task whose classpath is kit main
+// + jackson + junit, and deliberately NOT :adapter / kernel-md-facade — chosen over a classloader-hiding
+// test because it reproduces the real absent-backend classpath structurally (ServiceLoader finds no provider),
+// with no fragile jar-path filtering. `noBackendTestImplementation extendsFrom implementation` pulls main's
+// own deps (Jackson) but NOT testImplementation (which carries the backend), so the backend is unrepresentable.
+sourceSets {
+    noBackendTest {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+configurations {
+    noBackendTestImplementation.extendsFrom implementation
+    noBackendTestRuntimeOnly.extendsFrom runtimeOnly
+}
+dependencies {
+    noBackendTestImplementation platform('org.junit:junit-bom:5.11.4')
+    noBackendTestImplementation 'org.junit.jupiter:junit-jupiter'
+    noBackendTestRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+tasks.register('noBackendTest', Test) {
+    group = 'verification'
+    description = 'The §2c degraded-mode acceptance lane: the kits with NO kernel backend on the classpath.'
+    testClassesDirs = sourceSets.noBackendTest.output.classesDirs
+    classpath = sourceSets.noBackendTest.runtimeClasspath
+    useJUnitPlatform()
+}
+tasks.named('check') { dependsOn 'noBackendTest' }
