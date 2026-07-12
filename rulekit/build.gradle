@@ -5,7 +5,10 @@
 // io.github.mbackschat.a12.dm:dmkits-rulekit (MIT).
 plugins {
     id 'java-library'
+    id 'maven-publish'
 }
+
+base { archivesName = 'dmkits-rulekit' }
 
 repositories {
     mavenLocal()
@@ -26,4 +29,20 @@ dependencies {
 
     // The catalog is a bundled JSON resource parsed at load time; the DSL renderer + validators read JSON.
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+}
+
+// Publishing (Stage 4, Package B): io.github.mbackschat.a12.dm:dmkits-rulekit — MIT, kernel-free (its POM
+// depends on dmkits-core; the R4 read seam is the ConditionReadBack port a provided backend implements).
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            artifactId = 'dmkits-rulekit'
+            pom {
+                name = 'dmkits-rulekit'
+                description = 'a12-dmkits — dm.rulekit: the typed rule/computation DSL, EN/DE renderer, operator catalog, validators, and the ConditionReadBack read seam. MIT.'
+                rootProject.dmkitsPom(delegate)
+            }
+        }
+    }
 }

@@ -1,4 +1,4 @@
-# Release spec — `dmtool` CLI + the dmkits developer library (rulekit + modelkit)
+# Release spec — `dmtool` CLI + the dmkits developer library (core / rulekit / modelkit / edit / schemakit)
 
 The **durable** contract for releasing this project: the surfaces we ship, how each artifact is built, the release runbook, the verification gate, versioning, and the distribution/trust posture. This spec **survives and evolves** with every release. (Its transient companion — the per-release execution plan with iteration order, status, and one-time migrations — lives separately and is deleted when a release is done.)
 
@@ -11,7 +11,7 @@ The **durable** contract for releasing this project: the surfaces we ship, how e
 | Surface | Audience | v1 artifacts | Channel |
 |---|---|---|---|
 | **`dmtool` CLI** | BAs + developers; **#1 use is inside a coding-agent session** | native binary per OS + `SHA256SUMS` + **agent plugins (Claude Code + Codex)** | binaries on the public mirror Release (§10); the Claude Code + Codex plugins (§6); later brew/scoop, `curl \| sh` |
-| ~~dmkits library (rulekit + modelkit)~~ | Java developers | **deferred → §11** | — |
+| ~~dmkits library (five kernel-free kits + `dmkits` aggregator)~~ | Java developers | publish **wiring landed** (Stage 4); the Central **deploy** is **deferred → §11** | — |
 
 The **command name is `dmtool`** everywhere it is publicly invoked. `:cli`'s `installDist` launcher (`applicationName = 'dmtool'`) and the native binary share that name; the eval exposes the JVM launcher as `dmtool` on PATH too (so the skill is one verbatim artifact — §6).
 
@@ -22,7 +22,7 @@ The **command name is `dmtool`** everywhere it is publicly invoked. `:cli`'s `in
 - **0.x** while the public library API stabilizes; **`1.0.0`** when it does. MAJOR = breaking API change, MINOR = additive, PATCH = fixes.
 - **The compatibility key is the kernel semver** (currently `30.8.1`; the A12 Tools distribution label `2025.06-ext5` is a secondary human tag). It is already encoded where consumers look:
   - CLI → baked into `version.properties` as `kernelBuiltAgainst`, surfaced by `--version` / `manifest.version`.
-  - library → the published **POM** declares `com.mgmtp.a12.kernel:kernel-md-facade:30.8.1`.
+  - library → the kits are **kernel-free** (decoupling Stage 3), so their published POMs declare **no** kernel dependency; the kernel-compat key rides the CLI surface + the release title/notes, not a library POM coordinate.
   - → therefore **no separate `project-release.yaml`** (a third, drift-prone source), and **no `release/YYYY.MM` maintenance branches** (premature, and against the no-self-branching rule).
 - **Tag-format gate** (CI, lands with the CI matrix): `^v[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?$`.
 - **Release title carries compatibility:** `vX.Y.Z — kernel <kver> (A12 Tools <quarter>)` — e.g. `v0.1.0 — kernel 30.8.1 (A12 Tools 2025.06-ext5)`.
@@ -157,7 +157,7 @@ So the primary (plugin/terminal) paths are clean; only a browser download trips 
 
 ## 8. Library consume recipe — DEFERRED (not v1)
 
-The consume recipe (bootstrap kernel → install jar with POM → declare the dependency; Maven Central is structurally blocked by the un-published kernel dep) is recorded with the rest of the deferred developer wave in **§11**.
+The consume recipe (install the kernel-free kit jar(s) with their POMs → declare the dependency) is recorded with the rest of the deferred developer wave in **§11**. Maven Central is **no longer structurally blocked** (Stage 3 removed the kernel `api` dep and Stage 4 wired the per-kit publish); only the actual deploy + signing remain deferred.
 
 A static Maven repo (one-line `maven { url }` consume) is a later upgrade; it does not remove step 1, so its v1 marginal value is small.
 
@@ -170,7 +170,7 @@ A static Maven repo (one-line `maven { url }` consume) is a later upgrade; it do
 **Source repo PRIVATE (early testers) + a separate PUBLIC release-mirror repo as the single public distribution point.** The release step publishes every downloadable artifact to the mirror's GitHub Releases (and its Pages), so anonymous consumers and agents fetch from the mirror while the source stays private. Going public later retires the mirror (releases move to the source repo). The mirror holds:
 
 - the **CLI native binaries** per-OS + `SHA256SUMS`;
-- the **developer JARs** — `dmkits-X.Y.Z.jar` (the root `:` project = rulekit + modelkit) + `-sources.jar` + `-javadoc.jar` + POM (§3b);
+- the **developer JARs** — five per-kit artifacts (`dmkits-core`/`-rulekit`/`-modelkit`/`-edit`/`-schemakit`) + the `dmkits` aggregator POM (kernel-decoupling Stage 4); `-javadoc.jar`/`-sources.jar` ride publishing-prep (§3b);
 - the **JavaDoc HTML** (browsable) on the mirror's **GitHub Pages**;
 - an **LLM-facing API doc** (`llms.txt`-style flat API reference) for coding agents — planned (§11).
 
@@ -185,14 +185,14 @@ A static Maven repo (one-line `maven { url }` consume) is a later upgrade; it do
 
 **Licensing on the mirror (per [`LICENSING.md`](LICENSING.md) / CLI-SPEC §11) — mixed, per-artifact:**
 - **CLI native binaries → EUPL-1.2.** They embed the kernel, so each binary/release carries the kernel **LICENSE/NOTICE/THIRD_PARTY** + a source pointer (and **no "mgm A12" branding** — the `dmtool` name respects that).
-- **Developer JARs → MIT.** `dmkits-X.Y.Z.jar` does **not** embed the kernel (it's a separate `api` dependency the consumer bootstraps), so the dmkits jar + sources + javadoc stay MIT.
+- **Developer JARs → MIT.** The five kit jars (`dmkits-core`/`-rulekit`/`-modelkit`/`-edit`/`-schemakit`) + the `dmkits` aggregator POM are **kernel-free** (decoupling Stage 3 — no kernel type, no kernel dep in their POMs), so they stay MIT with no EUPL rider. The kernel backend (`:adapter`) is **not** published (owner ruling).
 - The mirror repo's README states the per-artifact licensing explicitly so a downloader isn't confused by the mix.
 
 ## 11. Developer surface — DEFERRED (recorded for later, NOT v1)
 
 **Out of scope for v1** (v1 = the CLI native binary, §1). This section is the durable record of the whole **developer-library wave** so it isn't lost when the transient release *plan* is deleted. The agent-first thesis extends from the CLI to the **library** — just as the CLI pairs a *self-describing surface* (`manifest`/`schema`/`--help`) with a *judgment skill*, the Java API would pair an **agent-readable API reference** with a **developer skill**. All would publish on the public mirror.
 
-1. **Library JARs** — `java-library` + `maven-publish`; `java { withJavadocJar() }` → consumer `dmkits-X.Y.Z.jar` + `-javadoc.jar` + a correct POM (`from components.java`). **No `sources.jar` while the source repo is private** (it would expose the private source on the public mirror; javadoc is fine — it's the public API, not impl). **The root `:` project (`a12-dmkits`) jar = rulekit + modelkit** in one artifact; not `:adapter`. **MIT** (doesn't embed the kernel). Outputs: `publishToMavenLocal` + the jar/javadoc/POM on the mirror. **Consume:** download from the mirror → bootstrap the kernel into `~/.m2` → install jar *with its POM* → `implementation 'io.github.mbackschat.a12.dm:dmkits:X.Y.Z'`. (Maven Central is structurally blocked — the kernel `api` dep isn't on Central.)
+1. **Library JARs — publish WIRING LANDED (kernel-decoupling Stage 4, Package B); the Central DEPLOY is what's still deferred.** `java-library` + `maven-publish` on the **five kernel-free kits** → `io.github.mbackschat.a12.dm:dmkits-{core,rulekit,modelkit,edit,schemakit}:X.Y.Z` (each `from components.java`, correct inter-kit POM deps) + the POM-only **`dmkits` aggregator** depending on all five (the coordinate this spec documents, §8). **MIT** — the kits carry **no kernel type and no kernel dep in their POMs** (Stage 3), and `:adapter` is unpublished (owner ruling), so **Maven Central is no longer structurally blocked**: the old blocker — a `kernel-md-facade` `api` dep on the published artifact — is gone. Verified by `publishToMavenLocal` (POMs inspected: right coordinates, right inter-kit deps, no `com.mgmtp`/no `:adapter`). **Still deferred to a publishing-prep follow-on:** the actual Central (or mirror) *deploy* + signing, the `-javadoc.jar`/`-sources.jar` (no `sources.jar` while the source repo is private), the API-surface locks, and the interpreter's KMP (Maven + npm) publication. **Consume (local today):** `implementation 'io.github.mbackschat.a12.dm:dmkits:X.Y.Z'` (the aggregator) or any single kit; a consumer who wants the kernel oracle provides a backend (`:adapter` built from source) on the runtime classpath.
 2. **JavaDoc** — the `-javadoc.jar` (downloadable) **and** browsable **HTML on the mirror's GitHub Pages** (a stable public URL).
 3. **LLM API doc (`llms.txt`-style)** — a flat, single-file API reference for coding agents (public types/signatures + typed-builder idioms + DSL entry points + short usage), distinct from the human JavaDoc. **Must be derived/CI-locked** against the real API (the no-drift discipline — assembled from the CI-locked typed-builder snippets + signatures), not hand-maintained. Public URL an agent can fetch.
 4. **Developer skill** — the library-persona analog of [`skill/SKILL.md`](../skill/SKILL.md): teaches *judgment* for authoring via the typed builder / `EditSession` / DSL (polarity, paths, iteration — same kernel semantics), **not** the API catalog (JavaDoc + `llms.txt`'s job — keep it minimal, mirroring "self-describing surface > skill"). Complements the EVAL-SPEC §2 "Developer path."
@@ -221,5 +221,5 @@ The tool is **not Claude-specific**. The CLI is a self-describing binary any cod
 - **Native over jlink/jpackage** — single self-contained binary, no JVM to provision; **measured 2026-06-15** (not estimated): native **33 MB / ~90 ms** vs B1 **119–147 MB / ~600 ms** (~4× size, ~7× start), and B1 passes 6/6 demos incl. runtime-eval. The closed-world risk is bounded by **rule-based reflection registration + the no-crash battery** ([`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md) §3.4/§3.6) — which closed the v0.1.0/v0.1.1 capture-bound defects — and the §3a Groovy hard ceiling. **B1 is the measured escape hatch** (§10 there), flipped to only if shipping the runtime-eval verbs becomes a real need.
 - **CI matrix, mac built locally** — native-image can't cross-compile (so "all OSes at once" = parallel CI jobs); macOS bills at a 10× multiplier (the only expensive line) and the signing cert lives locally, so mac stays off CI.
 - **No signing at v1** — the audience is terminal-capable and the primary delivery paths (plugin hook, package managers, `curl`) don't trip the OS guards at all; checksums + an escape hatch cover the rest. Signing is pure cost until friction is observed.
-- **Local-only library, SemVer** — Central is structurally blocked by the un-published kernel dependency; SemVer (not CalVer) keeps the project's release identity independent of the upstream calendar and preserves the API break-signal library consumers need.
+- **Library SemVer; Central now unblocked** — the kits are kernel-free (Stage 3) with per-kit publish wiring (Stage 4), so the old structural blocker (an un-published kernel `api` dep) is gone; only the deploy + signing remain deferred. SemVer (not CalVer) keeps the project's release identity independent of the upstream calendar and preserves the API break-signal library consumers need.
 - **Plugin, single-source skill** — one `/plugin install` gives an agent both `dmtool` and the judgment layer; keeping the skill identical to the eval's material is what keeps the N6 number honest.

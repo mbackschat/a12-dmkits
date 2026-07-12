@@ -11,7 +11,10 @@
 // Reuse-first: do not rebuild capability that already exists in those modules; surface gaps for the owner.
 plugins {
     id 'java-library'
+    id 'maven-publish'
 }
+
+base { archivesName = 'dmkits-schemakit' }
 
 repositories {
     mavenLocal()
@@ -34,10 +37,13 @@ dependencies {
     implementation project(':modelkit')
     implementation project(':rulekit')
 
-    // The MEDIATED kernel boundary (N8): reused for Tier-A projection — KernelAdapter.read parses a stored
-    // rule into a typed rulekit Condition (returns dmkits types, never raw kernel). Reuse-first: we do not
-    // reimplement a parser. (SCHEMAKIT-SPEC §1.)
-    implementation project(':adapter')
+    // The MEDIATED kernel boundary (N8): Tier-A projection reaches the parse through the kernel-free
+    // `dm.rulekit.spi.ConditionReadBack` port (Stage 3) — schemakit's MAIN imports NO adapter type. So the
+    // backend that PROVIDES that port (:adapter) is a TEST-scope dependency here, not a compile/publish one:
+    // the published dmkits-schemakit POM stays kernel-free (no :adapter, no com.mgmtp — Stage-4 Package B
+    // requirement), and a consumer supplies a ConditionReadBack backend at runtime just like for the other
+    // kits. dmtool is unaffected — :cli depends on :adapter directly, so the provider is on its classpath.
+    testImplementation project(':adapter')
 
     // JSON Schema parse/emit — Jackson tree (the same tree-walking style as modelkit's DM-JSON read).
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
@@ -102,3 +108,20 @@ def verifySchemakitPurity = tasks.register('verifySchemakitPurity') {
     }
 }
 tasks.named('check') { dependsOn verifySchemakitPurity }
+
+// Publishing (Stage 4, Package B): io.github.mbackschat.a12.dm:dmkits-schemakit — MIT. Its POM depends on
+// the kernel-free kits (dmkits-core/-modelkit/-rulekit) only; :adapter is test-scope, so no backend/kernel
+// leaks into the published POM (verifySchemakitPurity already guarantees no com.mgmtp in source).
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            artifactId = 'dmkits-schemakit'
+            pom {
+                name = 'dmkits-schemakit'
+                description = 'a12-dmkits — dm.schemakit: JSON Schema ⇄ Document Model import/export, authored through the dmkits typed surface. MIT.'
+                rootProject.dmkitsPom(delegate)
+            }
+        }
+    }
+}

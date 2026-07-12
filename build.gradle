@@ -1,5 +1,6 @@
 plugins {
     id 'java-library'
+    id 'maven-publish'
 }
 
 group = 'io.github.mbackschat.a12.dm'
@@ -224,3 +225,57 @@ tasks.register('noBackendTest', Test) {
     useJUnitPlatform()
 }
 tasks.named('check') { dependsOn 'noBackendTest' }
+
+// --- Publishing (kernel-decoupling Stage 4, Package B; RELEASE-SPEC §8/§11) ------------------------------
+// The five Java kits publish to Maven under io.github.mbackschat.a12.dm:dmkits-<name> on the shared 0.x
+// train (single-sourced above); each kit's own build file declares its MavenPublication + coordinates.
+// Here at root we (1) share the common POM metadata (MIT — the kits are kernel-free since Stage 3, so no
+// EUPL rider and no kernel dep to block Central), and (2) publish the AGGREGATOR POM `dmkits` (POM-only,
+// no jar) that depends on the five kit artifacts — preserving the coordinate RELEASE-SPEC §8 documents and
+// letting a consumer pull the whole set with one dependency. :adapter stays UNPUBLISHED (the kernel
+// backend, owner ruling 2); :cli is binary-only. Verifiable bar: `publishToMavenLocal` → inspect the POMs.
+ext.dmkitsPom = { pom ->
+    pom.url = 'https://github.com/mbackschat/a12-dmtool-releases'
+    pom.licenses {
+        license {
+            name = 'MIT License'
+            url = 'https://opensource.org/licenses/MIT'
+            distribution = 'repo'
+        }
+    }
+    pom.developers {
+        developer {
+            id = 'mbackschat'
+            name = 'Martin Backschat'
+        }
+    }
+    pom.scm {
+        url = 'https://github.com/mbackschat/a12-dmtool-releases'
+        connection = 'scm:git:https://github.com/mbackschat/a12-dmtool-releases.git'
+    }
+}
+
+publishing {
+    publications {
+        // POM-only aggregator (no `from components` → no jar): the `dmkits` umbrella that depends on the
+        // five kit artifacts. Hand-built <dependencies> since root has no component to derive them from.
+        aggregator(MavenPublication) {
+            artifactId = 'dmkits'
+            pom {
+                name = 'dmkits'
+                description = 'a12-dmkits — aggregator POM depending on the dm kits (core/rulekit/modelkit/edit/schemakit). MIT.'
+                packaging = 'pom'
+                dmkitsPom(delegate)
+                withXml {
+                    def deps = asNode().appendNode('dependencies')
+                    ['dmkits-core', 'dmkits-rulekit', 'dmkits-modelkit', 'dmkits-edit', 'dmkits-schemakit'].each { a ->
+                        def d = deps.appendNode('dependency')
+                        d.appendNode('groupId', project.group)
+                        d.appendNode('artifactId', a)
+                        d.appendNode('version', project.version)
+                    }
+                }
+            }
+        }
+    }
+}

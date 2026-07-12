@@ -4,7 +4,10 @@
 // `verifyKitPurity`). Published as io.github.mbackschat.a12.dm:dmkits-modelkit (MIT).
 plugins {
     id 'java-library'
+    id 'maven-publish'
 }
+
+base { archivesName = 'dmkits-modelkit' }
 
 repositories {
     mavenLocal()
@@ -24,4 +27,19 @@ dependencies {
     // DM-JSON emit/read via Jackson; the YAML reader backs YAML-flavoured model input (same tree-walking style).
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.18.2'
+}
+
+// Publishing (Stage 4, Package B): io.github.mbackschat.a12.dm:dmkits-modelkit — MIT (POM depends on dmkits-core).
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            artifactId = 'dmkits-modelkit'
+            pom {
+                name = 'dmkits-modelkit'
+                description = 'a12-dmkits — dm.modelkit: the document-model structure builder that emits kernel-accepted DM-JSON. MIT.'
+                rootProject.dmkitsPom(delegate)
+            }
+        }
+    }
 }
