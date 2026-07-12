@@ -133,7 +133,7 @@ class EvalDocVerbTest {
         assertFalse(firedContains(raw.out(), "EFF_POS"),
                 () -> "--no-computations validates stored EffectiveFee (empty→0) so the candidate does not fire: " + raw.out());
 
-        // the kernel engine agrees on both modes (the --kernel compose path == the interpreter default)
+        // the kernel engine agrees on both modes (the kernel compose path via KernelEval == the interpreter default)
         assertTrue(firedContains(CliTestSupport.runKernel(candidate).out(), "EFF_POS"),
                 "kernel default applies computations");
         assertFalse(firedContains(CliTestSupport.runKernel(concat(candidate, "--no-computations")).out(), "EFF_POS"),

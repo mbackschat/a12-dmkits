@@ -27,8 +27,8 @@
 #
 # Never hard-fails the session: on any download/verify problem it warns to stderr and exits 0 (the
 # session continues; `dmtool` just won't be on PATH). The runtime-eval verbs (model eval / rule eval /
-# model compute / model seed) DO run on the native binary via the kernel-free interpreter; only the opt-in
-# `--kernel` engine needs a JVM (see the project docs).
+# model compute / model seed) run on the native binary via the kernel-free interpreter — the sole runtime
+# eval engine, so no JVM is needed (see the project docs).
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

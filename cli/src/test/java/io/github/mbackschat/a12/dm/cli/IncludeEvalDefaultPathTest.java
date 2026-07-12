@@ -25,9 +25,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
  * eval path. Before this, {@code model eval}/{@code rule eval}/{@code model compute} handed the RAW model to the
  * interpreter, which does not expand includes, so an includes-bearing model lost its mounted content and a rule
  * over a mounted field silently mis-reported. Now the CLI pre-expands kernel-free (via {@code ModelReader}), so
- * the default path agrees with {@code --kernel}. When an INCLUDED model carries its own rules (which would need
- * relativization the assembly layer doesn't do yet, IG67), the default path <b>refuses loudly</b> rather than
- * mis-evaluate. Own domain (an insurance policy including a benefits sub-model).
+ * the default path agrees with the kernel. An INCLUDED model's OWN rules evaluate too — relative and
+ * single-root-group-absolute conditions are relativized on mount (Set U); only a rare residual shape (IF122, the
+ * G1′ caveat) makes the default path <b>refuse loudly</b> rather than mis-evaluate. The kernel leg here is the
+ * {@code KernelEval} harness (adapter API). Own domain (an insurance policy including a benefits sub-model).
  */
 class IncludeEvalDefaultPathTest {
 

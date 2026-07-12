@@ -6,10 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 ## [Unreleased]
 
-The built-in evaluation engine reaches full kernel parity on real-world corpora, and the authoring surface gets a consistency pass — one breaking flag rename.
+The built-in evaluation engine reaches full kernel parity on real-world corpora and becomes the **sole** runtime engine (the JVM-only `--kernel` eval flag is retired), and the authoring surface gets a consistency pass — two breaking changes.
 
 ### Changed
 
+- **BREAKING:** the JVM-only `--kernel` eval engine is removed from `model eval` / `rule eval` / `model compute`. Runtime evaluation now runs solely on the native-safe interpreter — verified rule-for-rule against the A12 kernel — on every target (JVM and native alike); the kernel stays bundled only for the consistency gate (`rule check` / `model check`).
 - **BREAKING:** `model import-jsonschema --format` is renamed **`--string-format`** — it selects the string-conversion strategy, while `--format` elsewhere selects output rendering; the two concepts now have distinct names.
 - `apply`-embedded `group`/`config`/`typedef read` ops now return the **full standalone-verb payload** (they previously returned a reduced subset), so a read inside a transaction is as informative as the standalone read.
 - `rule modify`/`group modify` gained metadata-removal flags and `meta` accepts the modify-family flag names — the two verb families now share one metadata vocabulary.
@@ -26,7 +27,7 @@ The built-in evaluation engine reaches full kernel parity on real-world corpora,
 ### Fixed
 
 - **The built-in evaluation engine (`rule eval` / `model eval`) now matches the A12 kernel bit-for-bit on two real-world corpora** — a 107-model industry workspace set and the kernel's 15 canonical metamodels — at **zero divergences in both benign and hostile value seeding**, closing a ~45-finding semantics campaign (computation cascades, semantic-index reads, Having-filtered quantifiers, date/number edge semantics, polarity of fired comparisons over invalid values, and more). A quadratic blow-up on indexed validation of large repetition lists was also removed.
-- Read/query verbs (`rule explain`/`format`, `computation explain`/`format`, `include read`, and both engines of `rule eval`/`model eval` on an unknown rule) now return a **structured, coded refusal** on a missing target instead of a bare error line.
+- Read/query verbs (`rule explain`/`format`, `computation explain`/`format`, `include read`, and `rule eval`/`model eval` on an unknown rule) now return a **structured, coded refusal** on a missing target instead of a bare error line.
 - JSON-Schema import: a `const` on a date/time/custom-typed field no longer aborts the import — it is skipped and reported, like every other unmappable constraint.
 - `field read`/`typedef read` report every written type-config slot (string no-value-validation, enum categories, enum invalid-value message), and `computation modify` no longer drops element metadata.
 

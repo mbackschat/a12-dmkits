@@ -24,6 +24,6 @@ dmtool -m model.dm.json rule check --field /Order/DeliveryDate \
   --condition 'FieldNotFilled(DeliveryDate)' --code DELIVERY_REQUIRED
 ```
 
-The native binary covers authoring / checking / structure / read **and runtime evaluation** — `model eval`, `rule eval`, `model compute`, `model seed` run on the native-safe interpreter (kernel-free). Only the opt-in `--kernel` engine (the A12 kernel via Groovy) needs a JVM and is refused under the native profile.
+The native binary covers authoring / checking / structure / read **and runtime evaluation** — `model eval`, `rule eval`, `model compute`, `model seed` run on the native-safe interpreter (kernel-free), the sole runtime eval engine on every target.
 
 > Not an official A12 / mgm artifact. `dmtool` is an independent tool built against the public A12 Kernel.

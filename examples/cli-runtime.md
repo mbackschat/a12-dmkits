@@ -5,7 +5,7 @@
 
 The previous tours operated on the **model** — its rules and computations as text. This one runs a document **instance** (actual field data) through the runtime engine and asks the *runtime* questions: which rules **fire** on this data, and what does a computed field **evaluate to**? Two read-only verbs, both `JSON-in / JSON-out`, both invoked through `dmtool` (the launcher shim) from the repo root; some steps also use `jq`. The document instance is a small JSON file — a nested `{"fields":{…}}` tree, grouped exactly like the model.
 
-**The engine.** These runtime verbs default to the **native-safe interpreter** — a from-scratch evaluator that reproduces the A12 kernel's runtime semantics without the kernel's on-the-fly Groovy, so they run in the GraalVM native image too. Add **`--kernel`** to evaluate with the A12 kernel itself (JVM only; not available in the native image). The interpreter is verified rule-for-rule against the kernel, so the two agree on which rules fire and what computes. Output blocks are captured by [showboat](https://github.com/simonw/showboat); re-check them with `uvx showboat@0.6.1 verify examples/cli-runtime.md` (exit 0 = output still matches the live CLI).
+**The engine.** These runtime verbs run on the **native-safe interpreter** — a from-scratch evaluator that reproduces the A12 kernel's runtime semantics without the kernel's on-the-fly Groovy, so they run in the GraalVM native image too; it is the sole runtime eval engine on every target. The interpreter is verified rule-for-rule against the kernel, so the two agree on which rules fire and what computes. Output blocks are captured by [showboat](https://github.com/simonw/showboat); re-check them with `uvx showboat@0.6.1 verify examples/cli-runtime.md` (exit 0 = output still matches the live CLI).
 
 ## The document instance
 
@@ -24,7 +24,7 @@ cat /tmp/rt-order-violation.json
 
 ## model eval — which rules fire?
 
-`model eval` runs the engine over the instance and reports, under `data.fired`, the **error codes of every rule that fired** (a rule *fires* when its violation condition evaluates true on this data). `--rule <path>` narrows the report to one stored rule and adds a `data.rule.{name,fired}` verdict for it. Discover its directional **I/O contract** from the CLI itself with `schema model eval` — what it consumes (a document instance) and the `EvalDocResult` it returns. (We show `schema`, not `--help`, on purpose: the I/O contract is **identical on the JVM and native builds**, whereas the flag list differs — `--kernel` is JVM-only and absent from the native binary.)
+`model eval` runs the engine over the instance and reports, under `data.fired`, the **error codes of every rule that fired** (a rule *fires* when its violation condition evaluates true on this data). `--rule <path>` narrows the report to one stored rule and adds a `data.rule.{name,fired}` verdict for it. Discover its directional **I/O contract** from the CLI itself with `schema model eval` — what it consumes (a document instance) and the `EvalDocResult` it returns. (We show `schema`, not `--help`, on purpose: the I/O contract is **identical on the JVM and native builds**, whereas `--help` can differ by picocli synopsis wrapping between builds.)
 
 ```bash
 dmtool schema model eval \

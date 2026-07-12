@@ -657,8 +657,8 @@ public final class KernelAdapter {
      * (KERNEL-FINDINGS "validateFull does NOT run computations"); this applies the computed values back —
      * changes set, errored/cleared emptied, the kernel's own {@code applyTo} — <em>before</em> validating, so a
      * required-but-computed field is filled by its computation before the required check runs (no false
-     * {@code mandatoryField}). The {@code --kernel} engine's compose path, the peer of the interpreter's
-     * {@link DmInterpreter#applyComputations} + {@code validate} that is the {@code model eval} default.
+     * {@code mandatoryField}). The kernel's compose path (the differential oracle for {@code model eval}), the
+     * peer of the interpreter's {@link DmInterpreter#applyComputations} + {@code validate} that dmtool runs.
      * Uses the modern {@code applyTo(DocumentV2)}: {@link DocumentV2} is immutable, so {@code applyTo} returns a
      * NEW document (the applied one) rather than mutating in place, and that returned instance is validated.
      */
@@ -903,7 +903,7 @@ public final class KernelAdapter {
      * non-blank), else the field NAME. The kernel REQUIRES the caller to supply this (the javadoc on
      * {@link ILabelProvider} is explicit); with none configured the kernel falls back to a path+index
      * debug string ({@code /Order/Quantity/1.1}) — a leak in the same class as the pointer {@code toString}
-     * we already render cleanly. Wiring it makes {@code --kernel} match the interpreter's
+     * we already render cleanly. Wiring it makes the kernel match the interpreter's
      * {@code ModelDef.labelOf} (both yield the name for our label-free corpus). KERNEL-FINDINGS §3.
      */
     private static final ILabelProvider LABEL_OR_NAME = (field, locale) -> {

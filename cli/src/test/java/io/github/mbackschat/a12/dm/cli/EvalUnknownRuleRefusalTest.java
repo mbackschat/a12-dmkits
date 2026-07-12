@@ -16,9 +16,10 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * F5 class-guard: an unknown rule handed to the RUNTIME verbs ({@code rule eval} / {@code model eval --rule})
  * is a <b>structured {@code refused} envelope</b> ({@code RK_NO_SUCH_RULE} + a corrective fix), never a bare
- * stderr line — and in BOTH engines. The defect spanned modes: the {@code --kernel} path {@code fail()}ed with
- * prose, and the DEFAULT interpreter path either threw "no such rule" ({@code rule eval}) or silently reported
- * the missing rule as {@code fired:false} ({@code model eval}). The read-family guard
+ * stderr line — and in BOTH engines (the interpreter, and the kernel leg via the {@code KernelEval} harness).
+ * The defect spanned modes: the kernel leg {@code fail()}ed with prose, and the interpreter path either threw
+ * "no such rule" ({@code rule eval}) or silently reported the missing rule as {@code fired:false} ({@code model
+ * eval}). The read-family guard
  * ({@link ReadMissingTargetEnvelopeTest}) can't reach these — they need a document {@code --instance}.
  */
 class EvalUnknownRuleRefusalTest {

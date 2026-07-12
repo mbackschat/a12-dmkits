@@ -51,9 +51,10 @@ public final class InterpreterEngine {
      * model handed straight to {@link InterpreterModelLoader} lost the mount). The returned DM-JSON is
      * self-contained + name-path-keyed, which the interpreter's loader already evaluates correctly.
      *
-     * <p>When the mount brings in an <b>included model's own</b> rules/computations — whose conditions the
-     * kernel would relativize but the assembly layer does not yet (IG67) — this throws
-     * {@link IncludeRelativizationException} so the verb refuses loudly rather than mis-evaluate.
+     * <p>Relative and single-root-group-absolute included conditions ARE relativized here and evaluate. Only a
+     * rare residual shape (MODEL_ROOT-absolute / bare-{@code /RG} / outer-correlated {@code [$/…]}) the assembly
+     * layer does not yet relativize (IF122, the G1′ accepted caveat) throws {@link IncludeRelativizationException}
+     * so the verb refuses loudly rather than mis-evaluate.
      */
     public static String expandForEval(String modelJson, ModelResolver resolver) {
         ModelReader reader = ModelReader.expand(modelJson, resolver);

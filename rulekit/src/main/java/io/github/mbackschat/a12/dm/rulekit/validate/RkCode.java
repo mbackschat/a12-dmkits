@@ -95,7 +95,7 @@ public enum RkCode {
             "a rule/computation from an INCLUDED model uses a rare reference shape the kernel-free assembly layer "
                     + "does not yet relativize — a MODEL_ROOT-absolute ref, a bare `/RG` group reference, or an "
                     + "outer-correlated `[$/…]` absolute ref (mounting drops the included root-group name; "
-                    + "INTERPRETER-GAPS IG67). Relative and single-root-group-absolute included conditions DO "
+                    + "INTERPRETER-FINDINGS IF122). Relative and single-root-group-absolute included conditions DO "
                     + "evaluate on the default path; only these rare shapes are refused, so they never silently mis-report.",
             "author the rule on the INCLUDING model referencing the mounted fields, or rewrite the included "
                     + "condition to a relative / single-root-group-absolute form — both evaluate on the default path."),

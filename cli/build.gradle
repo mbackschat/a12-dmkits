@@ -61,8 +61,9 @@ dependencies {
     // the native-safe runtime evaluator — dmtool's DEFAULT engine for the runtime verbs (model eval/compute,
     // rule eval): it loads a DM-JSON model into the kernel-free interpreter and evaluates rules/computations
     // WITHOUT the kernel's on-the-fly Groovy, so those verbs can run in the GraalVM native image (the Groovy
-    // ceiling, INTERPRETER-SPEC). `--kernel` opts into the kernel (JVM only). NB: this is a native-image
-    // dependency — re-capture reflection metadata before a native build (NATIVE-IMAGE-GRAALVM §5.1).
+    // ceiling, INTERPRETER-SPEC) — the sole runtime eval engine on every target (the `--kernel` eval flag was
+    // retired, Set V). NB: this is a native-image dependency — re-capture reflection metadata before a native
+    // build (NATIVE-IMAGE-GRAALVM §5.1).
     implementation project(':interpreter')
 
     // schemakit (the JSON Schema ⇄ Document Model transcoder) backs the `model import-jsonschema` /

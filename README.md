@@ -81,7 +81,7 @@ Same engine, no Java required. Every command is `dmtool -m <model> <target> <op>
 
 `dmtool` is distributed from the public release repo — **[`a12-dmtool-releases`](https://github.com/mbackschat/a12-dmtool-releases)**, which holds the **single source of install truth**. Both paths are documented there in full: the **agent plugin** (Claude Code / Codex — bundles the binary + the canonical skill, *including the post-install activation step*) and the **raw per-OS binary** (+ `SHA256SUMS`) for plain terminal use. (This source repo holds the plugin *source* under [`plugin/`](plugin/) (Claude Code) and [`plugin-codex/`](plugin-codex/) (Codex); they ship to the mirror at release.)
 
-The binary is **EUPL-1.2** (it embeds the A12 Kernel — see the mirror's `LICENSE`/`NOTICE`); Homebrew/Scoop come later. The runtime-evaluation verbs (`model eval`, `rule eval`, `model compute`) run on a **native-safe interpreter** by default, so they work in the native binary too — only `--kernel` (the A12 kernel engine) is JVM-only and is refused under the native profile.
+The binary is **EUPL-1.2** (it embeds the A12 Kernel — see the mirror's `LICENSE`/`NOTICE`); Homebrew/Scoop come later. The runtime-evaluation verbs (`model eval`, `rule eval`, `model compute`) run on a **native-safe interpreter** on every target — the sole runtime eval engine — so they work in the native binary too (the JVM-only `--kernel` eval flag was retired).
 
 ### Discover the tool itself
 
