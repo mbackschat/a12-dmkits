@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.adapter;
+package io.github.mbackschat.a12.dm.rulekit.read;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 
@@ -18,6 +18,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
  * <p>This is the tolerant, publishing-safe shape: reading a valid rule the kernel accepts never
  * throws. (The strict, fail-fast {@code UnsupportedConstructException} stays the converter's internal
  * unwind signal, surfaced here as {@link Opaque#reason()}.)
+ *
+ * <p>Kernel-decoupling stage 3: this lives in {@code rulekit} (it speaks rulekit's AST) as the return
+ * vocabulary of the {@link io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack} port; the kernel
+ * backend produces it, so a published consumer reads back through the port without a kernel type.
  */
 public sealed interface ReadResult permits ReadResult.Converted, ReadResult.Opaque {
 

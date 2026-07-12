@@ -1,4 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter;
+import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
+import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;

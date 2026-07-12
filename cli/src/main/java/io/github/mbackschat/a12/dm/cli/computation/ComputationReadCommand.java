@@ -14,7 +14,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
-import io.github.mbackschat.a12.dm.adapter.ReadComputation;
+import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
 import io.github.mbackschat.a12.dm.cli.rule.RuleMessages;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;

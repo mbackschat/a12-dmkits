@@ -4,6 +4,9 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
+import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
+
 /**
  * The whole-model read (F10): a foreign model's <b>validation rules</b> and its <b>computations</b>,
  * each read to a typed AST or preserved {@code Opaque}, as two <em>disjoint</em> maps keyed by full

@@ -22,8 +22,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import io.github.mbackschat.a12.dm.adapter.ReadResult;
-import io.github.mbackschat.a12.dm.adapter.ReadComputation;
+import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
+import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation;
 import io.github.mbackschat.a12.dm.rulekit.context.ModelContext;

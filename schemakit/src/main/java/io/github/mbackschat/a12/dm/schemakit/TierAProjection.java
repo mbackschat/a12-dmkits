@@ -4,8 +4,10 @@ import java.math.BigDecimal;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
-import io.github.mbackschat.a12.dm.adapter.ReadResult;
+import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
+import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
+import io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack;
+import io.github.mbackschat.a12.dm.rulekit.spi.ReadBackends;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
@@ -25,16 +27,17 @@ import java.util.Optional;
  * project-or-carry split with one representative shape — a string pattern rule
  * ({@code FieldFilled(F) And [F] PatternViolated "regex"}) → {@code properties[…F…].pattern = "regex"}.
  *
- * <p>Reuse-first (§1): the stored rule is read into a typed rulekit {@link Condition} through the project's
- * mediated kernel boundary, {@code :adapter}'s {@link KernelAdapter#read} — no parser is reimplemented here.
+ * <p>Reuse-first (§1): the stored rule is read into a typed rulekit {@link Condition} through the
+ * {@link ConditionReadBack} port (kernel-decoupling stage 3) — the kernel backend provides the parse; no
+ * parser is reimplemented here, and schemakit names no kernel type.
  */
 final class TierAProjection {
 
     private TierAProjection() {}
 
     static void project(String dmJson, ObjectNode schema, TranscodeReport.Builder report) {
-        KernelAdapter adapter = KernelAdapter.ofJson(dmJson);
-        for (Map.Entry<String, ReadResult> entry : adapter.readAll().entrySet()) {
+        Map<String, ReadResult> read = ReadBackends.require().readAll(dmJson, ReferenceResolvers.selfContained());
+        for (Map.Entry<String, ReadResult> entry : read.entrySet()) {
             if (!(entry.getValue() instanceof ReadResult.Converted converted)) {
                 continue;   // an Opaque (unmodeled) rule stays carriage-only — never silently lost
             }

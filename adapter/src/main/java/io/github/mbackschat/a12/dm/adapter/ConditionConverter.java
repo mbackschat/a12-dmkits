@@ -61,6 +61,8 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.PointInTimeOper
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ValueListConditionName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.ast.ASTVisitor;
 
+import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
+import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BaseYear;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef;

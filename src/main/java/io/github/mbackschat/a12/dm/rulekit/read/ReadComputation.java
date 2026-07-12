@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.adapter;
+package io.github.mbackschat.a12.dm.rulekit.read;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 
@@ -17,7 +17,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
  * </ul>
  *
  * <p>Tolerant by design (N8): reading a model whose computations the kernel accepts never throws —
- * supported ones become typed {@code Computation}s, the rest are reported {@code Opaque}.
+ * supported ones become typed {@code Computation}s, the rest are reported {@code Opaque}. Lives in
+ * {@code rulekit} (kernel-decoupling stage 3), the peer of {@link ReadResult}.
  */
 public sealed interface ReadComputation
         permits ReadComputation.Converted, ReadComputation.Opaque {
