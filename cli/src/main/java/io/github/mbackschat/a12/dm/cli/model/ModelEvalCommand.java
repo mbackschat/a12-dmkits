@@ -4,10 +4,7 @@ import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.CustomSupportOptions;
 import io.github.mbackschat.a12.dm.cli.DocInstance;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
-import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
-import io.github.mbackschat.a12.dm.cli.SafetyChecks;
-import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.cli.interp.IncludeRelativizationException;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
@@ -17,25 +14,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 
-import io.github.mbackschat.a12.dm.adapter.EvalMessage;
-import io.github.mbackschat.a12.dm.adapter.EvalResult;
-import io.github.mbackschat.a12.dm.adapter.FieldPointer;
-import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
-import io.github.mbackschat.a12.dm.interpreter.eval.PointerKt;
-import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
-import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
-import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
@@ -49,13 +34,15 @@ import picocli.CommandLine.Option;
  * fired}/{@code messages}/{@code rule} payload rides {@code data}. Narrow with {@code --rule} (existing) or a
  * candidate ({@code --condition} + {@code --field}, injected, not persisted). {@code model compute} reports the
  * computed values themselves.
+ *
+ * <p>Evaluation runs on the native-safe {@code dm.interpreter} — the sole runtime eval engine on every target
+ * (the user-facing {@code --kernel} eval flag was retired, INTERPRETER-DROPIN-CERTIFICATE); the kernel remains
+ * the {@code :adapter} differential oracle in test scope only.
  */
 @Command(name = "eval", mixinStandardHelpOptions = true,
         description = "Evaluate a document INSTANCE: report which rules fire in `data` (runtime; applies "
                 + "computations first by default — the form-engine flow — unless --no-computations).")
 final class ModelEvalCommand extends BaseCommand {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Option(names = "--instance", required = true, paramLabel = "<document.json>",
             description = "the document INSTANCE (field data) — a nested JSON tree under \"fields\". See `schema model eval`.")
@@ -94,13 +81,8 @@ final class ModelEvalCommand extends BaseCommand {
             description = "the evaluation locale (default: ${DEFAULT-VALUE})")
     String localeTag;
 
-    @Option(names = "--kernel",
-            description = "use the A12 kernel engine instead of the default interpreter (JVM only; "
-                    + "not available in the native image, where the interpreter is the only engine)")
-    boolean useKernel;
-
     @Option(names = "--no-computations",
-            description = "validate the document's STORED values as-is (the kernel's bare validateFull). By DEFAULT, "
+            description = "validate the document's STORED values as-is (the bare validateFull). By DEFAULT, "
                     + "eval first runs the model's computations and applies their values (the form-engine flow), so a "
                     + "required-or-referenced COMPUTED field is filled before validation — matching the running app. "
                     + "Use this to validate stored values directly, e.g. to check a computed field's stored value "
@@ -115,15 +97,9 @@ final class ModelEvalCommand extends BaseCommand {
 
     @Override
     public Integer call() {
-        // --kernel is removed from the native command tree (Cli.removeNativeUnavailableOptions), so under the
-        // native profile useKernel can never be set — no runtime refusal needed; the JVM keeps both engines.
         String model = model();
         if (model == null) {
             return fail("pass -m <model.json> (before or after the verb)");
-        }
-        String kernelConflict = customSupport.kernelConflict(useKernel);
-        if (kernelConflict != null) {
-            return fail(kernelConflict);
         }
         boolean candidate = condition != null || field != null;
         if (candidate && ruleId != null) {
@@ -148,10 +124,9 @@ final class ModelEvalCommand extends BaseCommand {
         }
         ModelResolver resolver = workspace.resolverFor(model);
 
-        // Resolve a candidate's group + error relpath (engine-independent).
+        // Resolve a candidate's group + error relpath.
         String effectiveGroup = group;
         String errorEntityRelPath = null;
-        String targetRule = ruleId;
         if (candidate) {
             if (effectiveGroup == null) {
                 int slash = field.lastIndexOf('/');
@@ -164,63 +139,33 @@ final class ModelEvalCommand extends BaseCommand {
                 return fail("--field " + field + " must be inside --group " + effectiveGroup);
             }
             errorEntityRelPath = "../" + field.substring(effectiveGroup.length() + 1);
-            targetRule = effectiveGroup + "/" + name;
         }
 
-        // The DEFAULT (interpreter) path pre-expands the model kernel-free so an includes-bearing model is
-        // evaluated with its mounted content present (decoupling Stage 2 / A4 — was silently dropped). The
-        // --kernel path expands internally, so it keeps the raw modelJson.
-        String interpJson = modelJson;
-        if (!useKernel) {
-            try {
-                interpJson = InterpreterEngine.expandForEval(modelJson, resolver);
-            } catch (IncludeRelativizationException e) {
-                return refusePrecheck("model", "eval", RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED,
-                        e.getMessage(), model, RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED.fix());
-            } catch (UnresolvedReferenceException e) {
-                return refusePrecheck("model", "eval", RkCode.UNRESOLVED_REFERENCE, e.getMessage(), model,
-                        RkCode.UNRESOLVED_REFERENCE.fix());
-            } catch (RuntimeException e) {
-                return fail("cannot expand model: " + e.getMessage());
-            }
+        // Pre-expand the model kernel-free so an includes-bearing model is evaluated with its mounted content
+        // present (decoupling Stage 2 / A4 — was silently dropped).
+        String interpJson;
+        try {
+            interpJson = InterpreterEngine.expandForEval(modelJson, resolver);
+        } catch (IncludeRelativizationException e) {
+            return refusePrecheck("model", "eval", RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED,
+                    e.getMessage(), model, RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED.fix());
+        } catch (UnresolvedReferenceException e) {
+            return refusePrecheck("model", "eval", RkCode.UNRESOLVED_REFERENCE, e.getMessage(), model,
+                    RkCode.UNRESOLVED_REFERENCE.fix());
+        } catch (RuntimeException e) {
+            return fail("cannot expand model: " + e.getMessage());
         }
 
         ObjectNode data;
         try {
-            if (useKernel) {
-                Locale locale = Locale.forLanguageTag(localeTag.replace('_', '-'));
-                String evalJson = modelJson;
-                if (candidate) {
-                    DraftRule draft = new DraftRule(effectiveGroup, name, errorEntityRelPath, condition, code, severity);
-                    ValidationResult check = new RuleValidator().check(modelJson, draft, resolver);
-                    if (!check.ok()) {
-                        ResultEnvelope env = ResultEnvelope.rejected("model", "eval",
-                                "the candidate rule is rejected by the kernel (use `rule check` for diagnostics)",
-                                check.diagnostics());
-                        out().print(env.toJsonString());
-                        return env.exitCode();
-                    }
-                    evalJson = new RuleValidator().inject(modelJson, draft);
-                } else if (ruleId != null) {
-                    // an unknown --rule is a coded, structured refusal (AP1), consistent with the read family.
-                    Optional<Refusal> refusal = new SafetyGate()
-                            .require(SafetyChecks.ruleExists(KernelAdapter.ofJson(modelJson, resolver), ruleId))
-                            .firstFailure();
-                    if (refusal.isPresent()) {
-                        return refuse("model", "eval", refusal.get());
-                    }
-                }
-                KernelAdapter ka = KernelAdapter.ofJson(evalJson, resolver);
-                data = kernelEvalData(noComputations ? ka.evaluate(fields, locale) : ka.evaluateApplied(fields, locale),
-                        targetRule);
-            } else if (candidate) {
+            if (candidate) {
                 data = InterpreterEngine.evalCandidateData(interpJson, fields, localeTag,
                         effectiveGroup, name, errorEntityRelPath, condition, code, severity,
                         customSupport.predefinedTypes(), customSupport.customConditions(),
                         customSupport.customFieldTypes(), !noComputations);
             } else {
-                // same structured refusal in the DEFAULT (kernel-free) path for an unknown --rule narrowing —
-                // otherwise it would silently report the missing rule as fired:false.
+                // a structured refusal for an unknown --rule narrowing — otherwise it would silently report
+                // the missing rule as fired:false.
                 if (ruleId != null && !InterpreterEngine.ruleFullNames(interpJson).contains(ruleId)) {
                     return refuseNotFound("model", "eval", RkCode.NO_SUCH_RULE,
                             "rule '" + ruleId + "' does not exist — refusing", ruleId, RkCode.NO_SUCH_RULE.fix());
@@ -244,41 +189,5 @@ final class ModelEvalCommand extends BaseCommand {
                 data.get("fired").size() + " rule(s) fired", true, List.of(), data);
         out().print(env.toJsonString());
         return env.exitCode();
-    }
-
-    /** Render a kernel {@link EvalResult} into the shared {@code data} shape (fired / messages / rule). */
-    private static ObjectNode kernelEvalData(EvalResult result, String targetRule) {
-        ObjectNode data = MAPPER.createObjectNode();
-        ArrayNode fired = data.putArray("fired");
-        result.firedCodes().forEach(fired::add);
-        ArrayNode messages = data.putArray("messages");
-        for (EvalMessage m : result.messages()) {
-            ObjectNode mn = messages.addObject();
-            mn.put("code", m.errorCode());
-            m.rulePath().ifPresent(r -> mn.put("rule", r));
-            mn.put("field", pointer(m.field()));   // path + indices via the shared formatter (no Impl toString)
-            mn.put("severity", m.severity());
-            mn.put("type", m.messageType());
-            mn.put("message", m.message());
-            ArrayNode referenced = mn.putArray("referenced");
-            m.referenced().forEach(p -> referenced.add(pointer(p)));
-            if (!m.fillToFix().isEmpty()) {
-                ArrayNode fillToFix = mn.putArray("fillToFix");
-                m.fillToFix().forEach(p -> fillToFix.add(pointer(p)));
-            }
-        }
-        if (targetRule != null) {
-            boolean ruleFired = result.messages().stream()
-                    .anyMatch(m -> m.rulePath().filter(targetRule::equals).isPresent());
-            ObjectNode rule = data.putObject("rule");
-            rule.put("name", targetRule);
-            rule.put("fired", ruleFired);
-        }
-        return data;
-    }
-
-    /** Render a kernel field pointer the same readable way the interpreter does (the ONE shared formatter). */
-    private static String pointer(FieldPointer p) {
-        return PointerKt.formatPointer(p.path(), p.reps());
     }
 }

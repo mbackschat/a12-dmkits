@@ -32,7 +32,7 @@ public final class CliTestSupport {
         return new Result(code, out.toString(), err.toString());
     }
 
-    /** Run with the <b>native build profile</b> forced ({@code --kernel} removed from the tree) — for the native-surface guard. */
+    /** Run with the <b>native build profile</b> forced — for the native-surface guard. */
     public static Result runNative(String... args) {
         StringBuilder out = new StringBuilder();
         StringBuilder err = new StringBuilder();
@@ -41,14 +41,15 @@ public final class CliTestSupport {
     }
 
     /**
-     * Run a runtime verb forcing the <b>kernel</b> engine ({@code --kernel} appended). The {@code model
-     * eval}/{@code compute} and {@code rule eval} verbs now default to the interpreter; these helpers keep
-     * the kernel-fidelity verb tests exercising the kernel (the interpreter has its own differential cover).
+     * Run a runtime-eval verb on the <b>kernel</b> engine, the kernel LEG of the CLI-level
+     * interpreter-vs-kernel differential. The user-facing {@code --kernel} eval flag was retired (Set V,
+     * INTERPRETER-DROPIN-CERTIFICATE): production {@code dmtool} evaluates only through the native-safe
+     * interpreter, so the kernel-fidelity verb/parity tests reach the kernel through {@link KernelEval} — the
+     * {@link io.github.mbackschat.a12.dm.adapter.KernelAdapter} API directly, as the {@code :adapter}
+     * differential tests do — rendering the identical {@code data} envelope.
      */
     public static Result runKernel(String... args) {
-        String[] withKernel = java.util.Arrays.copyOf(args, args.length + 1);
-        withKernel[args.length] = "--kernel";
-        return run(withKernel);
+        return KernelEval.run(args);
     }
 
     /** The subscription fixture + one valid rule, as DM-JSON. */

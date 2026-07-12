@@ -28,13 +28,14 @@ import io.github.mbackschat.a12.dm.core.ModelReader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 /**
- * The interpreter-backed engine behind the runtime verbs' DEFAULT path ({@code model eval} / {@code model
- * compute} / {@code rule eval}) — the native-safe alternative to the kernel's Groovy runtime. It loads a
+ * The interpreter-backed engine behind the runtime verbs ({@code model eval} / {@code model compute} /
+ * {@code rule eval}) — the sole runtime eval engine on every target, native-safe (no Groovy). It loads a
  * DM-JSON model + a {@code {"fields":{…}}} instance via {@link InterpreterModelLoader}, runs
- * {@link DmInterpreter}, and renders the same {@code data} shape as the kernel path so output is consistent
- * across engines. Two honest differences from the kernel: the {@code field} pointer is the resolved path
- * (not the kernel's verbose pointer object), and a rule using an unmodeled/external construct is reported
- * under {@code data.unsupported} rather than evaluated (use {@code --kernel} on the JVM for full fidelity).
+ * {@link DmInterpreter}, and renders the canonical {@code data} shape. Two honest differences from the kernel
+ * (the {@code :adapter} differential oracle): the {@code field} pointer is the resolved path (not the kernel's
+ * verbose pointer object), and a rule using an unmodeled/external construct is reported under {@code
+ * data.unsupported} rather than evaluated — supply its impl via {@code --custom-conditions-js} /
+ * {@code --predefined-types} to evaluate it.
  */
 public final class InterpreterEngine {
 
@@ -64,8 +65,7 @@ public final class InterpreterEngine {
     }
 
     /** The full names of the rules the interpreter can see in {@code modelJson} — kernel-free, so the runtime
-     *  verbs can gate an unknown {@code --rule} with a structured refusal in their DEFAULT (interpreter) path,
-     *  exactly as the {@code --kernel} path gates it via the kernel adapter. */
+     *  verbs can gate an unknown {@code --rule} with a structured refusal before evaluating. */
     public static List<String> ruleFullNames(String modelJson) {
         return InterpreterModelLoader.load(modelJson).getRules().stream().map(RuleDef::getPath).toList();
     }

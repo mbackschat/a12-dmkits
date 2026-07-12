@@ -4,10 +4,7 @@ import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.CustomSupportOptions;
 import io.github.mbackschat.a12.dm.cli.DocInstance;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
-import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
-import io.github.mbackschat.a12.dm.cli.SafetyChecks;
-import io.github.mbackschat.a12.dm.cli.SafetyGate;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.cli.interp.IncludeRelativizationException;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
@@ -15,19 +12,12 @@ import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
-import io.github.mbackschat.a12.dm.adapter.RuleTestOutcome;
-import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
@@ -37,19 +27,19 @@ import picocli.CommandLine.Parameters;
  * {@code dmtool rule eval <rulePath> --instance <document.json>} — the rule-scope RUNTIME verb: the scoped,
  * suppression-aware polarity check for ONE rule against a document INSTANCE (FEATURE-GAPS). The rule-first
  * peer of {@code model eval}: it answers <b>fired</b> / <b>passed</b> / <b>suppressed</b> — the last being a
- * rule the kernel never evaluated because a field it references is formally invalid (reporting that as a pass
+ * rule the engine never evaluated because a field it references is formally invalid (reporting that as a pass
  * would mislead, so a plain "did it fire" verb isn't enough). Read-only; the verdict rides {@code data}.
  *
  * <p>Runtime, single-rule scope — the runtime peer of the static candidate-check {@code rule check}; like
  * {@code model eval} it runs the form-engine flow (compute → apply → validate) by default ({@code
- * --no-computations} opts to raw). See the check/eval/compute taxonomy in CLI-SPEC.
+ * --no-computations} opts to raw). Evaluation runs on the native-safe {@code dm.interpreter} — the sole runtime
+ * eval engine on every target (the user-facing {@code --kernel} eval flag was retired). See the
+ * check/eval/compute taxonomy in CLI-SPEC.
  */
 @Command(name = "eval", mixinStandardHelpOptions = true,
         description = "Evaluate ONE rule against a document INSTANCE: fired / passed / suppressed (runtime "
                 + "polarity; applies computations first by default, like model eval).")
 final class RuleEvalCommand extends BaseCommand {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @ParamKind(ParamKind.Kind.RULE_PATH)
     @Parameters(index = "0", paramLabel = "<rulePathInModel>",
@@ -63,11 +53,6 @@ final class RuleEvalCommand extends BaseCommand {
     @Option(names = "--locale", defaultValue = "en_US", paramLabel = "<locale>",
             description = "the evaluation locale (default: ${DEFAULT-VALUE})")
     String localeTag;
-
-    @Option(names = "--kernel",
-            description = "use the A12 kernel engine instead of the default interpreter (JVM only; "
-                    + "not available in the native image, where the interpreter is the only engine)")
-    boolean useKernel;
 
     @Option(names = "--no-computations",
             description = "evaluate against the document's STORED values as-is. By DEFAULT, rule eval first runs "
@@ -84,16 +69,10 @@ final class RuleEvalCommand extends BaseCommand {
 
     @Override
     public Integer call() {
-        // --kernel is removed from the native command tree (Cli.removeNativeUnavailableOptions), so under the
-        // native profile useKernel can never be set — no runtime refusal needed; the JVM keeps both engines.
         String modelPath = model();
         String json = readModelJson(modelPath);   // null (after printing the failure) if no -m / unreadable
         if (json == null) {
             return 2;
-        }
-        String kernelConflict = customSupport.kernelConflict(useKernel);
-        if (kernelConflict != null) {
-            return fail(kernelConflict);
         }
         Map<String, Object> fields;
         try {
@@ -104,42 +83,26 @@ final class RuleEvalCommand extends BaseCommand {
             return fail("cannot read document: " + e.getMessage());
         }
         try {
-            ObjectNode data;
-            if (useKernel) {
-                Locale locale = Locale.forLanguageTag(localeTag.replace('_', '-'));
-                BoundModel bound = BoundModel.ofJson(json, workspace.resolverFor(modelPath));
-                KernelAdapter adapter = KernelAdapter.of(bound);
-                // an unknown rule is a coded, structured refusal (AP1), consistent with the read family.
-                Optional<Refusal> refusal = new SafetyGate()
-                        .require(SafetyChecks.ruleExists(adapter, rule))
-                        .firstFailure();
-                if (refusal.isPresent()) {
-                    return refuse("rule", "eval", refusal.get());
-                }
-                data = data(adapter.testRule(rule, fields, locale, !noComputations));
-            } else {
-                // pre-expand kernel-free so an includes-bearing model evaluates with its mounted content
-                // present (decoupling Stage 2 / A4); refuse loudly on included-model rules needing relativization.
-                String interpJson;
-                try {
-                    interpJson = InterpreterEngine.expandForEval(json, workspace.resolverFor(modelPath));
-                } catch (IncludeRelativizationException e) {
-                    return refusePrecheck("rule", "eval", RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED,
-                            e.getMessage(), modelPath, RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED.fix());
-                } catch (UnresolvedReferenceException e) {
-                    return refusePrecheck("rule", "eval", RkCode.UNRESOLVED_REFERENCE, e.getMessage(), modelPath,
-                            RkCode.UNRESOLVED_REFERENCE.fix());
-                }
-                // same structured refusal in the DEFAULT (kernel-free) path — the interpreter otherwise throws
-                // "no such rule", which would surface as a bare error.
-                if (!InterpreterEngine.ruleFullNames(interpJson).contains(rule)) {
-                    return refuseNotFound("rule", "eval", RkCode.NO_SUCH_RULE,
-                            "rule '" + rule + "' does not exist — refusing", rule, RkCode.NO_SUCH_RULE.fix());
-                }
-                data = InterpreterEngine.ruleTestData(interpJson, fields, localeTag, rule,
-                        customSupport.predefinedTypes(), customSupport.customConditions(),
-                        customSupport.customFieldTypes(), !noComputations);
+            // pre-expand kernel-free so an includes-bearing model evaluates with its mounted content present
+            // (decoupling Stage 2 / A4); refuse loudly on included-model rules needing relativization.
+            String interpJson;
+            try {
+                interpJson = InterpreterEngine.expandForEval(json, workspace.resolverFor(modelPath));
+            } catch (IncludeRelativizationException e) {
+                return refusePrecheck("rule", "eval", RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED,
+                        e.getMessage(), modelPath, RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED.fix());
+            } catch (UnresolvedReferenceException e) {
+                return refusePrecheck("rule", "eval", RkCode.UNRESOLVED_REFERENCE, e.getMessage(), modelPath,
+                        RkCode.UNRESOLVED_REFERENCE.fix());
             }
+            // a structured refusal — the interpreter otherwise throws "no such rule", a bare error.
+            if (!InterpreterEngine.ruleFullNames(interpJson).contains(rule)) {
+                return refuseNotFound("rule", "eval", RkCode.NO_SUCH_RULE,
+                        "rule '" + rule + "' does not exist — refusing", rule, RkCode.NO_SUCH_RULE.fix());
+            }
+            ObjectNode data = InterpreterEngine.ruleTestData(interpJson, fields, localeTag, rule,
+                    customSupport.predefinedTypes(), customSupport.customConditions(),
+                    customSupport.customFieldTypes(), !noComputations);
             ResultEnvelope refusal = customSupport.strictRefusal("rule", "eval", data);
             if (refusal != null) {
                 out().print(refusal.toJsonString());
@@ -155,7 +118,7 @@ final class RuleEvalCommand extends BaseCommand {
         }
     }
 
-    /** The human summary from the verdict + rule in {@code data} — engine-independent (same wording either way). */
+    /** The human summary from the verdict + rule in {@code data}. */
     private static String summary(ObjectNode data) {
         String r = data.path("rule").asText();
         return switch (data.path("verdict").asText()) {
@@ -166,22 +129,5 @@ final class RuleEvalCommand extends BaseCommand {
                     + "(e.g. a CustomCondition with no impl)";
             default -> r;
         };
-    }
-
-    private static ObjectNode data(RuleTestOutcome outcome) {
-        ObjectNode data = MAPPER.createObjectNode();
-        data.put("rule", outcome.rule());
-        data.put("fired", outcome.fired());
-        data.put("verdict", outcome.verdict().name().toLowerCase(Locale.ROOT));
-        outcome.message().ifPresent(m -> data.put("message", m));
-        if (!outcome.suppressedBy().isEmpty()) {
-            ArrayNode arr = data.putArray("suppressedBy");
-            for (RuleTestOutcome.Suppression s : outcome.suppressedBy()) {
-                ObjectNode node = arr.addObject();
-                node.put("field", s.field());
-                node.put("formalErrorCode", s.formalErrorCode());
-            }
-        }
-        return data;
     }
 }

@@ -33,8 +33,8 @@ import picocli.CommandLine.Option;
  *       evaluate instead of being reported unsupported.</li>
  * </ul>
  *
- * <p>All are <b>interpreter-only</b> (the kernel uses its own factories / throws on an unregistered construct),
- * so combining any with {@code --kernel} is a usage error — see {@link #kernelConflict(boolean)}.
+ * <p>All refine the interpreter engine (the sole runtime eval engine); a native {@code dmtool} cannot host
+ * arbitrary project code, so these make the degrade honest and useful.
  */
 @Command // a mixin must be a "command"
 public final class CustomSupportOptions {
@@ -115,34 +115,6 @@ public final class CustomSupportOptions {
         } catch (IOException e) {
             throw new IllegalArgumentException("cannot read --custom-field-types-js dir: " + e.getMessage());
         }
-    }
-
-    /**
-     * The corrective message if an interpreter-only option here was combined with {@code --kernel}, else
-     * {@code null}. The kernel runs its own field-type factory and reports its own custom-construct errors, so
-     * neither option applies to it.
-     */
-    public String kernelConflict(boolean useKernel) {
-        if (!useKernel) {
-            return null;
-        }
-        if (predefinedTypesPath != null) {
-            return "--predefined-types applies to the interpreter; the A12 kernel uses its own field-type "
-                    + "factory — drop --kernel or --predefined-types";
-        }
-        if (strictCustom) {
-            return "--strict-custom applies to the interpreter; the A12 kernel reports its own custom-construct "
-                    + "errors — drop --kernel or --strict-custom";
-        }
-        if (customConditionsJsDir != null) {
-            return "--custom-conditions-js applies to the interpreter; the A12 kernel runs its own custom "
-                    + "conditions — drop --kernel or --custom-conditions-js";
-        }
-        if (customFieldTypesJsDir != null) {
-            return "--custom-field-types-js applies to the interpreter; the A12 kernel runs its own custom "
-                    + "field types — drop --kernel or --custom-field-types-js";
-        }
-        return null;
     }
 
     /**

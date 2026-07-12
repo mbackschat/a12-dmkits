@@ -19,7 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * registry. A {@code CustomFieldType} field is reported {@code unsupported} (and so silently NOT validated)
  * unless its type is supplied; with {@code --predefined-types} the format (length/pattern) is enforced, so a
  * bad value fires {@code customFieldTypeInvalid}. Uses the committed {@code payment-customtype} fixture
- * (a {@code CustomFieldType "Iban"} field). Interpreter-only — refused with {@code --kernel}.
+ * (a {@code CustomFieldType "Iban"} field). Refines the interpreter — the sole runtime eval engine.
  */
 class CustomTypeSupportVerbTest {
 
@@ -85,19 +85,6 @@ class CustomTypeSupportVerbTest {
         assertEquals(0, res.code(), res::err);
         assertFalse(fired(res.out(), "customFieldTypeInvalid"),
                 () -> "without --predefined-types an unregistered custom type is skipped, not fired: " + res.out());
-    }
-
-    @Test
-    void predefinedTypesIsRefusedWithKernel(@TempDir Path dir) throws Exception {
-        Path model = CliTestSupport.paymentCustomType(dir);
-        Path bad = write(dir, "bad.json", """
-                { "fields": { "Payment": { "Iban": "x" } } }""");
-        Path types = write(dir, "types.json", IBAN_TYPES);
-        var res = CliTestSupport.run("-m", model.toString(), "model", "eval",
-                "--instance", bad.toString(), "--predefined-types", types.toString(), "--kernel");
-        assertNotEquals(0, res.code());
-        assertTrue((res.out() + res.err()).contains("--predefined-types applies to the interpreter"),
-                () -> "--kernel + --predefined-types must be refused: " + res.out() + res.err());
     }
 
     // ── G29: visible-ignore (data.unsupported) + --strict-custom ──

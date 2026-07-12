@@ -14,18 +14,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Guards the native-image contract for the runtime-eval verbs (docs/NATIVE-IMAGE-GRAALVM.md §4). They used
- * to be HIDDEN in native (they ran the kernel's Groovy codegen) — but they now default to the native-safe
- * {@code dm.interpreter}, so they STAY in the native command tree and run there. The JVM-only part is the
- * {@code --kernel} option, which under the native profile is <b>removed from the command tree entirely</b> —
- * not merely refused at runtime. The interpreter is the only native engine, so surfacing a flag that always
- * fails would mislead an LLM agent that discovers it via {@code --help}/{@code manifest}; removing it keeps
- * every self-describing surface honest (agent-first design).
+ * to be HIDDEN in native (they ran the kernel's Groovy codegen) — but they now run on the native-safe
+ * {@code dm.interpreter}, the SOLE runtime eval engine on every target, so they STAY in the native command
+ * tree and run there. The user-facing {@code --kernel} eval flag was retired (INTERPRETER-DROPIN-CERTIFICATE):
+ * it is gone from every profile, so no self-describing surface offers it.
  *
  * <p>Native isn't built in CI, so this runs the command tree in <b>forced-native profile</b> on the JVM
  * (the {@link CliTestSupport#runNative} seam) and asserts: the verbs are present on every self-describing
- * surface (manifest / {@code --help} / {@code schema}), the default (interpreter) path runs, and
- * {@code --kernel} is absent from native help + manifest (but present on the JVM profile, where the kernel
- * engine exists).
+ * surface (manifest / {@code --help} / {@code schema}), and the retired {@code --kernel} flag is an unknown
+ * option on every profile.
  */
 class NativeImageRuntimeVerbsTest {
 
@@ -80,42 +77,30 @@ class NativeImageRuntimeVerbsTest {
     }
 
     @Test
-    void nativeManifestOmitsTheKernelOptionButJvmKeepsIt() throws Exception {
+    void noProfileOffersTheRetiredKernelFlag() throws Exception {
+        // The --kernel eval flag was retired: it appears on NO runtime verb, on either profile's manifest.
         String nativeManifest = CliTestSupport.runNative("manifest").out();
         String jvmManifest = CliTestSupport.run("manifest").out();
         for (String verb : RUNTIME_VERBS) {
             Set<String> jvmFlags = manifestVerbFlags(jvmManifest, verb);
             Set<String> nativeFlags = manifestVerbFlags(nativeManifest, verb);
-            assertTrue(jvmFlags.contains("--kernel"),
-                    () -> "JVM manifest must keep --kernel on '" + verb + "' (the kernel engine exists there): " + jvmFlags);
+            assertTrue(!jvmFlags.contains("--kernel"),
+                    () -> "JVM manifest must NOT list --kernel on '" + verb + "' (retired): " + jvmFlags);
             assertTrue(!nativeFlags.contains("--kernel"),
-                    () -> "native manifest must NOT list --kernel on '" + verb + "' (interpreter is the only native engine): " + nativeFlags);
+                    () -> "native manifest must NOT list --kernel on '" + verb + "' (retired): " + nativeFlags);
         }
     }
 
     @Test
-    void nativeHelpOmitsTheKernelOption() {
-        String nativeEvalHelp = CliTestSupport.runNative("model", "eval", "--help").out();
-        assertTrue(!nativeEvalHelp.contains("--kernel"),
-                () -> "native 'model eval --help' must NOT mention --kernel:\n" + nativeEvalHelp);
-        String jvmEvalHelp = CliTestSupport.run("model", "eval", "--help").out();
-        assertTrue(jvmEvalHelp.contains("--kernel"),
-                () -> "JVM 'model eval --help' must still offer --kernel:\n" + jvmEvalHelp);
-    }
-
-    @Test
-    void nativeRejectsTheRemovedKernelFlagAndRunsTheDefaultEngine() {
-        // --kernel is removed from the native tree: passing it is an unknown option (usage error, exit 2).
-        CliTestSupport.Result kernel = CliTestSupport.runNative(
-                "-m", "x.json", "model", "eval", "--instance", "y.json", "--kernel");
-        assertEquals(2, kernel.code(), () -> "native --kernel must be a usage error (unknown option): " + kernel.out() + kernel.err());
-        assertTrue(kernel.err().contains("--kernel"),
-                () -> "the unknown-option error must name --kernel:\n" + kernel.err());
-
-        // the default (no --kernel) reaches the engine — here it then fails on the dummy model path, NOT on --kernel.
-        CliTestSupport.Result def = CliTestSupport.runNative(
-                "-m", "x.json", "model", "eval", "--instance", "y.json");
-        assertTrue(!def.err().contains("Unknown option") || !def.err().contains("--kernel"),
-                () -> "the default path must NOT trip on --kernel:\n" + def.err());
+    void theRetiredKernelFlagIsRejectedOnEveryProfile() {
+        // --kernel no longer exists on any verb: passing it is an unknown option (usage error, exit 2), on
+        // both the native and JVM profiles.
+        for (CliTestSupport.Result res : List.of(
+                CliTestSupport.runNative("-m", "x.json", "model", "eval", "--instance", "y.json", "--kernel"),
+                CliTestSupport.run("-m", "x.json", "model", "eval", "--instance", "y.json", "--kernel"))) {
+            assertEquals(2, res.code(), () -> "--kernel must be a usage error (unknown option): " + res.out() + res.err());
+            assertTrue(res.err().contains("--kernel"),
+                    () -> "the unknown-option error must name --kernel:\n" + res.err());
+        }
     }
 }

@@ -110,17 +110,6 @@ class CustomConditionJsVerbTest {
     }
 
     @Test
-    void customConditionsJsIsRefusedWithKernel(@TempDir Path dir) throws Exception {
-        Path model = CliTestSupport.orderRuled(dir);
-        Path js = jsDir(dir, FIRES_ON_BLOCKED);
-        var res = CliTestSupport.run("-m", model.toString(), "model", "eval",
-                "--instance", doc(dir, "Acme").toString(), "--custom-conditions-js", js.toString(), "--kernel");
-        assertNotEquals(0, res.code());
-        assertTrue((res.out() + res.err()).contains("--custom-conditions-js applies to the interpreter"),
-                () -> "--kernel + --custom-conditions-js must be refused: " + res.out() + res.err());
-    }
-
-    @Test
     void aMissingJsDirFailsCleanly(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         var res = CliTestSupport.run("-m", model.toString(), "model", "eval",

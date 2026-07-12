@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -92,16 +91,5 @@ class CustomFieldTypeJsVerbTest {
                 () -> "a JS validator that throws must degrade the cell to unsupported, not crash the run: " + res.out());
         assertFalse(fired(res.out(), "customFieldTypeInvalid"),
                 () -> "a non-evaluable cell is unsupported, not a (false) format error: " + res.out());
-    }
-
-    @Test
-    void customFieldTypesJsIsRefusedWithKernel(@TempDir Path dir) throws Exception {
-        Path model = CliTestSupport.paymentCustomType(dir);
-        Path js = jsDir(dir, IBAN_VALIDATE);
-        var res = CliTestSupport.run("-m", model.toString(), "model", "eval",
-                "--instance", doc(dir, "DE89").toString(), "--custom-field-types-js", js.toString(), "--kernel");
-        assertNotEquals(0, res.code());
-        assertTrue((res.out() + res.err()).contains("--custom-field-types-js applies to the interpreter"),
-                () -> "--kernel + --custom-field-types-js must be refused: " + res.out() + res.err());
     }
 }
