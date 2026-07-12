@@ -247,6 +247,7 @@ dmtool schema result | jq "{required, properties: (.properties | map_values(.des
     "outcome": "the execution result class; `error` = the tool itself failed (an unexpected throwable caught at the boundary, exit 70), distinct from `rejected` (input rejected, exit 1)",
     "ok": "the operation executed as asked (outcome in applied | preview | read | staged); false for refused | rejected | error",
     "valid": "validate/check (and after a mutating op): the subject model is kernel-valid — distinct from `ok`",
+    "verification": "(check/validate verdicts) how the verdict was reached: KERNEL_CONFIRMED = the kernel backend arbitrated (the CLI always bundles it); STRUCTURAL_ONLY = no backend, so `valid` reflects structural prechecks only and must NOT be read as kernel-green (a library-consumer posture; the CLI surfaces it for visibility)",
     "summary": "one human-readable line (the agent's quick read / log line)",
     "changed": "(mutations) the delta on success — e.g. {added, kind}, a refactor's rewritten references",
     "data": "(reads/queries) the op's payload — explanation tree, model card, fired-list, …; shape is op-specific (see `schema <target> <op>`)",

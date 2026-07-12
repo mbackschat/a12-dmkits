@@ -36,6 +36,7 @@ dmtool -m examples/models/order-ruled.dm.json model check
   "outcome" : "read",
   "ok" : true,
   "valid" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "model is valid",
   "diagnostics" : [ ],
   "written" : false
@@ -213,6 +214,7 @@ dmtool -m examples/models/order-ruled.dm.json rule check --field /Order/Quantity
   "outcome" : "read",
   "ok" : true,
   "valid" : true,
+  "verification" : "KERNEL_CONFIRMED",
   "summary" : "candidate is kernel-valid",
   "diagnostics" : [ {
     "severity" : "WARNING",

@@ -33,10 +33,10 @@ dmkits is **one library with a shared core and two sibling kits**, an **opt-in k
                     │                           └───────────┬─────────────┘                   │
                     │                          dm.core — the shared substrate                 │
                     │            ModelIndex · ModelLoader · DmJson write · ModelResolver       │
-                    │            ModelConsistencyException · ValueKind · the kernel gate       │
+                    │            ModelConsistencyException · ValueKind · Backends (SPI)        │
                     └────────────────────────────────┬────────────────────────────────────────┘
-                            public kernel ONLY (D15)  │                ▲  internal-read, guarded (N8)
-                                                      ▼                │  returns core types only
+                            SPI ports (ServiceLoader) │                ▲  internal-read, guarded (N8)
+                             — no kernel dep in main   │                │  implements the SPI ports
                     ┌──────────────────────────────────────┐   ┌──────┴───────────────────────┐
                     │  A12 kernel  (published to mavenLocal) │◀──│  :adapter                    │
                     │  public:   kernel-md-facade            │   │  a12internal READ tier       │
@@ -46,9 +46,10 @@ dmkits is **one library with a shared core and two sibling kits**, an **opt-in k
                     └──────────────────────────────────────┘   │   whereUsed, rewrite, eval)   │
                                                                  └──────────────────────────────┘
 
-  read the map: arrows = "depends on / calls". Kernel coupling WIDENS downward. The core is public-kernel-only
-  by construction (no internal jar on its classpath); ONLY :adapter crosses into the kernel's internal tier,
-  and it converts every kernel type back to a dmkits type at the boundary (nothing internal escapes).
+  read the map: arrows = "depends on / calls". Kernel coupling WIDENS downward. The kits are KERNEL-FREE
+  (no kernel dep in main — the kernel lives behind the SPI ports, resolved by ServiceLoader; verifyKitPurity);
+  ONLY :adapter implements those ports + crosses into the kernel's internal tier, converting every kernel
+  type back to a dmkits type at the boundary (nothing kernel escapes into a kit).
 ```
 
 **The three principal layers, top to bottom:**
@@ -61,7 +62,7 @@ dmkits is **one library with a shared core and two sibling kits**, an **opt-in k
 
 **The load-bearing invariants** (each enforced by a test, not just convention):
 
-- **Public-kernel-only core (D15/N8).** The root project binds only `kernel-md-facade`; the internal kernel jars are on `:adapter`'s classpath alone. So the core *cannot* couple to the kernel's unstable internals by accident — and stays polyglot-portable (a future TS twin could rebuild the same index from the same DM-JSON).
+- **Kernel-free kits, kernel behind the SPI (D15/N8; kernel-decoupling stage 3).** The kits (`dm.core` / `dm.rulekit` / `dm.modelkit` / `dm.edit`) import **zero** `com.mgmtp` — the root project has **no** kernel dependency in its main compile classpath. The kernel lives behind three narrow SPI ports (`dm.core.spi.ConsistencyOracle`, `dm.core.spi.BackendInfo`, `dm.rulekit.spi.ConditionReadBack`), resolved by `dm.core.Backends` / `dm.rulekit.spi.ReadBackends` via `ServiceLoader`; the one backend (`:adapter`) implements + registers them. Held by `verifyKitPurity` (fails on any `com.mgmtp` import/FQ-ref in the kits' `src/main`). The kernel stays the oracle in TESTS (test-scope `:adapter` provider). This is what unblocks the Maven-Central publish and keeps the kits polyglot-portable.
 - **Sibling kits (`dm.modelkit ⊥ dm.rulekit`).** Structure editing and rule authoring are peers over `dm.core`; neither imports the other. Held by `SiblingBoundaryTest` (a two-way package import sweep).
 - **Data out, never kernel objects (§5e).** Every artifact that crosses a boundary is plain data (a `String`, a record, JSON) — never a live kernel object. That is what keeps the out-surface agent-consumable and the core portable.
 
@@ -73,8 +74,8 @@ Five Gradle units. modelkit and `dm.edit` are **packages inside the root project
 
 | Unit | Gradle id | Depends on | Kernel coupling | Ships as |
 |---|---|---|---|---|
-| **library** | root `:` | `api kernel-md-facade`; `implementation` Jackson (databind + yaml) | **public kernel only** | the engine: `dm.core` + `dm.rulekit` + `dm.modelkit` + `dm.edit` |
-| **adapter** | `:adapter` | `api project(':')` + the kernel **internal-read** jars + the **runtime-eval** jars + `implementation project(':interpreter')` (the `KernelCustomConditions` bridge in main; the kernel differential in test) | the `a12internal` read tier + runtime evaluation, **confined to this module** | an opt-in read/convert/rewrite/evaluate surface (`KernelAdapter`) + the JVM bridge running existing kernel custom conditions on the interpreter (`KernelCustomConditions`) |
+| **library** | root `:` | `implementation` Jackson (databind + yaml); **no kernel dep in main** — the kernel is behind the SPI ports (`dm.core.spi.*`, `dm.rulekit.spi.*`); `testImplementation project(':adapter')` + `kernel-md-facade` give the kernel-oracle TESTS the backend | **none in main** (kernel-free kits; `verifyKitPurity`) | the engine: `dm.core` + `dm.rulekit` + `dm.modelkit` + `dm.edit` |
+| **adapter** | `:adapter` | `api project(':')` + `implementation kernel-md-facade` (the public tier root no longer carries) + the kernel **internal-read** jars + the **runtime-eval** jars + `implementation project(':interpreter')` | the kernel backend — the `a12internal` read tier + runtime evaluation + **the SPI-port impls**, all **confined to this module** | an opt-in read/convert/rewrite/evaluate surface (`KernelAdapter`) + **the three SPI-port providers** (`KernelConsistencyOracle`/`KernelBackendInfo`/`KernelConditionReadBack`, registered via `META-INF/services`) + `KernelCustomConditions` |
 | **interpreter** | `:interpreter` (Kotlin Multiplatform: jvm + js) | **one** common lib — kotlinx-serialization-json (tree API, for the DM-JSON loader; whitelisted in the purity lint); no kernel, no dmtool — purity-lint-enforced | **none** — kernel-free by construction | a native-safe, cross-platform runtime evaluator (`DmInterpreter`: `validateFull`/`validatePart`/`testRule`/`compute`) + a DM-JSON → `ModelDef` loader (`ModelLoader`); the publishable standalone artifact (design [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md) · impl [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md)) |
 | **cli** | `:cli` (`application` + GraalVM `native` plugins) | `implementation project(':')` + `project(':adapter')` + `project(':interpreter')` + picocli + Jackson | inherits the adapter's (bundled *inside* the binary, never a library surface) | the standalone `dmtool` front-end (JVM `installDist`; opt-in native image) |
 | **schemakit** | `:schemakit` (JVM/Java; package `…dm.schemakit`) | `implementation project(':')` + Jackson (+ `:adapter`/`:interpreter` as shapes need them) | reaches the kernel only through the project's own **mediated** modules (root `:` facade, `:adapter`'s N8 type-converting boundary, the kernel-free `:interpreter`) — never the raw kernel jars directly; its own source imports no kernel type (`verifySchemakitPurity`) | JSON Schema ⇄ Document Model transcoder ([SCHEMAKIT-SPEC.md](SCHEMAKIT-SPEC.md)) |
@@ -121,9 +122,9 @@ Internally `commonMain` is **layered into subpackages** under `dm.interpreter`: 
 
 | Tier | Who | Allowed |
 |---|---|---|
-| **public only** | the library (`:`) | `IDocumentModel`, `checkConsistency`, the public model API + serializer (`kernel-md-facade`). No internal jar on the classpath. |
-| **internal read, guarded** | `:adapter` only | the `a12internal` *read* AST (`parsetree-api` `ICondition`, `tool-api` `IRule`/`IEC`, `md-model` `DocumentModelService`) + runtime evaluation — reached in one call from the md-tier model, **converted back to dmkits types at the boundary**. Never constructs kernel AST (read-only). |
-| **internal allowed (tests)** | any test | fixtures/oracles may read the internal tier, provided nothing internal leaks into `src/main` or a public signature. |
+| **none in main (SPI only)** | the kits (`:` main) | **no kernel type at all** — the kernel is reached only through the SPI ports (`ConsistencyOracle`/`BackendInfo`/`ConditionReadBack`), resolved at runtime by `ServiceLoader`. `verifyKitPurity` enforces zero `com.mgmtp` in `src/main`. |
+| **public + internal read, guarded** | `:adapter` only | `kernel-md-facade` (the public tier — root no longer carries it) + the `a12internal` *read* AST (`parsetree-api` `ICondition`, `tool-api` `IRule`/`IEC`, `md-model` `DocumentModelService`) + runtime evaluation — reached in one call from the md-tier model, **converted back to dmkits types at the boundary** (and behind the SPI ports for the kits). Never constructs kernel AST (read-only). |
+| **kernel-as-oracle (tests)** | any test | fixtures/oracles may read the kernel (the kit tests get it via a test-scope `:adapter` provider + `kernel-md-facade`), provided nothing kernel leaks into `src/main` or a public signature. |
 
 ---
 
@@ -133,17 +134,18 @@ The root project is four package groups: a shared `dm.core`, the two sibling kit
 
 ### 3.1 `dm.core` — the shared substrate
 
-The DSL-free foundation both kits stand on. No rulekit or modelkit dependency. It **owns the vocabulary the kits' public surface speaks** — the reference-resolver type and the diagnostic types are ours, not the kernel's, so a consumer never has to import `com.mgmtp.*` to name them (kernel-decoupling stages 1–2, [KERNEL-DECOUPLING-PROPOSAL](KERNEL-DECOUPLING-PROPOSAL.md); the mapping to kernel types happens at the one named boundary seam below and, from stage 3, behind the SPI). **Model *assembly + indexing* is now kernel-free** (stage 2): `ModelReader` expands + indexes without the kernel; the kernel is consulted only for the *consistency gate* (`ModelLoader.load`, R3).
+The DSL-free foundation both kits stand on. No rulekit or modelkit dependency. It **owns the vocabulary the kits' public surface speaks** — the reference-resolver type and the diagnostic types are ours, not the kernel's, so a consumer never has to import `com.mgmtp.*` to name them (kernel-decoupling, [KERNEL-DECOUPLING-PROPOSAL](KERNEL-DECOUPLING-PROPOSAL.md)). **`dm.core` is kernel-free** (stage 3): model assembly + indexing run without the kernel (`ModelReader`); the consistency gate (`ModelLoader.loadAndCheck`, R3) and the version read route through the SPI ports (`dm.core.spi.ConsistencyOracle`/`BackendInfo`), resolved by `dm.core.Backends`. With no backend the gate degrades to structural-only and carries a `Verification.STRUCTURAL_ONLY` marker (§2c) — never a fabricated verdict.
 
 | Class | Role |
 |---|---|
 | `ModelReader` | the **kernel-free assembly layer** (stage 2): parse DM-JSON → **expand includes** (mount the included root group's children under the pre-existing `modelAlias` group; `includeLevel`; `excludeRules`/`excludeComputations`) → **resolve imported type-definitions to effective concrete types** → index by **name-path**. A clean-room reimplementation of the kernel's `expand` (KERNEL-FINDINGS "DocumentModel expansion"); emits self-contained, name-path-keyed DM-JSON (`toJson()`, the interpreter-ready form the CLI eval path pre-expands through) |
 | `ModelIndex` | the **kernel-free typed view** over `ModelReader` — group tree, field kinds, number scale/bounds, string length/pattern, repeatability, enum domains, element annotations. The retired kernel-typed accessors (`model()`/`fieldType()`, and the kernel returns of `field()`/`group()`) are gone; parity-locked to the kernel by `adapter.ModelIndexParityTest` |
-| `ModelLoader` | the **kernel consistency gate** (R3): `deserialize → expand → checkConsistency` on the real kernel, throwing on ERROR. `BoundModel`/`ModelDocument`/`EditSession` call it to gate, then index kernel-free via `ModelReader`; takes a `ModelResolver` |
+| `ModelLoader` | the **consistency gate** (R3): `loadAndCheck` routes through the `ConsistencyOracle` port (backend present → real kernel `deserialize → expand → checkConsistency`, throwing on ERROR; no backend → structural expand only, no verdict). `BoundModel`/`ModelDocument`/`EditSession` call it to gate, then index kernel-free via `ModelReader`; takes a `ModelResolver` |
+| `Backends`, `spi.ConsistencyOracle`, `spi.BackendInfo` | the **SPI resolution point + the two core ports** (stage 3): `Backends` discovers the backend via `ServiceLoader` (+ `override` for tests) and exposes `verification()` (KERNEL_CONFIRMED iff a backend is present); the ports speak only our types. `:adapter` implements + registers them |
+| `Verification` | the degraded-mode honesty marker (`KERNEL_CONFIRMED` / `STRUCTURAL_ONLY`) — carried by a `ValidationResult` and a `BoundModel` binding so a green result can never be read as kernel-confirmed without a backend (§2c) |
 | `ModelResolver` | **the** include-resolution type — a kernel-free `id → DM-JSON` SAM; every kit signature that resolves references speaks it (never the kernel resolver) |
-| `ReferenceResolvers` | `ModelResolver` factories (`selfContained`/`directory`) + the one kernel **bridge** `of(ModelResolver)` — the only kernel-typed member, used by `ModelLoader`'s gate (retires into the backend at stage 3) |
-| `Severity`, `Notification`, `Annotation` | owned value vocabulary — the **diagnostics** (INFO/WARNING/ERROR; severity + message; a kit `Diagnostic`/`ValidationResult`/`ModelConsistencyException` carries these, never a kernel `RankedNotification`/`Severity`) and an element's **annotation** (name/value, read kernel-free off `ModelIndex`) |
-| `KernelNotifications` | the single kernel→ours notification boundary mapper (interim seam; moves to the SPI at stage 3) |
+| `ReferenceResolvers` | `ModelResolver` factories (`selfContained`/`directory`) — all kernel-free (Jackson only); the kernel-resolver bridge moved into `:adapter` (`KernelResolvers`) at stage 3 |
+| `Severity`, `Notification`, `Annotation` | owned value vocabulary — the **diagnostics** (INFO/WARNING/ERROR; severity + message; a kit `Diagnostic`/`ValidationResult`/`ModelConsistencyException` carries these, never a kernel `RankedNotification`/`Severity`) and an element's **annotation** (name/value, read kernel-free off `ModelIndex`). The kernel→ours mapper (`KernelNotifications`) moved into `:adapter` at stage 3 |
 | `DmJson` | the generic, DSL-free DM-JSON **write** primitive (Jackson tree surgery, include-preserving) — shared by both kits |
 | `ModelConsistencyException` | the one type a kernel rejection (load-time or write-time) surfaces as — carries our `Notification`s |
 | `ValueKind`, `Suggest`, `ModelFormat`, … | value-type taxonomy (kernel-free — from the stored DM-JSON discriminator), did-you-mean suggestions, the DM-JSON format reference, `DmKeys`/`ElementType`/`UnresolvedReferenceException` |
