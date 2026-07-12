@@ -42,7 +42,7 @@ class NoStaleCommandSyntaxTest {
     private static final List<Path> ROOTS = List.of(
             Path.of("src/main/java"),
             Path.of("src/main/resources"),               // schema/*.json, verb-examples.json
-            Path.of("../src/main/resources/catalog"));   // operators.json (the core module's catalog)
+            Path.of("../rulekit/src/main/resources/catalog"));   // operators.json (the rulekit module's catalog)
 
     @Test
     void noStaleCommandSyntaxInUserFacingText() throws IOException {

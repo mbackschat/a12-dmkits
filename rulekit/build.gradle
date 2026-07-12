@@ -1,0 +1,29 @@
+// :rulekit — the dm.rulekit.* strongly-connected component (dsl, catalog, validate, write, lint, context,
+// read, spi) + the bundled operator catalog resource. One artifact, not sub-modularized (the SCC is a
+// jdeps fact, PROPOSAL §1b). Kernel-free (root `verifyKitPurity`); the R4 read seam is the
+// dm.rulekit.spi.ConditionReadBack port the :adapter backend implements. Published as
+// io.github.mbackschat.a12.dm:dmkits-rulekit (MIT).
+plugins {
+    id 'java-library'
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    // rulekit builds on dm.core and speaks core types across its public API (BoundModel returns ModelIndex,
+    // carries core.Severity/Notification/ModelResolver/Verification) → `api`, so a consumer of dmkits-rulekit
+    // gets dmkits-core transitively.
+    api project(':core')
+
+    // The catalog is a bundled JSON resource parsed at load time; the DSL renderer + validators read JSON.
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+}

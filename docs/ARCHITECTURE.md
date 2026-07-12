@@ -63,22 +63,26 @@ dmkits is **one library with a shared core and two sibling kits**, an **opt-in k
 **The load-bearing invariants** (each enforced by a test, not just convention):
 
 - **Kernel-free kits, kernel behind the SPI (D15/N8; kernel-decoupling stage 3).** The kits (`dm.core` / `dm.rulekit` / `dm.modelkit` / `dm.edit`) import **zero** `com.mgmtp` — the root project has **no** kernel dependency in its main compile classpath. The kernel lives behind three narrow SPI ports (`dm.core.spi.ConsistencyOracle`, `dm.core.spi.BackendInfo`, `dm.rulekit.spi.ConditionReadBack`), resolved by `dm.core.Backends` / `dm.rulekit.spi.ReadBackends` via `ServiceLoader`; the one backend (`:adapter`) implements + registers them. Held by `verifyKitPurity` (fails on any `com.mgmtp` import/FQ-ref in the kits' `src/main`). The kernel stays the oracle in TESTS (test-scope `:adapter` provider). This is what unblocks the Maven-Central publish and keeps the kits polyglot-portable.
-- **Sibling kits (`dm.modelkit ⊥ dm.rulekit`).** Structure editing and rule authoring are peers over `dm.core`; neither imports the other. Held by `SiblingBoundaryTest` (a two-way package import sweep).
+- **Sibling kits (`dm.modelkit ⊥ dm.rulekit`).** Structure editing and rule authoring are peers over `dm.core`; neither imports the other. Since the Stage-4 module cut this is a **build-graph fact** — `:modelkit` and `:rulekit` declare no dependency on each other, so a sideways import is unrepresentable-illegal (the strongest form). The old import-sweep `SiblingBoundaryTest` graduated (retired) when the modules landed.
 - **Data out, never kernel objects (§5e).** Every artifact that crosses a boundary is plain data (a `String`, a record, JSON) — never a live kernel object. That is what keeps the out-surface agent-consumable and the core portable.
 
 ---
 
 ## 2. Modules & dependencies
 
-Five Gradle units. modelkit and `dm.edit` are **packages inside the root project**, not separate modules (modelkit was folded in 2026-06-09 when the kernel-free module wall was dropped — history in PROJECT-DESIGN §21H).
+Nine Gradle units (the Stage-4 per-kit module cut, [KERNEL-DECOUPLING-PROPOSAL.md](KERNEL-DECOUPLING-PROPOSAL.md) §3a). The kits are four published, kernel-free modules — `core` (`dm.core`), `rulekit` (`dm.rulekit.*` + the operator catalog), `modelkit` (`dm.modelkit`), `edit` (`dm.edit`, the cross-kit top layer) — under `:adapter` (the kernel backend), `:cli` (`dmtool`), `:schemakit`, and `:interpreter`. **Layering: `core ← {rulekit, modelkit} ← edit`** (jdeps-verified acyclic; the sibling boundary `modelkit ⊥ rulekit` is now a build-graph fact). **Root `:` is a pure aggregator + the cross-kit integration-test host** — it has no main source; its `src/test` (unmoved) holds the ~150 cross-cutting tests, which span all four kits + share `Fixtures`/`ModelDrafts`, so they run at root with `testImplementation` on the kits + the `:adapter` oracle. **Packages were never renamed — only files moved** — so every FQCN test filter, the SEMANTICS-MAP simple-name cites, and reflection metadata stay stable. (History: modelkit was folded into root 2026-06-09, then re-split into modules here — PROJECT-DESIGN §21H.)
 
 | Unit | Gradle id | Depends on | Kernel coupling | Ships as |
 |---|---|---|---|---|
-| **library** | root `:` | `implementation` Jackson (databind + yaml); **no kernel dep in main** — the kernel is behind the SPI ports (`dm.core.spi.*`, `dm.rulekit.spi.*`); `testImplementation project(':adapter')` + `kernel-md-facade` give the kernel-oracle TESTS the backend | **none in main** (kernel-free kits; `verifyKitPurity`) | the engine: `dm.core` + `dm.rulekit` + `dm.modelkit` + `dm.edit` |
-| **adapter** | `:adapter` | `api project(':')` + `implementation kernel-md-facade` (the public tier root no longer carries) + the kernel **internal-read** jars + the **runtime-eval** jars + `implementation project(':interpreter')` | the kernel backend — the `a12internal` read tier + runtime evaluation + **the SPI-port impls**, all **confined to this module** | an opt-in read/convert/rewrite/evaluate surface (`KernelAdapter`) + **the three SPI-port providers** (`KernelConsistencyOracle`/`KernelBackendInfo`/`KernelConditionReadBack`, registered via `META-INF/services`) + `KernelCustomConditions` |
+| **core** | `:core` | `implementation` Jackson (databind) | **none** (kernel-free; `verifyKitPurity`) | `dm.core` — the DM-JSON reader/index/resolver + diagnostic vocabulary + the SPI ports (`dm.core.spi.*`) · published `dmkits-core` (MIT) |
+| **rulekit** | `:rulekit` | `api project(':core')` + `implementation` Jackson | **none** | `dm.rulekit.*` (one SCC) + the operator catalog resource + the R4 read seam (`dm.rulekit.spi.ConditionReadBack`) · published `dmkits-rulekit` (MIT) |
+| **modelkit** | `:modelkit` | `api project(':core')` + `implementation` Jackson (databind + yaml) | **none** | `dm.modelkit` structure builder (sibling of rulekit; no edge either way) · published `dmkits-modelkit` (MIT) |
+| **edit** | `:edit` | `api project(':core')` + `project(':modelkit')` + `project(':rulekit')` | **none** | `dm.edit` — the cross-kit editing top layer · published `dmkits-edit` (MIT) |
+| **(aggregator + test host)** | root `:` | `testImplementation` the four kits + `project(':adapter')` + `kernel-md-facade` + Jackson | **none in main** (no main source); the kernel-oracle TESTS get the backend at test scope | no artifact of its own — the `dmkits` aggregator POM + the ~150 cross-kit integration tests (`src/test`) |
+| **adapter** | `:adapter` | `api project(':core')`/`(':rulekit')`/`(':modelkit')`/`(':edit')` + `implementation kernel-md-facade` (the public tier the kits no longer carry) + the kernel **internal-read** jars + the **runtime-eval** jars + `implementation project(':interpreter')` | the kernel backend — the `a12internal` read tier + runtime evaluation + **the SPI-port impls**, all **confined to this module** | an opt-in read/convert/rewrite/evaluate surface (`KernelAdapter`) + **the three SPI-port providers** (`KernelConsistencyOracle`/`KernelBackendInfo`/`KernelConditionReadBack`, registered via `META-INF/services`) + `KernelCustomConditions` |
 | **interpreter** | `:interpreter` (Kotlin Multiplatform: jvm + js) | **one** common lib — kotlinx-serialization-json (tree API, for the DM-JSON loader; whitelisted in the purity lint); no kernel, no dmtool — purity-lint-enforced | **none** — kernel-free by construction | a native-safe, cross-platform runtime evaluator (`DmInterpreter`: `validateFull`/`validatePart`/`testRule`/`compute`) + a DM-JSON → `ModelDef` loader (`ModelLoader`); the publishable standalone artifact (design [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md) · impl [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md)) |
-| **cli** | `:cli` (`application` + GraalVM `native` plugins) | `implementation project(':')` + `project(':adapter')` + `project(':interpreter')` + picocli + Jackson | inherits the adapter's (bundled *inside* the binary, never a library surface) | the standalone `dmtool` front-end (JVM `installDist`; opt-in native image) |
-| **schemakit** | `:schemakit` (JVM/Java; package `…dm.schemakit`) | `implementation project(':')` + Jackson (+ `:adapter`/`:interpreter` as shapes need them) | reaches the kernel only through the project's own **mediated** modules (root `:` facade, `:adapter`'s N8 type-converting boundary, the kernel-free `:interpreter`) — never the raw kernel jars directly; its own source imports no kernel type (`verifySchemakitPurity`) | JSON Schema ⇄ Document Model transcoder ([SCHEMAKIT-SPEC.md](SCHEMAKIT-SPEC.md)) |
+| **cli** | `:cli` (`application` + GraalVM `native` plugins) | `implementation project(':core')`/`(':rulekit')`/`(':modelkit')`/`(':edit')` + `project(':adapter')` + `project(':interpreter')` + `project(':schemakit')` + picocli + Jackson | inherits the adapter's (bundled *inside* the binary, never a library surface) | the standalone `dmtool` front-end (JVM `installDist`; opt-in native image) |
+| **schemakit** | `:schemakit` (JVM/Java; package `…dm.schemakit`) | `implementation project(':core')`/`(':modelkit')`/`(':rulekit')` + `project(':adapter')` + Jackson | reaches the kernel only through the project's own **mediated** modules (the kits, `:adapter`'s N8 type-converting boundary, the kernel-free `:interpreter`) — never the raw kernel jars directly; its own source imports no kernel type (`verifySchemakitPurity`) | JSON Schema ⇄ Document Model transcoder ([SCHEMAKIT-SPEC.md](SCHEMAKIT-SPEC.md)) · published `dmkits-schemakit` (MIT) |
 
 The runtime verbs (`model eval`/`compute`, `rule eval`) **default to the `:interpreter` engine** — `:cli`'s `interp.InterpreterModelLoader` loads a DM-JSON model into the kernel-free `ModelDef` and `interp.InterpreterEngine` renders the result envelope, so they need no Groovy; **`--kernel` opts into the kernel** (JVM only — refused under the native profile, where the option is removed from the command tree). Because the default engine is kernel-free, these verbs **run in the native image** — `Cli.JVM_ONLY_VERBS` is empty (no verb hidden), and all 7 showboat demos (incl. `cli-runtime.md`) pass on the native binary; only the `--kernel` *option* is JVM-only (guarded by `NativeImageRuntimeVerbsTest`). The kernel-free `model seed` (generate a sample instance) is likewise native.
 
@@ -93,25 +97,27 @@ Internally `commonMain` is **layered into subpackages** under `dm.interpreter`: 
             │  :cli   application + native-image   (mainClass = CliMain)     │
             │         picocli command tree · ResultEnvelope · self-describe  │
             └───────────┬───────────────────────────────────┬──────────────┘
-            implementation                          implementation
+             implementation                          implementation
                         ▼                                    ▼
-            ┌──────────────────────┐  api project(':')  ┌────────────────────┐
-            │  :adapter            │───────────────────▶│  root  :           │
-            │  a12internal read +  │                    │  dm.core/rulekit/  │
-            │  runtime eval        │                    │  modelkit/edit     │
-            └──────────┬───────────┘                    └─────────┬──────────┘
-                       │ internal jars         testImpl   │       │ kernel-md-facade
-                       │                ┌─ ─ ─ ─ ─ ─ ─ ─ ─ ┘ public│
-                       ▼                ▼ (differential tests)     ▼
-            ┌──────────────────────┐  ┌────────────────────────────────────┐
-            │  A12 kernel          │  │  :interpreter  (KMP jvm+js)          │
-            │  @ mavenLocal        │  │  kernel-free runtime evaluator       │
-            │  (a12-kernel-        │  │  DmInterpreter · purity-lint-guarded │
-            │   bootstrap)         │  └────────────────────────────────────┘
-            └──────────────────────┘
+            ┌──────────────────────┐      api      ┌───────────────────────────┐
+            │  :adapter            │──────────────▶│  the kits  (kernel-FREE)   │
+            │  a12internal read +  │               │  :core ← {:rulekit,        │
+            │  runtime eval +      │               │          :modelkit} ← :edit│
+            │  the 3 SPI providers │               │  SPI ports · verifyKitPurity│
+            └──────────┬───────────┘               └───────────────────────────┘
+                       │ internal jars + kernel-md-facade
+                       ▼                            ┌───────────────────────────┐
+            ┌──────────────────────┐               │  :interpreter  (KMP jvm+js)│
+            │  A12 kernel          │               │  kernel-free evaluator     │
+            │  @ mavenLocal        │               │  (differential in :adapter)│
+            │  (a12-kernel-        │               └───────────────────────────┘
+            │   bootstrap)         │
+            └──────────────────────┘   root `:` — aggregator + cross-kit integration tests
+                                       (NO main source): testImplementation the four kits +
+                                       :adapter + kernel-md-facade (the kernel-oracle test seam)
 ```
 
-- `./gradlew :test` — the library (core + rulekit + modelkit + edit). No internal kernel jar on the classpath, so the D15 boundary is build-checked by construction; also runs `SiblingBoundaryTest`.
+- `./gradlew :test` — the cross-kit integration suite (root `:` is the test host; the kits' main is kernel-free, the kernel enters only as a test-scope `:adapter` oracle). `:verifyKitPurity` (no kit main names a kernel type) + `:noBackendTest` (the §2c degraded lane) ride `:check`, and both now also run in CI.
 - `./gradlew :interpreter:check` — the kernel-free evaluator on **both** targets (`jvmTest` + `jsNodeTest`) + the `verifyInterpreterPurity` lint.
 - `./gradlew :adapter:test` — the adapter (the only suite with the internal tier) + the interpreter↔kernel differential tests.
 - `./gradlew :cli:test` — the CLI (incl. the conformance matrix and the N6 gold oracle over `eval/tasks/`).
@@ -122,7 +128,7 @@ Internally `commonMain` is **layered into subpackages** under `dm.interpreter`: 
 
 | Tier | Who | Allowed |
 |---|---|---|
-| **none in main (SPI only)** | the kits (`:` main) | **no kernel type at all** — the kernel is reached only through the SPI ports (`ConsistencyOracle`/`BackendInfo`/`ConditionReadBack`), resolved at runtime by `ServiceLoader`. `verifyKitPurity` enforces zero `com.mgmtp` in `src/main`. |
+| **none in main (SPI only)** | the kit modules (`:core`/`:rulekit`/`:modelkit`/`:edit` main) | **no kernel type at all** — the kernel is reached only through the SPI ports (`ConsistencyOracle`/`BackendInfo`/`ConditionReadBack`), resolved at runtime by `ServiceLoader`. `verifyKitPurity` enforces zero `com.mgmtp` across all four kits' `src/main`. |
 | **public + internal read, guarded** | `:adapter` only | `kernel-md-facade` (the public tier — root no longer carries it) + the `a12internal` *read* AST (`parsetree-api` `ICondition`, `tool-api` `IRule`/`IEC`, `md-model` `DocumentModelService`) + runtime evaluation — reached in one call from the md-tier model, **converted back to dmkits types at the boundary** (and behind the SPI ports for the kits). Never constructs kernel AST (read-only). |
 | **kernel-as-oracle (tests)** | any test | fixtures/oracles may read the kernel (the kit tests get it via a test-scope `:adapter` provider + `kernel-md-facade`), provided nothing kernel leaks into `src/main` or a public signature. |
 

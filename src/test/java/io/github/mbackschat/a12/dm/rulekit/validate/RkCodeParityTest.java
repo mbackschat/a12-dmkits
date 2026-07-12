@@ -71,12 +71,12 @@ class RkCodeParityTest {
                 () -> "RkCode constants nothing emits/references (dead rows — remove or wire them): " + dead);
     }
 
-    /** The repo root — walk up from the working dir to the dir that holds {@code RkCode.java} under core. */
+    /** The repo root — walk up from the working dir to the dir that holds {@code RkCode.java} under rulekit. */
     private static Path repoRoot() {
         Path p = Path.of("").toAbsolutePath();
         for (; p != null; p = p.getParent()) {
             if (Files.exists(p.resolve(
-                    "src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/RkCode.java"))) {
+                    "rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/RkCode.java"))) {
                 return p;
             }
         }
@@ -85,7 +85,8 @@ class RkCodeParityTest {
 
     private static List<Path> mainSources(Path root) throws IOException {
         List<Path> out = new ArrayList<>();
-        for (String tree : List.of("src/main/java", "cli/src/main/java")) {
+        for (String tree : List.of("core/src/main/java", "rulekit/src/main/java",
+                "modelkit/src/main/java", "edit/src/main/java", "cli/src/main/java")) {
             Path dir = root.resolve(tree);
             if (!Files.isDirectory(dir)) {
                 continue;

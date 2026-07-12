@@ -26,8 +26,12 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 dependencies {
-    // core engine — BoundModel/ModelContext + the model index. Brings kernel-md-facade transitively.
-    implementation project(':')
+    // The kernel-free kits — the full authoring/read surface (Stage-4 module cut: `project(':')` split into
+    // the per-kit modules; the CLI is the front-end that uses all four). The kernel arrives via :adapter.
+    implementation project(':core')
+    implementation project(':rulekit')
+    implementation project(':modelkit')
+    implementation project(':edit')
 
     // the opt-in kernel-adapter (internal a12internal read tier) — powers the read-back verbs
     // (read/explain). Fine to bundle here: the CLI is an *app*, not a published library, so the
@@ -160,7 +164,7 @@ tasks.register('docGuardTest', Test) {
             'plugin-codex/AGENTS.md': rootProject.file('plugin-codex/AGENTS.md'),
             'docs/CLI-SPEC.md'   : rootProject.file('docs/CLI-SPEC.md'),
             'eval workflow'      : rootProject.file('eval/benchmark.workflow.js'),
-            'operator catalog'   : rootProject.fileTree('src/main/resources/catalog'),
+            'operator catalog'   : rootProject.fileTree('rulekit/src/main/resources/catalog'),
             // ModelLoaderParityTest reads every fixture model in both roots.
             'cli test models'    : rootProject.fileTree('cli/src/test/resources/models') { include '**/*.json' },
             'examples/models'    : rootProject.fileTree('examples/models') { include '**/*.json' }])
@@ -187,7 +191,7 @@ tasks.register('semanticsMapGuardTest', Test) {
             'docs/SEMANTICS-MAP.md'   : rootProject.file('docs/SEMANTICS-MAP.md'),
             'docs/KERNEL-FINDINGS.md' : rootProject.file('docs/KERNEL-FINDINGS.md'),
             'docs/KERNEL-SEMANTICS.md': rootProject.file('docs/KERNEL-SEMANTICS.md'),
-            'operator catalog'        : rootProject.fileTree('src/main/resources/catalog'),
+            'operator catalog'        : rootProject.fileTree('rulekit/src/main/resources/catalog'),
             'corpus cases'            : rootProject.fileTree('corpus/cases') { include '**/*.json' },
             'validate/laws lock tree' : rootProject.fileTree('src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws'),
             'adapter/laws (java)'     : rootProject.fileTree('adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws'),

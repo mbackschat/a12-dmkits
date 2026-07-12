@@ -5,6 +5,16 @@ plugins {
 group = 'io.github.mbackschat.a12.dm'
 version = '0.8.2'
 
+// Single-source the shared coordinates (kernel-decoupling Stage 4, PROPOSAL §3a): the published kit modules
+// (core/rulekit/modelkit/edit + schemakit) inherit group + version from HERE, so bump-version.sh's
+// `^version = ` edit (the line above) stays the one source of truth and every artifact shares the 0.x train.
+// The kernel pin + distribution tag stay `ext` on root (the CLI bakes them into version.properties). A
+// subproject may override in its own build file (e.g. :interpreter carries its own KMP/npm coordinates).
+subprojects {
+    group = rootProject.group
+    version = rootProject.version
+}
+
 // PUBLIC + LOCAL repositories only. The A12 kernel is resolved from the local Maven
 // repository (~/.m2), where the dedicated a12-kernel-bootstrap kit publishes it from
 // public sources. No private registry is used. See docs/PROJECT-DESIGN.md §19.
@@ -24,10 +34,11 @@ java {
 // error, so a new call to a removal-scheduled kernel API fails the build while plain-@Deprecated APIs (incl.
 // Jackson's) still compile. See docs/KERNEL-INTEGRATION-NOTES.md "A12K-3589 kernel-API removal surface".
 //
-// Kernel-decoupling stage 3: the KITS' MAIN source is now kernel-free (zero com.mgmtp — held by
-// verifyKitPurity), so compileJava faces no kernel API and the ratchet is a no-op there. It still guards
-// compileTestJava, where the kernel-oracle tests keep the kernel on the classpath (the kernel stays the
-// oracle in every test — verification unchanged). Left on withType(JavaCompile) so that test coverage holds.
+// Kernel-decoupling Stage 4: root has NO main source anymore (the kits moved to their own modules), so the
+// only kernel-facing compilation left here is compileTestJava — the cross-kit integration tests that keep
+// the kernel on the classpath as the oracle (verification unchanged). The ratchet stays on JavaCompile to
+// guard THAT compile. The kernel-free kit modules don't compile kernel code, so they carry no ratchet;
+// :adapter + :cli keep their own (their main compiles the kernel backend).
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += ['-Xlint:removal', '-Werror']
 }
@@ -42,30 +53,27 @@ ext.kernelVersion = '30.8.1'
 ext.a12Distribution = '2025.06-ext5'
 
 dependencies {
-    // Kernel-decoupling stage 3 (the decisive cut): the kits' MAIN source imports ZERO com.mgmtp — the
-    // kernel lives behind narrow SPI ports (dm.core.spi.*, dm.rulekit.spi.*) that the :adapter backend
-    // implements + registers via ServiceLoader. So there is NO kernel dependency in the kits' compile
-    // classpath anymore; the old `api kernel-md-facade` edge is deleted. This is what unblocks the
-    // Maven-Central publish (RELEASE-SPEC §8/§11). verifyKitPurity fails the build on any kernel import.
+    // Root is a PURE AGGREGATOR + the cross-kit integration-test host (kernel-decoupling Stage 4, PROPOSAL
+    // §3a, Option 1). It has NO main source; its src/test holds the ~150 cross-cutting tests (they span all
+    // four kits + share Fixtures/ModelDrafts), so it depends on every kit at TEST scope. The kits' MAIN is
+    // kernel-free (verifyKitPurity) — the kernel lives behind the SPI ports the :adapter backend implements.
+    testImplementation project(':core')
+    testImplementation project(':rulekit')
+    testImplementation project(':modelkit')
+    testImplementation project(':edit')
 
-    // The operator catalog (PROJECT-DESIGN §9) is a bundled JSON resource parsed at load time.
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
-    // YAML reader for the workspace `roles.yaml` access-control config (FEATURE-GAPS R3). Parsed as a
-    // Jackson tree (no reflective POJO binding), the same tree-walking style as ModelDocument's DM-JSON read.
-    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.18.2'
-
-    // modelkit (the structure builder) now lives in this module's `dm.modelkit` package (folded in
-    // 2026-06-09 — D10 superseded). Its dogfood fixtures (ModelDrafts) + tests are in this project's
-    // test set; the `dm.modelkit ⊥ dm.rulekit` boundary is held by `SiblingBoundaryTest`.
-
-    // The kernel stays the oracle in TESTS (kernel-decoupling: verification unchanged). Test scope only —
-    // MAIN is kernel-free. :adapter supplies the real ConsistencyOracle/BackendInfo ServiceLoader providers
-    // (so the kernel gate actually runs in kernel-oracle tests: BoundModel.ofJson / RuleValidator.check /
-    // the include/typedef constraint tests all get KERNEL_CONFIRMED); kernel-md-facade gives those tests the
-    // kernel types they read directly (IDocumentModel, the serializer). This is the sanctioned non-leaking
-    // pattern (KERNEL-DECOUPLING-PROPOSAL §3a: rootTest → adapterMain → rootMain is acyclic).
+    // The kernel stays the oracle in TESTS (verification unchanged). :adapter supplies the real
+    // ConsistencyOracle/BackendInfo ServiceLoader providers so the kernel gate actually runs in the
+    // kernel-oracle tests (BoundModel.ofJson / RuleValidator.check get KERNEL_CONFIRMED); kernel-md-facade
+    // gives the 8 tests that read kernel types directly (IDocumentModel, the serializer) their imports. The
+    // non-leaking pattern (PROPOSAL §3a): rootTest → adapterMain → {kit}Main is acyclic.
     testImplementation project(':adapter')
     testImplementation "com.mgmtp.a12.kernel:kernel-md-facade:${kernelVersion}"
+
+    // A few root tests read/emit DM-JSON directly → Jackson at test scope (the kits expose it only as
+    // `implementation`, so it is not on their consumers' compile classpath).
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+    testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.18.2'
 
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -130,8 +138,9 @@ tasks.register('docGuardTest', Test) {
     }
     guardInputs(it, [
             'docs/API-GUIDE.md': file('docs/API-GUIDE.md'),
-            'dsl sources'      : fileTree('src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl') { include '**/*.java' },
-            'operator catalog' : fileTree('src/main/resources/catalog')])
+            // dsl sources + the operator catalog moved to :rulekit in the Stage-4 module cut.
+            'dsl sources'      : fileTree('rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl') { include '**/*.java' },
+            'operator catalog' : fileTree('rulekit/src/main/resources/catalog')])
 }
 
 // Autonomous doc-snippet sync: rewrites every locked ```java fence in the docs from its canonical test
@@ -151,34 +160,36 @@ tasks.register('syncDocSnippets', Test) {
 }
 
 // --- Kit purity, locked (kernel-decoupling stage 3; mirrors :interpreter's verifyInterpreterPurity) ------
-// After stage 3 the kits (dm.core / dm.rulekit.* / dm.modelkit / dm.edit) import ZERO kernel types — the
-// kernel lives behind the SPI ports (dm.core.spi.* / dm.rulekit.spi.*) that :adapter implements. This guard
-// is the decoupling's regression net: it fails the build if any kit `src/main` file names a `com.mgmtp.*`
-// type in CODE (imports OR fully-qualified references — the FQ form is what an import-only sweep missed for
+// The kits (dm.core / dm.rulekit.* / dm.modelkit / dm.edit) import ZERO kernel types — the kernel lives
+// behind the SPI ports (dm.core.spi.* / dm.rulekit.spi.*) that :adapter implements. This guard is the
+// decoupling's regression net: it fails the build if any kit `src/main` file names a `com.mgmtp.*` type in
+// CODE (imports OR fully-qualified references — the FQ form is what an import-only sweep missed for
 // BoundModel before). Javadoc/line comments are stripped first, so the prose that legitimately mentions
 // `com.mgmtp.a12.kernel.*` (to explain the boundary) is not a violation. Test scope is out of scope on
-// purpose — the kernel stays the oracle in tests.
+// purpose — the kernel stays the oracle in tests. Stage 4: the kits are now their own modules, so this
+// single root guard scans all four kit `src/main/java` trees (one place, covers the whole class).
 def verifyKitPurity = tasks.register('verifyKitPurity') {
     group = 'verification'
     description = 'Fail if any kit src/main file imports or references com.mgmtp.* (the decoupling regression net).'
-    def mainSrc = file('src/main/java')
-    inputs.dir(mainSrc)
+    def kitMainDirs = ['core', 'rulekit', 'modelkit', 'edit'].collect { file("${it}/src/main/java") }
+    inputs.files(kitMainDirs)
     doLast {
         def violations = []
-        if (mainSrc.exists()) {
+        kitMainDirs.each { mainSrc ->
+            if (!mainSrc.exists()) return
             mainSrc.eachFileRecurse { f ->
                 if (!f.name.endsWith('.java')) return
                 // Strip block comments (incl. Javadoc) then line comments; any surviving com.mgmtp is real code.
                 def code = f.text.replaceAll(/(?s)\/\*.*?\*\//, '').replaceAll(/(?m)\/\/.*$/, '')
                 (code =~ /com\.mgmtp\.[\w.]+/).each { hit ->
-                    violations << "src/main/java/…/${f.name}: ${hit}".toString()
+                    violations << "${mainSrc.parentFile.parentFile.parentFile.name}/…/${f.name}: ${hit}".toString()
                 }
             }
         }
         if (violations) {
             throw new GradleException(
                 "kit purity violated — the kits (core/rulekit/modelkit/edit) MAIN source must name no kernel\n" +
-                "type; the kernel lives behind the SPI ports :adapter implements (kernel-decoupling stage 3).\n" +
+                "type; the kernel lives behind the SPI ports :adapter implements (kernel-decoupling).\n" +
                 "Offending com.mgmtp references:\n  " + violations.join('\n  '))
         }
     }
@@ -188,22 +199,19 @@ tasks.named('check') { dependsOn verifyKitPurity }
 // --- The no-backend lane (kernel-decoupling §2c; the Stage-3 acceptance bar) -----------------------------
 // Run the kits with NO backend on the classpath — a Maven-Central consumer's posture — and prove the §2c
 // degraded contract row by row (STRUCTURAL_ONLY, RK_NO_KERNEL_BACKEND, NO fake green, read-back fails fast).
-// Wiring (the design fork the master ruled): a DEDICATED source set + Test task whose classpath is kit main
-// + jackson + junit, and deliberately NOT :adapter / kernel-md-facade — chosen over a classloader-hiding
-// test because it reproduces the real absent-backend classpath structurally (ServiceLoader finds no provider),
-// with no fragile jar-path filtering. `noBackendTestImplementation extendsFrom implementation` pulls main's
-// own deps (Jackson) but NOT testImplementation (which carries the backend), so the backend is unrepresentable.
+// Wiring (the design fork the master ruled): a DEDICATED source set + Test task whose classpath is the
+// kernel-free KIT modules (+ their transitive Jackson at runtime) + junit, and deliberately NOT :adapter /
+// kernel-md-facade — chosen over a classloader-hiding test because it reproduces the real absent-backend
+// classpath STRUCTURALLY (ServiceLoader finds no ConsistencyOracle/ReadBack provider), with no fragile
+// jar-path filtering. Stage 4: it depends on the kit PROJECTS (root has no main source anymore); it does
+// NOT extend testImplementation, so the backend it carries stays unrepresentable here.
 sourceSets {
-    noBackendTest {
-        compileClasspath += sourceSets.main.output
-        runtimeClasspath += sourceSets.main.output
-    }
-}
-configurations {
-    noBackendTestImplementation.extendsFrom implementation
-    noBackendTestRuntimeOnly.extendsFrom runtimeOnly
+    noBackendTest
 }
 dependencies {
+    noBackendTestImplementation project(':core')
+    noBackendTestImplementation project(':rulekit')
+    noBackendTestImplementation project(':modelkit')
     noBackendTestImplementation platform('org.junit:junit-bom:5.11.4')
     noBackendTestImplementation 'org.junit.jupiter:junit-jupiter'
     noBackendTestRuntimeOnly 'org.junit.platform:junit-platform-launcher'

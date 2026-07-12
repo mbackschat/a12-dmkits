@@ -195,7 +195,7 @@ class DslCatalogBridgeTest {
         Path p = Path.of("").toAbsolutePath();
         for (; p != null; p = p.getParent()) {
             if (Files.exists(p.resolve(
-                    "src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/Dsl.java"))) {
+                    "rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/Dsl.java"))) {
                 return p;
             }
         }
@@ -203,7 +203,7 @@ class DslCatalogBridgeTest {
     }
 
     private static List<Path> dslSources(Path root) throws IOException {
-        Path dir = root.resolve("src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl");
+        Path dir = root.resolve("rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl");
         try (Stream<Path> walk = Files.walk(dir)) {
             return walk.filter(f -> f.toString().endsWith(".java")).toList();
         }

@@ -64,15 +64,19 @@ jobs:
 
       # The default suite + the differential FUZZERS (-PrunFuzz) run on every push/PR — fuzzers are
       # correctness nets (interpreter == kernel), ~2 min. The 8-min perf BENCHMARK is excluded here and
-      # runs in the nightly perf step below (docs/TESTING-SPEC "Test tiers").
-      - name: Build & test rulekit (core + adapter + cli + fuzzers)
+      # runs in the nightly perf step below (docs/TESTING-SPEC "Test tiers"). Stage-4 module cut: root `test`
+      # still exists (root is the cross-kit integration-test host, PROPOSAL §3a Option 1) so it runs the same
+      # suite; we ALSO run the kernel-decoupling regression nets `:verifyKitPurity` (no kit main names a
+      # kernel type) + `:noBackendTest` (the §2c degraded lane) here, since they were previously only on the
+      # local `check` and Stage 4 is exactly a change that could regress the kernel-free property.
+      - name: Build & test rulekit (kits + adapter + cli + fuzzers + kernel-free nets)
         working-directory: a12-dmkits
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
           # Public-repos-only Gradle home, as the README's build does (here it also gives a clean,
           # cacheable home on the runner).
           GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
-        run: ./gradlew --no-daemon test :adapter:test :cli:test -PrunFuzz
+        run: ./gradlew --no-daemon test :adapter:test :cli:test :verifyKitPurity :noBackendTest -PrunFuzz
 
       # The perf gate (@Tag 'perf', ~8 min) — nightly + on-demand, not on every push (it's a ratio
       # regression-gate, not a per-commit correctness check). Guaranteed to run, just not on the PR path.

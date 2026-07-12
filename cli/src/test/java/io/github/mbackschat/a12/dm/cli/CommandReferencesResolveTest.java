@@ -65,7 +65,7 @@ class CommandReferencesResolveTest {
     private static final List<Path> ROOTS = List.of(
             Path.of("src/main/java"),
             Path.of("src/main/resources"),
-            Path.of("../src/main/resources/catalog"));
+            Path.of("../rulekit/src/main/resources/catalog"));
 
     /** Command-bearing markdown an agent/installer reads (repo-root-relative from the {@code cli} module dir).
      *  The {@code examples/} demos are guarded by Showboat (it executes them); the skill's plugin copies by

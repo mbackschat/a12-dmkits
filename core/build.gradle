@@ -1,0 +1,25 @@
+// :core — dm.core, the kernel-free substrate (kernel-decoupling Stage 4 module cut, PROPOSAL §3a).
+// Holds the DM-JSON reader (ModelReader, Jackson), the name-path model index (ModelIndex), the resolver
+// (ModelResolver), the diagnostic vocabulary (Severity/Notification), and the SPI ports (dm.core.spi.*) that
+// the :adapter kernel backend implements + registers via ServiceLoader. Zero kernel imports (held by the
+// root `verifyKitPurity` guard). Published as io.github.mbackschat.a12.dm:dmkits-core (MIT).
+plugins {
+    id 'java-library'
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    // The reader parses/expands DM-JSON with Jackson. `implementation` (not `api`): core returns its own typed
+    // views (ModelIndex), never a JsonNode across a public signature, so consumers don't inherit Jackson.
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+}

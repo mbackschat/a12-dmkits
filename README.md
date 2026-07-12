@@ -750,7 +750,7 @@ Other useful tasks:
 ./gradlew :cli:run --args="-m model.json model check"   # run the standalone CLI in dev (no packaging)
 ```
 
-`./gradlew :test` keeps the core build free of the internal tier; see [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md) for the CLI.
+`./gradlew :test` runs the cross-kit library suite (root `:` is the integration-test host over the four kernel-free kit modules `:core`/`:rulekit`/`:modelkit`/`:edit`); the kits' main stays kernel-free and the kernel enters only as a test-scope oracle. See [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md) for the CLI.
 
 ## Commit hooks
 

@@ -1,0 +1,26 @@
+// :edit — dm.edit, the cross-kit TOP layer. EditSession/GroupEditor compose structure (modelkit) + rules
+// (rulekit) over a bound model (core) into a reviewable-diff editing surface, so it depends on BOTH siblings
+// plus core (jdeps: edit → core + modelkit + rulekit.{dsl,validate,write}, PROPOSAL §1b). Kernel-free (root
+// `verifyKitPurity`). Published as io.github.mbackschat.a12.dm:dmkits-edit (MIT).
+plugins {
+    id 'java-library'
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    // edit's public API (EditSession/GroupEditor) returns core + modelkit + rulekit types → all three `api`,
+    // so a consumer of dmkits-edit gets the sibling kits transitively (the POM depends on all three).
+    api project(':core')
+    api project(':modelkit')
+    api project(':rulekit')
+}

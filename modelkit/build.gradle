@@ -1,0 +1,27 @@
+// :modelkit — dm.modelkit, the document-model STRUCTURE builder (DocumentModelDraft/ModelDocument/FieldKind)
+// that emits DM-JSON the kernel accepts. Sibling of :rulekit over the shared :core substrate — it does NOT
+// depend on rulekit (the boundary is now a build-graph fact, PROPOSAL §3a). Kernel-free (root
+// `verifyKitPurity`). Published as io.github.mbackschat.a12.dm:dmkits-modelkit (MIT).
+plugins {
+    id 'java-library'
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    // modelkit builds on dm.core and exposes core types → `api` (dmkits-modelkit's POM depends on dmkits-core).
+    api project(':core')
+
+    // DM-JSON emit/read via Jackson; the YAML reader backs YAML-flavoured model input (same tree-walking style).
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.18.2'
+}

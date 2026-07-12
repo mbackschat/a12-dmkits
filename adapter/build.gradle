@@ -35,13 +35,18 @@ tasks.withType(JavaCompile).configureEach {
 def kernelVersion = '30.8.1'
 
 dependencies {
-    // rulekit core — BoundModel/Rule/Dsl + ReferenceResolvers. Kernel-decoupling stage 3: root ':' is now
-    // kernel-free, so the kernel-md-facade this module needs (DocumentModelServiceFactory, IDocumentModel,
-    // IDocumentModelService = expand/checkConsistency, the DM-JSON serializer, and the a12-base
-    // model-consistency Notification/Severity types it brings transitively) is declared HERE now, not
-    // inherited via ':'. This module IS the kernel backend (it implements the SPI ports), so kernel types
-    // are expected — the N8 boundary keeps them off public signatures.
-    api project(':')
+    // The kernel-free kits — BoundModel/Rule/Dsl + ReferenceResolvers + the SPI ports this backend implements.
+    // Stage-4 module cut: the single root project split into per-kit modules, so `api project(':')` becomes an
+    // `api` edge to each kit (re-exported to consumers — :cli/:schemakit — exactly as `project(':')` was).
+    // Kernel-decoupling stage 3: the kits are kernel-free, so the kernel-md-facade this module needs
+    // (DocumentModelServiceFactory, IDocumentModel, IDocumentModelService = expand/checkConsistency, the
+    // DM-JSON serializer, and the a12-base model-consistency Notification/Severity types it brings
+    // transitively) is declared HERE, not inherited. This module IS the kernel backend (it implements the SPI
+    // ports), so kernel types are expected — the N8 boundary keeps them off public signatures.
+    api project(':core')
+    api project(':rulekit')
+    api project(':modelkit')
+    api project(':edit')
     implementation "com.mgmtp.a12.kernel:kernel-md-facade:${kernelVersion}"
 
     // The a12internal *read* tier — adapter-only (core must never depend on these per N8/D15):

@@ -1,10 +1,20 @@
 rootProject.name = 'a12-dmkits'
 
-// modelkit (docs/PROJECT-DESIGN.md §21H, ARCHITECTURE "the umbrella") folded into the root project as the
-// `dm.modelkit` package layer (2026-06-09 — D10 superseded by Architecture A: siblings over a shared
-// core). The `dm.modelkit ⊥ dm.rulekit` sibling boundary is enforced at the package level by the
-// import-sweep test `SiblingBoundaryTest` (no longer by module isolation). modelkit may now use
-// `dm.core` + the public kernel surface.
+// The per-kit module cut (kernel-decoupling Stage 4, KERNEL-DECOUPLING-PROPOSAL §3a). Root's single source
+// set split into four published, kernel-free kit modules — `core` (dm.core), `rulekit` (the dm.rulekit.*
+// SCC + the operator catalog resource), `modelkit` (dm.modelkit), `edit` (dm.edit, the cross-kit top layer
+// depending on BOTH siblings). Layering: core ← {rulekit, modelkit} ← edit. PACKAGES NEVER RENAMED — only
+// files moved — so every FQCN test filter, the SEMANTICS-MAP simple-name cites, and reflection metadata are
+// stable. Root `:` is now a pure aggregator + the cross-kit integration-test host (its src/test is unmoved;
+// the tests span all four kits, so they run at root with testImplementation on the kits + :adapter oracle).
+include 'core'
+include 'rulekit'
+include 'modelkit'
+include 'edit'
+
+// The `dm.modelkit ⊥ dm.rulekit` sibling boundary is now a BUILD-GRAPH fact (neither module depends on the
+// other) — the strongest form, so the old import-sweep `SiblingBoundaryTest` graduated (retired). modelkit
+// uses `dm.core`; the kernel lives behind the SPI ports (:adapter), never in a kit.
 
 // The kernel-adapter (PROJECT-DESIGN D15/N8): an opt-in, Java-only module that consumes the kernel's
 // a12internal *read* surface (parser/formatter/meta) — never part of the shipped, polyglot core.

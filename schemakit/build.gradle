@@ -26,10 +26,13 @@ java {
 
 dependencies {
     // The engine: dm.core (ModelLoader), modelkit (DocumentModelDraft/ModelDocument), rulekit
-    // (Dsl/DslRenderer/RuleValidator). root `:` exposes the kernel ONLY via `api kernel-md-facade`.
-    // :adapter (typed rule read for Tier-A projection) and :interpreter (evaluation, two-tier) are
-    // PERMITTED and join as those increments land — never a DIRECT dep on the raw internal kernel jars.
-    implementation project(':')
+    // (Dsl/DslRenderer/RuleValidator). Stage-4 module cut: the single root project split into per-kit
+    // modules — schemakit authors through core + modelkit + rulekit (it does not touch edit). :adapter
+    // (typed rule read for Tier-A projection) and :interpreter (evaluation, two-tier) are PERMITTED and
+    // join as those increments land — never a DIRECT dep on the raw internal kernel jars.
+    implementation project(':core')
+    implementation project(':modelkit')
+    implementation project(':rulekit')
 
     // The MEDIATED kernel boundary (N8): reused for Tier-A projection — KernelAdapter.read parses a stored
     // rule into a typed rulekit Condition (returns dmkits types, never raw kernel). Reuse-first: we do not

@@ -41,7 +41,12 @@ LOG="$SANDBOX/dmtool-calls.log"
 # stales the binary (its reflective surface may be uncaptured) — so the check covers src AND test AND the
 # bundled metadata. Read-only: this only VERIFIES + halts loudly; the main loop runs the capture + rebuild
 # (deterministic side-effecting setup lives in those scripts, per CLAUDE.md).
-stale="$(find "$ROOT/cli/src" "$ROOT/src" -type f \( -name '*.java' -o -name '*.json' \) -newer "$NATIVE" -print -quit 2>/dev/null)"
+# Cover EVERY module's src tree, not just cli+root (kernel-decoupling §3b #13 class-fix): the native binary
+# links cli + all its dependency modules (the core/rulekit/modelkit/edit kits, :adapter, :interpreter,
+# :schemakit) and its reflection metadata is captured from the whole test suite, so a source change in ANY
+# module can stale it. `$ROOT/*/src` sweeps every subproject's src; `$ROOT/src` catches root's remaining
+# integration-test tree. (Kotlin counts too — :interpreter/:adapter are partly .kt and ride the native image.)
+stale="$(find "$ROOT"/*/src "$ROOT/src" -type f \( -name '*.java' -o -name '*.kt' -o -name '*.json' \) -newer "$NATIVE" -print -quit 2>/dev/null)"
 if [[ -n "$stale" ]]; then
   echo "STALE native binary — refusing to probe a fiction (newer than the build: $stale)" >&2
   echo "  the capture is TEST-SUITE-DRIVEN, so re-capture metadata FIRST, then rebuild:" >&2

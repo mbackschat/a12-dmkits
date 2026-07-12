@@ -55,7 +55,7 @@ class SemanticsMapResolveTest {
 
     private static final Path MAP = Path.of("../docs/SEMANTICS-MAP.md");
     private static final Path KERNEL_FINDINGS = Path.of("../docs/KERNEL-FINDINGS.md");
-    private static final Path CATALOG = Path.of("../src/main/resources/catalog/operators.json");
+    private static final Path CATALOG = Path.of("../rulekit/src/main/resources/catalog/operators.json");
     private static final Path CORPUS_CASES = Path.of("../corpus/cases");
     private static final Path KERNEL_SEMANTICS = Path.of("../docs/KERNEL-SEMANTICS.md");
     private static final List<Path> LOCK_TREES = List.of(
