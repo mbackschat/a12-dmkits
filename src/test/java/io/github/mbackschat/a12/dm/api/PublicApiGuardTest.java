@@ -4,9 +4,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
@@ -24,6 +37,10 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
  * surfaces as a reviewable diff. {@link PublicApiDumper} produces the dump; this class asserts and, under
  * {@code -Dapi.fix=true} ({@code ./gradlew dumpKitApi}), regenerates. Verifier and fixer share one dump path,
  * so they cannot disagree; CI never runs the fixer, so a forgotten regenerate still fails the build.
+ *
+ * <p>Alongside the golden diff, {@link #noThirdPartyTypeOnAnyPublishedSignature()} enforces the one HARD
+ * surface rule (Set W): no third-party type on any public/protected signature — the golden makes a change
+ * visible, the rule makes the whole leak class unshippable.
  *
  * <p><b>Placement.</b> This guard reads the committed goldens under {@code api/} at runtime, so it runs in the
  * dedicated {@code apiGuardTest} task with {@code api/} declared as <em>its</em> inputs (never on the broad
@@ -75,6 +92,128 @@ class PublicApiGuardTest {
             assertEquals(first, second, () ->
                     "PublicApiDumper is non-deterministic for " + k.artifact()
                     + " — two dumps of the same classes differ, so the golden guard would be flaky.");
+        }
+    }
+
+    /**
+     * Signature-type prefixes a Maven-Central consumer resolves with NO extra dependency: the JDK and our own
+     * kits. Everything else on a public signature forces a third-party compile dependency the POM does not
+     * advertise (the kits keep Jackson {@code implementation}-scoped).
+     */
+    private static final List<String> ALLOWED_TYPE_PREFIXES = List.of("java.", "javax.", "io.github.mbackschat.");
+
+    /**
+     * The <b>class</b> guard behind the Set W cleanup (root-cause generalization of "Jackson leaks on public
+     * kit signatures"): no {@code public}/{@code protected} signature of any published kit may reference a
+     * type outside {@code java.*}/{@code javax.*}/{@code io.github.mbackschat.*} — supertypes, interfaces,
+     * type-parameter bounds, field/parameter/return/exception types, through generics/arrays/wildcards. Unlike
+     * the golden diff (which shows any drift but relies on review to spot a leak), this fails the build on the
+     * whole class of defect, not just the Jackson instance.
+     */
+    @Test
+    @DisabledIfSystemProperty(named = "api.fix", matches = "true")
+    void noThirdPartyTypeOnAnyPublishedSignature() {
+        List<String> violations = new ArrayList<>();
+        for (Kit k : KITS) {
+            for (Class<?> type : PublicApiDumper.apiTypes(mainClasses(k), classLoader())) {
+                collectForeignReferences(k, type, violations);
+            }
+        }
+        assertTrue(violations.isEmpty(), () ->
+                "Third-party types on published kit signatures (a consumer would need an undeclared compile "
+                + "dependency — Set W keeps them implementation-scoped and invisible; re-type or hide the seam, "
+                + "never expose the vendor type):\n  " + String.join("\n  ", violations));
+    }
+
+    /** Every foreign type referenced by {@code type}'s API-visible declarations, appended as violations. */
+    private static void collectForeignReferences(Kit kit, Class<?> type, List<String> violations) {
+        Set<Class<?>> supers = flatten(type.getGenericInterfaces());
+        supers.addAll(flatten(type.getGenericSuperclass()));
+        check(kit, type, "extends/implements", violations, supers);
+        check(kit, type, "type parameters", violations, boundsOf(type.getTypeParameters()));
+        for (Field f : type.getDeclaredFields()) {
+            if (isApi(f.getModifiers()) && !f.isSynthetic()) {
+                check(kit, type, "field " + f.getName(), violations, flatten(f.getGenericType()));
+            }
+        }
+        for (Constructor<?> c : type.getDeclaredConstructors()) {
+            if (isApi(c.getModifiers()) && !c.isSynthetic()) {
+                check(kit, type, "constructor", violations, executableTypes(c));
+            }
+        }
+        for (Method m : type.getDeclaredMethods()) {
+            if (isApi(m.getModifiers()) && !m.isSynthetic() && !m.isBridge()) {
+                Set<Class<?>> referenced = executableTypes(m);
+                referenced.addAll(flatten(m.getGenericReturnType()));
+                check(kit, type, "method " + m.getName(), violations, referenced);
+            }
+        }
+    }
+
+    private static boolean isApi(int mods) {
+        return Modifier.isPublic(mods) || Modifier.isProtected(mods);
+    }
+
+    /** Parameter + exception types and type-parameter bounds of one constructor/method. */
+    private static Set<Class<?>> executableTypes(Executable e) {
+        Set<Class<?>> out = flatten(e.getGenericParameterTypes());
+        out.addAll(flatten(e.getGenericExceptionTypes()));
+        out.addAll(boundsOf(e.getTypeParameters()));
+        return out;
+    }
+
+    private static Set<Class<?>> boundsOf(TypeVariable<?>[] vars) {
+        Set<Class<?>> out = new LinkedHashSet<>();
+        for (TypeVariable<?> v : vars) {
+            out.addAll(flatten(v.getBounds()));
+        }
+        return out;
+    }
+
+    private static void check(Kit kit, Class<?> type, String where, List<String> violations, Set<Class<?>> referenced) {
+        for (Class<?> c : referenced) {
+            if (ALLOWED_TYPE_PREFIXES.stream().noneMatch(c.getName()::startsWith)) {
+                violations.add(kit.artifact() + ": " + type.getName() + " — " + where + " references " + c.getName());
+            }
+        }
+    }
+
+    private static Set<Class<?>> flatten(Type... types) {
+        Set<Class<?>> out = new LinkedHashSet<>();
+        for (Type t : types) {
+            flattenInto(t, out);
+        }
+        return out;
+    }
+
+    /**
+     * Every raw class a generic {@link Type} mentions (through parameterized args, arrays, wildcard bounds).
+     * A {@link TypeVariable} is terminal here — its bounds are checked once at the declaration site
+     * ({@link #boundsOf}), which also keeps self-referential bounds ({@code T extends Comparable<T>}) finite.
+     */
+    private static void flattenInto(Type t, Set<Class<?>> out) {
+        switch (t) {
+            case null -> { }
+            case Class<?> c -> {
+                Class<?> base = c;
+                while (base.isArray()) {
+                    base = base.getComponentType();
+                }
+                if (!base.isPrimitive()) {
+                    out.add(base);
+                }
+            }
+            case ParameterizedType p -> {
+                flattenInto(p.getRawType(), out);
+                flatten(p.getActualTypeArguments()).forEach(out::add);
+            }
+            case GenericArrayType g -> flattenInto(g.getGenericComponentType(), out);
+            case WildcardType w -> {
+                flatten(w.getUpperBounds()).forEach(out::add);
+                flatten(w.getLowerBounds()).forEach(out::add);
+            }
+            case TypeVariable<?> v -> { }
+            default -> throw new IllegalStateException("unhandled Type kind on a published signature: " + t);
         }
     }
 

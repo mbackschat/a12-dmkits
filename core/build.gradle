@@ -23,7 +23,8 @@ java {
 
 dependencies {
     // The reader parses/expands DM-JSON with Jackson. `implementation` (not `api`): core returns its own typed
-    // views (ModelIndex), never a JsonNode across a public signature, so consumers don't inherit Jackson.
+    // views (ModelIndex), never a JsonNode across a public signature, so consumers don't inherit Jackson —
+    // enforced for every published kit by PublicApiGuardTest.noThirdPartyTypeOnAnyPublishedSignature (Set W).
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
 }
 

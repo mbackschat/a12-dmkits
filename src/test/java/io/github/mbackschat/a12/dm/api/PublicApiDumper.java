@@ -73,6 +73,16 @@ final class PublicApiDumper {
      * @param loader         a class loader that can resolve the kit (the test class loader)
      */
     static String dump(Path mainClassesDir, ClassLoader loader) {
+        return apiTypes(mainClassesDir, loader).stream()
+                .map(PublicApiDumper::renderType).collect(Collectors.joining("\n\n")) + "\n";
+    }
+
+    /**
+     * Every API-visible type of one kit, sorted by binary name — the shared walk behind {@link #dump} and the
+     * third-party-signature guard ({@code PublicApiGuardTest}), so the two can never disagree on what "the
+     * published surface" is.
+     */
+    static List<Class<?>> apiTypes(Path mainClassesDir, ClassLoader loader) {
         List<Class<?>> types = new ArrayList<>();
         for (String fqcn : binaryNames(mainClassesDir)) {
             Class<?> c;
@@ -86,7 +96,7 @@ final class PublicApiDumper {
             }
         }
         types.sort(Comparator.comparing(Class::getName));
-        return types.stream().map(PublicApiDumper::renderType).collect(Collectors.joining("\n\n")) + "\n";
+        return types;
     }
 
     /** All class binary names under {@code dir}, excluding {@code module-info}/{@code package-info}. */
