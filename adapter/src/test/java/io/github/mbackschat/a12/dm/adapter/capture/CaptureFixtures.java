@@ -88,6 +88,38 @@ public final class CaptureFixtures {
         return writeScenario(root, UnaryOperator.identity());
     }
 
+    /** The THREE-case variant (reorder/filter equivalence, determinism): the base case plus an
+     *  alternative-value case and an empty-source case, all over {@code quote-premium.json}. */
+    public static Path writeThreeCaseScenario(Path root) {
+        String extraCases = """
+                {
+                      "caseId": "premium-alt-rate",
+                      "modelRef": "models/quote-premium.json",
+                      "operation": "compute",
+                      "placements": [
+                        { "kind": "GROUP", "path": "/Quote", "reps": [1] },
+                        { "kind": "FIELD", "path": "/Quote/BaseRate", "reps": [1, 1], "value": "4.00" }
+                      ],
+                      "probes": [ "/Quote[1]/Premium" ]
+                    },
+                    {
+                      "caseId": "premium-source-absent",
+                      "modelRef": "models/quote-premium.json",
+                      "operation": "compute",
+                      "placements": [
+                        { "kind": "GROUP", "path": "/Quote", "reps": [1] }
+                      ],
+                      "probes": [ "/Quote[1]/Premium" ]
+                    },""";
+        return writeScenario(root, text -> {
+            String injected = text.replace("\"cases\": [", "\"cases\": [\n    " + extraCases);
+            if (injected.equals(text)) {
+                throw new IllegalStateException("three-case injection needle did not match the scenario text");
+            }
+            return injected;
+        });
+    }
+
     /** As {@link #writeValidScenario}, with {@code mutate} applied to the valid scenario text first. */
     public static Path writeScenario(Path root, UnaryOperator<String> mutate) {
         String sha = placeModel(root, QUOTE_PREMIUM, "quote-premium.json");

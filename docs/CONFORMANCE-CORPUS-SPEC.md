@@ -253,3 +253,19 @@ A published id is immutable: schemas are closed (unknown members rejected), so a
 ### 15b. The one structural decoder
 
 `validate-scenarios` and `capture` share **one** acceptance pipeline (`schema.ScenarioSets.load` → the closed `ScenarioDecoder`): strict JSON (duplicate keys rejected, decimals exact — never through binary floating point), closed member sets at every level, digest-bound refs resolving only inside the scenario root (traversal and symlinks rejected), registry-checked runner/policy/projection/channel ids, and the kernel-free model-structure gates. Both commands therefore make the same pre-execution acceptance decision — guarded by the decoder-parity test, and structural rejection collects **every** problem with its location before refusing.
+
+### 15c. Runners & the kernel-free DTO boundary
+
+The COMPILE-TIME registry (`dto.RunnerId` + the `runner.Runners` exhaustive switch — no runtime plugin discovery):
+
+| runner id | role | route |
+|---|---|---|
+| `kernel-groovy-dynamic` | **anchor** | the kernel's md-runtime dynamic (Groovy) service |
+| `kernel-java-static` | **cross-route confirmation** | the kernel's own generated-JAVA validator, compiled in-memory, through the kernel's static rt-service |
+| `a12-dmkits-interpreter` | **triangulation** | the kernel-free interpreter — never the oracle |
+
+The two kernel names provably invoke **distinct registered routes** (`RouteDistinctnessTest`, a does-fire guard over the resolved rt-service implementations) — but the claim stays *cross-route agreement within one kernel implementation*, never independent engines. Both kernel routes observe through ONE shared mapper (`runner.kernel.KernelRouteSupport`), so a cross-route difference is a route difference, never a mapping one; kernel types TERMINATE in `capture.runner.kernel`, interpreter types in `capture.runner.interpreter`, and the neutral zone (dto/schema/json/packet) references neither engine — enforced by the **`verifyCapturePurity`** Gradle lint (wired into `:adapter:check`; the `verifyInterpreterPurity` pattern, does-fire-proven).
+
+Per (case, runner) execution is **fresh-state**: a new engine/evaluation context, a fresh document from the placements, the explicitly injected clock/locale — no cache crosses cases or routes (`ReorderEquivalenceTest`: a reordered full run and a filtered single-case run observe identically). Each run carries an explicit status — `success` / `unsupported` / `timeout` / `technicalFailure` — where successful-EMPTY output is data inside `success`, never a failure encoding; a failed run carries no semantic channels, and `technicalFailure` detail is fixed sanitized text (never an exception message, class name, or stack frame — those go to stderr only).
+
+Fidelity is declared per runner (`dto.RunnerFidelity`, echoed into capabilities + packets): the kernel routes expose all six channels with typed + rendered values, structured causes, and the absent/present-empty applied distinction; the interpreter exposes rendered values only, no changed subset (report-all granularity), no structured causes, no operand formal errors, and `noValueIndeterminate` applied states (its public read surface has no absent-vs-empty distinction — INTERPRETER-GAPS IG72). Missing transport is declared, never bridged.

@@ -1,0 +1,119 @@
+package io.github.mbackschat.a12.dm.adapter.capture.runner.interpreter;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import io.github.mbackschat.a12.dm.adapter.capture.dto.AppliedState;
+import io.github.mbackschat.a12.dm.adapter.capture.dto.ComputeObservation;
+import io.github.mbackschat.a12.dm.adapter.capture.dto.ObservedValue;
+import io.github.mbackschat.a12.dm.adapter.capture.dto.Pointers;
+import io.github.mbackschat.a12.dm.adapter.capture.dto.RunStatus;
+import io.github.mbackschat.a12.dm.adapter.capture.dto.RunnerFidelity;
+import io.github.mbackschat.a12.dm.adapter.capture.dto.RunnerId;
+import io.github.mbackschat.a12.dm.adapter.capture.runner.CaseExecution;
+import io.github.mbackschat.a12.dm.adapter.capture.runner.ComputeRunner;
+import io.github.mbackschat.a12.dm.adapter.capture.schema.ScenarioSet;
+import io.github.mbackschat.a12.dm.interpreter.DmInterpreter;
+import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException;
+import io.github.mbackschat.a12.dm.interpreter.eval.Document;
+import io.github.mbackschat.a12.dm.interpreter.eval.DocumentKt;
+import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader;
+import io.github.mbackschat.a12.dm.interpreter.model.Computed;
+import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome;
+import io.github.mbackschat.a12.dm.interpreter.model.EvalClock;
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef;
+import io.github.mbackschat.a12.dm.interpreter.model.ValuedField;
+
+/**
+ * The {@code a12-dmkits-interpreter} route — clean-room TRIANGULATION, never the oracle. READ-ONLY reuse
+ * of the interpreter's published surface ({@code ModelLoader} · {@code DmInterpreter.compute} ·
+ * {@code applyComputations} · {@code Document.valuedFields}); the fidelity gaps are declared honestly
+ * (proposal §4), never bridged: no typed values, no structured causes, no changed subset (report-all
+ * granularity), no operand formal errors on the compute surface, and the applied read-back cannot
+ * separate absent from present-empty ({@code AppliedState.NoValueIndeterminate};
+ * INTERPRETER-GAPS IG72). Missing transport is never rendered as an empty observation.
+ */
+public final class InterpreterRunner implements ComputeRunner {
+
+    @Override
+    public RunnerId id() {
+        return RunnerId.A12_DMKITS_INTERPRETER;
+    }
+
+    @Override
+    public ComputeObservation observe(CaseExecution execution) {
+        ModelDef def = ModelLoader.INSTANCE.load(execution.modelJson());
+        Document doc = replay(def, execution.placements());
+        EvalClock clock = execution.clock()
+                .map(c -> new EvalClock(c.substring(0, c.indexOf('T')), c))
+                .orElse(null);
+        DmInterpreter interpreter = new DmInterpreter(def, clock);
+
+        List<Computed> outcomes;
+        Document applied;
+        try {
+            outcomes = interpreter.compute(doc, execution.locale());
+            applied = interpreter.applyComputations(doc, execution.locale());
+        } catch (UnsupportedConstructException e) {
+            // The interpreter's own declared inability (our clean-room text) — never a silent skip.
+            return ComputeObservation.failed(execution.caseId(), id(), RunStatus.UNSUPPORTED, e.getMessage());
+        }
+
+        List<ComputeObservation.ValueEntry> values = new ArrayList<>();
+        List<ComputeObservation.ErrorEntry> errored = new ArrayList<>();
+        List<ComputeObservation.ClearedEntry> cleared = new ArrayList<>();
+        for (Computed outcome : outcomes) {
+            String pointer = Pointers.format(outcome.getPath(), outcome.getIndices());
+            String declared = execution.declaredComputationOf(pointer);
+            switch (outcome.getOutcome()) {
+                case VALUE -> values.add(new ComputeObservation.ValueEntry(pointer, declared,
+                        ObservedValue.renderedOnly(outcome.getValue())));
+                case ERRORED -> errored.add(new ComputeObservation.ErrorEntry(pointer, declared,
+                        ObservedValue.renderedOnly(outcome.getValue()),
+                        ComputeObservation.CauseObservation.notExposed()));
+                case CLEARED -> cleared.add(new ComputeObservation.ClearedEntry(pointer, declared));
+            }
+        }
+
+        List<ComputeObservation.AppliedEntry> appliedEntries = new ArrayList<>();
+        List<ValuedField> valued = applied.valuedFields();
+        for (String probe : execution.probePointers()) {
+            appliedEntries.add(new ComputeObservation.AppliedEntry(probe, appliedStateAt(valued, probe)));
+        }
+
+        return ComputeObservation.success(execution.caseId(), id())
+                .withoutErrors(ComputeObservation.Channel.available(RunnerFidelity.ALL_COMPUTED_CLEAN, values))
+                .changedSubset(ComputeObservation.Channel.notExposed())
+                .withErrors(ComputeObservation.Channel.available(RunnerFidelity.ERRORED_INSTANCES, errored))
+                .cleared(ComputeObservation.Channel.available(RunnerFidelity.ALL_CLEARED, cleared))
+                .formalErrorsInOperands(ComputeObservation.Channel.notExposed())
+                .appliedState(ComputeObservation.Channel.available(RunnerFidelity.REQUESTED_PROBES, appliedEntries))
+                .build();
+    }
+
+    private static Document replay(ModelDef def, List<ScenarioSet.Placement> placements) {
+        Document doc = DocumentKt.newDocument(def);
+        for (ScenarioSet.Placement p : placements) {
+            int[] reps = p.reps().stream().mapToInt(Integer::intValue).toArray();
+            switch (p.kind()) {
+                case GROUP -> doc.group(p.path(), reps);
+                case FIELD -> doc.field(p.path(), p.value().orElseThrow(), reps);
+                case EMPTY -> doc.emptyField(p.path(), reps);
+            }
+        }
+        return doc;
+    }
+
+    /** The applied read-back over the interpreter's public surface: a valued cell is observable
+     *  (rendered form); a valueless probe is {@code noValueIndeterminate} — the public surface exposes no
+     *  absent-vs-present-empty distinction (IG72), and capture never guesses one. */
+    private static AppliedState appliedStateAt(List<ValuedField> valued, String probe) {
+        Pointers.Parsed parsed = Pointers.parse(probe);
+        for (ValuedField field : valued) {
+            if (field.getPath().equals(parsed.namePath()) && field.getReps().equals(parsed.reps())) {
+                return new AppliedState.PresentValue(ObservedValue.renderedOnly(field.getRaw()));
+            }
+        }
+        return new AppliedState.NoValueIndeterminate();
+    }
+}

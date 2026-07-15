@@ -51,6 +51,48 @@ configurations {
     captureRuntimeOnly.extendsFrom runtimeOnly
 }
 
+// Separation by linting (the verifyInterpreterPurity / verifyKitPurity pattern): kernel types terminate
+// inside the two kernel route mappers (`capture.runner.kernel`), interpreter types inside the interpreter
+// runner (`capture.runner.interpreter`), and the NEUTRAL zone (dto/schema/json/packet/…) references
+// neither engine. Comments are stripped first, so only a real code reference fails.
+def verifyCapturePurity = tasks.register('verifyCapturePurity') {
+    group = 'verification'
+    description = 'Fail when a kernel/interpreter type crosses the capture DTO boundary (CONFORMANCE-CORPUS-SPEC §15).'
+    def srcRoot = file('src/capture')
+    inputs.dir(srcRoot)
+    doLast {
+        def kernelPrefixes = ['com.mgmtp.', 'groovy.']
+        def interpreterPrefix = 'io.github.mbackschat.a12.dm.interpreter.'
+        def violations = []
+        srcRoot.eachFileRecurse(groovy.io.FileType.FILES) { f ->
+            if (!f.name.endsWith('.java')) {
+                return
+            }
+            def rel = srcRoot.toPath().relativize(f.toPath()).toString()
+            def forbidden
+            if (rel.contains('capture/runner/kernel/')) {
+                forbidden = [interpreterPrefix]                     // kernel allowed; the interpreter may not leak in
+            } else if (rel.contains('capture/runner/interpreter/')) {
+                forbidden = kernelPrefixes                          // interpreter allowed; the kernel may not leak in
+            } else {
+                forbidden = kernelPrefixes + [interpreterPrefix]    // the neutral zone: neither engine
+            }
+            def code = f.text.replaceAll('(?s)/\\*.*?\\*/', '').replaceAll('//[^\\n]*', '')
+            forbidden.each { prefix ->
+                if (code.contains(prefix)) {
+                    violations << "${rel}: references forbidden prefix '${prefix}'"
+                }
+            }
+        }
+        if (violations) {
+            throw new GradleException("capture DTO-boundary purity violated — kernel/interpreter types must " +
+                    "terminate in their route mapper packages (CONFORMANCE-CORPUS-SPEC §15):\n  " +
+                    violations.join('\n  '))
+        }
+    }
+}
+tasks.named('check') { dependsOn verifyCapturePurity }
+
 dependencies {
     // The repo-standard JSON parser (already implementation-scoped in core/rulekit/modelkit/cli at this
     // exact pin) — the capture decoder parses scenario/packet JSON with it; the canonical packet WRITER is
