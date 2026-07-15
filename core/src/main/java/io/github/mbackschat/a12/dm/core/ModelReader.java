@@ -72,13 +72,15 @@ public final class ModelReader {
     private final Map<String, JsonNode> byPath;
     private final List<String> locales;
     private final List<String> includedRulesNeedingRelativization;
+    private final List<ComputationInfo> computations;
 
     private ModelReader(ObjectNode expanded, Map<String, JsonNode> byPath, List<String> locales,
-            List<String> includedRulesNeedingRelativization) {
+            List<String> includedRulesNeedingRelativization, List<ComputationInfo> computations) {
         this.expanded = expanded;
         this.byPath = byPath;
         this.locales = locales;
         this.includedRulesNeedingRelativization = includedRulesNeedingRelativization;
+        this.computations = computations;
     }
 
     /**
@@ -99,8 +101,9 @@ public final class ModelReader {
         normalizeIds(modelRoot, "");
         stripVestigialModelReferences(root);
         Map<String, JsonNode> byPath = new LinkedHashMap<>();
-        indexRootGroups(modelRoot, byPath);
-        return new ModelReader(root, byPath, readLocales(root), List.copyOf(warnings));
+        List<ComputationInfo> computations = new ArrayList<>();
+        indexRootGroups(modelRoot, byPath, computations);
+        return new ModelReader(root, byPath, readLocales(root), List.copyOf(warnings), List.copyOf(computations));
     }
 
     // ── outputs ─────────────────────────────────────────────────────────────────────────────────────────
@@ -141,6 +144,11 @@ public final class ModelReader {
     /** Every indexed name-path (fields + groups), in model order. */
     Set<String> paths() {
         return byPath.keySet();
+    }
+
+    /** The model's authored computations with resolved absolute targets, in model order (ModelIndex's view). */
+    List<ComputationInfo> computations() {
+        return computations;
     }
 
     // ── expansion ─────────────────────────────────────────────────────────────────────────────────────────
@@ -549,24 +557,61 @@ public final class ModelReader {
 
     /** Index the top-level groups' subtrees by name-path (fields + groups), starting one level below the
      *  synthetic root — a top-level group named {@code Order} is {@code /Order}, not {@code /RootGroup/Order}. */
-    private static void indexRootGroups(JsonNode modelRoot, Map<String, JsonNode> byPath) {
+    private static void indexRootGroups(JsonNode modelRoot, Map<String, JsonNode> byPath,
+            List<ComputationInfo> computations) {
         for (JsonNode group : modelRoot.path(DmKeys.ROOT_GROUPS)) {
-            indexElement(group, "", byPath);
+            indexElement(group, "", byPath, computations);
         }
     }
 
-    private static void indexElement(JsonNode node, String prefix, Map<String, JsonNode> byPath) {
+    private static void indexElement(JsonNode node, String prefix, Map<String, JsonNode> byPath,
+            List<ComputationInfo> computations) {
         ElementType type = ElementType.of(node);
+        if (type == ElementType.COMPUTATION) {
+            computations.add(computationInfo(node, prefix));
+            return;
+        }
         if (type != ElementType.GROUP && type != ElementType.FIELD) {
-            return;   // rules/computations carry no index entry (ModelIndex reads fields + groups)
+            return;   // rules carry no index entry (ModelIndex reads fields + groups)
         }
         String path = prefix + "/" + node.path(DmKeys.NAME).asText();
         byPath.put(path, node);
         if (type == ElementType.GROUP) {
             for (JsonNode child : node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)) {
-                indexElement(child, path, byPath);
+                indexElement(child, path, byPath, computations);
             }
         }
+    }
+
+    /** Map a Computation element in the group at {@code groupPath} to its {@link ComputationInfo} — the
+     *  declared {@code computedFieldRelPath} resolved against the computation ELEMENT's own path. */
+    private static ComputationInfo computationInfo(JsonNode node, String groupPath) {
+        String name = node.path(DmKeys.NAME).asText();
+        String elementPath = groupPath + "/" + name;
+        String relPath = node.path(ElementType.COMPUTATION.wireName()).path("computedFieldRelPath").asText("");
+        return new ComputationInfo(elementPath, groupPath, name, resolveRelPath(elementPath, relPath));
+    }
+
+    /**
+     * Resolve {@code relPath} against the element at {@code basePath}: a leading {@code /} is absolute,
+     * each {@code ..} pops one segment off the base, a plain segment descends — so a computation's sibling
+     * field {@code "../Field"} resolves to {@code <groupPath>/Field}. Package-private for a focused test.
+     */
+    static String resolveRelPath(String basePath, String relPath) {
+        if (relPath.startsWith("/")) {
+            return relPath;
+        }
+        List<String> segments = new ArrayList<>(List.of(basePath.substring(1).split("/")));
+        for (String step : relPath.split("/")) {
+            if ("..".equals(step)) {
+                if (!segments.isEmpty()) {
+                    segments.remove(segments.size() - 1);
+                }
+            } else if (!step.isEmpty() && !".".equals(step)) {
+                segments.add(step);
+            }
+        }
+        return "/" + String.join("/", segments);
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────────────────────────────────

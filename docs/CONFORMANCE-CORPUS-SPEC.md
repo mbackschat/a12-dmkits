@@ -228,3 +228,28 @@ What the in-repo reference capture + runners must satisfy (beyond the runner con
 ## 14. Licensing & publication
 
 The committed corpus is own-domain original material under the project license; captured expectations are behavioral facts about the kernel (mechanism, not expression). Nothing from the EUPL `a12-kernel-mm` metamodels or the proprietary A12 Tools workspaces is persisted here — live-sweep findings are minimized and re-expressed in our own domain first. Publishing the corpus beyond this repository stays **open-with-trigger** (was fork F2 of the [archived program](archived/SEMANTICS-FORMALIZATION-PROPOSAL.md)): publish **when an external consumer materializes**, and only after re-confirming provenance against the [licensing decision record](LICENSING.md).
+
+## 15. The portable evidence-capture boundary
+
+The source-maintained capture capability adopted from [`A12-DMKITS-CAPTURE-PROPOSAL.md`](A12-DMKITS-CAPTURE-PROPOSAL.md): a consumer (a12-kernel-lean) authors a closed scenario set — models, instances, operations, probes, a predeclared observation requirement, and **no expected behavior** — and the tool executes it through the registered runners into one deterministic, language-neutral **evidence packet**; separate named policies later classify the same packet without rewriting it. The packet — never a kernel-linked API — is the cross-project interface. Observation is separated from judgment by design: capture records what every runner exposed; a verifier decides whether a named projection satisfies a named policy.
+
+**Placement.** Adapter-internal developer tooling: the `capture` source set inside `:adapter` (Gradle-invoked, `io.github.mbackschat.a12.dm.adapter.capture.*`), with **no published component** — not a dmtool verb, not in dmtool-release, not on the interpreter's dependency surface. The self-tests live in `:adapter`'s test source set and drive the real command entry.
+
+### 15a. Schema identities (immutable, closed)
+
+| id | what it names |
+|---|---|
+| `capture-scenario-set-v1` | the consumer request: scenario-set identity/version, `compute-observation-v1` as the one operation schema, the pinned capability identity, the `local-wallclock-v1` world profile (locale `en_US`; per-case wall-clock instant; timezone stays runner-local allowlisted identity), digest-bound model refs, required runners, the qualification policy, the predeclared observation requirement (channels + comparison projections), and explicit cases (placements in corpus placement vocabulary + probe pointers). |
+| `evidence-packet-v1` | the packet envelope (`PACKET.json`): schema ids, kernel identity, capture source state, scenario identity + request digest, world, runner descriptors + fidelity, input digests (supplied AND adapted), legality artifacts, per-case observation refs + statuses. |
+| `compute-observation-v1` | one runner's per-case observation: the six channels (`withoutErrors` · `changedSubset` · `withErrors` · `cleared` · `formalErrorsInOperands` · `appliedState`), each multiplicity-preserving and enumeration-order-recording, typed `valueV2` and rendered form as separate fields, per-channel/per-field availability (`available`/`notExposedByRunner`/`notApplicable`). |
+| `capture-receipt-v1` | `RECEIPT.json`: the closed, sorted artifact inventory (relative path + role + bytes + SHA-256), every file including `PACKET.json`, itself excluded; its own SHA-256 is printed for out-of-band handoff. Symlinks and unclassifiable files refuse the build. |
+| `a12-dmkits-capture-capabilities-v1` | the machine-readable capability output — **transport capability, never semantic support** — schemas, input-scope versions, runner ids/roles/per-channel fidelity, projection/policy ids, commands. Locked byte-for-byte to a committed golden (`adapter/src/test/resources/capture/capabilities-v1.json`), so an in-place mutation under an existing id fails the build. |
+| `qualification-report-v1` · `packet-diff-report-v1` · `report-diff-report-v1` | the verifier/diff output schemas (§15d). |
+
+A published id is immutable: schemas are closed (unknown members rejected), so any added or reinterpreted member mints a new id. Requests pin explicit ids and are rejected on an unknown version — never "latest".
+
+**Expectation-free by construction.** The scenario schema has **no expected-result member at all**; a request carrying `expected`/`computeExpected` is refused with the explicit no-oracle diagnostic (expected outcomes belong in a separately reviewed conformance artifact produced after observation). The v1 input-support identity `non-repeatable-compute-targets-v1` rejects a computation whose target or scope lies under a repeatable group (checked kernel-free via `ModelIndex.computations()`).
+
+### 15b. The one structural decoder
+
+`validate-scenarios` and `capture` share **one** acceptance pipeline (`schema.ScenarioSets.load` → the closed `ScenarioDecoder`): strict JSON (duplicate keys rejected, decimals exact — never through binary floating point), closed member sets at every level, digest-bound refs resolving only inside the scenario root (traversal and symlinks rejected), registry-checked runner/policy/projection/channel ids, and the kernel-free model-structure gates. Both commands therefore make the same pre-execution acceptance decision — guarded by the decoder-parity test, and structural rejection collects **every** problem with its location before refusing.

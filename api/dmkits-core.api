@@ -14,6 +14,16 @@ public final class io.github.mbackschat.a12.dm.core.Backends
   public static void reset()
   public static io.github.mbackschat.a12.dm.core.Verification verification()
 
+public record io.github.mbackschat.a12.dm.core.ComputationInfo
+  public ComputationInfo(java.lang.String, java.lang.String, java.lang.String, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public java.lang.String groupPath()
+  public final int hashCode()
+  public java.lang.String name()
+  public java.lang.String path()
+  public java.lang.String targetFieldPath()
+  public final java.lang.String toString()
+
 public final class io.github.mbackschat.a12.dm.core.DmKeys
   public static final java.lang.String ALIAS
   public static final java.lang.String ANNOTATIONS
@@ -84,6 +94,7 @@ public final class io.github.mbackschat.a12.dm.core.ModelFormat
 public final class io.github.mbackschat.a12.dm.core.ModelIndex
   public java.util.List<io.github.mbackschat.a12.dm.core.Annotation> annotationsOf(java.lang.String)
   public java.util.List<io.github.mbackschat.a12.dm.core.Annotation> annotationsOfGroup(java.lang.String)
+  public java.util.List<io.github.mbackschat.a12.dm.core.ComputationInfo> computations()
   public java.util.Map<java.lang.String, java.util.List<java.lang.String>> enumCategories(java.lang.String)
   public java.util.List<java.lang.String> enumValues(java.lang.String)
   public java.util.stream.Stream<java.lang.String> fieldPaths()

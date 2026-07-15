@@ -1,0 +1,100 @@
+{
+    "header": {
+        "id": "quote-lines-rep",
+        "modelType": "document",
+        "modelVersion": "28.4.0",
+        "locales": [
+            {
+                "code": "en_US"
+            }
+        ],
+        "labels": [],
+        "annotations": [],
+        "modelReferences": []
+    },
+    "content": {
+        "modelInfo": {
+            "name": "quote-lines-rep",
+            "variant": "cockpit",
+            "revision": "Arbeitsversion",
+            "immutable": false
+        },
+        "modelConfig": {
+            "decimalSeparator": ".",
+            "timeZone": "Europe/Berlin",
+            "conditionLanguage": {
+                "code": "en_US"
+            },
+            "fieldRefByShortNameAllowed": true
+        },
+        "modelRoot": {
+            "rootGroups": [
+                {
+                    "type": "Group",
+                    "id": "/Quote",
+                    "name": "Quote",
+                    "Group": {
+                        "repeatability": 1,
+                        "elements": [
+                            {
+                                "type": "Group",
+                                "id": "/Quote/Lines",
+                                "name": "Lines",
+                                "Group": {
+                                    "repeatability": 10,
+                                    "elements": [
+                                        {
+                                            "type": "Field",
+                                            "id": "/Quote/Lines/Hours",
+                                            "name": "Hours",
+                                            "Field": {
+                                                "fieldType": {
+                                                    "type": "NumberType",
+                                                    "NumberType": {
+                                                        "maxFractionalDigits": 0
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "Field",
+                                            "id": "/Quote/Lines/LineCost",
+                                            "name": "LineCost",
+                                            "Field": {
+                                                "fieldType": {
+                                                    "type": "NumberType",
+                                                    "NumberType": {
+                                                        "maxFractionalDigits": 2
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "Computation",
+                                            "id": "/Quote/Lines/LineCostCalc",
+                                            "name": "LineCostCalc",
+                                            "Computation": {
+                                                "computedFieldRelPath": "../LineCost",
+                                                "computationAlternatives": [
+                                                    {
+                                                        "operation": "[Hours] * 80"
+                                                    }
+                                                ],
+                                                "errorMessage": [
+                                                    {
+                                                        "locale": "en_US",
+                                                        "text": "Line cost could not be computed."
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}

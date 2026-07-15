@@ -34,6 +34,33 @@ tasks.withType(JavaCompile).configureEach {
 
 def kernelVersion = '30.8.1'
 
+// The internal CAPTURE source set — the portable evidence-capture boundary (CONFORMANCE-CORPUS-SPEC §15,
+// the adopted A12-DMKITS-CAPTURE-PROPOSAL). Adapter-internal developer tooling, Gradle-invoked: NOT a
+// published component, NOT a dmtool verb, NOT on the interpreter's dependency surface — :cli/:interpreter
+// never see it (only :adapter's own tests consume its output). It inherits main's dependency set (the
+// kernel routes + the kits + the interpreter) because the two kernel route mappers live here; the neutral
+// DTO/schema packages inside it are held kernel-free by `verifyCapturePurity` below.
+sourceSets {
+    capture {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+configurations {
+    captureImplementation.extendsFrom implementation
+    captureRuntimeOnly.extendsFrom runtimeOnly
+}
+
+dependencies {
+    // The repo-standard JSON parser (already implementation-scoped in core/rulekit/modelkit/cli at this
+    // exact pin) — the capture decoder parses scenario/packet JSON with it; the canonical packet WRITER is
+    // the capture code's own (byte-level determinism is a schema contract, not a library default). No new
+    // artifact enters the repository and no published component changes.
+    captureImplementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+    // The capture self-tests live in the regular test source set and drive the real command entry.
+    testImplementation sourceSets.capture.output
+}
+
 dependencies {
     // The kernel-free kits — BoundModel/Rule/Dsl + ReferenceResolvers + the SPI ports this backend implements.
     // Stage-4 module cut: the single root project split into per-kit modules, so `api project(':')` becomes an
@@ -122,7 +149,7 @@ tasks.named('test') {
      'ig44.vcv', 'ig47.kernel', 'ig47.interp', 'ig47.model', 'ig47.seed', 'ig47.dump',
      'atom.kernel', 'atom.interp', 'atom.model', 'atom.seed', 'atom.dump', 'atom.valuediff',
      'vf.model', 'vf.seed', 'vf.side', 'vf.sig', 'vf.kernelmm', 'vf.dump',
-     'replay.model', 'replay.op', 'corpus.hostile',
+     'replay.model', 'replay.op', 'corpus.hostile', 'capture.golden.fix',
      'perf.profile', 'perf.n', 'perf.edge', 'perf.edge.n', 'perf.edge.counts', 'perf.scaling', 'perf.scaling.n'].each { k ->
         if (System.getProperty(k) != null) systemProperty k, System.getProperty(k)
     }

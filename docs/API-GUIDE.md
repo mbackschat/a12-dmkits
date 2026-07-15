@@ -1261,6 +1261,18 @@ m.fields()
 String edited = s.validate().toJson();        // kernel gate, once
 ```
 
+**Computations are enumerable too (kernel-free).** `ModelIndex.computations()` lists every authored computation with its declared `computedFieldRelPath` resolved to the **absolute target field path** (the rel base is the computation *element*, so a same-group target reads `"../Field"`). This is what a consumer that must reason about computation targets without the kernel uses — e.g. the capture boundary's v1 gate rejecting a repeatable-scoped target:
+
+<!-- snippet: model-computations -->
+```java
+// every authored computation, its computedFieldRelPath RESOLVED to the absolute target field:
+List<ComputationInfo> computations = ModelIndex.ofSelfContained(dmJson).computations();
+ComputationInfo payout = computations.get(0);
+payout.path();              // "/Claim/PayoutCalc"  — the computation element's name-path
+payout.groupPath();         // "/Claim"             — its containing group
+payout.targetFieldPath();   // "/Claim/Payout"      — "../Payout" resolved (rel base = the element)
+```
+
 ## 7. The LLM session — the loop the skill teaches, for both personas
 
 > **Skill status:** the first BA-path skill draft exists and was **eval-measured** (a clean Opus subagent, given only the CLI + catalog + skill, went from multi-attempt/medium-confidence to **first-attempt/high-confidence** on the T1 authoring task, with the silent-inversion polarity trap closed by the skill's polarity section). Method, lifts, and caveats in [`EVAL-SPEC.md`](./EVAL-SPEC.md). Structurally-distinct benchmark tasks **T2–T6** now span the families (field-vs-field, pattern, aggregate+Having, date, value-list+boolean; golds kernel-verified) — answering the "T1 ≈ the skill's worked example" caveat — and **T7** adds the first **comprehension** task (the `order-ruled` fixture; the oracle asserts its rules read to `Converted`, readable by `explain`). Remaining: the **Workflow pass@k runner** that drives the agent passes (T3–T6 authoring + T7 explanation).

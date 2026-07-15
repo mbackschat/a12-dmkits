@@ -77,6 +77,8 @@ class DocSnippetFreshnessTest {
                     "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/MirroringRuleStudyTest.java"),
             new Lock("editor-number-field", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/edit/GroupEditorTest.java"),
+            new Lock("model-computations", "docs/API-GUIDE.md",
+                    "src/test/java/io/github/mbackschat/a12/dm/core/ModelIndexComputationsTest.java"),
             new Lock("date-minmax", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("indexed-presence", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("indexed-coercion", "docs/API-GUIDE.md", NEW_SHAPES),

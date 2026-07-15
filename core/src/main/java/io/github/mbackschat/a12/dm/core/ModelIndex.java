@@ -155,6 +155,16 @@ public final class ModelIndex {
         return maxRepetitions(groupPath) != 1;
     }
 
+    /**
+     * The model's authored computations, in model order — each with its {@code computedFieldRelPath}
+     * <b>resolved to the absolute target field path</b> (the rel path is relative to the computation
+     * <em>element</em>: a sibling field in the group is {@code "../Field"}). Kernel-free, so a consumer
+     * can reason about computation targets (e.g. reject a repeatable-scoped target) without the kernel.
+     */
+    public List<ComputationInfo> computations() {
+        return reader.computations();
+    }
+
     /** The group's maximum repetitions — the repeatability count ({@code 1} = non-repeatable). */
     public int maxRepetitions(String groupPath) {
         return groupNode(groupPath).path(ElementType.GROUP.wireName()).path(DmKeys.REPEATABILITY).asInt(1);
