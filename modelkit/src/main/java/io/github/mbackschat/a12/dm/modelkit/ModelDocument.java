@@ -270,13 +270,19 @@ public final class ModelDocument {
     }
 
     /**
-     * The per-kind CONFIG of the type definition {@code id}, projected into the same schema-shape block a
-     * {@code typedef add} spec carries ({@code number} min/max/unit/scale, {@code string} pattern/length,
-     * {@code enum} values, date/time formats). The sibling of {@link #fieldConfig} for typedefs — so a
-     * constraint an agent put on a reusable type is verifiable through {@code typedef read} alone. Empty when
-     * the def carries no surfaceable config (a bare NUMBER) or there is no such def.
+     * The per-kind CONFIG of the type definition {@code id} as JSON text, projected into the same
+     * schema-shape block a {@code typedef add} spec carries ({@code number} min/max/unit/scale, {@code string}
+     * pattern/length, {@code enum} values, date/time formats). The sibling of {@link #fieldConfigJson} for
+     * typedefs — so a constraint an agent put on a reusable type is verifiable through {@code typedef read}
+     * alone. Empty when the def carries no surfaceable config (a bare NUMBER) or there is no such def.
      */
-    public Optional<ObjectNode> typeDefinitionConfig(String id) {
+    public Optional<String> typeDefinitionConfigJson(String id) {
+        return typeDefinitionConfig(id).map(ObjectNode::toString);
+    }
+
+    /** {@link #typeDefinitionConfigJson} as the internal node (the typed read-back peers route here; Set W —
+     *  a Jackson type may not cross the published surface). */
+    private Optional<ObjectNode> typeDefinitionConfig(String id) {
         JsonNode fieldType = typeDefinitionFieldType(id);
         if (fieldType == null || fieldType.isMissingNode()) {
             return Optional.empty();
@@ -349,14 +355,21 @@ public final class ModelDocument {
     }
 
     /**
-     * The field's per-kind CONFIG at {@code fieldPath} in the SAME schema-block shape {@code field add}/
-     * {@code field modify} accept ({@code number}/{@code string}/{@code enum}/{@code date}/…, or a
-     * {@code typedef} ref). The read-back of what was written, so a constraint (a NUMBER {@code min}/{@code
+     * The field's per-kind CONFIG at {@code fieldPath} as JSON text, in the SAME schema-block shape
+     * {@code field add}/{@code field modify} accept ({@code number}/{@code string}/{@code enum}/{@code date}/…,
+     * or a {@code typedef} ref). The read-back of what was written, so a constraint (a NUMBER {@code min}/{@code
      * max}/{@code unit}, a STRING {@code pattern}/length, enum {@code values}, a date {@code format}) is
      * verifiable through {@code field read} alone. Empty when the field carries no surfaceable config
-     * (a bare BOOLEAN/CONFIRM) or there is no such field.
+     * (a bare BOOLEAN/CONFIRM) or there is no such field. For a single declared constraint, prefer the typed
+     * peers ({@link #fieldPattern}, {@link #fieldMinValue}, {@link #fieldMaxFractionalDigits}, …).
      */
-    public Optional<ObjectNode> fieldConfig(String fieldPath) {
+    public Optional<String> fieldConfigJson(String fieldPath) {
+        return fieldConfig(fieldPath).map(ObjectNode::toString);
+    }
+
+    /** {@link #fieldConfigJson} as the internal node (the typed read-back peers route here; Set W — a Jackson
+     *  type may not cross the published surface). */
+    private Optional<ObjectNode> fieldConfig(String fieldPath) {
         JsonNode field = locate(fieldPath, false);
         if (field == null) {
             return Optional.empty();

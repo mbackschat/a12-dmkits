@@ -1,10 +1,11 @@
 package io.github.mbackschat.a12.dm.schemakit;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.assertKernelAccepts;
 import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.normalize;
@@ -33,15 +34,12 @@ class FieldConstraintsShapeTest {
         assertKernelAccepts(imported.dmJson());
         ModelDocument doc = ModelDocument.read(imported.dmJson());
 
-        ObjectNode codeCfg = doc.fieldConfig("/Root/code").orElseThrow();
-        assertEquals(2, codeCfg.findValue("minLength").asInt());
-        assertEquals(5, codeCfg.findValue("maxLength").asInt());
-        assertEquals("[A-Z]+", codeCfg.findValue("pattern").asText());
+        assertEquals(OptionalInt.of(2), doc.fieldMinLength("/Root/code"));
+        assertEquals(OptionalInt.of(5), doc.fieldMaxLength("/Root/code"));
+        assertEquals(Optional.of("[A-Z]+"), doc.fieldPattern("/Root/code"));
 
-        // the read-back number block carries the bounds as text under min/max
-        ObjectNode qtyCfg = doc.fieldConfig("/Root/quantity").orElseThrow();
-        assertEquals("1", qtyCfg.findValue("min").asText());
-        assertEquals("999", qtyCfg.findValue("max").asText());
+        assertEquals(Optional.of(new BigDecimal("1")), doc.fieldMinValue("/Root/quantity"));
+        assertEquals(Optional.of(new BigDecimal("999")), doc.fieldMaxValue("/Root/quantity"));
     }
 
     @Test

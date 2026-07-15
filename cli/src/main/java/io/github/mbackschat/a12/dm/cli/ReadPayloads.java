@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.cli;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Map;
 
@@ -102,6 +104,20 @@ public final class ReadPayloads {
             imports.forEach(importsArr::add);
         }
         return data;
+    }
+
+    /**
+     * A kit config-block read-back ({@code ModelDocument.fieldConfigJson}/{@code typeDefinitionConfigJson})
+     * parsed into a merge-ready object node — the kits speak JSON text across the published boundary (Set W),
+     * and the read verbs re-join it to their envelope here. The blocks carry only text/int/boolean leaves,
+     * so the parse is lossless and the rendered envelope is byte-identical to the pre-Set-W node hand-off.
+     */
+    public static ObjectNode configNode(String configJson) {
+        try {
+            return (ObjectNode) MAPPER.readTree(configJson);
+        } catch (IOException e) {
+            throw new UncheckedIOException("unparseable config block from the kit read-back: " + configJson, e);
+        }
     }
 
     /** Echo a per-locale/per-name metadata map under {@code key}, only when it carries something. */

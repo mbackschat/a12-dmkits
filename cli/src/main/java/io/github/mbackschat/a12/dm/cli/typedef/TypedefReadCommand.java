@@ -81,7 +81,7 @@ final class TypedefReadCommand extends BaseCommand {
                 // pattern/length, enum values, date/time formats) in the same block shape `typedef add`
                 // accepts — so a constraint on a reusable type is verifiable through `read` alone (read-gap
                 // fix B, the typedef sibling), never the raw model JSON
-                doc.typeDefinitionConfig(id).ifPresent(data::setAll);
+                doc.typeDefinitionConfigJson(id).ifPresent(cfg -> data.setAll(ReadPayloads.configNode(cfg)));
                 ResultEnvelope env = ResultEnvelope.read("typedef", "read",
                         "read type definition " + id, true, List.of(), data);
                 out().print(env.toJsonString());

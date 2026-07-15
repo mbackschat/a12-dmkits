@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.field;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.ReadPayloads;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 
 import java.io.IOException;
@@ -115,13 +116,14 @@ final class FieldReadCommand extends BaseCommand {
             // enum values, date/time formats) in the SAME block shape `field add` accepts — so an agent
             // confirms a constraint it set actually persisted, through this read alone, never the raw model
             // JSON (probe 05/07 number, 02 string: the missing read-back drove agents to inspect the file).
-            doc.fieldConfig(fieldPath).ifPresent(data::setAll);
+            doc.fieldConfigJson(fieldPath).ifPresent(cfg -> data.setAll(ReadPayloads.configNode(cfg)));
             // for a TYPEDEF-typed field the config above is just the `{typedef: <id>}` pointer; ALSO resolve
             // the type definition's own config so a constraint on the reusable type (scale/unit/pattern/…)
             // is confirmable through THIS read alone (probe 10: field read showed only the typedef name, not
             // the resolved scale — forcing a cross-read of `typedef read`/`model describe`).
             if (data.hasNonNull("typedef")) {
-                doc.typeDefinitionConfig(data.get("typedef").asText()).ifPresent(cfg -> data.set("resolvedType", cfg));
+                doc.typeDefinitionConfigJson(data.get("typedef").asText())
+                        .ifPresent(cfg -> data.set("resolvedType", ReadPayloads.configNode(cfg)));
             }
             ResultEnvelope env = ResultEnvelope.read("field", "read", "read " + fieldPath, true, List.of(), data);
             out().print(env.toJsonString());

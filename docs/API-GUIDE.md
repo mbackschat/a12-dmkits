@@ -771,10 +771,12 @@ doc.fieldType("/Subscription/Tier");   // Optional["EnumerationType"]  (raw kern
 doc.fieldKind("/Subscription/Tier");   // Optional["ENUMERATION"]  (clean ValueKind name; typedef → resolved underlying)
 doc.isRepeating("/Subscription/Addons"); // true
 doc.enumValues("/Subscription/Tier");  // [FREE, PRO, ENTERPRISE]   typed read-back of the enum values
-// constraint read-backs (peers of enumValues) — no raw fieldConfig dig, the schema-block quirks stay hidden:
+// constraint read-backs (peers of enumValues) — no raw config-block dig, the schema-block quirks stay hidden:
 doc.fieldPattern("/Subscription/Code");          // Optional["[A-Z]+"]   (+ fieldMinLength/fieldMaxLength : OptionalInt)
 doc.fieldMaxFractionalDigits("/Subscription/Fee"); // OptionalInt[2]     (+ fieldMinValue/fieldMaxValue : BigDecimal)
 doc.typeDefinitionMaxLength("ShortText");        // OptionalInt[…]       the same peers for a leaf typeDefinition
+doc.fieldConfigJson("/Subscription/Fee");        // Optional[{"number":{…}}]  the WHOLE per-kind block as JSON text
+                                                 // (the `field read` render source; typeDefinitionConfigJson for typedefs)
 doc.toJson();                          // content-equal to the source, idempotent, still kernel-valid
 ```
 *Locked by `modelkit.ModelDocumentTest`.*

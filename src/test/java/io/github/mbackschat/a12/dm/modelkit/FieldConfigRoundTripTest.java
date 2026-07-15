@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.modelkit;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -9,10 +9,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * F4 — {@link DocumentModelDraft#readTypeConfig} (the inverse of {@code writeTypeConfig}, surfaced by {@code
- * field read}/{@code typedef read} via {@link ModelDocument#fieldConfig}) must report every slot it wrote, so a
- * config an agent SET round-trips on read. Found 2026-07-10 (six-component review): three written slots were
- * dropped — string {@code noValueValidation}, enum {@code categories}, and the enum invalid-value {@code
- * errorMessage} — while the Javadoc promised a round-trip. This locks all three back into the read block.
+ * field read}/{@code typedef read} via {@link ModelDocument#fieldConfigJson}) must report every slot it wrote,
+ * so a config an agent SET round-trips on read. Found 2026-07-10 (six-component review): three written slots
+ * were dropped — string {@code noValueValidation}, enum {@code categories}, and the enum invalid-value {@code
+ * errorMessage} — while the Javadoc promised a round-trip. This locks all three back into the read block,
+ * through the Jackson-free JSON-text read-back the CLI consumes (Set W).
  */
 class FieldConfigRoundTripTest {
 
@@ -28,16 +29,26 @@ class FieldConfigRoundTripTest {
         return ModelDocument.read(json);
     }
 
+    /** The field's config block, read back as JSON text (the public seam) and parsed for the assertions. */
+    private static JsonNode config(String fieldPath) {
+        String json = policy().fieldConfigJson(fieldPath).orElseThrow();
+        try {
+            return new ObjectMapper().readTree(json);
+        } catch (Exception e) {
+            throw new IllegalStateException("unparseable config block: " + json, e);
+        }
+    }
+
     @Test
     void stringNoValueValidationRoundTripsOnRead() {
-        ObjectNode blob = policy().fieldConfig("/Policy/Blob").orElseThrow();
+        JsonNode blob = config("/Policy/Blob");
         assertTrue(blob.path("string").path("noValueValidation").asBoolean(false),
                 () -> "the written string noValueValidation must round-trip on read: " + blob);
     }
 
     @Test
     void enumCategoriesRoundTripOnRead() {
-        ObjectNode coverage = policy().fieldConfig("/Policy/Coverage").orElseThrow();
+        JsonNode coverage = config("/Policy/Coverage");
         JsonNode categories = coverage.path("enum").path("categories");
         assertTrue(categories.isArray() && !categories.isEmpty(),
                 () -> "the written enum categories must round-trip on read: " + coverage);
@@ -47,7 +58,7 @@ class FieldConfigRoundTripTest {
 
     @Test
     void enumInvalidValueMessageRoundTripsOnRead() {
-        ObjectNode coverage = policy().fieldConfig("/Policy/Coverage").orElseThrow();
+        JsonNode coverage = config("/Policy/Coverage");
         assertEquals("Unknown coverage level.", coverage.path("enum").path("errorMessages").path("en_US").asText(),
                 () -> "the written enum invalid-value message must round-trip on read: " + coverage);
     }

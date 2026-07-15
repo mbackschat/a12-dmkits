@@ -564,7 +564,7 @@ final class ApplyCommand extends BaseCommand {
                 data.put("kind", kind);
                 // surface the per-kind config so a read INSIDE a session verifies a staged constraint the
                 // same way (the read-gap fix is consistent across both paths)
-                doc.fieldConfig(path).ifPresent(data::setAll);
+                doc.fieldConfigJson(path).ifPresent(cfg -> data.setAll(ReadPayloads.configNode(cfg)));
                 yield readEnv(which, data, session);
             }
             case GROUP_READ -> {

@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
+import java.util.OptionalInt;
 
 import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.assertKernelAccepts;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,7 +29,7 @@ class MappingProfileShapeTest {
         assertKernelAccepts(imported.dmJson());
         ModelDocument doc = ModelDocument.read(imported.dmJson());
         assertEquals(Optional.of("NUMBER"), doc.fieldKind("/Root/price"), "best-effort default imports the number");
-        assertEquals(2, doc.fieldConfig("/Root/price").orElseThrow().findValue("maxFractionalDigits").asInt(),
+        assertEquals(OptionalInt.of(2), doc.fieldMaxFractionalDigits("/Root/price"),
                 "at the default scale 2 (the guess is flagged in the report)");
     }
 

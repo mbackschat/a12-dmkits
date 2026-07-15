@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.modelkit.Requiredness;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
+import java.util.OptionalInt;
 
 import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.assertKernelAccepts;
 import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.normalize;
@@ -79,7 +80,7 @@ class FlatObjectRoundTripTest {
 
         ModelDocument doc = ModelDocument.read(imported.dmJson());
         assertEquals(Optional.of("NUMBER"), doc.fieldKind("/Root/unitPrice"), "best-effort imports it");
-        assertEquals(2, doc.fieldConfig("/Root/unitPrice").orElseThrow().findValue("maxFractionalDigits").asInt());
+        assertEquals(OptionalInt.of(2), doc.fieldMaxFractionalDigits("/Root/unitPrice"));
         assertTrue(imported.report().diagnostics().stream().anyMatch(d -> d.contains("scale")),
                 () -> "the guessed scale is flagged, not silent: " + imported.report().diagnostics());
     }
