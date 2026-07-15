@@ -34,6 +34,24 @@ class ComputationFuzzDiffTest {
         }
     }
 
+    // The STRING-concat chains (empty-result store boundary, IG69/IF123): often-empty operands + rare
+    // literals make all-empty final concats — the shape the numeric chains can never produce — routine.
+    @Test
+    fun stringConcatChainsAgreeWithKernel() {
+        val failures = buildList {
+            for (m in 0 until MODELS) {
+                val scenario = ComputationFuzz.stringModel(m)
+                for (d in 0 until DOCS) {
+                    FuzzDiagnostics.computeDivergence(scenario, d)?.let { add("${scenario.name} :: $it") }
+                }
+            }
+        }
+        assertTrue(failures.isEmpty()) {
+            "string-concat fuzz: interpreter diverged from the kernel on ${failures.size} (model, doc) pairs:\n" +
+                failures.take(15).joinToString("\n")
+        }
+    }
+
     private companion object {
         const val MODELS = 40
         const val DOCS = 5

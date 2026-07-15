@@ -91,4 +91,69 @@ object ComputationFuzz {
     /** One operand: a field reference `[Name]` (~70%) or a small constant 1..5 (~30%). */
     private fun operand(avail: List<String>, rnd: Random): String =
         if (rnd.nextDouble() < 0.3) (1 + rnd.nextInt(5)).toString() else "[${avail[rnd.nextInt(avail.size)]}]"
+
+    /**
+     * Build a random STRING-CONCATENATION chain model for [modelSeed] — the **empty-result store-boundary
+     * net** (IG69/IF123). The numeric chains above can never produce an empty rendered result (empty-as-0
+     * → `"0"`), which is exactly why the final-empty-String store divergence survived every fuzz sweep. This
+     * family generates chains of string concats where base fields are empty OFTEN (~40%) and literals are
+     * RARE (~15%), so all-operand-empty concats — a final `""` the store must convert to the kernel's
+     * no-value decision — arise constantly; computed targets are pre-seeded stale (~25%), so both delta
+     * shapes (input-filled → CLEARED; absent → silence) and the cascade over a cleared string dependency
+     * are exercised.
+     */
+    fun stringModel(modelSeed: Int): PerfScenario {
+        val rnd = Random(modelSeed.toLong())
+        val baseCount = rnd.nextInt(2, 5)        // 2..4 base inputs
+        val compCount = rnd.nextInt(3, 7)        // 3..6 chained computed fields
+        val baseNames = (0 until baseCount).map { "B$it" }
+        val compNames = (0 until compCount).map { "S$it" }
+        val ops = (0 until compCount).map { i -> concatExpression(i, baseNames, rnd) }
+
+        val structureJson = DocumentModelDraft.named("labels").locale("en_US")
+            .rootGroup("Calc", Consumer { g ->
+                (baseNames + compNames).forEach { s -> g.stringField(s, Consumer {}) }
+            })
+            .build().toJson()
+        val kernelModel = compNames.indices.fold(structureJson) { m, i ->
+            RuntimeLaws.withComputation(m, GROUP, "Comp_S$i", "../S$i", ops[i])
+        }
+
+        val fields = (baseNames + compNames).map { FieldDef("$GROUP/$it", Kind.STRING) }
+        val interpModel = ModelDef(
+            fields, emptyList(),
+            computations = compNames.indices.map { i -> ComputationDef("$GROUP/S$i", GROUP, ops[i]) },
+        )
+        val gen = SeedGenerator(interpModel)
+        val computed = compNames.map { "$GROUP/$it" }.toSet()
+        // Base fields: a short token (or empty ~40% — the all-empty-concat trigger). Computed fields: usually
+        // left empty, pre-seeded STALE ~25% (a kernel clear of an input-filled target is a reported delta).
+        val values = ValueStrategy { f, _, r ->
+            when {
+                f.path in computed -> if (r.nextDouble() < 0.25) "STALE" else null
+                r.nextDouble() < 0.4 -> null
+                else -> "V${r.nextInt(0, 50)}"
+            }
+        }
+        return PerfScenario("strfuzz#$modelSeed b=$baseCount s=$compCount", kernelModel, interpModel, PerfOp.COMPUTE) {
+            sink, _, variant -> gen.populate(sink, seed = variant.toLong(), rowsOf = { _, _, _ -> 0 }, value = values)
+        }
+    }
+
+    /**
+     * The operation for `S{i}`: a concat chain `op0 + op1 [+ op2]` over the base string fields and the
+     * EARLIER computed fields `S0..S{i-1}` (acyclic; for `i>=1` the first operand is forced to `S{i-1}` so
+     * the cascade chain is never broken). Literals are rare so the all-empty final result stays reachable.
+     */
+    private fun concatExpression(i: Int, baseNames: List<String>, rnd: Random): String {
+        val avail = baseNames + (0 until i).map { "S$it" }
+        val parts = mutableListOf<String>()
+        parts += if (i >= 1) "[S${i - 1}]" else concatOperand(avail, rnd)
+        repeat(1 + rnd.nextInt(2)) { parts += "+ ${concatOperand(avail, rnd)}" }
+        return "{ " + parts.joinToString(" ") + " }"
+    }
+
+    /** One concat operand: a field reference `[Name]` (~85%) or a short string literal (~15%). */
+    private fun concatOperand(avail: List<String>, rnd: Random): String =
+        if (rnd.nextDouble() < 0.15) "\"X${1 + rnd.nextInt(5)}\"" else "[${avail[rnd.nextInt(avail.size)]}]"
 }

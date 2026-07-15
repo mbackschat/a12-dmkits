@@ -125,13 +125,14 @@ internal class ComputationEngine(
                     val v = evalComputation(parsed, interp)
                     // ERRORED: poison the target + do NOT overlay — a dependent's READ of it must poison, not read
                     // the bad value. A resolved VALUE overlays (dependents read the computed result) and DECIDES the
-                    // cell. An EMPTY (Unknown) is a no-op (IF87): recorded as a tentative clear (dependents read it
-                    // EMPTY, IF77) but NOT decided, so a later computation for the SAME cell can still win.
+                    // cell. A CLEARED — an EMPTY (Unknown) result, or a final empty TEXT (IF123: the kernel's
+                    // no-value store decision) — is a no-op (IF87): recorded as a tentative clear (dependents read
+                    // it EMPTY, IF77) but NOT decided, so a later computation for the SAME cell can still win.
                     toComputed(comp, v, targetKey.second).also { c ->
-                        when {
-                            c.outcome == ComputeOutcome.ERRORED -> { poisoned += targetKey; cleared -= targetKey; decided += targetKey }
-                            v !is Val.Unknown -> { overlay[targetKey] = v; cleared -= targetKey; decided += targetKey }
-                            else -> cleared += targetKey
+                        when (c.outcome) {
+                            ComputeOutcome.ERRORED -> { poisoned += targetKey; cleared -= targetKey; decided += targetKey }
+                            ComputeOutcome.VALUE -> { overlay[targetKey] = v; cleared -= targetKey; decided += targetKey }
+                            ComputeOutcome.CLEARED -> cleared += targetKey
                         }
                     }
                 } catch (p: PoisonedReadException) {
@@ -237,7 +238,12 @@ internal class ComputationEngine(
                 if (!stored.fits) return Computed(comp.targetPath, ComputeOutcome.ERRORED, stored.rendered, reps)
                 stored.rendered
             }
+            // A final EMPTY text is NO computed value (IF123) — the kernel's second root-store decision
+            // (`CalculationController.handleBerechnetenWert(VkString…)`: `!hasValue()` → "do like no calculation
+            // was done"), taken BEFORE the format check (an empty result is never checked, so never ERRORED).
+            // Same decision as a bare empty copy; a poisoned/ERRORED result never reaches this arm.
             is Val.Txt -> renderScalarValue(v.v, comp.targetPath)
+                .ifEmpty { return Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps) }
             is Val.Bool -> v.v.toString()
             is Val.Range -> renderRange(v, comp.targetPath)
             is Val.Unknown -> return Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps)
