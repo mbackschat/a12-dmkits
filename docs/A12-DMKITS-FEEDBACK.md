@@ -16,6 +16,8 @@
 
 **Triage (master, 2026-07-15): VERIFIED + ACCEPTED.** The stale line is `ExprEval.kt:485` ("an empty/absent (Unknown) operand → Unknown") directly above the `FunctionOp.LENGTH` arm returning `Val.Num(DEC_ZERO)` for the empty-check-relevant case; the nearby `emptyCheckRelevant` KDoc (l.644–650) is already correct. Trivial comment fix → Set Y.
 
+**Disposition (Set Y, 2026-07-15): FIXED.** The `FunctionOp.LENGTH` comment now states: check-relevant empty String → 0 (the kernel's `laenge` grow-only fill, IF73); malformed / wrong-kind / non-evaluable → Unknown — an operator-specific exception to direct String comparison, kept local. Unit wording aligned to UTF-16 code units (F2). Landing revision: the Set Y slice-3 commit.
+
 ### F2 — Name the `Length` unit precisely in public descriptions
 
 **Finding:** [`LengthOf.java`](../rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/LengthOf.java) and the [`operators.json`](../rulekit/src/main/resources/catalog/operators.json) catalog call the result a "character length." a12-dmkits' interpreter account uses UTF-16 code units, as recorded in [`KERNEL-FINDINGS.md`](KERNEL-FINDINGS.md) and locked by the multiplatform [`LengthUnicodeCountTest.kt`](../interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/LengthUnicodeCountTest.kt). The kernel differential [`AbsLengthDiffTest.kt`](../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/AbsLengthDiffTest.kt) anchors `Length` behavior but does not by itself establish a supplementary-plane Unicode separator; the operator-sensitive evidence retained here is ASCII-only.
@@ -26,6 +28,8 @@
 
 **Triage (master, 2026-07-15): VERIFIED + ACCEPTED.** "character length" confirmed in `LengthOf.java:3` and the catalog `Length.meaning`. Per the placement rule the operator fact goes in the **catalog** (N7-validated), the Javadoc follows it. Heed the caution: a supplementary-plane kernel differential is the only thing that would let us say "kernel-confirmed" — until then, wording claims the a12-dmkits contract only. → Set Y.
 
+**Disposition (Set Y, 2026-07-15): FIXED.** Catalog `Length.meaning` → "The UTF-16 code-unit length of a string field's value." plus a new SURPRISE gotcha naming the unit split (code units ≠ code points ≠ grapheme clusters; a supplementary-plane char counts 2) and scoping the claim: "the a12-dmkits contract, locked multiplatform; kernel correspondence is verified on BMP cases" — no supplementary-plane kernel confirmation asserted. `LengthOf.java` Javadoc follows the catalog; the `validExample` note says "UTF-16 code units". Catalog guards green (`rulekit.catalog.*`, incl. the kernel-executed examples). Landing revision: the Set Y slice-3 commit.
+
 ### F3 — Narrow or complete the "Kernel tri-checked" claim
 
 **Finding:** [`EmptyOperandFiringDiffTest.kt`](../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/EmptyOperandFiringDiffTest.kt) labels the `Length(empty) >= 0` polarity witness "Kernel tri-checked," but its helper compares Groovy-dynamic kernel output with the a12-dmkits interpreter; that test does not execute the Java-static strategy.
@@ -35,6 +39,8 @@
 **Acceptance check:** The test's prose names exactly the executed engines, and a deliberately changed static result would fail if "tri-checked" remains.
 
 **Triage (master, 2026-07-15): VERIFIED + ACCEPTED.** The claim is at l.86. Prefer their stronger option: add the Java-static leg (rule #1 demands BOTH strategies; this witness is exactly a strategy-divergence-prone polarity case). → Set Y.
+
+**Disposition (Set Y, 2026-07-15): FIXED — the stronger option.** `agreePolarity` gained the java-static leg (`kernelJavaEngine(model).messages(...)`, polarity compared groovy-dynamic vs java-static before the interpreter compare), so EVERY polarity witness in the file is now genuinely tri-checked and the l.86 comment reads "Tri-checked: groovy-dynamic == java-static == interpreter". All 23 tests green — the static leg agrees throughout. Landing revision: the Set Y slice-3 commit.
 
 ## Recommended corpus and capture improvements
 
@@ -98,6 +104,8 @@
 
 **Triage (master, 2026-07-15): VERIFIED + ACCEPTED — an iron-rule violation on our side.** The stale 2026-06-05 probe-era claim ("Bare names also resolve *upward*… no `../` needed") sits in the relative-path-forms supplement (~l.1766) and contradicts the 2026-07-11 source-backed §10 finding (~l.1226, `CheckIdNameRefImpl` order, IF119). "A contradicted note is updated, never left stale" — supersede in place with a pointer. → Set Y.
 
+**Disposition (Set Y, 2026-07-15): FIXED — re-probed first, then superseded in place, plus two surfaces the sweep found.** The June-5 shape re-probed on exactly its model (`[Tier]` from a rule on `/Subscription/Addons`): flag-on → accepted, flag-off → `MVK_INVALID_ENTITY` — the "ancestor success" was the `fieldRefByShortNameAllowed` unique-short-name fallback (modelkit drafts default it ON; the kernel default is off), locked as two new `validate.laws.PathLawsTest` arms. The relative-path-forms supplement now carries a visible SUPERSEDED correction naming the §10/IF119 mechanism + the flag precondition; the acceptance-check sweep also found and fixed the claim in `skill/SKILL.md` ("bare name" bullet — every replacement claim executed through the live binary per the skill-edit #1 rule: bare-unique accepted, ambiguous `MVK_FIELDNAME_NOT_UNIQUE`, `../Tier` accepted; plugin copies re-synced) and annotated the two 2026-06-05 `eval/RESULTS.md` entries with supersession notes (the dated record itself stays). Landing revision: the Set Y slice-3 commit.
+
 ### F10 — Treat a final empty String computation as no stored value
 
 **Finding:** At a12-dmkits revision `699e8619`, the interpreter correctly lets a clean empty String field contribute `""` inside concatenation, but it then reports the resulting final empty text as `VALUE ""`. Kernel 30.8.1 applies a second root-store decision: a final empty String is no computed value. The retained [String-computation receipt](../../a12-kernel-lean/evidence/kernel-30.8.1/captures/string-computation-2026-07-15.json) records both kernel strategies agreeing and the already kernel-granularity-projected interpreter disagreeing in exactly three cases: a stale target becomes `CLEARED`, while an absent target remains silent in both a content-bearing and an otherwise empty row. The nonempty control `[Source] + "-X"` still produces `VALUE "-X"`, so the problem is not empty operand substitution; it is the final String store boundary.
@@ -119,6 +127,8 @@
 **Acceptance check:** Public KDoc matches every constructor path; a String `maxLength` violation is available as an `ERRORED` result containing both attempted value and cause; the same invalid value is retained for absent, stale, and equal prior targets; and a deliberate attempted-value or cause mutation fails the rich replay. Any unchanged compact `pointer|ERRORED` route explicitly documents that it cannot support attempted-value or cause correspondence claims.
 
 **Triage (master, 2026-07-15): VERIFIED + ACCEPTED, split in two.** (a) The KDoc corrections (`Computed.value`, `toComputed`) are stale-comment fixes → Set Y. (b) The rich result/signature surface is a conformance-corpus design item riding the same machinery as F5/F7 → Set Z.
+
+**Disposition for (a) (Set Y, 2026-07-15): FIXED.** `Computed`/`ComputeOutcome` KDoc now states `value` is present for BOTH `VALUE` (the computed value) and `ERRORED` (the ATTEMPTED rendered value — the kernel stores it and flags the instance); `toComputed`'s KDoc names all three outcomes incl. the ERRORED-retains-value branch and the IF123 empty-text clear. Matches every constructor path (VALUE/ERRORED carry a value; CLEARED — Unknown, empty-text, poison, invalid-index — never does). (b) F11b rides Set Z, untouched. Landing revision: the Set Y slice-3 commit.
 
 ### F12 — Probe CRLF normalization before String target-length checks
 

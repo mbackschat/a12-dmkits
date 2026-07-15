@@ -51,6 +51,9 @@ class EmptyOperandFiringDiffTest {
         return k
     }
 
+    /** TRI-checked polarity: groovy-dynamic == java-static == interpreter (the java-static leg makes the
+     *  "Kernel tri-checked" claim below true — a strategy-divergence-prone polarity witness needs BOTH
+     *  kernel strategies, feedback F3). */
     private fun agreePolarity(errRel: String, code: String, cond: String,
                               filled: Map<String, String> = emptyMap(), empty: List<String> = emptyList()): String? {
         val model = RuntimeLaws.withRule(order, "/Order", "R_$code", errRel, code, cond)
@@ -58,6 +61,9 @@ class EmptyOperandFiringDiffTest {
         filled.forEach { (p, v) -> kDoc.field(p, v, 1, 1) }
         empty.forEach { p -> kDoc.emptyField(p, 1, 1) }
         val kernel = RuntimeLaws.typeOf(model, code, kDoc).map { it.name }.orElse(null)
+        val engine = RuntimeLaws.kernelJavaEngine(model)
+        val javaStatic = engine.messages(engine.instance(kDoc)).firstOrNull { it.code() == code }?.type()?.name
+        assertEquals(kernel, javaStatic, "$cond — polarity groovy-dynamic=$kernel java-static=$javaStatic")
         val def = ModelLoader.load(model)
         val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
             .field(CN, "Acme", 1, 1)
@@ -83,7 +89,7 @@ class EmptyOperandFiringDiffTest {
     /** `Length` is GROW-ONLY (`laenge`: `kannKleiner=false`), so a fired `Length(empty) >= 0` (0 ≥ 0, always
      *  fires) is a VALUE error — filling only lengthens, it cannot clear a `>=` — NOT OMISSION as a symmetric
      *  fill would give. This is the case that DISTINGUISHES grow-only from symmetric (the `< 5` direction is
-     *  OMISSION either way). Kernel tri-checked. */
+     *  OMISSION either way). Tri-checked: groovy-dynamic == java-static == interpreter ([agreePolarity]). */
     @Test fun lengthEmptyGreaterEqualPolarityValue() =
         assertEquals("VALUE_ERROR", agreePolarity("../ProductCode", "LNV", render(Dsl.length(m.str(PC)).ge(0)), empty = listOf(PC)))
 

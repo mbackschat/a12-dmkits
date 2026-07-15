@@ -71,7 +71,7 @@ So to enforce a requirement, write its **violation**:
 
 A condition is evaluated relative to the rule's **group** (its iteration scope — defaults to the error field's parent group).
 
-- **Bare name** = a field in the rule's scope **or an ancestor group** — the kernel searches *up* the hierarchy: `FieldNotFilled(MonthlyFee)`, and from a rule scoped to `/Subscription/Addons`, `[Tier]` resolves up to `/Subscription/Tier` (no `../` or absolute path needed for an ancestor's field).
+- **Bare name** = a field in the rule's **own scope**, else — when the name is **unique across the whole model** — that one field, wherever it sits (a model-config fallback, on in dmtool-created models). There is **no** upward search: from a rule scoped to `/Subscription/Addons`, `[Tier]` resolves to `/Subscription/Tier` because `Tier` is unique model-wide, not because it's an ancestor's field. A bare name that exists in **several** groups is rejected (`MVK_FIELDNAME_NOT_UNIQUE`) — write the parent navigation (`../Tier`) or the absolute path instead.
 - **Absolute path** for a field in a *different branch* (or just to be explicit): `[/Customer/Status]`.
 - **Brackets `[…]` mark a field used as a *value*** — a comparison operand: `[Quantity] > 0`, `[/Customer/Status] == "ACTIVE"`. **Anything inside a function/predicate/aggregate's parentheses is a BARE ref**, never bracketed: `FieldNotFilled(Quantity)`, `Sum(Items*/Amount)`, `DateRange(OrderDate, DeliveryDate)`, `StartOfDateRange(CoverageWindow)`. Bracketing a call's argument is a parse error, not extra safety.
 - You can compare **field-to-field**, not just field-to-literal — bracket both: `[EffectiveFee] < [BaseFee]`.

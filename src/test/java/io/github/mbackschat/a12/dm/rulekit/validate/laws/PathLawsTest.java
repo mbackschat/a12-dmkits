@@ -50,6 +50,30 @@ class PathLawsTest {
                 "MVK_FIELDNAME_NOT_UNIQUE");
     }
 
+    // The ANCESTOR-group shape behind the retired "bare names resolve upward" claim (feedback F9, the
+    // 2026-06-05 probe): a rule ON /Subscription/Addons referencing bare [Tier], a field of the PARENT group.
+    private static final String SUBSCRIPTION = DocumentModelDraft.named("subscription-ancestor").locale("en_US")
+            .rootGroup("Subscription", s -> s
+                    .field("Tier", FieldKind.STRING)
+                    .group("Addons", a -> a.field("MonthlyFee", FieldKind.STRING)))
+            .build().toJson();
+
+    @Test
+    void aBareAncestorFieldNameResolvesViaTheShortNameFallback() {
+        // What the June-5 probe actually observed: `Tier` is model-wide UNIQUE and the draft default sets
+        // `fieldRefByShortNameAllowed` on → the SHORT-NAME fallback resolves it (not an ancestor walk).
+        KernelLaws.acceptsModel(SUBSCRIPTION, "/Subscription/Addons", "../../Tier", "FieldFilled(Tier)");
+    }
+
+    @Test
+    void aBareAncestorFieldNameIsRejectedWithTheFlagOff_thereIsNoAncestorWalk() {
+        // The decisive arm: with the fallback off, the declaring-group candidate /Subscription/Addons/Tier
+        // misses and NOTHING walks the ancestors → MVK_INVALID_ENTITY. An ancestor field needs explicit
+        // `../` navigation or the flag-gated unique-short-name fallback (KERNEL-FINDINGS §10 / IF119).
+        KernelLaws.rejectsModel(ModelDocument.read(SUBSCRIPTION).setFieldRefByShortNameAllowed(false).toJson(),
+                "/Subscription/Addons", "../../Tier", "FieldFilled(Tier)", "MVK_INVALID_ENTITY");
+    }
+
     @Test
     void anOuterWildcardRequiresEveryRepeatableGroupBelowItToAlsoWildcard() {
         // outer * on Milestones but a plain (non-*) Tasks below it → rejected

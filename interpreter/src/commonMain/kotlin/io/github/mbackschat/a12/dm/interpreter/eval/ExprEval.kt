@@ -482,8 +482,11 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     FunctionOp.END_OF_DATE_RANGE -> (evalExpr(f.args[0]) as? Val.Range)?.let { Val.Txt(it.end) } ?: Val.Unknown
     // |x| — Abs over an expression, AbsValue over a field; a non-numeric/Unknown operand → Unknown.
     FunctionOp.ABS, FunctionOp.ABS_VALUE -> (evalExpr(f.args[0]) as? Val.Num)?.let { Val.Num(it.v.abs()) } ?: Val.Unknown
-    // The character count of a string field's value; an empty/absent (Unknown) operand → Unknown.
-    FunctionOp.LENGTH -> if (emptyCheckRelevant(f.args[0])) Val.Num(DEC_ZERO)   // empty string → 0 (laenge, grow-only)
+    // The UTF-16 code-unit count of a string field's value. A CHECK-RELEVANT empty/absent operand → 0 (the
+    // kernel's `laenge` fills an unspecified string as "", grow-only — IF73); a malformed, wrong-kind, or
+    // otherwise non-evaluable operand → Unknown (suppressed). An operator-specific exception to the direct
+    // String comparison (which an empty operand suppresses).
+    FunctionOp.LENGTH -> if (emptyCheckRelevant(f.args[0])) Val.Num(DEC_ZERO)
         else (evalExpr(f.args[0]) as? Val.Txt)?.let { Val.Num(dec(it.v.length)) } ?: Val.Unknown
     // Rounding — `Round*([expr], n)` to n decimal places; the `*Value(field)` siblings to an integer (0).
     FunctionOp.ROUND_DOWN -> roundExpr(f.args, RoundMode.FLOOR)

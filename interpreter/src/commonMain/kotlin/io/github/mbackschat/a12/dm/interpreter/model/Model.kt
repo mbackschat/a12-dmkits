@@ -553,15 +553,19 @@ data class RuleResult(
 
 /**
  * One computed-field outcome of a [DmInterpreter.compute] run — the kernel-free twin of the kernel's
- * computed-field buckets: VALUE (a concrete value, in [value]) / CLEARED (computed nothing) / ERRORED
- * (an operand/computation error).
+ * computed-field buckets: VALUE (a concrete value, in [Computed.value]) / CLEARED (computed nothing) /
+ * ERRORED (the computed result is formally invalid for the target field — [Computed.value] retains the
+ * ATTEMPTED rendered value, exactly as the kernel stores an errored value and flags it, IF34).
  */
 enum class ComputeOutcome { VALUE, CLEARED, ERRORED }
 
 /**
- * The [outcome] of computing one field at [path], with its [value] when [ComputeOutcome.VALUE], and the
- * target cell's repetition [indices] (one 1-based index per path part, the field included) — so a per-row
- * computed field (one outcome per repeated row) carries its exact row identity. Render the full pointer with
+ * The [outcome] of computing one field at [path], with its [value], and the target cell's repetition
+ * [indices] (one 1-based index per path part, the field included) — so a per-row computed field (one outcome
+ * per repeated row) carries its exact row identity. [value] is present for **both** a [ComputeOutcome.VALUE]
+ * (the computed value) **and** a [ComputeOutcome.ERRORED] (the ATTEMPTED rendered value — the kernel stores
+ * it and flags the instance, so the interpreter retains it too; feedback F11a); a [ComputeOutcome.CLEARED]
+ * carries none. Render the full pointer with
  * [io.github.mbackschat.a12.dm.interpreter.eval.formatPointer]`(path, indices)` — this is the per-row identity
  * the conformance corpus records (CONFORMANCE-CORPUS-SPEC §7), superseding the historical index-strip. [indices]
  * defaults empty for a hand-built [Computed] (a non-repeatable target renders bare).

@@ -376,6 +376,8 @@ First full sweep (now **T1–T8**, T8 added) after this session's large converte
 
 ### 2026-06-05 19:12 CEST — targeted T1 re-run confirms the judge path-resolution fix (opus, k=2)
 
+> **Superseded mechanism (2026-07-15, F9):** the "resolve up ancestor groups" reading below was wrong — there is **no ancestor walk**. Bare `[Tier]` resolved via the flag-gated model-wide **unique-short-name fallback** (`fieldRefByShortNameAllowed`, on in dmtool-created models); re-probed with the flag off it is `MVK_INVALID_ENTITY`. KERNEL-FINDINGS §10 / IF119; locked `validate.laws.PathLawsTest`. The T1 verdicts stand (bare `[Tier]` IS valid on these models — only the *why* was wrong).
+
 After fixing the judge prompt (it now knows bare field names resolve **up** ancestor groups — GAP 1 from the 19:06 run), a fresh **T1-only** re-run (`w8700u6m0`, 5 agents) flips **opus T1 → 2/2**. Both judges now resolve bare `[Tier]` to `/Subscription/Tier` and rule the candidates equivalent to the gold (*"the only difference is path notation … both denote the same field"*). Confirms the 19:06 T1 0/2 was a **judge false-negative**, not an authoring gap — opus authors T1 correctly from the self-describing CLI alone. (Did not re-judge sonnet's separate `FieldFilled(Name)` vs `GroupFilled(Addons)` guard divergence — that one is a real, subtle slip, left as-is.)
 
 ### 2026-06-05 19:06 CEST — full pass@k under the self-explaining CLI, bare-tool (opus + sonnet, k=2)
@@ -401,7 +403,7 @@ First run under the **new material boundary**: produce agents get ONLY the self-
 
 **GAPS / actions:**
 1. **Judge path-resolution bug (eval-design):** the judge doesn't know bare field names walk up ancestors → false-negatives (T1). Fix the judge prompt; a cheap T1 re-run should then flip toward ~2/2 (opus).
-2. **Kernel finding (new):** bare field names resolve against the rule's group **or an ancestor** (`[Tier]` from `/Subscription/Addons` → `/Subscription/Tier`, no `../` needed) — refines KERNEL-FINDINGS §paths. → documented + the skill's "bare = that scope" line corrected.
+2. **Kernel finding (new):** bare field names resolve against the rule's group **or an ancestor** (`[Tier]` from `/Subscription/Addons` → `/Subscription/Tier`, no `../` needed) — refines KERNEL-FINDINGS §paths. → documented + the skill's "bare = that scope" line corrected. *(Superseded 2026-07-15, F9: not an ancestor walk — the unique-short-name fallback; see the note atop the 19:12 entry.)*
 3. **Lint gap (minor):** `RK_UNGUARDED_NUMBER_COMPARISON` skips field-vs-aggregate, so T4's missing guard isn't nudged — a candidate lint extension.
 
 ### 2026-06-05 07:15 CEST — developer-path baseline probe (n=1, opus, worktree)
