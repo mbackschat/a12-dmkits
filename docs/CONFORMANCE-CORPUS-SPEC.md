@@ -306,3 +306,33 @@ The maintained command surface (`cli.CaptureTool` — ONE entry serving the Grad
 **Diffs.** `diff-packets` verifies both directories' receipt self-consistency, then reports added/removed/changed artifacts classified as `input` / `provenance` / `legality` / `observation` (the latter named per case + runner); `diff-reports` separates `policy-profile` drift from `qualification-result` drift (`DiffCommandsTest`). Both write `DIFF.json` + `RECEIPT.json` into a new caller-owned directory and never touch their inputs.
 
 **Corpus promotion is deliberately NOT a v1 command** — when a concrete corpus client justifies it, a corpus-specific promotion command must reverify packet + qualifying report, use an explicitly versioned rich-to-corpus projection, require separate human authorization, and emit the updated corpus receipt. Capture and verify refuse the corpus tree today.
+
+### 15f. Mutation sensitivity & the deferred map
+
+The proposal's §"Required tests and mutation sensitivity" list is implemented for the BOUNDARY by the committed harness [`adapter/capture-mutations/run-mutations.py`](../adapter/capture-mutations/run-mutations.py) (machine-checkable receipt: [`adapter/capture-mutations/mutation-receipt.json`](../adapter/capture-mutations/mutation-receipt.json), `capture-mutation-receipt-v1`): every mutation is applied → its PREDICTED narrow guard runs (a targeted JUnit class/method, the `verifyCapturePurity` lint, or the REAL command in `--development` mode) → the guard FIRES → the exact source bytes are restored (pre/post classified tree digests, proven equal) → the run finishes with the natural full capture gate green. Mutant packets are disposable and qualification-ineligible by construction.
+
+| proposal item | mutation | fired guard |
+|---|---|---|
+| illegal model reaching runtime | M01, M16 (gate inspects different bytes) | `LegalityGateTest` |
+| omitted kernel route / hidden cross-route divergence | M02 (+ artifact-level in `VerifierDivergenceTest`) | `VerifierDivergenceTest` |
+| errored attempted value / structured cause dropped (transport half) | M03 | `ErroredComputationObservationTest` |
+| absent vs present-empty collapsed | M04 | `AppliedStateDistinctionTest` |
+| deprecated/mutating application route | M05 | `KernelRouteObservationTest` |
+| interpreter disagreement blocking characterization / mislabeled confirmation | M06 (+ `VerifierDivergenceTest`'s artifact case) | `VerifierDivergenceTest` |
+| unavailable fidelity treated as equality | M07 | `VerifierDivergenceTest` |
+| the two kernel labels selecting one route | M08 | `RouteDistinctnessTest` |
+| failure serialized as successful-empty | M09 | `RunnersStatusTest` |
+| validation and capture deciding differently | M10 | `DecoderParityTest` |
+| state leaking across reordered/filtered runs | M11 | `ReorderEquivalenceTest` |
+| qualified capture before clean commit | M12 (the clean gate) | `CaptureCommandTest` |
+| second identical run differing | M13 | `CaptureDeterminismTest` |
+| output entering the committed corpus | M14 | `CaptureCommandTest` |
+| machine-specific value in generated metadata (inputs never falsely rejected) | M15 (+ real-command refusal step) | `CaptureCommandTest` + the LeakGuard refusal |
+| verifier mutating the packet | M17 | `VerifierTest` |
+| unknown version / in-place schema mutation | M18 + A06 | `CapabilitiesTest` / the decoder refusal |
+| kernel type crossing the DTO boundary | M19 | `verifyCapturePurity` |
+| development packet qualifying | M20 | `VerifierTest` |
+| packet/report member, digest, symlink, path drift | A01–A04 (real `verify` over mutated artifacts) | the integrity refusals |
+| expected-result member in a request | A05 (real `validate-scenarios`) | the no-oracle refusal |
+
+**Deferred to the external scenario run (the `string-direct-cascade-v1` set) — scenario-semantics, not boundary:** the accepted-equal all-clean/changed-subset split; the source-absent stale cascade (`"OLD-X"` vs `"-X"`); a rejected attempted value reaching the dependent computation; the SEMANTIC half of downstream cause reconstruction (M03 covers transport); the final qualified recapture from clean committed HEAD (the handback ritual — its clean-gate mechanics are M12). **Covered by an existing guard, no capture-side mutation:** the compact legacy corpus signature (`corpusReplayTest` — this program never touched that surface, byte-compatible by construction).

@@ -1,0 +1,395 @@
+{
+  "schema": "capture-mutation-receipt-v1",
+  "headRevision": "86eeafa770ab814783d06fc3d9e2f53f4204471c",
+  "cleanTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+  "mutations": [
+    {
+      "id": "M01-illegal-model-executed",
+      "description": "the legality gate stops gating: illegal models reach runtime execution",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/packet/PacketWriter.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.LegalityGateTest",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; LegalityGateTest > anIllegalModelIsCharacterizedNeverExecuted(Path) FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M02-route-divergence-ignored",
+      "description": "route confirmation stops reasoning about a cross-route divergence (hidden divergence)",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/policy/PolicyEngine.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.VerifierDivergenceTest.aCrossRouteSplitStopsConfirmationButCharacterizationRetainsIt",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; VerifierDivergenceTest > aCrossRouteSplitStopsConfirmationButCharacterizationRetainsIt(Path) FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M03-cause-dropped",
+      "description": "the errored instance's structured cause is dropped downstream",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/runner/kernel/KernelRouteSupport.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.ErroredComputationObservationTest.theErroredEntryRetainsTheAttemptedValueAndItsStructuredCause",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; ErroredComputationObservationTest > theErroredEntryRetainsTheAttemptedValueAndItsStructuredCause() FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M04-absent-empty-collapsed",
+      "description": "absent and present-empty applied states are collapsed",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/runner/kernel/KernelRouteSupport.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.AppliedStateDistinctionTest.theKernelRoutesKeepAbsentAndPresentEmptyDistinct",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; AppliedStateDistinctionTest > theKernelRoutesKeepAbsentAndPresentEmptyDistinct() FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M05-stale-application-route",
+      "description": "the applied state reads the INPUT document instead of applying the result to a fresh copy",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/runner/kernel/KernelRouteSupport.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.KernelRouteObservationTest.theAppliedStateProbesTheFreshCopyWithTypedValue",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; KernelRouteObservationTest > theAppliedStateProbesTheFreshCopyWithTypedValue() FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M06-characterization-blocks-on-disagreement",
+      "description": "characterization starts BLOCKING on a cross-route disagreement instead of retaining it",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/policy/PolicyEngine.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.VerifierDivergenceTest.aCrossRouteSplitStopsConfirmationButCharacterizationRetainsIt",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; VerifierDivergenceTest > aCrossRouteSplitStopsConfirmationButCharacterizationRetainsIt(Path) FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M07-unavailable-treated-as-equal",
+      "description": "an unavailable required interpreter channel is treated as semantic equality",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/policy/Projections.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.VerifierDivergenceTest.anUnavailableRequiredInterpreterChannelFailsConformanceClosed",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; VerifierDivergenceTest > anUnavailableRequiredInterpreterChannelFailsConformanceClosed(Path) FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M08-route-collapse",
+      "description": "the two kernel runner labels select the SAME execution route",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/runner/kernel/JavaStaticRunner.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.RouteDistinctnessTest",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; RouteDistinctnessTest > theTwoKernelRunnerNamesResolveToDistinctRoutes() FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M09-failure-as-successful-empty",
+      "description": "a runtime failure is serialized as a successful EMPTY observation",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/runner/Runners.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.RunnersStatusTest.aThrowMapsToTechnicalFailureWithSanitizedDetail",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; RunnersStatusTest > aThrowMapsToTechnicalFailureWithSanitizedDetail() FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M10-decoder-parity-broken",
+      "description": "standalone validation stops deciding (accepts everything) while capture still validates",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/cli/CaptureTool.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.DecoderParityTest",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; DecoderParityTest > validateScenariosAndCaptureDecideIdentically(Path) FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M11-order-dependent-state",
+      "description": "an execution-order-dependent value leaks into the observations (reorder/filtered runs disagree)",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/runner/kernel/KernelRouteSupport.java",
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/runner/kernel/KernelRouteSupport.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.ReorderEquivalenceTest",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; ReorderEquivalenceTest > reorderedAndFilteredRunsObserveIdentically() FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M12-clean-gate-removed",
+      "description": "default-mode capture stops requiring a clean committed checkout",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/packet/PacketWriter.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.CaptureCommandTest.defaultModeRefusesADirtyTreeNamingDevelopmentMode",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; CaptureCommandTest > defaultModeRefusesADirtyTreeNamingDevelopmentMode(Path) FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M13-nondeterministic-packet",
+      "description": "a volatile value enters the packet: a second identical run produces different bytes",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/packet/PacketWriter.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.CaptureDeterminismTest",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; CaptureDeterminismTest > doubleCaptureIsByteIdentical(Path) FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M14-corpus-write-allowed",
+      "description": "output may enter the committed corpus tree without promotion",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/packet/OutputDirs.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.CaptureCommandTest.refusesTheCommittedCorpusTree",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; CaptureCommandTest > refusesTheCommittedCorpusTree(Path) FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M15-metadata-leak",
+      "description": "a machine-specific absolute path enters generated metadata",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/packet/PacketWriter.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.CaptureCommandTest.captureWritesTheDirectoryShapedPacketAndPrintsTheReceiptDigest",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; CaptureCommandTest > captureWritesTheDirectoryShapedPacketAndPrintsTheReceiptDigest(Path) FAILED",
+      "realCommandStep": {
+        "command": "capture --development",
+        "refused": true,
+        "diagnostic": "metadata leak"
+      },
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M16-legality-inspects-different-bytes",
+      "description": "the legality checker consumes DIFFERENT bytes than the runtime executes",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/legality/LegalityGate.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.LegalityGateTest.anIllegalModelIsCharacterizedNeverExecuted",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; LegalityGateTest > anIllegalModelIsCharacterizedNeverExecuted(Path) FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M17-verifier-mutates-packet",
+      "description": "the verifier writes into the packet it consumes",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/policy/Verifier.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.VerifierTest.verificationNeverWritesIntoThePacket",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; VerifierTest > verificationNeverWritesIntoThePacket(Path) FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M18-schema-mutated-under-existing-id",
+      "description": "a projection/schema granularity changes IN PLACE under the existing capability id",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/dto/RunnerFidelity.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.CapabilitiesTest.capabilitiesOutputMatchesTheCommittedGolden",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; CapabilitiesTest > capabilitiesOutputMatchesTheCommittedGolden() FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M20-development-packet-eligible",
+      "description": "development/dirty packets become eligible for portable qualification",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/policy/PolicyEngine.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.VerifierTest.aDevelopmentPacketIsRejectedByEveryPortablePolicyBeforeComparison",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; VerifierTest > aDevelopmentPacketIsRejectedByEveryPortablePolicyBeforeComparison(Path) FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M19-kernel-type-crosses-dto-boundary",
+      "description": "a kernel type crosses into the neutral DTO boundary",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/dto/Pointers.java"
+      ],
+      "expectedGuard": ":adapter:verifyCapturePurity",
+      "guardFired": true,
+      "actualGuard": ":adapter:verifyCapturePurity FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "A01-stray-artifact",
+      "description": "artifact mutation \u2014 expect verify refusal (refuses unclassifiable artifact)",
+      "mutatedFiles": [
+        "<packet artifacts, restored>"
+      ],
+      "expectedGuard": "verify refusal: refuses unclassifiable artifact",
+      "guardFired": true,
+      "actualGuard": "refused",
+      "realCommandStep": {
+        "command": "verify",
+        "refused": true
+      },
+      "preTreeDigest": null,
+      "postTreeDigest": null,
+      "restoredExactBytes": true
+    },
+    {
+      "id": "A02-byte-drift",
+      "description": "artifact mutation \u2014 expect verify refusal (drifted)",
+      "mutatedFiles": [
+        "<packet artifacts, restored>"
+      ],
+      "expectedGuard": "verify refusal: drifted",
+      "guardFired": true,
+      "actualGuard": "refused",
+      "realCommandStep": {
+        "command": "verify",
+        "refused": true
+      },
+      "preTreeDigest": null,
+      "postTreeDigest": null,
+      "restoredExactBytes": true
+    },
+    {
+      "id": "A03-symlink",
+      "description": "artifact mutation \u2014 expect verify refusal (refuses symlink)",
+      "mutatedFiles": [
+        "<packet artifacts, restored>"
+      ],
+      "expectedGuard": "verify refusal: refuses symlink",
+      "guardFired": true,
+      "actualGuard": "refused",
+      "realCommandStep": {
+        "command": "verify",
+        "refused": true
+      },
+      "preTreeDigest": null,
+      "postTreeDigest": null,
+      "restoredExactBytes": true
+    },
+    {
+      "id": "A04-removed-artifact",
+      "description": "artifact mutation \u2014 expect verify refusal (drifted)",
+      "mutatedFiles": [
+        "<packet artifacts, restored>"
+      ],
+      "expectedGuard": "verify refusal: drifted",
+      "guardFired": true,
+      "actualGuard": "refused",
+      "realCommandStep": {
+        "command": "verify",
+        "refused": true
+      },
+      "preTreeDigest": null,
+      "postTreeDigest": null,
+      "restoredExactBytes": true
+    },
+    {
+      "id": "A05-expected-member",
+      "description": "request mutation \u2014 expect validate-scenarios refusal (never carries expected runner results)",
+      "mutatedFiles": [
+        "<scratch scenario>"
+      ],
+      "expectedGuard": "validate-scenarios refusal: never carries expected runner results",
+      "guardFired": true,
+      "actualGuard": "refused",
+      "realCommandStep": {
+        "command": "validate-scenarios",
+        "refused": true
+      },
+      "preTreeDigest": null,
+      "postTreeDigest": null,
+      "restoredExactBytes": true
+    },
+    {
+      "id": "A06-unknown-schema-version",
+      "description": "request mutation \u2014 expect validate-scenarios refusal (unknown versions are rejected)",
+      "mutatedFiles": [
+        "<scratch scenario>"
+      ],
+      "expectedGuard": "validate-scenarios refusal: unknown versions are rejected",
+      "guardFired": true,
+      "actualGuard": "refused",
+      "realCommandStep": {
+        "command": "validate-scenarios",
+        "refused": true
+      },
+      "preTreeDigest": null,
+      "postTreeDigest": null,
+      "restoredExactBytes": true
+    }
+  ],
+  "naturalGate": "BUILD SUCCESSFUL"
+}
