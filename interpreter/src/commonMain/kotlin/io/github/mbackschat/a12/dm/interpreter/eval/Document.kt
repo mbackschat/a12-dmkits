@@ -210,8 +210,16 @@ class Document @JvmOverloads constructor(
                 rows.getOrPut(p.path) { ArrayList() }.add(p.reps)
                 if (p.path in declaredReps) content.add(p)   // an instantiated REPEATABLE row is content (IF53)
             } else {
-                byKey.getOrPut(p.path) { HashMap() }.getOrPut(p.reps) { p }   // FIRST placement per (path,reps) wins
-                if (p.value != null) { valued.add(p); content.add(p) }
+                // CRLF→LF at EVAL ingestion (IF124): the kernel's formal-check stage feeds its eval caches the
+                // NORMALIZED value (`CheckCommand` → `FormalChecker.checkAndConvertFieldValue.normalizedValue()`
+                // = `RuntimeUtils.normalizeLinebreaks` — the `\r\n` pair only, a lone CR stays), so EVERY
+                // downstream read — the format measure, rule operands, compute operands, `$field.value$`
+                // interpolation — sees `\n`. Only this eval-side index normalizes; the consumer's raw
+                // [placements] stay untouched ([copy] reproduces them verbatim).
+                val q = if (p.value != null && p.value.contains("\r\n"))
+                    p.copy(value = p.value.replace("\r\n", "\n")) else p
+                byKey.getOrPut(q.path) { HashMap() }.getOrPut(q.reps) { q }   // FIRST placement per (path,reps) wins
+                if (q.value != null) { valued.add(q); content.add(q) }
             }
         }
         return Index(byKey, rows, valued, content, partsMemo)

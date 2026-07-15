@@ -161,8 +161,9 @@ enum class FormalErrorCode(val id: String) {
     NO_DECIMAL_SEPARATOR("zahlOhneDezimalTrenner"),
 
     /** A STRING containing a line break where the field does not permit them (the kernel's `stringMitNewline`).
-     *  **Default-forbidden** — fires unless the field declares `lineBreaksPermitted: true`. Checked as a format
-     *  concern, BEFORE the length checks (probe-verified). */
+     *  **Default-forbidden** — fires unless the field declares `lineBreaksPermitted: true` (an ENUM never can —
+     *  its kernel format definition hard-codes `lineBreakAllowed = false`). Checked as a format concern, the
+     *  FIRST value clause — before enum-domain, pattern, and the length checks (differentially pinned, IF124). */
     NEWLINE("stringMitNewline"),
 
     /** A NUMBER whose integer part carries a forbidden leading zero (`07`, `00`, `00.50`; the kernel's
@@ -305,12 +306,18 @@ private fun stringConstraintError(raw: String, c: FieldConstraints): FormalError
     // skipped. A kernel-valid such field carries no pattern/minLength and allows line breaks, so this effectively
     // means a declared maxLength is NOT enforced (IF29).
     if (c.noValueValidation) return null
-    // An ENUM field's only value check is value-domain membership (it has no pattern/length/newline checks).
+    // Line break (default-forbidden) FIRST — before enum-domain, pattern, and length (the kernel's
+    // `validiereFormat` clause order, IF124). The gate covers ENUM fields too: the kernel's enum format
+    // definition hard-codes `lineBreakAllowed = false`, so a break-carrying out-of-domain value is the
+    // NEWLINE, never `stringFalschesMuster` (differentially pinned, both strategies).
+    if (!c.lineBreaksPermitted && (raw.contains('\n') || raw.contains('\r'))) return FormalErrorCode.NEWLINE
+    // An ENUM field's remaining value check is value-domain membership (it has no pattern/length checks).
     if (c.enumValues.isNotEmpty()) {
         return if (raw !in c.enumValues) FormalErrorCode.PATTERN else null   // out-of-domain → stringFalschesMuster
     }
-    // A plain STRING: line break (default-forbidden, BEFORE length — probe-verified) → pattern → length.
-    if (!c.lineBreaksPermitted && (raw.contains('\n') || raw.contains('\r'))) return FormalErrorCode.NEWLINE
+    // A plain STRING: pattern → length. [raw] arrives CRLF-normalized (the Document's eval-ingestion
+    // normalization, IF124), so a permitted "\r\n" measures ONE unit here — exactly the kernel, which
+    // normalizes inside `validiereFormat` before these clauses.
     if (c.patternRegex != null && !c.patternRegex.matches(raw)) return FormalErrorCode.PATTERN
     if (c.minLength != null && raw.length < c.minLength) return FormalErrorCode.STRING_TOO_SHORT
     if (c.maxLength != null && raw.length > c.maxLength) return FormalErrorCode.STRING_TOO_LONG

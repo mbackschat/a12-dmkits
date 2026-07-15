@@ -292,6 +292,17 @@ The constraints are declared on the field type (kernel `IStringType` / `INumberT
 
 This is the same class as §94/§98 (format-error suppression) — only the trigger differs (a declared constraint / kernel default vs raw well-formedness). The **interpreter now models this dimension** (the per-cell family + the two defaults) — INTERPRETER-FINDINGS IF20, differential-locked by `adapter.laws.FieldConstraintFormalDiffTest`.
 
+## §3 supplement — CRLF is normalized to LF at EVAL INGESTION — the format measure, rule reads, and compute reads all see `\n` (source + tri-differential, both strategies, 2026-07-15; feedback F12 → IG70 → IF124)
+
+> Fold: folded → §3.
+
+One normalization, `RuntimeUtils.normalizeLinebreaks` = replace the `"\r\n"` PAIR with `"\n"` (a **lone CR stays**), applied at two source loci with one observable effect — *every evaluation-side read of a valid string value sees the normalized text*:
+
+- **Inside the String format check** (`FormatDefinitionString.validiereFormat`), the clause order is: `noValueValidation` → full-check gate → **line-break permission on the RAW text** (`stringMitNewline`; the gate applies to ENUM fields too — the enum format-definition constructor hard-codes `lineBreakAllowed = false` — so a break-carrying out-of-domain value is the NEWLINE, never `stringFalschesMuster`) → **normalize** → pattern XOR enum-domain (on the normalized text) → min/max length (on the normalized text). So a permitted `"AB\r\nCD"` measures **5** units, not the raw 6: `maxLength 5` is clean, `minLength 6` fires `stringZuKurz`, and a `AB\sCD` pattern (exactly one whitespace char) matches. (A pattern whose own text contains a literal line break is model-REJECTED — "Only values without line breaks are allowed" — so break-y patterns discriminate only via character classes.)
+- **At the formal-check stage of every run** (`CheckCommand` → `FormalChecker.checkAndConvertFieldValue`), a checked-and-valid value enters the eval caches as its **`normalizedValue()`** — which **refuted F12's "measure-only" hypothesis**: a RULE read is normalized too (`Length([F]) > 5` over the permitted CRLF does NOT fire — the read is 5; pinned `== 5` fires, `== 6` does not), a `noValueValidation` field's read is *still* normalized (the check is skipped, the ingestion is not), and a COMPUTATION read is normalized — a bare copy of the CRLF source **stores** `"AB\nCD"` (the stored computed value witnesses the read form). Both strategies agree on every arm.
+
+*(Interpreter: the twin locus is the `Document` eval-INDEX ingestion — value-bearing placements are CRLF-normalized once at index build, so the format measure (`stringConstraintError`, whose newline gate now also precedes the enum-domain arm), rule operands, compute operands, and `$field.value$` interpolation all read `\n`, while the consumer's raw placements stay untouched (`copy()` reproduces them verbatim; the compute delta projection keeps comparing against the RAW seed, matching the kernel's change-vs-input-document equality). Locked `adapter.laws.CrlfLengthNormalizationDiffTest` — 12 tri-check arms: the min/max boundary pair, LF + lone-CR controls, the no-breaks clause-order control, the pattern + enum arms, the nvv read, the Length-rule read, the compute copy — + multiplatform `interpreter … CrlfNormalizationTest`; INTERPRETER-FINDINGS IF124.)*
+
 ## §3 supplement — the two DISTINCT number-digit checks: generic `stelligkeitZuLang` (> 15 total) vs the integer-cap `zahlZuvieleVorkommastellen` (source + probe-verified 2026-07-07)
 
 > Fold: folded → §3.

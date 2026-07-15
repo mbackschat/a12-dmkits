@@ -30,10 +30,6 @@ Deferred items are in §2; a fixed gap is deleted from here (git + its `IF<n>` f
 
 ---
 
-**Inbound-feedback rows (the a12-kernel-lean queue, triaged 2026-07-15 — working doc [`A12-DMKITS-FEEDBACK.md`](A12-DMKITS-FEEDBACK.md)):**
-
-- **IG70 — CRLF normalization before String length checks: a SOURCE-LEVEL divergence CANDIDATE — probe first, never promote unobserved (feedback F12).** On the full-check route (`noValueValidation = false`) with line breaks **permitted**, kernel `FormatDefinitionString.validiereFormat` normalizes CRLF→LF (`RuntimeUtils.normalizeLinebreaks`) **before** applying String min/max length; our `FormalError.kt` `stringConstraintError` performs **no** line-break normalization (verified 2026-07-15), so a permitted `"\r\n"` near a one-code-unit boundary may measure 1 (kernel, normalized LF) vs 2 (interpreter, raw UTF-16 units). **Not yet an observed disagreement** — the drill is the IG57/IG58 mold: focused paired probes (both kernel strategies + interpreter; vary a min/max around the normalized CRLF length; keep the pre-normalized input, normalized form, cause, and delta separate so the probe locates whether normalization belongs before validation, before storage, or only in rendering) → differential-lock → fix or refute. Controls per F12's acceptance check: ordinary LF, and a no-line-breaks-permitted rejection keeping the clause order visible.
-
 ## 2. Deferred / ongoing-incremental (recorded with status; detail in [`INTERPRETER-FINDINGS.md`](INTERPRETER-FINDINGS.md))
 
 Two kinds live here when present: a **deferred** item (parked until its re-open trigger flips) and an **ongoing as-touched** refactor (progressing in increments, recorded so the remaining work isn't lost). Neither is a parity gap (those are §1); a fully-shipped item is deleted (its `IF<n>` finding + git are the record).
