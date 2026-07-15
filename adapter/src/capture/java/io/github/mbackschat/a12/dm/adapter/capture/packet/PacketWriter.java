@@ -119,28 +119,7 @@ public final class PacketWriter {
                     + " with --development; a development packet records the dirty state and is PERMANENTLY"
                     + " ineligible for every portable qualification policy.");
         }
-        Path out = options.outputDir().toAbsolutePath().normalize();
-        Path corpus = options.repoRoot().toAbsolutePath().normalize().resolve("corpus");
-        if (out.startsWith(corpus)) {
-            throw new CaptureRefusedException("the output directory lies inside the committed corpus tree ("
-                    + "corpus/) — capture NEVER writes into the corpus; promotion is a separate, reviewed,"
-                    + " explicitly authorized corpus-specific action.");
-        }
-        if (Files.exists(out)) {
-            if (!Files.isDirectory(out)) {
-                throw new CaptureRefusedException("the output path exists and is not a directory — supply a"
-                        + " NEW or EMPTY caller-owned directory.");
-            }
-            try (var entries = Files.list(out)) {
-                if (entries.findAny().isPresent()) {
-                    throw new CaptureRefusedException("the output directory is NOT empty — capture only writes"
-                            + " into a new or empty caller-owned directory (it never overwrites or mixes"
-                            + " packets).");
-                }
-            } catch (IOException e) {
-                throw new UncheckedIOException("failed to inspect the output directory", e);
-            }
-        }
+        OutputDirs.requireNewOrEmptyOutsideCorpus(options.outputDir(), options.repoRoot());
     }
 
     private static void writeGenerated(Path out, String relativePath, byte[] bytes, LeakGuard leakGuard)

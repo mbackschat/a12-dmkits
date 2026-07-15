@@ -10,11 +10,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import io.github.mbackschat.a12.dm.adapter.capture.dto.PolicyId;
+import io.github.mbackschat.a12.dm.adapter.capture.dto.ProjectionId;
 import io.github.mbackschat.a12.dm.adapter.capture.json.Json;
 import io.github.mbackschat.a12.dm.adapter.capture.packet.CaptureOptions;
 import io.github.mbackschat.a12.dm.adapter.capture.packet.CaptureRefusedException;
 import io.github.mbackschat.a12.dm.adapter.capture.packet.PacketWriter;
 import io.github.mbackschat.a12.dm.adapter.capture.packet.SourceState;
+import io.github.mbackschat.a12.dm.adapter.capture.policy.Diffs;
+import io.github.mbackschat.a12.dm.adapter.capture.policy.Verifier;
 import io.github.mbackschat.a12.dm.adapter.capture.schema.Capabilities;
 import io.github.mbackschat.a12.dm.adapter.capture.schema.ScenarioRejectedException;
 import io.github.mbackschat.a12.dm.adapter.capture.schema.ScenarioSets;
@@ -37,7 +41,10 @@ public final class CaptureTool {
     private enum Command {
         CAPABILITIES("capabilities"),
         VALIDATE_SCENARIOS("validate-scenarios"),
-        CAPTURE("capture");
+        CAPTURE("capture"),
+        VERIFY("verify"),
+        DIFF_PACKETS("diff-packets"),
+        DIFF_REPORTS("diff-reports");
 
         private final String wire;
 
@@ -106,6 +113,9 @@ public final class CaptureTool {
                 case VALIDATE_SCENARIOS -> validateScenarios(env, required(options, "--scenarios"));
                 case CAPTURE -> capture(env, required(options, "--scenarios"), required(options, "--output"),
                         development);
+                case VERIFY -> verify(env, options);
+                case DIFF_PACKETS -> diffPackets(env, options);
+                case DIFF_REPORTS -> diffReports(env, options);
             };
         } catch (IllegalArgumentException usage) {
             return usage(env, usage.getMessage());
@@ -156,6 +166,50 @@ public final class CaptureTool {
         return 0;
     }
 
+    private static int verify(Env env, Map<String, String> options) {
+        PolicyId policy = PolicyId.ofWire(required(options, "--policy"))
+                .orElseThrow(() -> new IllegalArgumentException("unknown policy \"" + options.get("--policy")
+                        + "\" — published: "
+                        + java.util.Arrays.stream(PolicyId.values()).map(PolicyId::wire).toList()));
+        Verifier.Verified verified = Verifier.verify(
+                Path.of(required(options, "--packet")),
+                required(options, "--packet-receipt-sha256"),
+                policy,
+                Path.of(required(options, "--output")),
+                env.probe().state(),
+                env.repoRoot());
+        env.out().println("policy " + policy.wire() + ": " + verified.verdict().toUpperCase(java.util.Locale.ROOT));
+        env.out().println("report RECEIPT.json sha256: " + verified.reportReceiptSha256());
+        return 0;
+    }
+
+    private static int diffPackets(Env env, Map<String, String> options) {
+        ProjectionId projection = ProjectionId.ofWire(required(options, "--projection"))
+                .orElseThrow(() -> new IllegalArgumentException("unknown projection \""
+                        + options.get("--projection") + "\" — published: "
+                        + java.util.Arrays.stream(ProjectionId.values()).map(ProjectionId::wire).toList()));
+        Diffs.Written written = Diffs.diffPackets(
+                Path.of(required(options, "--before")),
+                Path.of(required(options, "--after")),
+                projection,
+                Path.of(required(options, "--output")),
+                env.repoRoot());
+        env.out().println(written.identical() ? "packets are IDENTICAL" : "packets DIFFER — see DIFF.json");
+        env.out().println("diff RECEIPT.json sha256: " + written.reportReceiptSha256());
+        return 0;
+    }
+
+    private static int diffReports(Env env, Map<String, String> options) {
+        Diffs.Written written = Diffs.diffReports(
+                Path.of(required(options, "--before")),
+                Path.of(required(options, "--after")),
+                Path.of(required(options, "--output")),
+                env.repoRoot());
+        env.out().println(written.identical() ? "reports are IDENTICAL" : "reports DIFFER — see DIFF.json");
+        env.out().println("diff RECEIPT.json sha256: " + written.reportReceiptSha256());
+        return 0;
+    }
+
     private static Map<String, String> parseOptions(List<String> flags) {
         Map<String, String> options = new LinkedHashMap<>();
         for (int i = 0; i < flags.size(); i += 2) {
@@ -184,9 +238,12 @@ public final class CaptureTool {
                   capabilities
                   validate-scenarios --scenarios <file>
                   capture [--development] --scenarios <file> --output <new-or-empty-directory>
-                (Gradle: ./build.sh :adapter:captureCapabilities | :adapter:captureValidateScenarios \
-                -Pcapture.scenarios=<file> | :adapter:capture -Pcapture.scenarios=<file> \
-                -Pcapture.output=<dir> [-Pcapture.development])""");
+                  verify --packet <dir> --packet-receipt-sha256 <hex> --policy <policy-id> --output <new-dir>
+                  diff-packets --before <packet> --after <packet> --projection <projection-id> --output <new-dir>
+                  diff-reports --before <report> --after <report> --output <new-dir>
+                (Gradle: ./build.sh :adapter:captureCapabilities | :adapter:captureValidateScenarios | \
+                :adapter:capture | :adapter:captureVerify | :adapter:captureDiffPackets | \
+                :adapter:captureDiffReports — options via -Pcapture.*; see corpus/README.md)""");
         return 2;
     }
 }

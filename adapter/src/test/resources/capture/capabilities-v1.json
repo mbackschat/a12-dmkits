@@ -148,6 +148,7 @@
     "dmkits-projected-conformance-v1"
   ],
   "reportSchemas": [
+    "qualification-profile-v1",
     "qualification-report-v1",
     "packet-diff-report-v1",
     "report-diff-report-v1"

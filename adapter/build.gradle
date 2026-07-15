@@ -129,6 +129,32 @@ captureToolTask('capture',
             args + ['--scenarios', requireProperty('capture.scenarios'),
                     '--output', requireProperty('capture.output')]
         })
+captureToolTask('captureVerify',
+        'Apply a named qualification policy to an immutable packet (writes a digest-bound report dir): ' +
+                '-Pcapture.packet=<dir> -Pcapture.packetReceiptSha256=<hex> -Pcapture.policy=<id> -Pcapture.output=<new-dir>.',
+        { ->
+            ['verify', '--packet', requireProperty('capture.packet'),
+             '--packet-receipt-sha256', requireProperty('capture.packetReceiptSha256'),
+             '--policy', requireProperty('capture.policy'),
+             '--output', requireProperty('capture.output')]
+        })
+captureToolTask('captureDiffPackets',
+        'Structural packet diff (input/provenance vs per-runner observation drift): ' +
+                '-Pcapture.before=<dir> -Pcapture.after=<dir> -Pcapture.projection=<id> -Pcapture.output=<new-dir>.',
+        { ->
+            ['diff-packets', '--before', requireProperty('capture.before'),
+             '--after', requireProperty('capture.after'),
+             '--projection', requireProperty('capture.projection'),
+             '--output', requireProperty('capture.output')]
+        })
+captureToolTask('captureDiffReports',
+        'Structural report diff (policy/profile/verifier vs qualification-result drift): ' +
+                '-Pcapture.before=<dir> -Pcapture.after=<dir> -Pcapture.output=<new-dir>.',
+        { ->
+            ['diff-reports', '--before', requireProperty('capture.before'),
+             '--after', requireProperty('capture.after'),
+             '--output', requireProperty('capture.output')]
+        })
 
 dependencies {
     // The repo-standard JSON parser (already implementation-scoped in core/rulekit/modelkit/cli at this

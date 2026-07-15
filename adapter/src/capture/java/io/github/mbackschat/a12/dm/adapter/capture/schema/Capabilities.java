@@ -55,7 +55,8 @@ public final class Capabilities {
                 .put("policies", Json.arrOfStrings(
                         java.util.Arrays.stream(PolicyId.values()).map(PolicyId::wire).toList()))
                 .put("reportSchemas", Json.arrOfStrings(List.of(
-                        SchemaIds.QUALIFICATION_REPORT, SchemaIds.PACKET_DIFF_REPORT, SchemaIds.REPORT_DIFF_REPORT)))
+                        SchemaIds.QUALIFICATION_PROFILE, SchemaIds.QUALIFICATION_REPORT,
+                        SchemaIds.PACKET_DIFF_REPORT, SchemaIds.REPORT_DIFF_REPORT)))
                 .put("commands", Json.arrOfStrings(List.of(
                         "capabilities", "validate-scenarios", "capture", "verify", "diff-packets", "diff-reports")));
         return root;

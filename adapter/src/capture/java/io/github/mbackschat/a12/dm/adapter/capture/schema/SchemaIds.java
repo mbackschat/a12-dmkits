@@ -36,6 +36,9 @@ public final class SchemaIds {
     /** The qualification report schema ({@code REPORT.json} in a verify output dir). */
     public static final String QUALIFICATION_REPORT = "qualification-report-v1";
 
+    /** The pinned policy+projection definition schema ({@code PROFILE.json}, digest-bound by the report). */
+    public static final String QUALIFICATION_PROFILE = "qualification-profile-v1";
+
     /** The structural packet-diff report schema. */
     public static final String PACKET_DIFF_REPORT = "packet-diff-report-v1";
 
