@@ -39,3 +39,13 @@ The kernel-grounded reference implementation lives in `:adapter` test sources (i
 | `./build.sh -PrunCorpusCapture :adapter:test --tests '*CorpusGenerator'` | Re-captures the case set from `CorpusScenarios` (tri-verified) and rewrites the files. The KERNEL-UPGRADE re-capture entry point: on a kernel bump the committed diff **is** the behavior-change characterization. |
 
 Everything committed here is **own-domain original material** (the project's license-safe rule); nothing from the EUPL/proprietary corpora is persisted.
+
+## The portable evidence-capture commands
+
+The maintained capture boundary ([`docs/CONFORMANCE-CORPUS-SPEC.md`](../docs/CONFORMANCE-CORPUS-SPEC.md) §15) — adapter-internal developer tooling that executes a consumer-authored, expectation-free scenario set through the registered runners into a deterministic evidence packet. **Capture never writes into this corpus tree** (the command refuses it; promotion is a separate, reviewed, explicitly authorized action).
+
+| Task | What it does |
+|---|---|
+| `./build.sh :adapter:captureCapabilities` | Print the machine-readable capability output (`a12-dmkits-capture-capabilities-v1`) — transport capability, never semantic support. |
+| `./build.sh :adapter:captureValidateScenarios -Pcapture.scenarios=<file>` | Structurally validate a `capture-scenario-set-v1` file through the SAME closed decoder capture uses — no engine runs, nothing is written. |
+| `./build.sh :adapter:capture -Pcapture.scenarios=<file> -Pcapture.output=<new-or-empty-dir> [-Pcapture.development]` | Capture an evidence packet: legality gate → the three registered runners → deterministic directory-shaped packet; prints the out-of-band `RECEIPT.json` SHA-256. Default mode requires a clean committed checkout; `--development` packets are permanently qualification-ineligible. |

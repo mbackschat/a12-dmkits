@@ -32,7 +32,8 @@ public final class Capabilities {
                 .put("describes", "transport-capability, never A12 semantic support")
                 .put("requestSchemas", Json.arrOfStrings(List.of(SchemaIds.SCENARIO_SET)))
                 .put("envelopeSchemas", Json.arrOfStrings(List.of(SchemaIds.EVIDENCE_PACKET)))
-                .put("receiptSchema", SchemaIds.RECEIPT);
+                .put("receiptSchema", SchemaIds.RECEIPT)
+                .put("legalitySchema", SchemaIds.LEGALITY);
         Json.Arr operations = Json.Arr.of().add(Json.Obj.of()
                 .put("id", SchemaIds.COMPUTE_OBSERVATION)
                 .put("inputSupport", SchemaIds.INPUT_SUPPORT_COMPUTE)

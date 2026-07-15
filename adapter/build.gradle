@@ -93,6 +93,43 @@ def verifyCapturePurity = tasks.register('verifyCapturePurity') {
 }
 tasks.named('check') { dependsOn verifyCapturePurity }
 
+// The capture COMMAND surface (CONFORMANCE-CORPUS-SPEC §15d): Gradle is only the launcher — every task
+// drives the one real entry (cli.CaptureTool), the same entry the self-tests and the mutation suite call.
+// Options arrive as -Pcapture.* properties (documented in each task's description + corpus/README.md).
+def captureToolTask = { String taskName, String taskDescription, Closure<List<String>> buildArgs ->
+    tasks.register(taskName, JavaExec) {
+        group = 'capture'
+        description = taskDescription
+        classpath = sourceSets.capture.runtimeClasspath
+        mainClass = 'io.github.mbackschat.a12.dm.adapter.capture.cli.CaptureTool'
+        systemProperty 'capture.repoRoot', rootProject.projectDir.absolutePath
+        doFirst { args = buildArgs() }
+    }
+}
+def requireProperty = { String name ->
+    def value = project.findProperty(name)
+    if (value == null) {
+        throw new GradleException("missing -P${name} (see the task description)")
+    }
+    value.toString()
+}
+captureToolTask('captureCapabilities',
+        'Print the machine-readable capture capability output (a12-dmkits-capture-capabilities-v1).',
+        { -> ['capabilities'] })
+captureToolTask('captureValidateScenarios',
+        'Structurally validate a capture-scenario-set-v1 file (no engine, nothing written): -Pcapture.scenarios=<file>.',
+        { -> ['validate-scenarios', '--scenarios', requireProperty('capture.scenarios')] })
+captureToolTask('capture',
+        'Capture an evidence packet: -Pcapture.scenarios=<file> -Pcapture.output=<new-or-empty-dir> [-Pcapture.development].',
+        { ->
+            def args = ['capture']
+            if (project.hasProperty('capture.development')) {
+                args << '--development'
+            }
+            args + ['--scenarios', requireProperty('capture.scenarios'),
+                    '--output', requireProperty('capture.output')]
+        })
+
 dependencies {
     // The repo-standard JSON parser (already implementation-scoped in core/rulekit/modelkit/cli at this
     // exact pin) — the capture decoder parses scenario/packet JSON with it; the canonical packet WRITER is

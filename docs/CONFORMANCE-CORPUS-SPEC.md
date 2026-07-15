@@ -269,3 +269,24 @@ The two kernel names provably invoke **distinct registered routes** (`RouteDisti
 Per (case, runner) execution is **fresh-state**: a new engine/evaluation context, a fresh document from the placements, the explicitly injected clock/locale — no cache crosses cases or routes (`ReorderEquivalenceTest`: a reordered full run and a filtered single-case run observe identically). Each run carries an explicit status — `success` / `unsupported` / `timeout` / `technicalFailure` — where successful-EMPTY output is data inside `success`, never a failure encoding; a failed run carries no semantic channels, and `technicalFailure` detail is fixed sanitized text (never an exception message, class name, or stack frame — those go to stderr only).
 
 Fidelity is declared per runner (`dto.RunnerFidelity`, echoed into capabilities + packets): the kernel routes expose all six channels with typed + rendered values, structured causes, and the absent/present-empty applied distinction; the interpreter exposes rendered values only, no changed subset (report-all granularity), no structured causes, no operand formal errors, and `noValueIndeterminate` applied states (its public read surface has no absent-vs-empty distinction — INTERPRETER-GAPS IG72). Missing transport is declared, never bridged.
+
+### 15d. Commands, determinism, legality
+
+The maintained command surface (`cli.CaptureTool` — ONE entry serving the Gradle launchers, the self-tests, and the mutation suite, so tests drive the real command):
+
+| command | Gradle | what it does |
+|---|---|---|
+| `capabilities` | `./build.sh :adapter:captureCapabilities` | print the machine-readable capability output |
+| `validate-scenarios` | `./build.sh :adapter:captureValidateScenarios -Pcapture.scenarios=<file>` | structural acceptance through the SAME decoder capture runs — no engine, nothing written |
+| `capture` | `./build.sh :adapter:capture -Pcapture.scenarios=<file> -Pcapture.output=<dir> [-Pcapture.development]` | validate → legality gate → run the required runners → write the packet; prints the out-of-band `RECEIPT.json` SHA-256 |
+| `verify` · `diff-packets` · `diff-reports` | `:adapter:captureVerify` · `:adapter:captureDiffPackets` · `:adapter:captureDiffReports` | §15e (the W4 slice) |
+
+**Determinism.** Packets are directory-shaped and reviewable: UTF-8, LF, final newline, canonical member/array ordering from the schema builders, exact numbers (decimals as strings — never binary floating point), no timestamps or volatile host metadata in the packet identity. Two executions at the same source/kernel/model/input/world produce **byte-identical** contents (`CaptureDeterminismTest`, the double-capture guard). One case+runner diffs without rewriting unrelated observations.
+
+**Caller-owned output; the corpus is never written.** Both modes require an explicitly NEW or EMPTY caller-owned output directory, refuse the committed `corpus/` tree (promotion is a separate, reviewed, explicitly authorized action — deliberately not a v1 command), keep temp products in ignored storage, and leave source bytes and visible status exactly as found.
+
+**Clean vs `--development`.** Default capture requires a CLEAN committed checkout (the packet binds the git revision + a classified tree-state digest); `--development` runs against modified source for red/green and mutation work — its packet records `workingTree: dirty` + `developmentMode: true` and is **permanently ineligible** for every portable qualification policy.
+
+**Legality before runtime (§6).** Every model runs the kernel's authoring/consistency acceptance surface (the same `checkConsistency` gate `RuleValidator`/`model check` route through, via the adapter's `ConsistencyOracle`) BEFORE any runner executes; the per-model `capture-legality-v1` artifact records the validator identity, the verdict, severity+code+text-digest per notification (never kernel message text — the IF3 rule), and BOTH the supplied and adapted digests (v1 adapts nothing — bound explicitly equal, so the gate provably inspected the same bytes runtime consumed). An ILLEGAL model yields a characterization packet: its cases are marked `executed: false` and no observation artifact exists (`LegalityGateTest`).
+
+**The metadata leak guard (§2).** Every GENERATED artifact (envelope, legality, observations, receipts) is scanned at write time: no absolute local path, username, home directory, hostname, kernel class name (the kernel's Maven *coordinate* is sanctioned identity), or stack-trace frame — a hit refuses the capture. The COPIED consumer inputs (request + models) are exempt by design and never scanned or rewritten (`MetadataLeakGuardTest`).

@@ -9,6 +9,7 @@
     "evidence-packet-v1"
   ],
   "receiptSchema": "capture-receipt-v1",
+  "legalitySchema": "capture-legality-v1",
   "operationSchemas": [
     {
       "id": "compute-observation-v1",

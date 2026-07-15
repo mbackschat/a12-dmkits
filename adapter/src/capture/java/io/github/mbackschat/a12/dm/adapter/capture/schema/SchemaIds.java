@@ -30,6 +30,9 @@ public final class SchemaIds {
     /** The capability output's own independent version (part of the compatibility identity). */
     public static final String CAPABILITIES_VERSION = "1";
 
+    /** The per-model legality artifact schema (the §6 gate's provenance record). */
+    public static final String LEGALITY = "capture-legality-v1";
+
     /** The qualification report schema ({@code REPORT.json} in a verify output dir). */
     public static final String QUALIFICATION_REPORT = "qualification-report-v1";
 
