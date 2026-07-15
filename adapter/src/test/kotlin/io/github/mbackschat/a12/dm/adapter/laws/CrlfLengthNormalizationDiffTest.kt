@@ -20,8 +20,10 @@ import java.util.function.Consumer
  * applies pattern / enum-domain / min-max length on the NORMALIZED text; and the formal-check stage feeds the
  * eval caches the normalized value (`CheckCommand` → `checkAndConvertFieldValue.normalizedValue()`), so RULE
  * and COMPUTATION reads see it too — probe-refuted the F12 "measure-only" hypothesis: `Length` reads 5 for a
- * permitted `"AB\r\nCD"` (even on a `noValueValidation` field) and a computed copy STORES `"AB\nCD"`. The
- * interpreter's twin is the Document's eval-index ingestion (raw placements stay untouched).
+ * permitted `"AB\r\nCD"` (and FIRES `> 4` — a real normalized read, not a suppression) and a computed copy
+ * STORES `"AB\nCD"`. The interpreter's twin is the Document's eval-index ingestion (raw placements stay
+ * untouched). (A `noValueValidation` field is OUT of this class: its rule read never surfaces the stored
+ * text at all — the raw-type read semantics, IG71.)
  */
 class CrlfLengthNormalizationDiffTest {
 
@@ -123,6 +125,16 @@ class CrlfLengthNormalizationDiffTest {
         agree(model, NOTE, CRLF, emptyList(), "Length([IncidentNote]) > 5 over normalized CRLF")
     }
 
+    // The POSITIVE-fire discriminator: `> 4` FIRES at the normalized 5 — so the no-fire above is a real
+    // normalized READ, not a suppression of the CRLF value (which would silence this arm too).
+    @Test fun lengthOperatorFiresAtTheNormalizedLength() {
+        val json = noteModel(lineBreaks = true, max = 10)
+        val m = BoundModel.ofJson(json)
+        val cond = DslRenderer().render(Dsl.length(m.str(NOTE)).gt(4))
+        val model = RuntimeLaws.withRule(json, "/Claim", "R_LEN", "../IncidentNote", "LEN", cond)
+        agree(model, NOTE, CRLF, listOf("LEN"), "Length([IncidentNote]) > 4 fires at the normalized 5")
+    }
+
     // …and the same read boundary serves COMPUTATIONS: a bare copy of the CRLF source stores the NORMALIZED
     // text (the value itself witnesses the read form — 5 units, "AB\nCD").
     @Test fun computationCopyReadsTheNormalizedText() {
@@ -145,15 +157,10 @@ class CrlfLengthNormalizationDiffTest {
         assertEquals(k, i, "compute copy: kernel vs interpreter")
     }
 
-    // The `noValueValidation` bypass skips the format CHECK, but the eval read is STILL normalized —
-    // probe-pinned: the kernel does not fire `Length > 5` over the CRLF value even on an nvv field.
-    @Test fun noValueValidationReadIsStillNormalized() {
-        val json = noteModel(lineBreaks = true, noValueValidation = true)
-        val m = BoundModel.ofJson(json)
-        val cond = DslRenderer().render(Dsl.length(m.str(NOTE)).gt(5))
-        val model = RuntimeLaws.withRule(json, "/Claim", "R_LEN", "../IncidentNote", "LEN", cond)
-        agree(model, NOTE, CRLF, emptyList(), "Length over a noValueValidation CRLF is normalized")
-    }
+    // (A `noValueValidation` field deliberately has NO arm here: `Length(nvv) > c` is the only authorable
+    // value-ish read of one — `MVK_INVALID_LENGTH_OF_RAW_TYPE` / `MVK_INVALID_RAW_TYPE` reject the rest —
+    // and the kernel NEVER fires it (an unconditionally non-evaluable read, probe-pinned incl. `> -1` over
+    // filled AND empty), so the nvv read is a raw-type semantics question, not a normalization one — IG71.)
 
     private val COPY = "/Claim/NoteCopy"
 }
