@@ -17,7 +17,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import io.github.mbackschat.a12.dm.core.DmJson;
 import io.github.mbackschat.a12.dm.core.DmKeys;
 import io.github.mbackschat.a12.dm.core.ElementType;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
@@ -236,7 +235,7 @@ public final class ModelDocument {
             if (type.equals(el.path(DmKeys.TYPE).asText())) {
                 count[0]++;
             }
-            if (ElementType.GROUP.matches(el)) {
+            if (DmNodes.is(ElementType.GROUP, el)) {
                 countByType(el.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS), type, count);
             }
         }
@@ -917,7 +916,7 @@ public final class ModelDocument {
             if (path.equals(target)) {
                 return (ObjectNode) node;
             }
-            if (ElementType.GROUP.matches(node)) {
+            if (DmNodes.is(ElementType.GROUP, node)) {
                 ObjectNode inner = findByPath(node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS), path, target);
                 if (inner != null) {
                     return inner;
@@ -1033,7 +1032,7 @@ public final class ModelDocument {
         }
         boolean childField = false;
         for (JsonNode e : body.path(DmKeys.ELEMENTS)) {
-            if (ElementType.FIELD.matches(e) && fieldName.equals(e.path(DmKeys.NAME).asText())) {
+            if (DmNodes.is(ElementType.FIELD, e) && fieldName.equals(e.path(DmKeys.NAME).asText())) {
                 childField = true;
                 break;
             }
@@ -1078,7 +1077,7 @@ public final class ModelDocument {
         for (ElementDraft.SortField sf : fields) {
             boolean childField = false;
             for (JsonNode e : body.path(DmKeys.ELEMENTS)) {
-                if (ElementType.FIELD.matches(e) && sf.fieldName().equals(e.path(DmKeys.NAME).asText())) {
+                if (DmNodes.is(ElementType.FIELD, e) && sf.fieldName().equals(e.path(DmKeys.NAME).asText())) {
                     childField = true;
                     break;
                 }
@@ -1278,7 +1277,7 @@ public final class ModelDocument {
     /** Rename the rule at {@code ruleFullName} to {@code newName} (its name + id). Fails fast if absent. */
     public ModelDocument renameRule(String ruleFullName, String newName) {
         ObjectNode rule = findById(ruleFullName);
-        if (rule == null || !ElementType.RULE.matches(rule)) {
+        if (rule == null || !DmNodes.is(ElementType.RULE, rule)) {
             throw new IllegalArgumentException("no rule at: " + ruleFullName);
         }
         rule.put(DmKeys.NAME, newName).put(DmKeys.ID, renamePath(ruleFullName, newName));
@@ -1352,16 +1351,16 @@ public final class ModelDocument {
         if (id != null && (id.equals(oldPrefix) || id.startsWith(oldPrefix + "/"))) {
             obj.put(DmKeys.ID, newPrefix + id.substring(oldPrefix.length()));
         }
-        if (ElementType.GROUP.matches(obj)) {
+        if (DmNodes.is(ElementType.GROUP, obj)) {
             for (JsonNode child : obj.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)) {
                 reprefixIds(child, oldPrefix, newPrefix);
             }
-        } else if (ElementType.RULE.matches(obj) && obj.path(ElementType.RULE.wireName()) instanceof ObjectNode rule) {
+        } else if (DmNodes.is(ElementType.RULE, obj) && obj.path(ElementType.RULE.wireName()) instanceof ObjectNode rule) {
             // a carried rule's ABSOLUTE condition operands must re-base to the new root too (probe 01-de
             // Finding 6) — else the sub-model references the old foreign root (MVK_INVALID_ROOT_GROUP). The
             // errorEntityRelPath is relative ('../X') so it rides along unchanged.
             reprefixText(rule, "errorCondition", oldPrefix, newPrefix);
-        } else if (ElementType.COMPUTATION.matches(obj) && obj.path(ElementType.COMPUTATION.wireName()) instanceof ObjectNode comp) {
+        } else if (DmNodes.is(ElementType.COMPUTATION, obj) && obj.path(ElementType.COMPUTATION.wireName()) instanceof ObjectNode comp) {
             reprefixText(comp, "commonPrecondition", oldPrefix, newPrefix);
             for (JsonNode alt : comp.path("computationAlternatives")) {
                 if (alt instanceof ObjectNode altObj) {
@@ -1402,7 +1401,7 @@ public final class ModelDocument {
             found[0] = obj;
             return;
         }
-        if (ElementType.GROUP.matches(node)) {
+        if (DmNodes.is(ElementType.GROUP, node)) {
             for (JsonNode child : node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)) {
                 findById(child, id, found);
             }
@@ -1727,7 +1726,7 @@ public final class ModelDocument {
     private void inlineMounts(JsonNode elements, String alias, String includedRootId, JsonNode includedElements,
             boolean[] folded) {
         for (JsonNode element : elements) {
-            if (!ElementType.GROUP.matches(element)) {
+            if (!DmNodes.is(ElementType.GROUP, element)) {
                 continue;
             }
             ObjectNode body = (ObjectNode) element.path(ElementType.GROUP.wireName());
@@ -1838,7 +1837,7 @@ public final class ModelDocument {
 
     private void renameMounts(ArrayNode elements, String oldAlias, String newAlias, boolean[] any) {
         for (JsonNode el : elements) {
-            if (!ElementType.GROUP.matches(el)) {
+            if (!DmNodes.is(ElementType.GROUP, el)) {
                 continue;
             }
             ObjectNode body = (ObjectNode) el.path(ElementType.GROUP.wireName());
@@ -1854,7 +1853,7 @@ public final class ModelDocument {
     private void removeMounts(ArrayNode elements, String alias, boolean[] any) {
         for (int i = elements.size() - 1; i >= 0; i--) {
             JsonNode el = elements.get(i);
-            if (!ElementType.GROUP.matches(el)) {
+            if (!DmNodes.is(ElementType.GROUP, el)) {
                 continue;
             }
             JsonNode body = el.path(ElementType.GROUP.wireName());
@@ -1903,7 +1902,7 @@ public final class ModelDocument {
     }
 
     private ArrayNode containerElements(String groupPath) {
-        ArrayNode elements = DmJson.groupElements(root, groupPath);
+        ArrayNode elements = DmNodes.groupElements(root, groupPath);
         if (elements == null) {
             throw new IllegalArgumentException("no group at path: " + groupPath);
         }
@@ -1941,12 +1940,12 @@ public final class ModelDocument {
 
     private void walk(JsonNode node, String prefix, ElementVisitor visitor) {
         String path = prefix + "/" + node.path(DmKeys.NAME).asText();
-        if (ElementType.GROUP.matches(node)) {
+        if (DmNodes.is(ElementType.GROUP, node)) {
             visitor.visit(path, node, true);
             for (JsonNode child : node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)) {
                 walk(child, path, visitor);
             }
-        } else if (ElementType.FIELD.matches(node)) {
+        } else if (DmNodes.is(ElementType.FIELD, node)) {
             visitor.visit(path, node, false);
         }
         // Other element kinds (Rule/Computation/…) are not enumerated here — they are rulekit's, and

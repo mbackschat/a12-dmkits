@@ -38,7 +38,7 @@ Element order in DM-JSON is **semantically meaningful** (declaration order = for
 | object keys (`type`/`id`/`name`/payload; locale & annotation maps) | **stable canonical order** (keys are not semantic) — the likely current leak |
 | new elements | deterministic position, recorded so a later diff reads as a clean `added` |
 
-The fix lives in the core write path (`DmJson` / `ModelWriter` / `ModelDocument`, shared by the CLI). *Note (spike-confirmed, tasks #1/#2):* the write path is Jackson **tree surgery**, so element/key order is **already preserved** — there is **no reordering**. Across all fixtures the round-trip is **deterministic** (a compact-reformatted input converges to the same output) and a **stable fixed point** (`once == twice`); the *only* divergence from the stored file is **formatting** (`"k":` vs `"k" : `, indentation/array style — Jackson's `DefaultPrettyPrinter`). And on an already-normalized model, a one-rule edit is **fully localized** (0 lines changed elsewhere, +14 added). So Phase 0 was **not an order-preserving-writer rewrite** (the tree-surgery architecture already provides it) — it was **(1)** the `model normalize` verb (§2c) and **(2)** the guards (§2d), both now shipped. **Canonical-format decision: keep Jackson's `DefaultPrettyPrinter`** — it is the form every mutating write path already emits, so adopting it costs nothing and `model normalize` brings foreign files to it (a one-time, explicit reformat); introducing a different canonical format would churn every existing tool output for no semantic gain.
+The fix lives in the kits' write path (`ModelWriter` / `ModelDocument` tree surgery, shared by the CLI). *Note (spike-confirmed, tasks #1/#2):* the write path is Jackson **tree surgery**, so element/key order is **already preserved** — there is **no reordering**. Across all fixtures the round-trip is **deterministic** (a compact-reformatted input converges to the same output) and a **stable fixed point** (`once == twice`); the *only* divergence from the stored file is **formatting** (`"k":` vs `"k" : `, indentation/array style — Jackson's `DefaultPrettyPrinter`). And on an already-normalized model, a one-rule edit is **fully localized** (0 lines changed elsewhere, +14 added). So Phase 0 was **not an order-preserving-writer rewrite** (the tree-surgery architecture already provides it) — it was **(1)** the `model normalize` verb (§2c) and **(2)** the guards (§2d), both now shipped. **Canonical-format decision: keep Jackson's `DefaultPrettyPrinter`** — it is the form every mutating write path already emits, so adopting it costs nothing and `model normalize` brings foreign files to it (a one-time, explicit reformat); introducing a different canonical format would churn every existing tool output for no semantic gain.
 
 ### 2c. `model normalize` (built)
 
@@ -159,7 +159,7 @@ So mermaid is a **narrow accent**: the **workspace topology** (`workspace graph 
 | before/after condition + lossiness | **reuse** `RenderedDiff` |
 | canonical condition text | **reuse** `rule format` |
 | behavioral fire-set delta (`--deep`) | **reuse** `SeedGenerator` + `DmInterpreter` |
-| deterministic writer + `model normalize` | **new** (core `ModelWriter`/`DmJson`) |
+| deterministic writer + `model normalize` | **new** (`ModelWriter`'s tree surgery) |
 | diff engine + risk taxonomy + assembly/`md`/`text` rendering | **new** (the library primitive + the verb renderers) |
 | `workspace graph --format mermaid` | **new, tiny** (extends an existing verb) |
 

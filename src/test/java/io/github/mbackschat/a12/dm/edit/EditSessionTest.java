@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.edit;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -9,11 +8,8 @@ import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import io.github.mbackschat.a12.dm.Fixtures;
-import io.github.mbackschat.a12.dm.core.DmJson;
+import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
@@ -41,9 +37,8 @@ class EditSessionTest {
                 .toJson();
 
         assertTrue(ModelDocument.read(result).fieldPaths().contains("/Subscription/Addons/Discount"));
-        JsonNode tree = readTree(result);
-        assertNotNull(DmJson.findElement(tree, "Rule", "/Subscription/Addons/DiscountNotNegative"),
-                "the rule node is missing from the written-back model");
+        assertTrue(KernelAdapter.ofJson(result).readModel().rules().containsKey("/Subscription/Addons/DiscountNotNegative"),
+                "the rule is missing from the written-back model");
     }
 
     @Test
@@ -78,14 +73,6 @@ class EditSessionTest {
                 .code("DISCOUNT_NEGATIVE").severity(Severity.ERROR)
                 .message(Dsl.en("Discount must not be negative."), Dsl.de("Rabatt darf nicht negativ sein."))
                 .build();
-    }
-
-    private static JsonNode readTree(String json) {
-        try {
-            return new ObjectMapper().readTree(json);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 
     @Test

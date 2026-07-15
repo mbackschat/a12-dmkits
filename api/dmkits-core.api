@@ -14,11 +14,6 @@ public final class io.github.mbackschat.a12.dm.core.Backends
   public static void reset()
   public static io.github.mbackschat.a12.dm.core.Verification verification()
 
-public final class io.github.mbackschat.a12.dm.core.DmJson
-  public static com.fasterxml.jackson.databind.node.ObjectNode findElement(com.fasterxml.jackson.databind.JsonNode, java.lang.String, java.lang.String)
-  public static com.fasterxml.jackson.databind.node.ArrayNode groupElements(com.fasterxml.jackson.databind.JsonNode, java.lang.String)
-  public static java.lang.String insertIntoGroup(java.lang.String, java.lang.String, com.fasterxml.jackson.databind.node.ObjectNode)
-
 public final class io.github.mbackschat.a12.dm.core.DmKeys
   public static final java.lang.String ALIAS
   public static final java.lang.String ANNOTATIONS
@@ -73,8 +68,6 @@ public enum io.github.mbackschat.a12.dm.core.ElementType
   public static final io.github.mbackschat.a12.dm.core.ElementType GROUP
   public static final io.github.mbackschat.a12.dm.core.ElementType RULE
   public static io.github.mbackschat.a12.dm.core.ElementType fromWire(java.lang.String)
-  public boolean matches(com.fasterxml.jackson.databind.JsonNode)
-  public static io.github.mbackschat.a12.dm.core.ElementType of(com.fasterxml.jackson.databind.JsonNode)
   public static io.github.mbackschat.a12.dm.core.ElementType valueOf(java.lang.String)
   public static io.github.mbackschat.a12.dm.core.ElementType[] values()
   public java.lang.String wireName()

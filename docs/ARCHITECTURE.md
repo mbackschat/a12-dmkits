@@ -32,7 +32,7 @@ dmkits is **one library with a shared core and two sibling kits**, an **opt-in k
                     │    Test)         └────────┬─────────┘      └────────┬─────────┘         │
                     │                           └───────────┬─────────────┘                   │
                     │                          dm.core — the shared substrate                 │
-                    │            ModelIndex · ModelLoader · DmJson write · ModelResolver       │
+                    │            ModelIndex · ModelLoader · DmKeys/ElementType · ModelResolver │
                     │            ModelConsistencyException · ValueKind · Backends (SPI)        │
                     └────────────────────────────────┬────────────────────────────────────────┘
                             SPI ports (ServiceLoader) │                ▲  internal-read, guarded (N8)
@@ -152,7 +152,6 @@ The DSL-free foundation both kits stand on. No rulekit or modelkit dependency. I
 | `ModelResolver` | **the** include-resolution type — a kernel-free `id → DM-JSON` SAM; every kit signature that resolves references speaks it (never the kernel resolver) |
 | `ReferenceResolvers` | `ModelResolver` factories (`selfContained`/`directory`) — all kernel-free (Jackson only); the kernel-resolver bridge moved into `:adapter` (`KernelResolvers`) at stage 3 |
 | `Severity`, `Notification`, `Annotation` | owned value vocabulary — the **diagnostics** (INFO/WARNING/ERROR; severity + message; a kit `Diagnostic`/`ValidationResult`/`ModelConsistencyException` carries these, never a kernel `RankedNotification`/`Severity`) and an element's **annotation** (name/value, read kernel-free off `ModelIndex`). The kernel→ours mapper (`KernelNotifications`) moved into `:adapter` at stage 3 |
-| `DmJson` | the generic, DSL-free DM-JSON **write** primitive (Jackson tree surgery, include-preserving) — shared by both kits |
 | `ModelConsistencyException` | the one type a kernel rejection (load-time or write-time) surfaces as — carries our `Notification`s |
 | `ValueKind`, `Suggest`, `ModelFormat`, … | value-type taxonomy (kernel-free — from the stored DM-JSON discriminator), did-you-mean suggestions, the DM-JSON format reference, `DmKeys`/`ElementType`/`UnresolvedReferenceException` |
 
@@ -197,13 +196,13 @@ The typed condition/computation language: author, render (EN/DE), read back, val
 | `dsl` | `catalog`, `validate`, core | the typed **sealed** AST, model-bound handles, the catalog-driven EN/DE renderer, the authoring builders, `BoundModel` (the immutable model+rules rep), the `Dsl` static-import facade, `RenderedDiff` |
 | `lint` | `catalog`, `dsl`, `validate` | the AST lint layer + `RuleDiagnostics`, the aggregator across diagnostic origins |
 | `context` | `catalog`, `dsl`, core | the F9/F9a projections: `describe`/`find`/`explain` → `ModelCard`/`FieldMatch`/`RuleExplanation` |
-| `write` | `dsl` | the rule-aware DM-JSON write path (`ModelWriter`) over `core.DmJson` |
+| `write` | `dsl` | the rule-aware DM-JSON write path (`ModelWriter`) over its package-private tree-surgery primitives (`write.DmJson` — rulekit-private since Set W: no Jackson type crosses a published kit signature) |
 
 **Why `dsl` is one flat package of ~105 files (and stays flat).** Its spine is **sealed** — `Condition` and `Calculation` are `sealed interface`s with dozens of permitted subtypes each, plus a sealed operand hierarchy. The project has **no `module-info.java`**, so everything compiles into the *unnamed module*, and the JLS requires every permitted subtype of a sealed type to share the **same package** as its parent there. Sub-packaging (e.g. `dsl.conditions`) therefore wouldn't compile; the only escapes are adding a `module-info` (a heavy, risky change against the kernel/Groovy/native interplay for no navigability win) or dropping `sealed` (which forfeits the exhaustive-`switch` the renderer/visitors rely on — PROJECT-DESIGN §18.5). The package is one-class-per-file and nodes are named after the operators they model, so navigate by filename.
 
 ### 3.3 `dm.modelkit` — structure authoring & editing (28 files)
 
-The structural peer of rulekit: build a model from scratch, and read/round-trip/edit its structure (fields, groups, type-defs, includes, doc config). Jackson tree surgery over `core.DmJson`, re-bound to the kernel gate.
+The structural peer of rulekit: build a model from scratch, and read/round-trip/edit its structure (fields, groups, type-defs, includes, doc config). Jackson tree surgery over its own package-private node helpers (`DmNodes`), re-bound to the kernel gate.
 
 | Class | Role |
 |---|---|
@@ -218,7 +217,7 @@ The **only** layer that imports both kits. `EditSession` threads one DM-JSON doc
 ```
    dm.edit.EditSession   ──imports──▶  dm.modelkit  (structure edits)
         │                ──imports──▶  dm.rulekit   (rule/computation edits)
-        │                ──imports──▶  dm.core      (DmJson, index, the gate)
+        │                ──imports──▶  dm.core      (index, the gate, the wire vocabulary)
         └─ read JSON → apply ordered edits (transient-invalid tolerated) → validate() once → write JSON
 ```
 

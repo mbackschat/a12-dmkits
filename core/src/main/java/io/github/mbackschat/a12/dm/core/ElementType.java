@@ -37,13 +37,15 @@ public enum ElementType {
         return null;
     }
 
-    /** The kind of the DM-JSON element {@code node} (its {@code "type"}), or {@code null} if absent/unknown. */
-    public static ElementType of(JsonNode node) {
+    /** The kind of the DM-JSON element {@code node} (its {@code "type"}), or {@code null} if absent/unknown.
+     *  Core-internal (Set W): a Jackson-typed signature may not cross a published kit boundary; sibling kits
+     *  compose the same test from {@link #wireName()} + {@link DmKeys#TYPE}. */
+    static ElementType of(JsonNode node) {
         return fromWire(node.path(DmKeys.TYPE).asText(null));
     }
 
-    /** True iff {@code node}'s {@code "type"} is this kind. */
-    public boolean matches(JsonNode node) {
+    /** True iff {@code node}'s {@code "type"} is this kind. Core-internal (Set W), like {@link #of(JsonNode)}. */
+    boolean matches(JsonNode node) {
         return wireName.equals(node.path(DmKeys.TYPE).asText());
     }
 }

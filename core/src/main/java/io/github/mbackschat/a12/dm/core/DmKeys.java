@@ -3,7 +3,8 @@ package io.github.mbackschat.a12.dm.core;
 /**
  * The DM-JSON <b>structural</b> vocabulary — the object keys that spell the model/element skeleton, named
  * once (M9). Before this, keys like {@code "type"}/{@code "elements"}/{@code "content"} appeared as bare
- * string literals ~190× across {@link DmJson}, {@code ModelDocument}, and {@code DocumentModelDraft}, each a
+ * string literals ~190× across the kits' tree surgery ({@code ModelWriter}'s primitives, {@code ModelDocument},
+ * {@code DocumentModelDraft}), each a
  * silent typo risk with no single source. These constants are that source; the element {@code type}
  * discriminator's closed value set is {@link ElementType} (an enum, not loose strings).
  *
