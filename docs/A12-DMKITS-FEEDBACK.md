@@ -3,6 +3,8 @@
 > **Provenance + role.** Copied 2026-07-15 from the sibling [`a12-kernel-lean`](../../a12-kernel-lean/) project (`docs/A12-DMKITS-FEEDBACK.md`), whose maintainers recorded actionable upstream feedback discovered while formalizing/transporting kernel semantics. Their review is pinned to our revision `699e8619` (pre-Set-W; Set W touched none of the cited files, so every pin holds) and kernel `30.8.1`. **This copy is the WORKING triage doc:** each item carries a dated master triage disposition; when an item ships, its row gets the outcome + the graduated home (IG/IF row, catalog, findings) and the source queue in a12-kernel-lean is told, per its own handoff-use note. Links into our repo are rewritten repo-relative; evidence links point into the sibling checkout (consult-only).
 >
 > **Triage summary (master, 2026-07-15 — every claim spot-verified against source before acceptance):** all 12 items are **valid**. F10 is a **confirmed real eval divergence** (interpreter rule #1 must-fix); F12 is a credible divergence *candidate* (probe first). F1/F2/F3/F9/F11a are doc/comment corrections (F9 is an iron-rule violation on our side — a contradicted KERNEL-FINDINGS note left stale). F4–F8 are corpus/capture methodology improvements. Proposed packaging: **Set Y** (interpreter correctness: F10 fix + F12 probe + the co-located doc/comment fixes F1, F2, F3, F9, F11a — best agent) and **Set Z** (corpus/capture program: F4–F8 + F11b — regular agent).
+>
+> **Queue state (owner, 2026-07-15 — final):** **Set Y LANDED + gated** (F1, F2, F3, F9, F11a fixed; F10 → IF123; F12 → IF124 — plus the review-found IF125). **Set Z was superseded before minting:** F4, F5, F7, F8, F11b are **absorbed into the adopted [`A12-DMKITS-CAPTURE-PROPOSAL.md`](A12-DMKITS-CAPTURE-PROPOSAL.md)** (per-item dispositions below); **F6 stays open, re-sequenced** (corpus promotion is deliberately outside the proposal's V1). **This doc is DELETED when the capture program completes** (owner-directed lifecycle — the proposal file archives at the same time; git + the findings are the record).
 
 ## Recommended corrections
 
@@ -54,6 +56,8 @@
 
 **Triage (master, 2026-07-15): ACCEPTED.** Sound methodology — mirrors our own F4 "the real kernel is the oracle" testing rule; the negative does-fire guard is mandatory per the refactoring-gate discipline. → Set Z.
 
+**Disposition (owner, 2026-07-15): SUPERSEDED — absorbed into the adopted [capture proposal](A12-DMKITS-CAPTURE-PROPOSAL.md) (§6 "Legality before runtime", work-plan W3).** Not implemented piecemeal; the acceptance check carries forward strengthened (the legality result becomes packet provenance, and both supplied + adapted digests are bound so the gate and runtime provably inspect the same bytes).
+
 ### F5 — Separate conformance capture from characterization export
 
 **Finding:** The strict behavior in [`CorpusCapture.kt`](../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CorpusCapture.kt) blocks a case whenever the interpreter differs from the Groovy anchor. That is correct for the green portable conformance corpus, but it also prevents the same machinery from exporting a kernel observation precisely when an interpreter defect or still-unsupported semantic mechanism is being researched.
@@ -63,6 +67,8 @@
 **Acceptance check:** Strict capture still rejects an interpreter split; characterization mode exports the same split without relabeling it PASS or allowing it into the green corpus.
 
 **Triage (master, 2026-07-15): ACCEPTED.** The F10 receipt itself proves the need — a12-kernel-lean had to hand-build a disposable harness to export a divergence our strict capture refuses to write. Design constraint: the characterization artifacts live outside `corpus/` and are loudly non-conformance. → Set Z.
+
+**Disposition (owner, 2026-07-15): SUPERSEDED — absorbed into the adopted [capture proposal](A12-DMKITS-CAPTURE-PROPOSAL.md) (§5 "Capture once, qualify separately", work-plan W4).** The strict/characterization split generalizes to the three named qualification policies over immutable packets (`characterization-v1` retains divergences and can never promote; capture always preserves observations).
 
 ### F6 — Promote operator-sensitive empty and directional-polarity controls into the portable corpus
 
@@ -74,6 +80,8 @@
 
 **Triage (master, 2026-07-15): ACCEPTED.** The seven named cases are all settled findings on our side (IF73 family, the polarity gradient) — promoting them makes the portable corpus carry the knowledge instead of only repo-local DiffTests. → Set Z.
 
+**Disposition (owner, 2026-07-15): STILL OPEN — re-sequenced, NOT absorbed.** The adopted [capture proposal](A12-DMKITS-CAPTURE-PROPOSAL.md) deliberately defers corpus **promotion** out of its V1 (§5: "a separate hard boundary... not a mandatory generic V1 command"), so this item does not ride it automatically. It stays the one live capture-family row: promote the seven paired cases into the committed portable corpus once the capture boundary lands (through its gated path + a reviewed promotion), or via the existing corpus machinery if the program stalls.
+
 ### F7 — Generate an auditable capture receipt
 
 **Finding:** [`CorpusGenerator.kt`](../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CorpusGenerator.kt) writes cases and deduplicated models, and each case carries a kernel version, but there is no single generated receipt binding the exact capture schema, a12-dmkits revision, kernel version, strategy identities, model/case inventory, byte counts, and SHA-256 digests.
@@ -84,6 +92,8 @@
 
 **Triage (master, 2026-07-15): ACCEPTED.** Same golden-guard pattern as our schemas/API dumps — a receipt the replay gate verifies, regenerated deliberately. Their evidence receipt (schemaVersion 1) is a good reference shape. → Set Z.
 
+**Disposition (owner, 2026-07-15): SUPERSEDED — absorbed into the adopted [capture proposal](A12-DMKITS-CAPTURE-PROPOSAL.md) (§2 `RECEIPT.json` + §7 determinism, work-plan W1/W3).** The receipt becomes the packet's closed inventory (relative paths, roles, byte counts, SHA-256; self-hash-cycle excluded; out-of-band digest handoff; byte-identical recapture as the determinism contract).
+
 ### F8 — Retain a rerunnable capture recipe for focused external consumers
 
 **Finding:** The focused `operator-sensitive-empty` capture used for the Lean capsule was produced by a temporary adapter test in an ignored disposable workspace; the portable observations and receipt were retained here, but the source-side capture command/test was intentionally removed. The generic [`corpus/README.md`](../corpus/README.md) documents full corpus regeneration, not a small read-only export recipe for a named set of rules and documents.
@@ -93,6 +103,8 @@
 **Acceptance check:** A clean checkout can reproduce the named String/Length and Number-directional observations into an ignored directory with one documented command; `git status --short` remains unchanged.
 
 **Triage (master, 2026-07-15): ACCEPTED.** Composes F4+F5+F7 into one maintained entry point; the `git status` invariant is the right acceptance bar. → Set Z (the capstone item).
+
+**Disposition (owner, 2026-07-15): SUPERSEDED — absorbed into the adopted [capture proposal](A12-DMKITS-CAPTURE-PROPOSAL.md) (the maintained command surface itself, §7, work-plan W3).** The "focused-capture recipe" grows into the full `capture`/`validate-scenarios`/`verify`/`diff-*` command family with caller-owned output, committed-corpus refusal, and the clean-`git status` invariant carried forward verbatim.
 
 ### F9 — Correct the superseded bare-name ancestor claim
 
@@ -129,6 +141,8 @@
 **Triage (master, 2026-07-15): VERIFIED + ACCEPTED, split in two.** (a) The KDoc corrections (`Computed.value`, `toComputed`) are stale-comment fixes → Set Y. (b) The rich result/signature surface is a conformance-corpus design item riding the same machinery as F5/F7 → Set Z.
 
 **Disposition for (a) (Set Y, 2026-07-15): FIXED.** `Computed`/`ComputeOutcome` KDoc now states `value` is present for BOTH `VALUE` (the computed value) and `ERRORED` (the ATTEMPTED rendered value — the kernel stores it and flags the instance); `toComputed`'s KDoc names all three outcomes incl. the ERRORED-retains-value branch and the IF123 empty-text clear. Matches every constructor path (VALUE/ERRORED carry a value; CLEARED — Unknown, empty-text, poison, invalid-index — never does). (b) F11b rides Set Z, untouched. Landing revision: the Set Y slice-3 commit.
+
+**Disposition for (b) (owner, 2026-07-15): SUPERSEDED — absorbed into the adopted [capture proposal](A12-DMKITS-CAPTURE-PROPOSAL.md) (§4 exact public observations, work-plan W1/W2).** The rich signature becomes `compute-observation-v1`'s separate multiplicity-preserving channels (attempted value + structured cause + typed-vs-rendered values + per-field fidelity), the compact legacy signature stays byte-compatible and explicitly lossy-labeled — a stronger form of the acceptance check.
 
 ### F12 — Probe CRLF normalization before String target-length checks
 
