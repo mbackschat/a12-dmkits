@@ -27,17 +27,21 @@ public final class GroovyDynamicRunner implements ComputeRunner {
     public ComputeObservation observe(CaseExecution execution) {
         IDocumentModel model = KernelRouteSupport.expandedModel(execution.modelJson());
         IDocumentModelResolver resolver = id -> model;
-        IDocumentRtService rt = new DocumentRtServiceFactory(resolver)
-                .createDocumentRtService(KernelRouteSupport.freshDynamicConfig());
-        return KernelRouteSupport.observe(id(), rt, new DocumentServiceFactory(resolver), execution);
+        return KernelRouteSupport.observe(id(), dynamicRtService(resolver),
+                new DocumentServiceFactory(resolver), execution);
     }
 
     /** The resolved rt-service implementation class name — for the ROUTE-DISTINCTNESS guard only (a test
-     *  assertion; this string never enters a packet or report). */
+     *  assertion; this string never enters a packet or report). Shares {@link #dynamicRtService} with
+     *  {@link #observe}, so the guard provably inspects the route the observation runs. */
     public static String resolvedRouteClassName(String modelJson) {
         IDocumentModel model = KernelRouteSupport.expandedModel(modelJson);
-        IDocumentModelResolver resolver = id -> model;
+        return dynamicRtService(id -> model).getClass().getName();
+    }
+
+    /** The ONE construction of this runner's route — observation and distinctness probe both use it. */
+    private static IDocumentRtService dynamicRtService(IDocumentModelResolver resolver) {
         return new DocumentRtServiceFactory(resolver)
-                .createDocumentRtService(KernelRouteSupport.freshDynamicConfig()).getClass().getName();
+                .createDocumentRtService(KernelRouteSupport.freshDynamicConfig());
     }
 }

@@ -54,7 +54,8 @@ configurations {
 // Separation by linting (the verifyInterpreterPurity / verifyKitPurity pattern): kernel types terminate
 // inside the two kernel route mappers (`capture.runner.kernel`), interpreter types inside the interpreter
 // runner (`capture.runner.interpreter`), and the NEUTRAL zone (dto/schema/json/packet/…) references
-// neither engine. Comments are stripped first, so only a real code reference fails.
+// neither engine. Comments AND string literals are stripped first, so only a real compile-time type
+// reference fails — the LeakGuard legitimately NAMES the forbidden prefix as scan vocabulary in a string.
 def verifyCapturePurity = tasks.register('verifyCapturePurity') {
     group = 'verification'
     description = 'Fail when a kernel/interpreter type crosses the capture DTO boundary (CONFORMANCE-CORPUS-SPEC §15).'
@@ -77,7 +78,9 @@ def verifyCapturePurity = tasks.register('verifyCapturePurity') {
             } else {
                 forbidden = kernelPrefixes + [interpreterPrefix]    // the neutral zone: neither engine
             }
-            def code = f.text.replaceAll('(?s)/\\*.*?\\*/', '').replaceAll('//[^\\n]*', '')
+            def code = f.text.replaceAll('(?s)/\\*.*?\\*/', '')
+                    .replaceAll('//[^\\n]*', '')
+                    .replaceAll('"(?:\\\\.|[^"\\\\])*"', '""')
             forbidden.each { prefix ->
                 if (code.contains(prefix)) {
                     violations << "${rel}: references forbidden prefix '${prefix}'"
