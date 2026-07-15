@@ -122,6 +122,29 @@ public final class StructuralKernelFix {
                             + "together\") fires when an enum value's internal (XML) value and its per-locale display "
                             + "labels are not specified together across the declared locales — a label-coverage gap on "
                             + "the enum, not a condition error."),
+            "MVK_INVALID_RAW_TYPE", new Hint(
+                    "The condition (or computation) reads the VALUE of a field that declares noValueValidation "
+                            + "(a raw-type string) — the kernel forbids every value use of such a field: comparisons, "
+                            + "value lists, computations, even $field.value$ in a message. Test PRESENCE instead "
+                            + "(FieldFilled / FieldNotFilled and the quantifiers work normally), or drop "
+                            + "noValueValidation from the field (`field modify`) if its value must participate.",
+                    "MVK_INVALID_RAW_TYPE (\"It is not allowed to use a field which defines 'no value validation'\"): "
+                            + "a noValueValidation field's value is never interned for evaluation — the kernel caches a "
+                            + "pseudo value — so no rule or computation can read it. The only value-shaped construct it "
+                            + "permits is the whole-condition `Length(f) > <constant>`, and that is a disguised "
+                            + "max-length declaration, not an evaluated rule."),
+            "MVK_INVALID_LENGTH_OF_RAW_TYPE", new Hint(
+                    "Length over a noValueValidation (raw-type) field is allowed ONLY as the WHOLE rule condition "
+                            + "`Length(f) > <constant>` (or the mirrored `<constant> < Length(f)`) — no And/Or around "
+                            + "it, strict > only (no >=, ==, <=), and never inside a computation. Know what you author: "
+                            + "that one shape is a MAX-LENGTH DECLARATION the kernel lifts into the field's metadata and "
+                            + "ELIMINATES as a rule — it never fires at runtime, so do not expect a validation message "
+                            + "from it.",
+                    "MVK_INVALID_LENGTH_OF_RAW_TYPE (\"conditions using the length of a field which defines 'no value "
+                            + "validation' must have following form: 'Length(<field>) > <constant>'\"): the kernel "
+                            + "accepts exactly that comparison as a meta-length restraint (codegen removes the rule and "
+                            + "tightens the generated max length); every other Length use of a raw-type field is "
+                            + "rejected because its value is never available to evaluation."),
             "MVK_INVALID_COMPARE_DEC_PLACES", new Hint(
                     "The two decimal operands here must share the SAME declared scale (fractional digits) — only "
                             + "== / != and a computed-field assignment are checked; ORDERING (< <= > >=) is exempt. TWO "

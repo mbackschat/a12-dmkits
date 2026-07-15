@@ -118,6 +118,26 @@ class DiagnosticEnricherTest {
     }
 
     @Test
+    void rawTypeValueUseGetsThePresenceCorrective() {
+        Diagnostic enriched = ENRICHER.enrich(raw("MVK_INVALID_RAW_TYPE"));
+
+        String fix = enriched.fix().orElse("");
+        assertTrue(fix.contains("noValueValidation") && fix.contains("PRESENCE"),
+                () -> "the raw-type fix should steer to presence checks, got: " + fix);
+        assertTrue(enriched.explain().orElse("").contains("never interned"),
+                () -> "the explain should carry the pseudo-value mechanism, got: " + enriched.explain());
+    }
+
+    @Test
+    void rawTypeLengthShapeGetsTheEliminatedDeclarationCorrective() {
+        Diagnostic enriched = ENRICHER.enrich(raw("MVK_INVALID_LENGTH_OF_RAW_TYPE"));
+
+        String fix = enriched.fix().orElse("");
+        assertTrue(fix.contains("Length(f) > <constant>") && fix.contains("never fires"),
+                () -> "the raw-type Length fix should name the sole allowed shape AND warn it is eliminated, got: " + fix);
+    }
+
+    @Test
     void noCrossOperatorCodeSilentlyDropsACorrective() {
         // GUARD (anti-whack-a-mole, catalog-derived so it covers siblings we never probed): for EVERY kernel
         // code documented by >1 operator whose invalidExample fixes DISAGREE, the enriched fix must carry

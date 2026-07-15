@@ -1,8 +1,12 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
+import io.github.mbackschat.a12.dm.interpreter.ast.Cond
+import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
+import io.github.mbackschat.a12.dm.interpreter.eval.FunctionOp
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.renderMessage
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
@@ -273,6 +277,22 @@ class DmInterpreter @JvmOverloads constructor(
             cellRelevant = if (isRelevant === ALL_RELEVANT) null else { path, reps -> isRelevant(path, reps) },
             starRelevant = starRelevant, customRelevant = customRelevant)
 
+    /** The kernel's allowed-and-eliminated raw-type length shape (see [rowOutcomes]): the whole condition is
+     *  `Length(nvv) > constant` or the mirrored `constant < Length(nvv)` — GT/LT only (`>=`-style variants are
+     *  model-rejected `MVK_INVALID_LENGTH_OF_RAW_TYPE`, so they never reach a legal eval), the one `Length`
+     *  argument a plain field ref whose declared constraints carry `noValueValidation`. */
+    private fun eliminatedNvvMetaLengthRule(ast: Cond): Boolean {
+        if (ast !is Cond.Cmp) return false
+        val (fn, lit) = when (ast.op) {
+            CmpOp.GT -> ast.left to ast.right
+            CmpOp.LT -> ast.right to ast.left
+            else -> return false
+        }
+        if (lit !is Expr.NumLit || fn !is Expr.Func || FunctionOp.byName(fn.name) != FunctionOp.LENGTH) return false
+        val field = fn.args.singleOrNull() as? Expr.Field ?: return false
+        return model.constraintsOf(field.path).noValueValidation
+    }
+
     /** The per-row outcome of one rule: fired (with its message), passed, or suppressed (which field/code). */
     private sealed interface RowOutcome {
         data class Fired(val message: Message) : RowOutcome
@@ -282,6 +302,16 @@ class DmInterpreter @JvmOverloads constructor(
 
     private fun rowOutcomes(rule: RuleDef, pass: ValidationPass): List<RowOutcome> {
         val ast = parsedModel.condAstOf(rule)
+        // The nvv META-LENGTH rule is ELIMINATED — never evaluated, no rows (IG71 → IF125). A rule whose WHOLE
+        // condition is `Length(nvvField) > constant` (or the mirrored `constant < Length(nvvField)`) is the
+        // kernel's disguised max-length declaration for a raw-type field: the codegen REMOVES the rule and only
+        // tightens the generated meta-model's max length (`ValidationCodeGenerator.
+        // handleLengthOfAllowedValueValidationRule` → `addMaxLengthDefinedByRules`; the same extraction as
+        // `AnalyseService.getNameAndLengthOfAllowedValueValidation` — GT/LT-mirrored only), in BOTH strategies.
+        // This is the ONLY kernel-legal value-ish read of an nvv field (every other value position is
+        // model-rejected: MVK_INVALID_RAW_TYPE / MVK_INVALID_LENGTH_OF_RAW_TYPE / INVALID_NO_VALUE_VALIDATION),
+        // so eliminating the rule — not inventing a per-read np value state — is the mechanism-exact twin.
+        if (eliminatedNvvMetaLengthRule(ast)) return emptyList()
         val refs = nonStarredRefs(ast).distinct()
         val errorPath = resolveErrorPath(rule)
         return scopes.iterationContexts(rule, ast, pass.doc).map { ctx ->

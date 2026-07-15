@@ -34,6 +34,27 @@ class ModelFuzzDiffTest {
         }
     }
 
+    // The nvv (raw-type) family (IG71/IF125): random legal rules over noValueValidation fields — the
+    // eliminated meta-length shape must never fire while presence/count shapes fire normally. No other
+    // net can generate an nvv field, which is why the IG71 divergence survived every sweep.
+    @Test
+    fun nvvModelsAgreeWithKernel() {
+        val failures = buildList {
+            for (m in 0 until MODELS) {
+                val scenario = ModelFuzz.nvvModel(m)
+                for (d in 0 until DOCS) {
+                    if (!FuzzDiagnostics.signaturesAgree(scenario, d)) {
+                        add("${scenario.name} docSeed=$d :: " + FuzzDiagnostics.signatureDivergence(scenario, d))
+                    }
+                }
+            }
+        }
+        assertTrue(failures.isEmpty()) {
+            "nvv fuzz: interpreter diverged from the kernel on ${failures.size} (model, doc) pairs " +
+                "at the full-message level:\n" + failures.take(15).joinToString("\n")
+        }
+    }
+
     private companion object {
         const val MODELS = 40
         const val DOCS = 5

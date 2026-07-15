@@ -23,7 +23,7 @@ import java.util.function.Consumer
  * permitted `"AB\r\nCD"` (and FIRES `> 4` — a real normalized read, not a suppression) and a computed copy
  * STORES `"AB\nCD"`. The interpreter's twin is the Document's eval-index ingestion (raw placements stay
  * untouched). (A `noValueValidation` field is OUT of this class: its rule read never surfaces the stored
- * text at all — the raw-type read semantics, IG71.)
+ * text at all — the raw-type read semantics, IF125.)
  */
 class CrlfLengthNormalizationDiffTest {
 
@@ -160,7 +160,8 @@ class CrlfLengthNormalizationDiffTest {
     // (A `noValueValidation` field deliberately has NO arm here: `Length(nvv) > c` is the only authorable
     // value-ish read of one — `MVK_INVALID_LENGTH_OF_RAW_TYPE` / `MVK_INVALID_RAW_TYPE` reject the rest —
     // and the kernel NEVER fires it (an unconditionally non-evaluable read, probe-pinned incl. `> -1` over
-    // filled AND empty), so the nvv read is a raw-type semantics question, not a normalization one — IG71.)
+    // filled AND empty), so the nvv read is a raw-type semantics question, not a normalization one — IF125:
+    // the shape is ELIMINATED at codegen, locked by NvvRawTypeDiffTest.)
 
     private val COPY = "/Claim/NoteCopy"
 }

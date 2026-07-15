@@ -85,6 +85,77 @@ object ModelFuzz {
         }
     }
 
+    /**
+     * Build a random **nvv (raw-type) model** for [modelSeed] — the IG71/IF125 net. Two `noValueValidation`
+     * string fields (one root-level, one inside a repeatable group) with the LEGAL rule pool over them: the
+     * eliminated meta-length shape (`Length(nvv) > c`, both mirror directions, random bounds incl. always-true
+     * ones — the shape that must NEVER fire), presence checks, quantifiers, and content counts (which must
+     * fire normally). nvv values are sometimes multi-line (legal — the format check is skipped) and of random
+     * length, so a mis-evaluated Length would split immediately. No prior net could generate an nvv field —
+     * which is why the IG71 divergence survived every sweep.
+     */
+    fun nvvModel(modelSeed: Int): PerfScenario {
+        val rnd = Random(modelSeed.toLong())
+        val structureJson = DocumentModelDraft.named("claim").locale("en_US")
+            .rootGroup("Claim", Consumer { g ->
+                g.stringField("Note") { n -> n.lineBreaks().noValueValidation() }
+                g.field("Other", FieldKind.STRING)
+                g.field("Ref", FieldKind.STRING)
+                g.group("Items", Consumer { i ->
+                    i.repeatable(1000)
+                    i.stringField("Blob") { b -> b.lineBreaks().noValueValidation() }
+                    i.field("Name", FieldKind.STRING)
+                })
+            })
+            .build().toJson()
+
+        val spec = nvvRule(rnd)
+        val kernelModel = RuntimeLaws.withRule(structureJson, spec.group, "R_${spec.code}", spec.errorRel, spec.code, spec.cond)
+
+        val nvvPaths = setOf("/Claim/Note", "/Claim/Items/Blob")
+        val interpModel = ModelDef(
+            listOf(
+                FieldDef("/Claim/Note", Kind.STRING, noValueValidation = true, lineBreaksPermitted = true),
+                FieldDef("/Claim/Other", Kind.STRING),
+                FieldDef("/Claim/Ref", Kind.STRING),
+                FieldDef("/Claim/Items/Blob", Kind.STRING, noValueValidation = true, lineBreaksPermitted = true),
+                FieldDef("/Claim/Items/Name", Kind.STRING),
+            ),
+            listOf(RuleDef("${spec.group}/R_${spec.code}", spec.group, spec.cond, spec.code, spec.errorRel)),
+            repeatableGroups = setOf("/Claim/Items"),
+            declaredReps = mapOf("/Claim/Items" to 1000),
+        )
+        val gen = SeedGenerator(interpModel)
+        val rows: (String, List<Int>, Random) -> Int = { g, _, r -> if (g == "/Claim/Items") r.nextInt(0, 4) else 0 }
+        val values = ValueStrategy { f, _, r ->
+            when {
+                r.nextDouble() < 0.3 -> null
+                f.path in nvvPaths -> buildString {
+                    repeat(r.nextInt(1, 13)) { append(('a' + r.nextInt(26))) }
+                    if (r.nextDouble() < 0.3) insert(r.nextInt(length), '\n')   // multi-line raw payloads are legal
+                }
+                else -> "t" + r.nextInt(0, 50)
+            }
+        }
+        return PerfScenario("nvvfuzz#$modelSeed ${spec.code}", kernelModel, interpModel) { sink, _, variant ->
+            gen.populate(sink, seed = variant.toLong(), rowsOf = rows, value = values)
+        }
+    }
+
+    /** One legal rule over the nvv fields: the eliminated meta-length shape (never fires) or an ordinary
+     *  presence/quantifier/count rule (fires normally). Every shape references its error field. */
+    private fun nvvRule(rnd: Random): RuleSpec {
+        val bound = rnd.nextInt(-1, 15)
+        return when (rnd.nextInt(6)) {
+            0 -> RuleSpec("/Claim", "LG", "../Note", "Length(Note) > $bound")
+            1 -> RuleSpec("/Claim", "LM", "../Note", "$bound < Length(Note)")
+            2 -> RuleSpec("/Claim", "PN", "../Note", "FieldNotFilled(Note)")
+            3 -> RuleSpec("/Claim", "QA", "../Other", "AllFieldsFilled(Note, Other)")
+            4 -> RuleSpec("/Claim/Items", "RB", "../Blob", "GroupFilled(/Claim/Items) And FieldNotFilled(Blob)")
+            else -> RuleSpec("/Claim", "CT", "../Ref", "FieldFilled(Ref) And NumberOfFilledFields(Items*/Blob) > ${rnd.nextInt(0, 3)}")
+        }
+    }
+
     private data class RuleSpec(val group: String, val code: String, val errorRel: String, val cond: String)
 
     /** Pick a rule shape that stresses the nesting: per-row at the deepest level, a cross-level ref to the
