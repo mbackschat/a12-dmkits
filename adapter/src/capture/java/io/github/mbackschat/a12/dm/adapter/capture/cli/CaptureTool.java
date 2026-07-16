@@ -15,8 +15,8 @@ import io.github.mbackschat.a12.dm.adapter.capture.dto.ProjectionId;
 import io.github.mbackschat.a12.dm.adapter.capture.json.Json;
 import io.github.mbackschat.a12.dm.adapter.capture.packet.CaptureOptions;
 import io.github.mbackschat.a12.dm.adapter.capture.packet.CaptureRefusedException;
+import io.github.mbackschat.a12.dm.adapter.capture.packet.ClosureIdentity;
 import io.github.mbackschat.a12.dm.adapter.capture.packet.PacketWriter;
-import io.github.mbackschat.a12.dm.adapter.capture.packet.SourceState;
 import io.github.mbackschat.a12.dm.adapter.capture.policy.Diffs;
 import io.github.mbackschat.a12.dm.adapter.capture.policy.Verifier;
 import io.github.mbackschat.a12.dm.adapter.capture.schema.Capabilities;
@@ -32,9 +32,9 @@ import io.github.mbackschat.a12.dm.adapter.capture.schema.ScenarioSets;
  */
 public final class CaptureTool {
 
-    /** The command environment — injectable so tests cover both source-state branches; {@link #realEnv}
-     *  is what the Gradle tasks run. */
-    public record Env(PrintStream out, PrintStream err, SourceState.Probe probe, Path repoRoot) {
+    /** The command environment — injectable so tests cover the source-state and closure-identity refusal
+     *  branches deterministically; {@link #realEnv} is what the Gradle tasks run. */
+    public record Env(PrintStream out, PrintStream err, ClosureIdentity.Probe probe, Path repoRoot) {
     }
 
     /** The closed command set (grows per shipped slice; unknown commands name the available set). */
@@ -71,7 +71,7 @@ public final class CaptureTool {
 
     static Env realEnv() {
         Path repoRoot = repoRoot();
-        return new Env(System.out, System.err, SourceState.gitProbe(repoRoot), repoRoot);
+        return new Env(System.out, System.err, ClosureIdentity.probe(repoRoot), repoRoot);
     }
 
     private static Path repoRoot() {
@@ -154,7 +154,7 @@ public final class CaptureTool {
                 .scenarioFile(scenarioFile)
                 .outputDir(Path.of(output))
                 .development(development)
-                .sourceState(env.probe().state())
+                .identityProbe(env.probe())
                 .repoRoot(env.repoRoot())
                 .build());
         if (development) {
@@ -176,7 +176,7 @@ public final class CaptureTool {
                 required(options, "--packet-receipt-sha256"),
                 policy,
                 Path.of(required(options, "--output")),
-                env.probe().state(),
+                env.probe().resolve().source(),
                 env.repoRoot());
         env.out().println("policy " + policy.wire() + ": " + verified.verdict().toUpperCase(java.util.Locale.ROOT));
         env.out().println("report RECEIPT.json sha256: " + verified.reportReceiptSha256());

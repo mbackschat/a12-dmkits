@@ -4,13 +4,15 @@ import java.nio.file.Path;
 
 /**
  * One capture run's options — builder-constructed (the standing rule: several same-typed {@link Path}
- * parameters are silently swap-prone as positional arguments).
+ * parameters are silently swap-prone as positional arguments). The identity PROBE (not a snapshot) rides
+ * along because capture resolves the closure identity twice — before execution and again before
+ * finalization (audit Finding 5).
  */
 public record CaptureOptions(
         Path scenarioFile,
         Path outputDir,
         boolean development,
-        SourceState sourceState,
+        ClosureIdentity.Probe identityProbe,
         Path repoRoot) {
 
     public static Builder builder() {
@@ -21,7 +23,7 @@ public record CaptureOptions(
         private Path scenarioFile;
         private Path outputDir;
         private boolean development;
-        private SourceState sourceState;
+        private ClosureIdentity.Probe identityProbe;
         private Path repoRoot;
 
         public Builder scenarioFile(Path scenarioFile) {
@@ -39,8 +41,8 @@ public record CaptureOptions(
             return this;
         }
 
-        public Builder sourceState(SourceState sourceState) {
-            this.sourceState = sourceState;
+        public Builder identityProbe(ClosureIdentity.Probe identityProbe) {
+            this.identityProbe = identityProbe;
             return this;
         }
 
@@ -50,10 +52,10 @@ public record CaptureOptions(
         }
 
         public CaptureOptions build() {
-            if (scenarioFile == null || outputDir == null || sourceState == null || repoRoot == null) {
-                throw new IllegalStateException("scenarioFile, outputDir, sourceState, and repoRoot are required");
+            if (scenarioFile == null || outputDir == null || identityProbe == null || repoRoot == null) {
+                throw new IllegalStateException("scenarioFile, outputDir, identityProbe, and repoRoot are required");
             }
-            return new CaptureOptions(scenarioFile, outputDir, development, sourceState, repoRoot);
+            return new CaptureOptions(scenarioFile, outputDir, development, identityProbe, repoRoot);
         }
     }
 }

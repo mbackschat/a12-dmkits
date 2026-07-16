@@ -17,7 +17,9 @@ import org.junit.jupiter.api.io.TempDir;
 import io.github.mbackschat.a12.dm.adapter.capture.cli.CaptureTool;
 import io.github.mbackschat.a12.dm.adapter.capture.json.Digests;
 import io.github.mbackschat.a12.dm.adapter.capture.json.Json;
+import io.github.mbackschat.a12.dm.adapter.capture.packet.ClosureIdentity;
 import io.github.mbackschat.a12.dm.adapter.capture.packet.SourceState;
+import io.github.mbackschat.a12.dm.adapter.capture.runner.kernel.KernelArtifacts;
 
 /**
  * The REAL command surface (proposal §7), driven through the one entry the Gradle tasks call: refusals
@@ -33,13 +35,24 @@ class CaptureCommandTest {
     record Run(int exit, String out, String err) {
     }
 
+    /** A stable test identity: the injected source state + the REAL kernel closure and runtime of this
+     *  JVM (deterministic within a run, so the pre/post identity check passes). */
+    static ClosureIdentity.Probe probeOf(SourceState state) {
+        return () -> new ClosureIdentity(state, KernelArtifacts.resolveAll(),
+                ClosureIdentity.RuntimeIdentity.current());
+    }
+
     static Run run(Path repoRoot, SourceState state, String... args) {
+        return run(repoRoot, probeOf(state), args);
+    }
+
+    static Run run(Path repoRoot, ClosureIdentity.Probe probe, String... args) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         ByteArrayOutputStream err = new ByteArrayOutputStream();
         int exit = CaptureTool.run(args, new CaptureTool.Env(
                 new PrintStream(out, true, StandardCharsets.UTF_8),
                 new PrintStream(err, true, StandardCharsets.UTF_8),
-                () -> state, repoRoot));
+                probe, repoRoot));
         return new Run(exit, out.toString(StandardCharsets.UTF_8), err.toString(StandardCharsets.UTF_8));
     }
 

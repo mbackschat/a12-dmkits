@@ -53,14 +53,20 @@ public final class LeakGuard {
         }
     }
 
-    /** The one sanctioned {@code com.mgmtp.} occurrence: the kernel's MAVEN COORDINATE (group:artifact),
-     *  which the envelope must bind (proposal §3) — a coordinate is identity, not implementation detail;
-     *  the class-name ban still catches any dotted {@code com.mgmtp.…} type reference. */
-    private static final String ALLOWED_KERNEL_COORDINATE = "com.mgmtp.a12.kernel:";
+    /** The sanctioned {@code com.mgmtp.} occurrences: the kernel-closure MAVEN COORDINATES
+     *  (group + {@code :}), which the envelope must bind (proposal §3 / audit Finding 5) — a coordinate is
+     *  identity, not implementation detail; the class-name ban still catches any dotted
+     *  {@code com.mgmtp.…} type reference. */
+    private static final List<String> ALLOWED_KERNEL_COORDINATES =
+            List.of("com.mgmtp.a12.kernel:", "com.mgmtp.a12.base:");
 
     /** Check one GENERATED artifact's bytes; refuse loudly on any machine-specific or kernel leak. */
     public void checkGenerated(String artifactPath, byte[] bytes) {
-        String text = new String(bytes, StandardCharsets.UTF_8).replace(ALLOWED_KERNEL_COORDINATE, "");
+        String scrubbed = new String(bytes, StandardCharsets.UTF_8);
+        for (String coordinate : ALLOWED_KERNEL_COORDINATES) {
+            scrubbed = scrubbed.replace(coordinate, "");
+        }
+        final String text = scrubbed;
         List<String> hits = new ArrayList<>();
         forbidden.forEach((needle, meaning) -> {
             if (text.contains(needle)) {
