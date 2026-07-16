@@ -121,8 +121,8 @@ SOURCE_MUTATIONS = [
         "                packet.request().qualificationPolicy() == PolicyId.CHARACTERIZATION;",
         "        boolean characterizing = false;")]),
     m("M07-unavailable-treated-as-equal",
-      "an unavailable required interpreter channel is treated as semantic equality",
-      f"{TESTS}.VerifierDivergenceTest.anUnavailableRequiredInterpreterChannelFailsConformanceClosed",
+      "an unavailable required channel is treated as semantic equality (the fail-closed backstop dies)",
+      f"{TESTS}.ProjectionFailClosedTest.anUnavailableRequiredChannelIsNeverEquality",
       [(f"{CAPTURE}/policy/Projections.java",
         '            if (!"available".equals(availability(interpreter, channel.wire()))) {',
         "            if (false) {")]),
@@ -281,6 +281,11 @@ def run_source_mutation(entry, results):
             actual = entry["expectedGuard"] + (" FAILED" if fired else " passed")
         else:
             code, output = gradle([":adapter:test", "--tests", entry["expectedGuard"]], f"{mid}.log")
+            # A vanished/renamed guard ("No tests found") must FAIL the suite loudly — a build that fails
+            # because the filter matched nothing is not a fired guard (the false-positive class).
+            if "No tests found" in output:
+                raise RuntimeError(f"{mid}: expected guard {entry['expectedGuard']} matched NO tests —"
+                                   " the guard reference is stale; fix it, never record a fired guard")
             fired = code != 0 and "FAILED" in output
             actual = "; ".join(sorted({line.strip() for line in output.splitlines()
                                        if " FAILED" in line and ">" in line})) or "no failing test reported"
