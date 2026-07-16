@@ -128,6 +128,11 @@ public final class VerifiedPacket {
         return str(capture(), "sourceRevision");
     }
 
+    /** The envelope-bound digest of the copied request bytes ({@code scenario.requestSha256}). */
+    public String requestSha256() {
+        return str((Json.Obj) envelope.members().get("scenario"), "requestSha256");
+    }
+
     /** Every model ref → legality verdict, from the envelope. */
     public Map<String, String> legalityVerdicts() {
         Map<String, String> verdicts = new LinkedHashMap<>();

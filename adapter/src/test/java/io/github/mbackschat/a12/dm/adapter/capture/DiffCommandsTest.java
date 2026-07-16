@@ -76,17 +76,26 @@ class DiffCommandsTest {
 
     @Test
     void reportDiffSeparatesProfileFromQualificationResultDrift(@TempDir Path work) throws IOException {
-        Path packet = capture(work, "packet");
-        String sha = Digests.sha256(Files.readAllBytes(packet.resolve("RECEIPT.json")));
+        // Verification is bound to each packet's DECLARED policy, so differing profiles come from two
+        // packets declaring different policies — each verified under its own declaration.
+        Path confirmedPacket = capture(work, "confirmed-packet");
+        Path characterizationScenario = CaptureFixtures.writeScenario(work.resolve("characterization-root"),
+                CaptureFixtures.declareCharacterization());
+        Path characterizationPacket = work.resolve("characterization-packet");
+        assertEquals(0, CaptureCommandTest.run(work, CaptureCommandTest.CLEAN,
+                "capture", "--scenarios", characterizationScenario.toString(),
+                "--output", characterizationPacket.toString()).exit());
 
         Path satisfied = work.resolve("report-satisfied");
         assertEquals(0, CaptureCommandTest.run(work, CaptureCommandTest.CLEAN,
-                "verify", "--packet", packet.toString(), "--packet-receipt-sha256", sha,
+                "verify", "--packet", characterizationPacket.toString(), "--packet-receipt-sha256",
+                Digests.sha256(Files.readAllBytes(characterizationPacket.resolve("RECEIPT.json"))),
                 "--policy", "characterization-v1", "--output", satisfied.toString()).exit());
-        Path conformance = work.resolve("report-conformance");
+        Path conformance = work.resolve("report-confirmed");
         assertEquals(0, CaptureCommandTest.run(work, CaptureCommandTest.CLEAN,
-                "verify", "--packet", packet.toString(), "--packet-receipt-sha256", sha,
-                "--policy", "dmkits-projected-conformance-v1", "--output", conformance.toString()).exit());
+                "verify", "--packet", confirmedPacket.toString(), "--packet-receipt-sha256",
+                Digests.sha256(Files.readAllBytes(confirmedPacket.resolve("RECEIPT.json"))),
+                "--policy", "kernel-route-confirmed-v1", "--output", conformance.toString()).exit());
 
         CaptureCommandTest.Run run = CaptureCommandTest.run(work, CaptureCommandTest.CLEAN,
                 "diff-reports", "--before", satisfied.toString(), "--after", conformance.toString(),

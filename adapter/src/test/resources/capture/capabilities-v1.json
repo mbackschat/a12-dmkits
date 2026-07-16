@@ -143,10 +143,35 @@
     "compute-projection-dmkits-portable-v1"
   ],
   "policies": [
-    "characterization-v1",
-    "kernel-route-confirmed-v1",
-    "dmkits-projected-conformance-v1"
+    {
+      "id": "characterization-v1",
+      "qualifyingRunners": [],
+      "mandatoryProjections": []
+    },
+    {
+      "id": "kernel-route-confirmed-v1",
+      "qualifyingRunners": [
+        "kernel-groovy-dynamic",
+        "kernel-java-static"
+      ],
+      "mandatoryProjections": [
+        "compute-projection-kernel-route-v1"
+      ]
+    },
+    {
+      "id": "dmkits-projected-conformance-v1",
+      "qualifyingRunners": [
+        "kernel-groovy-dynamic",
+        "kernel-java-static",
+        "a12-dmkits-interpreter"
+      ],
+      "mandatoryProjections": [
+        "compute-projection-kernel-route-v1",
+        "compute-projection-dmkits-portable-v1"
+      ]
+    }
   ],
+  "requiredChannelsSemantics": "each required channel must be registry-available on every runner the declared policy requires to succeed (its qualifying runners); other requested runners keep their declared fidelity gaps — echoed, never bridged; per-runner or per-field requirements take a new request schema",
   "reportSchemas": [
     "qualification-profile-v1",
     "qualification-report-v1",

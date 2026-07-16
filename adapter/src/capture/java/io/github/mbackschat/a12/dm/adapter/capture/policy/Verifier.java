@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import io.github.mbackschat.a12.dm.adapter.capture.dto.PolicyId;
 import io.github.mbackschat.a12.dm.adapter.capture.json.Digests;
 import io.github.mbackschat.a12.dm.adapter.capture.json.Json;
+import io.github.mbackschat.a12.dm.adapter.capture.packet.CaptureRefusedException;
 import io.github.mbackschat.a12.dm.adapter.capture.packet.LeakGuard;
 import io.github.mbackschat.a12.dm.adapter.capture.packet.OutputDirs;
 import io.github.mbackschat.a12.dm.adapter.capture.packet.PacketWriter;
@@ -16,10 +17,13 @@ import io.github.mbackschat.a12.dm.adapter.capture.packet.SourceState;
 import io.github.mbackschat.a12.dm.adapter.capture.schema.SchemaIds;
 
 /**
- * The VERIFIER (proposal §5): applies a named policy to an immutable, receipt-bound packet and writes a
- * SEPARATE digest-bound report directory ({@code PROFILE.json} + {@code REPORT.json} + its own
- * {@code RECEIPT.json}) — verification never adds to or rewrites the packet. The report binds the exact
- * upstream receipt digest, the profile digest, and the verifier's own source identity.
+ * The VERIFIER (proposal §5): applies the REQUEST-DECLARED policy to an immutable, receipt-bound packet
+ * and writes a SEPARATE digest-bound report directory ({@code PROFILE.json} + {@code REPORT.json} + its
+ * own {@code RECEIPT.json}) — verification never adds to or rewrites the packet. Verification is BOUND to
+ * the request's declared qualification policy: a mismatching CLI policy is refused fail-closed before any
+ * comparison (a policy is never selected after observations are known). The report binds the exact
+ * upstream receipt digest, the request digest + declared observation-requirement identity, the profile
+ * digest, and the verifier's own source identity.
  */
 public final class Verifier {
 
@@ -34,6 +38,13 @@ public final class Verifier {
             Path outputDir, SourceState verifierState, Path repoRoot) {
         OutputDirs.requireNewOrEmptyOutsideCorpus(outputDir, repoRoot);
         VerifiedPacket packet = VerifiedPacket.load(packetDir, packetReceiptSha256);
+        PolicyId declared = packet.request().qualificationPolicy();
+        if (policy != declared) {
+            throw new CaptureRefusedException("the request declares qualification policy \"" + declared.wire()
+                    + "\" — verification is BOUND to the request-declared policy (pinned before execution);"
+                    + " the mismatching CLI policy \"" + policy.wire() + "\" is refused, fail closed. A"
+                    + " policy is never selected after observations are known.");
+        }
         PolicyEngine.Outcome outcome = PolicyEngine.apply(policy, packet);
 
         byte[] profileBytes = Json.canonicalBytes(Profiles.emit(policy));
@@ -58,9 +69,25 @@ public final class Verifier {
 
     private static Json report(PolicyId policy, VerifiedPacket packet, PolicyEngine.Outcome outcome,
             String profileSha256, SourceState verifierState) {
+        var requirement = packet.request().observationRequirement();
         Json.Obj root = Json.Obj.of()
                 .put("schema", SchemaIds.QUALIFICATION_REPORT)
                 .put("policy", Json.Obj.of().put("id", policy.wire()).put("version", "1"))
+                // The request-declared qualification contract this report is BOUND to: changing the
+                // declared requirement's identity or contents changes the request bytes, hence this digest,
+                // hence the report identity.
+                .put("request", Json.Obj.of()
+                        .put("scenarioSetId", packet.request().scenarioSetId())
+                        .put("scenarioSetVersion", packet.request().scenarioSetVersion())
+                        .put("requestSha256", packet.requestSha256())
+                        .put("qualificationPolicy", packet.request().qualificationPolicy().wire())
+                        .put("observationRequirement", Json.Obj.of()
+                                .put("id", requirement.id())
+                                .put("version", requirement.version())
+                                .put("requiredChannels", Json.arrOfStrings(requirement.requiredChannels()
+                                        .stream().map(c -> c.wire()).toList()))
+                                .put("comparisonProjections", Json.arrOfStrings(requirement
+                                        .comparisonProjections().stream().map(p -> p.wire()).toList()))))
                 .put("packet", Json.Obj.of()
                         .put("receiptSha256", packet.receiptSha256())
                         .put("sourceRevision", packet.sourceRevision())

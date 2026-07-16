@@ -64,7 +64,8 @@ public final class CaptureFixtures {
                     "id": "quote-selftest-requirement", "version": "1",
                     "requiredChannels": [ "withoutErrors", "changedSubset", "withErrors", "cleared",
                                           "formalErrorsInOperands", "appliedState" ],
-                    "comparisonProjections": [ "compute-projection-kernel-route-v1" ]
+                    "comparisonProjections": [ "compute-projection-kernel-route-v1",
+                                               "compute-projection-dmkits-portable-v1" ]
                   },
                   "cases": [
                     {
@@ -118,6 +119,22 @@ public final class CaptureFixtures {
             }
             return injected;
         });
+    }
+
+    /** The conformance-DECLARING variant of the valid scenario: policy
+     *  {@code dmkits-projected-conformance-v1} with {@code requiredChannels} limited to what the
+     *  interpreter's registry fidelity exposes (the qualifying-runner channel gate refuses more,
+     *  pre-execution, by design). */
+    public static UnaryOperator<String> declareConformance() {
+        return text -> text
+                .replace("\"kernel-route-confirmed-v1\"", "\"dmkits-projected-conformance-v1\"")
+                .replace("\"changedSubset\", ", "")
+                .replace("\"formalErrorsInOperands\", ", "");
+    }
+
+    /** The characterization-DECLARING variant of the valid scenario. */
+    public static UnaryOperator<String> declareCharacterization() {
+        return text -> text.replace("\"kernel-route-confirmed-v1\"", "\"characterization-v1\"");
     }
 
     /** As {@link #writeValidScenario}, with {@code mutate} applied to the valid scenario text first. */

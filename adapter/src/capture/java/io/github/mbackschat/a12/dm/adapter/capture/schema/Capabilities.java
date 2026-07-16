@@ -4,6 +4,7 @@ import java.util.List;
 
 import io.github.mbackschat.a12.dm.adapter.capture.dto.ChannelId;
 import io.github.mbackschat.a12.dm.adapter.capture.dto.PolicyId;
+import io.github.mbackschat.a12.dm.adapter.capture.dto.PolicyRequirements;
 import io.github.mbackschat.a12.dm.adapter.capture.dto.ProjectionId;
 import io.github.mbackschat.a12.dm.adapter.capture.dto.RunnerFidelity;
 import io.github.mbackschat.a12.dm.adapter.capture.dto.RunnerId;
@@ -50,10 +51,24 @@ public final class Capabilities {
         }
         root.put("runners", runners);
 
+        Json.Arr policies = Json.Arr.of();
+        for (PolicyId policy : PolicyId.values()) {
+            policies.add(Json.Obj.of()
+                    .put("id", policy.wire())
+                    .put("qualifyingRunners", Json.arrOfStrings(java.util.Arrays.stream(RunnerId.values())
+                            .filter(PolicyRequirements.qualifyingRunners(policy)::contains)
+                            .map(RunnerId::wire).toList()))
+                    .put("mandatoryProjections", Json.arrOfStrings(
+                            PolicyRequirements.mandatoryProjections(policy).stream()
+                                    .map(ProjectionId::wire).toList())));
+        }
         root.put("projections", Json.arrOfStrings(
                         java.util.Arrays.stream(ProjectionId.values()).map(ProjectionId::wire).toList()))
-                .put("policies", Json.arrOfStrings(
-                        java.util.Arrays.stream(PolicyId.values()).map(PolicyId::wire).toList()))
+                .put("policies", policies)
+                .put("requiredChannelsSemantics", "each required channel must be registry-available on"
+                        + " every runner the declared policy requires to succeed (its qualifying runners);"
+                        + " other requested runners keep their declared fidelity gaps — echoed, never"
+                        + " bridged; per-runner or per-field requirements take a new request schema")
                 .put("reportSchemas", Json.arrOfStrings(List.of(
                         SchemaIds.QUALIFICATION_PROFILE, SchemaIds.QUALIFICATION_REPORT,
                         SchemaIds.PACKET_DIFF_REPORT, SchemaIds.REPORT_DIFF_REPORT)))

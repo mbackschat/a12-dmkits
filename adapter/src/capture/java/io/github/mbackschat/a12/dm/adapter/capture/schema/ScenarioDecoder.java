@@ -7,9 +7,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import io.github.mbackschat.a12.dm.adapter.capture.dto.Availability;
 import io.github.mbackschat.a12.dm.adapter.capture.dto.ChannelId;
 import io.github.mbackschat.a12.dm.adapter.capture.dto.PolicyId;
+import io.github.mbackschat.a12.dm.adapter.capture.dto.PolicyRequirements;
 import io.github.mbackschat.a12.dm.adapter.capture.dto.ProjectionId;
+import io.github.mbackschat.a12.dm.adapter.capture.dto.RunnerFidelity;
 import io.github.mbackschat.a12.dm.adapter.capture.dto.RunnerId;
 import io.github.mbackschat.a12.dm.adapter.capture.json.Digests;
 import io.github.mbackschat.a12.dm.adapter.capture.json.Json;
@@ -71,6 +74,9 @@ public final class ScenarioDecoder {
         PolicyId policy = decodePolicy(str(obj, "qualificationPolicy"));
         ScenarioSet.ObservationRequirement requirement = decodeRequirement(obj.member("observationRequirement"));
         List<ScenarioSet.ScenarioCase> cases = decodeCases(obj.member("cases"), models);
+        if (policy != null && requirement != null) {
+            checkQualificationContract(policy, requirement, runners);
+        }
 
         if (!problems.isEmpty()) {
             return null;
@@ -200,6 +206,44 @@ public final class ScenarioDecoder {
             return null;
         }
         return new ScenarioSet.ObservationRequirement(id, version, channels, projections);
+    }
+
+    /**
+     * The REQUEST-BOUND qualification contract, gated BEFORE any runner can execute (the audit's
+     * Finding 1): every projection the declared policy's verdict rests on must be predeclared; every
+     * qualifying runner must be requested; and every required channel must be registry-available on every
+     * qualifying runner (a fidelity incompatibility knowable from the compile-time registry fails closed
+     * here, never after observations exist). Runners requested beyond the qualifying set keep their
+     * declared fidelity gaps — echoed, never a refusal.
+     */
+    private void checkQualificationContract(PolicyId policy,
+            ScenarioSet.ObservationRequirement requirement, List<RunnerId> runners) {
+        for (ProjectionId mandatory : PolicyRequirements.mandatoryProjections(policy)) {
+            if (!requirement.comparisonProjections().contains(mandatory)) {
+                problems.add("$.observationRequirement.comparisonProjections: policy " + policy.wire()
+                        + " qualifies under \"" + mandatory.wire() + "\" — every mandatory projection must be"
+                        + " PREDECLARED (pinned before execution; a comparison is never selected after"
+                        + " observations are known)");
+            }
+        }
+        for (RunnerId qualifying : PolicyRequirements.qualifyingRunners(policy)) {
+            if (!runners.contains(qualifying)) {
+                problems.add("$.requiredRunners: policy " + policy.wire() + " requires runner \""
+                        + qualifying.wire() + "\" to succeed — a qualifying runner must be requested"
+                        + " (fails closed)");
+                continue;
+            }
+            RunnerFidelity fidelity = RunnerFidelity.of(qualifying);
+            for (ChannelId channel : requirement.requiredChannels()) {
+                if (fidelity.channel(channel).availability() != Availability.AVAILABLE) {
+                    problems.add("$.observationRequirement.requiredChannels: channel \"" + channel.wire()
+                            + "\" is required but qualifying runner \"" + qualifying.wire()
+                            + "\" does not expose it (registry fidelity: "
+                            + fidelity.channel(channel).availability().wire()
+                            + ") — the requirement fails closed BEFORE execution");
+                }
+            }
+        }
     }
 
     private List<ScenarioSet.ScenarioCase> decodeCases(Json node, List<ScenarioSet.ModelRef> models) {

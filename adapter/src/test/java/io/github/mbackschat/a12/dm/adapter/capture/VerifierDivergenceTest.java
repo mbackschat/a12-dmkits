@@ -41,7 +41,11 @@ class VerifierDivergenceTest {
     }
 
     private static Path capture(Path work) {
-        Path scenario = CaptureFixtures.writeValidScenario(work.resolve("root"));
+        return capture(work, java.util.function.UnaryOperator.identity());
+    }
+
+    private static Path capture(Path work, java.util.function.UnaryOperator<String> mutateScenario) {
+        Path scenario = CaptureFixtures.writeScenario(work.resolve("root"), mutateScenario);
         Path packet = work.resolve("packet");
         CaptureCommandTest.Run run = CaptureCommandTest.run(work, CaptureCommandTest.CLEAN,
                 "capture", "--scenarios", scenario.toString(), "--output", packet.toString());
@@ -58,28 +62,35 @@ class VerifierDivergenceTest {
 
     @Test
     void aCrossRouteSplitStopsConfirmationButCharacterizationRetainsIt(@TempDir Path work) throws IOException {
-        Path packet = capture(work);
-        String sha = tamperObservation(packet, "premium-computes", "kernel-java-static",
+        Path confirmedPacket = capture(work.resolve("confirmed-work"));
+        String confirmedSha = tamperObservation(confirmedPacket, "premium-computes", "kernel-java-static",
                 text -> text.replace("\"20.5\"", "\"20.9\""));
-
-        CaptureCommandTest.Run confirmed = verify(work, packet, sha, "kernel-route-confirmed-v1",
-                work.resolve("confirmed"));
+        CaptureCommandTest.Run confirmed = verify(work, confirmedPacket, confirmedSha,
+                "kernel-route-confirmed-v1", work.resolve("confirmed"));
         assertEquals(0, confirmed.exit(), confirmed::err);
         assertTrue(confirmed.out().contains("REJECTED"));
         String report = Files.readString(work.resolve("confirmed/REPORT.json"));
         assertTrue(report.contains("DIVERGE"), report);
         assertTrue(report.contains("\"result\": \"divergent\""), "the divergent channel is NAMED");
 
-        CaptureCommandTest.Run characterization = verify(work, packet, sha, "characterization-v1",
-                work.resolve("characterization"));
-        assertEquals(0, characterization.exit());
+        // Retention needs a packet that DECLARES characterization (verification is policy-bound).
+        Path characterizationPacket = capture(work.resolve("characterization-work"),
+                CaptureFixtures.declareCharacterization());
+        String characterizationSha = tamperObservation(characterizationPacket, "premium-computes",
+                "kernel-java-static", text -> text.replace("\"20.5\"", "\"20.9\""));
+        CaptureCommandTest.Run characterization = verify(work, characterizationPacket, characterizationSha,
+                "characterization-v1", work.resolve("characterization"));
+        assertEquals(0, characterization.exit(), characterization::err);
         assertTrue(characterization.out().contains("SATISFIED"),
                 "characterization RETAINS a disagreement — it never blocks on one");
+        String retained = Files.readString(work.resolve("characterization/REPORT.json"));
+        assertTrue(retained.contains("\"result\": \"divergent\""),
+                "the disagreement stays visible in the retained comparisons");
     }
 
     @Test
     void anUnavailableRequiredInterpreterChannelFailsConformanceClosed(@TempDir Path work) throws IOException {
-        Path packet = capture(work);
+        Path packet = capture(work.resolve("conformance-work"), CaptureFixtures.declareConformance());
         // Declare the interpreter's withoutErrors channel unavailable (and empty) — consistently.
         String sha = tamperObservation(packet, "premium-computes", "a12-dmkits-interpreter", text -> text
                 .replaceFirst("\"withoutErrors\": \\{\\n      \"availability\": \"available\"",
@@ -92,8 +103,14 @@ class VerifierDivergenceTest {
         String report = Files.readString(work.resolve("conformance/REPORT.json"));
         assertTrue(report.contains("unavailableRequired"), "an unavailable required channel fails CLOSED");
 
-        CaptureCommandTest.Run confirmed = verify(work, packet, sha, "kernel-route-confirmed-v1",
-                work.resolve("confirmed"));
+        // Under the CONFIRMED policy the portable projection is informational: the same tamper on a
+        // confirmed-declaring packet leaves kernel-route agreement — and the verdict — intact.
+        Path confirmedPacket = capture(work.resolve("confirmed-work"));
+        String confirmedSha = tamperObservation(confirmedPacket, "premium-computes", "a12-dmkits-interpreter",
+                text -> text.replaceFirst("\"withoutErrors\": \\{\\n      \"availability\": \"available\"",
+                        "\"withoutErrors\": {\n      \"availability\": \"notExposedByRunner\""));
+        CaptureCommandTest.Run confirmed = verify(work, confirmedPacket, confirmedSha,
+                "kernel-route-confirmed-v1", work.resolve("confirmed"));
         assertTrue(confirmed.out().contains("SATISFIED"),
                 "the confirmed policy only REPORTS the interpreter — kernel-route agreement still holds");
     }
@@ -106,7 +123,7 @@ class VerifierDivergenceTest {
         Path artifact = packet.resolve("observations/premium-computes/kernel-java-static.json");
         Files.writeString(artifact, Files.readString(artifact).replace("\"20.5\"", "\"20.9\""));
 
-        CaptureCommandTest.Run run = verify(work, packet, originalSha, "characterization-v1",
+        CaptureCommandTest.Run run = verify(work, packet, originalSha, "kernel-route-confirmed-v1",
                 work.resolve("r"));
         assertEquals(1, run.exit());
         assertTrue(run.err().contains("drifted"), run::err);

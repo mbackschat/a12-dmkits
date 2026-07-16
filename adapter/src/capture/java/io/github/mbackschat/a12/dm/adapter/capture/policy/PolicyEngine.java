@@ -1,25 +1,29 @@
 package io.github.mbackschat.a12.dm.adapter.capture.policy;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
 import io.github.mbackschat.a12.dm.adapter.capture.dto.PolicyId;
+import io.github.mbackschat.a12.dm.adapter.capture.dto.PolicyRequirements;
 import io.github.mbackschat.a12.dm.adapter.capture.dto.Pointers;
+import io.github.mbackschat.a12.dm.adapter.capture.dto.ProjectionId;
 import io.github.mbackschat.a12.dm.adapter.capture.dto.RunnerId;
 import io.github.mbackschat.a12.dm.adapter.capture.json.Json;
 import io.github.mbackschat.a12.dm.adapter.capture.schema.ScenarioSet;
 
 /**
- * The named qualification POLICIES (proposal §5) over an integrity-verified, IMMUTABLE packet. Every
- * portable policy rejects a development-mode / dirty-source packet BEFORE semantic comparison. A
+ * The named qualification POLICIES (proposal §5) over an integrity-verified, IMMUTABLE packet, driven by
+ * the REQUEST-DECLARED qualification contract: comparisons run for exactly the projections the request
+ * PREDECLARED (the {@link PolicyRequirements} mandatory ones gate the verdict; additionally predeclared
+ * ones are informational — a projection never predeclared is never compared). Every portable policy
+ * rejects a development-mode / dirty-source packet BEFORE semantic comparison. A
  * {@code characterization-v1} outcome may retain runner failures and disagreements (and can never promote
  * a corpus case); {@code kernel-route-confirmed-v1} requires kernel legality + both kernel routes +
- * equality under every field of the kernel-route projection (interpreter agreement reported, not
- * required); {@code dmkits-projected-conformance-v1} additionally requires the interpreter available AND
- * equal under the portable projection — an unavailable required field fails CLOSED.
+ * equality under every field of the kernel-route projection; {@code dmkits-projected-conformance-v1}
+ * additionally requires the interpreter available AND equal under the portable projection — an
+ * unavailable required field fails CLOSED.
  */
 public final class PolicyEngine {
 
@@ -42,8 +46,7 @@ public final class PolicyEngine {
         }
         return switch (policy) {
             case CHARACTERIZATION -> characterization(packet);
-            case KERNEL_ROUTE_CONFIRMED -> kernelRouteConfirmed(packet, false);
-            case DMKITS_PROJECTED_CONFORMANCE -> kernelRouteConfirmed(packet, true);
+            case KERNEL_ROUTE_CONFIRMED, DMKITS_PROJECTED_CONFORMANCE -> qualifying(policy, packet);
         };
     }
 
@@ -56,6 +59,7 @@ public final class PolicyEngine {
                 reasons.add("no legality artifact for model " + model.ref());
             }
         }
+        List<Projections.Comparison> comparisons = new ArrayList<>();
         for (Json caseEntry : packet.caseEntries()) {
             Json.Obj caseObj = (Json.Obj) caseEntry;
             if (!((Json.Bool) caseObj.members().get("executed")).value()) {
@@ -68,13 +72,14 @@ public final class PolicyEngine {
                             + runner.wire() + " — runner availability must be truthful");
                 }
             }
+            comparisons.addAll(predeclaredComparisons(packet, caseId, reasons, false));
         }
-        return new Outcome(reasons.isEmpty() ? "satisfied" : "rejected", reasons,
-                kernelRouteComparisons(packet));
+        return new Outcome(reasons.isEmpty() ? "satisfied" : "rejected", reasons, comparisons);
     }
 
-    /** The confirmed policy; with {@code requireInterpreter} it becomes the conformance policy. */
-    private static Outcome kernelRouteConfirmed(VerifiedPacket packet, boolean requireInterpreter) {
+    /** The confirmed policy; conformance additionally makes the portable projection verdict-gating. */
+    private static Outcome qualifying(PolicyId policy, VerifiedPacket packet) {
+        boolean requireInterpreter = policy == PolicyId.DMKITS_PROJECTED_CONFORMANCE;
         List<String> reasons = new ArrayList<>();
         packet.legalityVerdicts().forEach((ref, verdict) -> {
             if (!"legal".equals(verdict)) {
@@ -82,13 +87,6 @@ public final class PolicyEngine {
                         + " confirmed/conformance policy (characterization only)");
             }
         });
-        Set<RunnerId> required = new HashSet<>(packet.request().requiredRunners());
-        if (!required.contains(RunnerId.KERNEL_GROOVY_DYNAMIC) || !required.contains(RunnerId.KERNEL_JAVA_STATIC)) {
-            reasons.add("both kernel routes are required and one was not requested — fails closed");
-        }
-        if (requireInterpreter && !required.contains(RunnerId.A12_DMKITS_INTERPRETER)) {
-            reasons.add("the interpreter runner is required by this policy and was not requested — fails closed");
-        }
 
         List<Projections.Comparison> comparisons = new ArrayList<>();
         for (Json caseEntry : packet.caseEntries()) {
@@ -98,54 +96,65 @@ public final class PolicyEngine {
                 reasons.add("case " + caseId + " was not executed (illegal model) — no runtime evidence");
                 continue;
             }
-            Json.Obj groovy = packet.observation(caseId, RunnerId.KERNEL_GROOVY_DYNAMIC.wire());
-            Json.Obj javaStatic = packet.observation(caseId, RunnerId.KERNEL_JAVA_STATIC.wire());
-            if (groovy == null || javaStatic == null
-                    || !"success".equals(VerifiedPacket.str(groovy, "status"))
-                    || !"success".equals(VerifiedPacket.str(javaStatic, "status"))) {
-                reasons.add("case " + caseId + ": a required kernel route is missing or unsuccessful —"
-                        + " fails closed");
-                continue;
-            }
-            Projections.Comparison route = Projections.kernelRoute(caseId, groovy, javaStatic);
-            comparisons.add(route);
-            if (!"equal".equals(route.result())) {
-                reasons.add("case " + caseId + ": the two kernel routes DIVERGE under "
-                        + route.projection().wire() + " — retained as characterization; route-confirmed"
-                        + " qualification stops");
-            }
-
-            Json.Obj interpreter = packet.observation(caseId, RunnerId.A12_DMKITS_INTERPRETER.wire());
-            if (interpreter != null && "success".equals(VerifiedPacket.str(interpreter, "status"))) {
-                Projections.Comparison portable = Projections.dmkitsPortable(caseId, groovy, interpreter,
-                        inputFilledPointers(packet.request(), caseId));
-                comparisons.add(portable);   // reported for confirmed; required for conformance
-                if (requireInterpreter && !"equal".equals(portable.result())) {
-                    reasons.add("case " + caseId + ": the interpreter is not available-and-equal under "
-                            + portable.projection().wire() + " (" + portable.result() + ") — fails closed");
+            for (RunnerId qualifying : PolicyRequirements.qualifyingRunners(policy)) {
+                Json.Obj observation = packet.observation(caseId, qualifying.wire());
+                if (observation == null || !"success".equals(VerifiedPacket.str(observation, "status"))) {
+                    reasons.add("case " + caseId + ": qualifying runner " + qualifying.wire()
+                            + " is missing or unsuccessful — fails closed");
                 }
-            } else if (requireInterpreter) {
-                reasons.add("case " + caseId + ": the interpreter observation is missing or unsuccessful —"
-                        + " a required runner fails the policy closed");
             }
+            comparisons.addAll(predeclaredComparisons(packet, caseId, reasons, requireInterpreter));
         }
         return new Outcome(reasons.isEmpty() ? "satisfied" : "rejected", reasons, comparisons);
     }
 
-    private static List<Projections.Comparison> kernelRouteComparisons(VerifiedPacket packet) {
+    /**
+     * The comparisons for exactly the PREDECLARED projections of {@code caseId} (skipping any whose
+     * observations are missing/unsuccessful — those already fail closed via the qualifying-runner check
+     * where the policy requires them). Divergence reasons are appended only for verdict-gating
+     * projections: the kernel-route projection always gates confirmed/conformance; the portable one gates
+     * only when {@code portableGates}.
+     */
+    private static List<Projections.Comparison> predeclaredComparisons(VerifiedPacket packet, String caseId,
+            List<String> reasons, boolean portableGates) {
+        Set<ProjectionId> predeclared =
+                new LinkedHashSet<>(packet.request().observationRequirement().comparisonProjections());
+        boolean characterizing =
+                packet.request().qualificationPolicy() == PolicyId.CHARACTERIZATION;
         List<Projections.Comparison> comparisons = new ArrayList<>();
-        for (Json caseEntry : packet.caseEntries()) {
-            Json.Obj caseObj = (Json.Obj) caseEntry;
-            String caseId = VerifiedPacket.str(caseObj, "caseId");
-            Json.Obj groovy = packet.observation(caseId, RunnerId.KERNEL_GROOVY_DYNAMIC.wire());
-            Json.Obj javaStatic = packet.observation(caseId, RunnerId.KERNEL_JAVA_STATIC.wire());
-            if (groovy != null && javaStatic != null
-                    && "success".equals(VerifiedPacket.str(groovy, "status"))
-                    && "success".equals(VerifiedPacket.str(javaStatic, "status"))) {
-                comparisons.add(Projections.kernelRoute(caseId, groovy, javaStatic));
+
+        Json.Obj groovy = successObservation(packet, caseId, RunnerId.KERNEL_GROOVY_DYNAMIC);
+        Json.Obj javaStatic = successObservation(packet, caseId, RunnerId.KERNEL_JAVA_STATIC);
+        if (predeclared.contains(ProjectionId.COMPUTE_KERNEL_ROUTE) && groovy != null && javaStatic != null) {
+            Projections.Comparison route = Projections.kernelRoute(caseId, groovy, javaStatic);
+            comparisons.add(route);
+            if (!characterizing && !"equal".equals(route.result())) {
+                reasons.add("case " + caseId + ": the two kernel routes DIVERGE under "
+                        + route.projection().wire() + " — retained as characterization; route-confirmed"
+                        + " qualification stops");
+            }
+        }
+
+        Json.Obj interpreter = successObservation(packet, caseId, RunnerId.A12_DMKITS_INTERPRETER);
+        if (predeclared.contains(ProjectionId.COMPUTE_DMKITS_PORTABLE) && groovy != null
+                && interpreter != null) {
+            Projections.Comparison portable = Projections.dmkitsPortable(caseId, groovy, interpreter,
+                    inputFilledPointers(packet.request(), caseId));
+            comparisons.add(portable);   // informational unless the policy makes it verdict-gating
+            if (portableGates && !"equal".equals(portable.result())) {
+                reasons.add("case " + caseId + ": the interpreter is not available-and-equal under "
+                        + portable.projection().wire() + " (" + portable.result() + ") — fails closed");
             }
         }
         return comparisons;
+    }
+
+    private static Json.Obj successObservation(VerifiedPacket packet, String caseId, RunnerId runner) {
+        Json.Obj observation = packet.observation(caseId, runner.wire());
+        if (observation == null || !"success".equals(VerifiedPacket.str(observation, "status"))) {
+            return null;
+        }
+        return observation;
     }
 
     /** The FIELD-placed (input-filled) cell pointers of {@code caseId} — the portable projection's

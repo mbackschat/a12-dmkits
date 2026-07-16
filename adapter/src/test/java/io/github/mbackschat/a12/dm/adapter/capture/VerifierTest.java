@@ -66,19 +66,18 @@ class VerifierTest {
     }
 
     @Test
-    void everyPolicyIsSatisfiedOnTheCleanAgreeingPacket(@TempDir Path reports) throws IOException {
-        for (String policy : new String[] {"characterization-v1", "kernel-route-confirmed-v1",
-                "dmkits-projected-conformance-v1"}) {
-            CaptureCommandTest.Run run = verify(policy, reports.resolve(policy));
-            assertEquals(0, run.exit(), run::err);
-            assertTrue(run.out().contains("SATISFIED"), policy + ": " + run.out());
-            String report = Files.readString(reports.resolve(policy).resolve("REPORT.json"));
-            assertTrue(report.contains("\"receiptSha256\": \"" + receiptSha + "\""),
-                    "the report digest-binds the exact upstream receipt");
-            assertTrue(report.contains("\"profileSha256\""), "…and the pinned profile definition");
-            assertTrue(Files.isRegularFile(reports.resolve(policy).resolve("PROFILE.json")));
-            assertTrue(Files.isRegularFile(reports.resolve(policy).resolve("RECEIPT.json")));
-        }
+    void theDeclaredPolicyReportIsDigestBound(@TempDir Path reports) throws IOException {
+        // The policy is the REQUEST-DECLARED one — never a CLI selection (VerifierPolicyBindingTest owns
+        // the mismatch refusals); this pins the report's digest bindings.
+        CaptureCommandTest.Run run = verify("kernel-route-confirmed-v1", reports.resolve("r"));
+        assertEquals(0, run.exit(), run::err);
+        assertTrue(run.out().contains("SATISFIED"), run::out);
+        String report = Files.readString(reports.resolve("r").resolve("REPORT.json"));
+        assertTrue(report.contains("\"receiptSha256\": \"" + receiptSha + "\""),
+                "the report digest-binds the exact upstream receipt");
+        assertTrue(report.contains("\"profileSha256\""), "…and the pinned profile definition");
+        assertTrue(Files.isRegularFile(reports.resolve("r").resolve("PROFILE.json")));
+        assertTrue(Files.isRegularFile(reports.resolve("r").resolve("RECEIPT.json")));
     }
 
     @Test
@@ -97,7 +96,7 @@ class VerifierTest {
 
     @Test
     void verificationNeverWritesIntoThePacket(@TempDir Path reports) throws IOException {
-        assertEquals(0, verify("characterization-v1", reports.resolve("r")).exit());
+        assertEquals(0, verify("kernel-route-confirmed-v1", reports.resolve("r")).exit());
         assertEquals(packetBytesBefore.keySet(), snapshot(packet).keySet(), "no artifact added/removed");
         for (Map.Entry<String, byte[]> entry : snapshot(packet).entrySet()) {
             assertTrue(java.util.Arrays.equals(packetBytesBefore.get(entry.getKey()), entry.getValue()),
@@ -107,31 +106,39 @@ class VerifierTest {
 
     @Test
     void aWrongReceiptDigestRefusesBeforeAnyPolicy(@TempDir Path reports) {
-        CaptureCommandTest.Run run = verify("characterization-v1", reports.resolve("r"), "0".repeat(64));
+        CaptureCommandTest.Run run = verify("kernel-route-confirmed-v1", reports.resolve("r"), "0".repeat(64));
         assertEquals(1, run.exit());
         assertTrue(run.err().contains("does not match the supplied out-of-band digest"), run::err);
         assertTrue(Files.notExists(reports.resolve("r").resolve("REPORT.json")), "no report on refusal");
     }
 
     @Test
-    void aDevelopmentPacketIsRejectedByEveryPortablePolicyBeforeComparison(@TempDir Path devWork)
+    void aDevelopmentPacketIsRejectedByItsDeclaredPolicyBeforeComparison(@TempDir Path devWork)
             throws IOException {
-        Path scenario = CaptureFixtures.writeValidScenario(devWork.resolve("root"));
-        Path devPacket = devWork.resolve("packet");
-        CaptureCommandTest.Run capture = CaptureCommandTest.run(devWork, CaptureCommandTest.DIRTY,
-                "capture", "--development", "--scenarios", scenario.toString(),
-                "--output", devPacket.toString());
-        assertEquals(0, capture.exit(), capture::err);
-        String devSha = receiptShaOf(capture);
+        // One development packet per declared portable policy — each is rejected by ITS OWN declared
+        // policy before any semantic comparison (a mismatching CLI policy never even reaches this check —
+        // VerifierPolicyBindingTest).
+        record Declared(String policy, java.util.function.UnaryOperator<String> mutate) {
+        }
+        for (Declared declared : new Declared[] {
+                new Declared("characterization-v1", CaptureFixtures.declareCharacterization()),
+                new Declared("kernel-route-confirmed-v1", java.util.function.UnaryOperator.identity()),
+                new Declared("dmkits-projected-conformance-v1", CaptureFixtures.declareConformance())}) {
+            Path caseDir = devWork.resolve(declared.policy());
+            Path scenario = CaptureFixtures.writeScenario(caseDir.resolve("root"), declared.mutate());
+            Path devPacket = caseDir.resolve("packet");
+            CaptureCommandTest.Run capture = CaptureCommandTest.run(caseDir, CaptureCommandTest.DIRTY,
+                    "capture", "--development", "--scenarios", scenario.toString(),
+                    "--output", devPacket.toString());
+            assertEquals(0, capture.exit(), capture::err);
+            String devSha = receiptShaOf(capture);
 
-        for (String policy : new String[] {"characterization-v1", "kernel-route-confirmed-v1",
-                "dmkits-projected-conformance-v1"}) {
-            Path reportDir = devWork.resolve("report-" + policy);
-            CaptureCommandTest.Run run = CaptureCommandTest.run(devWork, CaptureCommandTest.CLEAN,
+            Path reportDir = caseDir.resolve("report");
+            CaptureCommandTest.Run run = CaptureCommandTest.run(caseDir, CaptureCommandTest.CLEAN,
                     "verify", "--packet", devPacket.toString(), "--packet-receipt-sha256", devSha,
-                    "--policy", policy, "--output", reportDir.toString());
+                    "--policy", declared.policy(), "--output", reportDir.toString());
             assertEquals(0, run.exit(), run::err);
-            assertTrue(run.out().contains("REJECTED"), policy + " must reject a development packet");
+            assertTrue(run.out().contains("REJECTED"), declared.policy() + " must reject a development packet");
             String report = Files.readString(reportDir.resolve("REPORT.json"));
             assertTrue(report.contains("PERMANENTLY ineligible"), report);
             assertTrue(report.contains("\"comparisons\": []"),

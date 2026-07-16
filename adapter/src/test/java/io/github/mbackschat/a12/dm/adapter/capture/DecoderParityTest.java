@@ -34,6 +34,11 @@ class DecoderParityTest {
                 "\"sha256\": \"" + "0".repeat(64) + "\""));
         fixtures.put("placement path off-model", text -> text.replace("\"path\": \"/Quote/BaseRate\"",
                 "\"path\": \"/Quote/Nope\""));
+        fixtures.put("mandatory projection not predeclared", text -> CaptureFixtures.declareConformance()
+                .apply(text).replaceFirst(",\\s*\"compute-projection-dmkits-portable-v1\"", ""));
+        fixtures.put("required channel unavailable on a qualifying runner",
+                text -> CaptureFixtures.declareConformance().apply(text)
+                        .replace("\"withoutErrors\", ", "\"withoutErrors\", \"changedSubset\", "));
         return fixtures;
     }
 
