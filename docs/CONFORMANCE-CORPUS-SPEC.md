@@ -327,7 +327,7 @@ The proposal's §"Required tests and mutation sensitivity" list is implemented f
 | absent vs present-empty collapsed | M04 | `AppliedStateDistinctionTest` |
 | deprecated/mutating application route | M05 | `KernelRouteObservationTest` |
 | interpreter disagreement blocking characterization / mislabeled confirmation | M06 (+ `VerifierDivergenceTest`'s artifact case) | `VerifierDivergenceTest` |
-| unavailable fidelity treated as equality | M07 | `VerifierDivergenceTest` |
+| unavailable fidelity treated as equality | M07 (a forged availability is refused at the relational layer — A-tier; the policy backstop is unit-guarded) | `ProjectionFailClosedTest` |
 | the two kernel labels selecting one route | M08 | `RouteDistinctnessTest` |
 | failure serialized as successful-empty | M09 | `RunnersStatusTest` |
 | validation and capture deciding differently | M10 | `DecoderParityTest` |
@@ -342,6 +342,14 @@ The proposal's §"Required tests and mutation sensitivity" list is implemented f
 | development packet qualifying | M20 | `VerifierTest` |
 | packet/report member, digest, symlink, path drift | A01–A04 (real `verify` over mutated artifacts) | the integrity refusals |
 | expected-result member in a request | A05 (real `validate-scenarios`) | the no-oracle refusal |
+| a CLI policy mismatching the request-declared one qualifying | M21 | `VerifierPolicyBindingTest` |
+| a mandatory projection selected after observations (not predeclared) | M22 | `VerifierPolicyBindingTest` |
+| a required channel unavailable on a qualifying runner executing anyway | M23 | `VerifierPolicyBindingTest` |
+| a placement changed/dropped during placement-to-document adaptation | M24 | `ConsumedDocumentBindingTest` |
+| a closure-identity change between execution and finalization finalizing | M25 | `ClosureIdentityTest` |
+| a receipt-CONSISTENT internally contradictory packet verifying (request digest/identity claims, legality-verdict lies, observation case/runner/status/consumed-document claims, unknown nested members, removed associations, orphan artifacts, tampered capabilities copy) | A07–A15 (renewed-receipt mutations through the real `verify`; + the 14-case JUnit battery) | the relational refusals (`PacketRelationsTest`) |
+
+**Receipt honesty guard:** a stale guard reference (Gradle's "No tests found") FAILS the harness loudly — a filter matching nothing is never recorded as a fired guard (the false-positive class caught during Set Z2's own run).
 
 **Deferred to the external scenario run (the `string-direct-cascade-v1` set) — scenario-semantics, not boundary:** the accepted-equal all-clean/changed-subset split; the source-absent stale cascade (`"OLD-X"` vs `"-X"`); a rejected attempted value reaching the dependent computation; the SEMANTIC half of downstream cause reconstruction (M03 covers transport); the final qualified recapture from clean committed HEAD (the handback ritual — its clean-gate mechanics are M12). **Covered by an existing guard, no capture-side mutation:** the compact legacy corpus signature (`corpusReplayTest` — this program never touched that surface, byte-compatible by construction).
 

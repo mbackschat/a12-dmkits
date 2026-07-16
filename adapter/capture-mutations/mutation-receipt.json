@@ -1,7 +1,7 @@
 {
   "schema": "capture-mutation-receipt-v1",
-  "headRevision": "86eeafa770ab814783d06fc3d9e2f53f4204471c",
-  "cleanTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+  "headRevision": "8b8a9f604560bdb0e9bbc500639a863abe5dfa70",
+  "cleanTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
   "mutations": [
     {
       "id": "M01-illegal-model-executed",
@@ -13,8 +13,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; LegalityGateTest > anIllegalModelIsCharacterizedNeverExecuted(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -27,8 +27,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; VerifierDivergenceTest > aCrossRouteSplitStopsConfirmationButCharacterizationRetainsIt(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -41,8 +41,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; ErroredComputationObservationTest > theErroredEntryRetainsTheAttemptedValueAndItsStructuredCause() FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -55,8 +55,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; AppliedStateDistinctionTest > theKernelRoutesKeepAbsentAndPresentEmptyDistinct() FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -69,8 +69,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; KernelRouteObservationTest > theAppliedStateProbesTheFreshCopyWithTypedValue() FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -83,22 +83,22 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; VerifierDivergenceTest > aCrossRouteSplitStopsConfirmationButCharacterizationRetainsIt(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
       "id": "M07-unavailable-treated-as-equal",
-      "description": "an unavailable required interpreter channel is treated as semantic equality",
+      "description": "an unavailable required channel is treated as semantic equality (the fail-closed backstop dies)",
       "mutatedFiles": [
         "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/policy/Projections.java"
       ],
-      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.VerifierDivergenceTest.anUnavailableRequiredInterpreterChannelFailsConformanceClosed",
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.ProjectionFailClosedTest.anUnavailableRequiredChannelIsNeverEquality",
       "guardFired": true,
-      "actualGuard": "> Task :adapter:test FAILED; VerifierDivergenceTest > anUnavailableRequiredInterpreterChannelFailsConformanceClosed(Path) FAILED",
+      "actualGuard": "> Task :adapter:test FAILED; ProjectionFailClosedTest > anUnavailableRequiredChannelIsNeverEquality() FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -111,8 +111,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; RouteDistinctnessTest > theTwoKernelRunnerNamesResolveToDistinctRoutes() FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -125,8 +125,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; RunnersStatusTest > aThrowMapsToTechnicalFailureWithSanitizedDetail() FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -139,8 +139,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; DecoderParityTest > validateScenariosAndCaptureDecideIdentically(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -154,8 +154,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; ReorderEquivalenceTest > reorderedAndFilteredRunsObserveIdentically() FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -168,8 +168,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; CaptureCommandTest > defaultModeRefusesADirtyTreeNamingDevelopmentMode(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -182,8 +182,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; CaptureDeterminismTest > doubleCaptureIsByteIdentical(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -196,8 +196,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; CaptureCommandTest > refusesTheCommittedCorpusTree(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -214,8 +214,8 @@
         "refused": true,
         "diagnostic": "metadata leak"
       },
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -228,8 +228,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; LegalityGateTest > anIllegalModelIsCharacterizedNeverExecuted(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -242,8 +242,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; VerifierTest > verificationNeverWritesIntoThePacket(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -256,8 +256,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; CapabilitiesTest > capabilitiesOutputMatchesTheCommittedGolden() FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -266,12 +266,82 @@
       "mutatedFiles": [
         "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/policy/PolicyEngine.java"
       ],
-      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.VerifierTest.aDevelopmentPacketIsRejectedByEveryPortablePolicyBeforeComparison",
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.VerifierTest.aDevelopmentPacketIsRejectedByItsDeclaredPolicyBeforeComparison",
       "guardFired": true,
-      "actualGuard": "> Task :adapter:test FAILED; VerifierTest > aDevelopmentPacketIsRejectedByEveryPortablePolicyBeforeComparison(Path) FAILED",
+      "actualGuard": "> Task :adapter:test FAILED; VerifierTest > aDevelopmentPacketIsRejectedByItsDeclaredPolicyBeforeComparison(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M21-cli-policy-binding-removed",
+      "description": "verification stops binding to the request-declared policy (any CLI policy accepted)",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/policy/Verifier.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.VerifierPolicyBindingTest.aMismatchingCliPolicyIsRefusedWithoutAReport",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; VerifierPolicyBindingTest > aMismatchingCliPolicyIsRefusedWithoutAReport(Path) FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M22-mandatory-projection-gate-removed",
+      "description": "a policy's mandatory projection no longer needs predeclaration (selected after observations)",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/schema/ScenarioDecoder.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.VerifierPolicyBindingTest.aMandatoryProjectionMissingFromTheRequestRefusesBeforeExecution",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; VerifierPolicyBindingTest > aMandatoryProjectionMissingFromTheRequestRefusesBeforeExecution(Path) FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M23-channel-fidelity-gate-removed",
+      "description": "a required channel unavailable on a qualifying runner no longer refuses before execution",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/schema/ScenarioDecoder.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.VerifierPolicyBindingTest.aRequiredChannelAQualifyingRunnerCannotExposeRefusesBeforeExecution",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; VerifierPolicyBindingTest > aRequiredChannelAQualifyingRunnerCannotExposeRefusesBeforeExecution(Path) FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M24-placement-dropped-in-adaptation",
+      "description": "the kernel routes DROP a placement during placement-to-document adaptation (both routes alike)",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/runner/kernel/KernelRouteSupport.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.ConsumedDocumentBindingTest",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; ConsumedDocumentBindingTest > everySuccessObservationBindsTheConsumedPlacementIdentity(Path) FAILED; ConsumedDocumentBindingTest > theConsumedIdentitySeparatesEmptyFromAbsentAndValueFromValue(Path) FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "restoredExactBytes": true
+    },
+    {
+      "id": "M25-post-run-identity-check-removed",
+      "description": "capture stops re-verifying the closure identity before finalization (mid-run change unnoticed)",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/packet/PacketWriter.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.ClosureIdentityTest.anIdentityChangeBetweenExecutionAndFinalizationRefusesWithNoPacket",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; ClosureIdentityTest > anIdentityChangeBetweenExecutionAndFinalizationRefusesWithNoPacket(Path) FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -284,8 +354,8 @@
       "guardFired": true,
       "actualGuard": ":adapter:verifyCapturePurity FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
-      "postTreeDigest": "5072f1b7836b16652643d848806ff09e916a1c78fe2c48d4412c7a70dc72a91d",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -346,6 +416,159 @@
         "<packet artifacts, restored>"
       ],
       "expectedGuard": "verify refusal: drifted",
+      "guardFired": true,
+      "actualGuard": "refused",
+      "realCommandStep": {
+        "command": "verify",
+        "refused": true
+      },
+      "preTreeDigest": null,
+      "postTreeDigest": null,
+      "restoredExactBytes": true
+    },
+    {
+      "id": "A07-request-digest-claim",
+      "description": "artifact mutation \u2014 expect verify refusal (requestSha256)",
+      "mutatedFiles": [
+        "<packet artifacts, restored>"
+      ],
+      "expectedGuard": "verify refusal: requestSha256",
+      "guardFired": true,
+      "actualGuard": "refused",
+      "realCommandStep": {
+        "command": "verify",
+        "refused": true
+      },
+      "preTreeDigest": null,
+      "postTreeDigest": null,
+      "restoredExactBytes": true
+    },
+    {
+      "id": "A08-scenario-identity-claim",
+      "description": "artifact mutation \u2014 expect verify refusal (disagrees with the copied request)",
+      "mutatedFiles": [
+        "<packet artifacts, restored>"
+      ],
+      "expectedGuard": "verify refusal: disagrees with the copied request",
+      "guardFired": true,
+      "actualGuard": "refused",
+      "realCommandStep": {
+        "command": "verify",
+        "refused": true
+      },
+      "preTreeDigest": null,
+      "postTreeDigest": null,
+      "restoredExactBytes": true
+    },
+    {
+      "id": "A09-legality-verdict-claim",
+      "description": "artifact mutation \u2014 expect verify refusal (contradiction)",
+      "mutatedFiles": [
+        "<packet artifacts, restored>"
+      ],
+      "expectedGuard": "verify refusal: contradiction",
+      "guardFired": true,
+      "actualGuard": "refused",
+      "realCommandStep": {
+        "command": "verify",
+        "refused": true
+      },
+      "preTreeDigest": null,
+      "postTreeDigest": null,
+      "restoredExactBytes": true
+    },
+    {
+      "id": "A10-observation-case-claim",
+      "description": "artifact mutation \u2014 expect verify refusal (caseId)",
+      "mutatedFiles": [
+        "<packet artifacts, restored>"
+      ],
+      "expectedGuard": "verify refusal: caseId",
+      "guardFired": true,
+      "actualGuard": "refused",
+      "realCommandStep": {
+        "command": "verify",
+        "refused": true
+      },
+      "preTreeDigest": null,
+      "postTreeDigest": null,
+      "restoredExactBytes": true
+    },
+    {
+      "id": "A11-unknown-nested-member",
+      "description": "artifact mutation \u2014 expect verify refusal (unknown member)",
+      "mutatedFiles": [
+        "<packet artifacts, restored>"
+      ],
+      "expectedGuard": "verify refusal: unknown member",
+      "guardFired": true,
+      "actualGuard": "refused",
+      "realCommandStep": {
+        "command": "verify",
+        "refused": true
+      },
+      "preTreeDigest": null,
+      "postTreeDigest": null,
+      "restoredExactBytes": true
+    },
+    {
+      "id": "A12-removed-association",
+      "description": "artifact mutation \u2014 expect verify refusal (exactly once)",
+      "mutatedFiles": [
+        "<packet artifacts, restored>"
+      ],
+      "expectedGuard": "verify refusal: exactly once",
+      "guardFired": true,
+      "actualGuard": "refused",
+      "realCommandStep": {
+        "command": "verify",
+        "refused": true
+      },
+      "preTreeDigest": null,
+      "postTreeDigest": null,
+      "restoredExactBytes": true
+    },
+    {
+      "id": "A13-orphan-artifact",
+      "description": "artifact mutation \u2014 expect verify refusal (orphan)",
+      "mutatedFiles": [
+        "<packet artifacts, restored>"
+      ],
+      "expectedGuard": "verify refusal: orphan",
+      "guardFired": true,
+      "actualGuard": "refused",
+      "realCommandStep": {
+        "command": "verify",
+        "refused": true
+      },
+      "preTreeDigest": null,
+      "postTreeDigest": null,
+      "restoredExactBytes": true
+    },
+    {
+      "id": "A14-capability-copy-tamper",
+      "description": "artifact mutation \u2014 expect verify refusal (registry)",
+      "mutatedFiles": [
+        "<packet artifacts, restored>"
+      ],
+      "expectedGuard": "verify refusal: registry",
+      "guardFired": true,
+      "actualGuard": "refused",
+      "realCommandStep": {
+        "command": "verify",
+        "refused": true
+      },
+      "preTreeDigest": null,
+      "postTreeDigest": null,
+      "restoredExactBytes": true
+    },
+    {
+      "id": "A15-consumed-document-tamper",
+      "description": "artifact mutation \u2014 expect verify refusal (consumed)",
+      "mutatedFiles": [
+        "<packet artifacts, restored>"
+      ],
+      "expectedGuard": "verify refusal: consumed",
       "guardFired": true,
       "actualGuard": "refused",
       "realCommandStep": {
