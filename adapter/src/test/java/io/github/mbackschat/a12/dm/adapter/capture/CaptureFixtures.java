@@ -12,13 +12,17 @@ import io.github.mbackschat.a12.dm.adapter.capture.json.Digests;
 
 /**
  * Shared fixture plumbing for the capture self-tests: builds a scenario ROOT in a test temp dir (the
- * caller-owned directory a consumer would supply) from the committed own-domain models under
- * {@code capture/models/}, with correct digests. Tests derive rejection fixtures by mutating the valid
- * scenario text ({@link #writeScenario(Path, UnaryOperator)}).
+ * caller-owned directory a consumer would supply). The canonical VALID scenario is the committed
+ * consumer-facing authoring example {@code adapter/capture-examples/scenario-example/} (exposed on the
+ * test classpath as a resource root) — ONE source for the published example, the executed fixture, and
+ * the mutation harness's scratch scenario, so the example can never rot unexecuted
+ * ({@code ScenarioExampleTest} guards the digest + real-command acceptance). Tests derive rejection
+ * fixtures by mutating the example text ({@link #writeScenario(Path, UnaryOperator)}).
  */
 public final class CaptureFixtures {
 
-    public static final String QUOTE_PREMIUM = "capture/models/quote-premium.json";
+    public static final String SCENARIO_EXAMPLE = "scenario-example/scenarios.json";
+    public static final String QUOTE_PREMIUM = "scenario-example/models/quote-premium.json";
     public static final String QUOTE_LINES_REP = "capture/models/quote-lines-rep.json";
 
     private CaptureFixtures() {
@@ -48,40 +52,10 @@ public final class CaptureFixtures {
         }
     }
 
-    /** The canonical VALID self-test scenario text over {@code quote-premium.json} (digest spliced in). */
-    public static String validScenarioText(String modelSha256) {
-        return """
-                {
-                  "schema": "capture-scenario-set-v1",
-                  "scenarioSet": { "id": "capture-selftest-quote-v1", "version": "1" },
-                  "operationSchema": "compute-observation-v1",
-                  "requiredCapabilities": { "schema": "a12-dmkits-capture-capabilities-v1", "version": "1" },
-                  "world": { "profile": "local-wallclock-v1", "locale": "en_US" },
-                  "models": [ { "ref": "models/quote-premium.json", "sha256": "%s" } ],
-                  "requiredRunners": [ "kernel-groovy-dynamic", "kernel-java-static", "a12-dmkits-interpreter" ],
-                  "qualificationPolicy": "kernel-route-confirmed-v1",
-                  "observationRequirement": {
-                    "id": "quote-selftest-requirement", "version": "1",
-                    "requiredChannels": [ "withoutErrors", "changedSubset", "withErrors", "cleared",
-                                          "formalErrorsInOperands", "appliedState" ],
-                    "comparisonProjections": [ "compute-projection-kernel-route-v1",
-                                               "compute-projection-dmkits-portable-v1" ]
-                  },
-                  "cases": [
-                    {
-                      "caseId": "premium-computes",
-                      "modelRef": "models/quote-premium.json",
-                      "operation": "compute",
-                      "placements": [
-                        { "kind": "GROUP", "path": "/Quote", "reps": [1] },
-                        { "kind": "FIELD", "path": "/Quote/BaseRate", "reps": [1, 1], "value": "10.25" },
-                        { "kind": "EMPTY", "path": "/Quote/Premium", "reps": [1, 1] }
-                      ],
-                      "probes": [ "/Quote[1]/Premium" ]
-                    }
-                  ]
-                }
-                """.formatted(modelSha256);
+    /** The canonical VALID scenario text — the committed authoring example's exact bytes (its declared
+     *  model digest is the real one; {@code ScenarioExampleTest} keeps it fresh). */
+    public static String validScenarioText() {
+        return new String(resourceBytes(SCENARIO_EXAMPLE), StandardCharsets.UTF_8);
     }
 
     /** Build a complete valid scenario root in {@code root}; returns the scenario file path. */
@@ -140,9 +114,14 @@ public final class CaptureFixtures {
     /** As {@link #writeValidScenario}, with {@code mutate} applied to the valid scenario text first. */
     public static Path writeScenario(Path root, UnaryOperator<String> mutate) {
         String sha = placeModel(root, QUOTE_PREMIUM, "quote-premium.json");
+        String text = validScenarioText();
+        if (!text.contains(sha)) {
+            throw new IllegalStateException("the committed authoring example's declared model digest no"
+                    + " longer matches models/quote-premium.json — refresh scenario-example/scenarios.json");
+        }
         Path file = root.resolve("scenarios.json");
         try {
-            Files.writeString(file, mutate.apply(validScenarioText(sha)), StandardCharsets.UTF_8);
+            Files.writeString(file, mutate.apply(text), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }

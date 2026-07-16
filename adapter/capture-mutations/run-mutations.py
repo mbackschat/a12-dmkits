@@ -288,37 +288,12 @@ def run_real_capture_expect_refusal(mid):
 
 
 def write_scratch_scenario(name):
+    """Copy the committed authoring example (the ONE canonical valid scenario root) into scratch."""
     root = SCRATCH / name / "root"
-    models = root / "models"
-    models.mkdir(parents=True, exist_ok=True)
-    model_src = REPO / "adapter/src/test/resources/capture/models/quote-premium.json"
-    model_dst = models / "quote-premium.json"
-    shutil.copyfile(model_src, model_dst)
-    sha = hashlib.sha256(model_dst.read_bytes()).hexdigest()
-    scenario = root / "scenarios.json"
-    scenario.write_text(json.dumps({
-        "schema": "capture-scenario-set-v1",
-        "scenarioSet": {"id": "mutation-scratch-v1", "version": "1"},
-        "operationSchema": "compute-observation-v1",
-        "requiredCapabilities": {"schema": "a12-dmkits-capture-capabilities-v1", "version": "1"},
-        "world": {"profile": "local-wallclock-v1", "locale": "en_US"},
-        "models": [{"ref": "models/quote-premium.json", "sha256": sha}],
-        "requiredRunners": ["kernel-groovy-dynamic", "kernel-java-static", "a12-dmkits-interpreter"],
-        "qualificationPolicy": "kernel-route-confirmed-v1",
-        "observationRequirement": {
-            "id": "mutation-scratch-requirement", "version": "1",
-            "requiredChannels": ["withoutErrors", "changedSubset", "withErrors", "cleared",
-                                 "formalErrorsInOperands", "appliedState"],
-            "comparisonProjections": ["compute-projection-kernel-route-v1"]},
-        "cases": [{
-            "caseId": "premium-computes", "modelRef": "models/quote-premium.json",
-            "operation": "compute",
-            "placements": [
-                {"kind": "GROUP", "path": "/Quote", "reps": [1]},
-                {"kind": "FIELD", "path": "/Quote/BaseRate", "reps": [1, 1], "value": "10.25"}],
-            "probes": ["/Quote[1]/Premium"]}],
-    }, indent=2))
-    return scenario
+    if root.exists():
+        shutil.rmtree(root)
+    shutil.copytree(REPO / "adapter/capture-examples/scenario-example", root)
+    return root / "scenarios.json"
 
 
 # ---- artifact-level mutations (the real command over mutated ARTIFACTS; no source change) --------------
@@ -376,16 +351,15 @@ def run_artifact_mutations(results):
 
     for mid, needle, mutate_text in [
         ("A05-expected-member", "never carries expected runner results",
-         lambda t: t.replace('"probes": ["/Quote[1]/Premium"]',
-                             '"probes": ["/Quote[1]/Premium"], "expected": ["x"]')),
+         lambda t: t.replace('"probes": [ "/Quote[1]/Premium" ]',
+                             '"probes": [ "/Quote[1]/Premium" ], "expected": ["x"]')),
         ("A06-unknown-schema-version", "unknown versions are rejected",
          lambda t: t.replace("capture-scenario-set-v1", "capture-scenario-set-v9")),
     ]:
         print(f"== {mid}", flush=True)
         scenario_file = write_scratch_scenario(mid)
         text = scenario_file.read_text()
-        mutated = mutate_text(text.replace('"probes": [\n        "/Quote[1]/Premium"\n      ]',
-                                           '"probes": ["/Quote[1]/Premium"]'))
+        mutated = mutate_text(text)
         if mutated == text:
             raise RuntimeError(f"{mid}: scenario mutation did not apply")
         scenario_file.write_text(mutated)

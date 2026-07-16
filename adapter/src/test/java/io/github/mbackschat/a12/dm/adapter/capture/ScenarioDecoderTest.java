@@ -24,8 +24,6 @@ import io.github.mbackschat.a12.dm.adapter.capture.schema.ScenarioSet;
  */
 class ScenarioDecoderTest {
 
-    private static final String VALID_SHA = "a".repeat(64);
-
     private static ScenarioSet decode(String text) {
         return ScenarioDecoder.decode(Json.parse(text.getBytes(StandardCharsets.UTF_8)));
     }
@@ -35,7 +33,7 @@ class ScenarioDecoderTest {
     }
 
     private static String valid() {
-        return CaptureFixtures.validScenarioText(VALID_SHA);
+        return CaptureFixtures.validScenarioText();
     }
 
     @Test
@@ -99,7 +97,8 @@ class ScenarioDecoderTest {
 
     @Test
     void rejectsAMalformedDigest() {
-        List<String> problems = rejectionOf(valid().replace(VALID_SHA, "not-a-digest"));
+        List<String> problems = rejectionOf(valid().replaceFirst("\"sha256\": \"[0-9a-f]{64}\"",
+                "\"sha256\": \"not-a-digest\""));
         assertTrue(problems.stream().anyMatch(p -> p.contains("sha256")), problems::toString);
     }
 

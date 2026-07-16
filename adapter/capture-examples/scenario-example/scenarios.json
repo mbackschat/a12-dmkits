@@ -1,0 +1,30 @@
+{
+  "schema": "capture-scenario-set-v1",
+  "scenarioSet": { "id": "capture-selftest-quote-v1", "version": "1" },
+  "operationSchema": "compute-observation-v1",
+  "requiredCapabilities": { "schema": "a12-dmkits-capture-capabilities-v1", "version": "1" },
+  "world": { "profile": "local-wallclock-v1", "locale": "en_US" },
+  "models": [ { "ref": "models/quote-premium.json", "sha256": "5c05694278dcdc8574eae779e5580585b0df453332792033adf1de57bb40490f" } ],
+  "requiredRunners": [ "kernel-groovy-dynamic", "kernel-java-static", "a12-dmkits-interpreter" ],
+  "qualificationPolicy": "kernel-route-confirmed-v1",
+  "observationRequirement": {
+    "id": "quote-selftest-requirement", "version": "1",
+    "requiredChannels": [ "withoutErrors", "changedSubset", "withErrors", "cleared",
+                          "formalErrorsInOperands", "appliedState" ],
+    "comparisonProjections": [ "compute-projection-kernel-route-v1",
+                               "compute-projection-dmkits-portable-v1" ]
+  },
+  "cases": [
+    {
+      "caseId": "premium-computes",
+      "modelRef": "models/quote-premium.json",
+      "operation": "compute",
+      "placements": [
+        { "kind": "GROUP", "path": "/Quote", "reps": [1] },
+        { "kind": "FIELD", "path": "/Quote/BaseRate", "reps": [1, 1], "value": "10.25" },
+        { "kind": "EMPTY", "path": "/Quote/Premium", "reps": [1, 1] }
+      ],
+      "probes": [ "/Quote[1]/Premium" ]
+    }
+  ]
+}

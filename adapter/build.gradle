@@ -45,6 +45,12 @@ sourceSets {
         compileClasspath += sourceSets.main.output
         runtimeClasspath += sourceSets.main.output
     }
+    // The consumer-facing authoring example (`capture-examples/scenario-example/` — a complete, runnable
+    // scenario root) doubles as the tests' canonical valid fixture: exposing the directory as a test
+    // resource root keeps ONE source (no drift between the published example and the executed fixture).
+    test {
+        resources.srcDir 'capture-examples'
+    }
 }
 configurations {
     captureImplementation.extendsFrom implementation
