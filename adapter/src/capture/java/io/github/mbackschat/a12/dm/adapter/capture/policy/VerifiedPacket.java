@@ -12,17 +12,16 @@ import io.github.mbackschat.a12.dm.adapter.capture.json.Digests;
 import io.github.mbackschat.a12.dm.adapter.capture.json.Json;
 import io.github.mbackschat.a12.dm.adapter.capture.packet.CaptureRefusedException;
 import io.github.mbackschat.a12.dm.adapter.capture.packet.Receipt;
-import io.github.mbackschat.a12.dm.adapter.capture.schema.ScenarioDecoder;
 import io.github.mbackschat.a12.dm.adapter.capture.schema.ScenarioSet;
 import io.github.mbackschat.a12.dm.adapter.capture.schema.SchemaIds;
 
 /**
- * An IMMUTABLE packet, integrity-verified against the out-of-band receipt digest before any policy runs
- * (proposal §5/§7): the receipt file's SHA-256 must equal the supplied handoff value, the live inventory
- * must equal the stored receipt exactly (additions, removals, renames, byte drift, symlinks, and
- * unclassifiable strays all refuse), the envelope must parse CLOSED under a known schema id, and every
- * envelope artifact reference must agree with the receipt. Verification READS this view and never writes
- * into the packet.
+ * An IMMUTABLE packet, verified in two layers before any policy runs (proposal §5/§7; audit Finding 2):
+ * BYTE integrity — the receipt file's SHA-256 must equal the supplied out-of-band handoff value and the
+ * live inventory must equal the stored receipt exactly (additions, removals, renames, byte drift,
+ * symlinks, and unclassifiable strays all refuse) — then the closed RELATIONAL validation
+ * ({@link PacketRelations}): the envelope must DESCRIBE exactly the artifacts, registry echoes, and
+ * copied request the packet contains. Verification READS this view and never writes into the packet.
  */
 public final class VerifiedPacket {
 
@@ -42,10 +41,6 @@ public final class VerifiedPacket {
         this.request = request;
         this.observationsByCase = observationsByCase;
     }
-
-    /** The envelope's closed top-level member set (exactly what {@code PacketWriter} emits). */
-    private static final List<String> ENVELOPE_MEMBERS = List.of("schema", "operationSchema", "capabilities",
-            "kernel", "capture", "scenario", "world", "runners", "inputs", "legality", "cases", "command");
 
     public static VerifiedPacket load(Path dir, String expectedReceiptSha256) {
         byte[] receiptBytes = read(dir.resolve(Receipt.FILE_NAME));
@@ -71,33 +66,13 @@ public final class VerifiedPacket {
             throw new CaptureRefusedException("packet integrity: unknown envelope schema — this verifier"
                     + " supports exactly \"" + SchemaIds.EVIDENCE_PACKET + "\" (unknown versions are rejected)");
         }
-        for (String member : envelope.members().keySet()) {
-            if (!ENVELOPE_MEMBERS.contains(member)) {
-                throw new CaptureRefusedException("packet integrity: unknown envelope member \"" + member
-                        + "\" — " + SchemaIds.EVIDENCE_PACKET + " is closed");
-            }
-        }
 
-        ScenarioSet request = ScenarioDecoder.decode(Json.parse(read(dir.resolve("request/scenarios.json"))));
-
-        Map<String, Map<String, Json.Obj>> observations = new LinkedHashMap<>();
-        for (Json caseEntry : arr(envelope, "cases")) {
-            Json.Obj caseObj = (Json.Obj) caseEntry;
-            String caseId = str(caseObj, "caseId");
-            Map<String, Json.Obj> byRunner = new LinkedHashMap<>();
-            for (Json observationRef : ((Json.Arr) caseObj.members().get("observations")).items()) {
-                Json.Obj ref = (Json.Obj) observationRef;
-                String artifact = str(ref, "artifact");
-                byte[] bytes = read(dir.resolve(artifact));
-                if (!Digests.sha256(bytes).equals(str(ref, "sha256"))) {
-                    throw new CaptureRefusedException("packet integrity: envelope digest mismatch for "
-                            + artifact);
-                }
-                byRunner.put(str(ref, "runner"), (Json.Obj) Json.parse(bytes));
-            }
-            observations.put(caseId, byRunner);
-        }
-        return new VerifiedPacket(dir, stored, actualSha, envelope, request, observations);
+        // Bytes established (the receipt), the CLOSED RELATIONAL validator establishes that the envelope
+        // DESCRIBES those bytes: every claimed association verified, every artifact accounted for exactly
+        // once, unknown nested members refused (audit Finding 2).
+        PacketRelations.Relations relations = PacketRelations.check(dir, envelope, stored);
+        return new VerifiedPacket(dir, stored, actualSha, envelope, relations.request(),
+                relations.observationsByCase());
     }
 
     public Path dir() {

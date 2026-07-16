@@ -88,32 +88,11 @@ class VerifierDivergenceTest {
                 "the disagreement stays visible in the retained comparisons");
     }
 
-    @Test
-    void anUnavailableRequiredInterpreterChannelFailsConformanceClosed(@TempDir Path work) throws IOException {
-        Path packet = capture(work.resolve("conformance-work"), CaptureFixtures.declareConformance());
-        // Declare the interpreter's withoutErrors channel unavailable (and empty) — consistently.
-        String sha = tamperObservation(packet, "premium-computes", "a12-dmkits-interpreter", text -> text
-                .replaceFirst("\"withoutErrors\": \\{\\n      \"availability\": \"available\"",
-                        "\"withoutErrors\": {\n      \"availability\": \"notExposedByRunner\""));
-
-        CaptureCommandTest.Run conformance = verify(work, packet, sha, "dmkits-projected-conformance-v1",
-                work.resolve("conformance"));
-        assertEquals(0, conformance.exit(), conformance::err);
-        assertTrue(conformance.out().contains("REJECTED"));
-        String report = Files.readString(work.resolve("conformance/REPORT.json"));
-        assertTrue(report.contains("unavailableRequired"), "an unavailable required channel fails CLOSED");
-
-        // Under the CONFIRMED policy the portable projection is informational: the same tamper on a
-        // confirmed-declaring packet leaves kernel-route agreement — and the verdict — intact.
-        Path confirmedPacket = capture(work.resolve("confirmed-work"));
-        String confirmedSha = tamperObservation(confirmedPacket, "premium-computes", "a12-dmkits-interpreter",
-                text -> text.replaceFirst("\"withoutErrors\": \\{\\n      \"availability\": \"available\"",
-                        "\"withoutErrors\": {\n      \"availability\": \"notExposedByRunner\""));
-        CaptureCommandTest.Run confirmed = verify(work, confirmedPacket, confirmedSha,
-                "kernel-route-confirmed-v1", work.resolve("confirmed"));
-        assertTrue(confirmed.out().contains("SATISFIED"),
-                "the confirmed policy only REPORTS the interpreter — kernel-route agreement still holds");
-    }
+    // A FORGED channel availability (fidelity claimed away from the registry declaration) no longer
+    // reaches the policy layer at all — the closed relational validator refuses it as an integrity
+    // contradiction (PacketRelationsTest.forgedChannelAvailabilityContradictingTheRegistryRefuses). The
+    // policy-level fail-closed backstop for a genuinely unavailable required channel is unit-guarded in
+    // ProjectionFailClosedTest.
 
     @Test
     void undeclaredByteDriftRefusesVerificationOutright(@TempDir Path work) throws IOException {
