@@ -48,6 +48,7 @@ import io.github.mbackschat.a12.dm.adapter.capture.dto.Pointers;
 import io.github.mbackschat.a12.dm.adapter.capture.dto.RunnerFidelity;
 import io.github.mbackschat.a12.dm.adapter.capture.dto.RunnerId;
 import io.github.mbackschat.a12.dm.adapter.capture.runner.CaseExecution;
+import io.github.mbackschat.a12.dm.adapter.capture.schema.CaseDocumentIdentity;
 import io.github.mbackschat.a12.dm.adapter.capture.schema.ScenarioSet;
 
 /**
@@ -131,7 +132,8 @@ final class KernelRouteSupport {
     /** Observe {@code execution} through {@code rt} (whichever route built it), as {@code runner}. */
     static ComputeObservation observe(RunnerId runner, IDocumentRtService rt, DocumentServiceFactory dsf,
             CaseExecution execution) {
-        DocumentV2 input = buildInstance(dsf, execution);
+        CaseDocumentIdentity.Recorder consumed = CaseDocumentIdentity.recorder();
+        DocumentV2 input = buildInstance(dsf, execution, consumed);
         DocumentProcessingConfig config = processingConfig(execution);
 
         IDocumentComputationResult result = rt.compute(input, config);
@@ -169,6 +171,7 @@ final class KernelRouteSupport {
         }
 
         return ComputeObservation.success(execution.caseId(), runner)
+                .consumedDocument(consumed.identity())
                 .withoutErrors(ComputeObservation.Channel.available(RunnerFidelity.ALL_COMPUTED_CLEAN, withoutErrors))
                 .changedSubset(ComputeObservation.Channel.available(RunnerFidelity.DELTA_VS_INPUT, changedSubset))
                 .withErrors(ComputeObservation.Channel.available(RunnerFidelity.ERRORED_INSTANCES, withErrors))
@@ -181,16 +184,28 @@ final class KernelRouteSupport {
 
     // ---- instance building + config ---------------------------------------------------------------------
 
-    private static DocumentV2 buildInstance(DocumentServiceFactory dsf, CaseExecution execution) {
+    /** Build the instance, recording each placement AS it is applied (the recorder call shares the exact
+     *  locals the engine call consumes — the consumed-document binding, never a copy of the request). */
+    private static DocumentV2 buildInstance(DocumentServiceFactory dsf, CaseExecution execution,
+            CaseDocumentIdentity.Recorder consumed) {
         IDocumentFactory df = dsf.createDocumentFactory();
         IDocument document = df.createDocument(modelId(execution.modelJson()));
         for (ScenarioSet.Placement p : execution.placements()) {
             int[] reps = p.reps().stream().mapToInt(Integer::intValue).toArray();
             switch (p.kind()) {
-                case GROUP -> document.addEntityInstance(df.createGroupInstance(p.path(), reps));
-                case FIELD -> document.addEntityInstance(df.createFieldInstance(p.path(), reps,
-                        p.value().orElseThrow()));
-                case EMPTY -> document.addEntityInstance(df.createFieldInstance(p.path(), reps));
+                case GROUP -> {
+                    document.addEntityInstance(df.createGroupInstance(p.path(), reps));
+                    consumed.group(p.path(), p.reps());
+                }
+                case FIELD -> {
+                    String value = p.value().orElseThrow();
+                    document.addEntityInstance(df.createFieldInstance(p.path(), reps, value));
+                    consumed.field(p.path(), p.reps(), value);
+                }
+                case EMPTY -> {
+                    document.addEntityInstance(df.createFieldInstance(p.path(), reps));
+                    consumed.empty(p.path(), p.reps());
+                }
             }
         }
         return dsf.createDocumentV1V2Converter().ofDocumentV1(document);

@@ -32,7 +32,12 @@ public final class ObservationJson {
                 .put("consumedModel", Json.Obj.of()
                         .put("ref", modelRef)
                         .put("suppliedSha256", suppliedSha256)
-                        .put("adaptedSha256", adaptedSha256));
+                        .put("adaptedSha256", adaptedSha256))
+                // The runner-boundary document binding (only a completed run testifies to what it consumed).
+                .put("consumedDocument", observation.consumedDocument() == null
+                        ? Json.Null.NULL : Json.Obj.of()
+                                .put("placements", observation.consumedDocument().placements())
+                                .put("canonicalSha256", observation.consumedDocument().canonicalSha256()));
         Json.Obj channels = Json.Obj.of();
         channels.put(ChannelId.WITHOUT_ERRORS.wire(), valueChannel(observation.withoutErrors()));
         channels.put(ChannelId.CHANGED_SUBSET.wire(), valueChannel(observation.changedSubset()));

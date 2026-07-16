@@ -12,6 +12,7 @@ import io.github.mbackschat.a12.dm.adapter.capture.dto.RunnerFidelity;
 import io.github.mbackschat.a12.dm.adapter.capture.dto.RunnerId;
 import io.github.mbackschat.a12.dm.adapter.capture.runner.CaseExecution;
 import io.github.mbackschat.a12.dm.adapter.capture.runner.ComputeRunner;
+import io.github.mbackschat.a12.dm.adapter.capture.schema.CaseDocumentIdentity;
 import io.github.mbackschat.a12.dm.adapter.capture.schema.ScenarioSet;
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter;
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException;
@@ -43,7 +44,8 @@ public final class InterpreterRunner implements ComputeRunner {
     @Override
     public ComputeObservation observe(CaseExecution execution) {
         ModelDef def = ModelLoader.INSTANCE.load(execution.modelJson());
-        Document doc = replay(def, execution.placements());
+        CaseDocumentIdentity.Recorder consumed = CaseDocumentIdentity.recorder();
+        Document doc = replay(def, execution.placements(), consumed);
         EvalClock clock = execution.clock()
                 .map(c -> new EvalClock(c.substring(0, c.indexOf('T')), c))
                 .orElse(null);
@@ -82,6 +84,7 @@ public final class InterpreterRunner implements ComputeRunner {
         }
 
         return ComputeObservation.success(execution.caseId(), id())
+                .consumedDocument(consumed.identity())
                 .withoutErrors(ComputeObservation.Channel.available(RunnerFidelity.ALL_COMPUTED_CLEAN, values))
                 .changedSubset(ComputeObservation.Channel.notExposed())
                 .withErrors(ComputeObservation.Channel.available(RunnerFidelity.ERRORED_INSTANCES, errored))
@@ -91,14 +94,27 @@ public final class InterpreterRunner implements ComputeRunner {
                 .build();
     }
 
-    private static Document replay(ModelDef def, List<ScenarioSet.Placement> placements) {
+    /** Replay the placements, recording each AS it is applied to the interpreter document (the recorder
+     *  call shares the exact locals the engine call consumes — the consumed-document binding). */
+    private static Document replay(ModelDef def, List<ScenarioSet.Placement> placements,
+            CaseDocumentIdentity.Recorder consumed) {
         Document doc = DocumentKt.newDocument(def);
         for (ScenarioSet.Placement p : placements) {
             int[] reps = p.reps().stream().mapToInt(Integer::intValue).toArray();
             switch (p.kind()) {
-                case GROUP -> doc.group(p.path(), reps);
-                case FIELD -> doc.field(p.path(), p.value().orElseThrow(), reps);
-                case EMPTY -> doc.emptyField(p.path(), reps);
+                case GROUP -> {
+                    doc.group(p.path(), reps);
+                    consumed.group(p.path(), p.reps());
+                }
+                case FIELD -> {
+                    String value = p.value().orElseThrow();
+                    doc.field(p.path(), value, reps);
+                    consumed.field(p.path(), p.reps(), value);
+                }
+                case EMPTY -> {
+                    doc.emptyField(p.path(), reps);
+                    consumed.empty(p.path(), p.reps());
+                }
             }
         }
         return doc;

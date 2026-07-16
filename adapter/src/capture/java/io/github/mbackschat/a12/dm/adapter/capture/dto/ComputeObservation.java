@@ -20,6 +20,7 @@ public record ComputeObservation(
         RunnerId runner,
         RunStatus status,
         String statusDetail,
+        ConsumedDocument consumedDocument,
         Channel<ValueEntry> withoutErrors,
         Channel<ValueEntry> changedSubset,
         Channel<ErrorEntry> withErrors,
@@ -80,13 +81,14 @@ public record ComputeObservation(
     }
 
     /** A non-success observation: every channel {@link Availability#NOT_APPLICABLE} (the run produced no
-     *  semantic output — never serialized as successful-empty). */
+     *  semantic output — never serialized as successful-empty), and NO consumed-document binding (only a
+     *  completed run testifies to what it consumed). */
     public static ComputeObservation failed(String caseId, RunnerId runner, RunStatus status, String detail) {
         if (status == RunStatus.SUCCESS) {
             throw new IllegalArgumentException("a success observation carries channels — use the Builder");
         }
         Channel<ValueEntry> noValues = new Channel<>(Availability.NOT_APPLICABLE, RunnerFidelity.NOT_EXPOSED, List.of());
-        return new ComputeObservation(caseId, runner, status, detail,
+        return new ComputeObservation(caseId, runner, status, detail, null,
                 noValues, noValues,
                 new Channel<>(Availability.NOT_APPLICABLE, RunnerFidelity.NOT_EXPOSED, List.of()),
                 new Channel<>(Availability.NOT_APPLICABLE, RunnerFidelity.NOT_EXPOSED, List.of()),
@@ -98,10 +100,12 @@ public record ComputeObservation(
         return new Builder(caseId, runner);
     }
 
-    /** The success-observation builder — every channel set exactly once, enforced at {@link #build()}. */
+    /** The success-observation builder — every channel and the consumed-document identity set exactly
+     *  once, enforced at {@link #build()}. */
     public static final class Builder {
         private final String caseId;
         private final RunnerId runner;
+        private ConsumedDocument consumedDocument;
         private Channel<ValueEntry> withoutErrors;
         private Channel<ValueEntry> changedSubset;
         private Channel<ErrorEntry> withErrors;
@@ -112,6 +116,11 @@ public record ComputeObservation(
         private Builder(String caseId, RunnerId runner) {
             this.caseId = caseId;
             this.runner = runner;
+        }
+
+        public Builder consumedDocument(ConsumedDocument consumedDocument) {
+            this.consumedDocument = consumedDocument;
+            return this;
         }
 
         public Builder withoutErrors(Channel<ValueEntry> channel) {
@@ -150,7 +159,11 @@ public record ComputeObservation(
                 throw new IllegalStateException("every channel of a success observation must be set explicitly"
                         + " (an unexposed channel is Channel.notExposed(), never an omitted one)");
             }
-            return new ComputeObservation(caseId, runner, RunStatus.SUCCESS, null,
+            if (consumedDocument == null) {
+                throw new IllegalStateException("a success observation must bind the consumed-document"
+                        + " identity recorded at the runner's document-building boundary");
+            }
+            return new ComputeObservation(caseId, runner, RunStatus.SUCCESS, null, consumedDocument,
                     withoutErrors, changedSubset, withErrors, cleared, formalErrorsInOperands, appliedState);
         }
     }

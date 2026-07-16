@@ -71,6 +71,8 @@ class RunnersStatusTest {
     @Test
     void successfulEmptyIsDataAndDistinctFromEveryFailureEncoding() {
         ComputeObservation empty = ComputeObservation.success("status-case", RunnerId.A12_DMKITS_INTERPRETER)
+                .consumedDocument(new io.github.mbackschat.a12.dm.adapter.capture.dto.ConsumedDocument(
+                        0, "e".repeat(64)))
                 .withoutErrors(ComputeObservation.Channel.available(RunnerFidelity.ALL_COMPUTED_CLEAN, List.of()))
                 .changedSubset(ComputeObservation.Channel.notExposed())
                 .withErrors(ComputeObservation.Channel.available(RunnerFidelity.ERRORED_INSTANCES, List.of()))
