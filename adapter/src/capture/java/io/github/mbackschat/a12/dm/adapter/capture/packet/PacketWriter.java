@@ -17,6 +17,7 @@ import io.github.mbackschat.a12.dm.adapter.capture.legality.LegalityGate;
 import io.github.mbackschat.a12.dm.adapter.capture.runner.CaseExecution;
 import io.github.mbackschat.a12.dm.adapter.capture.runner.Runners;
 import io.github.mbackschat.a12.dm.adapter.capture.runner.kernel.KernelArtifacts;
+import io.github.mbackschat.a12.dm.adapter.capture.schema.Capabilities;
 import io.github.mbackschat.a12.dm.adapter.capture.schema.ScenarioSet;
 import io.github.mbackschat.a12.dm.adapter.capture.schema.ScenarioSets;
 import io.github.mbackschat.a12.dm.adapter.capture.schema.SchemaIds;
@@ -62,6 +63,11 @@ public final class PacketWriter {
                 Files.write(copy, model.getValue().bytes());
             }
 
+            // The exact capability declaration this capture ran under — copied INTO the packet so the
+            // fidelity claims are self-contained (never a separately trusted checkout file).
+            byte[] capabilityBytes = Json.canonicalBytes(Capabilities.emit());
+            writeGenerated(out, "capabilities/capabilities.json", capabilityBytes, leakGuard);
+
             // Legality BEFORE runtime — one artifact per model, provenance-recorded.
             Map<String, LegalityGate.Result> legality = new LinkedHashMap<>();
             for (Map.Entry<String, ScenarioSets.ModelBytes> model : loaded.models().entrySet()) {
@@ -99,7 +105,8 @@ public final class PacketWriter {
             }
 
             byte[] envelope = Json.canonicalBytes(
-                    envelope(loaded, options, kernel, legality, observationRefsByCase));
+                    envelope(loaded, options, kernel, Digests.sha256(capabilityBytes), legality,
+                            observationRefsByCase));
             writeGenerated(out, "PACKET.json", envelope, leakGuard);
 
             Receipt receipt = Receipt.over(out);
@@ -131,15 +138,17 @@ public final class PacketWriter {
     }
 
     private static Json envelope(ScenarioSets.Loaded loaded, CaptureOptions options,
-            KernelArtifacts.Identity kernel, Map<String, LegalityGate.Result> legality,
-            Map<String, List<Json>> observationRefsByCase) {
+            KernelArtifacts.Identity kernel, String capabilitiesSha256,
+            Map<String, LegalityGate.Result> legality, Map<String, List<Json>> observationRefsByCase) {
         ScenarioSet set = loaded.set();
         Json.Obj root = Json.Obj.of()
                 .put("schema", SchemaIds.EVIDENCE_PACKET)
                 .put("operationSchema", set.operationSchema())
                 .put("capabilities", Json.Obj.of()
                         .put("schema", SchemaIds.CAPABILITIES)
-                        .put("version", SchemaIds.CAPABILITIES_VERSION))
+                        .put("version", SchemaIds.CAPABILITIES_VERSION)
+                        .put("artifact", "capabilities/capabilities.json")
+                        .put("sha256", capabilitiesSha256))
                 .put("kernel", Json.Obj.of()
                         .put("artifactCoordinate", kernel.coordinate())
                         .put("version", kernel.version())

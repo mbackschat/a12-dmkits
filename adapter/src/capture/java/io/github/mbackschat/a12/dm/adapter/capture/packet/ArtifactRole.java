@@ -12,6 +12,7 @@ public enum ArtifactRole {
     PACKET_ENVELOPE("packet-envelope"),
     COPIED_REQUEST("copied-request"),
     COPIED_INPUT("copied-input"),
+    CAPABILITY_DECLARATION("capability-declaration"),
     LEGALITY("legality"),
     OBSERVATION("observation"),
     QUALIFICATION_PROFILE("qualification-profile"),
@@ -47,6 +48,9 @@ public enum ArtifactRole {
         }
         if (relativePath.startsWith("inputs/") && relativePath.endsWith(".json")) {
             return Optional.of(COPIED_INPUT);
+        }
+        if (relativePath.equals("capabilities/capabilities.json")) {
+            return Optional.of(CAPABILITY_DECLARATION);
         }
         if (relativePath.startsWith("legality/") && relativePath.endsWith(".json")) {
             return Optional.of(LEGALITY);
