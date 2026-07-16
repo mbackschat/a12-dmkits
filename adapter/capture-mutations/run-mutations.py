@@ -15,6 +15,7 @@ scratch dir and are qualification-ineligible by construction (--development).
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -150,6 +151,7 @@ SOURCE_MUTATIONS = [
         "                return ComputeObservation.failed(execution.caseId(), runner.id(), RunStatus.TECHNICAL_FAILURE,\n"
         '                        "the runner threw during execution; details withheld from the packet (see stderr)");',
         "                return ComputeObservation.success(execution.caseId(), runner.id())\n"
+        "                        .consumedDocument(new io.github.mbackschat.a12.dm.adapter.capture.dto.ConsumedDocument(0, \"0\".repeat(64)))\n"
         "                        .withoutErrors(ComputeObservation.Channel.available(\"all-computed-clean\", java.util.List.of()))\n"
         "                        .changedSubset(ComputeObservation.Channel.available(\"delta-vs-input\", java.util.List.of()))\n"
         "                        .withErrors(ComputeObservation.Channel.available(\"errored-instances\", java.util.List.of()))\n"
@@ -224,10 +226,44 @@ SOURCE_MUTATIONS = [
         '    public static final String ALL_COMPUTED_CLEAN = "all-clean";')]),
     m("M20-development-packet-eligible",
       "development/dirty packets become eligible for portable qualification",
-      f"{TESTS}.VerifierTest.aDevelopmentPacketIsRejectedByEveryPortablePolicyBeforeComparison",
+      f"{TESTS}.VerifierTest.aDevelopmentPacketIsRejectedByItsDeclaredPolicyBeforeComparison",
       [(f"{CAPTURE}/policy/PolicyEngine.java",
         '        if (packet.developmentMode() || !"clean".equals(packet.workingTree())) {',
         "        if (false) {")]),
+    # ---- the Set-Z2 audit-correction mutations (findings 1, 3, 5) --------------------------------------
+    m("M21-cli-policy-binding-removed",
+      "verification stops binding to the request-declared policy (any CLI policy accepted)",
+      f"{TESTS}.VerifierPolicyBindingTest.aMismatchingCliPolicyIsRefusedWithoutAReport",
+      [(f"{CAPTURE}/policy/Verifier.java",
+        "        if (policy != declared) {",
+        "        if (false) {")]),
+    m("M22-mandatory-projection-gate-removed",
+      "a policy's mandatory projection no longer needs predeclaration (selected after observations)",
+      f"{TESTS}.VerifierPolicyBindingTest.aMandatoryProjectionMissingFromTheRequestRefusesBeforeExecution",
+      [(f"{CAPTURE}/schema/ScenarioDecoder.java",
+        "            if (!requirement.comparisonProjections().contains(mandatory)) {",
+        "            if (false) {")]),
+    m("M23-channel-fidelity-gate-removed",
+      "a required channel unavailable on a qualifying runner no longer refuses before execution",
+      f"{TESTS}.VerifierPolicyBindingTest.aRequiredChannelAQualifyingRunnerCannotExposeRefusesBeforeExecution",
+      [(f"{CAPTURE}/schema/ScenarioDecoder.java",
+        "                if (fidelity.channel(channel).availability() != Availability.AVAILABLE) {",
+        "                if (false) {")]),
+    m("M24-placement-dropped-in-adaptation",
+      "the kernel routes DROP a placement during placement-to-document adaptation (both routes alike)",
+      f"{TESTS}.ConsumedDocumentBindingTest",
+      [(f"{CAPTURE}/runner/kernel/KernelRouteSupport.java",
+        "                case EMPTY -> {\n"
+        "                    document.addEntityInstance(df.createFieldInstance(p.path(), reps));\n"
+        "                    consumed.empty(p.path(), p.reps());\n"
+        "                }",
+        "                case EMPTY -> { }")]),
+    m("M25-post-run-identity-check-removed",
+      "capture stops re-verifying the closure identity before finalization (mid-run change unnoticed)",
+      f"{TESTS}.ClosureIdentityTest.anIdentityChangeBetweenExecutionAndFinalizationRefusesWithNoPacket",
+      [(f"{CAPTURE}/packet/PacketWriter.java",
+        "            if (!after.equals(before)) {",
+        "            if (false) {")]),
 ]
 
 # M19: the DTO-boundary crossing — its guard is the Gradle purity lint, not a JUnit class.
@@ -297,6 +333,41 @@ def write_scratch_scenario(name):
 
 
 # ---- artifact-level mutations (the real command over mutated ARTIFACTS; no source change) --------------
+#
+# Two tiers: the INTEGRITY tier (A01–A04) leaves the receipt stale, so the byte layer refuses; the
+# RELATIONAL tier (A07–A15, audit Finding 2) RENEWS the receipt (and re-binds envelope digests where an
+# artifact changed), so only the closed relational validator can catch the internal contradiction.
+
+RECEIPT_ROLES = [
+    ("PACKET.json", "packet-envelope"),
+    ("request/scenarios.json", "copied-request"),
+    ("capabilities/capabilities.json", "capability-declaration"),
+    ("inputs/", "copied-input"),
+    ("legality/", "legality"),
+    ("observations/", "observation"),
+]
+
+
+def receipt_role(rel):
+    for prefix, role in RECEIPT_ROLES:
+        if rel == prefix or (prefix.endswith("/") and rel.startswith(prefix)):
+            return role
+    raise RuntimeError(f"unclassifiable artifact {rel}")
+
+
+def renew_receipt(packet):
+    """Rewrite RECEIPT.json from the live directory (the consistent-tamper step); returns its digest."""
+    artifacts = []
+    for path in sorted(p.relative_to(packet).as_posix() for p in packet.rglob("*") if p.is_file()):
+        if path == "RECEIPT.json":
+            continue
+        data = (packet / path).read_bytes()
+        artifacts.append({"path": path, "role": receipt_role(path), "bytes": len(data),
+                          "sha256": hashlib.sha256(data).hexdigest()})
+    receipt = {"schema": "capture-receipt-v1", "artifacts": artifacts}
+    (packet / "RECEIPT.json").write_text(json.dumps(receipt, indent=2) + "\n")
+    return hashlib.sha256((packet / "RECEIPT.json").read_bytes()).hexdigest()
+
 
 def run_artifact_mutations(results):
     scenario = write_scratch_scenario("artifact")
@@ -306,13 +377,19 @@ def run_artifact_mutations(results):
     if code != 0:
         raise RuntimeError("artifact-suite base capture failed:\n" + output)
     receipt_sha = hashlib.sha256((packet / "RECEIPT.json").read_bytes()).hexdigest()
+    pristine = SCRATCH / "artifact" / "pristine"
+    shutil.copytree(packet, pristine)
 
-    def verify_expect(mid, diagnostic_needle, mutate, unmutate):
-        mutate()
+    def restore_packet():
+        shutil.rmtree(packet)
+        shutil.copytree(pristine, packet)
+
+    def verify_expect(mid, diagnostic_needle, mutate, unmutate=restore_packet):
+        effective_sha = mutate() or receipt_sha
         try:
             code, output = gradle([":adapter:captureVerify", f"-Pcapture.packet={packet}",
-                                   f"-Pcapture.packetReceiptSha256={receipt_sha}",
-                                   "-Pcapture.policy=characterization-v1",
+                                   f"-Pcapture.packetReceiptSha256={effective_sha}",
+                                   "-Pcapture.policy=kernel-route-confirmed-v1",
                                    f"-Pcapture.output={SCRATCH / mid / 'report'}"], f"{mid}.log")
             refused = code != 0 and diagnostic_needle in output
         finally:
@@ -326,28 +403,90 @@ def run_artifact_mutations(results):
         if not refused:
             raise RuntimeError(f"{mid}: verify did not refuse — mutation suite FAILED")
 
+    def envelope_sub(pattern, repl, count=1):
+        env = packet / "PACKET.json"
+        text, n = re.subn(pattern, repl, env.read_text(), count=count)
+        if n != count:
+            raise RuntimeError(f"envelope mutation matched {n} times, wanted {count}: {pattern}")
+        env.write_text(text)
+        return renew_receipt(packet)
+
+    def artifact_rebound_sub(rel, pattern, repl):
+        f = packet / rel
+        old_sha = hashlib.sha256(f.read_bytes()).hexdigest()
+        text, n = re.subn(pattern, repl, f.read_text(), count=1)
+        if n != 1:
+            raise RuntimeError(f"artifact mutation did not match: {rel}: {pattern}")
+        f.write_text(text)
+        new_sha = hashlib.sha256(f.read_bytes()).hexdigest()
+        env = packet / "PACKET.json"
+        env.write_text(env.read_text().replace(old_sha, new_sha))
+        return renew_receipt(packet)
+
+    # -- the integrity tier (stale receipt) --
     print("== A01-stray-artifact", flush=True)
-    stray = packet / "notes.txt"
     verify_expect("A01-stray-artifact", "refuses unclassifiable artifact",
-                  lambda: stray.write_text("stray"), lambda: stray.unlink())
+                  lambda: (packet / "notes.txt").write_text("stray") and None)
 
     print("== A02-byte-drift", flush=True)
     target = packet / "observations/premium-computes/kernel-java-static.json"
-    original = target.read_bytes()
     verify_expect("A02-byte-drift", "drifted",
-                  lambda: target.write_text(target.read_text().replace('"20.5"', '"20.9"')),
-                  lambda: target.write_bytes(original))
+                  lambda: target.write_text(target.read_text().replace('"20.5"', '"20.9"')) and None)
 
     print("== A03-symlink", flush=True)
-    link = packet / "observations/premium-computes/link.json"
     verify_expect("A03-symlink", "refuses symlink",
-                  lambda: link.symlink_to(target), lambda: link.unlink())
+                  lambda: (packet / "observations/premium-computes/link.json").symlink_to(target) and None)
 
     print("== A04-removed-artifact", flush=True)
-    legality = packet / "legality/models/quote-premium.json"
-    legality_bytes = legality.read_bytes()
     verify_expect("A04-removed-artifact", "drifted",
-                  lambda: legality.unlink(), lambda: legality.write_bytes(legality_bytes))
+                  lambda: (packet / "legality/models/quote-premium.json").unlink() and None)
+
+    # -- the relational tier (renewed receipt; audit Finding 2 + the F3/F4 verify halves) --
+    print("== A07-request-digest-claim", flush=True)
+    verify_expect("A07-request-digest-claim", "requestSha256",
+                  lambda: envelope_sub(r'"requestSha256": "[0-9a-f]{64}"',
+                                       '"requestSha256": "' + "1" * 64 + '"'))
+
+    print("== A08-scenario-identity-claim", flush=True)
+    verify_expect("A08-scenario-identity-claim", "disagrees with the copied request",
+                  lambda: envelope_sub(r'"id": "capture-selftest-quote-v1"',
+                                       '"id": "someone-elses-scenario-v1"'))
+
+    print("== A09-legality-verdict-claim", flush=True)
+    verify_expect("A09-legality-verdict-claim", "contradiction",
+                  lambda: envelope_sub(r'"verdict": "legal"', '"verdict": "illegal"'))
+
+    print("== A10-observation-case-claim", flush=True)
+    verify_expect("A10-observation-case-claim", "caseId",
+                  lambda: artifact_rebound_sub("observations/premium-computes/kernel-groovy-dynamic.json",
+                                               r'"caseId": "premium-computes"', '"caseId": "another-case"'))
+
+    print("== A11-unknown-nested-member", flush=True)
+    verify_expect("A11-unknown-nested-member", "unknown member",
+                  lambda: envelope_sub(r'"requestArtifact": "request/scenarios.json",',
+                                       '"requestArtifact": "request/scenarios.json",\\n    "note": "smuggled",'))
+
+    print("== A12-removed-association", flush=True)
+    verify_expect("A12-removed-association", "exactly once",
+                  lambda: envelope_sub(r',\s*\{\s*"runner": "kernel-java-static",[^}]*\}', ""))
+
+    print("== A13-orphan-artifact", flush=True)
+    def orphan():
+        shutil.copyfile(packet / "observations/premium-computes/kernel-groovy-dynamic.json",
+                        packet / "observations/premium-computes/extra.json")
+        return renew_receipt(packet)
+    verify_expect("A13-orphan-artifact", "orphan", orphan)
+
+    print("== A14-capability-copy-tamper", flush=True)
+    verify_expect("A14-capability-copy-tamper", "registry",
+                  lambda: artifact_rebound_sub("capabilities/capabilities.json",
+                                               r'"all-computed-clean"', '"all-clean"'))
+
+    print("== A15-consumed-document-tamper", flush=True)
+    verify_expect("A15-consumed-document-tamper", "consumed",
+                  lambda: artifact_rebound_sub("observations/premium-computes/kernel-groovy-dynamic.json",
+                                               r'"canonicalSha256": "[0-9a-f]{64}"',
+                                               '"canonicalSha256": "' + "3" * 64 + '"'))
 
     for mid, needle, mutate_text in [
         ("A05-expected-member", "never carries expected runner results",
