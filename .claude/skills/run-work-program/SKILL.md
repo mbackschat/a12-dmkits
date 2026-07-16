@@ -30,7 +30,7 @@ A worker that finds a new divergence mid-item does **not** triage it in-session:
 
 ## The review gate (master, per landing)
 
-Audit checklist — all six, every time:
+Audit checklist — all seven, every time:
 
 1. **Mechanism vs symptom** — does the fix explain the class, or patch the reported case?
 2. **Locus** — is the change at the shared root (the fix covers siblings)?
@@ -38,6 +38,7 @@ Audit checklist — all six, every time:
 4. **Both-strategies confirmation** — runtime AND codegen, from source where the oracle can't reach.
 5. **Histogram delta** — consistent with the claimed class size; no regression in other classes.
 6. **Locks re-run independently in the gate session** — never trust the report's green alone.
+7. **Advertised-invariant trace (contract-bearing surfaces)** — for every invariant the landing *advertises* (a schema field, a policy, a guarantee in docs/help), name the **enforcement locus** and its **failing test**. "Parsed but never consumed" is a real shipped class (the Set Z′ capture boundary parsed the request's `qualificationPolicy`/`observationRequirement` and enforced neither — caught only by the external consumer's audit, 2026-07-16). Does-fires prove built things fire; this item proves *claimed* things are built.
 
 Plus ledger hygiene: fixed rows deleted (rationale graduates to a finding), code comments repointed, the state doc's program log updated.
 
