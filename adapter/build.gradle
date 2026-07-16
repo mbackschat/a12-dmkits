@@ -65,10 +65,12 @@ def verifyCapturePurity = tasks.register('verifyCapturePurity') {
         def kernelPrefixes = ['com.mgmtp.', 'groovy.']
         def interpreterPrefix = 'io.github.mbackschat.a12.dm.interpreter.'
         def violations = []
+        def scanned = 0
         srcRoot.eachFileRecurse(groovy.io.FileType.FILES) { f ->
             if (!f.name.endsWith('.java')) {
                 return
             }
+            scanned++
             def rel = srcRoot.toPath().relativize(f.toPath()).toString()
             def forbidden
             if (rel.contains('capture/runner/kernel/')) {
@@ -91,6 +93,11 @@ def verifyCapturePurity = tasks.register('verifyCapturePurity') {
             throw new GradleException("capture DTO-boundary purity violated — kernel/interpreter types must " +
                     "terminate in their route mapper packages (CONFORMANCE-CORPUS-SPEC §15):\n  " +
                     violations.join('\n  '))
+        }
+        // The #17 silent-empty-scan defense: a moved/renamed source root must fail LOUDLY, never pass vacuously.
+        if (scanned == 0) {
+            throw new GradleException("verifyCapturePurity scanned ZERO .java files under ${srcRoot} — " +
+                    "the source root moved or emptied; a vacuous pass is a false green (the #17 guardInputs class).")
         }
     }
 }

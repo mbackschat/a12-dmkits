@@ -216,10 +216,12 @@ def verifyKitPurity = tasks.register('verifyKitPurity') {
     inputs.files(kitMainDirs)
     doLast {
         def violations = []
+        def scanned = 0
         kitMainDirs.each { mainSrc ->
             if (!mainSrc.exists()) return
             mainSrc.eachFileRecurse { f ->
                 if (!f.name.endsWith('.java')) return
+                scanned++
                 // Strip block comments (incl. Javadoc) then line comments; any surviving com.mgmtp is real code.
                 def code = f.text.replaceAll(/(?s)\/\*.*?\*\//, '').replaceAll(/(?m)\/\/.*$/, '')
                 (code =~ /com\.mgmtp\.[\w.]+/).each { hit ->
@@ -232,6 +234,12 @@ def verifyKitPurity = tasks.register('verifyKitPurity') {
                 "kit purity violated — the kits (core/rulekit/modelkit/edit) MAIN source must name no kernel\n" +
                 "type; the kernel lives behind the SPI ports :adapter implements (kernel-decoupling).\n" +
                 "Offending com.mgmtp references:\n  " + violations.join('\n  '))
+        }
+        // The #17 silent-empty-scan defense: if every kit main tree is missing/empty the lint must fail LOUDLY —
+        // a vacuous pass after a source move is a false green (the same class the guardInputs assertion closes).
+        if (scanned == 0) {
+            throw new GradleException("verifyKitPurity scanned ZERO .java files across the kit main trees — " +
+                    "the source roots moved or emptied; refusing the vacuous pass.")
         }
     }
 }
