@@ -87,7 +87,7 @@ SOURCE_MUTATIONS = [
       "route confirmation stops reasoning about a cross-route divergence (hidden divergence)",
       f"{TESTS}.VerifierDivergenceTest.aCrossRouteSplitStopsConfirmationButCharacterizationRetainsIt",
       [(f"{CAPTURE}/policy/PolicyEngine.java",
-        '            if (!"equal".equals(route.result())) {',
+        '            if (!characterizing && !"equal".equals(route.result())) {',
         "            if (false) {")]),
     m("M03-cause-dropped",
       "the errored instance's structured cause is dropped downstream",
@@ -117,15 +117,9 @@ SOURCE_MUTATIONS = [
       "characterization starts BLOCKING on a cross-route disagreement instead of retaining it",
       f"{TESTS}.VerifierDivergenceTest.aCrossRouteSplitStopsConfirmationButCharacterizationRetainsIt",
       [(f"{CAPTURE}/policy/PolicyEngine.java",
-        '        return new Outcome(reasons.isEmpty() ? "satisfied" : "rejected", reasons,\n'
-        "                kernelRouteComparisons(packet));",
-        "        List<Projections.Comparison> comparisons = kernelRouteComparisons(packet);\n"
-        "        for (Projections.Comparison c : comparisons) {\n"
-        '            if (!"equal".equals(c.result())) {\n'
-        '                reasons.add("cross-route divergence");\n'
-        "            }\n"
-        "        }\n"
-        '        return new Outcome(reasons.isEmpty() ? "satisfied" : "rejected", reasons, comparisons);')]),
+        "        boolean characterizing =\n"
+        "                packet.request().qualificationPolicy() == PolicyId.CHARACTERIZATION;",
+        "        boolean characterizing = false;")]),
     m("M07-unavailable-treated-as-equal",
       "an unavailable required interpreter channel is treated as semantic equality",
       f"{TESTS}.VerifierDivergenceTest.anUnavailableRequiredInterpreterChannelFailsConformanceClosed",
@@ -178,7 +172,7 @@ SOURCE_MUTATIONS = [
       "default-mode capture stops requiring a clean committed checkout",
       f"{TESTS}.CaptureCommandTest.defaultModeRefusesADirtyTreeNamingDevelopmentMode",
       [(f"{CAPTURE}/packet/PacketWriter.java",
-        "        if (!options.development() && !options.sourceState().clean()) {",
+        "        if (!options.development() && !identity.source().clean()) {",
         "        if (false) {")]),
     m("M13-nondeterministic-packet",
       "a volatile value enters the packet: a second identical run produces different bytes",
@@ -196,9 +190,9 @@ SOURCE_MUTATIONS = [
       "a machine-specific absolute path enters generated metadata",
       f"{TESTS}.CaptureCommandTest.captureWritesTheDirectoryShapedPacketAndPrintsTheReceiptDigest",
       [(f"{CAPTURE}/packet/PacketWriter.java",
-        '                        .put("sourceRevision", options.sourceState().revision())',
+        '                        .put("sourceRevision", identity.source().revision())',
         '                        .put("sourceRevision", System.getProperty("user.home") + "/"'
-        " + options.sourceState().revision())")],
+        " + identity.source().revision())")],
       command_step="capture-expect-refusal"),
     m("M16-legality-inspects-different-bytes",
       "the legality checker consumes DIFFERENT bytes than the runtime executes",
