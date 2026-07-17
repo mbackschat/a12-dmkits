@@ -1286,9 +1286,10 @@
       "root groups are not allowed (MVK_ROOT_GROUP_REFERENCED); no enum-category arguments"
     ],
     "gotchas": [
-      { "text": "the result is an ordinary number expression — compare it, or use it in arithmetic", "kind": "AUTHORING" }
+      { "text": "the operand is EITHER a plain field list of two or more fields — NumberOfFilledFields(CustomerName, ProductCode, Quantity) — OR one flattened repetition list over a repeatable group (a starred group then a field) — NumberOfFilledFields(Items*/Count); a single plain field is rejected (MVK_PARAMSIZE_INVALIDN), use FieldFilled/FieldNotFilled for one field", "kind": "AUTHORING" }
+    , { "text": "the result is an ordinary number expression — compare it, or use it in arithmetic", "kind": "AUTHORING" }
     , { "text": "a listed field carrying a formal error makes the whole count non-evaluable — the rule is suppressed, the broken field is neither counted nor skipped", "kind": "SURPRISE" } ],
-    "validExample": { "dsl": "NumberOfFilledFields(CustomerName, ProductCode, Quantity) < 2", "note": "fires when fewer than two of the three are filled" },
+    "validExample": { "dsl": "FieldFilled(CustomerName) And NumberOfFilledFields(Items*/Count) < 2", "note": "the flattened repetition-list form — fires when fewer than two line items carry a Count (a starred repeatable group then a field; the plain field-list form is also legal)" },
     "invalidExample": { "dsl": "NumberOfFilledFields(CustomerName) < 1", "error": "MVK_PARAMSIZE_INVALIDN", "fix": "list at least two fields (or one group) — for a single field use FieldFilled/FieldNotFilled" },
     "semantics": {
       "polarity": {
@@ -1345,9 +1346,10 @@
       "more than one group, OR a single repeatable group as a wildcard (Group*) counting its filled repetitions (MVK_PARAMSIZE_INVALIDGN); groups only (MVK_NO_FIELDS_ALLOWED); a root group is allowed only as the sole, starred operand (NumberOfFilledGroups(/Root*)), never alongside another group"
     ],
     "gotchas": [
-      { "text": "'filled' means the group row exists, not that it has data (same trap as GroupFilled)", "kind": "SURPRISE" }
+      { "text": "the operand is EITHER a group list of two or more groups — NumberOfFilledGroups(ShippingAddress, BillingAddress) — OR a single repeatable group as a wildcard counting its filled rows — NumberOfFilledGroups(Items*); it takes groups, not fields (MVK_NO_FIELDS_ALLOWED), and the bare group wildcard is how you count a repeatable group's rows", "kind": "AUTHORING" }
+    , { "text": "'filled' means the group row exists, not that it has data (same trap as GroupFilled)", "kind": "SURPRISE" }
     , { "text": "a counted field in the formal-error state suppresses the count entirely", "kind": "SURPRISE" } ],
-    "validExample": { "dsl": "NumberOfFilledGroups(ShippingAddress, BillingAddress) == 2", "note": "true when both address groups exist" },
+    "validExample": { "dsl": "FieldFilled(CustomerName) And NumberOfFilledGroups(Items*) < 1", "note": "the starred-repeatable-group form — fires when the order has no line items (counts a repeatable group's filled rows; a group list of two or more groups is also legal)" },
     "invalidExample": { "dsl": "NumberOfFilledGroups(ShippingAddress, CustomerName) < 1", "error": "MVK_NO_FIELDS_ALLOWED", "fix": "NumberOfFilledGroups takes groups — count fields with NumberOfFilledFields" },
     "semantics": {
       "polarity": {
@@ -1958,7 +1960,10 @@
       "the constant follows the 'In' grammar literal; the fields are bare entity refs",
       "a field may not be listed more than once (MVK_DUPLICATE_PARAM1; MVK_DUPLICATE_PARAM2 via a group)"
     ],
-    "validExample": { "dsl": "FieldFilled(Quantity) And NumberOfValueInFields(0 In Quantity, BackorderQuantity) > 0", "note": "fires when at least one of the two amounts is zero" },
+    "gotchas": [
+      { "text": "the operand shape is <value> In <fields>, where <fields> is EITHER a plain field list of two or more fields — NumberOfValueInFields(0 In Quantity, BackorderQuantity) — OR one flattened repetition list over a repeatable group (a starred group then a field) — NumberOfValueInFields(0 In Items*/Count); the constant may be a boolean, number, string, or date", "kind": "AUTHORING" }
+    ],
+    "validExample": { "dsl": "FieldFilled(CustomerName) And NumberOfValueInFields(0 In Items*/Count) > 0", "note": "the flattened repetition-list form — fires when at least one line item has a Count of 0 (the field list may be a starred repeatable group then a field; a plain field list is also legal)" },
     "semantics": {
       "emptyOperand": [
         {
