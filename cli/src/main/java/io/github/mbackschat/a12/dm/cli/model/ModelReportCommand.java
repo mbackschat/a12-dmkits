@@ -15,6 +15,7 @@ import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.rulekit.context.ModelCard;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 
@@ -123,6 +124,20 @@ final class ModelReportCommand extends BaseCommand {
             }
             if (c.canonicalText() != null) {
                 node.put("canonicalText", c.canonicalText());
+            }
+            // the preconditions — same key names/shape as `computation read` so the two surfaces agree
+            if (c.commonPrecondition() != null) {
+                node.put("commonPrecondition", c.commonPrecondition());
+            }
+            if (!c.alternatives().isEmpty()) {
+                ArrayNode alternatives = node.putArray("alternatives");
+                for (DraftComputation.Alternative alt : c.alternatives()) {
+                    ObjectNode altNode = alternatives.addObject();
+                    if (alt.precondition() != null) {
+                        altNode.put("precondition", alt.precondition());
+                    }
+                    altNode.put("operation", alt.operation());
+                }
             }
             putMessages(node, c.messages());
         }

@@ -100,7 +100,7 @@
     },
     "computations": {
       "type": "array",
-      "description": "the glossed computation catalog — every computed field in plain language",
+      "description": "the glossed computation catalog — every computed field in plain language, with its preconditions (commonPrecondition + per-alternative), in parity with `computation read`",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -112,6 +112,20 @@
           "computedField": { "type": "string", "description": "the field this computation fills (when explained)" },
           "gloss": { "type": "string", "description": "the tool-computed plain-language one-liner (absent when Opaque)" },
           "canonicalText": { "type": "string", "description": "the kernel-canonical text (present when Opaque)" },
+          "commonPrecondition": { "type": "string", "description": "the precondition gating the WHOLE computation, when set — the DSL text (same shape as `computation read`)" },
+          "alternatives": {
+            "type": "array",
+            "description": "the (precondition?, operation) formulae — same shape as `computation read`; present when explained",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["operation"],
+              "properties": {
+                "precondition": { "type": "string", "description": "this alternative's precondition, when it has one (absent for a single unconditional operation)" },
+                "operation": { "type": "string", "description": "the calculated-value operation, as DSL text" }
+              }
+            }
+          },
           "messages": {
             "type": "array",
             "description": "the verbatim stored self-validation messages",

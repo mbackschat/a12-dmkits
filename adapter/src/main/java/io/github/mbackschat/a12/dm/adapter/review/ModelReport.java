@@ -15,6 +15,7 @@ import io.github.mbackschat.a12.dm.rulekit.context.ModelContext;
 import io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 
 /**
  * MODEL-REVIEW — the comprehension engine (a library primitive, MODEL-REVIEW-SPEC §4), the peer of
@@ -60,9 +61,16 @@ public record ModelReport(Identity identity, ModelCard structure, Usage usage,
     public record RuleEntry(String rule, String scope, boolean explained, String gloss, String canonicalText,
             String severity, String code, String errorField, List<Message> messages) {}
 
-    /** One computation, glossed for comprehension. {@code gloss}/{@code computedField} null when Opaque. */
+    /**
+     * One computation, glossed for comprehension. {@code gloss}/{@code computedField} null when Opaque. The
+     * {@code commonPrecondition} (nullable — the gate over the whole computation) and the {@code alternatives}
+     * (each a {@code (precondition?, operation)} — the preconditioned or single-unconditional formulae) mirror
+     * {@code computation read}'s shape exactly, so the two surfaces agree; both are absent/empty for an Opaque
+     * computation.
+     */
     public record ComputationEntry(String computation, String scope, boolean explained, String computedField,
-            String gloss, String canonicalText, List<Message> messages) {}
+            String gloss, String canonicalText, String commonPrecondition,
+            List<DraftComputation.Alternative> alternatives, List<Message> messages) {}
 
     /** Assemble the comprehension view of {@code modelJson} (a self-contained, kernel-loadable model). */
     public static ModelReport of(String modelJson) {
@@ -139,11 +147,14 @@ public record ModelReport(Identity identity, ModelCard structure, Usage usage,
             ReadComputation read = adapter.readComputation(name);
             if (read instanceof ReadComputation.Converted converted) {
                 ComputationExplanation ex = context.explainComputation(converted.computation());
+                // the (precondition?, operation) formulae — the SAME DraftComputation `computation read`
+                // emits, so the report and the per-computation read agree on when a field is filled
+                DraftComputation draft = converted.computation().draft();
                 out.add(new ComputationEntry(name, scopeOf(name), true, ex.computedField(), ex.gloss(), null,
-                        computationMessages(ex.messages())));
+                        draft.commonPrecondition(), draft.alternatives(), computationMessages(ex.messages())));
             } else {
                 out.add(new ComputationEntry(name, scopeOf(name), false, null, null,
-                        ((ReadComputation.Opaque) read).canonicalText(), List.of()));
+                        ((ReadComputation.Opaque) read).canonicalText(), null, List.of(), List.of()));
             }
         }
         return out;

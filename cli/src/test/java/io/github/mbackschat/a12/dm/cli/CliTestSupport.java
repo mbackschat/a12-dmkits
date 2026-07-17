@@ -6,6 +6,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import io.github.mbackschat.a12.dm.edit.EditSession;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
@@ -85,6 +88,39 @@ public final class CliTestSupport {
     public static Path modelWithRuleAndComputation(Path dir) throws IOException {
         Path file = dir.resolve("subscription.dm.json");
         Files.writeString(file, modelWithRuleAndComputationJson());
+        return file;
+    }
+
+    /**
+     * An e-commerce order-pricing model with two computations carrying <b>preconditions</b> — one gated by a
+     * <b>common precondition</b> (ShippingFee), one with <b>per-alternative</b> preconditions (Discount) —
+     * authored through the typed surface. The fixture that exercises {@code model report}'s computation
+     * preconditions and their parity with {@code computation read} (Set RP task 2).
+     */
+    public static Path orderPricingComputations(Path dir) throws IOException {
+        String base = DocumentModelDraft.named("order-pricing").locale("en_US")
+                .rootGroup("Order", g -> g
+                        .field("Subtotal", FieldKind.NUMBER)
+                        .field("BaseShipping", FieldKind.NUMBER)
+                        .field("MemberRate", FieldKind.NUMBER)
+                        .field("GuestRate", FieldKind.NUMBER)
+                        .field("ShippingFee", FieldKind.NUMBER)
+                        .field("Discount", FieldKind.NUMBER))
+                .build().toJson();
+        EditSession s = EditSession.read(base);
+        s.addComputation(m -> m.computation(m.num("/Order/ShippingFee"))
+                .name("ShippingFeeComp")
+                .commonPrecondition(m.num("/Order/Subtotal").gt(0))
+                .when(m.num("/Order/Subtotal").gt(500)).calc(m.num("/Order/GuestRate").value())
+                .when(m.num("/Order/Subtotal").le(500)).calc(m.num("/Order/BaseShipping").value())
+                .message(Dsl.en("Shipping fee applies once the order has a subtotal.")).build());
+        s.addComputation(m -> m.computation(m.num("/Order/Discount"))
+                .name("DiscountComp")
+                .when(m.num("/Order/Subtotal").gt(1000)).calc(m.num("/Order/MemberRate").value())
+                .when(m.num("/Order/Subtotal").le(1000)).calc(m.num("/Order/GuestRate").value())
+                .message(Dsl.en("Discount depends on the order subtotal.")).build());
+        Path file = dir.resolve("order-pricing.dm.json");
+        Files.writeString(file, s.toJson());
         return file;
     }
 
