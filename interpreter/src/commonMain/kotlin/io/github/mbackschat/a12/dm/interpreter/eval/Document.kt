@@ -105,7 +105,10 @@ class Document @JvmOverloads constructor(
      *  bypass it. (Appended for positional-constructor compatibility.) */
     private val fieldConstraints: Map<String, FieldConstraints> = emptyMap(),
 ) {
-    private data class Placement(val path: String, val reps: List<Int>, val value: String?, val isGroup: Boolean)
+    /** [raw] is the ORIGINAL stored text ([value] before the eval-side CRLF→LF normalization, IF124) —
+     *  what [cellStateAt] reports; it defaults to [value] and is preserved by the normalizing `copy`. */
+    private data class Placement(val path: String, val reps: List<Int>, val value: String?, val isGroup: Boolean,
+        val raw: String? = value)
 
     private val placements = mutableListOf<Placement>()
     /** Group `(path, reps)` already instantiated — O(1) dedup for [autoGroup] (avoids an O(P²) build scan). */
@@ -278,7 +281,8 @@ class Document @JvmOverloads constructor(
      *  the single place the config param list is threaded, so [withComputed] stays in lockstep with the
      *  constructor. */
     private fun emptyCopy(): Document = Document(kinds, declaredReps, unsignedFields, rangeConfig, dateFormats,
-        scales, dateTimeFormats, datePrecisions, enumValues, enumCategories, timeFormats, baseYear)
+        scales, dateTimeFormats, datePrecisions, enumValues, enumCategories, timeFormats, baseYear,
+        fieldConstraints)
 
     /**
      * One [EvalContext] per instantiated row of [groupPath]; empty if the group has no rows. Each row's
@@ -484,6 +488,21 @@ class Document @JvmOverloads constructor(
      * instance even on an otherwise un-instantiated document (so it can't go through [contextsFor]).
      */
     fun filledAt(path: String, reps: List<Int>): Boolean = valueAt(path, reps)?.value != null
+
+    /**
+     * The stored state of the field cell at [path]/[reps] — [StoredCellState.Absent] (no placement),
+     * [StoredCellState.PresentEmpty] (a placement with no value, a `""` value included), or
+     * [StoredCellState.PresentValue] carrying the raw stored text. The public read-back for the
+     * apply-then-inspect loop (`validate(applyComputations(doc))` — IG72 → IF126): the states mirror what
+     * the kernel's `IDocumentComputationResult.applyTo(DocumentV2)` leaves per cell (the [StoredCellState]
+     * KDoc carries the per-result-kind contract). [reps] are 1-based, one per path segment, the field's
+     * own (always 1) included — the same addressing as [filledAt] and the builders.
+     */
+    fun cellStateAt(path: String, reps: List<Int>): StoredCellState {
+        val placement = valueAt(path, reps) ?: return StoredCellState.Absent
+        val raw = placement.raw
+        return if (raw.isNullOrEmpty()) StoredCellState.PresentEmpty else StoredCellState.PresentValue(raw)
+    }
 
     private inner class RowContext(
         private val group: String,

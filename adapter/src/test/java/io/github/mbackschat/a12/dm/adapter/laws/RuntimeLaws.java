@@ -42,6 +42,9 @@ import com.mgmtp.a12.kernel.md.document.apiV2.DocumentMultiPointer;
 import com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer;
 import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer;
 import com.mgmtp.a12.kernel.md.document.apiV2.immutable.DocumentV2;
+import com.mgmtp.a12.kernel.md.document.apiV2.immutable.FieldInstanceV2;
+import com.mgmtp.a12.kernel.md.document.apiV2.immutable.GroupInstanceV2;
+import com.mgmtp.a12.kernel.md.document.apiV2.immutable.RepetitionsV2;
 import io.github.mbackschat.a12.dm.interpreter.eval.PointerKt;
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.facade.DocumentRtServiceFactory;
@@ -648,6 +651,55 @@ public final class RuntimeLaws {
         return firedCodes(modelJson, doc).contains(errorCode);
     }
 
+    // ---- the post-application cell states (the applied-DocumentV2 read-back, IF126) ---------------
+
+    /** One probed cell: its name path + 1-based indices, one per path segment, the field's own included. */
+    record CellProbe(String path, List<Integer> reps) {
+    }
+
+    /**
+     * The kernel's post-APPLICATION cell states — {@code compute()} → {@code applyTo(DocumentV2)} → read each
+     * probe on the applied document — as {@code path|absent} / {@code path|presentEmpty} /
+     * {@code path|presentValue|<text>} (the typed value in canonical string form, the declared
+     * string-comparison rule). The groovy-dynamic leg; {@link JavaKernelEngine#appliedStates} is the
+     * static-JAVA twin. The oracle for {@code Document.cellStateAt} over
+     * {@code DmInterpreter.applyComputations} (KERNEL-FINDINGS §11 "post-application cell state").
+     */
+    static List<String> appliedStates(String modelJson, Doc doc, List<CellProbe> probes) {
+        IDocumentModel model = expandedModel(modelJson);
+        IDocumentModelResolver resolver = id -> model;
+        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
+        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
+        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
+        DocumentV2 applied = rt.compute(v2, config(null, Locale.US)).applyTo(v2);
+        return probes.stream().map(p -> p.path() + "|" + appliedStateAt(applied, p)).toList();
+    }
+
+    /** Walk the applied document to {@code probe} — absent / presentEmpty / presentValue|text kept distinct. */
+    private static String appliedStateAt(DocumentV2 applied, CellProbe probe) {
+        String[] segments = probe.path().substring(1).split("/");
+        GroupInstanceV2 current = applied;
+        for (int i = 0; i < segments.length - 1; i++) {
+            RepetitionsV2 rows = current.directSubgroup(segments[i]);
+            int index = probe.reps().get(i);
+            GroupInstanceV2 row = rows.size() >= index ? rows.get(index) : null;
+            if (row == null) {
+                return "absent";
+            }
+            current = row;
+        }
+        FieldInstanceV2 field = current.directField(segments[segments.length - 1]);
+        if (field == null) {
+            return "absent";
+        }
+        Object value = field.value();
+        if (value == null) {
+            return "presentEmpty";
+        }
+        String text = value instanceof java.math.BigDecimal d ? d.toPlainString() : String.valueOf(value);
+        return "presentValue|" + text;
+    }
+
     /**
      * A build-ONCE kernel evaluator for the performance harness (INTERPRETER-PERFORMANCE.md). The model is
      * deserialized + expanded and the rt service + document factory are created a SINGLE time, so a benchmark
@@ -781,6 +833,23 @@ public final class RuntimeLaws {
          *  tri-differential payload, mirroring the Groovy {@link RuntimeLaws#compute(String, Doc)}. */
         List<Computed> compute(DocumentV2 instance) {
             return computeDetail(rt, instance);
+        }
+
+        /** The post-application cell states over the static-JAVA strategy — the twin of
+         *  {@link RuntimeLaws#appliedStates(String, Doc, List)}. */
+        List<String> appliedStates(Doc doc, List<CellProbe> probes) {
+            DocumentV2 v2 = instance(doc);
+            DocumentV2 applied = rt.compute(v2, config(null, Locale.US)).applyTo(v2);
+            return probes.stream().map(p -> p.path() + "|" + appliedStateAt(applied, p)).toList();
+        }
+
+        /** The form-engine flow ({@code compute → applyTo → validateFull}) over the static-JAVA strategy —
+         *  the twin of {@link RuntimeLaws#messagesAfterCompute(String, Doc, Locale)}. */
+        List<Msg> messagesAfterCompute(Doc doc) {
+            DocumentV2 v2 = instance(doc);
+            DocumentProcessingConfig config = config(null, Locale.US);
+            DocumentV2 applied = rt.compute(v2, config).applyTo(v2);
+            return rt.validateFull(applied, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
         }
 
         /**
