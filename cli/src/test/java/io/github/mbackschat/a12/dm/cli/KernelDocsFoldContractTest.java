@@ -32,6 +32,11 @@ import org.junit.jupiter.api.Test;
  *   <li><b>Reasons are stated</b> — a not-foldable/pending marker carries a non-empty reason.</li>
  *   <li><b>The §-mirror stays intact</b> — every {@code §n} tag in a KERNEL-FINDINGS heading (incl.
  *       multi-tags like {@code §9/§11}) is within the canonical taxonomy and its section exists.</li>
+ *   <li><b>The canonical anchors stay pinned</b> — every {@link #REQUIRED_ANCHORS required anchor} (the
+ *       14 numbered sections' GitHub heading slugs + the field-types table) exists, and every intra-doc
+ *       {@code ](#…)} link resolves to a real heading — so deleting <b>or renaming</b> a canonical section
+ *       heading fails the build naming the exact anchor, instead of silently orphaning the fold markers,
+ *       SEMANTICS-MAP rows, cross-links, and downstream export consumers that key on it.</li>
  * </ul>
  *
  * <p>Runs in the dedicated {@code semanticsMapGuardTest} task (TESTING-SPEC "Tests that read repo files
@@ -149,6 +154,86 @@ class KernelDocsFoldContractTest {
         return "`" + (bare.length() > 70 ? bare.substring(0, 70) + "…" : bare) + "`";
     }
 
+    // ---------------------------------------------------------------- the anchor contract
+
+    /**
+     * The canonical anchors the ecosystem pins — the 14 numbered sections' GitHub heading slugs plus the
+     * field-types table. Everything that resolves into the canonical doc keys on these: the fold markers'
+     * {@code §n} targets, SEMANTICS-MAP's taxonomy rows, the doc's own {@code [§n](#…)} cross-links, and a
+     * downstream semantic-export consumer's section references. Deleting <b>or renaming</b> one of these
+     * headings breaks that keying silently — so the guard fails naming the exact anchor that went missing.
+     */
+    static final List<String> REQUIRED_ANCHORS = List.of(
+            "the-field-types-at-a-glance",
+            "1-truth-values-and-logical-evaluation",
+            "2-non-specified-empty-values",
+            "3-formal-errors-and-the-unknown-state",
+            "4-the-required-property",
+            "5-numbers-and-decimals",
+            "6-dates-and-time",
+            "7-strings-and-patterns",
+            "8-enumerations",
+            "9-repetition-iteration-and-cross-array-evaluation",
+            "10-paths-and-references",
+            "11-computations",
+            "12-the-validation-model",
+            "13-error-message-interpolation",
+            "14-customcondition--the-escape-hatch");
+
+    /** An intra-doc markdown link target: {@code ](#some-anchor)}. */
+    private static final Pattern INTRA_DOC_LINK = Pattern.compile("\\]\\(#([a-z0-9_-]+)\\)");
+
+    @Test
+    void everyRequiredCanonicalAnchorExistsAndEveryIntraDocLinkResolves() throws IOException {
+        List<String> violations = checkAnchors(Files.readString(KERNEL_SEMANTICS));
+        assertTrue(violations.isEmpty(), () -> "the KERNEL-SEMANTICS anchor contract is broken:\n"
+                + String.join("\n", violations));
+    }
+
+    /**
+     * All violations of the anchor contract: every {@link #REQUIRED_ANCHORS required} anchor must exist as
+     * a heading slug, and every intra-doc {@code ](#…)} link must resolve to a heading. Headings inside
+     * fenced code blocks don't count.
+     */
+    static List<String> checkAnchors(String semantics) {
+        List<String> violations = new ArrayList<>();
+
+        Set<String> anchors = new TreeSet<>();
+        boolean inFence = false;
+        for (String line : semantics.lines().toList()) {
+            if (line.startsWith("```")) {
+                inFence = !inFence;
+                continue;
+            }
+            if (!inFence && line.matches("^#{1,6} .+")) {
+                anchors.add(slug(line));
+            }
+        }
+
+        for (String required : REQUIRED_ANCHORS) {
+            if (!anchors.contains(required)) {
+                violations.add("required canonical anchor #" + required
+                        + " is missing — its heading was deleted or renamed");
+            }
+        }
+
+        Matcher link = INTRA_DOC_LINK.matcher(semantics);
+        Set<String> reported = new TreeSet<>();
+        while (link.find()) {
+            String target = link.group(1);
+            if (!anchors.contains(target) && reported.add(target)) {
+                violations.add("intra-doc link #" + target + " resolves to no heading");
+            }
+        }
+        return violations;
+    }
+
+    /** The GitHub slug of a markdown heading line: lowercase, punctuation stripped, spaces to hyphens. */
+    static String slug(String headingLine) {
+        String bare = headingLine.replaceFirst("^#{1,6} ", "").toLowerCase(java.util.Locale.ROOT);
+        return bare.replaceAll("[^a-z0-9\\- _]", "").replace(' ', '-');
+    }
+
     // ---------------------------------------------------------------- does-fire proofs
 
     private static final String GOOD_SEMANTICS = """
@@ -211,6 +296,59 @@ class KernelDocsFoldContractTest {
                 () -> "the broken §-mirror must fire for §9: " + violations);
         assertTrue(violations.stream().anyMatch(v -> v.contains("without a reason")),
                 () -> "the missing reason must fire: " + violations);
+    }
+
+    @Test
+    void firesNamingTheAnchorWhenACanonicalHeadingIsDeletedOrRenamed() {
+        String intact = canonicalSkeleton("## 3. Formal errors and the \"unknown\" state");
+        assertEquals(List.of(), checkAnchors(intact), "the intact skeleton must pass");
+
+        String deleted = canonicalSkeleton(null);
+        assertTrue(checkAnchors(deleted).stream()
+                        .anyMatch(v -> v.contains("3-formal-errors-and-the-unknown-state") && v.contains("missing")),
+                () -> "a deleted §3 heading must fire naming its anchor: " + checkAnchors(deleted));
+
+        String renamed = canonicalSkeleton("## 3. Formal problems and the \"unknown\" state");
+        assertTrue(checkAnchors(renamed).stream()
+                        .anyMatch(v -> v.contains("3-formal-errors-and-the-unknown-state") && v.contains("missing")),
+                () -> "a renamed §3 heading must fire naming the vanished anchor: " + checkAnchors(renamed));
+    }
+
+    @Test
+    void firesOnAnIntraDocLinkThatResolvesToNoHeadingAndIgnoresFencedHeadings() {
+        String withDeadLink = canonicalSkeleton("## 3. Formal errors and the \"unknown\" state")
+                + "\nsee [§3](#3-formal-errors-and-the-unknown-state) and [bogus](#a-section-that-is-not-there)\n";
+        assertTrue(checkAnchors(withDeadLink).stream()
+                        .anyMatch(v -> v.contains("a-section-that-is-not-there") && v.contains("resolves to no heading")),
+                () -> "the dead link must fire: " + checkAnchors(withDeadLink));
+
+        String fencedOnly = canonicalSkeleton("## 3. Formal errors and the \"unknown\" state")
+                + "\n```\n## 99. not a heading, just code\n```\nsee [x](#99-not-a-heading-just-code)\n";
+        assertTrue(checkAnchors(fencedOnly).stream().anyMatch(v -> v.contains("99-not-a-heading-just-code")),
+                "a fenced pseudo-heading must NOT mint an anchor");
+    }
+
+    /** The 14-section canonical skeleton; pass {@code null} to drop §3, or a replacement §3 heading line. */
+    private static String canonicalSkeleton(String sectionThreeHeading) {
+        StringBuilder sb = new StringBuilder("# A12 Kernel — validation-language semantics\n\n")
+                .append("## The field types at a glance\n\n")
+                .append("## 1. Truth values and logical evaluation\n\n")
+                .append("## 2. Non-specified (empty) values\n\n");
+        if (sectionThreeHeading != null) {
+            sb.append(sectionThreeHeading).append("\n\n");
+        }
+        return sb.append("## 4. The \"required\" property\n\n")
+                .append("## 5. Numbers and decimals\n\n")
+                .append("## 6. Dates and time\n\n")
+                .append("## 7. Strings and patterns\n\n")
+                .append("## 8. Enumerations\n\n")
+                .append("## 9. Repetition, iteration, and cross-array evaluation\n\n")
+                .append("## 10. Paths and references\n\n")
+                .append("## 11. Computations\n\n")
+                .append("## 12. The validation model\n\n")
+                .append("## 13. Error-message interpolation\n\n")
+                .append("## 14. CustomCondition — the escape hatch\n\n")
+                .toString();
     }
 
     @Test
