@@ -688,7 +688,7 @@ A fired comparison is an OMISSION error (`TRUE_AF`) only when filling an operand
 - **The sign trigger is `NumberType.positivesOnly`, NOT `minValue`** (the trap): a field with `minValue:1` is still *signed* (probed — `[BirthDay] >= 0` empty types OMISSION); only `positivesOnly:true` makes it unsigned (`[StockOnHand:positivesOnly] >= 0` empty types **VALUE**). `minValue` is a range constraint, independent of `hatVorzeichen`.
 - Consequence: `[Unsigned] >= 0` (empty) is a **VALUE** error — an unsigned 0 can't shrink, so no fill breaks `>= 0`; the same over a *signed* field is **OMISSION**. Both `<= X` are OMISSION (filling larger breaks them).
 
-*(Locked: `adapter.laws.DirectionalPolarityDiffTest` (unsigned `StockOnHand` vs signed `Quantity`); the signed cases also in `adapter.laws.PolarityDiffTest`/`AggPolarityDiffTest`. The interpreter's directional treatment: INTERPRETER-FINDINGS IF9.)*
+*(Locked: `adapter.laws.DirectionalPolarityDiffTest` (unsigned `StockOnHand` vs signed `Quantity`); the signed cases also in `adapter.laws.PolarityDiffTest`/`AggPolarityDiffTest`; the **`NE` directional arm** (`getFehlerFuerNE` — previously documented here but never `!=`-directionally DiffTest-exercised) is **corpus-locked** since 2026-07-17 by the portable `empty-polarity` cases (signedness + literal-direction + filled-state pairs, tri-engine replay incl. the JS oracle). The interpreter's directional treatment: INTERPRETER-FINDINGS IF9.)*
 
 **Function-operand fillability — `CurrentRepetition` and `FirstFilledValue` (probe + full-message fuzz, 2026-06-24).** The directional fillability above extends to value FUNCTIONS, not just fields/aggregates — and the naive "any empty/short star tail ⇒ fillable" over-reports OMISSION for two:
 
