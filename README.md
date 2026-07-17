@@ -1,6 +1,6 @@
 # a12-dmkits
 
-Author, read, and safely edit the **rules** and **structure** of A12 Kernel document models — through a self-describing command-line tool (**`dmtool`**), or as typed Java code. Every result is checked by the **real A12 kernel**, so what you produce is *accepted*, not merely plausible. JSON in, JSON out.
+Author, read, and safely edit the **rules** and **structure** of A12 Kernel document models — through a self-describing command-line tool (**`dmtool`**), or as typed Java code. What you author is confirmed by the **real A12 kernel**, so it is *accepted*, not merely plausible; what you run — which rules fire on a document — is evaluated by a clean-room, kernel-exact **interpreter** (JVM + JS). Models also import from and export to **JSON Schema / OpenAPI**. JSON in, JSON out.
 
 > **Not an official A12 artifact.** A personal exploration, not affiliated with or endorsed by mgm — currently a private project, built using GPT 5.5. Shipped code binds only to the kernel's **public** OSS surface — no internal systems. (An opt-in, Java-only adapter module may read the kernel's internal AST tier under strict guardrails.)
 
@@ -17,7 +17,7 @@ AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, Deliver
 
 Writing these by hand is fragile: a mistyped path, a wrong operator or decimal scale, or — most insidious — **inverted polarity** (the condition true on the *requirement* instead of the *violation*) slips through until the kernel runs, if it's caught at all.
 
-**`dmtool` closes that gap from the command line** — one self-describing native binary, **JSON in / JSON out**, no Java toolchain. It authors, reads, and safely edits a model's rules *and* structure, and **confirms every result against the real A12 kernel**, so *valid* means the engine accepts it, not that it merely looks right.
+**`dmtool` closes that gap from the command line** — one self-describing native binary, **JSON in / JSON out**, no Java toolchain. It authors, reads, and safely edits a model's rules *and* structure — **every edit is confirmed by the embedded real A12 kernel before it is written**, so *valid* means the engine accepts it, not that it merely looks right — and it runs rules against real documents on a **clean-room interpreter** held kernel-exact by a differential test estate and a tri-verified conformance corpus.
 
 It is built **agent-first** — the #1 use is inside a coding-agent session (Claude Code, Codex):
 
@@ -27,7 +27,7 @@ It is built **agent-first** — the #1 use is inside a coding-agent session (Cla
 
 ### A session, in natural language
 
-You don't type `dmtool` — your agent does. You state the rule in plain language; the agent resolves the model, reasons about **polarity** and **operator semantics**, and the **real kernel** confirms the result before anything is written:
+You don't type `dmtool` — your agent does. You state the rule in plain language; the agent resolves the model, reasons about **polarity** and **operator semantics**, and the **real kernel** confirms the authored rule before anything is written:
 
 **You —** *"In the order model, a delivery date must never be before the order date."*
 
@@ -69,7 +69,7 @@ Prefer typed Java in your own JVM project? The same engine is a library — see 
 | a **modeller / BA**, or an **LLM agent** | **`dmtool`**, the CLI | verbs + JSON I/O, single native binary, self-describing — no Java toolchain to install |
 | a **developer**, editing models in your own JVM project | **rulekit / modelkit** as a library | typed builders, kernel-checked, in your own code & compiler |
 
-*(Java first; a TypeScript twin may follow.)*
+*(The kits — rulekit, modelkit, dm.edit, schemakit — are a **Java** library. The **interpreter** is Kotlin Multiplatform and ships for **JVM and JS** — the same engine that runs in the native binary and the browser.)*
 
 ---
 

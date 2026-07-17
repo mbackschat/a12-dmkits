@@ -17,7 +17,7 @@ AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, Deliver
 
 Writing these by hand is fragile: a mistyped path, a wrong operator or decimal scale, or — most insidious — **inverted polarity** (the condition true on the *requirement* instead of the *violation*) slips through until the kernel runs, if it's caught at all.
 
-**`dmtool` closes that gap from the command line** — one self-describing native binary, **JSON in / JSON out**, no Java toolchain. It authors, reads, and safely edits a model's rules *and* structure, and **confirms every result against the real A12 kernel**, so *valid* means the engine accepts it, not that it merely looks right.
+**`dmtool` closes that gap from the command line** — one self-describing native binary, **JSON in / JSON out**, no Java toolchain. It authors, reads, and safely edits a model's rules *and* structure — **every edit is confirmed by the embedded real A12 kernel before it is written**, so *valid* means the engine accepts it, not that it merely looks right — and it runs rules against real documents on a **clean-room interpreter** held kernel-exact by a differential test estate and a tri-verified conformance corpus.
 
 It is built **agent-first** — the #1 use is inside a coding-agent session (Claude Code, Codex):
 
@@ -27,7 +27,7 @@ It is built **agent-first** — the #1 use is inside a coding-agent session (Cla
 
 ### A session, in natural language
 
-You don't type `dmtool` — your agent does. You state the rule in plain language; the agent resolves the model, reasons about **polarity** and **operator semantics**, and the **real kernel** confirms the result before anything is written:
+You don't type `dmtool` — your agent does. You state the rule in plain language; the agent resolves the model, reasons about **polarity** and **operator semantics**, and the **real kernel** confirms the authored rule before anything is written:
 
 **You —** *"In the order model, a delivery date must never be before the order date."*
 
@@ -120,7 +120,7 @@ dmtool schema rule check        # a verb's exact input / output shape
 
 ### From zero to a kernel-checked rule
 
-Create a model, add fields, and attach a validation rule — every step confirmed by the **real A12 kernel** (this whole sequence runs as-is):
+Create a model, add fields, and attach a validation rule — every authoring step confirmed by the **real A12 kernel** before it is written (this whole sequence runs as-is):
 
 ```sh
 # 1. a new, empty, kernel-valid model
