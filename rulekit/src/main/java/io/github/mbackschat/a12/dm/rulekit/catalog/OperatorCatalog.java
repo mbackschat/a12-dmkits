@@ -183,4 +183,26 @@ public final class OperatorCatalog {
                 .filter(e -> e.invalidExample() != null && mvkCode.equals(e.invalidExample().error()))
                 .toList();
     }
+
+    /**
+     * The operand-matched corrective fix (CATALOG-SPEC §6, the D1 mechanism): {@code operatorId}'s corrective
+     * for {@code code} whose {@code whenOperands} multiset matches {@code operandTokens} (the shared vocabulary
+     * of {@link #kindToken}: {@code number}/{@code string}/{@code date}/…, {@code string-literal},
+     * {@code number-literal}). Empty when the operator is unknown or no corrective matches — the caller keeps
+     * the entry-level union fix as the fallback. This is the catalog half of the D1 mechanism, called by BOTH
+     * the typed-AST {@link io.github.mbackschat.a12.dm.rulekit.lint.SpanResolver} and the CLI text-path
+     * enrichment (G30, which classifies operands via the kernel-free interpreter parser + {@code ModelIndex}).
+     */
+    public Optional<String> correctiveFix(String operatorId, String code, List<String> operandTokens) {
+        return byId(operatorId).stream()
+                .flatMap(e -> e.correctives().stream())
+                .filter(c -> code.equals(c.code()) && matchesUnordered(c.whenOperands(), operandTokens))
+                .map(Corrective::fix)
+                .findFirst();
+    }
+
+    private static boolean matchesUnordered(List<String> expected, List<String> actual) {
+        return expected.size() == actual.size()
+                && expected.stream().sorted().toList().equals(actual.stream().sorted().toList());
+    }
 }

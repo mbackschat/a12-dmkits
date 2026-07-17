@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli.rule;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.LintBackstop;
 import io.github.mbackschat.a12.dm.cli.ModelPaths;
+import io.github.mbackschat.a12.dm.cli.interp.TextConditionCorrective;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
@@ -123,7 +124,9 @@ final class RuleCheckCommand extends BaseCommand {
         try {
             DraftRule draft = new DraftRule(effectiveGroup, name, errorEntityRelPath, condition, code, severity);
             ValidationResult result = new RuleValidator().check(json, draft, resolver);
-            findings.addAll(result.diagnostics());
+            // G30: upgrade a rejected text candidate's union fix to the operand-matched corrective (the typed
+            // path's SpanResolver has no AST here) by classifying operands via the interpreter parser + ModelIndex.
+            findings.addAll(TextConditionCorrective.enrich(result.diagnostics(), condition, effectiveGroup, json, resolver));
             if (result.ok()) {
                 findings.addAll(LintBackstop.lintCandidate(json, effectiveGroup, name, errorEntityRelPath,
                         code, condition, severity, field, resolver));

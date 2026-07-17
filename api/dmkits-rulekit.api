@@ -136,6 +136,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry> byKeyword(java.lang.String)
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry> byKind(io.github.mbackschat.a12.dm.rulekit.catalog.OperatorKind)
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry> byReturns(java.lang.String)
+  public java.util.Optional<java.lang.String> correctiveFix(java.lang.String, java.lang.String, java.util.List<java.lang.String>)
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior> defaultEmptyBehavior(io.github.mbackschat.a12.dm.core.ValueKind)
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.catalog.EmptyBehavior> emptyOperandBehavior(java.lang.String, int, io.github.mbackschat.a12.dm.core.ValueKind)
   public java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog.EmptyOperandDefault> emptyOperandDefaults()

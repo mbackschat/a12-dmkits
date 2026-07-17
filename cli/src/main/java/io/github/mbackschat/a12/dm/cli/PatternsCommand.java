@@ -22,6 +22,8 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
+import io.github.mbackschat.a12.dm.cli.interp.TextConditionCorrective;
+import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
@@ -186,6 +188,9 @@ final class PatternsCommand extends BaseCommand {
 
         DraftRule draft = new DraftRule(group, ruleName, rel, inst.condition(), errorCode, "ERROR");
         ValidationResult check = new RuleValidator().check(modelJson, draft, resolver);
+        // G30: operand-aware corrective on the rejected text path (see TextConditionCorrective).
+        List<Diagnostic> ruleDiagnostics =
+                TextConditionCorrective.enrich(check.diagnostics(), inst.condition(), group, modelJson, resolver);
 
         ObjectNode root = MAPPER.createObjectNode();
         root.put("pattern", pattern.id());
@@ -197,7 +202,7 @@ final class PatternsCommand extends BaseCommand {
         ArrayNode specMsgs = spec.putArray("messages");
         msgs.forEach(m -> specMsgs.addObject().put("locale", m.locale()).put("text", m.text()));
         root.put("valid", check.ok());
-        root.set("diagnostics", diagnostics(check));
+        root.set("diagnostics", diagnostics(ruleDiagnostics));
 
         if (!apply) {
             return emit(root);                       // review the spec (+ kernel verdict), then `rule add`
@@ -373,8 +378,12 @@ final class PatternsCommand extends BaseCommand {
     }
 
     private com.fasterxml.jackson.databind.JsonNode diagnostics(ValidationResult check) {
+        return diagnostics(check.diagnostics());
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode diagnostics(List<Diagnostic> diagnostics) {
         try {
-            return MAPPER.readTree(check.toJson()).path("diagnostics");
+            return MAPPER.readTree(ValidationResult.of(diagnostics).toJson()).path("diagnostics");
         } catch (JsonProcessingException e) {
             return MAPPER.createArrayNode();
         }

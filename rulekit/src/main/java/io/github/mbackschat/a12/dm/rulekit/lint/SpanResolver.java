@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import io.github.mbackschat.a12.dm.rulekit.catalog.Corrective;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
@@ -40,8 +39,11 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Span;
  * a date-vs-ISO-literal gets the date-literal corrective, never the string-vs-string one (the D1
  * incident). No match, or no AST node — the entry-level union fix stays the fallback. This runs
  * wherever a typed {@code Condition} exists (the built-rule path, converted reads); a kernel-REJECTED
- * <em>text</em> candidate has no AST to classify — the kernel's parser returns {@code null} for an
- * invalid condition by contract — so the text path keeps the union fix.
+ * <em>text</em> candidate has no rulekit AST here — the kernel's parser returns {@code null} for an
+ * invalid condition by contract — so the text path's operand-matched selection is done at the CLI seam
+ * (G30, {@code cli.interp.TextConditionCorrective}) via the kernel-free interpreter parser, calling the
+ * SAME shared {@link OperatorCatalog#correctiveFix} this class does. The corrective match is
+ * single-sourced there; both paths fall back to the union fix when no corrective matches.
  */
 public final class SpanResolver {
 
@@ -118,10 +120,7 @@ public final class SpanResolver {
         if (tokens.isEmpty()) {
             return Optional.empty();
         }
-        return operator.correctives().stream()
-                .filter(c -> code.equals(c.code()) && matchesUnordered(c.whenOperands(), tokens))
-                .map(Corrective::fix)
-                .findFirst();
+        return catalog.correctiveFix(operator.id(), code, tokens);
     }
 
     /** The comparison's operand-class tokens ({@code number}/{@code string}/…, {@code string-literal},
@@ -142,15 +141,6 @@ public final class SpanResolver {
             case DateLiteral ignored -> "string-literal";
             default -> null;
         };
-    }
-
-    private static boolean matchesUnordered(List<String> expected, List<String> actual) {
-        if (expected.size() != actual.size()) {
-            return false;
-        }
-        List<String> a = expected.stream().sorted().toList();
-        List<String> b = actual.stream().sorted().toList();
-        return a.equals(b);
     }
 
     /** Every rendered AST node carrying {@code operatorId}. */

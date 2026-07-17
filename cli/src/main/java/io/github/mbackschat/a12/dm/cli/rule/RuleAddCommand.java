@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli.rule;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.LintBackstop;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
+import io.github.mbackschat.a12.dm.cli.interp.TextConditionCorrective;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 
@@ -113,9 +114,12 @@ final class RuleAddCommand extends BaseCommand {
         ValidationResult check = new RuleValidator().check(modelJson,
                 new DraftRule(group, name, errorEntityRelPath, condition, code, severity), resolver);
         if (!check.ok()) {
+            // G30: operand-aware corrective on the rejected text path (see TextConditionCorrective / RuleCheckCommand).
+            List<Diagnostic> diagnostics =
+                    TextConditionCorrective.enrich(check.diagnostics(), condition, group, modelJson, resolver);
             ResultEnvelope env = ResultEnvelope.rejected("rule", "add",
-                    "condition rejected by the kernel (" + check.diagnostics().size() + " finding(s))",
-                    check.diagnostics());
+                    "condition rejected by the kernel (" + diagnostics.size() + " finding(s))",
+                    diagnostics);
             out().print(env.toJsonString());
             return env.exitCode();
         }
