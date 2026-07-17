@@ -1,6 +1,6 @@
 # Kernel 31.1.0 upgrade — change analysis & update plan (PROPOSAL)
 
-**Status:** PROPOSAL, 2026-07-17, provisional pending the maintainer decisions in §10. This is the concrete instance of the [KERNEL-UPGRADE.md](KERNEL-UPGRADE.md) runbook for the `30.8.1 → 31.1.0` bump: it inventories what upstream changed and lays out the phased realignment. Nothing here is executed yet — the kernel checkouts were **fetched, not pulled**, and no pins were bumped.
+**Status:** PROPOSAL, 2026-07-17. **Recommended disposition: DEFER** — finish current work on 30.8.1 and fold this bump into the kernel-decoupling program (as its V1→V2 Stage 5) rather than run it now as a standalone migration; rationale + re-open triggers in §10. This is the concrete instance of the [KERNEL-UPGRADE.md](KERNEL-UPGRADE.md) runbook for the `30.8.1 → 31.1.0` bump: it inventories what upstream changed and lays out the phased realignment for when the bump happens. Nothing here is executed — the kernel checkouts were **fetched, not pulled**, and no pins were bumped.
 
 Sources: `git diff HEAD..origin/main` in the consult-only checkouts `../../a12-kernel` (`f10b920 "Release 2026.06-ext0 - 31.1.0"`) and `../../a12-kernel-mm` (`f7ea179`), `/delombok/` + `build/` excluded, source only. There are **no GitHub release notes** — the repos ship squashed release commits, so the source diff is the only changelog.
 
@@ -223,11 +223,19 @@ Regenerate all three native metadata sources (`tools.jackson`, new kernel types,
 
 ---
 
-## 10 · Decision points to escalate (maintainer calls)
+## 10 · Recommendation & decision points
 
-1. **Internal-module strategy.** Keep binding `:adapter` to `kernel-internal-*` (accept the instability the rename declares), or re-plumb onto only the public aggregates (`kernel-md-facade`/`kernel-md-serializer`/`kernel-md-documentmodel`)? Larger job, but aligns with the kernel's stated boundary. Decide before Phase 2. (Interacts with [KERNEL-DECOUPLING-PROPOSAL.md](KERNEL-DECOUPLING-PROPOSAL.md) — the SPI-port cut would localize this.)
-2. **Timing / scope.** Full migration now, or track 31.1.0 while staying on 30.8.1 (the `release/2025.06` line is maintained upstream)? Given the effort, is this a [`run-work-program`](../.claude/skills)?
-3. **`SumOfTerms` priority.** Ship in this bump (catalog + interpreter) or catalog-only first, interpreter later? It's the only new operator.
+**Recommended disposition (2026-07-17): DEFER — do not upgrade now.** There is no forcing function (30.8.1 is maintained upstream as `release/2025.06`), and 31.1.0 adds nothing the project needs — one operator (`SumOfTerms`) no consumer is asking for, plus two constraint *relaxations* (§2) that would only make our catalog/laws loosen. **No open gap is blocked on 30.8.1** (checked across every `-GAPS` ledger). Against that near-zero benefit, upgrading now is largely **throwaway work**: the biggest cost is the adapter V1→V2 rewrite (§4), which [KERNEL-DECOUPLING-PROPOSAL.md](KERNEL-DECOUPLING-PROPOSAL.md) already plans as its **Stage 5** — do decoupling first and that rewrite happens once, behind the SPI ports, turning 31.1.0 into a confined `:adapter` change instead of a cross-cutting migration touching 65 kernel-importing files. Deferring also avoids the gratuitous date-arithmetic differential risk (§5, Theme A) taken with no driver.
+
+**Suggested sequence:** (1) finish the in-flight capture program (Set Z2 handback) on 30.8.1; (2) run the decoupling program to the master gate; (3) then execute this bump as decoupling Stage 5 (V1→V2) + a version bump behind the boundary — this proposal is the ready worklist for that moment, and the build-time guardians (§8) make the realignment mechanical.
+
+**Re-open triggers (upgrade sooner if):** a consumer needs `SumOfTerms` or another 31.x-only capability; decoupling lands (do it immediately as Stage 5 — best timing); a **32.x** release ships (don't let the gap stretch to two annual lines); or a security/correctness fix lands in the 31.x line that 30.8.1 doesn't get (none today).
+
+The three maintainer calls this disposition resolves:
+
+1. **Internal-module strategy.** Keep binding `:adapter` to `kernel-internal-*` (accept the instability the rename declares), or re-plumb onto only the public aggregates (`kernel-md-facade`/`kernel-md-serializer`/`kernel-md-documentmodel`)? — *Recommended:* re-plumb behind the SPI, i.e. let the decoupling program own this; don't decide it standalone. Only relevant once Phase 2 runs.
+2. **Timing / scope.** Full migration now, or track 31.1.0 while staying on 30.8.1? — *Recommended:* **defer** (above); when it runs, it is a [`run-work-program`](../.claude/skills).
+3. **`SumOfTerms` priority.** Ship in this bump (catalog + interpreter) or catalog-only first? — *Recommended:* ship with the eventual bump; no reason to front-run it while deferred.
 
 ## 11 · Open questions needing build-time confirmation (can't verify without 31.1.0 in `mavenLocal`)
 
