@@ -1,6 +1,8 @@
 # dmtool — release distribution + agent plugins (Claude Code, Codex)
 
-Public distribution for **`dmtool`**, a CLI for authoring and validating **A12 Kernel** document-model validation rules. This repository is **release-only** (binaries + the plugins are pushed here from a separate source repo); it is not where the tool is developed.
+**`dmtool`** is an agent-friendly, **self-describing** CLI for authoring, validating, and safely editing **A12 Kernel document models** — validation rules, computations, and structure — one native binary, **JSON in / JSON out**. Every edit is confirmed by the embedded **real A12 kernel** before it is written, and runtime evaluation (which rules fire on a real document) runs on a clean-room, kernel-exact **interpreter**. Point your coding agent at it: the tool describes itself (`manifest` / `operators` / `schema`), and the bundled skill teaches the judgment calls.
+
+This repository is the **public distribution** — release-only (binaries + the plugins are pushed here from a separate source repo); it is not where the tool is developed.
 
 > **Not an official A12 / mgm artifact.** `dmtool` is an independent tool built against the public A12 Kernel.
 
@@ -94,13 +96,14 @@ Codex uses the **same on-demand installer**, so the *Activation* note above appl
 
 ## Install — raw binary (no agent)
 
-Download the binary for your OS from the latest [Release](../../releases) + `SHA256SUMS`, verify, and put it on your PATH:
+Download the binary for your OS — `dmtool-macos-arm64`, `dmtool-linux-x64`, `dmtool-linux-arm64`, or `dmtool-windows-x64.exe` (the assets are platform-suffixed because four platforms share one release page) — from the latest [Release](../../releases) + `SHA256SUMS`, verify, and put it on your PATH:
 
 ```sh
 shasum -a 256 -c SHA256SUMS            # verify integrity
-chmod +x dmtool-linux-arm64            # or dmtool-linux-x64 / dmtool-macos-arm64
 # macOS only, if Gatekeeper blocks a browser download:
 xattr -d com.apple.quarantine dmtool-macos-arm64
+# rename on install, so the tool on your PATH is a stable `dmtool`:
+mv dmtool-macos-arm64 dmtool && chmod +x dmtool   # or dmtool-linux-x64 / dmtool-linux-arm64
 ```
 
 The CLI is **self-describing** — `dmtool --help`, `dmtool manifest`, `dmtool operators`, `dmtool schema <target> <op>`.
@@ -188,13 +191,15 @@ Import is **best-effort** — it maps as much as possible (even unbounded arrays
 
 End-to-end walkthroughs of **every verb** — command + real captured output — live in [`examples/`](examples/) (full [index](examples/README.md)): discovering the tool, reading & **reviewing** a model (`model report` / `model diff`), the rule/computation edit loop, structure editing with the safe-delete gate, the atomic `apply` session, runtime evaluation, **JSON Schema ⇄ model** interop, custom field types & conditions, multi-file **workspaces**, and the version/compatibility surface.
 
+Want ideas for what to *ask*? [`SCENARIOS.md`](SCENARIOS.md) catalogues realistic **multi-step sessions** — ordered, plain-language asks you can hand to your agent verbatim: from-scratch authoring, evolving an existing model's rules, refactors, computations, and more.
+
 ## Changelog
 
 What changed in each release: [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Licensing (per artifact)
 
-- **Native CLI binaries → EUPL-1.2.** They embed the A12 Kernel, so each binary is offered under the European Union Public Licence v1.2. See [`LICENSE`](LICENSE), [`NOTICE`](NOTICE), and [`THIRD_PARTY_NOTICES`](THIRD_PARTY_NOTICES). **Kernel source** (EUPL-1.2): <https://github.com/mgm-tp> (satisfies EUPL Art. 5).
+- **Native CLI binaries → EUPL-1.2.** They embed the A12 Kernel, so each binary is offered under the European Union Public Licence v1.2. See [`LICENSE`](LICENSE), [`NOTICE`](NOTICE), [`THIRD_PARTY_NOTICES`](THIRD_PARTY_NOTICES), and the embedded kernel's own dual licence in [`KERNEL-LICENSE`](KERNEL-LICENSE). **Kernel source** (EUPL-1.2): <https://github.com/mgm-tp> (satisfies EUPL Art. 5).
 - **Plugin source** (the skills + hooks, for both agents) **→ MIT.**
 
 No warranty; see the licence text.
