@@ -46,6 +46,15 @@ object CorpusScenarios {
         orderNameSeedEqual(),
         orderPhantomItemRow(),
         orderDeliveryDateInPast(),
+        strEmptyEqSuppressed(),
+        strEmptyLengthLtOmission(),
+        strEmptyLengthGeValue(),
+        numUnsignedEmptyNeNegOneValue(),
+        numSignedEmptyNeNegOneOmission(),
+        numUnsignedEmptyNeOneOmission(),
+        numSignedFilledZeroNeNegOneValue(),
+        strLengthLtEmptyRowClean(),
+        numSignedNeNegOneEmptyRowClean(),
         computeCascadeSeed(),
         modelValidationSeed(),
     )
@@ -89,6 +98,54 @@ object CorpusScenarios {
         it.name("DeliveryPast").code("DELIVERY_PAST").errorField(ord.date("DeliveryDate").field())
             .`when`(ord.date("DeliveryDate").before(Dsl.today())).severity(Severity.ERROR)
             .message(Dsl.en("The delivery date is in the past.")).build()
+    }))
+
+    // ---- F6: the operator-sensitive empty/polarity control models (one rule each, so each case's
+    //          expected multiset is exactly that rule's firing — a shared multi-rule model would let
+    //          the other rules fire into a case's expectation and muddy the pairing, SPEC §6). --------
+
+    /** `[ProductCode] == "ABC"` on the root Order — a DIRECT string equality; an empty string is NOT evaluated (§2). */
+    private val orderCodeEqualsModel = model("order-code-equals", TypedRules.inject(order, ord.rule {
+        it.name("CodeEquals").code("CODE_EQ").errorField(ord.str("ProductCode").field())
+            .`when`(ord.str("ProductCode").eq("ABC")).severity(Severity.ERROR)
+            .message(Dsl.en("The product code must be ABC.")).build()
+    }))
+
+    /** `Length([ProductCode]) < 5` on the root Order — the string family's empty-as-0 backdoor: Length of an
+     *  empty string is a fillable 0 (grow-only), so it FIRES where the direct comparison is suppressed (IF73). */
+    private val orderCodeLengthLtModel = model("order-code-length-lt", TypedRules.inject(order, ord.rule {
+        it.name("CodeLenLt").code("CODE_LEN_LT").errorField(ord.str("ProductCode").field())
+            .`when`(Dsl.length(ord.str("ProductCode")).lt(5)).severity(Severity.ERROR)
+            .message(Dsl.en("The product code is too short.")).build()
+    }))
+
+    /** `Length([ProductCode]) >= 0` on the root Order — always true; the grow-only VALUE witness (filling can
+     *  only lengthen, so a `>=` can never be cleared → VALUE, not the OMISSION a symmetric leaf would give). */
+    private val orderCodeLengthGeModel = model("order-code-length-ge", TypedRules.inject(order, ord.rule {
+        it.name("CodeLenGe").code("CODE_LEN_GE").errorField(ord.str("ProductCode").field())
+            .`when`(Dsl.length(ord.str("ProductCode")).ge(0)).severity(Severity.ERROR)
+            .message(Dsl.en("The product code length is non-negative.")).build()
+    }))
+
+    /** `[StockOnHand] != -1` on the root Order — StockOnHand is UNSIGNED (`positivesOnly`); it can't shrink to -1. */
+    private val orderStockNeNegOneModel = model("order-stock-ne-neg-one", TypedRules.inject(order, ord.rule {
+        it.name("StockNeNegOne").code("STOCK_NE_NEG1").errorField(ord.num("StockOnHand").field())
+            .`when`(ord.num("StockOnHand").ne(-1)).severity(Severity.ERROR)
+            .message(Dsl.en("Stock on hand must not equal minus one.")).build()
+    }))
+
+    /** `[Quantity] != -1` on the root Order — Quantity is SIGNED (default); it CAN shrink to -1. */
+    private val orderQtyNeNegOneModel = model("order-qty-ne-neg-one", TypedRules.inject(order, ord.rule {
+        it.name("QtyNeNegOne").code("QTY_NE_NEG1").errorField(ord.num("Quantity").field())
+            .`when`(ord.num("Quantity").ne(-1)).severity(Severity.ERROR)
+            .message(Dsl.en("Quantity must not equal minus one.")).build()
+    }))
+
+    /** `[StockOnHand] != 1` on the root Order — UNSIGNED, but the literal is reachable by GROWING from 0. */
+    private val orderStockNeOneModel = model("order-stock-ne-one", TypedRules.inject(order, ord.rule {
+        it.name("StockNeOne").code("STOCK_NE_1").errorField(ord.num("StockOnHand").field())
+            .`when`(ord.num("StockOnHand").ne(1)).severity(Severity.ERROR)
+            .message(Dsl.en("Stock on hand must not equal one.")).build()
     }))
 
     // ---- curated cases (typed-authored) ---------------------------------------------------------
@@ -163,6 +220,105 @@ object CorpusScenarios {
         clock = "2026-07-06T12:00:00",
     )
 
+    // ---- F6: operator-sensitive empty/polarity control cases (the a12-kernel-lean feedback's
+    //          preserved message list, §15f). Every empty-value case sits in a CONTENT-BEARING row
+    //          (a filled CustomerName sibling), because an entirely-empty row is not evaluated and its
+    //          eligibility would otherwise confound the operator behavior; the two `*-empty-row-clean`
+    //          controls isolate that row-eligibility precondition (all-empty row → nothing fires). ----
+
+    /** 1 — an empty ProductCode compared DIRECTLY (`== "ABC"`) is suppressed; the operator-sensitivity pair of
+     *  the Length case, on the SAME empty value. */
+    private fun strEmptyEqSuppressed(): Family = family(
+        F6, orderCodeEqualsModel,
+        CaseMeta("str-empty-eq-suppressed", PENDING, CaseSource.CURATED, listOf("§2", "§7"),
+            tags = listOf("f6", "empty", "strings", "f6-pair-operator"),
+            notes = "a direct == over an empty String is not evaluated; pairs with str-empty-length-lt-omission on the varied axis = the operator applied to the same empty ProductCode"),
+        listOf(group("/Order", 1), field(CUSTOMER, "Acme", 1, 1), empty(PRODUCT_CODE, 1, 1)),
+        Op.ValidateFull,
+    )
+
+    /** 2 — `Length([ProductCode]) < 5` over the same empty ProductCode FIRES as OMISSION (empty-as-0 backdoor). */
+    private fun strEmptyLengthLtOmission(): Family = family(
+        F6, orderCodeLengthLtModel,
+        CaseMeta("str-empty-length-lt-omission", PENDING, CaseSource.CURATED, listOf("§2", "§7", "§12"),
+            tags = listOf("f6", "empty", "strings", "polarity", "f6-pair-operator", "f6-pair-direction", "f6-pair-row-eligibility"),
+            notes = "Length of an empty String is a fillable 0 (0 < 5 → OMISSION); the operator pair of str-empty-eq-suppressed and the direction pair of str-empty-length-ge-value (varied axis = the comparison direction)"),
+        listOf(group("/Order", 1), field(CUSTOMER, "Acme", 1, 1), empty(PRODUCT_CODE, 1, 1)),
+        Op.ValidateFull,
+    )
+
+    /** 3 — `Length([ProductCode]) >= 0` FIRES as VALUE — Length is grow-only, so a `>=` can't be filled to clear. */
+    private fun strEmptyLengthGeValue(): Family = family(
+        F6, orderCodeLengthGeModel,
+        CaseMeta("str-empty-length-ge-value", PENDING, CaseSource.CURATED, listOf("§2", "§7", "§12"),
+            tags = listOf("f6", "empty", "strings", "polarity", "f6-pair-direction"),
+            notes = "Length is grow-only, so an always-true `>= 0` fires as VALUE (filling only lengthens); the comparison-direction pair of str-empty-length-lt-omission"),
+        listOf(group("/Order", 1), field(CUSTOMER, "Acme", 1, 1), empty(PRODUCT_CODE, 1, 1)),
+        Op.ValidateFull,
+    )
+
+    /** 4 — an empty UNSIGNED StockOnHand reads as 0; `0 != -1` FIRES as VALUE (can't shrink to -1). */
+    private fun numUnsignedEmptyNeNegOneValue(): Family = family(
+        F6, orderStockNeNegOneModel,
+        CaseMeta("num-unsigned-empty-ne-neg1-value", PENDING, CaseSource.CURATED, listOf("§2", "§5", "§12"),
+            tags = listOf("f6", "empty", "numbers", "polarity", "f6-pair-signedness", "f6-pair-literal-direction"),
+            notes = "an unsigned empty number is 0 and can't shrink to -1, so `!= -1` fires as VALUE; the signedness pair of num-signed-empty-ne-neg1-omission and the literal-direction pair of num-unsigned-empty-ne-1-omission"),
+        listOf(group("/Order", 1), field(CUSTOMER, "Acme", 1, 1), empty(STOCK, 1, 1)),
+        Op.ValidateFull,
+    )
+
+    /** 5 — an empty SIGNED Quantity reads as 0; `0 != -1` FIRES as OMISSION (can shrink to -1). */
+    private fun numSignedEmptyNeNegOneOmission(): Family = family(
+        F6, orderQtyNeNegOneModel,
+        CaseMeta("num-signed-empty-ne-neg1-omission", PENDING, CaseSource.CURATED, listOf("§2", "§5", "§12"),
+            tags = listOf("f6", "empty", "numbers", "polarity", "f6-pair-signedness", "f6-pair-filled-state", "f6-pair-row-eligibility"),
+            notes = "a signed empty number is 0 and CAN shrink to -1, so `!= -1` fires as OMISSION; the signedness pair of num-unsigned-empty-ne-neg1-value and the filled-state pair of num-signed-filled-zero-ne-neg1-value"),
+        listOf(group("/Order", 1), field(CUSTOMER, "Acme", 1, 1), empty(QUANTITY, 1, 1)),
+        Op.ValidateFull,
+    )
+
+    /** 6 — an empty UNSIGNED StockOnHand reads as 0; `0 != 1` FIRES as OMISSION — the literal is reachable by growing. */
+    private fun numUnsignedEmptyNeOneOmission(): Family = family(
+        F6, orderStockNeOneModel,
+        CaseMeta("num-unsigned-empty-ne-1-omission", PENDING, CaseSource.CURATED, listOf("§2", "§5", "§12"),
+            tags = listOf("f6", "empty", "numbers", "polarity", "f6-pair-literal-direction"),
+            notes = "an unsigned empty number is 0 and CAN grow to 1, so `!= 1` fires as OMISSION; the literal-direction pair of num-unsigned-empty-ne-neg1-value (same field/sign, only the literal moves from below to above 0)"),
+        listOf(group("/Order", 1), field(CUSTOMER, "Acme", 1, 1), empty(STOCK, 1, 1)),
+        Op.ValidateFull,
+    )
+
+    /** 7 — a FILLED zero Quantity (`0`) `!= -1` FIRES as VALUE — a present value is a value error, not an omission. */
+    private fun numSignedFilledZeroNeNegOneValue(): Family = family(
+        F6, orderQtyNeNegOneModel,
+        CaseMeta("num-signed-filled-zero-ne-neg1-value", PENDING, CaseSource.CURATED, listOf("§5", "§12"),
+            tags = listOf("f6", "filled", "numbers", "polarity", "f6-pair-filled-state"),
+            notes = "a filled 0 (not empty) fires `!= -1` as VALUE; the filled-state pair of num-signed-empty-ne-neg1-omission (same signed rule, only empty→filled differs, flipping OMISSION→VALUE)"),
+        listOf(group("/Order", 1), field(CUSTOMER, "Acme", 1, 1), field(QUANTITY, "0", 1, 1)),
+        Op.ValidateFull,
+    )
+
+    /** 8 — control: the Length `< 5` rule over an ALL-EMPTY Order row fires NOTHING (an all-empty row is not
+     *  evaluated), isolating row eligibility from the operator firing of case 2. */
+    private fun strLengthLtEmptyRowClean(): Family = family(
+        F6, orderCodeLengthLtModel,
+        CaseMeta("str-length-lt-empty-row-clean", PENDING, CaseSource.CURATED, listOf("§2", "§7"),
+            tags = listOf("f6", "control", "empty-row", "strings", "f6-pair-row-eligibility"),
+            notes = "an ALL-EMPTY row (no sibling value) is not evaluated, so nothing fires; the row-eligibility control for str-empty-length-lt-omission (varied axis = the content-bearing sibling)"),
+        listOf(group("/Order", 1), empty(PRODUCT_CODE, 1, 1)),
+        Op.ValidateFull,
+    )
+
+    /** 9 — control: the signed `!= -1` rule over an ALL-EMPTY Order row fires NOTHING, isolating row eligibility
+     *  from the empty-as-0 firing of case 5. */
+    private fun numSignedNeNegOneEmptyRowClean(): Family = family(
+        F6, orderQtyNeNegOneModel,
+        CaseMeta("num-signed-ne-neg1-empty-row-clean", PENDING, CaseSource.CURATED, listOf("§2", "§5"),
+            tags = listOf("f6", "control", "empty-row", "numbers", "f6-pair-row-eligibility"),
+            notes = "an ALL-EMPTY row is not evaluated, so the empty-as-0 substitution never occurs and nothing fires; the row-eligibility control for num-signed-empty-ne-neg1-omission"),
+        listOf(group("/Order", 1), empty(QUANTITY, 1, 1)),
+        Op.ValidateFull,
+    )
+
     // ---- fuzz-seed cases (pinned from the differential fuzzers) ----------------------------------
 
     private fun computeCascadeSeed(): Family {
@@ -193,6 +349,13 @@ object CorpusScenarios {
 
     private const val PENDING = "pending"   // overwritten by CorpusCapture with the pinned kernel version
 
+    /** The F6 family directory (operator-sensitive empty/polarity controls) + the fields those cases place. */
+    private const val F6 = "empty-polarity"
+    private const val CUSTOMER = "/Order/CustomerName"   // the filled sibling that makes a row content-bearing
+    private const val PRODUCT_CODE = "/Order/ProductCode"
+    private const val STOCK = "/Order/StockOnHand"       // UNSIGNED number (positivesOnly)
+    private const val QUANTITY = "/Order/Quantity"       // SIGNED number (default)
+
     /** A standalone model file from raw DM-JSON — identity normalized to the unique [name], pretty-printed to the exact committed form. */
     private fun model(name: String, dmJson: String) = ModelFile(name, CaseJson.writeModel(dmJson, name))
 
@@ -202,6 +365,9 @@ object CorpusScenarios {
 
     private fun group(path: String, vararg reps: Int) = Placement(PlacementKind.GROUP, path, reps.toList())
     private fun field(path: String, value: String, vararg reps: Int) = Placement(PlacementKind.FIELD, path, reps.toList(), value)
+
+    /** A present-but-valueless field cell (SPEC §4 EMPTY) — an instantiated-empty cell, distinct from an absent one. */
+    private fun empty(path: String, vararg reps: Int) = Placement(PlacementKind.EMPTY, path, reps.toList())
 
     /** Record a fuzz [scenario]'s generated placements for [seed] (mirrors the fuzz nets' `instance(sink, 0, seed)`). */
     private fun record(scenario: PerfScenario, seed: Int): List<Placement> {

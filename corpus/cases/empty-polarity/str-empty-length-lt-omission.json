@@ -1,0 +1,55 @@
+{
+    "meta": {
+        "id": "str-empty-length-lt-omission",
+        "kernelVersion": "30.8.1",
+        "source": "curated",
+        "sections": [
+            "§2",
+            "§7",
+            "§12"
+        ],
+        "tags": [
+            "f6",
+            "empty",
+            "strings",
+            "polarity",
+            "f6-pair-operator",
+            "f6-pair-direction",
+            "f6-pair-row-eligibility"
+        ],
+        "notes": "Length of an empty String is a fillable 0 (0 < 5 → OMISSION); the operator pair of str-empty-eq-suppressed and the direction pair of str-empty-length-ge-value (varied axis = the comparison direction)"
+    },
+    "modelRef": "models/order-code-length-lt.json",
+    "placements": [
+        {
+            "kind": "GROUP",
+            "path": "/Order",
+            "reps": [
+                1
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/CustomerName",
+            "reps": [
+                1,
+                1
+            ],
+            "value": "Acme"
+        },
+        {
+            "kind": "EMPTY",
+            "path": "/Order/ProductCode",
+            "reps": [
+                1,
+                1
+            ]
+        }
+    ],
+    "op": {
+        "kind": "validateFull"
+    },
+    "expected": [
+        "CODE_LEN_LT|OMISSION_ERROR|/Order[1]/ProductCode"
+    ]
+}

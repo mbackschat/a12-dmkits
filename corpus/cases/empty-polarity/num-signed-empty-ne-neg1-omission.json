@@ -1,0 +1,55 @@
+{
+    "meta": {
+        "id": "num-signed-empty-ne-neg1-omission",
+        "kernelVersion": "30.8.1",
+        "source": "curated",
+        "sections": [
+            "§2",
+            "§5",
+            "§12"
+        ],
+        "tags": [
+            "f6",
+            "empty",
+            "numbers",
+            "polarity",
+            "f6-pair-signedness",
+            "f6-pair-filled-state",
+            "f6-pair-row-eligibility"
+        ],
+        "notes": "a signed empty number is 0 and CAN shrink to -1, so `!= -1` fires as OMISSION; the signedness pair of num-unsigned-empty-ne-neg1-value and the filled-state pair of num-signed-filled-zero-ne-neg1-value"
+    },
+    "modelRef": "models/order-qty-ne-neg-one.json",
+    "placements": [
+        {
+            "kind": "GROUP",
+            "path": "/Order",
+            "reps": [
+                1
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/CustomerName",
+            "reps": [
+                1,
+                1
+            ],
+            "value": "Acme"
+        },
+        {
+            "kind": "EMPTY",
+            "path": "/Order/Quantity",
+            "reps": [
+                1,
+                1
+            ]
+        }
+    ],
+    "op": {
+        "kind": "validateFull"
+    },
+    "expected": [
+        "QTY_NE_NEG1|OMISSION_ERROR|/Order[1]/Quantity"
+    ]
+}

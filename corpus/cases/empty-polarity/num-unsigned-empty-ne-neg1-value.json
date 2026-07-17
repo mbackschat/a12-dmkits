@@ -1,0 +1,54 @@
+{
+    "meta": {
+        "id": "num-unsigned-empty-ne-neg1-value",
+        "kernelVersion": "30.8.1",
+        "source": "curated",
+        "sections": [
+            "§2",
+            "§5",
+            "§12"
+        ],
+        "tags": [
+            "f6",
+            "empty",
+            "numbers",
+            "polarity",
+            "f6-pair-signedness",
+            "f6-pair-literal-direction"
+        ],
+        "notes": "an unsigned empty number is 0 and can't shrink to -1, so `!= -1` fires as VALUE; the signedness pair of num-signed-empty-ne-neg1-omission and the literal-direction pair of num-unsigned-empty-ne-1-omission"
+    },
+    "modelRef": "models/order-stock-ne-neg-one.json",
+    "placements": [
+        {
+            "kind": "GROUP",
+            "path": "/Order",
+            "reps": [
+                1
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/CustomerName",
+            "reps": [
+                1,
+                1
+            ],
+            "value": "Acme"
+        },
+        {
+            "kind": "EMPTY",
+            "path": "/Order/StockOnHand",
+            "reps": [
+                1,
+                1
+            ]
+        }
+    ],
+    "op": {
+        "kind": "validateFull"
+    },
+    "expected": [
+        "STOCK_NE_NEG1|VALUE_ERROR|/Order[1]/StockOnHand"
+    ]
+}

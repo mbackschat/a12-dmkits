@@ -9,17 +9,17 @@ One page, keyed by the canonical kernel-truth taxonomy, that answers: *for a giv
 | § | Area | KERNEL-FINDINGS | Catalog facets | Corpus families |
 |---|---|---|---|---|
 | §1 | Truth values and logical evaluation | §1 supplements | — | — |
-| §2 | Non-specified (empty) values | §2 supplements | `emptyOperand`, `aggregateIdentity` | — |
+| §2 | Non-specified (empty) values | §2 supplements | `emptyOperand`, `aggregateIdentity` | `empty-polarity` |
 | §3 | Formal errors and the "unknown" state | §3 supplements | — | — |
 | §4 | The "required" property | §4 supplements | — | — |
-| §5 | Numbers and decimals | §5 supplements | `boundary` | `comparison` |
+| §5 | Numbers and decimals | §5 supplements | `boundary` | `comparison`, `empty-polarity` |
 | §6 | Dates and time | §6 supplements | `boundary` | `clock` |
-| §7 | Strings and patterns | §7 supplements | — | — |
+| §7 | Strings and patterns | §7 supplements | — | `empty-polarity` |
 | §8 | Enumerations | §8 supplements | — | — |
 | §9 | Repetition, iteration, and cross-array evaluation | §9 supplements | `iterationRange` | `compute`, `fuzz` |
 | §10 | Paths and references | §10 supplements | — | — |
 | §11 | Computations | §11 supplements | — | `compute`, `fuzz` |
-| §12 | The validation model | §12 supplements | `polarity` | `partial` |
+| §12 | The validation model | §12 supplements | `polarity` | `empty-polarity`, `partial` |
 | §13 | Error-message interpolation | §13 supplements | — | — |
 | §14 | CustomCondition — the escape hatch | §14 supplements | — | — |
 

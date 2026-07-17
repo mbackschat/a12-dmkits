@@ -1,0 +1,41 @@
+{
+    "meta": {
+        "id": "str-length-lt-empty-row-clean",
+        "kernelVersion": "30.8.1",
+        "source": "curated",
+        "sections": [
+            "§2",
+            "§7"
+        ],
+        "tags": [
+            "f6",
+            "control",
+            "empty-row",
+            "strings",
+            "f6-pair-row-eligibility"
+        ],
+        "notes": "an ALL-EMPTY row (no sibling value) is not evaluated, so nothing fires; the row-eligibility control for str-empty-length-lt-omission (varied axis = the content-bearing sibling)"
+    },
+    "modelRef": "models/order-code-length-lt.json",
+    "placements": [
+        {
+            "kind": "GROUP",
+            "path": "/Order",
+            "reps": [
+                1
+            ]
+        },
+        {
+            "kind": "EMPTY",
+            "path": "/Order/ProductCode",
+            "reps": [
+                1,
+                1
+            ]
+        }
+    ],
+    "op": {
+        "kind": "validateFull"
+    },
+    "expected": []
+}

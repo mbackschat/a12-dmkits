@@ -1,0 +1,53 @@
+{
+    "meta": {
+        "id": "str-empty-length-ge-value",
+        "kernelVersion": "30.8.1",
+        "source": "curated",
+        "sections": [
+            "§2",
+            "§7",
+            "§12"
+        ],
+        "tags": [
+            "f6",
+            "empty",
+            "strings",
+            "polarity",
+            "f6-pair-direction"
+        ],
+        "notes": "Length is grow-only, so an always-true `>= 0` fires as VALUE (filling only lengthens); the comparison-direction pair of str-empty-length-lt-omission"
+    },
+    "modelRef": "models/order-code-length-ge.json",
+    "placements": [
+        {
+            "kind": "GROUP",
+            "path": "/Order",
+            "reps": [
+                1
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/CustomerName",
+            "reps": [
+                1,
+                1
+            ],
+            "value": "Acme"
+        },
+        {
+            "kind": "EMPTY",
+            "path": "/Order/ProductCode",
+            "reps": [
+                1,
+                1
+            ]
+        }
+    ],
+    "op": {
+        "kind": "validateFull"
+    },
+    "expected": [
+        "CODE_LEN_GE|VALUE_ERROR|/Order[1]/ProductCode"
+    ]
+}

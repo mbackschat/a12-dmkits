@@ -1,0 +1,41 @@
+{
+    "meta": {
+        "id": "num-signed-ne-neg1-empty-row-clean",
+        "kernelVersion": "30.8.1",
+        "source": "curated",
+        "sections": [
+            "§2",
+            "§5"
+        ],
+        "tags": [
+            "f6",
+            "control",
+            "empty-row",
+            "numbers",
+            "f6-pair-row-eligibility"
+        ],
+        "notes": "an ALL-EMPTY row is not evaluated, so the empty-as-0 substitution never occurs and nothing fires; the row-eligibility control for num-signed-empty-ne-neg1-omission"
+    },
+    "modelRef": "models/order-qty-ne-neg-one.json",
+    "placements": [
+        {
+            "kind": "GROUP",
+            "path": "/Order",
+            "reps": [
+                1
+            ]
+        },
+        {
+            "kind": "EMPTY",
+            "path": "/Order/Quantity",
+            "reps": [
+                1,
+                1
+            ]
+        }
+    ],
+    "op": {
+        "kind": "validateFull"
+    },
+    "expected": []
+}

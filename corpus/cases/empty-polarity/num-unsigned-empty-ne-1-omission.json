@@ -1,0 +1,53 @@
+{
+    "meta": {
+        "id": "num-unsigned-empty-ne-1-omission",
+        "kernelVersion": "30.8.1",
+        "source": "curated",
+        "sections": [
+            "§2",
+            "§5",
+            "§12"
+        ],
+        "tags": [
+            "f6",
+            "empty",
+            "numbers",
+            "polarity",
+            "f6-pair-literal-direction"
+        ],
+        "notes": "an unsigned empty number is 0 and CAN grow to 1, so `!= 1` fires as OMISSION; the literal-direction pair of num-unsigned-empty-ne-neg1-value (same field/sign, only the literal moves from below to above 0)"
+    },
+    "modelRef": "models/order-stock-ne-one.json",
+    "placements": [
+        {
+            "kind": "GROUP",
+            "path": "/Order",
+            "reps": [
+                1
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/CustomerName",
+            "reps": [
+                1,
+                1
+            ],
+            "value": "Acme"
+        },
+        {
+            "kind": "EMPTY",
+            "path": "/Order/StockOnHand",
+            "reps": [
+                1,
+                1
+            ]
+        }
+    ],
+    "op": {
+        "kind": "validateFull"
+    },
+    "expected": [
+        "STOCK_NE_1|OMISSION_ERROR|/Order[1]/StockOnHand"
+    ]
+}

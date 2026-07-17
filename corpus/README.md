@@ -16,7 +16,7 @@ corpus/
   cases/<family>/<id>.json     # one case per file (id == file stem)
 ```
 
-`<family>` is a kebab-case directory naming the primary semantic area (`comparison`, `compute`, `partial`, `clock`, `fuzz`, …) — a grouping aid; the normative taxonomy is each case's `meta.sections`.
+`<family>` is a kebab-case directory naming the primary semantic area (`comparison`, `compute`, `partial`, `clock`, `fuzz`, `empty-polarity`, …) — a grouping aid; the normative taxonomy is each case's `meta.sections`.
 
 ## Models & `modelRef`
 

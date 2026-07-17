@@ -1,0 +1,53 @@
+{
+    "meta": {
+        "id": "num-signed-filled-zero-ne-neg1-value",
+        "kernelVersion": "30.8.1",
+        "source": "curated",
+        "sections": [
+            "§5",
+            "§12"
+        ],
+        "tags": [
+            "f6",
+            "filled",
+            "numbers",
+            "polarity",
+            "f6-pair-filled-state"
+        ],
+        "notes": "a filled 0 (not empty) fires `!= -1` as VALUE; the filled-state pair of num-signed-empty-ne-neg1-omission (same signed rule, only empty→filled differs, flipping OMISSION→VALUE)"
+    },
+    "modelRef": "models/order-qty-ne-neg-one.json",
+    "placements": [
+        {
+            "kind": "GROUP",
+            "path": "/Order",
+            "reps": [
+                1
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/CustomerName",
+            "reps": [
+                1,
+                1
+            ],
+            "value": "Acme"
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/Quantity",
+            "reps": [
+                1,
+                1
+            ],
+            "value": "0"
+        }
+    ],
+    "op": {
+        "kind": "validateFull"
+    },
+    "expected": [
+        "QTY_NE_NEG1|VALUE_ERROR|/Order[1]/Quantity"
+    ]
+}
