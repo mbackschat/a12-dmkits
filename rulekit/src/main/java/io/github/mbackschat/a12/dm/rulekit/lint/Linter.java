@@ -281,16 +281,28 @@ public final class Linter {
     }
 
     /**
-     * An <em>ordering</em> comparison ({@code <} / {@code <=} / {@code >} / {@code >=}) of a
-     * <b>number</b> field against a numeric constant, with no presence guard on that field, where an
-     * <em>empty</em> field would actually fire. An unspecified number defaults to {@code 0} in a
-     * comparison (KERNEL-SEMANTICS §2), so {@code [Amount] < 100} fires on an EMPTY Amount
-     * ({@code 0 < 100}) — usually unintended. Conservative on three axes: only ordering ops (not
-     * {@code ==}/{@code !=}); only field-vs-constant (field-vs-field like {@code [A] < [B]} and
-     * field-vs-aggregate like {@code [Q] < Sum(...)} are left alone); and only when {@code 0} satisfies
-     * the comparison (so {@code [Amount] > 100} — which an empty value can't trip — is not flagged).
-     * Number is special: empty string/date/enum comparisons are simply not evaluated, so they need no
-     * guard. Pure-AST (the field kind is in the AST), so it fires on every lint entry point.
+     * Flags a <b>number</b> comparison where an <em>unguarded</em> empty field would make the rule fire.
+     * An unspecified number participates as {@code 0} in a comparison (KERNEL-SEMANTICS §2), so
+     * {@code [Amount] < 100} fires on an EMPTY Amount ({@code 0 < 100}) — usually unintended. The check is
+     * driven by the catalog's {@code emptyOperand} facet, in two lanes (detailed on
+     * {@link #maybeFlagComparison}):
+     * <ul>
+     *   <li><b>PRECISE</b> — for each unguarded field whose emptiness injects a value into a side (the
+     *       facet's {@code AS_ZERO}: a plain number field, a field inside arithmetic, or a field behind an
+     *       AS_ZERO-reaching function such as {@code Length} or the date/time extractors), partially
+     *       evaluate both sides under "that field is empty" and flag exactly when the comparison then
+     *       holds — across <em>all</em> comparison operators (ordering, {@code ==}/{@code !=}, the
+     *       tolerance family), not only ordering.</li>
+     *   <li><b>ADVISORY</b> — flag a plain number field against an aggregate or expression whose value the
+     *       partial evaluation cannot pin (the {@code [X] < Sum(…)} shape): the empty-as-0 trap is real
+     *       but unprovable, so it is flagged advisorily.</li>
+     * </ul>
+     *
+     * <p>The one remaining exclusion is <b>field-vs-field</b> ({@code [A] < [B]}): substituting one side's
+     * emptiness leaves the other side unpinned, so neither lane can decide the comparison and it is left
+     * alone. (Empty string/date/enum comparisons are simply not evaluated, so they never need a guard —
+     * this check is number-specific.) Pure-AST — the field kind is in the AST — so it fires on every lint
+     * entry point.
      */
     private void unguardedNumberComparison(Condition condition, String rulePath, List<Diagnostic> out) {
         Set<String> guarded = new HashSet<>();
