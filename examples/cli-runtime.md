@@ -197,7 +197,7 @@ dmtool -m examples/models/order-ruled.dm.json \
 
 ## model eval — a candidate rule, not yet stored
 
-You can also evaluate a rule that **isn't in the model** — `--condition "<DSL>" --field <path>` injects a one-off candidate (named `EvalDocCandidate` by default, error code `EVAL_DOC`), runs it against the instance, and tells you whether *it* fired. Nothing is persisted; it is the runtime twin of `rule check` (which only asks "is this valid?"). Here the candidate caps quantity at 100, and we feed it an order of 150.
+You can also evaluate a rule that **isn't in the model** — `--condition "<DSL>" --field <path>` **injects** a one-off candidate (named `EvalDocCandidate` by default, error code `EVAL_DOC`) into the model, runs the **whole** document, and narrows `data.rule` to whether *it* fired. Nothing is persisted; it is the runtime twin of `rule check` (which only asks "is this valid?"), and — because the candidate is injected and the full model runs — the candidate's message is row-indexed exactly as if you'd persisted it, and the other rules still report (here `EligibilityCheck` is an external `CustomCondition` with no impl, so it lands in `data.unsupported`). Here the candidate caps quantity at 100, and we feed it an order of 150.
 
 ```bash
 cat > /tmp/rt-qty-over.json <<'JSON'
@@ -224,10 +224,15 @@ dmtool -m examples/models/order-ruled.dm.json \
     "messages" : [ {
       "code" : "QTY_CAP",
       "rule" : "/Order/EvalDocCandidate",
-      "field" : "/Order/Quantity",
+      "field" : "/Order[1]/Quantity",
       "severity" : "ERROR",
       "type" : "VALUE_ERROR",
-      "message" : "EvalDocCandidate"
+      "message" : "EvalDocCandidate",
+      "referenced" : [ "/Order[1]/Quantity" ]
+    } ],
+    "unsupported" : [ {
+      "name" : "/Order/EligibilityCheck",
+      "reason" : "unregistered custom condition \"ExternalEligibility\" — register it in the custom-condition registry"
     } ],
     "rule" : {
       "name" : "/Order/EvalDocCandidate",
@@ -239,7 +244,7 @@ dmtool -m examples/models/order-ruled.dm.json \
 }
 ```
 
-→ The candidate fired (`QTY_CAP`, `data.rule.fired: true`) on `Quantity = 150`, attributed to the synthetic rule `/Order/EvalDocCandidate`. Drop the quantity below the cap and it would report `fired: false` — same dry-run, no write to the model.
+→ The candidate fired (`QTY_CAP`, `data.rule.fired: true`) on `Quantity = 150`, attributed to the synthetic rule `/Order/EvalDocCandidate` at the row-indexed `/Order[1]/Quantity`. Drop the quantity below the cap and it would report `fired: false` — same dry-run, no write to the model.
 
 ## model compute — what does a computed field evaluate to?
 

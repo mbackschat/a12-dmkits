@@ -77,7 +77,39 @@ public final class InterpreterEngine {
     public static ObjectNode evalData(String modelJson, Map<String, Object> fields, String locale, String targetRule,
             Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
             Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {
-        ModelDef def = InterpreterModelLoader.load(modelJson);
+        return evalFor(InterpreterModelLoader.load(modelJson), fields, locale, targetRule,
+                predefinedTypes, customConditions, customFieldTypes, applyComputations);
+    }
+
+    /**
+     * {@code model eval --condition/--field}: an injected, non-stored candidate rule. The candidate is
+     * appended to the model ({@link ModelDef#withRule}) and evaluated through the SAME whole-model
+     * {@link #evalFor} path as a stored rule — so it reports one <b>row-indexed</b> message per firing,
+     * identical to persisting the rule (G42), never a single index-less collapse; {@code rule} narrows to it.
+     * A candidate carries no message template, so it renders its {@code name} (matching the kernel's fallback).
+     */
+    public static ObjectNode evalCandidateData(String modelJson, Map<String, Object> fields, String locale,
+            String group, String name, String errorEntityRelPath, String condition, String code, String severity,
+            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
+            Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {
+        RuleDef candidate = new RuleDef(group + "/" + name, group, condition, code, errorEntityRelPath,
+                Severity.valueOf(severity.toUpperCase()), Map.of(locale, name));
+        ModelDef def = InterpreterModelLoader.load(modelJson).withRule(candidate);
+        return evalFor(def, fields, locale, candidate.getPath(),
+                predefinedTypes, customConditions, customFieldTypes, applyComputations);
+    }
+
+    /**
+     * The shared whole-model runtime-eval assembly — full {@link DmInterpreter#validate} (after the form-engine
+     * compute-apply when {@code applyComputations}), rendering the canonical {@code data} shape: the distinct
+     * fired codes, every per-row {@link Message} (row-indexed via {@link #addMessage}), the {@code unsupported}
+     * report (G29), and — when {@code targetRule} is non-null — the {@code rule} narrowing ({@code name}/{@code
+     * fired}). Both the persisted-rule path ({@link #evalData}) and the injected-candidate path
+     * ({@link #evalCandidateData}) end here, so candidate and persisted evaluation are bit-identical.
+     */
+    private static ObjectNode evalFor(ModelDef def, Map<String, Object> fields, String locale, String targetRule,
+            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
+            Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {
         Document doc = InterpreterModelLoader.document(fields, def);
         DmInterpreter interp = new DmInterpreter(def, null, predefinedTypes, customConditions, customFieldTypes);
         Document evalDoc = applyComputations ? interp.applyComputations(doc, locale) : doc;
@@ -100,40 +132,6 @@ public final class InterpreterEngine {
         // A construct the engine can't evaluate (a CustomCondition with no registered impl, or a custom-typed
         // cell with no --predefined-types entry) is reported in `data.unsupported` (G29) — NOT silently absent
         // from `fired`, which would read as a clean pass. `model eval --strict-custom` then refuses (the command).
-        return data;
-    }
-
-    /** {@code model eval --condition/--field}: an injected, non-stored candidate rule. */
-    public static ObjectNode evalCandidateData(String modelJson, Map<String, Object> fields, String locale,
-            String group, String name, String errorEntityRelPath, String condition, String code, String severity,
-            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
-            Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {
-        ModelDef def = InterpreterModelLoader.load(modelJson);
-        Document doc = InterpreterModelLoader.document(fields, def);
-        RuleDef candidate = new RuleDef(group + "/" + name, group, condition, code, errorEntityRelPath,
-                Severity.valueOf(severity.toUpperCase()), Map.of());
-        DmInterpreter interp = new DmInterpreter(def, null, predefinedTypes, customConditions, customFieldTypes);
-        Document evalDoc = applyComputations ? interp.applyComputations(doc, locale) : doc;
-        RuleResult result = interp.evalCandidate(candidate, evalDoc, locale);
-
-        boolean fired = result.getVerdict() == Verdict.FIRED;
-        ObjectNode data = MAPPER.createObjectNode();
-        ArrayNode firedArr = data.putArray("fired");
-        ArrayNode messages = data.putArray("messages");
-        if (fired) {
-            firedArr.add(code);
-            ObjectNode mn = messages.addObject();
-            mn.put("code", code);
-            mn.put("rule", candidate.getPath());
-            mn.put("field", errorPath(candidate));
-            mn.put("severity", severity.toUpperCase());
-            mn.put("type", typeError(result.getType()));
-            // A candidate carries no errorMessage template; fall back to its name (as the kernel does).
-            mn.put("message", result.getMessage().isEmpty() ? name : result.getMessage());
-        }
-        ObjectNode rule = data.putObject("rule");
-        rule.put("name", candidate.getPath());
-        rule.put("fired", fired);
         return data;
     }
 
@@ -242,13 +240,4 @@ public final class InterpreterEngine {
         };
     }
 
-    private static String errorPath(RuleDef rule) {
-        String base = rule.getPath();
-        String rel = rule.getErrorEntityRelPath();
-        while (rel.startsWith("../")) {
-            base = base.substring(0, base.lastIndexOf('/'));
-            rel = rel.substring(3);
-        }
-        return rel.isEmpty() ? base : base + "/" + rel;
-    }
 }

@@ -502,6 +502,15 @@ data class ModelDef(
      */
     fun labelOf(path: String, locale: String): String =
         labelsByPath[path]?.get(locale)?.takeIf { it.isNotBlank() } ?: path.trimEnd('/').substringAfterLast('/')
+
+    /**
+     * This model with an extra, non-stored [rule] appended — the interpreter's twin of the kernel's rule-inject
+     * behind `model eval --condition/--field`. The appended candidate is parsed and evaluated through the SAME
+     * per-row [DmInterpreter.validate] assembly as a stored rule, so a candidate over a repeated scope reports
+     * one row-indexed message per firing — identical to persisting the rule and running whole-model eval
+     * (G42), never a single index-less collapse. Every derived index recomputes off the copied [rules].
+     */
+    fun withRule(rule: RuleDef): ModelDef = copy(rules = rules + rule)
 }
 
 /**

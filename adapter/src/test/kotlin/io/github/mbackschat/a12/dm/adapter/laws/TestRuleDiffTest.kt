@@ -17,7 +17,10 @@ import org.junit.jupiter.api.Test
  * Differential for single-rule eval ([DmInterpreter.testRule]) — the `rule eval` shape. The FIRED vs
  * PASSED verdict must agree with whether the REAL kernel fires the rule over the same instance. (The
  * third verdict, SUPPRESSED, needs the formal-error increment and is not yet covered.) Also checks the
- * injected-candidate path ([DmInterpreter.evalCandidate]) used by `model eval --condition`.
+ * single-rule candidate VERDICT API ([DmInterpreter.evalCandidate]). (Note: the CLI's `model eval
+ * --condition` no longer routes through [DmInterpreter.evalCandidate] — since G42 it INJECTS the candidate
+ * into the model and runs the full per-row [DmInterpreter.validate], so a candidate over a repeated scope
+ * reports one row-indexed message per firing; this test still pins the standalone verdict API itself.)
  */
 class TestRuleDiffTest {
 
@@ -57,7 +60,8 @@ class TestRuleDiffTest {
 
     @Test
     fun candidateRuleFiredMatchesKernel() {
-        // the `model eval --condition` path: an injected, non-stored candidate over Quantity=150
+        // the standalone single-rule candidate verdict API over Quantity=150 (not the CLI's `model eval
+        // --condition` path, which since G42 injects + full-validates — see the class doc)
         val candidate = RuleDef("/Order/EvalDocCandidate", "/Order", render(m.num(Q).gt(100)), "EVAL_DOC", "../Quantity")
         val model = RuntimeLaws.withRule(order, "/Order", "EvalDocCandidate", "../Quantity", "EVAL_DOC", candidate.conditionText)
         val def = ModelDef(fields, emptyList())   // candidate is NOT in the model
