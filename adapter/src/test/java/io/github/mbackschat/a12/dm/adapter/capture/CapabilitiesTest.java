@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
+import io.github.mbackschat.a12.dm.adapter.capture.json.Digests;
 import io.github.mbackschat.a12.dm.adapter.capture.json.Json;
 import io.github.mbackschat.a12.dm.adapter.capture.schema.Capabilities;
 
@@ -23,6 +24,21 @@ import io.github.mbackschat.a12.dm.adapter.capture.schema.Capabilities;
  * in place of the guard, never in CI.
  */
 class CapabilitiesTest {
+
+    /** The V1 FREEZE LOCK (CONFORMANCE-CORPUS-SPEC §15a, frozen 2026-07-17 with the first retained
+     *  external client run): the canonical capabilities bytes are pinned at this digest, so after the
+     *  freeze even a deliberate golden regeneration fails CI — a changed closed shape mints a {@code -v2}
+     *  (new id, new golden, new lock), never an edit under the frozen id. */
+    private static final String FROZEN_V1_SHA256 =
+            "5bde25f5722acb1e14d9caa4d8757eca442f30a5c2f887774dcc886d4a282ee3";
+
+    @Test
+    void theFrozenV1CapabilitiesDigestHolds() {
+        assertEquals(FROZEN_V1_SHA256, Digests.sha256(CaptureFixtures.resourceBytes("capture/capabilities-v1.json")),
+                "capabilities-v1.json no longer matches the FROZEN V1 digest — V1 froze with the first"
+                        + " retained external client run (CONFORMANCE-CORPUS-SPEC §15a); a changed closed"
+                        + " shape mints a -v2, never an in-place edit under the frozen id");
+    }
 
     private static Path golden() {
         // The Gradle test working dir is the module dir (adapter/).
