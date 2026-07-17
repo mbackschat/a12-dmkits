@@ -356,6 +356,20 @@ The proposal's §"Required tests and mutation sensitivity" list is implemented f
 
 **Receipt honesty guard:** a stale guard reference (Gradle's "No tests found") FAILS the harness loudly — a filter matching nothing is never recorded as a fired guard (the false-positive class caught during Set Z2's own run).
 
-**Deferred to the external scenario run (the `string-direct-cascade-v1` set) — scenario-semantics, not boundary:** the accepted-equal all-clean/changed-subset split; the source-absent stale cascade (`"OLD-X"` vs `"-X"`); a rejected attempted value reaching the dependent computation; the SEMANTIC half of downstream cause reconstruction (M03 covers transport); the final qualified recapture from clean committed HEAD (the handback ritual — its clean-gate mechanics are M12). **Covered by an existing guard, no capture-side mutation:** the compact legacy corpus signature (`corpusReplayTest` — this program never touched that surface, byte-compatible by construction).
+**The scenario-semantic tier (2026-07-17, Set Z3 — the deferred map EXECUTED).** The formerly deferred scenario-semantics mutations ran against the exact external `string-direct-cascade-v1` pack through the committed harness [`adapter/capture-mutations/run-scenario-mutations.py`](../adapter/capture-mutations/run-scenario-mutations.py) (receipt: [`adapter/capture-mutations/scenario-mutation-receipt-string-direct-cascade-v1.json`](../adapter/capture-mutations/scenario-mutation-receipt-string-direct-cascade-v1.json), `capture-scenario-mutation-receipt-v1` — a **separate versioned receipt**; the generic boundary receipt above stays untouched). The mechanism: each mutation corrupts ONE semantic aspect in capture or interpreter source → the REAL `capture --development` runs the external scenario → the REAL `diff-packets` against a same-revision reference development packet must report EXACTLY the predicted per-case/per-runner observation drift (prediction recorded before execution; a structured field assertion pins the drift's shape; bytes restored with pre/post digests; mutant packets never see portable qualification; natural gate green). The five-case matrix SEPARATES: every mutation's drift confined itself to exactly the predicted cases/runners.
+
+| deferred item | mutation | predicted = observed drift |
+|---|---|---|
+| accepted-equal vanishing from all-clean | S01 | `source-abc-mid-abc` × both kernel routes |
+| accepted-equal entering the changed subset | S02 | `source-abc-mid-abc` × both kernel routes |
+| source-absent stale cascade (`"OLD-X"` vs `"-X"`) | S03 | `source-absent-mid-old` × interpreter |
+| rejected attempted value reaching the dependent | S04 | `source-abcd-mid-old` × interpreter |
+| attempted value dropped/altered (semantic half — M03 covers transport) | S05 | `source-abcd-mid-old` × both kernel routes |
+| cause code (`stringZuLang`) dropped/altered | S06 | `source-abcd-mid-old` × both kernel routes |
+| cause message type (`VALUE_ERROR`) dropped/altered | S07 | `source-abcd-mid-old` × both kernel routes |
+| cause pointer (`/Cascade[1]/Mid`) dropped/altered | S08 | `source-abcd-mid-old` × both kernel routes |
+| absent vs present-empty collapsed (scenario half — M04/M26 cover the unit level) | S09 | `source-absent-mid-old` + `source-abcd-mid-old` × both kernel routes |
+
+The final qualified recapture from clean committed HEAD (the handback ritual — its clean-gate mechanics are M12) is the run itself, not a mutation. **Covered by an existing guard, no capture-side mutation:** the compact legacy corpus signature (`corpusReplayTest` — this program never touched that surface, byte-compatible by construction).
 
 **Recorded follow-up — the duplicated javac in-memory bootstrap (Set Z′ gate, 2026-07-16).** The ~90-line in-memory `javac` bootstrap for the java-static route exists twice: in `RuntimeLaws` (the test-estate oracle) and in the capture `JavaStaticRunner`. Deliberate for now — the proposal's "stop extending `RuntimeLaws`" intent argued against coupling the proven test estate to the *unproven* capture boundary mid-program. The de-dup direction is the oracle **delegating to the capture runner** (one bootstrap, capture-owned), not the reverse. *Re-open trigger:* the external `string-direct-cascade-v1` run lands (the boundary is then proven), or a third copy of the bootstrap appears.
