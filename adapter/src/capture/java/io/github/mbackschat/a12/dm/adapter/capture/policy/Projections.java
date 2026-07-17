@@ -54,9 +54,7 @@ public final class Projections {
             new String[] {"changedSubset", "report-all granularity exposes no delta subset"},
             new String[] {"formalErrorsInOperands", "not exposed on the interpreter's compute surface"},
             new String[] {"appliedState.absentVsPresentEmpty",
-                    "outside the v1 portable comparison, which projects applied states to has-value/no-value;"
-                            + " the runner exposes the distinction since IF126 — comparing it is a deliberate"
-                            + " projection revision, not a fidelity echo"});
+                    "the interpreter's public read surface has no absent-vs-empty distinction (IG72)"});
 
     private Projections() {
     }

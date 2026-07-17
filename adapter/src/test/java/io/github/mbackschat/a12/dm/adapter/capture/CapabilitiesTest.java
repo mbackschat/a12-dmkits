@@ -25,19 +25,21 @@ import io.github.mbackschat.a12.dm.adapter.capture.schema.Capabilities;
  */
 class CapabilitiesTest {
 
-    /** The V1 FREEZE LOCK (CONFORMANCE-CORPUS-SPEC §15a, frozen 2026-07-17 with the first retained
-     *  external client run): the canonical capabilities bytes are pinned at this digest, so after the
-     *  freeze even a deliberate golden regeneration fails CI — a changed closed shape mints a {@code -v2}
-     *  (new id, new golden, new lock), never an edit under the frozen id. */
+    /** The V1 FREEZE LOCK (CONFORMANCE-CORPUS-SPEC §15a): V1 froze with the external client's successful
+     *  smoke run at {@code 3ebe7564} — one published capability tuple has one immutable meaning and byte
+     *  identity, whether or not that run's packet was retained. The canonical capabilities bytes are
+     *  pinned at the smoke-run digest, so even a deliberate golden regeneration fails CI — a changed
+     *  closed shape mints a {@code -v2} (new id, new golden, new lock), never an edit under the frozen
+     *  id. */
     private static final String FROZEN_V1_SHA256 =
-            "5bde25f5722acb1e14d9caa4d8757eca442f30a5c2f887774dcc886d4a282ee3";
+            "b87d381e7f43446bc886292766e34beab72ca3ec179be5f0f614975e66d603ca";
 
     @Test
     void theFrozenV1CapabilitiesDigestHolds() {
         assertEquals(FROZEN_V1_SHA256, Digests.sha256(CaptureFixtures.resourceBytes("capture/capabilities-v1.json")),
-                "capabilities-v1.json no longer matches the FROZEN V1 digest — V1 froze with the first"
-                        + " retained external client run (CONFORMANCE-CORPUS-SPEC §15a); a changed closed"
-                        + " shape mints a -v2, never an in-place edit under the frozen id");
+                "capabilities-v1.json no longer matches the FROZEN V1 digest — V1 froze with the external"
+                        + " client's successful smoke run at 3ebe7564 (CONFORMANCE-CORPUS-SPEC §15a); a"
+                        + " changed closed shape mints a -v2, never an in-place edit under the frozen id");
     }
 
     private static Path golden() {

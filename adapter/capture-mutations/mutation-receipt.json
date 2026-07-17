@@ -1,7 +1,7 @@
 {
   "schema": "capture-mutation-receipt-v1",
-  "headRevision": "34d29579a452ff523ccb26a08ef8ef59aa7c57f3",
-  "cleanTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+  "headRevision": "8b8a9f604560bdb0e9bbc500639a863abe5dfa70",
+  "cleanTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
   "mutations": [
     {
       "id": "M01-illegal-model-executed",
@@ -13,8 +13,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; LegalityGateTest > anIllegalModelIsCharacterizedNeverExecuted(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -27,8 +27,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; VerifierDivergenceTest > aCrossRouteSplitStopsConfirmationButCharacterizationRetainsIt(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -41,8 +41,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; ErroredComputationObservationTest > theErroredEntryRetainsTheAttemptedValueAndItsStructuredCause() FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -55,8 +55,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; AppliedStateDistinctionTest > theKernelRoutesKeepAbsentAndPresentEmptyDistinct() FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -69,8 +69,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; KernelRouteObservationTest > theAppliedStateProbesTheFreshCopyWithTypedValue() FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -83,8 +83,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; VerifierDivergenceTest > aCrossRouteSplitStopsConfirmationButCharacterizationRetainsIt(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -97,8 +97,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; ProjectionFailClosedTest > anUnavailableRequiredChannelIsNeverEquality() FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -111,8 +111,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; RouteDistinctnessTest > theTwoKernelRunnerNamesResolveToDistinctRoutes() FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -125,8 +125,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; RunnersStatusTest > aThrowMapsToTechnicalFailureWithSanitizedDetail() FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -139,8 +139,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; DecoderParityTest > validateScenariosAndCaptureDecideIdentically(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -154,8 +154,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; ReorderEquivalenceTest > reorderedAndFilteredRunsObserveIdentically() FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -168,8 +168,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; CaptureCommandTest > defaultModeRefusesADirtyTreeNamingDevelopmentMode(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -182,8 +182,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; CaptureDeterminismTest > doubleCaptureIsByteIdentical(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -196,8 +196,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; CaptureCommandTest > refusesTheCommittedCorpusTree(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -214,8 +214,8 @@
         "refused": true,
         "diagnostic": "metadata leak"
       },
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -228,8 +228,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; LegalityGateTest > anIllegalModelIsCharacterizedNeverExecuted(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -242,8 +242,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; VerifierTest > verificationNeverWritesIntoThePacket(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -256,8 +256,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; CapabilitiesTest > capabilitiesOutputMatchesTheCommittedGolden() FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -270,8 +270,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; VerifierTest > aDevelopmentPacketIsRejectedByItsDeclaredPolicyBeforeComparison(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -284,8 +284,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; VerifierPolicyBindingTest > aMismatchingCliPolicyIsRefusedWithoutAReport(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -298,8 +298,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; VerifierPolicyBindingTest > aMandatoryProjectionMissingFromTheRequestRefusesBeforeExecution(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -312,8 +312,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; VerifierPolicyBindingTest > aRequiredChannelAQualifyingRunnerCannotExposeRefusesBeforeExecution(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -326,8 +326,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; ConsumedDocumentBindingTest > everySuccessObservationBindsTheConsumedPlacementIdentity(Path) FAILED; ConsumedDocumentBindingTest > theConsumedIdentitySeparatesEmptyFromAbsentAndValueFromValue(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -340,22 +340,8 @@
       "guardFired": true,
       "actualGuard": "> Task :adapter:test FAILED; ClosureIdentityTest > anIdentityChangeBetweenExecutionAndFinalizationRefusesWithNoPacket(Path) FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "restoredExactBytes": true
-    },
-    {
-      "id": "M26-interpreter-cell-state-misread",
-      "description": "the interpreter runner maps a Document cell state wrongly (present-empty reported as absent)",
-      "mutatedFiles": [
-        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/runner/interpreter/InterpreterRunner.java"
-      ],
-      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.AppliedStateDistinctionTest.theInterpreterReportsTheSameRealStatesAsTheKernelRoutes",
-      "guardFired": true,
-      "actualGuard": "> Task :adapter:test FAILED; AppliedStateDistinctionTest > theInterpreterReportsTheSameRealStatesAsTheKernelRoutes() FAILED",
-      "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {
@@ -368,8 +354,8 @@
       "guardFired": true,
       "actualGuard": ":adapter:verifyCapturePurity FAILED",
       "realCommandStep": null,
-      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
-      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "preTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
+      "postTreeDigest": "c6c9192c03339084d9977810af5c034652fe4ab1ef8fe5d23af1cd8134cf0236",
       "restoredExactBytes": true
     },
     {

@@ -24,10 +24,10 @@ import io.github.mbackschat.a12.dm.adapter.capture.schema.ScenarioSets;
 /**
  * The interpreter TRIANGULATION lane (proposal §4): its observation is honest about fidelity — rendered
  * values only (typed {@code notExposedByRunner}), no structured causes, no changed subset (report-all
- * granularity), no operand formal errors. Applied probes carry the real absent / present-empty /
- * present-value states via {@code Document.cellStateAt} (IF126; the distinction lock is
- * {@code AppliedStateDistinctionTest}). Missing transport is DECLARED, never rendered as an empty
- * observation — and the rendered value it does expose agrees with the kernel anchor's rendered form.
+ * granularity), no operand formal errors, and an applied probe without a value is
+ * {@code noValueIndeterminate} (the public read surface has no absent-vs-present-empty distinction,
+ * IG72). Missing transport is DECLARED, never rendered as an empty observation — and the rendered value
+ * it does expose agrees with the kernel anchor's rendered form.
  */
 class InterpreterRunnerTest {
 

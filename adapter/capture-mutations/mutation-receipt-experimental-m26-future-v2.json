@@ -1,0 +1,27 @@
+{
+  "schema": "capture-mutation-receipt-experimental-v1",
+  "status": "experimental \u2014 future a12-dmkits-capture-capabilities-v2 evidence; NOT part of the frozen V1 boundary receipt (mutation-receipt.json, 40 mutations)",
+  "context": "Set AB (2026-07-17) wired the interpreter's Document.cellStateAt (IF126) through the capture interpreter lane's applied read-back and guarded the state mapping with mutation M26. That capture-lane exposure was REJECTED on version identity: it changed the externally frozen a12-dmkits-capture-capabilities-v1 bytes in place (the freeze event was the external client's successful smoke run at 3ebe7564, capabilities SHA-256 b87d381e7f43446bc886292766e34beab72ca3ec179be5f0f614975e66d603ca). The frozen V1 lane was restored in Set Z4 \u2014 the mutated mapping no longer exists on V1, so M26 cannot run against it. This receipt preserves the M26 evidence verbatim for the future v2 lane that may expose IF126 through capture (CONFORMANCE-CORPUS-SPEC section 15a); the frozen-V1 leak guard is FrozenV1InterpreterObservationTest.",
+  "sourceRun": {
+    "headRevision": "34d29579a452ff523ccb26a08ef8ef59aa7c57f3",
+    "cleanTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+    "naturalGate": "BUILD SUCCESSFUL",
+    "recordedIn": "commit 05e69e59 (the Set AB 41-mutation run; superseded receipt)"
+  },
+  "mutations": [
+    {
+      "id": "M26-interpreter-cell-state-misread",
+      "description": "the interpreter runner maps a Document cell state wrongly (present-empty reported as absent)",
+      "mutatedFiles": [
+        "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture/runner/interpreter/InterpreterRunner.java"
+      ],
+      "expectedGuard": "io.github.mbackschat.a12.dm.adapter.capture.AppliedStateDistinctionTest.theInterpreterReportsTheSameRealStatesAsTheKernelRoutes",
+      "guardFired": true,
+      "actualGuard": "> Task :adapter:test FAILED; AppliedStateDistinctionTest > theInterpreterReportsTheSameRealStatesAsTheKernelRoutes() FAILED",
+      "realCommandStep": null,
+      "preTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "postTreeDigest": "bfbc8bfacc97dd205ff9a5b93cb3e977c35feea8f9058d1744e1eb590d4d829c",
+      "restoredExactBytes": true
+    }
+  ]
+}

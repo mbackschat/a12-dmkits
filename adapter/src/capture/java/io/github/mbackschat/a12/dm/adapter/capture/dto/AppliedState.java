@@ -4,9 +4,8 @@ package io.github.mbackschat.a12.dm.adapter.capture.dto;
  * The exact post-application state of one probed cell after applying the public computation result to a
  * FRESH document copy (proposal §4, channel 6): {@code absent}, {@code present-empty}, and
  * {@code present-value(kind, value)} are kept DISTINCT — never collapsed. A runner whose public read
- * surface cannot separate absent from present-empty reports the honest {@link NoValueIndeterminate},
- * never a guessed state — since the interpreter's {@code cellStateAt} (IF126) every registered runner
- * exposes the distinction, but the state stays in the closed {@code compute-observation-v1} vocabulary.
+ * surface cannot separate absent from present-empty (the interpreter) reports the honest
+ * {@link NoValueIndeterminate}, never a guessed state.
  */
 public sealed interface AppliedState {
 

@@ -18,21 +18,21 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter;
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException;
 import io.github.mbackschat.a12.dm.interpreter.eval.Document;
 import io.github.mbackschat.a12.dm.interpreter.eval.DocumentKt;
-import io.github.mbackschat.a12.dm.interpreter.eval.StoredCellState;
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader;
 import io.github.mbackschat.a12.dm.interpreter.model.Computed;
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome;
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock;
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef;
+import io.github.mbackschat.a12.dm.interpreter.model.ValuedField;
 
 /**
  * The {@code a12-dmkits-interpreter} route — clean-room TRIANGULATION, never the oracle. READ-ONLY reuse
  * of the interpreter's published surface ({@code ModelLoader} · {@code DmInterpreter.compute} ·
- * {@code applyComputations} · {@code Document.cellStateAt}); the fidelity gaps are declared honestly
+ * {@code applyComputations} · {@code Document.valuedFields}); the fidelity gaps are declared honestly
  * (proposal §4), never bridged: no typed values, no structured causes, no changed subset (report-all
- * granularity), and no operand formal errors on the compute surface. The applied read-back keeps
- * absent / present-empty / present-value distinct via {@code cellStateAt} (INTERPRETER-FINDINGS IF126,
- * graduated from IG72). Missing transport is never rendered as an empty observation.
+ * granularity), no operand formal errors on the compute surface, and the applied read-back cannot
+ * separate absent from present-empty ({@code AppliedState.NoValueIndeterminate};
+ * INTERPRETER-GAPS IG72). Missing transport is never rendered as an empty observation.
  */
 public final class InterpreterRunner implements ComputeRunner {
 
@@ -78,8 +78,9 @@ public final class InterpreterRunner implements ComputeRunner {
         }
 
         List<ComputeObservation.AppliedEntry> appliedEntries = new ArrayList<>();
+        List<ValuedField> valued = applied.valuedFields();
         for (String probe : execution.probePointers()) {
-            appliedEntries.add(new ComputeObservation.AppliedEntry(probe, appliedStateAt(applied, probe)));
+            appliedEntries.add(new ComputeObservation.AppliedEntry(probe, appliedStateAt(valued, probe)));
         }
 
         return ComputeObservation.success(execution.caseId(), id())
@@ -119,18 +120,16 @@ public final class InterpreterRunner implements ComputeRunner {
         return doc;
     }
 
-    /** The applied read-back over the interpreter's public {@code Document.cellStateAt} (IF126): absent /
-     *  present-empty / present-value(raw, rendered form only) kept distinct — the same three states the
-     *  kernel routes read off the applied {@code DocumentV2}. */
-    private static AppliedState appliedStateAt(Document applied, String probe) {
+    /** The applied read-back over the interpreter's public surface: a valued cell is observable
+     *  (rendered form); a valueless probe is {@code noValueIndeterminate} — the public surface exposes no
+     *  absent-vs-present-empty distinction (IG72), and capture never guesses one. */
+    private static AppliedState appliedStateAt(List<ValuedField> valued, String probe) {
         Pointers.Parsed parsed = Pointers.parse(probe);
-        StoredCellState state = applied.cellStateAt(parsed.namePath(), parsed.reps());
-        return switch (state) {
-            case StoredCellState.Absent ignored -> new AppliedState.Absent();
-            case StoredCellState.PresentEmpty ignored -> new AppliedState.PresentEmpty();
-            case StoredCellState.PresentValue value ->
-                    new AppliedState.PresentValue(ObservedValue.renderedOnly(value.getRaw()));
-            default -> throw new IllegalStateException("unmapped cell state: " + state);
-        };
+        for (ValuedField field : valued) {
+            if (field.getPath().equals(parsed.namePath()) && field.getReps().equals(parsed.reps())) {
+                return new AppliedState.PresentValue(ObservedValue.renderedOnly(field.getRaw()));
+            }
+        }
+        return new AppliedState.NoValueIndeterminate();
     }
 }

@@ -258,12 +258,6 @@ SOURCE_MUTATIONS = [
       [(f"{CAPTURE}/packet/PacketWriter.java",
         "            if (!after.equals(before)) {",
         "            if (false) {")]),
-    m("M26-interpreter-cell-state-misread",
-      "the interpreter runner maps a Document cell state wrongly (present-empty reported as absent)",
-      f"{TESTS}.AppliedStateDistinctionTest.theInterpreterReportsTheSameRealStatesAsTheKernelRoutes",
-      [(f"{CAPTURE}/runner/interpreter/InterpreterRunner.java",
-        "            case StoredCellState.PresentEmpty ignored -> new AppliedState.PresentEmpty();",
-        "            case StoredCellState.PresentEmpty ignored -> new AppliedState.Absent();")]),
 ]
 
 # M19: the DTO-boundary crossing — its guard is the Gradle purity lint, not a JUnit class.

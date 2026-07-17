@@ -16,6 +16,11 @@ Run from the repo root on a CLEAN committed tree:
 The external scenario root is resolved from $CASCADE_SCENARIO_JSON or the sibling checkout
 `../a12-kernel-lean/evidence/scenarios/string-direct-cascade-v1/scenarios.json`; its bytes (and the
 model's) must match the pinned request identity — the scenario stays external and unmodified.
+
+The receipt is the Set Z4 SUCCESSOR (`capture-scenario-mutation-receipt-v2`): it binds the FROZEN V1
+capabilities digest (refusing to run on any other) and explicitly references its rejected Set Z3
+predecessor receipt, which stays committed untouched as version-identity history — this harness never
+writes to the predecessor's path.
 """
 
 import hashlib
@@ -30,13 +35,21 @@ _rm = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_rm)
 
 REPO = _rm.REPO
-RECEIPT = _HERE / "scenario-mutation-receipt-string-direct-cascade-v1.json"
+RECEIPT = _HERE / "scenario-mutation-receipt-string-direct-cascade-v1-r2.json"
 SCRATCH = REPO / "build" / "capture-scenario-mutations"
 
 SCENARIO_SHA256 = "4c5d4911ecacde819618b3b921b0bd30aa34b514cb0bbf3f0d2b735f21a0fd43"
 MODEL_SHA256 = "3d21add02d259a8d1ad2e14475582513aec2f4e60176f1c02c81d40de88a895d"
 KERNEL_BEHAVIOR_VERSION = "30.8.1"
 PROJECTION = "compute-projection-kernel-route-v1"
+
+# The FROZEN V1 capability identity (CONFORMANCE-CORPUS-SPEC §15a) — the successor receipt binds it and
+# the harness refuses to run against any other capabilities bytes.
+FROZEN_CAPABILITIES_SHA256 = "b87d381e7f43446bc886292766e34beab72ca3ec179be5f0f614975e66d603ca"
+
+# The rejected Set Z3 predecessor (version-identity rejection): committed, never rewritten, referenced.
+PREDECESSOR = _HERE / "scenario-mutation-receipt-string-direct-cascade-v1.json"
+PREDECESSOR_SHA256 = "045aa25e27a82bf97c83bccaa89ffa3052a8a429bd4f9f96747f67f80c7addbc"
 
 CAPTURE = "adapter/src/capture/java/io/github/mbackschat/a12/dm/adapter/capture"
 ENGINE = "interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/ComputationEngine.kt"
@@ -300,6 +313,14 @@ def main():
         shutil.rmtree(SCRATCH)
     head = _rm.sh(["git", "rev-parse", "HEAD"]).stdout.strip()
     capabilities_sha = sha256(REPO / "adapter/src/test/resources/capture/capabilities-v1.json")
+    if capabilities_sha != FROZEN_CAPABILITIES_SHA256:
+        print("capabilities-v1.json does not match the FROZEN V1 digest"
+              f" ({capabilities_sha} != {FROZEN_CAPABILITIES_SHA256}) — refusing", file=sys.stderr)
+        return 1
+    if sha256(PREDECESSOR) != PREDECESSOR_SHA256:
+        print("the rejected Set Z3 predecessor receipt was altered — it is immutable history; refusing",
+              file=sys.stderr)
+        return 1
 
     print("== reference development capture (clean tree)", flush=True)
     reference = SCRATCH / "reference/packet"
@@ -346,8 +367,17 @@ def main():
     natural_gate = "BUILD SUCCESSFUL" if code == 0 else "BUILD FAILED"
 
     receipt = {
-        "schema": "capture-scenario-mutation-receipt-v1",
+        "schema": "capture-scenario-mutation-receipt-v2",
         "scenarioSet": {"id": "string-direct-cascade-v1", "version": "1"},
+        "predecessor": {
+            "receipt": PREDECESSOR.name,
+            "sha256": PREDECESSOR_SHA256,
+            "disposition": "rejected-version-identity",
+            "note": "the Set Z3 run executed against in-place-mutated V1 capabilities bytes"
+                    " (5bde25f5722acb1e14d9caa4d8757eca442f30a5c2f887774dcc886d4a282ee3); its observations"
+                    " passed the independent audit, but one published capability tuple has one immutable"
+                    " meaning and byte identity — this successor run binds the frozen V1 digest",
+        },
         "scenarioSha256": SCENARIO_SHA256,
         "modelSha256": MODEL_SHA256,
         "capabilitiesSha256": capabilities_sha,
