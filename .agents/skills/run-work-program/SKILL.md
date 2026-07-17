@@ -5,7 +5,7 @@ description: Run a multi-session work program with the hybrid model policy and r
 
 # Running a multi-session work program
 
-This skill is intentionally a **pointer**, to avoid drift between agents. The canonical, maintained protocol — the master/worker structure, the per-item model choice, the hardened drill, the six-point review gate, and the three gate-proven criteria — lives in **one place**:
+This skill is intentionally a **pointer**, to avoid drift between agents. The canonical, maintained protocol — the master/worker structure, the per-item model choice, the hardened drill, the review-gate checklist, and the gate-proven drill criteria — lives in **one place**:
 
 > **`.claude/skills/run-work-program/SKILL.md`** (path from the repo root).
 
