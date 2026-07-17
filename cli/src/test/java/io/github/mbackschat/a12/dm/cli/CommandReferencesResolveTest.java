@@ -96,6 +96,17 @@ class CommandReferencesResolveTest {
      *  so the arg stream resolves like a normal invocation carrying placeholders. */
     private static final Pattern JS_PLACEHOLDER = Pattern.compile("\\$\\{[^{}]*\\}");
 
+    /** A <b>single-token</b> backtick span can name a verb no positive check reaches: one bareword could be
+     *  anything — an op mentioned alone ({@code `explain`}), a flag value, a JSON key — so it cannot be
+     *  resolved against the tree the way a {@code dmtool …} invocation or a {@code `target op`} shorthand
+     *  can. Retired / never-existed verb tokens hide exactly there (the README demo table's stale
+     *  {@code `validate`} survived every positive check). This curated deny-list closes that seam for the
+     *  scanned markdown: each entry is a token that must NOT appear as a bare backticked word, mapped to
+     *  the corrective to write instead. {@link #theRetiredTokenDenyListStaysRetiredInTheLiveTree()} keeps
+     *  the list honest against the live tree, so a later real verb of that name forces the entry out. */
+    private static final Map<String, String> RETIRED_VERB_TOKENS = Map.of(
+            "validate", "the live verb is `check` (`model check` / `workspace check` / `rule check`)");
+
     /** Sanity floor: the rich help text carries dozens of {@code dmtool …} examples. A rename that leaves
      *  the literal old name in the text makes the live-name scan find ~0 — this floor catches that. */
     private static final int MIN_INVOCATIONS = 20;
@@ -203,6 +214,51 @@ class CommandReferencesResolveTest {
         assertTrue(violations.stream().anyMatch(v -> v.contains("--rule")), violations::toString);
     }
 
+    /** Does-fire proof for the retired-token seam: a bare backticked {@code `validate`} must fire with the
+     *  corrective, while the real {@code --validate} flag, the composite {@code workspace list --validate},
+     *  and an undenied lone op name ({@code `usage`}) must not. */
+    @Test
+    void theRetiredTokenGuardFiresOnABareTokenButNotOnFlagsOrCompositeSpans(@TempDir Path dir) throws IOException {
+        CommandLine root = new CommandLine(new RootCommand());
+        Pattern invocation = Pattern.compile("\\b" + Pattern.quote(root.getCommandName()) + "\\b([^`}\"\\n]*)");
+        Path md = dir.resolve("stale.md");
+        Files.writeString(md, """
+                A demo table cell like `model describe`/`usage`/`validate` names a retired verb bare.
+
+                The flag `--validate` and the full `workspace list --validate` stay legal.
+                """);
+
+        List<String> violations = new ArrayList<>();
+        int[] count = {0};
+        scanMarkdown(md, root, invocation, violations, count);
+
+        assertEquals(1, violations.size(),
+                () -> "expected exactly the bare `validate` to fire, got: " + violations);
+        assertTrue(violations.get(0).contains("retired verb token"), violations::toString);
+    }
+
+    /** The deny-list's own anti-rot lock: a token stays deny-listed only while NO command of that name
+     *  exists anywhere in the live tree. If a real verb/op of that name ever lands, bare references become
+     *  legitimate and this fails, naming the entry to remove. */
+    @Test
+    void theRetiredTokenDenyListStaysRetiredInTheLiveTree() {
+        Set<String> live = new HashSet<>();
+        collectCommandNames(new CommandLine(new RootCommand()), live);
+        for (String token : RETIRED_VERB_TOKENS.keySet()) {
+            assertTrue(!live.contains(token),
+                    "`" + token + "` is on the retired-verb deny-list but now exists in the live command tree"
+                            + " — remove it from RETIRED_VERB_TOKENS (bare `" + token + "` refs are legitimate again)");
+        }
+    }
+
+    /** Every command name at every depth of the live tree. */
+    private static void collectCommandNames(CommandLine node, Set<String> out) {
+        for (Map.Entry<String, CommandLine> e : node.getSubcommands().entrySet()) {
+            out.add(e.getKey());
+            collectCommandNames(e.getValue(), out);
+        }
+    }
+
     /** Does-fire proof for the flag seam (anti-rot guard #2): a phantom flag after a real verb path must
      *  fire; a real option (here the {@code --workspace} mixin) must not. */
     @Test
@@ -255,6 +311,7 @@ class CommandReferencesResolveTest {
                     String span = b.group(1);
                     matchInvocations(span, file, lineNo, root, invocation, violations, invocationCount);
                     checkTwoTokenShorthand(span, file, lineNo, root, violations);
+                    checkRetiredToken(span, file, lineNo, violations);
                     checkSpanFlags(tokenize(span), 0, root, file, lineNo, span, violations);
                 }
             }
@@ -322,6 +379,16 @@ class CommandReferencesResolveTest {
             args = args.substring(0, args.length() - 1);   // drop the inline-code escape before the backtick
         }
         return JS_PLACEHOLDER.matcher(args).replaceAll("<v>");
+    }
+
+    /** A bare backticked span that IS a retired verb token (see {@link #RETIRED_VERB_TOKENS}): fires with
+     *  the corrective. Only the exact single-token form is denied — {@code --validate} (a real flag) and
+     *  composite spans keep riding the positive checks. */
+    private static void checkRetiredToken(String span, Path file, int lineNo, List<String> violations) {
+        String hint = RETIRED_VERB_TOKENS.get(span.trim());
+        if (hint != null) {
+            violations.add(file + ":" + lineNo + " — `" + span.trim() + "` — a retired verb token; " + hint);
+        }
     }
 
     /** The {@code `target op`} shorthand: a two-bareword span whose first word is a real top-level verb. */
