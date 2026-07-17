@@ -24,8 +24,8 @@ public enum RkCode {
 
     // --- lint advisories (valid-but-suspicious; LINT) -------------------------------------------
     UNGUARDED_NUMBER_COMPARISON(Severity.WARNING, DiagnosticSource.LINT,
-            "a number is compared with an ordering operator but its presence is not guarded; an empty number reads as 0, so the rule also fires on empty — a trap only when empty should be NEUTRAL, intentional when a missing number is itself a violation.",
-            "decide by intent: if an empty value should NOT trip the rule, guard it — FieldFilled(<number>) And <the comparison>; if empty-as-0 SHOULD fire (a missing number is a violation), the unguarded form is intentional — leave it."),
+            "a number is compared with an ordering operator but its presence is not guarded; an empty number reads as 0, so the rule also fires on empty — a trap only when empty should be NEUTRAL, intentional when a missing number is itself a violation. This also covers an ordering between two unguarded number fields ([A] < [B]): either side empty reads as 0, so the ordering can fire on the absence of either field.",
+            "decide by intent: if an empty value should NOT trip the rule, guard it — FieldFilled(<number>) And <the comparison> (or AllFieldsFilled(<A>, <B>) for a field-vs-field ordering); if empty-as-0 SHOULD fire (a missing number is a violation), the unguarded form is intentional — leave it."),
     UNGUARDED_STRING_CONCAT(Severity.WARNING, DiagnosticSource.LINT,
             "a string field participates in a concatenation compared as a value, but its operands are not presence-guarded; an empty string still concatenates, so the comparison is evaluated and can mis-fire.",
             "guard the concatenated operands with AllFieldsFilled(...) before comparing."),

@@ -294,15 +294,17 @@ public final class Linter {
      *       holds — across <em>all</em> comparison operators (ordering, {@code ==}/{@code !=}, the
      *       tolerance family), not only ordering.</li>
      *   <li><b>ADVISORY</b> — flag a plain number field against an aggregate or expression whose value the
-     *       partial evaluation cannot pin (the {@code [X] < Sum(…)} shape): the empty-as-0 trap is real
-     *       but unprovable, so it is flagged advisorily.</li>
+     *       partial evaluation cannot pin (the {@code [X] < Sum(…)} shape); AND (G41) an
+     *       <b>ordering between two unguarded number fields</b> ({@code [A] < [B]}), where substituting
+     *       either side empty leaves the other unpinned but the kernel still reads the empty side as 0 —
+     *       so the comparison fires on the absence of either field. Both are real-but-unprovable, hence
+     *       advisory.</li>
      * </ul>
      *
-     * <p>The one remaining exclusion is <b>field-vs-field</b> ({@code [A] < [B]}): substituting one side's
-     * emptiness leaves the other side unpinned, so neither lane can decide the comparison and it is left
-     * alone. (Empty string/date/enum comparisons are simply not evaluated, so they never need a guard —
-     * this check is number-specific.) Pure-AST — the field kind is in the AST — so it fires on every lint
-     * entry point.
+     * <p>The remaining exclusion is <b>equality/inequality field-vs-field</b> ({@code [A] == [B]}): a
+     * different trap shape with its own scale gate, out of scope here. (Empty string/date/enum comparisons
+     * are simply not evaluated, so they never need a guard — this check is number-specific.) Pure-AST — the
+     * field kind is in the AST — so it fires on every lint entry point.
      */
     private void unguardedNumberComparison(Condition condition, String rulePath, List<Diagnostic> out) {
         Set<String> guarded = new HashSet<>();
@@ -360,8 +362,12 @@ public final class Linter {
      *       the tolerance family).</li>
      *   <li><b>ADVISORY</b> — a plain number field against an aggregate/expression whose value the
      *       partial evaluation cannot pin (the T4 {@code [X] < Sum(…)} shape): the empty-as-0 trap is
-     *       real but unprovable, so flag it advisorily. Field-vs-field stays out of scope (both empties
-     *       substitute symmetrically; an aggregate's empty-SET identity is the {@code aggregateIdentity}
+     *       real but unprovable, so flag it advisorily. AND (G41) an <b>ordering between two unguarded
+     *       number fields</b> ({@code [A] < [B]}): substituting either side empty leaves the other
+     *       unpinned, but the kernel reads the empty side as 0, so the ordering can fire on the absence of
+     *       either field — flagged once, naming both, only when NEITHER is guarded (a partial guard is a
+     *       deliberate author choice, left alone). Equality/inequality field-vs-field stays out of scope
+     *       (its own scale gate; an aggregate's empty-SET identity is the {@code aggregateIdentity}
      *       dimension, WI-5b — star/field-list scopes are not per-field guardable anyway).</li>
      * </ol>
      */
@@ -389,7 +395,37 @@ public final class Linter {
         } else if (rightField != null && !flagged.contains(rightField) && !guarded.contains(rightField)
                 && isComplexNumberOperand(cmp.left()) && valueWhenEmpty(cmp.left(), rightField) == null) {
             flagUnguardedNumber(((FieldValue) cmp.right()).field(), cmp, rulePath, out);
+        } else if (isOrdering(cmp.operator()) && leftField != null && rightField != null
+                && !guarded.contains(leftField) && !guarded.contains(rightField)
+                && !flagged.contains(leftField) && !flagged.contains(rightField)) {
+            // ADVISORY (field-vs-field ordering, G41) — both sides plain number fields, an ORDERING operator,
+            // and NEITHER guarded. Substituting either side empty leaves the other unpinned, so the PRECISE
+            // lane can't decide it; but the kernel reads whichever side is empty as 0, so `[A] < [B]` can fire
+            // on the ABSENCE of either field (0 < [B] when B>0; [A] < 0 when A<0) — data-dependently. A partial
+            // (one-side) guard is a deliberate author choice and left alone.
+            flagUnguardedFieldVsField(leftField, rightField, cmp, rulePath, out);
         }
+    }
+
+    /**
+     * G41 advisory — an unguarded number <b>field-vs-field ordering</b> ({@code [A] < [B]}, both sides plain
+     * number fields, neither presence-guarded). One diagnostic naming both fields, since an empty value on
+     * EITHER side reads as 0 and can make the ordering hold.
+     */
+    private void flagUnguardedFieldVsField(String leftPath, String rightPath, ComparisonCondition cmp,
+            String rulePath, List<Diagnostic> out) {
+        out.add(new Diagnostic(Severity.WARNING, DiagnosticSource.LINT,
+                Optional.of("RK_UNGUARDED_NUMBER_COMPARISON"),
+                "'" + leftPath + "' and '" + rightPath + "' are numbers compared with an ordering operator but"
+                        + " neither's presence is guarded — an empty number reads as 0, so the rule also fires"
+                        + " on the absence of either '" + leftPath + "' or '" + rightPath + "'",
+                new Diagnostic.Where(rulePath, Optional.of(cmp.operatorId())),
+                Optional.of("decide by intent: if a missing '" + leftPath + "' or '" + rightPath + "' should NOT"
+                        + " trip the rule, guard both — AllFieldsFilled(" + leftPath + ", " + rightPath + ") And"
+                        + " <the comparison>; if empty-as-0 firing IS the intent, the unguarded form is fine"),
+                Optional.of("an unspecified number defaults to 0 in a comparison (KERNEL-SEMANTICS §2), so an"
+                        + " ordering between two unguarded number fields fires whenever either side is empty and"
+                        + " the resulting 0 satisfies the comparison — only a trap when empty should be NEUTRAL")));
     }
 
     /**

@@ -209,11 +209,12 @@ class LinterTest {
     }
 
     @Test
-    void noUnguardedNumberLintForFieldVsFieldComparison() {
-        // [MonthlyFee] < [MonthlyFee]-style field-vs-field is out of scope (no constant operand).
+    void unguardedFieldVsFieldOrderingIsFlagged() {
+        // G41: an unguarded number field-vs-field ORDERING is now the advisory lane (both empties read as 0,
+        // so the ordering fires on the absence of either side). Full coverage: UnguardedFieldVsFieldLintTest.
         Condition c = m.num(FEE).lt(m.num("/Subscription/Billing/BaseFee"));
-        assertTrue(noLint(c, "RK_UNGUARDED_NUMBER_COMPARISON"),
-                () -> "field-vs-field is out of the lint's conservative scope: " + linter.lint(c));
+        Diagnostic d = only(linter.lint(c), "RK_UNGUARDED_NUMBER_COMPARISON");
+        assertEquals(Severity.WARNING, d.severity());
     }
 
     @Test
