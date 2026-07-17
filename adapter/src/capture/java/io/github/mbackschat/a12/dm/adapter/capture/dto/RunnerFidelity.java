@@ -7,8 +7,9 @@ import java.util.Map;
  * A runner's DECLARED per-channel fidelity (proposal §2/§4) — what the runner's public surface exposes,
  * fixed by the compile-time registry and echoed into capabilities output and packet runner descriptors.
  * Honest by construction: the interpreter's missing typed values / structured causes / changed subset /
- * operand formal errors / absent-vs-present-empty distinction are declared {@code notExposedByRunner},
- * never rendered as empty observations or inferred from kernel output.
+ * operand formal errors are declared {@code notExposedByRunner}, never rendered as empty observations or
+ * inferred from kernel output. (The absent-vs-present-empty applied distinction became available with the
+ * interpreter's {@code Document.cellStateAt} — IF126, a deliberate pre-freeze v1 fidelity upgrade.)
  */
 public record RunnerFidelity(
         Map<ChannelId, ChannelFidelity> channels,
@@ -72,6 +73,6 @@ public record RunnerFidelity(
                 new ChannelFidelity(Availability.NOT_EXPOSED_BY_RUNNER, NOT_EXPOSED));
         channels.put(ChannelId.APPLIED_STATE, new ChannelFidelity(Availability.AVAILABLE, REQUESTED_PROBES));
         return new RunnerFidelity(channels, Availability.NOT_EXPOSED_BY_RUNNER, Availability.AVAILABLE,
-                Availability.NOT_EXPOSED_BY_RUNNER, Availability.NOT_EXPOSED_BY_RUNNER);
+                Availability.NOT_EXPOSED_BY_RUNNER, Availability.AVAILABLE);
     }
 }

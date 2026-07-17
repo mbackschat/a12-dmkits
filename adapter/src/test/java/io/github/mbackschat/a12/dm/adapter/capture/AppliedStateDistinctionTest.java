@@ -25,8 +25,9 @@ import io.github.mbackschat.a12.dm.adapter.capture.schema.ScenarioSets;
  * ABSENT vs PRESENT-EMPTY stay DISTINCT in the applied-state channel (proposal §4, the "collapsed"
  * mutation class): a probe naming a cell no placement created reads {@code absent}; an EMPTY-placed
  * (present-but-valueless) cell reads {@code presentEmpty}; both kernel routes agree; and the interpreter
- * honestly reports {@code noValueIndeterminate} for BOTH (IG72 — the distinction is kernel-routes-only
- * evidence, never guessed).
+ * reports the SAME real states through its public {@code Document.cellStateAt} (IF126, graduated from
+ * IG72 — the distinction is no longer kernel-routes-only evidence, and it is still never guessed: the
+ * runner maps the interpreter's own read, one state per probe).
  */
 class AppliedStateDistinctionTest {
 
@@ -91,9 +92,10 @@ class AppliedStateDistinctionTest {
     }
 
     @Test
-    void theInterpreterHonestlyReportsIndeterminateForBoth() {
-        assertInstanceOf(AppliedState.NoValueIndeterminate.class, interpreterStates.get("insured-absent"));
-        assertInstanceOf(AppliedState.NoValueIndeterminate.class, interpreterStates.get("insured-empty"),
-                "IG72: the interpreter's public read surface cannot separate the two — declared, not guessed");
+    void theInterpreterReportsTheSameRealStatesAsTheKernelRoutes() {
+        assertInstanceOf(AppliedState.Absent.class, interpreterStates.get("insured-absent"),
+                "IF126: cellStateAt separates the states — an unplaced cell reads ABSENT");
+        assertInstanceOf(AppliedState.PresentEmpty.class, interpreterStates.get("insured-empty"),
+                "IF126: an EMPTY-placed cell reads PRESENT-EMPTY — never collapsed, never indeterminate");
     }
 }

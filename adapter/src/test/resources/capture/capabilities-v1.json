@@ -135,7 +135,7 @@
       "typedValues": "notExposedByRunner",
       "renderedValues": "available",
       "structuredCauses": "notExposedByRunner",
-      "absentVsPresentEmpty": "notExposedByRunner"
+      "absentVsPresentEmpty": "available"
     }
   ],
   "projections": [
