@@ -37,8 +37,9 @@ class ModelReportComputationPreconditionsTest {
                 .build().toJson();
         EditSession s = EditSession.read(base);
         // (A) a common precondition gating the whole computation + two preconditioned alternatives (a common
-        //     precondition with a single unconditional operation folds into that operation on the kernel
-        //     round-trip — semantically identical — so it only survives distinctly with ≥2 alternatives)
+        //     precondition over a single unconditional operation folds onto that alternative as its own
+        //     precondition on the kernel round-trip — semantically identical; KERNEL-FINDINGS §11 supplement,
+        //     locked by ComputationCommonPreconditionFoldTest — so it survives distinctly only with ≥2 alternatives)
         s.addComputation(m -> m.computation(m.num(SHIPPING))
                 .name("ShippingFeeComp")
                 .commonPrecondition(m.num("/Order/Subtotal").gt(0))
