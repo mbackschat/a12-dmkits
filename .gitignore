@@ -28,3 +28,4 @@ bin/*
 # SME drops a workspace settings file into any folder opened as a workspace
 # (opening corpus models in the modeling tools is an intended workflow)
 corpus/**/settings.yaml
+__pycache__/
