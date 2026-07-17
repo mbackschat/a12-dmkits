@@ -4,6 +4,15 @@ Author, read, and safely edit the **rules** and **structure** of A12 Kernel docu
 
 > **Not an official A12 artifact.** A personal exploration, not affiliated with or endorsed by mgm — currently a private project, built using GPT 5.5. Shipped code binds only to the kernel's **public** OSS surface — no internal systems. (An opt-in, Java-only adapter module may read the kernel's internal AST tier under strict guardrails.)
 
+**What's in the box** — one line each; the sections below carry the detail:
+
+- **rulekit** — validation rules & computations as typed, model-bound Java code: author, read back, re-express
+- **modelkit** — the model's **structure**, the same way: fields, groups, type definitions, includes, document config
+- **dm.edit** — `EditSession`: structure + rule edits on one in-memory model, behind a single kernel gate
+- **schemakit** — JSON Schema / OpenAPI ⇄ document model, import and export
+- **the interpreter** — kernel-free runtime evaluation (validate / compute); one engine for the JVM, the native binary, and JS
+- **`dmtool`** — the CLI over all of it: self-describing, JSON in / JSON out, agent-first
+
 ---
 
 <!-- shared:dmtool-story — canonical HERE; mirrored verbatim into plugin/README.md (guarded by SharedReadmeRegionTest). Keep it link-light: NO docs/ links (the public mirror has no docs/ tree). -->
@@ -81,7 +90,7 @@ Same engine, no Java required. Every command is `dmtool -m <model> <target> <op>
 
 `dmtool` is distributed from the public release repo — **[`a12-dmtool-releases`](https://github.com/mbackschat/a12-dmtool-releases)**, which holds the **single source of install truth**. Both paths are documented there in full: the **agent plugin** (Claude Code / Codex — bundles the binary + the canonical skill, *including the post-install activation step*) and the **raw per-OS binary** (+ `SHA256SUMS`) for plain terminal use. (This source repo holds the plugin *source* under [`plugin/`](plugin/) (Claude Code) and [`plugin-codex/`](plugin-codex/) (Codex); they ship to the mirror at release.)
 
-The binary is **EUPL-1.2** (it embeds the A12 Kernel — see the mirror's `LICENSE`/`NOTICE`); Homebrew/Scoop come later. The runtime-evaluation verbs (`model eval`, `rule eval`, `model compute`) run on a **native-safe interpreter** on every target — the sole runtime eval engine — so they work in the native binary too (the JVM-only `--kernel` eval flag was retired).
+The binary is **EUPL-1.2** (it embeds the A12 Kernel — see the mirror's `LICENSE`/`NOTICE`); Homebrew/Scoop come later. The runtime-evaluation verbs (`model eval`, `rule eval`, `model compute`, `model seed`) run on a **native-safe interpreter** on every target — the sole runtime eval engine — so they work in the native binary too.
 
 ### Discover the tool itself
 
@@ -100,9 +109,14 @@ dmtool --version                      # this build + the kernel it targets (see 
 ### Start a model from scratch
 
 ```sh
-dmtool model new --id orders --locale en_US --root Order > orders.dm.json   # a new, empty, kernel-valid model
-dmtool -m orders.dm.json field add --group /Order --name Reference --kind STRING   # …then populate it
-dmtool -m orders.dm.json field modify postal.spec.json   # re-type a field in place (e.g. add a STRING pattern) — no delete-and-recreate
+# a new, empty, kernel-valid model
+dmtool model new --id orders --locale en_US --root Order > orders.dm.json
+
+# …then populate it
+dmtool -m orders.dm.json field add --group /Order --name Reference --kind STRING
+
+# re-type a field in place (e.g. add a STRING pattern) — no delete-and-recreate
+dmtool -m orders.dm.json field modify postal.spec.json
 ```
 
 `model new` is the primary model-*originating* verb (no `-m` — it makes one); every other verb edits an existing `-m` model. What it emits is kernel-checked, so the next `-m` edit binds.
@@ -144,17 +158,40 @@ The dialects, the full mapping contract, and the import↔export asymmetry are t
 ### Read & understand a model
 
 ```sh
-dmtool -m order.dm.json model info              # the header dashboard: identity, super/subtypes, includes/imports (resolved to files), counts
-dmtool -m order.dm.json model describe          # the model card: fields, kinds, enum domains, groups
-dmtool -m order.dm.json model check          # run it through the real kernel → {valid, diagnostics[]}
-dmtool -m order.dm.json field read /Order/Quantity                 # one field in full: kind, required, AND its per-kind config (min/max/unit/pattern/format) — verify a constraint, never read raw JSON
-dmtool -m order.dm.json rule read  /Order/DeliveryNotBeforeOrder    # a rule's condition, as typed JSON
-dmtool -m order.dm.json rule explain /Order/DeliveryNotBeforeOrder  # what it checks + WHEN it fires
-dmtool -m order.dm.json rule deps  /Order/DeliveryNotBeforeOrder    # its forward deps: the fields it references (+ iteration)
-dmtool -m order.dm.json rule format /Order/DeliveryNotBeforeOrder --lang DE  # the kernel's canonical text, switched EN↔DE
-dmtool -m order.dm.json where-used /Order/DeliveryDate             # the inverse: which rules/computations use a field
-dmtool -m order.dm.json model usage                                # whole-model audit: every field's referrers + the unreferenced set
-dmtool -m order.dm.json model report                               # the comprehension dashboard: identity + structure outline + the dead-field set + a GLOSSED rules/computations catalog (each in plain language, next to its stored message)
+# the header dashboard: identity, super/subtypes, includes/imports (resolved to files), counts
+dmtool -m order.dm.json model info
+
+# the model card: fields, kinds, enum domains, groups
+dmtool -m order.dm.json model describe
+
+# run it through the real kernel → {valid, diagnostics[]}
+dmtool -m order.dm.json model check
+
+# one field in full: kind, required, AND its per-kind config (min/max/unit/pattern/format)
+# — verify a constraint, never read raw JSON
+dmtool -m order.dm.json field read /Order/Quantity
+
+# a rule's condition, as typed JSON
+dmtool -m order.dm.json rule read /Order/DeliveryNotBeforeOrder
+
+# what it checks + WHEN it fires
+dmtool -m order.dm.json rule explain /Order/DeliveryNotBeforeOrder
+
+# its forward deps: the fields it references (+ iteration)
+dmtool -m order.dm.json rule deps /Order/DeliveryNotBeforeOrder
+
+# the kernel's canonical text, switched EN↔DE
+dmtool -m order.dm.json rule format /Order/DeliveryNotBeforeOrder --lang DE
+
+# the inverse: which rules/computations use a field
+dmtool -m order.dm.json where-used /Order/DeliveryDate
+
+# whole-model audit: every field's referrers + the unreferenced set
+dmtool -m order.dm.json model usage
+
+# the comprehension dashboard: identity + structure outline + the dead-field set
+# + a GLOSSED rules/computations catalog (each in plain language, next to its stored message)
+dmtool -m order.dm.json model report
 ```
 
 `model report` is the *understand-the-whole-model* companion to `model diff` below: where the others read one facet, it assembles the lot — and renders every rule/computation in **plain language** (a tool-computed gloss) next to its **stored message**, so you can see what a rule *does* against what it *claims*.
@@ -203,7 +240,7 @@ dmtool workspace roles ./models                      # the access-control lint: 
 dmtool workspace check ./models || exit 1         # fail the commit/build on any invalid model
 ```
 
-(`workspace list --validate` differs: it only flags a per-model boolean; `validate` surfaces *why* and fails the build.)
+(`workspace list --validate` differs: it only flags a per-model boolean; `workspace check` surfaces *why* and fails the build.)
 
 `workspace roles` is a second lint, on **access control** — but **advisory, never a gate**: A12 models carry a `roles` header annotation naming who may access them, a workspace declares those roles in `auth/roles.yaml`, and its users (with the roles each holds) in `auth/users.yaml`. The lint resolves the whole **RBAC triangle** and flags an **undefined role** (a model gating to a role the file doesn't declare — something even the A12 model editor permits silently), an **undefined authority** (a user holding an undeclared role), an **unreachable model** (gated to roles no user holds), plus ungated models, a missing/duplicate roles file, and orphan roles. Every finding is a **warning** (or a softer INFO) — never an error — and the verb **always exits 0**: access-control config is often a dev seed or owned by an external IdP, so the lint informs without ever blocking model work. Each finding carries a `fix` with the concrete remedy (see the [`cli-tour`](examples/cli-tour.md) walkthrough).
 
@@ -262,22 +299,35 @@ dmtool -m sub.dm.json   computation add <comp-spec.json>   # a computed field, l
 
 Diagnostics are **corrective**: each carries a stable `code`, a `where`, and a `fix` — and a built-in lint flags the classic **inverted-polarity** mistake automatically (and, on `computation add`, forbidden constructs + overlapping preconditions).
 
+Adding many rules or edits in one go? **`apply`** (below) is the bulk path — one model load, ordered ops, one terminal kernel gate, one write, atomic rollback — where `batch` merely amortizes process startup across independent calls.
+
 ### Run the rules against real data (not just static checks)
 
 ```sh
-dmtool -m order.dm.json model eval    --instance order-instance.json   # which rules actually FIRE on this document
-dmtool -m order.dm.json rule eval /Order/DeliveryNotBeforeOrder --instance order-instance.json  # one rule: fired / passed / suppressed
-dmtool -m sub.dm.json   model compute --instance sub-instance.json     # what each computed field evaluates to
-dmtool -m order.dm.json model eval    --instance order-instance.json --no-computations  # validate STORED values as-is (bare validateFull)
-dmtool -m order.dm.json model seed    --rows /Order/Items:2        # generate a valid sample instance (feeds the verbs above)
-dmtool -m pay.dm.json   model eval    --instance pay.json --predefined-types iban.json  # validate a custom field type
+# which rules actually FIRE on this document
+dmtool -m order.dm.json model eval --instance order-instance.json
+
+# one rule: fired / passed / suppressed
+dmtool -m order.dm.json rule eval /Order/DeliveryNotBeforeOrder --instance order-instance.json
+
+# what each computed field evaluates to
+dmtool -m sub.dm.json model compute --instance sub-instance.json
+
+# validate STORED values as-is (bare validateFull)
+dmtool -m order.dm.json model eval --instance order-instance.json --no-computations
+
+# generate a valid sample instance (feeds the verbs above)
+dmtool -m order.dm.json model seed --rows /Order/Items:2
+
+# validate a custom field type
+dmtool -m pay.dm.json model eval --instance pay.json --predefined-types iban.json
 ```
 
 This is the empirical check a static "is it valid?" can't give — it's how you confirm a rule's *polarity* on concrete data. `rule eval` scopes it to one rule with a three-way verdict, distinguishing a genuine **pass** from a rule the engine **suppressed** because a field it references is formally invalid. `model eval` / `rule eval` run the **form-engine flow by default** — *compute → apply → validate* — so a required-or-referenced **computed** field is filled by its computation before validation, matching the running app (the kernel keeps `validateFull` and `compute` separate, so a bare validate would false-fail a computed field); `--no-computations` opts down to the bare `validateFull` over stored values. These verbs run on a **native-safe interpreter** on every target — the sole runtime eval engine — reproducing the kernel's runtime semantics, verified rule-for-rule (the A12 kernel remains the differential oracle behind that verification).
 
 **Models that use custom constructs** still run: a `CustomFieldType` whose format is declarative is validated with `--predefined-types <file>`; for the *imperative* tail — a `CustomCondition`, or a checksum custom type — point `dmtool` at the project's own JS with `--custom-conditions-js` / `--custom-field-types-js` (run through a persistent Node worker); and anything still unhandled is **surfaced** under `data.unsupported` rather than silently passed, with `--strict-custom` turning that into a failure. Walkthrough: [`examples/cli-custom-types.md`](examples/cli-custom-types.md).
 
-> **The interpreter is kernel-exact *and* fast.** A clean-room, kernel-free evaluator (Kotlin, runs in the native image *and* the browser) whose results are checked rule-for-rule against the real A12 kernel by a differential test suite + a model-driven fuzzer. It scales **linearly** — and on the JVM it measures **competitive-to-faster than the kernel at every rule count and document size**, by a wide margin on large documents (the kernel goes super-linear where the interpreter stays flat). Method + full numbers: [`docs/INTERPRETER-PERFORMANCE.md`](docs/INTERPRETER-PERFORMANCE.md).
+> **The interpreter is kernel-exact *and* fast** — clean-room, no kernel code, verified rule-for-rule against the real kernel. The full story (library use on JVM + JS, the verification estate, the measured performance): [the interpreter section](#the-interpreter--kernel-free-runtime-evaluation) below.
 
 ### Edit, with a preview diff
 
@@ -397,12 +447,17 @@ The [`examples/`](examples/) directory has **verifiable** walkthroughs of every 
 
 | Demo | Shows |
 |---|---|
-| [`cli-tour`](examples/cli-tour.md) | discover + read (`manifest` · `operators` · `diagnostics` · `schema` · `model describe`/`usage`/`validate` · `rule read`/`explain`) |
-| [`cli-edit-loop`](examples/cli-edit-loop.md) | author/modify rules & computations, `batch`, the re-express loop |
-| [`cli-structure-edit`](examples/cli-structure-edit.md) | fields/groups/typedefs/includes/config + the safe-delete gate |
+| [`cli-tour`](examples/cli-tour.md) | read one model: `model check` / `model describe` / `model read` · `model usage` · `rule read` / `rule explain` / `rule format` / `rule check` · `field read` / `group read` / `config read` |
+| [`cli-discover`](examples/cli-discover.md) | the self-describing surface: `manifest` · `operators` · `patterns` · `diagnostics` · `schema` |
+| [`cli-review`](examples/cli-review.md) | review & comprehend: `model report` (the glossed catalog) · `model diff` (the risk-ranked semantic diff, incl. `POLARITY_INVERTED`) |
+| [`cli-workspace`](examples/cli-workspace.md) | multi-file models: `model info` · `workspace list` / `workspace graph` / `workspace roles` |
+| [`cli-edit-loop`](examples/cli-edit-loop.md) | author/modify rules & computations, `where-used`, `batch`, `;;` comments, the re-express loop |
+| [`cli-structure-edit`](examples/cli-structure-edit.md) | fields/groups/typedefs/includes/config + the safe-delete gate, the safety-gated refactors, group templates, `meta` |
 | [`cli-apply`](examples/cli-apply.md) | the atomic multi-op session + rollback + correctives + in-session refactors |
-| [`cli-runtime`](examples/cli-runtime.md) | `model eval` / `model compute` against document instances, `model seed` to generate one |
+| [`cli-runtime`](examples/cli-runtime.md) | `model eval` / `rule eval` / `model compute` against document instances, `model seed` to generate one |
+| [`cli-custom-types`](examples/cli-custom-types.md) | custom field types & conditions: `--predefined-types`, the JS escape, `data.unsupported`, `--strict-custom` |
 | [`cli-version`](examples/cli-version.md) | `--version`, `manifest.version`, the model-version policy |
+| [`cli-jsonschema`](examples/cli-jsonschema.md) | `model import-jsonschema` / `model export-jsonschema` — JSON Schema & OpenAPI, both directions |
 
 The full CLI contract: [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md).
 
@@ -470,13 +525,16 @@ Neither is "older": a path lookup is the foundation; the editor adds relative na
 
 ### Author (a quick start)
 
-The rule above is the whole pattern: pick the **scope group**, the **error field**, the **condition** (true on the violation), a **code** and per-locale **messages**, then `build()`. A **computation** (a field whose value is derived from others) reads the same way:
+The rule above is the whole pattern: pick the **scope group**, the **error field**, the **condition** (true on the violation), a **code** and per-locale **messages**, then `build()`. A **computation** (a field whose value is derived from others) reads the same way — either one unconditional `calc(...)`, or a **precondition table**: each `when(...)` guards its `calc(...)`, and a `commonPrecondition` guards them all:
 
 ```java
+NumberRef base = m.num("/Subscription/Billing/BaseFee");
 Computation comp = m.computation(m.num("/Subscription/Billing/EffectiveFee"))
     .name("EffectiveFeeComp")
-    .calc(m.num("/Subscription/Billing/BaseFee").value())     // EffectiveFee := BaseFee
-    .message(en("Effective fee equals the base fee."), de("Effektivgebühr = Basisgebühr."))
+    .commonPrecondition(base.filled())                 // guards every alternative below
+    .when(base.ge(100)).calc(base.value())             // at or above the threshold: pass the base fee through
+    .when(base.lt(100)).calc(NumberLiteral.of("0.00")) // below it: waived
+    .message(en("Effective fee follows the fee tiers."), de("Effektivgebühr folgt den Gebührenstufen."))
     .build();
 ```
 
@@ -698,6 +756,16 @@ More library idioms and the design rationale live in the [API guide](docs/API-GU
 
 ---
 
+## The interpreter — kernel-free runtime evaluation
+
+Runtime evaluation — *which rules fire on this document, what does each computed field evaluate to* — runs on a **clean-room, kernel-free interpreter** (Kotlin Multiplatform). It is the sole runtime eval engine, the one behind `model eval` / `rule eval` / `model compute` / `model seed` — and the reason those verbs work in the native binary: the interpreter needs **no codegen step at all**, where the kernel's Groovy codegen can't go native.
+
+- **Kernel-exact, by verification.** Its results are checked rule-for-rule against the real A12 kernel by a **differential test suite** plus a model-driven fuzzer, and it replays a **conformance corpus** of kernel-verified expected outcomes — captured tri-verified against the kernel's two evaluation strategies — on both JVM and JS.
+- **A standalone library, not just the CLI's engine.** One common engine, two targets — **JVM and JS** — so the same evaluator runs in your JVM service, in the GraalVM native image, and in the browser.
+- **Fast, and measured — never assumed.** It scales **linearly** (a single document stays linear to 300 000 rows, ~2.5 µs/row), and across **every measured shape it is competitive-to-far-faster than the kernel** — measured against the kernel's own generated validator compiled as Java, the Groovy-tax-free baseline: ~2–3× on the rule-count sweeps, ~5× on the combined real-world case, 25–50× on aggregates, up to ~165× on huge documents. On JS it stays linear too (~60–106 ms at 10 000 rows on Node). Method + full numbers: [`docs/INTERPRETER-PERFORMANCE.md`](docs/INTERPRETER-PERFORMANCE.md).
+
+---
+
 ## Documentation
 
 Start at the **[docs index](docs/README.md)**; the rest of the map:
@@ -705,7 +773,7 @@ Start at the **[docs index](docs/README.md)**; the rest of the map:
 | To find… | See |
 |---|---|
 | Vision, requirements, the decision log | [`docs/PROJECT-DESIGN.md`](docs/PROJECT-DESIGN.md) |
-| Per-feature implementation status | [`docs/API-FINDINGS.md`](docs/API-FINDINGS.md) |
+| The API design findings (the *why* behind the DSL) | [`docs/API-FINDINGS.md`](docs/API-FINDINGS.md) |
 | The CLI contract | [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md) |
 | Verified kernel facts | [`docs/KERNEL-FINDINGS.md`](docs/KERNEL-FINDINGS.md) · [`docs/KERNEL-INTEGRATION-NOTES.md`](docs/KERNEL-INTEGRATION-NOTES.md) |
 
