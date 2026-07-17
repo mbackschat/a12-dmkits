@@ -61,9 +61,10 @@ class DiagnosticsVerbTest {
         // P-mini-1 (probe-observed): an agent that meets a structural kernel code — one no operator
         // documents, so `operators`/`explain` can't help — naturally tries `diagnostics <code>`. It must
         // RESOLVE (meaning + fix), not dead-end. Covers the placement + iteration-scope codes, and the
-        // shared MVK_NO_WILDCARD (F06-2: it must give the generic flatten/--group guidance here too).
+        // shared MVK_NO_WILDCARD (F06-2: it must give the generic flatten/--group guidance here too), and the
+        // cross-context MVK_NO_GROUPS_ALLOWED (Set CA: aggregate/Having over a group wildcard, not FieldFilled).
         for (String code : java.util.List.of("MVK_ERROR_FIELD_NOT_IN_RULEGROUP", "MVK_NEG_CONDITION_IN_ITERATION",
-                "MVK_NO_WILDCARD", "MVK_UNEXPECTED_TOKEN")) {
+                "MVK_NO_WILDCARD", "MVK_UNEXPECTED_TOKEN", "MVK_NO_GROUPS_ALLOWED")) {
             var res = CliTestSupport.run("diagnostics", code);
             assertEquals(0, res.code(), () -> code + ": " + res.err());
             JsonNode j = M.readTree(res.out());
