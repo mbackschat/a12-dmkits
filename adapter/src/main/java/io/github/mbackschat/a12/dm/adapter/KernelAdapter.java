@@ -114,6 +114,9 @@ public final class KernelAdapter {
     private final ElementContainer elements;
     private final BoundModel model;
     private ICalculationService calc;   // lazily built (from the MVK service, which is its config) — only computations need it
+    private long referenceParses;       // observability seam: count of kernel condition-parses (getDirectlyReferencedEntities)
+    private Map<String, IRule> ruleIndex;                    // lazily built name→rule index (kills the per-lookup O(R) scan)
+    private Map<String, ICalculationRule> calcIndex;         // lazily built name→computation index (the ICalculationRule peer)
 
     private KernelAdapter(IMVK_Service mvk, BoundModel model) {
         this.mvk = mvk;
@@ -175,6 +178,7 @@ public final class KernelAdapter {
     /** The kernel's directly-referenced entities for any rule element, as full-name paths (null-tolerant). */
     private Set<String> referencedEntities(IRule rule) {
         Set<String> paths = new TreeSet<>();
+        referenceParses++;   // one kernel condition-parse — the count the single-pass usage-inverse contract locks
         Set<IEntity> refs = mvk.getDirectlyReferencedEntities(rule, SILENT);
         if (refs != null) {                                  // ParserService returns null on a parse failure
             for (IEntity entity : refs) {
@@ -182,6 +186,17 @@ public final class KernelAdapter {
             }
         }
         return paths;
+    }
+
+    /**
+     * Observability seam (Set RP): the running count of kernel condition-parses
+     * ({@code getDirectlyReferencedEntities}) — the expensive per-rule/per-computation reference read. Lets a
+     * test <b>deterministically</b> lock the single-pass {@code O(R+C)} contract of {@link #referrersByEntity}
+     * (each rule and computation parsed at most once per whole-model audit) instead of relying on wall-clock
+     * timing — the guard against re-introducing the {@code O(F·(R+C))} per-field recomputation.
+     */
+    public long referenceParseCount() {
+        return referenceParses;
     }
 
     /**
@@ -221,6 +236,36 @@ public final class KernelAdapter {
             }
         }
         return comps;
+    }
+
+    /**
+     * The whole-model <b>reference inverse</b>, built in a SINGLE pass: every field/group full path → the full
+     * names of the validation rules and computations that <em>directly</em> reference it (the per-entity union
+     * of {@link #whereUsed} and {@link #whereUsedInComputations}). This is the {@code O(R+C)} foundation a
+     * model-wide audit needs — a report's dead-field set and {@code model usage} would otherwise call the
+     * per-field {@code whereUsed}/{@code whereUsedInComputations} in a loop and re-parse every rule and
+     * computation once <em>per field</em> ({@code O(F·(R+C))} kernel parses, the shipped {@code model report}
+     * non-termination on huge models). Each rule and computation is parsed exactly once here.
+     *
+     * <p>An entity with no referrer is absent from the map, so a field is unreferenced iff it is not a key.
+     * Referrer sets are insertion-ordered — validation rules first (rule order), then computations
+     * (computation order) — matching a per-field {@code whereUsed()}+{@code whereUsedInComputations()} union,
+     * so a consumer that re-sorts (both current callers use a {@code TreeSet}) sees byte-identical output.
+     */
+    public Map<String, java.util.Set<String>> referrersByEntity() {
+        Map<String, java.util.Set<String>> byEntity = new java.util.LinkedHashMap<>();
+        for (String ruleName : ruleFullNames()) {            // validation rules only (computations excluded)
+            for (String entity : referencedFields(ruleName)) {
+                byEntity.computeIfAbsent(entity, k -> new java.util.LinkedHashSet<>()).add(ruleName);
+            }
+        }
+        for (ICalculationRule cr : elements.getAllCalculations()) {
+            String computation = cr.getRule().getFullName();
+            for (String entity : referencedEntities(cr.getRule())) {
+                byEntity.computeIfAbsent(entity, k -> new java.util.LinkedHashSet<>()).add(computation);
+            }
+        }
+        return byEntity;
     }
 
     /**
@@ -484,14 +529,27 @@ public final class KernelAdapter {
         return readOne(calculationRule(computationFullName));
     }
 
-    /** Look up a computation's {@code ICalculationRule} by full name (read-only — the {@link #rule} peer). */
+    /** Look up a computation's {@code ICalculationRule} by full name (read-only — the {@link #rule} peer).
+     *  Served from the {@link #calcIndex} so repeated computation reads stay {@code O(C)}, not {@code O(C²)}. */
     private ICalculationRule calculationRule(String computationFullName) {
-        for (ICalculationRule cr : elements.getAllCalculations()) {
-            if (computationFullName.equals(cr.getRule().getFullName())) {
-                return cr;
-            }
+        ICalculationRule cr = calcIndex().get(computationFullName);
+        if (cr == null) {
+            throw PrecheckException.notFound(RkCode.NO_SUCH_COMPUTATION, computationFullName);
         }
-        throw PrecheckException.notFound(RkCode.NO_SUCH_COMPUTATION, computationFullName);
+        return cr;
+    }
+
+    /** The name→computation index over every {@code ICalculationRule} in the model, built once — the
+     *  {@link #ruleIndex} peer. First occurrence wins, matching the old linear scan. */
+    private Map<String, ICalculationRule> calcIndex() {
+        if (calcIndex == null) {
+            Map<String, ICalculationRule> index = new java.util.LinkedHashMap<>();
+            for (ICalculationRule cr : elements.getAllCalculations()) {
+                index.putIfAbsent(cr.getRule().getFullName(), cr);
+            }
+            calcIndex = index;
+        }
+        return calcIndex;
     }
 
     /**
@@ -924,11 +982,27 @@ public final class KernelAdapter {
         return mvk.parseBedingungNoExpand(rule(ruleFullName), SILENT);
     }
 
-    /** Look up a tool-API {@code IRule} among the model's existing rules by full name (read-only — N8). */
+    /** Look up a tool-API {@code IRule} among the model's existing rules by full name (read-only — N8). Served
+     *  from the {@link #ruleIndex} so a report's per-rule catalog reads stay {@code O(R)}, not {@code O(R²)}. */
     private IRule rule(String fullName) {
-        return elements.getAllRules().stream()
-                .filter(r -> fullName.equals(r.getFullName()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("no rule in model at: " + fullName));
+        IRule r = ruleIndex().get(fullName);
+        if (r == null) {
+            throw new IllegalArgumentException("no rule in model at: " + fullName);
+        }
+        return r;
+    }
+
+    /** The name→rule index over every rule in the model, built once — replaces the per-lookup linear scan
+     *  over {@code getAllRules()} that made a report's rule catalog + usage {@code O(R²)}. First occurrence
+     *  wins, matching the old {@code findFirst()} scan. */
+    private Map<String, IRule> ruleIndex() {
+        if (ruleIndex == null) {
+            Map<String, IRule> index = new java.util.LinkedHashMap<>();
+            for (IRule r : elements.getAllRules()) {
+                index.putIfAbsent(r.getFullName(), r);
+            }
+            ruleIndex = index;
+        }
+        return ruleIndex;
     }
 }

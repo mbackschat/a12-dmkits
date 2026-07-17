@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -55,12 +56,14 @@ final class ModelUsageCommand extends BaseCommand {
         try {
             KernelAdapter adapter = KernelAdapter.ofJson(json, workspace.resolverFor(model));
             List<String> fields = ModelDocument.read(json).fieldPaths();
+            // the whole-model reference inverse, built ONCE (O(R+C)) — not the per-field where-used
+            // recomputation that made this O(F·(R+C)) and stalled on huge models (Set RP)
+            Map<String, Set<String>> byEntity = adapter.referrersByEntity();
             ObjectNode data = MAPPER.createObjectNode();
             ObjectNode usage = data.putObject("usage");
             ArrayNode unreferenced = data.putArray("unreferenced");
             for (String field : fields) {
-                Set<String> referrers = new TreeSet<>(adapter.whereUsed(field));
-                referrers.addAll(adapter.whereUsedInComputations(field));
+                Set<String> referrers = new TreeSet<>(byEntity.getOrDefault(field, Set.of()));
                 ArrayNode arr = usage.putArray(field);
                 referrers.forEach(arr::add);
                 if (referrers.isEmpty()) {

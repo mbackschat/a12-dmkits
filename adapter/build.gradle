@@ -271,7 +271,8 @@ tasks.named('test') {
      'atom.kernel', 'atom.interp', 'atom.model', 'atom.seed', 'atom.dump', 'atom.valuediff',
      'vf.model', 'vf.seed', 'vf.side', 'vf.sig', 'vf.kernelmm', 'vf.dump',
      'replay.model', 'replay.op', 'corpus.hostile', 'capture.golden.fix',
-     'perf.profile', 'perf.n', 'perf.edge', 'perf.edge.n', 'perf.edge.counts', 'perf.scaling', 'perf.scaling.n'].each { k ->
+     'perf.profile', 'perf.n', 'perf.edge', 'perf.edge.n', 'perf.edge.counts', 'perf.scaling', 'perf.scaling.n',
+     'rp.perf'].each { k ->
         if (System.getProperty(k) != null) systemProperty k, System.getProperty(k)
     }
     // Opt-in JFR sampling: -Dperf.jfr=<file.jfr> records the (profile-config) flight recorder on the test JVM

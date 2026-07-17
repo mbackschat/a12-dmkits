@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.adapter.review;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
@@ -21,7 +23,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
  * <ul>
  *   <li><b>identity</b> (J1, from {@link ModelDocument});</li>
  *   <li>the <b>structure</b> outline (J2, via {@link ModelContext#describe()} → {@link ModelCard});</li>
- *   <li>the field→referrers <b>usage</b> map + the unreferenced set (J4, via {@link KernelAdapter#whereUsed});</li>
+ *   <li>the unreferenced (dead-field) set (J4, via the whole-model reference inverse
+ *       {@link KernelAdapter#referrersByEntity} — built once, {@code O(R+C+F)}, not the per-field
+ *       {@code whereUsed} recomputation that made a report {@code O(F·(R+C))} and stall on huge models);</li>
  *   <li>the <b>glossed rules/computations catalog</b> (J3, the centerpiece) — every rule/computation in plain
  *       language: the tool-computed {@code gloss} ({@link ModelContext#explain}) + the fixed {@code polarity}
  *       (a rule fires on the VIOLATION) + the verbatim stored {@code messages} (the modeller's own text), so a
@@ -77,22 +81,32 @@ public record ModelReport(Identity identity, ModelCard structure, Usage usage,
     /** The shared assembly over an already-bound model — the public overloads differ only in how the
      *  {@link BoundModel} was resolved. */
     private static ModelReport of(String modelJson, BoundModel model) {
+        return assemble(modelJson, model, KernelAdapter.of(model));
+    }
+
+    /**
+     * The assembly over a caller-provided {@link KernelAdapter} — a package-private seam so the Set RP perf
+     * lock can build the adapter itself and read its {@link KernelAdapter#referenceParseCount()} after
+     * assembly, pinning that one report parses each rule/computation at most once (never once per field).
+     */
+    static ModelReport assemble(String modelJson, BoundModel model, KernelAdapter adapter) {
         ModelDocument doc = ModelDocument.read(modelJson);
         Identity identity = new Identity(doc.id(), doc.modelType(), doc.modelVersion(), doc.locales());
         ModelContext context = new ModelContext(model);
         ModelCard structure = context.describe();
-        KernelAdapter adapter = KernelAdapter.of(model);
         return new ModelReport(identity, structure, usage(adapter, structure),
                 ruleCatalog(adapter, context), computationCatalog(adapter, context));
     }
 
-    /** The dead-field set — reuses the same {@code getDirectlyReferencedEntities} primitive as {@code where-used}. */
+    /** The dead-field set — served from the whole-model reference inverse ({@link KernelAdapter#referrersByEntity},
+     *  built once), so it is {@code O(R+C+F)} instead of re-parsing every rule/computation per field. A field is
+     *  unreferenced iff no rule or computation references it, i.e. iff it is not a key in the inverse. */
     private static Usage usage(KernelAdapter adapter, ModelCard card) {
+        Map<String, Set<String>> referrers = adapter.referrersByEntity();
         List<String> unreferenced = new ArrayList<>();
         for (ModelCard.Field field : card.fields()) {
-            String path = field.path();
-            if (adapter.whereUsed(path).isEmpty() && adapter.whereUsedInComputations(path).isEmpty()) {
-                unreferenced.add(path);
+            if (!referrers.containsKey(field.path())) {
+                unreferenced.add(field.path());
             }
         }
         return new Usage(List.copyOf(unreferenced));

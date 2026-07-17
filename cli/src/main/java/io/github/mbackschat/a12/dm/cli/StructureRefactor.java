@@ -206,10 +206,12 @@ public final class StructureRefactor {
                 subtree.add(p);
             }
         });
+        // the whole-model reference inverse, built ONCE (O(R+C)) — not a per-subtree-path where-used
+        // recomputation that re-parses every rule/computation for each path (Set RP root fix)
+        Map<String, Set<String>> byEntity = adapter.referrersByEntity();
         Set<String> out = new TreeSet<>();
         for (String path : subtree) {
-            out.addAll(adapter.whereUsed(path));
-            out.addAll(adapter.whereUsedInComputations(path));
+            out.addAll(byEntity.getOrDefault(path, Set.of()));
         }
         return out;
     }
