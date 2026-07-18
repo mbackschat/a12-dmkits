@@ -34,175 +34,6 @@ tasks.withType(JavaCompile).configureEach {
 
 def kernelVersion = '30.8.1'
 
-// The internal CAPTURE source set — the portable evidence-capture boundary (CONFORMANCE-CORPUS-SPEC §15,
-// the adopted A12-DMKITS-CAPTURE-PROPOSAL). Adapter-internal developer tooling, Gradle-invoked: NOT a
-// published component, NOT a dmtool verb, NOT on the interpreter's dependency surface — :cli/:interpreter
-// never see it (only :adapter's own tests consume its output). It inherits main's dependency set (the
-// kernel routes + the kits + the interpreter) because the two kernel route mappers live here; the neutral
-// DTO/schema packages inside it are held kernel-free by `verifyCapturePurity` below.
-sourceSets {
-    capture {
-        compileClasspath += sourceSets.main.output
-        runtimeClasspath += sourceSets.main.output
-    }
-    // The consumer-facing authoring example (`capture-examples/scenario-example/` — a complete, runnable
-    // scenario root) doubles as the tests' canonical valid fixture: exposing the directory as a test
-    // resource root keeps ONE source (no drift between the published example and the executed fixture).
-    test {
-        resources.srcDir 'capture-examples'
-    }
-}
-configurations {
-    captureImplementation.extendsFrom implementation
-    captureRuntimeOnly.extendsFrom runtimeOnly
-}
-
-// Separation by linting (the verifyInterpreterPurity / verifyKitPurity pattern): kernel types terminate
-// inside the two kernel route mappers (`capture.runner.kernel`), interpreter types inside the interpreter
-// runner (`capture.runner.interpreter`), and the NEUTRAL zone (dto/schema/json/packet/…) references
-// neither engine. Comments AND string literals are stripped first, so only a real compile-time type
-// reference fails — the LeakGuard legitimately NAMES the forbidden prefix as scan vocabulary in a string.
-def verifyCapturePurity = tasks.register('verifyCapturePurity') {
-    group = 'verification'
-    description = 'Fail when a kernel/interpreter type crosses the capture DTO boundary (CONFORMANCE-CORPUS-SPEC §15).'
-    def srcRoot = file('src/capture')
-    inputs.dir(srcRoot)
-    doLast {
-        def kernelPrefixes = ['com.mgmtp.', 'groovy.']
-        def interpreterPrefix = 'io.github.mbackschat.a12.dm.interpreter.'
-        def violations = []
-        def scanned = 0
-        srcRoot.eachFileRecurse(groovy.io.FileType.FILES) { f ->
-            if (!f.name.endsWith('.java')) {
-                return
-            }
-            scanned++
-            def rel = srcRoot.toPath().relativize(f.toPath()).toString()
-            def forbidden
-            if (rel.contains('capture/runner/kernel/')) {
-                forbidden = [interpreterPrefix]                     // kernel allowed; the interpreter may not leak in
-            } else if (rel.contains('capture/runner/interpreter/')) {
-                forbidden = kernelPrefixes                          // interpreter allowed; the kernel may not leak in
-            } else {
-                forbidden = kernelPrefixes + [interpreterPrefix]    // the neutral zone: neither engine
-            }
-            def code = f.text.replaceAll('(?s)/\\*.*?\\*/', '')
-                    .replaceAll('//[^\\n]*', '')
-                    .replaceAll('"(?:\\\\.|[^"\\\\])*"', '""')
-            forbidden.each { prefix ->
-                if (code.contains(prefix)) {
-                    violations << "${rel}: references forbidden prefix '${prefix}'"
-                }
-            }
-        }
-        if (violations) {
-            throw new GradleException("capture DTO-boundary purity violated — kernel/interpreter types must " +
-                    "terminate in their route mapper packages (CONFORMANCE-CORPUS-SPEC §15):\n  " +
-                    violations.join('\n  '))
-        }
-        // The #17 silent-empty-scan defense: a moved/renamed source root must fail LOUDLY, never pass vacuously.
-        if (scanned == 0) {
-            throw new GradleException("verifyCapturePurity scanned ZERO .java files under ${srcRoot} — " +
-                    "the source root moved or emptied; a vacuous pass is a false green (the #17 guardInputs class).")
-        }
-    }
-}
-tasks.named('check') { dependsOn verifyCapturePurity }
-
-// The capture COMMAND surface (CONFORMANCE-CORPUS-SPEC §15d): Gradle is only the launcher — every task
-// drives the one real entry (cli.CaptureTool), the same entry the self-tests and the mutation suite call.
-// Options arrive as -Pcapture.* properties (documented in each task's description + corpus/README.md).
-def captureToolTask = { String taskName, String taskDescription, Closure<List<String>> buildArgs ->
-    tasks.register(taskName, JavaExec) {
-        group = 'capture'
-        description = taskDescription
-        classpath = sourceSets.capture.runtimeClasspath
-        mainClass = 'io.github.mbackschat.a12.dm.adapter.capture.cli.CaptureTool'
-        systemProperty 'capture.repoRoot', rootProject.projectDir.absolutePath
-        doFirst { args = buildArgs() }
-    }
-}
-def requireProperty = { String name ->
-    def value = project.findProperty(name)
-    if (value == null) {
-        throw new GradleException("missing -P${name} (see the task description)")
-    }
-    value.toString()
-}
-captureToolTask('captureCapabilities',
-        'Print the machine-readable capture capability output (a12-dmkits-capture-capabilities-v1).',
-        { -> ['capabilities'] })
-captureToolTask('captureValidateScenarios',
-        'Structurally validate a capture-scenario-set-v1 file (no engine, nothing written): -Pcapture.scenarios=<file>.',
-        { -> ['validate-scenarios', '--scenarios', requireProperty('capture.scenarios')] })
-captureToolTask('capture',
-        'Capture an evidence packet: -Pcapture.scenarios=<file> -Pcapture.output=<new-or-empty-dir> [-Pcapture.development].',
-        { ->
-            def args = ['capture']
-            if (project.hasProperty('capture.development')) {
-                args << '--development'
-            }
-            args + ['--scenarios', requireProperty('capture.scenarios'),
-                    '--output', requireProperty('capture.output')]
-        })
-captureToolTask('captureVerify',
-        'Apply a named qualification policy to an immutable packet (writes a digest-bound report dir): ' +
-                '-Pcapture.packet=<dir> -Pcapture.packetReceiptSha256=<hex> -Pcapture.policy=<id> -Pcapture.output=<new-dir>.',
-        { ->
-            ['verify', '--packet', requireProperty('capture.packet'),
-             '--packet-receipt-sha256', requireProperty('capture.packetReceiptSha256'),
-             '--policy', requireProperty('capture.policy'),
-             '--output', requireProperty('capture.output')]
-        })
-captureToolTask('captureDiffPackets',
-        'Structural packet diff (input/provenance vs per-runner observation drift): ' +
-                '-Pcapture.before=<dir> -Pcapture.after=<dir> -Pcapture.projection=<id> -Pcapture.output=<new-dir>.',
-        { ->
-            ['diff-packets', '--before', requireProperty('capture.before'),
-             '--after', requireProperty('capture.after'),
-             '--projection', requireProperty('capture.projection'),
-             '--output', requireProperty('capture.output')]
-        })
-captureToolTask('captureDiffReports',
-        'Structural report diff (policy/profile/verifier vs qualification-result drift): ' +
-                '-Pcapture.before=<dir> -Pcapture.after=<dir> -Pcapture.output=<new-dir>.',
-        { ->
-            ['diff-reports', '--before', requireProperty('capture.before'),
-             '--after', requireProperty('capture.after'),
-             '--output', requireProperty('capture.output')]
-        })
-
-// The compact semantic-observation exporter (CONFORMANCE-CORPUS-SPEC §15h) — post-capture, one family,
-// additive beside the frozen V1 surface: a SEPARATE entry (never CaptureTool, never in capabilities).
-// Its path properties are REPO-ROOT-resolved (absolute paths recommended and stay as given).
-tasks.register('exportSemanticObservations', JavaExec) {
-    group = 'capture'
-    description = 'Export the compact semantic-observation bundle from the retained qualified ' +
-            'string-direct-cascade-v1 evidence unit: -PsemanticEvidence.packet=<dir> ' +
-            '-PsemanticEvidence.packetReceiptSha256=<hex> -PsemanticEvidence.qualification=<dir> ' +
-            '-PsemanticEvidence.qualificationReceiptSha256=<hex> -PsemanticEvidence.output=<new-or-empty-dir>.'
-    classpath = sourceSets.capture.runtimeClasspath
-    mainClass = 'io.github.mbackschat.a12.dm.adapter.capture.export.CompactObservationTool'
-    systemProperty 'capture.repoRoot', rootProject.projectDir.absolutePath
-    doFirst {
-        args = ['--packet', rootProject.file(requireProperty('semanticEvidence.packet')).absolutePath,
-                '--packet-receipt-sha256', requireProperty('semanticEvidence.packetReceiptSha256'),
-                '--qualification', rootProject.file(requireProperty('semanticEvidence.qualification')).absolutePath,
-                '--qualification-receipt-sha256', requireProperty('semanticEvidence.qualificationReceiptSha256'),
-                '--output', rootProject.file(requireProperty('semanticEvidence.output')).absolutePath]
-    }
-}
-
-dependencies {
-    // The repo-standard JSON parser (already implementation-scoped in core/rulekit/modelkit/cli at this
-    // exact pin) — the capture decoder parses scenario/packet JSON with it; the canonical packet WRITER is
-    // the capture code's own (byte-level determinism is a schema contract, not a library default). No new
-    // artifact enters the repository and no published component changes.
-    captureImplementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
-    // The capture self-tests live in the regular test source set and drive the real command entry.
-    testImplementation sourceSets.capture.output
-}
-
 dependencies {
     // The kernel-free kits — BoundModel/Rule/Dsl + ReferenceResolvers + the SPI ports this backend implements.
     // Stage-4 module cut: the single root project split into per-kit modules, so `api project(':')` becomes an
@@ -256,6 +87,11 @@ dependencies {
     // bare kernel ships none → degenerate no-op). The impl 30.8.1 depends on this api 28.2.0 (ABI-consistent).
     testImplementation "com.mgmtp.a12.kernel:kernel-core-customfieldtype-api:28.2.0"
 
+    // The corpus/laws test tooling (CorpusModelPreparer / ModelShrinker / ParserCorpusSweep) parses and
+    // rewrites DM-JSON model trees with Jackson at the repo-standard pin (already implementation-scoped in
+    // core/rulekit/modelkit/cli) — a live test dependency, not a published one.
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -291,7 +127,7 @@ tasks.named('test') {
      'ig44.vcv', 'ig47.kernel', 'ig47.interp', 'ig47.model', 'ig47.seed', 'ig47.dump',
      'atom.kernel', 'atom.interp', 'atom.model', 'atom.seed', 'atom.dump', 'atom.valuediff',
      'vf.model', 'vf.seed', 'vf.side', 'vf.sig', 'vf.kernelmm', 'vf.dump',
-     'replay.model', 'replay.op', 'corpus.hostile', 'capture.golden.fix',
+     'replay.model', 'replay.op', 'corpus.hostile',
      'perf.profile', 'perf.n', 'perf.edge', 'perf.edge.n', 'perf.edge.counts', 'perf.scaling', 'perf.scaling.n',
      'rp.perf'].each { k ->
         if (System.getProperty(k) != null) systemProperty k, System.getProperty(k)

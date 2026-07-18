@@ -1261,7 +1261,7 @@ m.fields()
 String edited = s.validate().toJson();        // kernel gate, once
 ```
 
-**Computations are enumerable too (kernel-free).** `ModelIndex.computations()` lists every authored computation with its declared `computedFieldRelPath` resolved to the **absolute target field path** (the rel base is the computation *element*, so a same-group target reads `"../Field"`). This is what a consumer that must reason about computation targets without the kernel uses — e.g. the capture boundary's v1 gate rejecting a repeatable-scoped target:
+**Computations are enumerable too (kernel-free).** `ModelIndex.computations()` lists every authored computation with its declared `computedFieldRelPath` resolved to the **absolute target field path** (the rel base is the computation *element*, so a same-group target reads `"../Field"`). This is what a consumer that must reason about computation targets without the kernel uses — e.g. to reject a computation whose target sits in a repeatable scope:
 
 <!-- snippet: model-computations -->
 ```java
