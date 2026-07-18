@@ -10,6 +10,8 @@ import io.github.mbackschat.a12.dm.interpreter.gen.ValueStrategy
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
+import io.github.mbackschat.a12.dm.modelkit.DateTimeFieldBuilder
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder
@@ -45,11 +47,12 @@ private typealias RowsFn = (group: String, parentReps: List<Int>, rnd: Random) -
  * Index fields (LineKey/SubKey) are auto-required; the value strategy fills them, so no spurious
  * `mandatoryField` pollutes the benchmark.
  *
- * The kernel model JSON declares `modelConfig.timeZone: Europe/Berlin` (mirroring real workspace models) but
- * the interpreter [ModelDef]s here deliberately omit it: the catalog carries **no DATE_TIME field**, so the
- * zone axis is inert (dates/numbers/strings are zone-free). If a datetime scenario is ever added, thread
- * `timeZone = ModelTimeZone.EUROPE_BERLIN` into its ModelDef — a mismatch is not silent (the differential
- * fuzz fails loud on any straddling generated value; the DST family: `laws.DstTimeZoneDiffTest`).
+ * MOST scenarios carry **no DATE_TIME field**, so the zone axis is inert for them (dates/numbers/strings are
+ * zone-free) and their interpreter [ModelDef]s omit `timeZone`. The **[berlinDateTime]/[utcDateTimeControl]**
+ * pair (IG80) is the exception: it declares DATE_TIME fields and threads `timeZone` into its ModelDef, so the
+ * `berlinOffsetSeconds` civil-calendar path (IF128/IF131) is exercised at scale. When adding another datetime
+ * scenario, thread `timeZone = ModelTimeZone.EUROPE_BERLIN` into its ModelDef — a mismatch is not silent (the
+ * differential fails loud on any straddling generated value; the DST family: `laws.DstTimeZoneDiffTest`).
  */
 object PerfCatalog {
 
@@ -739,6 +742,75 @@ object PerfCatalog {
             gen.populate(sink, rowsOf = { g, _, _ -> when (g) { FX -> n; FB -> FRAMED_KEYS; FXA -> 1; else -> 0 } }, value = values)
         }
     }
+
+    // ---- Europe/Berlin DATE_TIME (IG80): exercises the `berlinOffsetSeconds` hot path at scale. Every DATE_TIME
+    //      conversion under a non-UTC model runs the civil-calendar offset math (IF128/IF131); a per-row
+    //      `DifferenceInHours` rule over a large repetition list makes that cost measurable. The values are
+    //      mid-June (constant CEST — NOT DST-straddling), so Berlin and UTC agree on the DIFFERENCE and
+    //      interp == kernel holds bit-for-bit, while the offset path still runs per conversion (the cost under test).
+    private const val DT_RUNS = "/Sched/Runs"
+    private const val DT_KEY = "$DT_RUNS/RunKey"
+    private const val DT_SA = "$DT_RUNS/StartedAt"
+    private const val DT_CA = "$DT_RUNS/EndedAt"
+    private const val DT_FMT = "yyyy-MM-dd'T'HH:mm:ss"
+
+    /** DocumentModelDraft defaults `modelConfig.timeZone` to `Europe/Berlin`; the UTC control swaps it. */
+    private val dtBerlinJson: String by lazy {
+        DocumentModelDraft.named("sched").locale("en_US")
+            .rootGroup("Sched", Consumer { root ->
+                root.group("Runs", Consumer { g ->
+                    g.repeatable(DECLARED_MAX).indexField("RunKey")
+                    g.field("RunKey", FieldKind.STRING)
+                    g.dateTimeField("StartedAt", Consumer<DateTimeFieldBuilder> { })
+                    g.dateTimeField("EndedAt", Consumer<DateTimeFieldBuilder> { })
+                })
+            }).build().toJson()
+    }
+    private val dtUtcJson: String by lazy { dtBerlinJson.replace("\"Europe/Berlin\"", "\"UTC\"") }
+
+    /** Non-DST-straddling Berlin datetimes: StartedAt in mid-June (constant CEST), EndedAt = +3 h same day, so
+     *  `DifferenceInHours(StartedAt, EndedAt)` = 3 under BOTH zones (interp == kernel) while the offset math runs. */
+    private fun dateTimeValues(variant: Int): ValueStrategy = ValueStrategy { field, reps, _ ->
+        val row = reps[1]
+        val day = 1 + (row + variant) % 28
+        val hour = (row + variant) % 18
+        when (field.path) {
+            DT_KEY -> "K" + reps.joinToString("_")
+            DT_SA -> "2024-06-%02dT%02d:00:00".format(day, hour)
+            DT_CA -> "2024-06-%02dT%02d:00:00".format(day, hour + 3)
+            else -> "0"
+        }
+    }
+
+    private fun dateTimeScenario(name: String, json: String, zone: ModelTimeZone): PerfScenario {
+        val g = EditSession.read(json).group(DT_RUNS)
+        val sa = g.dateTime("StartedAt")
+        val ca = g.dateTime("EndedAt")
+        val rule = g.errorRule("DTH", sa.field(), sa.filled().and(Dsl.differenceInHours(sa, ca).gt(0)))
+        val kernelModel = TypedRules.inject(json, rule)
+        val fields = listOf(
+            FieldDef(DT_KEY, Kind.STRING),
+            FieldDef(DT_SA, Kind.DATE_TIME, format = DT_FMT),
+            FieldDef(DT_CA, Kind.DATE_TIME, format = DT_FMT),
+        )
+        val interpModel = ModelDef(
+            fields, listOf(TypedRules.def(rule)),
+            repeatableGroups = setOf(DT_RUNS), declaredReps = mapOf(DT_RUNS to DECLARED_MAX),
+            indexFields = setOf(DT_KEY), timeZone = zone,
+        )
+        val gen = SeedGenerator(interpModel)
+        return PerfScenario(name, kernelModel, interpModel) { sink, n, variant ->
+            gen.populate(sink, rowsOf = { grp, _, _ -> if (grp == DT_RUNS) n else 0 }, value = dateTimeValues(variant))
+        }
+    }
+
+    /** **DT Berlin (IG80)** — a per-row `DifferenceInHours` over `Europe/Berlin` DATE_TIME fields: the datetime
+     *  instant math (`berlinOffsetSeconds` civil-calendar path, IF128/IF131) run once per conversion, at scale. */
+    fun berlinDateTime(): PerfScenario = dateTimeScenario("DT Berlin", dtBerlinJson, ModelTimeZone.EUROPE_BERLIN)
+
+    /** The **UTC control** for [berlinDateTime]: identical shape with the zone axis inert, so the Berlin/UTC delta
+     *  isolates the DST offset cost. */
+    fun utcDateTimeControl(): PerfScenario = dateTimeScenario("DT UTC control", dtUtcJson, ModelTimeZone.UTC)
 
     /** Every catalog scenario, in order — for the gate to sweep. */
     fun all(): List<PerfScenario> = listOf(b1(), b2(), b3(), b4(), b5(), b6())

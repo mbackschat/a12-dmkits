@@ -124,4 +124,28 @@ class PerfBenchTest {
         if (ratio != null) assertTrue(ratio < RATIO_CEILING,
             "${row.scenario}: parallel interp/kernel ratio $ratio exceeds $RATIO_CEILING at N=${row.n}")
     }
+
+    /**
+     * **Europe/Berlin DATE_TIME at scale (IG80)** — a per-row `DifferenceInHours` over `Europe/Berlin` datetime
+     * fields, plus the UTC control. Asserts the datetime arithmetic agrees with the kernel (interp == kernel — the
+     * mid-June values are non-straddling, so Berlin and UTC agree on the difference, while the `berlinOffsetSeconds`
+     * civil-calendar path still runs per conversion) and records the interp/kernel ratio; the printed Berlin-vs-UTC
+     * delta isolates the DST offset cost. Closes the datetime hole in the perf coverage and pins the IF128
+     * optimization's win (the growth guard is [PerfGateTest.berlinDateTimeStaysSubQuadratic]).
+     */
+    @Test
+    fun berlinDateTimeScalesLikeKernel() {
+        val berlin = PerfHarness.runScenario(PerfCatalog.berlinDateTime(), n = 3_000, withJava = false)
+        val utc = PerfHarness.runScenario(PerfCatalog.utcDateTimeControl(), n = 3_000, withJava = false)
+        println(PerfHarness.format(berlin, CAVEAT))
+        println(PerfHarness.format(utc, CAVEAT))
+        println("[perf] Berlin/UTC offset overhead: %.2f×".format(berlin.interp.medianMs / utc.interp.medianMs))
+        for (row in listOf(berlin, utc)) {
+            assertTrue(row.interp.medianMs < ABS_CEILING_MS,
+                "${row.scenario}: interpreter ${row.interp.medianMs}ms exceeds ${ABS_CEILING_MS}ms at N=${row.n}")
+            val ratio = row.ratioGroovy
+            if (ratio != null) assertTrue(ratio < RATIO_CEILING,
+                "${row.scenario}: datetime interp/kernel ratio $ratio exceeds $RATIO_CEILING at N=${row.n}")
+        }
+    }
 }

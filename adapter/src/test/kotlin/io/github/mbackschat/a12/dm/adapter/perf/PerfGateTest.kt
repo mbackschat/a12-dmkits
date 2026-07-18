@@ -336,4 +336,30 @@ class PerfGateTest {
         assertTrue(best < SUB_QUADRATIC_MAX,
             "complex real-world scaling looks super-linear: 4× claims took ${best}× the time (an interaction O(N²)?)")
     }
+
+    /**
+     * Guards the **Europe/Berlin DATE_TIME instant path** (IG80) against a per-conversion regression: every
+     * DATE_TIME parse under a non-UTC model runs the `berlinOffsetSeconds` civil-calendar offset (IF128/IF131),
+     * and a per-row `DifferenceInHours` rule runs it once per conversion per row — so it must stay LINEAR in rows.
+     * Time the interpreter (only) at N and 4N Berlin datetime rows; linear ≈ 4×, a per-conversion blowup ≈ 16×.
+     * This is the committed gate that keeps the IF128 offset optimization from silently regressing (its speedup
+     * was previously probe-only — the datetime hole IG80 named); the against-kernel ratio is
+     * [PerfBenchTest.berlinDateTimeScalesLikeKernel].
+     */
+    @Test
+    fun berlinDateTimeStaysSubQuadratic() {
+        val dt = PerfCatalog.berlinDateTime()
+        var best = Double.MAX_VALUE
+        var bSmall = 0.0; var bLarge = 0.0
+        repeat(GROWTH_REPEATS) {
+            val small = PerfHarness.timeInterpreter(dt, N_SMALL, warmup = 5, iters = 7)
+            val large = PerfHarness.timeInterpreter(dt, N_SMALL * 4, warmup = 5, iters = 7)
+            val g = large.minMs / small.minMs
+            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        }
+        println("[perf] Berlin DATE_TIME sub-quadratic: ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
+            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4} rows  min-growth=${"%.2f".format(best)}× (linear≈4, per-conversion-blowup≈16)")
+        assertTrue(best < SUB_QUADRATIC_MAX,
+            "Berlin DATE_TIME scaling looks super-linear: 4× rows took ${best}× the time (the offset path regressed?)")
+    }
 }
