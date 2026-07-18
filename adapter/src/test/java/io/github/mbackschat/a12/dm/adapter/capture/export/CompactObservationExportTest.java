@@ -37,7 +37,8 @@ import io.github.mbackschat.a12.dm.adapter.capture.schema.SchemaIds;
 
 /**
  * The compact semantic-observation exporter's committed guards (CONFORMANCE-CORPUS-SPEC §15h; the
- * client proposal's §"Red/green and mutation sensitivity" guards 1–2 and 4–10) over the smallest
+ * client proposal's §"Red/green and mutation sensitivity" guards 1–2 and 4–10, plus the Z5-R2
+ * frozen receipt-identity closure, guard 11) over the smallest
  * five-case typed fixture — the anchor channel contents mirror the retained qualified packet,
  * INCLUDING its incidental Out-before-Mid raw enumeration order. Guard 3 (the frozen V1
  * capabilities golden) is {@code CapabilitiesTest.theFrozenV1CapabilitiesDigestHolds}.
@@ -265,13 +266,13 @@ class CompactObservationExportTest {
 
     // ---- guard 10: tool-level refusals over the real command path ------------------------------
 
-    private static String refusal(Path packet, Path qualification, Path output, boolean clean,
-            Path repoRoot) {
+    private static String refusal(Path packet, String packetSha, Path qualification,
+            String qualificationSha, Path output, boolean clean, Path repoRoot) {
         ByteArrayOutputStream err = new ByteArrayOutputStream();
         int exit = CompactObservationTool.run(new String[] {
-                "--packet", packet.toString(), "--packet-receipt-sha256", PACKET_SHA,
+                "--packet", packet.toString(), "--packet-receipt-sha256", packetSha,
                 "--qualification", qualification.toString(),
-                "--qualification-receipt-sha256", QUALIFICATION_SHA,
+                "--qualification-receipt-sha256", qualificationSha,
                 "--output", output.toString()},
                 new CompactObservationTool.Env(new PrintStream(OutputStream.nullOutputStream()),
                         new PrintStream(err), () -> new SourceState(REVISION, clean, "tree-digest"),
@@ -282,16 +283,18 @@ class CompactObservationExportTest {
 
     @Test
     void wrongDigestsDirtyStateBadOutputAndOversizeRefuse(@TempDir Path temp) throws IOException {
-        assertTrue(refusal(temp, temp, temp.resolve("out"), false, temp).contains("CLEAN committed"),
+        assertTrue(refusal(temp, PACKET_SHA, temp, QUALIFICATION_SHA, temp.resolve("out"), false, temp)
+                        .contains("CLEAN committed"),
                 "a dirty exporter working tree refuses");
         Path packet = Files.createDirectory(temp.resolve("packet"));
         Files.writeString(packet.resolve("RECEIPT.json"), "{}");
-        assertTrue(refusal(packet, temp, temp.resolve("out"), true, temp)
+        assertTrue(refusal(packet, PACKET_SHA, temp, QUALIFICATION_SHA, temp.resolve("out"), true, temp)
                         .contains("does not match the supplied out-of-band digest"),
                 "a wrong packet receipt digest refuses");
         Path occupied = Files.createDirectory(temp.resolve("occupied"));
         Files.writeString(occupied.resolve("stray.txt"), "occupied");
-        assertTrue(refusal(packet, temp, occupied, true, temp).contains("NOT empty"),
+        assertTrue(refusal(packet, PACKET_SHA, temp, QUALIFICATION_SHA, occupied, true, temp)
+                        .contains("NOT empty"),
                 "a nonempty output directory refuses");
         Path qualification = Files.createDirectory(temp.resolve("qualification"));
         Files.writeString(qualification.resolve("RECEIPT.json"), "{}");
@@ -299,6 +302,28 @@ class CompactObservationExportTest {
                 () -> CompactObservationTool.requireReceiptTree(qualification, QUALIFICATION_SHA));
         assertRefuses("compact-export ceiling", () -> CompactObservationTool.write(
                 new byte[CompactObservationTool.MAX_BYTES + 1], temp.resolve("oversize"), temp));
+    }
+
+    // ---- guard 11 (Z5-R2): non-frozen receipt identities refuse before any tree verification ---
+
+    private static final String ALT_PACKET_SHA =
+            "7e38744283cf17f7f57fe0bce342084a8e2896fb99aa60c2a9f4fb52e185dc18";
+    private static final String ALT_QUALIFICATION_SHA =
+            "f581d82d7eb04929b38d4663bbb48a28f09c7399273cd5974cd59e739eca5d65";
+
+    @Test
+    void aNonFrozenReceiptIdentityRefusesBeforeAnyTreeVerification(@TempDir Path temp) {
+        // Valid 64-hex identities that are NOT the retained unit's, against paths that do not even
+        // exist: a refusal naming the frozen identity proves the gate fires BEFORE any
+        // filesystem/tree verification could run (a load attempt would fail differently).
+        String packet = refusal(temp.resolve("no-packet"), ALT_PACKET_SHA,
+                temp.resolve("no-qualification"), QUALIFICATION_SHA, temp.resolve("out"), true, temp);
+        assertTrue(packet.contains("not the frozen retained-unit identity"), packet);
+        String qualification = refusal(temp.resolve("no-packet"), PACKET_SHA,
+                temp.resolve("no-qualification"), ALT_QUALIFICATION_SHA, temp.resolve("out"), true, temp);
+        assertTrue(qualification.contains("not the frozen retained-unit identity"), qualification);
+        assertRefuses("not the frozen retained-unit identity", () ->
+                new CompactProjection.SourceIdentity(REVISION, ALT_PACKET_SHA, ALT_QUALIFICATION_SHA));
     }
 
     // ---- inline JSON fixture data (anchor observations mirroring the retained packet) ----------

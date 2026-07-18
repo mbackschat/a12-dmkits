@@ -25,8 +25,10 @@ import io.github.mbackschat.a12.dm.adapter.capture.schema.ScenarioSet;
  * The compact semantic-observation exporter's ONE command entry (CONFORMANCE-CORPUS-SPEC §15h) —
  * post-capture, adapter-internal, Gradle-launched ({@code :adapter:exportSemanticObservations}),
  * SEPARATE from {@code CaptureTool} and never advertised in
- * {@code a12-dmkits-capture-capabilities-v1}. It re-verifies the retained packet and qualification
- * byte integrity against the exact out-of-band digests, re-applies
+ * {@code a12-dmkits-capture-capabilities-v1}. It accepts ONLY the retained evidence unit — the
+ * supplied receipt digests must be the frozen identities (the {@link CompactProjection.SourceIdentity}
+ * invariant, refused before either tree is read) — re-verifies the packet and qualification byte
+ * integrity against them, re-applies
  * {@code kernel-route-confirmed-v1} through the existing {@code PolicyEngine}, projects the
  * {@code kernel-groovy-dynamic} anchor through {@link CompactProjection}, and writes exactly
  * {@code <output>/semantic-observations.json} (canonical UTF-8, final newline, at most 256 KiB,
@@ -83,14 +85,18 @@ public final class CompactObservationTool {
             throw new CaptureRefusedException("the exporter requires a CLEAN committed a12-dmkits"
                     + " revision — the emitted source identity certifies the projection");
         }
+        // The closed frozen-evidence invariant (Z5-R2): refuses any non-retained receipt identity
+        // BEFORE either tree is read or verified.
+        CompactProjection.SourceIdentity identity = new CompactProjection.SourceIdentity(
+                source.revision(), options.get("--packet-receipt-sha256"),
+                options.get("--qualification-receipt-sha256"));
         Path outputDir = Path.of(options.get("--output"));
         OutputDirs.requireNewOrEmptyOutsideCorpus(outputDir, env.repoRoot());
 
         Path packetDir = Path.of(options.get("--packet"));
-        String packetSha = options.get("--packet-receipt-sha256");
-        VerifiedPacket packet = VerifiedPacket.load(packetDir, packetSha);
-        String qualificationSha = options.get("--qualification-receipt-sha256");
-        requireReceiptTree(Path.of(options.get("--qualification")), qualificationSha);
+        VerifiedPacket packet = VerifiedPacket.load(packetDir, identity.packetReceiptSha256());
+        requireReceiptTree(Path.of(options.get("--qualification")),
+                identity.qualificationReceiptSha256());
         requireFrozenRequest(packet.requestSha256());
         requireFrozenKernel(packetDir);
         CompactProjection.requireRouteConfirmed(
@@ -101,8 +107,7 @@ public final class CompactObservationTool {
             anchors.put(scenarioCase.caseId(),
                     packet.observation(scenarioCase.caseId(), RunnerId.KERNEL_GROOVY_DYNAMIC.wire()));
         }
-        Json.Obj bundle = CompactProjection.bundle(packet.request(), anchors,
-                new CompactProjection.SourceIdentity(source.revision(), packetSha, qualificationSha));
+        Json.Obj bundle = CompactProjection.bundle(packet.request(), anchors, identity);
         String sha256 = write(Json.canonicalBytes(bundle), outputDir, env.repoRoot());
         env.out().println("exported " + outputDir.resolve(OUTPUT_FILE));
         env.out().println(OUTPUT_FILE + " sha256: " + sha256);

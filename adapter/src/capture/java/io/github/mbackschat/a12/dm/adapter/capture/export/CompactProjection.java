@@ -8,7 +8,6 @@ import java.util.Map;
 import io.github.mbackschat.a12.dm.adapter.capture.dto.PolicyId;
 import io.github.mbackschat.a12.dm.adapter.capture.dto.ProjectionId;
 import io.github.mbackschat.a12.dm.adapter.capture.dto.RunnerId;
-import io.github.mbackschat.a12.dm.adapter.capture.json.Digests;
 import io.github.mbackschat.a12.dm.adapter.capture.json.Json;
 import io.github.mbackschat.a12.dm.adapter.capture.packet.CaptureRefusedException;
 import io.github.mbackschat.a12.dm.adapter.capture.policy.PolicyEngine;
@@ -35,6 +34,13 @@ public final class CompactProjection {
      *  value byte-exactly (producer check 2; the proposal's Frozen-inputs table). */
     public static final String REQUEST_SHA256 =
             "4c5d4911ecacde819618b3b921b0bd30aa34b514cb0bbf3f0d2b735f21a0fd43";
+    /** The frozen packet receipt identity of the ONE retained evidence unit (Z5-R2) — the exporter
+     *  accepts no other packet tree, however self-consistent. */
+    public static final String PACKET_RECEIPT_SHA256 =
+            "7e38744283cf17f7f57fe0bce342084a8e2896fb99aa60c2a9f4fb52e185dc17";
+    /** The frozen qualification receipt identity of the ONE retained evidence unit (Z5-R2). */
+    public static final String QUALIFICATION_RECEIPT_SHA256 =
+            "f581d82d7eb04929b38d4663bbb48a28f09c7399273cd5974cd59e739eca5d64";
     private static final String FAMILY_ID = "string-direct-cascade-v1";
     private static final String FAMILY_VERSION = "1";
     private static final String PROJECTION_ID = "string-direct-cascade-semantic-v1";
@@ -75,16 +81,24 @@ public final class CompactProjection {
     private record CaseInput(String id, String source, String priorMid, String priorOut) {
     }
 
-    /** The exporter's emitted source identity: its clean commit + the two out-of-band digests that
-     *  separately anchor the historical raw capture and qualification. */
+    /** The exporter's emitted source identity — and the ONE closed frozen-evidence invariant
+     *  (Z5-R2): constructing it with anything but the retained unit's exact receipt identities
+     *  refuses, so the command (which builds it BEFORE reading either tree) and the bundle
+     *  projection (which only accepts the constructed record) carry the same pin — a different
+     *  self-consistent packet or qualification tree is unrepresentable. */
     public record SourceIdentity(String revision, String packetReceiptSha256,
             String qualificationReceiptSha256) {
 
         public SourceIdentity {
             require(revision != null && revision.matches("[0-9a-f]{40}"),
                     "the exporter revision must be a 40-character lowercase Git revision");
-            require(Digests.isSha256(packetReceiptSha256) && Digests.isSha256(qualificationReceiptSha256),
-                    "the out-of-band receipt digests must be lowercase-hex SHA-256 values");
+            require(PACKET_RECEIPT_SHA256.equals(packetReceiptSha256),
+                    "the supplied packet receipt digest " + packetReceiptSha256
+                            + " is not the frozen retained-unit identity " + PACKET_RECEIPT_SHA256);
+            require(QUALIFICATION_RECEIPT_SHA256.equals(qualificationReceiptSha256),
+                    "the supplied qualification receipt digest " + qualificationReceiptSha256
+                            + " is not the frozen retained-unit identity "
+                            + QUALIFICATION_RECEIPT_SHA256);
         }
     }
 
