@@ -234,7 +234,7 @@ public final class CompactProjection {
         for (Json entry : entries) {
             Json.Obj observed = asObj(entry, at);
             Target target = target(observed, at);
-            String value = agreedString(obj(observed, "value", at), at + " " + target.compact);
+            String value = renderedAgreedString(obj(observed, "value", at), at + " " + target.compact);
             mapped.add(Map.entry(target,
                     Json.Obj.of().put("target", target.compact).put("value", value)));
         }
@@ -248,7 +248,8 @@ public final class CompactProjection {
         for (Json entry : entries) {
             Json.Obj observed = asObj(entry, at);
             Target target = target(observed, at);
-            String attempted = agreedString(obj(observed, "attempted", at), at + " " + target.compact);
+            String attempted =
+                    renderedAgreedString(obj(observed, "attempted", at), at + " " + target.compact);
             Json.Obj cause = obj(observed, "cause", at);
             require("available".equals(str(cause, "availability", at))
                             && "stringZuLang".equals(str(cause, "code", at))
@@ -256,6 +257,9 @@ public final class CompactProjection {
                             && "/Cascade[1]/Mid".equals(str(cause, "errorPointer", at)),
                     at + ": only the exact retained cause tuple stringZuLang / VALUE_ERROR /"
                             + " /Cascade[1]/Mid maps to tooLong");
+            require(target.raw.equals(str(cause, "errorPointer", at)),
+                    at + ": the cause pointer must be the errored target itself — the retained Mid"
+                            + " cause cannot attach to " + target.compact);
             mapped.add(Map.entry(target, Json.Obj.of()
                     .put("target", target.compact)
                     .put("attempted", attempted)
@@ -284,7 +288,7 @@ public final class CompactProjection {
             Target target = Target.ofRaw(str(observed, "pointer", at), at);
             String state = str(observed, "state", at);
             Json value = switch (state) {
-                case "presentValue" -> new Json.Str(agreedString(obj(observed, "value", at),
+                case "presentValue" -> new Json.Str(typedAgreedString(obj(observed, "value", at),
                         at + " " + target.compact));
                 case "absent", "presentEmpty" -> Json.Null.NULL;
                 default -> throw refuse(at + ": unknown applied state \"" + state + "\"");
@@ -304,10 +308,22 @@ public final class CompactProjection {
         return target;
     }
 
-    /** Producer check 9 (the value half): the typed value must be an available nonempty
-     *  {@code STRING}, and typed and rendered text must agree wherever BOTH are available — a
-     *  disagreement refuses, never a silent preference. */
-    private static String agreedString(Json.Obj value, String at) {
+    /** Producer check 9's value half, closed Z5-R3 for the value/error channels ({@code clean},
+     *  {@code changed}, {@code errors.attempted}): the rendered text must itself be AVAILABLE and
+     *  equal to the typed text — typed text is never silently exported when the runner did not
+     *  expose a rendering. The applied-state channel deliberately does NOT share this: probes keep
+     *  their value-only contract via {@link #typedAgreedString}. */
+    private static String renderedAgreedString(Json.Obj value, String at) {
+        require("available".equals(str(obj(value, "rendered", at), "availability", at)),
+                at + ": the rendered value must be available in a value/error channel — typed text"
+                        + " is never exported alone");
+        return typedAgreedString(value, at);
+    }
+
+    /** The applied-state string contract (check 11 — unchanged by Z5-R3): an available nonempty
+     *  typed {@code STRING}; where a rendering IS exposed it must agree ({@code notExposedByRunner}
+     *  stays legitimate for probes) — a disagreement refuses, never a silent preference. */
+    private static String typedAgreedString(Json.Obj value, String at) {
         Json.Obj typed = obj(value, "typed", at);
         require("available".equals(str(typed, "availability", at)),
                 at + ": the typed value must be available");

@@ -38,7 +38,8 @@ import io.github.mbackschat.a12.dm.adapter.capture.schema.SchemaIds;
 /**
  * The compact semantic-observation exporter's committed guards (CONFORMANCE-CORPUS-SPEC §15h; the
  * client proposal's §"Red/green and mutation sensitivity" guards 1–2 and 4–10, plus the Z5-R2
- * frozen receipt-identity closure, guard 11) over the smallest
+ * frozen receipt-identity closure, guard 11, and the Z5-R3 rendered-availability + error-relation
+ * closures, guards 12–13) over the smallest
  * five-case typed fixture — the anchor channel contents mirror the retained qualified packet,
  * INCLUDING its incidental Out-before-Mid raw enumeration order. Guard 3 (the frozen V1
  * capabilities golden) is {@code CapabilitiesTest.theFrozenV1CapabilitiesDigestHolds}.
@@ -324,6 +325,49 @@ class CompactObservationExportTest {
         assertTrue(qualification.contains("not the frozen retained-unit identity"), qualification);
         assertRefuses("not the frozen retained-unit identity", () ->
                 new CompactProjection.SourceIdentity(REVISION, ALT_PACKET_SHA, ALT_QUALIFICATION_SHA));
+    }
+
+    // ---- guards 12+13 (Z5-R3): rendered availability + the closed error relation ----------------
+
+    private static Json.Obj withUnexposedRendering(String observation, String channel, String member) {
+        Json.Obj mutated = parse(observation);
+        Json.Obj entry = (Json.Obj) entries(mutated, channel).get(0);
+        ((Json.Obj) entry.members().get(member)).members()
+                .put("rendered", parse("{\"availability\": \"notExposedByRunner\"}"));
+        return mutated;
+    }
+
+    @Test
+    void anUnavailableRenderedValueInACleanOrChangedChannelRefuses() {
+        Map<String, Json.Obj> clean = anchors();
+        clean.put("source-abc-mid-old",
+                withUnexposedRendering(OBS_ABC_MID_OLD, "withoutErrors", "value"));
+        assertRefuses("rendered value must be available", () -> export(CASES, clean));
+        Map<String, Json.Obj> changed = anchors();
+        changed.put("source-abc-mid-old",
+                withUnexposedRendering(OBS_ABC_MID_OLD, "changedSubset", "value"));
+        assertRefuses("rendered value must be available", () -> export(CASES, changed));
+    }
+
+    @Test
+    void anUnavailableRenderedAttemptedValueInTheErrorChannelRefuses() {
+        Map<String, Json.Obj> anchors = anchors();
+        anchors.put("source-abcd-mid-old",
+                withUnexposedRendering(OBS_ABCD_MID_OLD, "withErrors", "attempted"));
+        assertRefuses("rendered value must be available", () -> export(CASES, anchors));
+    }
+
+    @Test
+    void anOutTargetPairedWithTheRetainedMidCauseRefuses() {
+        // An INTERNALLY valid Out target/computation pair — only the relation to the retained Mid
+        // cause pointer is broken, so a per-field check cannot catch it.
+        Json.Obj mutated = parse(OBS_ABCD_MID_OLD);
+        Json.Obj error = (Json.Obj) entries(mutated, "withErrors").get(0);
+        error.members().put("target", new Json.Str("/Cascade[1]/Out"));
+        error.members().put("declaredComputation", new Json.Str("/Cascade/OutComputation"));
+        Map<String, Json.Obj> anchors = anchors();
+        anchors.put("source-abcd-mid-old", mutated);
+        assertRefuses("cause pointer must be the errored target", () -> export(CASES, anchors));
     }
 
     // ---- inline JSON fixture data (anchor observations mirroring the retained packet) ----------
