@@ -119,7 +119,7 @@ The fuzz step is one line: add a `FuzzRule(group, code, errorRel, condition)` to
 # the fuzz net (the exactness gate) — fast, ~seconds
 ./build.sh :adapter:test --tests "io.github.mbackschat.a12.dm.adapter.perf.InterpreterKernelFuzzTest"
 
-# the seed generator's own multiplatform proof (JVM + JS)
+# the seed generator's own proof — the focused JVM run (the JS side rides the unfiltered :interpreter:check)
 ./build.sh :interpreter:jvmTest --tests "io.github.mbackschat.a12.dm.interpreter.SeedGeneratorTest"
 ```
 
