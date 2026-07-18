@@ -407,10 +407,35 @@ fun isIsoDateTime(s: String): Boolean = ISO_DATE_TIME.matches(s)
 // kernel's tzdb knows and this rule does not — an explicitly documented residual (the interpreter finding),
 // far outside realistic document data. UTC is the identity on every function here.
 
+/** Epoch day of civil `year-month-day` — Hinnant days_from_civil as PURE integer arithmetic (no string build
+ *  or regex, unlike [epochDay]); the DST offset path calls this per datetime value, so it must not allocate. */
+internal fun epochDayOfCivil(year: Int, month: Int, day: Int): Long {
+    val yAdj = if (month <= 2) year - 1L else year.toLong()
+    val era = (if (yAdj >= 0) yAdj else yAdj - 399) / 400
+    val yoe = yAdj - era * 400
+    val doy = (153L * (if (month > 2) month - 3 else month + 9) + 2) / 5 + day - 1
+    val doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
+    return era * 146097 + doe - 719468
+}
+
+/** The civil YEAR of an epoch [day] — Hinnant civil_from_days as PURE integer arithmetic (no string build,
+ *  unlike `isoFromEpochDay(...).substring(0,4).toInt()`); the DST offset path calls this per datetime value. */
+internal fun yearOfEpochDay(day: Long): Int {
+    val zz = day + 719468
+    val era = (if (zz >= 0) zz else zz - 146096) / 146097
+    val doe = zz - era * 146097
+    val yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
+    val y = yoe + era * 400
+    val doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
+    val mp = (5 * doy + 2) / 153
+    val mo = if (mp < 10) mp + 3 else mp - 9
+    return (if (mo <= 2) y + 1 else y).toInt()
+}
+
 /** Epoch day of the last Sunday of [month] (March or October — both 31 days) in [year].
  *  1970-01-01 (epoch day 0) was a Thursday, so a day is a Sunday iff `(epochDay + 4) % 7 == 0`. */
 private fun lastSundayEpochDay(year: Int, month: Int): Long {
-    val eom = epochDay(iso(year, month, 31))!!
+    val eom = epochDayOfCivil(year, month, 31)
     return eom - (eom + 4).mod(7L)
 }
 
@@ -420,9 +445,11 @@ private fun berlinDstStart(year: Int): Long = lastSundayEpochDay(year, 3) * 86_4
 /** The instant Berlin DST ends in [year] — last Sunday of October, 01:00:00Z (03:00 CEST → 02:00 CET). */
 private fun berlinDstEnd(year: Int): Long = lastSundayEpochDay(year, 10) * 86_400L + 3_600L
 
-/** Berlin's UTC offset in seconds at [instant]: 7200 (CEST) inside the DST window, else 3600 (CET). */
+/** Berlin's UTC offset in seconds at [instant]: 7200 (CEST) inside the DST window, else 3600 (CET). The year
+ *  and DST boundaries are pure-integer civil math ([yearOfEpochDay]/[epochDayOfCivil]) — no per-call string
+ *  allocation — because this is on the hot path for every DATE/DATE_TIME conversion under a Europe/Berlin model. */
 private fun berlinOffsetSeconds(instant: Long): Long {
-    val year = isoFromEpochDay(instant.floorDiv(86_400L)).substring(0, 4).toInt()
+    val year = yearOfEpochDay(instant.floorDiv(86_400L))
     return if (instant >= berlinDstStart(year) && instant < berlinDstEnd(year)) 7_200L else 3_600L
 }
 
