@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import io.github.mbackschat.a12.dm.interpreter.eval.Document;
+import io.github.mbackschat.a12.dm.interpreter.eval.DocumentKt;
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader;
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef;
 
@@ -30,11 +31,12 @@ public final class InterpreterModelLoader {
         return ModelLoader.load(modelJson);
     }
 
-    /** Build a {@link Document} from a nested fields map (the {@code DocInstance.readFields} output). */
+    /** Build a {@link Document} from a nested fields map (the {@code DocInstance.readFields} output).
+     *  Configured via {@code ModelDef.newDocument()} — the one place that threads EVERY config map (hand-listing
+     *  the positional constructor is how this method silently dropped {@code baseYear} and
+     *  {@code fieldConstraints}, and would have dropped {@code timeZone} too). */
     public static Document document(Map<String, Object> fields, ModelDef model) {
-        Document doc = new Document(model.getKinds(), model.getDeclaredReps(), model.getUnsignedFields(),
-                model.getRangeConfig(), model.getDateFormats(), model.getScales(), model.getDateTimeFormats(),
-                model.getDatePrecisions(), model.getEnumValues(), model.getEnumCategories(), model.getTimeFormats());
+        Document doc = DocumentKt.newDocument(model);
         walkInstance(doc, fields, new ArrayList<>(), new ArrayList<>());
         return doc;
     }

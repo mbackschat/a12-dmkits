@@ -273,7 +273,8 @@ class DmInterpreter @JvmOverloads constructor(
      */
     private fun validationConfig(isRelevant: Relevance, customRelevant: Set<FieldPointer>?,
             starRelevant: ((String) -> Boolean)?): EvalConfig =
-        EvalConfig(clock, model.baseYear, model.indexFields, predefinedTypes, customConditions, customFieldTypes,
+        EvalConfig(clock, model.baseYear, model.indexFields, timeZone = model.timeZone,
+            predefinedTypes = predefinedTypes, customConditions = customConditions, customFieldTypes = customFieldTypes,
             cellRelevant = if (isRelevant === ALL_RELEVANT) null else { path, reps -> isRelevant(path, reps) },
             starRelevant = starRelevant, customRelevant = customRelevant)
 

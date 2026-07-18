@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.FieldConstraints
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
+import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 
 /**
  * Formal-error detection — whether a raw field value is *well-formed for its kind*. The kernel runs this
@@ -204,13 +205,16 @@ fun formalError(
     /** The model's base year (kernel default 2000) — the year a year-less date FRAGMENT (`MM`, `MM-dd`)
      *  completes to for its realness check; unused for non-fragment kinds. */
     baseYear: Int = 2000,
+    /** The model's configured time zone — a Europe/Berlin DATE_TIME inside the spring-forward gap is
+     *  `datumFormatFalsch` (the kernel's non-lenient zone-set parse rejects it; KERNEL-FINDINGS §6). */
+    timeZone: ModelTimeZone = ModelTimeZone.UTC,
 ): FormalErrorCode? {
     if (raw.isEmpty()) return null
     // BASELINE value checks the kernel runs for EVERY kind before the type format (`checkFieldValueFormat`,
     // IF43): legal charset (default BMP; [legalCharset] customizes it, e.g. DIN 91379), then leading blank, then
     // trailing blank. They pre-empt the type-specific check (a ` 2024-01-01` DATE is `fuehrendesBlank`).
     baselineValueError(raw, legalCharset)?.let { return it }
-    return typeFormatError(kind, raw, scale, format, datePrecision, rangeSep, constraints, baseYear)
+    return typeFormatError(kind, raw, scale, format, datePrecision, rangeSep, constraints, baseYear, timeZone)
 }
 
 /**
@@ -226,6 +230,7 @@ fun typeFormatError(
     datePrecision: DatePrecision = DatePrecision.FULL, rangeSep: String? = null,
     constraints: FieldConstraints = FieldConstraints.NONE,
     baseYear: Int = 2000,
+    timeZone: ModelTimeZone = ModelTimeZone.UTC,
 ): FormalErrorCode? {
     if (raw.isEmpty()) return null
     return when (kind) {
@@ -258,7 +263,16 @@ fun typeFormatError(
         // code as DATE), and resolving it to Val.Unknown suppresses a referencing rule. (TIME was previously
         // unchecked entirely, so a malformed time even *escaped* suppression — KERNEL-FINDINGS §6 / IF8.)
         Kind.TIME -> if (parseTimeToIso(raw, format ?: "HH:mm:ss") != null) null else FormalErrorCode.DATE_FORMAT
-        Kind.DATE_TIME -> if (parseDateTimeToIso(raw, format ?: "yyyy-MM-dd'T'HH:mm:ss") != null) null else FormalErrorCode.DATE_FORMAT
+        Kind.DATE_TIME -> {
+            val iso = parseDateTimeToIso(raw, format ?: "yyyy-MM-dd'T'HH:mm:ss")
+            when {
+                iso == null -> FormalErrorCode.DATE_FORMAT
+                // A Europe/Berlin wall time inside the spring-forward gap does not exist — the kernel's
+                // non-lenient zone-set parse rejects it with the SAME code (probe-verified, KERNEL-FINDINGS §6).
+                isGapLocal(iso, timeZone) -> FormalErrorCode.DATE_FORMAT
+                else -> null
+            }
+        }
         // A malformed DATE_RANGE carries one of the kernel's `datumBereich*` codes (probe-verified): a value that
         // does not split into exactly two parts on the separator → `datumBereichTrennerFehlt`; split but a side
         // is not a valid date for the format (incl. calendar-invalid like 31.02) → `datumBereichFormatFalsch`;

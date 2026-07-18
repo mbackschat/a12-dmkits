@@ -44,6 +44,12 @@ private typealias RowsFn = (group: String, parentReps: List<Int>, rnd: Random) -
  *
  * Index fields (LineKey/SubKey) are auto-required; the value strategy fills them, so no spurious
  * `mandatoryField` pollutes the benchmark.
+ *
+ * The kernel model JSON declares `modelConfig.timeZone: Europe/Berlin` (mirroring real workspace models) but
+ * the interpreter [ModelDef]s here deliberately omit it: the catalog carries **no DATE_TIME field**, so the
+ * zone axis is inert (dates/numbers/strings are zone-free). If a datetime scenario is ever added, thread
+ * `timeZone = ModelTimeZone.EUROPE_BERLIN` into its ModelDef — a mismatch is not silent (the differential
+ * fuzz fails loud on any straddling generated value; the DST family: `laws.DstTimeZoneDiffTest`).
  */
 object PerfCatalog {
 

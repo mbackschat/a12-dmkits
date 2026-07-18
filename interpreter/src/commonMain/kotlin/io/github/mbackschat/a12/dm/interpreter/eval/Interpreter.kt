@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
 import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
+import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 
@@ -65,6 +66,7 @@ class Interpreter(
     // itself is allocated once per call and reused by [havingInterp]/[overlapFilterInterp], not per row.
     internal val clock = config.clock
     internal val baseYear = config.baseYear
+    internal val timeZone = config.timeZone
     internal val indexFields = config.indexFields
     private val predefinedTypes = config.predefinedTypes
     private val customConditions = config.customConditions
@@ -756,6 +758,23 @@ class Interpreter(
         // literal `""`, suppresses the comparison (it does not fire) rather than comparing as a value. An empty
         // string *field* already arrives as Unknown (handled above); this covers the non-field empty strings.
         if ((l is Val.Txt && l.v.isEmpty()) || (r is Val.Txt && r.v.isEmpty())) return Tri.UNKNOWN
+        // A DATETIME comparison under a non-UTC model zone compares zone-parsed INSTANTS (the kernel's
+        // `vergleicheDATUM` on `VkDate` epoch millis), derived STRUCTURALLY so a chained `Add{Hours,…}` keeps
+        // its exact instant — an ambiguous fall-back wall time re-parses as STANDARD, so the equal-looking
+        // rendering of a daylight-side chain result is a DIFFERENT instant (KERNEL-FINDINGS §6). Under UTC the
+        // canonical local ISO order IS the instant order, so the plain text compare below stays the fast path.
+        if (timeZone != ModelTimeZone.UTC && l is Val.Txt && r is Val.Txt && isIsoDateTime(l.v) && isIsoDateTime(r.v)) {
+            val li = dateTimeInstant(c.left) ?: return Tri.UNKNOWN
+            val ri = dateTimeInstant(c.right) ?: return Tri.UNKNOWN
+            return when (c.op) {
+                CmpOp.EQ -> Tri.of(li == ri)
+                CmpOp.NE -> Tri.of(li != ri)
+                CmpOp.LT -> Tri.of(li < ri)
+                CmpOp.LE -> Tri.of(li <= ri)
+                CmpOp.GT -> Tri.of(li > ri)
+                CmpOp.GE -> Tri.of(li >= ri)
+            }
+        }
         return when (c.op) {
             CmpOp.EQ -> Tri.of(ValCompare.equal(l, r))
             CmpOp.NE -> Tri.of(!ValCompare.equal(l, r))

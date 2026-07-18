@@ -340,6 +340,10 @@ data class ModelDef(
      *  charset SPI ([io.github.mbackschat.a12.dm.interpreter.DmInterpreter]); when null the SPI (default
      *  [LegalCharset.BMP]) applies (IF120). */
     val legalCharset: LegalCharset? = null,
+    /** The model's configured time zone (`content.modelConfig.timeZone`, default `UTC`) — the axis the kernel
+     *  applies to every DATE/DATE_TIME parse at eval time, making Europe/Berlin datetime arithmetic DST-aware
+     *  ([ModelTimeZone]; KERNEL-FINDINGS §6). */
+    val timeZone: ModelTimeZone = ModelTimeZone.UTC,
 ) {
     val kinds: Map<String, Kind> = fields.associate { it.path to it.kind }
     val repeatable: Set<String> = repeatableGroups + declaredReps.keys

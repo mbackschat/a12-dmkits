@@ -1,10 +1,11 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
@@ -36,9 +37,11 @@ class DateTimeArithmeticDiffTest {
     private fun agree(cond: String, sa: String, ca: String, msg: String) {
         val k = RuntimeLaws.fires(RuntimeLaws.withRule(order, "/Order", "R", "../ScheduledAt", "TA", cond), "TA",
             RuntimeLaws.doc().group("/Order", 1).field(SA, sa, 1, 1).field(CA, ca, 1, 1))
-        val def = ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "TA", "../ScheduledAt")))
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats).field(SA, sa, 1, 1).field(CA, ca, 1, 1)
+        // timeZone mirrors the kernel fixture's Europe/Berlin (order.dm.json modelConfig) — inert for this
+        // file's non-straddling June values; the DST family lives in DstTimeZoneDiffTest.
+        val def = ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "TA", "../ScheduledAt")),
+            timeZone = ModelTimeZone.EUROPE_BERLIN)
+        val iDoc = def.newDocument().field(SA, sa, 1, 1).field(CA, ca, 1, 1)
         val i = DmInterpreter(def).validate(iDoc).messages.any { it.code == "TA" }
         assertEquals(k, i, "$msg (sa=$sa ca=$ca)")
     }

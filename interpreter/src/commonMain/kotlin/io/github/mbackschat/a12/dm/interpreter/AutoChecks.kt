@@ -55,7 +55,8 @@ internal class AutoChecks(
             if (overLimitLevel(vf.path, vf.reps) != null) return@mapNotNull null
             val scale = model.scaleOf(vf.path)
             val code = formalError(kind, vf.raw, scale, model.dateLikeFormatOf(vf.path), model.datePrecisionOf(vf.path),
-                    model.rangeSeparatorOf(vf.path), model.constraintsOf(vf.path), legalCharset, model.baseYear ?: 2000)
+                    model.rangeSeparatorOf(vf.path), model.constraintsOf(vf.path), legalCharset, model.baseYear ?: 2000,
+                    model.timeZone)
             if (code != null) {
                 return@mapNotNull Message(code.id, FORMAL_RULE_PATH, formatPointer(vf.path, vf.reps), Severity.ERROR,
                     MsgType.VALUE, formalErrorText(code, locale, scale))
@@ -185,7 +186,8 @@ internal class AutoChecks(
         if (raw != null) {
             val kind = model.kinds[path] ?: return null
             formalError(kind, raw, model.scaleOf(path), model.dateLikeFormatOf(path), model.datePrecisionOf(path),
-                model.rangeSeparatorOf(path), model.constraintsOf(path), legalCharset, model.baseYear ?: 2000)?.id?.let { return it }
+                model.rangeSeparatorOf(path), model.constraintsOf(path), legalCharset, model.baseYear ?: 2000,
+                model.timeZone)?.id?.let { return it }
             if (customTypeRejected(path, raw)) return CUSTOM_TYPE_INVALID
             return if (path to reps in dup) UNIQUE_INDEX else null
         }

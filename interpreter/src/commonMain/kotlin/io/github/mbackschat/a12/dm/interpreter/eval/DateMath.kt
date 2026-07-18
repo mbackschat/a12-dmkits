@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
+import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
+
 /**
  * Pure date arithmetic on ISO `yyyy-MM-dd` strings — no `java.time`/luxon, so it stays in commonMain and
  * runs identically on JVM and JS (the date shim the proposal §5 anticipated isn't needed for whole-date
@@ -389,4 +391,94 @@ private fun buildIso(values: List<String>, comps: List<Char>): String? {
     comps.forEachIndexed { idx, c -> when (c) { 'y' -> y = values[idx].toInt(); 'M' -> mo = values[idx].toInt(); 'd' -> d = values[idx].toInt() } }
     if (y < 0 || mo < 1 || mo > 12 || d < 1 || d > daysInMonth(y, mo)) return null
     return iso(y, mo, d)
+}
+
+/** Whether [s] is a canonical ISO date-time (`yyyy-MM-dd'T'HH:mm:ss`) — the shape every resolved DATE_TIME
+ *  value carries; the datetime-comparison dispatch keys on it. */
+fun isIsoDateTime(s: String): Boolean = ISO_DATE_TIME.matches(s)
+
+// ---- model-timezone (DST) instant math — the Europe/Berlin axis (IG62 → KERNEL-FINDINGS §6) -------------
+//
+// The kernel parses every DATE/DATE_TIME with a zone-set formatter, so under a `Europe/Berlin` model wall
+// clock and instants diverge across the DST transitions. The interpreter keeps its canonical LOCAL ISO form
+// and converts to instants exactly where the kernel's semantics are instant-based. Clean-room encoding of the
+// CURRENT EU rule (in force since 1996): CEST (+2 h) from the last Sunday of March 01:00Z to the last Sunday
+// of October 01:00Z, else CET (+1 h). A Berlin datetime BEFORE 1996 follows older, year-specific rules the
+// kernel's tzdb knows and this rule does not — an explicitly documented residual (the interpreter finding),
+// far outside realistic document data. UTC is the identity on every function here.
+
+/** Epoch day of the last Sunday of [month] (March or October — both 31 days) in [year].
+ *  1970-01-01 (epoch day 0) was a Thursday, so a day is a Sunday iff `(epochDay + 4) % 7 == 0`. */
+private fun lastSundayEpochDay(year: Int, month: Int): Long {
+    val eom = epochDay(iso(year, month, 31))!!
+    return eom - (eom + 4).mod(7L)
+}
+
+/** The instant Berlin DST starts in [year] — last Sunday of March, 01:00:00Z (02:00 CET → 03:00 CEST). */
+private fun berlinDstStart(year: Int): Long = lastSundayEpochDay(year, 3) * 86_400L + 3_600L
+
+/** The instant Berlin DST ends in [year] — last Sunday of October, 01:00:00Z (03:00 CEST → 02:00 CET). */
+private fun berlinDstEnd(year: Int): Long = lastSundayEpochDay(year, 10) * 86_400L + 3_600L
+
+/** Berlin's UTC offset in seconds at [instant]: 7200 (CEST) inside the DST window, else 3600 (CET). */
+private fun berlinOffsetSeconds(instant: Long): Long {
+    val year = isoFromEpochDay(instant.floorDiv(86_400L)).substring(0, 4).toInt()
+    return if (instant >= berlinDstStart(year) && instant < berlinDstEnd(year)) 7_200L else 3_600L
+}
+
+/**
+ * The instant of a LOCAL wall time (naive epoch seconds, [epochSecond]) under [tz] — the kernel's PARSE
+ * resolution (a zone-set, non-lenient `SimpleDateFormat`, probe-verified):
+ *  - a wall time with exactly one consistent offset resolves to it (winter CET, summer CEST);
+ *  - the **ambiguous** fall-back hour (both offsets consistent) resolves to **standard time** (CET);
+ *  - the **nonexistent** spring-forward gap resolves to **null** — the kernel REJECTS it (`datumFormatFalsch`).
+ */
+fun localToInstant(localSeconds: Long, tz: ModelTimeZone): Long? = when (tz) {
+    ModelTimeZone.UTC -> localSeconds
+    ModelTimeZone.EUROPE_BERLIN -> {
+        val std = localSeconds - 3_600L
+        val dst = localSeconds - 7_200L
+        when {
+            berlinOffsetSeconds(std) == 3_600L -> std      // standard consistent (winter; the ambiguous hour → CET)
+            berlinOffsetSeconds(dst) == 7_200L -> dst      // daylight consistent (summer)
+            else -> null                                   // the spring gap — no such wall time
+        }
+    }
+}
+
+/** The LOCAL wall time (naive epoch seconds) of [instant] under [tz]. */
+fun instantToLocal(instant: Long, tz: ModelTimeZone): Long = when (tz) {
+    ModelTimeZone.UTC -> instant
+    ModelTimeZone.EUROPE_BERLIN -> instant + berlinOffsetSeconds(instant)
+}
+
+/** The instant of a canonical ISO date-time under [tz], or null when malformed OR a gap wall time. */
+fun zonedInstantOf(iso: String, tz: ModelTimeZone): Long? = epochSecond(iso)?.let { localToInstant(it, tz) }
+
+/** The canonical ISO date-time rendering of [instant]'s wall clock under [tz]. */
+fun isoFromZonedInstant(instant: Long, tz: ModelTimeZone): String = isoFromEpochSecond(instantToLocal(instant, tz))
+
+/** Whether a well-formed local date-time falls in [tz]'s spring-forward gap (a wall time that does not
+ *  exist) — the kernel's `datumFormatFalsch` for a stored value (probe-verified, KERNEL-FINDINGS §6). */
+fun isGapLocal(iso: String, tz: ModelTimeZone): Boolean =
+    tz != ModelTimeZone.UTC && epochSecond(iso)?.let { localToInstant(it, tz) == null } == true
+
+/**
+ * The landing instant of a WALL-day add over a date-time: nominal wall = [localSeconds] + [n]·86 400 (the
+ * kernel's zone-calendar `add(DAY_OF_MONTH)` keeps the clock time). A nominal landing with one consistent
+ * offset resolves to it; a landing in a **special hour** resolves so the step never OVERSHOOTS the direction
+ * of travel (kernel-probed on all four combinations, KERNEL-FINDINGS §6): a **forward** add takes the
+ * DAYLIGHT (earlier) instant — the gap landing renders `01:30` CET, the ambiguous landing keeps CEST — and a
+ * **backward** add takes the STANDARD (later) instant.
+ */
+fun wallDayLandingInstant(localSeconds: Long, n: Int, tz: ModelTimeZone): Long {
+    val nominal = localSeconds + n * 86_400L
+    if (tz == ModelTimeZone.UTC) return nominal
+    localToInstant(nominal, tz)?.let { strict ->
+        // The ambiguous hour resolves strict → standard; a FORWARD add instead keeps the daylight instant.
+        val dst = nominal - 7_200L
+        return if (n > 0 && berlinOffsetSeconds(dst) == 7_200L) dst else strict
+    }
+    // The gap: no consistent offset — forward lands on the daylight (earlier) instant, backward on standard.
+    return if (n > 0) nominal - 7_200L else nominal - 3_600L
 }

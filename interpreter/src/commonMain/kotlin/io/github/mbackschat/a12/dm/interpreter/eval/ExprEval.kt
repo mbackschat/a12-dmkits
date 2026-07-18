@@ -411,12 +411,15 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     FunctionOp.MAX_VALUE -> combine(starVals(f)) { Aggregates.max(it, minMaxEmpty(f)) }
     FunctionOp.MIN_VALUE -> combine(starVals(f)) { Aggregates.min(it, minMaxEmpty(f)) }
     FunctionOp.NUMBER_OF_DIFFERENT_VALUES -> combine(starVals(f), Aggregates::numberOfDifferentValues)
-    // DifferenceInDays(a, b) = b − a in whole days (sign = second − first), as a number. An EMPTY date operand
-    // reads as the fillable 0 (either empty → 0, kernel getDatumsDiff) and FIRES; a MALFORMED operand → Unknown.
+    // DifferenceInDays(a, b) = b − a in whole WALL-CLOCK days (Δ wall-seconds / 86 400, truncated toward
+    // zero) — over DATE_TIME operands the count is TIME-OF-DAY AWARE (23:00 → 01:00 next day is 0 days, and a
+    // DST-shortened Berlin day still counts as one wall day; kernel-probed, KERNEL-FINDINGS §6). A DATE
+    // operand reads as midnight (mixed pairs are legal); two plain dates reduce to the day-number difference.
+    // An EMPTY operand reads as the fillable 0 (either empty → 0, kernel getDatumsDiff); MALFORMED → Unknown.
     FunctionOp.DIFFERENCE_IN_DAYS -> dateDiffEmpty(f.args[0], f.args[1]) ?: run {
-        val a = epochOf(f.args[0])
-        val b = epochOf(f.args[1])
-        if (a == null || b == null) Val.Unknown else Val.Num(dec((b - a).toString()))
+        val a = wallSecondsOf(f.args[0])
+        val b = wallSecondsOf(f.args[1])
+        if (a == null || b == null) Val.Unknown else Val.Num(dec(((b - a) / 86_400L).toString()))
     }
     // Count-of-filled functions (used in a comparison, e.g. NumberOfFilledFields(a, b, c) < 2).
     FunctionOp.NUMBER_OF_FILLED_FIELDS -> filledFieldsValue(f.args)
@@ -471,7 +474,8 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     FunctionOp.DIFFERENCE_IN_MINUTES -> dateTimeDiff(f.args, 60L)
     FunctionOp.DIFFERENCE_IN_SECONDS -> dateTimeDiff(f.args, 1L)
     // Date arithmetic — date + n days / months / years → a date (ISO text). Empty/absent date → Unknown.
-    FunctionOp.ADD_DAYS -> dateShift(f.args, ::addDays)
+    // AddDays ALSO accepts a DATE_TIME operand (kernel-probed; AddMonths/AddYears reject one at MVK).
+    FunctionOp.ADD_DAYS -> addDaysValue(f.args)
     FunctionOp.ADD_MONTHS -> dateShift(f.args, ::addMonths)
     FunctionOp.ADD_YEARS -> dateShift(f.args, ::addYears)
     FunctionOp.DIFFERENCE_IN_MONTHS -> dateDiff(f.args, ::differenceInMonths)
@@ -771,22 +775,63 @@ private fun valToInt(v: Val): Int? = when (v) {
 
 private fun pad2(n: Int): String = n.toString().padStart(2, '0')
 
-/** `Add{Hours,Minutes,Seconds}(dateTime, n)` → the date-time shifted by `n · [unitSeconds]` (day boundary
- *  carried), as ISO text; Unknown if the date-time or count is absent/malformed. */
+/** `Add{Hours,Minutes,Seconds}(dateTime, n)` → the date-time shifted by `n · [unitSeconds]` of **instant**
+ *  time (day boundary carried; under a Europe/Berlin model the shift crosses a DST transition in real hours —
+ *  `01:30 CET + 1 h = 03:30 CEST`), rendered back to the zone's wall clock; Unknown if the date-time or count
+ *  is absent/malformed. Under UTC instant == wall, the historical arithmetic. */
 private fun Interpreter.dateTimeShift(args: List<Expr>, unitSeconds: Long): Val {
-    val dt = (evalExpr(args[0]) as? Val.Txt)?.v ?: return Val.Unknown
+    val instant = dateTimeInstant(args[0]) ?: return Val.Unknown
     val n = (evalExpr(args[1]) as? Val.Num)?.v?.display()?.toLongOrNull() ?: return Val.Unknown
-    return addDateTimeSeconds(dt, n * unitSeconds)?.let { Val.Txt(it) } ?: Val.Unknown
+    return Val.Txt(isoFromZonedInstant(instant + n * unitSeconds, timeZone))
 }
 
-/** `DifferenceIn{Hours,Minutes,Seconds}(a, b)` → `(epochSecond(b) − epochSecond(a)) / [unitSeconds]`,
- *  truncated toward zero; an EMPTY date-time operand reads as the fillable 0 (either empty → 0, kernel
- *  `getDatumsDiff` via `getCalenderDiff`) and FIRES; a MALFORMED operand → Unknown (suppressed). */
+/** `DifferenceIn{Hours,Minutes,Seconds}(a, b)` → `(instant(b) − instant(a)) / [unitSeconds]`, truncated toward
+ *  zero — the kernel subtracts zone-parsed INSTANTS (`getCalenderDiff` on epoch millis), so a Europe/Berlin
+ *  pair straddling a DST transition counts real hours, not wall hours (KERNEL-FINDINGS §6). An EMPTY date-time
+ *  operand reads as the fillable 0 (either empty → 0, kernel `getDatumsDiff`) and FIRES; a MALFORMED operand →
+ *  Unknown (suppressed). */
 private fun Interpreter.dateTimeDiff(args: List<Expr>, unitSeconds: Long): Val {
     dateDiffEmpty(args[0], args[1])?.let { return it }
-    val a = (evalExpr(args[0]) as? Val.Txt)?.v?.let { epochSecond(it) } ?: return Val.Unknown
-    val b = (evalExpr(args[1]) as? Val.Txt)?.v?.let { epochSecond(it) } ?: return Val.Unknown
+    val a = dateTimeInstant(args[0]) ?: return Val.Unknown
+    val b = dateTimeInstant(args[1]) ?: return Val.Unknown
     return Val.Num(dec(((b - a) / unitSeconds).toString()))
+}
+
+/**
+ * The zone INSTANT of a date-time-valued expression — the kernel evaluates the datetime operator family on
+ * `VkDate` instants end-to-end, so a **chained** result keeps its exact instant even where its wall-clock
+ * rendering is ambiguous (probe P5: `AddHours(01:30 CEST, 1)` is the DAYLIGHT side of the fall-back hour,
+ * NOT the instant the equal-looking stored `"02:30:00"` re-parses to). So the instant is derived
+ * STRUCTURALLY: an `Add{Hours,Minutes,Seconds}` chain adds instant seconds, an `AddDays` over a date-time
+ * re-applies the wall-day landing rule, and any other expression resolves via its canonical local rendering
+ * ([zonedInstantOf] — the parse resolution: ambiguous → standard, gap → null/suppressed). Under UTC this is
+ * exactly the naive [epochSecond] everywhere.
+ */
+internal fun Interpreter.dateTimeInstant(e: Expr): Long? {
+    if (e is Expr.Func) when (FunctionOp.byName(e.name)) {
+        FunctionOp.ADD_HOURS -> return chainedShiftInstant(e, 3_600L)
+        FunctionOp.ADD_MINUTES -> return chainedShiftInstant(e, 60L)
+        FunctionOp.ADD_SECONDS -> return chainedShiftInstant(e, 1L)
+        FunctionOp.ADD_DAYS -> {
+            // Only a DATE_TIME operand takes the wall-day landing; a plain DATE rides the generic path below
+            // (its rendered value carries no 'T' and the datetime ops never legally see it — MVK-gated).
+            val local = (evalExpr(e.args[0]) as? Val.Txt)?.v
+            if (local != null && 'T' in local) {
+                val n = (evalExpr(e.args[1]) as? Val.Num)?.v?.display()?.toIntOrNull() ?: return null
+                return epochSecond(local)?.let { wallDayLandingInstant(it, n, timeZone) }
+            }
+        }
+        else -> {}
+    }
+    return (evalExpr(e) as? Val.Txt)?.v?.let { zonedInstantOf(it, timeZone) }
+}
+
+/** The instant of an `Add{Hours,Minutes,Seconds}` node — the operand's instant plus `n` units (recursive,
+ *  so nested shifts chain in instant space exactly like the kernel's `VkDate` arithmetic). */
+private fun Interpreter.chainedShiftInstant(e: Expr.Func, unitSeconds: Long): Long? {
+    val base = dateTimeInstant(e.args[0]) ?: return null
+    val n = (evalExpr(e.args[1]) as? Val.Num)?.v?.display()?.toLongOrNull() ?: return null
+    return base + n * unitSeconds
 }
 
 /** `ValueAsDate(field, FirstDay|LastDay)` — resolve a (DAY_OPTIONAL) date field's raw value to a concrete
@@ -807,8 +852,24 @@ private fun Interpreter.dateShift(args: List<Expr>, shift: (String, Int) -> Stri
     return shift(date, n)?.let { Val.Txt(it) } ?: Val.Unknown
 }
 
-/** Epoch day of a date-valued expression (ISO text), or null if empty/malformed. */
-private fun Interpreter.epochOf(e: Expr): Long? = (coerceDate(evalExpr(e)) as? Val.Txt)?.let { epochDay(dateOnly(it.v)) }
+/** WALL-clock seconds of a date-or-datetime-valued expression: a DATE_TIME's naive wall seconds, a DATE as
+ *  its midnight (`DifferenceInDays`' basis — wall clock, not instants); null if empty/malformed. */
+private fun Interpreter.wallSecondsOf(e: Expr): Long? = (coerceDate(evalExpr(e)) as? Val.Txt)?.v?.let { v ->
+    if ('T' in v) epochSecond(v) else epochDay(v)?.times(86_400L)
+}
+
+/** `AddDays(x, n)` — a DATE operand shifts by calendar days ([addDays]); a DATE_TIME operand is legal too
+ *  and TIME-PRESERVING (kernel-probed): a wall-day add on the zone calendar, a special-hour landing resolved
+ *  by the no-overshoot rule ([wallDayLandingInstant]). Unknown if the operand or count is absent/malformed. */
+private fun Interpreter.addDaysValue(args: List<Expr>): Val {
+    val v = (coerceDate(evalExpr(args[0])) as? Val.Txt)?.v ?: return Val.Unknown
+    val n = (evalExpr(args[1]) as? Val.Num)?.v?.display()?.toIntOrNull() ?: return Val.Unknown
+    if ('T' in v) {
+        val local = epochSecond(v) ?: return Val.Unknown
+        return Val.Txt(isoFromZonedInstant(wallDayLandingInstant(local, n, timeZone), timeZone))
+    }
+    return addDays(v, n)?.let { Val.Txt(it) } ?: Val.Unknown
+}
 
 /** `FirstFilled(G* / f)` — the first FILLED cell's value in row order. In PARTIAL validation it is order-aware
  *  (IF42): a NON-relevant cell encountered BEFORE the first filled cell makes the result UNKNOWN (its

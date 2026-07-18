@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.FieldConstraints
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import io.github.mbackschat.a12.dm.interpreter.model.ValuedField
 import kotlin.jvm.JvmOverloads
 
@@ -53,7 +54,7 @@ internal const val UNKNOWN_REP = -5
 fun ModelDef.newDocument(): Document = Document(
     kinds, declaredReps, unsignedFields, rangeConfig, dateFormats, scales,
     dateTimeFormats, datePrecisions, enumValues, enumCategories, timeFormats, baseYear,
-    fieldConstraints,
+    fieldConstraints, timeZone,
 )
 
 class Document @JvmOverloads constructor(
@@ -104,6 +105,11 @@ class Document @JvmOverloads constructor(
      *  refs are already gated by [DmInterpreter]'s `invalid` closure; this closes the resolution paths that
      *  bypass it. (Appended for positional-constructor compatibility.) */
     private val fieldConstraints: Map<String, FieldConstraints> = emptyMap(),
+    /** The model's configured time zone ([ModelTimeZone], `modelConfig.timeZone`, default UTC) — the formal
+     *  check needs it because a Europe/Berlin DATE_TIME value inside the spring-forward gap (a wall time that
+     *  does not exist, e.g. `2024-03-31T02:30:00`) is the kernel's `datumFormatFalsch`: its non-lenient
+     *  zone-set parse rejects it (probe-verified, KERNEL-FINDINGS §6). (Appended for positional compat.) */
+    private val timeZone: ModelTimeZone = ModelTimeZone.UTC,
 ) {
     /** [raw] is the ORIGINAL stored text ([value] before the eval-side CRLF→LF normalization, IF124) —
      *  what [cellStateAt] reports; it defaults to [value] and is preserved by the normalizing `copy`. */
@@ -936,7 +942,7 @@ class Document @JvmOverloads constructor(
             else -> null
         }
         return formalError(kind, raw, scales[path], dateLikeFormat, precision, rangeConfig[path]?.second,
-            fieldConstraints[path] ?: FieldConstraints.NONE, baseYear = baseYear ?: 2000) != null
+            fieldConstraints[path] ?: FieldConstraints.NONE, baseYear = baseYear ?: 2000, timeZone = timeZone) != null
     }
 
     private fun resolveValue(path: String, raw: String): Val {

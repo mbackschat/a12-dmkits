@@ -14,6 +14,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
+import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.Requiredness
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
@@ -66,8 +67,11 @@ object ModelLoader {
         // legal charset the kernel enforces at runtime (ZeichenNichtImZeichensatz); empty/absent → no restriction (IF120).
         val legalCharset = LegalCharset.ofSupportedCharacters(
             modelConfig.path("supportedCharacters").elements().mapNotNull { it.asTextOrNull() })
+        // content.modelConfig.timeZone (default UTC) — the parse-time zone axis; an id beyond the kernel's two
+        // documented values (UTC / Europe/Berlin, GMT collapsing to UTC) is refused loud (KERNEL-FINDINGS §6).
+        val timeZone = ModelTimeZone.of(modelConfig.path("timeZone").asTextOrNull())
         return ModelDef(sink.fields, sink.rules, sink.comps, sink.repeatable, sink.declaredReps, sink.indexFields,
-            baseYear, fieldRefByShortNameAllowed = shortNameRefs, legalCharset = legalCharset)
+            baseYear, fieldRefByShortNameAllowed = shortNameRefs, legalCharset = legalCharset, timeZone = timeZone)
     }
 
     /** The mutable accumulators of one [load] pass — insertion-ordered to match the DM-JSON document order. */

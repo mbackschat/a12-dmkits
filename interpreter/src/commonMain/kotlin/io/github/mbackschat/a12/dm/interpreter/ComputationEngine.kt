@@ -85,8 +85,8 @@ internal class ComputationEngine(
         // The compute-invariant config, built once for every instance's Interpreter (computeMode; no
         // CustomCondition / relevance seams on the compute path). Only the per-instance `invalid` poison gate
         // varies (it closes over the instance context), so it stays an Interpreter constructor arg.
-        val computeConfig = EvalConfig(clock, model.baseYear, model.indexFields, predefinedTypes,
-            customFieldTypes = customFieldTypes, computeMode = true)
+        val computeConfig = EvalConfig(clock, model.baseYear, model.indexFields, timeZone = model.timeZone,
+            predefinedTypes = predefinedTypes, customFieldTypes = customFieldTypes, computeMode = true)
         // A FILLED operand that is "not check-relevant" — formally invalid — makes a computation over it
         // non-evaluable (IF76, generalized IF78; poison semantics IF85). The gate is the SAME
         // operand-invalidity test full validation uses ([operandNotCheckRelevant] → [computeFormalErrorAt]),
@@ -263,7 +263,7 @@ internal class ComputationEngine(
         val kind = model.kinds[targetPath] ?: return ComputeOutcome.VALUE
         val invalid = typeFormatError(kind, rendered, model.scaleOf(targetPath), model.dateLikeFormatOf(targetPath),
             model.datePrecisionOf(targetPath), model.rangeSeparatorOf(targetPath), model.constraintsOf(targetPath),
-            model.baseYear ?: 2000) != null
+            model.baseYear ?: 2000, model.timeZone) != null
         return if (invalid) ComputeOutcome.ERRORED else ComputeOutcome.VALUE
     }
 
