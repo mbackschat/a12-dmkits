@@ -1,0 +1,186 @@
+{
+    "header": {
+        "id": "cart-beyond-first-line",
+        "modelType": "document",
+        "modelVersion": "28.4.0",
+        "locales": [
+            {
+                "code": "en_US"
+            }
+        ],
+        "labels": [],
+        "annotations": [],
+        "modelReferences": []
+    },
+    "content": {
+        "modelInfo": {
+            "name": "cart-beyond-first-line",
+            "variant": "cockpit",
+            "revision": "Arbeitsversion",
+            "immutable": false
+        },
+        "modelConfig": {
+            "decimalSeparator": ".",
+            "timeZone": "Europe/Berlin",
+            "conditionLanguage": {
+                "code": "en_US"
+            },
+            "fieldRefByShortNameAllowed": true
+        },
+        "modelRoot": {
+            "rootGroups": [
+                {
+                    "type": "Group",
+                    "id": "/Cart",
+                    "name": "Cart",
+                    "Group": {
+                        "repeatability": 1,
+                        "elements": [
+                            {
+                                "type": "Rule",
+                                "id": "/Cart/BeyondFirst",
+                                "name": "BeyondFirst",
+                                "Rule": {
+                                    "errorEntityRelPath": "../Lines/Qty",
+                                    "errorCode": "BEYOND_FIRST",
+                                    "errorCondition": "FieldFilled(Lines/Qty) And CurrentRepetition(Lines) > 1",
+                                    "severity": "ERROR",
+                                    "errorMessage": [
+                                        {
+                                            "locale": "en_US",
+                                            "text": "x"
+                                        },
+                                        {
+                                            "locale": "de_DE",
+                                            "text": "x"
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "type": "Group",
+                                "id": "/Cart/Lines",
+                                "name": "Lines",
+                                "Group": {
+                                    "repeatability": 1000,
+                                    "indexFieldName": "ItemId",
+                                    "elements": [
+                                        {
+                                            "type": "Field",
+                                            "id": "/Cart/Lines/ItemId",
+                                            "name": "ItemId",
+                                            "Field": {
+                                                "fieldType": {
+                                                    "type": "StringType",
+                                                    "StringType": {}
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "Field",
+                                            "id": "/Cart/Lines/Qty",
+                                            "name": "Qty",
+                                            "Field": {
+                                                "fieldType": {
+                                                    "type": "NumberType",
+                                                    "NumberType": {
+                                                        "maxFractionalDigits": 0
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "Field",
+                                            "id": "/Cart/Lines/Price",
+                                            "name": "Price",
+                                            "Field": {
+                                                "fieldType": {
+                                                    "type": "NumberType",
+                                                    "NumberType": {
+                                                        "maxFractionalDigits": 2
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "Field",
+                                            "id": "/Cart/Lines/OrderedOn",
+                                            "name": "OrderedOn",
+                                            "Field": {
+                                                "fieldType": {
+                                                    "type": "DateType",
+                                                    "DateType": {
+                                                        "format": "yyyy-MM-dd"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "Field",
+                                            "id": "/Cart/Lines/DueBy",
+                                            "name": "DueBy",
+                                            "Field": {
+                                                "fieldType": {
+                                                    "type": "DateType",
+                                                    "DateType": {
+                                                        "format": "yyyy-MM-dd"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "Field",
+                                            "id": "/Cart/Lines/Active",
+                                            "name": "Active",
+                                            "Field": {
+                                                "fieldType": {
+                                                    "type": "BooleanType",
+                                                    "BooleanType": {}
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "Group",
+                                            "id": "/Cart/Lines/Parts",
+                                            "name": "Parts",
+                                            "Group": {
+                                                "repeatability": 1000,
+                                                "indexFieldName": "PartId",
+                                                "elements": [
+                                                    {
+                                                        "type": "Field",
+                                                        "id": "/Cart/Lines/Parts/PartId",
+                                                        "name": "PartId",
+                                                        "Field": {
+                                                            "fieldType": {
+                                                                "type": "StringType",
+                                                                "StringType": {}
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "type": "Field",
+                                                        "id": "/Cart/Lines/Parts/Weight",
+                                                        "name": "Weight",
+                                                        "Field": {
+                                                            "fieldType": {
+                                                                "type": "NumberType",
+                                                                "NumberType": {
+                                                                    "maxFractionalDigits": 2
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}

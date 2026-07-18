@@ -1,0 +1,108 @@
+{
+    "meta": {
+        "id": "having-all-filtered-out-sums-zero",
+        "kernelVersion": "30.8.1",
+        "source": "curated",
+        "sections": [
+            "§9"
+        ],
+        "tags": [
+            "having",
+            "aggregates",
+            "empty"
+        ],
+        "notes": "the filter keeps NO row — the empty keep-set folds to the Sum identity 0, so `== 0` fires"
+    },
+    "modelRef": "models/order-no-light-items.json",
+    "placements": [
+        {
+            "kind": "GROUP",
+            "path": "/Order",
+            "reps": [
+                1
+            ]
+        },
+        {
+            "kind": "GROUP",
+            "path": "/Order/Items",
+            "reps": [
+                1,
+                1
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/Items/Sku",
+            "reps": [
+                1,
+                1,
+                1
+            ],
+            "value": "A"
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/Items/Count",
+            "reps": [
+                1,
+                1,
+                1
+            ],
+            "value": "3"
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/Items/UnitWeight",
+            "reps": [
+                1,
+                1,
+                1
+            ],
+            "value": "2.00"
+        },
+        {
+            "kind": "GROUP",
+            "path": "/Order/Items",
+            "reps": [
+                1,
+                2
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/Items/Sku",
+            "reps": [
+                1,
+                2,
+                1
+            ],
+            "value": "B"
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/Items/Count",
+            "reps": [
+                1,
+                2,
+                1
+            ],
+            "value": "10"
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/Items/UnitWeight",
+            "reps": [
+                1,
+                2,
+                1
+            ],
+            "value": "2.00"
+        }
+    ],
+    "op": {
+        "kind": "validateFull"
+    },
+    "expected": [
+        "NO_LIGHT|OMISSION_ERROR|/Order[1]/Items[1]/Count"
+    ]
+}

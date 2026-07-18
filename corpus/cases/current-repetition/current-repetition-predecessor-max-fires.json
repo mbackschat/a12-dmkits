@@ -1,0 +1,116 @@
+{
+    "meta": {
+        "id": "current-repetition-predecessor-max-fires",
+        "kernelVersion": "30.8.1",
+        "source": "curated",
+        "sections": [
+            "§9"
+        ],
+        "tags": [
+            "current-repetition",
+            "correlation",
+            "having"
+        ],
+        "notes": "the predecessors idiom `CurrentRepetition(Lines) < CurrentRepetition($Lines)`: quantities 5,3,9 fire exactly on row 2 (its predecessor max 5 >= 3); row 3's predecessor max 5 < 9 stays clean"
+    },
+    "modelRef": "models/cart-qty-order.json",
+    "placements": [
+        {
+            "kind": "GROUP",
+            "path": "/Cart",
+            "reps": [
+                1
+            ]
+        },
+        {
+            "kind": "GROUP",
+            "path": "/Cart/Lines",
+            "reps": [
+                1,
+                1
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Cart/Lines/ItemId",
+            "reps": [
+                1,
+                1,
+                1
+            ],
+            "value": "K1"
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Cart/Lines/Qty",
+            "reps": [
+                1,
+                1,
+                1
+            ],
+            "value": "5"
+        },
+        {
+            "kind": "GROUP",
+            "path": "/Cart/Lines",
+            "reps": [
+                1,
+                2
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Cart/Lines/ItemId",
+            "reps": [
+                1,
+                2,
+                1
+            ],
+            "value": "K2"
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Cart/Lines/Qty",
+            "reps": [
+                1,
+                2,
+                1
+            ],
+            "value": "3"
+        },
+        {
+            "kind": "GROUP",
+            "path": "/Cart/Lines",
+            "reps": [
+                1,
+                3
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Cart/Lines/ItemId",
+            "reps": [
+                1,
+                3,
+                1
+            ],
+            "value": "K3"
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Cart/Lines/Qty",
+            "reps": [
+                1,
+                3,
+                1
+            ],
+            "value": "9"
+        }
+    ],
+    "op": {
+        "kind": "validateFull"
+    },
+    "expected": [
+        "QTY_ORDER|OMISSION_ERROR|/Cart[1]/Lines[2]/Qty"
+    ]
+}

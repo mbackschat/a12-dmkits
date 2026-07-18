@@ -1,0 +1,154 @@
+{
+    "meta": {
+        "id": "parallel-iteration-unmatched-sides-fire",
+        "kernelVersion": "30.8.1",
+        "source": "curated",
+        "sections": [
+            "§9",
+            "§12"
+        ],
+        "tags": [
+            "parallel-iteration",
+            "polarity"
+        ],
+        "notes": "the join iterates the UNION of the Department index values: Eng (Supply missing) fires at the real Demand row, Ops (Demand missing) fires at the kernel's UNKNOWN sentinel row [-5]; both OMISSION (an unspecified side is fillable)"
+    },
+    "modelRef": "models/staffing-coverage-pair.json",
+    "placements": [
+        {
+            "kind": "GROUP",
+            "path": "/Staffing",
+            "reps": [
+                1
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Staffing/PlanName",
+            "reps": [
+                1,
+                1
+            ],
+            "value": "Q3"
+        },
+        {
+            "kind": "GROUP",
+            "path": "/Staffing/Demand",
+            "reps": [
+                1,
+                1
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Staffing/Demand/Department",
+            "reps": [
+                1,
+                1,
+                1
+            ],
+            "value": "Sales"
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Staffing/Demand/Headcount",
+            "reps": [
+                1,
+                1,
+                1
+            ],
+            "value": "5"
+        },
+        {
+            "kind": "GROUP",
+            "path": "/Staffing/Demand",
+            "reps": [
+                1,
+                2
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Staffing/Demand/Department",
+            "reps": [
+                1,
+                2,
+                1
+            ],
+            "value": "Eng"
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Staffing/Demand/Headcount",
+            "reps": [
+                1,
+                2,
+                1
+            ],
+            "value": "3"
+        },
+        {
+            "kind": "GROUP",
+            "path": "/Staffing/Supply",
+            "reps": [
+                1,
+                1
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Staffing/Supply/Department",
+            "reps": [
+                1,
+                1,
+                1
+            ],
+            "value": "Sales"
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Staffing/Supply/Headcount",
+            "reps": [
+                1,
+                1,
+                1
+            ],
+            "value": "5"
+        },
+        {
+            "kind": "GROUP",
+            "path": "/Staffing/Supply",
+            "reps": [
+                1,
+                2
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Staffing/Supply/Department",
+            "reps": [
+                1,
+                2,
+                1
+            ],
+            "value": "Ops"
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Staffing/Supply/Headcount",
+            "reps": [
+                1,
+                2,
+                1
+            ],
+            "value": "2"
+        }
+    ],
+    "op": {
+        "kind": "validateFull"
+    },
+    "expected": [
+        "COVER_PAIR|OMISSION_ERROR|/Staffing[1]/Demand[-5]/Headcount",
+        "COVER_PAIR|OMISSION_ERROR|/Staffing[1]/Demand[2]/Headcount"
+    ]
+}

@@ -1,0 +1,144 @@
+{
+    "header": {
+        "id": "staffing-demand-exceeds-supply",
+        "modelType": "document",
+        "modelVersion": "28.4.0",
+        "locales": [
+            {
+                "code": "en_US"
+            }
+        ],
+        "labels": [],
+        "annotations": [],
+        "modelReferences": []
+    },
+    "content": {
+        "modelInfo": {
+            "name": "staffing-demand-exceeds-supply",
+            "variant": "cockpit",
+            "revision": "Arbeitsversion",
+            "immutable": false
+        },
+        "modelConfig": {
+            "decimalSeparator": ".",
+            "timeZone": "Europe/Berlin",
+            "conditionLanguage": {
+                "code": "en_US"
+            },
+            "fieldRefByShortNameAllowed": true
+        },
+        "modelRoot": {
+            "rootGroups": [
+                {
+                    "type": "Group",
+                    "id": "/Staffing",
+                    "name": "Staffing",
+                    "Group": {
+                        "repeatability": 1,
+                        "elements": [
+                            {
+                                "type": "Rule",
+                                "id": "/Staffing/OverDemand",
+                                "name": "OverDemand",
+                                "Rule": {
+                                    "errorEntityRelPath": "../Demand/Headcount",
+                                    "errorCode": "OVER_DEMAND",
+                                    "errorCondition": "[Demand/Headcount] > [Supply/Headcount]",
+                                    "severity": "ERROR",
+                                    "errorMessage": [
+                                        {
+                                            "locale": "en_US",
+                                            "text": "x"
+                                        },
+                                        {
+                                            "locale": "de_DE",
+                                            "text": "x"
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "type": "Field",
+                                "id": "/Staffing/PlanName",
+                                "name": "PlanName",
+                                "Field": {
+                                    "fieldType": {
+                                        "type": "StringType"
+                                    }
+                                }
+                            },
+                            {
+                                "type": "Group",
+                                "id": "/Staffing/Demand",
+                                "name": "Demand",
+                                "Group": {
+                                    "repeatability": 20,
+                                    "indexFieldName": "Department",
+                                    "elements": [
+                                        {
+                                            "type": "Field",
+                                            "id": "/Staffing/Demand/Department",
+                                            "name": "Department",
+                                            "Field": {
+                                                "fieldType": {
+                                                    "type": "StringType"
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "Field",
+                                            "id": "/Staffing/Demand/Headcount",
+                                            "name": "Headcount",
+                                            "Field": {
+                                                "fieldType": {
+                                                    "type": "NumberType",
+                                                    "NumberType": {
+                                                        "maxFractionalDigits": 0
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "type": "Group",
+                                "id": "/Staffing/Supply",
+                                "name": "Supply",
+                                "Group": {
+                                    "repeatability": 20,
+                                    "indexFieldName": "Department",
+                                    "elements": [
+                                        {
+                                            "type": "Field",
+                                            "id": "/Staffing/Supply/Department",
+                                            "name": "Department",
+                                            "Field": {
+                                                "fieldType": {
+                                                    "type": "StringType"
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "Field",
+                                            "id": "/Staffing/Supply/Headcount",
+                                            "name": "Headcount",
+                                            "Field": {
+                                                "fieldType": {
+                                                    "type": "NumberType",
+                                                    "NumberType": {
+                                                        "maxFractionalDigits": 0
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}

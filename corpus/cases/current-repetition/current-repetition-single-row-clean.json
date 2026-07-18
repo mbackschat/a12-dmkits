@@ -1,0 +1,56 @@
+{
+    "meta": {
+        "id": "current-repetition-single-row-clean",
+        "kernelVersion": "30.8.1",
+        "source": "curated",
+        "sections": [
+            "§9"
+        ],
+        "tags": [
+            "current-repetition"
+        ],
+        "notes": "a single row carries index 1 — `CurrentRepetition(Lines) > 1` never fires"
+    },
+    "modelRef": "models/cart-beyond-first-line.json",
+    "placements": [
+        {
+            "kind": "GROUP",
+            "path": "/Cart",
+            "reps": [
+                1
+            ]
+        },
+        {
+            "kind": "GROUP",
+            "path": "/Cart/Lines",
+            "reps": [
+                1,
+                1
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Cart/Lines/ItemId",
+            "reps": [
+                1,
+                1,
+                1
+            ],
+            "value": "K1"
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Cart/Lines/Qty",
+            "reps": [
+                1,
+                1,
+                1
+            ],
+            "value": "5"
+        }
+    ],
+    "op": {
+        "kind": "validateFull"
+    },
+    "expected": []
+}

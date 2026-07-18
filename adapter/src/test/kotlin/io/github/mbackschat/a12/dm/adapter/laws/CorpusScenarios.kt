@@ -38,6 +38,19 @@ object CorpusScenarios {
     private val ord = edit.group("/Order")
     private val items = edit.group("/Order/Items")
 
+    // F7 bases: the cart fixture (a repeatable Lines group — CurrentRepetition) and the staffing fixture
+    // (two sibling Department-indexed groups — parallel iteration), both own-domain like the order base.
+    private val cart = RuntimeLaws.model("models/fuzz.dm.json")
+    private val cartEdit = EditSession.read(cart)
+    private val cartRoot = cartEdit.group("/Cart")
+    private val lines = cartEdit.group("/Cart/Lines")
+
+    private val staffing = RuntimeLaws.model("models/staffing.dm.json")
+    private val staffEdit = EditSession.read(staffing)
+    private val staff = staffEdit.group("/Staffing")
+    private val demand = staffEdit.group("/Staffing/Demand")
+    private val supply = staffEdit.group("/Staffing/Supply")
+
     /** Every seed case with the family directory + the standalone model it references; all captured (tri-verified) here. */
     fun all(): List<Family> = listOf(
         orderQtyBelowThreshold(),
@@ -57,6 +70,22 @@ object CorpusScenarios {
         numSignedNeNegOneEmptyRowClean(),
         computeCascadeSeed(),
         modelValidationSeed(),
+        havingSumKeepsOnlyMatchingRows(),
+        havingSumExcludedRowsClean(),
+        havingAllFilteredOutSumsZero(),
+        havingQuantifierFiredOmission(),
+        filterCorrelatedDuplicatesFire(),
+        filterCorrelatedAllDistinctClean(),
+        filterSingleRowSelfExcludedClean(),
+        filterSelfMatchFiresEveryRow(),
+        currentRepetitionFiresBeyondFirstRow(),
+        currentRepetitionSingleRowClean(),
+        currentRepetitionPredecessorMaxFires(),
+        currentRepetitionOrderedRowsClean(),
+        parallelIterationUnmatchedSidesFire(),
+        parallelIterationAllMatchedClean(),
+        parallelIterationEmptySideReadsZero(),
+        parallelIterationInvalidIndexSuppresses(),
     )
 
     /** A scenario: the family dir, the tri-verified [case], and the standalone [model] it references by `modelRef`. */
@@ -146,6 +175,96 @@ object CorpusScenarios {
         it.name("StockNeOne").code("STOCK_NE_1").errorField(ord.num("StockOnHand").field())
             .`when`(ord.num("StockOnHand").ne(1)).severity(Severity.ERROR)
             .message(Dsl.en("Stock on hand must not equal one.")).build()
+    }))
+
+    // ---- F7: the iteration/correlation constructs — Having, the $ filter, CurrentRepetition, and
+    //          parallel iteration (KERNEL-SEMANTICS §9). One rule per model (the F6 pairing discipline);
+    //          each family pins a firing case, a clean case, and a binding/scope edge. -------------------
+
+    /** `Sum(Items* then Count Having [Items/UnitWeight] == 1) > 5` — a filtered aggregate; star-only, so it
+     *  fires ONCE at the pinned first-row anchor (IF127). */
+    private val orderLightSumModel = model("order-light-sum", TypedRules.inject(order, ord.rule {
+        it.name("LightSum").code("LIGHT_SUM").errorField(items.num("Count").field())
+            .`when`(Dsl.sum(ord.flatten("Items*/Count").having(items.num("UnitWeight").eq(1))).gt(5))
+            .severity(Severity.ERROR)
+            .message(Dsl.en("The light items' total count is too high.")).build()
+    }))
+
+    /** `Sum(Items* then Count Having [Items/UnitWeight] == 1) == 0` — fires exactly when the filter keeps
+     *  no row (the empty keep-set folds to the Sum identity 0). */
+    private val orderNoLightItemsModel = model("order-no-light-items", TypedRules.inject(order, ord.rule {
+        it.name("NoLight").code("NO_LIGHT").errorField(items.num("Count").field())
+            .`when`(Dsl.sum(ord.flatten("Items*/Count").having(items.num("UnitWeight").eq(1))).eq(0))
+            .severity(Severity.ERROR)
+            .message(Dsl.en("The order carries no light item.")).build()
+    }))
+
+    /** `AtLeastOneFieldFilled(Items* then Count Having [Items/UnitWeight] == 1)` — the fill quantifier over a
+     *  filtered star; a fired result is UNCONDITIONALLY OMISSION (the Having escalation, IF101). */
+    private val orderLightPresentModel = model("order-light-present", TypedRules.inject(order, ord.rule {
+        it.name("LightPresent").code("LIGHT_PRESENT").errorField(items.num("Count").field())
+            .`when`(Dsl.atLeastOneFieldFilled(ord.flatten("Items*/Count").having(items.num("UnitWeight").eq(1))))
+            .severity(Severity.ERROR)
+            .message(Dsl.en("A light item is on the order.")).build()
+    }))
+
+    /** The `$`-correlated duplicate detector — "another Items row shares this row's Count": a per-row rule whose
+     *  filter self-excludes via `CurrentRepetition(Items) != CurrentRepetition($Items)` and joins on the value. */
+    private val orderDuplicateCountModel = model("order-duplicate-count", TypedRules.inject(order, ord.rule {
+        it.name("DupCount").code("DUP_COUNT").errorField(items.num("Count").field())
+            .`when`(items.num("Count").filled().and(Dsl.atLeastOneFieldFilled(
+                ord.flatten("Items*/Count").having(
+                    Dsl.currentRepetition(ord.group("Items")).ne(Dsl.currentRepetition(ord.group("Items"), true))
+                        .and(items.num("Count").eq(items.num("Count").outer()))))))
+            .severity(Severity.ERROR)
+            .message(Dsl.en("Another item line carries the same count.")).build()
+    }))
+
+    /** The same `$` value join WITHOUT the self-exclusion — the filter's bare side iterates ALL rows, the
+     *  outer row included, so every filled row matches itself. */
+    private val orderSelfMatchCountModel = model("order-self-match-count", TypedRules.inject(order, ord.rule {
+        it.name("SelfMatch").code("SELF_MATCH").errorField(items.num("Count").field())
+            .`when`(items.num("Count").filled().and(Dsl.atLeastOneFieldFilled(
+                ord.flatten("Items*/Count").having(items.num("Count").eq(items.num("Count").outer())))))
+            .severity(Severity.ERROR)
+            .message(Dsl.en("An item line carries this count.")).build()
+    }))
+
+    /** `FieldFilled(Lines/Qty) And CurrentRepetition(Lines) > 1` — the structural row index, per Lines row. */
+    private val cartBeyondFirstLineModel = model("cart-beyond-first-line", TypedRules.inject(cart, cartRoot.rule {
+        it.name("BeyondFirst").code("BEYOND_FIRST").errorField(lines.num("Qty").field())
+            .`when`(lines.num("Qty").filled().and(Dsl.currentRepetition(cartRoot.group("Lines")).gt(1)))
+            .severity(Severity.ERROR)
+            .message(Dsl.en("A cart line beyond the first needs a review.")).build()
+    }))
+
+    /** The BA "all predecessors" idiom (own-domain): `MaxValue(Lines* then Qty Having CurrentRepetition(Lines)
+     *  < CurrentRepetition($Lines)) >= [Lines/Qty]` — quantities must increase strictly across lines. */
+    private val cartQtyOrderModel = model("cart-qty-order", TypedRules.inject(cart, cartRoot.rule {
+        it.name("QtyOrder").code("QTY_ORDER").errorField(lines.num("Qty").field())
+            .`when`(Dsl.maxValue(cartRoot.flatten("Lines*/Qty").having(
+                    Dsl.currentRepetition(cartRoot.group("Lines"))
+                        .lt(Dsl.currentRepetition(cartRoot.group("Lines"), true))))
+                .ge(lines.num("Qty").asNumber()))
+            .severity(Severity.ERROR)
+            .message(Dsl.en("Line quantities must increase from line to line.")).build()
+    }))
+
+    /** `FieldsNotCollectivelyFilled(Demand/Headcount, Supply/Headcount)` — the index-keyed outer join over the
+     *  sibling Department-indexed groups. */
+    private val staffingCoveragePairModel = model("staffing-coverage-pair", TypedRules.inject(staffing, staff.rule {
+        it.name("CoverPair").code("COVER_PAIR").errorField(demand.num("Headcount").field())
+            .`when`(Dsl.fieldsNotCollectivelyFilled(demand.field("Headcount"), supply.field("Headcount")))
+            .severity(Severity.ERROR)
+            .message(Dsl.en("Demand and supply must be planned together per department.")).build()
+    }))
+
+    /** `[Demand/Headcount] > [Supply/Headcount]` — an unguarded per-key compare across the parallel join. */
+    private val staffingOverDemandModel = model("staffing-demand-exceeds-supply", TypedRules.inject(staffing, staff.rule {
+        it.name("OverDemand").code("OVER_DEMAND").errorField(demand.num("Headcount").field())
+            .`when`(demand.num("Headcount").gt(supply.num("Headcount")))
+            .severity(Severity.ERROR)
+            .message(Dsl.en("A department demands more headcount than its supply covers.")).build()
     }))
 
     // ---- curated cases (typed-authored) ---------------------------------------------------------
@@ -319,6 +438,166 @@ object CorpusScenarios {
         Op.ValidateFull,
     )
 
+    // ---- F7: `Having` — the per-row filter on a starred aggregate (§9) ---------------------------
+
+    private fun havingSumKeepsOnlyMatchingRows(): Family = family(
+        HAVING, orderLightSumModel,
+        CaseMeta("having-sum-keeps-only-matching-rows", PENDING, CaseSource.CURATED, listOf("§9"),
+            tags = listOf("having", "aggregates"),
+            notes = "the filter keeps only the weight-1 rows (3+4=7 > 5) — the excluded 10 never enters the sum; star-only, so ONE fire at the pinned first-row anchor (IF127)"),
+        listOf(group("/Order", 1)) + itemRow(1, "A", "3", "1.00") + itemRow(2, "B", "10", "2.00") + itemRow(3, "C", "4", "1.00"),
+        Op.ValidateFull,
+    )
+
+    private fun havingSumExcludedRowsClean(): Family = family(
+        HAVING, orderLightSumModel,
+        CaseMeta("having-sum-excluded-rows-clean", PENDING, CaseSource.CURATED, listOf("§9"),
+            tags = listOf("having", "aggregates"),
+            notes = "the kept rows sum to 4 (not > 5) while the UNFILTERED sum 14 would fire — the clean case is what distinguishes a filter-honoring engine"),
+        listOf(group("/Order", 1)) + itemRow(1, "A", "2", "1.00") + itemRow(2, "B", "10", "2.00") + itemRow(3, "C", "2", "1.00"),
+        Op.ValidateFull,
+    )
+
+    private fun havingAllFilteredOutSumsZero(): Family = family(
+        HAVING, orderNoLightItemsModel,
+        CaseMeta("having-all-filtered-out-sums-zero", PENDING, CaseSource.CURATED, listOf("§9"),
+            tags = listOf("having", "aggregates", "empty"),
+            notes = "the filter keeps NO row — the empty keep-set folds to the Sum identity 0, so `== 0` fires"),
+        listOf(group("/Order", 1)) + itemRow(1, "A", "3", "2.00") + itemRow(2, "B", "10", "2.00"),
+        Op.ValidateFull,
+    )
+
+    private fun havingQuantifierFiredOmission(): Family = family(
+        HAVING, orderLightPresentModel,
+        CaseMeta("having-quantifier-fired-omission", PENDING, CaseSource.CURATED, listOf("§9", "§12"),
+            tags = listOf("having", "polarity"),
+            notes = "a fired fill quantifier over a Having-filtered star is UNCONDITIONALLY OMISSION (the escalation, IF101) — even over a fully-kept FILLED row, where an unfiltered quantifier would type VALUE"),
+        listOf(group("/Order", 1)) + itemRow(1, "A", "5", "1.00"),
+        Op.ValidateFull,
+    )
+
+    // ---- F7: the `$` filter correlation — the outer-row join inside `Having` (§9) ----------------
+
+    private fun filterCorrelatedDuplicatesFire(): Family = family(
+        FILTER, orderDuplicateCountModel,
+        CaseMeta("filter-correlated-duplicates-fire", PENDING, CaseSource.CURATED, listOf("§9"),
+            tags = listOf("filter", "correlation", "having"),
+            notes = "[\$Count] binds each filter evaluation to the OUTER iterating row — counts 5,5,9 fire exactly on the two duplicate rows"),
+        listOf(group("/Order", 1)) + itemRow(1, "A", "5") + itemRow(2, "B", "5") + itemRow(3, "C", "9"),
+        Op.ValidateFull,
+    )
+
+    private fun filterCorrelatedAllDistinctClean(): Family = family(
+        FILTER, orderDuplicateCountModel,
+        CaseMeta("filter-correlated-all-distinct-clean", PENDING, CaseSource.CURATED, listOf("§9"),
+            tags = listOf("filter", "correlation", "having"),
+            notes = "all counts distinct — the self-excluded value join keeps no row for any outer row, nothing fires"),
+        listOf(group("/Order", 1)) + itemRow(1, "A", "5") + itemRow(2, "B", "6") + itemRow(3, "C", "9"),
+        Op.ValidateFull,
+    )
+
+    private fun filterSingleRowSelfExcludedClean(): Family = family(
+        FILTER, orderDuplicateCountModel,
+        CaseMeta("filter-single-row-self-excluded-clean", PENDING, CaseSource.CURATED, listOf("§9"),
+            tags = listOf("filter", "correlation", "having"),
+            notes = "a single row: `CurrentRepetition(Items) != CurrentRepetition(\$Items)` excludes the only row, so the correlated quantifier can never fire"),
+        listOf(group("/Order", 1)) + itemRow(1, "A", "5"),
+        Op.ValidateFull,
+    )
+
+    private fun filterSelfMatchFiresEveryRow(): Family = family(
+        FILTER, orderSelfMatchCountModel,
+        CaseMeta("filter-self-match-fires-every-row", PENDING, CaseSource.CURATED, listOf("§9"),
+            tags = listOf("filter", "correlation", "having"),
+            notes = "WITHOUT the self-exclusion the filter's bare side iterates ALL rows including the outer row itself, so every filled row self-matches and fires — the binding edge the self-excluded twin controls"),
+        listOf(group("/Order", 1)) + itemRow(1, "A", "5") + itemRow(2, "B", "6") + itemRow(3, "C", "9"),
+        Op.ValidateFull,
+    )
+
+    // ---- F7: CurrentRepetition — the structural row index + the predecessors idiom (§9) ----------
+
+    private fun currentRepetitionFiresBeyondFirstRow(): Family = family(
+        CURRENT_REP, cartBeyondFirstLineModel,
+        CaseMeta("current-repetition-fires-beyond-first-row", PENDING, CaseSource.CURATED, listOf("§9", "§12"),
+            tags = listOf("current-repetition", "polarity"),
+            notes = "CurrentRepetition is the 1-based structural row index: rows 2,3 fire, row 1 does not — and the fired type is VALUE (no fill can change a row's index)"),
+        listOf(group("/Cart", 1)) + lineRow(1, "5") + lineRow(2, "5") + lineRow(3, "5"),
+        Op.ValidateFull,
+    )
+
+    private fun currentRepetitionSingleRowClean(): Family = family(
+        CURRENT_REP, cartBeyondFirstLineModel,
+        CaseMeta("current-repetition-single-row-clean", PENDING, CaseSource.CURATED, listOf("§9"),
+            tags = listOf("current-repetition"),
+            notes = "a single row carries index 1 — `CurrentRepetition(Lines) > 1` never fires"),
+        listOf(group("/Cart", 1)) + lineRow(1, "5"),
+        Op.ValidateFull,
+    )
+
+    private fun currentRepetitionPredecessorMaxFires(): Family = family(
+        CURRENT_REP, cartQtyOrderModel,
+        CaseMeta("current-repetition-predecessor-max-fires", PENDING, CaseSource.CURATED, listOf("§9"),
+            tags = listOf("current-repetition", "correlation", "having"),
+            notes = "the predecessors idiom `CurrentRepetition(Lines) < CurrentRepetition(\$Lines)`: quantities 5,3,9 fire exactly on row 2 (its predecessor max 5 >= 3); row 3's predecessor max 5 < 9 stays clean"),
+        listOf(group("/Cart", 1)) + lineRow(1, "5") + lineRow(2, "3") + lineRow(3, "9"),
+        Op.ValidateFull,
+    )
+
+    private fun currentRepetitionOrderedRowsClean(): Family = family(
+        CURRENT_REP, cartQtyOrderModel,
+        CaseMeta("current-repetition-ordered-rows-clean", PENDING, CaseSource.CURATED, listOf("§9"),
+            tags = listOf("current-repetition", "correlation", "having"),
+            notes = "strictly increasing quantities stay clean — including row 1, whose EMPTY predecessor set folds MaxValue to 0 (0 >= 3 is false), not to a fire or a suppression"),
+        listOf(group("/Cart", 1)) + lineRow(1, "3") + lineRow(2, "4") + lineRow(3, "5"),
+        Op.ValidateFull,
+    )
+
+    // ---- F7: parallel iteration — the index-keyed outer join over sibling groups (§9) ------------
+
+    private fun parallelIterationUnmatchedSidesFire(): Family = family(
+        PARALLEL, staffingCoveragePairModel,
+        CaseMeta("parallel-iteration-unmatched-sides-fire", PENDING, CaseSource.CURATED, listOf("§9", "§12"),
+            tags = listOf("parallel-iteration", "polarity"),
+            notes = "the join iterates the UNION of the Department index values: Eng (Supply missing) fires at the real Demand row, Ops (Demand missing) fires at the kernel's UNKNOWN sentinel row [-5]; both OMISSION (an unspecified side is fillable)"),
+        listOf(group("/Staffing", 1), field("/Staffing/PlanName", "Q3", 1, 1))
+            + staffRow("/Staffing/Demand", 1, "Sales", "5") + staffRow("/Staffing/Demand", 2, "Eng", "3")
+            + staffRow("/Staffing/Supply", 1, "Sales", "5") + staffRow("/Staffing/Supply", 2, "Ops", "2"),
+        Op.ValidateFull,
+    )
+
+    private fun parallelIterationAllMatchedClean(): Family = family(
+        PARALLEL, staffingCoveragePairModel,
+        CaseMeta("parallel-iteration-all-matched-clean", PENDING, CaseSource.CURATED, listOf("§9"),
+            tags = listOf("parallel-iteration"),
+            notes = "every Department value has a filled row on both sides — the outer join finds no unmatched side, nothing fires"),
+        listOf(group("/Staffing", 1), field("/Staffing/PlanName", "Q3", 1, 1))
+            + staffRow("/Staffing/Demand", 1, "Sales", "5") + staffRow("/Staffing/Demand", 2, "Eng", "3")
+            + staffRow("/Staffing/Supply", 1, "Sales", "2") + staffRow("/Staffing/Supply", 2, "Eng", "4"),
+        Op.ValidateFull,
+    )
+
+    private fun parallelIterationEmptySideReadsZero(): Family = family(
+        PARALLEL, staffingOverDemandModel,
+        CaseMeta("parallel-iteration-empty-side-reads-zero", PENDING, CaseSource.CURATED, listOf("§9", "§12"),
+            tags = listOf("parallel-iteration", "empty", "polarity"),
+            notes = "the join is BY KEY, never by row position: Sales 9>5 fires VALUE (all specified); Eng's missing Supply side reads empty-as-0, 3>0 fires OMISSION; Ops 0>2 stays silent"),
+        listOf(group("/Staffing", 1), field("/Staffing/PlanName", "Q3", 1, 1))
+            + staffRow("/Staffing/Demand", 1, "Sales", "9") + staffRow("/Staffing/Demand", 2, "Eng", "3")
+            + staffRow("/Staffing/Supply", 1, "Sales", "5") + staffRow("/Staffing/Supply", 2, "Ops", "2"),
+        Op.ValidateFull,
+    )
+
+    private fun parallelIterationInvalidIndexSuppresses(): Family = family(
+        PARALLEL, staffingCoveragePairModel,
+        CaseMeta("parallel-iteration-invalid-index-suppresses", PENDING, CaseSource.CURATED, listOf("§9"),
+            tags = listOf("parallel-iteration", "invalid-index"),
+            notes = "an EMPTY Department cell makes Supply's index invalid: references into Supply read 3VL UNKNOWN, suppressing the negative operator for Sales — only Ops (a valid Supply-only key) fires at Demand[-5]; the empty index cell itself draws the formal mandatoryField"),
+        listOf(group("/Staffing", 1), field("/Staffing/PlanName", "Q3", 1, 1))
+            + staffRow("/Staffing/Demand", 1, "Sales", "5")
+            + staffRow("/Staffing/Supply", 1, "Ops", "2") + staffRow("/Staffing/Supply", 2, null, "4"),
+        Op.ValidateFull,
+    )
+
     // ---- fuzz-seed cases (pinned from the differential fuzzers) ----------------------------------
 
     private fun computeCascadeSeed(): Family {
@@ -351,6 +630,12 @@ object CorpusScenarios {
 
     /** The F6 family directory (operator-sensitive empty/polarity controls) + the fields those cases place. */
     private const val F6 = "empty-polarity"
+
+    /** The F7 family directories — the iteration/correlation constructs (KERNEL-SEMANTICS §9). */
+    private const val HAVING = "having"
+    private const val FILTER = "filter"
+    private const val CURRENT_REP = "current-repetition"
+    private const val PARALLEL = "parallel-iteration"
     private const val CUSTOMER = "/Order/CustomerName"   // the filled sibling that makes a row content-bearing
     private const val PRODUCT_CODE = "/Order/ProductCode"
     private const val STOCK = "/Order/StockOnHand"       // UNSIGNED number (positivesOnly)
@@ -368,6 +653,31 @@ object CorpusScenarios {
 
     /** A present-but-valueless field cell (SPEC §4 EMPTY) — an instantiated-empty cell, distinct from an absent one. */
     private fun empty(path: String, vararg reps: Int) = Placement(PlacementKind.EMPTY, path, reps.toList())
+
+    // ---- F7 row helpers ---------------------------------------------------------------------------
+
+    /** One `/Order/Items` row: Sku (the index field), Count, and optionally UnitWeight (the Having filter column). */
+    private fun itemRow(r: Int, sku: String, count: String, weight: String? = null): List<Placement> = buildList {
+        add(group("/Order/Items", 1, r))
+        add(field("/Order/Items/Sku", sku, 1, r, 1))
+        add(field("/Order/Items/Count", count, 1, r, 1))
+        weight?.let { add(field("/Order/Items/UnitWeight", it, 1, r, 1)) }
+    }
+
+    /** One `/Cart/Lines` row: ItemId (the index field, keyed by the row) + Qty. */
+    private fun lineRow(r: Int, qty: String): List<Placement> = listOf(
+        group("/Cart/Lines", 1, r),
+        field("/Cart/Lines/ItemId", "K$r", 1, r, 1),
+        field("/Cart/Lines/Qty", qty, 1, r, 1),
+    )
+
+    /** One Demand/Supply row: Department (the shared join index; null = the cell stays empty — an invalid
+     *  index for the row, the shape `ParallelIterationDiffTest` pins) + Headcount. */
+    private fun staffRow(groupPath: String, r: Int, dept: String?, headcount: String): List<Placement> = buildList {
+        add(group(groupPath, 1, r))
+        dept?.let { add(field("$groupPath/Department", it, 1, r, 1)) }
+        add(field("$groupPath/Headcount", headcount, 1, r, 1))
+    }
 
     /** Record a fuzz [scenario]'s generated placements for [seed] (mirrors the fuzz nets' `instance(sink, 0, seed)`). */
     private fun record(scenario: PerfScenario, seed: Int): List<Placement> {

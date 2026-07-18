@@ -16,10 +16,10 @@ One page, keyed by the canonical kernel-truth taxonomy, that answers: *for a giv
 | §6 | Dates and time | §6 supplements | `boundary` | `clock` |
 | §7 | Strings and patterns | §7 supplements | — | `empty-polarity` |
 | §8 | Enumerations | §8 supplements | — | — |
-| §9 | Repetition, iteration, and cross-array evaluation | §9 supplements | `iterationRange` | `compute`, `fuzz` |
+| §9 | Repetition, iteration, and cross-array evaluation | §9 supplements | `iterationRange` | `compute`, `current-repetition`, `filter`, `fuzz`, `having`, `parallel-iteration` |
 | §10 | Paths and references | §10 supplements | — | — |
 | §11 | Computations | §11 supplements | — | `compute`, `fuzz` |
-| §12 | The validation model | §12 supplements | `polarity` | `empty-polarity`, `partial` |
+| §12 | The validation model | §12 supplements | `polarity` | `current-repetition`, `empty-polarity`, `having`, `parallel-iteration`, `partial` |
 | §13 | Error-message interpolation | §13 supplements | — | — |
 | §14 | CustomCondition — the escape hatch | §14 supplements | — | — |
 
