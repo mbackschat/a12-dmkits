@@ -172,6 +172,27 @@ captureToolTask('captureDiffReports',
              '--output', requireProperty('capture.output')]
         })
 
+// The compact semantic-observation exporter (CONFORMANCE-CORPUS-SPEC §15h) — post-capture, one family,
+// additive beside the frozen V1 surface: a SEPARATE entry (never CaptureTool, never in capabilities).
+// Its path properties are REPO-ROOT-resolved (absolute paths recommended and stay as given).
+tasks.register('exportSemanticObservations', JavaExec) {
+    group = 'capture'
+    description = 'Export the compact semantic-observation bundle from the retained qualified ' +
+            'string-direct-cascade-v1 evidence unit: -PsemanticEvidence.packet=<dir> ' +
+            '-PsemanticEvidence.packetReceiptSha256=<hex> -PsemanticEvidence.qualification=<dir> ' +
+            '-PsemanticEvidence.qualificationReceiptSha256=<hex> -PsemanticEvidence.output=<new-or-empty-dir>.'
+    classpath = sourceSets.capture.runtimeClasspath
+    mainClass = 'io.github.mbackschat.a12.dm.adapter.capture.export.CompactObservationTool'
+    systemProperty 'capture.repoRoot', rootProject.projectDir.absolutePath
+    doFirst {
+        args = ['--packet', rootProject.file(requireProperty('semanticEvidence.packet')).absolutePath,
+                '--packet-receipt-sha256', requireProperty('semanticEvidence.packetReceiptSha256'),
+                '--qualification', rootProject.file(requireProperty('semanticEvidence.qualification')).absolutePath,
+                '--qualification-receipt-sha256', requireProperty('semanticEvidence.qualificationReceiptSha256'),
+                '--output', rootProject.file(requireProperty('semanticEvidence.output')).absolutePath]
+    }
+}
+
 dependencies {
     // The repo-standard JSON parser (already implementation-scoped in core/rulekit/modelkit/cli at this
     // exact pin) — the capture decoder parses scenario/packet JSON with it; the canonical packet WRITER is
