@@ -2,7 +2,7 @@
 
 Two coupled pieces that share one engine:
 
-1. **The model-driven seed generator** (`SeedGenerator`, package `…dm.interpreter.gen`) — given a document model, it produces a **valid-by-construction** document instance. Kernel-free and multiplatform, so the same code serves three consumers.
+1. **The model-driven seed generator** (`SeedGenerator`, package `…dm.interpreter.gen`) — given a document model, it produces a **best-effort, model-derived candidate** document instance (structure-shaped; **not** guaranteed model-accepted). Kernel-free and multiplatform, so the same code serves three consumers.
 2. **The differential fuzz net** (`adapter.perf.InterpreterKernelFuzzTest`) — built on the generator: it generates many random documents and asserts the **interpreter agrees with the real kernel** on every one. This is the strongest gate for the interpreter's #1 rule — *match the kernel exactly* ([INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) IF0).
 
 Around these sit a few **companion harnesses** that make the exact-match loop fast: a **kernel probe battery** (learn the kernel's behavior *before* implementing), **fuzz divergence localization** (pinpoint *which* row/code diverged), and a **catalog-parity meter** (guard against unhandled operators). They're documented in "[Companion harnesses](#companion-harnesses--the-probe-first-loop)" below.
@@ -13,7 +13,7 @@ This doc is the **stable method**. The generator's *consumers* have their own ho
 
 Hand-writing document fixtures to test the interpreter is the obvious approach — and it is exactly what the per-operator `*DiffTest`s do (one pinned case each). But hand-picked cases only catch the divergences you *think* to write. The exact-match bar needs the opposite: **random combinations a human would not pick** — odd row counts across nested groups, mixed fill/empty/malformed patterns, colliding index keys, an aggregate over a list that happens to be empty. To generate those *and feed the same document to both engines*, you need one generator that builds a document once and can target either backing — that is the generator's reason to exist.
 
-It is **valid-by-construction** on purpose: the structure comes from the model (so every placement is addressable and every group instantiated correctly), and the default per-field value is in-format for the field's kind. A test that wants invalidity (the fuzz net does) layers it on top via a value strategy — it never has to fight a malformed *structure*.
+It is **structurally sound by construction** on purpose: the structure comes from the model (so every placement is addressable and every group instantiated correctly), and the default per-field value is in-format for the field's kind — this is **structure + per-field format, NOT whole-document model-acceptance**. A test that wants invalidity (the fuzz net does) layers it on top via a value strategy — it never has to fight a malformed *structure*.
 
 ## The data flow
 
@@ -52,7 +52,7 @@ gen.populate(
 | **`PlacementSink`** | `group(path, *reps)` · `field(path, value, *reps)` · `emptyField(path, *reps)`. The only thing the generator emits into. |
 | **`RowsFn`** = `(group, parentReps, rnd) -> Int` | How many rows to instantiate for a repeatable group under a given parent row. A non-repeatable group always gets exactly one row. Counts may vary per parent and per run (the RNG is passed in). |
 | **`ValueStrategy`** = `(field, reps, rnd) -> String?` | The value for one field instance; **`null` leaves it empty** (present-but-unfilled). |
-| **`ValidValues`** (the default strategy) | A **valid**, **constraint-aware** value for each `Kind`: NUMBER respects scale + sign (never a signed zero — that is a formal error) **and its declared `min/maxValue` range** (draws a declared bound, exercising both ends across seeds), STRING respects its declared **`min/maxLength`**, dates/times/ranges render in the field's format, a CONFIRM is `true` or empty only. A STRING **`pattern`** is cheaply satisfied (always verified against the real regex) or the field is **left empty** (the sanctioned leave-empty fallback) — the one case `ValidValues` returns `null`. Staying inside a field's declared constraints keeps the kernel's per-cell formal checks from firing and *suppressing the rules a differential means to exercise* (WI-7 / S2). Otherwise never empties a field — compose a wrapper for that. |
+| **`ValidValues`** (the default strategy) | A **best-effort, constraint-aware** value for each `Kind` (a per-field local heuristic, **not** a whole-document validity guarantee): NUMBER respects scale + sign (never a signed zero — that is a formal error) **and its declared `min/maxValue` range** (draws a declared bound, exercising both ends across seeds), STRING respects its declared **`min/maxLength`**, dates/times/ranges render in the field's format, a CONFIRM is `true` or empty only. A STRING **`pattern`** is cheaply satisfied (always verified against the real regex) or the field is **left empty** (the sanctioned leave-empty fallback) — the one case `ValidValues` returns `null`. Staying inside a field's declared constraints keeps the kernel's per-cell formal checks from firing and *suppressing the rules a differential means to exercise* (WI-7 / S2). Otherwise never empties a field — compose a wrapper for that. |
 
 **Determinism is the contract that makes the dual-engine differential work.** `populate` builds its own `Random(seed)` and walks in a fixed order, so two calls with the same generator instance and seed produce the **identical** document. The fuzz net relies on this: it materializes seed *s* into the interpreter and into the kernel from the same generator, and any divergence is therefore a real semantic difference, not a generation artefact — and a failing seed is exactly reproducible.
 
@@ -128,7 +128,7 @@ A failing fuzz seed prints `seed=N kernel-only=… interp-only=…`; reproduce i
 ## Relationship to the perf harness and the seed verb
 
 - **Perf harness** ([INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md)) — the *same* `SeedGenerator` + `PlacementSink` build the perf scenarios' instances into both engines; the fuzz net is the **correctness twin** of the perf differential (one asserts equality of outputs, the other measures time, both over generated real documents). The deterministic strategies there drive a known firing fraction; the fuzz strategy here is random.
-- **`dmtool seed` verb (#33)** — not yet built. The generator is already placed kernel-free precisely so the verb can wire `loader → SeedGenerator.populate(JsonSink) → serialize` on the native image, producing a valid sample instance for any model. The `PlacementSink` seam is the extension point — a third backing, no generator change.
+- **`dmtool seed` verb (#33)** — not yet built. The generator is already placed kernel-free precisely so the verb can wire `loader → SeedGenerator.populate(JsonSink) → serialize` on the native image, producing a best-effort model-derived sample candidate for any model. The `PlacementSink` seam is the extension point — a third backing, no generator change.
 
 ## Companion harnesses — the probe-first loop
 

@@ -316,7 +316,7 @@ dmtool -m sub.dm.json model compute --instance sub-instance.json
 # validate STORED values as-is (bare validateFull)
 dmtool -m order.dm.json model eval --instance order-instance.json --no-computations
 
-# generate a valid sample instance (feeds the verbs above)
+# generate a best-effort model-derived sample candidate (feeds the verbs above)
 dmtool -m order.dm.json model seed --rows /Order/Items:2
 
 # validate a custom field type

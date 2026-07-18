@@ -6,7 +6,8 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import kotlin.random.Random
 
 /**
- * Generates a **valid-by-construction** document instance from a [ModelDef] into a [PlacementSink]. It walks
+ * Generates a **best-effort, model-derived candidate** document instance (structure-shaped; not guaranteed
+ * model-accepted) from a [ModelDef] into a [PlacementSink]. It walks
  * the model's group tree (derived from the field paths + the declared repeatable groups), instantiates the
  * requested number of rows per repeatable group, and emits a value per field from a [ValueStrategy] — by
  * default a valid value for the field's [Kind] (respecting NUMBER scale/sign, date/time/range formats). The
@@ -14,9 +15,9 @@ import kotlin.random.Random
  * leaves it empty.
  *
  * Kernel-free and multiplatform — so it serves three consumers from one place:
- * - the **`:adapter` differential fuzz** net (random valid documents, assert interp == kernel);
+ * - the **`:adapter` differential fuzz** net (random generated documents, assert interp == kernel);
  * - the **perf harness** (deterministic strategies that drive a known firing fraction);
- * - a future **`dmtool seed`** verb on the native image (model → valid sample instance → JSON).
+ * - a future **`dmtool seed`** verb on the native image (model → best-effort sample candidate → JSON).
  *
  * **Determinism:** [populate] builds its own `Random(seed)` and walks in a fixed order, so two calls with the
  * same `seed` (and the same generator instance) produce the **identical** document — which is exactly how the
@@ -104,7 +105,8 @@ fun interface ValueStrategy {
 }
 
 /**
- * The default [ValueStrategy]: a **valid** value for each [Kind] — NUMBER respecting [FieldDef.scale],
+ * The default [ValueStrategy]: a **best-effort, constraint-aware** value for each [Kind] (a per-field local
+ * heuristic, **not** a whole-document validity guarantee) — NUMBER respecting [FieldDef.scale],
  * [FieldDef.signed] and its declared `min/maxValue` range, STRING respecting its declared `min/maxLength`,
  * dates/times/ranges rendered in the field's [FieldDef.format]. **Constraint-aware** (S2 seeding): drawing a
  * value inside a field's declared constraints keeps the kernel's per-cell formal checks (`zahlZuKlein`,
@@ -160,7 +162,7 @@ object ValidValues : ValueStrategy {
             "." + (1..(1 + rnd.nextInt(scale))).joinToString("") { rnd.nextInt(0, 10).toString() } else ""
         val magnitude = "$whole$frac"
         // Never sign a zero magnitude — the kernel forbids a signed zero (`zahlNullEnthaeltVorzeichen`), so
-        // `-0`/`-0.00` would be INVALID; ValidValues only ever emits kernel-valid values.
+        // `-0`/`-0.00` would be a formal error; ValidValues avoids emitting the values it models as formal errors.
         val sign = if (field.signed && rnd.nextBoolean() && magnitude.any { it in '1'..'9' }) "-" else ""
         return "$sign$magnitude"
     }

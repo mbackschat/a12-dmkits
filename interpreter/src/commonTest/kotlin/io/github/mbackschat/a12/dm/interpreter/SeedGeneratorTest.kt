@@ -14,8 +14,8 @@ import kotlin.test.assertEquals
 
 /**
  * Pure-engine, kernel-free, JVM+JS coverage of the [SeedGenerator] (INTERPRETER-PERFORMANCE.md "model-driven
- * seed generator"). It proves the generator builds **valid-by-construction** documents (required fields
- * filled → no spurious `mandatoryField`; in-format values → no formal errors), that an empty-strategy
+ * seed generator"). It proves the generator builds a **best-effort candidate** in which, on this fixture,
+ * required fields are filled → no spurious `mandatoryField`, in-format values → no formal errors; that an empty-strategy
  * triggers requiredness, and that generation is **deterministic for a fixed seed** (the property the fuzz net
  * relies on to materialize one instance into both engines). Kernel parity is the `:adapter` fuzz net's job.
  */

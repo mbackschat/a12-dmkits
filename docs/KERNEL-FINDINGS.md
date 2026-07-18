@@ -262,7 +262,7 @@ All four claims are canonical in §3 ("Suppression is branch-scoped — and it r
 
 > Fold: folded → §3.
 
-Surfaced by the **differential fuzz net** (`adapter.perf.InterpreterKernelFuzzTest` — random valid documents, assert interp == kernel), which fed a `-0`:
+Surfaced by the **differential fuzz net** (`adapter.perf.InterpreterKernelFuzzTest` — random generated documents, assert interp == kernel), which fed a `-0`:
 
 - **A signed zero is a formal error** — `-0`, `-0.0`, `-0.00` (any minus sign on a zero magnitude) → **`zahlNullEnthaeltVorzeichen`**. A non-zero negative (`-5`, `-0.01`) and a plain zero (`0`, `0.00`) are clean.
 - **A leading plus is a formal error** — `+5`, `+0`, `+0.5` → **`zahlMitPlus`** (distinct from `zahlHatUngueltigeZeichen`; the explicit `+` is its own error, not "invalid characters").

@@ -333,7 +333,7 @@ dmtool -m examples/models/subscription-computed.dm.json \
 
 ## model seed — generate a sample instance
 
-Writing instances by hand (as above) is fine for one check, but tedious for exploring a model. `model seed` **generates** a valid sample instance — every field a kind-appropriate value (numbers in scale, dates in their format, an enum a real member), repeatable groups populated — using the same kernel-free interpreter generator. It is **native-safe** (no kernel) and **deterministic** for a fixed `--seed`, and `--rows <group>:<n>` sets how many rows a repeatable group gets. Its output is the very `{"fields":{…}}` shape the runtime verbs consume.
+Writing instances by hand (as above) is fine for one check, but tedious for exploring a model. `model seed` **generates** a best-effort, model-derived **sample candidate** — every field a kind-appropriate value (numbers in scale, dates in their format, an enum a real member), repeatable groups populated — using the same kernel-free interpreter generator. It is **native-safe** (no kernel) and **deterministic** for a fixed `--seed`, and `--rows <group>:<n>` sets how many rows a repeatable group gets. Its output is the very `{"fields":{…}}` shape the runtime verbs consume.
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json \
@@ -345,7 +345,7 @@ dmtool -m examples/models/order-ruled.dm.json \
 {"topFields":13,"items":2,"itemKeys":["Count","Sku"]}
 ```
 
-→ The model's shape drives the result: every top-level field present, the `Items` group instantiated with the **2** rows requested, each row carrying its declared fields. Values are random-but-valid; the structure is the model's.
+→ The model's shape drives the result: every top-level field present, the `Items` group instantiated with the **2** rows requested, each row carrying its declared fields. Values are random, kind-appropriate best-effort samples; the structure is the model's.
 
 Because the output IS a document instance, it round-trips straight into `model eval` — generate, then evaluate, no hand-authoring:
 
@@ -358,7 +358,7 @@ dmtool -m examples/models/order-ruled.dm.json model eval --instance /tmp/rt-seed
 {"outcome":"read"}
 ```
 
-→ `outcome: "read"` — the generated instance is a valid document the runtime accepts.
+→ `outcome: "read"` — the eval **ran** over the instance (it parsed and evaluated). `read` is the read-verb's outcome; it is **not** a claim that the document passed validation or is model-accepted — a fired rule would still return `outcome:"read"`, so read `data.fired` for any violations.
 
 ## Recap
 
@@ -369,7 +369,7 @@ Read-only runtime verbs over a nested `{"fields":{…}}` instance — and `model
 | `model eval` | which rules fire on this data? | `data.fired` (codes) + `data.rule.{name,fired}` with `--rule` | violation fired, compliant did not (same rule, flipped date) |
 | `model eval --condition/--field` | would *this* candidate fire? | `data.rule.fired` | one-off `QTY_CAP` fired on `Quantity 150`, not persisted |
 | `model compute` | what does a computed field evaluate to? | `data.computed[].{field,value,outcome}` | `[BaseFee]` = `49.9`; empty operand = `0` (empty-as-0) |
-| `model seed` | give me a valid sample instance | the `{"fields":{…}}` document itself | structure matches the model; round-trips into `eval` |
+| `model seed` | give me a best-effort sample candidate | the `{"fields":{…}}` document itself | structure matches the model; round-trips into `eval` |
 
 Neither verb writes (`written: false`) — they evaluate the *model* against the *instance*, no mutation. The instance carries only the fields a check needs; everything else is absent (and, for numbers, reads as `0`).
 
