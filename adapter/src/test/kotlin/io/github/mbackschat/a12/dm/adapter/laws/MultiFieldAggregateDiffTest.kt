@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import com.mgmtp.a12.kernel.md.rt.api.IMessage
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -81,7 +82,7 @@ class MultiFieldAggregateDiffTest {
         repeatableGroups = setOf("/Order/Items"), declaredReps = mapOf("/Order/Items" to 50))
 
     private fun iDoc(s: Scene): Document {
-        val doc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val doc = def.newDocument()
         doc.field(CN, "Acme", 1, 1)
         s.qty?.let { doc.field(QTY, it, 1, 1) }
         s.bq?.let { doc.field(BQ, it, 1, 1) }

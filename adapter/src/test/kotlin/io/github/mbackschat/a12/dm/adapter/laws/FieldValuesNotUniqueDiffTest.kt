@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -41,7 +41,7 @@ class FieldValuesNotUniqueDiffTest {
         val kModel = RuntimeLaws.withRule(order, "/Order", "FU", errorRel, "FU", cond)
         val def = ModelDef(fields, listOf(RuleDef("/Order/FU", "/Order", cond, "FU", errorRel)))
         val kDoc = RuntimeLaws.doc().group("/Order", 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val iDoc = def.newDocument()
             .group("/Order", 1)
         for ((path, value) in cells) if (value != null) {
             kDoc.field(path, value, 1, 1); iDoc.field(path, value, 1, 1)
@@ -88,7 +88,7 @@ class FieldValuesNotUniqueDiffTest {
             repeatableGroups = setOf(ITEMS), declaredReps = mapOf(ITEMS to 100), indexFields = setOf(SKU),
         )
         val kDoc = RuntimeLaws.doc().group("/Order", 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val iDoc = def.newDocument()
             .group("/Order", 1)
         counts.forEachIndexed { i, c ->
             val r = i + 1

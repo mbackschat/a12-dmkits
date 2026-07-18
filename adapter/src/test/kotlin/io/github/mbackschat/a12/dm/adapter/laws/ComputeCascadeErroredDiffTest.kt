@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
@@ -46,7 +46,7 @@ class ComputeCascadeErroredDiffTest {
     /** Each engine's compute result as a `path|outcome|value` multiset (absent = not computed). */
     private fun kSig(a: String) = RuntimeLaws.compute(kModel, RuntimeLaws.doc().group("/Calc", 1).field(A, a, 1, 1))
         .map { "${it.path()}|${if (it.cleared()) "CLEARED" else if (it.errored()) "ERRORED" else "VALUE"}|${it.value().orElse("")}" }.sorted()
-    private fun iSig(a: String) = DmInterpreter(def).compute(Document(def.kinds, def.declaredReps).group("/Calc", 1).field(A, a, 1, 1))
+    private fun iSig(a: String) = DmInterpreter(def).compute(def.newDocument().group("/Calc", 1).field(A, a, 1, 1))
         .map { "${it.path}|${it.outcome}|${if (it.outcome == ComputeOutcome.CLEARED) "" else it.value}" }.sorted()
 
     /** Control: A in range → the whole cascade computes (T=500, U=501, V=502) on both engines. */

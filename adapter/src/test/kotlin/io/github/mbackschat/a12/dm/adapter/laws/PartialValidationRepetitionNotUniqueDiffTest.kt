@@ -2,7 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws.Relevant
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -37,7 +37,7 @@ class PartialValidationRepetitionNotUniqueDiffTest {
     private fun kDoc() = RuntimeLaws.doc().group("/Order", 1)
         .group("/Order/Items", 1, 1).field(SKU, "K1", 1, 1, 1).field(COUNT, "5", 1, 1, 1)
         .group("/Order/Items", 1, 2).field(SKU, "K2", 1, 2, 1).field(COUNT, "5", 1, 2, 1)
-    private fun iDoc() = Document(def.kinds, def.declaredReps).group("/Order", 1)
+    private fun iDoc() = def.newDocument().group("/Order", 1)
         .group("/Order/Items", 1, 1).field(SKU, "K1", 1, 1, 1).field(COUNT, "5", 1, 1, 1)
         .group("/Order/Items", 1, 2).field(SKU, "K2", 1, 2, 1).field(COUNT, "5", 1, 2, 1)
 

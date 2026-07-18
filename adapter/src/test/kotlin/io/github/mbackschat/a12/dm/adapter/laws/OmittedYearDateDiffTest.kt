@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -40,7 +40,7 @@ class OmittedYearDateDiffTest {
 
     private fun iFires(cond: String, date: String): Boolean {
         val def = ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "OY", "../OrderDate")), baseYear = baseYear)
-        val doc = Document(def.kinds, dateFormats = def.dateFormats).field(OD, date, 1, 1)
+        val doc = def.newDocument().field(OD, date, 1, 1)
         return DmInterpreter(def).validateFull(doc).any { it.code == "OY" }
     }
 

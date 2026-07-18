@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
@@ -83,8 +83,7 @@ class ComputedNumberDigitOverflowDiffTest {
 
     private fun iOutcome(model: String, unitVal: String?, bulkVal: String?): String {
         val def = ModelLoader.load(model)
-        val doc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats, def.datePrecisions, def.enumValues, def.enumCategories).group("/Order", 1)
+        val doc = def.newDocument().group("/Order", 1)
         unitVal?.let { doc.field(UNIT, it, 1, 1) }
         bulkVal?.let { doc.field(BULK, it, 1, 1) }
         val c = DmInterpreter(def).compute(doc).firstOrNull { it.path == PROJECTED }

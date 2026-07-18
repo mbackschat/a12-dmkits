@@ -2,7 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.eval.Kleene
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -52,7 +52,7 @@ class KleeneDiffTest {
         val def = ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "K", "../Quantity")))
         val kDoc = RuntimeLaws.doc().group("/Order", 1)
             .field(A, valueFor(left), 1, 1).field(B, valueFor(right), 1, 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val iDoc = def.newDocument()
             .group("/Order", 1).field(A, valueFor(left), 1, 1).field(B, valueFor(right), 1, 1)
         val kernel = RuntimeLaws.fires(kModel, "K", kDoc)
         val interp = DmInterpreter(def).validateFull(iDoc).any { it.code == "K" }

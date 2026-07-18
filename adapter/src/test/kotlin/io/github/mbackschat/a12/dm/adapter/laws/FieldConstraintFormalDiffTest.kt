@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.eval.FORMAL_RULE_PATH
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -33,8 +33,7 @@ class FieldConstraintFormalDiffTest {
         val kModel = withField(fieldJson)
         val kCode = RuntimeLaws.firedCodes(kModel, setOf("/Order"), mapOf(path to value)).firstOrNull()
         val def = ModelDef(listOf(field), emptyList())
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats, def.datePrecisions, def.enumValues, def.enumCategories).group("/Order", 1)
+        val iDoc = def.newDocument().group("/Order", 1)
             .field(path, value, 1, 1)
         val iCode = DmInterpreter(def).validate(iDoc).messages.firstOrNull { it.rulePath == FORMAL_RULE_PATH }?.code
         assertEquals(kCode, iCode, "$msg  (kernel=$kCode interp=$iCode)")
@@ -167,8 +166,7 @@ class FieldConstraintFormalDiffTest {
         val kCode = RuntimeLaws.firedCodes(kModel, setOf("/Order"), mapOf(path to value)).firstOrNull()
         assertEquals(expectedKernel, kCode, "$msg — KERNEL winner")
         val def = ModelDef(listOf(field), emptyList())
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats, def.datePrecisions, def.enumValues, def.enumCategories).group("/Order", 1)
+        val iDoc = def.newDocument().group("/Order", 1)
             .field(path, value, 1, 1)
         val iCode = DmInterpreter(def).validate(iDoc).messages.firstOrNull { it.rulePath == FORMAL_RULE_PATH }?.code
         assertEquals(kCode, iCode, "$msg  (kernel=$kCode interp=$iCode)")
@@ -210,8 +208,7 @@ class FieldConstraintFormalDiffTest {
         // Priority already exists in the fixture — no splice needed; pass an empty field JSON.
         val kCode = RuntimeLaws.firedCodes(order, setOf("/Order"), mapOf("/Order/Priority" to "BOGUS")).firstOrNull()
         val def = ModelDef(listOf(priorityDef), emptyList())
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats, def.datePrecisions, def.enumValues, def.enumCategories).group("/Order", 1)
+        val iDoc = def.newDocument().group("/Order", 1)
             .field("/Order/Priority", "BOGUS", 1, 1)
         val iCode = DmInterpreter(def).validate(iDoc).messages.firstOrNull { it.rulePath == FORMAL_RULE_PATH }?.code
         assertEquals(kCode, iCode, "out-of-domain enum → stringFalschesMuster  (kernel=$kCode interp=$iCode)")
@@ -224,8 +221,7 @@ class FieldConstraintFormalDiffTest {
         val kModel = RuntimeLaws.withRule(withField(scoreField), "/Order", "R", "../Score", "R", "[Score] >= 0")
         val kFires = RuntimeLaws.firedCodes(kModel, setOf("/Order"), mapOf("/Order/Score" to "150.00")).contains("R")
         val def = ModelDef(listOf(scoreDef), listOf(RuleDef("/Order/R", "/Order", "[Score] >= 0", "R", "../Score")))
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats, def.datePrecisions, def.enumValues, def.enumCategories).group("/Order", 1)
+        val iDoc = def.newDocument().group("/Order", 1)
             .field("/Order/Score", "150.00", 1, 1)
         val iFires = DmInterpreter(def).validate(iDoc).messages.any { it.code == "R" }
         assertEquals(false, kFires, "kernel: out-of-range Score is unknown → rule R suppressed")

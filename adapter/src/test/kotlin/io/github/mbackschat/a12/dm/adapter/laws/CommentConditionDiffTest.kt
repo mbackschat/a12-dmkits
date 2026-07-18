@@ -2,7 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.edit.EditSession
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -50,7 +50,7 @@ class CommentConditionDiffTest {
     )
 
     private fun kDoc() = RuntimeLaws.doc().group("/Order", 1).field(FEE, "1500", 1, 1)
-    private fun iDoc() = Document(def.kinds, def.declaredReps).group("/Order", 1).field(FEE, "1500", 1, 1)
+    private fun iDoc() = def.newDocument().group("/Order", 1).field(FEE, "1500", 1, 1)
 
     /** validateFull: a commented condition whose body fires (1500 > 1000) — both engines agree on the codes. */
     @Test fun leadingCommentConditionEvaluatesLikeTheKernel() {

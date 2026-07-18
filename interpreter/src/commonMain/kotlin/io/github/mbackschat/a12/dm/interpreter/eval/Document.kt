@@ -12,7 +12,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldConstraints
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import io.github.mbackschat.a12.dm.interpreter.model.ValuedField
-import kotlin.jvm.JvmOverloads
 
 /**
  * The repetition index a parallel-iteration pointer carries for a group that has **no row** for the current
@@ -44,73 +43,41 @@ internal const val UNKNOWN_REP = -5
  * not O(rows · placements).
  */
 /**
- * An empty [Document] configured from [model] — every kind / reps / format / scale / enum / precision map the
- * evaluator needs, threaded from the [ModelDef] in ONE place. Placements are then added via the builder methods
- * or [io.github.mbackschat.a12.dm.interpreter.gen.asSink]. A consumer (corpus replay, a differential, a demo)
- * builds an instance without hand-listing the constructor's config maps — hand-listing them is how the FIVE
- * trailing maps (`dateTimeFormats`, `datePrecisions`, `enumValues`, `enumCategories`, `timeFormats`) get silently
- * dropped, which mis-evaluates a document over a datetime / partial-date / enum-category / time field.
+ * An empty [Document] configured from this [ModelDef] — every kind / reps / format / scale / enum / precision /
+ * base-year / constraint / time-zone map the evaluator needs, gathered into ONE immutable [DocumentConfig] so a
+ * consumer (corpus replay, a differential, a demo) never hand-lists config maps. Placements are then added via
+ * the builder methods or [io.github.mbackschat.a12.dm.interpreter.gen.asSink]. This is the blessed construction
+ * path: it threads EVERY slot, so a document over a datetime / partial-date / enum / time / constrained / non-UTC
+ * field is configured correctly (the positional-drop class IG75/IF131 fixed).
  */
-fun ModelDef.newDocument(): Document = Document(
+fun ModelDef.newDocument(): Document = Document(DocumentConfig(
     kinds, declaredReps, unsignedFields, rangeConfig, dateFormats, scales,
     dateTimeFormats, datePrecisions, enumValues, enumCategories, timeFormats, baseYear,
     fieldConstraints, timeZone,
-)
+))
 
-class Document @JvmOverloads constructor(
-    private val kinds: Map<String, Kind>,
-    private val declaredReps: Map<String, Int> = emptyMap(),
-    /** NUMBER fields that are *unsigned* (the kernel's `hatVorzeichen == false` — a non-negative `minValue`);
-     *  drives the directional empty-operand polarity ([EvalContext.signed]). Default: all fields signed. */
-    private val unsignedFields: Set<String> = emptySet(),
-    /** Each [Kind.DATE_RANGE] field's `(format, rangeSeparator)` — lets [resolveValue] canonicalize a rendered
-     *  range value (`01.06.2021-30.06.2021`) to a [Val.Range] of ISO dates, format-aware (locale variants). */
-    private val rangeConfig: Map<String, Pair<String, String>> = emptyMap(),
-    /** Each [Kind.DATE] field's rendering format (the kernel's `DateType.format`) — lets [resolveValue]
-     *  canonicalize a rendered date (`15.06.2024` for `dd.MM.yyyy`) to its ISO form, format-aware. Missing/ISO
-     *  fields stay ISO. */
-    private val dateFormats: Map<String, String> = emptyMap(),
-    /** Each NUMBER field's scale (`maxFractionalDigits`) — lets [resolveValue] formal-check a value so a
-     *  formally-invalid one (signed-zero, too-many-decimals, …) resolves to [Val.Unknown] even when it parses. */
-    private val scales: Map<String, Int?> = emptyMap(),
-    /** Each [Kind.DATE_TIME] field's rendering format (the kernel's `DateTimeType.format`) — lets [resolveValue]
-     *  canonicalize a rendered date-time to the ISO `yyyy-MM-dd'T'HH:mm:ss` form, format-aware. ISO default when
-     *  unset. (Appended after [scales] to keep the positional constructor compatible with existing callers.) */
-    private val dateTimeFormats: Map<String, String> = emptyMap(),
-    /** Each [Kind.DATE] field's [DatePrecision] — a `DAY_OPTIONAL` field accepts a day-omitted `00.MM.yyyy`
-     *  value (well-formed, but resolved to [Val.Unknown] directly; `ValueAsDate` resolves it). Default FULL.
-     *  (Appended for positional-constructor compatibility.) */
-    private val datePrecisions: Map<String, DatePrecision> = emptyMap(),
-    /** Each enumeration field's XML value list (declaration order) — the index domain for `EnumCategory`
-     *  (`[Field -> Category]`) and the membership check. (Appended for positional-constructor compatibility.) */
-    private val enumValues: Map<String, List<String>> = emptyMap(),
-    /** Each enumeration field's category map (name → positional value list) — the `EnumCategory` mapping:
-     *  the stored value's index in [enumValues] selects the category's value. (Appended for positional compat.) */
-    private val enumCategories: Map<String, Map<String, List<String>>> = emptyMap(),
-    /** Each [Kind.TIME] field's rendering format (the kernel's `TimeType.format`, e.g. `HH:mm:ss`) — lets
-     *  [resolveValue] formal-check a TIME so a malformed value resolves to [Val.Unknown] (a malformed time was
-     *  previously unchecked → it escaped suppression; KERNEL-FINDINGS §6). (Appended for positional compat.) */
-    private val timeFormats: Map<String, String> = emptyMap(),
-    /** The model's declared base year (the kernel's `modelInfo.baseYear`), or null → the kernel default 2000 —
-     *  the YEAR a year-less date FRAGMENT (`MM`, `MM-dd`) completes to when [resolveValue] canonicalizes it. A
-     *  model with a declared base year makes that completed year OBSERVABLE (a year-less fragment then compares
-     *  to a year-bearing date, the partition's base-year relaxation — DateFragmentComparisonDiffTest).
-     *  (Appended for positional-constructor compatibility.) */
-    private val baseYear: Int? = null,
-    /** Each field's declared-constraint set (IF20/IF84) — so [resolveValue] applies the FULL formal check
-     *  (min-fractional-digits, range, length, pattern, enum-domain, …), not just the format/scale check. A
-     *  constraint-violating value then resolves to [Val.Unknown] — not-check-relevant — everywhere resolution
-     *  is used (aggregate `starCells`, the `fillScope` fill tally), matching the kernel's `isWertAngegeben`
-     *  (a `minFractionalDigits`-2 field's `"5"` parses but is `zahlFalscheAnzahlNachkommastellen`). Direct field
-     *  refs are already gated by [DmInterpreter]'s `invalid` closure; this closes the resolution paths that
-     *  bypass it. (Appended for positional-constructor compatibility.) */
-    private val fieldConstraints: Map<String, FieldConstraints> = emptyMap(),
-    /** The model's configured time zone ([ModelTimeZone], `modelConfig.timeZone`, default UTC) — the formal
-     *  check needs it because a Europe/Berlin DATE_TIME value inside the spring-forward gap (a wall time that
-     *  does not exist, e.g. `2024-03-31T02:30:00`) is the kernel's `datumFormatFalsch`: its non-lenient
-     *  zone-set parse rejects it (probe-verified, KERNEL-FINDINGS §6). (Appended for positional compat.) */
-    private val timeZone: ModelTimeZone = ModelTimeZone.UTC,
-) {
+class Document(internal val config: DocumentConfig) {
+    /** Kinds-only convenience — a document with no configuration beyond field kinds (the common flat-model
+     *  test / ad-hoc case). Any richer configuration uses [DocumentConfig] with named arguments (conspicuous) or
+     *  [ModelDef.newDocument] (the full, model-derived config). */
+    constructor(kinds: Map<String, Kind>) : this(DocumentConfig(kinds))
+
+    // The configuration, destructured for the class body — all sourced from the single immutable [config], so
+    // [emptyCopy] can preserve every slot wholesale (`Document(config)`); the IG75/IF131 fix.
+    private val kinds = config.kinds
+    private val declaredReps = config.declaredReps
+    private val unsignedFields = config.unsignedFields
+    private val rangeConfig = config.rangeConfig
+    private val dateFormats = config.dateFormats
+    private val scales = config.scales
+    private val dateTimeFormats = config.dateTimeFormats
+    private val datePrecisions = config.datePrecisions
+    private val enumValues = config.enumValues
+    private val enumCategories = config.enumCategories
+    private val timeFormats = config.timeFormats
+    private val baseYear = config.baseYear
+    private val fieldConstraints = config.fieldConstraints
+    private val timeZone = config.timeZone
     /** [raw] is the ORIGINAL stored text ([value] before the eval-side CRLF→LF normalization, IF124) —
      *  what [cellStateAt] reports; it defaults to [value] and is preserved by the normalizing `copy`. */
     private data class Placement(val path: String, val reps: List<Int>, val value: String?, val isGroup: Boolean,
@@ -283,12 +250,11 @@ class Document @JvmOverloads constructor(
         return copy
     }
 
-    /** An empty document carrying this one's model configuration (kinds/reps/formats/…) but no placements —
-     *  the single place the config param list is threaded, so [withComputed] stays in lockstep with the
-     *  constructor. */
-    private fun emptyCopy(): Document = Document(kinds, declaredReps, unsignedFields, rangeConfig, dateFormats,
-        scales, dateTimeFormats, datePrecisions, enumValues, enumCategories, timeFormats, baseYear,
-        fieldConstraints)
+    /** An empty document carrying this one's [config] but no placements. Passing the single immutable
+     *  [DocumentConfig] wholesale is the fix for IG75/IF131: the former positional reconstruction threaded only
+     *  13 of the 14 slots and silently dropped `timeZone`, so a copy could not stay in lockstep. Now it cannot
+     *  drop a slot — there is no per-slot list. */
+    private fun emptyCopy(): Document = Document(config)
 
     /**
      * One [EvalContext] per instantiated row of [groupPath]; empty if the group has no rows. Each row's

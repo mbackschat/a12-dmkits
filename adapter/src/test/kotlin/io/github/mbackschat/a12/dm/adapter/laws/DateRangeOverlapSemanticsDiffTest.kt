@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -61,7 +62,7 @@ class DateRangeOverlapSemanticsDiffTest {
 
     private fun iDoc(model: String, scalars: List<Cell>, coverages: List<String?>): Pair<DmInterpreter, Document> {
         val def = ModelLoader.load(model)
-        val doc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val doc = def.newDocument()
         scalars.forEach { doc.field(it.path, it.value, *it.reps) }
         itemRows(coverages).forEach { doc.field(it.path, it.value, *it.reps) }
         return DmInterpreter(def) to doc

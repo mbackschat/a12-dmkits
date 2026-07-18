@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -37,7 +37,7 @@ class ToleranceDiffTest {
         val model = RuntimeLaws.withRule(order, "/Order", "DT", "../Quantity", "DT", cond)
         val def = ModelDef(fields, listOf(RuleDef("/Order/DT", "/Order", cond, "DT", "../Quantity")))
         val kDoc = RuntimeLaws.doc().group("/Order", 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val iDoc = def.newDocument()
             .group("/Order", 1)
         if (q != null) { kDoc.field(QTY, q, 1, 1); iDoc.field(QTY, q, 1, 1) }
         if (b != null) { kDoc.field(BACK, b, 1, 1); iDoc.field(BACK, b, 1, 1) }

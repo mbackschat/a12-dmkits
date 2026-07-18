@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.DocumentConfig
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -45,7 +46,7 @@ class AggDirectionalPolarityDiffTest {
         )
         val model = RuntimeLaws.withRule(order, "/Order", code, "../CustomerName", code, cond)
         val kDoc = RuntimeLaws.doc().group("/Order", 1).field(CN, "Acme", 1, 1)
-        val iDoc = Document(kinds, mapOf("/Order/Items" to 50), setOf(SQ)).field(CN, "Acme", 1, 1)
+        val iDoc = Document(DocumentConfig(kinds, mapOf("/Order/Items" to 50), setOf(SQ))).field(CN, "Acme", 1, 1)
         for (r in 1..3) {
             kDoc.group("/Order/Items", 1, r).field(IS, "S$r", 1, r, 1).field(starField, "5", 1, r, 1)
             iDoc.field(IS, "S$r", 1, r, 1).field(starField, "5", 1, r, 1)

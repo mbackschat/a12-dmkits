@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -38,8 +38,7 @@ class ValueAsDateDiffTest {
         val k = RuntimeLaws.fires(RuntimeLaws.withRule(order, "/Order", "R", "../ApproxDate", "VA", cond), "VA",
             RuntimeLaws.doc().group("/Order", 1).field(AD, approx, 1, 1))
         val def = ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "VA", "../ApproxDate")))
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats, def.datePrecisions).field(AD, approx, 1, 1)
+        val iDoc = def.newDocument().field(AD, approx, 1, 1)
         val i = DmInterpreter(def).validate(iDoc).messages.any { it.code == "VA" }
         assertEquals(k, i, "$msg ($approx)")
     }

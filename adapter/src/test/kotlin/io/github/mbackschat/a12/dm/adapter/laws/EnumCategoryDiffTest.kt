@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -42,8 +42,7 @@ class EnumCategoryDiffTest {
         val kModel = RuntimeLaws.withRule(order, "/Order", "R", "../Priority", "EC", cond)
         val def = ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "EC", "../Priority")))
         val kDoc = RuntimeLaws.doc().group("/Order", 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats, def.datePrecisions, def.enumValues, def.enumCategories).group("/Order", 1)
+        val iDoc = def.newDocument().group("/Order", 1)
         if (priority != null) { kDoc.field(PRIORITY, priority, 1, 1); iDoc.field(PRIORITY, priority, 1, 1) }
         val k = RuntimeLaws.typeOf(kModel, "EC", kDoc).map { it.name }.orElse(null)
         val i = DmInterpreter(def).validate(iDoc).messages.firstOrNull { it.code == "EC" }

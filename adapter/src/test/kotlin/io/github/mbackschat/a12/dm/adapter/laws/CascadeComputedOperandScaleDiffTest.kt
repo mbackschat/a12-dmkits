@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -72,7 +72,7 @@ class CascadeComputedOperandScaleDiffTest {
     @Test fun downstreamComputesOverAWholeNumberComputedOperand() {
         val kdoc = RuntimeLaws.doc().group("/Cart", 1).field(ITEMS, "5.00", 1, 1)
         val kTotal = RuntimeLaws.computedValue(RuntimeLaws.compute(kModel, kdoc), TOTAL).orElse(null)
-        val idoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val idoc = def.newDocument()
             .group("/Cart", 1).field(ITEMS, "5.00", 1, 1)
         val iTotal = DmInterpreter(def).compute(idoc).firstOrNull { it.path == TOTAL }?.value
 

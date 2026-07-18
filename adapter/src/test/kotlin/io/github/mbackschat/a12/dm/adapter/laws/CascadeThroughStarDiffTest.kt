@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -67,7 +67,7 @@ class CascadeThroughStarDiffTest {
         val kDoc = RuntimeLaws.doc().group("/Calc", 1)
             .group("/Calc/Lines", 1, 1).field("/Calc/Lines/Qty", "5", 1, 1, 1)
             .group("/Calc/Lines", 1, 2).field("/Calc/Lines/Qty", "3", 1, 2, 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val iDoc = def.newDocument()
             .group("/Calc", 1)
             .group("/Calc/Lines", 1, 1).field("/Calc/Lines/Qty", "5", 1, 1, 1)
             .group("/Calc/Lines", 1, 2).field("/Calc/Lines/Qty", "3", 1, 2, 1)

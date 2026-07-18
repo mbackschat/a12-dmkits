@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.DocumentConfig
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -46,7 +47,7 @@ class EntityValueListDiffTest {
     private fun iFires(cond: String, pc: String?, skuVals: List<String>): Boolean {
         val def = ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "NF", "../CustomerName")),
             repeatableGroups = setOf("/Order/Items"), declaredReps = mapOf("/Order/Items" to 50))
-        val doc = Document(kinds, def.declaredReps)
+        val doc = Document(DocumentConfig(kinds, def.declaredReps))
         doc.field(CN, "Acme", 1, 1)
         if (pc != null) doc.field(PC, pc, 1, 1)
         skuVals.forEachIndexed { i, s -> val r = i + 1; doc.group("/Order/Items", 1, r); doc.field(SKU, s, 1, r, 1) }

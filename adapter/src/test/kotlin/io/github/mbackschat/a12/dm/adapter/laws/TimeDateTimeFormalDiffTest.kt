@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -47,10 +47,7 @@ class TimeDateTimeFormalDiffTest {
     private val m = BoundModel.ofJson(json)
     private fun render(c: Condition): String = DslRenderer().render(c)
 
-    private fun iDoc() = Document(
-        kinds = def.kinds, scales = def.scales, dateFormats = def.dateFormats,
-        dateTimeFormats = def.dateTimeFormats, timeFormats = def.timeFormats, datePrecisions = def.datePrecisions,
-    )
+    private fun iDoc() = def.newDocument()
 
     private fun assertFormalAgrees(t: String, dt: String) {
         val kDoc = RuntimeLaws.doc().group("/Form", 1).field("/Form/T", t, 1, 1).field("/Form/DT", dt, 1, 1)

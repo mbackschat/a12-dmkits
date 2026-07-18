@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -56,7 +57,7 @@ class Date4ArgConstructionDiffTest {
         val kModel = RuntimeLaws.withComputation(json, "/Cal", "YearOutComp", "../YearOut", op)
         val def = ModelDef(fields, emptyList(), computations = listOf(ComputationDef(OUT, "/Cal", op)))
         val kValue = RuntimeLaws.computedValue(RuntimeLaws.compute(kModel, fill(RuntimeLaws.doc())), OUT).orElse(null)
-        val iValue = DmInterpreter(def).compute(iFill(Document(def.kinds, def.declaredReps))).firstOrNull { it.path == OUT }?.value
+        val iValue = DmInterpreter(def).compute(iFill(def.newDocument())).firstOrNull { it.path == OUT }?.value
         assertEquals(kValue, iValue, "YearFromDate(Date(15,6,20,24)) computed — kernel=$kValue interp=$iValue")
     }
 
@@ -66,7 +67,7 @@ class Date4ArgConstructionDiffTest {
         val kModel = RuntimeLaws.withRule(json, "/Cal", "V", "../Year2", "V", cond)
         val def = ModelDef(fields, listOf(RuleDef("/Cal/V", "/Cal", cond, "V", "../Year2")))
         val kFires = RuntimeLaws.firedCodes(kModel, fill(RuntimeLaws.doc())).contains("V")
-        val iFires = DmInterpreter(def).validate(iFill(Document(def.kinds, def.declaredReps))).messages.any { it.code == "V" }
+        val iFires = DmInterpreter(def).validate(iFill(def.newDocument())).messages.any { it.code == "V" }
         assertEquals(kFires, iFires, "Valid(Date(15,6,20,24)) — kernel=$kFires interp=$iFires")
     }
 

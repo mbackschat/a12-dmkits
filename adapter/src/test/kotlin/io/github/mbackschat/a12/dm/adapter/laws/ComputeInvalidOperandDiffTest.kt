@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
@@ -77,7 +77,7 @@ class ComputeInvalidOperandDiffTest {
             emptyList(),
             computations = listOf(ComputationDef(PRICE, "/Order", listOf(ComputationAlternative(null, op)))),
         )
-        val doc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val doc = def.newDocument()
             .group("/Order", 1)
         doc.field(PRICE, "0.01", 1, 1)
         values.forEach { (p, v) -> doc.field(p, v, 1, 1) }

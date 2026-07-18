@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
 import io.github.mbackschat.a12.dm.interpreter.gen.asSink
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
@@ -100,7 +101,7 @@ object InterpreterPerfEngine : PerfEngine {
         return object : ReusableEngine {
             override val label = "interp"
             override fun instance(n: Int, variant: Int): RunInstance {
-                val doc = Document(model.kinds, model.declaredReps, model.unsignedFields, model.rangeConfig, model.dateFormats, model.scales)
+                val doc = model.newDocument()
                 scenario.instance(doc.asSink(), n, variant)
                 return RunInstance {
                     when (scenario.op) {

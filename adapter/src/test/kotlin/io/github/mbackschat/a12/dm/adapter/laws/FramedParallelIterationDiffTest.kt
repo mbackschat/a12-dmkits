@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
 import io.github.mbackschat.a12.dm.interpreter.gen.asSink
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
@@ -97,7 +97,7 @@ class FramedParallelIterationDiffTest {
     }
 
     private fun assertAgrees(xs: List<List<Pair<String?, String?>>>, b: List<Pair<String?, String?>>) {
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val iDoc = def.newDocument()
         build(iDoc.asSink(), xs, b)
         val iSigs = DmInterpreter(def).validateFull(iDoc).filter { it.code == "PI" }
             .map { "${it.code}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}|${it.errorPath}" }.sorted()

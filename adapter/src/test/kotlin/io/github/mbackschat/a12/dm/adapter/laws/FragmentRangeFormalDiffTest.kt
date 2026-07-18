@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -33,7 +33,7 @@ class FragmentRangeFormalDiffTest {
 
     private fun assertFormalAgrees(value: String) {
         val kDoc = RuntimeLaws.doc().group("/Trip", 1).field(SEASON, value, 1, 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats)
+        val iDoc = def.newDocument()
             .group("/Trip", 1).field(SEASON, value, 1, 1)
         val kSigs = RuntimeLaws.messages(kModel, kDoc).map { "${it.code()}|${it.type().name}|${it.field()}" }.sorted()
         val iSigs = DmInterpreter(def).validateFull(iDoc)

@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -47,8 +47,7 @@ class ComputeCascadeDiffTest {
     @Test
     fun chainedComputationCascadesLikeKernel() {
         val kDoc = RuntimeLaws.doc().group("/Order", 1).field("/Order/Quantity", "5", 1, 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats, def.datePrecisions).group("/Order", 1).field("/Order/Quantity", "5", 1, 1)
+        val iDoc = def.newDocument().group("/Order", 1).field("/Order/Quantity", "5", 1, 1)
 
         val k = RuntimeLaws.compute(kModel, kDoc)
         val i = DmInterpreter(def).compute(iDoc)

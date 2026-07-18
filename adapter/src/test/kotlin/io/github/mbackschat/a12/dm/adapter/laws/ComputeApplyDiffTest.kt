@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -46,8 +46,7 @@ class ComputeApplyDiffTest {
 
     private fun kDoc() = RuntimeLaws.doc().group("/Order", 1).field(Q, "5", 1, 1).emptyField(BO, 1, 1)
     private fun iDoc(def: ModelDef) =
-        Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats, def.datePrecisions).group("/Order", 1).field(Q, "5", 1, 1).emptyField(BO, 1, 1)
+        def.newDocument().group("/Order", 1).field(Q, "5", 1, 1).emptyField(BO, 1, 1)
 
     private fun kernelRaw(kModel: String) =
         RuntimeLaws.messages(kModel, kDoc()).map { "${it.code}@${it.field}" }.filter { !it.startsWith("MVK_") }.toSortedSet()

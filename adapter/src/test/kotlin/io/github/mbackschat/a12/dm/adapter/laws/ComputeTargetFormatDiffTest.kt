@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -52,8 +52,7 @@ class ComputeTargetFormatDiffTest {
     @Test fun computedDateUsesTargetFormatLikeKernel() {
         val kValue = RuntimeLaws.computedValue(RuntimeLaws.compute(kModel,
             RuntimeLaws.doc().group("/Cal", 1).field(ORDER, "2024-06-30", 1, 1)), MAT).orElse(null)
-        val iValue = DmInterpreter(def).compute(Document(def.kinds, def.declaredReps, def.unsignedFields,
-            def.rangeConfig, def.dateFormats, def.scales, def.dateTimeFormats).group("/Cal", 1)
+        val iValue = DmInterpreter(def).compute(def.newDocument().group("/Cal", 1)
             .field(ORDER, "2024-06-30", 1, 1)).firstOrNull { it.path == MAT }?.value
         assertEquals(kValue, iValue, "AddYears(OrderDate,2) into a dd.MM.yyyy target — kernel=$kValue interp=$iValue")
     }
@@ -83,8 +82,7 @@ class ComputeTargetFormatDiffTest {
     @Test fun computedDateTimeUsesTargetFormatLikeKernel() {
         val kValue = RuntimeLaws.computedValue(RuntimeLaws.compute(dtKModel,
             RuntimeLaws.doc().group("/Dt", 1).field(D, "2024-06-30", 1, 1).field(T, "10:30:00", 1, 1)), STAMP).orElse(null)
-        val iValue = DmInterpreter(dtDef).compute(Document(dtDef.kinds, dtDef.declaredReps, dtDef.unsignedFields,
-            dtDef.rangeConfig, dtDef.dateFormats, dtDef.scales, dtDef.dateTimeFormats, timeFormats = dtDef.timeFormats)
+        val iValue = DmInterpreter(dtDef).compute(dtDef.newDocument()
             .group("/Dt", 1).field(D, "2024-06-30", 1, 1).field(T, "10:30:00", 1, 1))
             .firstOrNull { it.path == STAMP }?.value
         assertEquals(kValue, iValue, "DateTime(D,T) into a dd.MM.yyyy HH:mm:ss target — kernel=$kValue interp=$iValue")

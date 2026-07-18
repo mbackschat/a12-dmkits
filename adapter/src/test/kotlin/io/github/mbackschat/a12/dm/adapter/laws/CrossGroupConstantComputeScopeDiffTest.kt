@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -59,7 +59,7 @@ class CrossGroupConstantComputeScopeDiffTest {
     @Test fun crossGroupConstantComputesLikeKernel() {
         val kdoc = RuntimeLaws.doc().group("/Store", 1).field(STOCK, "100", 1, 1)
         val kValue = RuntimeLaws.computedValue(RuntimeLaws.compute(kModel, kdoc), STOCK).orElse(null)
-        val idoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val idoc = def.newDocument()
             .group("/Store", 1).field(STOCK, "100", 1, 1)
         val iValue = DmInterpreter(def).compute(idoc).firstOrNull { it.path == STOCK }?.value
 
@@ -74,7 +74,7 @@ class CrossGroupConstantComputeScopeDiffTest {
      *  an implicit-context fix is needed). */
     @Test fun crossGroupConstantOnEmptyDocMatchesKernel() {
         val kValue = RuntimeLaws.computedValue(RuntimeLaws.compute(kModel, RuntimeLaws.doc()), STOCK).orElse(null)
-        val idoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val idoc = def.newDocument()
         val iValue = DmInterpreter(def).compute(idoc).firstOrNull { it.path == STOCK }?.value
         assertEquals(kValue, iValue, "empty doc — kernel=$kValue interp=$iValue")
     }

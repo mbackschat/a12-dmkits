@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -31,7 +32,7 @@ class CustomConditionMultiplatformTest {
     private val nameIsAcme = CustomCondition { data, _, _, errorField -> data.getValue(errorField) == "ACME" }
 
     private fun docOf(name: String?): Document {
-        val doc = Document(def.kinds, def.declaredReps).group("/Order", 1)
+        val doc = def.newDocument().group("/Order", 1)
         if (name != null) doc.field(NAME, name, 1, 1)
         return doc
     }

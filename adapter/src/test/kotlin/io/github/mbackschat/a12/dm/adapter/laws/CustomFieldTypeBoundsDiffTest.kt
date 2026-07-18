@@ -5,7 +5,7 @@ import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeFactory
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeValidationParam
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldValidator
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -59,7 +59,7 @@ class CustomFieldTypeBoundsDiffTest {
             })
     }
 
-    private fun iDoc() = Document(kinds = def.kinds, scales = def.scales)
+    private fun iDoc() = def.newDocument()
 
     // A value-reading rule over the custom field, authored through the typed DSL: `BoundModel.custom(...)` returns a
     // string-shaped handle for a CUSTOM-kind field, so `== "abcd"` is expressed without a hand-written string. Both

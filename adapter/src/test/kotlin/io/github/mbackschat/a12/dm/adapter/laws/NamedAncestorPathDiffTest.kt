@@ -48,7 +48,7 @@ class NamedAncestorPathDiffTest {
     }
 
     private fun iDoc(buyer: String?): Document {
-        val d = Document(kinds, emptyMap())
+        val d = Document(kinds)
         if (buyer != null) d.field(BUYER, buyer, 1, 1)
         d.group("/Order/Shipment", 1, 1).field(CARRIER, "DHL", 1, 1, 1)
         d.group("/Order/Shipment/Parcel", 1, 1, 1).field(WEIGHT, "5", 1, 1, 1, 1)

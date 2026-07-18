@@ -2,7 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws.Relevant
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -32,7 +32,7 @@ class PartialValidationUniqueIndexDiffTest {
     private fun kDoc() = RuntimeLaws.doc().group("/Cart", 1)
         .group("/Cart/Lines", 1, 1).field(ITEM, "A", 1, 1, 1)
         .group("/Cart/Lines", 1, 2).field(ITEM, "A", 1, 2, 1)
-    private fun iDoc() = Document(def.kinds, def.declaredReps).group("/Cart", 1)
+    private fun iDoc() = def.newDocument().group("/Cart", 1)
         .group("/Cart/Lines", 1, 1).field(ITEM, "A", 1, 1, 1)
         .group("/Cart/Lines", 1, 2).field(ITEM, "A", 1, 2, 1)
 

@@ -1,6 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter
 
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -23,7 +23,7 @@ class PartialValidationTest {
         listOf(RuleDef("/Order/R", "/Order", cond, "PV", "../CustomerName")),
     )
 
-    private fun docOf(def: ModelDef) = Document(def.kinds, def.declaredReps)
+    private fun docOf(def: ModelDef) = def.newDocument()
         .group("/Order", 1).field(NAME, "Alice", 1, 1).field(CODE, "SKU-9", 1, 1)
 
     private fun fires(cond: String, relevant: Set<RelevantEntity>): Boolean {

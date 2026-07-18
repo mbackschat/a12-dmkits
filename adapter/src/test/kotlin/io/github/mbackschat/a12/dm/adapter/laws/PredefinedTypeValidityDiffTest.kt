@@ -6,7 +6,7 @@ import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeFactory
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeValidationParam
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldValidator
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -69,8 +69,7 @@ class PredefinedTypeValidityDiffTest {
         val kModel = RuntimeLaws.withRule(order, "/Order", "R", "../CustomerName", "VT", cond)
         val def = ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "VT", "../CustomerName")))
         val kDoc = RuntimeLaws.doc().group("/Order", 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats, def.datePrecisions, def.enumValues, def.enumCategories).group("/Order", 1)
+        val iDoc = def.newDocument().group("/Order", 1)
         if (name != null) { kDoc.field(NAME, name, 1, 1); iDoc.field(NAME, name, 1, 1) }
         val k = RuntimeLaws.typeOf(kModel, "VT", kDoc).map { it.name }.orElse(null)
         val i = DmInterpreter(def).validate(iDoc).messages.firstOrNull { it.code == "VT" }

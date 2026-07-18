@@ -2,7 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws.Relevant
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -55,7 +55,7 @@ class PartialValidationAggregateDiffTest {
     private fun kDoc() = RuntimeLaws.doc().group(CART, 1).field(TOTAL, "1", 1, 1)
         .group(LINES, 1, 1).field(QTY, "182", 1, 1, 1).field(PRICE, "600", 1, 1, 1)
         .group(LINES, 1, 2).field(PRICE, "600", 1, 2, 1)
-    private fun iDoc() = Document(def.kinds, def.declaredReps).group(CART, 1).field(TOTAL, "1", 1, 1)
+    private fun iDoc() = def.newDocument().group(CART, 1).field(TOTAL, "1", 1, 1)
         .group(LINES, 1, 1).field(QTY, "182", 1, 1, 1).field(PRICE, "600", 1, 1, 1)
         .group(LINES, 1, 2).field(PRICE, "600", 1, 2, 1)
 

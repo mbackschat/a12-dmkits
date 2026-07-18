@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -42,7 +43,7 @@ class OuterCorrelationPerfTest {
         repeatableGroups = setOf("/Order/Items"), declaredReps = mapOf("/Order/Items" to 200_000), indexFields = setOf(SKU))
 
     private fun doc(n: Int): Document {
-        val d = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val d = def.newDocument()
         for (r in 1..n) { d.field(SKU, "S$r", 1, r, 1); d.field(COUNT, (r % 50).toString(), 1, r, 1) }
         return d
     }

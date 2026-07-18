@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
@@ -79,7 +79,7 @@ class StringCopyComputeDiffTest {
             emptyList(),
             computations = listOf(ComputationDef(TGT, "/Shipment", listOf(ComputationAlternative(null, operation(json))))),
         )
-        val doc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val doc = def.newDocument()
             .group("/Shipment", 1)
         doc.field(TGT, "SENTINEL", 1, 1)
         sourceValue?.let { doc.field(SRC, it, 1, 1) }

@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.DocumentConfig
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -34,7 +35,7 @@ class DocumentScaleTest {
 
     /** A Document of [n] `/Perf/Lines` rows: row i gets `Qty = i % 100` and `Amount = 1`. */
     private fun doc(n: Int): Document {
-        val d = Document(kinds, declaredReps = mapOf("/Perf/Lines" to n))
+        val d = Document(DocumentConfig(kinds, declaredReps = mapOf("/Perf/Lines" to n)))
         for (i in 1..n) {
             d.field(qty, (i % 100).toString(), 1, i, 1)
             d.field(amount, "1", 1, i, 1)

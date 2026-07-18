@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -39,7 +39,7 @@ class UniqSuppressionDiffTest {
         val kDoc = RuntimeLaws.doc().group("/Cart", 1)
             .group("/Cart/Lines", 1, 1).field(ITEM, k1, 1, 1, 1).field(PRICE, "5", 1, 1, 1)
             .group("/Cart/Lines", 1, 2).field(ITEM, k2, 1, 2, 1).field(PRICE, "5", 1, 2, 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val iDoc = def.newDocument()
             .field(ITEM, k1, 1, 1, 1).field(PRICE, "5", 1, 1, 1).field(ITEM, k2, 1, 2, 1).field(PRICE, "5", 1, 2, 1)
         val kernel = RuntimeLaws.messages(kModel, kDoc).count { it.code == "RR" }
         val interp = DmInterpreter(def).validateFull(iDoc).count { it.code == "RR" }

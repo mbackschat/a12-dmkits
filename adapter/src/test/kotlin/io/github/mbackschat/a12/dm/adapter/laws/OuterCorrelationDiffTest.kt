@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -64,7 +64,7 @@ class OuterCorrelationDiffTest {
     private fun iFires(cond: String, counts: List<String?>): Int {
         val def = ModelDef(fields, listOf(RuleDef("/Order/Corr", "/Order", cond, "CORR", "../Items/Count")),
             repeatableGroups = setOf("/Order/Items"), declaredReps = mapOf("/Order/Items" to 1000), indexFields = setOf(SKU))
-        val doc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val doc = def.newDocument()
         counts.forEachIndexed { i, c ->
             val r = i + 1
             doc.field(SKU, ('A' + i).toString(), 1, r, 1)

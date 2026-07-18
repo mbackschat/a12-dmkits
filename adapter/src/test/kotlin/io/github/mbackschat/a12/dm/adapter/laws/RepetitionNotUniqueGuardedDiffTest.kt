@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -46,8 +47,7 @@ class RepetitionNotUniqueGuardedDiffTest {
         val def = ModelDef(fields, listOf(RuleDef("/Order/RU", "/Order", cond, "RU", "../Items/Count")),
             repeatableGroups = setOf("/Order/Items"), declaredReps = mapOf("/Order/Items" to 50), indexFields = setOf(SKU))
         val kDoc = RuntimeLaws.doc().group("/Order", 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats, def.datePrecisions)
+        val iDoc = def.newDocument()
         if (customer != null) { kDoc.field(CUSTOMER, customer, 1, 1); iDoc.field(CUSTOMER, customer, 1, 1) }
         rows.forEachIndexed { i, (c, w) ->
             val r = i + 1

@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -40,7 +40,7 @@ class RangeCoercionDiffTest {
         val def = ModelDef(fields, listOf(RuleDef("/Cart/Lines/RC", "/Cart/Lines", cond, "RC", "../ItemId")),
             repeatableGroups = setOf("/Cart/Lines"), declaredReps = mapOf("/Cart/Lines" to 1000), indexFields = setOf(ITEM))
         val kDoc = RuntimeLaws.doc().group("/Cart", 1).group("/Cart/Lines", 1, 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val iDoc = def.newDocument()
         if (item != null) { kDoc.field(ITEM, item, 1, 1, 1); iDoc.field(ITEM, item, 1, 1, 1) }
         val kernel = RuntimeLaws.fires(kModel, "RC", kDoc)
         val interp = DmInterpreter(def).validateFull(iDoc).any { it.code == "RC" }

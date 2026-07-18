@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
@@ -49,7 +49,7 @@ class ComputationPreconditionDiffTest {
             fields, emptyList(),
             computations = listOf(ComputationDef(PRICE, "/Order", alts.map { ComputationAlternative(it.first, it.second) }, common)),
         )
-        val iDoc = Document(def.kinds, def.declaredReps).group("/Order", 1)
+        val iDoc = def.newDocument().group("/Order", 1)
         if (quantity != null) iDoc.field(QTY, quantity, 1, 1)
         val out = DmInterpreter(def).compute(iDoc).firstOrNull { it.path == PRICE }
         val iVal = out?.value

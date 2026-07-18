@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
 import io.github.mbackschat.a12.dm.interpreter.gen.asSink
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
@@ -84,7 +84,7 @@ class ParallelIterationDiffTest {
 
     /** Interpreter `code|type|pointer` signatures for [code] over the document built by [build]. */
     private fun interpSigs(code: String, cond: String, build: (PlacementSink) -> Unit): List<String> {
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val iDoc = def.newDocument()
         build(iDoc.asSink())
         val ruleDef = RuleDef("/Staffing/$code", "/Staffing", cond, code, "../Demand/Headcount")
         return DmInterpreter(def.copy(rules = listOf(ruleDef))).validateFull(iDoc).filter { it.code == code }

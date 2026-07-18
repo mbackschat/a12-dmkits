@@ -1,6 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter
 
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.gen.SeedGenerator
 import io.github.mbackschat.a12.dm.interpreter.gen.ValidValues
 import io.github.mbackschat.a12.dm.interpreter.gen.asSink
@@ -36,7 +36,7 @@ class SeedGeneratorTest {
         declaredReps = mapOf("/Shop/Items" to 100),
     )
 
-    private fun doc(m: ModelDef) = Document(m.kinds, m.declaredReps, m.unsignedFields, m.rangeConfig)
+    private fun doc(m: ModelDef) = m.newDocument()
 
     private fun itemRows(count: Int): (String, List<Int>, kotlin.random.Random) -> Int =
         { group, _, _ -> if (group == "/Shop/Items") count else 0 }

@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -53,8 +53,7 @@ class DateConstructionDiffTest {
             if (y != null) doc.field(BY, y, 1, 1) else doc.emptyField(BY, 1, 1)
             return doc
         }
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats).field(PT, pickup, 1, 1)
+        val iDoc = def.newDocument().field(PT, pickup, 1, 1)
         if (d != null) iDoc.field(BD, d, 1, 1) else iDoc.emptyField(BD, 1, 1)
         if (m != null) iDoc.field(BM, m, 1, 1) else iDoc.emptyField(BM, 1, 1)
         if (y != null) iDoc.field(BY, y, 1, 1) else iDoc.emptyField(BY, 1, 1)

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.DocumentConfig
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -60,7 +61,7 @@ class NonRepGroupFilledContentDiffTest {
             }
             d
         }
-        val iDoc = Document(mapOf(NOTE to Kind.NUMBER, SKU to Kind.STRING), mapOf(ITEMS to 3))
+        val iDoc = Document(DocumentConfig(mapOf(NOTE to Kind.NUMBER, SKU to Kind.STRING), mapOf(ITEMS to 3)))
             .group(ORDER, 1).field(NOTE, "1", 1, 1).group(BOX, 1, 1).let { d ->
                 for (r in 1..itemRows) {
                     d.group(ITEMS, 1, 1, r)

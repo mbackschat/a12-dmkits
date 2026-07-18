@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -40,7 +40,7 @@ class CurrentRepetitionDiffTest {
         val def = ModelDef(fields, listOf(RuleDef("/Cart/CR", "/Cart", cond, "CR", "../Lines/Qty")),
             repeatableGroups = setOf("/Cart/Lines"), declaredReps = mapOf("/Cart/Lines" to 1000), indexFields = setOf(ITEM))
         val kDoc = RuntimeLaws.doc().group("/Cart", 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val iDoc = def.newDocument()
         qtys.forEachIndexed { i, qty ->
             val r = i + 1
             kDoc.group("/Cart/Lines", 1, r).field(ITEM, "K$r", 1, r, 1)

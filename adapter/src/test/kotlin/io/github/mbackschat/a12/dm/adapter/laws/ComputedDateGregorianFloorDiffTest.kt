@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.eval.FORMAL_RULE_PATH
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
@@ -97,7 +97,7 @@ class ComputedDateGregorianFloorDiffTest {
     }
 
     private fun iOutcome(day: String, month: String, year: String): String {
-        val doc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val doc = def.newDocument()
             .group("/Policy", 1).field(DAY, day, 1, 1).field(MONTH, month, 1, 1).field(YEAR, year, 1, 1)
         val c = DmInterpreter(def).compute(doc).firstOrNull { it.path == START }
         return when (c?.outcome) {
@@ -143,8 +143,7 @@ class ComputedDateGregorianFloorDiffTest {
 
     private fun storedAgree(value: String, expect: String?, msg: String) {
         val k = RuntimeLaws.firedCodes(order, setOf("/Order"), mapOf(AD to value)).firstOrNull()
-        val doc = Document(adDef.kinds, adDef.declaredReps, adDef.unsignedFields, adDef.rangeConfig,
-            adDef.dateFormats, adDef.scales, adDef.dateTimeFormats, adDef.datePrecisions)
+        val doc = adDef.newDocument()
             .group("/Order", 1).field(AD, value, 1, 1)
         val i = DmInterpreter(adDef).validate(doc).messages.firstOrNull { it.rulePath == FORMAL_RULE_PATH }?.code
         assertEquals(k, i, "$msg (kernel=$k interp=$i)")

@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -64,7 +64,7 @@ class NumberOfFilledGroupsStarDiffTest {
     private fun iFires(cond: String, rows: List<String?>, errorField: String = "../CustomerName"): Boolean {
         val def = ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "NF", errorField)),
             repeatableGroups = setOf("/Order/Items"), declaredReps = mapOf("/Order/Items" to 50), indexFields = setOf(SKU))
-        val doc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val doc = def.newDocument()
         doc.field(CN, "Acme", 1, 1)
         rows.forEachIndexed { i, sku ->
             val r = i + 1

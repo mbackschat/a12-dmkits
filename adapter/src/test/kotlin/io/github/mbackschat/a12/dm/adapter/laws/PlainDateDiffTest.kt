@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -41,7 +41,7 @@ class PlainDateDiffTest {
         val kModel = RuntimeLaws.withRule(order, "/Order", code, errorRel, code, cond)
         val def = ModelDef(fields, listOf(RuleDef("/Order/$code", "/Order", cond, code, errorRel)))
         val kDoc = RuntimeLaws.doc().group("/Order", 1).field(field, value, 1, 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats)
+        val iDoc = def.newDocument()
             .field(field, value, 1, 1)
         val relevant = setOf(code, "datumFormatFalsch")
         val kernel = RuntimeLaws.messages(kModel, kDoc).map { it.code }.filter { it in relevant }.sorted()

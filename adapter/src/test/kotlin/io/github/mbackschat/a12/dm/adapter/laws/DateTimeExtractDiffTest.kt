@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -34,8 +34,7 @@ class DateTimeExtractDiffTest {
         val k = RuntimeLaws.fires(RuntimeLaws.withRule(order, "/Order", "R", "../ScheduledAt", "DX", cond), "DX",
             RuntimeLaws.doc().group("/Order", 1).field(SA, instant, 1, 1))
         val def = ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "DX", "../ScheduledAt")))
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats).field(SA, instant, 1, 1)
+        val iDoc = def.newDocument().field(SA, instant, 1, 1)
         val i = DmInterpreter(def).validate(iDoc).messages.any { it.code == "DX" }
         assertEquals(k, i, "$msg ($instant)")
     }

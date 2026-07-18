@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -38,7 +38,7 @@ class QuantifierMalformedDiffTest {
         val kModel = RuntimeLaws.withRule(order, "/Order", code, "../Quantity", code, cond)
         val def = ModelDef(fields, listOf(RuleDef("/Order/$code", "/Order", cond, code, "../Quantity")))
         val kDoc = RuntimeLaws.doc().group("/Order", 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val iDoc = def.newDocument()
             .group("/Order", 1)   // instantiate the root explicitly so the all-empty case still has a row to evaluate
         if (qty != null) { kDoc.field(QTY, qty, 1, 1); iDoc.field(QTY, qty, 1, 1) }
         if (back != null) { kDoc.field(BACK, back, 1, 1); iDoc.field(BACK, back, 1, 1) }

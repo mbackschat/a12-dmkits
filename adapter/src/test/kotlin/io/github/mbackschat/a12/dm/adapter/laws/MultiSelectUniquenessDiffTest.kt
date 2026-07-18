@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -48,7 +48,7 @@ class MultiSelectUniquenessDiffTest {
     /** Builds the SAME instance into both engines; a null value models an empty (unselected) required row. */
     private inner class Build {
         val kDoc = RuntimeLaws.doc().group("/Order", 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats)
+        val iDoc = def.newDocument()
         fun row(i: Int, value: String?) {
             kDoc.group("/Order/Channels", 1, i); iDoc.group("/Order/Channels", 1, i)
             if (value != null) { kDoc.field(VALUE, value, 1, i, 1); iDoc.field(VALUE, value, 1, i, 1) }

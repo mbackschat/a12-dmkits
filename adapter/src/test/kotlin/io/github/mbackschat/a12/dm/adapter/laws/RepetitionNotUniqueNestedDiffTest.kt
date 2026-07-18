@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -44,8 +44,7 @@ class RepetitionNotUniqueNestedDiffTest {
             declaredReps = mapOf("/Project/Milestones" to 20, "/Project/Milestones/Tasks" to 20),
             indexFields = setOf(PHASE, TASK_ID))
         val kDoc = RuntimeLaws.doc().group("/Project", 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats, def.datePrecisions)
+        val iDoc = def.newDocument()
         efforts.forEachIndexed { mi, tasks ->
             val m = mi + 1
             kDoc.group("/Project/Milestones", 1, m).field(PHASE, "P$m", 1, m, 1)

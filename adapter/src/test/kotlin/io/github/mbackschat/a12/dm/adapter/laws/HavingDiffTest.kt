@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -40,8 +40,7 @@ class HavingDiffTest {
         val def = ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "HV", "../CustomerName")),
             repeatableGroups = setOf("/Order/Items"), declaredReps = mapOf("/Order/Items" to 50), indexFields = setOf(SKU))
         val kDoc = RuntimeLaws.doc().group("/Order", 1).field(CN, "Acme", 1, 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats, def.datePrecisions).field(CN, "Acme", 1, 1)
+        val iDoc = def.newDocument().field(CN, "Acme", 1, 1)
         rows.forEachIndexed { i, (w, c) ->
             val r = i + 1
             kDoc.group("/Order/Items", 1, r).field(SKU, "K$r", 1, r, 1).field(WEIGHT, w, 1, r, 1).field(COUNT, c, 1, r, 1)

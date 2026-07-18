@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.gen.asSink
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
@@ -31,7 +32,7 @@ class EvalProfileTest {
 
     private fun profile(scenario: io.github.mbackschat.a12.dm.adapter.perf.PerfScenario, n: Int, label: String) {
         val model = scenario.interpModel
-        val doc = Document(model.kinds, model.declaredReps, model.unsignedFields, model.rangeConfig, model.dateFormats, model.scales)
+        val doc = model.newDocument()
         scenario.instance(doc.asSink(), n, 0)
         val interp = DmInterpreter(model)
         repeat(20) { interp.validateFull(doc) }   // warm + let JFR start sampling

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -43,7 +44,7 @@ class CustomTypePerfTest {
 
     /** A document of [n] custom-typed cells, all carrying a valid IBAN (so `accepts` runs the full regex per cell). */
     private fun doc(n: Int): Document {
-        val d = Document(customDef.kinds, customDef.declaredReps)   // kinds are STRING for both defs → one doc serves both
+        val d = customDef.newDocument()   // kinds are STRING for both defs → one doc serves both
         for (i in 1..n) d.field(s, "DE89370400440532013000", 1, i, 1)
         return d
     }
@@ -52,7 +53,7 @@ class CustomTypePerfTest {
         val d = doc(N)
         // Correctness sanity — the timed path is NOT a no-op: a bad value fires customFieldTypeInvalid, and the
         // registered type is actually consulted (nothing reported unsupported).
-        val bad = Document(customDef.kinds, customDef.declaredReps).apply { field(s, "NOT-AN-IBAN", 1, 1, 1) }
+        val bad = customDef.newDocument().apply { field(s, "NOT-AN-IBAN", 1, 1, 1) }
         val outcome = DmInterpreter(customDef, predefinedTypes = registry).validate(bad)
         assertEquals(1, outcome.messages.size, "the accepts() path must run (a bad IBAN fires once): ${outcome.messages}")
         assertTrue(outcome.unsupported.isEmpty(), "the registered type must be consulted, not reported unsupported: ${outcome.unsupported}")

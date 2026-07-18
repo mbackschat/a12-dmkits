@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.DocumentConfig
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -41,7 +42,7 @@ class DirectionalPolarityDiffTest {
         val model = RuntimeLaws.withRule(order, "/Order", "R", errorRel, code, cond)
         val kernel = RuntimeLaws.typeOf(model, code, setOf("/Order"), setOf(emptyField), mapOf(CN to "Acme"))
             .map { it.name }.orElse(null)
-        val doc = Document(kinds, emptyMap(), unsigned).field(CN, "Acme", 1, 1).emptyField(emptyField, 1, 1)
+        val doc = Document(DocumentConfig(kinds, unsignedFields = unsigned)).field(CN, "Acme", 1, 1).emptyField(emptyField, 1, 1)
         val interp = DmInterpreter(ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, code, errorRel))))
             .validate(doc).messages.firstOrNull { it.code == code }?.type
             ?.let { if (it == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR" }

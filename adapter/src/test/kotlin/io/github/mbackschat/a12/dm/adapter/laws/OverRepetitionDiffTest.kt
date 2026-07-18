@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -42,7 +42,7 @@ class OverRepetitionDiffTest {
 
     private inner class Build {
         val kDoc = RuntimeLaws.doc().group("/Order", 1)
-        val iDoc = Document(def.kinds, def.declaredReps).group("/Order", 1)
+        val iDoc = def.newDocument().group("/Order", 1)
         fun line(i: Int) { kDoc.group(LINES, 1, i); iDoc.group(LINES, 1, i); kDoc.field(QTY, "5", 1, i, 1); iDoc.field(QTY, "5", 1, i, 1) }
         fun part(li: Int, pi: Int) { kDoc.group(PARTS, 1, li, pi); iDoc.group(PARTS, 1, li, pi); kDoc.field(COST, "7", 1, li, pi, 1); iDoc.field(COST, "7", 1, li, pi, 1) }
     }
@@ -93,7 +93,7 @@ class OverRepetitionDiffTest {
             repeatableGroups = setOf(LINES), declaredReps = mapOf(LINES to 3), indexFields = setOf(KEY),
         )
         val kDoc = RuntimeLaws.doc().group("/Order", 1)
-        val iDoc = Document(idxDef.kinds, idxDef.declaredReps).group("/Order", 1)
+        val iDoc = idxDef.newDocument().group("/Order", 1)
         fun row(i: Int, key: String?) {
             kDoc.group(LINES, 1, i); iDoc.group(LINES, 1, i)
             if (key != null) { kDoc.field(KEY, key, 1, i, 1); iDoc.field(KEY, key, 1, i, 1) }

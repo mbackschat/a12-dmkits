@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
@@ -80,8 +80,7 @@ class ConcatInvalidOperandDiffTest {
 
     private fun iOutcome(model: String, values: Map<String, String>): String {
         val def = ModelLoader.load(model)
-        val doc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats, def.datePrecisions, def.enumValues, def.enumCategories).group("/Product", 1)
+        val doc = def.newDocument().group("/Product", 1)
         doc.field(LABEL, SEED, 1, 1)
         values.forEach { (p, v) -> doc.field(p, v, 1, 1) }
         val c = DmInterpreter(def).compute(doc).firstOrNull { it.path == LABEL }

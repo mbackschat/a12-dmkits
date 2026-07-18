@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
@@ -65,7 +65,7 @@ class CascadeClearedDependencyDiffTest {
     }
 
     private fun interpOutcomes(values: Map<String, String>): Map<String, String> {
-        val doc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val doc = def.newDocument()
             .group("/Order", 1)
         doc.field(MID, "77", 1, 1); doc.field(OUT, "88", 1, 1)
         values.forEach { (p, v) -> doc.field(p, v, 1, 1) }

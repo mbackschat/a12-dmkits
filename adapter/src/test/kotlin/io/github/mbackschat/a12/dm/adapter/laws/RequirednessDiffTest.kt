@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -164,7 +165,7 @@ class RequirednessDiffTest {
     /** Build the doc both ways (kernel + interpreter) from one description, and assert identical code@pointer sets. */
     private fun agree(kModel: String, def: ModelDef, msg: String, build: (DocLike) -> Unit) {
         val kDoc = RuntimeLaws.doc()
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields)
+        val iDoc = def.newDocument()
         build(DocLike(kDoc, iDoc))
         val kernel = RuntimeLaws.messages(kModel, kDoc).map { "${it.code}@${it.field}" }
             .filter { !it.startsWith("MVK_") }.toSortedSet()

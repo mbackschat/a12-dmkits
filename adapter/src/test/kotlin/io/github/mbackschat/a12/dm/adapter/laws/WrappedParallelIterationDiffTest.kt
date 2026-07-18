@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
 import io.github.mbackschat.a12.dm.interpreter.gen.asSink
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
@@ -86,7 +86,7 @@ class WrappedParallelIterationDiffTest {
             override fun field(path: String, value: String, vararg reps: Int) { kDoc.field(path, value, *reps) }
             override fun emptyField(path: String, vararg reps: Int) { kDoc.emptyField(path, *reps) }
         }, a, b)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val iDoc = def.newDocument()
         build(iDoc.asSink(), a, b)
 
         val kSigs = RuntimeLaws.messages(model, kDoc).filter { it.code() == "PI" }

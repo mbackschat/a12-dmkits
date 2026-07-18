@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.CUSTOM_TYPE_INVALID
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -31,7 +31,7 @@ class CustomFieldTypeSpiTest {
 
     private fun out(value: String) =
         DmInterpreter(def, customFieldTypes = ibanType)
-            .validate(Document(def.kinds, def.declaredReps).group("/Pay", 1).also { it.field(IBAN, value, 1, 1) })
+            .validate(def.newDocument().group("/Pay", 1).also { it.field(IBAN, value, 1, 1) })
 
     @Test
     fun codeTypeAcceptsAValidValue() {
@@ -54,7 +54,7 @@ class CustomFieldTypeSpiTest {
             FieldDef(IBAN, Kind.STRING, customTypeName = "Iban"),
             FieldDef(CODE, Kind.STRING, customTypeName = "Code"),
         ), emptyList())
-        val doc = Document(both.kinds, both.declaredReps).group("/Pay", 1).also {
+        val doc = both.newDocument().group("/Pay", 1).also {
             it.field(IBAN, "NOT-AN-IBAN", 1, 1)   // rejected by the code type
             it.field(CODE, "ab", 1, 1)            // rejected by the declarative type (len 2 < 3)
         }

@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -41,8 +41,7 @@ class DateRangeComputeDiffTest {
             .group("/Order", 1).field(OD, orderDate, 1, 1).field(DD, deliveryDate, 1, 1))
         val kernelValue = RuntimeLaws.computedValue(kernel, CW).orElse(null)
 
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats).field(OD, orderDate, 1, 1).field(DD, deliveryDate, 1, 1)
+        val iDoc = def.newDocument().field(OD, orderDate, 1, 1).field(DD, deliveryDate, 1, 1)
         val got = DmInterpreter(def).compute(iDoc).single { it.path == CW }.value
         assertEquals(kernelValue, got, "$msg (kernel=$kernelValue interp=$got)")
     }

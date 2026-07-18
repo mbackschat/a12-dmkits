@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -39,7 +39,7 @@ class DateRangeDiffTest {
         val def = ModelDef(fields, listOf(RuleDef("/Order/RR", "/Order", cond, "RR", "../OrderDate")))
 
         val kDoc = RuntimeLaws.doc().group("/Order", 1).field(OD, "2024-06-01", 1, 1).field(CW, coverage, 1, 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig)
+        val iDoc = def.newDocument()
             .field(OD, "2024-06-01", 1, 1).field(CW, coverage, 1, 1)
         val kernel = RuntimeLaws.fires(kModel, "RR", kDoc)
         val interp = DmInterpreter(def).validateFull(iDoc).any { it.code == "RR" }
@@ -69,7 +69,7 @@ class DateRangeDiffTest {
         val def = ModelDef(overlapFields, listOf(RuleDef("/Order/$code", "/Order", cond, code, "../OrderDate")),
             repeatableGroups = setOf("/Order/Items"), declaredReps = mapOf("/Order/Items" to 50))
         val kDoc = RuntimeLaws.doc().group("/Order", 1).field(OD, "2024-06-01", 1, 1).field(CW, window, 1, 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig)
+        val iDoc = def.newDocument()
             .field(OD, "2024-06-01", 1, 1).field(CW, window, 1, 1)
         itemCoverages.forEachIndexed { i, ic ->
             kDoc.group("/Order/Items", 1, i + 1).field(IC, ic, 1, i + 1, 1)

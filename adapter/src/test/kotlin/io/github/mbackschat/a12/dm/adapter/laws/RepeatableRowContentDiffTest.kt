@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.DocumentConfig
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -60,7 +61,7 @@ class RepeatableRowContentDiffTest {
         for (r in 1..rows) { d.group(LINES, 1, r); if (emptyPlacements) d.emptyField(QTY, 1, r, 1) }
         d
     }
-    private fun iDoc(rows: Int, emptyPlacements: Boolean) = Document(KINDS, mapOf(LINES to 3))
+    private fun iDoc(rows: Int, emptyPlacements: Boolean) = Document(DocumentConfig(KINDS, mapOf(LINES to 3)))
         .group(CART, 1).let { d ->
             for (r in 1..rows) { d.group(LINES, 1, r); if (emptyPlacements) d.emptyField(QTY, 1, r, 1) }
             d

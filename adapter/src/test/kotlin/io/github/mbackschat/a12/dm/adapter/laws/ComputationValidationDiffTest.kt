@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
@@ -41,8 +41,7 @@ class ComputationValidationDiffTest {
 
     private fun kDoc(coverage: String) = RuntimeLaws.doc().group("/Order", 1)
         .field(ORDER_DATE, "2024-01-01", 1, 1).field(DELIVERY_DATE, "2024-02-01", 1, 1).field(COVERAGE, coverage, 1, 1)
-    private fun iDoc(coverage: String) = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig,
-        def.dateFormats, def.scales, def.dateTimeFormats).group("/Order", 1)
+    private fun iDoc(coverage: String) = def.newDocument().group("/Order", 1)
         .field(ORDER_DATE, "2024-01-01", 1, 1).field(DELIVERY_DATE, "2024-02-01", 1, 1).field(COVERAGE, coverage, 1, 1)
 
     private fun agree(coverage: String, msg: String) {

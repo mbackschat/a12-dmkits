@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import com.mgmtp.a12.kernel.md.rt.api.IMessage
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.DocumentConfig
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -79,7 +80,7 @@ class GroupScopedFieldFillDiffTest {
     }
 
     private fun iDoc(s: Scene): Document {
-        val doc = Document(kinds, mapOf("/Root/Lines" to 2))
+        val doc = Document(DocumentConfig(kinds, mapOf("/Root/Lines" to 2)))
         doc.field(GATE, "g", 1, 1)
         if (s.addrInstantiated) {
             doc.group("/Root/Addr", 1, 1)

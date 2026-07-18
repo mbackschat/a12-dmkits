@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -42,7 +42,7 @@ class FieldValueCoercionDiffTest {
         val kModel = RuntimeLaws.withRule(order, "/Order", "FC", errorRel, "FC", cond)
         val def = ModelDef(fields, listOf(RuleDef("/Order/FC", "/Order", cond, "FC", errorRel)))
         val kDoc = RuntimeLaws.doc().group("/Order", 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val iDoc = def.newDocument()
         if (qty != null) { kDoc.field(QTY, qty, 1, 1); iDoc.field(QTY, qty, 1, 1) }
         if (rush != null) { kDoc.field(RUSH, rush, 1, 1); iDoc.field(RUSH, rush, 1, 1) }
         val kernel = RuntimeLaws.fires(kModel, "FC", kDoc)

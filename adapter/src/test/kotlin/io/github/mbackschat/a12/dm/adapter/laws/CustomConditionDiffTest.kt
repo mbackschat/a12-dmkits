@@ -6,7 +6,7 @@ import com.mgmtp.a12.kernel.md.document.api.IEntityInstance
 import com.mgmtp.a12.kernel.md.document.api.IFieldInstance
 import io.github.mbackschat.a12.dm.adapter.KernelCustomConditions
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -66,10 +66,7 @@ class CustomConditionDiffTest {
     /** Run the SAME logic on both engines for CustomerName = [name] (null = empty); compare firing + polarity. */
     private fun agree(name: String?, msg: String) {
         val kDoc = RuntimeLaws.doc().group("/Order", 1)
-        val iDoc = Document(
-            def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
-            def.scales, def.dateTimeFormats, def.datePrecisions, def.enumValues, def.enumCategories,
-        ).group("/Order", 1)
+        val iDoc = def.newDocument().group("/Order", 1)
         if (name != null) {
             kDoc.field(NAME, name, 1, 1)
             iDoc.field(NAME, name, 1, 1)

@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
@@ -36,7 +36,7 @@ class EmptyOperandFiringDiffTest {
         empty.forEach { p -> kDoc.emptyField(p, 1, 1) }
         val kernel = RuntimeLaws.messages(model, kDoc).count { it.code() == code }
         val def = ModelLoader.load(model)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val iDoc = def.newDocument()
             .field(CN, "Acme", 1, 1)
         filled.forEach { (p, v) -> iDoc.field(p, v, 1, 1) }
         empty.forEach { p -> iDoc.emptyField(p, 1, 1) }
@@ -65,7 +65,7 @@ class EmptyOperandFiringDiffTest {
         val javaStatic = engine.messages(engine.instance(kDoc)).firstOrNull { it.code() == code }?.type()?.name
         assertEquals(kernel, javaStatic, "$cond — polarity groovy-dynamic=$kernel java-static=$javaStatic")
         val def = ModelLoader.load(model)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val iDoc = def.newDocument()
             .field(CN, "Acme", 1, 1)
         filled.forEach { (p, v) -> iDoc.field(p, v, 1, 1) }
         empty.forEach { p -> iDoc.emptyField(p, 1, 1) }

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
@@ -27,7 +28,7 @@ class CharsetPerfTest {
     private val din = LegalCharset.ofRanges(0x20..0x7E, 0x00A0..0x024F, 0x1E00..0x1EFF, 0x2000..0x206F)
 
     private fun doc(): Document {
-        val d = Document(def.kinds, def.declaredReps)
+        val d = def.newDocument()
         for (i in 1..N) d.field(s, "Auftragsbestätigung Nr. $i — Île-de-France", 1, i, 1)   // all within DIN
         return d
     }

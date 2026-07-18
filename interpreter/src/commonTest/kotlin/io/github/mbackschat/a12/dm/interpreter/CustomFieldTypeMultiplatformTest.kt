@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.CUSTOM_TYPE_INVALID
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -35,7 +36,7 @@ class CustomFieldTypeMultiplatformTest {
     private val codeType = mapOf("Code" to PredefinedType(minLength = 3, maxLength = 5))
 
     private fun docOf(value: String): Document =
-        Document(def.kinds, def.declaredReps).group("/Order", 1).also { it.field(CODE, value, 1, 1) }
+        def.newDocument().group("/Order", 1).also { it.field(CODE, value, 1, 1) }
 
     private fun registered(value: String) = DmInterpreter(def, predefinedTypes = codeType).validate(docOf(value))
     private fun unregistered(value: String) = DmInterpreter(def).validate(docOf(value))   // DEFAULT has no "Code"

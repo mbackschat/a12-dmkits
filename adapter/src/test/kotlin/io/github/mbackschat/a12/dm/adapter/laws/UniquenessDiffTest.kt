@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -30,7 +30,7 @@ class UniquenessDiffTest {
     /** Builds the SAME instance into both engines; a null id models an absent (unfilled) index field. */
     private inner class Build {
         val kDoc = RuntimeLaws.doc().group("/Cart", 1)
-        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats)
+        val iDoc = def.newDocument()
         fun line(i: Int, item: String?) {
             kDoc.group("/Cart/Lines", 1, i); iDoc.group("/Cart/Lines", 1, i)
             if (item != null) { kDoc.field(ITEM, item, 1, i, 1); iDoc.field(ITEM, item, 1, i, 1) }

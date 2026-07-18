@@ -4,7 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.conformance.Placement
 import io.github.mbackschat.a12.dm.interpreter.conformance.PlacementKind
 import io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
@@ -102,7 +102,7 @@ class EmptyConcatStoreDiffTest {
 
     /** The interpreter's (raw report-all, kernel-granularity-projected) outcome pair for [c]. */
     private fun iOutcomes(def: ModelDef, c: Case): Pair<String, String> {
-        val doc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+        val doc = def.newDocument()
             .group("/Policy", 1)
         for ((p, v) in seed(c)) doc.field(p, v, 1, 1)
         val computed = DmInterpreter(def).compute(doc)

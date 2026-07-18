@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -72,7 +73,7 @@ class AggMalformedDiffTest {
         declaredReps = mapOf("/Cart/Lines" to 1000), indexFields = setOf(ITEM),
     )
 
-    private fun doc(def: ModelDef) = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
+    private fun doc(def: ModelDef) = def.newDocument()
 
     @Test fun sumSuppressedByMalformedElement() = starred(render(Dsl.sum(prices).gt(100)), "SM", "200", "abc")
     @Test fun sumComputesWhenAllValid() = starred(render(Dsl.sum(prices).gt(100)), "SM", "200", "50")

@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
@@ -44,7 +44,7 @@ class ComputeErrorBucketDiffTest {
     private fun agree(a: String, b: String, msg: String) {
         val k = RuntimeLaws.compute(kModel, RuntimeLaws.doc().group("/Calc", 1).field(A, a, 1, 1).field(B, b, 1, 1))
             .first { it.path == T }
-        val i = DmInterpreter(def).compute(Document(def.kinds, def.declaredReps).group("/Calc", 1)
+        val i = DmInterpreter(def).compute(def.newDocument().group("/Calc", 1)
             .field(A, a, 1, 1).field(B, b, 1, 1)).first { it.path == T }
         assertEquals(k.errored(), i.outcome == ComputeOutcome.ERRORED, "$msg — errored kernel=${k.errored()} interp=${i.outcome}")
         assertEquals(k.value().orElse(null), i.value, "$msg — value")
