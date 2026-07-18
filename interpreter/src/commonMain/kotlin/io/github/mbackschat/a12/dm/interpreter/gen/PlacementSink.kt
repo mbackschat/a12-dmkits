@@ -5,7 +5,7 @@ package io.github.mbackschat.a12.dm.interpreter.gen
  * 1-based repetition index per path part** (group AND field), exactly as [io.github.mbackschat.a12.dm.interpreter.eval.Document]
  * is addressed. It is the seam that lets a generator ([SeedGenerator]) build a document **once** and target
  * any backing instance: the interpreter's `Document` (via [Document.asSink]), a kernel `IDocument` (an adapter
- * in `:adapter`), or a JSON serializer (a future `dmtool seed` verb). Kernel-free, so it lives in `:interpreter`
+ * in `:adapter`), or a JSON serializer (the `dmtool model seed` verb). Kernel-free, so it lives in `:interpreter`
  * and rides the native/JS runtime.
  */
 interface PlacementSink {

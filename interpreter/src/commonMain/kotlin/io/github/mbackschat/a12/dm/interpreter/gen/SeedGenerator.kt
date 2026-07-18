@@ -6,18 +6,18 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import kotlin.random.Random
 
 /**
- * Generates a **best-effort, model-derived candidate** document instance (structure-shaped; not guaranteed
- * model-accepted) from a [ModelDef] into a [PlacementSink]. It walks
+ * Generates a **best-effort, model-derived sample candidate** document instance from a [ModelDef] into a
+ * [PlacementSink]. It walks
  * the model's group tree (derived from the field paths + the declared repeatable groups), instantiates the
  * requested number of rows per repeatable group, and emits a value per field from a [ValueStrategy] — by
- * default a valid value for the field's [Kind] (respecting NUMBER scale/sign, date/time/range formats). The
- * result is correct by construction: every field gets an in-format value unless a strategy deliberately
- * leaves it empty.
+ * default a best-effort in-format value for the field's [Kind] (respecting NUMBER scale/sign, date/time/range
+ * formats). It is a candidate, **not** a guarantee: placements are addressable, but caller-selected row counts
+ * may exceed a group's declared maximum, so the output is not necessarily structurally or model accepted.
  *
  * Kernel-free and multiplatform — so it serves three consumers from one place:
  * - the **`:adapter` differential fuzz** net (random generated documents, assert interp == kernel);
  * - the **perf harness** (deterministic strategies that drive a known firing fraction);
- * - a future **`dmtool seed`** verb on the native image (model → best-effort sample candidate → JSON).
+ * - the **`dmtool model seed`** verb on the native image (model → best-effort sample candidate → JSON).
  *
  * **Determinism:** [populate] builds its own `Random(seed)` and walks in a fixed order, so two calls with the
  * same `seed` (and the same generator instance) produce the **identical** document — which is exactly how the
@@ -60,9 +60,9 @@ class SeedGenerator(private val model: ModelDef) {
     }
 
     /**
-     * Java-friendly convenience (the shape `dmtool seed` drives): populate with **fixed** per-group row counts
+     * Java-friendly convenience (the shape `dmtool model seed` drives): populate with **fixed** per-group row counts
      * — a repeatable group listed in [rowsByGroup] gets that many rows, any other gets [defaultRows] — and the
-     * default [ValidValues] strategy (every field a valid value). Avoids passing a Kotlin function/`Random`
+     * default [ValidValues] strategy (a best-effort per-field heuristic, not a validity guarantee). Avoids passing a Kotlin function/`Random`
      * from Java.
      */
     fun populate(sink: PlacementSink, seed: Long, rowsByGroup: Map<String, Int>, defaultRows: Int) =

@@ -32,7 +32,7 @@ object CorpusSeeding {
         return out
     }
 
-    /** Java-friendly fixed-row seeding: every repeatable group gets [rows] rows, every field a valid value. */
+    /** Java-friendly fixed-row seeding: every repeatable group gets [rows] rows, every field a best-effort ValidValues sample. */
     fun seedPlacementsFixed(model: ModelDef, seed: Long, rows: Int): List<Placement> {
         val out = mutableListOf<Placement>()
         SeedGenerator(model).populate(recordInto(out), seed, { _, _, _ -> rows }, ValidValues)

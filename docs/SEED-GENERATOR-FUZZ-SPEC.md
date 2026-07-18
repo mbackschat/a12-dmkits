@@ -2,7 +2,7 @@
 
 Two coupled pieces that share one engine:
 
-1. **The model-driven seed generator** (`SeedGenerator`, package `…dm.interpreter.gen`) — given a document model, it produces a **best-effort, model-derived candidate** document instance (structure-shaped; **not** guaranteed model-accepted). Kernel-free and multiplatform, so the same code serves three consumers.
+1. **The model-driven seed generator** (`SeedGenerator`, package `…dm.interpreter.gen`) — given a document model, it produces a **best-effort, model-derived sample candidate** document instance (**not** guaranteed structurally or model accepted — caller-selected row counts may exceed declared maxima). Kernel-free and multiplatform, so the same code serves three consumers.
 2. **The differential fuzz net** (`adapter.perf.InterpreterKernelFuzzTest`) — built on the generator: it generates many random documents and asserts the **interpreter agrees with the real kernel** on every one. This is the strongest gate for the interpreter's #1 rule — *match the kernel exactly* ([INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) IF0).
 
 Around these sit a few **companion harnesses** that make the exact-match loop fast: a **kernel probe battery** (learn the kernel's behavior *before* implementing), **fuzz divergence localization** (pinpoint *which* row/code diverged), and a **catalog-parity meter** (guard against unhandled operators). They're documented in "[Companion harnesses](#companion-harnesses--the-probe-first-loop)" below.
@@ -13,7 +13,7 @@ This doc is the **stable method**. The generator's *consumers* have their own ho
 
 Hand-writing document fixtures to test the interpreter is the obvious approach — and it is exactly what the per-operator `*DiffTest`s do (one pinned case each). But hand-picked cases only catch the divergences you *think* to write. The exact-match bar needs the opposite: **random combinations a human would not pick** — odd row counts across nested groups, mixed fill/empty/malformed patterns, colliding index keys, an aggregate over a list that happens to be empty. To generate those *and feed the same document to both engines*, you need one generator that builds a document once and can target either backing — that is the generator's reason to exist.
 
-It is **structurally sound by construction** on purpose: the structure comes from the model (so every placement is addressable and every group instantiated correctly), and the default per-field value is in-format for the field's kind — this is **structure + per-field format, NOT whole-document model-acceptance**. A test that wants invalidity (the fuzz net does) layers it on top via a value strategy — it never has to fight a malformed *structure*.
+It is **best-effort, model-derived** on purpose: the structure comes from the model (placements are addressable) and the default per-field value is in-format for the field's kind — but this is **not** a validity guarantee: `ValidValues` is a per-field local heuristic, caller-selected repetition counts may exceed a group's declared maximum, and addressable placements are **not** necessarily structurally or model accepted. A test that wants invalidity (the fuzz net does) layers it on top via a value strategy.
 
 ## The data flow
 
@@ -29,7 +29,7 @@ It is **structurally sound by construction** on purpose: the structure comes fro
                     PlacementSink                 ← the seam: one build, any backing
                     ├─ Document.asSink()          → the interpreter's general Document      (:interpreter)
                     ├─ KernelSink(RuntimeLaws.Doc)→ a kernel IDocument                       (:adapter, has the kernel)
-                    └─ (future) JsonSink          → a DM-JSON sample instance               (dmtool seed verb, #33)
+                    └─ JsonInstanceSink           → a DM-JSON sample candidate              (dmtool model seed, :cli)
 ```
 
 Each placement carries **one 1-based repetition index per path part** (group *and* field) — the exact addressing the interpreter's `Document` and the kernel's `IDocument` both use, so the sink is a thin pass-through on each side.
@@ -56,7 +56,7 @@ gen.populate(
 
 **Determinism is the contract that makes the dual-engine differential work.** `populate` builds its own `Random(seed)` and walks in a fixed order, so two calls with the same generator instance and seed produce the **identical** document. The fuzz net relies on this: it materializes seed *s* into the interpreter and into the kernel from the same generator, and any divergence is therefore a real semantic difference, not a generation artefact — and a failing seed is exactly reproducible.
 
-**Kernel-free + multiplatform.** `…interpreter.gen` imports no kernel/Groovy/`java.*` (the `verifyInterpreterPurity` lint enforces it), so the generator rides the native image and the JS artifact. That is what lets the *same* generator back a future `dmtool seed` verb on the native binary — the kernel is touched only by the fuzz net's oracle, which lives in `:adapter`.
+**Kernel-free + multiplatform.** `…interpreter.gen` imports no kernel/Groovy/`java.*` (the `verifyInterpreterPurity` lint enforces it), so the generator rides the native image and the JS artifact. That is what lets the *same* generator back the shipped `dmtool model seed` verb on the native binary — the kernel is touched only by the fuzz net's oracle, which lives in `:adapter`.
 
 ## The differential fuzz net
 
@@ -120,7 +120,7 @@ The fuzz step is one line: add a `FuzzRule(group, code, errorRel, condition)` to
 ./build.sh :adapter:test --tests "io.github.mbackschat.a12.dm.adapter.perf.InterpreterKernelFuzzTest"
 
 # the seed generator's own multiplatform proof (JVM + JS)
-./build.sh :interpreter:check --tests "io.github.mbackschat.a12.dm.interpreter.SeedGeneratorTest"
+./build.sh :interpreter:jvmTest --tests "io.github.mbackschat.a12.dm.interpreter.SeedGeneratorTest"
 ```
 
 A failing fuzz seed prints `seed=N kernel-only=… interp-only=…`; reproduce it in isolation by pinning that seed, then write the minimal `*DiffTest` that captures the divergence before fixing (red/green).
@@ -128,7 +128,7 @@ A failing fuzz seed prints `seed=N kernel-only=… interp-only=…`; reproduce i
 ## Relationship to the perf harness and the seed verb
 
 - **Perf harness** ([INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md)) — the *same* `SeedGenerator` + `PlacementSink` build the perf scenarios' instances into both engines; the fuzz net is the **correctness twin** of the perf differential (one asserts equality of outputs, the other measures time, both over generated real documents). The deterministic strategies there drive a known firing fraction; the fuzz strategy here is random.
-- **`dmtool seed` verb (#33)** — not yet built. The generator is already placed kernel-free precisely so the verb can wire `loader → SeedGenerator.populate(JsonSink) → serialize` on the native image, producing a best-effort model-derived sample candidate for any model. The `PlacementSink` seam is the extension point — a third backing, no generator change.
+- **`dmtool model seed` verb** — shipped. The generator is placed kernel-free so the verb wires `loader → SeedGenerator.populate(JsonInstanceSink) → serialize` on the native image, producing a best-effort model-derived sample candidate for any model. The `PlacementSink` seam is the extension point — a third backing, no generator change.
 
 ## Companion harnesses — the probe-first loop
 

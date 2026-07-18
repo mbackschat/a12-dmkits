@@ -31,7 +31,7 @@ private typealias RowsFn = (group: String, parentReps: List<Int>, rnd: Random) -
  * The perf benchmark catalog (INTERPRETER-PERFORMANCE.md). Single-sources the `perf.dm.json` model — the
  * nested `/Perf` → `Lines`(LineKey, Qty, Amount) → `Subs`(SubKey, Cost) shape — so a scenario's kernel JSON
  * and interpreter [ModelDef] are built from ONE set of rule params and cannot drift. The instance is built by
- * the **model-driven [SeedGenerator]** (the same generator the differential fuzz net and a future `dmtool seed`
+ * the **model-driven [SeedGenerator]** (the same generator the differential fuzz net and the `dmtool model seed`
  * verb use): the structure comes from the model; a per-field [ValueStrategy] drives the numeric values so a
  * known fraction of rows crosses each rule's threshold. The shapes target the **non-obvious group machinery**:
  *

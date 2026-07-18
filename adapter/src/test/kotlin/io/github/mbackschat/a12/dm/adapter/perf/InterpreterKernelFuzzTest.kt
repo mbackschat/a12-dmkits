@@ -14,8 +14,8 @@ import org.junit.jupiter.api.Test
  * patterns (exercising requiredness on empty index fields), aggregates over varying lists, a cross-level
  * reference — surfacing divergences no hand-picked case would.
  *
- * The generator is **kernel-free** (`:interpreter`), so this same generator backs the perf harness and a future
- * `dmtool seed` verb; the kernel half here is the `RuntimeLaws` oracle (so the test lives in `:adapter`). Each
+ * The generator is **kernel-free** (`:interpreter`), so this same generator backs the perf harness and the
+ * `dmtool model seed` verb; the kernel half here is the `RuntimeLaws` oracle (so the test lives in `:adapter`). Each
  * seed is materialized into all THREE engines from the same generator instance — deterministic for a fixed seed,
  * so a failing seed is exactly reproducible (printed in the assertion).
  *
