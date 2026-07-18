@@ -193,6 +193,15 @@ class StarOnlyIterationScopeDiffTest {
             build(b, qtysPerItem = listOf(listOf("1", "2"), listOf("3", "4")))
         }
 
+    // ── arm (d2): the skill's scope-choice pair — the PARENT-declared variant of arm (a) fires identically ──
+
+    @Test fun parentScopeVariantFiresIdenticallyToTheInRowScope() =
+        agree("/Order", "../Items/Count", "Sum(/Order/Items*/Count) > -1",
+            expect = listOf("/Order[1]/Items[1]/Count|OMISSION_ERROR"),
+            msg = "the same star-only rule declared at the non-repeatable PARENT fires exactly like arm (a): once, first row") { b ->
+            build(b, counts = listOf("2", "5", "1"))
+        }
+
     // ── arm (e): the once-evaluation's content gate — root instance vs the star's collapse level ────────────
 
     @Test fun onceFireIsGatedOnRootContentNotTheCollapseSubtree() =
