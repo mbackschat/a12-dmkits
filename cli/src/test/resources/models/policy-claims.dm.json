@@ -1,0 +1,111 @@
+{
+  "header" : {
+    "id" : "policy-claims",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "policy-claims",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Policy",
+        "name" : "Policy",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Field",
+            "id" : "/Policy/PolicyNumber",
+            "name" : "PolicyNumber",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Policy/CoverageLimit",
+            "name" : "CoverageLimit",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 2,
+                  "minFractionalDigits" : 2
+                }
+              }
+            }
+          }, {
+            "type" : "Group",
+            "id" : "/Policy/Claims",
+            "name" : "Claims",
+            "Group" : {
+              "repeatability" : 100,
+              "elements" : [ {
+                "type" : "Field",
+                "id" : "/Policy/Claims/ClaimId",
+                "name" : "ClaimId",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "StringType"
+                  }
+                }
+              }, {
+                "type" : "Field",
+                "id" : "/Policy/Claims/Amount",
+                "name" : "Amount",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "NumberType",
+                    "NumberType" : {
+                      "maxFractionalDigits" : 2,
+                      "minFractionalDigits" : 2
+                    }
+                  }
+                }
+              }, {
+                "type" : "Field",
+                "id" : "/Policy/Claims/Status",
+                "name" : "Status",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "EnumerationType",
+                    "EnumerationType" : {
+                      "values" : [ {
+                        "value" : "OPEN"
+                      }, {
+                        "value" : "APPROVED"
+                      }, {
+                        "value" : "REJECTED"
+                      } ]
+                    }
+                  }
+                }
+              } ],
+              "indexFieldName" : "ClaimId"
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}
