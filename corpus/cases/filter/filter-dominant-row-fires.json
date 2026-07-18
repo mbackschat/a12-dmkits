@@ -1,0 +1,117 @@
+{
+    "meta": {
+        "id": "filter-dominant-row-fires",
+        "kernelVersion": "30.8.1",
+        "source": "curated",
+        "sections": [
+            "§9"
+        ],
+        "tags": [
+            "filter",
+            "correlation",
+            "having",
+            "aggregates"
+        ],
+        "notes": "a VALUE aggregate over the $-self-excluded keep-set: counts 3,9,2 fire exactly on row 2 (9 > the OTHERS' sum 5) — an engine summing ALL rows (no exclusion) or only the own row could never fire it"
+    },
+    "modelRef": "models/order-dominant-count.json",
+    "placements": [
+        {
+            "kind": "GROUP",
+            "path": "/Order",
+            "reps": [
+                1
+            ]
+        },
+        {
+            "kind": "GROUP",
+            "path": "/Order/Items",
+            "reps": [
+                1,
+                1
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/Items/Sku",
+            "reps": [
+                1,
+                1,
+                1
+            ],
+            "value": "A"
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/Items/Count",
+            "reps": [
+                1,
+                1,
+                1
+            ],
+            "value": "3"
+        },
+        {
+            "kind": "GROUP",
+            "path": "/Order/Items",
+            "reps": [
+                1,
+                2
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/Items/Sku",
+            "reps": [
+                1,
+                2,
+                1
+            ],
+            "value": "B"
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/Items/Count",
+            "reps": [
+                1,
+                2,
+                1
+            ],
+            "value": "9"
+        },
+        {
+            "kind": "GROUP",
+            "path": "/Order/Items",
+            "reps": [
+                1,
+                3
+            ]
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/Items/Sku",
+            "reps": [
+                1,
+                3,
+                1
+            ],
+            "value": "C"
+        },
+        {
+            "kind": "FIELD",
+            "path": "/Order/Items/Count",
+            "reps": [
+                1,
+                3,
+                1
+            ],
+            "value": "2"
+        }
+    ],
+    "op": {
+        "kind": "validateFull"
+    },
+    "expected": [
+        "DOMINANT_COUNT|OMISSION_ERROR|/Order[1]/Items[2]/Count"
+    ]
+}

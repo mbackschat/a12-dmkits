@@ -77,6 +77,7 @@ object CorpusScenarios {
         filterCorrelatedDuplicatesFire(),
         filterCorrelatedAllDistinctClean(),
         filterSingleRowSelfExcludedClean(),
+        filterDominantRowFires(),
         filterSelfMatchFiresEveryRow(),
         currentRepetitionFiresBeyondFirstRow(),
         currentRepetitionSingleRowClean(),
@@ -228,6 +229,17 @@ object CorpusScenarios {
                 ord.flatten("Items*/Count").having(items.num("Count").eq(items.num("Count").outer())))))
             .severity(Severity.ERROR)
             .message(Dsl.en("An item line carries this count.")).build()
+    }))
+
+    /** The `$`-correlated DOMINANT-row detector — "this row's Count exceeds ALL OTHER rows' combined": a per-row
+     *  rule whose VALUE aggregate consumes the `$`-self-excluded keep-set (the quantifier twin is DupCount). */
+    private val orderDominantCountModel = model("order-dominant-count", TypedRules.inject(order, ord.rule {
+        it.name("DominantCount").code("DOMINANT_COUNT").errorField(items.num("Count").field())
+            .`when`(items.num("Count").filled().and(items.num("Count").asNumber().gt(Dsl.sum(
+                ord.flatten("Items*/Count").having(
+                    Dsl.currentRepetition(ord.group("Items")).ne(Dsl.currentRepetition(ord.group("Items"), true)))))))
+            .severity(Severity.ERROR)
+            .message(Dsl.en("One item line outweighs all the others combined.")).build()
     }))
 
     /** `FieldFilled(Lines/Qty) And CurrentRepetition(Lines) > 1` — the structural row index, per Lines row. */
@@ -502,6 +514,15 @@ object CorpusScenarios {
             tags = listOf("filter", "correlation", "having"),
             notes = "a single row: `CurrentRepetition(Items) != CurrentRepetition(\$Items)` excludes the only row, so the correlated quantifier can never fire"),
         listOf(group("/Order", 1)) + itemRow(1, "A", "5"),
+        Op.ValidateFull,
+    )
+
+    private fun filterDominantRowFires(): Family = family(
+        FILTER, orderDominantCountModel,
+        CaseMeta("filter-dominant-row-fires", PENDING, CaseSource.CURATED, listOf("§9"),
+            tags = listOf("filter", "correlation", "having", "aggregates"),
+            notes = "a VALUE aggregate over the \$-self-excluded keep-set: counts 3,9,2 fire exactly on row 2 (9 > the OTHERS' sum 5) — an engine summing ALL rows (no exclusion) or only the own row could never fire it"),
+        listOf(group("/Order", 1)) + itemRow(1, "A", "3") + itemRow(2, "B", "9") + itemRow(3, "C", "2"),
         Op.ValidateFull,
     )
 
