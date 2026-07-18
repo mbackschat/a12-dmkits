@@ -34,6 +34,31 @@ internal fun condDepRefs(cond: Cond): List<String> = when (cond) {
     is Cond.Custom -> emptyList()
 }
 
+/** Every starred operand of the condition — the star side of the SCOPE view (IF127): a star's BINDING
+ *  levels (the segments STRICTLY ABOVE its first `*`-marked group) carry the kernel's per-row ITERATION
+ *  marker and drive iteration exactly like a non-starred ref's repeatable ancestors, while the starred
+ *  level and everything below are a WILDCARD collapse and never do. The walk does NOT descend into
+ *  [Expr.Star.having] — the kernel excludes filter-condition refs from iteration analysis (a `$`-outer
+ *  ref correlates to the very outer row being determined). */
+internal fun starRefs(cond: Cond): List<Expr.Star> = when (cond) {
+    is Cond.Cmp -> exprStars(cond.left) + exprStars(cond.right)
+    is Cond.Tolerance -> exprStars(cond.left) + exprStars(cond.right)
+    is Cond.ValueListQuant -> (cond.fields + cond.values).flatMap { exprStars(it) }
+    is Cond.And -> starRefs(cond.left) + starRefs(cond.right)
+    is Cond.Or -> starRefs(cond.left) + starRefs(cond.right)
+    is Cond.Not -> starRefs(cond.c)
+    is Cond.Pred -> cond.args.flatMap { exprStars(it) }
+    is Cond.Pattern -> exprStars(cond.value) + exprStars(cond.pattern)
+    is Cond.Custom -> emptyList()
+}
+
+internal fun exprStars(expr: Expr): List<Expr.Star> = when (expr) {
+    is Expr.Star -> listOf(expr)
+    is Expr.Func -> expr.args.flatMap { exprStars(it) }
+    is Expr.Arith -> exprStars(expr.left) + exprStars(expr.right)
+    else -> emptyList()
+}
+
 /** Every non-starred field-reference path in the condition (Star refs are aggregates, excluded). */
 internal fun nonStarredRefs(cond: Cond): List<String> = when (cond) {
     is Cond.Cmp -> exprRefs(cond.left) + exprRefs(cond.right)

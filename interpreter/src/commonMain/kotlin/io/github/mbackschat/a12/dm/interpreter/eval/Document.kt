@@ -310,6 +310,22 @@ class Document @JvmOverloads constructor(
         return if (allNonRepeatable) listOf(RowContext(groupPath, List(segs.size) { 1 }, false)) else emptyList()
     }
 
+    /**
+     * The ONCE-evaluation context at [groupPath] — a rule with no repeatable reference level evaluates exactly
+     * once (KERNEL-FINDINGS §9 supplement, the star-only scope law): the group's real row when instantiated,
+     * else ONE synthetic all-1s row. The synthetic row exists even on an empty document because the kernel's
+     * once-frame always runs — the content gate rides the `evaluated` flag (computed from the valued-field
+     * attach map exactly as a real row's), so a comparison stays suppressed on a contentless instance while a
+     * structural can-fire-empty condition (`GroupNotFilled(RuleGroup)` on an empty group) still fires.
+     */
+    fun onceContextFor(groupPath: String): List<EvalContext> {
+        val rows = contextsFor(groupPath)
+        if (rows.isNotEmpty()) return rows
+        val reps = List(parts(groupPath).size) { 1 }
+        val attach = attachByDepth(groupPath)
+        return listOf(RowContext(groupPath, reps, attach.any { (d, pfx) -> reps.take(d) in pfx }))
+    }
+
     private fun computeContextsFor(groupPath: String): List<EvalContext> {
         val rows = rowsOf(groupPath)
         if (rows.isEmpty()) return emptyList()

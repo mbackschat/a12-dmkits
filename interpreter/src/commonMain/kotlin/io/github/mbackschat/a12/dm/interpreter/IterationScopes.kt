@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
+import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -16,12 +17,21 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 internal class IterationScopes(private val model: ModelDef) {
 
     /**
-     * The contexts a rule is evaluated over. The normal case: one per row of its iteration **scope** — the
-     * **deepest repeatable group** that is an ancestor of any *non-aggregated* field reference (a starred ref
-     * is an aggregate and collapses the repetition, so it does NOT force iteration); with no repeatable ref, the
-     * scope is the rule's declared [RuleDef.group]. This is the kernel law (KERNEL-FINDINGS §9 supplement,
-     * `IterationLawsTest`): the iteration scope is the set of *referenced* repeatable fields, NOT the rule's node
-     * placement — a rule at `/Order` reaching into `/Order/Items` iterates the Items rows.
+     * The contexts a rule is evaluated over — REFERENCE-driven, never placement-driven (the kernel law,
+     * KERNEL-FINDINGS §9 supplement, `IterationLawsTest`/`StarOnlyIterationScopeDiffTest`): a rule at `/Order`
+     * reaching into `/Order/Items` iterates the Items rows, and the declared [RuleDef.group] drives nothing.
+     * Three tiers, mirroring the kernel's per-level ITERATION markers:
+     *
+     * 1. The deepest repeatable ancestor-or-self of a *non-aggregated* field reference — one context per row.
+     * 2. With no per-row ref: the deepest repeatable **BINDING level** of a starred ref (the levels STRICTLY
+     *    ABOVE the first `*`-marked group — the same levels the star binds, IF93/IF94). The starred level and
+     *    below are a WILDCARD collapse and never iterate (IF127; the old fallback to [RuleDef.group] over-fired
+     *    a star-only rule per row of its OWN group).
+     * 3. With no repeatable reference level at all: exactly ONE evaluation — the context of the error path's
+     *    ROOT group, whose `evaluated` flag is the kernel's content gate (fires only when the root instance
+     *    carries any value), with every unreferenced repeatable level of the error path pinned to row 1
+     *    (phantom anchors included — the kernel fires at an UNINSTANTIATED `Fees[1]`). This subsumes the IF103
+     *    cross-root re-anchor: an empty declaring container never silences the once-evaluation.
      *
      * **Parallel iteration** — when the condition references TWO (or more) NON-nested repeatable groups per-row
      * (siblings, neither an ancestor of the other), the kernel iterates them JOINTLY as an outer join keyed by a
@@ -31,21 +41,30 @@ internal class IterationScopes(private val model: ModelDef) {
      */
     fun iterationContexts(rule: RuleDef, ast: Cond, doc: Document): List<EvalContext> {
         val refs = nonStarredRefs(ast)
-        val scope = scopeFromRefs(refs, rule.group)
+        val scope = deepestRepeatableAnchor(refs) ?: run {
+            val starAnchor = starBindingAnchor(ast)
+            return if (starAnchor != null) doc.contextsFor(starAnchor)
+            else doc.onceContextFor(rootGroupOf(resolveErrorPath(rule)))
+        }
         val parallelGroups = refs.flatMap { ancestorGroups(it).filter { g -> g in model.repeatable } }
             .distinct().filter { it != scope && !scope.startsWith("$it/") }
         if (parallelGroups.isNotEmpty()) return parallelIterationContexts(scope, parallelGroups, doc)
-        val contexts = doc.contextsFor(scope)
-        // A rule with NO repeatable non-starred ref, declared in a container without instance content (a
-        // real-workspace `*_Rules` root referencing + erroring into OTHER roots), still evaluates ONCE — the
-        // kernel's iteration is reference-driven, and the rule fires at its ERROR ENTITY (IF103, the ordinary-
-        // rule sibling of IF100's implicit-validation anchor). Re-anchor at the error entity's parent ONLY when
-        // the declaring scope yields nothing, so every currently-anchored rule is bit-identical.
-        if (contexts.isEmpty() && scope == rule.group) {
-            val errorAnchor = parentGroup(resolveErrorPath(rule))
-            if (errorAnchor != scope) return doc.contextsFor(errorAnchor)
-        }
-        return contexts
+        return doc.contextsFor(scope)
+    }
+
+    /** The deepest repeatable BINDING level across the condition's starred refs (tier 2), or null. */
+    private fun starBindingAnchor(ast: Cond): String? =
+        starRefs(ast).flatMap { bindingLevels(it) }.filter { it in model.repeatable }
+            .maxByOrNull { it.count { c -> c == '/' } }
+
+    /** The group paths STRICTLY ABOVE [star]'s first `*`-marked group — the levels the star binds (its
+     *  [Cond]-side twin is [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s `groupScopePrefix` cap):
+     *  [Expr.Star.bindDepth] segments when parsed, else the hand-built default (the leaf group's parent). */
+    private fun bindingLevels(star: Expr.Star): List<String> {
+        val parts = pathParts(star.path)
+        val depth = if (star.bindDepth >= 0) minOf(star.bindDepth, parts.size)
+        else parts.size - (if (model.kinds[star.path] == null) 1 else 2)
+        return (1..depth).map { d -> "/" + parts.take(d).joinToString("/") }
     }
 
     /**
@@ -99,6 +118,10 @@ internal class IterationScopes(private val model: ModelDef) {
 
     /** The deepest repeatable group ancestor of any [refs] path, else [defaultGroup]. */
     fun scopeFromRefs(refs: List<String>, defaultGroup: String): String =
+        deepestRepeatableAnchor(refs) ?: defaultGroup
+
+    /** The deepest repeatable group ancestor-or-self of any [refs] path, or null when none is repeatable. */
+    private fun deepestRepeatableAnchor(refs: List<String>): String? =
         refs.flatMap { ref ->
             // ancestor-or-SELF: a bare GROUP reference (a group-scope quantifier arg — legal un-starred on an
             // indexed repeatable group) is itself an iteration anchor: the kernel iterates the rule PER ROW of
@@ -108,5 +131,4 @@ internal class IterationScopes(private val model: ModelDef) {
             (ancestorGroups(ref) + listOfNotNull(ref.takeIf { model.kinds[ref] == null }))
                 .filter { it in model.repeatable }
         }.maxByOrNull { it.count { c -> c == '/' } }
-            ?: defaultGroup
 }
