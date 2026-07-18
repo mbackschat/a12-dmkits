@@ -8,7 +8,8 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
  * pride is well-founded: its architecture is **compile-once codegen + per-run caches** (`IndexFieldCache`,
  * `ValidationCache`, `CalculationCache`, `GroupFillCache`, `RepetitionNotUniqueErrorCache`), so its advantage
  * shows in the **many-rules** and **batch (repeated-eval)** regimes — exactly where the interpreter's per-call
- * rule re-parse (the #31 "prepare once" cost) accumulates. This opt-in test HUNTS the crossover (interp/java
+ * tree-WALK of the cached rule ASTs (parsing is one-and-done — `ParsedModel`; the #31 re-parse cost is retired)
+ * meets the kernel's already-compiled rules. This opt-in test HUNTS the crossover (interp/java
  * → 1 and beyond) rather than gating it; it is the proof-of-kernel-edge measurement for the analysis log.
  *
  * ```
@@ -28,8 +29,9 @@ class KernelEdgeTest {
         get() = System.getProperty("perf.edge.counts", "6,12,24,48,96,192").split(",").map { it.trim().toInt() }
 
     /**
-     * Rule-count sweep at fixed document size: as the rule count grows, the interpreter re-parses ALL rules on
-     * every `validateFull` call while the kernel runs already-generated code — so interp/kernel-Java climbs
+     * Rule-count sweep at fixed document size: as the rule count grows, the interpreter tree-WALKS all rule ASTs
+     * on every `validateFull` call (parsed once + cached — `ParsedModel`) while the kernel runs already-generated
+     * code — so interp/kernel-Java climbs
      * toward (and past) 1.0. The crossover is the kernel's compile-once edge, made visible.
      */
     @Test

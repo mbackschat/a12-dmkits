@@ -28,7 +28,8 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
  * - [runScenario] — single-document throughput: time one instance evaluated repeatedly (the O(N²) gate).
  * - [runRepeated] — **repeated eval over slightly-different documents** (form-input / batch): the engine built
  *   once, M variant instances run through it. This is what the kernel's codegen + per-run caches are tuned for,
- *   and the mode that exposes the interpreter's per-call rule re-parse (the #31 "prepare once" cost).
+ *   and the mode where the kernel's compiled rules most out-run the interpreter's per-call tree-WALK (parsing is
+ *   one-and-done — cached in `ParsedModel` at construction; the #31 re-parse cost is retired).
  *
  * **Correctness first (a named non-negotiable):** both modes assert the engines produce the SAME fired codes
  * (a sorted *multiset* — same codes AND per-row firing count) BEFORE timing; a fast-but-wrong path is no win.
@@ -97,7 +98,7 @@ object InterpreterPerfEngine : PerfEngine {
     override val label = "interp"
     override fun build(scenario: PerfScenario): ReusableEngine {
         val model: ModelDef = scenario.interpModel
-        val interp = DmInterpreter(model)   // built once; note: re-parses rules per validate call (the #31 cost)
+        val interp = DmInterpreter(model)   // built once; rules parsed once + cached at construction (ParsedModel — #31 re-parse retired; per-call cost is the tree-walk)
         return object : ReusableEngine {
             override val label = "interp"
             override fun instance(n: Int, variant: Int): RunInstance {
@@ -280,7 +281,8 @@ object PerfHarness {
      * different instances (variant 0..M-1, OUTSIDE timing), assert correctness on the first + last variant,
      * then time the LOOP of M evaluations and report **per-eval** stats. This is the reuse pattern the kernel's
      * codegen + per-run caches are tuned for; comparing its ratio to the single-document [runScenario] ratio
-     * reveals whether the interpreter's per-call rule re-parse (the #31 "prepare once" cost) hurts under reuse.
+     * reveals whether the interpreter's per-call tree-WALK (parsing is one-and-done — cached in `ParsedModel`)
+     * costs it against the kernel's compiled rules under reuse.
      */
     fun runRepeated(
         scenario: PerfScenario, n: Int, variants: Int = 20, warmupLoops: Int = 3, timedLoops: Int = 5,

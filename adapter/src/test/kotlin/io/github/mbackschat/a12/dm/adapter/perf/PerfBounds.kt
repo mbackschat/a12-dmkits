@@ -15,6 +15,8 @@ internal object PerfBounds {
     const val SUB_QUADRATIC_MAX = 9.0   // linear ≈ 4; a quadratic 4×-rows blowup is ≈ 16 — 9 is the trip line
     // Codegen is NOT in the timed region (primed out by warmup — the kernel generates ahead). Both tiers
     // measure against Groovy (the shortcut); the Groovy execution tax (~1.0–1.3×, pinned by KernelEdgeTest)
-    // and the residual "kernel validates MORE dimensions" make this NOT apples-to-apples.
-    const val CAVEAT = "(NOT apples-to-apples: kernel also auto-validates declared field-type constraints (range/length/pattern/enum-domain — IF20); codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)"
+    // makes this NOT apples-to-apples. (The interpreter now auto-validates the SAME declared field-type
+    // constraints as the kernel — IF20, locked by FieldConstraintFormalDiffTest — so that former coverage gap
+    // is closed and is no longer a fairness caveat.)
+    const val CAVEAT = "(NOT apples-to-apples: codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)"
 }

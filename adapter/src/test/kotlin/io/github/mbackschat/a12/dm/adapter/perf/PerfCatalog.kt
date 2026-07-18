@@ -228,8 +228,9 @@ object PerfCatalog {
         subs.errorRule("LC", cost.field(), cost.filled().and(cost.lt(10))),
     )
 
-    /** B6 — MANY rules over the nested model: whole-document throughput where the interpreter's per-call rule
-     *  re-parse (the #31 "prepare once" cost) bites hardest (the kernel codegens all rules once). */
+    /** B6 — MANY rules over the nested model: whole-document throughput where the kernel's compile-once codegen
+     *  most out-runs the interpreter's per-call tree-walk (rules are parsed once + cached — `ParsedModel`; the
+     *  #31 re-parse cost is retired). */
     fun b6(): PerfScenario {
         val rules = b6Rules()
         val kernelModel = rules.fold(perfJson) { json, r -> TypedRules.inject(json, r) }
@@ -248,8 +249,8 @@ object PerfCatalog {
     /**
      * A parameterized many-rules scenario: [count] kernel-valid rules over the nested model, cycling per-row /
      * cross-field / nested / aggregate templates with varying thresholds (unique codes). The scale knob is the
-     * **rule count**, used by the kernel-edge sweep to find where the interpreter's per-call re-parse (#31)
-     * loses to the kernel's compile-once codegen — the kernel's documented architectural advantage.
+     * **rule count**, used by the kernel-edge sweep to find where the interpreter's per-call tree-walk (rules
+     * parsed once + cached — `ParsedModel`) loses to the kernel's compile-once codegen — its documented advantage.
      */
     fun manyRules(count: Int, firing: Boolean = true): PerfScenario {
         val rules = (0 until count).map { i ->
@@ -606,10 +607,11 @@ object PerfCatalog {
 
     /**
      * **The semantic-index cliff** — a per-Line rule that resolves a semantic index `[/Perf/Lines/Amount For
-     * "NOMATCH"]`. The interpreter's `indexedCell` does a **linear scan of the repetition list per lookup**
-     * (here a non-matching key → the *full* scan, the worst case), and the rule iterates per row → **O(rows²)**;
-     * the kernel's `IndexFieldCache` makes each lookup O(1) → O(rows). This is the shape where the kernel's
-     * runtime optimization decisively beats a naive interpreter (KernelEdgeTest.semanticIndexCliff verifies it).
+     * "NOMATCH"]`. BEFORE IF116 the interpreter's `indexedCell` did a **linear scan of the repetition list per
+     * lookup** (a non-matching key → the *full* scan, the worst case) and the rule iterates per row → **O(rows²)**;
+     * IF116 memoizes the indexed-read column per (column, scope) at the document level (the kernel's
+     * `IndexFieldCache` analog), so each lookup is O(1)/O(log) → O(rows). This scenario +
+     * `PerfGateTest.semanticIndexStaysSubQuadratic` guard that fix against a regression to the per-lookup scan.
      * (A constant **non-matching** literal key is used deliberately — it forces the FULL row scan every call,
      * the worst case, which is what stresses the index. Both the literal and the field-keyed `For <field>` form
      * are supported; see SemanticIndexDiffTest / SemanticIndexFieldKeyedDiffTest.)
