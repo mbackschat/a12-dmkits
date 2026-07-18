@@ -23,7 +23,8 @@ object CorpusSeeding {
     /**
      * Generate one deterministic instance of [model] for [seed]: each repeatable group gets a seed-varied row
      * count in `0..[maxRows]` (0 exercises an empty repeatable group; >1 exercises iteration), every field a
-     * valid-by-construction value from [strategy]. Deterministic in ([seed], [model], [strategy]).
+     * kind-appropriate best-effort value from [strategy] (per-value formal plausibility, not
+     * model-acceptance). Deterministic in ([seed], [model], [strategy]).
      */
     fun seedPlacements(model: ModelDef, seed: Long, maxRows: Int = 2, strategy: ValueStrategy = ValidValues): List<Placement> {
         val out = mutableListOf<Placement>()
