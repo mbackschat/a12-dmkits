@@ -59,6 +59,11 @@ public final class TextConditionCorrective {
      */
     public static List<Diagnostic> enrich(List<Diagnostic> diagnostics, String conditionText, String baseGroup,
             String modelJson, ModelResolver resolver) {
+        // Skip the catalog load + model expansion when there is nothing to enrich (a clean `rule check` has no
+        // diagnostics) — the instance enrich's guard, hoisted before the eager argument builds it can't reach.
+        if (diagnostics.isEmpty() || conditionText == null || conditionText.isBlank()) {
+            return diagnostics;
+        }
         try {
             return new TextConditionCorrective().enrich(diagnostics, conditionText, baseGroup,
                     ModelIndex.of(modelJson, resolver));
