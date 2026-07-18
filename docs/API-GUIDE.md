@@ -1081,6 +1081,17 @@ val fired = DmInterpreter(model).validate(document, "en_US").messages.map { it.c
 
 dmtool's JVM `InterpreterModelLoader.load` is a thin delegate over this same loader — parity across every fixture model is CI-guarded (`ModelLoaderParityTest`), so the native runtime verbs and a JS library see identical `ModelDef`s. *Test-backed: `interpreter/…/load/ModelLoaderTest` (JVM + JS), `cli.interp.ModelLoaderParityTest`, `cli.interp.InterpreterRealModelDiffTest`.*
 
+The same façade computes, whole-document or one field at a time. `compute(document)` runs **every** computation (the twin of the kernel's `compute()`); `computeField(fieldPath, document)` runs **one** computed field "like a function" — only its transitive computed-dependency closure, in dependency order, so a cascade operand is never read stale (the single-computation twin of `testRule`; IF129). It returns one `Computed` per target-cell instance (a repeated computed field → one per row) and throws if no computation targets the field:
+
+<!-- teaser -->
+```kotlin
+val interp = DmInterpreter(model)
+val all = interp.compute(document)                                 // every computed instance (VALUE / CLEARED / ERRORED)
+val amounts = interp.computeField("/Order/Lines/Amount", document) // just this field — one Computed per row, closure-pruned
+```
+
+*Test-backed: `interpreter/…/ComputeFieldInvariantTest` (JVM + JS — `computeField` == `compute` projected to the field, for every target/row/outcome) + `adapter.laws.ComputeFieldDiffTest` (== the real kernel's `compute()`, projected per field).*
+
 ## 5f. Comments — author `;;` notes, preserved across the loop
 
 A rule's condition can carry a `;;` line **comment** — concrete syntax the kernel tolerates but does **not** keep in its parsed AST. rulekit carries comments in a **side-channel** beside the immutable AST (`rulekit.dsl.Comments`, keyed by *node identity*, covering both a `Condition` branch and a `Calculation` operation — the "carrier (c)" design, so the sealed hierarchies + their exhaustive switches stay untouched). The payoff: you **author** comments with the typed builder, and a rule's **leading comment is preserved by default** across read→modify→write-back.

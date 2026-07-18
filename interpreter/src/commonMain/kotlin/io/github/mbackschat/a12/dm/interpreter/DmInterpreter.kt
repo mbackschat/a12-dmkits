@@ -224,6 +224,22 @@ class DmInterpreter @JvmOverloads constructor(
         engine.computeInstances(doc)
 
     /**
+     * Evaluate a SINGLE computed field against the instance — the single-computation twin of [testRule], the
+     * "run this field like a function" primitive (IF129, graduated from IG74). Computes [fieldPath]'s transitive
+     * computed-dependency CLOSURE in dependency order (so a cascade operand is never read stale/empty) and returns
+     * the target's outcome PER INSTANCE — one [Computed] per row of a repeated computed field, VALUE / CLEARED /
+     * ERRORED, with poison + precondition semantics intact. Behaviour-identical to [compute] filtered to
+     * [fieldPath], just pruned to the needed subset — an unrelated computation cannot feed the target
+     * (`ComputeFieldInvariantTest`/`ComputeFieldDiffTest`). Throws [IllegalArgumentException] if no computation
+     * targets [fieldPath] (a non-computed field has no outcome). [locale] rides for compute-family symmetry; like
+     * [compute] the result is locale-independent (computed values, not rendered messages).
+     */
+    fun computeField(fieldPath: String, doc: Document, locale: String = "en_US"): List<Computed> {
+        require(model.computations.any { it.targetPath == fieldPath }) { "no computation targets field: $fieldPath" }
+        return engine.computeField(fieldPath, doc)
+    }
+
+    /**
      * Apply this model's computations to [doc] and return the **updated document** (old + computed values) —
      * the interpreter's twin of the kernel's `compute().applyTo(doc)` (KERNEL-FINDINGS "validateFull does NOT
      * run computations": the kernel keeps validate and compute separate and the consumer applies). A VALUE

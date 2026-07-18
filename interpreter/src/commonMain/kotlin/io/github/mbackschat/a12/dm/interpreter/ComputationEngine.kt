@@ -41,10 +41,31 @@ internal class ComputationEngine(
 ) {
 
     /**
-     * Every computed-field outcome WITH its target cell's repetition indices ([Computed.indices]) — the core
-     * behind both [compute] (which returns it as the public report) and [applyComputations] (which needs the
-     * indices to address the right cell). The per-row identity flows straight onto [Computed] (no separate
-     * carrier), which the conformance corpus records (CONFORMANCE-CORPUS-SPEC §7).
+     * Every computed-field outcome for the WHOLE model WITH its target cell's repetition indices
+     * ([Computed.indices]) — the runtime twin of the kernel's whole-document `compute()`, and the core behind
+     * both [compute] (which returns it as the public report) and [applyComputations] (which needs the indices to
+     * address the right cell). The per-row identity flows straight onto [Computed] (no separate carrier), which
+     * the conformance corpus records (CONFORMANCE-CORPUS-SPEC §7). Delegates to [computeOver] over ALL
+     * computations in dependency order.
+     */
+    fun computeInstances(doc: Document): List<Computed> =
+        computeOver(doc, computationsInDependencyOrder())
+
+    /**
+     * Compute ONE computed field — its transitive computed-dependency CLOSURE run in dependency order (so cascade
+     * operands aren't read stale/empty), the target's own instances projected out (IF129, graduated from IG74).
+     * The single-computation twin of `DmInterpreter.testRule`: "run this field like a function". Behaviour-IDENTICAL
+     * to [computeInstances] filtered to [fieldPath] — an unrelated computation cannot feed the target, so pruning to
+     * the upstream closure changes nothing but the cost (locked by `ComputeFieldInvariantTest`/`ComputeFieldDiffTest`).
+     * Returns one [Computed] per target-cell instance (a repeated computed field → one per row). A non-computed
+     * [fieldPath] has an empty closure → empty list; the public [DmInterpreter.computeField] guards that up front.
+     */
+    fun computeField(fieldPath: String, doc: Document): List<Computed> =
+        computeOver(doc, dependencyClosureOf(fieldPath)).filter { it.path == fieldPath }
+
+    /**
+     * The cascade engine over a GIVEN dependency-ordered [comps] list — the shared worker of [computeInstances]
+     * (ALL computations) and [computeField] (one field's closure).
      *
      * **Cascade** — a computation may reference ANOTHER computation's target field; the kernel computes the
      * dependency first and the dependent reads its computed value (the CalculationCache). We mirror that
@@ -59,7 +80,7 @@ internal class ComputationEngine(
      * `CalculationFieldException` → "fehlerhaft berechnet"): no value, reported CLEARED (report-all), and its
      * own dependents' reads poison transitively. Read-driven, so evaluation order/short-circuits decide.
      */
-    fun computeInstances(doc: Document): List<Computed> {
+    private fun computeOver(doc: Document, comps: List<ComputationDef>): List<Computed> {
         // A field may be targeted by MULTIPLE computations (a composed base + subtype override — IF87): they run in
         // document order and the FIRST NON-EMPTY outcome (a VALUE or a POISON) wins per cell; an empty/clearing one is
         // a no-op and control falls through to the next (the kernel's `CalculationController.handleBerechnetenWert` —
@@ -92,7 +113,7 @@ internal class ComputationEngine(
         // operand-invalidity test full validation uses ([operandNotCheckRelevant] → [computeFormalErrorAt]),
         // but on the compute path a positive test THROWS: the consult IS the kernel's poisoning read. An EMPTY
         // operand — even a required one — stays empty-as-0 (`nichtAngegeben`, not `nichtPruefungsrelevant`).
-        for (comp in computationsInDependencyOrder()) {
+        for (comp in comps) {
             val parsed = parsedModel.parsedOf(comp)
             // A computation iterates where it WRITES (the target's scope), not where it is DECLARED. When neither
             // the operands nor the target has a repeatable ancestor (an all-non-repeatable target), fall back to
@@ -273,11 +294,27 @@ internal class ComputationEngine(
      * (which the kernel rejects at codegen) throws. References are taken over ALL field/star paths so a
      * dependency through an aggregate over a computed field is ordered too.
      */
-    private fun computationsInDependencyOrder(): List<ComputationDef> {
-        // A field can be targeted by MULTIPLE computations (a composed base + subtype override — IF87), so order the
-        // TARGET GROUPS by dependency and return ALL computations (no dedup). Within a target the computations keep
-        // DOCUMENT order ([groupBy] preserves encounter order), which is the order [computeInstances]'s
-        // first-non-empty-wins consumes; across targets, a target is emitted only after every target it reads.
+    private fun computationsInDependencyOrder(): List<ComputationDef> =
+        orderedFrom(model.computations.map { it.targetPath })
+
+    /**
+     * The transitive computed-dependency CLOSURE of [fieldPath], in dependency order — [fieldPath]'s own
+     * computation(s) plus (recursively) every computation whose target [fieldPath] reads, and so on UPSTREAM
+     * (never its dependents). The subset [computeField] runs so a cascade operand isn't read stale while unrelated
+     * computations are pruned. A non-computed [fieldPath] (no computation targets it) yields an empty list.
+     */
+    private fun dependencyClosureOf(fieldPath: String): List<ComputationDef> =
+        orderedFrom(listOf(fieldPath))
+
+    /**
+     * The DFS topological sort shared by [computationsInDependencyOrder] (roots = every target) and
+     * [dependencyClosureOf] (root = one field). Recurses into the targets a computation reads BEFORE emitting it,
+     * so a target is ordered after every target it depends on. A field can be targeted by MULTIPLE computations
+     * (a composed base + subtype override — IF87), emitted together in DOCUMENT order ([groupBy] preserves
+     * encounter order — the order [computeOver]'s first-non-empty-wins consumes). A cyclic dependency (which the
+     * kernel rejects at codegen) throws.
+     */
+    private fun orderedFrom(roots: List<String>): List<ComputationDef> {
         val byTarget: Map<String, List<ComputationDef>> = model.computations.groupBy { it.targetPath }
         val ordered = mutableListOf<ComputationDef>()
         val done = HashSet<String>()
@@ -293,7 +330,7 @@ internal class ComputationEngine(
             onStack.remove(target)
             if (done.add(target)) ordered.addAll(byTarget[target].orEmpty())
         }
-        model.computations.forEach { visit(it.targetPath) }
+        roots.forEach { visit(it) }
         return ordered
     }
 
