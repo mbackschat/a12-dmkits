@@ -139,7 +139,8 @@ tasks.withType(Test).configureEach {
 // A few guards read REPO FILES at RUNTIME that Gradle can't infer as inputs — CliTourFreshnessTest reads
 // examples/*.md; CommandReferencesResolveTest reads the source + public READMEs, skill/SKILL.md, the Codex
 // AGENTS.md, the eval workflow JS, and the operator catalog; SharedReadmeRegionTest reads both public
-// READMEs; ModelLoaderParityTest reads both fixture-model roots. They run in THIS
+// READMEs; ModelLoaderParityTest reads both fixture-model roots; DocsIndexGuardTest reads the whole docs/
+// tree + its index. They run in THIS
 // dedicated task with those files declared as ITS inputs, so the win is scoped: editing a demo/doc/model
 // re-runs ONLY these classes (not the ~620-test suite), and such a change can no longer go up-to-date /
 // restore from the BUILD CACHE into a FALSE GREEN locally while CI (a fresh checkout) fails. `test` dependsOn
@@ -154,6 +155,7 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.CommandReferencesResolveTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.CliSpecVerbTableTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.SharedReadmeRegionTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocsIndexGuardTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.interp.ModelLoaderParityTest'
     }
     // guardInputs (root ext, kernel-decoupling §3b #17) declares these runtime-read files as inputs AND fails
@@ -165,6 +167,9 @@ tasks.register('docGuardTest', Test) {
             'skill/SKILL.md'     : rootProject.file('skill/SKILL.md'),
             'plugin-codex/AGENTS.md': rootProject.file('plugin-codex/AGENTS.md'),
             'docs/CLI-SPEC.md'   : rootProject.file('docs/CLI-SPEC.md'),
+            // DocsIndexGuardTest reads docs/README.md (the index) + the whole docs/ + docs/archived/ md tree.
+            'docs/README.md'     : rootProject.file('docs/README.md'),
+            'docs/*.md tree'     : rootProject.fileTree('docs') { include '**/*.md' },
             'eval workflow'      : rootProject.file('eval/benchmark.workflow.js'),
             'operator catalog'   : rootProject.fileTree('rulekit/src/main/resources/catalog'),
             // ModelLoaderParityTest reads every fixture model in both roots.
@@ -211,6 +216,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.CommandReferencesResolveTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.CliSpecVerbTableTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.SharedReadmeRegionTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.DocsIndexGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.SemanticsMapResolveTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.KernelDocsFoldContractTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.interp.ModelLoaderParityTest'
