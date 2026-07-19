@@ -62,7 +62,11 @@ internal class ValidationPass(
 
     /** The first referenced field that is "unknown" in [ctx] (malformed value, required-empty, or duplicate index), else null. */
     fun firstSuppressor(refs: List<String>, ctx: EvalContext): Suppression? =
-        refs.firstNotNullOfOrNull { path -> formalErrorAt(path, ctx.repsOf(path), ctx)?.let { Suppression(path, it) } }
+        refs.firstNotNullOfOrNull { path ->
+            val reps = ctx.repsOf(path)
+            if (!isRelevant(path, reps)) null
+            else formalErrorAt(path, reps, ctx)?.let { Suppression(path, it) }
+        }
 
     /**
      * The per-row [Interpreter] used to evaluate a rule condition at [ctx] — the single construction point for

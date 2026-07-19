@@ -200,6 +200,7 @@ class CapabilityEvidenceMatrixTest {
         val test = when (entry.id()) {
             "DateRange" -> DateRangeComputeDiffTest::class
             "CustomCondition" -> CustomConditionDiffTest::class
+            "RepetitionNotUnique" -> RepetitionNotUniqueExactnessDiffTest::class
             "ValidType", "InvalidType" -> PredefinedTypeValidityDiffTest::class
             else -> {
                 require(entry.validExample() != null) {

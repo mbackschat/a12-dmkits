@@ -349,7 +349,9 @@ class DmInterpreter @JvmOverloads constructor(
         // a normal rule (no cache, no seam). Building here can throw UnsupportedConstructException (>1 RNU, a
         // group/asterisk key, a too-deep scope) — the caller's per-rule tolerance reports it unsupported.
         val rnuCache = rnuEval.outcomes(rule, ast, pass)
-        val rnuSeam: ((EvalContext) -> MsgType?)? = rnuCache?.let { m -> { c -> m[c.repsOf(errorPath)] } }
+        val ordinaryMessageRefs = if (rnuCache == null) refs else nonRnuMessageRefs(ast).distinct()
+        val rnuSeam: ((EvalContext) -> MsgType?)? =
+            rnuCache?.let { cache -> { context -> cache.rows[context.repsOf(errorPath)]?.type } }
         return scopes.iterationContexts(rule, ast, pass.doc).map { ctx ->
             // Partial validation: the kernel runs a rule only if its error-field instance is relevant — else
             // the rule is NOT executed for this row (no message, not a suppression). Full validation: always.
@@ -373,7 +375,17 @@ class DmInterpreter @JvmOverloads constructor(
             if (firedType != null) {
                 val type = firedType
                 val text = rule.messages[pass.locale]?.let { renderMessage(it, rule.group, ctx) { p -> model.labelOf(p, pass.locale) } } ?: ""
-                val referenced = refs.map { formatPointer(it, ctx.repsOf(it)) }
+                val ordinaryPointers = ordinaryMessageRefs.map { formatPointer(it, ctx.repsOf(it)) }
+                val rnuOutcome = rnuCache?.rows?.get(ctx.repsOf(errorPath))
+                val rnuPointers =
+                    if (rnuOutcome?.type == type) {
+                        rnuOutcome.peerKeyRepetitions.flatMap { peerRepetitions ->
+                            rnuCache.keys.zip(peerRepetitions).map { (path, reps) -> formatPointer(path, reps) }
+                        }
+                    } else {
+                        emptyList()
+                    }
+                val referenced = (ordinaryPointers + rnuPointers).distinct()
                 // refOmissionErrorResponsible: for an OMISSION error the kernel attaches ALL the operands the
                 // omission depends on (verified — both the filled and the empty operand of an And), so filling/
                 // changing any could resolve it. Empty for a VALUE error (no fill fixes a value).

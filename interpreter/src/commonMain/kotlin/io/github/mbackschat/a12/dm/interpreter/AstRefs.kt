@@ -72,6 +72,23 @@ internal fun nonStarredRefs(cond: Cond): List<String> = when (cond) {
     is Cond.Custom -> emptyList()   // the name references no field in the text — the rule is guarded by a field ref
 }
 
+/**
+ * Every ordinary message reference, excluding the key arguments of a `RepetitionNotUnique` leaf. RNU projects
+ * those keys from its duplicate-cluster cache instead of resolving only the current row; the same path used by
+ * another branch still appears through that branch's own walk.
+ */
+internal fun nonRnuMessageRefs(cond: Cond): List<String> = when (cond) {
+    is Cond.Cmp -> exprRefs(cond.left) + exprRefs(cond.right)
+    is Cond.Tolerance -> exprRefs(cond.left) + exprRefs(cond.right)
+    is Cond.ValueListQuant -> (cond.fields + cond.values).flatMap { exprRefs(it) }
+    is Cond.And -> nonRnuMessageRefs(cond.left) + nonRnuMessageRefs(cond.right)
+    is Cond.Or -> nonRnuMessageRefs(cond.left) + nonRnuMessageRefs(cond.right)
+    is Cond.Not -> nonRnuMessageRefs(cond.c)
+    is Cond.Pred -> if (cond.name == "RepetitionNotUnique") emptyList() else cond.args.flatMap { exprRefs(it) }
+    is Cond.Pattern -> exprRefs(cond.value) + exprRefs(cond.pattern)
+    is Cond.Custom -> emptyList()
+}
+
 internal fun exprRefs(expr: Expr): List<String> = when (expr) {
     is Expr.Field -> listOf(expr.path)
     is Expr.Func -> expr.args.flatMap { exprRefs(it) }   // Star args excluded → drop through

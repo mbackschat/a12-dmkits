@@ -117,15 +117,16 @@ class RepetitionNotUniqueCompositionDiffTest {
             "(5,empty)(5,empty) duplicate → RNU OMISSION composes through the Or")
 
     @Test fun guardAndRnuOrOtherNest() =
-        agree(customerAndRnuOrHeavy, listOf("5" to "1", "9" to "200"),
-            "guard filled → (dup row fires VALUE via RNU, unique heavy row fires VALUE via Or)", customer = "Ada")
+        agree(customerAndRnuOrHeavy, listOf("5" to "1", "5" to "1", "9" to "200"),
+            "guard filled → (duplicate rows fire VALUE via RNU, unique heavy row fires VALUE via Or)", customer = "Ada")
 
     @Test fun guardFalseSuppressesTheWholeNest() =
         agree(customerAndRnuOrHeavy, listOf("5" to "1", "5" to "1"), "guard empty → the whole And is false → none fire", customer = null)
 
     @Test fun codegenEvaluatesCompositionIdentically() {
         agreeTri(rnuOrHeavy, listOf("5" to "1", "5" to "1", "9" to "200"), "codegen: RNU under Or")
-        agreeTri(customerAndRnuOrHeavy, listOf("5" to "1", "9" to "200"), "codegen: guard And (RNU Or other)", customer = "Ada")
+        agreeTri(customerAndRnuOrHeavy, listOf("5" to "1", "5" to "1", "9" to "200"),
+            "codegen: guard And (RNU Or other)", customer = "Ada")
     }
 }
 

@@ -42,7 +42,7 @@ enum class PredicateOp(val kernelName: String, val polarity: MsgType?, val count
     // (IF149): polarity is DATA-dependent (null → computed in `Interpreter.predType` from the per-row cache —
     // VALUE when every key component is present, OMISSION when a fillable component is empty). Its per-row result
     // is read from the call-scoped duplicate cache ([io.github.mbackschat.a12.dm.interpreter.RepetitionNotUniqueEvaluator]),
-    // so it composes under arbitrary legal And/Or/Not exactly like any other leaf.
+    // so it composes under arbitrary legal And/Or trees exactly like any other leaf.
     REPETITION_NOT_UNIQUE("RepetitionNotUnique", null),
     // Valid/Invalid(Date(...)): is the constructed date a real calendar date with all parts present? Valid is a
     // present-value verdict → VALUE. Invalid's polarity is data-dependent (null): OMISSION when an empty part
