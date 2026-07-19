@@ -24,6 +24,7 @@ Keep corrections focused on the recorded findings. In particular, do not broaden
 
 - [RV-2026-07-19-03 — IG91 → IG87 prepared-model and include-remap chain review](#rv-2026-07-19-03) — **Changes requested.** IF145 leaves the normal CLI gate red; IF146's raw-text remapper is not safe or complete for the legal reference grammar, and IG87 was reclassified as ongoing despite ordinary unfinished correctness/evidence work.
 - [RV-2026-07-19-04 — IG93 → IG96 compute-semantics chain review](#rv-2026-07-19-04) — **Changes requested.** IF147's new bare-group scan is not formally correct, context-complete, declaration-range ordered, or actually lazy; IF148's valid-model runtime wiring works, but tolerance metadata remains lossy through the typed/CLI surfaces and its closure evidence is incomplete.
+- [RV-2026-07-19-05 — IG95 → IG92 → IG88 interpreter-semantics chain review](#rv-2026-07-19-05) — **Changes requested.** IF149 compares numeric duplicate keys incorrectly, ignores composite-key relevance, and loses duplicate-peer message pointers; IF150 omits the kernel validator context, can invoke a validator more than once, and has incomplete suppression/message/consumer evidence; IF151 can build a nonterminating trie from an empty entry and lacks the required legal-overlap and real scale locks.
 
 ### Resolution index
 
@@ -559,6 +560,353 @@ Open. Independent verification should reject the “IG91 → IG87 chain complete
 #### Resolution
 
 Open. Independent verification should reject the “IG93 → IG96 chain complete” claim until RV04-1 through RV04-9 are resolved, each issue carries a fixing commit and green verification note, and IG93/IG96 are deleted from the active gap ledger only after their original contracts and these direct sibling defects are fully cleared.
+
+<a id="rv-2026-07-19-05"></a>
+
+### RV-2026-07-19-05 — IG95 → IG92 → IG88 interpreter-semantics chain review
+
+**Repository:** `$HOME/Projects/oss/a12/a12-rulekit`
+
+**Review type:** Post-commit review followed by owner-authorized correction. The verdict below records the pre-fix state independently of later resolution notes.
+
+**Reviewed commits and claimed outcomes:**
+
+- `10576e45` — IG95 → IF149: represent `RepetitionNotUnique` as an ordinary per-row 3VL predicate and replace the old top-level recognizer with a call-scoped duplicate cache.
+- `5fd309d3`, `611a4a0e` — IG92 → IF150: let the custom-field-type SPI and JS worker return a project rejection code instead of always emitting `customFieldTypeInvalid`.
+- `ac632a76` — IG88 → IF151: retain configured multi-code-point charset entries atomically in a trie rather than flattening them into independently legal code points.
+
+**Verdict:** Changes requested; none of the three gaps is ready to graduate. Each commit repairs its motivating discriminator and has a sound architectural core, but direct sibling cases remain wrong or unsafe. IG95, IG92, and IG88 must remain active until the corrections and evidence below are complete; moving a residual to an ongoing section is not an acceptable substitute for clearing it.
+
+<a id="rv05-1"></a>
+
+#### RV05-1 — `RepetitionNotUnique` compares numeric keys as display strings
+
+**Severity:** High / legal-input semantic divergence.
+
+**Root mechanism and evidence:**
+
+- `RepetitionNotUniqueEvaluator.outcomes` materializes every key as `ctx.displayValue(...)` and groups `List<String?>`.
+- The kernel stores numeric duplicate-key components as numeric values. Its equality is scale-insensitive within the supported decimal domain, so legal values such as `5` and `5.00` are equal even though their display strings differ.
+- Text keys must remain exact strings, and empty/invalid cells retain their existing distinct 3VL treatment. Globally normalizing every string would therefore be another semantic defect.
+
+**Required correction:**
+
+- Introduce a typed, immutable duplicate-key atom derived from each key field's declared kind.
+- Canonicalize numeric atoms to the kernel's equality domain, including the existing scale-19 boundary behavior; keep textual/enum/date and empty-state identities type-correct.
+- Use the typed composite key in the one-time grouping cache without adding a per-lookup parse.
+
+**Acceptance checks:**
+
+- Dynamic-Groovy, generated-Java, JVM interpreter, and Node interpreter agree for `5` versus `5.00`, a mixed composite key with different numeric spellings, exact textual spellings, and a reachable scale-boundary case.
+- The cache remains O(rows × key-count) to build and O(1) per row.
+
+**Resolution:** Open.
+
+<a id="rv05-2"></a>
+
+#### RV05-2 — partial validation checks only the RNU error field for relevance
+
+**Severity:** High / legal partial-validation divergence.
+
+**Root mechanism and evidence:**
+
+- The evaluator excludes formally invalid key cells but applies `pass.isRelevant(...)` only to `errorPath`.
+- A composite key therefore still hashes a row when a non-error key component is outside the partial-validation relevance set.
+- The kernel excludes a participant whose required key cell is nonrelevant; checking only the attachment field changes both duplicate membership and the resulting truth value.
+
+**Required correction:**
+
+- Gate every key component through the validation pass's relevance and formal-state oracle before constructing the row key.
+- Preserve the established global-field and branch-scoped semantics rather than prefiltering unrelated ordinary predicates.
+
+**Acceptance checks:**
+
+- A two-key RNU matches both kernel strategies when all keys are relevant and when only the error key is relevant.
+- A composed `Or` case proves that an independently true branch retains its normal behavior when the RNU participant is excluded.
+- JVM and Node exercise the same partial-validation cases.
+
+**Resolution:** Open.
+
+<a id="rv05-3"></a>
+
+#### RV05-3 — IF149 discards duplicate peers needed by rich message projection
+
+**Severity:** High / observable message-metadata divergence.
+
+**Root mechanism and evidence:**
+
+- The IF149 cache exposes only `MsgType?` for the current row.
+- Kernel RNU messages expand RNU key references across the current row and its duplicate peers; the interpreter's ordinary projection now reports only the current-row pointers.
+- The loss is observable in `referenced` and `fillToFix`, especially for composite keys and a three-row duplicate cluster. It cannot be reconstructed from polarity after the peer set has been discarded.
+
+**Required correction:**
+
+- Store an RNU row outcome containing polarity and the duplicate peer repetition coordinates.
+- Feed polarity through the ordinary 3VL walk, but let message projection expand only references owned by the RNU leaf over that peer set; references from other boolean branches remain scoped to the current row.
+- Keep the cache call-scoped and built once.
+
+**Acceptance checks:**
+
+- Exact differential assertions cover VALUE and OMISSION, a composite key, a three-row cluster, and an RNU composed with another branch.
+- `referenced` and `fillToFix` agree with both kernel strategies, not merely message counts/codes.
+
+**Resolution:** Open.
+
+<a id="rv05-4"></a>
+
+#### RV05-4 — IF149's evidence and active documentation overstate closure
+
+**Severity:** Medium / false-green capability evidence.
+
+**Evidence:**
+
+- `RepetitionNotUniqueCompositionDiffTest.guardAndRnuOrOtherNest` uses distinct key values (`5` and `9`) although its commentary treats the second row as a duplicate, so the nested RNU arm never fires.
+- The capability matrix credits the generic catalog-strategy scenario, whose fixed fixture also has unique keys; removing the dedicated RNU behavior lock would not make the capability cell fail.
+- Static-Java coverage contains only the happy compositions; FALSE, UNKNOWN/OMISSION, partial relevance, and rich metadata are not covered across the required platform/strategy tiers.
+- [INTERPRETER-FINDINGS.md](INTERPRETER-FINDINGS.md) and the drop-in certificate describe generic `Not` composition. The public rule DSL exposes legal `And`/`Or` trees but no generic `Not` operator.
+
+**Required correction:**
+
+- Repair the ineffective discriminator and register a dedicated firing RNU evidence set in the capability matrix.
+- Complete the FALSE/UNKNOWN/OMISSION, partial, rich-metadata, JVM/Node, and both-kernel-strategy arms named above.
+- Restrict active documentation to legal `And`/`Or` composition and reopen IG95 until RV05-1 through RV05-4 pass.
+
+**Acceptance checks:**
+
+- Each matrix cell resolves to a test whose fixture actually makes the RNU leaf decisive.
+- Mutation/removal of the dedicated RNU evidence makes the evidence guard fail.
+- No active source-of-truth document claims a generic `Not` surface.
+
+**Resolution:** Open.
+
+<a id="rv05-5"></a>
+
+#### RV05-5 — IF150 does not expose the kernel custom-validator context
+
+**Severity:** High / customization-surface incompatibility.
+
+**Root mechanism and evidence:**
+
+- The interpreter SPI is `CustomFieldType.check(value)` while the kernel validator receives `value`, locale, declared `minLength`/`maxLength`, and `isDisplayValue`.
+- `ModelLoader` currently retains the custom type name but drops its declared bounds, even though the kernel passes those bounds as informational validator parameters rather than enforcing them generically.
+- A legal project validator may select acceptance, rejection code, or message from those inputs; the interpreter cannot reproduce it. The certificate's GREEN customization claim is therefore premature.
+
+**Required correction:**
+
+- Add a typed custom-validation context carrying the kernel-observable locale, optional declared bounds, and display-value mode.
+- Preserve custom field-type metadata in `FieldDef`/`ModelLoader` and pass the context through the library SPI and JS worker contract.
+- Characterize every discriminator against dynamic-Groovy and generated Java; explicitly document any kernel slot that is inapplicable to the interpreter's stored-value input rather than silently inventing a value.
+
+**Acceptance checks:**
+
+- Differential validators vary their result by locale, each bound, and display-value mode where reachable; JVM and Node cover the common path.
+- Missing optional bounds remain distinguishable from a declared numeric value.
+- The typed API, CLI help/contract, architecture text, finding, and certificate describe the same context.
+
+**Resolution:** Open.
+
+<a id="rv05-6"></a>
+
+#### RV05-6 — a custom validator can run more than once and before relevance short-circuiting
+
+**Severity:** High / correctness and performance defect.
+
+**Root mechanism and evidence:**
+
+- `AutoChecks.formalErrors` invokes the custom validator to emit a formal message.
+- Rule suppression later calls `ValidationPass.formalErrorAt`, which can invoke the same validator again for the same cell.
+- The kernel validates a cell once and reuses its formal result. A stateful validator can therefore change observable behavior in the interpreter, and the Node SPI pays duplicate process RPC.
+- The partial-invalid predicate currently evaluates `formalErrorAt(...) != null || !isRelevant(...)`, so a nonrelevant custom cell is validated before it is discarded. The kernel short-circuits nonrelevance first.
+
+**Required correction:**
+
+- Make one per-validation formal-result cache the shared source for formal emission, rule suppression, computation suppression, and RNU filtering.
+- Check relevance before any custom validation.
+- Cache the complete rejection object, not only its code, so message metadata is also stable.
+
+**Acceptance checks:**
+
+- A count-sensitive validator is called exactly once per relevant cell in full and partial validation, including when a rule references it.
+- A throwing/unsupported validator is never invoked for a nonrelevant cell.
+- A JVM/Node guard protects the single-call invariant; the hot path adds no repeated Node RPC.
+
+**Resolution:** Open.
+
+<a id="rv05-7"></a>
+
+#### RV05-7 — rejection-code suppression and rejection-message semantics are not proven exact
+
+**Severity:** High / observable contract incomplete.
+
+**Evidence:**
+
+- The new differential asserts emitted formal codes but does not observe `testRule`/candidate suppression carrying the same project code.
+- `CustomFieldTypeSpiTest` says a rule is suppressed, but its constructed `ModelDef` contains no rule.
+- `CustomTypeRejection.message` is public and emitted verbatim. The kernel routes the validator's message through its error handler and substitutes the field placeholder; that observable behavior has not been characterized or reproduced.
+
+**Required correction:**
+
+- Add a real rule and assert exact `suppressedBy.code` through the candidate API on JVM and Node, grounded by the kernel differential.
+- Probe and implement the kernel's custom-message placeholder behavior, or remove the unverified message surface if it cannot be matched. Do not leave a public field with silently different semantics.
+- Cover accepted input and at least two project keys so no constant-code fallback can pass.
+
+**Acceptance checks:**
+
+- Formal emission and suppression use the identical cached rejection code.
+- Message text and substitution agree with both kernel strategies for a named-field placeholder and ordinary text.
+- The declarative predefined-type fallback still emits its documented constant.
+
+**Resolution:** Open.
+
+<a id="rv05-8"></a>
+
+#### RV05-8 — IF150's consumer contract, evidence registry, and documentation are inconsistent
+
+**Severity:** Medium / discoverability and false evidence.
+
+**Evidence:**
+
+- Live CLI option help still describes only `validate(value)` and does not expose the object-result shape added by `611a4a0e`.
+- The Node worker accepts undocumented aliases `{ok, code, message}` in addition to `{valid, errorKey, errorMessage}`, creating a second unguarded contract.
+- The capability matrix maps custom-field support to `CustomFieldTypeBoundsDiffTest`, not the rejection-code lock; code-identity coverage can disappear while the matrix remains green.
+- Active IF44/IF150 text still contains Boolean-only, constant-code, or full-parity wording inconsistent with the live API and RV05-5.
+
+**Required correction:**
+
+- Make the supported JS result/context shape discoverable in live help, the CLI specification, and an executable example/assertion.
+- Keep one explicit object vocabulary and reject malformed objects loudly inside the custom-support boundary; remove undocumented aliases unless deliberately specified and tested.
+- Give rejection-code identity and context forwarding explicit capability evidence.
+- Perform a bounded IF44/IF150/certificate/findings/SEMANTICS-MAP sweep without broad unrelated wording changes.
+
+**Acceptance checks:**
+
+- A cold consumer can discover the exact JS function signature and return shape from `--help`.
+- Help and example guards fail if the live contract drifts.
+- Removing either the code-identity or context differential makes the capability guard fail.
+
+**Resolution:** Open.
+
+<a id="rv05-9"></a>
+
+#### RV05-9 — an empty charset grapheme creates a nonterminating matcher
+
+**Severity:** Critical / public construction can hang evaluation.
+
+**Root mechanism and evidence:**
+
+- `LegalCharset.of(..., graphemes = listOf(""))` converts the empty string to an empty code-point list.
+- `TrieNode.insert(empty)` marks the root terminal.
+- `matches(nonEmpty)` then accepts the zero-length terminal without advancing `i`, so the loop never terminates. `ofSupportedCharacters(listOf(""))` reaches the same state.
+- The failure was reproduced against the built JVM artifact; the call did not return.
+
+**Required correction:**
+
+- Reject an empty charset entry before trie construction and make “the trie root is never terminal” a construction invariant.
+- Apply the same validated construction boundary to the public SPI and the model-slot factory; malformed model configuration must fail loudly rather than hang later.
+
+**Acceptance checks:**
+
+- JVM and Node construction tests reject empty entries through both factories.
+- A termination regression test proves matching cannot accept a zero-length transition.
+- Valid singleton, range, and combined-grapheme behavior remains unchanged.
+
+**Resolution:** Open.
+
+<a id="rv05-10"></a>
+
+#### RV05-10 — public charset factories do not enforce the kernel's bounded legal-definition contract
+
+**Severity:** Medium / correctness and complexity invariant unenforced.
+
+**Root mechanism and evidence:**
+
+- The public factories accept arbitrary atomic strings, including surrogate-bearing and overlong sequences that the pinned kernel rejects.
+- The matcher's no-backtrack correctness and linear bound rely on validated, bounded entries. With unchecked growing common prefixes, matching becomes O(input × maximum-entry-length) and can become quadratic when the definition grows with the input.
+- IF151 documentation already cites some kernel rejection limits, but construction does not enforce them.
+
+**Required correction:**
+
+- Characterize and encode the pinned kernel's legal singleton/range/grapheme constraints at one common construction boundary: empty, surrogate, maximum length, malformed range, and overlap-domain rules.
+- Prefer a closed parsed entry representation so invalid states cannot reach the trie; retain original clean-room expression.
+- Loudly reject invalid model-slot and consumer-SPI definitions with actionable diagnostics.
+
+**Acceptance checks:**
+
+- JVM and Node reject empty, surrogate-bearing, overlong, malformed-range, and genuinely forbidden-overlap definitions.
+- Dynamic-Groovy and generated-Java structural probes agree with every accepted/rejected discriminator.
+- No invalid definition can construct an unbounded or zero-progress trie.
+
+**Resolution:** Open.
+
+<a id="rv05-11"></a>
+
+#### RV05-11 — IF151 omits the required legal overlap characterization
+
+**Severity:** Medium / incomplete original IG88 acceptance contract.
+
+**Evidence:**
+
+- `SupportedCharactersGraphemeDiffTest` and `LegalCharsetGraphemeTest` exercise only one decomposed `e + acute` entry.
+- There is no multiple-entry shared-prefix case, terminal-prefix case, or structural rejection lock for the kernel's genuinely ambiguous overlap class.
+- The implementation comment says configured graphemes “never overlap,” but the kernel trie permits non-ambiguous shared prefixes and terminal prefixes; only its specific forbidden overlap must reject.
+
+**Required correction:**
+
+- Use the structural oracle to select and lock at least two legal shared-prefix graphemes, one legal terminal-prefix shape, and the genuinely forbidden overlap shape.
+- Differentially exercise accepted shapes against dynamic-Groovy, generated Java, and the interpreter, including full sequence and component-only negatives.
+- Correct the implementation comment and evidence registry to the characterized contract.
+
+**Acceptance checks:**
+
+- Prefix traversal selects the longest complete legal sequence without admitting a bare component.
+- Construction rejects only the characterized forbidden class rather than all overlap.
+- Both public factories and both interpreter platforms share the same parsed contract.
+
+**Resolution:** Open.
+
+<a id="rv05-12"></a>
+
+#### RV05-12 — IF151's fixed-size timing comparison is not a scale guard
+
+**Severity:** Medium / performance acceptance gap.
+
+**Evidence:**
+
+- `graphemeCharsetIsWithinAFactorOfBmp` compares one BMP aggregate and one trie aggregate at fixed `N=50,000`, then calls the result linear.
+- It has no N/4N observation, no interleaved within-pair estimator, no semantic preflight, and no Node-side protection.
+- The common matcher allocates a `Pair` for each decoded code point; the new trie path also uses boxed map keys on the hottest character loop. Those costs are not a correctness bug, but they make the missing growth/platform guard material.
+
+**Required correction:**
+
+- Remove per-code-point transient allocation from the hot matcher while preserving the BMP/range fast path.
+- Add semantic preflight and an interleaved N/4N median within-pair growth guard, classified as a catastrophe floor rather than an uncertified NFR.
+- Add a Node lane or a reasoned deterministic commonMain operation-bound test that protects the same growth invariant without flaky wall-clock thresholds.
+
+**Acceptance checks:**
+
+- JVM and Node prove correct outputs before timing/operation checks.
+- Fourfold input growth stays under the ratified catastrophe ceiling on both the BMP and grapheme paths.
+- The guard fails on a deliberately quadratic scan and does not claim an uncertified absolute target.
+
+**Resolution:** Open.
+
+#### What the review accepted
+
+- IF149's first-class predicate, ordinary 3VL walk, and one-time call-scoped grouping cache are the correct replacement for the old top-level recognizer. No performance cliff was found in the implemented grouping mechanism.
+- IF150's nullable typed rejection is the correct direction: accepted values stay allocation-free and project rejection codes can now reach formal messages. The accepted/two-key differential genuinely checks both kernel strategies for its narrow scenario.
+- IF151's trie fixes the demonstrated flattening defect for a valid short decomposed grapheme, keeps the BMP/range fast path, and the existing differential genuinely checks dynamic-Groovy, generated Java, and the interpreter for that shape.
+- The reviewed commits are focused and clean-room. The pre-existing concurrent `docs/README.md` modification and proposal deletion were not included in them.
+
+#### Required implementation order
+
+1. Fix RV05-9 and RV05-10 first so malformed charset configuration cannot hang or invalidate the matcher's complexity invariant; then finish overlap and scale evidence under RV05-11 and RV05-12.
+2. In one warm RNU context, implement typed duplicate keys, all-key relevance, and peer-carrying outcomes, then repair the evidence matrix and documentation under RV05-1 through RV05-4.
+3. In one custom-validation context, preserve the kernel context, unify formal-result caching, prove suppression/message semantics, and align the CLI/evidence/docs under RV05-5 through RV05-8.
+4. Run the targeted JVM/Node/dynamic-Groovy/generated-Java suites after each feature commit, then run the interpreter purity/check, adapter suite, CLI documentation guards, capability matrix, semantics map, and stale-gap guards before graduating IG95, IG92, and IG88.
+
+#### Resolution
+
+Open. Independent verification should reject the “IG95 → IG92 → IG88 chain complete” claim until RV05-1 through RV05-12 each carry a fixing commit and green evidence note, the capability/certificate claims resolve to decisive tests, and the three IG rows are deleted only after their original contracts and these direct sibling defects are fully cleared.
 
 ## Resolved chapter archive
 
