@@ -338,12 +338,12 @@ class PerfGateTest {
     }
 
     /**
-     * Guards the **Europe/Berlin DATE_TIME instant path** (IG80) against a per-conversion regression: every
+     * Guards the **Europe/Berlin DATE_TIME instant path** (IF132) against a per-conversion regression: every
      * DATE_TIME parse under a non-UTC model runs the `berlinOffsetSeconds` civil-calendar offset (IF128/IF131),
      * and a per-row `DifferenceInHours` rule runs it once per conversion per row — so it must stay LINEAR in rows.
      * Time the interpreter (only) at N and 4N Berlin datetime rows; linear ≈ 4×, a per-conversion blowup ≈ 16×.
      * This is the committed gate that keeps the IF128 offset optimization from silently regressing (its speedup
-     * was previously probe-only — the datetime hole IG80 named); the against-kernel ratio is
+     * was previously probe-only — the datetime hole IF132 named); the against-kernel ratio is
      * [PerfBenchTest.berlinDateTimeScalesLikeKernel].
      */
     @Test

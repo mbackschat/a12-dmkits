@@ -49,7 +49,7 @@ private typealias RowsFn = (group: String, parentReps: List<Int>, rnd: Random) -
  *
  * MOST scenarios carry **no DATE_TIME field**, so the zone axis is inert for them (dates/numbers/strings are
  * zone-free) and their interpreter [ModelDef]s omit `timeZone`. The **[berlinDateTime]/[utcDateTimeControl]**
- * pair (IG80) is the exception: it declares DATE_TIME fields and threads `timeZone` into its ModelDef, so the
+ * pair (IF132) is the exception: it declares DATE_TIME fields and threads `timeZone` into its ModelDef, so the
  * `berlinOffsetSeconds` civil-calendar path (IF128/IF131) is exercised at scale. When adding another datetime
  * scenario, thread `timeZone = ModelTimeZone.EUROPE_BERLIN` into its ModelDef — a mismatch is not silent (the
  * differential fails loud on any straddling generated value; the DST family: `laws.DstTimeZoneDiffTest`).
@@ -745,7 +745,7 @@ object PerfCatalog {
         }
     }
 
-    // ---- Europe/Berlin DATE_TIME (IG80): exercises the `berlinOffsetSeconds` hot path at scale. Every DATE_TIME
+    // ---- Europe/Berlin DATE_TIME (IF132): exercises the `berlinOffsetSeconds` hot path at scale. Every DATE_TIME
     //      conversion under a non-UTC model runs the civil-calendar offset math (IF128/IF131); a per-row
     //      `DifferenceInHours` rule over a large repetition list makes that cost measurable. The values are
     //      mid-June (constant CEST — NOT DST-straddling), so Berlin and UTC agree on the DIFFERENCE and
@@ -806,7 +806,7 @@ object PerfCatalog {
         }
     }
 
-    /** **DT Berlin (IG80)** — a per-row `DifferenceInHours` over `Europe/Berlin` DATE_TIME fields: the datetime
+    /** **DT Berlin (IF132)** — a per-row `DifferenceInHours` over `Europe/Berlin` DATE_TIME fields: the datetime
      *  instant math (`berlinOffsetSeconds` civil-calendar path, IF128/IF131) run once per conversion, at scale. */
     fun berlinDateTime(): PerfScenario = dateTimeScenario("DT Berlin", dtBerlinJson, ModelTimeZone.EUROPE_BERLIN)
 

@@ -126,7 +126,7 @@ class PerfBenchTest {
     }
 
     /**
-     * **Europe/Berlin DATE_TIME at scale (IG80)** — a per-row `DifferenceInHours` over `Europe/Berlin` datetime
+     * **Europe/Berlin DATE_TIME at scale (IF132)** — a per-row `DifferenceInHours` over `Europe/Berlin` datetime
      * fields, plus the UTC control. Asserts the datetime arithmetic agrees with the kernel (interp == kernel — the
      * mid-June values are non-straddling, so Berlin and UTC agree on the difference, while the `berlinOffsetSeconds`
      * civil-calendar path still runs per conversion) and records the interp/kernel ratio; the printed Berlin-vs-UTC

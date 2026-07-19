@@ -304,38 +304,35 @@ object FuzzDiagnostics {
     private fun javaPartialSignatures(kernelModel: String, places: List<Place>, rel: Set<RuntimeLaws.Relevant>): List<String> =
         javaEngine(kernelModel).messagesPart(kernelDoc(places), rel).map(::msgSig).sorted()
 
-    /** Drop the signatures whose code is in [ignoreCodes] (the IG20 boundary — see [partialSignaturesAgree]). */
-    private fun filterCodes(sigs: List<String>, ignoreCodes: Set<String>): List<String> =
-        if (ignoreCodes.isEmpty()) sigs else sigs.filterNot { it.substringBefore('|') in ignoreCodes }
-
     /**
      * Whether [seed]'s generated document, under a random relevant subset ([relevantSeed]), produces the SAME
      * fired-message signatures (`code|type|pointer`) from the interpreter's `validatePart`, the kernel's
      * Groovy-dynamic `validatePart`, AND the kernel's static-JAVA `validatePart` (WI-1's third engine) — the
      * partial-validation differential gate (rule-gating + 3VL + non-aggregate rules + formal/uniqueness errors).
      *
-     * [ignoreCodes] carves out the **IG20 boundary**: STARRED AGGREGATES over a repeatable group under *mixed*
-     * partial relevance (some cells relevant via their group, some via a direct field pointer, some non-relevant)
-     * are not yet kernel-exact — the kernel's per-operator rule (e.g. `FirstFilled` needs only the first filled
-     * relevant cell; `Sum` treats a cell whose GROUP row is non-relevant as Unknown even when the field pointer
-     * is listed) is subtler than the blanket IF35 gate. Those rule codes are excluded pending IG20.
+     * The former **IG20 boundary** — STARRED AGGREGATES over a repeatable group under *mixed* partial relevance
+     * (some cells relevant via their group, some via a direct field pointer, some non-relevant) — is CLOSED by
+     * IF42: the interpreter is kernel-exact there (the kernel's per-operator rule, e.g. `FirstFilled` needs only
+     * the first filled relevant cell; `Sum` treats a cell whose GROUP row is non-relevant as Unknown even when the
+     * field pointer is listed — subtler than the blanket IF35 gate), so the fuzz runs those codes unfiltered (the
+     * former `ignoreCodes` filter is retired).
      */
-    fun partialSignaturesAgree(scenario: PerfScenario, seed: Int, relevantSeed: Int, ignoreCodes: Set<String> = emptySet()): Boolean {
+    fun partialSignaturesAgree(scenario: PerfScenario, seed: Int, relevantSeed: Int): Boolean {
         val places = record(scenario, seed)
         val (kRel, iRel) = relevantSets(places, relevantSeed)
-        val i = filterCodes(interpPartialSignatures(scenario.interpModel, places, iRel), ignoreCodes)
-        val k = filterCodes(kernelPartialSignatures(scenario.kernelModel, places, kRel), ignoreCodes)
-        val j = filterCodes(javaPartialSignatures(scenario.kernelModel, places, kRel), ignoreCodes)
+        val i = interpPartialSignatures(scenario.interpModel, places, iRel)
+        val k = kernelPartialSignatures(scenario.kernelModel, places, kRel)
+        val j = javaPartialSignatures(scenario.kernelModel, places, kRel)
         return i == k && k == j
     }
 
     /** A localized partial report for ([seed], [relevantSeed]): which engine pair's signatures split. */
-    fun partialDivergence(scenario: PerfScenario, seed: Int, relevantSeed: Int, ignoreCodes: Set<String> = emptySet()): String {
+    fun partialDivergence(scenario: PerfScenario, seed: Int, relevantSeed: Int): String {
         val places = record(scenario, seed)
         val (kRel, iRel) = relevantSets(places, relevantSeed)
-        val i = filterCodes(interpPartialSignatures(scenario.interpModel, places, iRel), ignoreCodes)
-        val k = filterCodes(kernelPartialSignatures(scenario.kernelModel, places, kRel), ignoreCodes)
-        val j = filterCodes(javaPartialSignatures(scenario.kernelModel, places, kRel), ignoreCodes)
+        val i = interpPartialSignatures(scenario.interpModel, places, iRel)
+        val k = kernelPartialSignatures(scenario.kernelModel, places, kRel)
+        val j = javaPartialSignatures(scenario.kernelModel, places, kRel)
         val report = splitReport(i, k, j)
         return if (report.isEmpty()) "seed=$seed/rel=$relevantSeed: signatures agree"
         else "seed=$seed/rel=$relevantSeed  relevant=${iRel.size}/${places.size}$report"

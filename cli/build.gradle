@@ -206,9 +206,32 @@ tasks.register('semanticsMapGuardTest', Test) {
             'interpreter commonTest'  : rootProject.fileTree('interpreter/src/commonTest')])
 }
 
+// The deleted-gap reference guard (StaleGapReferenceGuardTest, IF141) reads docs/INTERPRETER-GAPS.md (the live-gap
+// set) + scans the interpreter/adapter/cli source at runtime for a present-tense-OPEN cite of a DELETED gap. Its
+// own task (the semanticsMapGuardTest rationale — source trees as inputs must not bloat docGuardTest), so an
+// IG graduation (a ledger row deleted) re-runs ONLY this guard and can't false-green from the build cache.
+tasks.register('staleGapGuardTest', Test) {
+    description = 'Rejects a present-tense-OPEN reference to a DELETED interpreter gap (IF141); the live-gap set is docs/INTERPRETER-GAPS.md.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.StaleGapReferenceGuardTest'
+    }
+    rootProject.guardInputs(it, [
+            'docs/INTERPRETER-GAPS.md': rootProject.file('docs/INTERPRETER-GAPS.md'),
+            'interpreter/src'         : rootProject.fileTree('interpreter/src') { include '**/*.kt' },
+            'adapter/src'             : rootProject.fileTree('adapter/src') { include('**/*.kt', '**/*.java') },
+            'cli/src'                 : rootProject.fileTree('cli/src') { include('**/*.kt', '**/*.java') },
+            'interpreter/build.gradle': rootProject.file('interpreter/build.gradle'),
+            'adapter/build.gradle'    : rootProject.file('adapter/build.gradle'),
+            'cli/build.gradle'        : rootProject.file('cli/build.gradle')])
+}
+
 tasks.named('test') {
     dependsOn 'docGuardTest'
     dependsOn 'semanticsMapGuardTest'
+    dependsOn 'staleGapGuardTest'
     // The repo-file-reading guards live in docGuardTest / semanticsMapGuardTest (with the right inputs); keep
     // them OUT of the cacheable main suite so a docs/model-only edit can't invalidate all ~620 tests.
     filter {
@@ -220,6 +243,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.SemanticsMapResolveTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.KernelDocsFoldContractTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.interp.ModelLoaderParityTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.StaleGapReferenceGuardTest'
     }
 }
 
