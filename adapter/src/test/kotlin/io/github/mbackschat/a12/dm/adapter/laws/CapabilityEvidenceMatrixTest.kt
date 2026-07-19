@@ -36,7 +36,8 @@ class CapabilityEvidenceMatrixTest {
         FORMAL_PATTERN(Axis.FORMAL, "pattern (declared + predefined)"),
         FORMAL_VALUE_BOUNDS(Axis.FORMAL, "value bounds (min/max value)"),
         FORMAL_NUMBER_SHAPE(Axis.FORMAL, "scale / sign / precision"),
-        FORMAL_LEGAL_CHARSET(Axis.FORMAL, "legal charset (BMP / DIN-91379)"),
+        FORMAL_LEGAL_CHARSET_RUNTIME(Axis.FORMAL, "legal charset matching (BMP / DIN-91379 / graphemes)"),
+        FORMAL_LEGAL_CHARSET_DEFINITION(Axis.FORMAL, "legal charset definition boundary"),
         FORMAL_RAW_TYPE(Axis.FORMAL, "raw-type (noValueValidation)"),
 
         COMPUTATION_TIERED(Axis.COMPUTATION, "tiered / precondition-guarded"),
@@ -111,9 +112,14 @@ class CapabilityEvidenceMatrixTest {
             NumberSignFormalDiffTest::class,
             Static.Tri(NumberSignFormalDiffTest::class),
         )),
-        Capability(CapabilityId.FORMAL_LEGAL_CHARSET, Coverage.Evidence(
-            SupportedCharactersDiffTest::class,
-            Static.Tri(SupportedCharactersDiffTest::class),
+        Capability(CapabilityId.FORMAL_LEGAL_CHARSET_RUNTIME, Coverage.Evidence(
+            SupportedCharactersGraphemeDiffTest::class,
+            Static.Tri(SupportedCharactersGraphemeDiffTest::class),
+        )),
+        Capability(CapabilityId.FORMAL_LEGAL_CHARSET_DEFINITION, Coverage.Excluded(
+            tracked("IF151", why = "charset definitions are structurally accepted or rejected before either runtime strategy executes"),
+            SupportedCharactersDefinitionDiffTest::class,
+            ciJvm,
         )),
         Capability(CapabilityId.FORMAL_RAW_TYPE, Coverage.Evidence(
             NvvRawTypeDiffTest::class,
