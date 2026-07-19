@@ -104,8 +104,18 @@ class Document(internal val config: DocumentConfig) {
             ancestorGroups(path).forEachIndexed { i, g -> autoGroup(g, r.take(i + 1)) }
             placements += Placement(path, r, value, false)
         }
-        cachedIndex = null   // invalidate the lazily-built lookup index
+        invalidateDerivedCaches()   // every mutation clears ALL document-derived caches (IF142)
         return this
+    }
+
+    /**
+     * Invalidate EVERY document-derived cache — the ONE place a mutation clears (IF142, was IG81). A new
+     * document-derived cache MUST be added here, or a query → mutate → query can reuse a stale derived view.
+     */
+    private fun invalidateDerivedCaches() {
+        cachedIndex = null                 // the lazily-built lookup index
+        rowContextsCache.clear()           // a `Having` filter's per-row contexts
+        correlationBucketCache.clear()     // a `$` equality-correlation's hash buckets
     }
 
     private fun autoGroup(path: String, reps: List<Int>) {
