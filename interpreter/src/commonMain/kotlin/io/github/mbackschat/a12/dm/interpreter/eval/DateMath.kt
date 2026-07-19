@@ -397,15 +397,19 @@ private fun buildIso(values: List<String>, comps: List<Char>): String? {
  *  value carries; the datetime-comparison dispatch keys on it. */
 fun isIsoDateTime(s: String): Boolean = ISO_DATE_TIME.matches(s)
 
-// ---- model-timezone (DST) instant math — the Europe/Berlin axis (IG62 → KERNEL-FINDINGS §6) -------------
+// ---- model-timezone (DST) instant math — the Europe/Berlin axis (IG83 → KERNEL-FINDINGS §6) -------------
 //
 // The kernel parses every DATE/DATE_TIME with a zone-set formatter, so under a `Europe/Berlin` model wall
 // clock and instants diverge across the DST transitions. The interpreter keeps its canonical LOCAL ISO form
-// and converts to instants exactly where the kernel's semantics are instant-based. Clean-room encoding of the
-// CURRENT EU rule (in force since 1996): CEST (+2 h) from the last Sunday of March 01:00Z to the last Sunday
-// of October 01:00Z, else CET (+1 h). A Berlin datetime BEFORE 1996 follows older, year-specific rules the
-// kernel's tzdb knows and this rule does not — an explicitly documented residual (the interpreter finding),
-// far outside realistic document data. UTC is the identity on every function here.
+// and converts to instants exactly where the kernel's semantics are instant-based. Clean-room encoding of
+// Berlin's COMPLETE history as the kernel actually sees it — the legacy `java.util.TimeZone` path
+// (`SimpleDateFormat` in `ValidationDateParser`), NOT `java.time`. That distinction is pinned in the table
+// below: `java.util` DROPS the pre-1916 LMT (Berlin is flat CET +1 h before the first DST transition), and
+// Berlin has THREE historical offsets — CET (+1 h), CEST (+2 h), and CEMT (+3 h, the 1945/47 double-summer
+// windows). The [BERLIN_TX_EPOCH]/[BERLIN_TX_OFFSET] transitions (1916→1997) are the kernel's own step
+// function (pinned to JDK 21 tzdb 2026a — settled history, stable across releases, differential-locked);
+// beyond them the recurring EU rule governs (CEST from the last Sunday of March 01:00Z to the last Sunday
+// of October 01:00Z). UTC is the identity on every function here.
 
 /** Epoch day of civil `year-month-day` — Hinnant days_from_civil as PURE integer arithmetic (no string build
  *  or regex, unlike [epochDay]); the DST offset path calls this per datetime value, so it must not allocate. */
@@ -445,31 +449,86 @@ private fun berlinDstStart(year: Int): Long = lastSundayEpochDay(year, 3) * 86_4
 /** The instant Berlin DST ends in [year] — last Sunday of October, 01:00:00Z (03:00 CEST → 02:00 CET). */
 private fun berlinDstEnd(year: Int): Long = lastSundayEpochDay(year, 10) * 86_400L + 3_600L
 
-/** Berlin's UTC offset in seconds at [instant]: 7200 (CEST) inside the DST window, else 3600 (CET). The year
- *  and DST boundaries are pure-integer civil math ([yearOfEpochDay]/[epochDayOfCivil]) — no per-call string
- *  allocation — because this is on the hot path for every DATE/DATE_TIME conversion under a Europe/Berlin model. */
+/** The distinct UTC offsets (seconds) Berlin has ever used — CET, CEST, and the 1945/47 CEMT (+3 h) — ASCENDING.
+ *  A wall time has at most one instant per offset; the wall→instant resolution tries them in this order. */
+private val BERLIN_OFFSETS = longArrayOf(3_600L, 7_200L, 10_800L)
+
+// The kernel's OWN transition step function (`java.util.TimeZone.getOffset` for Europe/Berlin), 1916→1997 —
+// pinned to JDK 21 tzdb 2026a. Each epoch-second in [BERLIN_TX_EPOCH] is when the offset in the aligned slot
+// of [BERLIN_TX_OFFSET] takes effect; before the first entry Berlin is flat CET (java.util drops the LMT),
+// and at/after the last entry the recurring EU rule governs. Ascending, so [berlinOffsetSeconds] binary-searches.
+private val BERLIN_TX_EPOCH = longArrayOf(
+         -1693706400L, -1680483600L, -1663455600L, -1650150000L, -1632006000L, -1618700400L,
+          -938905200L,  -857257200L,  -844556400L,  -828226800L,  -812502000L,  -796777200L,
+          -781052400L,  -776563200L,  -765936000L,  -761180400L,  -748479600L,  -733273200L,
+          -717631200L,  -714610800L,  -710380800L,  -701910000L,  -684975600L,  -670460400L,
+          -654130800L,  -639010800L,   323830800L,   338950800L,   354675600L,   370400400L,
+           386125200L,   401850000L,   417574800L,   433299600L,   449024400L,   465354000L,
+           481078800L,   496803600L,   512528400L,   528253200L,   543978000L,   559702800L,
+           575427600L,   591152400L,   606877200L,   622602000L,   638326800L,   654656400L,
+           670381200L,   686106000L,   701830800L,   717555600L,   733280400L,   749005200L,
+           764730000L,   780454800L,   796179600L,   811904400L,   828234000L,   846378000L,
+           859683600L,   877827600L,
+    )
+private val BERLIN_TX_OFFSET = longArrayOf(
+          7200L,  3600L,  7200L,  3600L,  7200L,  3600L,
+          7200L,  3600L,  7200L,  3600L,  7200L,  3600L,
+          7200L, 10800L,  7200L,  3600L,  7200L,  3600L,
+          7200L, 10800L,  7200L,  3600L,  7200L,  3600L,
+          7200L,  3600L,  7200L,  3600L,  7200L,  3600L,
+          7200L,  3600L,  7200L,  3600L,  7200L,  3600L,
+          7200L,  3600L,  7200L,  3600L,  7200L,  3600L,
+          7200L,  3600L,  7200L,  3600L,  7200L,  3600L,
+          7200L,  3600L,  7200L,  3600L,  7200L,  3600L,
+          7200L,  3600L,  7200L,  3600L,  7200L,  3600L,
+          7200L,  3600L,
+    )
+
+/** Berlin's UTC offset in seconds at [instant] over its COMPLETE history — flat CET before 1916 (the kernel's
+ *  java.util path drops the LMT), the pinned [BERLIN_TX_EPOCH]/[BERLIN_TX_OFFSET] transitions through 1997
+ *  (CET/CEST/CEMT), and the recurring EU rule beyond. Binary search + pure-integer civil math ([berlinEuRuleOffset])
+ *  — no per-call string allocation — because this is on the hot path for every conversion under a Berlin model. */
 private fun berlinOffsetSeconds(instant: Long): Long {
+    if (instant < BERLIN_TX_EPOCH[0]) return 3_600L                 // pre-1916: flat CET (no LMT on the kernel path)
+    val last = BERLIN_TX_EPOCH.size - 1
+    if (instant >= BERLIN_TX_EPOCH[last]) return berlinEuRuleOffset(instant)   // 1997-10-26 onward: the stable EU rule
+    var lo = 0; var hi = last                                       // greatest i with BERLIN_TX_EPOCH[i] <= instant
+    while (lo < hi) {
+        val mid = (lo + hi + 1) ushr 1
+        if (BERLIN_TX_EPOCH[mid] <= instant) lo = mid else hi = mid - 1
+    }
+    return BERLIN_TX_OFFSET[lo]
+}
+
+/** Berlin's offset under the recurring EU rule (in force continuously since 1996): CEST (+2 h) from the last
+ *  Sunday of March 01:00Z to the last Sunday of October 01:00Z, else CET (+1 h). Governs the future beyond the
+ *  pinned table; the table itself carries the irregular 1916→1995 history the rule does not describe. */
+private fun berlinEuRuleOffset(instant: Long): Long {
     val year = yearOfEpochDay(instant.floorDiv(86_400L))
     return if (instant >= berlinDstStart(year) && instant < berlinDstEnd(year)) 7_200L else 3_600L
 }
 
 /**
  * The instant of a LOCAL wall time (naive epoch seconds, [epochSecond]) under [tz] — the kernel's PARSE
- * resolution (a zone-set, non-lenient `SimpleDateFormat`, probe-verified):
- *  - a wall time with exactly one consistent offset resolves to it (winter CET, summer CEST);
- *  - the **ambiguous** fall-back hour (both offsets consistent) resolves to **standard time** (CET);
+ * resolution (a zone-set, non-lenient `SimpleDateFormat`, probe-verified over all of Berlin's history):
+ *  - a wall time with exactly one consistent offset resolves to it (winter CET, summer CEST, midsummer CEMT);
+ *  - the **ambiguous** fall-back hour (two consistent offsets) resolves to the **smaller (after) offset** —
+ *    standard-time in a normal fall-back, CEST in the 1945 CEMT→CEST overlap;
  *  - the **nonexistent** spring-forward gap resolves to **null** — the kernel REJECTS it (`datumFormatFalsch`).
+ *
+ * The rule is one loop: try the candidate offsets ASCENDING and take the first instant whose true offset
+ * ([berlinOffsetSeconds]) equals the offset assumed — so an overlap picks the smaller offset (the kernel's
+ * after/standard choice) and a gap matches none.
  */
 fun localToInstant(localSeconds: Long, tz: ModelTimeZone): Long? = when (tz) {
     ModelTimeZone.UTC -> localSeconds
     ModelTimeZone.EUROPE_BERLIN -> {
-        val std = localSeconds - 3_600L
-        val dst = localSeconds - 7_200L
-        when {
-            berlinOffsetSeconds(std) == 3_600L -> std      // standard consistent (winter; the ambiguous hour → CET)
-            berlinOffsetSeconds(dst) == 7_200L -> dst      // daylight consistent (summer)
-            else -> null                                   // the spring gap — no such wall time
+        var resolved: Long? = null
+        for (offset in BERLIN_OFFSETS) {
+            val instant = localSeconds - offset
+            if (berlinOffsetSeconds(instant) == offset) { resolved = instant; break }
         }
+        resolved                                           // null ⇒ the spring gap — no such wall time
     }
 }
 
@@ -501,11 +560,15 @@ fun isGapLocal(iso: String, tz: ModelTimeZone): Boolean =
 fun wallDayLandingInstant(localSeconds: Long, n: Int, tz: ModelTimeZone): Long {
     val nominal = localSeconds + n * 86_400L
     if (tz == ModelTimeZone.UTC) return nominal
-    localToInstant(nominal, tz)?.let { strict ->
-        // The ambiguous hour resolves strict → standard; a FORWARD add instead keeps the daylight instant.
-        val dst = nominal - 7_200L
-        return if (n > 0 && berlinOffsetSeconds(dst) == 7_200L) dst else strict
+    // Every consistent instant for the nominal wall time (0 in a gap, 1 normally, 2 in an ambiguous overlap).
+    val consistent = BERLIN_OFFSETS.filter { berlinOffsetSeconds(nominal - it) == it }.map { nominal - it }
+    if (consistent.isNotEmpty()) {
+        // No overshoot: a FORWARD add takes the DAYLIGHT (earliest) instant, a BACKWARD add the STANDARD (latest).
+        return if (n > 0) consistent.min() else consistent.max()
     }
-    // The gap: no consistent offset — forward lands on the daylight (earlier) instant, backward on standard.
-    return if (n > 0) nominal - 7_200L else nominal - 3_600L
+    // The gap: no consistent instant. The bracketing transition is oBefore→oAfter (oAfter the larger offset);
+    // forward straddles to the daylight (earlier) instant `nominal − oAfter`, backward to the standard `nominal − oBefore`.
+    val oAfter = BERLIN_OFFSETS.first { berlinOffsetSeconds(nominal - it) < it }
+    val oBefore = BERLIN_OFFSETS.last { berlinOffsetSeconds(nominal - it) > it }
+    return if (n > 0) nominal - oAfter else nominal - oBefore
 }
