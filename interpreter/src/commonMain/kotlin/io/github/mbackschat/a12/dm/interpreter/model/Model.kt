@@ -56,9 +56,9 @@ enum class MsgType { VALUE, OMISSION }
  * The kernel makes predefined types a **runtime CLIENT SPI** (project-specific; the kernel core ships none —
  * KERNEL-FINDINGS §8), so the interpreter mirrors that: the consumer SUPPLIES the type definitions (a built-in
  * set in [PredefinedTypeRegistry.DEFAULT], extensible per consumer). A `Valid`/`Invalid` over an *unregistered*
- * type is reported **unsupported** (fail-fast), never silently no-op'd. (Checksum types — IBAN's mod-97 etc.,
- * the kernel's `PROVIDED_VALIDATION_CODE` strategy — are out of this declarative model; they'd need a
- * function-valued registry entry, a future extension.)
+ * type is reported **unsupported** (fail-fast), never silently no-op'd. Checksum types — IBAN's mod-97 etc.,
+ * the kernel's `PROVIDED_VALIDATION_CODE` strategy — are intentionally outside this declarative model; consumers
+ * register them through the function-valued [CustomFieldType] SPI.
  */
 data class PredefinedType(val minLength: Int? = null, val maxLength: Int? = null, val pattern: String? = null) {
     private val regex: Regex? = pattern?.let { Regex(it) }

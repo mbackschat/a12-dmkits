@@ -52,8 +52,8 @@ class AbsLengthDiffTest {
     @Test fun lengthEquals() = agree(render(m.field(ITEM).filled().and(m.str(ITEM).length().eq(4))), "../ItemId", "ABCD", "1", "1", "len(ABCD) = 4")
     @Test fun lengthDoesNotFire() = agree(render(m.field(ITEM).filled().and(m.str(ITEM).length().gt(4))), "../ItemId", "ABCD", "1", "1", "len(ABCD) = 4 not > 4")
 
-    // IG63 — Length counts UTF-16 code units: a decomposed combining sequence (e + U+0301, BMP-legal) counts as
-    // 2, not 1 (a grapheme count would say 1). Kernel == interpreter here; the JS target is pinned by
+    // KERNEL-FINDINGS §7 — Length counts UTF-16 code units: a decomposed combining sequence (e + U+0301,
+    // BMP-legal) counts as 2, not 1 (a grapheme count would say 1). Kernel == interpreter here; the JS target is pinned by
     // interpreter.LengthUnicodeCountTest. (Supplementary-plane / astral chars: a recorded residual, KERNEL-FINDINGS §7.)
     @Test fun lengthCountsACombiningSequenceAsTwo() =
         agree(render(m.field(ITEM).filled().and(m.str(ITEM).length().eq(2))), "../ItemId", "e\u0301", "1", "1",

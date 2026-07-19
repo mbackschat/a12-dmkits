@@ -11,7 +11,7 @@ import kotlin.test.Test
 import kotlin.test.assertTrue
 
 /**
- * The CODE-BASED [CustomFieldType] SPI (IG21) — the imperative twin of the declarative [PredefinedType], for a
+ * The CODE-BASED [CustomFieldType] SPI (IF44) — the imperative twin of the declarative [PredefinedType], for a
  * custom type whose validity is logic a length/pattern can't express (a checksum). It is dispatched ONLY after
  * the declarative registry misses, so the declarative path is unchanged (the monomorphic-hot-path rule;
  * `CustomTypePerfTest` guards the perf, this guards the behaviour). Runs on JVM AND JS (commonMain), so a

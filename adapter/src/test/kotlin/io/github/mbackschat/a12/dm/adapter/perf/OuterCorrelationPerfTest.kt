@@ -16,11 +16,10 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 
 /**
- * Perf gate — the `$` OUTER-CORRELATION (IF47) stays **linear PER ROW**. A self-correlation is O(N²) *by
- * nature* (each row is compared against every other — the kernel is O(N²) here too); the risk this guards is an
- * accidental O(N³) from per-inner-row O(N) work. So it asserts **sub-cubic** growth: 4× the rows must cost well
- * under 64× the time (a clean quadratic ≈ 16×). Passing proves the per-row filter work is O(1) — the `$` ref
- * resolves against the fixed enclosing row ([ctxOf]) and `rowContexts` reuses the memoized prefix index.
+ * Perf gate — the recognized `$` equality self-correlation (IF47) stays a hash join: O(N) total, not a nested
+ * O(N²) scan. Four times the rows must therefore cost well below quadratic growth (≈16×); the generous `<9×`
+ * catastrophe floor catches loss of the hash-join path while tolerating timing noise. The single-star
+ * `CurrentRepetition` self-exclusion remains hash-joinable because the current row can be subtracted from its bucket.
  * Robust estimator (min-of-repeats, small+large back-to-back) mirrors `PerfGateTest.scalingIsSubQuadratic`.
  */
 @Tag("perf")
@@ -71,7 +70,7 @@ class OuterCorrelationPerfTest {
     }
 
     @Test
-    fun outerCorrelationScalesSubCubically() {
+    fun equalityOuterCorrelationStaysSubQuadratic() {
         var best = Double.MAX_VALUE
         var small = 0.0
         var large = 0.0
@@ -81,29 +80,27 @@ class OuterCorrelationPerfTest {
             val growth = l / s
             if (growth < best) { best = growth; small = s; large = l }
         }
-        println("[perf] \$ correlation: %.1fms@%d → %.1fms@%d  min-growth=%.1f× (quadratic≈16, cubic≈64)"
+        println("[perf] \$ equality correlation: %.1fms@%d → %.1fms@%d  min-growth=%.1f× (linear≈4, quadratic≈16)"
             .format(small, N, large, N * 4, best))
-        assertTrue(best < 36.0,
-            "\$ correlation scaling looks cubic: 4× the rows took ${best}× the time (quadratic≈16, cubic≈64)")
+        assertTrue(best < 9.0,
+            "\$ equality correlation scaling looks quadratic: 4× the rows took ${best}× the time (linear≈4, quadratic≈16)")
     }
 
     /**
-     * **Measured against the kernel** (INTERPRETER-PERFORMANCE "measure AGAINST the kernel"): the interpreter
-     * must stay in the kernel's O(N²) complexity CLASS for a `$` self-correlation — not merely sub-cubic in
-     * isolation. Times BOTH engines at N and 4N and asserts the interp/kernel RATIO is stable (a worse class
-     * would make the ratio grow ~4× with N). Being a constant factor slower than the kernel is fine (perf goal
-     * #2 is "equal-or-better"; #1 is just "good = same class"); a growing ratio is the regression this catches.
+     * **Measured against the kernel** (INTERPRETER-PERFORMANCE "measure AGAINST the kernel"): times BOTH engines
+     * at N and 4N and asserts the interp/kernel RATIO is stable. This does not assign the kernel a complexity
+     * class; it catches the interpreter worsening relative to the actual oracle curve as N grows.
      */
     @Test
-    fun outerCorrelationMatchesKernelComplexityClass() {
+    fun equalityOuterCorrelationDoesNotWorsenAgainstKernel() {
         val (iSmall, kSmall) = minMs(N) to kernelMinMs(N)
         val (iLarge, kLarge) = minMs(N * 4) to kernelMinMs(N * 4)
         val ratioSmall = iSmall / kSmall
         val ratioLarge = iLarge / kLarge
         println("[perf] \$ correlation vs kernel: N=%d interp=%.1f kernel=%.1f (%.2f×) | N=%d interp=%.1f kernel=%.1f (%.2f×)"
             .format(N, iSmall, kSmall, ratioSmall, N * 4, iLarge, kLarge, ratioLarge))
-        // The ratio must not GROW with N (that would mean a worse complexity class than the kernel). Generous
-        // 2.5× headroom for timing noise; a true O(N³)-vs-O(N²) regression would blow the ratio up ~4×.
+        // The ratio must not GROW materially with N. Generous 2.5× headroom for timing noise; a reverted nested
+        // interpreter scan should widen it materially at 4× rows.
         assertTrue(ratioLarge < ratioSmall * 2.5,
             "interp/kernel ratio grew from $ratioSmall× to $ratioLarge× at 4× rows — interp is a worse class than the kernel")
     }

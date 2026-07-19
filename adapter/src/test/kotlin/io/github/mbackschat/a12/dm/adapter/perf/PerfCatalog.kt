@@ -311,8 +311,9 @@ object PerfCatalog {
      * every numeric field is a small `1`, below every `manyRules` threshold (`Qty>50+i`, `Cost>40+i`,
      * `Amount>Qty` → `1>1` false, the `Sum(Lines* then Amount) > 1000+i` aggregate → `n` Lines × 1 = `n` ≤ 1000 < 1003) → **0 fires**
      * at the benchmark's N=1000. Index keys stay UNIQUE (else duplicate-index errors would fire). This is the
-     * regime where the per-row eval (firedType + polarity) dominates — where the kernel's two-phase short-circuit
-     * helps and ours doesn't (yet); the firing-heavy [perfValues] hides it behind message-building.
+     * regime where per-row evaluation (firedType + polarity) dominates and exposes the strategy difference: the
+     * kernel's two-phase guard versus the interpreter's deliberate lazy-polarity single walk (the attempted
+     * two-phase interpreter variant measured slower); the firing-heavy [perfValues] hides it behind message-building.
      */
     private fun lowFiringValues(variant: Int): ValueStrategy = ValueStrategy { field, reps, _ ->
         when (field.path) {

@@ -15,7 +15,8 @@ import kotlin.test.assertEquals
  *
  * This is the syntactic lock (AST equality); [io.github.mbackschat.a12.dm.adapter.laws.NamedAncestorPathDiffTest]
  * is the behavioral lock against the real kernel. WI-P (SEMANTICS-FORMALIZATION-PROPOSAL, from Phase-0 S1;
- * INTERPRETER-FINDINGS IF55). Field-vs-field and presence predicates only — no NUMBER literal (its `Dec` compares by identity).
+ * INTERPRETER-FINDINGS IF55). These cases use field-vs-field and presence predicates to isolate path resolution;
+ * numeric literals are also safe in whole-AST equality because `Dec` has value semantics since IF41.
  */
 class NamedAncestorPathParseTest {
 

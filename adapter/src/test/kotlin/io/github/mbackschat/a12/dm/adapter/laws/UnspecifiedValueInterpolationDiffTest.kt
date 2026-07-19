@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * Differential (IG64 → §13) — interpolating an UNSPECIFIED value: `$field.value$` of a not-given field yields
+ * Differential (IF121; kernel contract §13) — interpolating an UNSPECIFIED value: `$field.value$` of a not-given field yields
  * `0` for a NUMBER and an empty string for other kinds (KERNEL-SEMANTICS §13). The interpolated field must be
  * referenced in the rule condition (the kernel's `INVALID_FIELD` — an interpolated field not in the condition
  * is rejected at codegen), so each rule fires on a comparison over the SAME (unspecified, non-required) field:

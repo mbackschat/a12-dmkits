@@ -15,9 +15,9 @@ import org.junit.jupiter.api.Test
 
 /**
  * Differential for single-rule eval ([DmInterpreter.testRule]) — the `rule eval` shape. The FIRED vs
- * PASSED verdict must agree with whether the REAL kernel fires the rule over the same instance. (The
- * third verdict, SUPPRESSED, needs the formal-error increment and is not yet covered.) Also checks the
- * single-rule candidate VERDICT API ([DmInterpreter.evalCandidate]). (Note: the CLI's `model eval
+ * PASSED verdict must agree with whether the REAL kernel fires the rule over the same instance. The third verdict,
+ * SUPPRESSED, is covered by [SuppressionDiffTest]. Also checks the single-rule candidate VERDICT API
+ * ([DmInterpreter.evalCandidate]). (Note: the CLI's `model eval
  * --condition` no longer routes through [DmInterpreter.evalCandidate] — since G42 it INJECTS the candidate
  * into the model and runs the full per-row [DmInterpreter.validate], so a candidate over a repeated scope
  * reports one row-indexed message per firing; this test still pins the standalone verdict API itself.)

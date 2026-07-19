@@ -13,8 +13,8 @@ import kotlin.test.assertFailsWith
  * parser accepts EXACTLY the enumerated variants — and rejects any other casing (`aNd`, `oR`, `In` misspelled),
  * so it stays a fixed table, not blanket case-folding.
  *
- * WI-P (SEMANTICS-FORMALIZATION-PROPOSAL, from Phase-0 S1; INTERPRETER-FINDINGS IF55). Field-vs-field and presence
- * predicates only — no NUMBER literal (its `Dec` compares by identity, IG4), as the sibling path-parse tests.
+ * WI-P (SEMANTICS-FORMALIZATION-PROPOSAL, from Phase-0 S1; INTERPRETER-FINDINGS IF55). Presence predicates isolate
+ * keyword spelling here; numeric literals are also safe in whole-AST equality because `Dec` has value semantics since IF41.
  */
 class KeywordCaseVariantParseTest {
 

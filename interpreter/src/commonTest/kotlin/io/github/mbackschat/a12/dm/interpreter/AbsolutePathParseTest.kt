@@ -18,10 +18,8 @@ import kotlin.test.assertEquals
  */
 class AbsolutePathParseTest {
 
-    // The cases avoid a NUMBER literal on purpose: the AST's `NumLit` carries a `Dec` (the BigDecimal wrapper)
-    // that compares by identity, not value — so whole-AST `assertEquals` over a `> 50` would spuriously fail on
-    // the two distinct `Dec` instances, unrelated to path parsing. Field-vs-field `==` and presence predicates
-    // exercise the absolute-path parsing fully without a literal.
+    // These cases use field-vs-field comparisons and presence predicates to isolate path parsing. Numeric literals
+    // are also safe in whole-AST equality: `Dec` has scale-insensitive value equality since IF41.
 
     @Test
     fun absoluteEqualsRelativeInPredicateArgAndValueRef() =

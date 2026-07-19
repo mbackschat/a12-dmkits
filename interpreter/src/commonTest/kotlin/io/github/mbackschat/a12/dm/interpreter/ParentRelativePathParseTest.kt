@@ -18,8 +18,8 @@ import kotlin.test.assertEquals
  */
 class ParentRelativePathParseTest {
 
-    // Field-vs-field comparisons and presence predicates only — no NUMBER literal (its `Dec` compares by
-    // identity, IG4, which would spuriously fail whole-AST `assertEquals`), exactly as AbsolutePathParseTest.
+    // Field-vs-field comparisons and presence predicates isolate path resolution here. Numeric literals are also
+    // safe in whole-AST equality: `Dec` has scale-insensitive value equality since IF41.
 
     @Test
     fun parentRelativeEqualsAbsoluteInPredicateAndValueRef() =

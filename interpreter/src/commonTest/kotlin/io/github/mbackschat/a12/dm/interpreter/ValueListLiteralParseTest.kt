@@ -12,8 +12,8 @@ import kotlin.test.assertEquals
  * literal value list (`(field, "a", "b", …)`), which is exactly how the kernel stores them. This maps onto the
  * existing generic-predicate AST ([Cond.Pred] with the field then the value members as args) that the
  * evaluator's `valueInList` already interprets (locked by `ValueListDiffTest`) — this pins the PARSE of the
- * literal form. WI-P (SEMANTICS-FORMALIZATION-PROPOSAL, from Phase-0 S1; INTERPRETER-FINDINGS IF55). String members only —
- * a NUMBER literal's `Dec` compares by identity (IG4), which whole-AST `assertEquals` can't compare.
+ * literal form. WI-P (SEMANTICS-FORMALIZATION-PROPOSAL, from Phase-0 S1; INTERPRETER-FINDINGS IF55). String members
+ * isolate this grammar arm; numeric members are also safe in whole-AST equality because `Dec` has value semantics since IF41.
  */
 class ValueListLiteralParseTest {
 

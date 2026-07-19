@@ -5,8 +5,8 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 
 /**
  * The interpreter's **two-goal** analysis (INTERPRETER-PERFORMANCE.md "the interpreter's two goals"):
- *  1. **Fast startup** — no code generation, so the *first* validation is cheap (the kernel pays codegen +
- *     Groovy compile on its first call; the interpreter pays only a lazy index build + first parse).
+ *  1. **Fast startup** — measure fresh interpreter construction through its first result. This class does not
+ *     compare kernel generation/compilation because the benchmark contract places it ahead of request execution.
  *  2. **On-par at scale** — stays linear to large row counts (the #28 indexing + the per-group context memo).
  *
  * Opt-in (heavy), single-threaded analysis — not a gate:
@@ -40,11 +40,10 @@ class PerfScalingTest {
      * the engine (lazy — just AST wrappers, no parse) + the first `validateFull` (one-time lazy index build +
      * first rule parse), after which it is steady-state. We report those in absolute terms.
      *
-     * **We do NOT time the kernel's cold codegen for comparison** — non-negotiable #2: kernel codegen is
-     * *always ahead of use* in real-world projects (model-load / deploy time), so the kernel never pays it per
-     * request; putting it next to the interpreter's startup would be the forbidden, unfair measurement. The
-     * interpreter's *not needing* codegen at all is a capability point (native image, one-shot CLI / JS), not a
-     * startup-timing race — and so it is not benchmarked here.
+     * **We do NOT time kernel generation/compilation here** — the benchmark contract treats it as ahead-of-request
+     * model preparation, not per-request latency. This method is interpreter-only and therefore cannot establish
+     * an against-kernel startup ratio. The interpreter's not needing generated-validator preparation remains a
+     * capability point (native image, one-shot CLI / JS), not a startup-timing race.
      */
     @Test
     fun startupCost() {
@@ -56,11 +55,11 @@ class PerfScalingTest {
         val coldMs = timeOnce { inst.run() }                     // first call: lazy index build + first parse + eval
         val warmMs = (0 until 8).minOf { timeOnce { inst.run() } }   // steady-state per call
 
-        println("[startup] interpreter, 48-rule model (kernel codegen NOT measured — it is ahead-of-use):")
+        println("[startup] interpreter, 48-rule model (kernel preparation/compile is outside this interpreter-only measurement):")
         println("  engine build       = %.2f ms (lazy AST wrappers, no parse)".format(buildMs))
         println("  first validateFull = %.2f ms (one-time lazy index build + first parse)".format(coldMs))
         println("  steady-state/call  = %.2f ms".format(warmMs))
-        println("  → one-time startup overhead ≈ %.2f ms; the interpreter pays NO codegen step at all".format(buildMs + (coldMs - warmMs)))
+        println("  → one-time startup overhead ≈ %.2f ms; no generated-validator preparation".format(buildMs + (coldMs - warmMs)))
     }
 
     /**

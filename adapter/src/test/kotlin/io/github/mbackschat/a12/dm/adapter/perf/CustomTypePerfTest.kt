@@ -19,8 +19,8 @@ import kotlin.time.measureTime
  * formal-error HOT path — it MUST stay a monomorphic, JIT-inlined call on the concrete `PredefinedType`, NOT a
  * per-cell virtual/megamorphic dispatch or a per-cell allocation. This is the standing
  * [INTERPRETER-PERFORMANCE.md] "the hot path stays a monomorphic concrete call" rule made into a regression
- * gate: when the code-based field-type SPI lands (INTERPRETER-GAPS IG21), a naive "route every field type
- * through one `fun interface`" refactor would deoptimize the declarative path — and this test trips.
+ * gate: IF44's code-based field-type SPI is deliberately additive; a naive "route every field type through one
+ * `fun interface`" refactor would deoptimize the declarative path — and this test trips.
  *
  * Two guards (the [CharsetPerfTest] sibling pattern — pure engine, no kernel, JVM-only; the ratio/growth cancels
  * machine speed):

@@ -1,7 +1,7 @@
 // The dm-interpreter (docs/INTERPRETER-SPEC.md; impl in docs/INTERPRETER-ARCHITECTURE.md) — a Kotlin Multiplatform, native-safe runtime
 // evaluator for conditions + computations. ONE common engine, two targets (JVM + JS/Node), so it runs
 // in a GraalVM native image (no Groovy) and as a Node-hosted JS library — Node is the SUPPORTED JS runtime;
-// a browser host is an unverified, deferred capability (INTERPRETER-FINDINGS IF138). It is the publishable standalone artifact:
+// a browser host is an unverified, deferred capability (INTERPRETER-FINDINGS IF138). It is a publication-eligible standalone module:
 // it carries NO kernel/dmtool dependency — the kernel DIFFERENTIAL tests live in :adapter, not here, so
 // this module stays kernel-free even in test scope. That separation is enforced by `verifyInterpreterPurity`
 // below (proposal §8 — "separation by convention + linting, not a repo wall").
@@ -33,8 +33,9 @@ kotlin {
         }
         jsMain {
             dependencies {
-                // Arbitrary-precision decimal on JS (proposal §5's named choice), so JS matches the JVM's
-                // BigDecimal exactly (0.1 + 0.2 == 0.3). The ONE JS-platform dependency (an expect/actual shim).
+                // Arbitrary-precision decimal backend for JS. Exact small arithmetic is covered; full JVM
+                // MathContext(50) and plain-render parity remains IG89. The ONE JS-platform dependency
+                // (behind an expect/actual shim).
                 implementation npm('big.js', '6.2.2')
             }
         }
@@ -48,7 +49,7 @@ kotlin {
 
 // --- Separation by linting (proposal §8) ------------------------------------------------------------
 // The engine must never couple to the kernel or dmtool. A forbidden import fails the build, so the
-// kernel-free / native-safe / publishable-standalone property can't silently erode as the engine grows.
+// kernel-free / native-safe / publication-eligible standalone boundary can't silently erode as the engine grows.
 def verifyInterpreterPurity = tasks.register('verifyInterpreterPurity') {
     group = 'verification'
     description = 'Fail on a forbidden import so the kernel-free engine cannot couple to the kernel/dmtool/JVM.'

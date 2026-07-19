@@ -7,7 +7,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * §13 (IG64) — interpolating an UNSPECIFIED `$field.value$`: `0` for a NUMBER, empty string for other kinds
+ * IF121 — interpolating an UNSPECIFIED `$field.value$`: `0` for a NUMBER, empty string for other kinds
  * (matching the kernel's `getValueForDisplay`; the JVM-vs-kernel proof is `adapter.laws.UnspecifiedValue
  * InterpolationDiffTest`, this pins the same rendering on BOTH KMP targets). A FILLED value renders verbatim.
  */
