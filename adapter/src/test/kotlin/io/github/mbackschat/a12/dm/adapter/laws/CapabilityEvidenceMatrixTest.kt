@@ -44,6 +44,7 @@ class CapabilityEvidenceMatrixTest {
         COMPUTATION_CASCADE(Axis.COMPUTATION, "cascade (dependency order)"),
         COMPUTATION_MULTI_TARGET(Axis.COMPUTATION, "multiple computations for one target"),
         COMPUTATION_CROSS_ROOT(Axis.COMPUTATION, "cross-root target and pointer"),
+        COMPUTATION_BARE_GROUP_SCAN(Axis.COMPUTATION, "bare-group ordered computation scan"),
         COMPUTATION_TOLERANCE(Axis.COMPUTATION, "tolerance comparison"),
 
         CONFIG_TIME_ZONE(Axis.CONFIG, "timeZone (datetime arithmetic)"),
@@ -146,6 +147,10 @@ class CapabilityEvidenceMatrixTest {
         Capability(CapabilityId.COMPUTATION_CROSS_ROOT, Coverage.Evidence(
             MultiRootComputationPointerDiffTest::class,
             Static.Tri(MultiRootComputationPointerDiffTest::class),
+        )),
+        Capability(CapabilityId.COMPUTATION_BARE_GROUP_SCAN, Coverage.Evidence(
+            BareGroupComputeExactnessDiffTest::class,
+            Static.Tri(BareGroupComputeExactnessDiffTest::class),
         )),
         Capability(CapabilityId.COMPUTATION_TOLERANCE, Coverage.Evidence(
             ToleranceDiffTest::class,
@@ -332,10 +337,14 @@ class CapabilityEvidenceMatrixTest {
     }
 
     @Test
-    fun crossRootAndUnsupportedSafetyUseTheirActualLocks() {
+    fun specialistCapabilitiesUseTheirActualLocks() {
         val crossRoot = matrix.single { it.id == CapabilityId.COMPUTATION_CROSS_ROOT }.coverage as Coverage.Evidence
         assertEquals(MultiRootComputationPointerDiffTest::class, crossRoot.dynamic)
         assertEquals(MultiRootComputationPointerDiffTest::class, (crossRoot.static as Static.Tri).test)
+
+        val bareGroup = matrix.single { it.id == CapabilityId.COMPUTATION_BARE_GROUP_SCAN }.coverage as Coverage.Evidence
+        assertEquals(BareGroupComputeExactnessDiffTest::class, bareGroup.dynamic)
+        assertEquals(BareGroupComputeExactnessDiffTest::class, (bareGroup.static as Static.Tri).test)
 
         val safety = matrix.single { it.id == CapabilityId.PLATFORM_UNSUPPORTED_SAFETY }.coverage as Coverage.Excluded
         assertEquals(ValidateFullUnsupportedSafetyDiffTest::class, safety.lock)

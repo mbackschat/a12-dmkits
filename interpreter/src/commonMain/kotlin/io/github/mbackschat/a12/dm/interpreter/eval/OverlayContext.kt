@@ -93,6 +93,29 @@ internal class OverlayContext(
             }
         }
     }
+    override fun starScanCells(path: String, bindDepth: Int, declaredRange: Boolean): Sequence<ScanCell> =
+        d.starScanCells(path, bindDepth, declaredRange).map(::overlaidScanCell)
+
+    override fun containedFieldCells(groupPath: String, declaredRange: Boolean): Sequence<ScanCell> =
+        d.containedFieldCells(groupPath, declaredRange).map(::overlaidScanCell)
+
+    private fun overlaidScanCell(cell: ScanCell): ScanCell {
+        val key = cell.path to cell.reps
+        return when {
+            key in poisoned -> cell.copy(raw = null, baseState = CellState.INVALID)
+            key in cleared -> cell.copy(raw = null, baseState = CellState.EMPTY)
+            key in overlay -> cell.copy(raw = renderOverlayValue(cell.path, overlay.getValue(key)), baseState = CellState.FILLED)
+            else -> cell
+        }
+    }
+
+    private fun renderOverlayValue(path: String, value: Val): String? = when (value) {
+        is Val.Num -> value.v.display(minFracOf(path))
+        is Val.Txt -> value.v
+        is Val.Bool -> value.v.toString()
+        is Val.Range -> "${value.start}/${value.end}"
+        is Val.Unknown -> null
+    }
 
     // A `Having` filter / group-star iteration reads the cascade too: every row context is overlay-WRAPPED,
     // so the filter's reads (and the kept-row reads riding it — starOperandVals, filledFieldsValue, the fill

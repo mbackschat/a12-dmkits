@@ -62,4 +62,13 @@ internal class FormalResultCache(
             is FormalResult.Invalid -> result.failure
             is FormalResult.Unsupported -> throw UnsupportedConstructException(result.reason)
         }
+
+    /** Compute-scan twin of [failureAt]: an identity-preserving scan already carries the exact raw value and
+     *  repetitions, so no synthetic row context is needed for a filled cell. */
+    fun failureAt(path: String, reps: List<Int>, raw: String): FormalFailure? =
+        when (val result = resultAt(path, reps, raw)) {
+            FormalResult.Valid -> null
+            is FormalResult.Invalid -> result.failure
+            is FormalResult.Unsupported -> throw UnsupportedConstructException(result.reason)
+        }
 }

@@ -198,10 +198,25 @@ interface EvalContext {
         }
     }
 
-    /** The COMPUTE-mode scan states of a bare GROUP's contained fields, in DECLARATION order — the ordered read
-     *  stream a compute-mode group-fill quantifier scans lazily (one filled/empty read per cell; a [Document]
-     *  provides the precise declaration order + formal check). Empty by default. */
-    fun containedFieldStates(groupPath: String): List<CellState> = emptyList()
+    /** Identity-preserving COMPUTE scan of a starred field. [declaredRange] includes uninstantiated declared
+     *  repetitions in their exact position; false emits instantiated rows only. The general [Document] supplies
+     *  raw values lazily. */
+    fun starScanCells(path: String, bindDepth: Int = -1, declaredRange: Boolean = false): Sequence<ScanCell> {
+        if (declaredRange) {
+            throw UnsupportedConstructException("declared star scan needs the general Document context, not $this")
+        }
+        val cells = starCells(path, bindDepth)
+        val states = starScanStates(path, bindDepth)
+        return cells.indices.asSequence().map { i ->
+            ScanCell(path, cells[i].first, null, states[i])
+        }
+    }
+
+    /** Identity-preserving COMPUTE scan of a bare GROUP's contained fields in declaration order. The returned
+     *  sequence must be lazy: a deciding cell prevents every later lookup and formal check. [declaredRange]
+     *  interleaves each field's missing declared repetitions before advancing to the next field. */
+    fun containedFieldCells(groupPath: String, declaredRange: Boolean): Sequence<ScanCell> =
+        throw UnsupportedConstructException("bare-group compute scan needs the general Document context, not $this")
 }
 
 /** A cell's COMPUTE-mode read state ([EvalContext.cellState], IF85) — a visited [INVALID] cell poisons the
@@ -210,6 +225,15 @@ interface EvalContext {
  *  where these states map to the kernel predicates FILLED=`wertAngegeben`, EMPTY=not-specified,
  *  INVALID=`nichtPruefungsrelevant`. */
 enum class CellState { EMPTY, FILLED, INVALID }
+
+/** One identity-preserving cell event in a compute-mode fill scan. [baseState] is the document/overlay state;
+ *  the compute call's complete formal oracle may refine FILLED to INVALID before the event is consumed. */
+data class ScanCell(
+    val path: String,
+    val reps: List<Int>,
+    val raw: String?,
+    val baseState: CellState,
+)
 
 /**
  * The resolved state of an INDEX column ([EvalContext.indexColumn]): the [EvalContext.starCells]-aligned

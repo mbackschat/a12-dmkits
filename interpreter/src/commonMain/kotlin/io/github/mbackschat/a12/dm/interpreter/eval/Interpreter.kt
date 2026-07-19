@@ -84,6 +84,7 @@ class Interpreter(
     internal val cellRelevant = config.cellRelevant
     internal val starRelevant = config.starRelevant
     private val customRelevant = config.customRelevant
+    private val computeScanState = config.computeScanState
     internal val computeMode = config.computeMode
 
     /** The context a node resolves against: the enclosing (`outer`) iteration for a `$`-marked ref, else [ctx]. */
@@ -410,17 +411,16 @@ class Interpreter(
 
     /**
      * The lazy filled/empty cell stream of a fill quantifier's operands, in the kernel's read order — operands
-     * in list order, a star's rows in row order, a `Having` filter evaluated per row inside the scan (its reads
-     * can poison too). An INVALID visited cell throws ([PoisonedReadException]); [declaredTail] appends the
-     * DECLARED-range emptiness after a star/group's instantiated cells (an un-instantiated rep reads empty —
-     * no value read, so it cannot poison; kernel `alleEntitiesAngegeben`'s declared iteration).
+     * in list order, a star's rows in row order, a bare group's fields in declaration order with every field's
+     * declared repetitions interleaved before the next field, and a `Having` filter evaluated per row inside the
+     * scan (its reads can poison too). An INVALID visited cell throws ([PoisonedReadException]); an uninstantiated
+     * declared repetition reads empty without a value read, so it cannot poison.
      */
     private fun scanFilled(args: List<Expr>, declaredTail: Boolean): Sequence<Boolean> = sequence {
         for (a in args) when {
             a is Expr.Star && a.having == null -> {
                 val c = ctxOf(a)
-                for (state in c.starScanStates(a.path, a.bindDepth)) yield(filledOrPoison(a.path, state))
-                if (declaredTail && c.fillScope(a.path, isGroup = false).anyEmptyDeclared) yield(false)
+                for (cell in c.starScanCells(a.path, a.bindDepth, declaredTail)) yield(filledOrPoison(cell))
             }
             a is Expr.Star -> {
                 // A filtered star: the filter runs per row inside the scan (its reads poison row-correctly); an
@@ -437,8 +437,7 @@ class Interpreter(
                 // ordered getAllContainedFields scan (IF147). Was an eager whole-group tally that poisoned on ANY
                 // unknown regardless of a preceding decisive cell (the IF147 over-poison, probe-confirmed).
                 val c = ctxOf(a)
-                for (state in c.containedFieldStates(a.path)) yield(filledOrPoison(a.path, state))
-                if (declaredTail && c.fillScope(a.path, isGroup = true).anyEmptyDeclared) yield(false)
+                for (cell in c.containedFieldCells(a.path, declaredTail)) yield(filledOrPoison(cell))
             }
             else -> yield(
                 when (presenceTri(a)) {
@@ -449,6 +448,14 @@ class Interpreter(
                 },
             )
         }
+    }
+
+    private fun filledOrPoison(cell: ScanCell): Boolean = when (
+        if (cell.baseState == CellState.FILLED) computeScanState?.invoke(cell) ?: cell.baseState else cell.baseState
+    ) {
+        CellState.INVALID -> throw PoisonedReadException(cell.path)
+        CellState.FILLED -> true
+        CellState.EMPTY -> false
     }
 
     private fun filledOrPoison(path: String, state: CellState): Boolean = when (state) {

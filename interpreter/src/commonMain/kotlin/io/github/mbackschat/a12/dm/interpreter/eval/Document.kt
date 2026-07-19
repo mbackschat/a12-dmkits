@@ -173,6 +173,8 @@ class Document(internal val config: DocumentConfig) {
 
         /** group path → its declared field paths, recursive (the GROUP-star aggregate expansion, IF99). */
         val containedFieldsByGroup: MutableMap<String, List<String>> = HashMap()
+        /** group path → its declared field paths in model declaration order, cached once for compute scans. */
+        val containedFieldsInDeclarationOrderByGroup: MutableMap<String, List<String>> = HashMap()
     }
 
     private var cachedIndex: Index? = null
@@ -599,6 +601,14 @@ class Document(internal val config: DocumentConfig) {
             }
         }
 
+        override fun starScanCells(path: String, bindDepth: Int, declaredRange: Boolean): Sequence<ScanCell> {
+            val fieldParts = partsOf(path)
+            val common = commonPrefixLen(fieldParts, partsOf(group))
+            val reps = if (declaredRange) declaredCellReps(fieldParts, common)
+                else starRows(path, bindDepth).asSequence()
+            return reps.map { scanCell(path, it) }
+        }
+
         override fun starOmission(path: String, bindDepth: Int): Boolean {
             val repGroup = parentGroup(path)
             val rows = starRows(path, bindDepth)
@@ -698,27 +708,61 @@ class Document(internal val config: DocumentConfig) {
             return FillScope(t, f, n, unknown, allFilled, anyEmpty)
         }
 
-        // The contained fields' instantiated cell states in DECLARATION order (`kinds` is insertion-ordered from
-        // the model's field order) — the ordered stream a COMPUTE-mode bare-group fill quantifier scans, one lazy
-        // filled/empty read per cell (an INVALID one poisons in Interpreter.scanFilled), so an operator's
-        // early-stop skips a later invalid cell — the kernel's ordered getAllContainedFields scan (IF147). Unlike
-        // [fillScope]'s sorted, eager tally, this preserves declaration order and does not itself trigger a poison.
-        override fun containedFieldStates(groupPath: String): List<CellState> {
-            val prefix = "$groupPath/"
-            val out = ArrayList<CellState>()
-            for (field in kinds.keys) {
-                if (!field.startsWith(prefix)) continue
-                val parts = partsOf(field)
-                val common = commonPrefixLen(parts, partsOf(group))
-                for (v in instCells(field, parts, common)) {
-                    out += when {
-                        v == null -> CellState.EMPTY
-                        v is Val.Unknown -> CellState.INVALID
-                        else -> CellState.FILLED
+        // The contained fields in declaration order, then each field's repetitions in row order. Both the field
+        // plan and every cell lookup are lazy: a quantifier witness prevents all later reads/allocation. The
+        // declared-range form interleaves a field's uninstantiated repetitions BEFORE the next field (RV04-1).
+        override fun containedFieldCells(groupPath: String, declaredRange: Boolean): Sequence<ScanCell> = sequence {
+            val fields = index().containedFieldsInDeclarationOrderByGroup.getOrPut(groupPath) {
+                val prefix = "$groupPath/"
+                kinds.keys.filter { it.startsWith(prefix) }
+            }
+            for (field in fields) {
+                val fieldParts = partsOf(field)
+                val common = commonPrefixLen(fieldParts, partsOf(group))
+                val reps = if (declaredRange) declaredCellReps(fieldParts, common)
+                    else instantiatedCellReps(field, fieldParts, common)
+                for (r in reps) yield(scanCell(field, r))
+            }
+        }
+
+        private fun scanCell(path: String, reps: List<Int>): ScanCell {
+            val raw = valueAt(path, reps)?.value
+            val state = when {
+                raw == null -> CellState.EMPTY
+                formallyInvalid(path, raw) -> CellState.INVALID
+                else -> CellState.FILLED
+            }
+            return ScanCell(path, reps, raw, state)
+        }
+
+        private fun instantiatedCellReps(
+            field: String,
+            fieldParts: List<String>,
+            common: Int,
+        ): Sequence<List<Int>> {
+            val repeated = (common until fieldParts.size - 1).any {
+                "/" + fieldParts.take(it + 1).joinToString("/") in declaredReps
+            }
+            return if (repeated) starRows(field).asSequence() else sequenceOf(reps(field))
+        }
+
+        /** Full declared cell identities for one field, scoped to this row and yielded repetition-major. */
+        private fun declaredCellReps(fieldParts: List<String>, common: Int): Sequence<List<Int>> = sequence {
+            suspend fun SequenceScope<List<Int>>.visit(level: Int, prefixReps: List<Int>) {
+                if (level == fieldParts.size) {
+                    yield(prefixReps)
+                    return
+                }
+                val prefix = "/" + fieldParts.take(level + 1).joinToString("/")
+                when {
+                    level < common -> visit(level + 1, prefixReps + rowReps[level])
+                    prefix in declaredReps -> {
+                        for (rep in 1..declaredReps.getValue(prefix)) visit(level + 1, prefixReps + rep)
                     }
+                    else -> visit(level + 1, prefixReps + 1)
                 }
             }
-            return out
+            visit(0, emptyList())
         }
 
         /** The INSTANTIATED cells of a descendant [field]: one cell (its scope reps) when no repeatable level lies
@@ -886,6 +930,10 @@ class Document(internal val config: DocumentConfig) {
         // loud rather than risk a silently-wrong answer.
         override fun star(path: String, bindDepth: Int): List<Val> = unsupportedInParallel()
         override fun starOmission(path: String, bindDepth: Int): Boolean = unsupportedInParallel()
+        override fun starScanCells(path: String, bindDepth: Int, declaredRange: Boolean): Sequence<ScanCell> =
+            unsupportedInParallel()
+        override fun containedFieldCells(groupPath: String, declaredRange: Boolean): Sequence<ScanCell> =
+            unsupportedInParallel()
         private fun unsupportedInParallel(): Nothing =
             throw UnsupportedConstructException("an aggregate/filter inside a parallel iteration is not modeled")
     }

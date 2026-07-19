@@ -59,6 +59,11 @@ class EvalConfig(
      *  caller's relevant entities + the auto-added global fields, wildcards preserved. So a relevance-aware
      *  custom condition can return false when its fields are not relevant (IF38). */
     val customRelevant: Set<FieldPointer>? = null,
+    /** Compute-only refinement for an identity-preserving [ScanCell]. The general document supplies the raw
+     *  presence/format state; the computation call supplies its complete call-local formal oracle here so
+     *  charset, custom-type, declared-constraint, and over-limit failures poison group/star scans exactly like
+     *  direct reads. Null outside the computation engine. */
+    val computeScanState: ((ScanCell) -> CellState)? = null,
     /**
      * COMPUTE-mode evaluation semantics (IF85 — the kernel's calculation path, which differs from validation):
      * - a read of a formally-invalid cell POISONS the computation instance ([PoisonedReadException]) instead of

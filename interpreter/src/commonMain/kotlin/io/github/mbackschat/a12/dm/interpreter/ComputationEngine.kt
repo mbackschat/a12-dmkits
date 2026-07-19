@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.OverlayContext
 import io.github.mbackschat.a12.dm.interpreter.eval.OverlayViews
 import io.github.mbackschat.a12.dm.interpreter.eval.PoisonedReadException
+import io.github.mbackschat.a12.dm.interpreter.eval.CellState
 import io.github.mbackschat.a12.dm.interpreter.eval.UNKNOWN_REP
 import io.github.mbackschat.a12.dm.interpreter.eval.renderDateToFormat
 import io.github.mbackschat.a12.dm.interpreter.eval.storedComputedNumber
@@ -108,8 +109,23 @@ internal class ComputationEngine(
         // The compute-invariant config, built once for every instance's Interpreter (computeMode; no
         // CustomCondition / relevance seams on the compute path). Only the per-instance `invalid` poison gate
         // varies (it closes over the instance context), so it stays an Interpreter constructor arg.
-        val computeConfig = EvalConfig(clock, model.baseYear, model.indexFields, timeZone = model.timeZone,
-            predefinedTypes = predefinedTypes, customFieldTypes = customFieldTypes, computeMode = true)
+        val computeConfig = EvalConfig(
+            clock,
+            model.baseYear,
+            model.indexFields,
+            timeZone = model.timeZone,
+            predefinedTypes = predefinedTypes,
+            customFieldTypes = customFieldTypes,
+            computeScanState = { cell ->
+                when {
+                    cell.baseState != CellState.FILLED -> cell.baseState
+                    cell.raw == null -> CellState.EMPTY
+                    formalResults.failureAt(cell.path, cell.reps, cell.raw) != null -> CellState.INVALID
+                    else -> CellState.FILLED
+                }
+            },
+            computeMode = true,
+        )
         // A FILLED operand that is "not check-relevant" — formally invalid — makes a computation over it
         // non-evaluable (IF76, generalized IF78; poison semantics IF85). The gate is the SAME
         // operand-invalidity test full validation uses ([operandNotCheckRelevant] → [FormalResultCache]),
@@ -372,9 +388,16 @@ internal class ComputationEngine(
      *  refs (incl. starred and `Having`-filter refs, so a dependency through an aggregate over a computed field
      *  is ordered) plus each precondition's + the common precondition's FULL refs ([condDepRefs] — a
      *  precondition's quantifier over a computed field is a dependency too). */
-    private fun computationDepRefs(parsed: ParsedComputation): List<String> =
+    private fun computationDepRefs(parsed: ParsedComputation): List<String> = (
         (parsed.commonPrecondition?.let { condDepRefs(it) } ?: emptyList()) +
             parsed.alternatives.flatMap {
                 (it.precondition?.let { p -> condDepRefs(p) } ?: emptyList()) + referencedFieldPaths(it.operation)
             }
+        ).flatMap(::expandGroupDependency)
+
+    /** A bare-group fill predicate depends on every computed target contained by that group, not on the
+     *  non-field group path itself. Expansion here serves both whole-model ordering and computeField closure. */
+    private fun expandGroupDependency(path: String): List<String> =
+        if (path in model.kinds) listOf(path)
+        else model.kinds.keys.filter { it.startsWith("$path/") }
 }
