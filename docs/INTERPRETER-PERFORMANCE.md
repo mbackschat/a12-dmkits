@@ -355,6 +355,30 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 *The current headline + the naive baseline it improved on. The intermediate optimization-journey entries were collapsed away (2026-06-27) — the *method* and the *lessons* live above (the optimization catalog, the kernel-technique map, the biases-to-re-check); this log keeps only the **current** measures and the **pre-optimization yardstick** they're read against. Dates are when each axis was last measured.*
 
+### Checkpoint 2026-07-19 — IF143 compute-overlay scenarios vs the kernel (against-kernel scaling curve)
+
+After the IF143 per-step overlay-view cache landed, measured both compute-overlay scenarios against BOTH kernel baselines at N = 200 / 800 / 3200 Rows (Apple Silicon, `runScenario` warmup 10 / iters 6, codegen primed out; `compute` op; interp == groovy == java asserted before timing). `ratioJava` = interp / kernel-**Java** (the fair, Groovy-tax-free comparator; < 1 = interp faster).
+
+| scenario | N | interp | groovy | java | ratioJava |
+|---|--:|--:|--:|--:|--:|
+| **CO index** (`[Src For "K1"]` under an active overlay) | 200 | 2.26 ms | 18.50 ms | 13.97 ms | **0.16** |
+| | 800 | 5.68 ms | 44.72 ms | 32.85 ms | **0.17** |
+| | 3200 | 13.07 ms | 164.99 ms | 147.68 ms | **0.09** |
+| **CO correlation** (`$`-equality self-correlation under an active overlay) | 200 | 11.16 ms | 16.27 ms | 13.44 ms | **0.83** |
+| | 800 | 36.66 ms | 55.73 ms | 48.68 ms | **0.75** |
+| | 3200 | 166.40 ms | 263.53 ms | 241.20 ms | **0.69** |
+
+Per-4×-Rows growth factors (linear ⟹ ×4, quadratic ⟹ ×16):
+
+| step | interp | groovy | java |
+|---|--:|--:|--:|
+| CO index 200→800 | ×2.51 | ×2.42 | ×2.35 |
+| CO index 800→3200 | **×2.30** | ×3.69 | ×4.50 |
+| CO correlation 200→800 | ×3.29 | ×3.43 | ×3.62 |
+| CO correlation 800→3200 | **×4.54** | ×4.73 | ×4.95 |
+
+**Reading.** (1) The **interpreter is faster than kernel-Java across the whole curve** — the index scenario by **~6–11×** (13 ms vs 148 ms at 3200), the correlation scenario by **~1.2–1.5×** — and faster than kernel-Groovy by more. (2) The **index path is linear-or-better** and its top-step growth (×2.30) beats kernel-Java's (×4.50), confirming the IF143 cache holds the index-column view O(rows). (3) The **correlation path's mild super-linearity (~×4.5–5 per ×4 Rows) is INHERENT and SHARED by all three engines** — kernel-Java shows ×4.95, kernel-Groovy ×4.73, interp ×4.54 — i.e. the interpreter tracks the kernel's own complexity class here and is *no worse than the kernel* (the IG77/IG98 criterion for permitting inherently-pairwise growth). This is direct evidence the IF143 correlation cache being "roughly neutral" is fine: the `$`-self-correlation compute is not a cliff the interpreter uniquely pays.
+
 ### Evidence inspection 2026-07-18 — current Node scale report, not NFR-S/P certification
 
 The existing `jsNodeTest` report for the current build records B1 per-row at **140.39 ms** and B2 star-aggregate at **60.88 ms** for 10,000 rows. This is useful plausibility evidence for the 350 ms initial first-answer ceiling, 250 ms design target, and 1,000 ms warm-throughput bar, but it is one shared test process with engine/document construction outside the clock—not a 50-process nearest-rank p95 run or the 2,500→10,000 paired growth protocol. It therefore certifies none of NFR-S2/P1 by itself.
