@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -132,27 +133,31 @@ class ModelReaderTest {
     }
 
     @Test
-    void relativizesAMountedIncludedRuleWithADescendingAbsolutePath() {
-        // An included rule naming the included root group ABSOLUTELY ([/Benefits/Coverage]) is rewritten to its
-        // relative post-mount form ([Coverage], depth 0) — so it evaluates and needs NO relativization signal.
+    void remapsAMountedIncludedRuleWithADescendingAbsolutePath() {
+        // An included rule naming the included root group ABSOLUTELY ([/Benefits/Coverage]) is remapped onto its
+        // post-mount location ([/Policy/Benefits/Coverage]) — so it evaluates and needs NO relativization signal.
         ModelReader reader = ModelReader.expand(policyIncludingBenefits(false), absoluteBenefitsResolver());
         assertTrue(reader.includedRulesNeedingRelativization().isEmpty(),
-                () -> "the absolute ref is relativized, not flagged: " + reader.includedRulesNeedingRelativization());
-        assertFalse(reader.toJson().contains("[/Benefits/Coverage]"), "the absolute reference is gone from the condition");
-        assertTrue(reader.toJson().contains("[Coverage] < 0"), () -> "the condition is now relative: " + reader.toJson());
+                () -> "the absolute ref is remapped, not flagged: " + reader.includedRulesNeedingRelativization());
+        assertFalse(reader.toJson().contains("[/Benefits/Coverage]"), "the pre-mount absolute reference is gone");
+        assertTrue(reader.toJson().contains("[/Policy/Benefits/Coverage] < 0"),
+                () -> "the condition now names the post-mount location: " + reader.toJson());
     }
 
     @Test
-    void flagsAResidualBareRootGroupAbsoluteReferenceItCannotRelativize() {
-        // A BARE /Benefits group reference (no descent) is a residual the relativizer leaves as-is — still flagged
-        // so the consumer refuses rather than mis-evaluate.
+    void remapsAMountedBareRootGroupAbsoluteReference() {
+        // A BARE /Benefits group reference (no descent) is remapped to the mount group /Policy/Benefits — so it
+        // evaluates and is no longer flagged (the residual is only a truly-unmappable absolute).
         ModelReader reader = ModelReader.expand(policyIncludingBenefits(false), bareGroupRefBenefitsResolver());
-        assertEquals(List.of("CoveragePositive"), reader.includedRulesNeedingRelativization());
+        assertTrue(reader.includedRulesNeedingRelativization().isEmpty(),
+                () -> "the bare group ref is remapped, not flagged: " + reader.includedRulesNeedingRelativization());
+        assertTrue(reader.toJson().contains("GroupFilled(/Policy/Benefits)"),
+                () -> "the bare ref names the post-mount mount group: " + reader.toJson());
     }
 
     @Test
     void excludeRulesDropsMountedIncludedRulesAndClearsTheRelativizationSignal() {
-        // The bare-group-ref rule WOULD be flagged (a residual); excludeRules drops it, so the signal is cleared.
+        // excludeRules drops the mounted rule entirely, so nothing is carried and nothing can be flagged.
         ModelReader reader = ModelReader.expand(policyIncludingBenefits(true), bareGroupRefBenefitsResolver());
         assertTrue(reader.paths().contains("/Policy/Benefits/Coverage"), "the mounted field survives");
         assertTrue(reader.includedRulesNeedingRelativization().isEmpty(),
@@ -161,47 +166,43 @@ class ModelReaderTest {
     }
 
     @Test
-    void relativizesRootGroupAbsolutePathsByDepthLeavingEverythingElse() {
-        // /RootGroup/rest at depth D → ("../" * D) + rest — the descending absolute forms the rewriter handles:
-        assertEquals("[Coverage] < 0",
-                ModelReader.relativizeRootGroupAbsolutePaths("[/Benefits/Coverage] < 0", "Benefits", 0));
-        assertEquals("[../Coverage] < 0",
-                ModelReader.relativizeRootGroupAbsolutePaths("[/Benefits/Coverage] < 0", "Benefits", 1));
-        assertEquals("Sum(Lines*/Amount) > 0",
-                ModelReader.relativizeRootGroupAbsolutePaths("Sum(/Benefits/Lines*/Amount) > 0", "Benefits", 0));
-        assertEquals("Max([a], ../../Cap) > 0",
-                ModelReader.relativizeRootGroupAbsolutePaths("Max([a], /Benefits/Cap) > 0", "Benefits", 2));
-        // left verbatim — a division, a relative ref, a DIFFERENT root, a BARE group ref, an OUTER absolute:
-        assertEquals("[Total] / [Count] > 1",
-                ModelReader.relativizeRootGroupAbsolutePaths("[Total] / [Count] > 1", "Benefits", 0));
-        assertEquals("[Coverage] < 0",
-                ModelReader.relativizeRootGroupAbsolutePaths("[Coverage] < 0", "Benefits", 3));
-        assertEquals("[/Other/x] == True",
-                ModelReader.relativizeRootGroupAbsolutePaths("[/Other/x] == True", "Benefits", 0));
-        assertEquals("GroupFilled(/Benefits)",
-                ModelReader.relativizeRootGroupAbsolutePaths("GroupFilled(/Benefits)", "Benefits", 0));
-        assertEquals("[$/Benefits/x] == True",
-                ModelReader.relativizeRootGroupAbsolutePaths("[$/Benefits/x] == True", "Benefits", 1));
+    void remapsAbsolutePathsByPrefixLeavingEverythingElse() {
+        // SINGLE_RG: /Benefits -> /Policy/Cover. Every included absolute ref is remapped onto that prefix — a
+        // descending path, a bare group ref, and a $-outer ref are handled uniformly; non-included tokens stay.
+        Map<String, String> single = Map.of("/Benefits", "/Policy/Cover");
+        assertEquals("[/Policy/Cover/Coverage] < 0", remap("[/Benefits/Coverage] < 0", single));
+        assertEquals("Sum(/Policy/Cover/Lines*/Amount) > 0", remap("Sum(/Benefits/Lines*/Amount) > 0", single));
+        assertEquals("Max([a], /Policy/Cover/Cap) > 0", remap("Max([a], /Benefits/Cap) > 0", single));
+        assertEquals("GroupFilled(/Policy/Cover)", remap("GroupFilled(/Benefits)", single));    // bare group ref
+        assertEquals("[$/Policy/Cover/x] == True", remap("[$/Benefits/x] == True", single));    // outer-correlated
+        // left verbatim — a division, a relative ref:
+        assertEquals("[Total] / [Count] > 1", remap("[Total] / [Count] > 1", single));
+        assertEquals("[Coverage] < 0", remap("[Coverage] < 0", single));
+        // MODEL_ROOT: the top group keeps its name under the mount (/Benefits -> /Policy/Extras/Benefits).
+        assertEquals("[/Policy/Extras/Benefits/Coverage] < 0",
+                remap("[/Benefits/Coverage] < 0", Map.of("/Benefits", "/Policy/Extras/Benefits")));
     }
 
-    // ── the absolute-path detector (the relativization trigger) ──────────────────────────────────────────
+    private static String remap(String condition, Map<String, String> prefixMap) {
+        return ModelReader.remapAbsolutePaths(condition, prefixMap).text();
+    }
+
+    // ── the residual detector (the refusal trigger) ──────────────────────────────────────────────────────
 
     @Test
-    void detectsAbsolutePathReferencesButNotDivisionOrDescentOrRelative() {
-        // absolute references — a '/' that STARTS a reference (after [ ( , $, or at the start):
-        assertTrue(ModelReader.conditionHasAbsolutePathRef("[/Benefits/Coverage] < 0"), "bracketed absolute");
-        assertTrue(ModelReader.conditionHasAbsolutePathRef("Sum(/Benefits/Lines*/Amount) > 0"), "function-arg absolute");
-        assertTrue(ModelReader.conditionHasAbsolutePathRef("Max(a, /Benefits/Cap) > 0"), "second-arg absolute");
-        assertTrue(ModelReader.conditionHasAbsolutePathRef("[$/Benefits/Coverage] == True"), "outer-correlated absolute");
-        assertTrue(ModelReader.conditionHasAbsolutePathRef("/Benefits/Coverage > 0"), "leading absolute");
-        assertTrue(ModelReader.conditionHasAbsolutePathRef("Sum( /Benefits/Amount ) > 0"), "absolute after whitespace");
-        // NOT absolute — division, descent inside a relative path, relative/outer-relative, RuleGroup:
-        assertFalse(ModelReader.conditionHasAbsolutePathRef("[Coverage] < 0"), "relative-downward");
-        assertFalse(ModelReader.conditionHasAbsolutePathRef("[Total] / [Count] > 1"), "division after ]");
-        assertFalse(ModelReader.conditionHasAbsolutePathRef("FieldFilled(Address/Street)"), "descent in a relative path");
-        assertFalse(ModelReader.conditionHasAbsolutePathRef("[../Coverage] < 0"), "relative-upward");
-        assertFalse(ModelReader.conditionHasAbsolutePathRef("[$Sibling/Flag] == True"), "outer-correlated relative");
-        assertFalse(ModelReader.conditionHasAbsolutePathRef("GroupFilled(RuleGroup) and FieldNotFilled(name)"), "no path at all");
+    void flagsAnUnmappableAbsoluteAsResidualButNotAMappedRefDivisionDescentOrRelative() {
+        Map<String, String> map = Map.of("/Benefits", "/Policy/Cover");
+        // an absolute ref naming NO mounted top-group is a residual (left verbatim, flagged):
+        assertTrue(ModelReader.remapAbsolutePaths("[/Other/x] == True", map).hadResidual(), "unmapped bracketed absolute");
+        assertTrue(ModelReader.remapAbsolutePaths("Sum(/Other/Amount) > 0", map).hadResidual(), "unmapped function-arg absolute");
+        assertTrue(ModelReader.remapAbsolutePaths("[$/Other/x] == True", map).hadResidual(), "unmapped outer absolute");
+        // a mapped absolute, a division, a descent inside a relative path, relative/outer-relative, RuleGroup — none:
+        assertFalse(ModelReader.remapAbsolutePaths("[/Benefits/Coverage] < 0", map).hadResidual(), "mapped absolute");
+        assertFalse(ModelReader.remapAbsolutePaths("[Total] / [Count] > 1", map).hadResidual(), "division after ]");
+        assertFalse(ModelReader.remapAbsolutePaths("FieldFilled(Address/Street)", map).hadResidual(), "descent in a relative path");
+        assertFalse(ModelReader.remapAbsolutePaths("[../Coverage] < 0", map).hadResidual(), "relative-upward");
+        assertFalse(ModelReader.remapAbsolutePaths("[$Sibling/Flag] == True", map).hadResidual(), "outer-correlated relative");
+        assertFalse(ModelReader.remapAbsolutePaths("GroupFilled(RuleGroup) and FieldNotFilled(name)", map).hadResidual(), "no path");
     }
 
     // ── failure modes ─────────────────────────────────────────────────────────────────────────────────────

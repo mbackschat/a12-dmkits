@@ -67,10 +67,11 @@ public final class ModelReader {
             .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
             .build();
 
-    /** Included rules/computations we mounted but did NOT rewrite (see {@link #includedRulesNeedingRelativization}). */
+    /** The expanded, self-contained, name-path-keyed DM-JSON tree. */
     private final ObjectNode expanded;
     private final Map<String, JsonNode> byPath;
     private final List<String> locales;
+    /** Mounted included rules/computations whose condition kept an unmappable absolute (see the accessor). */
     private final List<String> includedRulesNeedingRelativization;
     private final List<ComputationInfo> computations;
 
@@ -123,12 +124,13 @@ public final class ModelReader {
     }
 
     /**
-     * The name-paths of the rules/computations mounted from an <b>included</b> model that this reader carried
-     * <em>verbatim</em> — i.e. whose conditions the kernel would relativize (the vanished included-root-group
-     * name) but the reader does not (yet) rewrite. Empty for the common case (rules live on the base model,
-     * referencing mounted fields — those need no rewrite). A consumer that must not silently mis-evaluate
-     * (the CLI eval pre-expansion, A4 / IF122; remaining legal reference shapes are IG87) refuses when this is
-     * non-empty rather than feed possibly-wrong conditions to the engine.
+     * The name-paths of the rules/computations mounted from an <b>included</b> model whose condition still carries
+     * an absolute reference the mount could <b>not</b> remap — an absolute first segment naming no mounted
+     * top-group (a residual the move-remap does not cover). Empty for every legal include: relative references
+     * resolve against the post-mount group unchanged, and every absolute reference to an included entity
+     * (descending, bare-group, {@code $}-outer, or MODEL_ROOT) is remapped onto its post-mount location. A
+     * consumer that must not silently mis-evaluate (the CLI eval pre-expansion, A4 / IF122) refuses when this is
+     * non-empty rather than feed a possibly-wrong condition to the engine.
      */
     public List<String> includedRulesNeedingRelativization() {
         return includedRulesNeedingRelativization;
@@ -164,7 +166,7 @@ public final class ModelReader {
             importTypeDefs(root, resolver, typeDefs, visiting);
         }
         JsonNode rootGroups = content.path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS);
-        expandElements(rootGroups, root, resolver, typeDefs, visiting, warnings);
+        expandElements(rootGroups, root, resolver, typeDefs, visiting, warnings, "");
     }
 
     /** Merge {@code content.typeDefinitions} into {@code typeDefs} (keyed by id; first wins — the kernel dedups
@@ -199,9 +201,11 @@ public final class ModelReader {
         }
     }
 
-    /** Walk an {@code elements}/{@code rootGroups} array, expanding each mount group in place. */
+    /** Walk an {@code elements}/{@code rootGroups} array, expanding each mount group in place. {@code parentPath}
+     *  is the absolute name-path of the container whose elements these are (empty at the model root), so a mount's
+     *  own absolute path is known — the anchor the condition remap rewrites included references onto. */
     private static void expandElements(JsonNode elements, ObjectNode baseRoot, ModelResolver resolver,
-            Map<String, JsonNode> typeDefs, Set<String> visiting, List<String> warnings) {
+            Map<String, JsonNode> typeDefs, Set<String> visiting, List<String> warnings, String parentPath) {
         if (!elements.isArray()) {
             return;
         }
@@ -210,14 +214,15 @@ public final class ModelReader {
                 continue;
             }
             ObjectNode body = (ObjectNode) groupNode.path(ElementType.GROUP.wireName());
+            String groupPath = parentPath + "/" + groupNode.path(DmKeys.NAME).asText();
             String alias = body.path(DmKeys.MODEL_ALIAS).asText("");
             JsonNode existing = body.path(DmKeys.ELEMENTS);
             // A modelAlias group is an unexpanded mount only while its elements are empty — the kernel's
             // idempotency guard (an already-mounted group is not re-expanded).
             if (!alias.isEmpty() && (existing.isMissingNode() || existing.isEmpty())) {
-                mount(groupNode, body, alias, baseRoot, resolver, typeDefs, visiting, warnings);
+                mount(groupNode, body, alias, baseRoot, resolver, typeDefs, visiting, warnings, groupPath);
             } else {
-                expandElements(existing, baseRoot, resolver, typeDefs, visiting, warnings);
+                expandElements(existing, baseRoot, resolver, typeDefs, visiting, warnings, groupPath);
             }
         }
     }
@@ -225,7 +230,8 @@ public final class ModelReader {
     /** Mount the model referenced by {@code alias} into {@code mountGroup}: append the included root group's
      *  children (SINGLE_RG) or every top-level group (MODEL_ROOT), after fully expanding the included model. */
     private static void mount(ObjectNode mountGroup, ObjectNode mountBody, String alias, ObjectNode baseRoot,
-            ModelResolver resolver, Map<String, JsonNode> typeDefs, Set<String> visiting, List<String> warnings) {
+            ModelResolver resolver, Map<String, JsonNode> typeDefs, Set<String> visiting, List<String> warnings,
+            String mountPath) {
         String reference = referenceForAlias(baseRoot, alias);
         if (visiting.contains(reference)) {
             throw new IllegalArgumentException("include cycle detected at reference \"" + reference + "\"");
@@ -241,16 +247,28 @@ public final class ModelReader {
         ArrayNode includedRootGroups = (ArrayNode) includedRoot.path(DmKeys.CONTENT)
                 .path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS);
 
+        // The old (included-model) absolute-path prefix → its new post-mount absolute prefix — the kernel's
+        // move-remap (RulesAndComputationsAdjusterVisitor): a mounted condition's references to included entities
+        // are rewritten onto their new location. SINGLE_RG replaces the vanishing root group with the mount path;
+        // MODEL_ROOT keeps each top group's name under the mount.
         List<JsonNode> toMount = new ArrayList<>();
-        String rootGroupName = null;   // SINGLE_RG only: the vanishing included-root-group name the relativizer strips
+        Map<String, String> prefixMap = new LinkedHashMap<>();
         if (modelRoot) {
-            // MODEL_ROOT: every top-level group becomes a child of the mount (keeping its own name).
-            includedRootGroups.forEach(toMount::add);
+            for (JsonNode top : includedRootGroups) {
+                toMount.add(top);
+                String name = top.path(DmKeys.NAME).asText();
+                if (!name.isEmpty()) {
+                    prefixMap.put("/" + name, mountPath + "/" + name);
+                }
+            }
         } else if (!includedRootGroups.isEmpty()) {
             // SINGLE_RG (default): the single root group's children become the mount's children; the root group
-            // itself is discarded — only its usageType is copied onto the mount group.
+            // itself is discarded (its name maps to the mount path) — only its usageType is copied onto the mount.
             JsonNode includedRootGroup = includedRootGroups.get(0);
-            rootGroupName = includedRootGroup.path(DmKeys.NAME).asText();
+            String rootGroupName = includedRootGroup.path(DmKeys.NAME).asText();
+            if (!rootGroupName.isEmpty()) {
+                prefixMap.put("/" + rootGroupName, mountPath);
+            }
             JsonNode usageType = includedRootGroup.path(ElementType.GROUP.wireName()).path("usageType");
             if (!usageType.isMissingNode()) {
                 mountBody.set("usageType", usageType);
@@ -263,13 +281,10 @@ public final class ModelReader {
             ObjectNode kept = filterRulesAndComputations((ObjectNode) child, excludeRules, excludeComputations);
             if (kept != null) {
                 mountElements.add(kept);
-                // Relativize the included rules/computations that name the (now-vanished) root group by an
-                // absolute path — SINGLE_RG only; a direct child is at depth 0 below the mount. MODEL_ROOT
-                // absolute refs (which keep the top-group name) are a narrow residual, left for the refusal path.
-                if (!modelRoot && rootGroupName != null && !rootGroupName.isEmpty()) {
-                    relativizeMountedConditions(kept, rootGroupName, 0);
-                }
-                recordIncludedRulesNeedingRelativization(kept, warnings);
+                // Remap every absolute included reference onto its post-mount location; a reference this cannot map
+                // (an absolute first segment naming no mounted top-group) is left verbatim and its element recorded
+                // so the consumer refuses rather than mis-evaluate.
+                remapMountedConditions(kept, prefixMap, warnings);
             }
         }
         // The include directives are now consumed — drop them so the expanded group is a plain, self-contained
@@ -319,136 +334,87 @@ public final class ModelReader {
         return node;
     }
 
-    /** Record a mounted included rule/computation ONLY if its condition <b>still</b> carries an absolute-path
-     *  reference AFTER {@link #relativizeMountedConditions} has run — i.e. a <b>residual</b> the relativizer does
-     *  not rewrite: a bare {@code /RootGroup} group reference, an outer-correlated {@code [$/…]}, or a MODEL_ROOT
-     *  include's absolute ref. The common SINGLE_RG {@code /RootGroup/rest} reference is rewritten to its relative
-     *  post-mount form and needs no signal; every relative reference already resolves against the rule's post-mount
-     *  group unchanged (KERNEL-FINDINGS "DocumentModel expansion"). A recorded residual makes a correctness-critical
-     *  consumer refuse rather than mis-evaluate (A4 / IF122; remaining legal reference shapes are IG87). */
-    private static void recordIncludedRulesNeedingRelativization(JsonNode node, List<String> warnings) {
+    // ── included-rule remap (the kernel's include-mount condition rewrite — RulesAndComputationsAdjusterVisitor) ──
+
+    /** Remap every absolute included reference in a mounted rule's / computation's condition(s) onto its
+     *  post-mount location, per {@code prefixMap}. An absolute reference the map cannot rewrite (a first segment
+     *  naming no mounted top-group) is left verbatim and its element recorded in {@code warnings}, so a
+     *  correctness-critical consumer refuses rather than mis-evaluate (A4 / IF122). Recurses into groups. */
+    private static void remapMountedConditions(JsonNode node, Map<String, String> prefixMap, List<String> warnings) {
         ElementType type = ElementType.of(node);
         if (type == ElementType.RULE) {
-            if (conditionHasAbsolutePathRef(node.path(ElementType.RULE.wireName()).path("errorCondition").asText(""))) {
+            if (remapConditionKey((ObjectNode) node.path(ElementType.RULE.wireName()), "errorCondition", prefixMap)) {
                 warnings.add(node.path(DmKeys.NAME).asText());
             }
-        } else if (type == ElementType.COMPUTATION) {
-            if (computationHasAbsolutePathRef(node.path(ElementType.COMPUTATION.wireName()))) {
-                warnings.add(node.path(DmKeys.NAME).asText());
-            }
-        } else if (type == ElementType.GROUP) {
-            node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)
-                    .forEach(child -> recordIncludedRulesNeedingRelativization(child, warnings));
-        }
-    }
-
-    /** Whether any of a computation's condition texts — the common precondition and each alternative's
-     *  precondition/operation — carries an absolute-path reference (see {@link #conditionHasAbsolutePathRef}). */
-    private static boolean computationHasAbsolutePathRef(JsonNode computationBody) {
-        if (conditionHasAbsolutePathRef(computationBody.path("commonPrecondition").asText(""))) {
-            return true;
-        }
-        for (JsonNode alt : computationBody.path("computationAlternatives")) {
-            if (conditionHasAbsolutePathRef(alt.path("precondition").asText(""))
-                    || conditionHasAbsolutePathRef(alt.path("operation").asText(""))) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Whether a stored condition text contains an <b>absolute-path</b> entity reference — a {@code /} that
-     * <em>starts</em> a reference: immediately after {@code [}, {@code (}, {@code ,}, {@code $}, or at the text
-     * start (ignoring whitespace), and followed by an identifier char. A division {@code /} (after {@code ]} /
-     * {@code )} / a digit) or a descent {@code /} inside a relative path (after an identifier / {@code *}) is
-     * NOT a reference start, so neither is flagged. After the relativizer has run, this reports only the
-     * <b>residual</b> absolutes it does not rewrite (a bare {@code /RootGroup} group ref, an outer-correlated
-     * {@code [$/…]}, or a MODEL_ROOT include). Package-private for a focused unit test.
-     */
-    static boolean conditionHasAbsolutePathRef(String condition) {
-        for (int i = 0; i < condition.length(); i++) {
-            if (isAbsolutePathStart(condition, i)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // ── included-rule relativization (the kernel's include-mount condition rewrite) ───────────────────────────
-
-    /**
-     * Rewrite the absolute-path references that name the vanished included root group in a mounted rule's /
-     * computation's condition(s) to their <b>relative</b> post-mount form, so they resolve against the rule's
-     * post-mount group — the kernel's include relativization (KERNEL-FINDINGS "DocumentModel expansion").
-     * SINGLE_RG only: a reference {@code /RootGroup/rest} in an element at [depth] below the mount becomes
-     * {@code ("../" * depth) + rest}; every relative reference already resolves correctly and is untouched.
-     * An absolute reference this does NOT rewrite (a bare {@code /RootGroup} group ref, an outer-correlated
-     * {@code [$/…]}) survives and is reported by {@link #recordIncludedRulesNeedingRelativization} so the
-     * consumer refuses rather than mis-evaluate. Recurses into groups, incrementing the depth.
-     */
-    private static void relativizeMountedConditions(JsonNode node, String rootGroupName, int depth) {
-        ElementType type = ElementType.of(node);
-        if (type == ElementType.RULE) {
-            rewriteConditionKey((ObjectNode) node.path(ElementType.RULE.wireName()), "errorCondition", rootGroupName, depth);
         } else if (type == ElementType.COMPUTATION) {
             ObjectNode body = (ObjectNode) node.path(ElementType.COMPUTATION.wireName());
-            rewriteConditionKey(body, "commonPrecondition", rootGroupName, depth);
+            boolean residual = remapConditionKey(body, "commonPrecondition", prefixMap);
             for (JsonNode alt : body.path("computationAlternatives")) {
                 if (alt instanceof ObjectNode altObj) {
-                    rewriteConditionKey(altObj, "precondition", rootGroupName, depth);
-                    rewriteConditionKey(altObj, "operation", rootGroupName, depth);
+                    residual |= remapConditionKey(altObj, "precondition", prefixMap);
+                    residual |= remapConditionKey(altObj, "operation", prefixMap);
                 }
+            }
+            if (residual) {
+                warnings.add(node.path(DmKeys.NAME).asText());
             }
         } else if (type == ElementType.GROUP) {
             for (JsonNode child : node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)) {
-                relativizeMountedConditions(child, rootGroupName, depth + 1);
+                remapMountedConditions(child, prefixMap, warnings);
             }
         }
     }
 
-    private static void rewriteConditionKey(ObjectNode body, String key, String rootGroupName, int depth) {
+    /** Remap one condition key in place; returns whether it left an unmappable absolute residual. */
+    private static boolean remapConditionKey(ObjectNode body, String key, Map<String, String> prefixMap) {
         if (!body.hasNonNull(key)) {
-            return;
+            return false;
         }
         String cond = body.path(key).asText("");
-        String rewritten = relativizeRootGroupAbsolutePaths(cond, rootGroupName, depth);
-        if (!rewritten.equals(cond)) {
-            body.put(key, rewritten);
+        RemapResult r = remapAbsolutePaths(cond, prefixMap);
+        if (!r.text().equals(cond)) {
+            body.put(key, r.text());
         }
+        return r.hadResidual();
     }
 
+    /** The rewritten condition text plus whether it left an absolute reference no mount prefix could map. */
+    record RemapResult(String text, boolean hadResidual) {}
+
     /**
-     * Replace each {@code /<rootGroupName>/rest} absolute reference in [condition] with {@code ("../" * depth) +
-     * rest} (the depth-{@code depth} relative form), leaving every other token — relative refs, divisions,
-     * literals, and any absolute ref that does not descend from the root group — verbatim. Package-private for a
-     * focused unit test.
+     * Rewrite each absolute-path reference in [condition] whose first segment {@code /<seg>} is a key of
+     * {@code prefixMap}, replacing that prefix with the mapped post-mount prefix (keeping the rest of the path and
+     * any leading {@code $} outer-correlation marker) — the kernel's move-remap. A {@code /<seg>/rest},
+     * a bare {@code /<seg>}, an outer {@code [$/<seg>/…]}, and a MODEL_ROOT {@code /<top>/…} are all handled
+     * uniformly. Every other token — relative refs, divisions, literals — is left verbatim; an absolute ref whose
+     * first segment is not in the map is left verbatim and flagged as a residual. Package-private for a focused
+     * unit test.
      */
-    static String relativizeRootGroupAbsolutePaths(String condition, String rootGroupName, int depth) {
+    static RemapResult remapAbsolutePaths(String condition, Map<String, String> prefixMap) {
         StringBuilder out = new StringBuilder(condition.length());
         boolean changed = false;
+        boolean residual = false;
         int i = 0;
         while (i < condition.length()) {
-            // Only a "plain" absolute-ref '/' (not outer-correlated: prev char is not '$') is rewritable — an
-            // outer '$/…' is left as a documented residual for the refusal path.
-            if (isAbsolutePathStart(condition, i) && prevSignificant(condition, i) != '$') {
+            if (isAbsolutePathStart(condition, i)) {
                 int segStart = i + 1;
                 int segEnd = segStart;
                 while (segEnd < condition.length() && isIdentPart(condition.charAt(segEnd))) {
                     segEnd++;
                 }
-                boolean hasDescent = segEnd < condition.length() && condition.charAt(segEnd) == '/';
-                if (hasDescent && condition.substring(segStart, segEnd).equals(rootGroupName)) {
-                    out.append("../".repeat(depth));   // "/RootGroup/" → ("../" * depth); the descent '/' is consumed
-                    i = segEnd + 1;
+                String newPrefix = prefixMap.get("/" + condition.substring(segStart, segEnd));
+                if (newPrefix != null) {
+                    out.append(newPrefix);   // "/<seg>" → its post-mount prefix; the rest of the path continues
+                    i = segEnd;
                     changed = true;
                     continue;
                 }
+                residual = true;   // an absolute ref naming no mounted top-group — a genuine residual, left as-is
             }
             out.append(condition.charAt(i));
             i++;
         }
-        return changed ? out.toString() : condition;
+        return new RemapResult(changed ? out.toString() : condition, residual);
     }
 
     /** Whether {@code s.charAt(i)} is a '/' that STARTS an absolute entity reference: followed by an identifier

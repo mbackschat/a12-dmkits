@@ -134,7 +134,7 @@ Status legend: **GREEN** = differentially proven identical to the kernel · **DO
 - **No un-locked operator, formal check, or quantifier** — every one maps to a DiffTest (§1, audit (2)).
 - **Message locales:** the interpolation mechanism is a per-locale template map lookup (locale-agnostic by construction); EN + DE are differentially locked; a third locale is the same mechanism, different key — not a hole.
 - **Customization/configuration points:** the six input axes in §1d are mapped, but the later audit found unexercised semantic subdomains: combined-grapheme charset entries (IG88), custom-validator rejection codes (IG92), and the timezone-id/history domain (IG83).
-- **The original hole-hunt surfaced R1 and R5; it did not exhaust the legal domain.** R1 is covered for relative and single-root-group absolute references while G1′ remains IG87. IF128 closed the exercised modern-Berlin cases, not every accepted zone/history. The follow-on audit's live IGs are why this document now describes a historical layered audit rather than a complete proof.
+- **The original hole-hunt surfaced R1 and R5; it did not exhaust the legal domain.** R1 is covered for relative and single-root-group absolute references, and G1′ (bare-`/RG`, MODEL_ROOT, and `$`-outer included refs) now evaluates via the move-remap (IF146; a `$`-outer end-to-end lock residual is IG87 §2). IF128 closed the exercised modern-Berlin cases, not every accepted zone/history. The follow-on audit's live IGs are why this document now describes a historical layered audit rather than a complete proof.
 
 ---
 
