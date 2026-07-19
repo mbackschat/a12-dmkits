@@ -58,6 +58,7 @@ The integration does not:
 - wrap every operator with `z.function()`;
 - reproduce A12 parsing or validation through Zod regexes, coercion, transforms, or refinements;
 - turn Zod into an A12 document model, rule language, custom-condition API, or second interpreter;
+- adapt, load, or register A12 Kernel Custom Field Type or Custom Condition interfaces, or depend on a kernel-compatibility artifact;
 - treat `undefined`, `null`, defaults, catch values, or coercion as A12 document-state semantics;
 - make a structurally similar JavaScript object an authentic A12 wrapper or `DocumentSnapshot`;
 - replace A12 model/version ownership with TypeScript brands or `instanceof`;
@@ -79,6 +80,8 @@ The integration does not:
     ├── peer/singleton ──> @a12/operators-zod
     └── peer ────────────> zod
 ```
+
+Both Zod packages depend only on Zod and the kernel-free A12 base packages shown above. They remain kernel-free and MIT-licensed and have no direct or transitive dependency on an A12 Kernel API or runtime artifact. The optional TypeScript/JVM kernel-compatibility adapters belong to the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md) and sit outside this graph. An application may install a Zod adapter and a kernel-compatibility adapter together; they meet only through the public Interpreter registry/document/report contracts, never through a Zod-to-kernel integration path.
 
 The adapter packages should require Zod 4.1 or a later explicitly qualified compatible range as a peer dependency. They must not install private copies of Zod or the A12 base packages. Package-manager and bundler qualification must verify one physical `@a12/operators` instance per JavaScript realm, because the core authenticity contract deliberately rejects wrappers from duplicate package copies.
 
@@ -704,12 +707,12 @@ const snapshot: DocumentSnapshot =
 
 const validationOptions:
   ValidationOptions = {
-  locale: "en_US",
+    locale: "en_US",
 };
 
 const validationReport:
   ValidationReport =
-  interpreter.validate(
+  interpreter.validateFull(
     snapshot,
     validationOptions,
   );
@@ -966,7 +969,7 @@ Model-derived schema caches must use an exact immutable model version or verifie
 
 If an A12 application-facing adapter later accepts caller-provided validation libraries, the [Standard Schema interface](https://standardschema.dev/schema) is preferable to exposing Zod-specific types at that generic boundary. Zod implements Standard Schema.
 
-Standard Schema is not an A12 custom-field-type or custom-condition SPI. A generic validator does not automatically preserve A12 callback context, truth and non-evaluation behavior, rejection identity, repetition scope, invocation order, exception semantics, or ownership.
+Standard Schema is not an A12 custom-field-type or custom-condition SPI. A generic validator does not automatically preserve a Custom Condition’s Boolean error-firing polarity, full-versus-partial relevance, formally incorrect entities, partially known error pointer, value overrides, custom-field error identity/conversions, repetition scope, factory invocation order, exception semantics, or ownership.
 
 Any Standard Schema integration with the synchronous Interpreter path must:
 
@@ -1152,6 +1155,7 @@ Interpreter integration begins with the A12-native minimum transport and ownersh
 - Zod is a peer dependency only of the optional TypeScript adapter packages.
 - The adapters resolve the application’s existing A12 base packages and never bundle private core-runtime copies.
 - Kotlin `commonMain`, ordinary Operator and Interpreter artifacts, and Java APIs contain no Zod dependency.
+- Neither Zod adapter has a direct or transitive dependency on an A12 Kernel API or an Interpreter kernel-compatibility artifact; kernel-interface reuse is installed, licensed, and qualified separately.
 - A no-Zod application has no Zod bundle, startup, allocation, or runtime cost.
 
 ### 17.2 Operator adapter

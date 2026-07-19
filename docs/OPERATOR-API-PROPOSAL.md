@@ -6,9 +6,11 @@ This proposal defines how A12 value-level operators become directly callable fro
 
 The declarations use the proposed public TypeScript names consistently; catalog mappings identify the corresponding kernel operation where one exists. TypeScript is the primary design and acceptance surface. Kotlin Multiplatform is the implementation strategy, and a secondary JVM projection reuses the same Kotlin implementation.
 
+The base Kotlin Multiplatform implementation and its TypeScript/JVM projections are clean-room, kernel-free, MIT-licensed artifacts. They do not import, link, reflect over, or bundle any A12 Kernel API or runtime artifact. Kernel source and differential execution are semantic evidence only, never a shipped or runtime dependency.
+
 Every example spells out input, variable, callback-parameter, callback-return, and result types. `declare const name: Type` marks an externally supplied immutable input, `const name: Type` marks a local immutable value, and `let name: Type` marks deliberately mutable local state. The type annotation beside each variable is authoritative; the nearest type table or explanatory paragraph defines that type once so examples do not rely on TypeScript inference or repeat the same definition at every call site.
 
-Model-bound validation, documents, symbolic expressions, rules, and computations are intentionally outside this proposal. They belong to the optional [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md).
+Model-bound validation, documents, symbolic expressions, rules, computations, Custom Field Types, and Custom Conditions are intentionally outside this proposal. They belong to the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md), whose own registries and optional platform compatibility adapters do not extend or participate in direct operators.
 
 ## 1. Recommendation
 
@@ -86,10 +88,10 @@ The catalog maps to this boundary as follows:
 | `Sum`, `Min`, `Max`, `NumberOfDifferentValues`, `NumberOfValueInFields`, `SumOfProducts` | collection functions over supplied values |
 | `Today`, `Now`, `BaseYear` | available only through explicit time/base-year inputs; never host globals |
 | partial date fragments and format-driven completion | interpreter resolves the field’s format/base-year context and then exposes a complete `A12Date` |
-| field/group fill predicates, field coercions, enum categories, semantic indexes, repetition operators, `Having`, custom conditions/types | interpreter-only because their operands are model/document state |
+| field/group fill predicates, field coercions, enum categories, semantic indexes, repetition operators, `Having`, Custom Conditions, Custom Field Types | interpreter-only because their operands are model/document state; customization uses the Interpreter proposal’s native registries and optional compatibility adapters |
 | pattern operations, named time zones, and affected decimal operations | direct in principle but absent until cross-platform parity is exact |
 
-This classification is represented by a generated or CI-checked capability matrix against the live operator catalog, so every catalog entry has an explicit direct, interpreter, authoring, adapter, or parity-gated disposition and a new entry cannot disappear from the TypeScript surface unnoticed.
+This classification is represented by a generated or CI-checked capability matrix against the live operator catalog, so every catalog entry has an explicit direct, interpreter, authoring, or parity-gated disposition and a new entry cannot disappear from the TypeScript surface unnoticed.
 
 ## 4. A12 value types
 
@@ -2109,8 +2111,7 @@ The public surface needs a mechanically complete relationship to the live operat
 type A12ApiLayer =
   | "directOperator"
   | "interpreter"
-  | "authoring"
-  | "jvmKernelAdapter";
+  | "authoring";
 
 type A12CapabilityAvailability =
   | {
@@ -2175,10 +2176,24 @@ The direct API is therefore not a second implementation and not merely export an
 - the interpreter resolves fields/context and delegates its internal resolved values to the same semantic primitives;
 - the public TypeScript façade authenticates wrappers and translates errors at its boundary, while the interpreter calls a trusted internal entry point and does not allocate public wrappers or run public guards/codecs per AST node;
 - `jsMain` converts exports, arrays, errors, and declarations only;
-- `jvmMain` provides Java-friendly mechanical adapters only;
+- `jvmMain` provides Java-friendly host projections and conversions only and imports no kernel API;
 - platform `expect`/`actual` primitives remain governed by common parity laws.
 
 The semantic code should first be extracted in place. Before publication, bundle size, dependency direction, and npm/Maven ABI evidence must decide whether it remains an independent surface of `:interpreter` or moves into a lower-level `:operators` KMP artifact shared by the interpreter.
+
+The dependency direction is one-way:
+
+```text
+kernel-free operator semantics
+          ▲
+          │
+kernel-free interpreter
+          ▲
+          │ optional, platform-specific
+kernel-compatibility adapters for Interpreter customization
+```
+
+An optional compatibility adapter may depend on the kernel-free Interpreter and Operator artifacts plus its platform’s kernel API. Neither base artifact may depend directly or transitively on that adapter or kernel API. Custom Field Types and Custom Conditions are model/document callbacks and therefore belong only to the Interpreter compatibility boundary; the direct Operator package contains no customization registry, adapter discovery, or custom-operator extension mechanism.
 
 ### 9.1 TypeScript-first surface
 
@@ -2230,4 +2245,4 @@ Each public export must either cite its catalog identity or be explicitly classi
 
 Values are immutable and operators are stateless/reentrant. JVM calls are thread-safe; there is no mutable global decimal context, clock, regex engine state, or time-zone state. Platform projections defensively isolate any host library with mutable globals.
 
-The semantic implementation lives once in Kotlin `commonMain`, remains kernel-free, and has common JVM/JavaScript laws plus applicable kernel evidence. Direct calls allocate no session and perform no parsing, AST traversal, model lookup, or document iteration. Extracting shared semantics must not worsen the existing interpreter’s parsing, AST traversal, startup, warmup, throughput, scaling, allocation, or footprint.
+The semantic implementation lives once in Kotlin `commonMain`, and every published base Operator artifact and ordinary TypeScript/JVM projection remains kernel-free and MIT-licensed, with no direct or transitive kernel dependency. Any optional kernel-linked compatibility artifact is separately packaged and licensed and, as specified by the Interpreter proposal, never participates in a direct operator call. Direct calls allocate no session and perform no parsing, AST traversal, model lookup, document iteration, customization lookup, or adapter dispatch. Extracting shared semantics must not worsen the existing interpreter’s parsing, AST traversal, startup, warmup, throughput, scaling, allocation, or footprint.
