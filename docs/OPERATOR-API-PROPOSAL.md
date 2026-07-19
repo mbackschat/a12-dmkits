@@ -1,268 +1,132 @@
+**Proposal-writing guideline — simple mode**
+
+Keep this document focused on the requested API proposal, not an implementation or rollout plan.
+
+- Prefer the smallest viable design; do not expand the scope or add speculative features.
+- Use short sections, tables, bullets, and fully typed minimal examples instead of prose walls.
+- Keep paragraphs to at most three sentences and explain each concept once.
+- Include only types needed to understand the public API; do not catalogue basic language types.
+- Clearly separate required, optional, and excluded functionality.
+- Preserve semantic and performance requirements without repeating them.
+- Surface only issues that materially affect correctness or feasibility.
+- Delete anything that does not help a developer understand or use the proposal.
+
+Preferred structure: motivation, scope, public API, typed examples, semantics and guarantees, packaging and adapters, explicit exclusions.
+
 # Proposal: Direct A12 value operators for TypeScript from Kotlin Multiplatform
 
-## Status
+## Status and recommendation
 
-This proposal defines how A12 value-level operators become directly callable from TypeScript without a model, document, interpreter session, expression string, parser, AST, or rule.
-
-The declarations use the proposed public TypeScript names consistently; catalog mappings identify the corresponding kernel operation where one exists. TypeScript is the primary design and acceptance surface. Kotlin Multiplatform is the implementation strategy, and a secondary JVM projection reuses the same Kotlin implementation.
-
-The base Kotlin Multiplatform implementation and its TypeScript/JVM projections are clean-room, kernel-free, MIT-licensed artifacts. They do not import, link, reflect over, or bundle any A12 Kernel API or runtime artifact. Kernel source and differential execution are semantic evidence only, never a shipped or runtime dependency.
-
-Every example spells out input, variable, callback-parameter, callback-return, and result types. `declare const name: Type` marks an externally supplied immutable input, `const name: Type` marks a local immutable value, and `let name: Type` marks deliberately mutable local state. The type annotation beside each variable is authoritative; the nearest type table or explanatory paragraph defines that type once so examples do not rely on TypeScript inference or repeat the same definition at every call site.
-
-Model-bound validation, documents, symbolic expressions, rules, computations, Custom Field Types, and Custom Conditions are intentionally outside this proposal. They belong to the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md), whose own registries and optional platform compatibility adapters do not extend or participate in direct operators.
-
-## 1. Recommendation
-
-Expose immutable A12 semantic values and ordinary typed operator functions:
+Expose A12 value-level operators as ordinary typed functions over authentic A12 values. A developer should be able to wrap a native value, call `operators.dateTime.differenceInHours` or another operator, and unwrap the result without creating a model, document, interpreter, session, expression, parser, or AST.
 
 ```ts
 declare const operators: A12Operators;
-declare const start: A12DateTime;
-declare const end: A12DateTime;
 
-const hours: A12Integer =
-  operators.dateTime.differenceInHours(start, end);
-```
-
-`start` and `end` are immutable `A12DateTime` values, the result is an `A12Integer`, and the call is synchronous and deterministic. There is no setup, lifecycle, model, document, parser, AST, or manufactured evaluation context.
-
-For example:
-
-```ts
 const utc: A12TimeZone = A12TimeZone.utc();
-const start: A12DateTime =
-  A12DateTime.parseLocal("2024-03-31T01:30:00", utc);
-const end: A12DateTime =
-  A12DateTime.parseLocal("2024-03-31T03:30:00", utc);
-
-const hours: A12Integer =
-  operators.dateTime.differenceInHours(start, end);
+const start: A12DateTime = A12DateTime.parseLocal("2026-07-19T08:00:00", utc);
+const end: A12DateTime = A12DateTime.parseLocal("2026-07-19T10:30:00", utc);
+const hours: A12Integer = operators.dateTime.differenceInHours(start, end);
 const nativeHours: number = hours.toSafeInteger();
 ```
 
-This proposal exposes the complete **value-level A12 semantics** boundary. Catalog entries that inspect fields, models, repetitions, or rules remain interpreter operations; catalog variants that differ only by operand source collapse to one direct function.
+TypeScript is the primary product surface. The semantics live once in Kotlin Multiplatform `commonMain`; Kotlin/JS provides the TypeScript API, and the JVM target provides a secondary Java-friendly projection over the same implementation.
 
-## 2. Motivation
+The base implementation and both projections are clean-room, kernel-free, and MIT-licensed. They do not import, link, reflect over, or bundle the licensed A12 Kernel.
 
-TypeScript applications often need one piece of A12 behavior, not an evaluator. Examples include:
+## Motivation
 
-- calculate the kernel-equivalent difference between two date-times;
-- add a month using A12 end-of-month rules;
-- round a decimal using A12 accounting behavior;
-- count or slice a string using A12 indexing semantics;
-- test two date ranges for overlap;
-- reuse the same operator in a form mapper, import pipeline, service, array transformation, or application function.
+TypeScript applications frequently need one A12 operation rather than a full evaluator:
 
-Requiring an interpreter session for those jobs creates accidental complexity. The caller already has the operands. A model, document, field path, parser, and prepared program add no information.
+- calculate an A12 date-time difference;
+- shift a date using A12 end-of-month rules;
+- round an exact decimal using A12 behavior;
+- apply A12 string indexing;
+- compare dates, numbers, times, or ranges;
+- reduce a supplied array of A12 values;
+- reuse the same operation in a form, import, service, or application function.
 
-Native JavaScript values are not authoritative operands: `number` cannot represent arbitrary decimals exactly; `Date` is an instant rather than a date-only or local date-time value; and A12 time-zone, UTF-16 indexing, comparison, and precision rules differ from host defaults.
+Native JavaScript values are not a sufficient semantic boundary. A JavaScript `number` cannot represent arbitrary business decimals exactly, a JavaScript `Date` is an instant rather than an A12 date-only value, and host string, regex, time-zone, and arithmetic behavior can differ from A12.
 
-The right boundary is therefore explicit but lightweight: wrap native input as an A12 value, call operators, and unwrap the result deliberately.
+The API therefore makes conversion explicit while keeping direct calls small.
 
-## 3. Scope
+## Scope
 
-An operation belongs in this API when its result is a function of:
+An operation belongs in this API when its result depends only on supplied A12 values and explicit scalar arguments inherent to the operation.
 
-1. supplied, already-valid A12 values; and
-2. an explicit scalar argument that is inherent to the operation, such as a rounding scale.
-
-| In scope | Examples |
+| Required | Examples |
 |---|---|
-| Value construction and conversion | decimal text, safe integer, ISO date, local date-time plus zone |
-| Direct value operators | date differences, date shifts, string length, rounding, comparison |
-| Value collections | sum supplied numbers, concatenate supplied strings, overlap supplied ranges |
-| Immediate composition | nesting, ordinary functions, native `map`/`filter` |
-| Semantic-result composition | `A12Result` and `A12Evaluation` `map`, `flatMap`, `zipWith`, `match`, and fallback operations |
+| A12 scalar values | string, Boolean, Confirm, number, integer refinement, date, time, date-time, date range |
+| Exact wrapping and unwrapping | decimal text, `bigint`, ISO date/time, structured date-time and range values |
+| Direct single-value operators | date shifts, date-time differences, string length, numeric rounding |
+| Comparisons and truth | typed comparison and three-state `A12Truth` |
+| Value collections | sums, extrema, counts, membership, range overlap |
+| Eager composition | nesting, native `map`, and result/evaluation combinators |
+| Catalog accountability | every catalog capability has a direct, interpreter, authoring, or parity-gated disposition |
 
-Field state and declarations, paths and repetition context, document aggregates and predicates, implicit `Today`/`Now`/`BaseYear`, rule findings and suppression, computation orchestration, and symbolic expressions all require information outside supplied values. They are interpreter concerns, not hidden parameters to a direct operator.
-
-The catalog maps to this boundary as follows:
-
-| Catalog family | Direct API treatment |
+| Required but separately packaged compatibility deliverable | Purpose |
 |---|---|
-| arithmetic, comparison, rounding, strings, dates, times, date-times, date ranges | typed scalar functions |
-| `True`/`False`, `Date`, `Time`, `DateTime`, `DateRange` | value constructors |
-| `Valid`/`Invalid` over constructed dates | interpreter-owned candidate-expression semantics; strict direct construction produces only a valid `A12Date` |
-| `Abs`/`AbsValue`, `Round*`/`Round*Value` | one function per semantic operation; field-source variants do not duplicate it |
-| `Sum`, `Min`, `Max`, `NumberOfDifferentValues`, `NumberOfValueInFields`, `SumOfProducts` | collection functions over supplied values |
-| `Today`, `Now`, `BaseYear` | available only through explicit time/base-year inputs; never host globals |
-| partial date fragments and format-driven completion | interpreter resolves the field’s format/base-year context and then exposes a complete `A12Date` |
-| field/group fill predicates, field coercions, enum categories, semantic indexes, repetition operators, `Having`, Custom Conditions, Custom Field Types | interpreter-only because their operands are model/document state; customization uses the Interpreter proposal’s native registries and optional compatibility adapters |
-| pattern operations, named time zones, and affected decimal operations | direct in principle but absent until cross-platform parity is exact |
+| Interpreter Kernel compatibility adapters | Allow projects to reuse existing Kernel Custom Field Type and Custom Condition implementations without adding a Kernel dependency to the Operator or Interpreter core |
 
-This classification is represented by a generated or CI-checked capability matrix against the live operator catalog, so every catalog entry has an explicit direct, interpreter, authoring, or parity-gated disposition and a new entry cannot disappear from the TypeScript surface unnoticed.
+Applications that use only license-free native registries do not install the Kernel adapters. The adapters are nevertheless a required compatibility deliverable for existing A12 projects and are not part of the direct Operator API.
 
-## 4. A12 value types
+| Optional and separately packaged TypeScript convenience | Purpose |
+|---|---|
+| Zod adapter | Compose exact A12 codecs with Zod at a TypeScript boundary |
+| Family import paths | Improve browser tree shaking if Kotlin/JS measurements justify them |
 
-The public surface should have a small immutable value family:
+| Excluded | Reason |
+|---|---|
+| Models, documents, field paths, repetitions, rules, computations, and expression evaluation | They require interpreter context |
+| Empty, malformed, absent, or suppressed field state | These are document states, not scalar values |
+| Custom Field Type and Custom Condition registries | They are model-bound Interpreter capabilities |
+| Custom operators | The operator set remains closed and catalog-accountable |
+| Arbitrary JSON structures | Structured document handling belongs to the Interpreter API |
+| A fluent expression or validation DSL | Direct operators are eager functions, not an expression graph |
+
+See the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md) for model-bound behavior and the [Zod integration proposal](ZOD-INTEGRATION-PROPOSAL.md) for the optional TypeScript adapter.
+
+## Public API
+
+### A12 values
+
+The direct API exposes immutable semantic values:
 
 | Type | Meaning |
 |---|---|
-| `A12String` | a supplied text value |
-| `A12Boolean` | a wrapped boolean data value |
-| `A12Confirm` | the distinct filled confirmation marker; it has no `false` value |
-| `A12Number` | an arbitrary-precision A12 decimal |
-| `A12Integer` | a checked integral refinement of `A12Number`, also used for counts and offsets; its runtime kind remains `"number"` |
-| `A12Date` | a complete calendar date |
-| `A12Time` | a time of day |
-| `A12TimeZone` | an explicitly supported A12/model time-zone identity |
-| `A12DateTime` | an exact instant paired with explicit direct-API time-zone evaluation context; the zone is not claimed to be intrinsic kernel scalar identity |
-| `A12DateRange` | an inclusive pair of complete dates |
-| `A12Pattern` | a validated operator utility; gated and absent until the Java/JavaScript regex profile is exact, and deliberately not an `A12Value` |
-| `A12Value` | the closed discriminated union of storable scalar values: string, Boolean, Confirm, number, date, time, date-time, and date range |
-| `A12Truth` | a three-state condition result: true, false, or not evaluated |
-| `A12Evaluation<T>` | a value-producing operator result: value `T` or legitimate kernel non-evaluation |
-| `A12NonEvaluationReason` | a closed structured reason for legitimate value non-evaluation |
-| `A12Option<T>` | an explicit optional result with `some` and `none` cases |
-| `A12Result<T, E>` | a success value `T` or a typed error `E` |
-| `A12Codec<Input, Output>` | a dependency-free exact, synchronous, bidirectional conversion contract |
-| `A12Codecs` | canonical scalar codecs and array-codec composition |
-| `A12EvaluationTime` | one exact instant resolved in one supported time zone |
-| `A12BaseYear` | an explicit base year with number, start-date, and date-range projections |
-| `A12Tolerance` | the closed `ONE`, `TWO`, `FIVE`, or `TEN` tolerance set |
-| `A12ScalarIssue` | the closed structured union of scalar conversion and operator issues |
-| `A12Error` | the stable JS-safe base for typed scalar and array-conversion failures |
-| `A12ErrorCode` | the closed conversion/operator/array-conversion error-family discriminator |
-| `A12ConversionError` | invalid native-to-A12 construction or checked unwrapping |
-| `A12OperatorError` | an actual direct-API precondition violation such as an invalid range, scale, collection shape, evaluation-zone pairing, or foreign wrapper; never legal kernel non-evaluation |
-| `A12ErrorGuards` | runtime `A12Errors` value for safely narrowing a caught `unknown` value to an A12 error subtype |
-| `A12ResultCompanion` | runtime `A12Result` value providing typed result combinators |
-| `A12NativeScalar` | supported native scalar union: `string`, `boolean`, `number`, `bigint`, or `Date` |
-| `A12ArrayConversionResult<T>` | a bulk-conversion result whose failure contains indexed conversion errors |
-| `A12ArrayConversionError` | one bulk-conversion failure containing every indexed scalar error |
-| `A12IndexedConversionError` | one scalar conversion failure plus its source array index |
-| `A12Operators` | the stateless exported `operators` namespace and its typed operator families |
-| `A12ArrayAdapters` | typed contract of the stateless `A12Arrays` bulk wrapping/unwrapping value |
+| `A12String` | A supplied text value |
+| `A12Boolean` | A wrapped two-state Boolean value |
+| `A12Confirm` | The distinct filled confirmation value; there is no false Confirm |
+| `A12Number` | An arbitrary-precision A12 decimal |
+| `A12Integer` | A checked integral refinement of `A12Number`; its runtime kind remains `"number"` |
+| `A12Date` | A complete valid calendar date |
+| `A12Time` | A valid time of day |
+| `A12TimeZone` | An explicitly supported evaluation-zone identity |
+| `A12DateTime` | An exact instant paired with explicit direct-API evaluation-zone context |
+| `A12DateRange` | An inclusive pair of complete dates |
+| `A12Value` | The closed union of storable scalar values above |
 
-Invalid dates, invalid times, unresolved daylight-saving gaps, and malformed numbers do not become values. The throwing construction form either returns a valid immutable value or throws `A12ConversionError`; its `try…` counterpart returns the same failure through `A12Result`.
+`A12Integer` is not a new kernel value kind. It makes counts, component values, indexes, scales, and offsets type-safe while remaining usable wherever an `A12Number` is accepted.
 
-The TypeScript examples use these host types and type forms deliberately:
+Support values remain outside `A12Value`:
 
-| TypeScript type | Meaning at this boundary |
+| Type | Purpose |
 |---|---|
-| `string` | native text used for exact lexical input or output |
-| `boolean` | a native two-state flag that wraps exactly as `A12Boolean` |
-| `number` | a safe integral value or an explicitly named lossy decimal projection |
-| `bigint` | an exact native integral value |
-| `Date` | a JavaScript instant with no A12 calendar-date or time-zone identity |
-| `Error` | the standard JavaScript exception base; A12 error subtypes add stable discriminators and diagnostics |
-| `unknown` | a native value whose shape must be checked before use, including the default safe type of a TypeScript `catch` variable |
-| `void` | a function or callback completes without returning a value |
-| `unique symbol` | a declaration-only key for static nominal typing; it is not an A12 runtime authenticity mechanism |
-| `readonly T[]` | an ordinary immutable-view array of homogeneous elements of type `T` |
-
-`A12Value` is the exported discriminated union of the concrete storable scalar types shown below. `A12Integer` refines `A12Number`; it does not add an `"integer"` discriminant or a second kernel value kind. `A12Pattern`, `A12Truth`, `A12Evaluation`, `A12EvaluationTime`, `A12BaseYear`, `A12Tolerance`, results, codecs, and errors are support/operator types rather than document values and are excluded. Every `A12Value` has a stable `kind` and an `unknown`-accepting TypeScript type guard; applicable scalar kinds expose the canonical conversions declared on their own interfaces. Given an explicitly typed `declare const candidate: A12Value`, the check `candidate.kind === "dateTime"` narrows `candidate` to `A12DateTime`. Semantic equality comes from typed comparison operators; wrapper object identity is never semantic equality. Confirm deliberately has no false/native projection, and date-range endpoints are exposed by `operators.dateRange`. A general JSON document/value codec is deliberately not part of this API.
-
-Condition-producing operators return `A12Truth`: `true`, `false`, or `notEvaluated`. Value-producing operators that are legal but partial return `A12Evaluation<T>`: `value` or `notEvaluated` with a structured reason. These channels must not be collapsed into `false`, `undefined`, an exception, or a conversion failure. The `A12Boolean` instance method `asTruth(): A12Truth` produces a known truth value.
-
-`A12Option<T>` is `{kind: "some"; value: T} | {kind: "none"}`. `A12Result<T, E = A12Error>` is `{ok: true; value: T} | {ok: false; error: E}`. The failure type is deliberately unbounded so the same generic can carry distinct Interpreter failures such as `DocumentInputError` without pretending that they are scalar errors. `A12ArrayConversionResult<T>` specializes the result with `A12ArrayConversionError`, whose `items` carry an index and scalar error. `A12Codec<Input, Output>` describes only exact synchronous conversion; it is not a schema, refinement, validation, or expression language. These are small API utilities, not additional kernel data value kinds.
-
-The concrete result, truth, and error contracts are:
+| `A12EvaluationTime` | One explicit instant resolved in one supported zone for `Today` and `Now` |
+| `A12BaseYear` | An explicit base year with number, start-date, and full-year-range projections |
+| `A12Tolerance` | The closed `ONE`, `TWO`, `FIVE`, or `TEN` tolerance set |
+| `A12Pattern` | A compiled pattern utility; the entire type remains absent until regex parity is exact |
+| `A12Truth` | A three-state condition result |
+| `A12Evaluation<T>` | A value or legitimate semantic non-evaluation |
+| `A12Option<T>` | A present or absent result for utilities without an empty identity |
+| `A12Result<T, E>` | A success or typed failure |
 
 ```ts
-declare const a12SemanticValueBrand: unique symbol;
-declare const a12IntegerBrand: unique symbol;
-declare const a12OperatorCatalogIdBrand: unique symbol;
+type A12Tolerance = "ONE" | "TWO" | "FIVE" | "TEN";
+```
 
-type A12ValueKind =
-  | "string"
-  | "boolean"
-  | "confirm"
-  | "number"
-  | "date"
-  | "time"
-  | "dateTime"
-  | "dateRange";
+The public values expose stable discriminants and guards that accept `unknown`:
 
-type A12WrapperKind =
-  | A12ValueKind
-  | "timeZone"
-  | "evaluationTime"
-  | "baseYear"
-  | "pattern";
-
-interface A12SemanticValue<
-  K extends A12WrapperKind,
-> {
-  readonly [a12SemanticValueBrand]: never;
-  readonly kind: K;
-}
-
-interface A12String extends A12SemanticValue<"string"> {
-  toNative(): string;
-}
-
-interface A12Boolean extends A12SemanticValue<"boolean"> {
-  toNative(): boolean;
-  asTruth(): A12Truth;
-}
-
-interface A12Confirm extends A12SemanticValue<"confirm"> {}
-
-interface A12Number
-  extends A12SemanticValue<"number"> {
-  toDecimalString(): string;
-  toNumberLossy(): number;
-}
-
-interface A12Integer extends A12Number {
-  readonly [a12IntegerBrand]: never;
-  toSafeInteger(): number;
-  tryToSafeInteger():
-    A12Result<number, A12ConversionError>;
-  toBigInt(): bigint;
-}
-
-interface A12Date extends A12SemanticValue<"date"> {
-  toIsoString(): string;
-}
-
-interface A12Time extends A12SemanticValue<"time"> {
-  toIsoString(): string;
-}
-
-interface A12TimeZone
-  extends A12SemanticValue<"timeZone"> {
-  readonly id: string;
-}
-
-interface A12DateTime
-  extends A12SemanticValue<"dateTime"> {
-  readonly evaluationTimeZone: A12TimeZone;
-  toLocalIsoString(): string;
-  toInstantIsoString(): string;
-  toJsInstantDate(): Date;
-  tryToJsInstantDate():
-    A12Result<Date, A12ConversionError>;
-}
-
-interface A12DateRange
-  extends A12SemanticValue<"dateRange"> {}
-
-interface A12EvaluationTime
-  extends A12SemanticValue<"evaluationTime"> {
-  readonly timeZone: A12TimeZone;
-}
-
-interface A12BaseYear
-  extends A12SemanticValue<"baseYear"> {
-  asInteger(): A12Integer;
-  asStartDate(): A12Date;
-  asDateRange(): A12DateRange;
-}
-
-type A12Tolerance =
-  | "ONE"
-  | "TWO"
-  | "FIVE"
-  | "TEN";
-
-interface A12Pattern
-  extends A12SemanticValue<"pattern"> {
-  readonly source: string;
-}
-
+```ts
 type A12Value =
   | A12String
   | A12Boolean
@@ -273,535 +137,140 @@ type A12Value =
   | A12DateTime
   | A12DateRange;
 
-type A12Option<T> =
-  | {readonly kind: "some"; readonly value: T}
-  | {readonly kind: "none"};
-
-type A12Truth =
-  | {readonly kind: "true"}
-  | {readonly kind: "false"}
-  | {readonly kind: "notEvaluated"};
-
-type A12NonEvaluationReason =
-  | {
-      readonly code: "divisionByZero";
-    }
-  | {
-      readonly code: "powerDomain";
-      readonly detail:
-        | "exponentOutOfRange"
-        | "zeroToNegativeExponent";
-    };
-
-type A12Evaluation<T> =
-  | {
-      readonly kind: "value";
-      readonly value: T;
-    }
-  | {
-      readonly kind: "notEvaluated";
-      readonly reason: A12NonEvaluationReason;
-    };
-
-type A12OperatorCatalogId =
-  string & {
-    readonly [a12OperatorCatalogIdBrand]: never;
-  };
-
-type A12OperationIdentity =
-  | {
-      readonly kind: "catalog";
-      readonly catalogId:
-        A12OperatorCatalogId;
-    }
-  | {
-      readonly kind: "directUtility";
-      readonly utilityId: string;
-    };
-
-type A12IssuePathSegment = string | number;
-
-type A12NativeInputKind =
-  | "string"
-  | "boolean"
-  | "number"
-  | "bigint"
-  | "javascriptDate"
-  | "object"
-  | "array"
-  | "a12Value";
-
-type A12ReceivedInputKind =
-  | A12NativeInputKind
-  | "null"
-  | "undefined"
-  | "function"
-  | "symbol"
-  | "foreignA12Value";
-
-type A12ConversionIssue =
-  | {
-      readonly code: "invalidNativeType";
-      readonly expected: A12NativeInputKind;
-      readonly received: A12ReceivedInputKind;
-      readonly path: readonly A12IssuePathSegment[];
-      readonly message: string;
-    }
-  | {
-      readonly code: "invalidDecimal";
-      readonly reason:
-        | "empty"
-        | "invalidSyntax"
-        | "notFinite"
-        | "outsideSupportedRange";
-      readonly path: readonly A12IssuePathSegment[];
-      readonly message: string;
-    }
-  | {
-      readonly code: "invalidInteger";
-      readonly reason:
-        | "notIntegral"
-        | "unsafeNativeNumber"
-        | "outsideSupportedRange";
-      readonly path: readonly A12IssuePathSegment[];
-      readonly message: string;
-    }
-  | {
-      readonly code: "invalidTemporalValue";
-      readonly valueKind:
-        | "date"
-        | "time"
-        | "dateTime";
-      readonly reason:
-        | "empty"
-        | "invalidSyntax"
-        | "invalidComponent";
-      readonly path: readonly A12IssuePathSegment[];
-      readonly message: string;
-    }
-  | {
-      readonly code: "reversedDateRange";
-      readonly path: readonly A12IssuePathSegment[];
-      readonly message: string;
-    }
-  | {
-      readonly code: "unsupportedTimeZone";
-      readonly timeZone: string;
-      readonly path: readonly A12IssuePathSegment[];
-      readonly message: string;
-    }
-  | {
-      readonly code: "nonexistentLocalTime";
-      readonly timeZone: string;
-      readonly path: readonly A12IssuePathSegment[];
-      readonly message: string;
-    }
-  | {
-      readonly code: "temporalPrecisionLoss";
-      readonly source: "javascriptDate";
-      readonly unsupportedUnit: "milliseconds";
-      readonly path: readonly A12IssuePathSegment[];
-      readonly message: string;
-    }
-  | {
-      readonly code: "invalidPattern";
-      readonly reason:
-        | "invalidSyntax"
-        | "unsupportedFeature";
-      readonly position?: number;
-      readonly path: readonly A12IssuePathSegment[];
-      readonly message: string;
-    }
-  | {
-      readonly code: "invalidA12Wrapper";
-      readonly expectedKind: A12WrapperKind;
-      readonly received: A12ReceivedInputKind;
-      readonly path: readonly A12IssuePathSegment[];
-      readonly message: string;
-    };
-
-type A12OperatorIssue =
-  | {
-      readonly code: "operatorArgumentOutOfRange";
-      readonly operation: A12OperationIdentity;
-      readonly argument: string;
-      readonly minimum?: string;
-      readonly maximum?: string;
-      readonly actual: string;
-      readonly path: readonly A12IssuePathSegment[];
-      readonly message: string;
-    }
-  | {
-      readonly code: "incompatibleTimeZones";
-      readonly operation: A12OperationIdentity;
-      readonly leftTimeZone: string;
-      readonly rightTimeZone: string;
-      readonly path: readonly A12IssuePathSegment[];
-      readonly message: string;
-    }
-  | {
-      readonly code: "incompatibleCollectionLengths";
-      readonly operation: A12OperationIdentity;
-      readonly leftLength: number;
-      readonly rightLength: number;
-      readonly path: readonly A12IssuePathSegment[];
-      readonly message: string;
-    }
-  | {
-      readonly code: "invalidOperatorOperand";
-      readonly operation: A12OperationIdentity;
-      readonly argument: string;
-      readonly expectedKind: A12WrapperKind;
-      readonly received: A12ReceivedInputKind;
-      readonly path: readonly A12IssuePathSegment[];
-      readonly message: string;
-    };
-
-type A12ScalarIssue =
-  | A12ConversionIssue
-  | A12OperatorIssue;
-
-type A12ErrorCode =
-  | "A12_CONVERSION_ERROR"
-  | "A12_OPERATOR_ERROR"
-  | "A12_ARRAY_CONVERSION_ERROR";
-
-interface A12Error<
-  Issue extends A12ScalarIssue = A12ScalarIssue,
-> extends Error {
-  readonly kind:
-    | "conversion"
-    | "operator"
-    | "array-conversion";
-  readonly code: A12ErrorCode;
-  readonly issues: readonly [
-    Issue,
-    ...Issue[],
-  ];
-  readonly message: string;
+interface A12Number {
+  readonly kind: "number";
+  toDecimalString(): string;
+  toNumberLossy(): number;
 }
 
-interface A12ConversionError
-  extends A12Error<A12ConversionIssue> {
-  readonly kind: "conversion";
-  readonly code: "A12_CONVERSION_ERROR";
+interface A12Integer extends A12Number {
+  toBigInt(): bigint;
+  toSafeInteger(): number;
+  tryToSafeInteger(): A12Result<number, A12ConversionError>;
 }
 
-interface A12OperatorError
-  extends A12Error<A12OperatorIssue> {
-  readonly kind: "operator";
-  readonly code: "A12_OPERATOR_ERROR";
+interface A12Date {
+  readonly kind: "date";
+  toIsoString(): string;
 }
 
-type A12Result<T, E = A12Error> =
-  | {readonly ok: true; readonly value: T}
-  | {readonly ok: false; readonly error: E};
-
-interface A12IndexedConversionError<
-  E extends A12ConversionError = A12ConversionError,
-> {
-  readonly index: number;
-  readonly error: E;
+interface A12DateTime {
+  readonly kind: "dateTime";
+  readonly evaluationTimeZone: A12TimeZone;
+  toInstantIsoString(): string;
+  toLocalIsoString(): string;
+  toJsInstantDate(): Date;
 }
 
-interface A12ArrayConversionError<
-  E extends A12ConversionError = A12ConversionError,
-> extends A12Error<A12ConversionIssue> {
-  readonly kind: "array-conversion";
-  readonly code: "A12_ARRAY_CONVERSION_ERROR";
-  readonly items: readonly [
-    A12IndexedConversionError<E>,
-    ...A12IndexedConversionError<E>[],
-  ];
+interface A12ValueGuard<T extends A12Value> {
+  is(value: unknown): value is T;
 }
+```
 
-interface A12ErrorGuards {
-  is(value: unknown): value is A12Error;
-  isConversion(
-    value: unknown,
-  ): value is A12ConversionError;
-  isOperator(
-    value: unknown,
-  ): value is A12OperatorError;
-  isArrayConversion(
-    value: unknown,
-  ): value is A12ArrayConversionError;
-}
+Each runtime companion, such as `A12Date`, combines construction with `A12ValueGuard<A12Date>`. Guards validate an authentic library-issued wrapper, not merely an object with a matching `kind`.
 
-type A12ArrayConversionResult<
-  T,
-  E extends A12ConversionError = A12ConversionError,
-> = A12Result<readonly T[], A12ArrayConversionError<E>>;
+### Construction and exact conversion
 
-interface A12ResultCompanion {
-  map<T, U, E>(
-    result: A12Result<T, E>,
-    transform: (value: T) => U,
-  ): A12Result<U, E>;
+The shortest path remains a named constructor or parser:
 
-  flatMap<
-    T,
-    U,
-    E1,
-    E2,
-  >(
-    result: A12Result<T, E1>,
-    transform: (value: T) => A12Result<U, E2>,
-  ): A12Result<U, E1 | E2>;
+```ts
+declare const nativeText: string;
+declare const nativeFlag: boolean;
+declare const nativeInteger: bigint;
 
-  zipWith<
-    A,
-    B,
-    C,
-    E1,
-    E2,
-  >(
-    first: A12Result<A, E1>,
-    second: A12Result<B, E2>,
-    combine: (first: A, second: B) => C,
-  ): A12Result<C, E1 | E2>;
+const text: A12String = A12String.of(nativeText);
+const flag: A12Boolean = A12Boolean.of(nativeFlag);
+const confirmed: A12Confirm = A12Confirm.confirmed();
+const amount: A12Number = A12Number.parse("19.95");
+const count: A12Integer = A12Integer.fromBigInt(nativeInteger);
+const date: A12Date = A12Date.parseIso("2026-07-19");
+const time: A12Time = A12Time.parseIso("14:30:00");
 
-  match<T, E, S, F>(
-    result: A12Result<T, E>,
-    branches: {
-      readonly ok: (value: T) => S;
-      readonly error: (error: E) => F;
-    },
-  ): S | F;
+const nativeTextAgain: string = text.toNative();
+const nativeFlagAgain: boolean = flag.toNative();
+const nativeAmount: string = amount.toDecimalString();
+const nativeCount: bigint = count.toBigInt();
+const nativeDate: string = date.toIsoString();
+const nativeTime: string = time.toIsoString();
+```
 
-  getOrElse<T, E>(
-    result: A12Result<T, E>,
-    fallback: (error: E) => T,
-  ): T;
+Exact decimal text is the primary numeric boundary. JavaScript `number` conversion is visibly lossy and never appears as an arithmetic overload:
 
-  capture<T>(
-    operation: () => T,
-  ): A12Result<T, A12OperatorError>;
-}
+```ts
+declare const nativeApproximation: number;
+declare const amount: A12Number;
 
-interface A12EvaluationCompanion {
-  map<T, U>(
-    evaluation: A12Evaluation<T>,
-    transform: (value: T) => U,
-  ): A12Evaluation<U>;
+const approximateA12Value: A12Number = A12Number.fromNumberLossy(nativeApproximation);
+const approximateNativeValue: number = amount.toNumberLossy();
+```
 
-  flatMap<T, U>(
-    evaluation: A12Evaluation<T>,
-    transform:
-      (value: T) => A12Evaluation<U>,
-  ): A12Evaluation<U>;
+Safe native integers and `bigint` remain exact:
 
-  zipWith<A, B, C>(
-    first: A12Evaluation<A>,
-    second: A12Evaluation<B>,
-    combine: (first: A, second: B) => C,
-  ): A12Evaluation<C>;
+```ts
+const smallCount: A12Integer = A12Integer.fromSafeInteger(42);
+const nativeSmallCount: number = smallCount.toSafeInteger();
+```
 
-  match<T, V, N>(
-    evaluation: A12Evaluation<T>,
-    branches: {
-      readonly value: (value: T) => V;
-      readonly notEvaluated:
-        (reason: A12NonEvaluationReason) => N;
-    },
-  ): V | N;
+A JavaScript `Date` is accepted only as an instant and only with an explicit evaluation zone:
 
-  getOrElse<T>(
-    evaluation: A12Evaluation<T>,
-    fallback:
-      (reason: A12NonEvaluationReason) => T,
-  ): T;
-}
+```ts
+declare const nativeInstant: Date;
 
+const utc: A12TimeZone = A12TimeZone.utc();
+const dateTime: A12DateTime = A12DateTime.fromJsDate(nativeInstant, utc);
+const nativeInstantAgain: Date = dateTime.toJsInstantDate();
+```
+
+There is no implicit `Date` to `A12Date` conversion. `fromJsDate` rejects sub-second precision unless the caller uses a separately named rounding or truncation conversion.
+
+Structured values use explicit constructors:
+
+```ts
+const year: A12Integer = A12Integer.fromSafeInteger(2026);
+const month: A12Integer = A12Integer.fromSafeInteger(7);
+const day: A12Integer = A12Integer.fromSafeInteger(19);
+const hours: A12Integer = A12Integer.fromSafeInteger(14);
+const minutes: A12Integer = A12Integer.fromSafeInteger(30);
+const seconds: A12Integer = A12Integer.fromSafeInteger(0);
+
+const date: A12Date = A12Date.of(year, month, day);
+const time: A12Time = A12Time.of(hours, minutes, seconds);
+const dateTime: A12DateTime = A12DateTime.combine(date, time, A12TimeZone.utc());
+const range: A12DateRange = A12DateRange.of(date, operators.date.addDays(date, A12Integer.fromSafeInteger(7)));
+```
+
+Strict construction produces a valid value or a conversion error. The interpreter-only expression behavior that preserves an unreal `Date(...)` candidate for `Valid(...)` or `Invalid(...)` does not weaken `A12Date`.
+
+### Exact codecs
+
+Constructors are convenient for one value. A small dependency-free codec contract enables transports, arrays, and optional schema-library adapters without introducing a schema language:
+
+```ts
 interface A12Codec<Input, Output> {
   parse(input: unknown): Output;
-
-  tryParse(
-    input: unknown,
-  ): A12Result<Output, A12ConversionError>;
-
+  tryParse(input: unknown): A12Result<Output, A12ConversionError>;
   decode(input: Input): Output;
-
-  tryDecode(
-    input: Input,
-  ): A12Result<Output, A12ConversionError>;
-
+  tryDecode(input: Input): A12Result<Output, A12ConversionError>;
   encode(output: Output): Input;
-
-  tryEncode(
-    output: Output,
-  ): A12Result<Input, A12ConversionError>;
+  tryEncode(output: Output): A12Result<Input, A12ConversionError>;
 }
+```
 
-declare const A12Result: A12ResultCompanion;
-declare const A12Evaluation:
-  A12EvaluationCompanion;
-declare const A12Errors: A12ErrorGuards;
+The canonical codecs are:
 
-interface A12OptionCompanion {
-  readonly none: {readonly kind: "none"};
-  some<T>(value: T): A12Option<T>;
-}
+| Codec | Exact representation |
+|---|---|
+| `A12Codecs.string` | `string` ↔ `A12String` |
+| `A12Codecs.boolean` | `boolean` ↔ `A12Boolean` |
+| `A12Codecs.confirmed` | literal `true` ↔ `A12Confirm` |
+| `A12Codecs.decimalString` | decimal `string` ↔ `A12Number` |
+| `A12Codecs.bigint` | `bigint` ↔ `A12Integer` |
+| `A12Codecs.isoDate` | ISO date `string` ↔ `A12Date` |
+| `A12Codecs.isoTime` | ISO time `string` ↔ `A12Time` |
+| `A12Codecs.dateRange` | `{start, end}` ↔ `A12DateRange` |
+| `A12Codecs.dateTime` | `{instant, timeZone}` ↔ `A12DateTime` for the supported zone set |
 
-interface A12StringCompanion {
-  of(value: string): A12String;
-  is(value: unknown): value is A12String;
-}
-
-interface A12BooleanCompanion {
-  of(value: boolean): A12Boolean;
-  is(value: unknown): value is A12Boolean;
-}
-
-interface A12ConfirmCompanion {
-  confirmed(): A12Confirm;
-  is(value: unknown): value is A12Confirm;
-}
-
-interface A12NumberCompanion {
-  parse(value: string): A12Number;
-  tryParse(
-    value: string,
-  ): A12Result<A12Number, A12ConversionError>;
-  fromNumberLossy(value: number): A12Number;
-  tryFromNumberLossy(
-    value: number,
-  ): A12Result<A12Number, A12ConversionError>;
-  is(value: unknown): value is A12Number;
-}
-
-interface A12IntegerCompanion {
-  fromSafeInteger(value: number): A12Integer;
-  tryFromSafeInteger(
-    value: number,
-  ): A12Result<A12Integer, A12ConversionError>;
-  fromBigInt(value: bigint): A12Integer;
-  is(value: unknown): value is A12Integer;
-}
-
-interface A12DateCompanion {
-  parseIso(value: string): A12Date;
-  tryParseIso(
-    value: string,
-  ): A12Result<A12Date, A12ConversionError>;
-  of(
-    year: A12Integer,
-    month: A12Integer,
-    day: A12Integer,
-  ): A12Date;
-  tryOf(
-    year: A12Integer,
-    month: A12Integer,
-    day: A12Integer,
-  ): A12Result<A12Date, A12ConversionError>;
-  is(value: unknown): value is A12Date;
-}
-
-interface A12TimeCompanion {
-  parseIso(value: string): A12Time;
-  tryParseIso(
-    value: string,
-  ): A12Result<A12Time, A12ConversionError>;
-  of(
-    hours: A12Integer,
-    minutes: A12Integer,
-    seconds: A12Integer,
-  ): A12Time;
-  tryOf(
-    hours: A12Integer,
-    minutes: A12Integer,
-    seconds: A12Integer,
-  ): A12Result<A12Time, A12ConversionError>;
-  is(value: unknown): value is A12Time;
-}
-
-interface A12TimeZoneCompanion {
-  utc(): A12TimeZone;
-  is(value: unknown): value is A12TimeZone;
-}
-
-interface A12DateTimeCompanion {
-  parseLocal(
-    localIso: string,
-    evaluationTimeZone: A12TimeZone,
-  ): A12DateTime;
-  tryParseLocal(
-    localIso: string,
-    evaluationTimeZone: A12TimeZone,
-  ): A12Result<A12DateTime, A12ConversionError>;
-  parseInstant(
-    instantIso: string,
-    evaluationTimeZone: A12TimeZone,
-  ): A12DateTime;
-  tryParseInstant(
-    instantIso: string,
-    evaluationTimeZone: A12TimeZone,
-  ): A12Result<A12DateTime, A12ConversionError>;
-  fromJsDate(
-    instant: Date,
-    evaluationTimeZone: A12TimeZone,
-  ): A12DateTime;
-  tryFromJsDate(
-    instant: Date,
-    evaluationTimeZone: A12TimeZone,
-  ): A12Result<A12DateTime, A12ConversionError>;
-  combine(
-    date: A12Date,
-    time: A12Time,
-    evaluationTimeZone: A12TimeZone,
-  ): A12DateTime;
-  tryCombine(
-    date: A12Date,
-    time: A12Time,
-    evaluationTimeZone: A12TimeZone,
-  ): A12Result<A12DateTime, A12ConversionError>;
-  is(value: unknown): value is A12DateTime;
-}
-
-interface A12DateRangeCompanion {
-  of(start: A12Date, end: A12Date): A12DateRange;
-  tryOf(
-    start: A12Date,
-    end: A12Date,
-  ): A12Result<A12DateRange, A12ConversionError>;
-  is(value: unknown): value is A12DateRange;
-}
-
-interface A12EvaluationTimeCompanion {
-  fromJsDate(
-    instant: Date,
-    timeZone: A12TimeZone,
-  ): A12EvaluationTime;
-  tryFromJsDate(
-    instant: Date,
-    timeZone: A12TimeZone,
-  ): A12Result<A12EvaluationTime, A12ConversionError>;
-  is(value: unknown): value is A12EvaluationTime;
-}
-
-interface A12BaseYearCompanion {
-  fromSafeInteger(value: number): A12BaseYear;
-  tryFromSafeInteger(
-    value: number,
-  ): A12Result<A12BaseYear, A12ConversionError>;
-  is(value: unknown): value is A12BaseYear;
-}
-
-interface A12ToleranceCompanion {
-  readonly ONE: "ONE";
-  readonly TWO: "TWO";
-  readonly FIVE: "FIVE";
-  readonly TEN: "TEN";
-}
-
-interface A12PatternCompanion {
-  compile(source: string): A12Pattern;
-  tryCompile(
-    source: string,
-  ): A12Result<A12Pattern, A12ConversionError>;
-  is(value: unknown): value is A12Pattern;
-}
-
+```ts
 interface A12DateRangeWire {
   readonly start: string;
   readonly end: string;
@@ -812,615 +281,69 @@ interface A12DateTimeWire {
   readonly timeZone: string;
 }
 
-interface A12CodecCompanion {
-  readonly string:
-    A12Codec<string, A12String>;
-  readonly boolean:
-    A12Codec<boolean, A12Boolean>;
-  readonly confirmed:
-    A12Codec<true, A12Confirm>;
-  readonly decimalString:
-    A12Codec<string, A12Number>;
-  readonly bigint:
-    A12Codec<bigint, A12Integer>;
-  readonly isoDate:
-    A12Codec<string, A12Date>;
-  readonly isoTime:
-    A12Codec<string, A12Time>;
-  readonly dateRange:
-    A12Codec<A12DateRangeWire, A12DateRange>;
-  readonly dateTime:
-    A12Codec<A12DateTimeWire, A12DateTime>;
+declare const input: unknown;
 
-  array<Input, Output>(
-    item: A12Codec<Input, Output>,
-  ): A12Codec<
-    readonly Input[],
-    readonly Output[]
-  >;
-}
+const amountCodec: A12Codec<string, A12Number> = A12Codecs.decimalString;
+const amount: A12Number = amountCodec.parse(input);
+const canonicalAmount: string = amountCodec.encode(amount);
 
-declare const A12Option: A12OptionCompanion;
-declare const A12String: A12StringCompanion;
-declare const A12Boolean: A12BooleanCompanion;
-declare const A12Confirm: A12ConfirmCompanion;
-declare const A12Number: A12NumberCompanion;
-declare const A12Integer: A12IntegerCompanion;
-declare const A12Date: A12DateCompanion;
-declare const A12Time: A12TimeCompanion;
-declare const A12TimeZone: A12TimeZoneCompanion;
-declare const A12DateTime: A12DateTimeCompanion;
-declare const A12DateRange: A12DateRangeCompanion;
-declare const A12EvaluationTime:
-  A12EvaluationTimeCompanion;
-declare const A12BaseYear: A12BaseYearCompanion;
-declare const A12Tolerance: A12ToleranceCompanion;
-declare const A12Pattern: A12PatternCompanion;
-declare const A12Codecs: A12CodecCompanion;
+const dateTimeCodec: A12Codec<A12DateTimeWire, A12DateTime> = A12Codecs.dateTime;
 ```
 
-`A12SemanticValue<K>` is the declaration helper shared by every immutable wrapper. Its module-private `unique symbol` brand prevents accidental structural assignment in TypeScript, while Kotlin-backed runtime authenticity checks enforce the boundary at execution time. `K` is the exact literal `kind` discriminant. `A12ValueKind` lists only storable scalar discriminants; support values use distinct literals and remain outside `A12Value`. `A12Integer` extends `A12Number`, retains `kind: "number"`, and adds a private integer-refinement brand, exact `bigint` conversion, and checked safe-integer conversion.
+Only exact bidirectional conversions are codecs. Decimal `number`, zone-less JavaScript `Date`, and zone-less local date-time conversions remain checked or explicitly lossy one-way operations.
 
-Each `…Companion` interface defines the runtime export with the same name as its value type. An `of`/`parse`/`from…` method returns the named immutable type or throws `A12ConversionError` when the declared input domain is violated; every fallible form has the adjacent `try…` result form. `A12String.of`, `A12Boolean.of`, `A12Confirm.confirmed`, `A12Integer.fromBigInt`, and `A12TimeZone.utc` are total for their typed inputs and therefore need no artificial try-form. Every wrapper guard accepts `unknown`, never throws, and verifies an authentic library-issued wrapper. A literal `kind` switch narrows only after a value has already passed an authenticity guard or arrived through a typed trusted boundary.
+Every codec obeys these laws:
 
-`A12Option<T>` is the generic `some`/`none` union. `A12OptionCompanion` is its runtime constructor: `some<T>` preserves the supplied type `T`, while the immutable `none` object is assignable to every `A12Option<T>` because it carries no value. `A12Tolerance` is a closed string-literal union and `A12ToleranceCompanion` supplies its four correctly typed constants. `A12Pattern` and `A12PatternCompanion` describe the gated declaration shape; both exports are omitted from an actual package until the supported regex profile is exact.
+- `decode(encode(value))` preserves the semantic A12 value and required direct-API context;
+- `encode(decode(input))` may canonicalize spelling but preserves accepted semantics;
+- JVM and JavaScript return the same value or structured issue for the same supported input;
+- a lossy conversion is never presented as an exact codec.
 
-`A12Truth` is the exact discriminated three-state union. `A12Evaluation<T>` is the corresponding explicit algebra for a value-producing partial operation. `A12ErrorCode` identifies the stable error family, while the closed `A12ConversionIssue` and `A12OperatorIssue` unions identify the concrete machine-readable causes and carry paths and structured details. An operator issue’s `operation` retains the exact catalog identity where one exists or the stable ID of a clearly classified direct utility. Developers never have to parse `message`, and errors do not copy the rejected raw input by default. `A12ErrorGuards` safely narrow a TypeScript `unknown` without relying on cross-module `instanceof`. `A12IndexedConversionError.index` is the zero-based native-array index and `error` is the original scalar conversion error. Bulk errors deliberately do not retain the source value; the caller already owns the source array and may use the index without duplicating or leaking input.
+### Arrays and lists
 
-`A12ResultCompanion` is the runtime value named `A12Result`, separate from the same-named generic result type. Its generic parameters name the success, failure, and callback result types explicitly. `map`, `flatMap`, and `zipWith` propagate existing typed failures and do not catch exceptions thrown by application callbacks. `zipWith` returns the left failure first when both inputs fail. `match` folds success and failure branches, while `getOrElse` computes a fallback. `capture` catches only `A12OperatorError`; every foreign exception or thrown value propagates unchanged.
+TypeScript uses ordinary homogeneous `readonly` arrays and Kotlin/JVM uses lists. There is no `A12List` value kind.
 
-`A12EvaluationCompanion` provides the same scalable semantic composition for partial value operations. Its `map` and `flatMap` do not invoke the callback for `notEvaluated`; `zipWith` returns the first non-evaluation from left to right; `match` forces the caller to handle both channels; and `getOrElse` requires an explicit reason-aware fallback. These combinators are eager and construct no expression graph.
-
-`A12Codec<Input, Output>` separates the typed native/wire input from the authentic A12 output. `parse`/`tryParse` begin at `unknown`; `decode`/`tryDecode` begin at a statically typed input; `encode`/`tryEncode` produce the exact portable representation. `A12Codecs` contains only exact codecs and array composition. It defines no object schema, defaults, optionality, arbitrary refinements, validation graph, or document model.
-
-The remaining support types are explicit values rather than hidden context:
-
-- `A12EvaluationTime` is one exact instant resolved in one supported time zone;
-- `A12BaseYear` exposes the configured year as integer, start date, or full-year range;
-- `A12Tolerance` is the closed `ONE | TWO | FIVE | TEN` set;
-- `A12Integer` is accepted everywhere an `A12NumericValue` operand is accepted.
-
-The common field domains project predictably: number/amount → `A12Number`, integral counts/offsets → `A12Integer`, boolean → `A12Boolean`, a filled confirm → `A12Confirm`, string and stored enum code → `A12String`, and temporal/range kinds → their matching A12 values. An unset confirm remains document state; `false` is rejected and Confirm never compares with Boolean. Enum categories, partial-date completion, and field formatting remain model/interpreter behavior.
-
-The direct layer deliberately excludes field-state wrappers such as “empty” or “formally invalid.” An empty field’s operator behavior is model/evaluation semantics. It is not the same thing as a direct call with an `A12Date`.
-
-### 4.1 Runtime authenticity and realm policy
-
-TypeScript brands prevent accidental misuse only at compile time. The runtime boundary is a Kotlin/JS-owned authenticity marker and invariant check that is not reproducible by a plain object with the same public properties. `instanceof` alone is insufficient because duplicate bundles and realms create different constructor identities.
-
-The initial contract deliberately accepts wrappers only from the same physical package instance and JavaScript realm. A duplicate package copy, Node Worker, iframe realm, or structured-cloned wrapper is foreign and every `is(value: unknown)` guard returns `false`. Operators receiving such a value through plain JavaScript, `any`, or an unsafe assertion throw a structured `A12OperatorError` rather than leaking a Kotlin cast failure. Cross-realm, worker, process, persistence, and network transfer uses the exact codec representation and reconstructs a local authentic wrapper. This policy is deterministic, avoids a forgeable global symbol registry, and can be widened later only with a proven interoperable ABI.
-
-`A12Number.is(value)` accepts every authentic number wrapper, including an `A12Integer`; `A12Integer.is(value)` additionally proves the integral refinement. Neither guard trusts a public `kind: "number"` property by itself.
-
-### 4.2 Date-time identity
-
-`A12DateTime` cannot be a decorated string. Kernel sub-day differences are instant-based, and chained shifts must preserve the exact instant through daylight-saving overlaps. The kernel scalar represents an instant whose effective time zone comes from model/runtime context; the direct wrapper pairs that instant with explicit evaluation context so an otherwise context-free operator call remains deterministic. The paired zone is not presented as intrinsic kernel storage identity.
-
-Construction resolves a local date-time using an explicit supported zone:
+An array codec composes any exact scalar or structured codec:
 
 ```ts
-const value: A12DateTime = A12DateTime.parseLocal(
-  "2024-10-27T02:30:00",
-  A12TimeZone.utc(),
+const amountsCodec: A12Codec<readonly string[], readonly A12Number[]> = A12Codecs.array(A12Codecs.decimalString);
+const nativeAmounts: readonly string[] = ["19.95", "7.50"];
+const amounts: readonly A12Number[] = amountsCodec.decode(nativeAmounts);
+const canonicalAmounts: readonly string[] = amountsCodec.encode(amounts);
+```
+
+Array conversion preserves order and duplicates. It rejects sparse holes, `null`, `undefined`, and wrong element kinds, and reports the zero-based index of each failing element.
+
+Callers that already have scalar converters may use the lower-level adapters:
+
+```ts
+type A12NativeScalar = string | boolean | number | bigint | Date;
+
+interface A12ArraysApi {
+  wrapAll<Input extends A12NativeScalar, Output extends A12Value>(inputs: readonly Input[], wrap: (input: Input) => Output): readonly Output[];
+  tryWrapAll<Input extends A12NativeScalar, Output extends A12Value, Failure extends A12ConversionError = A12ConversionError>(inputs: readonly Input[], wrap: (input: Input) => A12Result<Output, Failure>): A12ArrayConversionResult<Output, Failure>;
+  unwrapAll<Input extends A12Value, Output extends A12NativeScalar>(values: readonly Input[], unwrap: (value: Input) => Output): readonly Output[];
+  tryUnwrapAll<Input extends A12Value, Output extends A12NativeScalar, Failure extends A12ConversionError = A12ConversionError>(values: readonly Input[], unwrap: (value: Input) => A12Result<Output, Failure>): A12ArrayConversionResult<Output, Failure>;
+}
+
+declare const A12Arrays: A12ArraysApi;
+declare const nativeValues: readonly string[];
+
+const attemptedValues: A12Result<readonly A12Number[], A12ArrayConversionError> = A12Arrays.tryWrapAll(
+  nativeValues,
+  (value: string): A12Result<A12Number, A12ConversionError> => A12Number.tryParse(value),
 );
 ```
 
-The value retains enough evaluation context to make later calls context-free. UTC is the initial guaranteed zone and therefore the only initially accepted `A12DateTimeWire.timeZone`. Named IANA zones such as `Europe/Berlin` join the accepted context set only after their supported history is kernel-exact; the API does not advertise a partly correct zone. When named zones ship, a spring daylight-saving gap is a conversion error, a fall-back ambiguous local time follows the exact kernel resolution rule, and operations requiring two date-times reject incompatible evaluation zones unless an explicit conversion is defined.
+`wrapAll` is fail-fast and turns a thrown `A12ConversionError` into one indexed `A12ArrayConversionError`; a foreign exception propagates unchanged. The `try…` forms evaluate every element, accumulate every indexed conversion failure, and retain both the flattened issue paths and the original scalar errors grouped by index.
 
-## 5. Wrapping and unwrapping native values
+Native `map` and `filter` remain the normal choice for element-wise work. The operator namespace adds only reductions and predicates with real A12 semantics.
 
-Wrapping and unwrapping are core API, not an appendix.
+### Operator namespaces
 
-### 5.1 Strings and booleans
-
-Native strings and booleans convert without loss through `A12String.of`/`toNative` and `A12Boolean.of`/`toNative`:
+The primary export is a stateless, discoverable namespace:
 
 ```ts
-declare const nativeText: string;
-declare const nativeFlag: boolean;
-
-const text: A12String = A12String.of(nativeText);
-const nativeTextAgain: string = text.toNative();
-const flag: A12Boolean = A12Boolean.of(nativeFlag);
-const nativeFlagAgain: boolean = flag.toNative();
-const confirmed: A12Confirm = A12Confirm.confirmed();
-```
-
-`A12Confirm.confirmed()` constructs the only filled confirmation value. There is deliberately no `A12Confirm.of(false)` or native `boolean` unwrapping for Confirm.
-
-### 5.2 Numbers
-
-Exact decimal text is the primary numeric boundary:
-
-```ts
-const amount: A12Number = A12Number.parse("19.955");
-const canonical: string = amount.toDecimalString();
-```
-
-`toDecimalString()` is value-exact and canonical, not a promise to preserve source spelling: parsing `"19.950"` may produce `"19.95"`. Stored field lexical rendering such as `FieldValueAsString` remains document/interpreter behavior.
-
-Safe integers and `bigint` have exact adapters:
-
-```ts
-declare const nativeBigInt: bigint;
-
-const count: A12Integer = A12Integer.fromSafeInteger(42);
-const large: A12Integer = A12Integer.fromBigInt(nativeBigInt);
-
-const nativeCount: number = count.toSafeInteger();
-const nativeLarge: bigint = large.toBigInt();
-```
-
-A JavaScript `number` conversion must never pretend to recover a business decimal exactly. If a convenience adapter is supported, loss is visible in the name:
-
-```ts
-declare const nativeNumber: number;
-declare const amount: A12Number;
-
-const wrappedApproximate: A12Number =
-  A12Number.fromNumberLossy(nativeNumber);
-const nativeApproximate: number = amount.toNumberLossy();
-```
-
-There is no silent `number` overload on arithmetic operators.
-
-### 5.3 Dates and times
-
-Canonical text is the unambiguous boundary:
-
-```ts
-const date: A12Date = A12Date.parseIso("2026-07-19");
-const time: A12Time = A12Time.parseIso("14:30:00");
-
-const dateText: string = date.toIsoString();
-const timeText: string = time.toIsoString();
-```
-
-A JavaScript `Date` is an instant. It can convert to an `A12DateTime` only with an explicit zone:
-
-```ts
-declare const nativeDate: Date;
-declare const utc: A12TimeZone;
-
-const value: A12DateTime =
-  A12DateTime.fromJsDate(nativeDate, utc);
-const nativeInstant: Date = value.toJsInstantDate();
-
-const local: string = value.toLocalIsoString();
-const instant: string = value.toInstantIsoString();
-const evaluationTimeZone: A12TimeZone =
-  value.evaluationTimeZone;
-
-const fromNativeInstant: A12DateTime =
-  A12DateTime.fromJsDate(
-    nativeInstant,
-    evaluationTimeZone,
-  );
-const fromInstantText: A12DateTime =
-  A12DateTime.parseInstant(
-    instant,
-    evaluationTimeZone,
-  );
-```
-
-The A12 boundary has second precision. `fromJsDate` rejects a non-zero millisecond component unless the caller chooses an explicitly named rounding/truncation conversion.
-
-`toJsInstantDate()` preserves the instant but, like every JavaScript `Date`, cannot carry the direct API’s evaluation-zone context. `fromJsDate(nativeInstant, evaluationTimeZone)` is its exact inverse at A12 second precision. `toInstantIsoString()` emits an offset/UTC instant string, and `parseInstant(instant, evaluationTimeZone)` is its exact textual inverse. Local canonical text is a display projection, not an exact round-trip representation: during a daylight-saving overlap, the same local text can name two instants. There is no default conversion from JavaScript `Date` to `A12Date`, because choosing a calendar date requires a zone.
-
-### 5.4 Exact codecs and conversion classification
-
-Constructors remain the shortest scalar API. Codecs add one dependency-free composition boundary for transports, arrays, and future adapters:
-
-```ts
-declare const unknownAmount: unknown;
-
-const amountCodec: A12Codec<string, A12Number> =
-  A12Codecs.decimalString;
-const amount: A12Number =
-  amountCodec.parse(unknownAmount);
-const canonicalAmount: string =
-  amountCodec.encode(amount);
-
-const amountsCodec: A12Codec<
-  readonly string[],
-  readonly A12Number[]
-> = A12Codecs.array(
-  A12Codecs.decimalString,
-);
-
-const nativeAmounts: readonly string[] = [
-  "19.95",
-  "7.50",
-];
-const amounts: readonly A12Number[] =
-  amountsCodec.decode(nativeAmounts);
-```
-
-`unknownAmount` is an untrusted boundary value. `amountCodec` accepts exact decimal text and produces an authentic `A12Number`. `canonicalAmount` is exact canonical decimal text. `amountsCodec` composes the same conversion over immutable-view arrays, and `amounts` retains order and duplicates. Array parsing rejects sparse holes, `null`, `undefined`, and an element of the wrong native kind. Array failures prefix every scalar issue path with the failing zero-based index.
-
-Only exact bidirectional conversions are codecs:
-
-| Conversion | Exact codec | Rationale |
-|---|---:|---|
-| `string` ↔ `A12String` | yes | exact |
-| `boolean` ↔ `A12Boolean` | yes | exact |
-| literal `true` ↔ `A12Confirm` | yes | Confirm has no false filled value |
-| decimal string ↔ `A12Number` | yes | exact decimal representation |
-| `bigint` ↔ `A12Integer` | yes | exact integral representation |
-| ISO calendar-date string ↔ `A12Date` | yes | exact after canonicalization |
-| ISO local-time string ↔ `A12Time` | yes | exact after canonicalization |
-| `{start, end}` ↔ `A12DateRange` | yes | structured and unambiguous |
-| `{instant, timeZone}` ↔ `A12DateTime` | yes for the exactly supported context set; initially UTC | preserves the instant plus explicit direct-API evaluation context |
-| JavaScript `number` ↔ `A12Number` | no | may lose decimal information |
-| every `A12Integer` ↔ safe JavaScript `number` | no | only a checked subset fits |
-| JavaScript `Date` ↔ `A12Date` | no | instant and calendar date are different concepts |
-| JavaScript `Date` ↔ `A12DateTime` without a zone | no | the instant does not select evaluation-zone context |
-| zone-less local date-time ↔ `A12DateTime` | no | a daylight-saving overlap or gap can be ambiguous or invalid |
-
-`A12Integer.fromSafeInteger` and `tryToSafeInteger` remain checked one-way conversions rather than a misleading codec over the whole integer domain. `A12Number.fromNumberLossy` and `toNumberLossy` remain visibly lossy methods. `A12DateTime.fromJsDate` is exact only because it receives the explicit zone context and rejects precision loss.
-
-Every exact codec is law-tested on JVM and JavaScript:
-
-1. `decode(encode(value))` preserves the semantic A12 value and required direct-API context.
-2. `encode(decode(input))` may canonicalize lexical input but preserves accepted semantics.
-3. Supported platforms produce the same A12 value or the same structured issue for the same input.
-4. No lossy or partial conversion is presented as an exact codec.
-5. Array composition preserves order and duplicates and reports every failing index without retaining raw inputs.
-
-### 5.5 Parse results
-
-User input needs both throwing and composable forms:
-
-```ts
-declare const input: string;
-
-const date: A12Date = A12Date.parseIso(input);
-const attempted: A12Result<A12Date, A12ConversionError> =
-  A12Date.tryParseIso(input);
-```
-
-`date` is the throwing `A12Date` result. `attempted` is the non-throwing `A12Result<A12Date, A12ConversionError>` form declared by `A12DateCompanion`; its `ok` discriminant narrows to either the date or the structured conversion error. Raw Kotlin exceptions and sealed implementation types do not leak into TypeScript.
-
-Throwing forms have a runtime-safe recognition path:
-
-```ts
-declare const input: string;
-
-try {
-  const date: A12Date = A12Date.parseIso(input);
-} catch (caught: unknown) {
-  if (A12Errors.isConversion(caught)) {
-    const conversionError: A12ConversionError = caught;
-    const firstIssue: A12ConversionIssue =
-      conversionError.issues[0];
-    const issueCode: A12ConversionIssue["code"] =
-      firstIssue.code;
-  }
-}
-```
-
-`input` is native `string`. `date` is the successfully constructed `A12Date`. `caught` is `unknown`, the safe TypeScript catch type. `A12Errors.isConversion` narrows it to `A12ConversionError`, which is then assigned to `conversionError`; `firstIssue` is a closed structured conversion issue and `issueCode` is its exhaustively narrowable discriminator. `A12Errors.is`, `isOperator`, and `isArrayConversion` provide the corresponding base/operator/bulk guards.
-
-## 6. Operator surface
-
-Operator names use idiomatic lower camel case while documenting their operator-catalog identity, such as `catalog:DifferenceInHours`. Namespaces make the API discoverable without a stringly dispatcher.
-
-The baseline callable surface is fully typed:
-
-```ts
-type A12NumericValue = A12Number;
-type A12TemporalValue = A12Date | A12DateTime;
-
-type A12TotalEqualityOperands =
-  | [left: A12Boolean, right: A12Boolean]
-  | [left: A12Confirm, right: A12Confirm]
-  | [left: A12NumericValue, right: A12NumericValue]
-  | [left: A12Date, right: A12Date]
-  | [left: A12Time, right: A12Time]
-  | [left: A12DateTime, right: A12DateTime]
-  | [left: A12DateRange, right: A12DateRange];
-
-type A12OrderedOperands =
-  | [left: A12NumericValue, right: A12NumericValue]
-  | [left: A12Date, right: A12Date]
-  | [left: A12Time, right: A12Time]
-  | [left: A12DateTime, right: A12DateTime];
-
-type A12TotalEqualityCollection =
-  | readonly A12Boolean[]
-  | readonly A12Confirm[]
-  | readonly A12NumericValue[]
-  | readonly A12Date[]
-  | readonly A12Time[]
-  | readonly A12DateTime[]
-  | readonly A12DateRange[];
-
-type A12TotalEqualityCollectionOperands =
-  | [
-      values: readonly A12Boolean[],
-      target: A12Boolean,
-    ]
-  | [
-      values: readonly A12Confirm[],
-      target: A12Confirm,
-    ]
-  | [
-      values: readonly A12NumericValue[],
-      target: A12NumericValue,
-    ]
-  | [
-      values: readonly A12Date[],
-      target: A12Date,
-    ]
-  | [
-      values: readonly A12Time[],
-      target: A12Time,
-    ]
-  | [
-      values: readonly A12DateTime[],
-      target: A12DateTime,
-    ]
-  | [
-      values: readonly A12DateRange[],
-      target: A12DateRange,
-    ];
-
-interface A12PointInTimeOperators {
-  today(sample: A12EvaluationTime): A12Date;
-  now(sample: A12EvaluationTime): A12DateTime;
-}
-
-interface A12BooleanOperators {
-  and(
-    left: A12Boolean,
-    right: A12Boolean,
-  ): A12Boolean;
-  or(
-    left: A12Boolean,
-    right: A12Boolean,
-  ): A12Boolean;
-  not(value: A12Boolean): A12Boolean;
-}
-
-interface A12TruthOperators {
-  and(left: A12Truth, right: A12Truth): A12Truth;
-  or(left: A12Truth, right: A12Truth): A12Truth;
-  not(value: A12Truth): A12Truth;
-}
-
-interface A12DateOperators {
-  differenceInDays(
-    start: A12Date,
-    end: A12Date,
-  ): A12Integer;
-  differenceInMonths(
-    start: A12Date,
-    end: A12Date,
-  ): A12Integer;
-  differenceInYears(
-    start: A12Date,
-    end: A12Date,
-  ): A12Integer;
-  addDays(
-    value: A12Date,
-    amount: A12Integer,
-  ): A12Date;
-  addMonths(
-    value: A12Date,
-    amount: A12Integer,
-  ): A12Date;
-  addYears(
-    value: A12Date,
-    amount: A12Integer,
-  ): A12Date;
-  year(value: A12Date): A12Integer;
-  month(value: A12Date): A12Integer;
-  day(value: A12Date): A12Integer;
-  quarter(value: A12Date): A12Integer;
-  minAll(
-    values: readonly A12Date[],
-  ): A12Option<A12Date>;
-  maxAll(
-    values: readonly A12Date[],
-  ): A12Option<A12Date>;
-}
-
-interface A12DateTimeOperators {
-  differenceInDays(
-    start: A12DateTime,
-    end: A12DateTime,
-  ): A12Integer;
-  differenceInHours(
-    start: A12DateTime,
-    end: A12DateTime,
-  ): A12Integer;
-  differenceInMinutes(
-    start: A12DateTime,
-    end: A12DateTime,
-  ): A12Integer;
-  differenceInSeconds(
-    start: A12DateTime,
-    end: A12DateTime,
-  ): A12Integer;
-  addDays(
-    value: A12DateTime,
-    amount: A12Integer,
-  ): A12DateTime;
-  addHours(
-    value: A12DateTime,
-    amount: A12Integer,
-  ): A12DateTime;
-  addMinutes(
-    value: A12DateTime,
-    amount: A12Integer,
-  ): A12DateTime;
-  addSeconds(
-    value: A12DateTime,
-    amount: A12Integer,
-  ): A12DateTime;
-  datePart(value: A12DateTime): A12Date;
-  timePart(value: A12DateTime): A12Time;
-}
-
-interface A12TemporalOperators {
-  differenceInDays(
-    start: A12TemporalValue,
-    end: A12TemporalValue,
-  ): A12Integer;
-  year(value: A12TemporalValue): A12Integer;
-  month(value: A12TemporalValue): A12Integer;
-  day(value: A12TemporalValue): A12Integer;
-  quarter(value: A12TemporalValue): A12Integer;
-}
-
-interface A12TimeOperators {
-  hours(value: A12Time): A12Integer;
-  minutes(value: A12Time): A12Integer;
-  seconds(value: A12Time): A12Integer;
-}
-
-interface A12StringOperators {
-  length(value: A12String): A12Integer;
-  concat(
-    first: A12String,
-    second: A12String,
-    ...rest: A12String[]
-  ): A12String;
-  rangeAsString(
-    value: A12String,
-    startInclusive: A12Integer,
-    endInclusive: A12Integer,
-  ): A12String;
-  rangeAsNumber(
-    value: A12String,
-    startInclusive: A12Integer,
-    endInclusive: A12Integer,
-  ): A12Number;
-  equal(
-    left: A12String,
-    right: A12String,
-  ): A12Truth;
-  notEqual(
-    left: A12String,
-    right: A12String,
-  ): A12Truth;
-  concatAll(
-    values: readonly A12String[],
-  ): A12String;
-}
-
-interface A12NumberOperators {
-  add(
-    left: A12NumericValue,
-    right: A12NumericValue,
-  ): A12Number;
-  subtract(
-    left: A12NumericValue,
-    right: A12NumericValue,
-  ): A12Number;
-  abs(value: A12NumericValue): A12Number;
-  min(
-    left: A12NumericValue,
-    right: A12NumericValue,
-  ): A12Number;
-  max(
-    left: A12NumericValue,
-    right: A12NumericValue,
-  ): A12Number;
-  roundDown(
-    value: A12NumericValue,
-    scale: A12Integer,
-  ): A12Number;
-  roundUp(
-    value: A12NumericValue,
-    scale: A12Integer,
-  ): A12Number;
-  roundAccounting(
-    value: A12NumericValue,
-    scale: A12Integer,
-  ): A12Number;
-  differsByMoreThan(
-    left: A12NumericValue,
-    right: A12NumericValue,
-    tolerance: A12Tolerance,
-  ): A12Truth;
-  sumAll(
-    values: readonly A12NumericValue[],
-  ): A12Number;
-  minAll(
-    values: readonly A12NumericValue[],
-  ): A12Number;
-  maxAll(
-    values: readonly A12NumericValue[],
-  ): A12Number;
-}
-
-interface A12CompareOperators {
-  equal(
-    ...operands: A12TotalEqualityOperands
-  ): A12Truth;
-  notEqual(
-    ...operands: A12TotalEqualityOperands
-  ): A12Truth;
-  lessThan(
-    ...operands: A12OrderedOperands
-  ): A12Truth;
-  lessThanOrEqual(
-    ...operands: A12OrderedOperands
-  ): A12Truth;
-  greaterThan(
-    ...operands: A12OrderedOperands
-  ): A12Truth;
-  greaterThanOrEqual(
-    ...operands: A12OrderedOperands
-  ): A12Truth;
-  order(
-    ...operands: A12OrderedOperands
-  ): A12Integer;
-}
-
-interface A12DateRangeOperators {
-  start(value: A12DateRange): A12Date;
-  end(value: A12DateRange): A12Date;
-  overlaps(
-    left: A12DateRange,
-    right: A12DateRange,
-  ): A12Truth;
-  anyPairOverlaps(
-    values: readonly A12DateRange[],
-  ): A12Truth;
-  overlapsAny(
-    target: A12DateRange,
-    values: readonly A12DateRange[],
-  ): A12Truth;
-}
-
-interface A12ValueCollectionOperators {
-  includes(
-    ...operands: A12TotalEqualityCollectionOperands
-  ): A12Truth;
-  count(
-    ...operands: A12TotalEqualityCollectionOperands
-  ): A12Integer;
-  distinctCount(
-    values: A12TotalEqualityCollection,
-  ): A12Integer;
-}
-
-interface A12StringValueCollectionOperators {
-  includesExact(
-    values: readonly A12String[],
-    target: A12String,
-  ): A12Truth;
-  countExact(
-    values: readonly A12String[],
-    target: A12String,
-  ): A12Integer;
-  distinctCountExact(
-    values: readonly A12String[],
-  ): A12Integer;
-}
-
 interface A12Operators {
   readonly pointInTime: A12PointInTimeOperators;
   readonly boolean: A12BooleanOperators;
@@ -1434,815 +357,590 @@ interface A12Operators {
   readonly compare: A12CompareOperators;
   readonly dateRange: A12DateRangeOperators;
   readonly values: A12ValueCollectionOperators;
-  readonly stringValues:
-    A12StringValueCollectionOperators;
+  readonly stringValues: A12StringValueCollectionOperators;
 }
 
 declare const operators: A12Operators;
 ```
 
-`A12NumericValue` names the one kernel number domain. An `A12Integer` is assignable because it refines `A12Number`; no union or second runtime kind is required. `A12TemporalValue` is the intentionally mixed date/date-time domain. The operand-tuple unions enforce compatible pairings: strings cannot enter generic comparison, date ranges cannot enter ordering, and unrelated kinds cannot be compared. The collection unions similarly keep arrays homogeneous and restrict generic membership/counting to kinds with total equality. Each family interface is the callable namespace used by the examples below.
+The required families are:
 
-Gated features extend the baseline type only when their exact semantics ship:
+| Namespace | Direct operations |
+|---|---|
+| `pointInTime` | `today(sample)`, `now(sample)` with an explicit `A12EvaluationTime` |
+| `boolean` | `and`, `or`, `not` over known `A12Boolean` values |
+| `truth` | `and`, `or`, `not` over `A12Truth` |
+| `date` | differences in days/months/years; add days/months/years; year/month/day/quarter; collection minimum/maximum |
+| `dateTime` | differences in days/hours/minutes/seconds; add days/hours/minutes/seconds; date and time parts |
+| `temporal` | mixed date/date-time day difference and temporal components where the catalog permits them |
+| `time` | hour, minute, and second components |
+| `string` | length, concatenate, A12 ranges, string equality/inequality, concatenate all |
+| `number` | add, subtract, absolute value, minimum, maximum, rounding, tolerance, sum, collection extrema |
+| `compare` | equality and ordering for compatible total scalar kinds |
+| `dateRange` | endpoints, pair overlap, any-pair overlap, target overlap |
+| `values` | membership, occurrence count, and distinct count for kinds with total equality |
+| `stringValues` | explicitly exact supplied-string membership, count, and distinct count |
+
+Catalog variants that differ only in where operands come from map to one direct function. For example, field-source and already-resolved variants of an absolute-value operator do not create duplicate TypeScript methods.
+
+Representative family signatures make the typing contract concrete:
 
 ```ts
-interface A12PatternStringOperators
-  extends A12StringOperators {
-  matches(
-    value: A12String,
-    pattern: A12Pattern,
-  ): A12Truth;
-  violates(
-    value: A12String,
-    pattern: A12Pattern,
-  ): A12Truth;
+type A12TemporalValue = A12Date | A12DateTime;
+
+interface A12DateOperators {
+  differenceInDays(start: A12Date, end: A12Date): A12Integer;
+  differenceInMonths(start: A12Date, end: A12Date): A12Integer;
+  differenceInYears(start: A12Date, end: A12Date): A12Integer;
+  addDays(value: A12Date, amount: A12Integer): A12Date;
+  addMonths(value: A12Date, amount: A12Integer): A12Date;
+  addYears(value: A12Date, amount: A12Integer): A12Date;
+  year(value: A12Date): A12Integer;
+  month(value: A12Date): A12Integer;
+  day(value: A12Date): A12Integer;
+  quarter(value: A12Date): A12Integer;
+  minAll(values: readonly A12Date[]): A12Option<A12Date>;
+  maxAll(values: readonly A12Date[]): A12Option<A12Date>;
 }
 
-interface A12OperatorsWithPatterns
-  extends A12Operators {
-  readonly string: A12PatternStringOperators;
+interface A12DateTimeOperators {
+  differenceInDays(start: A12DateTime, end: A12DateTime): A12Integer;
+  differenceInHours(start: A12DateTime, end: A12DateTime): A12Integer;
+  differenceInMinutes(start: A12DateTime, end: A12DateTime): A12Integer;
+  differenceInSeconds(start: A12DateTime, end: A12DateTime): A12Integer;
+  addDays(value: A12DateTime, amount: A12Integer): A12DateTime;
+  addHours(value: A12DateTime, amount: A12Integer): A12DateTime;
+  addMinutes(value: A12DateTime, amount: A12Integer): A12DateTime;
+  addSeconds(value: A12DateTime, amount: A12Integer): A12DateTime;
+  datePart(value: A12DateTime): A12Date;
+  timePart(value: A12DateTime): A12Time;
 }
 
-interface A12ExactArithmeticNumberOperators
-  extends A12NumberOperators {
-  multiply(
-    left: A12NumericValue,
-    right: A12NumericValue,
-  ): A12Number;
-  divide(
-    left: A12NumericValue,
-    right: A12NumericValue,
-  ): A12Evaluation<A12Number>;
-  power(
-    value: A12NumericValue,
-    exponent: A12Integer,
-  ): A12Evaluation<A12Number>;
-  sumOfProducts(
-    left: readonly A12NumericValue[],
-    right: readonly A12NumericValue[],
-  ): A12Number;
+interface A12StringOperators {
+  length(value: A12String): A12Integer;
+  concat(first: A12String, second: A12String, ...rest: A12String[]): A12String;
+  rangeAsString(value: A12String, startInclusive: A12Integer, endInclusive: A12Integer): A12String;
+  rangeAsNumber(value: A12String, startInclusive: A12Integer, endInclusive: A12Integer): A12Number;
+  equal(left: A12String, right: A12String): A12Truth;
+  notEqual(left: A12String, right: A12String): A12Truth;
+  concatAll(values: readonly A12String[]): A12String;
 }
 
-interface A12OperatorsWithExactArithmetic
-  extends A12Operators {
-  readonly number:
-    A12ExactArithmeticNumberOperators;
+interface A12NumberOperators {
+  add(left: A12Number, right: A12Number): A12Number;
+  subtract(left: A12Number, right: A12Number): A12Number;
+  abs(value: A12Number): A12Number;
+  min(left: A12Number, right: A12Number): A12Number;
+  max(left: A12Number, right: A12Number): A12Number;
+  roundDown(value: A12Number, scale: A12Integer): A12Number;
+  roundUp(value: A12Number, scale: A12Integer): A12Number;
+  roundAccounting(value: A12Number, scale: A12Integer): A12Number;
+  differsByMoreThan(left: A12Number, right: A12Number, tolerance: A12Tolerance): A12Truth;
+  sumAll(values: readonly A12Number[]): A12Number;
+  minAll(values: readonly A12Number[]): A12Number;
+  maxAll(values: readonly A12Number[]): A12Number;
+}
+
+interface A12DateRangeOperators {
+  start(value: A12DateRange): A12Date;
+  end(value: A12DateRange): A12Date;
+  overlaps(left: A12DateRange, right: A12DateRange): A12Truth;
+  anyPairOverlaps(values: readonly A12DateRange[]): A12Truth;
+  overlapsAny(target: A12DateRange, values: readonly A12DateRange[]): A12Truth;
 }
 ```
 
-`A12OperatorsWithPatterns` adds only the exact supported pattern profile. `A12OperatorsWithExactArithmetic` adds the operations that depend on the exact JavaScript 50-significant-digit arithmetic context. These extension types prevent examples or declarations from pretending gated methods already exist.
+All other family signatures follow the same rule: authentic A12 inputs, explicit context where required, and an A12 value, `A12Truth`, `A12Option`, or `A12Evaluation` result.
 
-### 6.1 Construction, constants, and logic
+## Typed usage examples
 
-Strict constructors create already-valid direct values without parsing an expression:
-
-```ts
-declare const year: A12Integer;
-declare const month: A12Integer;
-declare const day: A12Integer;
-declare const hours: A12Integer;
-declare const minutes: A12Integer;
-declare const seconds: A12Integer;
-declare const zone: A12TimeZone;
-declare const start: A12Date;
-declare const end: A12Date;
-
-const date: A12Date = A12Date.of(year, month, day);
-const time: A12Time = A12Time.of(hours, minutes, seconds);
-const dateTime: A12DateTime =
-  A12DateTime.combine(date, time, zone);
-const range: A12DateRange = A12DateRange.of(start, end);
-```
-
-All numeric components are `A12Integer`. `A12Date.of` and `A12Date.tryOf` are strict value boundaries: an impossible combination such as 31 February produces `A12ConversionError` rather than an invalid `A12Date`.
-
-That strict contract does not replace the catalog expression semantics of `Date(...)` observed by `Valid(Date(...))` and `Invalid(Date(...))`. The interpreter may retain an unreal construction candidate long enough for those conditions to inspect it, including document-contextual empty or malformed components and polarity. Such a candidate is not an `A12Date` and is not exposed by this direct API. If a concrete direct candidate-inspection use case later appears, it requires a separately named `A12DateCandidate` with an explicit state algebra; it must never weaken `A12Date` or make an impossible date look like a value.
-
-Point-in-time constants require an immutable sample captured once by the caller:
-
-```ts
-declare const nativeNow: Date;
-declare const zone: A12TimeZone;
-
-const sample: A12EvaluationTime =
-  A12EvaluationTime.fromJsDate(nativeNow, zone);
-const today: A12Date = operators.pointInTime.today(sample);
-const now: A12DateTime = operators.pointInTime.now(sample);
-
-const baseYear: A12BaseYear =
-  A12BaseYear.fromSafeInteger(2026);
-const baseYearNumber: A12Integer = baseYear.asInteger();
-const baseYearStart: A12Date = baseYear.asStartDate();
-const baseYearRange: A12DateRange = baseYear.asDateRange();
-```
-
-There is no implicit read of the host clock. `A12BaseYear` makes the catalog’s number/date/range projections explicit rather than relying on expression context.
-
-Fully known boolean values and three-valued condition results have distinct combinators:
-
-```ts
-declare const firstBoolean: A12Boolean;
-declare const secondBoolean: A12Boolean;
-declare const firstTruth: A12Truth;
-declare const secondTruth: A12Truth;
-
-const booleanAnd: A12Boolean =
-  operators.boolean.and(firstBoolean, secondBoolean);
-const booleanOr: A12Boolean =
-  operators.boolean.or(firstBoolean, secondBoolean);
-const booleanNot: A12Boolean =
-  operators.boolean.not(firstBoolean);
-
-const truthAnd: A12Truth =
-  operators.truth.and(firstTruth, secondTruth);
-const truthOr: A12Truth =
-  operators.truth.or(firstTruth, secondTruth);
-const truthNot: A12Truth =
-  operators.truth.not(firstTruth);
-```
-
-`operators.truth` uses exact strong Kleene logic: false decides `and`, true decides `or`, otherwise an operand that is `notEvaluated` propagates; `not(notEvaluated)` remains `notEvaluated`. The total boolean functions and `not` are classified as value/combinator conveniences.
-
-### 6.2 Dates
-
-```ts
-declare const start: A12Date;
-declare const end: A12Date;
-declare const date: A12Date;
-declare const amount: A12Integer;
-
-const dayDifference: A12Integer =
-  operators.date.differenceInDays(start, end);
-const monthDifference: A12Integer =
-  operators.date.differenceInMonths(start, end);
-const yearDifference: A12Integer =
-  operators.date.differenceInYears(start, end);
-
-const dayShift: A12Date =
-  operators.date.addDays(date, amount);
-const monthShift: A12Date =
-  operators.date.addMonths(date, amount);
-const yearShift: A12Date =
-  operators.date.addYears(date, amount);
-
-const yearPart: A12Integer = operators.date.year(date);
-const monthPart: A12Integer = operators.date.month(date);
-const dayPart: A12Integer = operators.date.day(date);
-const quarterPart: A12Integer = operators.date.quarter(date);
-```
-
-These functions preserve A12 rules such as whole-period differences, end-of-month clamping, and leap-year behavior. Shift offsets are `A12Integer`; their result types are `A12Integer` or `A12Date`, never native numbers or dates.
-
-### 6.3 Date-times and times
-
-```ts
-declare const startDateTime: A12DateTime;
-declare const endDateTime: A12DateTime;
-declare const dateTime: A12DateTime;
-declare const amount: A12Integer;
-declare const temporalStart: A12Date | A12DateTime;
-declare const temporalEnd: A12Date | A12DateTime;
-declare const temporalValue: A12Date | A12DateTime;
-declare const time: A12Time;
-
-const dateTimeDays: A12Integer =
-  operators.dateTime.differenceInDays(
-    startDateTime,
-    endDateTime,
-  );
-const hours: A12Integer =
-  operators.dateTime.differenceInHours(
-    startDateTime,
-    endDateTime,
-  );
-const minutes: A12Integer =
-  operators.dateTime.differenceInMinutes(
-    startDateTime,
-    endDateTime,
-  );
-const seconds: A12Integer =
-  operators.dateTime.differenceInSeconds(
-    startDateTime,
-    endDateTime,
-  );
-
-const shiftedDays: A12DateTime =
-  operators.dateTime.addDays(dateTime, amount);
-const shiftedHours: A12DateTime =
-  operators.dateTime.addHours(dateTime, amount);
-const shiftedMinutes: A12DateTime =
-  operators.dateTime.addMinutes(dateTime, amount);
-const shiftedSeconds: A12DateTime =
-  operators.dateTime.addSeconds(dateTime, amount);
-
-const datePart: A12Date =
-  operators.dateTime.datePart(dateTime);
-const timePart: A12Time =
-  operators.dateTime.timePart(dateTime);
-
-const temporalDays: A12Integer =
-  operators.temporal.differenceInDays(
-    temporalStart,
-    temporalEnd,
-  );
-const temporalYear: A12Integer =
-  operators.temporal.year(temporalValue);
-const temporalMonth: A12Integer =
-  operators.temporal.month(temporalValue);
-const temporalDay: A12Integer =
-  operators.temporal.day(temporalValue);
-const temporalQuarter: A12Integer =
-  operators.temporal.quarter(temporalValue);
-
-const timeHours: A12Integer = operators.time.hours(time);
-const timeMinutes: A12Integer = operators.time.minutes(time);
-const timeSeconds: A12Integer = operators.time.seconds(time);
-```
-
-Sub-day differences use the resolved instants stored by `A12DateTime` and truncate toward zero: a reverse difference of negative five-and-a-half hours is `-5`. `addHours`/`addMinutes`/`addSeconds` shift the instant.
-
-`dateTime.addDays` is the distinct wall-calendar operation: it preserves local time and applies the kernel’s directional daylight-saving landing rule. `dateTime.differenceInDays` handles two date-times. The wider `temporal.differenceInDays` accepts `A12Date | A12DateTime` on either side, counts whole wall-clock days including time of day, and truncates toward zero. In a mixed pair, the date is midnight in the date-time’s zone. Two incompatible date-time zones are an operator error.
-
-Month/year differences and shifts remain date-only because DATE_TIME operands are not legal for those catalog operations. The temporal component extractors accept either a date or date-time.
-
-### 6.4 Strings
-
-```ts
-declare const value: A12String;
-declare const first: A12String;
-declare const second: A12String;
-declare const third: A12String;
-declare const startInclusive: A12Integer;
-declare const endInclusive: A12Integer;
-
-const length: A12Integer = operators.string.length(value);
-const concatenated: A12String =
-  operators.string.concat(first, second, third);
-const selectedText: A12String = operators.string.rangeAsString(
-  value,
-  startInclusive,
-  endInclusive,
-);
-const selectedNumber: A12Number = operators.string.rangeAsNumber(
-  value,
-  startInclusive,
-  endInclusive,
-);
-```
-
-The range bounds are `A12Integer` values and follow A12’s UTF-16 and one-based inclusive semantics. A start below one or after the end is an operator error. An end beyond the string returns an empty `A12String`; `rangeAsNumber` returns zero unless the selected text is a non-empty run of digits. Native `substring` and numeric coercion are not implementation substitutes.
-
-Given an explicitly typed `declare const numericText: A12String`, direct numeric conversion remains `A12Number.parse(numericText.toNative())`; `FieldValueAsNumber` has field, enum, empty, and formal-state semantics and is not presented as a pure string operator.
-
-Empty strings make kernel string comparison non-evaluable for both equality and inequality. The direct string-specific comparison therefore preserves that state:
-
-```ts
-declare const first: A12String;
-declare const second: A12String;
-
-const equal: A12Truth =
-  operators.string.equal(first, second);
-const notEqual: A12Truth =
-  operators.string.notEqual(first, second);
-
-const outcome: A12Truth["kind"] = equal.kind;
-```
-
-The kernel permits string equality and inequality only; string ordering is not a legal comparison. The API must not falsely collapse `notEvaluated` to `false` or make generic equality claim a total string contract.
-
-Pattern operators are expected but are gated by Java/JavaScript regex parity:
-
-```ts
-// Exposed only after the supported A12 pattern profile is exact.
-declare const operators: A12OperatorsWithPatterns;
-declare const value: A12String;
-declare const pattern: A12Pattern;
-
-const matches: A12Truth =
-  operators.string.matches(value, pattern);
-const violates: A12Truth =
-  operators.string.violates(value, pattern);
-```
-
-Patterns are compiled to `A12Pattern` before matching so syntax errors are conversion errors rather than repeated operator failures. These functions are absent, not approximate, until the regex contract is implemented or mechanically restricted.
-
-### 6.5 Numbers
-
-```ts
-declare const a: A12Number;
-declare const b: A12Number;
-declare const value: A12Number;
-declare const scale: A12Integer;
-
-const sum: A12Number = operators.number.add(a, b);
-const difference: A12Number = operators.number.subtract(a, b);
-
-const absolute: A12Number = operators.number.abs(value);
-const minimum: A12Number = operators.number.min(a, b);
-const maximum: A12Number = operators.number.max(a, b);
-
-const roundedDown: A12Number =
-  operators.number.roundDown(value, scale);
-const roundedUp: A12Number =
-  operators.number.roundUp(value, scale);
-const roundedAccounting: A12Number =
-  operators.number.roundAccounting(value, scale);
-```
-
-Each scale is an `A12Integer` in the catalog-supported range `0..14`.
-
-Multiplication, division, and power are expected but are gated by the existing JavaScript decimal-context gap:
-
-```ts
-// Exposed only after JavaScript matches the A12 50-significant-digit contract.
-declare const operators:
-  A12OperatorsWithExactArithmetic;
-declare const a: A12Number;
-declare const b: A12Number;
-declare const exponent: A12Integer;
-
-const product: A12Number = operators.number.multiply(a, b);
-const quotient: A12Evaluation<A12Number> =
-  operators.number.divide(a, b);
-const power: A12Evaluation<A12Number> =
-  operators.number.power(a, exponent);
-```
-
-`exponent` is an `A12Integer`. Multiplication returns `A12Number`. Division and power return `A12Evaluation<A12Number>` because legal kernel operands can produce quiet non-evaluation: division by zero yields `{kind: "notEvaluated", reason: {code: "divisionByZero"}}`, and an invalid power domain yields the corresponding structured `powerDomain` reason. They never return `NaN` or infinity and never relabel legitimate non-evaluation as `A12OperatorError`. A wrong wrapper, incompatible argument kind supplied through unsafe JavaScript, or another actual API-precondition violation remains an operator error. Gated functions are absent, not host-language approximations, until their arithmetic semantics are exact.
-
-### 6.6 Comparisons
-
-Semantic comparison must not be confused with wrapper identity:
-
-```ts
-declare const a: A12Number;
-declare const b: A12Number;
-
-const equal: A12Truth = operators.compare.equal(a, b);
-const notEqual: A12Truth = operators.compare.notEqual(a, b);
-const lessThan: A12Truth = operators.compare.lessThan(a, b);
-const lessThanOrEqual: A12Truth =
-  operators.compare.lessThanOrEqual(a, b);
-const greaterThan: A12Truth =
-  operators.compare.greaterThan(a, b);
-const greaterThanOrEqual: A12Truth =
-  operators.compare.greaterThanOrEqual(a, b);
-const order: A12Integer = operators.compare.order(a, b);
-```
-
-The six predicates return `A12Truth`; for total compatible operands it is always known. `order` returns an `A12Integer` whose value is `-1`, `0`, or `1` and exists only for ordered kinds.
-
-| Operand kind | Equality | Ordering |
-|---|---|---|
-| `A12Boolean` | yes | no |
-| `A12Confirm` | only with `A12Confirm` | no |
-| `A12Number`, including the `A12Integer` refinement | yes | yes |
-| `A12Date` with `A12Date` | yes | yes |
-| `A12Time` with `A12Time` | yes | yes |
-| compatible `A12DateTime` values | yes | yes |
-| `A12DateRange` with `A12DateRange` | yes | no |
-| `A12String` with `A12String` | string-specific `A12Truth` API | no |
-
-All other pairs are rejected by TypeScript/Kotlin typing. Comparison follows the A12 contract, including numeric precision, instead of delegating to JavaScript object or floating-point equality.
-
-The generic comparison surface excludes `A12String`; its non-total comparison is the string-specific `A12Truth` API above.
-
-Tolerance checks are value-level number operators:
-
-```ts
-declare const a: A12Number;
-declare const b: A12Number;
-
-const differs: A12Truth = operators.number.differsByMoreThan(
-  a,
-  b,
-  A12Tolerance.FIVE,
-);
-```
-
-The tolerance predicate also returns `A12Truth`. `A12Tolerance` does not invent arbitrary tolerance semantics beyond the closed catalog set.
-
-### 6.7 Date ranges
-
-```ts
-declare const start: A12Date;
-declare const end: A12Date;
-declare const first: A12DateRange;
-declare const second: A12DateRange;
-declare const target: A12DateRange;
-declare const ranges: readonly A12DateRange[];
-
-const range: A12DateRange = A12DateRange.of(start, end);
-
-const rangeStart: A12Date = operators.dateRange.start(range);
-const rangeEnd: A12Date = operators.dateRange.end(range);
-const overlaps: A12Truth =
-  operators.dateRange.overlaps(first, second);
-const anyPairOverlaps: A12Truth =
-  operators.dateRange.anyPairOverlaps(ranges);
-const targetOverlapsAny: A12Truth =
-  operators.dateRange.overlapsAny(target, ranges);
-```
-
-The overlap contract is inclusive at both endpoints. `A12DateRange.of` rejects `start > end`.
-
-Overlap predicates return known `A12Truth` results. `anyPairOverlaps` tests distinct array occurrences with `i < j`; one element returns false, while two equal ranges are two occurrences and overlap. `overlapsAny(target, ranges)` compares the distinguished target with each supplied range. These names avoid inheriting the catalog’s field-list/self-pair behavior accidentally.
-
-### 6.8 Value collections
-
-Collection operators receive actual values, not field paths:
-
-```ts
-declare const operators:
-  A12OperatorsWithExactArithmetic;
-declare const amounts: readonly A12Number[];
-declare const left: readonly A12Number[];
-declare const right: readonly A12Number[];
-declare const dates: readonly A12Date[];
-declare const parts: readonly A12String[];
-declare const candidates: readonly A12Number[];
-declare const numberTarget: A12Number;
-declare const strings: readonly A12String[];
-declare const stringTarget: A12String;
-declare const ranges: readonly A12DateRange[];
-
-const total: A12Number = operators.number.sumAll(amounts);
-const numericMinimum: A12Number =
-  operators.number.minAll(amounts);
-const numericMaximum: A12Number =
-  operators.number.maxAll(amounts);
-const dotProduct: A12Number =
-  operators.number.sumOfProducts(left, right);
-
-const earliest: A12Option<A12Date> =
-  operators.date.minAll(dates);
-const latest: A12Option<A12Date> =
-  operators.date.maxAll(dates);
-
-const text: A12String = operators.string.concatAll(parts);
-const included: A12Truth =
-  operators.values.includes(candidates, numberTarget);
-const occurrences: A12Integer =
-  operators.values.count(candidates, numberTarget);
-const differentValues: A12Integer =
-  operators.values.distinctCount(candidates);
-const stringIncluded: A12Truth =
-  operators.stringValues.includesExact(strings, stringTarget);
-const stringOccurrences: A12Integer =
-  operators.stringValues.countExact(strings, stringTarget);
-const differentStrings: A12Integer =
-  operators.stringValues.distinctCountExact(strings);
-const overlappingRanges: A12Truth =
-  operators.dateRange.anyPairOverlaps(ranges);
-```
-
-`sumAll([])`, numeric `minAll([])`/`maxAll([])`, and `sumOfProducts([], [])` return zero, matching the direct catalog reductions. `concatAll([])` returns an empty string; counts return zero; membership and overlap predicates return known false. Date `minAll`/`maxAll` are explicitly classified as collection utilities and return `A12Option.none` for an empty list. `sumOfProducts` requires equal lengths and remains absent while multiplication parity is gated.
-
-Arrays are homogeneous. These functions operate on supplied, already-valid values and do not inherit field-aggregate behavior for absent, empty, malformed, filtered, or starred document cells.
-
-Collection predicates return `A12Truth`. The catalog-semantic `operators.values` membership/count functions accept only kinds with total equality; they do not accept strings.
-
-The explicitly named `stringValues.*Exact` functions are collection utilities, not catalog field-list operators. They compare the supplied text values exactly, treat an explicit empty `A12String` as an ordinary array value, and return known results. Catalog string membership, where an empty field/value can make the condition non-evaluated, remains interpreter-owned.
-
-TypeScript accepts ordinary homogeneous `readonly` arrays such as `readonly A12Number[]`; Kotlin accepts `List<A12Number>`. The platform façade performs a mechanical, order-preserving conversion and does not expose a mutable collection to common semantics. There is no `A12List` wrapper and no mixed JSON-object collection model. Native `map`/`filter` handle element-wise work, while this namespace contains only reductions and predicates with real A12 semantics.
-
-A document repetition such as `Lines[{Amount, TaxCode}]`, including its missing cells and row coordinates, belongs to the interpreter. After the interpreter extracts `readonly A12Number[]`, those values can be passed directly to this API.
-
-## 7. Combinators
-
-Direct total operators are ordinary functions. They can be nested, passed to application code, and composed with ordinary TypeScript functions without a library-specific pipeline:
+### Direct date and date-time operations
 
 ```ts
 declare const invoiceDate: A12Date;
+declare const firstInstant: A12DateTime;
+declare const secondInstant: A12DateTime;
 
-const oneMonth: A12Integer =
-  A12Integer.fromSafeInteger(1);
-const minusOneDay: A12Integer =
-  A12Integer.fromSafeInteger(-1);
-const nextMonth: A12Date =
-  operators.date.addMonths(
-    invoiceDate,
-    oneMonth,
-  );
-const dueDate: A12Date =
-  operators.date.addDays(
-    nextMonth,
-    minusOneDay,
-  );
+const oneMonth: A12Integer = A12Integer.fromSafeInteger(1);
+const nextMonth: A12Date = operators.date.addMonths(invoiceDate, oneMonth);
+const hours: A12Integer = operators.dateTime.differenceInHours(firstInstant, secondInstant);
 ```
 
-`oneMonth` and `minusOneDay` are exact integral offsets. `nextMonth` is the first eager operator result and `dueDate` is the second. No expression, deferred pipeline, or hidden state is constructed.
+Date shifts preserve A12 leap-year and end-of-month behavior. Sub-day date-time differences use exact instants and truncate toward zero.
 
-Value-producing partial operators compose through `A12Evaluation`, not exceptions or a fixed-arity generic `pipe`:
+### Strings
 
 ```ts
-declare const operators:
-  A12OperatorsWithExactArithmetic;
-declare const numerator: A12Number;
-declare const denominator: A12Number;
+declare const source: A12String;
 
-const quotient: A12Evaluation<A12Number> =
-  operators.number.divide(
-    numerator,
-    denominator,
-  );
-const roundedQuotient:
-  A12Evaluation<A12Number> =
-  A12Evaluation.map(
-    quotient,
-    (value: A12Number): A12Number =>
-      operators.number.roundAccounting(
-        value,
-        A12Integer.fromSafeInteger(2),
-      ),
-  );
-const displayText: string =
-  A12Evaluation.match(
-    roundedQuotient,
-    {
-      value: (value: A12Number): string =>
-        value.toDecimalString(),
-      notEvaluated: (
-        reason: A12NonEvaluationReason,
-      ): string => reason.code,
-    },
-  );
+const firstIndex: A12Integer = A12Integer.fromSafeInteger(1);
+const fourthIndex: A12Integer = A12Integer.fromSafeInteger(4);
+const length: A12Integer = operators.string.length(source);
+const prefix: A12String = operators.string.rangeAsString(source, firstIndex, fourthIndex);
 ```
 
-`quotient` preserves legal kernel non-evaluation. `roundedQuotient` applies rounding only when a quotient exists. `displayText` handles both outcomes explicitly. `flatMap` supports arbitrary-length chains of partial operations and `zipWith` combines independent evaluations; the API is not capped at two stages.
+A12 string ranges use one-based inclusive indexes and the kernel’s UTF-16 semantics. Native `substring` is not an implementation substitute.
 
-Operators must also work with native collection combinators:
+### Exact numbers and collection operators
+
+```ts
+const amounts: readonly A12Number[] = [
+  A12Number.parse("19.95"),
+  A12Number.parse("7.50"),
+];
+const total: A12Number = operators.number.sumAll(amounts);
+const roundedTotal: A12Number = operators.number.roundAccounting(total, A12Integer.fromSafeInteger(2));
+const nativeTotal: string = roundedTotal.toDecimalString();
+```
+
+Collection functions operate on supplied values only. They do not inherit document behavior for absent, empty, malformed, filtered, or repeated cells.
+
+### Native array composition
 
 ```ts
 declare const amounts: readonly A12Number[];
 
-const rounded: readonly A12Number[] = amounts.map(
-  (amount: A12Number): A12Number =>
-    operators.number.roundAccounting(
-      amount,
-      A12Integer.fromSafeInteger(2),
-    ),
+const scale: A12Integer = A12Integer.fromSafeInteger(2);
+const roundedAmounts: readonly A12Number[] = amounts.map(
+  (amount: A12Number): A12Number => operators.number.roundAccounting(amount, scale),
 );
 ```
 
-Parse results need only a small conventional combinator set:
+Operators are normal functions and require no special pipeline.
+
+### Explicit clock input
+
+```ts
+declare const nativeNow: Date;
+
+const sample: A12EvaluationTime = A12EvaluationTime.fromJsDate(nativeNow, A12TimeZone.utc());
+const today: A12Date = operators.pointInTime.today(sample);
+const now: A12DateTime = operators.pointInTime.now(sample);
+```
+
+`Today` and `Now` never read a process-global clock or zone.
+
+## Results, truth, and errors
+
+### Three distinct failure channels
+
+The API preserves three concepts that must not be collapsed:
+
+| Situation | Public result |
+|---|---|
+| Invalid native input or checked conversion | `A12ConversionError`, thrown or returned through `A12Result` |
+| Invalid direct-API precondition | `A12OperatorError` |
+| Legal kernel operands that produce no value | `A12Evaluation.notEvaluated` |
+
+Condition-producing operators return three-state truth:
+
+```ts
+type A12Truth =
+  | { readonly kind: "true" }
+  | { readonly kind: "false" }
+  | { readonly kind: "notEvaluated" };
+
+type A12NonEvaluationReason =
+  | { readonly code: "divisionByZero" }
+  | {
+      readonly code: "powerDomain";
+      readonly detail: "exponentOutOfRange" | "zeroToNegativeExponent";
+    };
+
+type A12Evaluation<T> =
+  | { readonly kind: "value"; readonly value: T }
+  | { readonly kind: "notEvaluated"; readonly reason: A12NonEvaluationReason };
+
+type A12Option<T> =
+  | { readonly kind: "some"; readonly value: T }
+  | { readonly kind: "none" };
+
+type A12Result<T, E = A12Error> =
+  | { readonly ok: true; readonly value: T }
+  | { readonly ok: false; readonly error: E };
+```
+
+Division by zero and invalid power domains are legitimate non-evaluation, not exceptions, `undefined`, `NaN`, infinity, or conversion errors. String equality also preserves A12 non-evaluation for an explicit empty string through `A12Truth`.
+
+### Structured errors
+
+Errors are normal JavaScript `Error` subtypes with stable machine-readable discriminants and structured issues:
+
+```ts
+type A12IssuePathSegment = string | number;
+
+type A12OperationIdentity =
+  | { readonly kind: "catalog"; readonly catalogId: string }
+  | { readonly kind: "directUtility"; readonly utilityId: string };
+
+type A12NativeInputKind = "string" | "boolean" | "number" | "bigint" | "javascriptDate" | "object" | "array" | "a12Value";
+type A12ReceivedInputKind = A12NativeInputKind | "null" | "undefined" | "function" | "symbol" | "foreignA12Value";
+type A12WrapperKind = "string" | "boolean" | "confirm" | "number" | "date" | "time" | "dateTime" | "dateRange" | "timeZone" | "evaluationTime" | "baseYear" | "pattern";
+
+interface A12IssueBase<Code extends string> {
+  readonly code: Code;
+  readonly path: readonly A12IssuePathSegment[];
+  readonly message: string;
+}
+
+type A12ConversionIssue =
+  | (A12IssueBase<"invalidNativeType"> & {
+      readonly expected: A12NativeInputKind;
+      readonly received: A12ReceivedInputKind;
+    })
+  | (A12IssueBase<"invalidDecimal"> & {
+      readonly reason: "empty" | "invalidSyntax" | "notFinite" | "outsideSupportedRange";
+    })
+  | (A12IssueBase<"invalidInteger"> & {
+      readonly reason: "notIntegral" | "unsafeNativeNumber" | "outsideSupportedRange";
+    })
+  | (A12IssueBase<"invalidTemporalValue"> & {
+      readonly valueKind: "date" | "time" | "dateTime";
+      readonly reason: "empty" | "invalidSyntax" | "invalidComponent";
+    })
+  | A12IssueBase<"reversedDateRange">
+  | (A12IssueBase<"unsupportedTimeZone"> & {
+      readonly timeZone: string;
+    })
+  | (A12IssueBase<"nonexistentLocalTime"> & {
+      readonly timeZone: string;
+    })
+  | (A12IssueBase<"temporalPrecisionLoss"> & {
+      readonly source: "javascriptDate";
+      readonly unsupportedUnit: "milliseconds";
+    })
+  | (A12IssueBase<"invalidPattern"> & {
+      readonly reason: "invalidSyntax" | "unsupportedFeature";
+      readonly position?: number;
+    })
+  | (A12IssueBase<"invalidA12Wrapper"> & {
+      readonly expectedKind: A12WrapperKind;
+      readonly received: A12ReceivedInputKind;
+    });
+
+type A12OperatorIssue =
+  | (A12IssueBase<"operatorArgumentOutOfRange"> & {
+      readonly operation: A12OperationIdentity;
+      readonly argument: string;
+      readonly minimum?: string;
+      readonly maximum?: string;
+      readonly actual: string;
+    })
+  | (A12IssueBase<"incompatibleTimeZones"> & {
+      readonly operation: A12OperationIdentity;
+      readonly leftTimeZone: string;
+      readonly rightTimeZone: string;
+    })
+  | (A12IssueBase<"incompatibleCollectionLengths"> & {
+      readonly operation: A12OperationIdentity;
+      readonly leftLength: number;
+      readonly rightLength: number;
+    })
+  | (A12IssueBase<"invalidOperatorOperand"> & {
+      readonly operation: A12OperationIdentity;
+      readonly argument: string;
+      readonly expectedKind: A12WrapperKind;
+      readonly received: A12ReceivedInputKind;
+    });
+
+type A12ScalarIssue = A12ConversionIssue | A12OperatorIssue;
+type A12ErrorCode = "A12_CONVERSION_ERROR" | "A12_OPERATOR_ERROR" | "A12_ARRAY_CONVERSION_ERROR";
+
+interface A12Error<Issue extends A12ScalarIssue = A12ScalarIssue> extends Error {
+  readonly kind: "conversion" | "operator" | "array-conversion";
+  readonly code: A12ErrorCode;
+  readonly issues: readonly [Issue, ...Issue[]];
+  readonly message: string;
+}
+
+interface A12ConversionError extends A12Error<A12ConversionIssue> {
+  readonly kind: "conversion";
+  readonly code: "A12_CONVERSION_ERROR";
+}
+
+interface A12OperatorError extends A12Error<A12OperatorIssue> {
+  readonly kind: "operator";
+  readonly code: "A12_OPERATOR_ERROR";
+}
+
+interface A12IndexedConversionError<Failure extends A12ConversionError = A12ConversionError> {
+  readonly index: number;
+  readonly error: Failure;
+}
+
+interface A12ArrayConversionError<Failure extends A12ConversionError = A12ConversionError> extends A12Error<A12ConversionIssue> {
+  readonly kind: "array-conversion";
+  readonly code: "A12_ARRAY_CONVERSION_ERROR";
+  readonly items: readonly [A12IndexedConversionError<Failure>, ...A12IndexedConversionError<Failure>[]];
+}
+
+type A12ArrayConversionResult<T, Failure extends A12ConversionError = A12ConversionError> = A12Result<readonly T[], A12ArrayConversionError<Failure>>;
+
+interface A12ErrorGuards {
+  is(value: unknown): value is A12Error;
+  isConversion(value: unknown): value is A12ConversionError;
+  isOperator(value: unknown): value is A12OperatorError;
+  isArrayConversion(value: unknown): value is A12ArrayConversionError;
+}
+
+declare const A12Errors: A12ErrorGuards;
+```
+
+The issue unions are closed and exhaustively narrowable. Their variants retain the details developers need without parsing a message:
+
+| Issue | Structured details |
+|---|---|
+| `invalidNativeType` | expected and received native kinds |
+| `invalidDecimal` | empty, syntax, finite, or supported-range reason |
+| `invalidInteger` | non-integral, unsafe native number, or supported-range reason |
+| `invalidTemporalValue` | date/time/date-time kind and syntax/component reason |
+| `reversedDateRange` | offending path |
+| `unsupportedTimeZone`, `nonexistentLocalTime` | zone identity |
+| `temporalPrecisionLoss` | JavaScript `Date` and unsupported millisecond unit |
+| `invalidPattern` | syntax/unsupported-feature reason and optional position |
+| `invalidA12Wrapper` | expected wrapper kind and received/foreign kind |
+| `operatorArgumentOutOfRange` | operation identity, argument, bounds, and actual value |
+| `incompatibleTimeZones` | operation and both zones |
+| `incompatibleCollectionLengths` | operation and both lengths |
+| `invalidOperatorOperand` | operation, argument, expected kind, and received kind |
+
+`message` is explanatory and never the machine contract. Errors do not copy rejected raw input by default, error guards do not rely on cross-module `instanceof`, and an operator issue retains either its exact catalog ID or the stable ID of a classified direct utility.
+
+Throwing constructors have adjacent result forms:
+
+```ts
+declare const input: string;
+
+const date: A12Date = A12Date.parseIso(input);
+const attemptedDate: A12Result<A12Date, A12ConversionError> = A12Date.tryParseIso(input);
+```
+
+### Combinators
+
+Total operators compose by ordinary function calls. `A12Result` and `A12Evaluation` provide `map`, `flatMap`, `zipWith`, `match`, and `getOrElse` for their explicit channels.
 
 ```ts
 declare const nativeStart: string;
 declare const nativeEnd: string;
 
-const difference: A12Result<
-  A12Integer,
-  A12ConversionError
-> = A12Result.zipWith(
+const difference: A12Result<A12Integer, A12ConversionError> = A12Result.zipWith(
   A12Date.tryParseIso(nativeStart),
   A12Date.tryParseIso(nativeEnd),
-  (start: A12Date, end: A12Date): A12Integer =>
-    operators.date.differenceInDays(start, end),
+  (start: A12Date, end: A12Date): A12Integer => operators.date.differenceInDays(start, end),
 );
 ```
 
-The result operations are `map`, `flatMap`, `zipWith`, `match`, and `getOrElse`. Together with the corresponding `A12Evaluation` operations, they cover the semantic result channels without creating a custom expression DSL or general-purpose effect system.
-
-The exact `A12Codecs.array(item)` composition in §5.4 is the primary array boundary and supports both scalar and structured wire types. `A12Arrays` remains an optional lower-level callback adapter for callers that already have scalar constructor or projection functions:
+Partial numeric operations use `A12Evaluation`:
 
 ```ts
-type A12NativeScalar =
-  | string
-  | boolean
-  | number
-  | bigint
-  | Date;
-
-interface A12ArrayAdapters {
-  wrapAll<
-    I extends A12NativeScalar,
-    O extends A12Value,
-  >(
-    inputs: readonly I[],
-    wrap: (input: I) => O,
-  ): readonly O[];
-
-  tryWrapAll<
-    I extends A12NativeScalar,
-    O extends A12Value,
-    E extends A12ConversionError =
-      A12ConversionError,
-  >(
-    inputs: readonly I[],
-    wrap: (input: I) => A12Result<O, E>,
-  ): A12ArrayConversionResult<O, E>;
-
-  unwrapAll<
-    I extends A12Value,
-    O extends A12NativeScalar,
-  >(
-    values: readonly I[],
-    unwrap: (value: I) => O,
-  ): readonly O[];
-
-  tryUnwrapAll<
-    I extends A12Value,
-    O extends A12NativeScalar,
-    E extends A12ConversionError =
-      A12ConversionError,
-  >(
-    values: readonly I[],
-    unwrap: (value: I) => A12Result<O, E>,
-  ): A12ArrayConversionResult<O, E>;
+interface A12ExactArithmeticNumberOperators extends A12NumberOperators {
+  multiply(left: A12Number, right: A12Number): A12Number;
+  divide(left: A12Number, right: A12Number): A12Evaluation<A12Number>;
+  power(value: A12Number, exponent: A12Integer): A12Evaluation<A12Number>;
+  sumOfProducts(left: readonly A12Number[], right: readonly A12Number[]): A12Number;
 }
 
-declare const A12Arrays: A12ArrayAdapters;
+declare const exactNumberOperators: A12ExactArithmeticNumberOperators;
+declare const numerator: A12Number;
+declare const denominator: A12Number;
+
+const quotient: A12Evaluation<A12Number> = exactNumberOperators.divide(numerator, denominator);
+const display: string = A12Evaluation.match(
+  quotient,
+  {
+    value: (value: A12Number): string => value.toDecimalString(),
+    notEvaluated: (reason: A12NonEvaluationReason): string => reason.code,
+  },
+);
 ```
 
-`A12NativeScalar` is exactly the five supported host scalar types listed in §4. `A12ArrayAdapters` is the runtime contract of the `A12Arrays` value. For wrapping, `I` is an `A12NativeScalar` subtype and `O` is an `A12Value` subtype; unwrapping reverses those bounds. `E` is the exact `A12ConversionError` subtype returned by a result-based callback. `wrapAll` is fail-fast: if its callback throws `A12ConversionError`, the adapter throws one `A12ArrayConversionError` containing that scalar error and its zero-based index; foreign exceptions propagate. `tryWrapAll` and `tryUnwrapAll` receive one typed scalar result for every input and accumulate every indexed conversion failure. `unwrapAll` is infallible only to the extent that its caller-supplied callback is; it neither catches nor relabels callback failures.
+These combinators are eager and construct no expression graph. They do not catch exceptions thrown by application callbacks.
 
-```ts
-declare const nativeAmounts: readonly string[];
-declare const counts: readonly A12Integer[];
+Their propagation rules are deterministic:
 
-const attempted: A12ArrayConversionResult<A12Number> =
-  A12Arrays.tryWrapAll(
-    nativeAmounts,
-    (
-      input: string,
-    ): A12Result<A12Number, A12ConversionError> =>
-      A12Number.tryParse(input),
-  );
+| Combinator | Rule |
+|---|---|
+| `A12Result.map` / `flatMap` | Do not invoke the callback for a failure |
+| `A12Result.zipWith` | Return the left failure first when both inputs fail |
+| `A12Result.capture` | Catch only `A12OperatorError`; every foreign thrown value propagates |
+| `A12Evaluation.map` / `flatMap` | Do not invoke the callback for `notEvaluated` |
+| `A12Evaluation.zipWith` | Return the first non-evaluation from left to right |
+| `match` | Force handling of both result branches |
+| `getOrElse` | Require an explicit error- or reason-aware fallback |
 
-const attemptedNativeCounts: A12ArrayConversionResult<number> =
-  A12Arrays.tryUnwrapAll(
-    counts,
-    (
-      value: A12Integer,
-    ): A12Result<number, A12ConversionError> =>
-      value.tryToSafeInteger(),
-  );
+## Semantic invariants and gotchas
 
-if (!attempted.ok) {
-  const errors: readonly A12IndexedConversionError[] =
-    attempted.error.items;
-}
+These are observable A12 contracts, not implementation suggestions.
 
-if (attempted.ok) {
-  const amounts: readonly A12Number[] = attempted.value;
-  const nativeAgain: readonly string[] = A12Arrays.unwrapAll(
-    amounts,
-    (value: A12Number): string => value.toDecimalString(),
-  );
-}
-```
+### Value and conversion invariants
 
-`nativeAmounts` is an immutable native-string array and `counts` is an immutable `A12Integer` array. `attempted` is the indexed `A12Number` wrapping result. `attemptedNativeCounts` is the checked native-`number` unwrapping result; its explicitly typed callback accepts `A12Integer` and returns `A12Result<number, A12ConversionError>`. `errors` is the readonly indexed-error list. In the success branch, `amounts` is the readonly wrapped-number array and `nativeAgain` is a fresh readonly native-string array.
+| Invariant | Consequence |
+|---|---|
+| `A12Integer` is a checked refinement of `A12Number` | It retains runtime `kind: "number"` and is not a new storable kernel kind |
+| Confirm is not Boolean | `A12Confirm.confirmed()` is the only filled Confirm value; false is rejected, an unset Confirm is document state, and Confirm compares only with Confirm |
+| TypeScript brands are static only | Runtime guards accept `unknown` and verify a Kotlin/JS-issued authentic wrapper |
+| `instanceof` is not the cross-realm contract | Duplicate bundles, workers, iframes, and structured clones are foreign; transfer the exact codec representation and reconstruct locally |
+| A public `kind` property is insufficient | `A12Number.is(value)` accepts authentic integers, while `A12Integer.is(value)` additionally proves integrality |
+| Exact and lossy conversion are visibly different | Decimal strings and `bigint` are exact; JavaScript decimal `number` conversion is explicitly named `Lossy` |
+| Canonical output need not preserve source spelling | For example, `"19.950"` may encode as `"19.95"` without changing the value |
+| Construction and operation failures differ | Reversed range endpoints are a conversion error; an out-of-range operator scale or index is an operator error |
+| Checked unwrapping never silently truncates | A value outside JavaScript’s safe-integer domain returns a conversion result or throws the declared conversion error |
+| Guards and errors are JavaScript-safe | A foreign wrapper produces a structured `A12OperatorError`, never a raw Kotlin cast failure |
 
-`wrapAll` is the fail-fast throwing form; its error identifies the failing index. `tryWrapAll` evaluates every element and returns one `A12ArrayConversionError` containing all indexed failures. The array error’s canonical `issues` list is the flattened view of the item errors with each zero-based index prefixed to its path; `items` retains the same errors grouped by source element. `unwrapAll` applies an ordinary caller-selected scalar converter and returns a fresh readonly native array; its exactness or lossiness is exactly that converter’s documented behavior. `tryUnwrapAll` is the indexed-accumulation form for checked unwrappers such as `A12Integer.tryToSafeInteger` and `A12DateTime.tryToJsInstantDate`.
+### Truth and partial evaluation
 
-The adapters preserve order and reject sparse holes, `null`, `undefined`, and foreign element kinds. Ordinary native `map` remains equally valid when indexed error accumulation is unnecessary.
+| Invariant | Consequence |
+|---|---|
+| `A12Truth.notEvaluated` is not false | Callers must inspect or match the three-state result |
+| Truth composition uses strong Kleene logic | False decides `and`, true decides `or`, otherwise non-evaluation propagates; `not(notEvaluated)` remains non-evaluated |
+| Legal partial arithmetic is not exceptional | Division by zero and invalid power domains return `A12Evaluation.notEvaluated` |
+| API misuse remains exceptional | A wrong wrapper, incompatible zone, unsupported argument range, or unequal dot-product length is an `A12OperatorError` |
+| Results are never collapsed to host sentinels | No semantic outcome becomes `undefined`, `null`, `NaN`, infinity, or an untyped exception |
 
-These combinators execute ordinary functions over actual values. They do not build, serialize, prepare, cache, or later interpret an expression graph.
+### Temporal invariants
 
-Symbolic composition is a different interpreter/authoring API with AST, typing, preparation, and execution questions; it belongs in the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md) or a later authoring proposal.
+| Invariant | Consequence |
+|---|---|
+| `A12Date` is a calendar date, not a JavaScript instant | A JavaScript `Date` cannot become an `A12Date` without an explicit calendar projection outside this exact API |
+| `A12DateTime` preserves an exact instant plus evaluation-zone context | Chained sub-day operations survive daylight-saving overlaps without reducing the value to decorated local text |
+| The direct zone is explicit context | It is not claimed to be intrinsic kernel scalar storage identity |
+| Local text alone is not an exact date-time round trip | During an overlap, one local spelling can identify two instants; `{instant, timeZone}` is the exact wire form |
+| JavaScript `Date` has finer precision | Non-zero milliseconds are rejected unless an explicitly named rounding/truncation conversion is chosen |
+| UTC is the initial guaranteed zone | Named zones, including `Europe/Berlin`, remain absent until history, gaps, overlaps, and arithmetic are kernel-exact |
+| Two date-times need compatible evaluation zones | Incompatible contexts produce `A12OperatorError` unless an explicit exact conversion exists |
+| Sub-day differences are instant-based | Hours, minutes, and seconds truncate toward zero, including negative results |
+| `dateTime.addDays` is a wall-calendar operation | It preserves local time and uses the kernel’s directional daylight-saving landing behavior |
+| Mixed date/date-time day difference has an explicit rule | The date operand is midnight in the date-time operand’s zone; whole wall-clock days truncate toward zero |
+| Month and year shifts remain date-only where required by the catalog | The API does not broaden legal operand domains for convenience |
+| Date shifts retain A12 calendar behavior | End-of-month clamping, leap years, and whole-period differences must match exactly |
+| `Today`, `Now`, and base year are explicit | One immutable `A12EvaluationTime` sample avoids clock drift; `A12BaseYear` exposes number, start-date, and full-year-range projections |
 
-## 8. Capability and parity coverage
+### Numeric, string, comparison, and range invariants
 
-The public surface needs a mechanically complete relationship to the live operator catalog. Prose grouped by family is not enough to prove that every catalog operator and every observable facet has a disposition.
+| Invariant | Consequence |
+|---|---|
+| Exact decimals do not use JavaScript floating point | Operator overloads never accept native decimal `number`; semantic arithmetic uses the A12 decimal implementation |
+| Rounding scale is constrained | It is an `A12Integer` in the catalog-supported `0..14` range |
+| Tolerance is a closed catalog domain | `A12Tolerance` is only `ONE`, `TWO`, `FIVE`, or `TEN` |
+| String indexing follows A12 | It is UTF-16, one-based, and inclusive |
+| String-range edge cases are not JavaScript substring behavior | A start below one or after the end is an operator error; an end beyond the string produces an empty `A12String` |
+| `rangeAsNumber` is not native coercion | It returns the selected digit run as an A12 number and otherwise returns zero |
+| Empty-string comparison is partial | String `equal` and `notEqual` may return `A12Truth.notEvaluated`; generic total comparison therefore excludes strings |
+| Strings are not ordered by the catalog | No direct string less-than or greater-than operation is invented |
+| Generic comparison is kind-safe | Boolean, Confirm, number, date, time, date-time, and date range equality use only legal compatible pairs; ordering is limited to number/date/time/date-time |
+| Wrapper identity is not value equality | Callers use typed comparison operators rather than `===` |
+| Date ranges are inclusive | Construction rejects `start > end`; overlap includes both endpoints |
+| Pattern compilation precedes matching | Invalid or unsupported patterns are conversion failures, and `A12Pattern` plus match methods remain absent until the regex profile is exact |
 
-```ts
-type A12ApiLayer =
-  | "directOperator"
-  | "interpreter"
-  | "authoring";
+### Collection invariants
 
-type A12CapabilityAvailability =
-  | {
-      readonly kind: "available";
-    }
-  | {
-      readonly kind: "parityGated";
-      readonly gapId: string;
-    };
+| Invariant | Consequence |
+|---|---|
+| Arrays/lists are host containers | TypeScript uses `readonly T[]`, Kotlin/JVM uses `List<T>`, and no `A12List` kernel kind is invented |
+| Collections are homogeneous | Mixed JSON-like value bags are outside this API |
+| Order and duplicate occurrences are preserved | Counts, distinct counts, products, and pair overlap see the supplied occurrences |
+| Array conversion errors retain indexes | `items` preserves each original scalar error with its zero-based source index; flattened issue paths carry the same index |
+| Bulk conversion does not retain raw values | The caller already owns the input; this avoids duplication and accidental disclosure |
+| Catalog reduction identities remain exact | Numeric `sumAll([])`, `minAll([])`, `maxAll([])`, and `sumOfProducts([], [])` return zero; `concatAll([])` returns the empty string |
+| Predicate identities remain exact | Empty membership, count, distinct-count, and overlap inputs return their catalog-defined false/zero results |
+| Date extrema are a direct utility | `date.minAll([])` and `date.maxAll([])` return `A12Option.none` rather than inventing a date |
+| Dot product requires equal lengths | Unequal lengths produce `A12OperatorError`; the operation remains gated with multiplication parity |
+| Any-pair range overlap compares occurrences with `i < j` | One occurrence is false; two equal range occurrences overlap |
+| Exact supplied-string collections are explicitly utilities | Empty `A12String` is an ordinary supplied value in `stringValues`; contextual catalog string membership remains interpreter-owned |
+| A document repetition is not a value array | Missing cells, row coordinates, filters, and starred paths are resolved by the Interpreter before extracted values enter this API |
 
-type A12CapabilitySource =
-  A12OperationIdentity;
+### Direct versus interpreter semantics
 
-type A12CapabilityClassification =
-  | "kernelOperator"
-  | "valueConstructor"
-  | "exactConversion"
-  | "collectionUtility"
-  | "semanticCombinator";
+| Case | Owner and rationale |
+|---|---|
+| Strict `A12Date.of(...)` | Direct API; it produces a valid date or conversion error |
+| `Valid(Date(...))` / `Invalid(Date(...))` | Interpreter; the kernel deliberately keeps an unreal construction candidate observable, so failed strict construction cannot model it |
+| Partial dates and format/base-year completion | Interpreter; completion depends on field declarations and model context |
+| `FieldValueAsNumber` / `FieldValueAsString` | Interpreter; behavior depends on field kind, empty/malformed state, enum mapping, and formatting |
+| Stored enum code | Directly representable as `A12String` after resolution |
+| Enum category, fill predicate, repetition, semantic index, `Having` | Interpreter; each inspects model or document state |
+| Custom Field Type or Custom Condition | Interpreter registry; required separate platform compatibility artifacts connect existing Kernel implementations without contaminating the license-free core |
+| Direct operator | No customization registry or adapter dispatch participates |
 
-interface A12CapabilityEntry {
-  readonly capabilityId: string;
-  readonly source: A12CapabilitySource;
-  readonly classification:
-    A12CapabilityClassification;
-  readonly layers: readonly A12ApiLayer[];
-  readonly availability:
-    A12CapabilityAvailability;
-  readonly directFunction?: string;
-  readonly contextualFacets?:
-    readonly string[];
-}
+Clock, base year, time zone, decimal context, regex state, locale, and other process globals never affect a direct call implicitly. Required context is an immutable typed value.
 
-declare const operatorCapabilities:
-  readonly A12CapabilityEntry[];
-```
+## Operator completeness and parity gates
 
-`operatorCapabilities` represents an opt-in generated manifest or build/CI artifact, not an eagerly initialized object in the primary operator bundle. A catalog-backed `source.catalogId` is the exact live catalog identity; a direct utility instead has its own stable `utilityId`. `capabilityId` distinguishes semantic facets when one catalog entry spans more than one boundary. `classification` separates true kernel operators from constructors and clearly named conveniences. `layers` states where each facet is reachable. `availability` makes implemented/parity-proven and visibly gated states disjoint, and a gated state cannot exist without its exact `gapId`. `directFunction`, when present, uses the actual public name such as `operators.dateTime.differenceInHours`. `contextualFacets` identifies the model/document behavior that remains interpreter-owned.
+The API must remain accountable to the live operator catalog. A generated or CI-checked capability matrix assigns every catalog entry and semantic facet to exactly one disposition:
 
-One catalog entry may yield several entries. Strict resolved date construction can map to `A12Date.of`, while unreal construction candidates, empty/malformed components, `Valid(Date(...))`, and `Invalid(Date(...))` map to interpreter facets. Field-source variants of a value operator may map to the same direct function plus an interpreter operand-resolution facet.
+| Disposition | Meaning |
+|---|---|
+| Direct operator | Operates only on supplied values and is exposed here |
+| Interpreter | Requires model, document, field, repetition, rule, or customization context |
+| Authoring | Constructs symbolic expressions or rules rather than evaluating supplied values |
+| Parity-gated | Belongs in the direct API but is absent until Kotlin/JVM and Kotlin/JS behavior is exact |
 
-The matrix is generated from or CI-checked against the live catalog and enforces all of the following:
+Every public direct function records its catalog identity or is explicitly classified as a value constructor, exact conversion, collection utility, or semantic combinator. One catalog entry may have both a direct value facet and an interpreter-only contextual facet.
 
-- every catalog ID has at least one disposition;
-- every direct function points to a catalog identity or is explicitly classified as a value, conversion, collection, or combinator utility;
-- every gated entry points to one exact gap and is absent from the callable baseline type;
-- no gap can be closed in prose while the platform parity laws still fail;
-- a catalog addition or removal fails the guard until the matrix and public surface agree;
-- JavaScript and JVM availability are recorded independently where a platform primitive is parity-gated.
+The matrix is a coverage guard, not a semantic source. Catalog additions fail CI until classified, and a parity-gated function is absent from the callable baseline type rather than implemented approximately.
 
-The matrix is a coverage system, not a semantic source. The operator catalog and kernel evidence remain the source of semantic behavior. The matrix prevents omission, makes scope visible to TypeScript developers, and gives an exact release boundary for decimal, regex, time-zone, and future parity work.
+Known release gates are:
 
-## 9. Kotlin ownership and public projections
+| Capability | Gate |
+|---|---|
+| Core decimals | Construction, addition, subtraction, comparison, rounding, and canonical rendering must be exact before `A12Number` ships |
+| Multiplication, division, and power | The JavaScript implementation must match the A12 50-significant-digit arithmetic context |
+| Pattern operators | The accepted Java/JavaScript regex domain must be exact and mechanically enforced |
+| Named time zones | Supported identifiers and history, including Berlin daylight-saving behavior, must match exactly |
 
-The semantic implementation lives once in the Kotlin Multiplatform runtime-semantics layer. The direct façade and interpreter both depend on it; TypeScript and JVM projections contain mechanical adaptation only.
+The closed gaps belong to the same namespace. Until then, extension types or capability metadata may describe them, but the baseline API must not pretend they are available.
 
-The current interpreter already contains reusable pieces such as decimal behavior and date arithmetic. Other semantics still embedded in AST evaluation must be extracted into pure value-level functions before both callers can share them.
+## Kotlin ownership and performance
 
-The direct API is therefore not a second implementation and not merely export annotations:
-
-- `commonMain` owns every operator decision;
-- the interpreter resolves fields/context and delegates its internal resolved values to the same semantic primitives;
-- the public TypeScript façade authenticates wrappers and translates errors at its boundary, while the interpreter calls a trusted internal entry point and does not allocate public wrappers or run public guards/codecs per AST node;
-- `jsMain` converts exports, arrays, errors, and declarations only;
-- `jvmMain` provides Java-friendly host projections and conversions only and imports no kernel API;
-- platform `expect`/`actual` primitives remain governed by common parity laws.
-
-The semantic code should first be extracted in place. Before publication, bundle size, dependency direction, and npm/Maven ABI evidence must decide whether it remains an independent surface of `:interpreter` or moves into a lower-level `:operators` KMP artifact shared by the interpreter.
-
-The dependency direction is one-way:
+The semantic implementation lives once in a kernel-free Kotlin Multiplatform layer:
 
 ```text
-kernel-free operator semantics
-          ▲
-          │
-kernel-free interpreter
-          ▲
-          │ optional, platform-specific
-kernel-compatibility adapters for Interpreter customization
+Kotlin commonMain operator semantics
+        ├── Kotlin/JS TypeScript façade
+        ├── JVM/Java-friendly façade
+        └── kernel-free Interpreter resolved-value evaluator
 ```
 
-An optional compatibility adapter may depend on the kernel-free Interpreter and Operator artifacts plus its platform’s kernel API. Neither base artifact may depend directly or transitively on that adapter or kernel API. Custom Field Types and Custom Conditions are model/document callbacks and therefore belong only to the Interpreter compatibility boundary; the direct Operator package contains no customization registry, adapter discovery, or custom-operator extension mechanism.
+`commonMain` owns semantic decisions. `jsMain` and `jvmMain` adapt exports, host values, arrays/lists, and errors only; neither reimplements an operator.
 
-### 9.1 TypeScript-first surface
+The interpreter resolves fields and context, then calls the same internal semantic primitives. It uses a trusted internal entry point and must not allocate public wrappers, run public authenticity guards, or translate public errors for every AST node.
 
-TypeScript examples, names, declaration review, and consumer tests define the public API. The façade must not leak Kotlin collections, mangled overloads, `Dec`, `Val`, `Expr`, `Cond`, `EvalContext`, or other execution internals.
+Direct calls have no session allocation, parsing, AST traversal, model lookup, document iteration, customization lookup, registry lookup, or adapter dispatch. Values are immutable, operators are stateless and reentrant, and no mutable host-global decimal, clock, regex, or time-zone state is shared.
 
-The exported operators must be normal callable functions so they can be passed to `map`, application code, or composition helpers.
+Extracting shared semantics is acceptable only if existing interpreter parsing, AST traversal, startup, warmup, throughput, interleaved-model scaling, allocation, and footprint do not regress. The existing interpreter benchmark and differential suite are release gates for that invariant.
 
-The discoverable namespace, including `operators.dateTime.differenceInHours`, is the primary surface. Browser-oriented family subpaths such as `@a12/operators/date-time` may additionally re-export the same functions when emitted Kotlin/JS bundle measurements prove useful dead-code elimination. A subpath never carries a second TypeScript semantic implementation and never changes the function name or signature.
+## Packaging and adapters
 
-Current JavaScript evidence supports Node. This proposal does not promise a browser target until a real browser consumer triggers packaging and compatibility qualification.
+The primary TypeScript package is a Kotlin/JS projection such as `@a12/operators`. It contains A12 values, exact codecs, errors, combinators, and the `operators` namespace with no interpreter, Zod, or kernel dependency.
 
-Optional TypeScript boundary adapters, including the separate [Zod integration proposal](ZOD-INTEGRATION-PROPOSAL.md), may wrap `A12Codecs` and translate structured issues. They depend outward on this API, contain no A12 semantics, and are packaged separately. The primary operator package and every direct operator call remain free of Zod or another schema runtime.
+The JVM artifact exposes the same semantics with Java-friendly conversions and collection projections. Java support is secondary and must not dictate TypeScript naming or produce a second semantic implementation.
 
-### 9.2 Secondary JVM surface
+An optional Zod package depends outward on the TypeScript package and translates codecs and structured issues. Zod never enters `commonMain`, the primary JavaScript bundle, direct operator calls, or the JVM API.
 
-The JVM target exposes the same values and operator semantics through a thin Java-friendly façade. It may adapt Java collections, exceptions, `BigDecimal`, or `java.time` explicitly, but it does not implement an operator again.
+Kernel compatibility is relevant only when an application reuses existing Kernel implementations of model-bound Custom Field Types or Custom Conditions. Providing those separate platform-specific Interpreter artifacts is required for existing-project compatibility; installing them is unnecessary for applications that use only the license-free native registries.
 
-Java support is useful, but it does not determine TypeScript naming or delay the primary surface.
+Each compatibility artifact carries the applicable Kernel dependency and license. Neither the operator artifact nor the kernel-free Interpreter depends on it.
 
-## 10. Exactness, errors, and release boundary
+No adapter can register or override direct operators.
 
-Every public operator must reproduce the applicable kernel behavior exactly through the clean-room differential/conformance approach. Each parity-gated capability remains visible in the generated manifest and the project’s exact gap ledger until its cross-platform laws pass.
+## Explicit exclusions
 
-| Gap | Release rule |
-|---|---|
-| JavaScript decimal rendering and mutable host-global decimal context | `A12Number` does not ship until construction, addition, subtraction, comparison, rounding, and canonical plain-decimal rendering are isolated and exact |
-| JavaScript 50-significant-digit arithmetic context | multiplication, division, and power remain absent until exact |
-| Java/JavaScript regex dialect | `A12Pattern` and pattern operators remain absent until the accepted pattern domain is exact and enforced before evaluation |
-| Time-zone identifiers and history | UTC ships first; named zones remain absent until their supported history is exact |
+This proposal does not provide:
 
-Affected operations are fixed or excluded, never approximated with weaker host semantics.
+- `DocumentV2` or another document type in the direct API;
+- an interpreter session or hidden default context;
+- field-path or repetition operators over raw arrays;
+- arbitrary object/JSON validation;
+- symbolic expression construction;
+- custom operator registration;
+- native JavaScript `number` arithmetic presented as A12 arithmetic;
+- implicit JavaScript `Date` conversion to an A12 calendar date;
+- `undefined`, `null`, or exceptions as substitutes for A12 truth or semantic non-evaluation;
+- approximate regex, decimal, or named-time-zone behavior;
+- a runtime dependency on the licensed A12 Kernel.
 
-Fallibility is uniform:
+## Feasibility
 
-- every declaration-block method that can fail—`parse…`, date/time/range `of`, checked native-number/date conversions, local/instant date-time resolution, `combine`, base-year construction, checked `toSafeInteger`, and gated pattern compilation—throws the stable JS-safe `A12ConversionError`;
-- each fallible constructor/converter has the explicitly declared adjacent `try…` form returning `A12Result<SuccessType, A12ConversionError>`;
-- `A12String.of`, `A12Boolean.of`, `A12Confirm.confirmed`, `A12Integer.fromBigInt`, canonical text projections, `A12Integer.toBigInt`, lossy numeric projection of an already-valid A12 number, and `A12TimeZone.utc` are total for their typed inputs and do not receive meaningless try-forms;
-- reversed endpoints passed to `A12DateRange.of` are a construction failure and therefore produce `A12ConversionError`;
-- a total typed operator returns its value or `A12Truth` directly, while an actual API-precondition violation such as out-of-domain string bounds or scale, unequal dot-product lengths, incompatible evaluation zones, or a foreign wrapper supplied through unsafe JavaScript throws structured `A12OperatorError`;
-- division by zero and invalid power domains are legal kernel operands and return `A12Evaluation.notEvaluated`; they are neither conversion errors nor operator errors;
-- `A12Result.capture` converts an operator call to the result form without duplicating every method as `tryX`;
-- unsupported platform semantics have no exported function until exact, and incompatible operand kinds fail at compile time.
+The proposal is feasible because the interpreter already needs the same clean-room scalar semantics and Kotlin Multiplatform can expose one implementation to both JavaScript and JVM. The main risks are semantic completeness, Kotlin/JS façade quality, and the known decimal, regex, and named-time-zone parity gaps, not the direct-call architecture.
 
-Checked unwrapping never truncates silently. A visibly lossy conversion is a separate method. The indexed conversion forms preserve the same scalar errors and add each failing index.
-
-Direct calls never return field suppression, pointers, or rule findings. The `A12Truth` and `A12Evaluation` `notEvaluated` variants are direct semantic outcomes, not hidden document state.
-
-Each public export must either cite its catalog identity or be explicitly classified as an A12 value, conversion, collection, or combinator utility. Exact conversions preserve the represented value; canonical rendering need not preserve the source spelling. Potentially lossy native conversions are checked or visibly named.
-
-Values are immutable and operators are stateless/reentrant. JVM calls are thread-safe; there is no mutable global decimal context, clock, regex engine state, or time-zone state. Platform projections defensively isolate any host library with mutable globals.
-
-The semantic implementation lives once in Kotlin `commonMain`, and every published base Operator artifact and ordinary TypeScript/JVM projection remains kernel-free and MIT-licensed, with no direct or transitive kernel dependency. Any optional kernel-linked compatibility artifact is separately packaged and licensed and, as specified by the Interpreter proposal, never participates in a direct operator call. Direct calls allocate no session and perform no parsing, AST traversal, model lookup, document iteration, customization lookup, or adapter dispatch. Extracting shared semantics must not worsen the existing interpreter’s parsing, AST traversal, startup, warmup, throughput, scaling, allocation, or footprint.
+The API can ship incrementally by operator family only when the capability matrix remains exhaustive and unavailable functions are visibly gated. The non-negotiable acceptance conditions are exact A12 behavior, an ergonomic TypeScript surface, no licensed runtime dependency, and no interpreter parsing, AST, warmup, throughput, or allocation regression.
