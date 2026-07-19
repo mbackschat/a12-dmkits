@@ -1865,3 +1865,29 @@ The kernel's condition formatter (`ConditionFormatter` → `FormatterVisitor` �
 Default language: the no-locale `formatConditionText` renders in the model's `conditionLanguage` (`getLanguageUsedInConditionText()`), which the kernel **silently falls back to German** for any locale other than `Locale.US`/`Locale.GERMANY` (already noted on `KernelAdapter.canonicalConditionText`). The dmkits default is English and **independent of the display locale** (`DocumentModelDraft.DEFAULT_CONDITION_LANGUAGE = en_US`), so our models render English — but the German source map is still consulted under the hood.
 
 **Native-image impact (the v0.8.0 Linux-only `rule format` defect).** GraalVM bundles only the **build host's default locale** (+ `en`) into the image's resolvable locales unless `-H:IncludeLocales` is set. A binary built on a **`de_DE`** host (the maintainer's Mac) carries the German terminal data → `rule format` works; one built on an **`en`/`C`** host (Linux CI) does **not** → `getMapOfLocalizedTerminalIDs().get(Locale.GERMANY)` is empty → `rule format`'s English render fails with *"The german token name 'Und' is unknown"* (or `ExceptionInInitializerError`). The output was never going to *be* German (target = `en_US`); it crashed for lack of the German **source**. Only an explicit `--lang DE` short-circuits the German-map read — which is why `rule format --lang DE` passed on Linux while the default did not. **Fix:** pin `-H:IncludeLocales=en,de` so every build is locale-complete and host-independent ([NATIVE-IMAGE-GRAALVM §3.2](NATIVE-IMAGE-GRAALVM.md)). *(Reconstruct: a forced-`en` builder via `-J-Duser.language=en` reproduces the crash on macOS; adding `-H:IncludeLocales=en,de` restores the English render. Locked at runtime by the Linux native gate over `examples/cli-jsonschema.md`.)*
+
+## §7 supplement — pattern regexes are Java `Pattern` on JVM but raw `new RegExp` on the kernel's own JS target (source, 2026-07-20)
+
+> Fold: pending — newly recorded pattern-dialect fact; folds into §7 (patterns) on the next canonical KERNEL-SEMANTICS pass.
+
+The kernel has TWO regex loci, and BOTH compile the raw authored pattern string once and cache it:
+
+- **Declared STRING/predefined `pattern`** — `FormatDefinitionString`: JVM `Pattern.compile(muster)` held on the format-def (`pattern.matcher(wert).matches()`, full-region); the TS twin (`FormatDefinitionString.ts`) builds `new RegExp("^(?:" + muster + ")$")` at construction and calls `.test(wert)`.
+- **Condition `PatternMatched`/`PatternViolated` literal** — `BedingungsOperatorHelper.getPattern(regex)`: JVM a static `ConcurrentHashMap<String,Pattern>` via `computeIfAbsent(regex, Pattern::compile)`; the TS twin (`BedingungsOperatorHelper.ts`) a static `Map<string,RegExp>` via `new RegExp("^(?:" + regex + ")$")`. Both are **compile-once** (never per row/eval).
+
+**Two source facts drive the cross-host behavior:**
+
+1. **The model check does NOT validate pattern syntax.** `StringType.pattern` is a plain stored `String`; there is no MVK pattern-syntax rule (the only pattern-adjacent model rejections are the incidental ones — `noValueValidation` forbidding `pattern`, and a pattern literal that itself contains a line break). So a pattern using a Java-only construct is model-VALID and loadable, and only `Pattern.compile` (runtime) would object — which it does not, because Java accepts it.
+2. **The kernel's own JS/TS target feeds the raw Java pattern to `new RegExp` — no translation.** Therefore the kernel is **not host-uniform** for regex: kernel-Java (JVM, `java.util.regex.Pattern`) accepts constructs that JS `RegExp` throws on or reads differently, and the kernel-TS reproduces the JS behavior exactly (it IS `new RegExp`).
+
+**The Java→JS construct split** (`new RegExp("^(?:" + p + ")$")`, verified on Node):
+
+| Java `Pattern` construct | JS `RegExp` | consequence on the kernel-TS AND any raw-RegExp JS consumer |
+|---|---|---|
+| inline flags `(?i)` `(?s)` `(?m)` `(?x)`, possessive `a++`/`a*+`, atomic `(?>…)` | **SyntaxError** | model construction / eval throws on JS |
+| `\R` `\h` `\H` `\v` `\V`, `\p{Alpha}`/POSIX names, `\A` `\z` `\Z`, `[a-z&&[^bc]]` intersection, `[:alpha:]` | **accepted, DIFFERENT meaning** (identity-escape / literal / different class) | silent semantic divergence on JS |
+| ordinary regex, `[…]`, `{n,m}`, `\d \w \s`, `|`, named groups `(?<n>…)` + `\k<n>` | **identical** | the overwhelming majority — parity on both hosts |
+
+Anchoring: the kernel-TS wraps `^(?:…)$` (the non-capturing group is load-bearing — a naive `^…$` mis-anchors top-level alternation, e.g. `^ab|cd$` matches `"abX"`). Full-region match on both hosts, matching JVM `matcher.matches()`.
+
+**Consequence for a kernel-faithful interpreter.** A JS consumer that does raw `new RegExp` (as the kernel-TS does, and as Kotlin `Regex` does on JS) reproduces the kernel's OWN JS behavior — including the throw-set and the silent-divergence-set. Making JS instead behave like Java `Pattern` (via translation or a portable engine) would make the consumer DIVERGE from the kernel's own JS runtime, not converge on it. See INTERPRETER-GAPS IG90 for the interpreter-side decision.
