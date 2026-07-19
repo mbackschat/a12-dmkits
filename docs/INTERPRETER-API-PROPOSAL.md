@@ -23,8 +23,6 @@ TypeScript on Node is the primary product surface. Java/JVM is a secondary proje
 
 The base Kotlin Multiplatform interpreter and its TypeScript/JVM façades are clean-room, kernel-free, MIT-licensed artifacts. They do not import, link, reflect over, or bundle an A12 Kernel artifact.
 
-Required, separately packaged adapters provide compatibility with existing kernel-interface implementations. Applications install them only for interface reuse, and adapter licensing follows kernel linkage and distribution.
-
 The direct [Operator API proposal](OPERATOR-API-PROPOSAL.md) remains independent: calling `operators.dateTime.differenceInHours(start, end)` never requires an interpreter. This proposal is the model/document layer for behavior that genuinely needs paths, repetitions, formal state, relevance, rules, computations, or runtime customization.
 
 API and package names are proposed contracts. Where a contract requires engine work beyond the present evaluator, the relevant section states that implementation dependency because kernel exactness and performance evidence are acceptance conditions.
@@ -78,14 +76,12 @@ The stable façade should cover the evaluator’s actual jobs and make the statu
 | Compute all stored computations | `compute` | core |
 | Compute one target | `computeField` | core |
 | Apply computations | `applyComputations` | core, refined to return outcomes and snapshot without double evaluation |
-| Supply native custom field types and custom conditions | `DocumentProcessingConfig` factories | core kernel-free registries and SPIs |
-| Reuse existing JVM or TypeScript kernel-interface implementations | platform-specific kernel factories and documents | required separately packaged compatibility adapters, installed where interface reuse is needed |
+| Supply custom field types and custom conditions | evaluator factory hooks | core kernel-free registries and SPIs |
 | Evaluate an arbitrary symbolic expression | parser/evaluator internals only | optional advanced API, not core v1 |
 | Prepare an ad hoc computation | no complete capability | deferred |
 | Build or consistency-check a model | modelkit/kernel concerns | outside the interpreter API |
-| Adapt `DocumentV2` | kernel-linked JVM type | required JVM compatibility deliverable, installed where `DocumentV2` reuse is needed |
 
-The core should be complete for “load model → create/read document → configure custom types/conditions → validate/compute → inspect results.” Candidate programs, service registries, batch helpers, and browser adapters are optional layers. Kernel-interface compatibility adapters are required product deliverables but separately installed only by applications that reuse those interfaces; customization semantics are always required.
+The core should be complete for “load model → create/read document → configure custom types/conditions → validate/compute → inspect results.” Candidate programs, service registries, batch helpers, and browser adapters are optional layers.
 
 The primary direct verbs remain deliberately familiar: `validateFull`, `validatePart`, and `compute` offer the corresponding kernel capabilities over kernel-free types. Richer reports, frozen snapshots, support inspection, and compute-and-apply are additive; they do not rename or weaken the established validation/computation jobs. `PreparedModel` is the kernel-free prepare-once abstraction and does not reproduce the kernel’s strategy-specific dynamic-code cache API.
 
@@ -658,9 +654,7 @@ Concurrent `createInterpreter` calls may invoke the factory concurrently, so the
 
 #### Customization semantics and lifecycle
 
-The public customization surface is a P0 compatibility contract, not an optional plug-in afterthought. Existing projects already own substantial Custom Field Type and Custom Condition libraries, often implemented separately for JVM and TypeScript.
-
-The kernel-free interpreter therefore defines its own Kotlin Multiplatform SPI with the same observable jobs and callback data. Required, separately packaged platform compatibility artifacts adapt existing kernel implementations to it and are installed only where that reuse is needed.
+The public customization surface is a P0 compatibility contract, not an optional plug-in afterthought. The kernel-free interpreter defines Kotlin Multiplatform SPIs for Custom Field Types and Custom Conditions with the same observable jobs and callback data.
 
 A new portable customization can be implemented once in Kotlin `commonMain` and projected to TypeScript and JVM when its dependencies are multiplatform; host-specific implementations can target the corresponding projection directly. The core SPI remains useful without any kernel artifact.
 
@@ -668,7 +662,6 @@ A new portable customization can be implemented once in Kotlin `commonMain` and 
 |---|---|
 | Validation input | `value` is native stored text; `parameters` carries message locale and optional `minLength`/`maxLength`; `isDisplayValue` states whether conversion is required |
 | Core storage | `DocumentSnapshot` stores internal form, so direct core validation passes `isDisplayValue: false`; form/import code converts display text before writing |
-| Compatibility presentation | An adapter passes `true` only when its audited native presentation state requires that exact input |
 | Validation result | Acceptance fabricates no value; rejection preserves the consumer-defined `errorKey` and message |
 | Conversion result | Both directions return converted text or the retained input plus its conversion error; identity conversions are valid |
 | Invocation ownership | The evaluator owns the field pointer and model constraints; they are not invented callback inputs |
@@ -678,16 +671,15 @@ A new portable customization can be implemented once in Kotlin `commonMain` and 
 | Custom Condition input | Contract |
 |---|---|
 | Full relevance | `relevantEntities` is `undefined` |
-| TypeScript partial relevance | Preserve the caller array after entity-identity conversion/deduplication and global-field inclusion; do not pre-expand group selectors, and keep wildcard forms |
+| Partial relevance | Preserve the caller selection after entity-identity conversion/deduplication and global-field inclusion; do not pre-expand group selectors, and keep wildcard forms |
 | Empty relevance | A truly empty effective set returns before callback invocation; an originally empty array reaches callbacks only if source normalization such as global-field inclusion makes it non-empty |
-| JVM relevance | Use independently source-backed set-conversion and empty-set laws; do not infer TypeScript behavior |
-| Formal errors | Preserve the exact source callback set after pointer conversion; the platform audit determines admissible pointer variants |
+| Formal errors | Preserve the exact callback set after pointer conversion |
 | Error pointer | Preserve the containing rule’s error field, including partially known repetitions |
-| Overrides | Preserve the TypeScript façade’s call-scoped entity-value mapping; use `undefined` when absent |
+| Overrides | Preserve call-scoped effective-value overrides; use `undefined` when absent |
 
 The callback returns native `boolean`; `true` means the error condition is met and the containing rule fires. It returns `false` itself when required input is irrelevant, formally incorrect, or does not satisfy the project condition.
 
-The interpreter must not substitute `A12Truth`, a generic refinement, expression arguments, locale, or evaluation time. Platform adapter laws lock set membership, duplicates, order exposure, short-circuiting, and pointer/wildcard conversion exactly.
+The interpreter must not substitute `A12Truth`, a generic refinement, expression arguments, locale, or evaluation time. Conformance laws lock set membership, duplicates, order exposure, short-circuiting, and pointer/wildcard conversion exactly.
 
 | Registry operation | Contract |
 |---|---|
@@ -695,23 +687,14 @@ The interpreter must not substitute `A12Truth`, a generic refinement, expression
 | `fromMap` | Accept own enumerable keys only |
 | `fromFactory` | Adapt a name resolver whose `create` returns `undefined`, without throwing, for unsupported names |
 | Lane binding | Enumerate names used by the prepared model, create each native implementation once per lane/configuration, and store direct slots |
-| Hot path | Perform no registry scan, name lookup, reflection, or adapter discovery per field or AST node |
+| Hot path | Perform no registry scan, name lookup, reflection, or provider discovery per field or AST node |
 | Missing name | Report it through `supportReport()` and the ordinary unsupported result channel |
 
-Before freezing the ABI, audit every member and lifecycle rule of both customization SPIs against modern kernel 30.8.1 JVM interfaces and the target TypeScript interfaces used by real projects.
+`CustomConditionDocumentView` is only the typed observable subset conditions require, not a recreation of an arbitrary document API. If a production callback observes another required fact, add an explicit typed member rather than a generic map.
 
-The compatibility audits are separate:
+Conformance laws preserve invocation order/cardinality, repetition scope, partial relevance, formal-error filtering, partially known error pointers, overrides, normalization, length semantics, `isDisplayValue`, conversion, error identity/message, rejection or false versus exception, and cleanup after partial failure.
 
-- JVM document-model conditions receive `DocumentV2`, nullable pointer sets, and `PartiallyKnownDocumentMultiPointer`.
-- The TypeScript document-model façade receives its native `Document`, model ID, arrays, and entity-value mapping.
-- Static JVM generated-runtime conditions over `IData`/`IIdentifier` are a third surface and are not covered by the `DocumentV2` adapter.
-- Factory names, validation parameters, presentation information, and localized error representations differ by platform.
-
-`CustomConditionDocumentView` is only the typed observable subset established by the audit, not a recreation of arbitrary native document APIs. If a production callback observes another required fact, add an explicit typed member rather than a generic map.
-
-Compatibility laws preserve invocation order/cardinality, repetition scope, partial relevance, formal-error filtering, partially known error pointers, overrides, normalization, length semantics, `isDisplayValue`, conversion, error identity/message, rejection or false versus exception, and cleanup after partial failure.
-
-For native core callbacks, an exception is `InterpreterIntegrationError`; it never becomes ordinary rejection, unsupported semantics, or `false`. Each kernel-compatibility adapter separately preserves its source platform’s exception behavior at its public boundary.
+For native core callbacks, an exception is `InterpreterIntegrationError`; it never becomes ordinary rejection, unsupported semantics, or `false`.
 
 There is no Custom Operator SDK or operator registration. Operators remain the fixed, catalog-governed surface from the [Operator API proposal](OPERATOR-API-PROPOSAL.md).
 
@@ -719,9 +702,9 @@ All callbacks are synchronous. A runtime thenable from plain JavaScript or unsaf
 
 Callback sets belong exclusively to one active lane unless a future contract proves sharing safe. Direct callers retain external resource ownership; service registrations receive the exactly-once disposal contract in §8.
 
-An active `Interpreter` is not recursively reentrant. A same-lane validation, computation, inspection, or custom-field conversion from a callback fails with reason `"reentrant-evaluation"` before time sampling, cache mutation, or native adapter-context replacement.
+An active `Interpreter` is not recursively reentrant. A same-lane validation, computation, inspection, or custom-field conversion from a callback fails with reason `"reentrant-evaluation"` before time sampling, cache mutation, or callback-context replacement.
 
-A callback may use a separately acquired lane under normal pool rules. Compatibility tests cover direct reentry, nested failure, and `finally` cleanup so an outer native document or value mapping cannot be overwritten.
+A callback may use a separately acquired lane under normal pool rules. Tests cover direct reentry, nested failure, and `finally` cleanup so an outer callback context cannot be overwritten.
 
 The two-step API is intentional. `openExpandedModel(json, configuration)` may exist as a convenience, but it must not hide the reusable prepared-model boundary.
 
@@ -1312,7 +1295,7 @@ Clock providers, locale, fallback charset, predefined/custom field-type implemen
 
 The prepared definition may record unique custom names, but only `Interpreter` creation resolves them against lane registries. The bound runtime stores direct validator/condition slots beside relevant metadata and condition nodes.
 
-When a source factory must observably create callbacks more often, an adapter slot may instead hold a constant-name lifecycle-preserving provider. It still performs no registry search or adapter discovery in the AST.
+When a source factory must observably create callbacks more often, a provider slot may instead hold a constant-name lifecycle-preserving provider. It still performs no registry search or factory discovery in the AST.
 
 This separation allows two interpreters over one model to use different project implementations without hot-path name lookup.
 
@@ -1706,7 +1689,7 @@ Each field declaration has a storage-representation codec independent of formal 
 
 Built-in string, enumeration, and custom declarations store `A12String` exactly; custom fields use internal text. Formal validation supplies that string, `isDisplayValue: false`, locale, and optional length hints.
 
-Display text first uses the bound conversion API. A kernel-compatibility adapter derives equivalent behavior from native document/presentation state without changing canonical storage.
+Display text first uses the bound conversion API.
 
 #### Custom display/internal conversion
 
@@ -2553,10 +2536,6 @@ const report: ValidationReport =
 
 `validateFull` is the primary complete-document verb; `validatePart` is its relevance-aware counterpart. Both return kernel-free `ValidationReport`.
 
-Portable projections derive from the detached report without reevaluation. Exact native projection requires every native datum in the report or an authenticated same-evaluation sidecar; TypeScript `Localizable[]` cannot be reconstructed from `message: string`.
-
-A native entry point promising complete configured behavior requires both support flags. Source-exact adapters preserve normal missing-factory behavior and do not eagerly probe unless the factory is certified safe.
-
 `report.noErrorOccurred` answers only the kernel error-severity question. A caller that requires a complete clean result checks both `report.noErrorOccurred` and `report.fullySupported`. A messages-only projection that silently drops unsupported programs is unsafe.
 
 Each finding exposes stable data the evaluator can support: origin, code, report pointer, severity, value/omission polarity, localized text, and any verified referenced/fill-to-fix report pointers. Authored findings additionally expose the rule path. Kotlin implementation types do not cross the boundary.
@@ -2756,7 +2735,7 @@ type ComputeAndApplyResult =
 | `"cleared"` | Cleared fields |
 | `"formal-error"` reasons | Formal errors in operands |
 
-`noErrorOccurred` is the corresponding aggregate. A compatibility adapter exposes familiar collections and owns native application through an authenticated source-bound result; a detached `ComputationReport` is not an application handle.
+`noErrorOccurred` is the corresponding aggregate.
 
 | Application case | Contract |
 |---|---|
@@ -3586,8 +3565,8 @@ Binding prepares customization dispatch:
 | Binding case | Contract |
 |---|---|
 | Used name | Bind each model-used custom field/condition name to one indexed slot |
-| Reusable native factory | Store the created implementation |
-| Missing native name | Store one missing sentinel used by readiness reporting |
+| Resolved factory implementation | Store the created implementation |
+| Missing name | Store one missing sentinel used by readiness reporting |
 | Observable source cardinality | Store a direct constant-name provider; never force a singleton or readiness probe |
 | Runtime-resolved capability | Keep that status until normal evaluation invokes the source factory |
 | Hot path | Metadata/AST point directly to slots; no service registry, configuration token, string map, reflection, or coordination lock |
@@ -3929,9 +3908,7 @@ Callbacks are synchronous; static types exclude `Promise`, and runtime thenables
 
 A future reentrant configuration may require explicitly share-safe callbacks. Callback lifetime and exception conversion remain façade contracts.
 
-Kernel-free registries are created per lane and are never process-global. A compatibility adapter shares a factory only when the source contract requires factory thread safety; dispatch wrapper and native call context remain exclusive-lane state.
-
-Returned callbacks preserve source creation cardinality rather than being silently shared. Registry lookup and adapter discovery stay outside evaluator hot loops.
+Kernel-free registries are created per lane and are never process-global. Returned callbacks preserve source creation cardinality rather than being silently shared, and registry lookup stays outside evaluator hot loops.
 
 There is deliberately no universal “validation error” or `success: boolean`. The public algebra keeps these families distinct:
 
@@ -3963,7 +3940,6 @@ Public results and failures use arrays, readonly objects, discriminated unions, 
 | malformed field text | retained raw state plus validation finding/suppression |
 | unsupported legal construct/configuration | `InterpreterSupportReport` before serving and an explicit unsupported result for the requested evaluation |
 | owner mismatch | `ModelOwnerMismatchError` |
-| native compatibility binding/document model-ID mismatch | platform projection of `KernelCompatibilityInputError` before conversion or evaluation |
 | invalid candidate | `ProgramPreparationError` |
 | released service token | `ReleasedServiceHandleError` before evaluation |
 | explicitly retired model or alias | `RetiredServiceHandleError` before evaluation |
@@ -3993,15 +3969,7 @@ All model loading policy, parsing, paths, repetition semantics, formal-state beh
                  ▼                         ▼
        TypeScript façade            JVM/Java façade
           PRIMARY                     SECONDARY
-                 ▲                         ▲
-                 │ required product        │ required product
-      TypeScript kernel-compat       JVM kernel-compat
-             adapter                    adapter
-                 │                         │
-       existing TS callbacks       existing JVM callbacks
 ```
-
-The arrows point from each required, separately packaged compatibility adapter to the base artifact it consumes; applications install an adapter only when they reuse that platform’s kernel interfaces. The base Interpreter and Operator artifacts never depend back on either adapter.
 
 The TypeScript façade is required product work: explicit exports, plain declarations, JS-safe errors, arrays/readonly DTOs, and strict TypeScript consumer tests. The ordinary JVM façade adapts Java collections and uses builders where justified. Neither façade contains evaluator logic or imports a kernel type.
 
@@ -4011,42 +3979,58 @@ They never enter `commonMain`, customization SPIs, parsing, AST traversal, warm 
 
 Node is the verified JavaScript host. Browser qualification requires a real browser build, bundle smoke test, conformance run, callback contract, and browser performance evidence. A fake async wrapper that still blocks the Node event loop is not useful; worker-thread/browser-worker adapters may be separate later.
 
-### 10.1 Required kernel-compatibility artifacts
+### 10.1 Reusing every A12 Kernel evaluator extension
 
-Two platform-specific artifacts bridge existing project implementations without contaminating the core:
+The compatibility requirement is narrow and complete:
 
-| Proposed artifact | Accepts | Depends on |
-|---|---|---|
-| `@a12/interpreter-kernel-compat` | the existing TypeScript kernel document, generated-runtime configuration, model ID, entity-value mapping, custom-field factory, and custom-condition factory | kernel-free TypeScript Interpreter façade and the certified TypeScript kernel API line |
-| `a12-interpreter-kernel-compat-jvm` | `DocumentV2`, `DocumentProcessingConfig`, modern JVM custom-field and custom-condition factories, plus explicitly supported legacy variants | kernel-free JVM Interpreter façade and the certified A12 Kernel JVM API line |
+> Existing project implementations of every A12 Kernel extension point used during validation or computation must be callable by the kernel-free interpreter.
 
-TypeScript is the primary compatibility surface; JVM is the secondary route for existing Java implementations. The artifacts remain separate because their documents, nullable sets, partially known pointers, callbacks, factory absence, validation parameters, and localized messages differ observably.
+For A12 Kernel 30.8.1, `DocumentRtCustomExtensionService` exposes exactly `registerCustomFieldTypes(ICustomFieldTypeFactory)` and `registerCustomConditions(ICustomConditionFactory)`. The complete evaluator extension inventory is therefore:
 
-Each adapter pins and certifies a kernel API line, initially 30.8.1 where applicable. Base artifacts remain MIT and kernel-free; adapter obligations follow kernel linkage.
+| Kernel extension family | Kernel-free target |
+|---|---|
+| `ICustomFieldTypeFactory` and its validators | `PredefinedTypeRegistry`, `CustomFieldTypeFactory`, `CustomFieldTypeRegistry`, and `CustomFieldValidator` |
+| `ICustomConditionFactory` and its conditions | `CustomConditionFactory`, `CustomConditionRegistry`, and `CustomCondition` |
 
-A deployment that must remain entirely kernel-free implements or recompiles its project customizations against the native KMP/TypeScript/JVM projection of the core SPI. Reusing an already compiled implementation whose public types are kernel interfaces necessarily selects the separately packaged compatibility artifact; packaging cannot erase that dependency by hiding it behind reflection or copying the interface definitions.
+The Kernel exposes no custom-operator, custom-function, or custom-computation registration point. This proposal therefore defines none.
 
-| Existing capability | Kernel-free core | Compatibility projection |
-|---|---|---|
-| full validation | `Interpreter.validateFull(DocumentSnapshot, ValidationOptions)` | `validateFull` over the native kernel document/config |
-| partial validation | `Interpreter.validatePart(DocumentSnapshot, RelevantEntityPointer[], ValidationOptions)` | `validatePart` over native pointer collections |
-| computations | `Interpreter.compute(DocumentSnapshot, ComputeOptions)` | `compute` over the native kernel document/config |
-| apply computation results | `computeAndApply` returns a new snapshot from one evaluation | a source-bound adapter computation result exposes kernel-style `appliedTo` without reevaluation |
-| custom field types | `CustomFieldTypeRegistry` / `CustomFieldValidator` | existing platform factory and validator interfaces |
-| custom conditions | `CustomConditionRegistry` / `CustomCondition` | existing platform factory and condition interfaces with the original native document |
+`ICustomMigrationCode` is a document/model migration hook, not an evaluator extension. It belongs in a future migration API and adapter rather than the Interpreter API.
 
-The host-neutral custom-field result keeps `errorKey` and rendered `message`; JVM carries its source string directly. TypeScript returns `Localizable[]`, so adapter configuration supplies a renderer and each call supplies locale before producing a canonical report.
+Legal charset, locale, model time zone, and clock are interpreter configuration inputs rather than project extension interfaces. The core supports them directly; they require no Kernel compatibility adapter.
 
-Rendering is a projection, not preservation of localization objects. Exact `DocumentValidationResult` projection must retain original `Localizable[]` in a same-evaluation sidecar; detached strings cannot reconstruct them.
+#### Required artifacts and boundary
 
-#### TypeScript adapter
+Existing extensions are reused through two required, separately packaged artifacts:
 
-The primary TypeScript compatibility contract retains the established verbs and parameters:
+| Artifact | Purpose |
+|---|---|
+| `@a12/interpreter-kernel-compat` | adapt existing TypeScript Kernel field-type and condition factories |
+| `a12-interpreter-kernel-compat-jvm` | adapt existing JVM Kernel field-type and condition factories |
+
+The base Kotlin Multiplatform interpreter defines its own license-free extension interfaces. The adapter artifacts may depend on the corresponding Kernel API, so their licensing and distribution are separate from the base interpreter.
+
+```text
+existing Kernel extension factories
+                 │
+                 ▼
+       platform compatibility adapter
+                 │
+                 ▼
+       kernel-free KMP registries
+                 │
+                 ▼
+       kernel-free Interpreter
+```
+
+The adapters translate callbacks only. They do not expose a second interpreter, accept Kernel documents as validation input, invoke Kernel validation or computation, or adapt computation results back into Kernel documents.
+
+Applications that implement the KMP SPI directly need no Kernel dependency or compatibility artifact. Applications that reuse implementations compiled against Kernel interfaces install the matching adapter.
+
+#### Adapter surface
+
+The adapter accepts existing factories and returns ordinary kernel-free registries:
 
 ```ts
-type KernelDocument = Document;
-type KernelEntityInstancePath = EntityInstancePath;
-
 interface KernelCustomFieldMessageRenderer {
   render(
     errorText: readonly Localizable[],
@@ -4054,291 +4038,85 @@ interface KernelCustomFieldMessageRenderer {
   ): string;
 }
 
-interface KernelCompatibilityConfiguration {
-  readonly documentModelId: string;
-  readonly generatedRuntime: GeneratedCodeRtConfig;
-  readonly extensionResolution: "explicit-only";
-  readonly customFieldMessageRenderer:
+interface KernelCustomFieldTypeExtensions {
+  readonly factory:
+    ICustomFieldTypeFactory;
+  readonly messages:
     KernelCustomFieldMessageRenderer;
 }
 
-interface KernelCompatibilityInputError
-  extends Error {
-  readonly code:
-    "A12_KERNEL_COMPATIBILITY_INPUT_FAILED";
-  readonly reason: "model-id-mismatch";
-  readonly expectedDocumentModelId: string;
-  readonly actualDocumentModelId?: string;
+interface KernelExtensionFactories {
+  readonly customFieldTypes?:
+    KernelCustomFieldTypeExtensions;
+  readonly customConditions?:
+    ICustomConditionFactory;
 }
 
-declare const kernelCompatibleComputationResultBrand:
-  unique symbol;
-
-type KernelCompatibleComputationApplication =
-  | {
-      readonly kind: "applied";
-      readonly document: KernelDocument;
-    }
-  | {
-      readonly kind: "notApplied";
-      readonly reason: "unsupported";
-      readonly document: KernelDocument;
-    };
-
-interface KernelCompatibleComputationResult {
-  readonly [kernelCompatibleComputationResultBrand]:
-    never;
-  readonly prepared: PreparedModel;
-  readonly report: ComputationReport;
-  readonly document: KernelDocument;
-  appliedTo(
-    document: KernelDocument,
-  ): KernelCompatibleComputationApplication;
+interface AdaptedKernelExtensions {
+  readonly predefinedTypes:
+    PredefinedTypeRegistry;
+  readonly customFieldTypes:
+    CustomFieldTypeRegistry;
+  readonly customConditions:
+    CustomConditionRegistry;
 }
 
-interface KernelCompatibleInterpreter {
-  readonly prepared: PreparedModel;
-  supportReport(): InterpreterSupportReport;
-  convertCustomFieldDisplayToInternal(
-    pointer: CustomFieldPointer,
-    displayValue: string,
-  ): CustomFieldConversionResult;
-  convertCustomFieldInternalToDisplay(
-    pointer: CustomFieldPointer,
-    internalValue: string,
-  ): CustomFieldConversionResult;
-  validateFull(
-    document: KernelDocument,
-    valueOverrides?: EntityInstanceValueMapping,
-    options?: ValidationOptions,
-  ): ValidationReport;
-  validatePart(
-    document: KernelDocument,
-    relevantEntities:
-      readonly KernelEntityInstancePath[],
-    valueOverrides?: EntityInstanceValueMapping,
-    options?: ValidationOptions,
-  ): ValidationReport;
-  compute(
-    document: KernelDocument,
-    options?: ComputeOptions,
-  ): KernelCompatibleComputationResult;
-  dispose(): void;
-}
+declare function adaptKernelExtensions(
+  factories: KernelExtensionFactories,
+): AdaptedKernelExtensions;
 
-declare function createKernelCompatibleInterpreter(
-  prepared: PreparedModel,
-  configuration:
-    KernelCompatibilityConfiguration,
-): KernelCompatibleInterpreter;
-
-declare const prepared: PreparedModel;
-declare const generatedDocumentModelId: string;
-declare const generatedRuntime:
-  GeneratedCodeRtConfig;
-declare const customFieldMessageRenderer:
+declare const kernelFieldTypes:
+  ICustomFieldTypeFactory;
+declare const kernelFieldTypeMessages:
   KernelCustomFieldMessageRenderer;
-declare const document: KernelDocument;
-declare const valueOverrides:
-  EntityInstanceValueMapping | undefined;
+declare const kernelConditions:
+  ICustomConditionFactory;
 
-const compatibilityConfiguration:
-  KernelCompatibilityConfiguration = {
-    documentModelId: generatedDocumentModelId,
-    generatedRuntime,
-    extensionResolution: "explicit-only",
-    customFieldMessageRenderer,
+const extensionFactories:
+  KernelExtensionFactories = {
+    customFieldTypes: {
+      factory: kernelFieldTypes,
+      messages: kernelFieldTypeMessages,
+    },
+    customConditions: kernelConditions,
   };
-const compatible: KernelCompatibleInterpreter =
-  createKernelCompatibleInterpreter(
-    prepared,
-    compatibilityConfiguration,
-  );
-const validationOptions: ValidationOptions = {
-  locale: "en_US",
-};
-const compatibilityComputeOptions: ComputeOptions = {
-  locale: "en_US",
-};
-const report: ValidationReport =
-  compatible.validateFull(
-    document,
-    valueOverrides,
-    validationOptions,
-  );
-const computation:
-  KernelCompatibleComputationResult =
-    compatible.compute(
-      document,
-      compatibilityComputeOptions,
-    );
-const computationApplication:
-  KernelCompatibleComputationApplication =
-    computation.appliedTo(document);
-if (computationApplication.kind === "applied") {
-  const updatedDocument: KernelDocument =
-    computationApplication.document;
-}
+const extensions: AdaptedKernelExtensions =
+  adaptKernelExtensions(extensionFactories);
 ```
 
-| TypeScript adapter input/result | Contract |
+The returned registries are supplied through the normal `InterpreterConfiguration.createBindings` contract. Validation and computation continue to accept `DocumentSnapshot` and return the ordinary kernel-free reports.
+
+The TypeScript message renderer turns the Kernel validator’s `Localizable[]` into the core result message for the validation call’s locale. The JVM artifact uses its corresponding source message representation and returns the same KMP registry projections.
+
+Neither artifact adds `validateFull(DocumentV2)`, `validatePart(DocumentV2, ...)`, or `compute(DocumentV2)`.
+
+#### Exact compatibility contract
+
+The adapters preserve every observable extension behavior:
+
+| Extension | Required preservation |
 |---|---|
-| Kernel aliases | Import existing `Document`, `EntityInstancePath`, and `Localizable`; do not reproduce declarations |
-| Generated model ID | Use the authoritative generated artifact value, never a service alias or copied prepared value |
-| Generated runtime | Preserve factories, `currentDateForTest`, and `ignoreUnknownFields` |
-| Message renderer | Render existing `Localizable[]` for the requested locale |
-| Extension mode | Required `"explicit-only"` means absent factory stays absent and never invokes deprecated global registration |
-| Document/overrides | Keep original kernel `Document` and existing optional `EntityInstanceValueMapping` |
-| Options | Validation locale and computation diagnostic locale remain explicit |
-| Results | Canonical detached validation report plus opaque source-bound computation/application result; only `"applied"` exposes an updated document |
+| Custom Field Type | factory lookup, validator lifecycle, declared custom-field validation, predefined-type `Valid`/`Invalid` checks, stored/display mode, effective length bounds, display/internal conversion, rejection identity, message, and localization |
+| Custom Condition | factory lookup, invocation order and count, full/partial relevance, formal-error entities, error pointer, repetition coordinates, effective value overrides where the source API exposes them, `true`-means-rule-fires polarity, and exception behavior |
 
-Construction compares configured and prepared document-model IDs before lane creation. A TypeScript `Document` has no authoritative version token, so strict model-bound decoding is the strongest local check and callers must route through the handle for the exact generated version.
+For declared custom fields, validation remains full delegation: the adapter must not add generic length validation around the project validator. Omitted bounds reach the callback as the Kernel defaults `1` and `999`, stored-document validation passes `isDisplayValue=false`, and one relevant value is validated once per formal pass.
 
-Across an untrusted boundary, the portable owner/version token accompanies the document; native structure does not authenticate provenance.
+TypeScript and the classic JVM interface use the Kernel’s `IData`/`IIdentifier`-shaped condition contract. The adapter supplies a read-only compatibility view backed by the current `DocumentSnapshot`; it does not copy the document or call a Kernel evaluator.
 
-| TypeScript adapter behavior | Contract |
-|---|---|
-| Readiness | Expose bound-lane readiness; keep factory-backed names runtime-resolved when eager probing would alter cardinality |
-| Conversion | Invoke existing custom-field conversions through the same pre-bound slot |
-| Partial validation | Map native entity paths to exact core relevance before kernel-style normalization |
-| Validation locale | Optional final options preserve familiar shape; omission renders canonical messages in `"en_US"` |
-| Computation locale | Defaults to `"en_US"` and applies to formal/custom diagnostics |
-| Computation result | Authenticated source-bound handle retaining original document and detached canonical report |
-| Application | Never reevaluate; unsupported preserves supplied document, otherwise copy it, preserve unknown/native content, and apply exact source-classified changed/errored/cleared collections rather than replay detached delta |
-| Disposal | Idempotently retire the exclusive lane; Worker cache or pool owns retained handles |
-| Test date | `currentDateForTest` follows exact call time unless explicit options win |
-| Unknown fields | Preserve source `ignoreUnknownFields`: unknown groups remain ignored, and overrides are not discarded merely because it is true |
+Modern JVM conditions that require `DocumentV2` need a JVM-only compatibility view. Supporting that callback shape does not make `DocumentV2` a core document type or a public interpreter input.
 
-#### JVM adapter
+An adapter must support existing extension implementations unchanged. Similar-looking replacement interfaces are insufficient evidence; compatibility is established with real project implementations and differential tests.
 
-The secondary JVM artifact exposes the same capability set over JVM kernel types:
+#### Lifecycle and performance
 
-```java
-public enum KernelComputationApplicationFailure {
-    UNSUPPORTED
-}
+- Resolve every model-used extension name while binding an interpreter lane.
+- Create extension instances with the same factory cardinality and lifecycle as the source Kernel contract.
+- Store direct indexed callback slots in prepared executable nodes.
+- Keep callback instances lane-confined unless their source contract explicitly guarantees safe sharing.
+- Perform no reflection, registry search, adapter discovery, Kernel class loading, document copying, or wrapper allocation per AST visit.
+- Keep the base no-customization path free of adapter code and dependencies.
 
-public sealed interface
-        KernelCompatibleComputationApplication
-        permits AppliedKernelComputation,
-                NotAppliedKernelComputation {
-}
-
-public record AppliedKernelComputation(
-        DocumentV2 document)
-        implements KernelCompatibleComputationApplication {
-}
-
-public record NotAppliedKernelComputation(
-        KernelComputationApplicationFailure reason,
-        DocumentV2 document)
-        implements KernelCompatibleComputationApplication {
-}
-
-public interface KernelCompatibleComputationResult {
-    PreparedModel prepared();
-
-    ComputationReport report();
-
-    DocumentV2 document();
-
-    KernelCompatibleComputationApplication appliedTo(
-            DocumentV2 document);
-}
-
-public interface KernelCompatibleInterpreter
-        extends AutoCloseable {
-    InterpreterSupportReport supportReport();
-
-    CustomFieldConversionResult
-            convertCustomFieldDisplayToInternal(
-                    CustomFieldPointer pointer,
-                    String displayValue);
-
-    CustomFieldConversionResult
-            convertCustomFieldInternalToDisplay(
-                    CustomFieldPointer pointer,
-                    String internalValue);
-
-    ValidationReport validateFull(DocumentV2 document);
-
-    ValidationReport validatePart(
-            DocumentV2 document,
-            Set<? extends DocumentMultiPointer> relevantEntities);
-
-    KernelCompatibleComputationResult compute(
-            DocumentV2 document);
-
-    @Override
-    void close();
-}
-
-public final class KernelInterpreterAdapters {
-    public static KernelCompatibleInterpreter bind(
-            PreparedModel preparedModel,
-            DocumentProcessingConfig documentProcessingConfig);
-}
-
-static ValidationReport validateExistingDocument(
-        PreparedModel preparedModel,
-        DocumentProcessingConfig documentProcessingConfig,
-        DocumentV2 document) {
-    try (KernelCompatibleInterpreter compatibleInterpreter =
-                 KernelInterpreterAdapters.bind(
-                         preparedModel,
-                         documentProcessingConfig)) {
-        return compatibleInterpreter.validateFull(document);
-    }
-}
-```
-
-| JVM adapter aspect | Contract |
-|---|---|
-| Configuration | Existing `DocumentProcessingConfig` supplies locale, test date, factories, presentation, and supported legacy data |
-| Document/relevance | Existing `DocumentV2` and `Set<? extends DocumentMultiPointer>` |
-| Lane | Compatible interpreter owns one exclusive lane until close; a service may pool it |
-| Validation | Return canonical kernel-free report |
-| Computation | Source-bound result with canonical report and sealed no-reevaluation application |
-| Application variants | Applied exposes updated document; unsupported preserves supplied document |
-| Native conveniences | Offer only when every native member is derived losslessly; TypeScript localization limits do not disappear by analogy |
-
-The JVM convenience binds one exact configuration and checks document model ID before every operation. A native model ID does not prove exact version, so the selecting registry/binding remains responsible for routing.
-
-The multi-threaded form treats locale/current date as call data and selects lanes by semantic factory-binding identity. It neither rebuilds interpreters per locale nor uses structural equality/caller strings as callback identity.
-
-Missing modern factories mean no implementation. Deprecated global fallback is excluded from this entry point and, if later certified, receives a separately named legacy mode.
-
-#### Shared adapter execution contract
-
-For each adapter operation, one exclusive lane performs this sequence:
-
-1. Verify the native/bound model identity as far as that platform can authenticate it, then convert the native kernel document into one `DocumentSnapshot` once.
-2. Convert TypeScript validation mappings and any native presentation information once into call-scoped immutable overlays. A value override wins over the document value—including malformed text and explicit `""`—and every formal check, field read, rule/operator input, message interpolation, and custom-condition document view reads that overlay. The presentation overlay supplies the source-exact `isDisplayValue` decision for each custom field.
-3. Retain the original native document, exact `prepared.model.documentModelId`, original value mapping, and source presentation state in lane-local call context.
-4. Invoke the Kotlin interpreter, whose pre-bound custom slots call adapter wrappers directly.
-5. Let those wrappers call existing project implementations with the unchanged original native document/mapping and exact mapped relevance, formal-error, partially known error-pointer, locale, length, display-value, and conversion inputs.
-6. Clear every overlay and native call-context value in `finally`, detach the canonical report or source-bound computation result, and release or retain the lane according to its owner.
-
-The overlay is an evaluation view, not rewritten transport or persistent state. Core snapshots store internal custom text and pass `isDisplayValue: false`; adapters pass `true` only when audited native presentation requires it.
-
-TypeScript conditions receive the original document and value mapping because their interface requires both. Adapters never rebuild a kernel document per callback, delegate validation/computation to the kernel, use process-global/`ThreadLocal` call state, or transport runtime objects across Workers.
-
-Scalar validators wrap directly. Custom Conditions require the retained original document, so a factory-only wrapper without a kernel-shaped validation entry point is insufficient.
-
-The detached computation result remains runtime-authenticated and retains original document plus exact source application classification. Unsupported application performs no mutation and preserves the supplied document.
-
-Supported application copies the native document, preserves unknown content, applies only source-classified changed values, and clears source-classified errored/cleared fields. It never infers application from detached delta, which omits absent clears and cannot reproduce application to another supplied document.
-
-#### Legacy and static compatibility
-
-- Modern factories are primary.
-- Still-used deprecated variants stay out of the core SPI; source/binary audit against SME and another production project determines adaptation or explicit unsupported status.
-- JVM legacy mode may retain `additionalInformation` in adapter call context and invoke its deprecated overload, but the untyped map never enters `commonMain`.
-- Static registrations may become an explicit lane registry only after lifecycle and multi-tenant isolation are proven; the core never consults a global service.
-- Static `IData`/`IIdentifier` conditions need their own audited adapter or remain unsupported; document-model compatibility proves nothing about them.
-- Similarity is not drop-in evidence. Claimed paths run existing implementations unchanged and receive differential coverage for applicable evaluation strategies.
-
-The compatibility layer adapts existing callback implementations, native documents, and the result shapes explicitly declared above. It does not make the core depend on the kernel, reconstruct TypeScript localization objects from strings, or promise that an application can replace an entire kernel service without changing assembly/configuration code.
+Each supported Kernel release has an extension-inventory check. If a later Kernel adds another evaluator extension point, the matching core SPI and platform adapters are required before that release can claim extension compatibility.
 
 ## 11. Correctness and performance
 
@@ -4349,7 +4127,7 @@ API completeness is guarded by source-backed capability ledgers, not by a short 
 The audited universes include:
 
 - the model/meta-model schema;
-- the document API and `DocumentProcessingConfig`;
+- the document/configuration API and public extension SPIs;
 - legal-charset, custom-type, and custom-condition SPIs;
 - validation and computation result interfaces;
 - the live operator catalog for contextual operator use.
@@ -4362,7 +4140,7 @@ Stored-program performance keeps the current invariants:
 - repeated evaluation never reparses;
 - the optimized AST and traversal remain unchanged;
 - custom field-type declarations and custom-condition AST nodes hold pre-bound indexed dispatch slots rather than searching registries during evaluation;
-- the empty-customization path has no adapter branch, registry scan, wrapper allocation, pointer mapping, or kernel class loading;
+- the empty-customization path has no registry scan, wrapper allocation, pointer mapping, or platform class loading;
 - model-static indexes/scopes are shared or copied only where semantics and measured cost permit;
 - unknown-transport validation, model-aware document decode, registry wait, evaluation, encoding, and optional projection cost are measured separately;
 - no process-global initialization or validation-result cache is introduced.
@@ -4374,24 +4152,12 @@ Model reuse needs separate sequential and concurrent gates:
 3. Drive multiple concurrent requests for the same hot model through several pooled instances, plus D1/D2 interleaving, and prove scaling without concurrent entry into a confined instance.
 4. Drive the same D1/D2 pattern through a bounded Node Worker pool and prove that every Worker retains one warm lane per hot local key, resolves portable versions to local identities correctly, and never transports runtime objects across Workers.
 
-Customization and compatibility add separate release gates rather than hiding their cost inside one aggregate benchmark:
+Customization adds separate release gates rather than hiding its cost inside one aggregate benchmark:
 
 1. Compare a no-customization model with the current interpreter baseline and require no measurable regression in parser cost, AST traversal, startup, warmup, steady-state latency, throughput, allocation, or retained memory.
 2. Measure native custom field validators and native custom conditions independently on callback-heavy documents, including full validation, partial validation, and computation paths.
-3. Measure the TypeScript and JVM compatibility adapters separately from native callbacks. Report native-document conversion, pointer-map construction, callback time, evaluator time, and report projection as distinct measurements.
-4. Prove each native document is converted at most once per public operation, core registry lookup and adapter discovery occur only while binding, and the callback hot path contains only the source-required factory invocation at its audited cardinality plus direct precomputed pointer/slot access. No registry search, reflection, coordination lock, or adapter/configuration allocation is permitted per field cell or AST visit.
-5. Repeat cold/warm D1/D2 interleaving and concurrent JVM-lane/Node-Worker tests with distinct custom configurations, proving no callback, original native document, value override, locale, or pointer map crosses a lane or request.
-
-Compatibility has a strict zero-cost contract when its artifact is absent:
-
-- no adapter code, branch, class loading, dependency, startup, or retained state exists in the base artifacts;
-- the no-customization benchmark remains statistically indistinguishable from its pinned pre-change baseline.
-
-When an adapter is selected, one `O(document)` native-to-snapshot conversion per public operation is unavoidable and is not marketed as zero overhead.
-
-The initial release budget compares the complete warm adapter call with the certified kernel 30.8.1 call over the same native document, model, custom implementations, result demand, process, and concurrency. The confidence interval for p50/p95 latency must not be worse, throughput must not be lower, and allocated bytes per operation must not be higher.
-
-The benchmark also publishes the delta against validation of an already-decoded native-core snapshot so the conversion cost cannot be hidden. A platform that misses any end-to-end budget does not ship as performance-compatible unless an explicit product decision revises that budget with measured evidence.
+3. Prove registry lookup occurs only while binding and the callback hot path uses direct precomputed slots without reflection, coordination locks, or per-node configuration allocation.
+4. Repeat cold/warm D1/D2 interleaving and concurrent JVM-lane/Node-Worker tests with distinct custom configurations, proving no callback, override, locale, or cache crosses a lane or request.
 
 The multi-threaded gate races registry lookup, pool acquisition/release, warming, and eviction. It proves deterministic results, no double lease, no use-after-eviction, and no cross-model/configuration document, result, clock, callback, formal-check, or computation cache contamination.
 
@@ -4415,16 +4181,14 @@ This foundation is independently useful for HTTP, queue, persistence, plugin, an
 
 Once this foundation is stable, it is sufficient for the strict document-ingress and owner-bound snapshot portions of the optional [Zod integration proposal](ZOD-INTEGRATION-PROPOSAL.md). Validation-report projection still waits for the canonical `ValidationReport` contract.
 
-The next compatibility-bearing increment contains:
+The next customization-bearing increment contains:
 
 - `validateFull`, `validatePart`, and `compute`;
 - the native Custom Field Type and Custom Condition SPIs;
 - exact callback laws;
 - pre-bound lane dispatch.
 
-The TypeScript kernel-compatibility adapter follows once that contract and the native document/report boundaries are stable. The secondary JVM adapter follows the same core contract.
-
-Zod scalar integration may proceed independently after the Operator API. Zod transport work needs only the minimum transport/ownership foundation; neither Zod package waits for kernel-interface compatibility.
+Zod scalar integration may proceed independently after the Operator API. Zod transport work needs only the minimum transport/ownership foundation.
 
 ### 12.2 Complete product boundary
 
@@ -4433,28 +4197,17 @@ Zod scalar integration may proceed independently after the Operator API. Zod tra
 | strict expanded-model preparation | bounded model registry/runtime pool | process-global/unbounded cache |
 | prepared owner versus exclusive active interpreter split | explicit eager pool warmup | mandatory shared/reentrant evaluator |
 | read-only model introspection and caller-owned owner-aware application metadata | nested document-JSON adapter | dynamic model/rule authoring |
-| strict `unknown` decode, typed fast path, authenticity guard, and versioned lossless encode | document patch conveniences | common `DocumentV2` dependency |
+| strict `unknown` decode, typed fast path, authenticity guard, and versioned lossless encode | document patch conveniences | Kernel document types in the core |
 | frozen request document/field-aware `DocumentCellValue` builder | persistent structural-sharing form editor | promise-returning callbacks |
 | direct callback-free storage access plus separate correlated formal inspection | candidate-rule preview | candidate computations |
-| kernel-free custom field-type/condition SPIs, immutable registries, and pre-bound lane slots | separately installed TypeScript and JVM kernel-compatibility adapters | kernel types or deprecated global registries in the core |
+| kernel-free custom field-type/condition SPIs, immutable registries, and pre-bound lane slots | — | kernel types or process-global registries in the core |
 | full/relevant-set validation, lossless report axes/pointers, and configuration support report | number expression observer | arbitrary context-free expression claim |
 | stored-rule row outcomes | tracing/explanation if demanded | kernel consistency certification in TypeScript |
 | lossless compute, compute-field, compute-and-apply outcomes and deltas | browser after qualification | browser support by assumption |
 
 This product is feasible, but it is not a rename exercise. The evaluator-backed validation/computation core is medium productization work; the definition/active-instance split and bounded registry/pool require explicit ownership but do not require one shared reentrant evaluator; a performant immutable editable document surface is a distinct substantial capability.
 
-The customization architecture is also feasible.
-
-| Area | Assessment |
-|---|---|
-| Native Custom Field Types | Comparatively direct because validation is scalar; display/internal conversion, presentation state, and TypeScript localization must remain explicit |
-| Custom Condition reuse | Moderate complexity because it requires lossless native-document retention, relevance/formal-error/error-pointer translation, TypeScript value-override handling, model-bound routing, and lifecycle-safe call context |
-| Static `IData`/`IIdentifier` conditions | A separate compatibility increment, not a free consequence of the modern document adapter |
-| Deprecated global/legacy variants | Separate compatibility increments |
-
-None of this requires a kernel dependency or adapter branch in the core no-customization path.
-
-The main feasibility gates are unchanged real-project implementations, exact platform differential tests, and the end-to-end adapter performance budget. One native-document conversion per operation is unavoidable, so feasibility is high but conditional rather than a promise of literal zero adapter overhead.
+The customization architecture is also feasible. Custom Field Types are primarily scalar validation and conversion; Custom Conditions require the complete, exact document/relevance/formal-state callback view.
 
 Before publication, the following contracts need implementation and evidence:
 
@@ -4471,9 +4224,5 @@ Before publication, the following contracts need implementation and evidence:
 - Worker-local rollout and ownership;
 - JVM pool backpressure and lifecycle races;
 - the exact Node package ABI.
-
-Kernel-interface compatibility is a separately packaged deliverable, but the native customization semantics it adapts are required core work.
-
-An adapter cannot claim compatibility until unchanged SME implementations and at least one additional production implementation pass source-/binary-compatibility tests, semantic differential tests, lifecycle tests, and the separate performance gates in §11.
 
 Persistent structural sharing, candidate programs, and browser support should not hold the core validation-service API hostage.

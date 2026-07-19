@@ -23,7 +23,7 @@ The declarations use the proposed public TypeScript names consistently; catalog 
 
 The base Kotlin Multiplatform implementation and its TypeScript/JVM projections are clean-room, kernel-free, MIT-licensed artifacts. They do not import, link, reflect over, or bundle any A12 Kernel API or runtime artifact. Kernel source and differential execution are semantic evidence only, never a shipped or runtime dependency.
 
-Model-bound validation, documents, symbolic expressions, rules, computations, Custom Field Types, and Custom Conditions are intentionally outside this proposal. They belong to the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md); its required, separately packaged Kernel compatibility adapters do not extend or participate in direct operators.
+Model-bound validation, documents, symbolic expressions, rules, computations, Custom Field Types, and Custom Conditions are intentionally outside this proposal. They belong to the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md).
 
 ## 1. Recommendation
 
@@ -101,7 +101,7 @@ The catalog maps to this boundary as follows:
 | `Sum`, `Min`, `Max`, `NumberOfDifferentValues`, `NumberOfValueInFields`, `SumOfProducts` | collection functions over supplied values |
 | `Today`, `Now`, `BaseYear` | available only through explicit time/base-year inputs; never host globals |
 | partial date fragments and format-driven completion | interpreter resolves the field’s format/base-year context and then exposes a complete `A12Date` |
-| field/group fill predicates, field coercions, enum categories, semantic indexes, repetition operators, `Having`, Custom Conditions, Custom Field Types | interpreter-only because their operands are model/document state; customization uses native registries and required, separately packaged Kernel compatibility adapters |
+| field/group fill predicates, field coercions, enum categories, semantic indexes, repetition operators, `Having`, Custom Conditions, Custom Field Types | interpreter-only because their operands are model/document state |
 | pattern operations, named time zones, and affected decimal operations | direct in principle but absent until cross-platform parity is exact |
 
 This classification is represented by a generated or CI-checked capability matrix against the live operator catalog, so every catalog entry has an explicit direct, interpreter, authoring, or parity-gated disposition and a new entry cannot disappear from the TypeScript surface unnoticed.
@@ -2285,14 +2285,7 @@ kernel-free operator semantics
           ▲
           │
 kernel-free interpreter
-          ▲
-          │ required product deliverables, platform-specific and separately packaged
-kernel-compatibility adapters for Interpreter customization
 ```
-
-The TypeScript and JVM Kernel compatibility adapters are required product deliverables for projects that reuse existing Kernel Custom Field Type or Custom Condition implementations. They are separately packaged and installed only where that reuse is needed.
-
-Each adapter may depend on the kernel-free Interpreter and Operator artifacts plus its platform’s Kernel API. Neither base artifact may depend directly or transitively on an adapter or Kernel API, and the direct Operator package contains no customization registry, adapter discovery, or custom-operator extension mechanism.
 
 ### 9.1 TypeScript-first surface
 
@@ -2350,6 +2343,6 @@ Each public export must either cite its catalog identity or be explicitly classi
 
 Values are immutable and operators are stateless/reentrant. JVM calls are thread-safe; there is no mutable global decimal context, clock, regex engine state, or time-zone state. Platform projections defensively isolate any host library with mutable globals.
 
-The semantic implementation lives once in Kotlin `commonMain`, and every published base Operator artifact and ordinary TypeScript/JVM projection remains kernel-free and MIT-licensed, with no direct or transitive Kernel dependency. Required Kernel compatibility deliverables are separately packaged and licensed, installed only for Kernel-interface reuse, and never participate in a direct operator call.
+The semantic implementation lives once in Kotlin `commonMain`, and every published base Operator artifact and ordinary TypeScript/JVM projection remains kernel-free and MIT-licensed, with no direct or transitive Kernel dependency.
 
 Direct calls allocate no session and perform no parsing, AST traversal, model lookup, document iteration, customization lookup, or adapter dispatch. Extracting shared semantics must not worsen the existing interpreter’s parsing, AST traversal, startup, warmup, throughput, scaling, allocation, or footprint.
