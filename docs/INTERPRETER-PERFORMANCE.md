@@ -355,6 +355,18 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 *The current headline + the naive baseline it improved on. The intermediate optimization-journey entries were collapsed away (2026-06-27) — the *method* and the *lessons* live above (the optimization catalog, the kernel-technique map, the biases-to-re-check); this log keeps only the **current** measures and the **pre-optimization yardstick** they're read against. Dates are when each axis was last measured.*
 
+### Checkpoint 2026-07-19 — IG98 multi-star `$`-correlation scaling discriminator (interp WORSE than the kernel → optimization owed)
+
+The IG98 decision measurement: is the interpreter's naive multi-star `$`-equality-correlation scan (`MoreThanOneFieldFilled(/Perf/Lines* then Subs* then Cost Having [Cost] == [$Cost])`, per-Sub, star spans all Lines) *worse* than the kernel's complexity class, or does the kernel also scan it? Apple Silicon, `validateFull`, min-of-4 after 3 warmups, N and 4N Lines (×2 Subs each):
+
+| engine | 150 Lines | 600 Lines | growth |
+|---|--:|--:|--:|
+| interpreter (naive multi-star scan) | 21.2 ms | 135.9 ms | **×6.41** |
+| kernel-Java | 41.7 ms | 112.2 ms | **×2.69** |
+| **interp/kernel ratio** | **0.51** | **1.21** | ratio ×2.37 |
+
+**Reading.** The interp starts **2× faster** than kernel-Java (0.51) but ends **1.2× slower** (1.21) — the ratio *widens* ×2.37 over ×4 Lines, which means the interpreter is in a **worse complexity class than the kernel** for this shape (the kernel's ×2.69 is ~linear; the interp's ×6.41 is a soft quadratic). This FAILS IG98's "no worse than the kernel" criterion, so the multi-star hash-join optimization is owed (it is NOT a no-op / parity-by-construction). Legality was settled separately (`MultiStarOuterCorrelationDiffTest`: kernel MVK-accepts + interp matches on a cross-Line correlation). See [INTERPRETER-GAPS.md](INTERPRETER-GAPS.md) IG98.
+
 ### Checkpoint 2026-07-19 — IF143 compute-overlay scenarios vs the kernel (against-kernel scaling curve)
 
 After the IF143 per-step overlay-view cache landed, measured both compute-overlay scenarios against BOTH kernel baselines at N = 200 / 800 / 3200 Rows (Apple Silicon, `runScenario` warmup 10 / iters 6, codegen primed out; `compute` op; interp == groovy == java asserted before timing). `ratioJava` = interp / kernel-**Java** (the fair, Groovy-tax-free comparator; < 1 = interp faster).
