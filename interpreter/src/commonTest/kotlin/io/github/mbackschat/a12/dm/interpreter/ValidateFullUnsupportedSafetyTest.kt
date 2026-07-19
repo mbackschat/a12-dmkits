@@ -24,12 +24,19 @@ class ValidateFullUnsupportedSafetyTest {
     private val sku = "/Order/Items/Sku"
     private val count = "/Order/Items/Count"
 
-    // R1 puts a SemanticIndex in a FieldValuesNotUnique operand — kernel-legal, not modeled there → unsupported;
-    // R2 is healthy. So validate() reports unsupported=[R1], messages=[R2].
+    // R1 composes RepetitionNotUnique under Or behind the required positive group guard — kernel-legal, but that
+    // boolean placement is not modeled (IG95) → unsupported. R2 is healthy, so validate() reports unsupported=[R1],
+    // messages=[R2]. ValidateFullUnsupportedSafetyDiffTest proves this discriminator passes the real kernel gate.
     private val withUnsupported = ModelDef(
         fields = listOf(FieldDef(cn, Kind.STRING), FieldDef(sku, Kind.STRING), FieldDef(count, Kind.NUMBER)),
         rules = listOf(
-            RuleDef("/Order/R1", "/Order", "FieldFilled(CustomerName) And FieldValuesNotUnique($count For \"K1\", CustomerName)", "R1", "../CustomerName"),
+            RuleDef(
+                "/Order/R1",
+                "/Order",
+                "GroupFilled(Items) And (RepetitionNotUnique(Items/Count) Or FieldFilled(CustomerName))",
+                "R1",
+                "../Items/Count",
+            ),
             RuleDef("/Order/R2", "/Order", "FieldFilled(CustomerName)", "R2", "../CustomerName"),
         ),
         repeatableGroups = setOf("/Order/Items"),
@@ -58,14 +65,21 @@ class ValidateFullUnsupportedSafetyTest {
     )
 
     private fun doc(m: ModelDef) = m.newDocument().group("/Order", 1).field(cn, "Acme", 1, 1).also {
-        if (sku in m.indexFields) it.field(sku, "K1", 1, 1, 1)
+        if (sku in m.indexFields) {
+            it.group("/Order/Items", 1, 1)
+                .field(sku, "K1", 1, 1, 1)
+                .field(count, "2", 1, 1, 1)
+                .group("/Order/Items", 1, 2)
+                .field(sku, "K2", 1, 2, 1)
+                .field(count, "2", 1, 2, 1)
+        }
     }
 
     @Test
     fun validateFullThrowsWhenAnUnsupportedRuleWouldBeSilentlyDropped() {
         val input = doc(withUnsupported)
-        assertTrue(sku in withUnsupported.indexFields, "the semantic-index fixture must declare the Items index field")
-        assertTrue(input.filledAt(sku, listOf(1, 1, 1)), "the semantic-index fixture must populate key K1")
+        assertTrue(sku in withUnsupported.indexFields, "the repeated-group fixture must declare the Items index field")
+        assertTrue(input.filledAt(sku, listOf(1, 1, 1)), "the repeated-group fixture must populate index key K1")
         val ex = assertFailsWith<IllegalStateException> {
             DmInterpreter(withUnsupported).validateFull(input)
         }
