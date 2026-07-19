@@ -92,13 +92,14 @@ public enum RkCode {
             "the chosen new name/id collides with an existing sibling field/group or declared id.",
             "choose a name not already used by a sibling, or rename/remove the existing one first."),
     INTERPRETER_INCLUDE_RULES_UNSUPPORTED(Severity.ERROR, DiagnosticSource.PRECHECK,
-            "a rule/computation from an INCLUDED model uses a rare reference shape the kernel-free assembly layer "
-                    + "does not yet relativize — a MODEL_ROOT-absolute ref, a bare `/RG` group reference, or an "
-                    + "outer-correlated `[$/…]` absolute ref (mounting drops the included root-group name; "
-                    + "INTERPRETER-FINDINGS IF122). Relative and single-root-group-absolute included conditions DO "
-                    + "evaluate on the default path; only these rare shapes are refused, so they never silently mis-report.",
-            "author the rule on the INCLUDING model referencing the mounted fields, or rewrite the included "
-                    + "condition to a relative / single-root-group-absolute form — both evaluate on the default path."),
+            "a rule/computation from an INCLUDED model carries an absolute reference the kernel-free assembly "
+                    + "layer cannot remap onto its post-mount location — its first path segment names no mounted "
+                    + "top-group (a genuinely-unresolvable absolute; INTERPRETER-FINDINGS IF146). A mount is "
+                    + "remapped as a MOVE, so descending, bare `/RG` group, MODEL_ROOT, and `$`-outer included "
+                    + "references DO evaluate on the default path; only an unmappable absolute is refused, so it "
+                    + "never silently mis-reports.",
+            "check the included condition's absolute reference names an entity inside the included model; or "
+                    + "author the rule on the INCLUDING model referencing the mounted fields, or use a relative form."),
     MOUNT_NOT_EDITABLE(Severity.ERROR, DiagnosticSource.PRECHECK,
             "the target group mounts an include (it has a modelAlias); adding a local child element would make the kernel use the local elements and STOP expanding the include, silently discarding the mounted content — valid but not what was meant.",
             "add the element to the included model instead (edit that model's structure), or choose a non-mount group."),

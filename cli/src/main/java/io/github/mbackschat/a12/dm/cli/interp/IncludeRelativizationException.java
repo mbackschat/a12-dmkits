@@ -3,13 +3,12 @@ package io.github.mbackschat.a12.dm.cli.interp;
 import java.util.List;
 
 /**
- * The kernel-free interpreter eval path (decoupling Stage 2) mounted an <b>included</b> model's own
- * rule/computation whose condition uses a <b>rare reference shape</b> the kernel-free assembly layer does not
- * yet relativize — a MODEL_ROOT-absolute ref, a bare {@code /RG} group reference, or an outer-correlated
- * {@code [$/…]} absolute ref (mounting drops the included root-group name; INTERPRETER-FINDINGS IF122, the G1′
- * accepted caveat). Relative and single-root-group-absolute included conditions ARE relativized and evaluate on
- * the default path; only these rare shapes refuse loudly with {@code RK_INTERPRETER_INCLUDE_RULES_UNSUPPORTED}
- * rather than risk a silent-wrong-result.
+ * The kernel-free interpreter eval path mounted an <b>included</b> model's own rule/computation whose condition
+ * carries an absolute reference the assembly layer <b>cannot remap</b> onto its post-mount location — a first
+ * path segment naming no mounted top-group (a genuinely-unresolvable absolute; INTERPRETER-FINDINGS IF146). A
+ * mount is remapped as a MOVE, so descending, bare {@code /RG} group, MODEL_ROOT, and {@code $}-outer included
+ * references DO evaluate on the default path; only an unmappable absolute refuses loudly with
+ * {@code RK_INTERPRETER_INCLUDE_RULES_UNSUPPORTED} rather than risk a silent-wrong-result.
  */
 public final class IncludeRelativizationException extends RuntimeException {
 
@@ -17,8 +16,8 @@ public final class IncludeRelativizationException extends RuntimeException {
 
     IncludeRelativizationException(List<String> rules) {
         super("cannot evaluate " + rules.size() + " rule(s)/computation(s) from an included model on the "
-                + "default path — a rare reference shape needs relativization the assembly layer does not yet "
-                + "perform: " + rules);
+                + "default path — an absolute reference the assembly layer cannot remap onto its post-mount "
+                + "location (its first segment names no mounted group): " + rules);
         this.rules = List.copyOf(rules);
     }
 

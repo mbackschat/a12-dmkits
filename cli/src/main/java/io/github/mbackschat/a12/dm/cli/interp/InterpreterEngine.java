@@ -51,10 +51,10 @@ public final class InterpreterEngine {
      * model handed straight to {@link InterpreterModelLoader} lost the mount). The returned DM-JSON is
      * self-contained + name-path-keyed, which the interpreter's loader already evaluates correctly.
      *
-     * <p>Relative and single-root-group-absolute included conditions ARE relativized here and evaluate. Only a
-     * rare residual shape (MODEL_ROOT-absolute / bare-{@code /RG} / outer-correlated {@code [$/…]}) the assembly
-     * layer does not yet relativize (IF122, the G1′ accepted caveat) throws {@link IncludeRelativizationException}
-     * so the verb refuses loudly rather than mis-evaluate.
+     * <p>A mount is remapped as a MOVE: every absolute included reference (descending, bare-{@code /RG} group,
+     * MODEL_ROOT, or {@code $}-outer) is rewritten onto its post-mount location here, so it evaluates (IF146).
+     * Only a genuinely-unmappable absolute — a first segment naming no mounted top-group — throws
+     * {@link IncludeRelativizationException} so the verb refuses loudly rather than mis-evaluate.
      */
     public static String expandForEval(String modelJson, ModelResolver resolver) {
         ModelReader reader = ModelReader.expand(modelJson, resolver);
