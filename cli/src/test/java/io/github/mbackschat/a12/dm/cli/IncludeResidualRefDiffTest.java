@@ -21,12 +21,11 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
 /**
- * IF146 — the three residual include-reference shapes the assembly layer once refused now EVALUATE, matching the
- * kernel. A mount is a MOVE: every absolute reference to an included entity is remapped onto its post-mount
- * location (the kernel's {@code RulesAndComputationsAdjusterVisitor}), so a bare {@code /RootGroup} group ref, a
- * MODEL_ROOT {@code /TopGroup/rest} ref, and a descending {@code /RootGroup/rest} ref all resolve — for rules AND
- * computations. Own domain (an insurance policy mounting a benefits sub-model). The firing/relative twin is
- * {@code IncludeEvalDefaultPathTest}; the remap unit is {@code ModelReaderTest}.
+ * IF146 — include preparation identifies genuine reference spans, binds them in the included model, and remaps
+ * moved targets without touching literal text. The behavioral oracle is kernel include expansion
+ * ({@code DocumentModelExpandService.RuleAndComputationConditionUpdaterVisitor} with
+ * {@code EntityPathsRelativizer}); this CLI differential covers rule/computation evaluation plus the structured
+ * unknown-reference refusal. The dynamic/static strategy lock is {@code IncludeAssemblyStrategyDiffTest}.
  */
 class IncludeResidualRefDiffTest {
 
@@ -63,8 +62,17 @@ class IncludeResidualRefDiffTest {
         String withComp = m.add(m.computation(m.num("/Benefits/Total")).name("TotalComp")
                 .calc(m.num("/Benefits/Base").value())
                 .message(en("Total must equal Base.")).build()).toJson();
-        // force the operand to an ABSOLUTE path naming the vanished root group ([Base] -> [/Benefits/Base]).
+        // Force the operand to an absolute path naming the pre-mount root ([Base] -> [/Benefits/Base]).
         return withComp.replace("[Base]", "[/Benefits/Base]");
+    }
+
+    private static String benefitsWithPathLikeLiteralRule() {
+        BoundModel model = BoundModel.ofJson(benefits());
+        return model.add(model.rule(model.group("/Benefits")).name("LiteralCheck")
+                .errorField(model.str("/Benefits/Kind").field())
+                .when(model.str("/Benefits/Kind").eq("(/Unknown/Value"))
+                .code("LITERAL").severity(Severity.ERROR)
+                .message(en("The literal matches.")).build()).toJson();
     }
 
     private static String policy(boolean modelRoot) {
@@ -163,5 +171,35 @@ class IncludeResidualRefDiffTest {
         String defTotal = computedValue(def.out(), "/Policy/Cover/Total");
         assertEquals("42", defTotal, () -> "the remapped computation computes Total from Base: " + def.out());
         assertEquals(computedValue(ker.out(), "/Policy/Cover/Total"), defTotal, () -> "matches the kernel: " + def.out());
+    }
+
+    @Test
+    void aGenuineUnknownAbsoluteReferenceProducesAStructuredRefusal(@TempDir Path dir) throws Exception {
+        String benefits = benefitsWithRule().replace("[Coverage] < 0", "[/Unknown/Coverage] < 0");
+        Path model = ws(dir, policy(false), benefits);
+        Path instance = doc(dir, "{ \"fields\": { \"Policy\": { \"Cover\": { \"Coverage\": \"-5.00\" } } } }");
+
+        CliTestSupport.Result result = CliTestSupport.run(
+                "-m", model.toString(), "model", "eval", "--instance", instance.toString());
+        JsonNode envelope = M.readTree(result.out());
+
+        assertEquals("refused", envelope.path("outcome").asText(), () -> result.out() + result.err());
+        assertEquals("RK_INTERPRETER_INCLUDE_RULES_UNSUPPORTED",
+                envelope.path("diagnostics").path(0).path("code").asText());
+        assertTrue(envelope.path("diagnostics").path(0).path("summary").asText()
+                .contains("/Policy/Cover/CoveragePositive"), "the refusal identifies the surviving element");
+    }
+
+    @Test
+    void aPathLikeStringLiteralNeverProducesAFalseRefusal(@TempDir Path dir) throws Exception {
+        Path model = ws(dir, policy(false), benefitsWithPathLikeLiteralRule());
+        Path instance = doc(dir,
+                "{ \"fields\": { \"Policy\": { \"Cover\": { \"Kind\": \"(/Unknown/Value\" } } } }");
+
+        CliTestSupport.Result result = CliTestSupport.run(
+                "-m", model.toString(), "model", "eval", "--instance", instance.toString());
+
+        assertEquals(0, result.code(), () -> result.out() + result.err());
+        assertTrue(fired(result.out(), "LITERAL"), () -> "the literal comparison evaluates: " + result.out());
     }
 }

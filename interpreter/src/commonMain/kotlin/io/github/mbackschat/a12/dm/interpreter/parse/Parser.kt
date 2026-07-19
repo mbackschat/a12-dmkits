@@ -418,6 +418,18 @@ private class ConditionParser(private val src: String, private val base: String,
 
     private fun readIdent(): String {
         skipWs()
+        if (peek() == '\'') {
+            next()
+            val start = pos
+            while (peek() != '\'') {
+                require(pos < src.length) { "parser: unterminated quoted path segment in \"$src\"" }
+                next()
+            }
+            val segment = src.substring(start, pos)
+            expect('\'')
+            require(segment.isNotEmpty()) { "parser: empty quoted path segment in \"$src\"" }
+            return segment
+        }
         val start = pos
         while (peek().isLetterOrDigit() || peek() == '_') next()
         return src.substring(start, pos)

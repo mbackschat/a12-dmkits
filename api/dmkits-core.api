@@ -123,6 +123,7 @@ public final class io.github.mbackschat.a12.dm.core.ModelLoader
 
 public final class io.github.mbackschat.a12.dm.core.ModelReader
   public static io.github.mbackschat.a12.dm.core.ModelReader expand(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
+  public java.util.List<java.lang.String> includedElementsWithUnmappedReferences()
   public java.util.List<java.lang.String> includedRulesNeedingRelativization()
   public java.util.List<java.lang.String> locales()
   public java.lang.String toJson()

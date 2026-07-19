@@ -117,28 +117,28 @@ class ModelReaderTest {
         assertTrue(reader.paths().contains("/Policy/Extras/Rider/Amount"), () -> "paths: " + reader.paths());
     }
 
-    // ── include exclude flags + the relativization signal (A4 guard) ─────────────────────────────────────
+    // ── include exclude flags + the unmapped-reference signal (A4 guard) ────────────────────────────────
 
     @Test
-    void carriesAMountedRelativeIncludedRuleWithoutARelativizationSignal() {
+    void carriesAMountedRelativeIncludedRuleWithoutAnUnmappedReferenceSignal() {
         ModelReader reader = ModelReader.expand(policyIncludingBenefits(false), benefitsResolver());
         assertTrue(reader.paths().contains("/Policy/Benefits/Coverage"), () -> "paths: " + reader.paths());
-        // The mounted rule references its field by a RELATIVE path ([Coverage]); such a reference resolves against
-        // the rule's post-mount group unchanged, so the kernel rewrites nothing (EntityPathsRelativizer's
-        // relative-downward short-circuit) — the reader carries it verbatim with NO relativization signal, and
-        // the interpreter evaluates it kernel-exact (KERNEL-FINDINGS "DocumentModel expansion").
-        assertTrue(reader.includedRulesNeedingRelativization().isEmpty(),
-                () -> "a relative included rule needs no relativization: " + reader.includedRulesNeedingRelativization());
+        // The mounted rule references its field by a same-group relative path ([Coverage]); moving the rule and
+        // field together preserves that meaning, so the reader carries it verbatim with no unmapped signal.
+        assertTrue(reader.includedElementsWithUnmappedReferences().isEmpty(),
+                () -> "a relative included rule needs no remap: "
+                        + reader.includedElementsWithUnmappedReferences());
         assertTrue(reader.toJson().contains("CoveragePositive"), "the mounted rule is carried in the expanded form");
     }
 
     @Test
     void remapsAMountedIncludedRuleWithADescendingAbsolutePath() {
         // An included rule naming the included root group ABSOLUTELY ([/Benefits/Coverage]) is remapped onto its
-        // post-mount location ([/Policy/Benefits/Coverage]) — so it evaluates and needs NO relativization signal.
+        // post-mount location ([/Policy/Benefits/Coverage]) — so it evaluates with no unmapped signal.
         ModelReader reader = ModelReader.expand(policyIncludingBenefits(false), absoluteBenefitsResolver());
-        assertTrue(reader.includedRulesNeedingRelativization().isEmpty(),
-                () -> "the absolute ref is remapped, not flagged: " + reader.includedRulesNeedingRelativization());
+        assertTrue(reader.includedElementsWithUnmappedReferences().isEmpty(),
+                () -> "the absolute ref is remapped, not flagged: "
+                        + reader.includedElementsWithUnmappedReferences());
         assertFalse(reader.toJson().contains("[/Benefits/Coverage]"), "the pre-mount absolute reference is gone");
         assertTrue(reader.toJson().contains("[/Policy/Benefits/Coverage] < 0"),
                 () -> "the condition now names the post-mount location: " + reader.toJson());
@@ -149,19 +149,20 @@ class ModelReaderTest {
         // A BARE /Benefits group reference (no descent) is remapped to the mount group /Policy/Benefits — so it
         // evaluates and is no longer flagged (the residual is only a truly-unmappable absolute).
         ModelReader reader = ModelReader.expand(policyIncludingBenefits(false), bareGroupRefBenefitsResolver());
-        assertTrue(reader.includedRulesNeedingRelativization().isEmpty(),
-                () -> "the bare group ref is remapped, not flagged: " + reader.includedRulesNeedingRelativization());
+        assertTrue(reader.includedElementsWithUnmappedReferences().isEmpty(),
+                () -> "the bare group ref is remapped, not flagged: "
+                        + reader.includedElementsWithUnmappedReferences());
         assertTrue(reader.toJson().contains("GroupFilled(/Policy/Benefits)"),
                 () -> "the bare ref names the post-mount mount group: " + reader.toJson());
     }
 
     @Test
-    void excludeRulesDropsMountedIncludedRulesAndClearsTheRelativizationSignal() {
+    void excludeRulesDropsMountedIncludedRulesAndClearsTheUnmappedReferenceSignal() {
         // excludeRules drops the mounted rule entirely, so nothing is carried and nothing can be flagged.
         ModelReader reader = ModelReader.expand(policyIncludingBenefits(true), bareGroupRefBenefitsResolver());
         assertTrue(reader.paths().contains("/Policy/Benefits/Coverage"), "the mounted field survives");
-        assertTrue(reader.includedRulesNeedingRelativization().isEmpty(),
-                "excludeRules drops the mounted rule, so nothing needs relativization");
+        assertTrue(reader.includedElementsWithUnmappedReferences().isEmpty(),
+                "excludeRules drops the mounted rule, so no unmapped reference survives");
         assertFalse(reader.toJson().contains("CoveragePositive"), "the excluded rule is gone from the expanded form");
     }
 

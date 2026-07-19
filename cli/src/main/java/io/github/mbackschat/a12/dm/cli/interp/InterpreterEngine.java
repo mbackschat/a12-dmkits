@@ -51,14 +51,14 @@ public final class InterpreterEngine {
      * model handed straight to {@link InterpreterModelLoader} lost the mount). The returned DM-JSON is
      * self-contained + name-path-keyed, which the interpreter's loader already evaluates correctly.
      *
-     * <p>A mount is remapped as a MOVE: every absolute included reference (descending, bare-{@code /RG} group,
-     * MODEL_ROOT, or {@code $}-outer) is rewritten onto its post-mount location here, so it evaluates (IF146).
-     * Only a genuinely-unmappable absolute — a first segment naming no mounted top-group — throws
+     * <p>A mount is remapped as a MOVE: a reference-aware pass binds every included rule/computation fragment
+     * in its pre-mount context, rewrites moved absolute and flag-enabled unique short-name targets, and leaves
+     * literals/comments untouched (IF146). A surviving genuine unmapped reference throws
      * {@link IncludeRelativizationException} so the verb refuses loudly rather than mis-evaluate.
      */
     public static String expandForEval(String modelJson, ModelResolver resolver) {
         ModelReader reader = ModelReader.expand(modelJson, resolver);
-        List<String> needsRewrite = reader.includedRulesNeedingRelativization();
+        List<String> needsRewrite = reader.includedElementsWithUnmappedReferences();
         if (!needsRewrite.isEmpty()) {
             throw new IncludeRelativizationException(needsRewrite);
         }

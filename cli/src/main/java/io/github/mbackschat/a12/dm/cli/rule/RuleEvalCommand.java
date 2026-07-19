@@ -83,8 +83,8 @@ final class RuleEvalCommand extends BaseCommand {
             return fail("cannot read document: " + e.getMessage());
         }
         try {
-            // pre-expand kernel-free so an includes-bearing model evaluates with its mounted content present
-            // (decoupling Stage 2 / A4); refuse loudly on included-model rules needing relativization.
+            // Pre-expand kernel-free so an includes-bearing model evaluates with its mounted content present
+            // (decoupling Stage 2 / A4); refuse loudly if a surviving included element retains an unmapped ref.
             String interpJson;
             try {
                 interpJson = InterpreterEngine.expandForEval(json, workspace.resolverFor(modelPath));

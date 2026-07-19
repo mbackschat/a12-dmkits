@@ -36,7 +36,8 @@ import picocli.CommandLine.Option;
  * <p>The model is prepared through the SAME kernel-free boundary the runtime verbs use
  * ({@link InterpreterEngine#expandForEval}) — includes mounted, imported typedefs inlined, opaque ids
  * normalized to name-paths — so a multi-file model is seeded from its real, self-contained structure (IF145).
- * A refusal (a relativization residual or an unresolved reference) is the structured {@code refused} envelope;
+ * A refusal (a surviving unmapped included reference or an unresolved model reference) is the structured
+ * {@code refused} envelope;
  * the document artifact is emitted only on success.
  */
 @Command(name = "seed", mixinStandardHelpOptions = true,
@@ -79,8 +80,8 @@ final class ModelSeedCommand extends BaseCommand {
         // Prepare through the SAME kernel-free boundary the runtime verbs use (IF145): mount includes + inline
         // imported typedefs + normalize opaque ids to name-paths, so an includes/typedef/opaque-id model is
         // seeded from its real, self-contained structure rather than the raw stub the loader would otherwise
-        // silently under-read (a dropped mount, a typedef flattened to STRING). A rare relativization residual
-        // refuses loudly here — seed never consumes rule conditions, but one boundary beats a divergent seed path.
+        // silently under-read (a dropped mount, a typedef flattened to STRING). A surviving unmapped included
+        // reference refuses loudly here — seed never consumes rule conditions, but one boundary prevents drift.
         ModelResolver resolver = workspace.resolverFor(model);
         String interpJson;
         try {

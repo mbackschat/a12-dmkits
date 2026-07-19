@@ -3,8 +3,10 @@ package io.github.mbackschat.a12.dm.core;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -71,16 +73,16 @@ public final class ModelReader {
     private final ObjectNode expanded;
     private final Map<String, JsonNode> byPath;
     private final List<String> locales;
-    /** Mounted included rules/computations whose condition kept an unmappable absolute (see the accessor). */
-    private final List<String> includedRulesNeedingRelativization;
+    /** Surviving mounted rules/computations whose fragments retain a genuine unmappable reference. */
+    private final List<String> includedElementsWithUnmappedReferences;
     private final List<ComputationInfo> computations;
 
     private ModelReader(ObjectNode expanded, Map<String, JsonNode> byPath, List<String> locales,
-            List<String> includedRulesNeedingRelativization, List<ComputationInfo> computations) {
+            List<String> includedElementsWithUnmappedReferences, List<ComputationInfo> computations) {
         this.expanded = expanded;
         this.byPath = byPath;
         this.locales = locales;
-        this.includedRulesNeedingRelativization = includedRulesNeedingRelativization;
+        this.includedElementsWithUnmappedReferences = includedElementsWithUnmappedReferences;
         this.computations = computations;
     }
 
@@ -95,16 +97,17 @@ public final class ModelReader {
     public static ModelReader expand(String dmJson, ModelResolver resolver) {
         ObjectNode root = parse(dmJson);
         Map<String, JsonNode> typeDefs = new HashMap<>();
-        List<String> warnings = new ArrayList<>();
-        expandContent(root, resolver, typeDefs, new HashSet<>(), warnings);
+        Set<ObjectNode> elementsWithResiduals = Collections.newSetFromMap(new IdentityHashMap<>());
+        expandContent(root, resolver, typeDefs, new HashSet<>(), elementsWithResiduals);
         JsonNode modelRoot = root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT);
         inlineTypeDefs(modelRoot, typeDefs, new HashSet<>());
         normalizeIds(modelRoot, "");
+        List<String> unmappedReferences = residualElementPaths(modelRoot, elementsWithResiduals);
         stripVestigialModelReferences(root);
         Map<String, JsonNode> byPath = new LinkedHashMap<>();
         List<ComputationInfo> computations = new ArrayList<>();
         indexRootGroups(modelRoot, byPath, computations);
-        return new ModelReader(root, byPath, readLocales(root), List.copyOf(warnings), List.copyOf(computations));
+        return new ModelReader(root, byPath, readLocales(root), unmappedReferences, List.copyOf(computations));
     }
 
     // ── outputs ─────────────────────────────────────────────────────────────────────────────────────────
@@ -124,16 +127,23 @@ public final class ModelReader {
     }
 
     /**
-     * The name-paths of the rules/computations mounted from an <b>included</b> model whose condition still carries
-     * an absolute reference the mount could <b>not</b> remap — an absolute first segment naming no mounted
-     * top-group (a residual the move-remap does not cover). Empty for every legal include: relative references
-     * resolve against the post-mount group unchanged, and every absolute reference to an included entity
-     * (descending, bare-group, {@code $}-outer, or MODEL_ROOT) is remapped onto its post-mount location. A
-     * consumer that must not silently mis-evaluate (the CLI eval pre-expansion, A4 / IF122) refuses when this is
-     * non-empty rather than feed a possibly-wrong condition to the engine.
+     * The full name-paths of surviving rules/computations mounted from an <b>included</b> model whose
+     * reference-bearing fragments retain a genuine unmapped reference. Relative references keep their
+     * move-invariant meaning; absolute and flag-enabled unique short-name references to included entities are
+     * bound in the pre-mount model and rewritten to their moved targets. A consumer that must not silently
+     * mis-evaluate (the CLI eval preparation boundary, A4 / IF122) refuses when this is non-empty.
      */
+    public List<String> includedElementsWithUnmappedReferences() {
+        return includedElementsWithUnmappedReferences;
+    }
+
+    /**
+     * Historical compatibility alias. The result covers both rules and computations and reports current
+     * unmapped references rather than the removed depth-relative implementation.
+     */
+    @Deprecated(forRemoval = false)
     public List<String> includedRulesNeedingRelativization() {
-        return includedRulesNeedingRelativization;
+        return includedElementsWithUnmappedReferences();
     }
 
     // ── the name-path index (package-private; ModelIndex is the typed view) ───────────────────────────────
@@ -157,7 +167,7 @@ public final class ModelReader {
 
     /** Collect this model's type-definitions, resolve header typedef imports, then expand every include mount. */
     private static void expandContent(ObjectNode root, ModelResolver resolver, Map<String, JsonNode> typeDefs,
-            Set<String> visiting, List<String> warnings) {
+            Set<String> visiting, Set<ObjectNode> elementsWithResiduals) {
         JsonNode content = root.path(DmKeys.CONTENT);
         collectTypeDefs(content, typeDefs);
         // Header "typeDefinitions"-purpose imports are ingested only when the model declares no local ones
@@ -166,7 +176,7 @@ public final class ModelReader {
             importTypeDefs(root, resolver, typeDefs, visiting);
         }
         JsonNode rootGroups = content.path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS);
-        expandElements(rootGroups, root, resolver, typeDefs, visiting, warnings, "");
+        expandElements(rootGroups, root, resolver, typeDefs, visiting, elementsWithResiduals, "");
     }
 
     /** Merge {@code content.typeDefinitions} into {@code typeDefs} (keyed by id; first wins — the kernel dedups
@@ -205,7 +215,8 @@ public final class ModelReader {
      *  is the absolute name-path of the container whose elements these are (empty at the model root), so a mount's
      *  own absolute path is known — the anchor the condition remap rewrites included references onto. */
     private static void expandElements(JsonNode elements, ObjectNode baseRoot, ModelResolver resolver,
-            Map<String, JsonNode> typeDefs, Set<String> visiting, List<String> warnings, String parentPath) {
+            Map<String, JsonNode> typeDefs, Set<String> visiting, Set<ObjectNode> elementsWithResiduals,
+            String parentPath) {
         if (!elements.isArray()) {
             return;
         }
@@ -220,9 +231,10 @@ public final class ModelReader {
             // A modelAlias group is an unexpanded mount only while its elements are empty — the kernel's
             // idempotency guard (an already-mounted group is not re-expanded).
             if (!alias.isEmpty() && (existing.isMissingNode() || existing.isEmpty())) {
-                mount(groupNode, body, alias, baseRoot, resolver, typeDefs, visiting, warnings, groupPath);
+                mount(groupNode, body, alias, baseRoot, resolver, typeDefs, visiting, elementsWithResiduals,
+                        groupPath);
             } else {
-                expandElements(existing, baseRoot, resolver, typeDefs, visiting, warnings, groupPath);
+                expandElements(existing, baseRoot, resolver, typeDefs, visiting, elementsWithResiduals, groupPath);
             }
         }
     }
@@ -230,15 +242,15 @@ public final class ModelReader {
     /** Mount the model referenced by {@code alias} into {@code mountGroup}: append the included root group's
      *  children (SINGLE_RG) or every top-level group (MODEL_ROOT), after fully expanding the included model. */
     private static void mount(ObjectNode mountGroup, ObjectNode mountBody, String alias, ObjectNode baseRoot,
-            ModelResolver resolver, Map<String, JsonNode> typeDefs, Set<String> visiting, List<String> warnings,
-            String mountPath) {
+            ModelResolver resolver, Map<String, JsonNode> typeDefs, Set<String> visiting,
+            Set<ObjectNode> elementsWithResiduals, String mountPath) {
         String reference = referenceForAlias(baseRoot, alias);
         if (visiting.contains(reference)) {
             throw new IllegalArgumentException("include cycle detected at reference \"" + reference + "\"");
         }
         ObjectNode includedRoot = resolve(resolver, reference);
         visiting.add(reference);
-        expandContent(includedRoot, resolver, typeDefs, visiting, warnings);
+        expandContent(includedRoot, resolver, typeDefs, visiting, elementsWithResiduals);
         visiting.remove(reference);
 
         boolean modelRoot = "MODEL_ROOT".equals(mountBody.path("includeLevel").asText());
@@ -246,16 +258,17 @@ public final class ModelReader {
         boolean excludeComputations = mountBody.path("excludeComputations").asBoolean(false);
         ArrayNode includedRootGroups = (ArrayNode) includedRoot.path(DmKeys.CONTENT)
                 .path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS);
+        ModelSymbols symbols = ModelSymbols.from(includedRoot);
 
-        // The old (included-model) absolute-path prefix → its new post-mount absolute prefix — the kernel's
-        // move-remap (RulesAndComputationsAdjusterVisitor): a mounted condition's references to included entities
-        // are rewritten onto their new location. SINGLE_RG replaces the vanishing root group with the mount path;
-        // MODEL_ROOT keeps each top group's name under the mount.
-        List<JsonNode> toMount = new ArrayList<>();
+        // The old (included-model) absolute-path prefix → its new post-mount absolute prefix. Kernel behavior is
+        // characterized from DocumentModelExpandService.RuleAndComputationConditionUpdaterVisitor together with
+        // EntityPathsRelativizer: mounted fragments keep naming the entities that moved with them. SINGLE_RG
+        // replaces the vanishing root group with the mount path; MODEL_ROOT keeps each top group's name below it.
+        List<MountedNode> toMount = new ArrayList<>();
         Map<String, String> prefixMap = new LinkedHashMap<>();
         if (modelRoot) {
             for (JsonNode top : includedRootGroups) {
-                toMount.add(top);
+                toMount.add(new MountedNode(top, ""));
                 String name = top.path(DmKeys.NAME).asText();
                 if (!name.isEmpty()) {
                     prefixMap.put("/" + name, mountPath + "/" + name);
@@ -273,18 +286,21 @@ public final class ModelReader {
             if (!usageType.isMissingNode()) {
                 mountBody.set("usageType", usageType);
             }
-            includedRootGroup.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS).forEach(toMount::add);
+            String includedRootPath = "/" + rootGroupName;
+            includedRootGroup.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)
+                    .forEach(child -> toMount.add(new MountedNode(child, includedRootPath)));
         }
 
         ArrayNode mountElements = mountBody.putArray(DmKeys.ELEMENTS);
-        for (JsonNode child : toMount) {
-            ObjectNode kept = filterRulesAndComputations((ObjectNode) child, excludeRules, excludeComputations);
+        for (MountedNode child : toMount) {
+            ObjectNode kept = filterRulesAndComputations(
+                    (ObjectNode) child.node(), excludeRules, excludeComputations);
             if (kept != null) {
                 mountElements.add(kept);
                 // Remap every absolute included reference onto its post-mount location; a reference this cannot map
                 // (an absolute first segment naming no mounted top-group) is left verbatim and its element recorded
                 // so the consumer refuses rather than mis-evaluate.
-                remapMountedConditions(kept, prefixMap, warnings);
+                remapMountedConditions(kept, prefixMap, elementsWithResiduals, symbols, child.parentPath());
             }
         }
         // The include directives are now consumed — drop them so the expanded group is a plain, self-contained
@@ -334,48 +350,123 @@ public final class ModelReader {
         return node;
     }
 
-    // ── included-rule remap (the kernel's include-mount condition rewrite — RulesAndComputationsAdjusterVisitor) ──
+    private record MountedNode(JsonNode node, String parentPath) {
+    }
 
-    /** Remap every absolute included reference in a mounted rule's / computation's condition(s) onto its
-     *  post-mount location, per {@code prefixMap}. An absolute reference the map cannot rewrite (a first segment
-     *  naming no mounted top-group) is left verbatim and its element recorded in {@code warnings}, so a
-     *  correctness-critical consumer refuses rather than mis-evaluate (A4 / IF122). Recurses into groups. */
-    private static void remapMountedConditions(JsonNode node, Map<String, String> prefixMap, List<String> warnings) {
-        ElementType type = ElementType.of(node);
-        if (type == ElementType.RULE) {
-            if (remapConditionKey((ObjectNode) node.path(ElementType.RULE.wireName()), "errorCondition", prefixMap)) {
-                warnings.add(node.path(DmKeys.NAME).asText());
+    private record ModelSymbols(
+            Set<String> entityPaths,
+            Map<String, List<String>> fieldsByShortName,
+            boolean shortNamesAllowed) {
+
+        private static ModelSymbols from(ObjectNode root) {
+            Set<String> paths = new HashSet<>();
+            Map<String, List<String>> fields = new HashMap<>();
+            for (JsonNode top : root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS)) {
+                collect(top, "", paths, fields);
             }
-        } else if (type == ElementType.COMPUTATION) {
-            ObjectNode body = (ObjectNode) node.path(ElementType.COMPUTATION.wireName());
-            boolean residual = remapConditionKey(body, "commonPrecondition", prefixMap);
-            for (JsonNode alt : body.path("computationAlternatives")) {
-                if (alt instanceof ObjectNode altObj) {
-                    residual |= remapConditionKey(altObj, "precondition", prefixMap);
-                    residual |= remapConditionKey(altObj, "operation", prefixMap);
-                }
+            boolean allowShortNames = root.path(DmKeys.CONTENT).path(DmKeys.MODEL_CONFIG)
+                    .path(DmKeys.FIELD_REF_BY_SHORT_NAME_ALLOWED).asBoolean(false);
+            return new ModelSymbols(paths, fields, allowShortNames);
+        }
+
+        private static void collect(JsonNode node, String parentPath, Set<String> paths,
+                Map<String, List<String>> fields) {
+            ElementType type = ElementType.of(node);
+            if (type != ElementType.GROUP && type != ElementType.FIELD) {
+                return;
             }
-            if (residual) {
-                warnings.add(node.path(DmKeys.NAME).asText());
+            String name = node.path(DmKeys.NAME).asText();
+            String path = parentPath + "/" + name;
+            paths.add(path);
+            if (type == ElementType.FIELD) {
+                fields.computeIfAbsent(name, ignored -> new ArrayList<>()).add(path);
+                return;
             }
-        } else if (type == ElementType.GROUP) {
             for (JsonNode child : node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)) {
-                remapMountedConditions(child, prefixMap, warnings);
+                collect(child, path, paths, fields);
             }
         }
     }
 
-    /** Remap one condition key in place; returns whether it left an unmappable absolute residual. */
-    private static boolean remapConditionKey(ObjectNode body, String key, Map<String, String> prefixMap) {
+    // ── included reference remap (kernel include expansion: parsed reference spans moved with their targets) ──
+
+    /** Remap every absolute included reference in a mounted rule's / computation's condition(s) onto its
+     *  post-mount location, per {@code prefixMap}. An absolute reference the map cannot rewrite (a first segment
+     *  naming no mounted top-group) is left verbatim and its element recorded in {@code elementsWithResiduals}, so a
+     *  correctness-critical consumer refuses rather than mis-evaluate (A4 / IF122). Recurses into groups. */
+    private static void remapMountedConditions(JsonNode node, Map<String, String> prefixMap,
+            Set<ObjectNode> elementsWithResiduals, ModelSymbols symbols, String parentPath) {
+        ElementType type = ElementType.of(node);
+        if (type == ElementType.RULE) {
+            ObjectNode element = (ObjectNode) node;
+            boolean residual = remapConditionKey((ObjectNode) node.path(ElementType.RULE.wireName()),
+                    "errorCondition", referenceContext(prefixMap, symbols, parentPath));
+            updateResidual(elementsWithResiduals, element, residual);
+        } else if (type == ElementType.COMPUTATION) {
+            ObjectNode element = (ObjectNode) node;
+            ObjectNode body = (ObjectNode) node.path(ElementType.COMPUTATION.wireName());
+            ConditionReferenceRemapper.ReferenceContext context = referenceContext(prefixMap, symbols, parentPath);
+            boolean residual = remapConditionKey(body, "commonPrecondition", context);
+            for (JsonNode alt : body.path("computationAlternatives")) {
+                if (alt instanceof ObjectNode altObj) {
+                    residual |= remapConditionKey(altObj, "precondition", context);
+                    residual |= remapConditionKey(altObj, "operation", context);
+                }
+            }
+            updateResidual(elementsWithResiduals, element, residual);
+        } else if (type == ElementType.GROUP) {
+            String groupPath = parentPath + "/" + node.path(DmKeys.NAME).asText();
+            for (JsonNode child : node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)) {
+                remapMountedConditions(child, prefixMap, elementsWithResiduals, symbols, groupPath);
+            }
+        }
+    }
+
+    private static ConditionReferenceRemapper.ReferenceContext referenceContext(
+            Map<String, String> prefixMap, ModelSymbols symbols, String declaringGroup) {
+        return new ConditionReferenceRemapper.ReferenceContext(
+                prefixMap, declaringGroup, symbols.entityPaths(), symbols.fieldsByShortName(),
+                symbols.shortNamesAllowed());
+    }
+
+    private static void updateResidual(Set<ObjectNode> elementsWithResiduals, ObjectNode element, boolean residual) {
+        if (residual) {
+            elementsWithResiduals.add(element);
+        } else {
+            elementsWithResiduals.remove(element);
+        }
+    }
+
+    /** Remap one reference-bearing fragment in place; returns whether it retained a genuine unmapped reference. */
+    private static boolean remapConditionKey(ObjectNode body, String key,
+            ConditionReferenceRemapper.ReferenceContext context) {
         if (!body.hasNonNull(key)) {
             return false;
         }
         String cond = body.path(key).asText("");
-        RemapResult r = remapAbsolutePaths(cond, prefixMap);
+        ConditionReferenceRemapper.Result r = ConditionReferenceRemapper.remapReferences(cond, context);
         if (!r.text().equals(cond)) {
             body.put(key, r.text());
         }
         return r.hadResidual();
+    }
+
+    private static List<String> residualElementPaths(JsonNode root, Set<ObjectNode> elementsWithResiduals) {
+        List<String> paths = new ArrayList<>();
+        collectResidualElementPaths(root, elementsWithResiduals, paths);
+        return List.copyOf(paths);
+    }
+
+    private static void collectResidualElementPaths(JsonNode node, Set<ObjectNode> elementsWithResiduals,
+            List<String> paths) {
+        if (node instanceof ObjectNode object) {
+            if (elementsWithResiduals.contains(object)) {
+                paths.add(object.path(DmKeys.ID).asText());
+            }
+            object.forEach(child -> collectResidualElementPaths(child, elementsWithResiduals, paths));
+        } else if (node.isArray()) {
+            node.forEach(child -> collectResidualElementPaths(child, elementsWithResiduals, paths));
+        }
     }
 
     /** The rewritten condition text plus whether it left an absolute reference no mount prefix could map. */
@@ -391,61 +482,9 @@ public final class ModelReader {
      * unit test.
      */
     static RemapResult remapAbsolutePaths(String condition, Map<String, String> prefixMap) {
-        StringBuilder out = new StringBuilder(condition.length());
-        boolean changed = false;
-        boolean residual = false;
-        int i = 0;
-        while (i < condition.length()) {
-            if (isAbsolutePathStart(condition, i)) {
-                int segStart = i + 1;
-                int segEnd = segStart;
-                while (segEnd < condition.length() && isIdentPart(condition.charAt(segEnd))) {
-                    segEnd++;
-                }
-                String newPrefix = prefixMap.get("/" + condition.substring(segStart, segEnd));
-                if (newPrefix != null) {
-                    out.append(newPrefix);   // "/<seg>" → its post-mount prefix; the rest of the path continues
-                    i = segEnd;
-                    changed = true;
-                    continue;
-                }
-                residual = true;   // an absolute ref naming no mounted top-group — a genuine residual, left as-is
-            }
-            out.append(condition.charAt(i));
-            i++;
-        }
-        return new RemapResult(changed ? out.toString() : condition, residual);
-    }
-
-    /** Whether {@code s.charAt(i)} is a '/' that STARTS an absolute entity reference: followed by an identifier
-     *  start, and preceded (skipping whitespace) by a reference-opening char ({@code [ ( , $}) or the text start. */
-    private static boolean isAbsolutePathStart(String s, int i) {
-        if (i >= s.length() || s.charAt(i) != '/') {
-            return false;
-        }
-        char next = i + 1 < s.length() ? s.charAt(i + 1) : '\0';
-        if (!isIdentStart(next)) {
-            return false;
-        }
-        char prev = prevSignificant(s, i);
-        return prev == '\0' || prev == '[' || prev == '(' || prev == ',' || prev == '$';
-    }
-
-    /** The nearest non-whitespace char before index {@code i}, or {@code '\0'} at the text start. */
-    private static char prevSignificant(String s, int i) {
-        int j = i - 1;
-        while (j >= 0 && Character.isWhitespace(s.charAt(j))) {
-            j--;
-        }
-        return j < 0 ? '\0' : s.charAt(j);
-    }
-
-    private static boolean isIdentStart(char c) {
-        return Character.isLetter(c) || c == '_';
-    }
-
-    private static boolean isIdentPart(char c) {
-        return Character.isLetterOrDigit(c) || c == '_';
+        ConditionReferenceRemapper.Result result =
+                ConditionReferenceRemapper.remapAbsolutePaths(condition, prefixMap);
+        return new RemapResult(result.text(), result.hadResidual());
     }
 
     // ── effective types (typedef inlining) ────────────────────────────────────────────────────────────────

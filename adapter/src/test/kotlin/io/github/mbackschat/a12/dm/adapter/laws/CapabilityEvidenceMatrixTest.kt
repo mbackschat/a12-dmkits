@@ -63,6 +63,7 @@ class CapabilityEvidenceMatrixTest {
         PLATFORM_UNSUPPORTED_SAFETY(Axis.PLATFORM, "multiplatform validateFull unsupported-result safety"),
 
         ASSEMBLY_PREPARED(Axis.ASSEMBLY, "prepared self-contained model"),
+        ASSEMBLY_INCLUDE_PREPARATION(Axis.ASSEMBLY, "included reference preparation/remap"),
         ASSEMBLY_RAW_COMPOSITION(Axis.ASSEMBLY, "raw includes / typedefs / opaque-id composition"),
     }
 
@@ -211,8 +212,12 @@ class CapabilityEvidenceMatrixTest {
             CorpusModelPreparerTest::class,
             Static.Tri(CorpusModelPreparerTest::class),
         )),
+        Capability(CapabilityId.ASSEMBLY_INCLUDE_PREPARATION, Coverage.Evidence(
+            IncludeAssemblyStrategyDiffTest::class,
+            Static.Tri(IncludeAssemblyStrategyDiffTest::class),
+        )),
         Capability(CapabilityId.ASSEMBLY_RAW_COMPOSITION, Coverage.Excluded(
-            tracked("IG68", "IG87", why = "commonMain does not yet assemble raw includes, typedefs, opaque ids, and included paths"),
+            tracked("IG68", why = "commonMain does not yet assemble raw includes, typedefs, opaque ids, and included references"),
         )),
     )
 

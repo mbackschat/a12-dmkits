@@ -3,26 +3,30 @@ package io.github.mbackschat.a12.dm.cli.interp;
 import java.util.List;
 
 /**
- * The kernel-free interpreter eval path mounted an <b>included</b> model's own rule/computation whose condition
- * carries an absolute reference the assembly layer <b>cannot remap</b> onto its post-mount location — a first
- * path segment naming no mounted top-group (a genuinely-unresolvable absolute; INTERPRETER-FINDINGS IF146). A
- * mount is remapped as a MOVE, so descending, bare {@code /RG} group, MODEL_ROOT, and {@code $}-outer included
- * references DO evaluate on the default path; only an unmappable absolute refuses loudly with
+ * The kernel-free interpreter preparation path found a surviving <b>included</b> rule/computation whose
+ * reference-bearing fragment retains a genuine unmapped reference (INTERPRETER-FINDINGS IF146). A mount is
+ * remapped as a MOVE through a reference-aware pass, so legal absolute, short-name, MODEL_ROOT, and
+ * {@code $}-outer references evaluate; only a genuine unmapped reference refuses loudly with
  * {@code RK_INTERPRETER_INCLUDE_RULES_UNSUPPORTED} rather than risk a silent-wrong-result.
  */
 public final class IncludeRelativizationException extends RuntimeException {
 
-    private final transient List<String> rules;
+    private final transient List<String> elements;
 
-    IncludeRelativizationException(List<String> rules) {
-        super("cannot evaluate " + rules.size() + " rule(s)/computation(s) from an included model on the "
-                + "default path — an absolute reference the assembly layer cannot remap onto its post-mount "
-                + "location (its first segment names no mounted group): " + rules);
-        this.rules = List.copyOf(rules);
+    IncludeRelativizationException(List<String> elements) {
+        super("cannot evaluate " + elements.size() + " rule(s)/computation(s) from an included model on the "
+                + "default path — the assembly layer retained a genuine unmapped reference in: " + elements);
+        this.elements = List.copyOf(elements);
     }
 
-    /** The names of the mounted included rules/computations that would need relativization. */
+    /** The full name-paths of the mounted included rules/computations with an unmapped reference. */
+    public List<String> elements() {
+        return elements;
+    }
+
+    /** Historical compatibility alias for {@link #elements()}. */
+    @Deprecated(forRemoval = false)
     public List<String> rules() {
-        return rules;
+        return elements();
     }
 }

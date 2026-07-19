@@ -25,10 +25,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
  * eval path. Before this, {@code model eval}/{@code rule eval}/{@code model compute} handed the RAW model to the
  * interpreter, which does not expand includes, so an includes-bearing model lost its mounted content and a rule
  * over a mounted field silently mis-reported. Now the CLI pre-expands kernel-free (via {@code ModelReader}), so
- * the default path agrees with the kernel. An INCLUDED model's OWN rules evaluate too — relative and
- * single-root-group-absolute conditions are relativized on mount (Set U); only a rare residual shape (IF122, the
- * G1′ caveat) makes the default path <b>refuse loudly</b> rather than mis-evaluate. The kernel leg here is the
- * {@code KernelEval} harness (adapter API). Own domain (an insurance policy including a benefits sub-model).
+ * the default path agrees with the kernel. An INCLUDED model's own rules/computations are reference-aware:
+ * same-group relative references stay unchanged while moved absolute/short-name targets are rebound before
+ * mounting (IF146). A genuine unmapped reference refuses loudly. The kernel leg here is the {@code KernelEval}
+ * harness (adapter API). Own domain (an insurance policy including a benefits sub-model).
  */
 class IncludeEvalDefaultPathTest {
 
@@ -43,7 +43,7 @@ class IncludeEvalDefaultPathTest {
                 .build().toJson();
     }
 
-    /** benefits + a rule of its OWN (references the included root) — the relativization-refusal case. */
+    /** benefits + a rule of its own, initially using move-invariant same-group references. */
     private static String benefitsWithRule() {
         BoundModel m = BoundModel.ofJson(benefits());
         return m.add(m.rule(m.group("/Benefits")).name("CoveragePositive")
@@ -69,16 +69,14 @@ class IncludeEvalDefaultPathTest {
                 .message(en("Coverage exceeds the cap.")).build()).toJson();
     }
 
-    /** benefitsWithRule, but the rule names its field by an ABSOLUTE path ([/Benefits/Coverage]) — depth 0
-     *  under the mount, so the relativizer must rewrite it to the relative [Coverage]. */
+    /** benefitsWithRule, but the rule names its field by an absolute pre-mount path. */
     private static String benefitsWithAbsoluteRule() {
         return benefitsWithRule()
                 .replace("FieldFilled(Coverage)", "FieldFilled(/Benefits/Coverage)")
                 .replace("[Coverage] < 0", "[/Benefits/Coverage] < 0");
     }
 
-    /** A benefits sub-model with a Tier subgroup whose OWN rule references the root field by an ABSOLUTE path
-     *  ([/Benefits/Amount]) — depth 1 below the mount, so the relativizer must produce ../Amount. */
+    /** A benefits sub-model with a Tier subgroup whose own rule uses an absolute pre-mount path. */
     private static String nestedBenefitsWithAbsoluteRule() {
         String nested = DocumentModelDraft.named("benefits").locale("en_US")
                 .rootGroup("Benefits", b -> b
@@ -86,8 +84,7 @@ class IncludeEvalDefaultPathTest {
                         .group("Tier", t -> t.numberField("Value", n -> n.fractionDigits(2))))
                 .build().toJson();
         BoundModel m = BoundModel.ofJson(nested);
-        // The rule lives in the Tier subgroup and reads its own Value — but by an ABSOLUTE path naming the root
-        // (/Benefits/Tier/Value). At depth 1 the relativizer must produce ../Tier/Value for it to resolve post-mount.
+        // The rule lives in Tier and reads Value by its absolute pre-mount path.
         String withRule = m.add(m.rule(m.group("/Benefits/Tier")).name("ValuePositive")
                 .errorField(m.num("/Benefits/Tier/Value").field())
                 .when(m.num("/Benefits/Tier/Value").filled().and(m.num("/Benefits/Tier/Value").lt(0)))
@@ -179,8 +176,8 @@ class IncludeEvalDefaultPathTest {
         Path model = workspace(dir, policy, benefits);
         Path doc = instance(dir, "-5.00");   // negative → the included model's OWN rule (Coverage must not be negative) fires
 
-        // The included rule references its field RELATIVELY ([Coverage]); the assembly layer carries it verbatim
-        // (no relativization needed) and the interpreter resolves [Coverage] against the rule's POST-MOUNT group
+        // The included rule references its field relatively ([Coverage]); moving rule and field together preserves
+        // its meaning, and the interpreter resolves [Coverage] against the rule's post-mount group
         // /Policy/Cover — so the default path evaluates the mounted included rule, matching --kernel (was: refused).
         CliTestSupport.Result def = CliTestSupport.run(
                 "-m", model.toString(), "model", "eval", "--instance", doc.toString());
@@ -195,40 +192,38 @@ class IncludeEvalDefaultPathTest {
     }
 
     @Test
-    void anIncludedRuleWithAnAbsolutePathIsRelativizedAndEvaluatesLikeTheKernel(@TempDir Path dir) throws Exception {
+    void anIncludedRuleWithAnAbsolutePathIsRemappedAndEvaluatesLikeTheKernel(@TempDir Path dir) throws Exception {
         String benefits = benefitsWithAbsoluteRule();
         assertTrue(benefits.contains("[/Benefits/Coverage]"), "the fixture rule uses an absolute path");
         Path model = workspace(dir, policyMountingBenefitsAtCover(), benefits);
-        Path doc = instance(dir, "-5.00");   // negative → the included rule fires (once its absolute ref is relativized)
+        Path doc = instance(dir, "-5.00");   // negative → the included rule fires after its reference is remapped
 
-        // /Benefits/Coverage names the root group that vanishes on mount; the assembly layer rewrites it to the
-        // relative [Coverage] (depth 0), so the default path resolves it against /Policy/Cover and matches --kernel.
+        // /Benefits/Coverage is bound before mounting and rewritten to /Policy/Cover/Coverage.
         CliTestSupport.Result def = CliTestSupport.run(
                 "-m", model.toString(), "model", "eval", "--instance", doc.toString());
         CliTestSupport.Result ker = CliTestSupport.runKernel(
                 "-m", model.toString(), "model", "eval", "--instance", doc.toString());
 
-        assertEquals(0, def.code(), () -> "the default path evaluates the relativized absolute rule: " + def.out() + def.err());
-        assertTrue(fired(def.out(), "COV_NEG"), () -> "the relativized absolute reference fires: " + def.out());
+        assertEquals(0, def.code(), () -> "the default path evaluates the remapped absolute rule: " + def.out() + def.err());
+        assertTrue(fired(def.out(), "COV_NEG"), () -> "the remapped absolute reference fires: " + def.out());
         assertEquals(fired(ker.out(), "COV_NEG"), fired(def.out(), "COV_NEG"), () -> "matches --kernel: " + def.out());
     }
 
     @Test
-    void aNestedIncludedRuleWithAnAbsolutePathIsRelativizedByDepthLikeTheKernel(@TempDir Path dir) throws Exception {
+    void aNestedIncludedRuleWithAnAbsolutePathIsRemappedLikeTheKernel(@TempDir Path dir) throws Exception {
         String benefits = nestedBenefitsWithAbsoluteRule();
         assertTrue(benefits.contains("[/Benefits/Tier/Value]"), "the fixture rule uses an absolute path");
         Path model = workspace(dir, policyMountingBenefitsAtCover(), benefits);
-        Path doc = tierValueInstance(dir, "-5.00");   // negative → the depth-1 nested rule fires
+        Path doc = tierValueInstance(dir, "-5.00");   // negative → the nested rule fires
 
-        // The rule lives one group deep (/Benefits/Tier), so /Benefits/Tier/Value must relativize to ../Tier/Value —
-        // the depth-1 form — for the interpreter to resolve it against the rule's post-mount group /Policy/Cover/Tier.
+        // The same reference-aware move remap applies independently of the rule's nesting depth.
         CliTestSupport.Result def = CliTestSupport.run(
                 "-m", model.toString(), "model", "eval", "--instance", doc.toString());
         CliTestSupport.Result ker = CliTestSupport.runKernel(
                 "-m", model.toString(), "model", "eval", "--instance", doc.toString());
 
-        assertEquals(0, def.code(), () -> "the default path evaluates the depth-1 relativized rule: " + def.out() + def.err());
-        assertTrue(fired(def.out(), "VAL_NEG"), () -> "the depth-1 relativized reference fires: " + def.out());
+        assertEquals(0, def.code(), () -> "the default path evaluates the nested remapped rule: " + def.out() + def.err());
+        assertTrue(fired(def.out(), "VAL_NEG"), () -> "the nested remapped reference fires: " + def.out());
         assertEquals(fired(ker.out(), "VAL_NEG"), fired(def.out(), "VAL_NEG"), () -> "matches --kernel: " + def.out());
     }
 
