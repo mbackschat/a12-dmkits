@@ -104,6 +104,17 @@ data class Divergence(
     val computeExpected: List<String>? = null,
 )
 
+/**
+ * The per-strategy expectation override for [strategy] (§11), in the op's key, or null when the anchor applies —
+ * the pure selection every replay runner uses to enforce the ratified oracle (INTERPRETER-FINDINGS IF136): the
+ * interpreter never consults it (it always asserts the Groovy-dynamic anchor), a kernel-static-Java replay applies
+ * it, and the anchor is never overridden. Engine-neutral, so it lives beside the portable case format it selects
+ * from and is shared by the JVM tri-engine runner (`:adapter` `CorpusReplay`) unchanged.
+ */
+fun ConformanceCase.overrideFor(strategy: String): List<String>? =
+    divergences.firstOrNull { it.strategy == strategy }
+        ?.let { if (op is Op.Compute) it.computeExpected else it.expected }
+
 /** Replay these placements into [sink] in order (§4: parent row before its contents; replay is sequential). */
 fun List<Placement>.replayInto(sink: PlacementSink) {
     for (p in this) when (p.kind) {

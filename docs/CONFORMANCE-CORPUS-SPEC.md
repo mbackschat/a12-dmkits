@@ -186,7 +186,7 @@ Engine mapping for the in-repo runners: the interpreter takes `EvalClock(today =
 
 ## 11. Strategy divergences
 
-`expected`/`computeExpected` always record the **Groovy-dynamic anchor**. When another kernel strategy observably differs on the case, that fact is recorded — never adopted:
+`expected`/`computeExpected` always record the **Groovy-dynamic anchor**. This is the **module-wide ratified oracle** (INTERPRETER-FINDINGS IF136, owner-decided 2026-07-19): `interpreter/CLAUDE.md`'s #1 rules make the same choice — on a legal-input split the interpreter matches Groovy-dynamic, and a **static-Java** codegen split is recorded here, never adopted. When another kernel strategy observably differs on the case, that fact is recorded — never adopted:
 
 ```jsonc
 "divergences": [

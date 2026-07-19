@@ -2,7 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.conformance.ConformanceCase
 import io.github.mbackschat.a12.dm.interpreter.conformance.InterpreterReplay
-import io.github.mbackschat.a12.dm.interpreter.conformance.Op
+import io.github.mbackschat.a12.dm.interpreter.conformance.overrideFor
 
 /**
  * The JVM conformance **replay runner** (CONFORMANCE-CORPUS-SPEC §12) — replays a committed [ConformanceCase]
@@ -29,7 +29,7 @@ object CorpusReplay {
         val groovy = InterpreterReplay.compare(
             CorpusEngines.groovyDynamic(modelJson, case.placements, case.op, case.clock), anchor)
 
-        val javaExpected = overrideFor(case, CorpusEngines.JAVA_STATIC) ?: anchor
+        val javaExpected = case.overrideFor(CorpusEngines.JAVA_STATIC) ?: anchor
         val java = InterpreterReplay.compare(
             CorpusEngines.javaStatic(modelJson, case.placements, case.op, case.clock), javaExpected)
 
@@ -39,9 +39,4 @@ object CorpusReplay {
             CorpusEngines.JAVA_STATIC to java,
         )
     }
-
-    /** The per-strategy divergence override for [strategy], in the op's key, or null when the anchor applies. */
-    private fun overrideFor(case: ConformanceCase, strategy: String): List<String>? =
-        case.divergences.firstOrNull { it.strategy == strategy }
-            ?.let { if (case.op is Op.Compute) it.computeExpected else it.expected }
 }

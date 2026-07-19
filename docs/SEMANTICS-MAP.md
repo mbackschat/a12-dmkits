@@ -52,7 +52,7 @@ Lock-tree classes whose subject is not one kernel-semantics section — the conc
 |---|---|
 | Condition concrete syntax (lexing, comments, directives — KERNEL-FINDINGS "Condition lexing"/"Condition comments"/"Condition directives") | `DirectiveLawsTest`, `CommentConditionDiffTest`, `ParserDiffTest`, `ParserCorpusSweepTest`, `KeywordCaseVariantParseTest`, `CommentSkipParseTest`, `ForIndexArgParseTest`, `ValueListLiteralParseTest`, `ValueListQuantifierHavingParseTest` |
 | Operator-catalog verification lanes ([CATALOG-SPEC.md](CATALOG-SPEC.md) §5) | `CatalogFacetProbesTest`, `CatalogParityTest` |
-| Conformance corpus — capture, replay, schema ([CONFORMANCE-CORPUS-SPEC.md](CONFORMANCE-CORPUS-SPEC.md)) | `CorpusCaptureTest`, `CorpusReplayTest`, `CorpusSchemaGuardTest`, `CorpusModelPreparerTest`, `CorpusReplayCommonTest`, `CaseJsonTest` |
+| Conformance corpus — capture, replay, schema ([CONFORMANCE-CORPUS-SPEC.md](CONFORMANCE-CORPUS-SPEC.md)) | `CorpusCaptureTest`, `CorpusReplayTest`, `CorpusSchemaGuardTest`, `CorpusModelPreparerTest`, `CorpusReplayCommonTest`, `CaseJsonTest`, `ConformanceDivergenceEnforcementTest` |
 | Cross-cutting differentials & engine seams (whole-surface, no single section) | `ValidateFullDiffTest`, `InterpreterDiffTest`, `OperatorBatteryDiffTest`, `FullMessageFuzzDiffTest`, `FuzzDiagnosticsTest`, `KernelProbeTest`, `EvalDocSeamLawsTest`, `InterpreterMultiplatformTest`, `DeterminismPropertyTest`, `UnsupportedDegradeTest` |
 | Triage / sweep instruments (opt-in, tagged) | `ModelShrinkTest`, `RawAtomShrinkTest`, `RealCorpusSweepTest`, `MinimalReplayTest`, `ValidateUnitShrinkTest`, `CrashProbeTest` |
 | DM-JSON loader & instance seeding | `ModelLoaderTest`, `SeedGeneratorTest`, `ValidValuesConstraintTest` |
