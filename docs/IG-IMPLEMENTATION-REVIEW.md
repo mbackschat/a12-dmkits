@@ -23,6 +23,7 @@ Keep corrections focused on the recorded findings. In particular, do not broaden
 ### Active chapters
 
 - [RV-2026-07-19-03 — IG91 → IG87 prepared-model and include-remap chain review](#rv-2026-07-19-03) — **Changes requested.** IF145 leaves the normal CLI gate red; IF146's raw-text remapper is not safe or complete for the legal reference grammar, and IG87 was reclassified as ongoing despite ordinary unfinished correctness/evidence work.
+- [RV-2026-07-19-04 — IG93 → IG96 compute-semantics chain review](#rv-2026-07-19-04) — **Changes requested.** IF147's new bare-group scan is not formally correct, context-complete, declaration-range ordered, or actually lazy; IF148's valid-model runtime wiring works, but tolerance metadata remains lossy through the typed/CLI surfaces and its closure evidence is incomplete.
 
 ### Resolution index
 
@@ -274,6 +275,290 @@ Keep corrections focused on the recorded findings. In particular, do not broaden
 #### Resolution
 
 Open. Independent verification should reject the “IG91 → IG87 chain complete” claim until RV03-1 through RV03-7 are resolved, every issue carries a fixing commit and green verification note, and IG87 is deleted rather than deferred.
+
+<a id="rv-2026-07-19-04"></a>
+
+### RV-2026-07-19-04 — IG93 → IG96 compute-semantics chain review
+
+**Repository:** `$HOME/Projects/oss/a12/a12-rulekit`
+
+**Review type:** Read-only post-commit review. No implementation, test, specification, or gap-ledger file was changed by this review; this chapter is the only review artifact.
+
+**Reviewed commits and claimed outcomes:**
+
+- `7b7e8a78` — IG93 → IF147: replace the eager bare-group `fillScope` decision with a declaration-order state scan and close the last IF85 residual.
+- `73f039a9` — IG96 → IF148: retain a computation alternative's `toleranceRangeOp` as a closed band and synthesize the matching tolerance condition for implicit computation validation.
+
+**Verdict:** Changes requested; the chain is not complete. The IF147 probe found a real `NoFieldFilled` divergence and the chosen declaration-order direction is correct, but the new abstraction introduces legal-input misclassification, loses cascade state and dependency edges, orders declared repetition tails incorrectly, and materializes the whole group before the advertised early stop. The single differential does not satisfy IG93's original quantifier/context/platform matrix. IF148's core `ModelLoader` → `ParsedModel` → `Cond.Tolerance` wiring is correct for a valid prepared model, but the rest of the project's computation surface cannot represent the same metadata: read hides it and modify can silently delete it. Its fail-loud boundary, capability-matrix registration, tiered evidence, and JVM/Node semantic evidence are also incomplete. Restore IG93 and IG96 to the active gap section until the named work is finished, then graduate and delete them; do not move either to ongoing/deferred.
+
+<a id="rv04-1"></a>
+
+#### RV04-1 — IF147 puts declared repetition tails after the entire group instead of after their field
+
+**Severity:** High / legal-input wrong outcome and poisoning order.
+
+**Evidence:**
+
+- [`scanFilled`](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/Interpreter.kt) consumes all instantiated states returned by `containedFieldStates(groupPath)` and only then appends one aggregate `fillScope(...).anyEmptyDeclared` marker.
+- The kernel's group expansion is field-major: it finishes a contained field's instantiated and declared repetition range before moving to the next contained field.
+- Concrete discriminator: the first descendant field is repeatable with row 1 filled and a declared-but-uninstantiated row 2, while a later descendant field is malformed. `AllFieldsFilled` and `NotAllFieldsFilled` must decide at the first field's missing row without reading the malformed later field. The interpreter visits the malformed field first and poisons. `FieldsNotCollectivelyFilled` inherits the defect in its second pass.
+- `fillScope` also collapses every declared omission into one Boolean, so it cannot restore the lost per-field read position.
+
+**Required correction:**
+
+- Produce the compute scan in true field-major, repetition-major order, interleaving each field's instantiated cells and any operator-relevant declared omissions before advancing to the next field.
+- Keep the instantiated-only and declared-range operator semantics distinct without a group-wide tail approximation.
+
+**Acceptance checks:**
+
+- Tri-check all seven legal fill quantifiers with a repeatable first field, a declared missing row, and a malformed later field.
+- Reverse the decisive/invalid order and cover both two-pass operators.
+- Include nested contained groups and VALUE, CLEARED, and ERRORED downstream outcomes.
+
+**Resolution:** Open.
+
+<a id="rv04-2"></a>
+
+#### RV04-2 — IF147 equates a non-concrete resolved value with formal invalidity and bypasses the full computation-formal oracle
+
+**Severity:** High / legal-input false poison plus missed poison classes.
+
+**Evidence:**
+
+- [`Document.containedFieldStates`](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/Document.kt) calls `resolveValue` and maps every `Val.Unknown` to `CellState.INVALID`.
+- The existing [`EvalContext.cellState`](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/EvalContext.kt) contract explicitly says these are different states. A well-formed `DAY_OPTIONAL` value such as `00.06.2024` resolves to `Val.Unknown` for a direct value expression but is formally valid, FILLED, and must not poison.
+- `RowContext.cellState` and `starScanStates` correctly inspect raw presence plus `formallyInvalid`; the new group path does not reuse that invariant.
+- The opposite error is also possible: `containedFieldStates` never invokes the computation engine's full `AutoChecks.computeFormalErrorAt` gate, so charset, custom field-type, over-limit, and other model-level formal failures that poison an ordinary computation read can remain merely FILLED in a group scan.
+
+**Required correction:**
+
+- Represent an ordered scan item with enough identity to evaluate raw presence and the same complete formal-status oracle used by direct computation reads; do not infer invalidity from `Val.Unknown`.
+- Preserve the distinction between “formally valid but not a concrete scalar” and “formally invalid.”
+
+**Acceptance checks:**
+
+- A valid omitted-day date is FILLED and never poisons through a bare group; a malformed date control does.
+- Restricted-charset, custom-type, representative declared-constraint, and over-limit failures poison identically through direct, star, and bare-group reads.
+- The portable state-classification locks run on JVM and Node, with representative end-to-end tri-differentials against both kernel strategies.
+
+**Resolution:** Open.
+
+<a id="rv04-3"></a>
+
+#### RV04-3 — the new bare-group seam loses computation overlays, dependency edges, and unsupported-context safety
+
+**Severity:** Critical / cascade can read stale data or silently treat a real group as empty.
+
+**Root mechanism:**
+
+`containedFieldStates` returns anonymous states rather than path/repetition identities and has a silent `emptyList()` default. That makes the new operation impossible to adapt correctly in wrappers and hides missing implementations.
+
+**Evidence:**
+
+- [`OverlayContext`](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/OverlayContext.kt) overrides direct and starred state reads but not `containedFieldStates`; delegation therefore scans the raw document and ignores an earlier computation's VALUE, CLEARED, or POISONED group member.
+- [`condDepRefs`](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/AstRefs.kt) records a bare group operand only as the group path. [`ComputationEngine.orderedFrom`](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/ComputationEngine.kt) follows only exact computed target paths, so a computation depending on a group quantifier need not run after computations targeting fields inside that group. `computeField` can omit the producer entirely.
+- Production `ParallelRowContext` does not override the new method and inherits `emptyList()`. If the shape is legal, fill predicates return empty-group answers; if it is unsupported, the required behavior is a loud refusal, not a plausible false result.
+
+**Required root correction:**
+
+- Make the group scan model-aware and identity-preserving so dependency analysis can expand a group to its contained computed targets and context decorators can apply VALUE/CLEARED/POISONED state per `(path, reps)`.
+- Remove the silent-empty default. Implement every legal production context and fail loud for an explicitly unsupported one.
+
+**Acceptance checks:**
+
+- In a two-computation cascade, B's bare-group condition sees A's VALUE, CLEARED, and POISONED outcomes when A is declared before and after B.
+- `compute()` and `computeField(B)` both include/order the contained producer.
+- Nested and repeatable group operands retain the correct instance identity.
+- Probe the parallel shape against both kernels; implement it if legal, otherwise lock the structured loud refusal.
+- Run representative cascade behavior on JVM and Node and tri-check the kernel-visible outcomes.
+
+**Resolution:** Open.
+
+<a id="rv04-4"></a>
+
+#### RV04-4 — IF147's advertised early stop still performs whole-group work and allocation
+
+**Severity:** Medium / performance target miss and active documentation drift.
+
+**Evidence:**
+
+- `containedFieldStates` scans every model field key, resolves every matching instantiated cell, and fills an `ArrayList<CellState>` before `Sequence.any`, `none`, or `all` can consume its first state.
+- `instCells` separately materializes each field's resolved cell list. Declared-range operators can then call `fillScope`, scanning the group again.
+- A first-cell witness therefore remains O(all contained instantiated cells) with O(cell count) temporary allocation; only Boolean consumption stops early.
+- IF147, the source KDoc, and [`INTERPRETER-PERFORMANCE.md`](INTERPRETER-PERFORMANCE.md) call the implementation lazy and say a later cell is not read. That is false at the actual value-resolution/work boundary.
+
+**Required correction:**
+
+- Use an on-demand iterator/sequence/cursor that computes one raw cell state at a time and stops all later lookup, resolution, and allocation when the operator decides.
+- Cache the declaration-ordered contained-field plan per model/group rather than filtering every model field on each read.
+- Eliminate the second whole-group scan by carrying declared-range events in the same ordered cursor.
+
+**Acceptance checks:**
+
+- A counting common test proves that a decisive first cell does not consult or resolve a large tail.
+- A quantifier-heavy N/4N guard distinguishes first-witness O(1) behavior from whole-group O(N) work and detects accidental double scans.
+- Allocation/work claims in IF147 and PERFORMANCE match the measured implementation.
+
+**Resolution:** Open.
+
+<a id="rv04-5"></a>
+
+#### RV04-5 — IG93's original closure matrix and typed-fixture discipline were not satisfied
+
+**Severity:** High / blocks graduation and the “last IF85 residual closed” claim.
+
+**Evidence:**
+
+- The original IG93 contract required every legal group-fill quantifier, both decisive/invalid orders, both kernel strategies, nested-group preservation, and VALUE/CLEARED/ERRORED/read evidence.
+- [`BareGroupComputePoisonDiffTest`](../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/BareGroupComputePoisonDiffTest.kt) covers only `NoFieldFilled` over two direct fields in one flat, non-repeatable group. Its dynamic-Groovy/static-Java/interpreter discriminator is valid, but it does not exercise the other six quantifiers, declared tails, nested/repeatable descendants, cascade overlays, dependency closure, or ERRORED.
+- The differential is JVM-only. Running `:interpreter:check` compiles and tests common code on Node, but no common test exercises the new group path, so IF147's claimed JVM+JS behavioral lock is unsupported.
+- The fixture hand-writes `NoFieldFilled(Details)` and `FieldNotFilled(Flag)` strings. This bypasses the typed dmkits surface despite the project's standing dogfood rule; the available builder/ref/renderer path should be used, or the missing typed bridge is itself a gap to fix.
+
+**Required correction:**
+
+- Restore IG93 to the active section and complete the seven-operator, ordering, nesting/repetition, cascade, outcome, strategy, and platform matrix after RV04-1 through RV04-4.
+- Author the fixtures through typed refs/conditions/computations; extend the typed test bridge if it cannot express a required legal shape.
+- Only then align IF147, IF85, the certificate, SEMANTICS-MAP, specification, and performance wording and delete IG93.
+
+**Acceptance checks:**
+
+- Every original IG93 arm resolves to a named, passing test, and the strategy/capability evidence matrix points to it.
+- A common JVM/Node behavioral test executes the group scan rather than merely compiling it.
+- No new internal fixture embeds a hand-written condition/operation string when a typed surface can express it.
+
+**Resolution:** Open.
+
+<a id="rv04-6"></a>
+
+#### RV04-6 — `toleranceRangeOp` remains lossy through rulekit and CLI read/modify/write
+
+**Severity:** Critical / unrelated edit can silently change validation semantics.
+
+**Evidence:**
+
+- [`Computation.Alternative`](../rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl/Computation.java) and [`DraftComputation.Alternative`](../rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/DraftComputation.java) carry only precondition and operation.
+- [`ConditionConverter.convertOperation`](../adapter/src/main/java/io/github/mbackschat/a12/dm/adapter/ConditionConverter.java) explicitly unwraps `IWithComparisonOperation` to `getOriginalOperation`, discarding the comparison wrapper before it builds the typed alternative.
+- [`RuleValidator`](../rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/RuleValidator.java) and [`ModelWriter`](../rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/write/ModelWriter.java) never emit `toleranceRangeOp`. The replace path rebuilds every alternative and preserves only leading comments plus element-level metadata, not per-alternative tolerance.
+- [`ComputationReadCommand`](../cli/src/main/java/io/github/mbackschat/a12/dm/cli/computation/ComputationReadCommand.java) cannot report the field, [`ComputationSpec`](../cli/src/main/java/io/github/mbackschat/a12/dm/cli/computation/ComputationSpec.java) cannot parse it, and [`add.schema.json`](../cli/src/main/resources/schema/add.schema.json) forbids it.
+- Therefore `computation read` hides live metadata, typed/CLI add cannot author it, and an unrelated `computation modify` can silently turn a tolerant implicit validation into strict `!=`.
+- IF148's own differential works around the missing consumer surface by injecting raw JSON through a string-valued `RuntimeLaws.CompAlt`, contrary to the project's typed-dogfood rule.
+
+**Required root correction:**
+
+- Add one closed tolerance-band type to the computation alternative and carry it through typed builder, draft, kernel conversion, explanation/diff/read, validation, writer/edit/replace, CLI spec/apply, schemas, and examples.
+- Preserve the band independently on every tier. Use a builder as the public draft-alternative construction path rather than growing the adjacent-`String` positional constructor.
+- Rebuild the IF148 differential through the same typed surface a consumer uses.
+
+**Acceptance checks:**
+
+- Typed and CLI add author every supported band and the kernel accepts the persisted model.
+- Read exposes each alternative's band; an unrelated modify round-trips all tiers byte-semantically and does not revert to strict inequality.
+- Diff/explain/report surfaces do not hide a semantic change in the band.
+- API-GUIDE and executable schema examples demonstrate the feature, and the schema/conformance guards pass.
+
+**Resolution:** Open.
+
+<a id="rv04-7"></a>
+
+#### RV04-7 — IF148's loader silently treats some present invalid values as “no tolerance”
+
+**Severity:** Medium / fail-loud boundary violation.
+
+**Evidence:**
+
+- [`ToleranceBand.ofWire`](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/model/Model.kt) returns null for both null and the empty string.
+- `ModelLoader.asTextOrNull` also returns null for a present object/array value. Both routes synthesize strict `!=` instead of rejecting the malformed metadata.
+- The kernel distinguishes an absent/null slot from a present value and rejects a present value outside its closed tolerance set. IG96 explicitly required unknown values to fail loud.
+- [`ComputationToleranceBandLoadTest`](../interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/ComputationToleranceBandLoadTest.kt) covers only one unknown non-empty string, so the silent-degrade siblings remain unlocked.
+
+**Required correction:**
+
+- Distinguish missing/explicitly absent metadata from a present value.
+- Require a string equal to one of the four wire values whenever the property is present; reject empty, blank, object/array, and every other value with a diagnostic naming the property and accepted set.
+
+**Acceptance checks:**
+
+- Missing/null retains strict `!=`.
+- Empty, blank, unknown string, object/array, and other wrong JSON types reject loudly on JVM and Node.
+- No invalid present value can reach `ParsedModel` as a null band.
+
+**Resolution:** Open.
+
+<a id="rv04-8"></a>
+
+#### RV04-8 — the capability matrix credits IF148 to an unrelated rule-tolerance test
+
+**Severity:** High / false generated-certificate evidence.
+
+**Evidence:**
+
+- [`CapabilityEvidenceMatrixTest`](../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/CapabilityEvidenceMatrixTest.kt) maps `COMPUTATION_TOLERANCE` to `ToleranceDiffTest` for both dynamic and static evidence.
+- `ToleranceDiffTest` exercises an authored rule condition using a tolerance operator; it does not load or evaluate a computation alternative's `toleranceRangeOp` or its implicit validation.
+- [`ComputationToleranceValidationDiffTest`](../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/ComputationToleranceValidationDiffTest.kt) is registered in SEMANTICS-MAP but not in the capability matrix, so the matrix can remain green while the exact computation-metadata evidence disappears.
+
+**Required correction:**
+
+- Point the computation capability to the IF148 test, or split rule-condition tolerance and computation-alternative tolerance into distinct capability IDs.
+- Name the capability precisely and make certificate output derive from that mapping.
+- Add a guard that prevents a rule-only evidence class from satisfying the computation-metadata cell.
+
+**Acceptance checks:**
+
+- Removing/renaming `ComputationToleranceValidationDiffTest` makes the matrix fail.
+- The certificate names the actual test and distinguishes rule tolerance from computation `toleranceRangeOp`.
+
+**Resolution:** Open.
+
+<a id="rv04-9"></a>
+
+#### RV04-9 — IF148's tier/platform matrix and active documentation overstate the evidence
+
+**Severity:** Medium / incomplete original acceptance contract and avoidable test cost.
+
+**Evidence:**
+
+- The original IG96 contract required equal, inside, boundary, and just-outside cases for every band, including guarded/tiered alternatives and JVM+JS.
+- `ComputationToleranceValidationDiffTest` has a single unconditional alternative. Its `guard=true` arm adds a true common precondition; it does not test an alternative precondition, multiple selected tiers, different bands per tier, or a false guard.
+- The inside-band test omits band 1, which needs a decimal discriminator. Common JVM/Node coverage loads the enum only and never runs synthesized implicit validation end to end.
+- The test asks `kernelJavaEngine(kModel)` for two separate engines in one assertion and passes an instance from one to the other, doubling generated-Java setup on every case and violating the harness's build-once intent.
+- IF148 says every band has all four evidence points and calls the behavior JVM+JS-locked. The certificate still uses stale residual/evidence wording and omits the new computation test from its exact-lock list.
+
+**Required correction:**
+
+- Add a real mutually exclusive multi-tier computation with per-alternative bands, selected-tier cases, and false common/alternative guards.
+- Complete the per-band matrix, using decimal values for a strict interior point of band 1 and covering both difference directions where numeric polarity could matter.
+- Add a common end-to-end `DmInterpreter.validateFull` lock for representative inside/outside and selected-tier cases on JVM and Node; assert no hidden unsupported report.
+- Reuse one generated-Java engine per model/case, then perform the bounded IF148/certificate/findings/SEMANTICS-MAP wording sweep.
+
+**Acceptance checks:**
+
+- Each band has named equal/interior/boundary/outside evidence, and tier selection proves the band stays attached to the selected alternative.
+- False guards prove omission rather than accidental strict comparison.
+- JVM and Node execute loader, synthesis, and validation semantics, not only enum mapping.
+- Every active evidence claim names a test that proves that exact claim.
+
+**Resolution:** Open.
+
+#### What the review accepted
+
+- The IF147 discriminator is genuine: for the tested flat `NoFieldFilled` shape, dynamic-Groovy and static-Java agree on declaration-order early-stop and the interpreter now matches them.
+- Model field insertion order is preserved, so declaration order is the correct basis for the replacement scan.
+- IF148's closed enum and valid-wire loader mapping are directionally correct, and `ParsedModel` now uses the existing, correct `Cond.Tolerance` runtime rather than duplicating tolerance math.
+- `errorCodesToSuppress` remained separate, as required.
+- The focused IF147 and IF148 differentials plus IF148's JVM/Node loader tests pass.
+- Both reviewed commits are narrowly scoped and clean-room. The concurrent `docs/README.md` modification and proposal deletion were not included.
+- The reported “whole estate green except concurrent doc guards” cannot be accepted: the separate active RV03-1 chapter still records a committed IF145 `ModelLoaderParityTest` regression on the normal CLI gate. That pre-existing red is not caused by these two commits, but it makes the whole-estate claim false until RV03-1 is resolved.
+
+#### Recommended implementation order
+
+1. In one warm group-scan context, fix RV04-1 through RV04-4: ordered cell/declared events, full formal state, overlay/dependency identity, safe contexts, and actual lazy traversal.
+2. Complete the typed seven-operator/platform/strategy matrix and graduate IG93 under RV04-5, updating only the directly affected IF147/IF85/performance/certificate claims.
+3. In one computation-surface context, carry the closed tolerance band end to end and prove preservation under add/read/modify under RV04-6 and RV04-7.
+4. Correct the evidence registry, complete tier/JVM/Node locks, remove duplicate engine setup, and align the bounded IF148 documentation under RV04-8 and RV04-9.
+
+#### Resolution
+
+Open. Independent verification should reject the “IG93 → IG96 chain complete” claim until RV04-1 through RV04-9 are resolved, each issue carries a fixing commit and green verification note, and IG93/IG96 are deleted from the active gap ledger only after their original contracts and these direct sibling defects are fully cleared.
 
 ## Resolved chapter archive
 
