@@ -26,10 +26,22 @@ class CharsetPerfTest {
     private val s = "/C/S"
     private val def = ModelDef(listOf(FieldDef(s, Kind.STRING)), emptyList(), declaredReps = mapOf("/C" to N))
     private val din = LegalCharset.ofRanges(0x20..0x7E, 0x00A0..0x024F, 0x1E00..0x1EFF, 0x2000..0x206F)
+    // A DIN-style charset that ALSO declares combining graphemes (IF151) — the atomic-trie membership path.
+    private val dinWithGraphemes = LegalCharset.of(
+        ranges = listOf(0x20..0x7E, 0x00A0..0x024F, 0x1E00..0x1EFF, 0x2000..0x206F),
+        graphemes = listOf("é", "á", "ö"))   // decomposed é, á, ö
 
     private fun doc(): Document {
         val d = def.newDocument()
         for (i in 1..N) d.field(s, "Auftragsbestätigung Nr. $i — Île-de-France", 1, i, 1)   // all within DIN
+        return d
+    }
+
+    /** A large document whose values carry the configured DECOMPOSED graphemes, so the trie walk runs to
+     *  completion on the hot membership path (the worst case the scale guard must bound). */
+    private fun graphemeDoc(): Document {
+        val d = def.newDocument()
+        for (i in 1..N) d.field(s, "Café Résumé nr $i", 1, i, 1)   // decomposed é ×3, rest ASCII
         return d
     }
 
@@ -41,6 +53,16 @@ class CharsetPerfTest {
         val custom = measureTime { repeat(REPEATS) { run(din) } }
         assertTrue(custom < bmp * FACTOR + 50.milliseconds,
             "custom charset ($custom) must be within ${FACTOR}× the BMP default ($bmp) — a per-codepoint virtual call regressed")
+    }
+
+    @Test fun graphemeCharsetIsWithinAFactorOfBmp() {
+        val d = graphemeDoc()
+        fun run(c: LegalCharset) = DmInterpreter(def, legalCharset = c).validate(d)
+        repeat(WARM) { run(LegalCharset.BMP); run(dinWithGraphemes) }          // warm both paths
+        val bmp = measureTime { repeat(REPEATS) { run(LegalCharset.BMP) } }
+        val grapheme = measureTime { repeat(REPEATS) { run(dinWithGraphemes) } }
+        assertTrue(grapheme < bmp * FACTOR + 50.milliseconds,
+            "grapheme charset ($grapheme) must be within ${FACTOR}× the BMP default ($bmp) — the atomic-trie walk must stay linear")
     }
 
     private companion object {

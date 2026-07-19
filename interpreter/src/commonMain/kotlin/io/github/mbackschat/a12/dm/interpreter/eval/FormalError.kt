@@ -408,28 +408,10 @@ private fun numberFormalError(raw: String, scale: Int?): FormalErrorCode? = when
  * illegal. A leading/trailing blank is reported even when the type check would otherwise pass or fail differently.
  */
 private fun baselineValueError(raw: String, legalCharset: LegalCharset): FormalErrorCode? = when {
-    !charsetLegal(raw, legalCharset) -> FormalErrorCode.CHARSET
+    !legalCharset.matches(raw) -> FormalErrorCode.CHARSET
     raw.startsWith(' ') -> FormalErrorCode.LEADING_BLANK
     raw.endsWith(' ') -> FormalErrorCode.TRAILING_BLANK
     else -> null
-}
-
-/** Whether every Unicode code point in [s] is legal per [charset]. This runs in the formal-error HOT path (per
- *  valued field on every validation), so the default [LegalCharset.BMP] takes a fast path: BMP ≡ "no
- *  supplementary-plane char" ≡ no UTF-16 surrogate — a tight inline char scan with NO per-code-point callback.
- *  Only a CUSTOM charset (e.g. DIN 91379) pays the per-code-point walk (combining surrogate pairs, since
- *  `String.codePoints()` is JVM-only). */
-private fun charsetLegal(s: String, charset: LegalCharset): Boolean {
-    if (charset === LegalCharset.BMP) return s.none { it.isHighSurrogate() || it.isLowSurrogate() }
-    var i = 0
-    while (i < s.length) {
-        val c = s[i]
-        val cp = if (c.isHighSurrogate() && i + 1 < s.length && s[i + 1].isLowSurrogate()) {
-            val combined = 0x10000 + ((c.code - 0xD800) shl 10) + (s[i + 1].code - 0xDC00); i += 2; combined
-        } else { i += 1; c.code }
-        if (!charset.allows(cp)) return false
-    }
-    return true
 }
 
 private fun fractionalDigits(raw: String): Int = raw.substringAfter('.', "").length
