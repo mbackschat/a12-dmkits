@@ -825,7 +825,7 @@ Topic 1 must not misclassify existing interpreter defects as work introduced by 
 | IG89 — Kotlin/JS decimal context/rendering | pre-existing interpreter correctness gap | release dependency for exact TypeScript arithmetic; not Topic 1 implementation |
 | IG90 — Java/JavaScript regex semantics | pre-existing interpreter correctness/performance gap | release dependency for exact TypeScript pattern behavior; not Topic 1 implementation |
 | IG85 — standalone npm publication/ABI | interpreter delivery gap activated by a library consumer | directly closed by Topic 1 packaging |
-| IG86 — browser verification | interpreter delivery gap | directly closed only if Topic 1 promises browser support |
+| IG86→IF138 — browser deferred | interpreter delivery gap | re-opens if Topic 1 / a consumer promises browser support |
 | IG68 — common model assembly | pre-existing interpreter capability gap | required only if TypeScript must accept raw models/includes rather than expanded input |
 | IG91 — enforced prepared-model boundary | pre-existing preparation defect | Topic 1 must consume/enforce the resulting boundary, not create another one |
 

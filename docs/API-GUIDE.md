@@ -1067,7 +1067,7 @@ So you can prove a rule *behaves* — run a passing and a violating document and
 
 ### The kernel-free twin — load a model and evaluate it without the kernel (`ModelLoader` + `DmInterpreter`)
 
-`KernelAdapter` above is the JVM-only path that *uses* the kernel. Its twin is [`:interpreter`](INTERPRETER-SPEC.md) — a **standalone, kernel-free, multiplatform (JVM + JS)** evaluator (the engine dmtool's native image runs, and a publishable Kotlin/JS library). Its `ModelLoader` reads an **expanded, self-contained** DM-JSON model straight into a `ModelDef` on **both** targets — so a browser/JVM library consumer no longer hand-builds the model (the standalone-loader design observation, finding 57):
+`KernelAdapter` above is the JVM-only path that *uses* the kernel. Its twin is [`:interpreter`](INTERPRETER-SPEC.md) — a **standalone, kernel-free, multiplatform (JVM + JS)** evaluator (the engine dmtool's native image runs, and a publishable Kotlin/JS library). Its `ModelLoader` reads an **expanded, self-contained** DM-JSON model straight into a `ModelDef` on **both** targets — so a JS (Node, the supported JS runtime) or JVM library consumer no longer hand-builds the model (the standalone-loader design observation, finding 57):
 
 <!-- teaser -->
 ```kotlin
