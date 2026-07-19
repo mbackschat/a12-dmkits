@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.CUSTOM_TYPE_INVALID
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
+import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -16,16 +17,19 @@ import kotlin.test.assertTrue
  * the declarative registry misses, so the declarative path is unchanged (the monomorphic-hot-path rule;
  * `CustomTypePerfTest` guards the perf, this guards the behaviour). Runs on JVM AND JS (commonMain), so a
  * Kotlin/JS library consumer reaches the same support. Three behaviours + the coexistence proof:
- *  - **code type + rejected** → `customFieldTypeInvalid` on the cell (and a referencing rule is suppressed);
+ *  - **code type + rejected** → the validator's PROJECT-SPECIFIC code on the cell (IF150 — the kernel's
+ *    `getErrorKey()`, not a fixed constant), and a referencing rule is suppressed;
  *  - **code type + accepted** → clean;
- *  - **declarative and code-based registries COEXIST** — each custom-typed field dispatches to its own registry,
- *    proving the code path is additive (the declarative `accepts` path is not rerouted through the SPI).
+ *  - **declarative and code-based registries COEXIST** — each custom-typed field dispatches to its own registry:
+ *    the code-based cell carries its project code, the declarative cell the interpreter's own `customFieldTypeInvalid`.
  */
 class CustomFieldTypeSpiTest {
 
     // An IMPERATIVE type: valid iff the value starts with "DE" — trivially code, not a format the declarative
-    // PredefinedType expresses as a single accepts() the same way. (A real one would be IBAN's mod-97.)
-    private val ibanType = mapOf<String, CustomFieldType>("Iban" to CustomFieldType { it.startsWith("DE") })
+    // PredefinedType expresses as a single accepts() the same way. (A real one would be IBAN's mod-97.) Its
+    // rejection carries the project-specific key "IBAN_INVALID".
+    private val ibanType = mapOf<String, CustomFieldType>(
+        "Iban" to CustomFieldType { if (it.startsWith("DE")) null else CustomTypeRejection("IBAN_INVALID") })
 
     private val def = ModelDef(listOf(FieldDef(IBAN, Kind.STRING, customTypeName = "Iban")), emptyList())
 
@@ -35,14 +39,15 @@ class CustomFieldTypeSpiTest {
 
     @Test
     fun codeTypeAcceptsAValidValue() {
-        assertTrue(out("DE89370400440532013000").messages.none { it.code == CUSTOM_TYPE_INVALID },
-            "a value the code-based validate() accepts raises no formal error")
+        assertTrue(out("DE89370400440532013000").messages.none { it.errorPath.contains("Iban") },
+            "a value the code-based check() accepts raises no formal error")
     }
 
     @Test
-    fun codeTypeRejectsAnInvalidValue() {
+    fun codeTypeRejectsAnInvalidValueWithItsProjectCode() {
         val o = out("NOT-AN-IBAN")
-        assertTrue(o.messages.any { it.code == CUSTOM_TYPE_INVALID }, "a value the code-based validate() rejects fires customFieldTypeInvalid")
+        assertTrue(o.messages.any { it.code == "IBAN_INVALID" }, "a value the code-based check() rejects fires the validator's project code")
+        assertTrue(o.messages.none { it.code == CUSTOM_TYPE_INVALID }, "the fixed constant is NOT used for a code-based rejection")
         assertTrue(o.unsupported.isEmpty(), "a REGISTERED code type is consulted, not reported unsupported")
     }
 
@@ -60,9 +65,11 @@ class CustomFieldTypeSpiTest {
         }
         val o = DmInterpreter(both, predefinedTypes = mapOf("Code" to PredefinedType(minLength = 3, maxLength = 5)),
             customFieldTypes = ibanType).validate(doc)
-        val bad = o.messages.filter { it.code == CUSTOM_TYPE_INVALID }.map { it.errorPath }
-        assertTrue(bad.any { it.contains("Iban") }, "the code-based Iban cell is rejected: $bad")
-        assertTrue(bad.any { it.contains("Code") }, "the declarative Code cell is rejected (path untouched): $bad")
+        // The code-based Iban cell carries its project key; the declarative Code cell the interpreter's constant.
+        assertTrue(o.messages.any { it.code == "IBAN_INVALID" && it.errorPath.contains("Iban") },
+            "the code-based Iban cell is rejected with its project code: ${o.messages.map { it.code to it.errorPath }}")
+        assertTrue(o.messages.any { it.code == CUSTOM_TYPE_INVALID && it.errorPath.contains("Code") },
+            "the declarative Code cell is rejected with the constant (path untouched): ${o.messages.map { it.code to it.errorPath }}")
         assertTrue(o.unsupported.isEmpty(), "both types are registered — nothing unsupported")
     }
 

@@ -6,10 +6,12 @@
 //
 // Protocol (one JSON object per line):
 //   request   { "id": <n>, "kind": "condition"|"fieldType", "name": "<TypeOrConditionName>", ...payload }
-//   response  { "id": <n>, "result": <bool> }   |   { "id": <n>, "error": "<message>" }
+//   response  { "id": <n>, "result": <bool> [, "errorKey": <str>, "errorMessage": <str>] }   |   { "id": <n>, "error": "<message>" }
 //
 // A `condition` request carries the kernel's 4-param ICustomCondition contract (data view + relevant /
-// formallyIncorrect sets + errorField); a `fieldType` request carries just the cell value. The user's
+// formallyIncorrect sets + errorField); a `fieldType` request carries just the cell value. A field-type
+// validator may return a plain boolean, OR an object { valid, errorKey?, errorMessage? } so a rejection can
+// carry the project-specific error code (IF150 — the kernel's ICustomFieldValidator getErrorKey). The user's
 // `<Name>.js` is imported once and cached.
 //
 // argv: [node, thisScript, <userDir>, <idleMs>]
@@ -65,10 +67,15 @@ function idSet(list) {
 async function handle(req) {
   const fn = await impl(req.name);
   if (req.kind === 'fieldType') {
-    return Boolean(fn(req.value));
+    const r = fn(req.value);
+    // A field-type validator may return a boolean, or { valid, errorKey?, errorMessage? } to carry a project code.
+    if (r && typeof r === 'object') {
+      return { result: Boolean(r.valid ?? r.ok ?? false), errorKey: r.errorKey ?? r.code, errorMessage: r.errorMessage ?? r.message };
+    }
+    return { result: Boolean(r) };
   }
   // condition: data, relevantEntities (undefined = full), formallyIncorrectFields (never null), errorField
-  return Boolean(fn(dataView(req.data), idSet(req.relevant), idSet(req.formallyIncorrect) ?? idSet([]), ident(req.errorField)));
+  return { result: Boolean(fn(dataView(req.data), idSet(req.relevant), idSet(req.formallyIncorrect) ?? idSet([]), ident(req.errorField))) };
 }
 
 let idle = setTimeout(() => process.exit(0), IDLE_MS);
@@ -78,7 +85,7 @@ rl.on('line', async (line) => {
   let req = null;
   try { req = JSON.parse(line); } catch { idle = setTimeout(() => process.exit(0), IDLE_MS); return; }
   let resp;
-  try { resp = { id: req.id, result: await handle(req) }; }
+  try { resp = { id: req.id, ...(await handle(req)) }; }
   catch (e) { resp = { id: req.id, error: String((e && e.message) || e) }; }
   process.stdout.write(JSON.stringify(resp) + '\n');
   idle = setTimeout(() => process.exit(0), IDLE_MS);

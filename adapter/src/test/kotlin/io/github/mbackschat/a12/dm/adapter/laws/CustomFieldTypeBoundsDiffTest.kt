@@ -7,6 +7,7 @@ import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldValidator
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
+import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -27,9 +28,9 @@ import java.util.function.Consumer
  * like [PredefinedTypeValidityDiffTest], this runs the SAME length predicate in all three engines — the kernel
  * strategies via their per-call custom-field-type factory, the interpreter via its [CustomFieldType] SPI — and verifies the OBSERVABLE
  * behaviour: a **rejected** cell becomes "unknown" and SUPPRESSES a value-reading rule that references it,
- * bit-for-bit with the kernel; an **accepted** cell lets the rule evaluate. (The per-cell formal MESSAGE codes
- * differ by design — the kernel emits the validator's project-specific key, the interpreter its own
- * `customFieldTypeInvalid` — so we compare the referencing rule's firing, the kernel-faithful observable.)
+ * bit-for-bit with the kernel; an **accepted** cell lets the rule evaluate. (The per-cell formal error CODE now
+ * ALSO matches — the interpreter emits the validator's project-specific key, IF150 — locked in
+ * `CustomFieldTypeRejectionCodeDiffTest`; this test locks the downstream suppression.)
  *
  * The kernel side registers the validator through the modern per-call `DocumentProcessingConfig.customFieldTypeFactory`
  * (the [ICustomFieldTypeFactory] threaded via [RuntimeLaws.messages]) — the successor to the removed static
@@ -45,7 +46,8 @@ class CustomFieldTypeBoundsDiffTest {
         .build().toJson()
     private val def = ModelDef(listOf(FieldDef(CODE, Kind.STRING, customTypeName = "Code")), emptyList())
     private val acceptsCode: (String) -> Boolean = { it.length in 3..5 }
-    private val codeTypes = mapOf("Code" to CustomFieldType { acceptsCode(it) })
+    // The interpreter SPI mirrors the kernel validator: reject with the SAME project key (IF150).
+    private val codeTypes = mapOf("Code" to CustomFieldType { if (acceptsCode(it)) null else CustomTypeRejection("CODE_INVALID") })
 
     /** A kernel validator for "Code" enforcing length [3, 5] — the same domain as the interpreter's [PredefinedType]. */
     private val factory = object : ICustomFieldTypeFactory {

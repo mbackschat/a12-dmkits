@@ -85,19 +85,32 @@ object PredefinedTypeRegistry {
 }
 
 /**
- * The consumer SPI for a CODE-BASED custom field type — the kernel's `ICustomFieldType` client surface, for an
- * imperative type whose validity is *logic*, not a format (a checksum: IBAN mod-97, ISIN/Luhn check digit). The
+ * The project-specific rejection a [CustomFieldType] returns for an invalid value — the interpreter's twin of the
+ * kernel's `ICustomFieldTypeCheckError` (IF150). [code] is the **machine-observable** rejection key (the kernel's
+ * `getErrorKey()`) that becomes the cell's formal error code — a consumer/downstream contract, NOT interpreter-
+ * chosen wording, so it is carried verbatim. [message] is the optional consumer-supplied text (the interpreter
+ * falls back to its own wording when null — the German kernel bundle stays out, but a consumer's OWN message is
+ * not kernel-copyrighted and may surface).
+ */
+data class CustomTypeRejection(val code: String, val message: String? = null)
+
+/**
+ * The consumer SPI for a CODE-BASED custom field type — the kernel's `ICustomFieldValidator` client surface, for
+ * an imperative type whose validity is *logic*, not a format (a checksum: IBAN mod-97, ISIN/Luhn check digit). The
  * declarative [PredefinedType] (length/pattern) covers the format majority; this covers the imperative tail.
  *
  * **Dispatched ALONGSIDE [PredefinedType], never replacing it** (the [DmInterpreter]/`Interpreter` consult a
  * code-based type only AFTER the declarative registry misses): the declarative per-cell path stays a monomorphic,
- * JIT-inlined `accepts` call, and this polymorphic [validate] is reached only for a code-backed type — a consumer
- * who registers none pays nothing. This is the INTERPRETER-PERFORMANCE "hot path stays a monomorphic concrete
- * call" rule (locked by `CustomTypePerfTest`).
+ * JIT-inlined `accepts` call, and this polymorphic [check] is reached only for a code-backed type — a consumer
+ * who registers none pays nothing. The hot (accepting) case returns `null` (no allocation); a rejection allocates
+ * the [CustomTypeRejection]. This is the INTERPRETER-PERFORMANCE "hot path stays a monomorphic concrete call"
+ * rule (locked by `CustomTypePerfTest`).
  */
 fun interface CustomFieldType {
-    /** @return true iff [value] is a valid instance of this type (so an INVALID value fires `customFieldTypeInvalid`). */
-    fun validate(value: String): Boolean
+    /** @return null when [value] is a valid instance of this type; a [CustomTypeRejection] (carrying the
+     *  project-specific error code, the kernel's `getErrorKey()`) when it is rejected — so an INVALID value fires
+     *  that project code, not a fixed constant (IF150). */
+    fun check(value: String): CustomTypeRejection?
 }
 
 /**

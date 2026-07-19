@@ -24,6 +24,7 @@ import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException;
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition;
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionData;
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType;
+import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection;
 import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer;
 
 /**
@@ -107,12 +108,24 @@ public final class CustomJsWorker implements AutoCloseable {
         return types;
     }
 
-    private synchronized boolean checkFieldType(String name, String value) {
+    /**
+     * The interpreter's {@link CustomFieldType} contract: {@code null} when the value is accepted, else a
+     * {@link CustomTypeRejection} carrying the validator's project-specific error key (IF150). A JS validator may
+     * return a plain boolean (rejection → the fixed {@code customFieldTypeInvalid}) or an object
+     * {@code {valid, errorKey, errorMessage}} (rejection → its project {@code errorKey}).
+     */
+    private synchronized CustomTypeRejection checkFieldType(String name, String value) {
         ObjectNode req = MAPPER.createObjectNode();
         req.put("kind", "fieldType");
         req.put("name", name);
         req.put("value", value);
-        return rpc(req, "custom field type", name);
+        JsonNode resp = rpc(req, "custom field type", name);
+        if (resp.path("result").asBoolean()) {
+            return null;   // accepted
+        }
+        String code = resp.hasNonNull("errorKey") ? resp.get("errorKey").asText() : "customFieldTypeInvalid";
+        String message = resp.hasNonNull("errorMessage") ? resp.get("errorMessage").asText() : null;
+        return new CustomTypeRejection(code, message);
     }
 
     private synchronized boolean checkCondition(String name, CustomConditionData data, Set<FieldPointer> relevant,
@@ -137,10 +150,12 @@ public final class CustomJsWorker implements AutoCloseable {
         }
         putPointers(req.putArray("formallyIncorrect"), formallyIncorrect);
         putPointer(req.putObject("errorField"), errorField);
-        return rpc(req, "custom condition", name);
+        return rpc(req, "custom condition", name).path("result").asBoolean();
     }
 
-    private boolean rpc(ObjectNode req, String kind, String name) {
+    /** One request/response round-trip; returns the response node (with {@code result} and, for a field-type
+     *  rejection, an optional {@code errorKey}/{@code errorMessage}), or throws {@link UnsupportedConstructException}. */
+    private JsonNode rpc(ObjectNode req, String kind, String name) {
         if (unavailable) {
             throw unsupported(kind, name, "the JS worker is unavailable");
         }
@@ -159,7 +174,7 @@ public final class CustomJsWorker implements AutoCloseable {
             if (resp.hasNonNull("error")) {
                 throw unsupported(kind, name, resp.get("error").asText());
             }
-            return resp.path("result").asBoolean();
+            return resp;
         } catch (IOException e) {
             unavailable = true;
             throw unsupported(kind, name, e.getMessage());

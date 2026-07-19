@@ -16,6 +16,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.mandatoryFieldText
 import io.github.mbackschat.a12.dm.interpreter.eval.overRepetitionText
 import io.github.mbackschat.a12.dm.interpreter.eval.uniqueIndexText
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
+import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import io.github.mbackschat.a12.dm.interpreter.model.Message
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -62,14 +63,14 @@ internal class AutoChecks(
                     MsgType.VALUE, formalErrorText(code, locale, scale))
             }
             // A registered custom field type that rejects the value (the implicit per-cell `Valid(field, type)`).
-            // A CODE-BASED type whose validate() can't run (a JS worker down / errored) throws here → degrade the
-            // cell to unsupported instead of crashing the whole validation (mirrors the per-rule tolerance).
+            // The cell's formal error code is the validator's PROJECT-SPECIFIC key (IF150), not a fixed constant —
+            // matching the kernel's `ICustomFieldValidator.getErrorKey()`. A CODE-BASED type whose check() can't
+            // run (a JS worker down / errored) throws here → degrade the cell to unsupported instead of crashing
+            // the whole validation (mirrors the per-rule tolerance).
             try {
-                if (customTypeRejected(vf.path, vf.raw)) {
-                    Message(CUSTOM_TYPE_INVALID, FORMAL_RULE_PATH, formatPointer(vf.path, vf.reps), Severity.ERROR,
-                        MsgType.VALUE, customTypeInvalidText(locale))
-                } else {
-                    null
+                customTypeRejection(vf.path, vf.raw)?.let { rej ->
+                    Message(rej.code, FORMAL_RULE_PATH, formatPointer(vf.path, vf.reps), Severity.ERROR,
+                        MsgType.VALUE, rej.message ?: customTypeInvalidText(locale))
                 }
             } catch (e: UnsupportedConstructException) {
                 customUnsupported += UnsupportedRule(formatPointer(vf.path, vf.reps),
@@ -188,22 +189,24 @@ internal class AutoChecks(
             formalError(kind, raw, model.scaleOf(path), model.dateLikeFormatOf(path), model.datePrecisionOf(path),
                 model.rangeSeparatorOf(path), model.constraintsOf(path), legalCharset, model.baseYear ?: 2000,
                 model.timeZone)?.id?.let { return it }
-            if (customTypeRejected(path, raw)) return CUSTOM_TYPE_INVALID
+            customTypeRejection(path, raw)?.let { return it.code }
             return if (path to reps in dup) UNIQUE_INDEX else null
         }
         return if (requiredEmpty(path, ctx)) MANDATORY_FIELD else null
     }
 
-    /** Whether the filled value [raw] at [path] is REJECTED by the field's declared custom field type — i.e. the
-     *  field IS custom-typed, its type IS registered in [predefinedTypes], and the value fails the type's `accepts`
-     *  check (the implicit per-cell `Valid(field, type)`). An UNregistered custom type returns false here (no
-     *  formal error): the value is then used leniently as a plain string and the cell is reported by
-     *  [customTypeUnsupported] instead (the kernel throws without a validator; the interpreter degrades). */
-    private fun customTypeRejected(path: String, raw: String): Boolean {
-        val typeName = model.customTypeOf(path) ?: return false
-        predefinedTypes[typeName]?.let { return !it.accepts(raw) }       // declarative: monomorphic, unchanged
-        customFieldTypes[typeName]?.let { return !it.validate(raw) }     // code-based: reached only for a code type
-        return false                                                     // unregistered → unsupported, not rejected
+    /** The project-specific rejection of the filled value [raw] at [path] by the field's declared custom field
+     *  type, or null when the field is not custom-typed / the value is accepted / the type is unregistered. A
+     *  declarative [PredefinedType] carries no project code, so its rejection uses the interpreter's own
+     *  [CUSTOM_TYPE_INVALID]; a CODE-BASED [CustomFieldType] carries the validator's `getErrorKey()` (IF150). An
+     *  UNregistered custom type returns null (the value is used leniently as a plain string and the cell is
+     *  reported by [customTypeUnsupported] instead — the kernel throws without a validator; the interpreter
+     *  degrades). A code-based check that can't run throws [UnsupportedConstructException] (JS worker down). */
+    private fun customTypeRejection(path: String, raw: String): CustomTypeRejection? {
+        val typeName = model.customTypeOf(path) ?: return null
+        predefinedTypes[typeName]?.let { return if (it.accepts(raw)) null else CustomTypeRejection(CUSTOM_TYPE_INVALID) }
+        customFieldTypes[typeName]?.let { return it.check(raw) }         // code-based: the validator's project key
+        return null                                                      // unregistered → unsupported, not rejected
     }
 
     /** Filled cells whose declared custom field type has NO registered validator — reported [ValidationOutcome.unsupported]

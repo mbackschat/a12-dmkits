@@ -80,6 +80,23 @@ class CustomFieldTypeJsVerbTest {
     }
 
     @Test
+    void jsFieldTypeSurfacesItsProjectErrorKey(@TempDir Path dir) throws Exception {
+        assumeTrue(nodeAvailable(), "node not on PATH");
+        Path model = CliTestSupport.paymentCustomType(dir);
+        // A validator returning { valid, errorKey } carries its PROJECT-SPECIFIC code to the cell (IF150), instead
+        // of the fixed customFieldTypeInvalid — matching the kernel's ICustomFieldValidator getErrorKey().
+        Path js = jsDir(dir, "export function validate(value) { "
+                + "return value.startsWith('DE') ? { valid: true } : { valid: false, errorKey: 'IBAN_BAD' }; }\n");
+        var bad = CliTestSupport.run("-m", model.toString(), "model", "eval",
+                "--instance", doc(dir, "NOT-AN-IBAN").toString(), "--custom-field-types-js", js.toString());
+        assertEquals(0, bad.code(), bad::err);
+        assertTrue(fired(bad.out(), "IBAN_BAD"),
+                () -> "a JS validator's project error key must reach the cell: " + bad.out());
+        assertFalse(fired(bad.out(), "customFieldTypeInvalid"),
+                () -> "the fixed constant is not used when the JS validator supplies a key: " + bad.out());
+    }
+
+    @Test
     void aThrowingJsFieldTypeDegradesToUnsupported(@TempDir Path dir) throws Exception {
         assumeTrue(nodeAvailable(), "node not on PATH");
         Path model = CliTestSupport.paymentCustomType(dir);

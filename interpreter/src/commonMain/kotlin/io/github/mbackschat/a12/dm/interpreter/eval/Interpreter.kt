@@ -468,8 +468,10 @@ class Interpreter(
         val typeName = (args[1] as? Expr.StrLit)?.v
             ?: throw UnsupportedConstructException("predefined-type validity needs a string type name, got ${args[1]}")
         // Declarative first (monomorphic), then a code-based type; unregistered in BOTH → unsupported (fail-fast).
+        // The `Valid`/`Invalid` condition operator needs only the accept/reject boolean — a code-based type
+        // accepts iff its `check` returns null (no rejection); the project code rides the per-cell formal error.
         val accept: (String) -> Boolean = predefinedTypes[typeName]?.let { it::accepts }
-            ?: customFieldTypes[typeName]?.let { it::validate }
+            ?: customFieldTypes[typeName]?.let { ct -> { v: String -> ct.check(v) == null } }
             ?: throw UnsupportedConstructException("unknown predefined type \"$typeName\" — register it in the predefined-type or custom-field-type registry")
         if (!ctx.filled(path)) return Tri.UNKNOWN
         val value = ctx.displayValue(path) ?: return Tri.UNKNOWN
