@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.CUSTOM_TYPE_INVALID
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
+import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldTypeDeclaration
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
@@ -30,7 +31,7 @@ class CustomFieldTypeMultiplatformTest {
     // A "Code" custom type: length in [3, 5]. The rule fires (Length < 10) on any short value — so it FIRES on a
     // valid cell AND on a leniently-used unregistered cell, but is SUPPRESSED when a rejected cell goes unknown.
     private val def = ModelDef(
-        listOf(FieldDef(CODE, Kind.STRING, customTypeName = "Code")),
+        listOf(FieldDef(CODE, Kind.STRING, customType = CustomFieldTypeDeclaration("Code"))),
         listOf(RuleDef("/Order/R", "/Order", "Length(Code) < 10", "R", "../Code")),
     )
     private val codeType = mapOf("Code" to PredefinedType(minLength = 3, maxLength = 5))

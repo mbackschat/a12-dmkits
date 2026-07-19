@@ -432,15 +432,34 @@ public final class RuntimeLaws {
      * implicit per-cell {@code Valid(field, type)}); a rejected cell reads as "unknown". Mirrors
      * {@link #validateWithConditions} for the field-type SPI.
      */
-    static List<Msg> messages(String modelJson, Doc doc, ICustomFieldTypeFactory fieldTypeFactory) {
+    private static IDocumentValidationResult validateWithFieldTypes(
+            String modelJson, Doc doc, ICustomFieldTypeFactory fieldTypeFactory, Locale locale) {
         IDocumentModel model = expandedModel(modelJson);
         IDocumentModelResolver resolver = id -> model;
         DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
         IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
         DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, dsf.createDocumentFactory(), doc));
-        DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US)
+        DocumentProcessingConfig config = DocumentProcessingConfig.builder(locale)
                 .customFieldTypeFactory(fieldTypeFactory).build();
-        return rt.validateFull(v2, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        return rt.validateFull(v2, config);
+    }
+
+    static List<Msg> messages(String modelJson, Doc doc, ICustomFieldTypeFactory fieldTypeFactory) {
+        return messages(modelJson, doc, fieldTypeFactory, Locale.US);
+    }
+
+    static List<Msg> messages(
+            String modelJson, Doc doc, ICustomFieldTypeFactory fieldTypeFactory, Locale locale) {
+        return validateWithFieldTypes(modelJson, doc, fieldTypeFactory, locale)
+                .getMessages().stream().map(RuntimeLaws::toMsg).toList();
+    }
+
+    static Optional<String> customFieldErrorTextOf(
+            String modelJson, String errorCode, Doc doc, ICustomFieldTypeFactory fieldTypeFactory, Locale locale) {
+        return validateWithFieldTypes(modelJson, doc, fieldTypeFactory, locale).getMessages().stream()
+                .filter(message -> message.getErrorCode().equals(errorCode))
+                .map(IMessage::getErrorText)
+                .findFirst();
     }
 
     /** Whether {@code errorCode} fires under the modern custom-condition path. */
@@ -845,9 +864,24 @@ public final class RuntimeLaws {
 
         /** Generated-Java validation with the same per-call custom-field-type factory as the dynamic path. */
         List<Msg> messages(DocumentV2 instance, ICustomFieldTypeFactory fieldTypeFactory) {
-            DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US)
+            return messages(instance, fieldTypeFactory, Locale.US);
+        }
+
+        List<Msg> messages(
+                DocumentV2 instance, ICustomFieldTypeFactory fieldTypeFactory, Locale locale) {
+            DocumentProcessingConfig config = DocumentProcessingConfig.builder(locale)
                     .customFieldTypeFactory(fieldTypeFactory).build();
             return rt.validateFull(instance, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        }
+
+        Optional<String> customFieldErrorTextOf(
+                DocumentV2 instance, String errorCode, ICustomFieldTypeFactory fieldTypeFactory, Locale locale) {
+            DocumentProcessingConfig config = DocumentProcessingConfig.builder(locale)
+                    .customFieldTypeFactory(fieldTypeFactory).build();
+            return rt.validateFull(instance, config).getMessages().stream()
+                    .filter(message -> message.getErrorCode().equals(errorCode))
+                    .map(IMessage::getErrorText)
+                    .findFirst();
         }
 
         /** Every computed-field outcome (value / cleared / errored) for an already-built instance — the compute

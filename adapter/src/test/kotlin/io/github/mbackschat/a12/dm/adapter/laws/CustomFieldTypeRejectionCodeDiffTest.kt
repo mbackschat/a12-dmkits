@@ -7,6 +7,7 @@ import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldValidator
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
+import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldTypeDeclaration
 import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -38,7 +39,9 @@ class CustomFieldTypeRejectionCodeDiffTest {
             g.customField("Code", Consumer<CustomFieldBuilder> { it.type("Code").minLength(3).maxLength(5) })
         })
         .build().toJson()
-    private val def = ModelDef(listOf(FieldDef(CODE, Kind.STRING, customTypeName = "Code")), emptyList())
+    private val def = ModelDef(listOf(
+        FieldDef(CODE, Kind.STRING, customType = CustomFieldTypeDeclaration("Code", 3, 5)),
+    ), emptyList())
 
     /** The shared reject rule: too short → CODE_TOO_SHORT, too long → CODE_TOO_LONG, else accepted. */
     private fun rejectionKey(value: String): String? = when {
@@ -47,7 +50,9 @@ class CustomFieldTypeRejectionCodeDiffTest {
         else -> null
     }
 
-    private val codeTypes = mapOf("Code" to CustomFieldType { v -> rejectionKey(v)?.let { CustomTypeRejection(it) } })
+    private val codeTypes = mapOf("Code" to CustomFieldType { value, _ ->
+        rejectionKey(value)?.let { CustomTypeRejection(it) }
+    })
 
     private val factory = object : ICustomFieldTypeFactory {
         override fun createCustomFieldValidator(name: String): Optional<ICustomFieldValidator> =

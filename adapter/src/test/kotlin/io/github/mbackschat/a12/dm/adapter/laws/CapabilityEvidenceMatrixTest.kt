@@ -50,7 +50,10 @@ class CapabilityEvidenceMatrixTest {
         CONFIG_LOCALE(Axis.CONFIG, "locale (message language)"),
 
         CUSTOM_CONDITION(Axis.CUSTOMIZATION, "CustomCondition SPI"),
-        CUSTOM_FIELD_TYPE(Axis.CUSTOMIZATION, "CustomFieldType SPI"),
+        CUSTOM_FIELD_TYPE_DISPATCH(Axis.CUSTOMIZATION, "CustomFieldType accept/reject and suppression"),
+        CUSTOM_FIELD_TYPE_CONTEXT(Axis.CUSTOMIZATION, "CustomFieldType locale/bounds/stored-mode context"),
+        CUSTOM_FIELD_TYPE_REJECTION(Axis.CUSTOMIZATION, "CustomFieldType project rejection-code identity"),
+        CUSTOM_FIELD_TYPE_MESSAGE(Axis.CUSTOMIZATION, "CustomFieldType rejection-message projection"),
         CUSTOM_PREDEFINED_TYPE(Axis.CUSTOMIZATION, "predefined types"),
 
         PLATFORM_JVM(Axis.PLATFORM, "JVM library runtime"),
@@ -162,9 +165,21 @@ class CapabilityEvidenceMatrixTest {
             CustomConditionDiffTest::class,
             Static.Tri(CustomConditionDiffTest::class),
         )),
-        Capability(CapabilityId.CUSTOM_FIELD_TYPE, Coverage.Evidence(
+        Capability(CapabilityId.CUSTOM_FIELD_TYPE_DISPATCH, Coverage.Evidence(
             CustomFieldTypeBoundsDiffTest::class,
             Static.Tri(CustomFieldTypeBoundsDiffTest::class),
+        )),
+        Capability(CapabilityId.CUSTOM_FIELD_TYPE_CONTEXT, Coverage.Evidence(
+            CustomFieldTypeContextDiffTest::class,
+            Static.Tri(CustomFieldTypeContextDiffTest::class),
+        )),
+        Capability(CapabilityId.CUSTOM_FIELD_TYPE_REJECTION, Coverage.Evidence(
+            CustomFieldTypeRejectionCodeDiffTest::class,
+            Static.Tri(CustomFieldTypeRejectionCodeDiffTest::class),
+        )),
+        Capability(CapabilityId.CUSTOM_FIELD_TYPE_MESSAGE, Coverage.Evidence(
+            CustomFieldTypeMessageDiffTest::class,
+            Static.Tri(CustomFieldTypeMessageDiffTest::class),
         )),
         Capability(CapabilityId.CUSTOM_PREDEFINED_TYPE, Coverage.Evidence(
             PredefinedTypeValidityDiffTest::class,

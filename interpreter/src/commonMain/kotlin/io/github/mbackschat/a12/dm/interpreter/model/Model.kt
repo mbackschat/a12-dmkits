@@ -88,11 +88,29 @@ object PredefinedTypeRegistry {
  * The project-specific rejection a [CustomFieldType] returns for an invalid value — the interpreter's twin of the
  * kernel's `ICustomFieldTypeCheckError` (IF150). [code] is the **machine-observable** rejection key (the kernel's
  * `getErrorKey()`) that becomes the cell's formal error code — a consumer/downstream contract, NOT interpreter-
- * chosen wording, so it is carried verbatim. [message] is the optional consumer-supplied text (the interpreter
- * falls back to its own wording when null — the German kernel bundle stays out, but a consumer's OWN message is
- * not kernel-copyrighted and may surface).
+ * chosen wording, so it is carried verbatim. [message] is the optional consumer-supplied template: every
+ * `$<fieldName>$` placeholder is replaced with the localized field label before it is emitted. The interpreter
+ * falls back to its own wording when null — the German kernel bundle stays out, but a consumer's OWN message may
+ * surface.
  */
 data class CustomTypeRejection(val code: String, val message: String? = null)
+
+/**
+ * The context supplied to a [CustomFieldType] for one value check — the interpreter twin of the kernel's
+ * `ICustomFieldTypeValidationParam` plus its separate `isDisplayValue` argument.
+ *
+ * [locale] is the validation call's error-message locale. [minLength] and [maxLength] are the effective bounds:
+ * a declaration's raw nullable values become the kernel defaults `1` and `999` when omitted. They are validator
+ * inputs, not generic string constraints.
+ * [isDisplayValue] is always false at the supported stored-document runtime boundary: both kernel strategies
+ * receive canonical values there, and only the lower-level presentation-validation API can make it true.
+ */
+data class CustomFieldValidationContext(
+    val locale: String,
+    val minLength: Int? = null,
+    val maxLength: Int? = null,
+    val isDisplayValue: Boolean = false,
+)
 
 /**
  * The consumer SPI for a CODE-BASED custom field type — the kernel's `ICustomFieldValidator` client surface, for
@@ -107,11 +125,18 @@ data class CustomTypeRejection(val code: String, val message: String? = null)
  * rule (locked by `CustomTypePerfTest`).
  */
 fun interface CustomFieldType {
-    /** @return null when [value] is a valid instance of this type; a [CustomTypeRejection] (carrying the
+    /** @return null when [value] is a valid instance of this type under [context]; a [CustomTypeRejection] (carrying the
      *  project-specific error code, the kernel's `getErrorKey()`) when it is rejected — so an INVALID value fires
      *  that project code, not a fixed constant (IF150). */
-    fun check(value: String): CustomTypeRejection?
+    fun check(value: String, context: CustomFieldValidationContext): CustomTypeRejection?
 }
+
+/** A field's `CustomFieldType` declaration: registered validator [name] plus optional validator length hints. */
+data class CustomFieldTypeDeclaration(
+    val name: String,
+    val minLength: Int? = null,
+    val maxLength: Int? = null,
+)
 
 /**
  * A field's requiredness — the kernel's `IRequirednessConfig.Mode`. A required-but-empty field raises
@@ -170,11 +195,13 @@ data class FieldDef(
     /** For an ENUMERATION field: each category's positional value list (the kernel's `getCategoryValues`),
      *  keyed by category name — index `i` pairs with [enumValues]`[i]`. Drives `[Field -> Category]`. */
     val enumCategories: Map<String, List<String>> = emptyMap(),
-    /** For a CUSTOM-typed field (`CustomFieldType{name}`): the predefined-type NAME its filled values are
-     *  validated against — the [ModelDef] resolves it via the consumer's [PredefinedTypeRegistry], so a declared
+    /** For a CUSTOM-typed field: its validator name and optional bounds. The bounds are passed to
+     *  [CustomFieldType.check] through [CustomFieldValidationContext]; they are not generic [Kind.STRING]
+     *  constraints and therefore do not fire independently of the registered validator. [ModelDef] resolves the
+     *  name through the consumer's [PredefinedTypeRegistry], so a declared
      *  custom type is the implicit per-cell form of `Valid(field, name)` (KERNEL-FINDINGS "Custom-extensibility
      *  surface"). Null for a non-custom field; the kind stays [Kind.STRING] (the value is string-shaped). */
-    val customTypeName: String? = null,
+    val customType: CustomFieldTypeDeclaration? = null,
     // ── Declared field-type CONSTRAINTS (IF20) — auto-validated against a filled value (KERNEL-FINDINGS §3). ──
     /** A STRING field's declared minimum length (`StringType.minLength`); a shorter value → `stringZuKurz`. */
     val minLength: Int? = null,
@@ -496,15 +523,15 @@ data class ModelDef(
     /** The field's declared constraints (IF20), or [FieldConstraints.NONE] when it declares none. */
     fun constraintsOf(path: String): FieldConstraints = fieldConstraints[path] ?: FieldConstraints.NONE
 
-    /** Each CUSTOM-typed field's predefined-type name ([FieldDef.customTypeName]) — the per-cell auto-validation
+    /** Each CUSTOM-typed field's declaration ([FieldDef.customType]) — the per-cell auto-validation
      *  input: a filled value is validated against the consumer's [PredefinedTypeRegistry] entry of that name,
      *  exactly like `Valid(field, name)` (the kernel's client-SPI custom field type). */
-    val customTypes: Map<String, String> = fields
-        .filter { it.customTypeName != null }
-        .associate { it.path to it.customTypeName!! }
+    val customTypes: Map<String, CustomFieldTypeDeclaration> = fields
+        .filter { it.customType != null }
+        .associate { it.path to it.customType!! }
 
-    /** The field's declared custom-type name, or null when it is not a custom-typed field. */
-    fun customTypeOf(path: String): String? = customTypes[path]
+    /** The field's declared custom type, or null when it is not a custom-typed field. */
+    fun customTypeOf(path: String): CustomFieldTypeDeclaration? = customTypes[path]
 
     /** Each enumeration field's XML value list — the [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s
      *  `EnumCategory` positional-map input (the index of the stored value). */

@@ -24,6 +24,7 @@ import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException;
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition;
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionData;
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType;
+import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldValidationContext;
 import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection;
 import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer;
 
@@ -87,7 +88,7 @@ public final class CustomJsWorker implements AutoCloseable {
 
     /**
      * Worker-backed {@link CustomFieldType}s, one per {@code <Name>.js} in {@code dir} (each exporting a
-     * {@code validate(value)} / {@code check(value)}), sharing ONE worker. A type with no {@code <Name>.js}
+     * {@code validate(value, context)} / {@code check(value, context)}), sharing ONE worker. A type with no {@code <Name>.js}
      * stays unregistered (its cells are reported {@code unsupported}, as before).
      *
      * @throws IOException if {@code dir} can't be listed
@@ -99,7 +100,7 @@ public final class CustomJsWorker implements AutoCloseable {
             files.filter(p -> p.getFileName().toString().endsWith(".js")).forEach(p -> {
                 String file = p.getFileName().toString();
                 String name = file.substring(0, file.length() - ".js".length());
-                types.put(name, value -> worker.checkFieldType(name, value));
+                types.put(name, (value, context) -> worker.checkFieldType(name, value, context));
             });
         }
         if (!types.isEmpty()) {
@@ -114,11 +115,25 @@ public final class CustomJsWorker implements AutoCloseable {
      * return a plain boolean (rejection → the fixed {@code customFieldTypeInvalid}) or an object
      * {@code {valid, errorKey, errorMessage}} (rejection → its project {@code errorKey}).
      */
-    private synchronized CustomTypeRejection checkFieldType(String name, String value) {
+    private synchronized CustomTypeRejection checkFieldType(
+            String name, String value, CustomFieldValidationContext context) {
         ObjectNode req = MAPPER.createObjectNode();
         req.put("kind", "fieldType");
         req.put("name", name);
         req.put("value", value);
+        ObjectNode contextNode = req.putObject("context");
+        contextNode.put("locale", context.getLocale());
+        if (context.getMinLength() == null) {
+            contextNode.putNull("minLength");
+        } else {
+            contextNode.put("minLength", context.getMinLength());
+        }
+        if (context.getMaxLength() == null) {
+            contextNode.putNull("maxLength");
+        } else {
+            contextNode.put("maxLength", context.getMaxLength());
+        }
+        contextNode.put("isDisplayValue", context.isDisplayValue());
         JsonNode resp = rpc(req, "custom field type", name);
         if (resp.path("result").asBoolean()) {
             return null;   // accepted

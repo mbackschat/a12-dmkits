@@ -54,8 +54,10 @@ class DmInterpreter @JvmOverloads constructor(
     private val customConditions: Map<String, CustomCondition> = emptyMap(),
     /** Consumer-supplied CODE-BASED custom field types ([CustomFieldType] — the kernel's `ICustomFieldType` SPI,
      *  for imperative checksum types), keyed by name. Default empty. Consulted ONLY after [predefinedTypes] misses,
-     *  so the declarative per-cell path stays monomorphic ([CustomFieldType]'s KDoc; `CustomTypePerfTest`). A
-     *  custom-typed cell whose name is in NEITHER registry is reported unsupported (the lenient degrade). */
+     *  so the declarative per-cell path stays monomorphic ([CustomFieldType]'s KDoc; `CustomTypePerfTest`). Each
+     *  relevant concrete value is checked once per call with its locale/effective bounds/stored-value context;
+     *  the cached code/message result drives both emission and suppression. A custom-typed cell whose name is in
+     *  NEITHER registry is reported unsupported (the lenient degrade). */
     private val customFieldTypes: Map<String, CustomFieldType> = emptyMap(),
     /** The consumer-supplied legal character set field values are validated against — the SPI for a project charset
      *  the DM-JSON does NOT carry (e.g. **DIN 91379**, the EU public-administration set), IF43. **Default
@@ -169,16 +171,18 @@ class DmInterpreter @JvmOverloads constructor(
     private fun validateWith(doc: Document, locale: String, isRelevant: Relevance,
             customRelevant: Set<FieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null): ValidationOutcome {
         val dup = checks.duplicateIndexCells(doc, isRelevant)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
+        val formalResults = FormalResultCache(checks, locale, dup)
         // Custom-type unsupported is collected up front (cells whose type is in NEITHER registry); formalErrors
         // ADDS to it any REGISTERED code-based type whose validate() can't run (a JS worker down / errored), so
         // that degrades to unsupported per cell rather than crashing the whole validation.
         val unsupported = checks.customTypeUnsupported(doc, isRelevant).toMutableList()
-        val messages = (checks.formalErrors(doc, locale, isRelevant, unsupported) + checks.mandatoryErrors(doc, locale, isRelevant)
+        val messages = (checks.formalErrors(doc, locale, isRelevant, formalResults, unsupported) +
+                checks.mandatoryErrors(doc, locale, isRelevant)
                 + checks.uniquenessMessages(dup, locale, isRelevant) + checks.overRepetitionMessages(doc, locale, isRelevant)).toMutableList()
         // The per-call seam (IF117): the formal-status memo spans ALL rules of this validation (the doc is
         // immutable here), and the EvalConfig is built once for the whole call.
         val pass = ValidationPass(doc, locale, isRelevant, dup,
-            validationConfig(isRelevant, customRelevant, starRelevant), checks)
+            validationConfig(isRelevant, customRelevant, starRelevant), formalResults)
         for (rule in model.rules) {
             try {
                 // RepetitionNotUnique now flows through the ordinary rule path as a 3VL leaf (IF149) — no
@@ -234,7 +238,7 @@ class DmInterpreter @JvmOverloads constructor(
      * [io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity].
      */
     fun compute(doc: Document, locale: String = "en_US"): List<Computed> =
-        engine.computeInstances(doc)
+        engine.computeInstances(doc, locale)
 
     /**
      * Evaluate a SINGLE computed field against the instance — the single-computation twin of [testRule], the
@@ -249,7 +253,7 @@ class DmInterpreter @JvmOverloads constructor(
      */
     fun computeField(fieldPath: String, doc: Document, locale: String = "en_US"): List<Computed> {
         require(model.computations.any { it.targetPath == fieldPath }) { "no computation targets field: $fieldPath" }
-        return engine.computeField(fieldPath, doc)
+        return engine.computeField(fieldPath, doc, locale)
     }
 
     /**
@@ -267,7 +271,7 @@ class DmInterpreter @JvmOverloads constructor(
      */
     fun applyComputations(doc: Document, locale: String = "en_US"): Document {
         val overrides = HashMap<Pair<String, List<Int>>, String?>()
-        for (computed in engine.computeInstances(doc)) {
+        for (computed in engine.computeInstances(doc, locale)) {
             overrides[computed.path to computed.indices] = if (computed.outcome == ComputeOutcome.VALUE) computed.value else null
         }
         return doc.withComputed(overrides)
@@ -275,8 +279,15 @@ class DmInterpreter @JvmOverloads constructor(
 
     private fun evalRule(rule: RuleDef, doc: Document, locale: String): RuleResult {
         // A single-rule pass (fresh formal-status memo, everything relevant) — the testRule/evalCandidate shape.
-        val pass = ValidationPass(doc, locale, ALL_RELEVANT, checks.duplicateIndexCells(doc),
-            validationConfig(ALL_RELEVANT, null, null), checks)
+        val dup = checks.duplicateIndexCells(doc)
+        val pass = ValidationPass(
+            doc,
+            locale,
+            ALL_RELEVANT,
+            dup,
+            validationConfig(ALL_RELEVANT, null, null),
+            FormalResultCache(checks, locale, dup),
+        )
         val rows = rowOutcomes(rule, pass)
         rows.firstNotNullOfOrNull { it as? RowOutcome.Fired }?.let {
             return RuleResult(rule.path, Verdict.FIRED, it.message.text, it.message.type)

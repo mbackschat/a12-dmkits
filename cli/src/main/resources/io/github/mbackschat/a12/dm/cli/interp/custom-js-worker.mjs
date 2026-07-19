@@ -9,15 +9,15 @@
 //   response  { "id": <n>, "result": <bool> [, "errorKey": <str>, "errorMessage": <str>] }   |   { "id": <n>, "error": "<message>" }
 //
 // A `condition` request carries the kernel's 4-param ICustomCondition contract (data view + relevant /
-// formallyIncorrect sets + errorField); a `fieldType` request carries just the cell value. A field-type
-// validator may return a plain boolean, OR an object { valid, errorKey?, errorMessage? } so a rejection can
-// carry the project-specific error code (IF150 — the kernel's ICustomFieldValidator getErrorKey). The user's
-// `<Name>.js` is imported once and cached.
+// formallyIncorrect sets + errorField); a `fieldType` request carries the cell value and validation context
+// { locale, minLength, maxLength, isDisplayValue }. A field-type validator may return a plain boolean, OR the
+// strict object vocabulary { valid, errorKey?, errorMessage? } so a rejection can carry the project-specific
+// error code (IF150 — the kernel's ICustomFieldValidator getErrorKey). The user's `<Name>.js` is imported once.
 //
 // argv: [node, thisScript, <userDir>, <idleMs>]
 
 import { createInterface } from 'node:readline';
-import { pathToFileURL } from 'node:url';
+import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const USER_DIR = process.argv[2];
@@ -28,7 +28,11 @@ const moduleCache = new Map();   // name -> the resolved check/validate function
 /** Import `<name>.js` from the user dir (once) and resolve its callable — tolerating the common export shapes. */
 async function impl(name) {
   if (moduleCache.has(name)) return moduleCache.get(name);
-  const mod = await import(pathToFileURL(resolve(USER_DIR, name + '.js')).href);
+  // A user's `<Name>.js` is documented as an ES module, but a standalone .js outside a package defaults to
+  // CommonJS in Node and rejects `export`. Import the source as an ES-module data URL so the contract does not
+  // depend on an unadvertised package.json `{ "type": "module" }` beside the validator.
+  const source = await readFile(resolve(USER_DIR, name + '.js'), 'utf8');
+  const mod = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
   const cand = mod.check ?? mod.validate ?? mod.default ?? mod;
   const fn = typeof cand === 'function' ? cand
     : (typeof cand?.check === 'function' ? cand.check.bind(cand)
@@ -67,12 +71,22 @@ function idSet(list) {
 async function handle(req) {
   const fn = await impl(req.name);
   if (req.kind === 'fieldType') {
-    const r = fn(req.value);
-    // A field-type validator may return a boolean, or { valid, errorKey?, errorMessage? } to carry a project code.
-    if (r && typeof r === 'object') {
-      return { result: Boolean(r.valid ?? r.ok ?? false), errorKey: r.errorKey ?? r.code, errorMessage: r.errorMessage ?? r.message };
+    const r = await fn(req.value, req.context);
+    if (typeof r === 'boolean') return { result: r };
+    if (r === null || typeof r !== 'object' || Array.isArray(r)) {
+      throw new Error('field-type validate(value, context) must return boolean or { valid, errorKey?, errorMessage? }');
     }
-    return { result: Boolean(r) };
+    const allowed = new Set(['valid', 'errorKey', 'errorMessage']);
+    const unknown = Object.keys(r).filter(k => !allowed.has(k));
+    if (unknown.length > 0) throw new Error(`field-type result has unknown key(s): ${unknown.join(', ')}`);
+    if (typeof r.valid !== 'boolean') throw new Error('field-type result.valid must be boolean');
+    if (r.errorKey !== undefined && typeof r.errorKey !== 'string') {
+      throw new Error('field-type result.errorKey must be a string');
+    }
+    if (r.errorMessage !== undefined && typeof r.errorMessage !== 'string') {
+      throw new Error('field-type result.errorMessage must be a string');
+    }
+    return { result: r.valid, errorKey: r.errorKey, errorMessage: r.errorMessage };
   }
   // condition: data, relevantEntities (undefined = full), formallyIncorrectFields (never null), errorField
   return { result: Boolean(fn(dataView(req.data), idSet(req.relevant), idSet(req.formallyIncorrect) ?? idSet([]), ident(req.errorField))) };

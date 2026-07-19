@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
+import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldTypeDeclaration
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
@@ -36,7 +37,9 @@ import kotlin.time.measureTime
 class CustomTypePerfTest {
 
     private val s = "/C/S"
-    private val customDef = ModelDef(listOf(FieldDef(s, Kind.STRING, customTypeName = "Iban")),
+    private val customDef = ModelDef(listOf(
+        FieldDef(s, Kind.STRING, customType = CustomFieldTypeDeclaration("Iban")),
+    ),
         emptyList(), declaredReps = mapOf("/C" to MAX))
     private val stringDef = ModelDef(listOf(FieldDef(s, Kind.STRING, pattern = IBAN)),
         emptyList(), declaredReps = mapOf("/C" to MAX))

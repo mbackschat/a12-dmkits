@@ -140,13 +140,25 @@ dmtool -m examples/models/order-ruled.dm.json \
 
 ## The imperative tail — the JS escape
 
-`--predefined-types` covers a custom field type whose validity is a *format* (length/pattern). But a real IBAN also has a **mod-97 checksum**, and a `CustomCondition` is by definition logic the DSL can't express — neither has a declarative form. For those, point `dmtool` at the project's **own JS** with `--custom-field-types-js <dir>` / `--custom-conditions-js <dir>`: each `<Name>.js` (a field type exports `validate(value)`; a condition exports `check(data, …)` — the kernel's `ICustomCondition` shape, so an existing browser-side impl is reusable) runs through a single, persistent **Node worker**. Here a project `Iban.js` rejects a value the pattern would have accepted:
+`--predefined-types` covers a custom field type whose validity is a *format* (length/pattern). But a real IBAN also has a **mod-97 checksum**, and a `CustomCondition` is by definition logic the DSL can't express — neither has a declarative form. For those, point `dmtool` at the project's **own JS** with `--custom-field-types-js <dir>` / `--custom-conditions-js <dir>`: each field-type `<Name>.js` exports `validate(value, context)`, where `context` contains the message locale, effective bounds, and stored/display mode; each condition exports `check(data, …)`. Both run through a single persistent **Node worker**. Here a project `Iban.js` verifies the omitted-bound defaults and stored-value mode, then rejects a value the pattern would have accepted with its own code and message template:
 
 ```bash
 mkdir -p /tmp/ct-js
 cat > /tmp/ct-js/Iban.js <<'JS'
 // The project's real validator — here a stand-in for IBAN's mod-97: must start with a DE country code.
-export function validate(value) { return value.startsWith('DE') && value.length >= 15; }
+export function validate(value, context) {
+  if (context.locale !== 'en_US' || context.minLength !== 1 ||
+      context.maxLength !== 999 || context.isDisplayValue !== false) {
+    throw new Error('unexpected custom-field context');
+  }
+  return value.startsWith('DE') && value.length >= 15
+    ? { valid: true }
+    : {
+        valid: false,
+        errorKey: 'invalidIban',
+        errorMessage: 'Invalid $<fieldName>$',
+      };
+}
 JS
 cat > /tmp/ct-fr.json <<'JSON'
 { "fields": { "Payment": { "AccountHolder": "Acme", "Iban": "FR7630006000011234567890189" } } }
@@ -154,24 +166,25 @@ JSON
 dmtool -m examples/models/payment-customtype.dm.json \
   model eval --instance /tmp/ct-fr.json \
   --custom-field-types-js /tmp/ct-js \
-  | jq '{fired: .data.fired, msg: [.data.messages[] | {code, field}]}'
+  | jq '{fired: .data.fired, msg: [.data.messages[] | {code, field, text}]}'
 
 ```
 
 ```output
 {
   "fired": [
-    "customFieldTypeInvalid"
+    "invalidIban"
   ],
   "msg": [
     {
-      "code": "customFieldTypeInvalid",
-      "field": "/Payment[1]/Iban"
+      "code": "invalidIban",
+      "field": "/Payment[1]/Iban",
+      "text": "Invalid Iban"
     }
   ]
 }
 ```
 
-The worker **never outlives `dmtool`** (it self-exits when the parent's pipe closes — even on a hard kill — plus an idle timeout and a JVM shutdown hook). And it degrades the same way: no `node` on PATH, or a `.js` that throws, leaves the construct `unsupported` rather than crashing.
+The object vocabulary is exactly `{ valid, errorKey?, errorMessage? }`; alias-only or wrongly typed objects are rejected rather than guessed. The worker **never outlives `dmtool`** (it self-exits when the parent's pipe closes — even on a hard kill — plus an idle timeout and a JVM shutdown hook). No `node` on PATH, a `.js` exception, or a malformed result leaves the construct visibly `unsupported` rather than crashing or reporting a false clean result.
 
 So `dmtool` stays useful on models full of custom constructs: it **authors** them, **validates** the declarative custom types (`--predefined-types`), runs the **imperative** ones from the project's own JS (`--custom-field-types-js` / `--custom-conditions-js`), and is **honest** about anything still unhandled — surfacing it (and failing on demand with `--strict-custom`) rather than reporting a false clean pass. For full in-process fidelity, register the impls on the `:interpreter` library directly.

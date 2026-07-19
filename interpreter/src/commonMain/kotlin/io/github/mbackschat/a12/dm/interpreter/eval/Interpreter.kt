@@ -9,6 +9,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
+import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldValidationContext
 import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
@@ -471,7 +472,13 @@ class Interpreter(
         // The `Valid`/`Invalid` condition operator needs only the accept/reject boolean — a code-based type
         // accepts iff its `check` returns null (no rejection); the project code rides the per-cell formal error.
         val accept: (String) -> Boolean = predefinedTypes[typeName]?.let { it::accepts }
-            ?: customFieldTypes[typeName]?.let { ct -> { v: String -> ct.check(v) == null } }
+            ?: customFieldTypes[typeName]?.let { customType ->
+                { value: String ->
+                    // Explicit Valid/Invalid uses the kernel's validate-without-error-reporting path: there is no
+                    // declaring field, so bounds are absent; both strategies pass Locale.GERMANY and canonical data.
+                    customType.check(value, CustomFieldValidationContext("de_DE")) == null
+                }
+            }
             ?: throw UnsupportedConstructException("unknown predefined type \"$typeName\" — register it in the predefined-type or custom-field-type registry")
         if (!ctx.filled(path)) return Tri.UNKNOWN
         val value = ctx.displayValue(path) ?: return Tri.UNKNOWN

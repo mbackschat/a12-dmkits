@@ -7,6 +7,7 @@ import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldValidator
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
+import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldTypeDeclaration
 import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -44,10 +45,14 @@ class CustomFieldTypeBoundsDiffTest {
             g.customField("Code", Consumer<CustomFieldBuilder> { it.type("Code").minLength(3).maxLength(5) })
         })
         .build().toJson()
-    private val def = ModelDef(listOf(FieldDef(CODE, Kind.STRING, customTypeName = "Code")), emptyList())
+    private val def = ModelDef(listOf(
+        FieldDef(CODE, Kind.STRING, customType = CustomFieldTypeDeclaration("Code", 3, 5)),
+    ), emptyList())
     private val acceptsCode: (String) -> Boolean = { it.length in 3..5 }
     // The interpreter SPI mirrors the kernel validator: reject with the SAME project key (IF150).
-    private val codeTypes = mapOf("Code" to CustomFieldType { if (acceptsCode(it)) null else CustomTypeRejection("CODE_INVALID") })
+    private val codeTypes = mapOf("Code" to CustomFieldType { value, _ ->
+        if (acceptsCode(value)) null else CustomTypeRejection("CODE_INVALID")
+    })
 
     /** A kernel validator for "Code" enforcing length [3, 5] — the same domain as the interpreter's [PredefinedType]. */
     private val factory = object : ICustomFieldTypeFactory {

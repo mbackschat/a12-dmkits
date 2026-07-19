@@ -13,6 +13,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.Message
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
+import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldTypeDeclaration
 import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import kotlin.test.Test
@@ -135,11 +136,14 @@ class RepetitionNotUniqueExactnessTest {
     @Test
     fun aNonRelevantCustomKeyDoesNotInvokeItsValidator() {
         var checks = 0
-        val model = model(rnu(count, weight), FieldDef(WEIGHT, Kind.STRING, customTypeName = "Observed"))
+        val model = model(
+            rnu(count, weight),
+            FieldDef(WEIGHT, Kind.STRING, customType = CustomFieldTypeDeclaration("Observed")),
+        )
         val doc = document(model, listOf(Item("5", "accepted"), Item("5", "accepted")))
         val engine = DmInterpreter(
             model,
-            customFieldTypes = mapOf("Observed" to CustomFieldType {
+            customFieldTypes = mapOf("Observed" to CustomFieldType { _, _ ->
                 checks++
                 null
             }),

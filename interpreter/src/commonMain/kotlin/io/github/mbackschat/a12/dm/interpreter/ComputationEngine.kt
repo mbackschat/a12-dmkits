@@ -27,7 +27,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
  * The computation engine — the cascade (overlay / poison / cleared), the parallel join-by-key iteration,
  * and the dependency ordering — a call-invariant collaborator of the I2 eval-state seam (IF117). The
  * per-call cascade state stays local to [computeInstances] (reified as the [OverlayContext] decorator);
- * the poison gate consults the same formal-status oracle as validation ([AutoChecks.computeFormalErrorAt])
+ * the poison gate consults the same call-local [FormalResultCache] as validation
  * but THROWS — consulting it on a filled formally-invalid operand IS the kernel's poisoning read (IF85).
  * Allocated once per [DmInterpreter].
  */
@@ -49,8 +49,8 @@ internal class ComputationEngine(
      * the conformance corpus records (CONFORMANCE-CORPUS-SPEC §7). Delegates to [computeOver] over ALL
      * computations in dependency order.
      */
-    fun computeInstances(doc: Document): List<Computed> =
-        computeOver(doc, computationsInDependencyOrder())
+    fun computeInstances(doc: Document, locale: String): List<Computed> =
+        computeOver(doc, computationsInDependencyOrder(), locale)
 
     /**
      * Compute ONE computed field — its transitive computed-dependency CLOSURE run in dependency order (so cascade
@@ -61,8 +61,8 @@ internal class ComputationEngine(
      * Returns one [Computed] per target-cell instance (a repeated computed field → one per row). A non-computed
      * [fieldPath] has an empty closure → empty list; the public [DmInterpreter.computeField] guards that up front.
      */
-    fun computeField(fieldPath: String, doc: Document): List<Computed> =
-        computeOver(doc, dependencyClosureOf(fieldPath)).filter { it.path == fieldPath }
+    fun computeField(fieldPath: String, doc: Document, locale: String): List<Computed> =
+        computeOver(doc, dependencyClosureOf(fieldPath), locale).filter { it.path == fieldPath }
 
     /**
      * The cascade engine over a GIVEN dependency-ordered [comps] list — the shared worker of [computeInstances]
@@ -81,7 +81,7 @@ internal class ComputationEngine(
      * `CalculationFieldException` → "fehlerhaft berechnet"): no value, reported CLEARED (report-all), and its
      * own dependents' reads poison transitively. Read-driven, so evaluation order/short-circuits decide.
      */
-    private fun computeOver(doc: Document, comps: List<ComputationDef>): List<Computed> {
+    private fun computeOver(doc: Document, comps: List<ComputationDef>, locale: String): List<Computed> {
         // A field may be targeted by MULTIPLE computations (a composed base + subtype override — IF87): they run in
         // document order and the FIRST NON-EMPTY outcome (a VALUE or a POISON) wins per cell; an empty/clearing one is
         // a no-op and control falls through to the next (the kernel's `CalculationController.handleBerechnetenWert` —
@@ -100,10 +100,11 @@ internal class ComputationEngine(
         // A computed NUMBER is STORED padded to its field's minFractionalDigits (IF82) — so a downstream read of
         // a cascade-overlaid value must see that SAME stored form. Without this an integer-valued computed
         // operand (a constant `10`, a whole-number result) reads back as `10` (0 fractional digits) and a min-2
-        // field's poison gate ([computeFormalErrorAt]) wrongly flags it `zahlFalscheAnzahlNachkommastellen` →
+        // field's poison gate wrongly flags it `zahlFalscheAnzahlNachkommastellen` →
         // poisons a downstream computation the kernel computes fine (IF90).
         val minFracOf: (String) -> Int = { p -> model.constraintsOf(p).minFractionalDigits ?: 0 }
         val poisoned = HashSet<Pair<String, List<Int>>>()
+        val formalResults = FormalResultCache(checks, locale, emptySet())
         // The compute-invariant config, built once for every instance's Interpreter (computeMode; no
         // CustomCondition / relevance seams on the compute path). Only the per-instance `invalid` poison gate
         // varies (it closes over the instance context), so it stays an Interpreter constructor arg.
@@ -111,7 +112,7 @@ internal class ComputationEngine(
             predefinedTypes = predefinedTypes, customFieldTypes = customFieldTypes, computeMode = true)
         // A FILLED operand that is "not check-relevant" — formally invalid — makes a computation over it
         // non-evaluable (IF76, generalized IF78; poison semantics IF85). The gate is the SAME
-        // operand-invalidity test full validation uses ([operandNotCheckRelevant] → [computeFormalErrorAt]),
+        // operand-invalidity test full validation uses ([operandNotCheckRelevant] → [FormalResultCache]),
         // but on the compute path a positive test THROWS: the consult IS the kernel's poisoning read. An EMPTY
         // operand — even a required one — stays empty-as-0 (`nichtAngegeben`, not `nichtPruefungsrelevant`).
         for (comp in comps) {
@@ -139,7 +140,10 @@ internal class ComputationEngine(
                 val interp = Interpreter(ectx, computeConfig,
                     // The compute gate THROWS (IF85): consulting it on a filled formally-invalid operand IS the
                     // kernel's poisoning read (validation's gate stays Boolean → the 3VL exclusion).
-                    invalid = { path -> if (operandNotCheckRelevant(path, ectx)) throw PoisonedReadException(path) else false })
+                    invalid = { path ->
+                        if (operandNotCheckRelevant(path, ectx, formalResults)) throw PoisonedReadException(path)
+                        else false
+                    })
                 // A read of a formally-invalid cell — an input field, or a POISONED computed dependency — aborts
                 // this instance (IF85, the kernel's CalculationFieldException → "fehlerhaft berechnet"): it skips
                 // the remaining alternatives, produces no value (reported CLEARED under the report-all contract;
@@ -217,15 +221,15 @@ internal class ComputationEngine(
     }
 
     /** Whether a FILLED operand is "not check-relevant" for a computation — the SAME test full validation uses
-     *  ([computeFormalErrorAt]): the kernel clears a computation over ANY formally-invalid filled operand — every
+     *  ([FormalResultCache]): the kernel clears a computation over ANY formally-invalid filled operand — every
      *  number formal code (range, fraction-digit, integer-cap, zero-not-allowed, length, leading-zeros, …), a
      *  string length/pattern/enum-domain, a rejected custom type, an over-limit cell — matching both strategies
      *  (differentially confirmed: every formal-error class clears, IF78). An EMPTY operand → false (empty-as-0
      *  applies, even when required — the kernel's `nichtAngegeben`, IF76); duplicate-index is not tracked in
      *  compute (empty [dup]). */
-    private fun operandNotCheckRelevant(path: String, ctx: EvalContext): Boolean {
+    private fun operandNotCheckRelevant(path: String, ctx: EvalContext, formalResults: FormalResultCache): Boolean {
         if (ctx.displayValue(path) == null) return false   // empty → empty-as-0, not cleared
-        return checks.computeFormalErrorAt(path, ctx.repsOf(path), ctx, emptySet()) != null
+        return formalResults.failureAt(path, ctx.repsOf(path), ctx) != null
     }
 
     /**

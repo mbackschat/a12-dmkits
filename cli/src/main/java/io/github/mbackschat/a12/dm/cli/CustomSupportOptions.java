@@ -60,7 +60,8 @@ public final class CustomSupportOptions {
 
     @Option(names = "--custom-field-types-js", paramLabel = "<dir>",
             description = "a directory of project JS custom-field-type impls (<Name>.js, exporting "
-                    + "validate(value)); run via the same Node worker so an imperative custom field type "
+                    + "validate(value, context)); context is {locale,minLength,maxLength,isDisplayValue}; return "
+                    + "boolean or {valid,errorKey?,errorMessage?}. Run via the same Node worker so an imperative custom field type "
                     + "(a checksum) validates instead of being reported unsupported. Needs `node`; if absent, "
                     + "the value stays unsupported. Interpreter-only.")
     String customFieldTypesJsDir;

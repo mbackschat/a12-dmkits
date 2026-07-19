@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.CUSTOM_TYPE_INVALID
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
+import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldTypeDeclaration
 import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -29,9 +30,14 @@ class CustomFieldTypeSpiTest {
     // PredefinedType expresses as a single accepts() the same way. (A real one would be IBAN's mod-97.) Its
     // rejection carries the project-specific key "IBAN_INVALID".
     private val ibanType = mapOf<String, CustomFieldType>(
-        "Iban" to CustomFieldType { if (it.startsWith("DE")) null else CustomTypeRejection("IBAN_INVALID") })
+        "Iban" to CustomFieldType { value, _ ->
+            if (value.startsWith("DE")) null else CustomTypeRejection("IBAN_INVALID")
+        },
+    )
 
-    private val def = ModelDef(listOf(FieldDef(IBAN, Kind.STRING, customTypeName = "Iban")), emptyList())
+    private val def = ModelDef(listOf(
+        FieldDef(IBAN, Kind.STRING, customType = CustomFieldTypeDeclaration("Iban")),
+    ), emptyList())
 
     private fun out(value: String) =
         DmInterpreter(def, customFieldTypes = ibanType)
@@ -56,8 +62,8 @@ class CustomFieldTypeSpiTest {
         // Two custom-typed fields: Iban (code-based) + Code (declarative length 3..5). Each must dispatch to its
         // own registry — the declarative cell uses PredefinedType.accepts, the code cell uses CustomFieldType.validate.
         val both = ModelDef(listOf(
-            FieldDef(IBAN, Kind.STRING, customTypeName = "Iban"),
-            FieldDef(CODE, Kind.STRING, customTypeName = "Code"),
+            FieldDef(IBAN, Kind.STRING, customType = CustomFieldTypeDeclaration("Iban")),
+            FieldDef(CODE, Kind.STRING, customType = CustomFieldTypeDeclaration("Code")),
         ), emptyList())
         val doc = both.newDocument().group("/Pay", 1).also {
             it.field(IBAN, "NOT-AN-IBAN", 1, 1)   // rejected by the code type

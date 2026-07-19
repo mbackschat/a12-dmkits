@@ -11,6 +11,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
 import io.github.mbackschat.a12.dm.interpreter.model.ToleranceBand
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
+import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldTypeDeclaration
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -199,7 +200,7 @@ object ModelLoader {
     private fun fieldDef(node: JsonElement, id: String): FieldDef = FieldDef(
         path = id,
         kind = kindOf(node),
-        labels = localizedTexts(node.path("labels")),
+        labels = localizedTexts(node.path("Field").path("label")),
         scale = scaleOf(node),
         signed = signed(node),
         required = requirednessOf(node),
@@ -208,7 +209,7 @@ object ModelLoader {
         datePrecision = datePrecisionOf(node),
         enumValues = enumValuesOf(node),
         enumCategories = enumCategoriesOf(node),
-        customTypeName = customTypeNameOf(node),
+        customType = customFieldTypeOf(node),
         minLength = typedInt(node, "StringType", "minLength"),
         maxLength = typedInt(node, "StringType", "maxLength"),
         pattern = stringTypeText(node, "pattern"),
@@ -317,10 +318,16 @@ object ModelLoader {
     private fun signed(fieldNode: JsonElement?): Boolean =
         !fieldNode.path("Field").path("fieldType").path("NumberType").path("positivesOnly").asBoolean(false)
 
-    /** The `name` of a `CustomFieldType` field — the predefined type its values are validated against; else null. */
-    private fun customTypeNameOf(fieldNode: JsonElement?): String? {
-        val v = typed(fieldNode, "CustomFieldType").path("name")
-        return if (v.isTextual()) v.asText() else null
+    /** A `CustomFieldType` field's validator name and optional length-bound inputs; else null. */
+    private fun customFieldTypeOf(fieldNode: JsonElement?): CustomFieldTypeDeclaration? {
+        val type = typed(fieldNode, "CustomFieldType")
+        val name = type.path("name")
+        if (!name.isTextual()) return null
+        return CustomFieldTypeDeclaration(
+            name.asText(),
+            type.path("minLength").takeIf { it.isIntNode() }?.asInt(0),
+            type.path("maxLength").takeIf { it.isIntNode() }?.asInt(0),
+        )
     }
 
     /** A `String` property of a `StringType` field type (e.g. `pattern`), or null. */
