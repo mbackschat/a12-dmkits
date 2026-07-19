@@ -17,7 +17,11 @@ actual class Dec(val v: BigDecimal) : Comparable<Dec> {
     actual fun div(other: Dec): Dec = Dec(v.divide(other.v, INTERNAL))
     actual fun pow(exponent: Int): Dec =
         if (exponent >= 0) Dec(v.pow(exponent, INTERNAL))
-        else Dec(BigDecimal.ONE.divide(v.pow(-exponent, INTERNAL), INTERNAL))
+        // Negative power is the kernel's RECIPROCAL-FIRST form (1/v)^|n|, NOT 1/(v^|n|) — matching
+        // `VkBigDecimal.power` → `getKehrwert(this).power(|n|)`, each step at MathContext(50) HALF_UP. The two
+        // differ once the 50-sig rounding lands inside the scale-19 comparison window (e.g. 0.3^-64, 34 integer
+        // digits): `(1/0.3)^64` = …4484006, but `1/(0.3^64)` = …4484025 (differentially observable, IF153-locked).
+        else Dec(BigDecimal.ONE.divide(v, INTERNAL).pow(-exponent, INTERNAL))
     actual override fun compareTo(other: Dec): Int = v.compareTo(other.v)
     actual fun abs(): Dec = Dec(v.abs())
     actual fun scale19(): Dec = Dec(v.setScale(19, RoundingMode.HALF_UP))

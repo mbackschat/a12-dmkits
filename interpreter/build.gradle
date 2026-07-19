@@ -33,8 +33,8 @@ kotlin {
         }
         jsMain {
             dependencies {
-                // Arbitrary-precision decimal backend for JS. Exact small arithmetic is covered; full JVM
-                // MathContext(50) and plain-render parity remains IG89. The ONE JS-platform dependency
+                // Arbitrary-precision decimal backend for JS. Full JVM MathContext(50)/plain-render parity is
+                // honored from an isolated big.js constructor (IF153). The ONE JS-platform dependency
                 // (behind an expect/actual shim).
                 implementation npm('big.js', '6.2.2')
             }
