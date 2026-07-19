@@ -25,7 +25,7 @@
     "commonPrecondition": { "type": "string", "description": "(computation) optional guard (A12 DSL) shared by all alternatives" },
     "alternatives": {
       "type": "array",
-      "description": "(computation) ≥1 (precondition?, operation) tier — either one unconditional {operation} or all preconditioned {precondition, operation} (the kernel rejects mixing)",
+      "description": "(computation) ≥1 (precondition?, operation, toleranceRangeOp?) tier — either one unconditional {operation} or all preconditioned {precondition, operation} (the kernel rejects mixing)",
       "minItems": 1,
       "items": {
         "type": "object",
@@ -33,7 +33,12 @@
         "additionalProperties": false,
         "properties": {
           "precondition": { "type": "string", "description": "the tier's guard in A12 DSL (omit for the single unconditional alternative)" },
-          "operation": { "type": "string", "description": "the value-expression in A12 DSL, assigned to the computed field when the precondition holds" }
+          "operation": { "type": "string", "description": "the value-expression in A12 DSL, assigned to the computed field when the precondition holds" },
+          "toleranceRangeOp": {
+            "type": "string",
+            "enum": ["DiffersWithToleranceRange1", "DiffersWithToleranceRange2", "DiffersWithToleranceRange5", "DiffersWithToleranceRange10"],
+            "description": "optional closed tolerance band for this alternative's implicit validation; a stored computed value fires the computation's validation only when its absolute difference from the operation exceeds the selected band"
+          }
         }
       }
     },
@@ -71,7 +76,7 @@
     {
       "computedField": "/Subscription/Billing/EffectiveFee",
       "comment": "effective fee equals the base fee",
-      "alternatives": [ { "operation": "[/Subscription/Billing/BaseFee]" } ],
+      "alternatives": [ { "operation": "[/Subscription/Billing/BaseFee]", "toleranceRangeOp": "DiffersWithToleranceRange1" } ],
       "messages": [
         { "locale": "en_US", "text": "Effective equals base." },
         { "locale": "de_DE", "text": "Effektiv gleich Basis." }

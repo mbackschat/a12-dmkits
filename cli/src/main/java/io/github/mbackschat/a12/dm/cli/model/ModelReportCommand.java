@@ -137,6 +137,9 @@ final class ModelReportCommand extends BaseCommand {
                         altNode.put("precondition", alt.precondition());
                     }
                     altNode.put("operation", alt.operation());
+                    if (alt.toleranceRangeOp() != null) {
+                        altNode.put("toleranceRangeOp", alt.toleranceRangeOp().wire());
+                    }
                 }
             }
             putMessages(node, c.messages());

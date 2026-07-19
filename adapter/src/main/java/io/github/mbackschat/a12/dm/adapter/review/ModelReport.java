@@ -64,7 +64,8 @@ public record ModelReport(Identity identity, ModelCard structure, Usage usage,
     /**
      * One computation, glossed for comprehension. {@code gloss}/{@code computedField} null when Opaque. The
      * {@code commonPrecondition} (nullable — the gate over the whole computation) and the {@code alternatives}
-     * (each a {@code (precondition?, operation)} — the preconditioned or single-unconditional formulae) mirror
+     * (each a {@code (precondition?, operation, toleranceRangeOp?)} — the preconditioned or
+     * single-unconditional formulae) mirror
      * {@code computation read}'s shape exactly, so the two surfaces agree; both are absent/empty for an Opaque
      * computation.
      */

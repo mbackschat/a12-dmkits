@@ -77,7 +77,7 @@ public final class ModelContext {
         Optional<RuleExplanation> commonPrecondition = computation.commonPrecondition().map(this::explain);
         List<ComputationExplanation.Alternative> alternatives = computation.alternatives().stream()
                 .map(a -> new ComputationExplanation.Alternative(
-                        a.precondition().map(this::explain), explainOperation(a.operation())))
+                        a.precondition().map(this::explain), explainOperation(a.operation()), a.toleranceRangeOp()))
                 .toList();
         List<ComputationExplanation.Message> messages = computation.messages().stream()
                 .map(t -> new ComputationExplanation.Message(t.locale(), t.text()))

@@ -15,7 +15,7 @@ import kotlin.test.assertNull
  */
 class ComputationToleranceBandLoadTest {
 
-    private fun model(toleranceRangeOp: String?) = """
+    private fun model(toleranceRangeOpJson: String?) = """
         {
           "header": { "id": "order" },
           "content": { "modelRoot": { "rootGroups": [ {
@@ -24,13 +24,13 @@ class ComputationToleranceBandLoadTest {
               { "type": "Field", "id": "/Order/Fee", "name": "Fee", "Field": { "fieldType": {"type":"NumberType"} } },
               { "type": "Computation", "id": "/Order/FeeCheck", "name": "FeeCheck", "Computation": {
                 "computedFieldRelPath": "../Fee", "computationAlternatives": [
-                  { "operation": "[Base]"${if (toleranceRangeOp == null) "" else ", \"toleranceRangeOp\": \"$toleranceRangeOp\""} } ] } }
+                  { "operation": "[Base]"${if (toleranceRangeOpJson == null) "" else ", \"toleranceRangeOp\": $toleranceRangeOpJson"} } ] } }
             ] } } ] } }
         }
     """.trimIndent()
 
     private fun bandOf(toleranceRangeOp: String?) =
-        ModelLoader.load(model(toleranceRangeOp)).computations.first().alternatives.first().tolerance
+        ModelLoader.load(model(toleranceRangeOp?.let { "\"$it\"" })).computations.first().alternatives.first().tolerance
 
     @Test fun eachBandLoads() {
         assertEquals(ToleranceBand.TR1, bandOf("DiffersWithToleranceRange1"))
@@ -41,9 +41,22 @@ class ComputationToleranceBandLoadTest {
 
     @Test fun absentToleranceIsNull() = assertNull(bandOf(null), "no toleranceRangeOp → strict != (null band)")
 
+    @Test fun explicitNullToleranceIsNull() {
+        val band = ModelLoader.load(model("null")).computations.first().alternatives.first().tolerance
+        assertNull(band, "explicit null retains strict !=")
+    }
+
     @Test fun anUnknownToleranceValueIsRejectedLoud() {
         val e = assertFailsWith<IllegalArgumentException> { bandOf("DiffersWithToleranceRange3") }
         assertContains(e.message ?: "", "toleranceRangeOp")
         assertContains(e.message ?: "", "DiffersWithToleranceRange3")
+    }
+
+    @Test fun everyMalformedPresentToleranceIsRejectedLoud() {
+        listOf("\"\"", "\"   \"", "{}", "[]", "7", "true").forEach { malformed ->
+            val e = assertFailsWith<IllegalArgumentException>(malformed) { ModelLoader.load(model(malformed)) }
+            assertContains(e.message ?: "", "toleranceRangeOp")
+            assertContains(e.message ?: "", "DiffersWithToleranceRange1")
+        }
     }
 }

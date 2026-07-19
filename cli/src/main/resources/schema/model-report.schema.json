@@ -115,14 +115,19 @@
           "commonPrecondition": { "type": "string", "description": "the precondition gating the WHOLE computation, when set — the DSL text (same shape as `computation read`)" },
           "alternatives": {
             "type": "array",
-            "description": "the (precondition?, operation) formulae — same shape as `computation read`; present when explained",
+            "description": "the (precondition?, operation, toleranceRangeOp?) formulae — same shape as `computation read`; present when explained",
             "items": {
               "type": "object",
               "additionalProperties": false,
               "required": ["operation"],
               "properties": {
                 "precondition": { "type": "string", "description": "this alternative's precondition, when it has one (absent for a single unconditional operation)" },
-                "operation": { "type": "string", "description": "the calculated-value operation, as DSL text" }
+                "operation": { "type": "string", "description": "the calculated-value operation, as DSL text" },
+                "toleranceRangeOp": {
+                  "type": "string",
+                  "enum": ["DiffersWithToleranceRange1", "DiffersWithToleranceRange2", "DiffersWithToleranceRange5", "DiffersWithToleranceRange10"],
+                  "description": "this alternative's implicit-validation tolerance band, when set"
+                }
               }
             }
           },

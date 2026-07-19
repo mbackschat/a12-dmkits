@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 
 /**
@@ -21,7 +22,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
  *   "name": "FieldComp",                         // optional — defaults to &lt;Field&gt;Comp
  *   "commonPrecondition": "&lt;DSL&gt;",               // optional — guard shared by all alternatives
  *   "alternatives": [                            // required, non-empty
- *     { "precondition": "&lt;DSL&gt;", "operation": "&lt;DSL&gt;" },   // tiered
+ *     { "precondition": "&lt;DSL&gt;", "operation": "&lt;DSL&gt;",
+ *       "toleranceRangeOp": "DiffersWithToleranceRange1" }, // optional per tier
  *     { "operation": "&lt;DSL&gt;" } ],                          // OR one unconditional
  *   "messages": [ {"locale":"en_US","text":"…"} ] }          // required, non-empty
  * </pre>
@@ -71,14 +73,33 @@ public final class ComputationSpec {
             if (operation == null) {
                 return error("each alternative needs an operation (the value-expression DSL)");
             }
-            alternatives.add(new DraftComputation.Alternative(text(alt, "precondition"), operation));
+            ToleranceBand toleranceRangeOp = null;
+            if (alt.has("toleranceRangeOp") && !alt.get("toleranceRangeOp").isNull()) {
+                JsonNode tolerance = alt.get("toleranceRangeOp");
+                if (!tolerance.isTextual() || tolerance.asText().isBlank()) {
+                    return error("toleranceRangeOp must be one of "
+                            + java.util.Arrays.stream(ToleranceBand.values()).map(ToleranceBand::wire).toList());
+                }
+                try {
+                    toleranceRangeOp = ToleranceBand.fromWire(tolerance.asText());
+                } catch (IllegalArgumentException e) {
+                    return error(e.getMessage());
+                }
+            }
+            alternatives.add(DraftComputation.Alternative.builder(operation)
+                    .precondition(text(alt, "precondition"))
+                    .toleranceRangeOp(toleranceRangeOp)
+                    .build());
         }
         // a whole-computation comment leads the first operation (mirrors the library Computation.Builder.comment(String))
         String comment = text(spec, "comment");
         if (comment != null && !comment.isBlank()) {
             DraftComputation.Alternative first = alternatives.get(0);
-            alternatives.set(0, new DraftComputation.Alternative(
-                    first.precondition(), Comments.withLeadingComment(comment, first.operation())));
+            alternatives.set(0, DraftComputation.Alternative
+                    .builder(Comments.withLeadingComment(comment, first.operation()))
+                    .precondition(first.precondition())
+                    .toleranceRangeOp(first.toleranceRangeOp())
+                    .build());
         }
 
         List<LocalizedText> messages = messages(spec);

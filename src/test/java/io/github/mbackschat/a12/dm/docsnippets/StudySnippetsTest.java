@@ -43,6 +43,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
 
 /**
  * The canonical, runnable §9 study snippets — each tagged region is mirrored verbatim into
@@ -216,8 +217,9 @@ class StudySnippetsTest {
         Computation tiered = m.computation(m.num("/Subscription/Billing/EffectiveFee"))   // element placed in the
                 .name("TieredFeeComp")                                                     // computed field's group;
                 .commonPrecondition(fieldFilled(base.field()))                             // relPath computed
-                .when(base.ge(100)).calc(base.value())             // staged: every when() must get its calc()
-                .when(base.lt(100)).calc(NumberLiteral.of("0.00"))
+                .when(base.ge(100)).calc(base.value(), ToleranceBand.TR1)  // the selected tier keeps its own
+                .when(base.lt(100)).calc(NumberLiteral.of("0.00"),         // implicit-validation tolerance;
+                                         ToleranceBand.TR2)                 // absent means strict inequality
                 .message(en("EffectiveFee follows the fee tiers."),
                          de("EffectiveFee folgt den Gebührenstufen."))   // a message per declared locale (the locale law)
                 .build();

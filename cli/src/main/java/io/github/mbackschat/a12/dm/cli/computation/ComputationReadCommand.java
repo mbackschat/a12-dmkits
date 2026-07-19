@@ -95,6 +95,9 @@ final class ComputationReadCommand extends BaseCommand {
                         node.put("precondition", alt.precondition());
                     }
                     node.put("operation", alt.operation());
+                    if (alt.toleranceRangeOp() != null) {
+                        node.put("toleranceRangeOp", alt.toleranceRangeOp().wire());
+                    }
                 }
                 RuleMessages.putInto(data, comp.messages());
             } else {

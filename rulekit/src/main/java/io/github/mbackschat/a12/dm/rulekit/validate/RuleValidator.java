@@ -310,6 +310,9 @@ public final class RuleValidator {
                 alt.put("precondition", alternative.precondition());
             }
             alt.put("operation", alternative.operation());
+            if (alternative.toleranceRangeOp() != null) {
+                alt.put("toleranceRangeOp", alternative.toleranceRangeOp().wire());
+            }
         }
 
         // Computations also require error text (MVK_ERROR_MESSAGE_MISSING) — placeholder per locale.

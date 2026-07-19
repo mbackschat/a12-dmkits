@@ -181,7 +181,7 @@ object ModelLoader {
                             val common = if (c.hasNonNull("commonPrecondition")) c.path("commonPrecondition").asText() else null
                             val alts = c.path("computationAlternatives").elements().map { alt ->
                                 val precond = if (alt.hasNonNull("precondition")) alt.path("precondition").asText() else null
-                                val tolerance = ToleranceBand.ofWire(alt.path("toleranceRangeOp").asTextOrNull())
+                                val tolerance = toleranceBandOf(alt)
                                 ComputationAlternative(precond, alt.path("operation").asText(), tolerance)
                             }
                             // The computation's element name is the error code of its implicit validation rule (IF32).
@@ -385,6 +385,16 @@ object ModelLoader {
     }
 
     /** Resolve a relpath against the NODE's own id (`../F` pops the node name, then appends). */
+    /** Missing/null means strict `!=`; any present non-string or string outside the closed set fails loud. */
+    private fun toleranceBandOf(alternative: JsonElement): ToleranceBand? {
+        val value = (alternative as? JsonObject)?.get("toleranceRangeOp") ?: return null
+        if (value is JsonNull) return null
+        require(value.isTextual()) {
+            "toleranceRangeOp must be a string equal to one of ${ToleranceBand.entries.map { it.wire }}"
+        }
+        return ToleranceBand.ofWire(value.asText())
+    }
+
     private fun resolveRel(nodeId: String, rel: String): String {
         var base = nodeId
         var r = rel

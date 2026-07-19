@@ -292,6 +292,9 @@ public final class ModelWriter {
                 alt.put("precondition", alternative.precondition());
             }
             alt.put("operation", alternative.operation());
+            if (alternative.toleranceRangeOp() != null) {
+                alt.put("toleranceRangeOp", alternative.toleranceRangeOp().wire());
+            }
         }
 
         ArrayNode messageArray = body.putArray("errorMessage");

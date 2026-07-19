@@ -592,14 +592,15 @@ m2.writeTo(path);                                          // DM-JSON write path
 Computation tiered = m.computation(m.num("/Subscription/Billing/EffectiveFee"))   // element placed in the
         .name("TieredFeeComp")                                                     // computed field's group;
         .commonPrecondition(fieldFilled(base.field()))                             // relPath computed
-        .when(base.ge(100)).calc(base.value())             // staged: every when() must get its calc()
-        .when(base.lt(100)).calc(NumberLiteral.of("0.00"))
+        .when(base.ge(100)).calc(base.value(), ToleranceBand.TR1)  // the selected tier keeps its own
+        .when(base.lt(100)).calc(NumberLiteral.of("0.00"),         // implicit-validation tolerance;
+                                 ToleranceBand.TR2)                 // absent means strict inequality
         .message(en("EffectiveFee follows the fee tiers."),
                  de("EffectiveFee folgt den Gebührenstufen."))   // a message per declared locale (the locale law)
         .build();
 ```
 
-**The original sketch here used `.otherwise(...)` — that was kernel-illegal** (verified: mixing preconditioned and unconditional alternatives draws `MVK_ERROR_EMPTY_PRECONDITION`), so the API doesn't offer it: either one unconditional `calc(...)` or all-preconditioned `when(...).calc(...)`. Further slot rules pre-checked at `build()` with the code named: the computed field must not appear in preconditions *or* operations (`MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` — both verified), operation **kind** must match the computed field (`Calculation.kind()` — the typed AST now carries the §5b lattice), message required. Mutual exclusivity of preconditions stays the kernel/runtime's judgment; result *scale* stays the kernel's call (D13).
+**The original sketch here used `.otherwise(...)` — that was kernel-illegal** (verified: mixing preconditioned and unconditional alternatives draws `MVK_ERROR_EMPTY_PRECONDITION`), so the API doesn't offer it: either one unconditional `calc(...)` or all-preconditioned `when(...).calc(...)`. The optional `ToleranceBand` overload carries one of the kernel's four closed `toleranceRangeOp` values on that alternative; it changes the computation's implicit validation from strict inequality to “difference exceeds N” and round-trips through read/modify/write. Further slot rules pre-checked at `build()` with the code named: the computed field must not appear in preconditions *or* operations (`MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` — both verified), operation **kind** must match the computed field (`Calculation.kind()` — the typed AST now carries the §5b lattice), message required. Mutual exclusivity of preconditions stays the kernel/runtime's judgment; result *scale* stays the kernel's call (D13).
 
 **Cross-slot reuse for free:** `SubscriptionIdioms.paidTier(tier)` drops unchanged into a rule `errorCondition` *or* a computation `precondition` — one expression language, many slots (§5). That is the concrete payoff of combinators + the slot model.
 

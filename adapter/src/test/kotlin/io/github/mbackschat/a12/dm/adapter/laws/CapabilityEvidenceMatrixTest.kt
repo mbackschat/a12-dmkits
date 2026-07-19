@@ -45,7 +45,7 @@ class CapabilityEvidenceMatrixTest {
         COMPUTATION_MULTI_TARGET(Axis.COMPUTATION, "multiple computations for one target"),
         COMPUTATION_CROSS_ROOT(Axis.COMPUTATION, "cross-root target and pointer"),
         COMPUTATION_BARE_GROUP_SCAN(Axis.COMPUTATION, "bare-group ordered computation scan"),
-        COMPUTATION_TOLERANCE(Axis.COMPUTATION, "tolerance comparison"),
+        COMPUTATION_TOLERANCE(Axis.COMPUTATION, "computation-alternative toleranceRangeOp"),
 
         CONFIG_TIME_ZONE(Axis.CONFIG, "timeZone (datetime arithmetic)"),
         CONFIG_LOCALE(Axis.CONFIG, "locale (message language)"),
@@ -153,8 +153,8 @@ class CapabilityEvidenceMatrixTest {
             Static.Tri(BareGroupComputeExactnessDiffTest::class),
         )),
         Capability(CapabilityId.COMPUTATION_TOLERANCE, Coverage.Evidence(
-            ToleranceDiffTest::class,
-            Static.Tri(ToleranceDiffTest::class),
+            ComputationToleranceValidationDiffTest::class,
+            Static.Tri(ComputationToleranceValidationDiffTest::class),
         )),
 
         // CONFIGURATION
@@ -345,6 +345,14 @@ class CapabilityEvidenceMatrixTest {
         val bareGroup = matrix.single { it.id == CapabilityId.COMPUTATION_BARE_GROUP_SCAN }.coverage as Coverage.Evidence
         assertEquals(BareGroupComputeExactnessDiffTest::class, bareGroup.dynamic)
         assertEquals(BareGroupComputeExactnessDiffTest::class, (bareGroup.static as Static.Tri).test)
+
+        val computationTolerance =
+            matrix.single { it.id == CapabilityId.COMPUTATION_TOLERANCE }.coverage as Coverage.Evidence
+        assertEquals(ComputationToleranceValidationDiffTest::class, computationTolerance.dynamic)
+        assertEquals(
+            ComputationToleranceValidationDiffTest::class,
+            (computationTolerance.static as Static.Tri).test,
+        )
 
         val safety = matrix.single { it.id == CapabilityId.PLATFORM_UNSUPPORTED_SAFETY }.coverage as Coverage.Excluded
         assertEquals(ValidateFullUnsupportedSafetyDiffTest::class, safety.lock)

@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
+
 /**
  * A structured projection of one computation (F9 explain, the calculated-field peer of
  * {@link RuleExplanation}) — what it computes, under which conditions, in human- and machine-readable
@@ -41,9 +43,18 @@ public record ComputationExplanation(
     }
 
     /** One {@code (precondition?, operation)} tier — the precondition (if any) and the value it assigns. */
-    public record Alternative(Optional<RuleExplanation> precondition, OperationExplanation operation) {
+    public record Alternative(
+            Optional<RuleExplanation> precondition,
+            OperationExplanation operation,
+            Optional<ToleranceBand> toleranceRangeOp) {
+
         public Alternative {
             precondition = precondition == null ? Optional.empty() : precondition;
+            toleranceRangeOp = toleranceRangeOp == null ? Optional.empty() : toleranceRangeOp;
+        }
+
+        public Alternative(Optional<RuleExplanation> precondition, OperationExplanation operation) {
+            this(precondition, operation, Optional.empty());
         }
     }
 
@@ -76,6 +87,7 @@ public record ComputationExplanation(
             ObjectNode node = alts.addObject();
             a.precondition().ifPresent(p -> node.set("precondition", ruleJson(p)));
             node.set("operation", operationJson(a.operation()));
+            a.toleranceRangeOp().ifPresent(tolerance -> node.put("toleranceRangeOp", tolerance.wire()));
         }
 
         ArrayNode msgs = root.putArray("messages");

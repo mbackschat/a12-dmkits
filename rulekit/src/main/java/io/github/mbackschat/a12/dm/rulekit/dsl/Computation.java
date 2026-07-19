@@ -48,7 +48,19 @@ public record Computation(
         this(groupPath, name, computedField, commonPrecondition, alternatives, messages, comments, List.of());
     }
 
-    public record Alternative(Optional<Condition> precondition, Calculation operation) {
+    public record Alternative(
+            Optional<Condition> precondition,
+            Calculation operation,
+            Optional<ToleranceBand> toleranceRangeOp) {
+
+        public Alternative {
+            precondition = precondition == null ? Optional.empty() : precondition;
+            toleranceRangeOp = toleranceRangeOp == null ? Optional.empty() : toleranceRangeOp;
+        }
+
+        public Alternative(Optional<Condition> precondition, Calculation operation) {
+            this(precondition, operation, Optional.empty());
+        }
     }
 
     // Builders are created via BoundModel#computation(...) — model-aware so messages can be checked
@@ -71,7 +83,8 @@ public record Computation(
                 alternatives.stream()
                         .map(a -> new DraftComputation.Alternative(
                                 a.precondition().map(p -> renderer.render(p, comments)).orElse(null),
-                                renderer.render(a.operation(), comments)))
+                                renderer.render(a.operation(), comments),
+                                a.toleranceRangeOp().orElse(null)))
                         .toList(),
                 errorCodesToSuppress);
     }
@@ -114,6 +127,12 @@ public record Computation(
         /** The single unconditional alternative — exclusive with {@code when(...).calc(...)}. */
         public Builder calc(Calculation operation) {
             alternatives.add(new Alternative(Optional.empty(), operation));
+            return this;
+        }
+
+        /** The single unconditional alternative with a closed implicit-validation tolerance band. */
+        public Builder calc(Calculation operation, ToleranceBand toleranceRangeOp) {
+            alternatives.add(new Alternative(Optional.empty(), operation, Optional.ofNullable(toleranceRangeOp)));
             return this;
         }
 
@@ -274,6 +293,13 @@ public record Computation(
 
         public Builder calc(Calculation operation) {
             builder.alternatives.add(new Alternative(Optional.of(precondition), operation));
+            return builder;
+        }
+
+        /** A preconditioned alternative with its own closed implicit-validation tolerance band. */
+        public Builder calc(Calculation operation, ToleranceBand toleranceRangeOp) {
+            builder.alternatives.add(
+                    new Alternative(Optional.of(precondition), operation, Optional.ofNullable(toleranceRangeOp)));
             return builder;
         }
     }

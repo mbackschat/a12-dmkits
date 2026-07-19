@@ -122,6 +122,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.ado.serviceparams.ICalculationInfo;
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.services.IBaseCalculationService.RoundingMode;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 
 /**
@@ -1792,6 +1793,21 @@ final class ConditionConverter {
                 + " into a " + computedKind + " field", op);
     }
 
+    /** Preserve the comparison wrapper as computation metadata before conversion unwraps its value. */
+    private static ToleranceBand toleranceBand(IOperation operation) {
+        if (!(operation instanceof IWithComparisonOperation wrapped)
+                || wrapped.getComparisonOperation() == null) {
+            return null;
+        }
+        return switch (wrapped.getComparisonOperation()) {
+            case NE1 -> ToleranceBand.TR1;
+            case NE2 -> ToleranceBand.TR2;
+            case NE5 -> ToleranceBand.TR5;
+            case NE10 -> ToleranceBand.TR10;
+            default -> null;
+        };
+    }
+
     /**
      * Assemble a rulekit {@link Computation} from the kernel's extracted {@link ICalculationInfo}
      * (calculated field + common precondition + {@code (precondition, operation)} alternatives) plus the
@@ -1811,7 +1827,11 @@ final class ConditionConverter {
         for (Pair<ICondition, IOperation> partial : info.getPartialCalculations()) {
             ICondition pre = partial.getLeft();
             Optional<Condition> precondition = pre == null ? Optional.empty() : Optional.of(convert(pre));
-            alternatives.add(new Computation.Alternative(precondition, convertOperation(partial.getRight(), kind)));
+            IOperation operation = partial.getRight();
+            alternatives.add(new Computation.Alternative(
+                    precondition,
+                    convertOperation(operation, kind),
+                    Optional.ofNullable(toleranceBand(operation))));
         }
         String groupPath = computedPath.substring(0, computedPath.lastIndexOf('/'));
         // info.getName() is the computation's full path; Computation.name is the short (last-segment) name

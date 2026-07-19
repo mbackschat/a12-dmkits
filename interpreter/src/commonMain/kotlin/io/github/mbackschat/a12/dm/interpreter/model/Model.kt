@@ -271,10 +271,10 @@ enum class ToleranceBand(val wire: String, val amount: Int) {
     TR10("DiffersWithToleranceRange10", 10);
 
     companion object {
-        /** Map a DM-JSON `toleranceRangeOp` value to its band — null/empty → no tolerance (strict `!=`); an
-         *  unknown non-empty value is a **loud reject** (never silently a strict comparison). */
+        /** Map a DM-JSON `toleranceRangeOp` value to its band. Null means the property is absent/explicitly
+         *  null (strict `!=`); every present string outside the closed set is rejected loudly. */
         fun ofWire(wire: String?): ToleranceBand? {
-            if (wire.isNullOrEmpty()) return null
+            if (wire == null) return null
             return entries.firstOrNull { it.wire == wire }
                 ?: throw IllegalArgumentException(
                     "unknown toleranceRangeOp '$wire' — expected one of ${entries.map { it.wire }}")

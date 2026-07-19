@@ -370,11 +370,13 @@ public record io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation
 
 public static record io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Alternative
   public Alternative(java.util.Optional<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation>, io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.OperationExplanation)
+  public Alternative(java.util.Optional<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation>, io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.OperationExplanation, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand>)
   public final boolean equals(java.lang.Object)
   public final int hashCode()
   public io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.OperationExplanation operation()
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.context.RuleExplanation> precondition()
   public final java.lang.String toString()
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand> toleranceRangeOp()
 
 public static record io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation.Message
   public Message(java.lang.String, java.lang.String)
@@ -694,18 +696,22 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.Computation
 
 public static record io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Alternative
   public Alternative(java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public Alternative(java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition>, io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand>)
   public final boolean equals(java.lang.Object)
   public final int hashCode()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Calculation operation()
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Condition> precondition()
   public final java.lang.String toString()
+  public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand> toleranceRangeOp()
 
 public static final class io.github.mbackschat.a12.dm.rulekit.dsl.Computation.AlternativeBuilder
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand)
 
 public static final class io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation build()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder calc(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder comment(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder comment(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Computation.Builder comment(java.lang.String)
@@ -2161,6 +2167,16 @@ public enum io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance valueOf(java.lang.String)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance[] values()
 
+public enum io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand TR1
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand TR10
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand TR2
+  public static final io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand TR5
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand fromWire(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand[] values()
+  public java.lang.String wire()
+
 public record io.github.mbackschat.a12.dm.rulekit.dsl.ValueAsDate implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
   public ValueAsDate(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, boolean)
   public java.lang.String dayKeywordId()
@@ -2329,11 +2345,19 @@ public record io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation
 
 public static record io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative
   public Alternative(java.lang.String, java.lang.String)
+  public Alternative(java.lang.String, java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand)
+  public static io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative.Builder builder(java.lang.String)
   public final boolean equals(java.lang.Object)
   public final int hashCode()
   public java.lang.String operation()
   public java.lang.String precondition()
   public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand toleranceRangeOp()
+
+public static final class io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative.Builder
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative build()
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative.Builder precondition(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation.Alternative.Builder toleranceRangeOp(io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand)
 
 public record io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
   public DraftRule(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String)

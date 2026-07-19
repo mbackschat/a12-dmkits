@@ -46,7 +46,10 @@ object TypedRules {
         val r = DslRenderer(ConditionLanguage.EN, comp.groupPath())
         val alts = comp.alternatives()
         val common = comp.commonPrecondition().map { r.render(it) }.orElse(null)
-        val unconditional = alts.size == 1 && alts[0].precondition().orElse(null) == null && common == null
+        val unconditional = alts.size == 1 &&
+            alts[0].precondition().orElse(null) == null &&
+            alts[0].toleranceRangeOp().isEmpty &&
+            common == null
         return if (unconditional) {
             RuntimeLaws.withComputation(
                 json, comp.groupPath(), comp.name(), comp.computedFieldRelPath(), r.render(alts[0].operation()),
@@ -54,7 +57,13 @@ object TypedRules {
         } else {
             RuntimeLaws.withTieredComputation(
                 json, comp.groupPath(), comp.name(), comp.computedFieldRelPath(), common,
-                alts.map { RuntimeLaws.CompAlt(it.precondition().map { p -> r.render(p) }.orElse(null), r.render(it.operation())) },
+                alts.map {
+                    RuntimeLaws.CompAlt(
+                        it.precondition().map { p -> r.render(p) }.orElse(null),
+                        r.render(it.operation()),
+                        it.toleranceRangeOp().map { band -> band.wire() }.orElse(null),
+                    )
+                },
             )
         }
     }
@@ -65,7 +74,15 @@ object TypedRules {
         return ComputationDef(
             comp.computedField().path(), comp.groupPath(),
             comp.alternatives().map {
-                ComputationAlternative(it.precondition().map { p -> r.render(p) }.orElse(null), r.render(it.operation()))
+                ComputationAlternative(
+                    it.precondition().map { p -> r.render(p) }.orElse(null),
+                    r.render(it.operation()),
+                    it.toleranceRangeOp()
+                        .map { band ->
+                            io.github.mbackschat.a12.dm.interpreter.model.ToleranceBand.ofWire(band.wire())
+                        }
+                        .orElse(null),
+                )
             },
             comp.commonPrecondition().map { r.render(it) }.orElse(null),
         )

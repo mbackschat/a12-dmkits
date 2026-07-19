@@ -682,6 +682,8 @@ public final class KernelAdapter {
                     p -> text.append("when ").append(renderer.render(p)).append(" => "),
                     () -> text.append("always => "));
             text.append(renderer.render(alternative.operation()));
+            alternative.toleranceRangeOp().ifPresent(
+                    tolerance -> text.append(" [toleranceRangeOp=").append(tolerance.wire()).append(']'));
         }
         return text.toString();
     }

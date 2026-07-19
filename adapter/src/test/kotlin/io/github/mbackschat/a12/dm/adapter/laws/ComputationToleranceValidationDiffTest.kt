@@ -4,80 +4,131 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
-import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.GroupBuilder
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import java.util.function.Consumer
 
 /**
- * Differential — a computation alternative's `toleranceRangeOp` (`DiffersWithToleranceRange{1,2,5,10}`): the
- * kernel's implicit computation-validation compares the stored value against the operation with the matching
- * tolerance band (fires iff `|stored − op| > N`) instead of strict `!=` (IF148, graduated from IG96). So a stored
- * value WITHIN ±N — including exactly at the boundary — does not fire, and only a value more than N away fires.
- * Was a strict-`!=` over-fire in the interpreter. Own domain (an order with a tolerated fee). Tri-check:
- * groovy-dynamic == static-Java == interpreter (via {@code firedCodes}).
+ * Typed tri-engine IF148 lock for a computation alternative's `toleranceRangeOp`: every band, both numeric
+ * directions, tier selection, and false guards use one rulekit computation as the kernel/interpreter input.
  */
 class ComputationToleranceValidationDiffTest {
 
-    private val NAME = "FeeCheck"
-
-    /** Order{ Base, Fee } + FeeCheck: Fee := [Base] with the given `toleranceRangeOp` (a guarded tier when [guard]). */
-    private fun model(band: Int, guard: Boolean): String {
+    private fun singleBandModel(band: ToleranceBand): String {
         val base = DocumentModelDraft.named("order").locale("en_US")
-            .rootGroup("Order", Consumer { g: GroupBuilder ->
-                g.numberField("Base", Consumer { })
-                g.numberField("Fee", Consumer { })
-            }).build().toJson()
-        val tol = "DiffersWithToleranceRange$band"
-        return RuntimeLaws.withTieredComputation(base, "/Order", NAME, "../Fee",
-            if (guard) "FieldFilled(Base)" else null,
-            listOf(RuntimeLaws.CompAlt(null, "[Base]", tol)))
+            .rootGroup("Order") { order ->
+                order.numberField("Base") { it.fractionDigits(1) }
+                order.numberField("Fee") { it.fractionDigits(1) }
+            }
+            .build()
+            .toJson()
+        val model = BoundModel.ofJson(base)
+        val computation = model.computation(model.num(FEE))
+            .name(NAME)
+            .calc(model.num(BASE).value(), band)
+            .message(Dsl.en("Fee follows Base within the selected tolerance."))
+            .build()
+        return TypedRules.inject(base, computation)
     }
 
-    /** Assert groovy-dynamic == static-Java == interpreter on whether the implicit validation fires. */
-    private fun agree(band: Int, base: Int, fee: Int, expectFire: Boolean, guard: Boolean = false) {
-        val kModel = model(band, guard)
-        val def = ModelLoader.load(kModel)
-        val kDoc = RuntimeLaws.doc().group("/Order", 1)
-            .field("/Order/Base", base.toString(), 1, 1).field("/Order/Fee", fee.toString(), 1, 1)
-        val iDoc = def.newDocument().group("/Order", 1)
-            .field("/Order/Base", base.toString(), 1, 1).field("/Order/Fee", fee.toString(), 1, 1)
+    private fun agree(
+        modelJson: String,
+        fields: Map<String, String>,
+        expectFire: Boolean,
+        scenario: String,
+    ) {
+        val def = ModelLoader.load(modelJson)
+        val kernelDocument = RuntimeLaws.doc().group(ROOT, 1)
+        val interpreterDocument = def.newDocument().group(ROOT, 1)
+        fields.forEach { (path, value) ->
+            kernelDocument.field(path, value, 1, 1)
+            interpreterDocument.field(path, value, 1, 1)
+        }
 
-        val groovy = RuntimeLaws.firedCodes(kModel, kDoc).contains(NAME)
-        val java = RuntimeLaws.kernelJavaEngine(kModel).firedCodesSorted(
-            RuntimeLaws.kernelJavaEngine(kModel).instance(kDoc)).contains(NAME)
-        val interp = DmInterpreter(def).validate(iDoc).messages.any { it.code == NAME }
+        val dynamic = RuntimeLaws.firedCodes(modelJson, kernelDocument).contains(NAME)
+        val staticEngine = RuntimeLaws.kernelJavaEngine(modelJson)
+        val generatedJava = staticEngine.firedCodesSorted(staticEngine.instance(kernelDocument)).contains(NAME)
+        val interpreter = DmInterpreter(def).validate(interpreterDocument).messages.any { it.code == NAME }
 
-        val msg = "band=$band |$fee-$base|=${kotlin.math.abs(fee - base)} guard=$guard"
-        assertEquals(expectFire, groovy, "$msg — kernel groovy-dynamic")
-        assertEquals(groovy, java, "$msg — groovy vs static-Java")
-        assertEquals(groovy, interp, "$msg — kernel vs interpreter")
+        assertEquals(expectFire, dynamic, "$scenario — normative dynamic-Groovy")
+        assertEquals(dynamic, generatedJava, "$scenario — generated Java")
+        assertEquals(dynamic, interpreter, "$scenario — interpreter")
     }
 
-    @Test fun equalNeverFires() = listOf(1, 2, 5, 10).forEach { agree(it, 100, 100, expectFire = false) }
-
-    @Test fun insideTheBandDoesNotFire() {
-        agree(2, 100, 101, expectFire = false)   // diff 1 < 2
-        agree(5, 100, 103, expectFire = false)   // diff 3 < 5
-        agree(10, 100, 95, expectFire = false)   // diff 5 < 10 (below)
+    @Test
+    fun everyBandCoversEqualInteriorBoundaryAndBothOutsideDirections() {
+        val cases = mapOf(
+            ToleranceBand.TR1 to listOf("100.0" to false, "100.5" to false, "101.0" to false, "101.5" to true, "98.5" to true),
+            ToleranceBand.TR2 to listOf("100.0" to false, "101.0" to false, "102.0" to false, "102.5" to true, "97.5" to true),
+            ToleranceBand.TR5 to listOf("100.0" to false, "102.5" to false, "105.0" to false, "105.5" to true, "94.5" to true),
+            ToleranceBand.TR10 to listOf("100.0" to false, "105.0" to false, "110.0" to false, "110.5" to true, "89.5" to true),
+        )
+        cases.forEach { (band, fees) ->
+            val model = singleBandModel(band)
+            fees.forEach { (fee, fires) ->
+                agree(model, mapOf(BASE to "100.0", FEE to fee), fires, "${band.wire()} fee=$fee")
+            }
+        }
     }
 
-    @Test fun atTheBoundaryDoesNotFire() {
-        agree(1, 100, 101, expectFire = false)   // diff 1 == 1
-        agree(2, 100, 102, expectFire = false)   // diff 2 == 2
-        agree(5, 100, 105, expectFire = false)   // diff 5 == 5
-        agree(10, 100, 90, expectFire = false)   // diff 10 == 10 (below)
+    @Test
+    fun selectedTierKeepsItsOwnBandAndFalseGuardsStaySilent() {
+        val base = DocumentModelDraft.named("tiered-order").locale("en_US")
+            .rootGroup("Order") { order ->
+                order.stringField("Tier") { }
+                order.numberField("Gate") { it.fractionDigits(0) }
+                order.numberField("BaseA") { it.fractionDigits(1) }
+                order.numberField("BaseB") { it.fractionDigits(1) }
+                order.numberField("Fee") { it.fractionDigits(1) }
+            }
+            .build()
+            .toJson()
+        val model = BoundModel.ofJson(base)
+        val computation = model.computation(model.num(FEE))
+            .name(NAME)
+            .commonPrecondition(model.num(GATE).filled())
+            .`when`(model.str(TIER).eq("A")).calc(model.num(BASE_A).value(), ToleranceBand.TR1)
+            .`when`(model.str(TIER).eq("B")).calc(model.num(BASE_B).value(), ToleranceBand.TR10)
+            .message(Dsl.en("Fee follows the selected tier."))
+            .build()
+        val json = TypedRules.inject(base, computation)
+
+        agree(
+            json,
+            mapOf(GATE to "1", TIER to "A", BASE_A to "100.0", BASE_B to "100.0", FEE to "101.5"),
+            true,
+            "tier A selects TR1",
+        )
+        agree(
+            json,
+            mapOf(GATE to "1", TIER to "B", BASE_A to "100.0", BASE_B to "100.0", FEE to "105.0"),
+            false,
+            "tier B selects TR10",
+        )
+        agree(
+            json,
+            mapOf(TIER to "A", BASE_A to "100.0", BASE_B to "100.0", FEE to "102.0"),
+            false,
+            "false common guard",
+        )
+        agree(
+            json,
+            mapOf(GATE to "1", TIER to "C", BASE_A to "100.0", BASE_B to "100.0", FEE to "120.0"),
+            false,
+            "no alternative selected",
+        )
     }
 
-    @Test fun justOutsideTheBandFires() {
-        agree(1, 100, 102, expectFire = true)    // diff 2 > 1
-        agree(2, 100, 103, expectFire = true)    // diff 3 > 2
-        agree(5, 100, 106, expectFire = true)    // diff 6 > 5
-        agree(10, 100, 111, expectFire = true)   // diff 11 > 10
-    }
-
-    @Test fun aGuardedToleranceTierBehavesTheSame() {
-        agree(2, 100, 101, expectFire = false, guard = true)   // inside → not fire
-        agree(2, 100, 103, expectFire = true, guard = true)    // outside → fire
+    private companion object {
+        const val ROOT = "/Order"
+        const val NAME = "FeeCheck"
+        const val BASE = "/Order/Base"
+        const val FEE = "/Order/Fee"
+        const val GATE = "/Order/Gate"
+        const val TIER = "/Order/Tier"
+        const val BASE_A = "/Order/BaseA"
+        const val BASE_B = "/Order/BaseB"
     }
 }
