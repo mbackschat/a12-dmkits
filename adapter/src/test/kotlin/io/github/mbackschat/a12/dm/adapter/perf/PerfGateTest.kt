@@ -362,4 +362,71 @@ class PerfGateTest {
         assertTrue(best < SUB_QUADRATIC_MAX,
             "Berlin DATE_TIME scaling looks super-linear: 4× rows took ${best}× the time (the offset path regressed?)")
     }
+
+    /**
+     * Guards the **compute-overlay index-column view** (IF143) — the HARD O(rows²): under an ACTIVE cascade
+     * overlay, a per-Row `[Src For "K1"]` read rebuilt `indexColumn(Key)` from the wrapped cells on EVERY outer Row
+     * (the [io.github.mbackschat.a12.dm.interpreter.eval.OverlayContext] bypassed the raw document-level cache), and
+     * that rebuild dominated. The per-step overlay-view cache shares the view across the Rows of a computation step →
+     * O(rows). Time the interpreter (only) over N and 4N Rows; the fix took it from **18.75× (quadratic) to ~3.5×
+     * (linear)** at 1500/6000. Trip well below the ~16× a reintroduced per-Row rebuild would show.
+     */
+    @Test
+    fun computeOverlaySemanticIndexStaysSubQuadratic() = overlaySubQuadratic(
+        PerfCatalog.computeOverlaySemanticIndex(), "compute-overlay index-column", CO_N,
+        "the OverlayContext rebuilds indexColumn per outer Row instead of caching per step?")
+
+    /**
+     * A **soft** guard on the compute-overlay `$`-correlation path (IF143). Unlike the index-column path (a HARD
+     * O(rows²), 18.75×→3.5× across the fix), the `$`-correlation rebuild reuses the doc-cached `rowContexts`, so
+     * its per-row constant is tiny: the O(rows²) never clears the JIT-deflated timing noise into the quadratic
+     * band, and the cache is roughly NEUTRAL here (the shared `OverlayViews` mechanism is proven by the strong
+     * index gate above). This gate stays at the fast [CO_N] and only trips on a SEVERE regression (a large-constant
+     * per-row rebuild pushing growth past `SUB_QUADRATIC_MAX`); the correlation cache's CORRECTNESS is locked by
+     * [computeOverlayAgreesWithKernel] + `interpreter.OverlayDerivedViewCacheTest`.
+     */
+    @Test
+    fun computeOverlayCorrelationStaysSubQuadratic() = overlaySubQuadratic(
+        PerfCatalog.computeOverlayCorrelation(), "compute-overlay \$-correlation", CO_N,
+        "the OverlayContext rebuilds correlationBuckets per outer Row with a large constant?")
+
+    /** Shared sub-quadratic estimator for the two compute-overlay scenarios (IF143) — smaller N than the validate
+     *  gates (the compute path runs a two-computation cascade per Row, so it is heavier), same min-of-repeats. */
+    private fun overlaySubQuadratic(sc: PerfScenario, label: String, n: Int, culprit: String) {
+        var best = Double.MAX_VALUE
+        var bSmall = 0.0; var bLarge = 0.0
+        repeat(GROWTH_REPEATS) {
+            val small = PerfHarness.timeInterpreter(sc, n, warmup = 8, iters = 7)
+            val large = PerfHarness.timeInterpreter(sc, n * 4, warmup = 8, iters = 7)
+            val g = large.minMs / small.minMs
+            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        }
+        println("[perf] $label sub-quadratic: ${"%.1f".format(bSmall)}ms@$n → " +
+            "${"%.1f".format(bLarge)}ms@${n * 4} rows  min-growth=${"%.2f".format(best)}× (linear≈4, old-per-row-rebuild≈16)")
+        assertTrue(best < SUB_QUADRATIC_MAX,
+            "$label scaling looks super-linear: 4× rows took ${best}× the time ($culprit)")
+    }
+
+    /**
+     * **Compute-overlay correctness gate (IF143)** — both overlay-view scenarios (index-column + `$`-correlation)
+     * run through the kernel at small N: `runScenario` asserts the compute outcomes agree interp == groovy == java
+     * (the "zero unsupported + VALUE/CLEARED/ERRORED parity before timing" IF143 requires — a compute over an
+     * unsupported construct would throw, and a stale overlay-view cache would diverge). Kept small so the kernel's
+     * per-scenario codegen stays cheap; the growth gates above carry the scaling proof.
+     */
+    @Test
+    fun computeOverlayAgreesWithKernel() {
+        for (sc in listOf(PerfCatalog.computeOverlaySemanticIndex(), PerfCatalog.computeOverlayCorrelation())) {
+            val row = PerfHarness.runScenario(sc, n = 200, withJava = true)
+            println(PerfHarness.format(row, CAVEAT))
+            assertTrue(row.interp.medianMs < ABS_CEILING_MS,
+                "${row.scenario}: interpreter ${row.interp.medianMs}ms exceeds ${ABS_CEILING_MS}ms at N=${row.n}")
+        }
+    }
+
+    private companion object {
+        /** Row count for the index-column compute-overlay gate — smaller than [N_SMALL] (the compute cascade is
+         *  heavier), yet the per-row `indexColumn` rebuild dominates, so the O(rows²) is unmistakable here. */
+        const val CO_N = 1_500
+    }
 }

@@ -112,6 +112,18 @@ interface EvalContext {
      *  per-row filter inside an aggregate. Default empty (the flat spike contexts don't model rows). */
     fun rowContexts(groupPath: String, bindDepth: Int = -1): List<EvalContext> = emptyList()
 
+    /**
+     * The repetition-index prefix identifying the row-SCOPE a starred aggregate / `$`-correlation over [groupPath]'s
+     * rows ranges within in THIS context — the levels bound to this row (the `*`-marked level and below iterate
+     * fully; [bindDepth] caps it for a multi-star operand, IF93/IF94). The **compute-cascade overlay's** derived-view
+     * cache ([io.github.mbackschat.a12.dm.interpreter.eval.OverlayViews], IF143) keys on it so an overlaid
+     * index-column / correlation-bucket view is built once per (column, scope) within a computation step and shared
+     * across the outer rows — the SAME scope key the raw [Document]'s document-level cache uses, which the overlay
+     * otherwise bypassed and rebuilt per outer row (O(rows²)). Default empty (a flat single-row context has one
+     * implicit scope and never reaches the overlay cache).
+     */
+    fun scopePrefixOf(groupPath: String, bindDepth: Int = -1): List<Int> = emptyList()
+
     /** The declared FIELD paths inside [groupPath], recursively incl. nested subgroups (the kernel
      *  `ExpandService` → `getAllContainedFields`) — how a GROUP operand of a value aggregate expands (IF99).
      *  Empty when [groupPath] contains no fields (or the context doesn't model structure). */

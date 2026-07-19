@@ -620,6 +620,94 @@ object PerfCatalog {
         scenario("SI cliff",
             lines.errorRule("SI", amount.field(), amount.filled().and(amount.forIndex("NOMATCH").gt(0))), ::flatRows)
 
+    // ---- compute-overlay derived-view scenarios (IF143) — a cascade makes the OverlayContext ACTIVE, then a
+    //      per-Row computation reads a derived view (index-column / $-correlation buckets) once PER OUTER ROW.
+    //      The raw Document caches those views per (column, scope) at the document level, but the cascade overlay
+    //      bypassed that cache and rebuilt from the wrapped cells on every read → O(rows²). `[A] := [Src]` is the
+    //      overlay activator (a prior cascade value), so the reader below runs through the OverlayContext (an
+    //      empty overlay would use the raw cached view — no rebuild, no cliff). The per-step overlay-view cache
+    //      (IF143) restores O(rows). Both readers over a STORED column (Key/Src), NOT the step's own target, so the
+    //      view is stable within the step (the self-target guard's cacheable side). Scale knob N = Row count.
+    private const val OVL_ROW = "/Ovl/Row"
+    private const val OVL_KEY = "$OVL_ROW/Key"
+    private const val OVL_SRC = "$OVL_ROW/Src"
+    private const val OVL_A = "$OVL_ROW/A"
+    private const val OVL_B = "$OVL_ROW/B"
+    private const val OVL_C = "$OVL_ROW/C"
+
+    private val ovlJson: String by lazy {
+        DocumentModelDraft.named("ovl").locale("en_US")
+            .rootGroup("Ovl", Consumer { root ->
+                root.group("Row", Consumer { g ->
+                    g.repeatable(DECLARED_MAX).indexField("Key")
+                    g.field("Key", FieldKind.STRING)
+                    for (f in listOf("Src", "A", "B", "C")) g.numberField(f, Consumer<NumberFieldBuilder> { it.fractionDigits(0) })
+                })
+            }).build().toJson()
+    }
+    private val ovl: EditSession by lazy { EditSession.read(ovlJson) }
+    private val ovlFields = listOf(
+        FieldDef(OVL_KEY, Kind.STRING),
+        FieldDef(OVL_SRC, Kind.NUMBER, scale = 0), FieldDef(OVL_A, Kind.NUMBER, scale = 0),
+        FieldDef(OVL_B, Kind.NUMBER, scale = 0), FieldDef(OVL_C, Kind.NUMBER, scale = 0),
+    )
+
+    /** The overlay-ACTIVATING copy `[A] := [Src]` — a prior cascade value so the per-Row derived-view reader runs
+     *  through the [OverlayContext] (an empty overlay uses the raw cached view — no rebuild, no reproducer). */
+    private fun ovlActivator(rowEd: GroupEditor): Computation =
+        rowEd.computation(rowEd.num("A")) { it.name("Acopy").calc(rowEd.num("Src").value()).message(Dsl.en("x")).build() }
+
+    private fun ovlScenario(name: String, rowEd: GroupEditor, reader: Computation): PerfScenario {
+        val comps = listOf(ovlActivator(rowEd), reader)
+        val kernelModel = comps.fold(ovlJson) { json, c -> TypedRules.inject(json, c) }
+        val interpModel = ModelDef(
+            ovlFields, emptyList(), computations = comps.map { TypedRules.def(it) },
+            repeatableGroups = setOf(OVL_ROW), declaredReps = mapOf(OVL_ROW to DECLARED_MAX), indexFields = setOf(OVL_KEY),
+        )
+        val gen = SeedGenerator(interpModel)
+        return PerfScenario(name, kernelModel, interpModel, PerfOp.COMPUTE) { sink, n, variant ->
+            gen.populate(sink, rowsOf = { g, _, _ -> if (g == OVL_ROW) n else 0 }, value = ovlValues(variant))
+        }
+    }
+
+    /** Row values: a unique required index Key, a stored `Src` whose values COLLIDE (mod 50, so the `$`-correlation
+     *  buckets hold many rows), and the computed A/B/C empty in the seed (so every Row computes a value). */
+    private fun ovlValues(variant: Int): ValueStrategy = ValueStrategy { field, reps, _ ->
+        when (field.path) {
+            OVL_KEY -> "K" + reps.joinToString("_")
+            OVL_SRC -> ((reps[1] + variant) % 50).toString()
+            OVL_A, OVL_B, OVL_C -> null
+            else -> "0"
+        }
+    }
+
+    /** **CO index (IF143)** — a per-Row `[B] := [Src For "K1"]` semantic-index read under an ACTIVE cascade overlay:
+     *  `computeGuardedIndexCell` reads `indexColumn(Key)` per outer Row (the IF115 whole-column validity gate),
+     *  which the [OverlayContext] rebuilt per read (O(rows²)) until the per-step overlay-view cache shares it. */
+    fun computeOverlaySemanticIndex(): PerfScenario {
+        val rowEd = ovl.group(OVL_ROW)
+        val reader = rowEd.computation(rowEd.num("B")) {
+            it.name("Bidx").calc(rowEd.num("Src").forIndex("K1").expression()).message(Dsl.en("x")).build()
+        }
+        return ovlScenario("CO index", rowEd, reader)
+    }
+
+    /** **CO correlation (IF143)** — a per-Row `$`-equality self-correlation precondition under an ACTIVE cascade
+     *  overlay: `hashJoinTally` reads `correlationBuckets(Row, [Src], Src)` per outer Row, which the [OverlayContext]
+     *  rebuilt (re-wrapping every row) per read until the per-step overlay-view cache shares it. `[C] := [Src]`
+     *  when another Row shares this Row's `Src`. */
+    fun computeOverlayCorrelation(): PerfScenario {
+        val rowEd = ovl.group(OVL_ROW)
+        val inRef = rowEd.num("Src")
+        val corr = Dsl.atLeastOneFieldFilled(ovl.group("/Ovl").flatten("Row*/Src").having(
+            Dsl.currentRepetition(rowEd.ref()).ne(Dsl.currentRepetition(rowEd.ref(), true))
+                .and(inRef.eq(inRef.outer()))))
+        val reader = rowEd.computation(rowEd.num("C")) {
+            it.name("Ccorr").`when`(corr).calc(inRef.value()).message(Dsl.en("x")).build()
+        }
+        return ovlScenario("CO correlation", rowEd, reader)
+    }
+
     private const val PA = "/Plan/A"
     private const val PB = "/Plan/B"
     private val parallelJson: String by lazy {

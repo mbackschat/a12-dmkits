@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.OverlayContext
+import io.github.mbackschat.a12.dm.interpreter.eval.OverlayViews
 import io.github.mbackschat.a12.dm.interpreter.eval.PoisonedReadException
 import io.github.mbackschat.a12.dm.interpreter.eval.UNKNOWN_REP
 import io.github.mbackschat.a12.dm.interpreter.eval.renderDateToFormat
@@ -114,6 +115,10 @@ internal class ComputationEngine(
         // but on the compute path a positive test THROWS: the consult IS the kernel's poisoning read. An EMPTY
         // operand — even a required one — stays empty-as-0 (`nichtAngegeben`, not `nichtPruefungsrelevant`).
         for (comp in comps) {
+            // The overlay's derived-view cache is FRESH per computation step: within a step only comp.targetPath is
+            // written, so a cached index-column / correlation view over any OTHER column is stable and shared across
+            // the step's outer rows (IF143); a new step starts clean so a self-write can't read a superseded view.
+            val views = OverlayViews()
             val parsed = parsedModel.parsedOf(comp)
             // A computation iterates where it WRITES (the target's scope), not where it is DECLARED. When neither
             // the operands nor the target has a repeatable ancestor (an all-non-repeatable target), fall back to
@@ -130,7 +135,7 @@ internal class ComputationEngine(
                 val targetKey = comp.targetPath to ctx.repsOf(comp.targetPath)
                 if (targetKey in decided) return   // an earlier computation's non-empty outcome already won (IF87)
                 val ectx = if (overlay.isEmpty() && cleared.isEmpty() && poisoned.isEmpty()) ctx
-                    else OverlayContext(ctx, overlay, cleared, poisoned, emptyOf, minFracOf)
+                    else OverlayContext(ctx, overlay, cleared, poisoned, emptyOf, minFracOf, views, comp.targetPath)
                 val interp = Interpreter(ectx, computeConfig,
                     // The compute gate THROWS (IF85): consulting it on a filled formally-invalid operand IS the
                     // kernel's poisoning read (validation's gate stays Boolean → the 3VL exclusion).

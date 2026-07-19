@@ -18,6 +18,12 @@ internal class OverlayContext(
     private val poisoned: Set<Pair<String, List<Int>>>,
     private val emptyOf: (String) -> Val,
     private val minFracOf: (String) -> Int,
+    // The overlay's per-computation-step derived-view cache (IF143) + the step's OWN target column. The cache is
+    // shared across the step's outer rows so an index-column / correlation-bucket view over a STABLE column is built
+    // once, not rebuilt per row (O(rows²)→O(rows)); a view reading [selfTarget] (the column this step writes) is
+    // NEVER cached — the overlay for that column changes as the cascade lands, so it is rebuilt fresh every read.
+    private val views: OverlayViews,
+    private val selfTarget: String,
 ) : EvalContext by d {
     private fun overlaid(path: String): Val? = overlay[path to d.repsOf(path)]
     private fun isCleared(path: String): Boolean = path to d.repsOf(path) in cleared
@@ -67,9 +73,13 @@ internal class OverlayContext(
         }
     override fun star(path: String, bindDepth: Int): List<Val> = starCells(path, bindDepth).mapNotNull { it.second }
     override fun starAll(path: String, bindDepth: Int): List<Val> = starCells(path, bindDepth).map { (_, v) -> v ?: emptyOf(path) }
-    // NOT the raw context's document-level memo (`by d` would delegate there and read stale/raw cells):
-    // the overlay's column view changes as the cascade lands, so rebuild from THIS context's cells per read.
-    override fun indexColumn(path: String, bindDepth: Int): IndexColumn = IndexColumn(starCells(path, bindDepth))
+    // NOT the raw context's document-level memo (`by d` would delegate there and read stale/raw cells): the overlay's
+    // column view changes as the cascade lands. But WITHIN a computation step only [selfTarget] changes, so a view
+    // over any OTHER column is stable and is cached once per (column, scope) — shared across the step's outer rows
+    // (IF143). Only the step's own write column rebuilds from the wrapped cells per read (never a stale cache).
+    override fun indexColumn(path: String, bindDepth: Int): IndexColumn =
+        if (path == selfTarget) IndexColumn(starCells(path, bindDepth))
+        else views.indexColumn(path, d.scopePrefixOf(parentGroupOf(path), bindDepth)) { IndexColumn(starCells(path, bindDepth)) }
     override fun starScanStates(path: String, bindDepth: Int): List<CellState> {
         val states = d.starScanStates(path, bindDepth)
         val rows = d.starCells(path, bindDepth)
@@ -89,10 +99,47 @@ internal class OverlayContext(
     // quantifiers) see an overlaid value, a cleared target as EMPTY (IF77), and a poisoned one as a
     // poisoning read (IF85) — the raw delegation read the STALE stored cell (IF98).
     override fun rowContexts(groupPath: String, bindDepth: Int): List<EvalContext> =
-        d.rowContexts(groupPath, bindDepth).map { OverlayContext(it, overlay, cleared, poisoned, emptyOf, minFracOf) }
+        d.rowContexts(groupPath, bindDepth).map { OverlayContext(it, overlay, cleared, poisoned, emptyOf, minFracOf, views, selfTarget) }
 
-    // The `$`-join buckets must read joined values through the overlay as well — rebuilt from the wrapped
-    // rows (the Document-side cache is scope-keyed on RAW reads; a cascade overlay is per-compute-pass).
+    // The `$`-join buckets must read joined values through the overlay — rebuilt from the wrapped rows (the
+    // Document-side cache is scope-keyed on RAW reads; a cascade overlay is per-compute-pass). But within a step
+    // that rebuild is stable unless a join/star field IS the step's write column, so it is cached once per (group,
+    // scope, join, star) and shared across the step's outer rows (IF143). A self-write join/target rebuilds fresh.
     override fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String): Map<List<Val>, IntArray> =
-        correlationBucketsOf(rowContexts(groupPath), joinFields, starPath)
+        if (starPath == selfTarget || selfTarget in joinFields)
+            correlationBucketsOf(rowContexts(groupPath), joinFields, starPath)
+        else views.correlation(groupPath, d.scopePrefixOf(groupPath, -1), joinFields, starPath) {
+            correlationBucketsOf(rowContexts(groupPath), joinFields, starPath)
+        }
+
+    /** The immediate parent group of a field path (`/Ovl/Row/Src` → `/Ovl/Row`) — matches [Document]'s
+     *  `parentGroup`, so the index-column scope key aligns with the raw context's `starScopePrefix`. */
+    private fun parentGroupOf(fieldPath: String): String {
+        val i = fieldPath.lastIndexOf('/')
+        return if (i <= 0) "/" else fieldPath.substring(0, i)
+    }
+}
+
+/**
+ * The compute cascade's per-computation-STEP cache of the overlay's derived views — the index-column
+ * ([EvalContext.indexColumn]) and `$`-correlation-bucket ([EvalContext.correlationBuckets]) views an
+ * [OverlayContext] would otherwise rebuild from the wrapped cells on EVERY outer row (O(outer×inner) — the pre-IF143 rebuild). A
+ * computation step writes only its OWN target column, and a legal computation never reads its own target — the
+ * caller passes that target as `selfTarget` and bypasses this cache for it — so within one step every OTHER column
+ * is stable, and a view over it is built once and shared across the outer rows (O(outer+inner)). Keyed by
+ * (column(s), scope-prefix) exactly as the raw document-level cache is ([Document]'s `indexColumnByScope` /
+ * `correlationBucketCache`), so two outer rows of the same scope share the entry. Allocated **fresh per step**
+ * (bounded by the distinct views one computation references) and never spanning a step, so a later step's
+ * self-write can never read a view built against a superseded overlay.
+ */
+internal class OverlayViews {
+    private val indexColumns = HashMap<Pair<String, List<Int>>, IndexColumn>()
+    private val correlations = HashMap<List<Any?>, Map<List<Val>, IntArray>>()
+
+    fun indexColumn(path: String, scope: List<Int>, build: () -> IndexColumn): IndexColumn =
+        indexColumns.getOrPut(path to scope, build)
+
+    fun correlation(groupPath: String, scope: List<Int>, joinFields: List<String>, starPath: String,
+                    build: () -> Map<List<Val>, IntArray>): Map<List<Val>, IntArray> =
+        correlations.getOrPut(listOf(groupPath, scope, joinFields, starPath), build)
 }

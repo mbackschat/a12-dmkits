@@ -666,6 +666,10 @@ class Document(internal val config: DocumentConfig) {
         override fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String): Map<List<Val>, IntArray> =
             correlationBucketsScoped(groupPath, groupScopePrefix(groupPath, -1), joinFields, starPath)
 
+        // The scope key an overlay-aware derived-view cache shares across outer rows (IF143) — the SAME prefix the
+        // raw indexColumnByScope / correlationBucketCache key on, so the overlay's per-step cache matches this row's view.
+        override fun scopePrefixOf(groupPath: String, bindDepth: Int): List<Int> = groupScopePrefix(groupPath, bindDepth)
+
         // A group-scoped / starred-field fill quantifier — "the fields inside the group" (recursively, the kernel
         // ExpandService → getAllContainedFields), across the two kernel ranges (IF49). See [EvalContext.fillScope].
         override fun fillScope(scopePath: String, isGroup: Boolean): FillScope {
