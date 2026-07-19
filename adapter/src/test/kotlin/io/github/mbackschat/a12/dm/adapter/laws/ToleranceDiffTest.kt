@@ -61,6 +61,26 @@ class ToleranceDiffTest {
     @Test fun band5BoundaryDoesNotFire() = agree(t5, "10", "5", msg = "|10−5|=5 not > 5 → no fire")
     @Test fun band5AboveFiresValue() = agree(t5, "11", "5", msg = "|11−5|=6 > 5 → VALUE")
 
+    @Test
+    fun toleranceHasGeneratedJavaTriEvidence() {
+        val model = RuntimeLaws.withRule(order, "/Order", "ToleranceJava", "../Quantity", "DT_JAVA", t1)
+        val kDoc = RuntimeLaws.doc().group("/Order", 1)
+            .field(QTY, "5", 1, 1).field(BACK, "9", 1, 1)
+        val groovyDynamic = RuntimeLaws.typeOf(model, "DT_JAVA", kDoc).map { it.name }.orElse(null)
+        val engine = RuntimeLaws.kernelJavaEngine(model)
+        val javaStatic = engine.messages(engine.instance(kDoc))
+            .firstOrNull { it.code() == "DT_JAVA" }?.type()?.name
+        val def = ModelDef(fields, listOf(RuleDef("/Order/ToleranceJava", "/Order", t1, "DT_JAVA", "../Quantity")))
+        val iDoc = def.newDocument().group("/Order", 1)
+            .field(QTY, "5", 1, 1).field(BACK, "9", 1, 1)
+        val interpreter = DmInterpreter(def).validate(iDoc).messages.firstOrNull { it.code == "DT_JAVA" }?.type
+            ?.let { if (it == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR" }
+
+        assertEquals("VALUE_ERROR", groovyDynamic, "|5−9|=4 > 1 must exercise the tolerance rule")
+        assertEquals(groovyDynamic, javaStatic, "tolerance: groovy-dynamic vs generated Java")
+        assertEquals(groovyDynamic, interpreter, "tolerance: kernel vs interpreter")
+    }
+
     private companion object {
         const val QTY = "/Order/Quantity"
         const val BACK = "/Order/BackorderQuantity"

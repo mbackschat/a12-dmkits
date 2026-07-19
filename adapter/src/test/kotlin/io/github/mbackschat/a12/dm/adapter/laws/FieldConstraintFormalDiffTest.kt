@@ -61,6 +61,28 @@ class FieldConstraintFormalDiffTest {
     @Test fun tooManyDecimals() = agree(scoreField, scoreDef, "/Order/Score", "5.000", "3 frac > max 2 → zahlFalscheAnzahlNachkommastellen")
     @Test fun numberValid() = agree(scoreField, scoreDef, "/Order/Score", "50.00", "valid → no formal error")
 
+    @Test
+    fun numberValueBoundsHaveGeneratedJavaTriEvidence() {
+        val model = withField(scoreField)
+        val engine = RuntimeLaws.kernelJavaEngine(model)
+        val def = ModelDef(listOf(scoreDef), emptyList())
+
+        listOf("0.50" to "zahlZuKlein", "150.00" to "zahlZuGross").forEach { (value, expected) ->
+            val kDoc = RuntimeLaws.doc().group("/Order", 1).field("/Order/Score", value, 1, 1)
+            val groovyDynamic = RuntimeLaws.messages(model, kDoc).map { it.code() }
+                .filter { it.startsWith("zahl") }.sorted()
+            val javaStatic = engine.messages(engine.instance(kDoc)).map { it.code() }
+                .filter { it.startsWith("zahl") }.sorted()
+            val iDoc = def.newDocument().group("/Order", 1).field("/Order/Score", value, 1, 1)
+            val interpreter = DmInterpreter(def).validate(iDoc).messages.map { it.code }
+                .filter { it.startsWith("zahl") }.sorted()
+
+            assertEquals(listOf(expected), groovyDynamic, "$value must exercise the declared value bound")
+            assertEquals(groovyDynamic, javaStatic, "$value: groovy-dynamic vs generated Java")
+            assertEquals(groovyDynamic, interpreter, "$value: kernel vs interpreter")
+        }
+    }
+
     // ── IF78: a NumberType with NO maxFractionalDigits is scale-0 (the kernel's primitive-int default) — an
     //    INTEGER field: any decimal separator is zahlHatDezimalTrenner. The loader defaults scale to 0 (locked at
     //    the loader level by `interpreter … ModelLoaderTest`); here the interp FieldDef carries scale=0 to match. ──

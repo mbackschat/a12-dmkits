@@ -59,4 +59,24 @@ class ComputeCascadeDiffTest {
         assertEquals(RuntimeLaws.computedValue(k, "/Order/StockOnHand").orElse(null), interp("/Order/StockOnHand"), "interp StockOnHand == kernel")
         assertEquals(RuntimeLaws.computedValue(k, "/Order/BackorderQuantity").orElse(null), interp("/Order/BackorderQuantity"), "interp cascades == kernel (11, not 1)")
     }
+
+    @Test
+    fun computationCascadeHasGeneratedJavaTriEvidence() {
+        val kDoc = RuntimeLaws.doc().group("/Order", 1).field("/Order/Quantity", "5", 1, 1)
+        val groovyDynamic = RuntimeLaws.compute(kModel, kDoc)
+            .associate { it.path() to it.value().orElse(null) }
+        val engine = RuntimeLaws.kernelJavaEngine(kModel)
+        val javaStatic = engine.compute(engine.instance(kDoc))
+            .associate { it.path() to it.value().orElse(null) }
+        val iDoc = def.newDocument().group("/Order", 1).field("/Order/Quantity", "5", 1, 1)
+        val interpreter = DmInterpreter(def).compute(iDoc).associate { it.path to it.value }
+        val expected = mapOf(
+            "/Order/StockOnHand" to "10",
+            "/Order/BackorderQuantity" to "11",
+        )
+
+        assertEquals(expected, groovyDynamic, "the dependent computation must read the computed value")
+        assertEquals(groovyDynamic, javaStatic, "computation cascade: groovy-dynamic vs generated Java")
+        assertEquals(groovyDynamic, interpreter, "computation cascade: kernel vs interpreter")
+    }
 }

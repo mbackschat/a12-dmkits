@@ -106,6 +106,43 @@ class ValidateFullDiffTest {
         assertEquals("OMISSION_ERROR", kernelType.toString())
     }
 
+    @Test
+    fun wholeDocumentValidationTriChecksGeneratedJava() {
+        val qtyRule = RuleDef(
+            "/Order/QtyCap", "/Order", render(m.num(Q).filled().and(m.num(Q).lt(100))),
+            "QTY_LOW", "../Quantity",
+        )
+        val rowRule = RuleDef(
+            "/Order/CountCap", "/Order", render(m.num(IC).filled().and(m.num(IC).gt(50))),
+            "COUNT_HIGH", "../Items/Count",
+        )
+        var model = RuntimeLaws.withRule(order, "/Order", "QtyCap", "../Quantity", "QTY_LOW", qtyRule.conditionText)
+        model = RuntimeLaws.withRule(model, "/Order", "CountCap", "../Items/Count", "COUNT_HIGH", rowRule.conditionText)
+        val def = ModelDef(fields, listOf(qtyRule, rowRule), repeatableGroups = setOf("/Order/Items"))
+        val kDoc = RuntimeLaws.doc().group("/Order", 1).field(Q, "80", 1, 1).field(CN, "Acme", 1, 1)
+        val iDoc = Document(def.kinds).field(Q, "80", 1, 1).field(CN, "Acme", 1, 1)
+        listOf("10", "80").forEachIndexed { index, count ->
+            val row = index + 1
+            kDoc.group("/Order/Items", 1, row).field(IC, count, 1, row, 1)
+            iDoc.field(IC, count, 1, row, 1)
+        }
+
+        fun kernelSignatures(messages: List<RuntimeLaws.Msg>) = messages
+            .filter { it.code() == "QTY_LOW" || it.code() == "COUNT_HIGH" }
+            .map { "${it.code()}|${it.type().name}|${it.field()}" }.sorted()
+        val groovy = kernelSignatures(RuntimeLaws.messages(model, kDoc))
+        val javaEngine = RuntimeLaws.kernelJavaEngine(model)
+        val javaStatic = kernelSignatures(javaEngine.messages(javaEngine.instance(kDoc)))
+        val interpreter = DmInterpreter(def).validateFull(iDoc)
+            .filter { it.code == "QTY_LOW" || it.code == "COUNT_HIGH" }
+            .map { "${it.code}|${if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}|${it.errorPath}" }
+            .sorted()
+
+        assertEquals(2, groovy.size, "the whole-document discriminator must fire one flat and one per-row rule: $groovy")
+        assertEquals(groovy, javaStatic, "whole JVM path — Groovy-dynamic vs generated Java")
+        assertEquals(groovy, interpreter, "whole JVM path — Groovy-dynamic vs interpreter")
+    }
+
     private companion object {
         const val Q = "/Order/Quantity"
         const val BQ = "/Order/BackorderQuantity"

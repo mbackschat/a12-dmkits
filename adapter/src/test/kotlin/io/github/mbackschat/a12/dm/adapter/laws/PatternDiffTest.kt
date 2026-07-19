@@ -62,6 +62,23 @@ class PatternDiffTest {
         assertAll(checks)
     }
 
+    @Test
+    fun patternHasGeneratedJavaTriEvidence() {
+        val cond = render(m.str(PC).matches(rx))
+        val model = RuntimeLaws.withRule(order, "/Order", "PatternJava", "../ProductCode", "PAT_JAVA", cond)
+        val values = mapOf(PC to "ABC")
+        val kDoc = RuntimeLaws.doc().group("/Order", 1).field(PC, "ABC", 1, 1)
+        val groovyDynamic = RuntimeLaws.fires(model, "PAT_JAVA", kDoc)
+        val engine = RuntimeLaws.kernelJavaEngine(model)
+        val javaStatic = engine.firedCodesSorted(engine.instance(kDoc)).contains("PAT_JAVA")
+        val interpreter = Interpreter(SingleRowDoc("/Order", values, kinds))
+            .fires(parseCondition(cond, "/Order"))
+
+        assertEquals(true, groovyDynamic, "PatternMatched must exercise the matching branch")
+        assertEquals(groovyDynamic, javaStatic, "PatternMatched: groovy-dynamic vs generated Java")
+        assertEquals(groovyDynamic, interpreter, "PatternMatched: kernel vs interpreter")
+    }
+
     private companion object {
         const val PC = "/Order/ProductCode"
         const val CN = "/Order/CustomerName"

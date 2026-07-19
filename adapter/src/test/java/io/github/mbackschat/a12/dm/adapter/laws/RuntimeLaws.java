@@ -829,6 +829,20 @@ public final class RuntimeLaws {
             return rt.validateFull(instance, config(null, Locale.US)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
         }
 
+        /** Generated-Java validation with the same per-call custom-condition callbacks as the dynamic path. */
+        List<Msg> messages(DocumentV2 instance, Map<String, ICustomCondition> customConditions) {
+            DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US)
+                    .customConditionFactory(ICustomConditionFactory.fromMap(customConditions)).build();
+            return rt.validateFull(instance, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        }
+
+        /** Generated-Java validation with the same per-call custom-field-type factory as the dynamic path. */
+        List<Msg> messages(DocumentV2 instance, ICustomFieldTypeFactory fieldTypeFactory) {
+            DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US)
+                    .customFieldTypeFactory(fieldTypeFactory).build();
+            return rt.validateFull(instance, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+        }
+
         /** Every computed-field outcome (value / cleared / errored) for an already-built instance — the compute
          *  tri-differential payload, mirroring the Groovy {@link RuntimeLaws#compute(String, Doc)}. */
         List<Computed> compute(DocumentV2 instance) {

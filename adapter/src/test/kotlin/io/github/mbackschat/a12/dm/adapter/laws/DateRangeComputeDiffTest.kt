@@ -52,6 +52,23 @@ class DateRangeComputeDiffTest {
     @Test fun anotherSpan() =
         agree("2023-01-15", "2023-12-24", "a second span renders the same way")
 
+    @Test
+    fun dateRangeConstructorHasGeneratedJavaTriEvidence() {
+        val kDoc = RuntimeLaws.doc().group("/Order", 1)
+            .field(OD, "2024-06-01", 1, 1).field(DD, "2024-06-30", 1, 1)
+        val groovyDynamic = RuntimeLaws.compute(model, kDoc)
+            .single { it.path() == CW }.value().orElse(null)
+        val engine = RuntimeLaws.kernelJavaEngine(model)
+        val javaStatic = engine.compute(engine.instance(kDoc))
+            .single { it.path() == CW }.value().orElse(null)
+        val iDoc = def.newDocument().field(OD, "2024-06-01", 1, 1).field(DD, "2024-06-30", 1, 1)
+        val interpreter = DmInterpreter(def).compute(iDoc).single { it.path == CW }.value
+
+        assertEquals("01.06.2024-30.06.2024", groovyDynamic, "DateRange must render in the target field format")
+        assertEquals(groovyDynamic, javaStatic, "DateRange: groovy-dynamic vs generated Java")
+        assertEquals(groovyDynamic, interpreter, "DateRange: kernel vs interpreter")
+    }
+
     private companion object {
         const val OD = "/Order/OrderDate"
         const val DD = "/Order/DeliveryDate"

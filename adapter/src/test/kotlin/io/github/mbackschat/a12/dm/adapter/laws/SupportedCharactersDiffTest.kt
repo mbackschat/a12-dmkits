@@ -47,6 +47,23 @@ class SupportedCharactersDiffTest {
     @Test fun punctuationIsOutOfSet() = agree("POL-24", "the '-' is outside A-Z/0-9 → charset fires")
     @Test fun bmpAccentIsOutOfSet() = agree("PÖL", "an accented BMP letter is outside A-Z → charset fires")
 
+    @Test
+    fun modelLegalCharsetHasGeneratedJavaTriEvidence() {
+        val kDoc = RuntimeLaws.doc().group("/Policy", 1).field(REF, "POL-24", 1, 1)
+        val groovyDynamic = RuntimeLaws.messages(json, kDoc).map { it.code() }
+            .filter { it == CHARSET }.sorted()
+        val engine = RuntimeLaws.kernelJavaEngine(json)
+        val javaStatic = engine.messages(engine.instance(kDoc)).map { it.code() }
+            .filter { it == CHARSET }.sorted()
+        val iDoc = Document(def.kinds).group("/Policy", 1).field(REF, "POL-24", 1, 1)
+        val interpreter = DmInterpreter(def).validate(iDoc).messages.map { it.code }
+            .filter { it == CHARSET }.sorted()
+
+        assertEquals(listOf(CHARSET), groovyDynamic, "'-' must exercise the model-declared legal charset")
+        assertEquals(groovyDynamic, javaStatic, "supportedCharacters: groovy-dynamic vs generated Java")
+        assertEquals(groovyDynamic, interpreter, "supportedCharacters: kernel vs interpreter")
+    }
+
     private companion object {
         const val REF = "/Policy/Ref"
     }

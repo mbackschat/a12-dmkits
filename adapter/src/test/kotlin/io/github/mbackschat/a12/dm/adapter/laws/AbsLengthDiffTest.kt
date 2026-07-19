@@ -62,6 +62,33 @@ class AbsLengthDiffTest {
         agree(render(m.field(ITEM).filled().and(m.str(ITEM).length().eq(1))), "../ItemId", "e\u0301", "1", "1",
             "decomposed e+U+0301 is 2, not 1 grapheme")
 
+    @Test
+    fun lengthHasGeneratedJavaTriEvidence() {
+        val cond = render(m.field(ITEM).filled().and(m.str(ITEM).length().eq(2)))
+        val model = RuntimeLaws.withRule(fuzz, "/Cart/Lines", "RR", "../ItemId", "RR", cond)
+        val kDoc = RuntimeLaws.doc().group("/Cart", 1)
+            .group("/Cart/Lines", 1, 1).field(ITEM, "e\u0301", 1, 1, 1)
+            .field(QTY, "1", 1, 1, 1).field(PRICE, "1", 1, 1, 1)
+        val groovyDynamic = RuntimeLaws.fires(model, "RR", kDoc)
+        val engine = RuntimeLaws.kernelJavaEngine(model)
+        val javaStatic = engine.firedCodesSorted(engine.instance(kDoc)).contains("RR")
+
+        val def = ModelDef(
+            fields,
+            listOf(RuleDef("/Cart/Lines/RR", "/Cart/Lines", cond, "RR", "../ItemId")),
+            repeatableGroups = setOf("/Cart/Lines"),
+            declaredReps = mapOf("/Cart/Lines" to 1000),
+            indexFields = setOf(ITEM),
+        )
+        val iDoc = def.newDocument()
+            .field(ITEM, "e\u0301", 1, 1, 1).field(QTY, "1", 1, 1, 1).field(PRICE, "1", 1, 1, 1)
+        val interpreter = DmInterpreter(def).validateFull(iDoc).any { it.code == "RR" }
+
+        assertEquals(true, groovyDynamic, "Length must count the decomposed sequence as two UTF-16 units")
+        assertEquals(groovyDynamic, javaStatic, "Length: groovy-dynamic vs generated Java")
+        assertEquals(groovyDynamic, interpreter, "Length: kernel vs interpreter")
+    }
+
     private companion object {
         const val ITEM = "/Cart/Lines/ItemId"
         const val QTY = "/Cart/Lines/Qty"

@@ -40,6 +40,7 @@ class CustomConditionDiffTest {
     private val m = BoundModel.ofJson(order)
     private val cond = DslRenderer().render(m.field(NAME).filled().and(Dsl.customCondition("NameIsAcme")))
     private val kModel = RuntimeLaws.withRule(order, "/Order", "R", "../CustomerName", "CC", cond)
+    private val javaEngine by lazy { RuntimeLaws.kernelJavaEngine(kModel) }
     private val def = ModelDef(
         listOf(FieldDef(NAME, Kind.STRING)),
         listOf(RuleDef("/Order/R", "/Order", cond, "CC", "../CustomerName")),
@@ -72,10 +73,13 @@ class CustomConditionDiffTest {
             iDoc.field(NAME, name, 1, 1)
         }
         val k = RuntimeLaws.typeOf(kModel, "CC", kDoc, mapOf("NameIsAcme" to mdNameIsAcme)).map { it.name }.orElse(null)
+        val j = javaEngine.messages(javaEngine.instance(kDoc), mapOf("NameIsAcme" to mdNameIsAcme))
+            .firstOrNull { it.code() == "CC" }?.type()?.name
         val i = DmInterpreter(def, customConditions = KernelCustomConditions.fromCore(mapOf("NameIsAcme" to coreNameIsAcme)))
             .validate(iDoc).messages.firstOrNull { it.code == "CC" }
             ?.type?.let { if (it == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR" }
-        assertEquals(k, i, "$msg  (kernel=$k interp=$i)")
+        assertEquals(k, j, "$msg  (Groovy-dynamic=$k generated-Java=$j)")
+        assertEquals(k, i, "$msg  (Groovy-dynamic=$k interpreter=$i)")
     }
 
     @Test fun acmeFires() = agree("ACME", "value ACME → condition true → fires VALUE")

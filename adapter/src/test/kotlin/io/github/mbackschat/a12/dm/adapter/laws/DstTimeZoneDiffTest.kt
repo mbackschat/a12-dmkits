@@ -111,6 +111,35 @@ class DstTimeZoneDiffTest {
         render(m.dateTime(SA).filled().and(Dsl.differenceInHours(m.dateTime(SA), m.dateTime(CA)).eq(5))),
         "2024-06-15T22:00:00", "2024-06-16T03:30:00", "no transition crossed → plain arithmetic")
 
+    @Test
+    fun modelTimeZoneTriChecksGeneratedJava() {
+        val cond = render(m.dateTime(SA).filled().and(Dsl.differenceInHours(m.dateTime(SA), m.dateTime(CA)).eq(1)))
+        val model = RuntimeLaws.withRule(berlinOrder, "/Order", "R", "../ScheduledAt", "TA", cond)
+        val def = ModelDef(
+            fields,
+            listOf(RuleDef("/Order/R", "/Order", cond, "TA", "../ScheduledAt")),
+            timeZone = ModelTimeZone.EUROPE_BERLIN,
+        )
+        val javaEngine = RuntimeLaws.kernelJavaEngine(model)
+
+        listOf(
+            Triple("2024-03-31T01:30:00", "2024-03-31T03:30:00", true),
+            Triple("2024-06-15T01:30:00", "2024-06-15T03:30:00", false),
+        ).forEach { (sa, ca, expected) ->
+            val kDoc = RuntimeLaws.doc().group("/Order", 1)
+                .field(SA, sa, 1, 1).field(CA, ca, 1, 1)
+            val iDoc = def.newDocument().group("/Order", 1)
+                .field(SA, sa, 1, 1).field(CA, ca, 1, 1)
+            val groovy = RuntimeLaws.messages(model, kDoc).any { it.code() == "TA" }
+            val javaStatic = javaEngine.messages(javaEngine.instance(kDoc)).any { it.code() == "TA" }
+            val interpreter = DmInterpreter(def).validateFull(iDoc).any { it.code == "TA" }
+
+            assertEquals(expected, groovy, "Berlin $sa → $ca discriminator")
+            assertEquals(groovy, javaStatic, "Berlin $sa → $ca — Groovy-dynamic vs generated Java")
+            assertEquals(groovy, interpreter, "Berlin $sa → $ca — Groovy-dynamic vs interpreter")
+        }
+    }
+
     private companion object {
         const val SA = "/Order/ScheduledAt"
         const val CA = "/Order/CompletedAt"

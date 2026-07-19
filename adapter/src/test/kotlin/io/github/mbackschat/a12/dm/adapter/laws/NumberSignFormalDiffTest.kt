@@ -50,6 +50,29 @@ class NumberSignFormalDiffTest {
         listOf("-1", "0").forEach { agree(BQ, it) }
     }
 
+    @Test
+    fun numberSignFormattingHasGeneratedJavaTriEvidence() {
+        val engine = RuntimeLaws.kernelJavaEngine(order)
+        listOf(
+            Triple(UP, "-0.00", "zahlNullEnthaeltVorzeichen"),
+            Triple(BQ, "-0.0", "zahlNullEnthaeltVorzeichen"),
+            Triple(UP, "+5", "zahlMitPlus"),
+        ).forEach { (field, value, expected) ->
+            val kDoc = RuntimeLaws.doc().group("/Order", 1).field(field, value, 1, 1)
+            val groovyDynamic = RuntimeLaws.messages(order, kDoc).map { it.code() }
+                .filter { it.startsWith("zahl") }.sorted()
+            val javaStatic = engine.messages(engine.instance(kDoc)).map { it.code() }
+                .filter { it.startsWith("zahl") }.sorted()
+            val iDoc = Document(model.kinds).field(field, value, 1, 1)
+            val interpreter = DmInterpreter(model).validateFull(iDoc).map { it.code }
+                .filter { it.startsWith("zahl") }.sorted()
+
+            assertEquals(listOf(expected), groovyDynamic, "$field = '$value' must exercise number-sign formatting")
+            assertEquals(groovyDynamic, javaStatic, "$field = '$value': groovy-dynamic vs generated Java")
+            assertEquals(groovyDynamic, interpreter, "$field = '$value': kernel vs interpreter")
+        }
+    }
+
     private companion object {
         const val UP = "/Order/UnitPrice"           // scale 2
         const val BQ = "/Order/BackorderQuantity"   // scale 0

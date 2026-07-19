@@ -54,12 +54,14 @@ class CorpusModelPreparerTest {
 
         val interpSigs = CorpusEngines.interpret(interpJson, placements, Op.ValidateFull)
         val kernelSigs = CorpusEngines.groovyDynamic(kernelJson, placements, Op.ValidateFull)
+        val javaStaticSigs = CorpusEngines.javaStatic(kernelJson, placements, Op.ValidateFull)
         val kernelOrigSigs = CorpusEngines.groovyDynamic(kernelOriginalJson, placements, Op.ValidateFull)
 
         assertTrue(interpSigs.any { it.startsWith("PRIORITY_FILLED|") }) {
             "the rule must fire (else the comparison is vacuous) — signatures: $interpSigs"
         }
         assertEquals(kernelOrigSigs, kernelSigs, "kernel must be id-agnostic + typedef-transparent")
+        assertEquals(kernelSigs, javaStaticSigs, "prepared model must execute identically through generated Java")
         assertEquals(kernelSigs, interpSigs, "interpreter (prepared) must match the kernel anchor")
     }
 

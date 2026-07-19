@@ -94,6 +94,29 @@ class PredefinedTypeValidityDiffTest {
     @Test fun bareInvalidValidNoFire() = agree(render(Dsl.invalidType(cn, "EMail")), valid, "bare Invalid, valid → no fire")
     @Test fun bareInvalidEmptyNoFire() = agree(render(Dsl.invalidType(cn, "EMail")), null, "bare Invalid, empty → no fire (not specified)")
 
+    @Test
+    fun predefinedValidatorTriChecksGeneratedJava() {
+        val cond = render(Dsl.validType(cn, "EMail"))
+        val model = RuntimeLaws.withRule(order, "/Order", "R", "../CustomerName", "VT", cond)
+        val def = ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "VT", "../CustomerName")))
+        val javaEngine = RuntimeLaws.kernelJavaEngine(model)
+
+        listOf(valid to "VALUE_ERROR", invalid to null).forEach { (name, expected) ->
+            val kDoc = RuntimeLaws.doc().group("/Order", 1).field(NAME, name, 1, 1)
+            val iDoc = def.newDocument().group("/Order", 1).field(NAME, name, 1, 1)
+            val groovy = RuntimeLaws.messages(model, kDoc, factory)
+                .firstOrNull { it.code() == "VT" }?.type()?.name
+            val javaStatic = javaEngine.messages(javaEngine.instance(kDoc), factory)
+                .firstOrNull { it.code() == "VT" }?.type()?.name
+            val interpreter = DmInterpreter(def).validateFull(iDoc).firstOrNull { it.code == "VT" }
+                ?.type?.let { if (it == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR" }
+
+            assertEquals(expected, groovy, "$name discriminator")
+            assertEquals(groovy, javaStatic, "$name — Groovy-dynamic vs generated Java")
+            assertEquals(groovy, interpreter, "$name — Groovy-dynamic vs interpreter")
+        }
+    }
+
     private companion object {
         const val NAME = "/Order/CustomerName"
     }
