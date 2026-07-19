@@ -22,8 +22,7 @@ Keep every correction within the recorded findings, including the instruction no
 
 ### Active chapters
 
-- [RV-2026-07-19-03 — IG91 → IG87 prepared-model and include-remap chain review](#rv-2026-07-19-03) — **Changes requested.** IF145 leaves the normal CLI gate red; IF146's raw-text remapper is not safe or complete for the legal reference grammar, and IG87 was reclassified as ongoing despite ordinary unfinished correctness/evidence work.
-- [RV-2026-07-19-04 — IG93 → IG96 compute-semantics chain review](#rv-2026-07-19-04) — **Changes requested.** IF147's new bare-group scan is not formally correct, context-complete, declaration-range ordered, or actually lazy; IF148's valid-model runtime wiring works, but tolerance metadata remains lossy through the typed/CLI surfaces and its closure evidence is incomplete.
+None.
 
 ### Resolution index
 
@@ -36,8 +35,12 @@ Keep every correction within the recorded findings, including the instruction no
 - [RV05-1](#rv05-1), [RV05-2](#rv05-2), [RV05-3](#rv05-3), [RV05-4](#rv05-4) — resolved in `07fb8c03`.
 - [RV05-5](#rv05-5), [RV05-6](#rv05-6), [RV05-7](#rv05-7), [RV05-8](#rv05-8) — resolved in `955ccdc7`.
 - [RV05-9](#rv05-9), [RV05-10](#rv05-10), [RV05-11](#rv05-11), [RV05-12](#rv05-12) — resolved in `1903cd80`.
+- [RV03-1](#rv03-1), [RV03-2](#rv03-2) — resolved in `2ccf9ee2`.
+- [RV03-3](#rv03-3), [RV03-4](#rv03-4), [RV03-5](#rv03-5), [RV03-6](#rv03-6), [RV03-7](#rv03-7) — resolved in `8b18848d`.
+- [RV04-1](#rv04-1), [RV04-2](#rv04-2), [RV04-3](#rv04-3), [RV04-4](#rv04-4), [RV04-5](#rv04-5) — resolved in `b52de06e`.
+- [RV04-6](#rv04-6), [RV04-7](#rv04-7), [RV04-8](#rv04-8), [RV04-9](#rv04-9) — resolved in `d6a08f5b`.
 
-## Active review chapters
+## Resolved chapter archive
 
 <a id="rv-2026-07-19-03"></a>
 
@@ -81,7 +84,7 @@ Keep every correction within the recorded findings, including the instruction no
 - Raw include, unresolved typedef, and opaque-ID residue still reject through `ModelLoaderPreparedGuardTest` on JVM and Node.
 - `./build.sh :cli:docGuardTest` and the normal `:cli:test` dependency path pass.
 
-**Resolution:** Open.
+**Resolution:** Resolved in `2ccf9ee2`. `ModelLoaderParityTest` now compares all 38 fixtures after the shared preparation step, while `ModelLoaderPreparedGuardTest` retains direct raw-residue rejection on JVM and Node. The normal CLI doc guard and `:cli:test` dependency path passed.
 
 <a id="rv03-2"></a>
 
@@ -112,7 +115,7 @@ Keep every correction within the recorded findings, including the instruction no
 - The unprepared opaque input still fails when deliberately passed straight to `ModelLoader`.
 - IF145, IG68, `ModelLoader` KDoc, and the named tests describe one factual preparation/refusal lifecycle.
 
-**Resolution:** Open.
+**Resolution:** Resolved in `2ccf9ee2`. `ModelSeedPreparationTest` now includes the opaque-ID production-route integration arm; IF145, IG68, and the loader KDoc distinguish kernel-free preparation from loud rejection of recognized raw residue. The seed, direct `ModelReaderTest`, and prepared-loader guards passed.
 
 <a id="rv03-3"></a>
 
@@ -146,7 +149,7 @@ Keep every correction within the recorded findings, including the instruction no
 - A genuine unknown absolute reference produces the structured CLI refusal end to end; a path-like string literal never does.
 - Representative cases match the dynamic-Groovy kernel and static-Java strategy where strategy coverage is claimed.
 
-**Resolution:** Open.
+**Resolution:** Resolved in `8b18848d`. The raw character heuristic was replaced by the reference-aware `ConditionReferenceRemapper`, shared across rule and computation fragments. `IncludeReferenceRemapTest`, `IncludeReferenceBindingTest`, `IncludeResidualRefDiffTest`, and `QuotedPathSegmentParseTest` lock legal reference slots, literal safety, quoted paths, and structured refusal.
 
 <a id="rv03-4"></a>
 
@@ -173,7 +176,7 @@ Keep every correction within the recorded findings, including the instruction no
 - An including-model name collision does not retarget or invalidate the included rule/computation.
 - Flag-on/flag-off behavior and rules/computations agree with both kernel strategies.
 
-**Resolution:** Open.
+**Resolution:** Resolved in `8b18848d`. Included short names are bound before integration and remapped to their moved targets, including collision cases, instead of being re-resolved in the larger mounted model. The binding/remap unit locks and include strategy differential passed.
 
 <a id="rv03-5"></a>
 
@@ -199,7 +202,7 @@ Keep every correction within the recorded findings, including the instruction no
 - The same residual in retained content refuses.
 - Two same-named elements in different groups yield distinguishable locations.
 
-**Resolution:** Open.
+**Resolution:** Resolved in `8b18848d`. Residual diagnostics are now coupled to surviving mounted elements and carry unambiguous name paths; excluded nested content cannot leave a false refusal. Retained-residual, excluded-residual, and duplicate-name checks passed.
 
 <a id="rv03-6"></a>
 
@@ -229,7 +232,7 @@ Keep every correction within the recorded findings, including the instruction no
 - The capability matrix resolves to the actual include evidence rather than a coarse unrelated prepared-model test.
 - No ordinary unfinished IG87 work remains in the deferred/ongoing section.
 
-**Resolution:** Open.
+**Resolution:** Resolved in `8b18848d`. `IncludeAssemblyStrategyDiffTest` and the expanded include-remap locks cover nested mount depths, rules and computation fragments, legal outer-correlation and reference forms, and both dynamic-Groovy and static-Java strategies. `CapabilityEvidenceMatrixTest` now points to this actual assembly evidence, and IG87 was deleted rather than deferred.
 
 <a id="rv03-7"></a>
 
@@ -257,7 +260,7 @@ Keep every correction within the recorded findings, including the instruction no
 - Every named test exists and proves the claim attached to it.
 - Static-Java, rule/computation, and supported-reference wording matches the evidence after RV03-3 through RV03-6 close.
 
-**Resolution:** Open.
+**Resolution:** Resolved in `8b18848d`. The certificate, IF122/IF146, interpreter specification, diagnostic wording, semantics map, and include-test comments now describe the reference-aware absolute remap and its actual evidence; obsolete depth-relative and refusal claims were removed. The focused include tests, evidence matrix, stale-gap guard, doc guards, and API guard passed.
 
 #### What the review accepted
 
@@ -277,7 +280,7 @@ Keep every correction within the recorded findings, including the instruction no
 
 #### Resolution
 
-Open. Independent verification should reject the “IG91 → IG87 chain complete” claim until RV03-1 through RV03-7 are resolved, every issue carries a fixing commit and green verification note, and IG87 is deleted rather than deferred.
+Resolved by `2ccf9ee2` and `8b18848d`. IG91 and IG87 have no remaining gap row; the prepared-model boundary, include reference binding/remap, both-strategy evidence, and bounded documentation corrections passed their named acceptance checks.
 
 <a id="rv-2026-07-19-04"></a>
 
@@ -318,7 +321,7 @@ Open. Independent verification should reject the “IG91 → IG87 chain complete
 - Reverse the decisive/invalid order and cover both two-pass operators.
 - Include nested contained groups and VALUE, CLEARED, and ERRORED downstream outcomes.
 
-**Resolution:** Open.
+**Resolution:** Resolved in `b52de06e`. The scan cursor is field-major and repetition-major, interleaving each field's declared omissions before advancing. `BareGroupComputeExactnessTest` and `BareGroupComputeExactnessDiffTest` cover all seven quantifiers, both decision orders, nested/repeatable fields, and VALUE/CLEARED/ERRORED outcomes on JVM, Node, dynamic Groovy, and static Java.
 
 <a id="rv04-2"></a>
 
@@ -344,7 +347,7 @@ Open. Independent verification should reject the “IG91 → IG87 chain complete
 - Restricted-charset, custom-type, representative declared-constraint, and over-limit failures poison identically through direct, star, and bare-group reads.
 - The portable state-classification locks run on JVM and Node, with representative end-to-end tri-differentials against both kernel strategies.
 
-**Resolution:** Open.
+**Resolution:** Resolved in `b52de06e`. Identity-preserving scan items now classify raw presence separately from the shared full computation-formal oracle; valid non-concrete dates remain filled, while charset, custom-type, declared-constraint, over-limit, and malformed values poison consistently. The common and tri-engine exactness locks passed.
 
 <a id="rv04-3"></a>
 
@@ -375,7 +378,7 @@ Open. Independent verification should reject the “IG91 → IG87 chain complete
 - Probe the parallel shape against both kernels; implement it if legal, otherwise lock the structured loud refusal.
 - Run representative cascade behavior on JVM and Node and tri-check the kernel-visible outcomes.
 
-**Resolution:** Open.
+**Resolution:** Resolved in `b52de06e`. Group scans retain `(path, repetitions)` identity, consume overlay state, contribute contained computed targets to dependency closure, and have no silent-empty production fallback. Cascade VALUE/CLEARED/POISONED, declaration-order reversal, `compute()`, `computeField()`, nested/repeatable, and parallel-context behavior are locked in the common and differential suites.
 
 <a id="rv04-4"></a>
 
@@ -402,7 +405,7 @@ Open. Independent verification should reject the “IG91 → IG87 chain complete
 - A quantifier-heavy N/4N guard distinguishes first-witness O(1) behavior from whole-group O(N) work and detects accidental double scans.
 - Allocation/work claims in IF147 and PERFORMANCE match the measured implementation.
 
-**Resolution:** Open.
+**Resolution:** Resolved in `b52de06e`. The model caches each declaration-ordered group plan and exposes an on-demand cursor that resolves only the next needed item, with declared-range events in the same traversal. `BareGroupScanLazinessTest` proves first-witness short-circuiting and guards the N/4N work curve; the bounded IF147/performance wording now matches the implementation.
 
 <a id="rv04-5"></a>
 
@@ -429,7 +432,7 @@ Open. Independent verification should reject the “IG91 → IG87 chain complete
 - A common JVM/Node behavioral test executes the group scan rather than merely compiling it.
 - No new internal fixture embeds a hand-written condition/operation string when a typed surface can express it.
 
-**Resolution:** Open.
+**Resolution:** Resolved in `b52de06e`. Typed fixtures now drive the seven-operator/context/outcome/platform/strategy matrix through `BareGroupComputeExactnessTest` and `BareGroupComputeExactnessDiffTest`; `CapabilityEvidenceMatrixTest`, IF147/IF85, the certificate, performance record, and semantics map point to those locks. IG93 was deleted rather than deferred.
 
 <a id="rv04-6"></a>
 
@@ -459,7 +462,7 @@ Open. Independent verification should reject the “IG91 → IG87 chain complete
 - Diff/explain/report surfaces do not hide a semantic change in the band.
 - API-GUIDE and executable schema examples demonstrate the feature, and the schema/conformance guards pass.
 
-**Resolution:** Open.
+**Resolution:** Resolved in `d6a08f5b`. The closed public `ToleranceBand` travels independently per alternative through typed builders, draft/validation/writer, kernel conversion, read/modify/apply, explanation/diff/report, schemas, and executable examples. `ComputationToleranceCliTest` covers every band plus unrelated modification preservation, and the API/schema/snippet guards passed.
 
 <a id="rv04-7"></a>
 
@@ -485,7 +488,7 @@ Open. Independent verification should reject the “IG91 → IG87 chain complete
 - Empty, blank, unknown string, object/array, and other wrong JSON types reject loudly on JVM and Node.
 - No invalid present value can reach `ParsedModel` as a null band.
 
-**Resolution:** Open.
+**Resolution:** Resolved in `d6a08f5b`. Missing or null metadata alone means strict comparison; every present empty, blank, unknown, object, array, numeric, or Boolean value is rejected with the property name and accepted set. `ComputationToleranceBandLoadTest` passed on JVM and Node.
 
 <a id="rv04-8"></a>
 
@@ -510,7 +513,7 @@ Open. Independent verification should reject the “IG91 → IG87 chain complete
 - Removing/renaming `ComputationToleranceValidationDiffTest` makes the matrix fail.
 - The certificate names the actual test and distinguishes rule tolerance from computation `toleranceRangeOp`.
 
-**Resolution:** Open.
+**Resolution:** Resolved in `d6a08f5b`. The computation capability cell now resolves specifically to `ComputationToleranceValidationDiffTest`, with a specialist assertion that prevents rule-only tolerance evidence from satisfying it. The evidence matrix and certificate now distinguish rule tolerance from computation-alternative metadata.
 
 <a id="rv04-9"></a>
 
@@ -540,7 +543,7 @@ Open. Independent verification should reject the “IG91 → IG87 chain complete
 - JVM and Node execute loader, synthesis, and validation semantics, not only enum mapping.
 - Every active evidence claim names a test that proves that exact claim.
 
-**Resolution:** Open.
+**Resolution:** Resolved in `d6a08f5b`. The typed differential covers equal, interior, boundary, and outside values in both directions for every band, selected alternatives with distinct bands, and false common/alternative guards while reusing one generated-Java engine per case. `ComputationToleranceValidationTest` executes loader, synthesis, tier selection, and validation on JVM and Node; the differential, certificate, finding, and semantics-map guards passed.
 
 #### What the review accepted
 
@@ -561,9 +564,7 @@ Open. Independent verification should reject the “IG91 → IG87 chain complete
 
 #### Resolution
 
-Open. Independent verification should reject the “IG93 → IG96 chain complete” claim until RV04-1 through RV04-9 are resolved, each issue carries a fixing commit and green verification note, and IG93/IG96 are deleted from the active gap ledger only after their original contracts and these direct sibling defects are fully cleared.
-
-## Resolved chapter archive
+Resolved by `b52de06e` and `d6a08f5b`. IG93 and IG96 have no remaining gap row; exact lazy bare-group scanning and end-to-end computation tolerance metadata/semantics passed their named JVM, Node, dynamic-Groovy, static-Java, CLI, API, schema, evidence, stale-gap, and purity checks.
 
 <a id="rv-2026-07-19-05"></a>
 
