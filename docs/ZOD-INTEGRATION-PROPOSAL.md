@@ -1131,13 +1131,17 @@ These risks should be resolved in the owning API proposal or isolated behind ada
 
 ## 16. Delivery sequence
 
+`@a12/operators-zod` does not wait for Interpreter API development. It can ship as soon as the Operator API’s dependency-free scalar codecs, runtime guards, structured errors, and package-instance contract are stable.
+
+Interpreter integration begins with the A12-native minimum transport and ownership foundation defined by the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md): the versioned placement DTO, decode limits, structured input diagnostics, prepared ownership, model-aware decode, typed fast read, canonical encode, and snapshot authenticity guard. The strict Zod placement schema may be designed and tested earlier, but it should not be published before that authoritative core decoder exists; otherwise the adapter risks becoming the accidental document specification or a second validator.
+
 1. Publish and test the dependency-free A12 scalar codecs, runtime guards, and structured conversion errors from the Operator API.
 2. Implement `@a12/operators-zod` scalar codecs and the error bridge.
 3. Add branded encode-safe `object` and `array` composition with TypeScript declaration tests and runtime provenance checks.
-4. Publish and test the strict `PlacementDocumentInputV1` schema in `@a12/interpreter-zod`.
-5. Add configurable transport limits where a real service requires them.
-6. Add the prepared-owner-bound snapshot adapter only after the core owner guard and canonical encoder are stable.
-7. Add the lossless report/form projection against complete canonical Interpreter reports.
+4. Implement and stabilize the Interpreter API’s dependency-free minimum transport and ownership foundation.
+5. Publish the strict `PlacementDocumentInputV1` schema and configurable transport-limit schema factory in `@a12/interpreter-zod`.
+6. Add the prepared-owner-bound snapshot adapter using the stable core owner guard, model-aware decoder, and canonical encoder.
+7. Add the lossless report/form projection only after complete canonical Interpreter reports are stable.
 8. Add Worker-specific examples and conformance tests without embedding a Worker coordinator into the adapter package.
 9. Evaluate advisory model-derived schemas and build-time generation as separate consumer-driven work.
 

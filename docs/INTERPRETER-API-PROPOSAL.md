@@ -3516,6 +3516,16 @@ Known decimal, regex, time-zone, preparation, and host gaps in [INTERPRETER-GAPS
 
 ## 12. Recommended product surface
 
+### 12.1 Minimum transport and ownership foundation
+
+The first implementable Interpreter increment should be a dependency-free transport and ownership foundation: `PlacementDocumentInputV1`, `DocumentDecodeLimits`, structured `DocumentInputDiagnostic` and `DocumentInputError` values, `PreparedModel` and `ModelOwnerIdentity`, `PreparedDocumentApi.tryDecodePlacements`, the typed `readPlacements` fast path, `encodePlacements`, `isSnapshot(value: unknown)`, and the resulting model-owned `DocumentSnapshot`.
+
+This foundation is independently useful for HTTP, queue, persistence, plugin, and Worker boundaries. It establishes one authoritative A12-native document contract before optional framework adapters appear. It does not depend on the validation-service registry, runtime pooling, persistent editing, candidate programs, Zod, or browser support.
+
+Once this foundation is stable, it is sufficient for the strict document-ingress and owner-bound snapshot portions of the optional [Zod integration proposal](ZOD-INTEGRATION-PROPOSAL.md). Validation-report projection still waits for the canonical `ValidationReport` contract.
+
+### 12.2 Complete product boundary
+
 | Core contract | Optional after the core | Deliberately outside/deferred |
 |---|---|---|
 | strict expanded-model preparation | bounded model registry/runtime pool | process-global/unbounded cache |
