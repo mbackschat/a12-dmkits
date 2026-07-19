@@ -7,7 +7,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 /**
- * Multiplatform (JVM + JS) lock for IG91's enforced preparation boundary: [ModelLoader] consumes only an
+ * Multiplatform (JVM + JS) lock for IF145's enforced preparation boundary: [ModelLoader] consumes only an
  * EXPANDED, self-contained, name-path-keyed model, so a raw model that slips past preparation must fail LOUD
  * — never load as a structurally plausible but wrong model (a dropped mount, a typedef silently flattened to
  * STRING, an opaque id trusted as a path). Every CLI consumer prepares upstream via `ModelReader.expand`; this

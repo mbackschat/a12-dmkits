@@ -1,0 +1,113 @@
+package io.github.mbackschat.a12.dm.cli.model;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import io.github.mbackschat.a12.dm.cli.CliTestSupport;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+
+/**
+ * IF145 — {@code model seed} must prepare its input through the SAME kernel-free expander every other runtime
+ * verb uses ({@code InterpreterEngine.expandForEval}), not read raw DM-JSON and load it directly. Two
+ * consequences of that boundary are locked here over own-domain (insurance / e-commerce) fixtures: an included
+ * sub-model's fields are instantiated (the mount is not silently dropped), and an imported typedef field is
+ * seeded from its RESOLVED kind (not flattened to STRING). The loader-side refusal of any residue that escapes
+ * preparation is the sibling {@code ModelLoaderPreparedGuardTest}; the eval-path twin is
+ * {@code IncludeEvalDefaultPathTest}.
+ */
+class ModelSeedPreparationTest {
+
+    private static final ObjectMapper M = new ObjectMapper();
+
+    // ── include: a policy mounting a benefits sub-model ─────────────────────────────────────────────
+
+    /** The included benefits sub-model: a Coverage amount + a Kind, no rules. */
+    private static String benefits() {
+        return DocumentModelDraft.named("benefits").locale("en_US")
+                .rootGroup("Benefits", b -> b
+                        .numberField("Coverage", n -> n.fractionDigits(2))
+                        .field("Kind", FieldKind.STRING))
+                .build().toJson();
+    }
+
+    /** A policy mounting benefits at /Policy/Cover. */
+    private static String policyMountingBenefits() {
+        return DocumentModelDraft.named("policy").locale("en_US")
+                .include("benefits", "benefits")
+                .rootGroup("Policy", p -> p
+                        .field("PolicyNo", FieldKind.STRING)
+                        .mount("Cover", "benefits"))
+                .build().toJson();
+    }
+
+    // ── typedef import: a storefront importing a Money number type ───────────────────────────────────
+
+    /** A type-def-only provider carrying a Money number type (2 fraction digits). */
+    private static String catalogTypes() {
+        return DocumentModelDraft.typeDefModel("catalogtypes").locale("en_US")
+                .typeDef("Money", t -> t.number(n -> n.fractionDigits(2)))
+                .build().toJson();
+    }
+
+    /** A storefront whose Price field is typed by the imported Money definition. */
+    private static String storefrontImportingMoney() {
+        return DocumentModelDraft.named("storefront").locale("en_US")
+                .importTypeDefs("catalogtypes")
+                .rootGroup("Storefront", s -> s
+                        .field("Sku", FieldKind.STRING)
+                        .typedefField("Price", "Money"))
+                .build().toJson();
+    }
+
+    /** Write the base model + its referenced model to {@code dir}; return the base model path. */
+    private static Path workspace(Path dir, String baseName, String baseJson, String refName, String refJson)
+            throws IOException {
+        Files.writeString(dir.resolve(refName), refJson);
+        Path base = dir.resolve(baseName);
+        Files.writeString(base, baseJson);
+        return base;
+    }
+
+    @Test
+    void seedInstantiatesTheMountedSubmodelsFields(@TempDir Path dir) throws Exception {
+        Path model = workspace(dir, "policy.dm.json", policyMountingBenefits(), "benefits.dm.json", benefits());
+
+        CliTestSupport.Result seed = CliTestSupport.run("-m", model.toString(), "model", "seed");
+
+        assertEquals(0, seed.code(), () -> "seed succeeds: " + seed.out() + seed.err());
+        JsonNode fields = M.readTree(seed.out()).path("fields");
+        assertTrue(fields.path("Policy").hasNonNull("PolicyNo"),
+                () -> "seed emits the base field: " + seed.out());
+        // Without preparation the raw (unexpanded) model reaches the loader, so the mounted Cover subtree is
+        // absent from the walked model and never seeded — this is the reproducer.
+        assertTrue(fields.path("Policy").path("Cover").hasNonNull("Coverage"),
+                () -> "seed instantiates the MOUNTED sub-model's field (was silently dropped): " + seed.out());
+    }
+
+    @Test
+    void seedResolvesAnImportedTypedefFieldToItsDeclaredKind(@TempDir Path dir) throws Exception {
+        Path model = workspace(dir, "storefront.dm.json", storefrontImportingMoney(),
+                "catalogtypes.dm.json", catalogTypes());
+
+        CliTestSupport.Result seed = CliTestSupport.run("-m", model.toString(), "model", "seed");
+
+        assertEquals(0, seed.code(), () -> "seed succeeds: " + seed.out() + seed.err());
+        JsonNode fields = M.readTree(seed.out()).path("fields");
+        String price = fields.path("Storefront").path("Price").asText();
+        // Preparation inlines the imported Money type, so Price is seeded as a NUMBER (a decimal literal).
+        // Without it the TypeDefType flattens to STRING and Price would be a "s..." string token instead.
+        assertTrue(price.matches("-?\\d+(\\.\\d+)?"),
+                () -> "the imported typedef field is seeded from its resolved NUMBER kind, not STRING: " + seed.out());
+    }
+}

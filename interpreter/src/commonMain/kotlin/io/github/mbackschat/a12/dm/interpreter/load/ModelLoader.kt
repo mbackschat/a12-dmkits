@@ -41,7 +41,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Severity
  * The loader handles a **single, fully-expanded** model: no `modelReferences`/`imports` resolution and no
  * `TypeDefType` de-referencing. Includes and type-definition libraries are resolved **upstream** by the kernel's
  * `expand()` (native-safe via the read tier) before the DM-JSON reaches here. This boundary is **enforced, not
- * assumed** ([requirePrepared], IG91): a model that still carries an unexpanded include (`modelAlias`), an
+ * assumed** ([requirePrepared], IF145): a model that still carries an unexpanded include (`modelAlias`), an
  * unresolved `TypeDefType`, or a non-name-path (opaque) id is **rejected loud** with a corrective message —
  * never loaded as a structurally plausible but wrong model (a dropped mount, a typedef silently flattened to
  * STRING, an opaque id trusted as a path). Every CLI consumer prepares upstream via `ModelReader.expand`; this
@@ -89,7 +89,7 @@ object ModelLoader {
     }
 
     /**
-     * Enforce the loader's prepared-model contract (IG91): every recorded element (Field/Group/Rule/Computation)
+     * Enforce the loader's prepared-model contract (IF145): every recorded element (Field/Group/Rule/Computation)
      * must be name-path-keyed, and the model must carry no unexpanded include (`Group.modelAlias`) nor unresolved
      * `TypeDefType`. These are the three residue classes that would otherwise load a **wrong** model silently — a
      * mount whose fields never appear, a typedef flattened to STRING, an opaque id trusted as a path. The header

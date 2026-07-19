@@ -35,7 +35,7 @@ One engine, two compile targets, from a single `commonMain` source set:
 | package | holds | role |
 |---|---|---|
 | `.model` | `ModelDef`/`FieldDef`/`RuleDef`/`ComputationDef` · `Kind`/`MsgType`/`Severity`/`Requiredness` · `Message`/`RuleResult`/`ValidationOutcome`/`Computed` · `RelevantEntity` · the `CustomCondition` SPI (`CustomCondition`/`CustomConditionData`/`FieldPointer`) · `PredefinedType` registry | the data contract consumers build/read |
-| `.load` | `ModelLoader` — prepared, self-contained, name-path-keyed DM-JSON → `ModelDef` (kotlinx tree API, WI-2) | build a `ModelDef` after upstream assembly; raw-model preparation is IG68/IG91 |
+| `.load` | `ModelLoader` — prepared, self-contained, name-path-keyed DM-JSON → `ModelDef` (kotlinx tree API, WI-2); rejects unprepared residue loud (IF145) | build a `ModelDef` after upstream assembly; the standalone commonMain assembler is IG68 |
 | `.ast` | `Cond` / `Expr` (sealed) · `Val` / `Tri` · `typedValue`/`emptyValue` | the parsed rule, as data |
 | `.parse` | `parseCondition` / `parseExpression` — recursive descent (§3) | text → AST |
 | `.eval` | `Interpreter` (the tree-walk strategy = the per-row eval-state seam, IF117) + its collaborator extension files `ExprEval`/`PolarityWalk`/`ValueListQuantEval` + the per-call `EvalConfig` bundle · `EvalContext` + `Document` (+ the `OverlayContext` cascade decorator, and the `SingleRowDoc`/`RepDoc` test doubles) · the operator registries (`PredicateOp`/`FunctionOp`/`ConstantOp`) · `Kleene` · `DateMath` · `ValCompare` · `Aggregates` · `Polarity` · `CorrelationJoin` (the pure `$`-join recognizer) · `FormalError` · `Pointer` · the message renderer | the engine |
