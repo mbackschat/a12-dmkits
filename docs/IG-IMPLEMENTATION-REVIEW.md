@@ -10,11 +10,11 @@ Reviews are read-only unless the owner explicitly asks for changes. A reviewer w
 
 ### Implementors who resolve chapters
 
-The completed chapter already contains the important facts, evidence, scope, and acceptance checks, assembled through substantial review work. When asked to implement it, **use it as the authoritative work brief: do not restart or repeat the review and do not broaden the audit.** Re-check only the live locations needed to apply the recorded fix and its direct guard. Do not reopen ratified owner decisions unless implementation exposes a concrete contradiction or genuine blocker.
+Treat the completed chapter as the authoritative and complete work brief: it already contains the reviewed facts, evidence, scope, corrections, and acceptance checks. Follow the reviewer's explicit instructions exactly as written; do not restart or repeat the review, add to or question the instructions, reinterpret them, broaden the audit, reopen ratified decisions, redesign adjacent surfaces, or edit unrelated proposals/documents. Re-check only the live locations needed for the recorded fix and its direct guard, unless implementation exposes a concrete contradiction or genuine blocker.
 
-**The default completion condition is to clear the associated IG gap, not to preserve unfinished work by moving it to “deferred” or “ongoing-incremental.”** Finish every residual already named by the chapter, graduate the durable result into its owning finding/specification, and delete the IG row. A gap may remain deferred only when the owner explicitly ratified an external re-open trigger or implementation hits a genuine blocker that cannot be resolved within the authorized scope; record that exception plainly instead of silently reclassifying ordinary unfinished work. This rule applies to every current and future implementation chapter.
+Resolve the chapter immediately with the smallest clean root fix and its named acceptance checks; do not overthink it. Completion means clearing the associated IG gap: finish every named residual, graduate the durable result into its owning finding/specification, and delete the IG row rather than moving ordinary unfinished work to “deferred” or “ongoing-incremental.” Deferral is allowed only for an owner-ratified external re-open trigger or a genuine in-scope blocker that cannot be resolved, and that exception must be recorded plainly.
 
-Keep corrections focused on the recorded findings. In particular, do not broaden an entry into a rewrite of unconditional “kernel-exact,” “full conformance,” “full fidelity,” or “linear” language. Record the fixing commit and verification results in a resolution note beneath every corrected issue, retain the original verdict as review history, and leave the finished result for an independent reviewer to verify.
+Keep every correction within the recorded findings, including the instruction not to broaden work into rewrites of unconditional “kernel-exact,” “full conformance,” “full fidelity,” or “linear” language. Verify and commit the fix, add the commit and verification evidence beneath every resolved issue, preserve the original verdict as review history, and leave the result ready for independent review. These rules bind the primary implementer and every delegated subagent for every current and future implementation chapter; the primary implementer must include them in delegated work and enforce them during integration.
 
 ---
 
@@ -24,7 +24,6 @@ Keep corrections focused on the recorded findings. In particular, do not broaden
 
 - [RV-2026-07-19-03 — IG91 → IG87 prepared-model and include-remap chain review](#rv-2026-07-19-03) — **Changes requested.** IF145 leaves the normal CLI gate red; IF146's raw-text remapper is not safe or complete for the legal reference grammar, and IG87 was reclassified as ongoing despite ordinary unfinished correctness/evidence work.
 - [RV-2026-07-19-04 — IG93 → IG96 compute-semantics chain review](#rv-2026-07-19-04) — **Changes requested.** IF147's new bare-group scan is not formally correct, context-complete, declaration-range ordered, or actually lazy; IF148's valid-model runtime wiring works, but tolerance metadata remains lossy through the typed/CLI surfaces and its closure evidence is incomplete.
-- [RV-2026-07-19-05 — IG95 → IG92 → IG88 interpreter-semantics chain review](#rv-2026-07-19-05) — **Changes requested.** IF149 compares numeric duplicate keys incorrectly, ignores composite-key relevance, and loses duplicate-peer message pointers; IF150 omits the kernel validator context, can invoke a validator more than once, and has incomplete suppression/message/consumer evidence; IF151 can build a nonterminating trie from an empty entry and lacks the required legal-overlap and real scale locks.
 
 ### Resolution index
 
@@ -34,6 +33,9 @@ Keep corrections focused on the recorded findings. In particular, do not broaden
 - [RV02-3](#rv02-3) — resolved in `be4e4e93` and `a00bfc08`.
 - [RV02-4](#rv02-4) — resolved in `be4e4e93`.
 - [RV02-5](#rv02-5) — resolved in `d3121905` and `5a25c25d`.
+- [RV05-1](#rv05-1), [RV05-2](#rv05-2), [RV05-3](#rv05-3), [RV05-4](#rv05-4) — resolved in `07fb8c03`.
+- [RV05-5](#rv05-5), [RV05-6](#rv05-6), [RV05-7](#rv05-7), [RV05-8](#rv05-8) — resolved in `955ccdc7`.
+- [RV05-9](#rv05-9), [RV05-10](#rv05-10), [RV05-11](#rv05-11), [RV05-12](#rv05-12) — resolved in `1903cd80`.
 
 ## Active review chapters
 
@@ -561,6 +563,8 @@ Open. Independent verification should reject the “IG91 → IG87 chain complete
 
 Open. Independent verification should reject the “IG93 → IG96 chain complete” claim until RV04-1 through RV04-9 are resolved, each issue carries a fixing commit and green verification note, and IG93/IG96 are deleted from the active gap ledger only after their original contracts and these direct sibling defects are fully cleared.
 
+## Resolved chapter archive
+
 <a id="rv-2026-07-19-05"></a>
 
 ### RV-2026-07-19-05 — IG95 → IG92 → IG88 interpreter-semantics chain review
@@ -600,7 +604,7 @@ Open. Independent verification should reject the “IG93 → IG96 chain complete
 - Dynamic-Groovy, generated-Java, JVM interpreter, and Node interpreter agree for `5` versus `5.00`, a mixed composite key with different numeric spellings, exact textual spellings, and a reachable scale-boundary case.
 - The cache remains O(rows × key-count) to build and O(1) per row.
 
-**Resolution:** Open.
+**Resolution — implemented in `07fb8c03`, ready for independent review.** RNU keys now use typed atoms with kernel-equivalent numeric equality while preserving exact text identity. `RepetitionNotUniqueExactnessDiffTest` and the JVM/Node `RepetitionNotUniqueExactnessTest` cover numeric spelling, composite keys, text, and the supported scale boundary; the cache remains one build plus O(1) row lookup.
 
 <a id="rv05-2"></a>
 
@@ -625,7 +629,7 @@ Open. Independent verification should reject the “IG93 → IG96 chain complete
 - A composed `Or` case proves that an independently true branch retains its normal behavior when the RNU participant is excluded.
 - JVM and Node exercise the same partial-validation cases.
 
-**Resolution:** Open.
+**Resolution — implemented in `07fb8c03`, ready for independent review.** Every composite-key cell now passes relevance and formal-state checks before entering the duplicate cache. The exactness differential and multiplatform lock cover all-relevant, partial-relevance, and composed-`Or` behavior.
 
 <a id="rv05-3"></a>
 
@@ -650,7 +654,7 @@ Open. Independent verification should reject the “IG93 → IG96 chain complete
 - Exact differential assertions cover VALUE and OMISSION, a composite key, a three-row cluster, and an RNU composed with another branch.
 - `referenced` and `fillToFix` agree with both kernel strategies, not merely message counts/codes.
 
-**Resolution:** Open.
+**Resolution — implemented in `07fb8c03`, ready for independent review.** Cached RNU outcomes retain polarity and every duplicate peer's repetition coordinates; rich projection expands only RNU-owned references while other branches remain row-local. Exact VALUE/OMISSION, composite-key, three-row-cluster, `referenced`, and `fillToFix` assertions pass against both kernel strategies and on JVM/Node.
 
 <a id="rv05-4"></a>
 
@@ -677,7 +681,7 @@ Open. Independent verification should reject the “IG93 → IG96 chain complete
 - Mutation/removal of the dedicated RNU evidence makes the evidence guard fail.
 - No active source-of-truth document claims a generic `Not` surface.
 
-**Resolution:** Open.
+**Resolution — implemented in `07fb8c03`, ready for independent review.** The ineffective composition fixture now makes RNU decisive, dedicated exactness evidence is registered in `CapabilityEvidenceMatrixTest`, and active documentation is limited to the legal `And`/`Or` surface. Removing that evidence now fails the matrix.
 
 <a id="rv05-5"></a>
 
@@ -703,7 +707,7 @@ Open. Independent verification should reject the “IG93 → IG96 chain complete
 - Missing optional bounds remain distinguishable from a declared numeric value.
 - The typed API, CLI help/contract, architecture text, finding, and certificate describe the same context.
 
-**Resolution:** Open.
+**Resolution — implemented in `955ccdc7`, ready for independent review.** `CustomFieldType.check(value, context)` receives locale, effective bounds, and stored/display mode through a typed declaration/context preserved by `ModelLoader` and the JS bridge. The required differential exposed one correction to the review premise: omitted raw bounds remain nullable in model metadata, but both kernel strategies pass effective callback defaults `1` and `999`; `CustomFieldTypeContextDiffTest`, `CustomFieldTypeLoadTest`, and the JVM/Node context tests lock that behavior.
 
 <a id="rv05-6"></a>
 
@@ -730,7 +734,7 @@ Open. Independent verification should reject the “IG93 → IG96 chain complete
 - A throwing/unsupported validator is never invoked for a nonrelevant cell.
 - A JVM/Node guard protects the single-call invariant; the hot path adds no repeated Node RPC.
 
-**Resolution:** Open.
+**Resolution — implemented in `955ccdc7`, ready for independent review.** A call-local `FormalResultCache` is now the relevance-first source for automatic emission, rule/candidate suppression, computation poison, and RNU filtering; its overlay-aware key includes the effective raw value. `CustomFieldTypeContextCacheTest` proves exactly one JVM/Node invocation per relevant value and no invocation for nonrelevant values.
 
 <a id="rv05-7"></a>
 
@@ -756,7 +760,7 @@ Open. Independent verification should reject the “IG93 → IG96 chain complete
 - Message text and substitution agree with both kernel strategies for a named-field placeholder and ordinary text.
 - The declarative predefined-type fallback still emits its documented constant.
 
-**Resolution:** Open.
+**Resolution — implemented in `955ccdc7`, ready for independent review.** Emission and suppression consume the same cached project code and message template, including replacement of every `$<fieldName>$` with the localized field label. `CustomFieldTypeMessageDiffTest`, `CustomFieldTypeRejectionCodeDiffTest`, and the candidate/cache locks cover accepted input, multiple project keys, ordinary text, repeated placeholders, and the unchanged predefined-type fallback.
 
 <a id="rv05-8"></a>
 
@@ -784,7 +788,7 @@ Open. Independent verification should reject the “IG93 → IG96 chain complete
 - Help and example guards fail if the live contract drifts.
 - Removing either the code-identity or context differential makes the capability guard fail.
 
-**Resolution:** Open.
+**Resolution — implemented in `955ccdc7`, ready for independent review.** Live help, CLI specification, executable example, worker protocol, findings, certificate, semantics map, and capability matrix now expose one contextual JS contract: Boolean or `{ valid, errorKey?, errorMessage? }`; undocumented aliases and malformed objects fail loudly. `CustomFieldTypeJsContractTest` and `CapabilityEvidenceMatrixTest` lock discoverability plus independent context/code/message evidence.
 
 <a id="rv05-9"></a>
 
@@ -810,7 +814,7 @@ Open. Independent verification should reject the “IG93 → IG96 chain complete
 - A termination regression test proves matching cannot accept a zero-length transition.
 - Valid singleton, range, and combined-grapheme behavior remains unchanged.
 
-**Resolution:** Open.
+**Resolution — implemented in `1903cd80`, ready for independent review.** Both charset factories now reject empty entries before building the parsed definition, making a terminal trie root unrepresentable. `LegalCharsetDefinitionTest` covers the public and model-slot factories on JVM/Node and retains valid singleton, range, and grapheme behavior.
 
 <a id="rv05-10"></a>
 
@@ -836,7 +840,7 @@ Open. Independent verification should reject the “IG93 → IG96 chain complete
 - Dynamic-Groovy and generated-Java structural probes agree with every accepted/rejected discriminator.
 - No invalid definition can construct an unbounded or zero-progress trie.
 
-**Resolution:** Open.
+**Resolution — implemented in `1903cd80`, ready for independent review.** One common parsed-definition boundary validates empty, surrogate-bearing, overlong, malformed-range, and forbidden-overlap inputs before trie construction. `SupportedCharactersDefinitionDiffTest` locks accepted/rejected discriminators against both kernel strategies, while `LegalCharsetDefinitionTest` locks both interpreter platforms and construction routes.
 
 <a id="rv05-11"></a>
 
@@ -862,7 +866,7 @@ Open. Independent verification should reject the “IG93 → IG96 chain complete
 - Construction rejects only the characterized forbidden class rather than all overlap.
 - Both public factories and both interpreter platforms share the same parsed contract.
 
-**Resolution:** Open.
+**Resolution — implemented in `1903cd80`, ready for independent review.** The definition and matcher now distinguish legal shared prefixes and terminal prefixes from the characterized forbidden overlap class, and the stale “never overlap” claim was removed. `SupportedCharactersGraphemeDiffTest`, `SupportedCharactersDefinitionDiffTest`, and `LegalCharsetDefinitionTest` cover longest complete matching, component negatives, both factories, both kernel strategies, JVM, and Node.
 
 <a id="rv05-12"></a>
 
@@ -888,7 +892,7 @@ Open. Independent verification should reject the “IG93 → IG96 chain complete
 - Fourfold input growth stays under the ratified catastrophe ceiling on both the BMP and grapheme paths.
 - The guard fails on a deliberately quadratic scan and does not claim an uncertified absolute target.
 
-**Resolution:** Open.
+**Resolution — implemented in `1903cd80`, ready for independent review.** Code-point decoding no longer allocates a transient `Pair`, and the matcher retains its packed BMP/range fast path. `CharsetPerfTest` adds semantic preflight plus interleaved N/4N within-pair JVM growth checks, while deterministic commonMain `LegalCharsetGrowthTest` protects JVM/Node linear operation growth without an uncertified absolute target.
 
 #### What the review accepted
 
@@ -906,9 +910,7 @@ Open. Independent verification should reject the “IG93 → IG96 chain complete
 
 #### Resolution
 
-Open. Independent verification should reject the “IG95 → IG92 → IG88 chain complete” claim until RV05-1 through RV05-12 each carry a fixing commit and green evidence note, the capability/certificate claims resolve to decisive tests, and the three IG rows are deleted only after their original contracts and these direct sibling defects are fully cleared.
-
-## Resolved chapter archive
+Resolved in `07fb8c03`, `955ccdc7`, and `1903cd80`; ready for independent review. RV05-1 through RV05-12 now carry direct guards, IF149/IF151 and new IF152 own the durable findings, the capability/certificate evidence resolves to decisive tests, and IG95/IG92/IG88 are absent from the active gap ledger. Focused JVM, Node, dynamic-Groovy, generated-Java, interpreter-purity, adapter, CLI, semantics-map, and stale-gap checks passed. The full `:cli:docGuardTest` remains red only for the separately recorded active RV03 multifile-loader regression and the concurrent proposal-index change; this chapter does not claim those unrelated failures are resolved.
 
 ### RV-2026-07-19-01 — IG76, IG84, and IG86 owner-decision landing review
 
