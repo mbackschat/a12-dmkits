@@ -21,27 +21,17 @@ import kotlin.test.assertTrue
 class ValidateFullUnsupportedSafetyTest {
 
     private val cn = "/Order/CustomerName"
-    private val sku = "/Order/Items/Sku"
-    private val count = "/Order/Items/Count"
 
-    // R1 composes RepetitionNotUnique under Or behind the required positive group guard — kernel-legal, but that
-    // boolean placement is not modeled (IG95) → unsupported. R2 is healthy, so validate() reports unsupported=[R1],
-    // messages=[R2]. ValidateFullUnsupportedSafetyDiffTest proves this discriminator passes the real kernel gate.
+    // R1 references an unregistered CustomCondition — a legal kernel construct the interpreter reports unsupported
+    // (no SPI registered). R2 is healthy, so validate() reports unsupported=[R1], messages=[R2] (the mixed case:
+    // a healthy rule still produces messages while the unmodeled one is surfaced, not silently dropped).
+    // ValidateFullUnsupportedSafetyDiffTest proves this discriminator passes the real kernel gate.
     private val withUnsupported = ModelDef(
-        fields = listOf(FieldDef(cn, Kind.STRING), FieldDef(sku, Kind.STRING), FieldDef(count, Kind.NUMBER)),
+        fields = listOf(FieldDef(cn, Kind.STRING)),
         rules = listOf(
-            RuleDef(
-                "/Order/R1",
-                "/Order",
-                "GroupFilled(Items) And (RepetitionNotUnique(Items/Count) Or FieldFilled(CustomerName))",
-                "R1",
-                "../Items/Count",
-            ),
+            RuleDef("/Order/R1", "/Order", "FieldFilled(CustomerName) And CustomCondition RiskCheck", "R1", "../CustomerName"),
             RuleDef("/Order/R2", "/Order", "FieldFilled(CustomerName)", "R2", "../CustomerName"),
         ),
-        repeatableGroups = setOf("/Order/Items"),
-        declaredReps = mapOf("/Order/Items" to 50),
-        indexFields = setOf(sku),
     )
 
     // The model construct is supported, but the consumer-owned CustomCondition registration is deliberately absent.
@@ -64,33 +54,23 @@ class ValidateFullUnsupportedSafetyTest {
         rules = listOf(RuleDef("/Order/R2", "/Order", "FieldFilled(CustomerName)", "R2", "../CustomerName")),
     )
 
-    private fun doc(m: ModelDef) = m.newDocument().group("/Order", 1).field(cn, "Acme", 1, 1).also {
-        if (sku in m.indexFields) {
-            it.group("/Order/Items", 1, 1)
-                .field(sku, "K1", 1, 1, 1)
-                .field(count, "2", 1, 1, 1)
-                .group("/Order/Items", 1, 2)
-                .field(sku, "K2", 1, 2, 1)
-                .field(count, "2", 1, 2, 1)
-        }
-    }
+    private fun doc(m: ModelDef) = m.newDocument().group("/Order", 1).field(cn, "Acme", 1, 1)
 
     @Test
     fun validateFullThrowsWhenAnUnsupportedRuleWouldBeSilentlyDropped() {
         val input = doc(withUnsupported)
-        assertTrue(sku in withUnsupported.indexFields, "the repeated-group fixture must declare the Items index field")
-        assertTrue(input.filledAt(sku, listOf(1, 1, 1)), "the repeated-group fixture must populate index key K1")
         val ex = assertFailsWith<IllegalStateException> {
             DmInterpreter(withUnsupported).validateFull(input)
         }
         val msg = ex.message ?: ""
         assertTrue("/Order/R1" in msg, "the error names the unsupported rule: $msg")
         assertTrue("validate" in msg, "the error points the caller to validate(): $msg")
-        // the safe API still surfaces it — the loud failure is the convenience's, not a lost report.
-        assertTrue(
-            DmInterpreter(withUnsupported).validate(doc(withUnsupported)).unsupported.any { it.rulePath == "/Order/R1" },
-            "validate() reports the unsupported rule the caller should read",
-        )
+        // the safe API still surfaces it — the loud failure is the convenience's, not a lost report — and the
+        // healthy rule R2 still produces its message (the mixed model: unsupported and messages coexist).
+        val outcome = DmInterpreter(withUnsupported).validate(input)
+        assertTrue(outcome.unsupported.any { it.rulePath == "/Order/R1" },
+            "validate() reports the unsupported rule the caller should read")
+        assertEquals(listOf("R2"), outcome.messages.map { it.code }, "the healthy rule still fires")
     }
 
     @Test

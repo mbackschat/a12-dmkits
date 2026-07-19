@@ -52,8 +52,7 @@ class CatalogParityTest {
         "NotAllFieldValuesIncludedInValueList",
         "True", "False",                                                   // Expr.BoolLit
         "FirstDay", "LastDay",                                             // ValueAsDate day-specification markers (Expr.Const)
-        "RepetitionNotUnique",                                             // a whole-rule uniqueness pass (not evalPred-dispatched)
-        "FromScope",                                                       // the @From reference-group selector of RepetitionNotUnique
+        "FromScope",                                                       // the @From reference-group selector of RepetitionNotUnique (a marker, not an enum op)
         "SemanticIndex",                                                   // [field For "value"] — Expr.SemanticIndex, keyed row lookup
         "Having",                                                          // Sum(star Having cond) — Expr.Star's per-row filter
         "EnumCategory",                                                    // [field -> Category] — Expr.EnumCategory, positional enum-value→category map
@@ -95,6 +94,12 @@ class CatalogParityTest {
         group(
             "value-list scalar predicates — FieldValueIncludedInValueList / its negation; ValueListDiffTest-locked",
             "FieldValueIncludedInValueList", "FieldValueNotIncludedInValueList",
+        )
+        group(
+            "RepetitionNotUnique — the per-row duplicate-key 3VL leaf (IF149); RepetitionNotUnique*DiffTest-locked " +
+                "incl. the composition net, but needs a repeatable group with a duplicate-valued key column the " +
+                "condition fuzz model does not synthesize",
+            "RepetitionNotUnique",
         )
         group("date-range overlap predicates — DateRangeDiffTest-locked; need date-range fields in the fuzz model",
             "DateRangesOverlap", "AtLeastOneDateRangeOverlaps")

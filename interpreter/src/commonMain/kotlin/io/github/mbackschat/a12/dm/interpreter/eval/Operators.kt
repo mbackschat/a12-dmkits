@@ -38,6 +38,12 @@ enum class PredicateOp(val kernelName: String, val polarity: MsgType?, val count
     // Two of the listed fields hold the same value → a value error (you change a value, you don't fill — both
     // are already filled). Empties are skipped (two empties are NOT a duplicate); a malformed operand suppresses.
     FIELD_VALUES_NOT_UNIQUE("FieldValuesNotUnique", MsgType.VALUE),
+    // A repetition row whose (composite) key duplicates another row's within scope. An ordinary per-row 3VL leaf
+    // (IF149): polarity is DATA-dependent (null → computed in `Interpreter.predType` from the per-row cache —
+    // VALUE when every key component is present, OMISSION when a fillable component is empty). Its per-row result
+    // is read from the call-scoped duplicate cache ([io.github.mbackschat.a12.dm.interpreter.RepetitionNotUniqueEvaluator]),
+    // so it composes under arbitrary legal And/Or/Not exactly like any other leaf.
+    REPETITION_NOT_UNIQUE("RepetitionNotUnique", null),
     // Valid/Invalid(Date(...)): is the constructed date a real calendar date with all parts present? Valid is a
     // present-value verdict → VALUE. Invalid's polarity is data-dependent (null): OMISSION when an empty part
     // could be filled to make the date real, else VALUE — computed in `Interpreter.predType` (KERNEL-FINDINGS §6).

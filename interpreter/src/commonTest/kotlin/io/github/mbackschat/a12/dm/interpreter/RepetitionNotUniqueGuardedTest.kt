@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.interpreter.model.Verdict
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -79,13 +80,29 @@ class RepetitionNotUniqueGuardedTest {
     }
 
     @Test
-    fun repetitionNotUniqueUnderOrDegradesLoud() {
-        // RNU is NOT a top-level And conjunct here (it sits under an Or) — an evaluation shape the interpreter
-        // does not model and the real corpora never use. Recognition stays strict: reported unsupported (loud),
-        // never silently mis-evaluated.
-        val m = model("RepetitionNotUnique(Items/Count) Or FieldFilled(CustomerName)")
+    fun repetitionNotUniqueUnderOrIsSupportedAndFires() {
+        // RNU is an ordinary 3VL leaf (IF149), so it composes under `Or` like any other leaf — no longer
+        // "unsupported". Both rows are Count=5 duplicates, so RNU fires VALUE on each regardless of the Or's other
+        // branch (a positive-presence branch — the kernel forbids a NEGATIVE-presence one here, MVK_NEG_CONDITION_IN_ITERATION).
+        val m = model("RepetitionNotUnique(Items/Count) Or FieldFilled(Items/UnitWeight)")
         val outcome = DmInterpreter(m).validate(twoDuplicateRows(m, listOf(null, null), customer = null))
-        assertTrue(outcome.unsupported.any { it.rulePath == "/Order/RU" && "RepetitionNotUnique" in it.reason },
-            "RNU under Or degrades loud: ${outcome.unsupported}")
+        assertTrue(outcome.unsupported.isEmpty(), "RNU under Or is supported: ${outcome.unsupported}")
+        assertEquals(listOf("/Order[1]/Items[1]/Count|VALUE", "/Order[1]/Items[2]/Count|VALUE"),
+            outcome.messages.filter { it.code == "RU" }.map { "${it.errorPath}|${it.type}" }.sorted(),
+            "both duplicate rows fire VALUE through the Or")
+    }
+
+    @Test
+    fun testRuleEvaluatesRepetitionNotUnique() {
+        // As a 3VL leaf (IF149) RNU now flows through the single-rule path too — testRule/evalCandidate used to
+        // THROW on a RepetitionNotUnique rule (it was never a PredicateOp; only validate's recognizer handled it).
+        val m = model("RepetitionNotUnique(Items/Count)")
+        assertEquals(Verdict.FIRED, DmInterpreter(m).testRule("/Order/RU", twoDuplicateRows(m, listOf(null, null), customer = null)).verdict,
+            "a duplicate makes the single-rule verdict FIRED")
+        val distinct = m.newDocument().group("/Order", 1)
+            .also { it.group("/Order/Items", 1, 1).field(sku, "A", 1, 1, 1).field(count, "5", 1, 1, 1) }
+            .also { it.group("/Order/Items", 1, 2).field(sku, "B", 1, 2, 1).field(count, "7", 1, 2, 1) }
+        assertEquals(Verdict.PASSED, DmInterpreter(m).testRule("/Order/RU", distinct).verdict,
+            "distinct counts → PASSED")
     }
 }

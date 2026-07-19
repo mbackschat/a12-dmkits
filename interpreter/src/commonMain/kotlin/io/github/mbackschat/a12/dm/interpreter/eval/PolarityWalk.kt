@@ -376,6 +376,10 @@ private fun Interpreter.toleranceType(c: Cond.Tolerance): MsgType =
  */
 private fun Interpreter.predType(p: Cond.Pred): MsgType {
     val op = PredicateOp.byName(p.name) ?: return MsgType.VALUE
+    // RepetitionNotUnique's polarity is the per-row cache outcome (IF149): VALUE when every key component is
+    // present, OMISSION when a fillable component is empty. Read only on a firing (TRUE) row, so the outcome is
+    // non-null; the fallback keeps the lazy-walk placeholder sound.
+    if (op == PredicateOp.REPETITION_NOT_UNIQUE) return rnuOutcomeAt() ?: MsgType.VALUE
     // Invalid(Date(...)) is directional: an empty (fillable) part could be filled to make the date real →
     // OMISSION; an all-present-but-unreal date is a value error → VALUE (kernel-probed, KERNEL-FINDINGS §6).
     // The predefined-type form `Invalid(field, "Name")` (2 args) is a present-value verdict → VALUE; the

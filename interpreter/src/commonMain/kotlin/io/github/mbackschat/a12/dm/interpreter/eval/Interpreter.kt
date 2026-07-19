@@ -59,6 +59,15 @@ class Interpreter(
      *  ref is UNBOUND and resolves to UNKNOWN (the kernel then keeps the cell: keep-law = not-FALSE keeps),
      *  rather than binding to [outer] or throwing. Set only by [overlapFilterInterp] (KERNEL-FINDINGS §6, IF72). */
     private val outerUnbound: Boolean = false,
+    /**
+     * The per-row `RepetitionNotUnique` outcome for THIS rule (IF149) — `(row ctx) → VALUE / OMISSION / null`
+     * (null = the row's key is not a duplicate). Read from the call-scoped duplicate cache
+     * [io.github.mbackschat.a12.dm.interpreter.RepetitionNotUniqueEvaluator] builds ONCE per pass, so RNU is an
+     * ordinary 3VL leaf composed by the boolean walk. Non-null only for a rule whose condition contains an RNU
+     * leaf; a `RepetitionNotUnique` predicate reached with this null is reported unsupported (degrade-loud). Null
+     * in sub-interpreters ([havingInterp]/[overlapFilterInterp]) — RNU cannot appear inside a `Having`.
+     */
+    internal val rnuOutcome: ((EvalContext) -> MsgType?)? = null,
 ) {
 
     // The config bundle destructured into the fields the walk reads — keeps every internal reference and its
@@ -182,7 +191,7 @@ class Interpreter(
         null, PredicateOp.FIELD_FILLED, PredicateOp.GROUP_FILLED,
         PredicateOp.FIELD_VALUE_IN_LIST, PredicateOp.FIELD_VALUE_NOT_IN_LIST,
         PredicateOp.DATE_RANGES_OVERLAP, PredicateOp.ATLEAST_ONE_DATE_RANGE_OVERLAPS,
-        PredicateOp.FIELD_VALUES_NOT_UNIQUE,
+        PredicateOp.FIELD_VALUES_NOT_UNIQUE, PredicateOp.REPETITION_NOT_UNIQUE,
         PredicateOp.VALID -> false   // needs present ranges / ≥2 present equal values / a real present date / a present value
         PredicateOp.FIELD_NOT_FILLED, PredicateOp.GROUP_NOT_FILLED -> true
         // Invalid(Date(...)) (1 arg) fires on an empty row — every part unspecified IS invalid (kernel-probed,
@@ -257,6 +266,15 @@ class Interpreter(
         return Tri.of(condition.check(data, relevant = customRelevant, formallyIncorrect = formallyIncorrect, errorField = errorField))
     }
 
+    /** The current row's `RepetitionNotUnique` outcome (VALUE / OMISSION / null=not-a-duplicate) — read from the
+     *  per-rule [rnuOutcome] cache seam. A `RepetitionNotUnique` leaf reached with no cache wired (outside a
+     *  rule-level position, or in a rule the cache builder declined) degrades LOUD (reported unsupported). */
+    internal fun rnuOutcomeAt(): MsgType? {
+        val f = rnuOutcome ?: throw UnsupportedConstructException(
+            "RepetitionNotUnique is only evaluable as a rule-level leaf")
+        return f(ctx)
+    }
+
     internal fun evalPred(p: Cond.Pred): Tri {
         // Overlap-predicate Having: a predicate touching an unbound `$` is trivially TRUE (see [evalCmp]).
         if (outerUnbound && p.args.any { hasUnboundOuter(it) }) return Tri.TRUE
@@ -271,6 +289,10 @@ class Interpreter(
             PredicateOp.DATE_RANGES_OVERLAP -> overlapAny(p.args).truth
             PredicateOp.ATLEAST_ONE_DATE_RANGE_OVERLAPS -> atLeastOneOverlap(p.args).truth
             PredicateOp.FIELD_VALUES_NOT_UNIQUE -> fieldValuesNotUnique(p.args)
+            // An ordinary per-row 3VL leaf (IF149): the row's key is a duplicate (TRUE) or not (FALSE), read from
+            // the call-scoped duplicate cache. The polarity (VALUE/OMISSION) rides [rnuOutcome] and is typed in
+            // [predType]; here only truth matters. Degrade-loud if the leaf wasn't wired (see [rnuOutcomeAt]).
+            PredicateOp.REPETITION_NOT_UNIQUE -> Tri.of(rnuOutcomeAt() != null)
             // Valid/Invalid(Date(...)): 3VL over the construction's status. A malformed part makes the whole
             // non-evaluable (UNKNOWN — both go quiet, the formal error fires); else Valid iff real-and-all-present,
             // Invalid its complement (unreal OR an empty part).

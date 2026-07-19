@@ -181,9 +181,9 @@ class DmInterpreter @JvmOverloads constructor(
             validationConfig(isRelevant, customRelevant, starRelevant), checks)
         for (rule in model.rules) {
             try {
-                val rnu = rnuEval.recognize(rule, parsedModel.condAstOf(rule))
-                messages += if (rnu != null) rnuEval.messages(rule, rnu, pass)
-                else messagesFor(rule, pass)
+                // RepetitionNotUnique now flows through the ordinary rule path as a 3VL leaf (IF149) — no
+                // recognizer/emitter special-casing; [rowOutcomes] builds its duplicate cache and threads it in.
+                messages += messagesFor(rule, pass)
             } catch (e: UnsupportedConstructException) {
                 unsupported += UnsupportedRule(rule.path, e.message ?: "unsupported construct")
             }
@@ -344,6 +344,12 @@ class DmInterpreter @JvmOverloads constructor(
         if (eliminatedNvvMetaLengthRule(ast)) return emptyList()
         val refs = nonStarredRefs(ast).distinct()
         val errorPath = resolveErrorPath(rule)
+        // A rule whose condition contains a RepetitionNotUnique leaf gets its duplicate cache built ONCE (IF149),
+        // guard-independent, keyed by error-path reps; the per-row seam looks the current row up in O(1). Null for
+        // a normal rule (no cache, no seam). Building here can throw UnsupportedConstructException (>1 RNU, a
+        // group/asterisk key, a too-deep scope) — the caller's per-rule tolerance reports it unsupported.
+        val rnuCache = rnuEval.outcomes(rule, ast, pass)
+        val rnuSeam: ((EvalContext) -> MsgType?)? = rnuCache?.let { m -> { c -> m[c.repsOf(errorPath)] } }
         return scopes.iterationContexts(rule, ast, pass.doc).map { ctx ->
             // Partial validation: the kernel runs a rule only if its error-field instance is relevant — else
             // the rule is NOT executed for this row (no message, not a suppression). Full validation: always.
@@ -354,8 +360,9 @@ class DmInterpreter @JvmOverloads constructor(
             // likewise unknown (branch-scoped, same as a formal error) via [formalErrorAt]. In partial mode a
             // referenced field instance that is NOT relevant is also unknown — the same 3VL yields the kernel's
             // suppression (`And` suppresses, `Or` with a relevant-true operand still fires). The custom-condition
-            // registry + the row's error-field pointer ride along for a `CustomCondition X` leaf.
-            val interp = pass.interpreterFor(ctx, errorPath)
+            // registry + the row's error-field pointer ride along for a `CustomCondition X` leaf; [rnuSeam] the
+            // per-row RepetitionNotUnique cache outcome for an RNU leaf (IF149).
+            val interp = pass.interpreterFor(ctx, errorPath, rnuSeam)
             // ONE typed walk per row (the fired MsgType, or null if it doesn't fire) — firedType != null ⟺ the
             // rule fires (truth == TRUE), and the value IS the polarity. The walk is LAZY-polarity: it skips the
             // VALUE/OMISSION typing on non-firing nodes (the kernel types only firing rows), measured faster in

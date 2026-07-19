@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.Suppression
 
 /** Whether a field/group instance `(path, reps)` is relevant — full validation: always; partial: in the
@@ -64,16 +65,18 @@ internal class ValidationPass(
         refs.firstNotNullOfOrNull { path -> formalErrorAt(path, ctx.repsOf(path), ctx)?.let { Suppression(path, it) } }
 
     /**
-     * The per-row [Interpreter] used to evaluate a rule condition at [ctx] — the single construction point
-     * shared by [DmInterpreter]'s row outcomes (the whole condition) and the `RepetitionNotUnique` guard
-     * conjunct. [config] is the call-invariant bundle; the two per-row inputs are supplied here: the
-     * error-field pointer, and the `invalid` gate by which a formally-invalid / (in partial) non-relevant
-     * referenced field resolves to `Val.Unknown`.
+     * The per-row [Interpreter] used to evaluate a rule condition at [ctx] — the single construction point for
+     * [DmInterpreter]'s row outcomes (the whole condition). [config] is the call-invariant bundle; the per-row
+     * inputs are supplied here: the error-field pointer, the `invalid` gate by which a formally-invalid / (in
+     * partial) non-relevant referenced field resolves to `Val.Unknown`, and the optional [rnuOutcome] cache seam
+     * for a rule whose condition contains a `RepetitionNotUnique` leaf (IF149; null for a normal rule).
      */
-    fun interpreterFor(ctx: EvalContext, errorPath: String): Interpreter =
+    fun interpreterFor(ctx: EvalContext, errorPath: String,
+            rnuOutcome: ((EvalContext) -> MsgType?)? = null): Interpreter =
         Interpreter(ctx, config, FieldPointer(errorPath, ctx.repsOf(errorPath)),
             invalid = { path ->
                 val reps = ctx.repsOf(path)   // computed once, reused for the formal check AND relevance
                 formalErrorAt(path, reps, ctx) != null || !isRelevant(path, reps)
-            })
+            },
+            rnuOutcome = rnuOutcome)
 }
