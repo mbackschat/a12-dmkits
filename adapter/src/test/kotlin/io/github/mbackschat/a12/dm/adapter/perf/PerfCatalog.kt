@@ -210,6 +210,36 @@ object PerfCatalog {
         scenario("B5 deep-nested-star",
             perfRoot.errorRule("DN", cost.field(), Dsl.sum(perfRoot.flatten("Lines*/Subs*/Cost")).gt(0)), ::nestedRows)
 
+    /** **Multi-star `$`-correlation** (IG98) — a per-Sub `MoreThanOneFieldFilled(Lines* then Subs* then Cost
+     *  Having [Cost] == [$Cost])`: each Sub correlates against EVERY Line's Subs by equal Cost. Before IG98 the
+     *  multi-star operand forced the O(N²) naive scan (interp measured worse than the kernel, ratio 0.51→1.21);
+     *  the first-star-scope hash join makes it O(rows). Costs cycle by SUB index (`msCorrValues`) so every Line's
+     *  same-index Subs share a Cost → large cross-Line buckets, the worst case for the correlation. */
+    fun multiStarCorrelation(): PerfScenario {
+        val rule = subs.errorRule("MSC", cost.field(), cost.filled().and(
+            Dsl.moreThanOneFieldFilled(perfRoot.flatten("Lines*/Subs*/Cost").having(cost.eq(cost.outer())))))
+        val kernelModel = TypedRules.inject(perfJson, rule)
+        val interpModel = ModelDef(
+            fields, listOf(TypedRules.def(rule)),
+            repeatableGroups = setOf(LINES, SUBS),
+            declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX), indexFields = setOf(LINE_KEY, SUB_KEY),
+        )
+        val gen = SeedGenerator(interpModel)
+        return PerfScenario("MSC multi-star correlation", kernelModel, interpModel) { sink, n, variant ->
+            gen.populate(sink, rowsOf = nestedRows(n), value = msCorrValues(variant))
+        }
+    }
+
+    /** Costs keyed by SUB index (not Line) so same-index Subs across ALL Lines collide — the big cross-Line
+     *  buckets that stress the multi-star correlation; index keys stay unique. */
+    private fun msCorrValues(variant: Int): ValueStrategy = ValueStrategy { field, reps, _ ->
+        when (field.path) {
+            LINE_KEY, SUB_KEY -> "K" + reps.joinToString("_")
+            COST -> ((reps[2] + variant) % 20).toString()   // depends on the SUB index → collides across Lines
+            else -> "0"
+        }
+    }
+
     /** The B6 many-rules set (12): per-row, cross-field, threshold, aggregates (incl. deep nested-star),
      *  nested per-sub, cross-level — a realistic complex model. Codes unique within the model; all forms are
      *  kernel-valid (CurrentRepetition is covered by the fuzz net + its own diff test, not needed here). */

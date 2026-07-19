@@ -137,8 +137,10 @@ interface EvalContext {
      * (un-evaluated) row is excluded too (the filter's row-gate). This lets a filtered quantifier resolve
      * `AtLeastOneFieldFilled(G* / F Having [X] == [$X] …)` in O(1) per outer row (a hash lookup) instead of an
      * O(N) inner scan — the kernel's own linear strategy. Built + **cached per (group, scope)** by the general
-     * [Document] (shared across every outer row); the flat spike contexts don't model rows. */
-    fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String): Map<List<Val>, IntArray> =
+     * [Document] (shared across every outer row); the flat spike contexts don't model rows. [bindDepth] widens the
+     * bucket scope to the FIRST `*`-marked level for a MULTI-star operand (`A* / B* / F`, IF94) so the join spans
+     * every A's B-rows, not just the current one (IG98); −1 = the single-star leaf-parent scope. */
+    fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String, bindDepth: Int = -1): Map<List<Val>, IntArray> =
         throw UnsupportedConstructException("correlation buckets need the general Document context, not $this")
 
     /**

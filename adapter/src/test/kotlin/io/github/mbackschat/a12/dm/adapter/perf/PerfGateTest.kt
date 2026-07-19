@@ -218,6 +218,30 @@ class PerfGateTest {
     }
 
     /**
+     * Guards the **multi-star `$`-correlation** (IG98) against the O(rows²) naive scan it used before the
+     * first-star-scope hash join: `MoreThanOneFieldFilled(Lines* then Subs* then Cost Having [Cost] == [$Cost])`,
+     * per-Sub, correlates each Sub against EVERY Line's Subs. The naive scan was measured WORSE than the kernel
+     * (interp/kernel ratio widened 0.51→1.21); the hash join makes it O(rows). Time the interpreter (only) at N
+     * and 4N Lines (×5 Subs); linear ≈ 4×, a reverted naive scan ≈ 16×. Trip well below.
+     */
+    @Test
+    fun multiStarCorrelationStaysSubQuadratic() {
+        val ms = PerfCatalog.multiStarCorrelation()
+        var best = Double.MAX_VALUE
+        var bSmall = 0.0; var bLarge = 0.0
+        repeat(GROWTH_REPEATS) {
+            val small = PerfHarness.timeInterpreter(ms, N_SMALL, warmup = 5, iters = 7)
+            val large = PerfHarness.timeInterpreter(ms, N_SMALL * 4, warmup = 5, iters = 7)
+            val g = large.minMs / small.minMs
+            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        }
+        println("[perf] multi-star \$-correlation sub-quadratic: ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
+            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4} lines  min-growth=${"%.2f".format(best)}× (linear≈4, naive-scan≈16)")
+        assertTrue(best < SUB_QUADRATIC_MAX,
+            "multi-star \$-correlation scaling looks super-linear: 4× lines took ${best}× the time (reverted to the naive scan?)")
+    }
+
+    /**
      * The O(rows²) detector for the **parallel-iteration outer join** — the place a naive sibling-join would
      * quadratic. Time the interpreter (only) at N and 4N; the index-keyed join is linear (≈4×), a nested-loop
      * join would be ≈16×. Guards the `IndexFieldCache`-analog (value→row map + prefix-indexed rows).

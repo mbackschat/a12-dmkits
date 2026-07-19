@@ -663,8 +663,11 @@ class Document(internal val config: DocumentConfig) {
                 kinds.keys.filter { it.startsWith("$groupPath/") }.sorted()
             }
 
-        override fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String): Map<List<Val>, IntArray> =
-            correlationBucketsScoped(groupPath, groupScopePrefix(groupPath, -1), joinFields, starPath)
+        // [bindDepth] widens the bucket scope for a MULTI-star operand (IG98): −1 keeps the single-star leaf-parent
+        // scope; a multi-star first-star bind depth caps the shared prefix higher, so the buckets span every A's
+        // B-rows (the same rows `rowContexts(groupPath, bindDepth)` — the naive scan — iterates).
+        override fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String, bindDepth: Int): Map<List<Val>, IntArray> =
+            correlationBucketsScoped(groupPath, groupScopePrefix(groupPath, bindDepth), joinFields, starPath)
 
         // The scope key an overlay-aware derived-view cache shares across outer rows (IF143) — the SAME prefix the
         // raw indexColumnByScope / correlationBucketCache key on, so the overlay's per-step cache matches this row's view.

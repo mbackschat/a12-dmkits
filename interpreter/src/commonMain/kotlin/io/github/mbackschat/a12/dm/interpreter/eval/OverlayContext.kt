@@ -105,11 +105,11 @@ internal class OverlayContext(
     // Document-side cache is scope-keyed on RAW reads; a cascade overlay is per-compute-pass). But within a step
     // that rebuild is stable unless a join/star field IS the step's write column, so it is cached once per (group,
     // scope, join, star) and shared across the step's outer rows (IF143). A self-write join/target rebuilds fresh.
-    override fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String): Map<List<Val>, IntArray> =
+    override fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String, bindDepth: Int): Map<List<Val>, IntArray> =
         if (starPath == selfTarget || selfTarget in joinFields)
-            correlationBucketsOf(rowContexts(groupPath), joinFields, starPath)
-        else views.correlation(groupPath, d.scopePrefixOf(groupPath, -1), joinFields, starPath) {
-            correlationBucketsOf(rowContexts(groupPath), joinFields, starPath)
+            correlationBucketsOf(rowContexts(groupPath, bindDepth), joinFields, starPath)
+        else views.correlation(groupPath, d.scopePrefixOf(groupPath, bindDepth), joinFields, starPath) {
+            correlationBucketsOf(rowContexts(groupPath, bindDepth), joinFields, starPath)
         }
 
     /** The immediate parent group of a field path (`/Ovl/Row/Src` → `/Ovl/Row`) — matches [Document]'s

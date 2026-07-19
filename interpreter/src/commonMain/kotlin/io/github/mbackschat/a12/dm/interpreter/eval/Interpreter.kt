@@ -535,12 +535,14 @@ class Interpreter(
         val group = star.path.substringBeforeLast('/')
         // Fast path: an equality self-correlation Having (`[X] == [$X]` ± a CurrentRepetition self-exclusion) is
         // a HASH JOIN — O(1) per outer row against buckets the Document builds + caches once (O(N)). This is the
-        // kernel's own linear strategy; the O(N²) scan below is the fallback for an arbitrary Having. A
-        // MULTI-star operand (bindDepth above the leaf group's parent — IF94) takes the naive scan: the bucket
-        // cache is keyed on the single-star scope, and the correct-but-slower loop needs no new join logic.
-        if (!isMultiStar(star)) {
-            star.having?.let { CorrelationJoin.parse(it, group) }?.let { return hashJoinTally(star, group, it) }
-        }
+        // kernel's own linear strategy; the O(N²) scan below is the fallback for an arbitrary Having. A MULTI-star
+        // operand (bindDepth above the leaf group's parent — IF94) hash-joins too (IG98): the buckets widen to the
+        // first-star scope via [hashJoinTally]'s `bindDepth`. The one multi-star shape that STAYS naive is a
+        // SELF-EXCLUSION (`CurrentRepetition(G) != CurrentRepetition($G)`): across the wider scope it drops EVERY
+        // row sharing the outer's leaf index, not just the outer's own row, which the hash join's single-row
+        // self-subtraction cannot express (the single-star scope makes that index unique, so single-star is safe).
+        val join = star.having?.let { CorrelationJoin.parse(it, group) }
+        if (join != null && (!isMultiStar(star) || !join.selfExcluded)) return hashJoinTally(star, group, join)
         return naiveStarQuantTally(star, group)
     }
 
@@ -601,6 +603,7 @@ class Interpreter(
     internal fun correlationTallyBothWays(star: Expr.Star): Pair<Triple<Int, Int, Int>, Triple<Int, Int, Int>>? {
         val group = star.path.substringBeforeLast('/')
         val join = star.having?.let { CorrelationJoin.parse(it, group) } ?: return null
+        if (isMultiStar(star) && join.selfExcluded) return null   // this shape uses the naive path only — no fast path to compare (IG98)
         return hashJoinTally(star, group, join) to naiveStarQuantTally(star, group)
     }
 
@@ -612,7 +615,7 @@ class Interpreter(
      * would for well-formed data (the differential + fuzz lock it). Buckets are built + cached by the Document.
      */
     private fun hashJoinTally(star: Expr.Star, group: String, join: JoinSpec): Triple<Int, Int, Int> {
-        val buckets = ctx.correlationBuckets(group, join.innerFields, star.path)
+        val buckets = ctx.correlationBuckets(group, join.innerFields, star.path, star.bindDepth)
         val outerKey = join.outerFields.map { p -> if (invalid(p)) Val.Unknown else ctx.field(p) }
         if (outerKey.any { it is Val.Unknown }) return Triple(0, 0, 0)   // an Unknown outer value never matches
         val tfn = buckets[outerKey] ?: return Triple(0, 0, 0)
