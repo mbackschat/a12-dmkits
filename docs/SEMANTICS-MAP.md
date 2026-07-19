@@ -55,7 +55,7 @@ Lock-tree classes whose subject is not one kernel-semantics section — the conc
 | Conformance corpus — capture, replay, schema ([CONFORMANCE-CORPUS-SPEC.md](CONFORMANCE-CORPUS-SPEC.md)) | `CorpusCaptureTest`, `CorpusReplayTest`, `CorpusSchemaGuardTest`, `CorpusModelPreparerTest`, `CorpusReplayCommonTest`, `CaseJsonTest`, `ConformanceDivergenceEnforcementTest` |
 | Cross-cutting differentials & engine seams (whole-surface, no single section) | `ValidateFullDiffTest`, `InterpreterDiffTest`, `OperatorBatteryDiffTest`, `FullMessageFuzzDiffTest`, `FuzzDiagnosticsTest`, `KernelProbeTest`, `EvalDocSeamLawsTest`, `InterpreterMultiplatformTest`, `DeterminismPropertyTest`, `UnsupportedDegradeTest`, `ValidateFullUnsupportedSafetyTest`, `DocumentMutationCacheInvalidationTest` |
 | Triage / sweep instruments (opt-in, tagged) | `ModelShrinkTest`, `RawAtomShrinkTest`, `RealCorpusSweepTest`, `MinimalReplayTest`, `ValidateUnitShrinkTest`, `CrashProbeTest` |
-| DM-JSON loader & instance seeding | `ModelLoaderTest`, `SeedGeneratorTest`, `ValidValuesConstraintTest` |
+| DM-JSON loader & instance seeding | `ModelLoaderTest`, `ModelLoaderPreparedGuardTest`, `SeedGeneratorTest`, `ValidValuesConstraintTest` |
 
 ## Vocabulary — recurring shorthand
 

@@ -37,12 +37,15 @@ import io.github.mbackschat.a12.dm.interpreter.model.Severity
  * element nesting: it records a node iff it has BOTH keys, then recurses into every child. Fields/rules/computations
  * are collected in **document order** (kotlinx [JsonObject] iteration is insertion order, matching the DM-JSON).
  *
- * ## v1 scope — EXPANDED, SELF-CONTAINED models only
+ * ## Scope — EXPANDED, SELF-CONTAINED models only, ENFORCED
  * The loader handles a **single, fully-expanded** model: no `modelReferences`/`imports` resolution and no
  * `TypeDefType` de-referencing. Includes and type-definition libraries are resolved **upstream** by the kernel's
- * `expand()` (native-safe via the read tier) before the DM-JSON reaches here; a model that still carries a
- * `TypeDefType` reference flattens to a [Kind.STRING] field (its underlying kind/constraints unresolved). This
- * mirrors the interpreter's evaluation contract (INTERPRETER-SPEC).
+ * `expand()` (native-safe via the read tier) before the DM-JSON reaches here. This boundary is **enforced, not
+ * assumed** ([requirePrepared], IG91): a model that still carries an unexpanded include (`modelAlias`), an
+ * unresolved `TypeDefType`, or a non-name-path (opaque) id is **rejected loud** with a corrective message —
+ * never loaded as a structurally plausible but wrong model (a dropped mount, a typedef silently flattened to
+ * STRING, an opaque id trusted as a path). Every CLI consumer prepares upstream via `ModelReader.expand`; this
+ * is the guard that makes a future bypass fail loud instead of silent.
  */
 object ModelLoader {
 
@@ -54,6 +57,7 @@ object ModelLoader {
         } catch (e: SerializationException) {
             throw IllegalArgumentException("not valid DM-JSON", e)
         }
+        requirePrepared(root)
         val sink = Sink()
         walk(root, sink)
         // The model's base year (content.modelInfo.baseYear, a string) — the value of the BaseYear constant.
@@ -82,6 +86,54 @@ object ModelLoader {
         val repeatable = linkedSetOf<String>()
         val declaredReps = linkedMapOf<String, Int>()
         val indexFields = linkedSetOf<String>()
+    }
+
+    /**
+     * Enforce the loader's prepared-model contract (IG91): every recorded element (Field/Group/Rule/Computation)
+     * must be name-path-keyed, and the model must carry no unexpanded include (`Group.modelAlias`) nor unresolved
+     * `TypeDefType`. These are the three residue classes that would otherwise load a **wrong** model silently — a
+     * mount whose fields never appear, a typedef flattened to STRING, an opaque id trusted as a path. The header
+     * (a node with an `id` but no element `type`) is not path-addressed, so it is not checked. Throws
+     * [IllegalArgumentException] with a corrective message naming the offending element.
+     */
+    private fun requirePrepared(node: JsonElement) {
+        when (node) {
+            is JsonObject -> {
+                val type = node.path("type").asTextOrNull()
+                val id = node.path("id").asTextOrNull()
+                if (type != null && id != null) {
+                    when (type) {
+                        "Field" -> {
+                            requireNamePath(id)
+                            require(node.path("Field").path("fieldType").path("type").asText() != "TypeDefType") {
+                                "unresolved TypeDefType at '$id' — imported type-definitions must be inlined " +
+                                    "(ModelReader.expand) before loading; the interpreter loader consumes only expanded models"
+                            }
+                        }
+                        "Group" -> {
+                            requireNamePath(id)
+                            require(!node.path("Group").hasNonNull("modelAlias")) {
+                                "unexpanded include at '$id' (modelAlias='${node.path("Group").path("modelAlias").asText()}') — " +
+                                    "includes must be mounted (ModelReader.expand) before loading"
+                            }
+                        }
+                        "Rule", "Computation" -> requireNamePath(id)
+                        else -> { /* header / other nodes are not path-addressed */ }
+                    }
+                }
+                node.values.forEach { requirePrepared(it) }
+            }
+            is JsonArray -> node.forEach { requirePrepared(it) }
+            else -> { /* scalar leaf */ }
+        }
+    }
+
+    /** A recorded element's `id` must be a name-path (`/Group/Field`), never an opaque (un-normalized) kernel id. */
+    private fun requireNamePath(id: String) {
+        require(id.startsWith("/")) {
+            "non-name-path id '$id' — opaque model ids must be normalized to name-paths (/Group/Field) before " +
+                "loading; the interpreter loader addresses every element by name-path"
+        }
     }
 
     private fun walk(node: JsonElement, sink: Sink) {
