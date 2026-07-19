@@ -1,3 +1,18 @@
+**Proposal-writing guideline — simple mode**
+
+Keep this document focused on the requested API proposal, not an implementation or rollout plan.
+
+- Prefer the smallest viable design; do not expand the scope or add speculative features.
+- Use short sections, tables, bullets, and fully typed minimal examples instead of prose walls.
+- Keep paragraphs to at most three sentences and explain each concept once.
+- Include only types needed to understand the public API; do not catalogue basic language types.
+- Clearly separate required, optional, and excluded functionality.
+- Preserve semantic and performance requirements without repeating them.
+- Surface only issues that materially affect correctness or feasibility.
+- Delete anything that does not help a developer understand or use the proposal.
+
+Preferred structure: motivation, scope, public API, typed examples, semantics and guarantees, packaging and adapters, explicit exclusions.
+
 # Proposal: TypeScript-first API for the Kotlin Multiplatform interpreter
 
 ## Status
@@ -6,13 +21,13 @@ This proposal defines a TypeScript-first public API for the Kotlin Multiplatform
 
 TypeScript on Node is the primary product surface. Java/JVM is a secondary projection of the same Kotlin `commonMain` implementation. Browser use is an important future form-UI scenario, not a current support claim.
 
-The base Kotlin Multiplatform interpreter, its TypeScript façade, and its ordinary JVM façade are clean-room, kernel-free, MIT-licensed artifacts. They do not import, link, reflect over, or bundle any A12 Kernel API or runtime artifact. Compatibility with existing kernel-interface implementations is supplied only by separately installed platform adapters whose own licensing follows their kernel dependency and distribution mode.
+The base Kotlin Multiplatform interpreter and its TypeScript/JVM façades are clean-room, kernel-free, MIT-licensed artifacts. They do not import, link, reflect over, or bundle an A12 Kernel artifact.
+
+Required, separately packaged adapters provide compatibility with existing kernel-interface implementations. Applications install them only for interface reuse, and adapter licensing follows kernel linkage and distribution.
 
 The direct [Operator API proposal](OPERATOR-API-PROPOSAL.md) remains independent: calling `operators.dateTime.differenceInHours(start, end)` never requires an interpreter. This proposal is the model/document layer for behavior that genuinely needs paths, repetitions, formal state, relevance, rules, computations, or runtime customization.
 
 API and package names are proposed contracts. Where a contract requires engine work beyond the present evaluator, the relevant section states that implementation dependency because kernel exactness and performance evidence are acceptance conditions.
-
-Every example spells out input, variable, callback-parameter, callback-return, and result types. `declare const name: Type` marks an externally supplied immutable input, `const name: Type` marks a local immutable value, and `let name: Type` marks deliberately mutable local state. The type annotation beside each variable is authoritative; the nearest type table or explanatory paragraph defines that type once so examples do not rely on TypeScript inference or repeat the same definition at every call site.
 
 ## 1. Verdict and boundary
 
@@ -64,13 +79,13 @@ The stable façade should cover the evaluator’s actual jobs and make the statu
 | Compute one target | `computeField` | core |
 | Apply computations | `applyComputations` | core, refined to return outcomes and snapshot without double evaluation |
 | Supply native custom field types and custom conditions | `DocumentProcessingConfig` factories | core kernel-free registries and SPIs |
-| Reuse existing JVM or TypeScript kernel-interface implementations | platform-specific kernel factories and documents | optional separately packaged compatibility adapters |
+| Reuse existing JVM or TypeScript kernel-interface implementations | platform-specific kernel factories and documents | required separately packaged compatibility adapters, installed where interface reuse is needed |
 | Evaluate an arbitrary symbolic expression | parser/evaluator internals only | optional advanced API, not core v1 |
 | Prepare an ad hoc computation | no complete capability | deferred |
 | Build or consistency-check a model | modelkit/kernel concerns | outside the interpreter API |
-| Adapt `DocumentV2` | kernel-linked JVM type | optional JVM compatibility adapter |
+| Adapt `DocumentV2` | kernel-linked JVM type | required JVM compatibility deliverable, installed where `DocumentV2` reuse is needed |
 
-The core should be complete for “load model → create/read document → configure custom types/conditions → validate/compute → inspect results.” Candidate programs, service registries, batch helpers, browser adapters, and kernel-interface compatibility adapters are optional layers over that core. Customization semantics are not optional; only the dependency on a particular existing platform interface is.
+The core should be complete for “load model → create/read document → configure custom types/conditions → validate/compute → inspect results.” Candidate programs, service registries, batch helpers, and browser adapters are optional layers. Kernel-interface compatibility adapters are required product deliverables but separately installed only by applications that reuse those interfaces; customization semantics are always required.
 
 The primary direct verbs remain deliberately familiar: `validateFull`, `validatePart`, and `compute` offer the corresponding kernel capabilities over kernel-free types. Richer reports, frozen snapshots, support inspection, and compute-and-apply are additive; they do not rename or weaken the established validation/computation jobs. `PreparedModel` is the kernel-free prepare-once abstraction and does not reproduce the kernel’s strategy-specific dynamic-code cache API.
 
@@ -80,7 +95,6 @@ The primary direct verbs remain deliberately familiar: `validateFull`, `validate
 
 | Type | Meaning and ownership |
 |---|---|
-| `string` | native TypeScript text; expanded DM-JSON enters through this type |
 | `ExpandedModelJson` | a `string` known to contain expanded, self-contained, name-path-keyed DM-JSON; the loader still validates that claim |
 | `ModelFingerprint` | a library-computed digest string over exact model input bytes plus preparation-format/ABI identity |
 | `ModelPreparationDiagnostic` | one stable preparation code, optional model path, and corrective message |
@@ -94,15 +108,6 @@ The primary direct verbs remain deliberately familiar: `validateFull`, `validate
 | `DocumentCellValue` | the closed union accepted by typed document writes: an ordinary `A12Value`, a model-owned day-optional date, or a model-owned date fragment |
 | `DocumentValueWriteError` | typed field-aware write exception carrying the target field, supplied `DocumentCellValue` kind, and exact failure reason |
 | `ProgramPreparationError` | typed candidate-rule/expression preparation exception |
-| `number` | a bounded native integer used for sizes, repetition coordinates, timeouts, and metadata such as scale; never a document decimal value |
-| `boolean` | a native API flag; document Boolean values use `A12Boolean` |
-| `undefined` | an optional API member is absent; it is not an empty document cell |
-| `Error` | the standard JavaScript exception base extended by typed preparation, input, ownership, and service failures |
-| `void` | a function or callback completes without returning a value |
-| `unique symbol` | a declaration-only nominal-brand key that prevents accidental structural assignment at compile time; runtime authenticity comes from Kotlin-owned owner tokens and guards |
-| `readonly T[]` | an immutable-view native array whose element type is the generic type parameter `T` |
-| `Readonly<Record<K, V>>` | an immutable-view native key/value map with key type `K` and value type `V` |
-| `Exclude<T, U>` | the built-in TypeScript type operation that removes every member assignable to `U` from union `T` |
 | `A12Value` | the direct Operator API’s discriminated union of valid immutable A12 scalar values |
 | `A12Result<T, E>` | the Operator API’s non-throwing success-`T`/error-`E` union |
 | `A12Truth` | the Operator API’s evaluated-kernel-Boolean or explicit not-evaluated condition result; it is never silently collapsed to native `boolean` |
@@ -160,6 +165,10 @@ The primary direct verbs remain deliberately familiar: `validateFull`, `validate
 | `ValidationOptions` | validation alias of `ProgramEvaluationOptions` |
 | `InterpreterSupportReport` | configuration-aware, document-independent report of supported, unsupported, and source-factory-runtime-resolved model constructs |
 | `ValidationReport` | detached findings, unsupported-program data, and independent error/support axes; it contains no live interpreter state |
+
+Host-language values never substitute for document values: native `number` is limited to safe-integer API metadata and coordinates, document decimals use `A12Number`, document Booleans use `A12Boolean`, and `undefined` does not mean absent or present-empty storage. TypeScript brands prevent accidental assignment only; Kotlin-owned runtime tokens enforce authenticity.
+
+#### Preparation and core errors
 
 The zero-customization path has no configuration setup:
 
@@ -384,11 +393,22 @@ const interpreter: Interpreter =
   prepared.createInterpreter();
 ```
 
-`expandedModelJson` has type `ExpandedModelJson`, the caller-supplied expanded model text. `PreparedModel` is the runtime constructor value whose TypeScript type is `PreparedModelConstructor`. `prepared` has type `PreparedModel`, the immutable model definition returned by the loader, and `interpreter` has type `Interpreter`, one active default-configured evaluator created from it. The declaration-only `modelVersionIdentityBrand` variable has type `unique symbol`; it exists only in generated typings to make `ModelVersionIdentity` nominal and has no application runtime value.
-
-`loadExpandedJson` returns `PreparedModel` or throws `ModelPreparationError`; `tryLoadExpandedJson` returns the same diagnostics through `ModelPreparationResult` when model input is expected user data. `ModelOwnerMismatchError` is the structured core failure raised when a snapshot, pointer, or prepared-program handle belongs to a different owner domain; `expected` and `actual` are opaque `ModelOwnerIdentity` values for correlation, not model content. `UnknownModelPathError` reports the requested `ModelEntityKind` and path. `DocumentInputError` aggregates portable placement diagnostics. Every diagnostic carries `inputPath`, a path into the untrusted envelope, and may additionally carry `modelPath`, the attempted A12 path once it is identifiable; those two locations are never overloaded. Its discriminated `details` member carries the applicable expected/received type, version, count, limit, property, duplicate, or conflict data, so consumers and optional adapters never parse `message`. `message` is presentation only. `placementIndex` is zero-based into the corresponding input array when present. `DocumentCoordinateError` reports the exact model path, expected coordinate count, supplied native-number coordinates, and whether arity or a non-positive/non-safe-integer coordinate failed. `DocumentRowScopeError` carries the requested group path and the supplied ancestor’s `GroupPointer`. `DocumentValueWriteError` reports a field/value kind mismatch or a lossy field representation without silently changing the value. `ProgramPreparationError` reports invalid candidate-rule or expression source without misclassifying the whole model as invalid.
+| Boundary | Contract |
+|---|---|
+| Model loading | `loadExpandedJson` returns `PreparedModel` or throws `ModelPreparationError`; `tryLoadExpandedJson` returns the same diagnostics through `ModelPreparationResult` |
+| Owner mismatch | `ModelOwnerMismatchError` covers foreign snapshots, pointers, and prepared-program handles; `expected` and `actual` are opaque correlation identities, not model content |
+| Model lookup | `UnknownModelPathError` reports the requested `ModelEntityKind` and path |
+| Document input | `DocumentInputError` aggregates portable placement diagnostics; every item has an envelope `inputPath` and may separately carry the attempted A12 `modelPath` |
+| Diagnostic details | The discriminated `details` member carries expected/received type, version, count, limit, property, duplicate, or conflict data; consumers never parse presentation-only `message` |
+| Placement location | `placementIndex`, when present, is zero-based into the corresponding input array |
+| Coordinates | `DocumentCoordinateError` reports the exact model path, expected coordinate count, supplied coordinates, and whether arity or positive-safe-integer validation failed |
+| Row scope | `DocumentRowScopeError` carries the requested group path and supplied ancestor `GroupPointer` |
+| Typed write | `DocumentValueWriteError` reports kind mismatch or lossy representation without changing the value |
+| Candidate preparation | `ProgramPreparationError` reports invalid candidate-rule or expression source without classifying the whole model as invalid |
 
 The default configuration uses a system clock sampled once per evaluation transaction, model-carried time zone/declared base year/charset, the kernel-compatible date-completion base-year default, the BMP fallback charset, built-in predefined types, and empty custom registries. Missing custom constructs remain explicit in evaluation results as unsupported; they are never silently ignored.
+
+#### Runtime configuration and customization
 
 Applications that need customization pass a typed configuration:
 
@@ -632,25 +652,76 @@ const customizedInterpreter: Interpreter =
   prepared.createInterpreter(configuration);
 ```
 
-`fallbackLegalCharset` has type `LegalCharset`, the opaque immutable fallback policy. `createPredefinedTypes`, `createCustomFieldTypes`, and `createCustomConditions` are externally supplied zero-argument binding-factory variables whose explicit return types are `PredefinedTypeRegistry`, `CustomFieldTypeRegistry`, and `CustomConditionRegistry`; they are distinct from `CustomFieldTypeFactory` and `CustomConditionFactory`, which resolve one implementation by its model name. `configuration` has type `InterpreterConfiguration`, a reusable factory definition. Its `createBindings` callback has the explicit return type `DirectInterpreterBindings`. `clock`, `predefinedTypes`, `customFieldTypes`, and `customConditions` are freshly created, explicitly typed values assembled into the `bindings` result; `customizedInterpreter` is the one active `Interpreter` that exclusively owns that result. The four `...Brand` declarations have type `unique symbol` and exist only to make the four opaque interfaces nominal; applications do not read runtime values from them.
+`PreparedModel.createInterpreter(configuration)` calls `createBindings` exactly once and never shares the result with another interpreter. Reusing one configuration is safe only because each call returns a fresh exclusive binding set; those clocks and registries need not be thread-safe.
 
-`PreparedModel.createInterpreter(configuration)` calls `createBindings` exactly once and never shares its returned objects with another interpreter. Reusing one configuration is safe only because each call must return a fresh exclusive binding set; those returned clocks/registries need not be thread-safe. Concurrent `createInterpreter` calls may invoke the factory concurrently, so the factory itself must be share-safe or the application must serialize creation. Direct bindings have caller-owned external resource lifetime and no interpreter disposal callback; applications needing service-owned creation and cleanup use `InterpreterConfigurationRegistration` in §8.
+Concurrent `createInterpreter` calls may invoke the factory concurrently, so the factory itself must be share-safe or application-serialized. Direct bindings have caller-owned external resource lifetime and no interpreter disposal callback; service-owned creation and cleanup use `InterpreterConfigurationRegistration` in §8.
 
-The public customization surface is a P0 compatibility contract, not an optional plug-in afterthought. Existing projects already own substantial Custom Field Type and Custom Condition libraries, often implemented separately for JVM and TypeScript. The kernel-free interpreter therefore defines its own Kotlin Multiplatform SPI with the same observable jobs and callback data, while optional platform compatibility artifacts adapt existing kernel implementations to it. A new portable customization can be implemented once in Kotlin `commonMain` and projected to TypeScript and JVM when its own dependencies are multiplatform; host-specific implementations can target the corresponding projection directly. The core SPI must remain useful without any kernel artifact.
+#### Customization semantics and lifecycle
 
-`CustomFieldValidator.validate` deliberately mirrors the modern callback shape: `value` is the native stored text, `parameters` carries the requested message locale plus optional `minLength` and `maxLength`, and `isDisplayValue` states whether conversion is required before checking. The portable `DocumentSnapshot` contract stores custom values in internal form, so direct core validation passes `false`; form/import code converts display text through `convertCustomFieldDisplayToInternal` before writing. A compatibility adapter may pass `true` only when its audited native presentation state requires that exact callback input. Accepted validation returns no fabricated value; rejection preserves both the consumer-defined `errorKey` and message. `convertDisplayToInternal` and `convertInternalToDisplay` return either the converted native string or the retained input plus its conversion error. Identity conversions remain valid implementations. The evaluator owns the field pointer and model constraints around the invocation; they are not invented callback inputs.
+The public customization surface is a P0 compatibility contract, not an optional plug-in afterthought. Existing projects already own substantial Custom Field Type and Custom Condition libraries, often implemented separately for JVM and TypeScript.
 
-`CustomCondition.check` deliberately has no expression arguments. Its `CustomConditionInvocation.document` exposes the complete model-owned snapshot, model metadata/navigation, lossless stored values, effective values including any call-scoped override, and instantiated rows; `documentModelId` preserves the authored model identity exposed by the TypeScript kernel callback. `relevantEntities` is `undefined` for full validation. For TypeScript `validatePart`, it is the exact callback view produced from the caller’s array after entity-identity conversion/deduplication and global-field inclusion; group selectors are not pre-expanded into descendants, and wildcard forms remain present. A truly empty effective relevance set returns before invoking a Custom Condition, so the adapter must not invent an empty-array callback when the source façade would short-circuit; a caller-provided empty array can reach callbacks only when source-defined normalization, such as global-field inclusion, makes the effective set non-empty. The JVM adapter has its own source-backed set-conversion and empty-set short-circuit laws rather than inheriting the TypeScript rule by assumption. `formallyIncorrectEntities` contains the exact source callback set after pointer conversion; its admissible pointer variants are fixed by the platform audit rather than narrowed to fields or groups by assumption. `errorPointer` is the containing rule’s error field and may contain a partially known repetition. `valueOverrides` preserves the TypeScript kernel façade’s call-scoped entity-value mapping; it is `undefined` when no mapping exists. The callback returns native `boolean`; `true` means the error condition is met and the containing rule fires. A callback must return `false` itself when required input is irrelevant, formally incorrect, or does not satisfy the project condition. The interpreter must not replace this observable contract with `A12Truth`, a generic refinement callback, an argument list, a locale, or an evaluation-time parameter. Platform adapter laws lock set membership, duplicates, order exposure, short-circuiting, and pointer/wildcard conversion exactly.
+The kernel-free interpreter therefore defines its own Kotlin Multiplatform SPI with the same observable jobs and callback data. Required, separately packaged platform compatibility artifacts adapt existing kernel implementations to it and are installed only where that reuse is needed.
 
-`CustomFieldTypes.of` and `CustomConditions.of` create immutable name registries from explicit entries and reject an empty or duplicate name with `CustomizationRegistrationError` and its exact `"empty-name"` or `"duplicate-name"` reason. `fromMap` is the object-map convenience and accepts own enumerable keys only. `fromFactory` adapts a name-resolving factory whose `create` method returns `undefined` for an unsupported name without throwing. When a native interpreter lane is created, it enumerates the custom names used by the prepared model, creates each required implementation once for that lane/configuration, and stores direct implementation slots in its prepared runtime state. Evaluation performs no registry scan, name lookup, reflection, or adapter discovery at a field or AST node. Missing native names appear in `supportReport()` and in the normal unsupported result channel.
+A new portable customization can be implemented once in Kotlin `commonMain` and projected to TypeScript and JVM when its dependencies are multiplatform; host-specific implementations can target the corresponding projection directly. The core SPI remains useful without any kernel artifact.
 
-Before freezing the ABI, every member and lifecycle rule of `CustomFieldValidator`, `CustomCondition`, both factories, both registries, and `CustomConditionDocumentView` must be audited against the modern kernel 30.8.1 JVM interfaces and the target TypeScript kernel interfaces used by real projects. Java and TypeScript are separate compatibility audits because their existing APIs are not structurally identical: JVM document-model conditions receive `DocumentV2`, nullable pointer sets, and `PartiallyKnownDocumentMultiPointer`; the TypeScript document-model façade receives its native `Document`, a model ID, arrays, and an entity-value mapping; static generated-runtime conditions over `IData`/`IIdentifier` are a third distinct JVM surface and are not implicitly covered by the `DocumentV2` adapter. Field-type factory names, validation parameters, presentation information, and localized error representations also differ. The initial `CustomConditionDocumentView` is the typed observable subset supported by the current audit, not a claim that arbitrary native document APIs have been recreated; production audits may require additional model navigation or storage queries before compatibility can be declared. The laws must preserve exact invocation order and cardinality, repetition scope, partial-relevance input, formal-error filtering, partially known error pointers, value overrides, value normalization, length semantics, `isDisplayValue`, conversion behavior, error identity/message, ordinary rejection or false versus callback exception, and cleanup after partial failure. If a production callback can observe another required fact, the core SPI gains an explicit typed member rather than a generic map.
+| Custom Field Type aspect | Contract |
+|---|---|
+| Validation input | `value` is native stored text; `parameters` carries message locale and optional `minLength`/`maxLength`; `isDisplayValue` states whether conversion is required |
+| Core storage | `DocumentSnapshot` stores internal form, so direct core validation passes `isDisplayValue: false`; form/import code converts display text before writing |
+| Compatibility presentation | An adapter passes `true` only when its audited native presentation state requires that exact input |
+| Validation result | Acceptance fabricates no value; rejection preserves the consumer-defined `errorKey` and message |
+| Conversion result | Both directions return converted text or the retained input plus its conversion error; identity conversions are valid |
+| Invocation ownership | The evaluator owns the field pointer and model constraints; they are not invented callback inputs |
 
-For native core callbacks, a callback exception is `InterpreterIntegrationError`; it is never converted into ordinary rejection, unsupported semantics, or false. Each kernel-compatibility adapter must separately differential-test the source platform’s exception behavior and preserve it at that adapter’s public boundary instead of claiming the core mapping is automatically identical. There is no Custom Operator SDK or operator-registration mechanism in this proposal. Operators remain the fixed, catalog-governed semantic surface from the [Operator API proposal](OPERATOR-API-PROPOSAL.md).
+`CustomCondition.check` has no expression arguments. Its invocation exposes the complete model-owned snapshot, model metadata/navigation, lossless stored values, effective values including call-scoped overrides, instantiated rows, and the authored `documentModelId`.
 
-All callbacks are synchronous. Their TypeScript signatures exclude `Promise`; plain JavaScript or unsafe TypeScript that nevertheless returns a thenable fails at the actual callback boundary with `InterpreterIntegrationError`, is never awaited, and retires the affected lane. Callback sets belong exclusively to one active interpreter lane unless a future explicitly share-safe configuration contract is introduced. Direct callers retain external resource ownership; service registrations receive the exactly-once disposal contract in §8.
+| Custom Condition input | Contract |
+|---|---|
+| Full relevance | `relevantEntities` is `undefined` |
+| TypeScript partial relevance | Preserve the caller array after entity-identity conversion/deduplication and global-field inclusion; do not pre-expand group selectors, and keep wildcard forms |
+| Empty relevance | A truly empty effective set returns before callback invocation; an originally empty array reaches callbacks only if source normalization such as global-field inclusion makes it non-empty |
+| JVM relevance | Use independently source-backed set-conversion and empty-set laws; do not infer TypeScript behavior |
+| Formal errors | Preserve the exact source callback set after pointer conversion; the platform audit determines admissible pointer variants |
+| Error pointer | Preserve the containing rule’s error field, including partially known repetitions |
+| Overrides | Preserve the TypeScript façade’s call-scoped entity-value mapping; use `undefined` when absent |
 
-An active `Interpreter` is not recursively reentrant. If a custom callback calls `validateFull`, `validatePart`, `compute`, inspection, or custom-field conversion on the same lane, the inner operation fails with `InterpreterIntegrationError` reason `"reentrant-evaluation"` before sampling time, mutating caches, or pushing/replacing native adapter call context. A callback may call a separately acquired lane subject to ordinary service/pool rules. Compatibility tests cover direct reentry, nested failure, and `finally` cleanup so an outer original document or value mapping cannot be overwritten.
+The callback returns native `boolean`; `true` means the error condition is met and the containing rule fires. It returns `false` itself when required input is irrelevant, formally incorrect, or does not satisfy the project condition.
+
+The interpreter must not substitute `A12Truth`, a generic refinement, expression arguments, locale, or evaluation time. Platform adapter laws lock set membership, duplicates, order exposure, short-circuiting, and pointer/wildcard conversion exactly.
+
+| Registry operation | Contract |
+|---|---|
+| `of` | Create an immutable explicit-name registry; reject empty or duplicate names with exact `CustomizationRegistrationError` reasons |
+| `fromMap` | Accept own enumerable keys only |
+| `fromFactory` | Adapt a name resolver whose `create` returns `undefined`, without throwing, for unsupported names |
+| Lane binding | Enumerate names used by the prepared model, create each native implementation once per lane/configuration, and store direct slots |
+| Hot path | Perform no registry scan, name lookup, reflection, or adapter discovery per field or AST node |
+| Missing name | Report it through `supportReport()` and the ordinary unsupported result channel |
+
+Before freezing the ABI, audit every member and lifecycle rule of both customization SPIs against modern kernel 30.8.1 JVM interfaces and the target TypeScript interfaces used by real projects.
+
+The compatibility audits are separate:
+
+- JVM document-model conditions receive `DocumentV2`, nullable pointer sets, and `PartiallyKnownDocumentMultiPointer`.
+- The TypeScript document-model façade receives its native `Document`, model ID, arrays, and entity-value mapping.
+- Static JVM generated-runtime conditions over `IData`/`IIdentifier` are a third surface and are not covered by the `DocumentV2` adapter.
+- Factory names, validation parameters, presentation information, and localized error representations differ by platform.
+
+`CustomConditionDocumentView` is only the typed observable subset established by the audit, not a recreation of arbitrary native document APIs. If a production callback observes another required fact, add an explicit typed member rather than a generic map.
+
+Compatibility laws preserve invocation order/cardinality, repetition scope, partial relevance, formal-error filtering, partially known error pointers, overrides, normalization, length semantics, `isDisplayValue`, conversion, error identity/message, rejection or false versus exception, and cleanup after partial failure.
+
+For native core callbacks, an exception is `InterpreterIntegrationError`; it never becomes ordinary rejection, unsupported semantics, or `false`. Each kernel-compatibility adapter separately preserves its source platform’s exception behavior at its public boundary.
+
+There is no Custom Operator SDK or operator registration. Operators remain the fixed, catalog-governed surface from the [Operator API proposal](OPERATOR-API-PROPOSAL.md).
+
+All callbacks are synchronous. A runtime thenable from plain JavaScript or unsafe TypeScript fails at the callback boundary with `InterpreterIntegrationError`, is never awaited, and retires the lane.
+
+Callback sets belong exclusively to one active lane unless a future contract proves sharing safe. Direct callers retain external resource ownership; service registrations receive the exactly-once disposal contract in §8.
+
+An active `Interpreter` is not recursively reentrant. A same-lane validation, computation, inspection, or custom-field conversion from a callback fails with reason `"reentrant-evaluation"` before time sampling, cache mutation, or native adapter-context replacement.
+
+A callback may use a separately acquired lane under normal pool rules. Compatibility tests cover direct reentry, nested failure, and `finally` cleanup so an outer native document or value mapping cannot be overwritten.
 
 The two-step API is intentional. `openExpandedModel(json, configuration)` may exist as a convenience, but it must not hide the reusable prepared-model boundary.
 
@@ -1147,17 +1218,72 @@ interface PreparedProgramInterpreter
 }
 ```
 
-`ModelOwned` is a nominal library-issued marker carrying both the exact local model version and the owner domain that controls authenticity. Its module-private brand prevents accidental object-literal assignment in checked TypeScript, but `any` and type assertions can bypass it. Every public operation therefore validates Kotlin-owned runtime owner tokens; static brands are never the security boundary. Objects with the same `modelVersion` are still incompatible when their `owner` values differ. `PreparedDocumentApi` is the authoritative model-bound document codec and builder factory. `PreparedModel` owns one local owner domain, but neither that object nor its internal prepared representation is required to be concurrently shareable. `Interpreter` is the configured, initially thread-confined core evaluator. Its path parameters are native `string` values validated against that prepared model; options are optional because their documented defaults are complete. All methods are synchronous and return detached results or frozen snapshots.
+#### Ownership and callable semantics
 
-`ModelMetadata` is the read-only definition view. Its `documentModelId` is the exact model identity supplied to the existing TypeScript Custom Condition callback; strict preparation must preserve it rather than derive it from a service alias or fingerprint. `fields()` and `groups()` return flat, deterministic model-order views; `rootFields()` and `rootGroups()` start structural traversal. Each `GroupMetadata` exposes its direct `fields()`, direct `childGroups()`, and optional configured `indexField`. That index-field relationship tells a dynamic client which direct child keys the group’s rows; the interpreter also auto-checks its non-empty values for uniqueness within each parent-row scope. `FieldMetadata`, `GroupMetadata`, `RuleMetadata`, and `ComputationMetadata` are immutable descriptions. `FieldKind` is the closed evaluator-value projection: string, enumeration, and custom declarations project to `"string"`; date and date-fragment declarations project to `"date"`; every other declaration projects to its same-named semantic kind. `FieldDeclaration` is the separate discriminated declared type a dynamic form or mapper needs before any value exists, so its enumeration, custom, date-fragment, and optional-date cases are not collapsed.
+| Concept | Contract |
+|---|---|
+| `ModelOwned` | Carries exact local model-version and owner identities |
+| Static brand | Prevents accidental object-literal assignment in checked TypeScript but is bypassable through `any` or assertions |
+| Runtime authenticity | Every public operation validates Kotlin-owned owner tokens; equal model versions remain incompatible when owners differ |
+| `PreparedDocumentApi` | Authoritative model-bound document codec and builder factory |
+| `PreparedModel` | Owns one local domain; neither it nor its prepared representation is required to be concurrently shareable |
+| `Interpreter` | Configured, initially thread-confined evaluator with model-validated string paths |
+| Calls | Synchronous, with complete option defaults, returning detached results or frozen snapshots |
 
-`CommonFieldConstraints.declaredRequiredness` is exactly the field’s authored setting. `effectiveRequiredness` includes the kernel’s generated index-field rule: when an index field is authored as `"not-required"`, its effective value is `"relative-to-parent"`; an explicitly required index field retains that explicit mode. `"absolute"` means always required when there is no repeatable ancestor and required once the lowest repeatable-ancestor row exists otherwise. `"relative-to-parent"` means required when the immediate parent group is filled; a created repeatable parent row counts as filled even when it has no valued cell. `"not-required"` means no mandatory check after index-field expansion. `global` is the model’s global-relevance flag.
+#### Model metadata semantics
 
-`StringFieldConstraints` and `NumberFieldConstraints` expose the exact typed bounds applicable to those declarations. `CustomFieldConstraints` carries only the model’s optional minimum/maximum-length hints for a custom validator; a custom declaration does not inherit the built-in string type’s pattern, newline, or `valueValidationEnabled` contract, and its validator owns length acceptance. A number declaration’s required `scale: number` is its single effective maximum fractional-digit count; strict preparation supplies `0` when the legal source omits scale. It is not repeated as an optional top-level field property or a second `maxFractionalDigits` constraint. `FieldFormat` is the model’s native format text. `Repeatability.levels` lists each repeatable ancestor in path order; an empty array means non-repeatable, and `RepetitionLevel.maximum` is the optional positive safe-integer upper bound. `GroupRef`, `GroupRowRef`, and `FieldInstanceRef` are validated navigation handles. `DocumentPointer` identifies one concrete entity instance and is narrowed by `FieldPointer`/`GroupPointer`; `CustomFieldPointer` is the nominal library-issued `FieldPointer` subtype whose declaration is provably custom and whose `customTypeName` identifies that declaration. `customFieldPointerBrand` prevents accidental structural relabeling in checked TypeScript; runtime operations still verify the Kotlin-owned pointer/owner token. `RelevantSelectionPointer` may additionally carry `ALL`, the nominal typed wildcard value, and `RelevantEntityPointer` accepts either form. `ReportPointer` separately permits concrete coordinates, `ALL`, and `UNKNOWN_REPETITION`, because a kernel finding may identify an authored wildcard or a partially known repetition rather than one fabricated concrete cell. `DateFragmentComponents` makes every supported fragment component set explicit and uses `A12Integer` rather than native numbers. `DocumentCellValue` is the typed-write union: ordinary direct-operator values plus model-owned incomplete date representations that cannot honestly be represented as an `A12Value`. Every numeric coordinate and numeric metadata bound is a safe integer, with positive repetition indexes and non-negative length/digit/scale limits. `Readonly<Record<LocaleCode, string>>` is an immutable locale-code-to-text map.
+| Metadata aspect | Contract |
+|---|---|
+| `documentModelId` | Preserve the exact identity supplied to TypeScript Custom Conditions; never derive it from a service alias or fingerprint |
+| Flat traversal | `fields()` and `groups()` return deterministic model-order views |
+| Structural traversal | Root methods begin traversal; each group exposes direct fields, child groups, and optional index field |
+| Index field | Identifies the direct-child row key; non-empty values are automatically checked for uniqueness within each parent-row scope |
+| Metadata objects | Field, group, rule, and computation metadata are immutable descriptions |
+| `FieldKind` | String, enumeration, and custom declarations project to `"string"`; date and date-fragment declarations project to `"date"`; other declarations retain their semantic kind |
+| `FieldDeclaration` | Preserves the distinct authored enumeration, custom, date-fragment, and optional-date cases needed before values exist |
 
-`ModelMetadata.declaredBaseYear` is present only when the model declares `modelInfo.baseYear`; it controls whether the expression constant `BaseYear` and other expression forms that require a declared base year are legal. `effectiveDateCompletionBaseYear` is always present and completes missing years in `DateFragmentType` values and partial `DateRangeType` endpoints; it equals the declared year or the kernel-compatible default year `2000`. Absence of `declaredBaseYear` must therefore never make those expressions legal by borrowing this completion default.
+| Requiredness value | Contract |
+|---|---|
+| Declared | Exactly the authored setting |
+| Effective index-field rule | Authored `"not-required"` becomes `"relative-to-parent"`; explicit requiredness remains explicit |
+| `"absolute"` | Always required without repeatable ancestors; otherwise required once the lowest repeatable-ancestor row exists |
+| `"relative-to-parent"` | Required when the immediate parent is filled; an explicitly created empty repeatable row counts as filled |
+| `"not-required"` | No mandatory check after index-field expansion |
+| `global` | Model’s global-relevance flag |
 
-`DocumentSnapshot` is a frozen instance. Its `storage` member and row enumeration read stored placements directly without running formal checks or invoking custom validators. `DocumentInspection` is the distinct detached, model-owned index produced by one complete automatic-formal pass; its `cell` and `cells` queries never reevaluate the document or reinvoke a callback. `DocumentBuilder` and `PersistentDocumentEditor` are single-owner mutable construction helpers whose `freeze()` methods return a new snapshot. Their typed removal operations restore field absence or remove a complete group subtree without exposing placement internals. `PreparedDocumentApi.isSnapshot(value: unknown)` authenticates a snapshot issued by this exact prepared owner and must not rely on structural typing or `instanceof` alone. `decodePlacements` is the authoritative `unknown` ingress, `tryDecodePlacements` returns the same diagnostics without throwing, `readPlacements` is the already-validated-DTO fast path, and public `encodePlacements` is the canonical portable output. `PreparedDocumentApi.dayOptionalDate`/`tryDayOptionalDate` construct the supported absent-day value, while `dateFragment`/`tryDateFragment` construct an explicit fragment for one same-model `FieldMetadata` declaration. Optional capabilities are separate types rather than mandatory core members: `PreparedModelWithDocumentEditing` adds the persistent editor, while `PreparedProgramModel` and `PreparedProgramInterpreter` add candidate-rule and expression preparation/evaluation. A package that ships either optional capability must expose a capability-specific loader or adapter returning that extension type; the core `PreparedModel` constructor continues to promise only the core interface.
+| Field or constraint | Contract |
+|---|---|
+| String/number constraints | Expose the exact typed bounds for those declarations |
+| Custom constraints | Carry only optional length hints; custom fields do not inherit built-in string pattern, newline, or `valueValidationEnabled`, and their validator owns length acceptance |
+| Number scale | Required single effective maximum fractional-digit count; strict preparation supplies `0` when legal source omits it, with no duplicate top-level scale property |
+| `FieldFormat` | Native model format text |
+| Repeatability | Lists repeatable ancestors in path order; empty means non-repeatable; each optional maximum is a positive safe integer |
+
+| Navigation or value | Contract |
+|---|---|
+| Refs | `GroupRef`, `GroupRowRef`, and `FieldInstanceRef` are validated navigation handles |
+| Concrete pointers | `DocumentPointer` identifies one entity and narrows to field/group; `CustomFieldPointer` proves a custom declaration and carries its type name |
+| Pointer authenticity | TypeScript brands prevent accidental relabeling; runtime operations verify Kotlin-owned pointer/owner tokens |
+| Relevance pointers | May carry nominal `ALL` wildcard coordinates |
+| Report pointers | May carry concrete, `ALL`, or `UNKNOWN_REPETITION` coordinates; findings never fabricate concrete cells |
+| Date fragments | Component variants are explicit and use `A12Integer`, not native numbers |
+| Typed writes | `DocumentCellValue` combines ordinary operator values with model-owned incomplete-date values that are not honest `A12Value` instances |
+| Numeric bounds | Coordinates and metadata bounds are safe integers; repetition indexes are positive and length/digit/scale bounds non-negative |
+| Localized maps | `Readonly<Record<LocaleCode, string>>` maps locale codes to immutable text |
+
+`ModelMetadata.declaredBaseYear` exists only when authored and controls whether `BaseYear` and other declaration-dependent expressions are legal. `effectiveDateCompletionBaseYear` always exists and completes date fragments and partial ranges using the declared year or kernel-compatible default `2000`.
+
+The completion default never makes `BaseYear` legal when `declaredBaseYear` is absent.
+
+| Document API | Contract |
+|---|---|
+| Snapshot storage/rows | Read frozen placements directly without formal checks or custom validators |
+| Inspection | Detached model-owned index from one complete formal pass; lookup never reevaluates or reinvokes callbacks |
+| Builders/editors | Single-owner mutable helpers whose `freeze()` returns a new snapshot; typed removal restores absence or removes a complete subtree |
+| `isSnapshot` | Authenticates a snapshot from the exact prepared owner without relying only on structure or `instanceof` |
+| Placement codec | `decodePlacements` is authoritative unknown ingress; `tryDecodePlacements` is non-throwing; `readPlacements` is the validated-DTO fast path; `encodePlacements` is canonical output |
+| Partial dates | Day-optional and date-fragment constructors produce exact same-owner model values |
+| Optional extensions | Persistent editing and prepared programs use separate capability types and capability-specific loaders/adapters; core `PreparedModel` promises neither |
 
 ### 3.2 Static versus configured state
 
@@ -1184,7 +1310,11 @@ Sharing is an optimization, not a public prerequisite. Independent copies cost m
 
 Clock providers, locale, fallback charset, predefined/custom field-type implementations, custom-condition implementations, documents, evaluation results, and per-call caches never belong to `PreparedModel`.
 
-The prepared definition may record the unique custom names used by the model, but only `Interpreter` creation resolves them against that lane’s registries. The bound runtime then stores direct validator/condition slots beside the applicable field metadata and condition nodes. A compatibility adapter may instead put a constant-name lifecycle-preserving provider in such a slot when the audited source factory is observably required to create a fresh callback more often; it still performs no registry search or dynamic adapter discovery in the AST. This separation lets two interpreters over one model use different project implementations without reintroducing name lookup into evaluation.
+The prepared definition may record unique custom names, but only `Interpreter` creation resolves them against lane registries. The bound runtime stores direct validator/condition slots beside relevant metadata and condition nodes.
+
+When a source factory must observably create callbacks more often, an adapter slot may instead hold a constant-name lifecycle-preserving provider. It still performs no registry search or adapter discovery in the AST.
+
+This separation allows two interpreters over one model to use different project implementations without hot-path name lookup.
 
 ### 3.3 Ownership
 
@@ -1213,8 +1343,6 @@ const reportA: ValidationReport =
 const reportB: ValidationReport =
   interpreterB.validateFull(snapshot);
 ```
-
-`prepared` has type `PreparedModel`, one local owner used sequentially in this example. `configurationA` and `configurationB` have type `InterpreterConfiguration`; each is a factory definition that supplies a fresh exclusive `DirectInterpreterBindings` set. `snapshot` has type `DocumentSnapshot`, one frozen instance owned by `prepared`. `interpreterA` and `interpreterB` are separate active `Interpreter` instances in the same owner domain, and `reportA`/`reportB` are detached `ValidationReport` results produced under their respective configurations.
 
 A snapshot or handle carrying a different `ModelOwnerIdentity` fails with `ModelOwnerMismatchError` even when its model version and paths match. A service that uses lane-owned prepared models must therefore decode a portable placement DTO only after selecting the lane; it cannot decode once and pass that snapshot among lanes. A service may share snapshots or model-bound codecs across lanes only when those lanes deliberately and provably share one owner domain.
 
@@ -1247,7 +1375,9 @@ A cached model must never freeze `Today` or `Now`. A system clock provider is sa
 
 `A12EvaluationTime` carries one exact instant plus the time-zone projection in which it was captured. Before model evaluation, the interpreter reprojects that instant into `prepared.model.timeZone`; `Today` and `Now` are then derived in the model’s zone. The input sample’s zone is therefore not a request-time override of the model. The same sample passed to two models denotes the same instant, while their `Today` values may differ legitimately because their model zones differ.
 
-`Interpreter.captureEvaluationTime()` captures the configured provider exactly once and returns an `A12EvaluationTime` already projected into that interpreter’s model zone. Supplying `ProgramEvaluationOptions.evaluationTime` or `ComputeOptions.evaluationTime` bypasses another clock read but still performs the same instant-preserving model-zone projection. This normalization is specific to model evaluation; direct `operators.pointInTime.today(sample)` and `operators.pointInTime.now(sample)` use the sample’s own explicit zone as specified by the [Operator API proposal](OPERATOR-API-PROPOSAL.md).
+`captureEvaluationTime()` samples the configured provider once and returns an `A12EvaluationTime` projected into the model zone. Supplying an explicit evaluation time avoids another clock read but still performs instant-preserving model-zone projection.
+
+This normalization is specific to model evaluation. Direct point-in-time operators use the sample’s own explicit zone as defined by the [Operator API proposal](OPERATOR-API-PROPOSAL.md).
 
 ```ts
 declare const interpreter: Interpreter;
@@ -1275,8 +1405,6 @@ if (computed.kind === "applied") {
 }
 ```
 
-`interpreter` has type `Interpreter` and supplies both the model zone and the configured clock provider. `snapshot` has type `DocumentSnapshot` and is the frozen input document. `evaluationTime` has type `A12EvaluationTime` and identifies one immutable instant; `computeOptions` and `validationOptions` carry that same sample to two calls. `computed` has type `ComputeAndApplyResult`; only its `"applied"` case contains the updated snapshot. `validation` has type `ValidationReport`, the detached validation result for that updated snapshot.
-
 Passing the same immutable `A12EvaluationTime` lets several calls form one deterministic application transaction. A fixed clock remains available for tests. A live clock provider and per-call sample are new API/refactoring work; the current `DmInterpreter` captures a fixed `EvalClock`.
 
 Locale and evaluation time are per-call data. They are never written into a prepared model, warm lane, process-global setting, model alias, or registry key. A request that omits time samples its lane’s configured clock once at transaction entry; a request that supplies time bypasses the clock read. A request that omits locale uses the documented API default without mutating any global locale.
@@ -1291,7 +1419,9 @@ The standalone boundary initially accepts only expanded, self-contained, name-pa
 
 `ModelLoader.load` is not yet that strict boundary: an unresolved type definition can currently degrade to a string kind. `PreparedModel.loadExpandedJson` must add a real residual/type/include guard and throw `ModelPreparationError` with structured diagnostics rather than accepting a semantically different model. `tryLoadExpandedJson` exposes the same failure without exceptions.
 
-The v1 `DateFieldPrecision` union can represent only `"full"` and `"day-optional"`. A model declaring month-optional or year-optional `DateType` precision is therefore rejected during strict preparation with a stable `ModelPreparationDiagnostic.code` such as `"UNSUPPORTED_DATE_PRECISION"`. It is not coerced to day-optional, collapsed to a date fragment, or accepted as an unsupported runtime cell. Once those precisions are implemented and differentially verified, the discriminated metadata and inspection unions can grow without weakening the strict boundary.
+V1 date precision supports only `"full"` and `"day-optional"`. Strict preparation rejects month-optional or year-optional declarations with a stable diagnostic such as `"UNSUPPORTED_DATE_PRECISION"`.
+
+It does not coerce them, collapse them to fragments, or defer them as unsupported cells. Once implemented and differentially verified, metadata and inspection unions can grow without weakening strict input.
 
 ### 4.2 Model identity
 
@@ -1352,9 +1482,17 @@ const computations: readonly ComputationMetadata[] =
   model.computations();
 ```
 
-`prepared` has type `PreparedModel`; `model` is its `ModelMetadata` view. `field` is one `FieldMetadata`; `fieldKind`, `fieldFormat`, `repeatability`, `computed`, `commonConstraints`, and `declaration` are typed projections of that declaration. `effectiveNumberScale` is a native `number` only for a number declaration and is `undefined` for every other field kind; the required `FieldDeclaration.scale` is the single effective number scale and defaults to zero when source JSON omits it. `fields` and `groups` are flat model-order views, while `rootFields` and `rootGroups` are the structural entry points. `orderGroup` is a `GroupMetadata`; `orderFields` and `orderChildGroups` contain only its direct children, and `orderIndexField` is either the configured `FieldMetadata` key or `undefined`. `declaredRequiredness` preserves authored configuration; `effectiveRequiredness` includes index-field auto-requiredness. `declaredBaseYear` is optional model configuration, whereas `effectiveDateCompletionBaseYear` is the always-present completion year for yearless fragments and partial ranges. `rules` and `computations` are immutable metadata arrays.
+| Metadata detail | Contract |
+|---|---|
+| Number scale | `FieldDeclaration.scale` is the single effective scale and is `0` when legal source omits it |
+| Traversal | `fields()` and `groups()` are flat model-order views; root methods begin structural traversal; group methods expose direct children |
+| Requiredness | Declared requiredness preserves authored configuration; effective requiredness includes index-field auto-requiredness |
+| Base year | `declaredBaseYear` is optional; `effectiveDateCompletionBaseYear` is always present for yearless fragments and partial ranges |
+| Programs | Rule and computation metadata arrays are immutable descriptions, not evaluable handles |
 
-`ModelMetadata` is the read-only public view over one prepared definition. `FieldMetadata`, `GroupMetadata`, `RuleMetadata`, and `ComputationMetadata` are immutable descriptions, not evaluable handles. `FieldKind` is the closed semantic value kind, `FieldFormat` describes the model’s lexical format, `Repeatability` describes whether and where repetitions occur, `CommonFieldConstraints` carries authored/effective cross-kind field rules, and `FieldDeclaration` preserves the declared field type plus its kind-specific constraints. `requireField`/`requireGroup` throw `UnknownModelPathError`; nullable `findField`/`findGroup` variants support probing.
+`ModelMetadata` is a read-only prepared-definition view. Field, group, rule, and computation metadata are immutable descriptions rather than evaluable handles.
+
+`FieldKind`, `FieldFormat`, `Repeatability`, `CommonFieldConstraints`, and `FieldDeclaration` preserve semantic kind, lexical format, repetition, authored/effective rules, and declaration-specific constraints. Required lookup throws `UnknownModelPathError`; nullable lookup supports probing.
 
 The first contract should expose evaluation-relevant facts: traversable structure, path, kind, format/effective scale, constraints, repetition, index-field relationships, labels/messages where available, computation status, model time zone, declared base year, and effective date-completion base year. It should not publish `ModelDef` or internal maps as ABI.
 
@@ -1405,7 +1543,7 @@ applicationMetadata.set(
 );
 ```
 
-`applicationMetadata` has type `ApplicationMetadataRegistry<OrderFieldPresentation>` and is created, synchronized, and retired by the application. `prepared` has type `PreparedModel`; `totalField` is its model-owned `FieldMetadata`, and `totalPresentation` has type `OrderFieldPresentation`. Registry implementations key by the runtime-authenticated owner-aware handle, not by a path or mutable model alias. The same path in a newer model version is a different key. There is no process-global application metadata registry, and model eviction does not delete caller metadata unless the caller explicitly couples those lifecycles.
+Registry implementations key by the runtime-authenticated owner-aware handle, not by a path or mutable model alias. The same path in a newer model version is a different key. There is no process-global application metadata registry, and model eviction does not delete caller metadata unless the caller explicitly couples those lifecycles.
 
 ## 5. Documents
 
@@ -1456,7 +1594,11 @@ interface DocumentDecodeOptions {
 }
 ```
 
-`PlacementDocumentInputV1` is the portable, behavior-free input DTO. `GroupPlacementInput` creates one concrete group row. `FieldPlacementInput` stores one raw field cell. `path` is an absolute model path validated during decoding; `coordinates` contains one positive, 1-based repetition index per path part, including the field part; and `raw` preserves the exact lexical text. Omitting a field means absent, `raw: ""` means present-empty, and malformed text remains present for formal validation. Explicit group placements preserve empty rows and sparse repetitions.
+`PlacementDocumentInputV1` is the portable, behavior-free DTO. `GroupPlacementInput` creates one concrete row; `FieldPlacementInput` stores one raw cell.
+
+`path` is an absolute model path validated during decoding. `coordinates` contains one positive, 1-based repetition index per path part, including the field part, and `raw` preserves exact lexical text.
+
+Omission means absent, `raw: ""` means present-empty, and malformed text remains present for formal validation. Explicit group placements preserve empty and sparse rows.
 
 ```ts
 declare const prepared: PreparedModel;
@@ -1485,9 +1627,9 @@ const canonicalDocument:
   prepared.documents.encodePlacements(snapshot);
 ```
 
-`prepared` has type `PreparedModel`, the owner of the model-aware document codec. `requestBody` has type `unknown`, as an HTTP, queue, plugin, persistence, or Worker boundary actually does. `decodeLimits` has type `DocumentDecodeLimits`, `decodeOptions` has type `DocumentDecodeOptions`, `snapshot` has type `DocumentSnapshot`, and `canonicalDocument` has type `PlacementDocumentInputV1`.
+`decodePlacements` is authoritative public ingress: validate runtime shape, reject unknown canonical-v1 keys, enforce resource limits, then perform model-aware path/coordinate checks and aggregate failures in `DocumentInputError`.
 
-`decodePlacements` is the authoritative public ingress. It validates the runtime shape before model-aware path/coordinate checks, rejects unknown object keys for the canonical v1 transport, enforces the supplied resource limits, and aggregates failures in `DocumentInputError`. `tryDecodePlacements` performs the same work and returns `A12Result<DocumentSnapshot, DocumentInputError>`. `readPlacements(input: PlacementDocumentInputV1, options?: DocumentDecodeOptions)` remains a typed fast boundary for data already validated by a trusted decoder; a TypeScript annotation alone is not evidence that data was validated.
+`tryDecodePlacements` performs the same work through `A12Result<DocumentSnapshot, DocumentInputError>`. `readPlacements` is the fast path for data already validated by a trusted decoder; a TypeScript annotation alone is not evidence of validation.
 
 `encodePlacements` writes a round-trippable `PlacementDocumentInputV1` after an owner check. A malformed number or date remains valid document input; it is not a valid direct `A12Number` or `A12Date`. Every diagnostic always carries its transport `inputPath`, such as `["fields", 2, "coordinates", 1]`, and separately carries the attempted `modelPath`, such as `"/Order/Lines/Amount"`, when known.
 
@@ -1539,15 +1681,34 @@ builder.putValue(serviceMonthPointer, serviceMonth);
 const snapshot: DocumentSnapshot = builder.freeze();
 ```
 
-`discount` has type `A12Number`, one member of the `A12Value` union. `year` and `month` are exact `A12Integer` components, and `billingMonth` is the model-owned `OptionalDateCellValue` constructed from them without inventing a day or a raw format. `orderGroup` is the reusable `GroupRef`; `orderRow` is its coordinate-validated `GroupRowRef`; `orderPointer` is the group-only pointer accepted by `addGroup`. `discountField`, `billingMonthField`, and `serviceMonthField` are `FieldInstanceRef` handles in that row, while `discountPointer`, `billingMonthPointer`, and `serviceMonthPointer` are their field-only pointers. `serviceMonthComponents` has type `DateFragmentComponents` and explicitly selects a month-only fragment; `serviceMonth` has type `DateFragmentCellValue`, a model-owned fragment constructed against `serviceMonthField.metadata`. `builder` has type `DocumentBuilder`; `putValue` accepts the complete `DocumentCellValue` union. `snapshot` has type `DocumentSnapshot`, the immutable document produced by `freeze()`.
+`DocumentBuilder` is a mutable, single-owner helper bound to one prepared model. Mutations accept validated pointers rather than duplicate raw path/coordinate overloads.
 
-`DocumentBuilder` is a mutable, single-owner construction helper bound to one prepared model. Its mutation methods accept validated pointers instead of duplicating raw path/coordinate overloads. `GroupRef.row(...coordinates: number[]): GroupRowRef` and the dynamic `ModelMetadata.pointer` factory reject a wrong coordinate count or a coordinate that is not a positive safe integer with `DocumentCoordinateError`. A coordinate above a declared repetition maximum is accepted deliberately so imported over-repetition can be represented and reported by formal validation. Repeating `addGroup` for the same `GroupPointer` is idempotent.
+`GroupRef.row` and `ModelMetadata.pointer` reject wrong arity or non-positive/non-safe-integer coordinates with `DocumentCoordinateError`. Coordinates above a repetition maximum remain representable for formal validation, and repeated `addGroup` is idempotent.
 
-`putValue` is the single field-aware typed insertion contract. `DocumentCellValue` contains the ordinary `A12String`, `A12Boolean`, `A12Confirm`, `A12Number`/`A12Integer`, `A12Date`, `A12Time`, `A12DateTime`, and `A12DateRange` values plus `OptionalDateCellValue` and `DateFragmentCellValue`. A complete date written to a day-optional date field remains an ordinary `A12Date`; `dayOptionalDate` creates only the absent-day case. Model-owned partial values must belong to the same prepared owner, and a date-fragment value’s shape must match the target declaration.
+#### Exact typed storage
 
-Each field declaration has a representation codec used only to store the supplied semantic value. It is independent of formal validation. The codec never rounds, truncates, normalizes line breaks in storage, or drops date components implicitly. It succeeds only when the value kind matches the field and render-then-storage-read represents the same semantic value; a date-fragment read compares both its explicit components and its `resolvedValue`, and an `A12DateTime` compares the same exact instant after the required projection into the model zone. Evaluation-only transformations such as CRLF-to-LF are outside this round-trip check. For a number, the codec strips insignificant trailing fractional zeros to obtain the natural scale, rejects a natural scale greater than the field’s effective `scale`, pads fractional zeros up to `minFractionalDigits` when necessary, and emits plain decimal text without an exponent. Strict preparation rejects a number declaration whose `minFractionalDigits` exceeds `scale`. For example, `12.345` is not exactly representable in a scale-2 field. Callers explicitly invoke a rounding or projection operator before retrying.
+`putValue` is the field-aware typed insertion contract. `DocumentCellValue` includes ordinary scalar values plus `OptionalDateCellValue` and `DateFragmentCellValue`.
 
-Built-in string, enumeration, and custom declarations store an `A12String` exactly. The canonical snapshot stores custom-field internal text. During formal validation, its configured `CustomFieldValidator` receives that native string, `isDisplayValue: false`, the requested locale, and the declaration’s optional `CustomFieldConstraints` length hints. Display-form input must first use the bound conversion API; a kernel compatibility adapter derives the equivalent behavior from its native document/presentation contract rather than changing canonical storage.
+A complete value in a day-optional field remains `A12Date`; `dayOptionalDate` creates only the absent-day case. Partial values must share the prepared owner, and fragment shape must match the target declaration.
+
+Each field declaration has a storage-representation codec independent of formal validation.
+
+| Codec aspect | Contract |
+|---|---|
+| No implicit loss | Never round, truncate, normalize stored line breaks, or drop date components |
+| Exactness | Value kind must match and render-then-read must preserve semantics |
+| Date fragment | Compare explicit components and `resolvedValue` |
+| Date-time | Compare the same exact instant after required model-zone projection |
+| Evaluation normalization | CRLF-to-LF and other evaluation-only transformations are outside the storage round trip |
+| Number rendering | Remove insignificant trailing fractional zeros, reject natural scale above field scale, pad to `minFractionalDigits`, and emit plain decimal without exponent |
+| Invalid number declaration | Strict preparation rejects `minFractionalDigits > scale` |
+| Caller correction | For example, scale-2 rejects `12.345`; callers explicitly round or project before retrying |
+
+Built-in string, enumeration, and custom declarations store `A12String` exactly; custom fields use internal text. Formal validation supplies that string, `isDisplayValue: false`, locale, and optional length hints.
+
+Display text first uses the bound conversion API. A kernel-compatibility adapter derives equivalent behavior from native document/presentation state without changing canonical storage.
+
+#### Custom display/internal conversion
 
 ```ts
 declare const interpreter: Interpreter;
@@ -1561,13 +1722,27 @@ const conversion: CustomFieldConversionResult =
   );
 ```
 
-`interpreter` has type `Interpreter`, the active evaluator holding the custom-field binding. `taxIdentifier` has type `CustomFieldPointer`, a model-owned pointer whose declaration names the validator. `displayValue` is native UI text. `conversion` has type `CustomFieldConversionResult`; only its `"converted"` case supplies internal text suitable for `A12String.of` and a typed document write, while its `"rejected"` case retains the supplied text and message for the UI. `convertCustomFieldInternalToDisplay` provides the inverse operation over canonical internal text. Neither conversion performs whole-document validation.
+Only the `"converted"` result supplies internal text suitable for `A12String.of` and a typed document write; `"rejected"` retains the supplied text and message for the UI. `convertCustomFieldInternalToDisplay` provides the inverse operation over canonical internal text. Neither conversion performs whole-document validation.
 
-Field constraints that do not affect exact storage representation—minimum/maximum, requiredness, allowed enumeration values, string pattern, custom validation, and similar rules—are not silently enforced by the builder. The exactly rendered value is stored and normal validation reports those violations. A kind mismatch throws `DocumentValueWriteError` with `reasonCode: "field-kind-mismatch"`; an inexact representation uses `"value-not-exactly-representable"`. Every failed `addGroup`, `removeGroup`, `putRaw`, `putValue`, or `removeField` call is atomic and leaves the builder/editor unchanged. `putRaw` intentionally preserves arbitrary user input, including malformed lexical text, for formal validation. Raw `PlacementDocumentInputV1` decoding remains the bulk-input path and aggregates structural problems in `DocumentInputError`.
+#### Mutation, removal, and freezing
 
-`removeField(pointer: FieldPointer): void` removes that exact field placement and restores the `"absent"` state; it is idempotent and does not remove an explicitly stored containing group row. `removeGroup(pointer: GroupPointer): void` removes that exact group placement and every descendant group/field placement in its subtree while leaving siblings and ancestors unchanged; it is also idempotent. `putRaw(pointer, "")` remains a present-empty field and is therefore intentionally different from `removeField(pointer)`. Both construction helpers expose the same operations so an application can undo an in-progress build or persistently edit an existing snapshot without reconstructing placement DTOs.
+| Mutation case | Contract |
+|---|---|
+| Non-representation constraint | Store the exactly rendered value; ordinary validation reports min/max, requiredness, enumeration, pattern, custom, and similar violations |
+| Kind mismatch | Throw `DocumentValueWriteError` with `"field-kind-mismatch"` |
+| Inexact representation | Throw with `"value-not-exactly-representable"` |
+| Failed mutation | `addGroup`, `removeGroup`, `putRaw`, `putValue`, and `removeField` are atomic |
+| Raw write | Preserve arbitrary, including malformed, lexical text for formal validation |
+| Bulk input | Placement decoding aggregates structural failures in `DocumentInputError` |
+
+- `removeField` idempotently restores exact field absence without deleting an explicitly stored containing row.
+- `removeGroup` idempotently removes the group placement and descendant subtree while preserving siblings and ancestors.
+- `putRaw(pointer, "")` creates present-empty storage and is intentionally different from `removeField`.
+- Both construction helpers expose these operations for undo and persistent editing without rebuilding placement DTOs.
 
 Builders are not evaluable. `freeze()` produces a stable request document whose stored placements no longer mutate. The initial service contract keeps it and its evaluation view confined to one request/runtime lease; it does not need to be concurrently shareable.
+
+#### Optional persistent editing
 
 A persistent form editor is an optional additional surface:
 
@@ -1585,11 +1760,13 @@ editor.putRaw(fieldPointer, inputText);
 const nextSnapshot: DocumentSnapshot = editor.freeze();
 ```
 
-`prepared` has type `PreparedModelWithDocumentEditing`, `currentSnapshot` and `nextSnapshot` have type `DocumentSnapshot`, `fieldPointer` is a model-validated `FieldPointer`, `inputText` is native `string`, and `editor` has type `PersistentDocumentEditor`. `PreparedDocumentEditingApi` adds `edit` without adding that method to the core `PreparedDocumentApi`. `PersistentDocumentEditor` is a single-owner editor that starts from one frozen snapshot and produces another; its `putValue`, `removeField`, `addGroup`, and `removeGroup` methods have the same contracts as the corresponding `DocumentBuilder` methods. It should use structural sharing so one keystroke does not copy an entire large document. It cannot become a supported form API until its cache invalidation contract and update-to-validation allocation/latency are proven. The validation-service core does not wait for it.
+`PreparedDocumentEditingApi` adds `edit` without adding that method to the core `PreparedDocumentApi`. `PersistentDocumentEditor` is a single-owner editor with the same mutation contracts as `DocumentBuilder`; it should use structural sharing so one keystroke does not copy an entire large document. It cannot become supported until its cache invalidation and update-to-validation allocation/latency contracts are proven; the validation-service core does not wait for it.
 
 ### 5.3 Pointers and typed inspection
 
 `DocumentPointer` is a tagged model-validated value containing path plus canonical repetition coordinates. Wildcard `ALL` is a tagged coordinate, not an internal sentinel integer.
+
+#### Pointer construction
 
 Ordinary client code should use model refs and row handles that derive non-repeatable coordinates:
 
@@ -1605,7 +1782,9 @@ const startedAtPointer: FieldPointer =
   startedAtField.pointer;
 ```
 
-`prepared` has type `PreparedModel`, the owner that issues every returned handle. `orderGroup` has type `GroupRef`, a model-validated reusable group handle. `orderRow` has type `GroupRowRef` and binds that group to concrete repetition coordinates. `startedAtField` has type `FieldInstanceRef` and identifies one field instance within the row. `startedAtPointer` has type `FieldPointer`, the field-specialized `DocumentPointer`; `GroupPointer` is the corresponding group specialization. Every pointer carries an explicit `entityKind`, immutable path, coordinates, model-version identity, and owner identity. `GroupRef.row` checks arity and positive-safe-integer coordinates and throws `DocumentCoordinateError` on failure; it does not require that the row already exists. The lossless transport retains complete canonical coordinates, so developers do not hand-author internal coordinate arrays for routine access.
+Every pointer carries its entity kind, path, coordinates, model-version identity, and owner identity. `GroupRef.row` checks arity and positive-safe-integer coordinates without requiring that the row already exists. The lossless transport retains complete canonical coordinates, so ordinary callers do not hand-author internal coordinate arrays.
+
+#### Instantiated-row enumeration
 
 Dynamic forms and mappers also need to enumerate rows that are actually instantiated in a snapshot:
 
@@ -1632,9 +1811,11 @@ const taxRowsByLine: readonly (readonly GroupRowRef[])[] =
   );
 ```
 
-`prepared` is the `PreparedModel` that owns every handle, and `snapshot` is one frozen `DocumentSnapshot` for that model. `orderGroup`, `lineGroup`, and `taxGroup` are reusable `GroupRef` definitions at three nesting levels. `firstOrderRow` is a coordinate-validated `GroupRowRef`, whether or not that row is present. `allLineRows` is an immutable array of every instantiated line row across all parent contexts. `firstOrderLineRows` narrows the result to descendants of the supplied order row. `taxRowsByLine` is an immutable outer array whose element type is another immutable `GroupRowRef` array; its callback parameter `lineRow` and callback result are both explicitly typed.
+`instantiatedRows` includes explicit empty rows and rows implied by fields, preserves sparse positive indexes, supports nested repetitions, and returns canonical ascending complete coordinates.
 
-`DocumentSnapshot.instantiatedRows(group: GroupRef, within?: GroupRowRef): readonly GroupRowRef[]` includes explicit empty rows and rows implied by field placements, preserves sparse positive indexes, supports nested repeated groups, and returns canonical ascending coordinate order with complete coordinates in every row’s `GroupPointer`. Omitting `within` searches all parent contexts. Supplying it restricts the result to descendants of that ancestor row; a handle from another prepared owner raises `ModelOwnerMismatchError`, and a same-model row that is not an ancestor of `group` raises `DocumentRowScopeError`. Enumeration reads the snapshot’s placement structure directly and does not serialize or rebuild a `PlacementDocumentInputV1`.
+Omitting `within` searches all parent contexts; supplying it restricts results to descendants. Foreign owners raise `ModelOwnerMismatchError`, non-ancestor same-model rows raise `DocumentRowScopeError`, and enumeration reads placements directly without serialization.
+
+#### Storage and formal inspection
 
 Stored state and configured validity are different:
 
@@ -2003,29 +2184,104 @@ interface FormalSuppression {
 }
 ```
 
-`DocumentSnapshot.storage` is the direct storage boundary. `DocumentStorage.cell(pointer)` and `cells(pointers)` return `StoredCellInspection` without running requiredness, format, range, pattern, uniqueness, legal-character, custom-field, rule, or computation logic. They do not invoke callbacks and do not sample the clock. `cells` preserves input order and duplicates, and both methods enforce owner identity before reading. The result preserves the raw absent/empty/present state and, when model-aware lexical decoding is possible without formal acceptance, the corresponding `CellStorageValue`; malformed text remains present with `storageValue.kind === "unavailable"`. This API is suitable for form rendering, debugging, persistence mapping, and on-keyup access where a full formal pass would be both semantically surprising and unnecessarily expensive.
+`DocumentSnapshot.storage` is the direct storage boundary.
 
-`CellInspection` reports four distinct dimensions—raw storage, storage-decoded value, evaluator-visible value, and configured formal/support state—and its union correlates them so impossible combinations do not type-check. `CellInspectionIdentity` supplies the `FieldPointer`, model-version identity, and owner identity shared by every case. `CellStorageInspection` distinguishes absent, present-empty, and present non-empty raw text. `NonEmptyRawString` is a library-issued output-only branded subtype of native `string`; callers never manufacture it, and it prevents `PresentCellStorage` from overlapping the dedicated `EmptyCellStorage` case. `CellStorageValue` is `"none"` for absent/empty storage, one ordinary `A12Value`, one model-owned optional-date or date-fragment value, or `"unavailable"` when present text cannot be storage-decoded. `NonStringA12Value` uses TypeScript’s `Exclude<A12Value, A12String>` utility to retain every ordinary value variant except `A12String`. `InternedCellEvaluationValue<T>` carries the concrete `A12Value` subtype `T` seen by rules and computations; `NonInternedCellEvaluationValue<R>` carries the exact non-value reason subtype `R`. `CellEvaluationValue` is their public union.
+| Storage behavior | Contract |
+|---|---|
+| No validation | Do not run requiredness, format, range, pattern, uniqueness, charset, custom-field, rule, or computation logic |
+| No callbacks/time | Invoke no callback and sample no clock |
+| Bulk lookup | Preserve input order and duplicates |
+| Ownership | Check owner identity before reading |
+| Result | Preserve absent/empty/present raw state and decoded `CellStorageValue`; malformed present text is `"unavailable"` |
+| Use cases | Form rendering, debugging, persistence mapping, and on-keyup reads without a surprising full pass |
 
-`ValidCellFormalState` means the automatic formal pass found no suppressing diagnostic and the configured field implementation is available. `InvalidCellFormalState` carries one or more formal diagnostics. `UnsupportedCellFormalState` is restricted to a present custom-field string whose configured type implementation is unavailable. `InvalidUnsupportedCellFormalState` preserves the reachable combination in which that same cell is both formally invalid and unsupported—for example, its raw text violates the legal charset while its custom field type is unregistered. `UnsupportedFieldInspection` identifies that custom type and its stable reason without reusing the program-level `UnsupportedProgram` type. `CellFormalFailure` and `CellFormalValidity` are the corresponding failure and complete-state unions.
+`CellInspection` correlates four dimensions so impossible combinations do not type-check:
 
-`CellInspectionCase<S, V, F, E, P>` is an internal declaration helper that binds the storage type `S`, storage-value type `V`, formal/support-state type `F`, evaluation-value type `E`, and pointer type `P`; `P` defaults to `FieldPointer`. The named case aliases make the exported `CellInspection` union readable. `EmptyStorageCellInspection` can be valid or invalid but cannot be unsupported. `UnsupportedCustomFieldCellInspection` and `InvalidUnsupportedCustomFieldCellInspection` require `CustomFieldPointer`, so an ordinary string/enumeration pointer cannot type-check in either unsupported case; their `reason.typeName` must equal `pointer.customTypeName`. `UnavailableCellInspection` is always formally invalid, because undecodable built-in text is a lexical formal error rather than missing custom semantics. An absent optional field is valid but not interned because it has no stored value. An absent required or required present-empty field is invalid and not interned because formal validity suppresses value reading. A present number may storage-decode to `A12Number` and still be invalid because it violates a minimum; it cannot simultaneously claim a concrete evaluator value.
+| Dimension/type | Contract |
+|---|---|
+| Identity | Pointer plus model-version and owner identities |
+| Storage | Absent, present-empty, or present non-empty raw text |
+| `NonEmptyRawString` | Library-issued output-only brand that cannot overlap present-empty |
+| Storage value | None, ordinary `A12Value`, model-owned optional date/date fragment, or unavailable undecodable text |
+| `NonStringA12Value` | Every ordinary value variant except `A12String` |
+| Evaluation value | Concrete interned subtype seen by programs, or exact non-value reason |
 
-`Interpreter.inspectDocument(snapshot: DocumentSnapshot, options?: InspectionOptions): DocumentInspection` is deliberately different: it runs the full-document automatic formal oracle exactly once with all model entities relevant. It covers field lexical format and declared constraints, effective mandatory checks, duplicate non-empty index-field values, over-repetition, legal-character checks, and configured custom-field validation. `InspectionOptions.locale` supplies the exact locale passed to custom-field validators and defaults to `"en_US"`; inspection cannot omit that observable callback input. It excludes authored business-rule findings, which belong to `ValidationReport`. Each configured custom-field validator is invoked at most once for each concrete field occurrence visited by that pass. The returned `DocumentInspection` is detached and immutable: `cell(pointer)` performs one indexed lookup, while `cells(pointers)` preserves input order and duplicates without repeating any validation or callback. Both methods reject a pointer owned by another prepared owner with `ModelOwnerMismatchError`.
+| Formal state | Contract |
+|---|---|
+| Valid | No suppressing automatic diagnostic and configured implementation available |
+| Invalid | One or more formal diagnostics |
+| Unsupported | Present custom-field string whose configured type is unavailable |
+| Invalid and unsupported | Preserve both reachable facts, such as illegal charset plus unregistered custom type |
+| Unsupported detail | Identify custom type and stable reason separately from program-level `UnsupportedProgram` |
+| Unions | `CellFormalFailure` and `CellFormalValidity` retain the complete state algebra |
 
-No implicit inspection cache crosses snapshots or interpreter instances. Editing and freezing a new `DocumentSnapshot` requires one new `inspectDocument` call; interleaving `D1, D2, D1, D2` cannot reuse request state from another snapshot. Implementations may retain a call-owned field index inside `DocumentInspection`, but it must have bounded lifetime and must not retain application callback resources. `InvalidCellFormalState.diagnostics` and `InvalidUnsupportedCellFormalState.diagnostics` contain every automatic finding attached to that field in deterministic evaluator precedence after the formal checks’ mutual-suppression rules. Their `effectiveSuppression` is the one member the evaluator uses to produce unknown/suppressed expression behavior. In an `"invalid-and-unsupported"` state, formal suppression has evaluation precedence, so `evaluationValue.reason` is `"formally-invalid"`; the corresponding `ValidationReport.unsupported` entry is an `UnsupportedCustomFieldProgram` with the cell’s `pointer` and the same `typeName`, `reasonCode`, and `detail` as its `UnsupportedFieldInspection`, so validation loses neither fact. Partial relevance can change effective mandatory and uniqueness outcomes, so `inspectDocument` does not pretend to describe `validatePart`; a future relevance-aware inspection method would need an explicit `readonly RelevantEntityPointer[]` input.
+`CellInspectionCase<S, V, F, E, P>` binds storage, decoded value, formal/support state, evaluation value, and pointer type; named aliases keep the exported union readable.
 
-For string-shaped fields, `storageValue` preserves the stored text exactly, including `"\r\n"` and a lone `"\r"`. A formally valid ordinary string’s `evaluationValue` applies the kernel ingestion rule exactly once: each CRLF pair becomes one LF, while a lone CR remains unchanged. Pattern/length checks, rules, message value interpolation, and computations all see that normalized `A12String`; `storage.raw` and the storage-decoded `A12String` remain untouched. A `noValueValidation` string is different: it can be formally valid and has an exact storage-decoded `A12String`, but its `evaluationValue` is `{kind: "not-interned", reason: "raw-type"}` because legal value operations cannot read it. Presence checks still use its storage state.
+| Correlation | Contract |
+|---|---|
+| Empty storage | May be valid or invalid, never unsupported |
+| Unsupported custom field | Requires `CustomFieldPointer`; reason type name equals `pointer.customTypeName` |
+| Unavailable built-in text | Always formally invalid, not “missing custom semantics” |
+| Optional absent | Valid but not interned because no value is stored |
+| Required absent/empty | Invalid and not interned because formal validity suppresses reading |
+| Decoded but invalid | A number can decode yet violate a minimum; it cannot simultaneously expose an evaluator value |
+
+#### Complete formal inspection
+
+`inspectDocument` runs the complete automatic formal oracle once with all model entities relevant. It covers lexical format, declared constraints, effective mandatory checks, duplicate non-empty indexes, over-repetition, legal characters, and configured custom validation.
+
+Locale defaults to `"en_US"` and is passed exactly to custom validators. Authored business rules remain in `ValidationReport`, and each custom validator runs at most once per concrete visited field.
+
+The returned index is detached and immutable. Single/bulk lookup does not revalidate, bulk lookup preserves order and duplicates, and foreign pointers raise `ModelOwnerMismatchError`.
+
+No implicit inspection cache crosses snapshots or interpreters; a newly frozen snapshot needs a new pass, and D1/D2 interleaving cannot reuse request state. A call-owned index may have bounded lifetime but cannot retain application callback resources.
+
+| Diagnostic rule | Contract |
+|---|---|
+| Ordering | Retain every automatic finding in deterministic evaluator precedence after mutual suppression |
+| Effective suppression | Identify the one diagnostic that produces unknown/suppressed expression behavior |
+| Invalid and unsupported | Formal invalidity has evaluation precedence, while `ValidationReport.unsupported` retains the same pointer, type name, reason code, and detail |
+| Partial relevance | Complete inspection does not describe `validatePart`; any future relevance-aware form needs explicit relevance input |
+
+#### String storage and evaluation
+
+Storage preserves exact text, including CRLF and lone CR. Evaluator ingestion converts each CRLF pair to LF exactly once while retaining lone CR; pattern/length checks, programs, and message interpolation see this normalized `A12String`, while stored forms remain untouched.
+
+A `noValueValidation` string can be formally valid and storage-decoded yet remain `{kind: "not-interned", reason: "raw-type"}` for value operations. Presence checks still use storage state.
 
 The other non-interned reasons are exact: `"no-stored-value"` for an optional absent/empty cell, `"formally-invalid"` when formal state suppresses value reading, `"incomplete-date"` for a day-optional value that requires explicit boundary resolution, and `"unsupported"` when configured semantics are unavailable. Expression-specific empty substitution remains inside the interpreter; a non-interned cell is not converted into a misleading direct `A12Value`.
 
-`OptionalDateCellValue` is model-owned because its creation, insertion, and completion belong to one prepared definition. It represents the currently supported incomplete `DateType`: a day-optional date with explicit `year: A12Integer` and `month: A12Integer` components and no fabricated day or field-specific lexical format. `PreparedDocumentApi.dayOptionalDate(year: A12Integer, month: A12Integer): OptionalDateCellValue` validates the supported calendar components and throws `A12ConversionError` for an invalid year/month; target-specific formatting occurs only in `putValue`. A complete value in the same field decodes as an ordinary `A12Date`; this special type appears only when the day is omitted. It is deliberately not an `A12Value`; `Interpreter.resolveOptionalDate(value: OptionalDateCellValue, boundary: OptionalDateBoundary): A12Date` resolves its actual year/month with an explicit first/last boundary and rejects a value from a different prepared definition. Month-optional and year-optional precisions are not exposed until the common loader/evaluator implements and differentially verifies them; strict preparation rejects models that declare either precision.
+#### Partial dates and date fragments
 
-`DateFragmentShape` is the declaration-side union of the four supported format/granularity pairs. `DateFragmentComponents` is the matching caller-input union with exact `A12Integer` components. `DateFragmentCellValue` is the model-owned output union that preserves the selected `format`, `granularity`, and supplied components while also carrying `resolvedValue`, the concrete `A12Date` produced by earliest-completion semantics. `PreparedDocumentApi.dateFragment(field: FieldMetadata, components: DateFragmentComponents): DateFragmentCellValue` requires a same-owner `DateFragmentType` field and a component variant matching that field’s declared shape. It validates the integer component ranges and calendar combination, throws `A12ConversionError` for a wrong declaration/shape/component set, and throws `ModelOwnerMismatchError` for foreign metadata; `tryDateFragment` converts only the former expected conversion failure to `A12Result` and leaves ownership misuse as an exception.
+| Optional-date aspect | Contract |
+|---|---|
+| Ownership | Model-owned because construction, insertion, and completion belong to one prepared definition |
+| Representation | Day-optional with exact `A12Integer` year/month; no fabricated day or field-specific lexical format |
+| Construction | Validate components and throw `A12ConversionError`; target formatting occurs only in `putValue` |
+| Complete date | Decode as ordinary `A12Date`; the special type appears only when day is omitted |
+| Resolution | Not an `A12Value`; resolve with explicit first/last boundary and reject foreign ownership |
+| Unsupported precision | Strictly reject month-optional/year-optional models until implemented and differentially verified |
 
-The `"MM"` and `"MM-dd"` shapes obtain their missing year from `ModelMetadata.effectiveDateCompletionBaseYear`, which is the declared base year or `2000`; the `"yyyy"` and `"yyyy-MM"` shapes already carry their year. A fragment value is written only to a matching date-fragment field. Supplying an ordinary `A12Date` to that field is rejected rather than silently dropping components; a developer must explicitly construct the intended fragment. This completion default does not make the expression constant `BaseYear` legal when `declaredBaseYear` is absent.
+| Date-fragment aspect | Contract |
+|---|---|
+| Shape/components | Declaration has four format/granularity pairs; caller input uses matching exact `A12Integer` components |
+| Stored value | Preserve format, granularity, supplied components, and earliest-completed `resolvedValue` |
+| Construction | Require same-owner date-fragment metadata and a matching component variant |
+| Failure | Wrong declaration/shape/components raise `A12ConversionError`; foreign metadata raises `ModelOwnerMismatchError` |
+| Non-throwing form | `tryDateFragment` converts only expected conversion failure to `A12Result`; ownership misuse still throws |
 
-A partial `DateRangeType` decodes directly to a complete `A12DateRange` in the ordinary `A12CellStorageValue` case. Missing years on either endpoint use `effectiveDateCompletionBaseYear`. Other missing start components complete to the earliest endpoint (month/day `1`), while missing end components complete to the latest endpoint (month `12`, day the last valid day of that month). For example, a `yyyy` range stores only endpoint years but reads as January 1 of the start year through December 31 of the end year. `InspectionDiagnostic` has a locale-independent discriminant and structured fields. A `"custom-field-rejected"` diagnostic additionally retains the callback’s exact `errorKey` and rendered `message`; inspection passes through that message and does not synthesize a replacement. `FormalSuppression` is the detached rule/expression result type identifying the `FieldPointer` and formal-error code that prevented evaluation. `UnsupportedProgram` remains the separate rule/computation-level result for a custom or unsupported semantic construct.
+`"MM"` and `"MM-dd"` use the effective completion year; `"yyyy"` and `"yyyy-MM"` retain their supplied year. A fragment writes only to a matching field, and an ordinary `A12Date` is rejected rather than losing components.
+
+The completion default does not make `BaseYear` legal when no base year is declared.
+
+Partial ranges decode directly to complete `A12DateRange` values. Missing years use the effective completion year; missing start components complete earliest, and missing end components complete latest, so a year-only range spans January 1 through December 31.
+
+| Diagnostic/result | Contract |
+|---|---|
+| `InspectionDiagnostic` | Locale-independent discriminant with structured fields |
+| Custom rejection | Retain exact `errorKey` and rendered callback message without replacement |
+| `FormalSuppression` | Detached field pointer and formal-error code preventing rule/expression evaluation |
+| `UnsupportedProgram` | Separate program-level result for missing custom or unsupported semantics |
 
 ```ts
 declare const interpreter: Interpreter;
@@ -2101,7 +2357,7 @@ if (evaluationValue.kind === "value") {
 }
 ```
 
-`interpreter` has type `Interpreter`, `snapshot` has type `DocumentSnapshot`, `startedAtPointer` has type `FieldPointer`, and `inspectionOptions` has type `InspectionOptions` with the custom-field message locale made explicit. `storedCell` has type `StoredCellInspection`; `storedState` and `decodedStoredValue` expose its callback-free storage result. `documentInspection` has type `DocumentInspection`, the detached index produced by one complete automatic-formal pass. `cell` is the complete `CellInspection`; `storage`, `storageValue`, `evaluationValue`, and `formalValidity` expose its four axes without inference. `value` is the storage-decoded `A12Value`; after its `kind` check, `startedAt` has the narrowed `A12DateTime` type. `optionalDate` is the model-owned incomplete value, and `optionalYear`/`optionalMonth` are its exact `A12Integer` components. `boundary` has type `OptionalDateBoundary` and chooses first-day completion; `resolvedDate` has type `A12Date`. `fragment` has type `DateFragmentCellValue`, `fragmentDate` is its complete `A12Date` projection, and the discriminant-narrowed `fragmentMonth` is the exact `A12Integer` month component. `interpreterVisibleValue` is present only when the evaluator actually interned a concrete `A12Value` and therefore carries normalization such as CRLF-to-LF. The configured interpreter performs this authoritative inspection because formal validity and evaluator availability may depend on fallback charset or custom field-type registries.
+The example keeps callback-free storage, configured formal state, evaluator-visible value, optional-date resolution, and fragment components distinct. A concrete evaluator value exists only in the `"value"` branch and may include evaluation normalization such as CRLF-to-LF.
 
 Successfully extracted values are ordinary values from the [Operator API proposal](OPERATOR-API-PROPOSAL.md). `A12Operators` is that proposal’s stateless type for the exported `operators` namespace:
 
@@ -2116,8 +2372,6 @@ const hours: A12Integer =
   completedAt,
 );
 ```
-
-`operators` has type `A12Operators`, the stateless direct-operator namespace imported from the Operator API. `startedAt` and `completedAt` have type `A12DateTime`, and `hours` has type `A12Integer`, the exact whole-hour difference returned by that operator.
 
 ## 6. Evaluation API
 
@@ -2251,7 +2505,9 @@ interface ValidationReport {
 }
 ```
 
-`LocaleCode` is a native `string` naming the requested message locale, conventionally a model locale such as `"en_US"` or `"de_DE"`. `ProgramEvaluationOptions` contains per-call locale/time data only, and `ValidationOptions` is its validation alias. `InspectionOptions` carries only the locale because inspection performs no authored time-dependent program evaluation, but configured custom-field validators can observe their message locale. Omitting `locale` is exactly equivalent to passing `"en_US"`.
+`LocaleCode` names a message locale such as `"en_US"` or `"de_DE"`. Program evaluation options carry per-call locale/time; inspection carries only observable custom-validator locale because it runs no authored time-dependent program.
+
+Omitting locale is exactly equivalent to `"en_US"`.
 
 Locale lookup is intentionally explicit and matches the current evaluator:
 
@@ -2261,9 +2517,22 @@ Locale lookup is intentionally explicit and matches the current evaluator:
 
 `ValidationFinding` is detached stable result data. `FormalValidationFinding` carries no invented rule identity; `AuthoredRuleValidationFinding` alone has the required authored `rulePath`. `ReportPointer` preserves concrete coordinates, authored wildcards, and partially known repetition coordinates. A projection may map those pointers to UI paths, but it cannot replace them with fabricated concrete `DocumentPointer` values.
 
-`UnsupportedProgramBase` supplies the optional semantic path plus stable reason/detail shared by unsupported results. `UnsupportedExecutableProgram` covers rules, computations, expressions, and custom conditions. `UnsupportedCustomFieldProgram` additionally carries the exact `CustomFieldPointer` and custom `typeName`; `UnsupportedProgram` is their closed union. `ValidationSeverity`, `FindingPolarity`, and built-in `UnsupportedReasonCode` are closed enums. A custom-field rejection retains its project-defined `errorKey` in the appropriate formal finding rather than turning all built-in codes into arbitrary strings.
+| Unsupported/result type | Contract |
+|---|---|
+| Base | Optional semantic path plus stable reason and detail |
+| Executable | Rules, computations, expressions, and custom conditions |
+| Custom field | Exact `CustomFieldPointer` and custom type name |
+| Closed enums | Severity, polarity, and built-in unsupported reasons remain exhaustive |
+| Custom rejection | Preserve project `errorKey` in the formal finding without opening all built-in codes to arbitrary strings |
 
-`ValidationReport` owns readonly arrays and no evaluator state. `noErrorOccurred` exactly preserves the kernel’s ERROR-severity predicate: warnings and information findings do not make it false. `fullySupported` is true exactly when no requested validation work was omitted for unsupported implementation or configuration semantics. These are independent axes; unsupported work does not fabricate an ERROR finding, and a fully supported report can still contain errors. The required `message: string` member may be empty for a stored rule with no exact locale entry; empty text is not the same as a missing finding.
+`ValidationReport` is detached and owns readonly arrays.
+
+| Report member | Contract |
+|---|---|
+| `noErrorOccurred` | Exact kernel ERROR-severity predicate; warnings and information do not make it false |
+| `fullySupported` | True only when no requested work was omitted for implementation/configuration support |
+| Independence | Unsupported work fabricates no ERROR; a fully supported report may still contain errors |
+| Empty message | A missing exact stored-rule locale yields `""`, which is not a missing finding |
 
 ```ts
 declare const interpreter: Interpreter;
@@ -2278,9 +2547,15 @@ const report: ValidationReport =
   interpreter.validateFull(snapshot, options);
 ```
 
-`interpreter` has type `Interpreter`, `snapshot` has type `DocumentSnapshot`, `support` has type `InterpreterSupportReport`, `options` has type `ValidationOptions`, and `report` has type `ValidationReport`. `supportReport()` scans the prepared model against this interpreter’s bound native types, conditions, charset, time-zone implementation, operators, and program forms without reading a request document or invoking application validation callbacks. It lets a native service fail readiness before accepting traffic rather than discovering the same missing capability on every request. `fullySupported` means no known capability is unsupported; `fullyResolved` additionally means none is deferred to a source-platform factory whose invocation cardinality must be preserved. The explicit `"en_US"` value documents the requested message locale even though it is also the omission default.
+`supportReport()` checks the prepared model against bound types, conditions, charset, time zones, operators, and program forms without reading a document or invoking validation callbacks. Services can therefore fail readiness before accepting traffic.
 
-`validateFull` is the primary complete-document verb rather than a façade-specific `validate` synonym. `validatePart` is its partial-relevance counterpart. Both return the richer kernel-free `ValidationReport`. Pure portable projections may derive from that detached report without reevaluating the document, but an exact native result projection is possible only when the canonical report retains every native datum or the adapter captures an authenticated sidecar during the same evaluation. In particular, the TypeScript kernel’s `Localizable[]` cannot be reconstructed from `message: string`; §10 therefore does not claim a drop-in `DocumentValidationResult` projection from a bare report. A native entry point that promises complete configured behavior requires both `supportReport().fullySupported` and `supportReport().fullyResolved`. A source-exact compatibility adapter does not add an eager factory probe; it preserves the source platform’s normal missing-factory behavior during evaluation unless that factory is explicitly certified safe to preflight.
+`fullySupported` means no known capability is unsupported. `fullyResolved` additionally means none remains deferred to a source factory whose invocation cardinality prevents eager probing.
+
+`validateFull` is the primary complete-document verb; `validatePart` is its relevance-aware counterpart. Both return kernel-free `ValidationReport`.
+
+Portable projections derive from the detached report without reevaluation. Exact native projection requires every native datum in the report or an authenticated same-evaluation sidecar; TypeScript `Localizable[]` cannot be reconstructed from `message: string`.
+
+A native entry point promising complete configured behavior requires both support flags. Source-exact adapters preserve normal missing-factory behavior and do not eagerly probe unless the factory is certified safe.
 
 `report.noErrorOccurred` answers only the kernel error-severity question. A caller that requires a complete clean result checks both `report.noErrorOccurred` and `report.fullySupported`. A messages-only projection that silently drops unsupported programs is unsafe.
 
@@ -2304,7 +2579,7 @@ const report: ValidationReport = interpreter.validatePart(
 );
 ```
 
-`interpreter` has type `Interpreter`, and `snapshot` has type `DocumentSnapshot`. `relevantPointers` is a readonly `RelevantEntityPointer` array; each element is a model-owned field/group identity plus concrete or tagged `ALL` repetition coordinates, and the array is the complete kernel-style relevance set for this validation rather than merely the fields changed since the previous call. `options` has type `ValidationOptions`, and `report` has type `ValidationReport`, the detached partial-validation result. Partial validation changes operand visibility and three-valued suppression; it is not “run full validation and filter messages.”
+The relevance array is the complete kernel-style field/group set with concrete or tagged `ALL` coordinates, not merely changed fields. Partial validation changes operand visibility and three-valued suppression; it is not full validation followed by filtering.
 
 For an on-change form, full validation is the safe default. A form that already owns the current relevance set may call `validatePart`. A future `validateChanges(previous, next, changed)` helper must not be added until its dependency/relevance semantics are designed and proven.
 
@@ -2354,8 +2629,6 @@ const result: StoredRuleEvaluation =
   options,
 );
 ```
-
-`interpreter` has type `Interpreter`, and `snapshot` has type `DocumentSnapshot`. `options` has type `ValidationOptions` and selects the message locale. `result` has type `StoredRuleEvaluation`, the detached row-preserving outcome set for the requested stored rule path.
 
 The current single-rule API collapses repeated rows, so this result shape is new boundary/engine work rather than a rename.
 
@@ -2465,13 +2738,34 @@ type ComputeAndApplyResult =
     };
 ```
 
-`ComputationOutcome` is detached result data for one `FieldPointer` target; a computation cannot target a group. It preserves four distinct result channels: a value, an explicit clear, an errored attempted value, and formal operand suppression. Every errored outcome retains its attempted raw storage text; `attemptedValue` exists only when typed conversion succeeded. `application` states the exact proposed storage effect, including a successful value that is already equal, a clear/error against an absent or already-empty target, and whether a value write must create ancestor placements.
+`ComputationOutcome` is detached data for one field target; computations never target groups.
+
+| Outcome data | Contract |
+|---|---|
+| Channels | Value, explicit clear, errored attempted value, or formal operand suppression |
+| Errored value | Always retain attempted raw text; include typed value only when conversion succeeded |
+| Application | State exact effect, including already-equal values, absent/already-empty clears, and ancestor creation |
 
 `ComputationReport.delta` contains only actual storage changes, in kernel application order. `changed` is exactly `delta.length > 0`. `noErrorOccurred` preserves the kernel computation-result error predicate and is false for the kernel channels classified as errored or formal-error; unsupported coverage remains independent. `fullySupported` is true exactly when `unsupported` is empty. Consumers do not infer any of these facts from array lengths or messages.
 
-The richer outcome algebra must project losslessly to the established computation capabilities: `"value"` outcomes form the computed-without-errors collection, value outcomes with a `"write"` application form its with-changes subset, `"errored"` outcomes form computed-with-errors, `"cleared"` outcomes form cleared fields, and `"formal-error"` reasons form formal-errors-in-operands. `noErrorOccurred` is already the corresponding aggregate. A compatibility adapter exposes those familiar collections when required. Kernel-style application is owned by the adapter’s authenticated source-bound computation result, which retains the original native document and exact application classification; a bare detached `ComputationReport` is intentionally not accepted as an application handle.
+| Outcome projection | Established capability |
+|---|---|
+| `"value"` | Computed without errors |
+| `"value"` plus `"write"` | Computed with changes |
+| `"errored"` | Computed with errors |
+| `"cleared"` | Cleared fields |
+| `"formal-error"` reasons | Formal errors in operands |
 
-`ComputationApplicationFailure` has only the value `"unsupported"`: an incomplete or unsupported computation program prevents every application and preserves the original snapshot. When all programs are supported, application exactly follows kernel placement behavior. A `value` outcome creates missing target placement and required ancestor placements as necessary, then stores `storedRaw`. A `cleared` or `errored` outcome makes an existing target placement present-empty (`raw: ""`), but an absent target remains absent and no ancestor is created solely to clear it. A formal-error outcome does not write. The result is `kind: "applied"` even when ordinary errored/formal channels make `noErrorOccurred` false; these are report data rather than atomic-application failures.
+`noErrorOccurred` is the corresponding aggregate. A compatibility adapter exposes familiar collections and owns native application through an authenticated source-bound result; a detached `ComputationReport` is not an application handle.
+
+| Application case | Contract |
+|---|---|
+| Unsupported program | Prevent every write and preserve the original snapshot |
+| Value | Create missing target and required ancestors, then store `storedRaw` |
+| Clear/error on existing target | Make it present-empty |
+| Clear/error on absent target | Keep absent and create no ancestor solely to clear |
+| Formal error | Perform no write |
+| Ordinary error with full support | Still return `"applied"`; report errors are not atomic-application failures |
 
 ```ts
 declare const interpreter: Interpreter;
@@ -2497,7 +2791,7 @@ if (application.kind === "applied") {
 }
 ```
 
-`interpreter` has type `Interpreter`, and `snapshot` has type `DocumentSnapshot`. `options` has type `ComputeOptions`; the empty object requests the configured clock and `"en_US"` message-locale defaults. The locale is observable when computation performs formal/custom-field validation and emits diagnostics. `report` and `totals` have type `ComputationReport`: the former covers every stored computation and the latter only the target path. `application` has type `ComputeAndApplyResult`, while `appliedComputations` is its detached `ComputationReport`. In the discriminant-narrowed applied branch, `computedSnapshot` has type `DocumentSnapshot` and is the atomically updated frozen document.
+Empty compute options use the configured clock and `"en_US"` locale. Locale remains observable when computation invokes formal/custom-field validation.
 
 Each computation outcome identifies its target pointer and is one of value, cleared, errored, or formal-error. An errored result carries attempted raw storage text and an optional typed value only when conversion succeeded; it must not falsely promise an invalid attempt is an `A12Value`. A formal-error result retains every exact suppressing field pointer/code rather than collapsing it into a generic error.
 
@@ -2532,7 +2826,9 @@ const result: ComputeAndValidateResult =
   interpreter.computeAndValidate(snapshot, options);
 ```
 
-`interpreter` has type `Interpreter`, and `snapshot` has type `DocumentSnapshot`. `options` has type `ComputeAndValidateOptions`, the validation-compatible per-call time/locale input, and `result` has type `ComputeAndValidateResult`, the discriminated completed/not-applied transaction result. The method computes once and, when all programs are supported, applies every outcome using the same placement rules as `computeAndApply`: values create and store their targets; clear/error outcomes empty existing targets but do not create absent ones. It then validates that fully updated snapshot. If any program is unsupported, `kind` is `computationsNotApplied`, `reason` is `"unsupported"`, `snapshot` is the unchanged input, and no misleading validation report is present. This is a convenience over the same computation and validation engines, not a second execution strategy.
+`computeAndValidate` computes once, applies the same placement rules as `computeAndApply`, then validates the fully updated snapshot.
+
+If any program is unsupported, it returns `computationsNotApplied` with the unchanged input and no misleading validation report. This is a convenience over the same engines, not a second execution strategy.
 
 ### 6.5 Interactive and service use
 
@@ -2566,8 +2862,6 @@ function onValueChanged(
   render(report);
 }
 ```
-
-`prepared` has type `PreparedModelWithDocumentEditing`, the optional editing-capable prepared definition; `configuration` has type `InterpreterConfiguration`; `initialDocument` has type `PlacementDocumentInputV1`; and `render` is a caller-provided synchronous `(ValidationReport) => void` callback. `interpreter` has type `Interpreter`, while mutable `snapshot` has type `DocumentSnapshot`. `onValueChanged` is an explicitly `void`-returning function whose `pointer: FieldPointer` identifies one concrete model-owned cell and whose `raw: string` is native input text. Inside it, `editor` has type `PersistentDocumentEditor`, and `report` has type `ValidationReport`, the detached result passed to `render`.
 
 This host-neutral example describes the optional persistent-editor behavior without claiming current browser qualification. When that form layer ships, every change creates a structurally shared snapshot; it does not reload the model, reparse stored programs, or rebuild static indexes.
 
@@ -2630,7 +2924,9 @@ const result: CandidateRuleEvaluation =
 );
 ```
 
-`prepared` has type `PreparedProgramModel`, and `interpreter` has type `PreparedProgramInterpreter`; those are the optional preparation/evaluation capability interfaces. `snapshot` has type `DocumentSnapshot`. `options` has type `ProgramEvaluationOptions`, `definition` has type `CandidateRuleDefinition`, `candidate` has type `PreparedRule`, and `result` has type `CandidateRuleEvaluation`. `CandidateRuleDefinition` is caller-owned source data. `PreparedRule` is a nominal, parse-once `ModelOwned` handle, not a rulekit AST. `CandidateRuleEvaluation` is explicitly marked as preview data and uses the same row-preserving `RuleOutcome` family; core `PreparedModel` and `Interpreter` do not promise these methods.
+`CandidateRuleDefinition` is caller-owned source. `PreparedRule` is a nominal parse-once model-owned handle, not a rulekit AST.
+
+Candidate results are explicitly preview data and reuse row-preserving `RuleOutcome`. Core `PreparedModel` and `Interpreter` do not promise this optional capability.
 
 The current `evalCandidate` reparses per call and does not share every stored-rule special path. A public prepared candidate requires syntax and model-reference validation, parse-once reuse, owner checks, and rejection whenever it would use weaker semantics.
 
@@ -2700,7 +2996,9 @@ const result: ExpressionEvaluation<A12Number> =
 );
 ```
 
-`prepared` has type `PreparedProgramModel`, `interpreter` has type `PreparedProgramInterpreter`, and `snapshot` has type `DocumentSnapshot`. `options` has type `ProgramEvaluationOptions`. `definition` has type `NumberExpressionDefinition`, the number-only source plus its reference base, while `expression` has type `PreparedNumberExpression`, a nominal parse-once `ModelOwned` handle. `evaluationLocation` has type `EvaluationLocation` and supplies the concrete group row. `result` has type `ExpressionEvaluation<A12Number>`, so its value case contains exactly `A12Number`. `ExpressionEvaluation<T>` also preserves a domain/no-value `notEvaluated` result such as division by zero, formal suppression, or unsupported semantics. `ExpressionNonEvaluation` is distinct from `FormalSuppression` because no formally invalid field need be involved.
+`NumberExpressionDefinition` combines number-only source with its reference base; `PreparedNumberExpression` is a nominal parse-once model-owned handle. Evaluation supplies a concrete group row.
+
+The value case contains exactly `A12Number`. The result also preserves domain non-evaluation such as division by zero, formal suppression, and unsupported semantics; expression non-evaluation is distinct because it need not involve a formally invalid field.
 
 This is not the direct operator API: the expression contains paths and evaluates later against document/repetition context. The current engine has no stable generic public expression result or context type. A number-only, simple-location API is the first plausible subset; parallel/correlated contexts and a typed symbolic builder need separate design.
 
@@ -3048,21 +3346,58 @@ declare const ValidationService:
   ValidationServiceConstructor;
 ```
 
-On the JVM, `ValidationService`, both registries, and every service-issued handle are safe for concurrent use. Public registration, alias activation, pin/release, retirement, admission, drain, close, and metric-snapshot transitions are linearizable, and prepared objects are safely published before any request can observe them. Each runtime has at most one exclusive lease; concurrent validation of one model uses multiple runtimes, never concurrent entry into one `Interpreter`, and no global or per-model evaluation lock may serialize evaluation.
+#### Concurrency and lifecycle
 
-The service has the one-way state machine `open → draining → closed`. Model/configuration registration, alias creation/activation/retirement, support inspection, validation, and warmup are **admitted work**. Each such operation atomically checks `state === "open"` and increments `inFlightOperations` before releasing lifecycle coordination; the count reaches zero only after all parsing, runtime/binding creation, publication or rollback, result detachment, and operation-owned cleanup has finished. Waiting acquisitions and active leases are included in admitted work and also exposed separately. Any disposal triggered outside admitted work increments `disposingRuntimes`.
+| Concern | Contract |
+|---|---|
+| JVM safety | Service, registries, and handles are thread-safe |
+| Linearizability | Registration, alias activation, pins/releases, retirement, admission, drain, close, and metrics transitions are linearizable |
+| Publication | Prepared objects are safely published before requests observe them |
+| Runtime lease | At most one exclusive lease per runtime; concurrent same-model work uses several runtimes |
+| Locking | Never concurrently enter one `Interpreter` or serialize evaluation behind a global/per-model lock |
 
-`drain()` linearizes the transition from `open` to `draining`, rejects new work before admission, wakes queued runtime acquisitions with `ValidationServiceDrainingError`, and waits for `inFlightOperations`, `waitingRequests`, `activeRuntimes`, and `disposingRuntimes` all to reach zero. Work admitted before the transition may finish and publish normally; because drain waits for its complete commit or rollback, nothing remains half-published. `drain()` leaves the service in `draining`; there is no resume operation.
+The lifecycle is one-way: `open → draining → closed`.
 
-`close()` performs the same transition/quiescence when necessary, then retires every idle runtime, tracks and waits for every disposal, invalidates tokens, clears registries, and only then publishes `closed`. It attempts all cleanup even if one binding throws; after cleanup it throws the first `ValidationServiceIntegrationError`, with the remaining failures summarized in that error’s `detail`. Since `closed` is published only after admitted work and disposal are quiescent, no preparation, runtime creation, callback, commit, or cleanup can publish state or leak a resource after close returns.
+| Lifecycle concept | Contract |
+|---|---|
+| Admitted work | Model/config registration, alias operations, support, validation, and warmup |
+| Admission | Atomically require `open` and increment `inFlightOperations` before releasing coordination |
+| Completion | Decrement only after parsing, binding/runtime creation, publication or rollback, result detachment, and owned cleanup |
+| Separate gauges | Waiting acquisitions and active leases remain admitted work but are also exposed separately |
+| External disposal | Disposal outside admitted work increments `disposingRuntimes` |
+| `drain()` | Enter draining, reject new work, wake queued acquisition with `ValidationServiceDrainingError`, wait for all in-flight/waiting/active/disposal counts, and never resume |
+| `close()` | Quiesce, retire idle runtimes, await disposal, invalidate tokens, clear registries, then publish closed |
+| Cleanup failure | Attempt all cleanup, then throw the first integration error and summarize the rest |
+| Postcondition | Nothing can publish or leak after close returns |
 
-Synchronous lifecycle reentrancy is rejected rather than allowed to self-deadlock. While the current JVM thread or Node isolate is executing `createBindings`, a custom field/condition callback, or `dispose` for this service, calling this same service’s `drain()` or `close()`, or releasing any `RegisteredInterpreterConfiguration` issued by this service, throws `ReentrantServiceLifecycleError` before changing service/token state or waiting. This applies even when a callback created for configuration A tries to release configuration B, because cross-configuration callbacks can otherwise wait on one another’s active leases/disposal. Its `operation` identifies the attempted call and `phase` identifies the active `"create"`, `"evaluate"`, or `"dispose"` integration frame. If the callback does not catch that exception, the service boundary wraps it as `ValidationServiceIntegrationError`; the reentrancy guard still prevents a wait cycle. Model/alias `release()` remains non-blocking and safe because admitted work already owns a temporary pin. Calls from another thread are not reentrant; they follow the normal quiescence contract and may wait until the callback returns.
+#### Reentrancy and repeated lifecycle calls
 
-Repeated lifecycle calls are deterministic. A second `drain()` joins the current quiescence wait or returns immediately when already quiescent/closed. Exactly one concurrent `close()` caller performs cleanup; other close callers join it and observe the same completion or cleanup error. A close concurrent with an earlier drain joins that drain and then closes. A drain ordered after close has begun joins through close completion; one ordered before close may return at drained quiescence while the later close performs final disposal. Once closed, `drain()`, `close()`, token `release()`, and `metrics()` remain harmless; all other operations fail.
+Same-service synchronous `drain`, `close`, or configuration release from `createBindings`, evaluation callback, or `dispose` throws `ReentrantServiceLifecycleError` before state change or waiting. This includes releasing configuration B from a callback created for A, preventing cross-configuration wait cycles.
 
-Error selection uses one fixed precedence. A lifecycle operation first enforces the same-service reentrancy guard because it must not inspect or mutate lifecycle state before that check. An ordinary work operation first observes service state (`ValidationServiceClosedError`, otherwise `ValidationServiceDrainingError`), then performs an ownership pass over every handle (`ForeignServiceHandleError`), then a token-state pass (`ReleasedServiceHandleError` before `RetiredServiceHandleError`), and only then reports input, capacity, or pool-saturation failures. Within either handle pass, `ValidatePlacementsRequest`, `SupportModelRequest`, and `WarmModelRequest` check `model` before `configuration`; `createAlias` checks `initial`; and `activate` checks `alias` before `next`. Thus even two invalid handles select one deterministic `handleKind`.
+The error records attempted operation and active create/evaluate/dispose phase. Uncaught reentrancy is wrapped as `ValidationServiceIntegrationError`; model/alias release stays non-blocking under the admitted temporary pin, and calls from another thread follow normal quiescence.
 
-Once admitted, a temporary pin fixes the selected model/configuration, so a later release, retirement, or alias activation cannot change that operation. Drain/close have one explicit cancellation point: an admitted validation still waiting for a runtime lease, or a warmup still waiting for runtime capacity, is woken with `ValidationServiceDrainingError` and rolls back its temporary pins and in-flight count. Validation performs no evaluation; warmup retires and disposes any runtime created solely by that still-incomplete request before returning the error, so no partial warm request is published. Once an operation owns every runtime resource needed to execute, it finishes normally before drain/close quiescence.
+| Repeated call | Contract |
+|---|---|
+| Second drain | Join current wait or return when already quiescent/closed |
+| Concurrent close | One caller cleans up; all callers observe the same completion/error |
+| Close after drain | Join drain, then close |
+| Drain during close | Join close; a drain ordered before close may return at drained quiescence |
+| Already closed | Drain, close, token release, and metrics are harmless; other operations fail |
+
+#### Error precedence and cancellation
+
+Lifecycle calls enforce reentrancy before observing or mutating state. Ordinary work checks, in order:
+
+1. closed, then draining state;
+2. handle ownership;
+3. released, then retired token state;
+4. input, capacity, then pool saturation.
+
+Request handle order is deterministic: model before configuration; alias creation checks initial model; activation checks alias before next model. Even several invalid handles therefore select one stable `handleKind`.
+
+Admission pins the selected model/configuration, so later release, retirement, or alias activation cannot affect that operation. Drain/close cancel only validation waiting for a lease or warmup waiting for capacity; both roll back pins and in-flight count with `ValidationServiceDrainingError`.
+
+Canceled validation performs no evaluation. Canceled warmup retires request-created runtimes and publishes no partial warm result; an operation that already owns all required resources finishes before quiescence.
 
 Registry/pool coordination locks are never held while parsing a model, evaluating a document, invoking application callbacks, or disposing bindings; only the state check, counters, pins, and publication step occur under coordination. These lifecycle and error-order rules are part of the contract and require race tests, not implementation commentary.
 
@@ -3145,15 +3480,27 @@ const report: ValidationReport =
 | `request` | `ValidatePlacementsRequest` | complete model/untrusted-document/options/configuration input for one validation |
 | `report` | `ValidationReport` | detached readonly findings and unsupported-program results |
 
-`ordersModelV2` is a `RegisteredModel`: a service-owned reference to one immutable registered model version. The name is application code only; the type carries the meaning. It exposes identity/fingerprint/lifecycle, not model internals or evaluator methods.
+Registered-model tokens expose identity, fingerprint, and lifecycle—not model internals or evaluator methods. Variable names remain application code only.
 
-`service.models.register` first enforces the individual/aggregate source limits, strictly prepares the expanded model, and computes `ModelFingerprint`. It uses the throwing preparation form, so invalid input produces `ModelPreparationError`. The operation is atomic: invalid input or a capacity failure creates no entry and no pin. Concurrent JVM registrations of the same exact input bytes and preparation ABI are single-flight and return separate `RegisteredModel` pins to the same model-version identity; releasing one pin does not invalidate the others. Different bytes remain different versions even when their JSON is semantically equivalent.
+`service.models.register` enforces source limits, strictly prepares the model, and computes its fingerprint. Invalid input throws `ModelPreparationError`; invalid input or capacity failure creates neither entry nor pin.
 
-`orderDocumentInput` is a `PlacementDocumentInputV1`, defined in §5.1. It is a portable readonly DTO and may cross a network, queue, JVM thread, or Node Worker boundary. The request member is deliberately typed `unknown`, so the service still performs authoritative shape and model-aware decoding rather than trusting the caller’s compile-time annotation. The DTO is not a `DocumentSnapshot`, contains no cache, and is not bound to a particular interpreter instance.
+Concurrent JVM registrations of identical bytes and preparation ABI are single-flight but return separate pins to one version identity. Releasing one pin does not invalidate others, and different bytes remain different versions even when semantically equivalent.
 
-`maxModels`, `maxInterpreterConfigurations`, all runtime-count limits, and every `DocumentDecodeLimits` member must be positive safe integers; source-byte limits and `runtimeAcquireTimeoutMs` must be non-negative safe integers. `maxInterpreterConfigurations` includes the built-in default. `maxRuntimesPerModelConfiguration` bounds one exact pool key, `maxRuntimesPerModel` bounds all configurations of one model version, and `maxTotalRuntimes` bounds the whole service. A transport adapter still enforces request-byte and JSON-parser-depth limits before constructing the unknown JavaScript value passed to this service.
+The portable readonly placement DTO may cross a network, queue, JVM thread, or Node Worker boundary. The request member is deliberately `unknown`, so the service still performs authoritative shape and model-aware decoding rather than trusting a compile-time annotation. The DTO contains no cache and is not a model-bound `DocumentSnapshot`.
 
-The missing `configuration` member is intentional. The service uses its built-in default interpreter configuration: built-in predefined types, empty custom registries, BMP fallback charset, and a system clock sampled once for the request. Model-carried time zone, declared/effective base-year semantics, and charset still come from `ordersModelV2`; locale and an explicit `A12EvaluationTime` remain per-call `ValidationOptions`. A caller that uses a fixed or custom clock samples it outside the service and supplies that immutable value, so time never becomes pooled interpreter state.
+| Service limit | Contract |
+|---|---|
+| Model/config/runtime/document counts | Positive safe integers |
+| Source bytes and acquisition timeout | Non-negative safe integers |
+| Configuration count | Includes built-in default |
+| Per-model/config runtimes | Bounds one exact pool key |
+| Per-model runtimes | Bounds all configurations of one version |
+| Total runtimes | Bounds the whole service |
+| Pre-object transport | Enforce request-byte and JSON-depth limits before constructing the unknown JS value |
+
+Omitting `configuration` selects built-in predefined types, empty custom registries, BMP fallback charset, and a system clock sampled once per request. Model zone, base-year semantics, and charset still come from the model; locale and explicit time remain per-call options.
+
+Fixed/custom clocks are sampled outside the service and passed as immutable time, so time never becomes pooled state.
 
 For each call, the service performs this exact ownership sequence:
 
@@ -3232,15 +3579,22 @@ const report: ValidationReport =
   service.validatePlacements(request);
 ```
 
-`service` has type `ValidationService`, the caller-owned registry/pool coordinator. `ordersModelV2` has type `RegisteredModel`, the service-issued token selecting one immutable model version, and `orderDocumentInput` has type `PlacementDocumentInputV1`, the portable raw document DTO. `fallbackLegalCharset` has opaque type `LegalCharset`. `createPredefinedTypes`, `createCustomFieldTypes`, and `createCustomConditions` are explicitly typed zero-argument factory functions; each invocation returns a registry exclusively owned by one runtime. `disposeCustomResources` is a typed two-argument callback returning `void`.
-
-`configurationDefinition` has type `InterpreterConfigurationRegistration`, the reusable service registration definition. Inside its factory, `predefinedTypes`, `customFieldTypes`, and `customConditions` have their corresponding registry types, while `bindings` has type `InterpreterBindings`, the complete per-runtime callback/resource set. `tenantConfiguration` has type `RegisteredInterpreterConfiguration`, the nominal service-issued pool-key token. `request` has type `ValidatePlacementsRequest`, and `report` has type `ValidationReport`, the detached result.
-
 For one `RegisteredInterpreterConfiguration`, the service never invokes `createBindings` concurrently; each returned `InterpreterBindings` belongs to exactly one active interpreter instance. `dispose` is optional, is called exactly once with exclusive access after that instance retires, and is also called after partial construction/evaluation failure when bindings were created. The registered token is thread-safe even though its produced callbacks need not be.
 
-Binding also prepares customization dispatch. The lane collects every custom field-type and condition name used by the model and binds each name to one indexed dispatch slot. For the native SPI and a compatibility factory whose lifecycle permits reuse, that slot contains the created implementation; an unresolved native name gets one prepared missing sentinel used by `supportReport()` rather than a repeated registry search. If a source factory’s creation cardinality is observable, the slot instead contains a direct constant-name provider that preserves it; the adapter must not silently turn a per-use factory into a singleton or probe it once merely for readiness. Such a capability is reported as `"runtime-resolved"` until normal evaluation invokes the source factory. Custom-field metadata and custom-condition AST nodes point directly at those slots, so a hot evaluation does not consult the service registry, the configuration token, a string-keyed map, reflection, or a coordination lock.
+Binding prepares customization dispatch:
 
-`tenantConfiguration.release()` is idempotent. Outside any active integration callback on that same service, it rejects future calls through that token, retires idle runtimes for the configuration immediately, lets active leases finish, and disposes their bindings on return. A synchronous release of any same-service configuration token from `createBindings`, a custom evaluation callback, or `dispose` is rejected by the `ReentrantServiceLifecycleError` rule in §8.2. `maxInterpreterConfigurations` prevents unbounded configuration metadata and model×configuration pool growth.
+| Binding case | Contract |
+|---|---|
+| Used name | Bind each model-used custom field/condition name to one indexed slot |
+| Reusable native factory | Store the created implementation |
+| Missing native name | Store one missing sentinel used by readiness reporting |
+| Observable source cardinality | Store a direct constant-name provider; never force a singleton or readiness probe |
+| Runtime-resolved capability | Keep that status until normal evaluation invokes the source factory |
+| Hot path | Metadata/AST point directly to slots; no service registry, configuration token, string map, reflection, or coordination lock |
+
+`tenantConfiguration.release()` is idempotent: reject future use, retire idle runtimes immediately, finish active leases, then dispose their bindings. Same-service release from creation/evaluation/disposal follows the reentrancy error rule.
+
+`maxInterpreterConfigurations` bounds configuration metadata and model×configuration pool growth.
 
 ### 8.5 Interleaving, concurrency, and warming
 
@@ -3266,7 +3620,7 @@ const warmReport: WarmModelReport =
   service.warm(warmRequest);
 ```
 
-`service` has type `ValidationService`, and `ordersModelV2` has type `RegisteredModel`. `warmRequest` has type `WarmModelRequest`: it selects that registered version and requests four bounded runtime instances under the default configuration. `warmReport` has type `WarmModelReport`, the detached count of instances and stored programs actually prepared.
+The request selects the registered version and asks for four bounded runtime instances under the default configuration. The returned report is a detached count of instances and stored programs actually prepared.
 
 On the JVM, several calls for the same model/configuration may lease different interpreter instances simultaneously. No instance is entered concurrently, and no global or per-model evaluation lock serializes all work. When the bounded pool is exhausted, a call waits only for `runtimeAcquireTimeoutMs` and then throws `RuntimePoolSaturatedError`; it never creates unbounded instances.
 
@@ -3287,13 +3641,17 @@ const ordersAlias: RegisteredModelAlias =
 service.models.activate(ordersAlias, ordersModelV3);
 ```
 
-`service` has type `ValidationService`. `ordersModelV2` and `ordersModelV3` have type `RegisteredModel` and identify two immutable prepared versions. `ordersAlias` has type `RegisteredModelAlias`, a nominal logical-name token whose active target the service switches atomically.
+The two registered-model tokens identify immutable prepared versions. The alias is a nominal logical-name token whose active target the service switches atomically.
 
 `activate` is atomic: requests that already acquired V2 finish on V2, while later acquisitions through `ordersAlias` use V3. A live `RegisteredModel` or alias pins its target. `release()` is idempotent, invalidates that token for future calls, and makes the entry evictable only after aliases and active leases stop pinning it. `retire` prevents new acquisition before those active leases finish.
 
-`drain()` and `close()` follow the complete admission/quiescence state machine in §8.2, including in-flight preparation, warmup, binding creation, publication/rollback, active leases, and disposal—not only queued validation requests. A request that already owns a runtime finishes normally; no queued request may acquire a lease after draining starts. Close invalidates every alias/model/configuration token for future service use, retires and disposes every runtime, releases service-owned pins, and clears the registries before publishing `closed`. Calling `release()` on an already invalidated token remains harmless. Direct `PreparedModel`/`Interpreter` objects outside the service are unaffected.
+Drain and close include preparation, warmup, binding creation, publication/rollback, active leases, and disposal—not only queued validation. Runtime-owning requests finish; queued requests acquire no lease after draining begins.
 
-Every race follows the operation’s linearization order. Work admitted before token release, retirement, or alias activation keeps its pinned version/configuration. If it owns all required runtime resources before drain/close, it finishes normally; if it is still waiting for a lease/capacity, the sole cancellation rule in §8.2 applies and it rolls back with `ValidationServiceDrainingError`. Work ordered after the relevant transition observes the new alias target or the corresponding released, retired, draining, or closed error before evaluation. Eviction never wins against an acquired temporary pin, and disposal can occur only after the last exclusive lease returns.
+Close invalidates service tokens, retires/disposes runtimes, releases service pins, and clears registries before publishing closed. Later token release is harmless, and direct prepared/interpreter objects remain unaffected.
+
+Every race follows linearization order. Earlier admitted work keeps its pinned version/configuration and finishes if it already owns resources; work still waiting rolls back under the sole draining cancellation rule.
+
+Later work sees the new alias target or corresponding lifecycle error before evaluation. Eviction never beats a temporary pin, and disposal occurs only after the last exclusive lease.
 
 ### 8.7 Node Worker coordinator and local ownership
 
@@ -3515,11 +3873,15 @@ interface WorkerValidationCoordinator {
 
 `ValidationOptionsWireV1`, `ValidationFindingWireV1`, and `UnsupportedProgramWireV1` are versioned plain transport projections of the corresponding canonical option/result records. Exact instants, model time-zone IDs, decimals in diagnostic bounds, and every report-pointer coordinate kind use explicit wire representations. They contain no Kotlin/JS wrapper, function, prototype, local owner, or opaque service token.
 
-The coordinator resolves `alias: string` to one exact `PortableModelVersionId`, temporarily pins that version, and only then creates `ValidateWorkerMessage`. An alias activation after that point cannot change the admitted request. Registration broadcasts `RegisterModelWorkerMessage`; each Worker recomputes `computedFingerprint`, rejects a mismatch, creates its own `ModelVersionIdentity`, `InterpreterConfigurationIdentity`, and one or more `ModelOwnerIdentity` values, and acknowledges readiness before the coordinator activates the alias. None of those local identities is derived from or substituted by the portable routing string.
+The coordinator resolves an alias to one exact portable version, pins it, and only then creates the validation message. Later alias activation cannot change the admitted request.
+
+Registration broadcasts model source; each Worker recomputes and verifies the fingerprint, creates local version/configuration/owner identities, and acknowledges readiness before alias activation. Portable routing strings never substitute for local identities.
 
 In one Worker, the default is one `WarmInterpreterLane` per `(PortableModelVersionId, PortableConfigurationId)` because synchronous parsing, decode, and evaluation cannot overlap on that JavaScript thread. A second same-key lane requires a measured reentrancy or ownership reason. D1 and D2 retain separate entries and lanes, so `D1, D2, D1, D2` does not reparse either model.
 
-`WorkerPreparedResource` preserves both viable owner strategies. A `"shared-owner"` entry may give all local lanes the same `prepared.owner` only when the prepared plan, lazy caches, and document codec are certified for that use. A `"lane-owned"` entry constructs an independent owner and codec for every lane. In both cases, `lane.documents.isSnapshot(value: unknown)` authenticates only snapshots in that lane’s owner domain. Decode and optional model-bound adapter lookup happen after lane selection; a codec cached for one lane must never create a snapshot consumed by another owner.
+`WorkerPreparedResource` supports shared-owner and lane-owned strategies. Sharing requires certification of the plan, lazy caches, and codec; lane-owned mode constructs an independent owner/codec per lane.
+
+`isSnapshot` authenticates only that lane’s owner domain. Decode and optional model-bound adapter lookup occur after lane selection, and one lane’s codec never creates snapshots for another owner.
 
 Workers exchange only portable model source/fingerprints, routing IDs, placement DTOs, per-call locale/time options, and encoded result DTOs. They never exchange `PreparedModel`, `Interpreter`, `DocumentSnapshot`, model-owned pointers, scalar wrapper objects, callbacks, registries, schema objects, or local identities.
 
@@ -3546,7 +3908,9 @@ static ValidationReport validateOne(
 }
 ```
 
-`service` has Java type `ValidationService`, the caller-owned thread-safe coordinator. `ordersModelV2` has type `RegisteredModel`, the service-issued token for one immutable model version. `documentInput` has type `PlacementDocumentInputV1`, the portable raw-placement DTO. `options` has type `ValidationOptions`, the immutable per-call locale/time options. `request` has type `ValidatePlacementsRequest`, the complete typed input built from those values, and `validateOne` explicitly returns `ValidationReport`, the detached validation result. `ValidatePlacementsRequest.Builder` is the Java projection of the TypeScript readonly request object; its optional `configuration(RegisteredInterpreterConfiguration)` method selects a custom registration, while omitting it uses the service default. The method is synchronous. Multiple JVM threads may call it concurrently, but each request receives a different exclusive interpreter lease.
+`ValidatePlacementsRequest.Builder` is the Java projection of the TypeScript readonly request. Its optional configuration method selects a custom registration; omission uses the service default.
+
+The method is synchronous and concurrently callable from JVM threads, with a distinct exclusive interpreter lease per request.
 
 The service exposes typed `ValidationServiceMetrics` for lifecycle state, admitted/disposal work, model/configuration counts, pool saturation, wait/rejection, active/idle runtimes, preparation, and eviction. Direct callers remain free to retain their own active instances without any registry or pool.
 
@@ -3561,9 +3925,13 @@ The stable configuration must represent every evaluator customization the kernel
 - clock provider on a direct `Interpreter`, or explicit `A12EvaluationTime` per service call;
 - locale per call.
 
-Callbacks are synchronous because the evaluator is synchronous. Static callback types exclude `Promise`; a runtime thenable from plain JavaScript or unsafe TypeScript is rejected when observed, never awaited, and treated as an integration failure. In the recommended JVM pool, callbacks belong to one thread-confined interpreter instance and need not support concurrent invocation. A future configuration for a reentrant interpreter may require explicitly share-safe callbacks. Callback lifetime and exception conversion are part of the façade contract.
+Callbacks are synchronous; static types exclude `Promise`, and runtime thenables are rejected, never awaited, as integration failures. In the JVM pool, callbacks belong to one confined interpreter and need not support concurrent invocation.
 
-The kernel-free registries are created per interpreter lane through `createBindings`; they are not process-global. An optional compatibility adapter may share an existing factory only when that platform contract requires the factory itself to be thread-safe, but its dispatch wrapper and native call context remain bound to an exclusive lane. Callback instances returned by the source factory follow that platform’s exact creation cardinality rather than being silently shared. Registry lookup and adapter discovery occur outside every evaluator hot loop.
+A future reentrant configuration may require explicitly share-safe callbacks. Callback lifetime and exception conversion remain façade contracts.
+
+Kernel-free registries are created per lane and are never process-global. A compatibility adapter shares a factory only when the source contract requires factory thread safety; dispatch wrapper and native call context remain exclusive-lane state.
+
+Returned callbacks preserve source creation cardinality rather than being silently shared. Registry lookup and adapter discovery stay outside evaluator hot loops.
 
 There is deliberately no universal “validation error” or `success: boolean`. The public algebra keeps these families distinct:
 
@@ -3626,20 +3994,24 @@ All model loading policy, parsing, paths, repetition semantics, formal-state beh
        TypeScript façade            JVM/Java façade
           PRIMARY                     SECONDARY
                  ▲                         ▲
-                 │ optional                │ optional
+                 │ required product        │ required product
       TypeScript kernel-compat       JVM kernel-compat
              adapter                    adapter
                  │                         │
        existing TS callbacks       existing JVM callbacks
 ```
 
-The arrows point from an optional adapter to the base artifact it consumes. The base Interpreter and Operator artifacts never depend back on either adapter. The TypeScript façade is required product work: explicit exports, plain declarations, JS-safe errors, arrays/readonly DTOs, and strict TypeScript consumer tests. The ordinary JVM façade adapts Java collections and uses builders where justified. Neither façade contains evaluator logic or imports a kernel type.
+The arrows point from each required, separately packaged compatibility adapter to the base artifact it consumes; applications install an adapter only when they reuse that platform’s kernel interfaces. The base Interpreter and Operator artifacts never depend back on either adapter.
 
-Optional TypeScript boundary adapters, including the separate [Zod integration proposal](ZOD-INTEGRATION-PROPOSAL.md), may validate portable DTO shapes and project canonical reports. They must delegate model-aware decoding to `decodePlacements` or `tryDecodePlacements`, authenticate snapshots with the exact owner’s `isSnapshot(value: unknown)`, encode through `encodePlacements`, and preserve `ReportPointer`. They do not belong in `commonMain`, customization SPIs, interpreter parsing, AST traversal, warm lanes, or JVM APIs and must never become a second validation engine.
+The TypeScript façade is required product work: explicit exports, plain declarations, JS-safe errors, arrays/readonly DTOs, and strict TypeScript consumer tests. The ordinary JVM façade adapts Java collections and uses builders where justified. Neither façade contains evaluator logic or imports a kernel type.
+
+Optional TypeScript boundary adapters, including [Zod integration](ZOD-INTEGRATION-PROPOSAL.md), may validate portable DTOs and project reports. They delegate model-aware decode, authenticate with the exact owner, encode canonically, and preserve `ReportPointer`.
+
+They never enter `commonMain`, customization SPIs, parsing, AST traversal, warm lanes, or JVM APIs, and never become a second evaluator.
 
 Node is the verified JavaScript host. Browser qualification requires a real browser build, bundle smoke test, conformance run, callback contract, and browser performance evidence. A fake async wrapper that still blocks the Node event loop is not useful; worker-thread/browser-worker adapters may be separate later.
 
-### 10.1 Optional kernel-compatibility artifacts
+### 10.1 Required kernel-compatibility artifacts
 
 Two platform-specific artifacts bridge existing project implementations without contaminating the core:
 
@@ -3648,7 +4020,9 @@ Two platform-specific artifacts bridge existing project implementations without 
 | `@a12/interpreter-kernel-compat` | the existing TypeScript kernel document, generated-runtime configuration, model ID, entity-value mapping, custom-field factory, and custom-condition factory | kernel-free TypeScript Interpreter façade and the certified TypeScript kernel API line |
 | `a12-interpreter-kernel-compat-jvm` | `DocumentV2`, `DocumentProcessingConfig`, modern JVM custom-field and custom-condition factories, plus explicitly supported legacy variants | kernel-free JVM Interpreter façade and the certified A12 Kernel JVM API line |
 
-TypeScript remains the primary product and compatibility surface; the JVM adapter is the secondary route for projects that already own Java implementations. The artifacts are separate because the JVM and TypeScript kernel interfaces differ observably. They do not pretend that `DocumentV2`, nullable Java sets, `PartiallyKnownDocumentMultiPointer`, the TypeScript document/model-ID/value-mapping callback, factory absence conventions, validation parameters, or localized custom-field messages are one structural API. Each adapter pins and certifies a specific kernel API line, initially 30.8.1 where applicable. The base artifacts remain MIT-licensed and kernel-free; a compatibility artifact’s license and distribution obligations follow its kernel linkage.
+TypeScript is the primary compatibility surface; JVM is the secondary route for existing Java implementations. The artifacts remain separate because their documents, nullable sets, partially known pointers, callbacks, factory absence, validation parameters, and localized messages differ observably.
+
+Each adapter pins and certifies a kernel API line, initially 30.8.1 where applicable. Base artifacts remain MIT and kernel-free; adapter obligations follow kernel linkage.
 
 A deployment that must remain entirely kernel-free implements or recompiles its project customizations against the native KMP/TypeScript/JVM projection of the core SPI. Reusing an already compiled implementation whose public types are kernel interfaces necessarily selects the separately packaged compatibility artifact; packaging cannot erase that dependency by hiding it behind reflection or copying the interface definitions.
 
@@ -3661,7 +4035,11 @@ A deployment that must remain entirely kernel-free implements or recompiles its 
 | custom field types | `CustomFieldTypeRegistry` / `CustomFieldValidator` | existing platform factory and validator interfaces |
 | custom conditions | `CustomConditionRegistry` / `CustomCondition` | existing platform factory and condition interfaces with the original native document |
 
-The host-neutral custom-field result keeps an `errorKey` and rendered `message`. The JVM adapter carries the existing string directly. The TypeScript callback instead returns `Localizable[]`, so the adapter configuration supplies an explicit renderer and the validation call supplies the requested locale before a canonical `ValidationReport` can be produced. That rendering is a deliberate projection, not a claim that the original localization objects survive in `message: string`. A future exact TypeScript `DocumentValidationResult` projection must retain the original `Localizable[]` in an adapter-owned sidecar during the same evaluation; it cannot reconstruct them from the detached canonical report.
+The host-neutral custom-field result keeps `errorKey` and rendered `message`; JVM carries its source string directly. TypeScript returns `Localizable[]`, so adapter configuration supplies a renderer and each call supplies locale before producing a canonical report.
+
+Rendering is a projection, not preservation of localization objects. Exact `DocumentValidationResult` projection must retain original `Localizable[]` in a same-evaluation sidecar; detached strings cannot reconstruct them.
+
+#### TypeScript adapter
 
 The primary TypeScript compatibility contract retains the established verbs and parameters:
 
@@ -3803,11 +4181,35 @@ if (computationApplication.kind === "applied") {
 }
 ```
 
-`KernelDocument` and `KernelEntityInstancePath` are adapter-imported aliases for the existing TypeScript kernel `Document` and `EntityInstancePath` types; the adapter does not reproduce their declarations. `Localizable` is the adapter-imported existing kernel localization-item type. `prepared` has type `PreparedModel`. `generatedDocumentModelId` is the exact `string` exported or otherwise authoritatively supplied by the generated model artifact, not a service alias or a value copied from `prepared` merely to satisfy the check. `generatedRuntime` has the existing `GeneratedCodeRtConfig` type and carries the custom factories, `currentDateForTest`, and `ignoreUnknownFields`. `customFieldMessageRenderer` has type `KernelCustomFieldMessageRenderer` and renders existing `Localizable[]` values for the requested locale. `compatibilityConfiguration` has type `KernelCompatibilityConfiguration`; its required `"explicit-only"` mode means an absent factory is absent and never triggers deprecated process-global registration. `document` is the original kernel document. `valueOverrides` has the existing `EntityInstanceValueMapping | undefined` type. `validationOptions` has type `ValidationOptions`; `compatibilityComputeOptions` has type `ComputeOptions` and supplies the computation diagnostic locale. `compatible` has the fully declared adapter type `KernelCompatibleInterpreter`, `report` has canonical type `ValidationReport`, `computation` has the opaque source-bound adapter result type, and `computationApplication` has the applied/not-applied adapter result type. Only its `"applied"` branch exposes `updatedDocument` with type `KernelDocument`.
+| TypeScript adapter input/result | Contract |
+|---|---|
+| Kernel aliases | Import existing `Document`, `EntityInstancePath`, and `Localizable`; do not reproduce declarations |
+| Generated model ID | Use the authoritative generated artifact value, never a service alias or copied prepared value |
+| Generated runtime | Preserve factories, `currentDateForTest`, and `ignoreUnknownFields` |
+| Message renderer | Render existing `Localizable[]` for the requested locale |
+| Extension mode | Required `"explicit-only"` means absent factory stays absent and never invokes deprecated global registration |
+| Document/overrides | Keep original kernel `Document` and existing optional `EntityInstanceValueMapping` |
+| Options | Validation locale and computation diagnostic locale remain explicit |
+| Results | Canonical detached validation report plus opaque source-bound computation/application result; only `"applied"` exposes an updated document |
 
-Construction compares `compatibilityConfiguration.documentModelId` with `prepared.model.documentModelId` and throws `KernelCompatibilityInputError` before creating a lane when they differ. The generated TypeScript `Document` does not itself carry an authoritative model/version token, so a model-bound adapter handle plus strict structural decoding is the strongest available runtime check; callers and multi-model registries remain responsible for routing the document through the handle created from its exact generated model version. Where provenance must cross an untrusted boundary, the portable owner/version token from §8 must accompany the document instead of pretending the native object authenticates itself.
+Construction compares configured and prepared document-model IDs before lane creation. A TypeScript `Document` has no authoritative version token, so strict model-bound decoding is the strongest local check and callers must route through the handle for the exact generated version.
 
-`supportReport` exposes the bound lane’s native and compatibility readiness; source factory-backed names remain `"runtime-resolved"` when preserving factory cardinality prevents an eager probe. The conversion methods invoke the existing custom-field conversion implementation through the same pre-bound slot. `validatePart` maps the native `EntityInstancePath` array to exact core relevance pointers before kernel-style normalization. The optional final `ValidationOptions` parameter is additive: omitting it retains the familiar native call shape and uses `"en_US"` for the canonical rendered report, while callers that need another canonical message locale state it explicitly. `ComputeOptions.locale` supplies the same required locale when formal/custom-field diagnostics arise during computation and likewise defaults to `"en_US"`. `compute` returns an authenticated `KernelCompatibleComputationResult`, not a bare detached report. Its `document` is the original source document and `report` is the canonical detached computation data. `appliedTo` never reevaluates and returns `"notApplied"` with the supplied document unchanged when `report.fullySupported` is false. Otherwise it copies the supplied native document, preserves unknown/native content, and returns `"applied"` after applying the exact source computation collections encoded in the handle—successful values classified as changed, errored values, and cleared values—rather than blindly replaying the original snapshot’s `delta`. `dispose` retires the exclusive adapter lane and is idempotent; a Worker-local cache or service pool owns it while retained. `GeneratedCodeRtConfig.currentDateForTest` maps to the call’s exact evaluation date/time law unless an explicit `ComputeOptions` or `ValidationOptions` evaluation time is supplied. `ignoreUnknownFields` controls native-document conversion exactly as in the source façade; unknown groups remain ignored, and override entries are not discarded merely because that flag is true.
+Across an untrusted boundary, the portable owner/version token accompanies the document; native structure does not authenticate provenance.
+
+| TypeScript adapter behavior | Contract |
+|---|---|
+| Readiness | Expose bound-lane readiness; keep factory-backed names runtime-resolved when eager probing would alter cardinality |
+| Conversion | Invoke existing custom-field conversions through the same pre-bound slot |
+| Partial validation | Map native entity paths to exact core relevance before kernel-style normalization |
+| Validation locale | Optional final options preserve familiar shape; omission renders canonical messages in `"en_US"` |
+| Computation locale | Defaults to `"en_US"` and applies to formal/custom diagnostics |
+| Computation result | Authenticated source-bound handle retaining original document and detached canonical report |
+| Application | Never reevaluate; unsupported preserves supplied document, otherwise copy it, preserve unknown/native content, and apply exact source-classified changed/errored/cleared collections rather than replay detached delta |
+| Disposal | Idempotently retire the exclusive lane; Worker cache or pool owns retained handles |
+| Test date | `currentDateForTest` follows exact call time unless explicit options win |
+| Unknown fields | Preserve source `ignoreUnknownFields`: unknown groups remain ignored, and overrides are not discarded merely because it is true |
+
+#### JVM adapter
 
 The secondary JVM artifact exposes the same capability set over JVM kernel types:
 
@@ -3890,9 +4292,23 @@ static ValidationReport validateExistingDocument(
 }
 ```
 
-`preparedModel` has Java type `PreparedModel`, the kernel-free prepared model. `documentProcessingConfig` has the existing kernel type `DocumentProcessingConfig` and carries locale, current test date, custom factories, presentation information, and any explicitly supported legacy data. `document` has existing type `DocumentV2`. `compatibleInterpreter` has adapter type `KernelCompatibleInterpreter`; it owns one exclusive lane until `close`, while a service may retain/pool that lane instead. `relevantEntities` has type `Set<? extends DocumentMultiPointer>`. Validation returns the canonical kernel-free `ValidationReport`; computation returns a source-bound `KernelCompatibleComputationResult` whose `report()` is canonical and whose `appliedTo` returns the sealed `KernelCompatibleComputationApplication` without reevaluation. `AppliedKernelComputation.document()` is the updated document; `NotAppliedKernelComputation` carries enum reason `UNSUPPORTED` and the supplied document unchanged. The adapter may offer JVM-native result conveniences only where every native member can be derived losslessly; the TypeScript localization restriction does not disappear by analogy.
+| JVM adapter aspect | Contract |
+|---|---|
+| Configuration | Existing `DocumentProcessingConfig` supplies locale, test date, factories, presentation, and supported legacy data |
+| Document/relevance | Existing `DocumentV2` and `Set<? extends DocumentMultiPointer>` |
+| Lane | Compatible interpreter owns one exclusive lane until close; a service may pool it |
+| Validation | Return canonical kernel-free report |
+| Computation | Source-bound result with canonical report and sealed no-reevaluation application |
+| Application variants | Applied exposes updated document; unsupported preserves supplied document |
+| Native conveniences | Offer only when every native member is derived losslessly; TypeScript localization limits do not disappear by analogy |
 
-The shown JVM convenience binds one exact `DocumentProcessingConfig`. `bind` checks `DocumentV2.getDocumentModelId()` against `preparedModel.model().documentModelId()` before every document operation and throws the JVM projection of `KernelCompatibilityInputError` on a mismatch. A native model ID does not prove an exact model version when the source format has no version token, so the registry/binding that selected `preparedModel` remains responsible for exact-version routing. The multi-threaded service form accepts that existing config on each `validateFull`, `validatePart`, or `compute` call, treats locale/current-date inputs as call data, and selects a warm lane by the identity of the semantic factory bindings. It must not build a new interpreter for each locale or use structural equality/caller strings as callback-resource identity. Missing modern factories mean no explicit implementation; deprecated static-global fallback is not consulted by this initial entry point and, if certified later, receives a separately named legacy mode.
+The JVM convenience binds one exact configuration and checks document model ID before every operation. A native model ID does not prove exact version, so the selecting registry/binding remains responsible for routing.
+
+The multi-threaded form treats locale/current date as call data and selects lanes by semantic factory-binding identity. It neither rebuilds interpreters per locale nor uses structural equality/caller strings as callback identity.
+
+Missing modern factories mean no implementation. Deprecated global fallback is excluded from this entry point and, if later certified, receives a separately named legacy mode.
+
+#### Shared adapter execution contract
 
 For each adapter operation, one exclusive lane performs this sequence:
 
@@ -3903,11 +4319,24 @@ For each adapter operation, one exclusive lane performs this sequence:
 5. Let those wrappers call existing project implementations with the unchanged original native document/mapping and exact mapped relevance, formal-error, partially known error-pointer, locale, length, display-value, and conversion inputs.
 6. Clear every overlay and native call-context value in `finally`, detach the canonical report or source-bound computation result, and release or retain the lane according to its owner.
 
-The overlay is an evaluation view, not a rewritten transport document or persistent snapshot. The portable document contract stores custom values in internal form, so native core validation passes `isDisplayValue: false`; callers with display-form text use `convertCustomFieldDisplayToInternal` before writing. Compatibility adapters may pass `true` only when audited native presentation information requires it. Existing TypeScript conditions still receive the original `Document` and `EntityInstanceValueMapping` because their interface explicitly requires implementations to interpret that mapping. The adapter never reconstructs a kernel document for each callback, never calls kernel validation or computation, never stores native call state in a process-global registry or `ThreadLocal`, and never sends a callback/runtime object across a Node Worker boundary. Scalar custom-field validators can be wrapped directly. Custom conditions require the retained original document; a factory-only wrapper without a kernel-shaped validation entry point is insufficient.
+The overlay is an evaluation view, not rewritten transport or persistent state. Core snapshots store internal custom text and pass `isDisplayValue: false`; adapters pass `true` only when audited native presentation requires it.
 
-An adapter computation result is detached from the active lane but remains runtime-authenticated to its prepared owner and retains the original native document plus the exact application classification needed by the source API. When `report.fullySupported` is false, `appliedTo` returns the not-applied variant with reason `"unsupported"`/`UNSUPPORTED`, performs no mutation, and preserves the supplied native document. Otherwise it copies that document, preserves unknown/native content, applies successful values only when the source result classified them as changed, and clears every source-classified errored or cleared field according to native placement rules. It does not infer application from `ComputationReport.delta`, because that delta legitimately omits already-absent clears and cannot reproduce application to a different supplied document by itself.
+TypeScript conditions receive the original document and value mapping because their interface requires both. Adapters never rebuild a kernel document per callback, delegate validation/computation to the kernel, use process-global/`ThreadLocal` call state, or transport runtime objects across Workers.
 
-Modern factory variants are the primary compatibility target. Still-used deprecated variants are not copied into the core SPI; each is source-/binary-audited against SME and at least one additional production project, then either adapted in the compatibility artifact or reported as an explicit unsupported compatibility case. A JVM legacy mode may retain `DocumentProcessingConfig.additionalInformation` in adapter call context and invoke the corresponding deprecated validator overload, but that untyped map never enters `commonMain`. Deprecated static registrations may be snapshotted into an explicit lane registry only when their lifecycle and multi-tenant isolation are proven; the adapter must not make the core consult a process-global service. Static generated-runtime Custom Conditions over `IData`/`IIdentifier` require their own audited adapter variant or remain explicitly unsupported; success with the document-model callback proves nothing about that surface. “A similar native callback exists” is not evidence of drop-in compatibility. Existing project implementations must run unchanged through the claimed adapter path, with differential tests covering both evaluation strategies where applicable.
+Scalar validators wrap directly. Custom Conditions require the retained original document, so a factory-only wrapper without a kernel-shaped validation entry point is insufficient.
+
+The detached computation result remains runtime-authenticated and retains original document plus exact source application classification. Unsupported application performs no mutation and preserves the supplied document.
+
+Supported application copies the native document, preserves unknown content, applies only source-classified changed values, and clears source-classified errored/cleared fields. It never infers application from detached delta, which omits absent clears and cannot reproduce application to another supplied document.
+
+#### Legacy and static compatibility
+
+- Modern factories are primary.
+- Still-used deprecated variants stay out of the core SPI; source/binary audit against SME and another production project determines adaptation or explicit unsupported status.
+- JVM legacy mode may retain `additionalInformation` in adapter call context and invoke its deprecated overload, but the untyped map never enters `commonMain`.
+- Static registrations may become an explicit lane registry only after lifecycle and multi-tenant isolation are proven; the core never consults a global service.
+- Static `IData`/`IIdentifier` conditions need their own audited adapter or remain unsupported; document-model compatibility proves nothing about them.
+- Similarity is not drop-in evidence. Claimed paths run existing implementations unchanged and receive differential coverage for applicable evaluation strategies.
 
 The compatibility layer adapts existing callback implementations, native documents, and the result shapes explicitly declared above. It does not make the core depend on the kernel, reconstruct TypeScript localization objects from strings, or promise that an application can replace an entire kernel service without changing assembly/configuration code.
 
@@ -3915,7 +4344,17 @@ The compatibility layer adapts existing callback implementations, native documen
 
 The interpreter remains a clean-room, kernel-free implementation and must match the applicable kernel behavior exactly. The stable façade delegates to the existing evaluator; it does not create a parallel execution path.
 
-API completeness is guarded by source-backed capability ledgers, not by a short hand-authored exception list. The audited universes include the model/meta-model schema, document API, `DocumentProcessingConfig`, legal-charset/type/condition SPIs, validation result interfaces, computation result interfaces, and the live operator catalog for contextual operator use. Each family records its kernel version, source universe, evidence, public API disposition, exact gap when parity-gated, and kernel-upgrade trigger. A family may claim completeness only when that universe and its guard are explicit.
+API completeness is guarded by source-backed capability ledgers, not by a short hand-authored exception list.
+
+The audited universes include:
+
+- the model/meta-model schema;
+- the document API and `DocumentProcessingConfig`;
+- legal-charset, custom-type, and custom-condition SPIs;
+- validation and computation result interfaces;
+- the live operator catalog for contextual operator use.
+
+For each family, the ledger records the kernel version, source universe, evidence, public API disposition, exact gap when parity-gated, and kernel-upgrade trigger. A family may claim completeness only when that universe and its guard are explicit.
 
 Stored-program performance keeps the current invariants:
 
@@ -3943,7 +4382,16 @@ Customization and compatibility add separate release gates rather than hiding th
 4. Prove each native document is converted at most once per public operation, core registry lookup and adapter discovery occur only while binding, and the callback hot path contains only the source-required factory invocation at its audited cardinality plus direct precomputed pointer/slot access. No registry search, reflection, coordination lock, or adapter/configuration allocation is permitted per field cell or AST visit.
 5. Repeat cold/warm D1/D2 interleaving and concurrent JVM-lane/Node-Worker tests with distinct custom configurations, proving no callback, original native document, value override, locale, or pointer map crosses a lane or request.
 
-Absence of a compatibility artifact has a strict zero-cost contract: no adapter code, branch, class loading, dependency, startup, or retained state exists in the base artifacts, and the no-customization benchmark above must remain statistically indistinguishable from its pinned pre-change baseline. When an adapter is selected, one `O(document)` native-to-snapshot conversion per public operation is unavoidable and is not marketed as zero overhead. The initial release budget compares the complete warm adapter call with the certified kernel 30.8.1 call over the same native document, model, custom implementations, result demand, process, and concurrency: the confidence interval for p50/p95 latency must not be worse, throughput must not be lower, and allocated bytes per operation must not be higher. The benchmark also publishes the delta against validation of an already-decoded native-core snapshot so the conversion cost cannot be hidden. A platform that misses any end-to-end budget does not ship as performance-compatible unless an explicit product decision revises that budget with measured evidence.
+Compatibility has a strict zero-cost contract when its artifact is absent:
+
+- no adapter code, branch, class loading, dependency, startup, or retained state exists in the base artifacts;
+- the no-customization benchmark remains statistically indistinguishable from its pinned pre-change baseline.
+
+When an adapter is selected, one `O(document)` native-to-snapshot conversion per public operation is unavoidable and is not marketed as zero overhead.
+
+The initial release budget compares the complete warm adapter call with the certified kernel 30.8.1 call over the same native document, model, custom implementations, result demand, process, and concurrency. The confidence interval for p50/p95 latency must not be worse, throughput must not be lower, and allocated bytes per operation must not be higher.
+
+The benchmark also publishes the delta against validation of an already-decoded native-core snapshot so the conversion cost cannot be hidden. A platform that misses any end-to-end budget does not ship as performance-compatible unless an explicit product decision revises that budget with measured evidence.
 
 The multi-threaded gate races registry lookup, pool acquisition/release, warming, and eviction. It proves deterministic results, no double lease, no use-after-eviction, and no cross-model/configuration document, result, clock, callback, formal-check, or computation cache contamination.
 
@@ -3967,7 +4415,16 @@ This foundation is independently useful for HTTP, queue, persistence, plugin, an
 
 Once this foundation is stable, it is sufficient for the strict document-ingress and owner-bound snapshot portions of the optional [Zod integration proposal](ZOD-INTEGRATION-PROPOSAL.md). Validation-report projection still waits for the canonical `ValidationReport` contract.
 
-The next compatibility-bearing increment is `validateFull`/`validatePart`/`compute` plus the native Custom Field Type and Custom Condition SPIs, exact callback laws, and pre-bound lane dispatch. The TypeScript kernel-compatibility adapter follows once that contract and the native document/report boundaries are stable; the secondary JVM adapter follows the same core contract. Zod scalar integration may proceed independently after the Operator API, and Zod transport work needs only the minimum transport/ownership foundation—neither Zod package waits for kernel-interface compatibility.
+The next compatibility-bearing increment contains:
+
+- `validateFull`, `validatePart`, and `compute`;
+- the native Custom Field Type and Custom Condition SPIs;
+- exact callback laws;
+- pre-bound lane dispatch.
+
+The TypeScript kernel-compatibility adapter follows once that contract and the native document/report boundaries are stable. The secondary JVM adapter follows the same core contract.
+
+Zod scalar integration may proceed independently after the Operator API. Zod transport work needs only the minimum transport/ownership foundation; neither Zod package waits for kernel-interface compatibility.
 
 ### 12.2 Complete product boundary
 
@@ -3986,6 +4443,37 @@ The next compatibility-bearing increment is `validateFull`/`validatePart`/`compu
 
 This product is feasible, but it is not a rename exercise. The evaluator-backed validation/computation core is medium productization work; the definition/active-instance split and bounded registry/pool require explicit ownership but do not require one shared reentrant evaluator; a performant immutable editable document surface is a distinct substantial capability.
 
-The customization architecture is also feasible. Native Custom Field Types are comparatively direct because their validation callback is scalar, although display/internal conversion, presentation state, and TypeScript localization must remain explicit. Custom Condition reuse is moderate-complexity work because it requires lossless native-document retention, relevance/formal-error/error-pointer translation, TypeScript value-override handling, model-bound routing, and lifecycle-safe call context. Static `IData`/`IIdentifier` conditions and deprecated global/legacy variants are separate compatibility increments, not free consequences of the modern document adapter. None of this requires a kernel dependency or adapter branch in the core no-customization path. The main feasibility gates are unchanged real-project implementations, exact platform differential tests, and the end-to-end adapter performance budget; one native-document conversion per operation is unavoidable, so feasibility is high but conditional rather than a promise of literal zero adapter overhead.
+The customization architecture is also feasible.
 
-Before publication, the specified contracts need implementation and evidence: strict `unknown` ingress and resource limits, lossless placement round trips, owner-aware authenticity, direct callback-free storage reads, exact field-aware typed rendering and custom-field conversion, request-document cache confinement, strict prepared-input rejection, model-zone clock sampling, structured finding/computation channels, complete custom field-type/condition SPIs, pre-bound customization slots, support reporting, repeated-row rule outcomes, interpreter-binding factories, Worker-local rollout/ownership, JVM pool backpressure/lifecycle races, and the exact Node package ABI. Kernel-interface compatibility is a separately packaged deliverable, but the native customization semantics it adapts are required core work. An adapter cannot claim compatibility until unchanged SME implementations and at least one additional production implementation pass source-/binary-compatibility tests, semantic differential tests, lifecycle tests, and the separate performance gates in §11. Persistent structural sharing, candidate programs, and browser support should not hold the core validation-service API hostage.
+| Area | Assessment |
+|---|---|
+| Native Custom Field Types | Comparatively direct because validation is scalar; display/internal conversion, presentation state, and TypeScript localization must remain explicit |
+| Custom Condition reuse | Moderate complexity because it requires lossless native-document retention, relevance/formal-error/error-pointer translation, TypeScript value-override handling, model-bound routing, and lifecycle-safe call context |
+| Static `IData`/`IIdentifier` conditions | A separate compatibility increment, not a free consequence of the modern document adapter |
+| Deprecated global/legacy variants | Separate compatibility increments |
+
+None of this requires a kernel dependency or adapter branch in the core no-customization path.
+
+The main feasibility gates are unchanged real-project implementations, exact platform differential tests, and the end-to-end adapter performance budget. One native-document conversion per operation is unavoidable, so feasibility is high but conditional rather than a promise of literal zero adapter overhead.
+
+Before publication, the following contracts need implementation and evidence:
+
+- strict `unknown` ingress and resource limits;
+- lossless placement round trips and owner-aware authenticity;
+- direct callback-free storage reads;
+- exact field-aware typed rendering and custom-field conversion;
+- request-document cache confinement and strict prepared-input rejection;
+- model-zone clock sampling;
+- structured finding and computation channels;
+- complete custom field-type and custom-condition SPIs;
+- pre-bound customization slots and support reporting;
+- repeated-row rule outcomes and interpreter-binding factories;
+- Worker-local rollout and ownership;
+- JVM pool backpressure and lifecycle races;
+- the exact Node package ABI.
+
+Kernel-interface compatibility is a separately packaged deliverable, but the native customization semantics it adapts are required core work.
+
+An adapter cannot claim compatibility until unchanged SME implementations and at least one additional production implementation pass source-/binary-compatibility tests, semantic differential tests, lifecycle tests, and the separate performance gates in §11.
+
+Persistent structural sharing, candidate programs, and browser support should not hold the core validation-service API hostage.

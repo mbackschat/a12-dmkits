@@ -1,3 +1,18 @@
+**Proposal-writing guideline — simple mode**
+
+Keep this document focused on the requested API proposal, not an implementation or rollout plan.
+
+- Prefer the smallest viable design; do not expand the scope or add speculative features.
+- Use short sections, tables, bullets, and fully typed minimal examples instead of prose walls.
+- Keep paragraphs to at most three sentences and explain each concept once.
+- Include only types needed to understand the public API; do not catalogue basic language types.
+- Clearly separate required, optional, and excluded functionality.
+- Preserve semantic and performance requirements without repeating them.
+- Surface only issues that materially affect correctness or feasibility.
+- Delete anything that does not help a developer understand or use the proposal.
+
+Preferred structure: motivation, scope, public API, typed examples, semantics and guarantees, packaging and adapters, explicit exclusions.
+
 # Proposal: Optional Zod integration for A12 TypeScript APIs
 
 ## Status
@@ -16,6 +31,8 @@ Zod remains outside Kotlin `commonMain`, the base `@a12/operators` and `@a12/int
 The initial supported JavaScript host follows the base packages’ qualified surface: Node. Browser and form examples describe intended integration behavior, but they become a support claim only after the underlying Operator/Interpreter packages pass browser packaging, conformance, and performance qualification.
 
 ## 1. Motivation
+
+> Zod is the ergonomics oracle; the A12 kernel is the semantic oracle.
 
 TypeScript applications commonly receive values as `unknown` from HTTP, queues, browser storage, configuration, plugins, and Worker messages. The A12 APIs deliberately operate on authentic A12 values and model-owned document objects rather than JavaScript primitives or structurally similar objects. An adapter is therefore useful at the point where untrusted or portable data crosses into those APIs.
 
@@ -81,7 +98,11 @@ The integration does not:
     └── peer ────────────> zod
 ```
 
-Both Zod packages depend only on Zod and the kernel-free A12 base packages shown above. They remain kernel-free and MIT-licensed and have no direct or transitive dependency on an A12 Kernel API or runtime artifact. The optional TypeScript/JVM kernel-compatibility adapters belong to the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md) and sit outside this graph. An application may install a Zod adapter and a kernel-compatibility adapter together; they meet only through the public Interpreter registry/document/report contracts, never through a Zod-to-kernel integration path.
+Both Zod packages depend only on Zod and the kernel-free A12 base packages shown above. They remain kernel-free and MIT-licensed and have no direct or transitive dependency on an A12 Kernel API or runtime artifact.
+
+The TypeScript/JVM kernel-compatibility adapters belong to the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md) and sit outside this graph. They are required, separately packaged, separately licensed, and separately qualified Interpreter product artifacts; applications install them selectively when they reuse existing kernel-interface implementations.
+
+An application may install a Zod adapter and a kernel-compatibility adapter together. They meet only through the public Interpreter registry/document/report contracts, never through a Zod-to-kernel integration path.
 
 The adapter packages should require Zod 4.1 or a later explicitly qualified compatible range as a peer dependency. They must not install private copies of Zod or the A12 base packages. Package-manager and bundler qualification must verify one physical `@a12/operators` instance per JavaScript realm, because the core authenticity contract deliberately rejects wrappers from duplicate package copies.
 
@@ -159,9 +180,13 @@ type A12ZodObjectOutput<
 
 `A12ZodCodec<Input, Output>` is issued only by `@a12/operators-zod` or by its composition helpers. The hidden TypeScript brand communicates the encode-safe contract, while runtime adapter metadata lets the composition factory reject an ordinary schema that was only asserted to the branded type. This metadata is an accidental-misuse guard, not a security boundary against hostile JavaScript.
 
-Every scalar codec also uses the exact core companion guard for its output schema: `A12Integer.is(value: unknown)` for integer output rather than the wider `A12Number.is`, and the corresponding concrete guard for every other value kind. The settled core policy accepts wrappers only from the same physical `@a12/operators` package instance and JavaScript realm. A wrapper from a duplicate bundle, Worker, iframe realm, structured clone, persistence layer, or network is foreign; the application encodes it to the exact portable representation and decodes a new local wrapper. Each encode transform delegates to the corresponding core `tryEncode` operation after the output guard succeeds.
+Every scalar codec uses the exact core companion guard for its output schema: `A12Integer.is(value: unknown)` for integer output rather than the wider `A12Number.is`, and the corresponding concrete guard for every other value kind. The settled core policy accepts wrappers only from the same physical `@a12/operators` package instance and JavaScript realm.
 
-`A12ZodDecoder<Input, Output>` deliberately carries no encode-safe brand. It is appropriate for one-way conversions such as safe JavaScript integer input to an `A12Integer` whose full output range cannot be encoded back to a safe JavaScript number. It may participate in ordinary parse-only Zod object/array composition, but `a12Zod.object` and `a12Zod.array` reject it. Zod exposes an encode operation on ordinary schemas; calling that operation on this decoder is unsupported and throws for the underlying unidirectional transform rather than encoding a value.
+A wrapper from a duplicate bundle, Worker, iframe realm, structured clone, persistence layer, or network is foreign. The application encodes it to the exact portable representation and decodes a new local wrapper. Each encode transform delegates to the corresponding core `tryEncode` operation after the output guard succeeds.
+
+`A12ZodDecoder<Input, Output>` deliberately carries no encode-safe brand. It is appropriate for one-way conversions such as safe JavaScript integer input to an `A12Integer` whose full output range cannot be encoded back to a safe JavaScript number.
+
+It may participate in ordinary parse-only Zod object/array composition, but `a12Zod.object` and `a12Zod.array` reject it. Zod exposes an encode operation on ordinary schemas; calling that operation on this decoder is unsupported and throws for the underlying unidirectional transform rather than encoding a value.
 
 ### 5.3 Composition preserves encode safety
 
@@ -193,7 +218,9 @@ Applications remain free to use ordinary `z.object(...)` and `z.array(...)` when
 
 ### 5.4 Expected A12 errors become Zod issues
 
-Zod does not automatically convert an exception thrown by a codec transform into a `ZodError`. Every adapter transform therefore calls the core non-throwing A12 operation and translates its expected failure into transform-context issues before returning `z.NEVER`.
+Zod does not automatically convert an exception thrown by a codec transform into a `ZodError`. Every adapter transform therefore calls the core non-throwing A12 operation, calls `ctx.addIssue(...)` once for every mapped expected failure, and returns `z.NEVER`.
+
+Expected A12 failures are never thrown from the transform. The narrow explanatory context types below may model `ctx.addIssue(...)` as an issue collector internally, but the observable Zod behavior is the same.
 
 ```ts
 type A12ZodIssuePathSegment = string | number;
@@ -264,7 +291,9 @@ declare const a12InterpreterZodIssueBridge:
   A12InterpreterZodIssueBridge;
 ```
 
-`@a12/operators-zod` exports `A12ZodIssueMetadataBase`, `A12ZodConversionIssueMetadata`, the common raw-issue/context types, and `a12ZodIssueBridge`. `@a12/interpreter-zod` imports those dependency-neutral adapter types, defines `A12ZodDocumentInputIssueMetadata`, and exports `a12InterpreterZodIssueBridge`. The operator adapter never imports Interpreter types. The public declarations may expose Zod’s concrete context and issue types rather than these narrow explanatory interfaces. The observable contract is:
+`@a12/operators-zod` exports `A12ZodIssueMetadataBase`, `A12ZodConversionIssueMetadata`, the common raw-issue/context types, and `a12ZodIssueBridge`. `@a12/interpreter-zod` imports those dependency-neutral adapter types, defines `A12ZodDocumentInputIssueMetadata`, and exports `a12InterpreterZodIssueBridge`.
+
+The operator adapter never imports Interpreter types. The public declarations may expose Zod’s concrete context and issue types rather than these narrow explanatory interfaces. The observable contract is:
 
 - one or more A12 diagnostics become one or more Zod issues;
 - every `A12ConversionError.issues` member becomes one Zod issue, and every `DocumentInputError.diagnostics` member becomes one Zod issue;
@@ -374,7 +403,9 @@ declare const a12Zod:
 
 `fromSafeNumber` first requires a finite, safe, integral JavaScript number and then delegates construction to the Kotlin-backed integer conversion. It must not round, truncate, clamp, or encode an arbitrary `A12Integer` back to `number`.
 
-`fromInstantAndZone` delegates exact-instant parsing, precision checks, supported-zone recognition and history, evaluation-context attachment, and canonical encoding to `A12Codecs.dateTime`. Its wire value already contains an instant, so daylight-saving overlap/gap resolution is not part of this conversion; that belongs to explicit local-date-time construction. The initial accepted direct-API zone set is UTC only, and the adapter widens it only when the Operator API’s named-zone parity gate passes. Zod validates only the object shape.
+`fromInstantAndZone` delegates exact-instant parsing, precision checks, supported-zone recognition and history, evaluation-context attachment, and canonical encoding to `A12Codecs.dateTime`. Its wire value already contains an instant, so daylight-saving overlap/gap resolution is not part of this conversion; that belongs to explicit local-date-time construction.
+
+The initial accepted direct-API zone set is UTC only, and the adapter widens it only when the Operator API’s named-zone parity gate passes. Zod validates only the object shape.
 
 ### 6.3 Composed object example
 
@@ -432,15 +463,6 @@ const canonicalOrder: OrderWire =
   z.encode(orderCodec, orderValues);
 ```
 
-| Variable | Type | Meaning |
-|---|---|---|
-| `orderCodec` | `A12ZodCodec<OrderWire, OrderValues>` | encode-safe composition from the portable order representation to authentic A12 values |
-| `requestBody` | `unknown` | untrusted HTTP, queue, plugin, or Worker input |
-| `orderValues` | `OrderValues` | parsed object containing Kotlin-backed A12 values |
-| `sevenDays` | `A12Integer` | exact A12 integer used as an operator argument |
-| `reminderDate` | `A12Date` | direct operator result |
-| `canonicalOrder` | `OrderWire` | canonical portable representation encoded from the A12 values |
-
 ### 6.4 Array example
 
 ```ts
@@ -461,13 +483,6 @@ const amounts: readonly A12Number[] =
 const total: A12Number =
   operators.number.sumAll(amounts);
 ```
-
-| Variable | Type | Meaning |
-|---|---|---|
-| `amountsCodec` | `A12ZodCodec<readonly string[], readonly A12Number[]>` | encode-safe array composition over the exact decimal-string codec |
-| `amountPayload` | `unknown` | untrusted array input |
-| `amounts` | `readonly A12Number[]` | parsed read-only view of authentic exact A12 numbers |
-| `total` | `A12Number` | direct A12 collection-operator result |
 
 If the third input element is invalid, the translated issue path includes index `2` and retains the nested A12 conversion code.
 
@@ -532,7 +547,9 @@ interface A12RefinementOptions {
 }
 ```
 
-This is not required for the initial adapter. A future helper must accept an `A12Truth` result explicitly. `A12Evaluation<T>`, including division and power outcomes, is a value-result algebra and is never treated as a Zod predicate or refinement. Direct operator calls remain the preferred API.
+This is not required for the initial adapter. A future helper must accept an `A12Truth` result explicitly.
+
+`A12Evaluation<T>`, including division and power outcomes, is a value-result algebra and is never treated as a Zod predicate or refinement. Direct operator calls remain the preferred API.
 
 ## 7. Interpreter transport adapter
 
@@ -634,6 +651,8 @@ Those are model-aware Interpreter responsibilities.
 
 The module-constant schema establishes shape only. It is suitable for tests and already resource-bounded application values; an untrusted service boundary uses the configured factory in §7.3.
 
+The static `PlacementDocumentInputV1` schema is fixture-tested with accepted and rejected examples. Fixtures cover the version discriminator, required and unknown members, placement arrays, native string fields, positive safe-integer coordinates, and representative structural failures.
+
 ### 7.3 Configurable ingress limits
 
 One module-constant schema cannot encode every service’s resource policy. The package should provide a factory that consumes the core Interpreter limit contract directly:
@@ -645,7 +664,9 @@ createPlacementDocumentInputV1Schema(
 ): z.ZodType<PlacementDocumentInputV1>;
 ```
 
-`limits` has type `DocumentDecodeLimits`. Every member is a positive safe native configuration integer, not an A12 numeric value. The factory validates the limits once and applies the six portable-shape limits for group placements, field placements, coordinate-vector length, path code units, raw code units per field, and total raw code units. It accepts the full core type so the exact same immutable object can be passed to model-aware decoding; `maxModelNestingDepth` is enforced there rather than by the static Zod schema.
+`limits` has type `DocumentDecodeLimits`. Every member is a positive safe native configuration integer, not an A12 numeric value.
+
+The factory validates the limits once and applies the six portable-shape limits for group placements, field placements, coordinate-vector length, path code units, raw code units per field, and total raw code units. It accepts the full core type so the exact same immutable object can be passed to model-aware decoding; `maxModelNestingDepth` is enforced there rather than by the static Zod schema.
 
 Raw HTTP or message byte limits must be applied before JSON parsing. Zod is not a CPU, memory, queue, or request-deadline governor.
 
@@ -718,25 +739,14 @@ const validationReport:
   );
 ```
 
-| Variable | Type | Meaning |
-|---|---|---|
-| `requestBody` | `unknown` | untrusted transport input |
-| `prepared` | `PreparedModel` | exact prepared model that owns document decoding |
-| `interpreter` | `Interpreter` | active interpreter created by the same prepared owner that decodes the snapshot |
-| `decodeLimits` | `DocumentDecodeLimits` | one complete positive-safe-integer ingress limit set reused by both stages |
-| `placementDocumentInputV1Schema` | `z.ZodType<PlacementDocumentInputV1>` | reusable strict Zod schema configured with the portable subset of `decodeLimits` |
-| `documentInput` | `PlacementDocumentInputV1` | strict portable placement DTO |
-| `decodeOptions` | `DocumentDecodeOptions` | core model-aware decode options carrying the same complete limits |
-| `snapshot` | `DocumentSnapshot` | frozen model-owned document |
-| `validationOptions` | `ValidationOptions` | explicit per-call Interpreter options |
-| `validationReport` | `ValidationReport` | canonical detached A12 validation result |
-
 The numeric limits are an illustrative service policy, not library defaults. A deployment chooses them from its payload and model constraints and keeps them outside evaluator hot paths.
 
 The two stages answer different questions:
 
 1. Zod establishes that the external value has the versioned transport shape.
 2. `readPlacements` establishes model paths, coordinate arity, model ownership, and A12 document storage semantics.
+
+Zod transport diagnostics and model-aware Interpreter diagnostics remain separate channels. Within `DocumentInputDiagnostic`, `inputPath` identifies the portable transport location while `modelPath` identifies the attempted A12 model location; projection never substitutes `modelPath` for `inputPath`.
 
 The dependency-free Interpreter API retains its own safe `unknown` decoding boundary. Zod is an optional alternative for applications already using Zod, not the only way to process untrusted input.
 
@@ -789,7 +799,9 @@ createPreparedDocumentAdapter(
 
 `prepared` has type `PreparedModel` and supplies the exact model owner plus its authoritative document decoder and encoder. `limits` has type `DocumentDecodeLimits` and is captured as immutable adapter configuration. The returned `PreparedZodDocumentAdapter.owner` is the same opaque `ModelOwnerIdentity`, while `modelVersion` identifies the exact local model version. Callers derive neither identity from a model alias, path, source string, or fingerprint.
 
-The decode transform calls `prepared.documents.tryDecodePlacements(input, {limits})`, translates only its failed `DocumentInputError` result into Zod issues, and returns the authentic snapshot on success. Its output schema verifies that success through `prepared.documents.isSnapshot(value: unknown)` without structural typing or `instanceof`. `encode(snapshot)` calls the core encoder; a foreign-owner snapshot therefore propagates `ModelOwnerMismatchError` and is never relabeled as invalid portable input.
+The decode transform calls `prepared.documents.tryDecodePlacements(input, {limits})`, translates only its failed `DocumentInputError` result into Zod issues, and returns the authentic snapshot on success. Its output schema verifies that success through `prepared.documents.isSnapshot(value: unknown)` without structural typing or `instanceof`.
+
+`encode(snapshot)` calls the core encoder. A foreign-owner snapshot therefore propagates `ModelOwnerMismatchError` and is never relabeled as invalid portable input.
 
 ### 8.3 Prepared-owner and lane-owned services
 
@@ -916,13 +928,7 @@ const formProjection:
   );
 ```
 
-| Variable | Type | Meaning |
-|---|---|---|
-| `validationReport` | `ValidationReport` | canonical detached A12 validation result |
-| `mapApplicationFormPath` | `(pointer: ReportPointer) => readonly FormPathSegment[] \| undefined` | application-owned semantic mapping from an A12 report location to a form-library path; it does not rely on wrapper object identity |
-| `projectionOptions` | `A12FormProjectionOptions` | application-owned mapping from report pointers to form paths |
-| `pointer` | `ReportPointer` | one A12 report location passed to the mapping callback |
-| `formProjection` | `A12FormIssueProjection` | original report plus mapped and unmapped projected issues |
+`mapApplicationFormPath` is an application-owned semantic mapping from an A12 report location to a form-library path. It must not rely on wrapper object identity.
 
 The projection must:
 
@@ -1027,7 +1033,11 @@ Do not send these values across a Worker boundary:
 
 Send only versioned plain DTOs, model source or verified portable identifiers where the service contract permits them, and encoded detached result DTOs. Node Worker messages use structured cloning; functions cannot be cloned and class prototypes are not preserved. See the [Node.js Worker Threads documentation](https://nodejs.org/api/worker_threads.html).
 
-Every Worker message payload is received as `unknown`. A Worker-facing service validates the complete versioned outer envelope—including message kind/version, request ID, portable model and configuration IDs, placement document, and portable validation options—before routing or model lookup. `placementDocumentInputV1Schema` validates only the nested document member and is not sufficient as a Worker protocol schema. Replies carry the Interpreter API’s plain `ValidationReportWireV1` projection rather than Kotlin/JS result objects. The exact coordinator envelope belongs to the Interpreter/service contract; an optional Zod schema may mirror that portable shape without owning its routing semantics.
+Every Worker message payload is received as `unknown`. A Worker-facing service validates the complete versioned outer envelope—including message kind/version, request ID, portable model and configuration IDs, placement document, and portable validation options—before routing or model lookup.
+
+`placementDocumentInputV1Schema` validates only the nested document member and is not sufficient as a Worker protocol schema. Replies carry the Interpreter API’s plain `ValidationReportWireV1` projection rather than Kotlin/JS result objects.
+
+The exact coordinator envelope belongs to the Interpreter/service contract. An optional Zod schema may mirror that portable shape without owning its routing semantics.
 
 ### 12.3 Cache placement
 
@@ -1099,6 +1109,7 @@ The integration is acceptable only if:
 7. The TypeScript adapter delegates all A12 semantics to Kotlin-backed operations.
 8. D1/D2 interleaving retains separate warm A12 entries and does not rebuild schemas per switch.
 9. Benchmarks report Zod transport parsing separately from A12 model-aware decoding, runtime waiting, evaluation, and projection.
+10. A release benchmark gate shows no regression for no-Zod and already-owned-input paths in parser performance, prepared-AST reuse, AST traversal, warmup, or evaluation.
 
 [Zod parsing](https://zod.dev/basics) traverses input and normally returns parsed output rather than blessing the original object. A Zod transport pass followed by model-aware A12 decoding can therefore traverse some structure twice. That cost is acceptable at an untrusted boundary only after measurement; it must not migrate into warm evaluation.
 
@@ -1136,7 +1147,9 @@ These risks should be resolved in the owning API proposal or isolated behind ada
 
 `@a12/operators-zod` does not wait for Interpreter API development. It can ship as soon as the Operator API’s dependency-free scalar codecs, runtime guards, structured errors, and package-instance contract are stable.
 
-Interpreter integration begins with the A12-native minimum transport and ownership foundation defined by the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md): the versioned placement DTO, decode limits, structured input diagnostics, prepared ownership, model-aware decode, typed fast read, canonical encode, and snapshot authenticity guard. The strict Zod placement schema may be designed and tested earlier, but it should not be published before that authoritative core decoder exists; otherwise the adapter risks becoming the accidental document specification or a second validator.
+Interpreter integration begins with the A12-native minimum transport and ownership foundation defined by the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md): the versioned placement DTO, decode limits, structured input diagnostics, prepared ownership, model-aware decode, typed fast read, canonical encode, and snapshot authenticity guard.
+
+The strict Zod placement schema may be designed and tested earlier, but it should not be published before that authoritative core decoder exists. Otherwise the adapter risks becoming the accidental document specification or a second validator.
 
 1. Publish and test the dependency-free A12 scalar codecs, runtime guards, and structured conversion errors from the Operator API.
 2. Implement `@a12/operators-zod` scalar codecs and the error bridge.
@@ -1148,61 +1161,9 @@ Interpreter integration begins with the A12-native minimum transport and ownersh
 8. Add Worker-specific examples and conformance tests without embedding a Worker coordinator into the adapter package.
 9. Evaluate advisory model-derived schemas and build-time generation as separate consumer-driven work.
 
-## 17. Acceptance criteria
+The required Interpreter kernel-compatibility adapters proceed independently after the core customization SPIs are stable. They are separately packaged, licensed, and qualified and are installed only by applications that reuse kernel-interface implementations; neither Zod package waits for or depends on them.
 
-### 17.1 Package isolation
-
-- Zod is a peer dependency only of the optional TypeScript adapter packages.
-- The adapters resolve the application’s existing A12 base packages and never bundle private core-runtime copies.
-- Kotlin `commonMain`, ordinary Operator and Interpreter artifacts, and Java APIs contain no Zod dependency.
-- Neither Zod adapter has a direct or transitive dependency on an A12 Kernel API or an Interpreter kernel-compatibility artifact; kernel-interface reuse is installed, licensed, and qualified separately.
-- A no-Zod application has no Zod bundle, startup, allocation, or runtime cost.
-
-### 17.2 Operator adapter
-
-- Every bidirectional adapter scalar delegates decode and encode to the corresponding core `A12Codec`.
-- The decode-only safe-number adapter delegates to `A12Integer.tryFromSafeInteger` and exposes no encode-safe contract.
-- The initial catalog includes string, Boolean, Confirm, decimal string, bigint integer, safe-number integer decode, date, time, date range, and date-time where the core declares exact support.
-- Safe native number conversion is decode-only and rejects non-finite, fractional, or unsafe values.
-- No JavaScript `number` codec is advertised as exact decimal conversion.
-- No JavaScript `Date` codec is advertised as an A12 calendar-date conversion.
-- Encode-safe object and array composition accepts schemas carrying adapter-issued provenance metadata and derives both sides from one schema shape; this is an accidental-misuse guard rather than a hostile-code boundary.
-- Encode-safe object composition rejects unknown members rather than silently stripping them.
-- Expected core conversion errors become nested Zod issues with stable A12 metadata.
-- Unexpected failures are not relabeled as invalid user input.
-- Array issue paths retain every failing element index.
-- No operator is wrapped in Zod at call time.
-
-### 17.3 Interpreter adapter
-
-- `PlacementDocumentInputV1` has a strict, versioned, fixture-tested schema.
-- Unknown object properties are rejected.
-- Transport and model-aware diagnostics remain distinct.
-- The Zod schema does not pre-validate raw A12 field semantics.
-- Every untrusted service example uses one explicit immutable `DocumentDecodeLimits` value for both the Zod transport schema and core model-aware decode.
-- A snapshot adapter delegates decode to one exact prepared owner’s `tryDecodePlacements`, delegates encode to `encodePlacements`, and uses the owner’s runtime guard.
-- Foreign-owner and structurally forged snapshots fail before encoding or evaluation, and encode-side owner mismatch remains `ModelOwnerMismatchError` rather than a Zod document-input issue.
-- Lane-owned implementations use the static Zod schema followed by the selected lane’s core decoder; they do not construct a public owner adapter from service routing tokens.
-- Report projection always retains the canonical `ValidationReport`.
-- Mapped issues retain their original finding or unsupported record.
-- Unmapped findings and unsupported programs remain visible.
-- An empty projected issue list does not imply a fully supported or error-free A12 report.
-
-### 17.4 Backend, security, and performance
-
-- Static schemas are created once per JavaScript realm.
-- Zod schemas, Kotlin/JS wrappers, snapshots, and local owner identities do not cross Worker boundaries.
-- Every Worker payload is treated as `unknown` and its complete versioned outer envelope is validated before routing.
-- Mutable global Zod configuration is not changed per request.
-- Schemas and adapter callbacks are synchronous, pure, and request-independent.
-- Raw input is omitted from issues by default.
-- Resource limits are applied outside evaluator hot paths.
-- Zod parse time is measured separately from A12 decoding and evaluation.
-- The strict Zod pass plus core document decode is reported honestly as two traversals.
-- Model interleaving does not rebuild schemas per request or contaminate owner-bound caches.
-- Parser, prepared-AST, AST traversal, warmup, and evaluation benchmarks show no regression for no-Zod and already-owned-input paths.
-
-## 18. Open integration decisions
+## 17. Open integration decisions
 
 The following decisions remain local to the optional adapters and do not change A12 semantics:
 
@@ -1214,7 +1175,7 @@ The following decisions remain local to the optional adapters and do not change 
 6. Which real form-library integrations justify convenience projections beyond the lossless generic projection.
 7. Whether advisory model-derived schemas and build-time model-specific generation become separate packages.
 
-## 19. Recommendation
+## 18. Recommendation
 
 Ship optional Zod integration as a boundary layer over complete A12-native APIs.
 
