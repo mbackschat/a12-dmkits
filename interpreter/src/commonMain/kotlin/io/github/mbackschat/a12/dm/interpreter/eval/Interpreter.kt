@@ -409,14 +409,13 @@ class Interpreter(
                 }
             }
             a is Expr.Field && ctxOf(a).declaredKind(a.path) == null -> {
-                // A GROUP scope expands to its contained fields. The tally reads every instantiated cell (the
-                // poison is order-free once no scan stop can precede it within the group — an approximation of
-                // the kernel's per-field declared interleaving, which no probe distinguishes yet).
-                val fs = ctxOf(a).fillScope(a.path, isGroup = true)
-                if (fs.hasUnknownInst) throw PoisonedReadException(a.path)
-                repeat(fs.tInst) { yield(true) }
-                repeat(fs.fInst) { yield(false) }
-                if (declaredTail && fs.anyEmptyDeclared) yield(false)
+                // A GROUP scope: scan its contained fields in DECLARATION order, each a lazy filled/empty read that
+                // poisons on a malformed cell — so an operator's early-stop skips a later invalid cell, the kernel's
+                // ordered getAllContainedFields scan (IF147). Was an eager whole-group tally that poisoned on ANY
+                // unknown regardless of a preceding decisive cell (the IF147 over-poison, probe-confirmed).
+                val c = ctxOf(a)
+                for (state in c.containedFieldStates(a.path)) yield(filledOrPoison(a.path, state))
+                if (declaredTail && c.fillScope(a.path, isGroup = true).anyEmptyDeclared) yield(false)
             }
             else -> yield(
                 when (presenceTri(a)) {

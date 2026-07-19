@@ -197,6 +197,11 @@ interface EvalContext {
             else -> CellState.FILLED
         }
     }
+
+    /** The COMPUTE-mode scan states of a bare GROUP's contained fields, in DECLARATION order — the ordered read
+     *  stream a compute-mode group-fill quantifier scans lazily (one filled/empty read per cell; a [Document]
+     *  provides the precise declaration order + formal check). Empty by default. */
+    fun containedFieldStates(groupPath: String): List<CellState> = emptyList()
 }
 
 /** A cell's COMPUTE-mode read state ([EvalContext.cellState], IF85) — a visited [INVALID] cell poisons the

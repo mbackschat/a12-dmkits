@@ -698,6 +698,29 @@ class Document(internal val config: DocumentConfig) {
             return FillScope(t, f, n, unknown, allFilled, anyEmpty)
         }
 
+        // The contained fields' instantiated cell states in DECLARATION order (`kinds` is insertion-ordered from
+        // the model's field order) — the ordered stream a COMPUTE-mode bare-group fill quantifier scans, one lazy
+        // filled/empty read per cell (an INVALID one poisons in Interpreter.scanFilled), so an operator's
+        // early-stop skips a later invalid cell — the kernel's ordered getAllContainedFields scan (IF147). Unlike
+        // [fillScope]'s sorted, eager tally, this preserves declaration order and does not itself trigger a poison.
+        override fun containedFieldStates(groupPath: String): List<CellState> {
+            val prefix = "$groupPath/"
+            val out = ArrayList<CellState>()
+            for (field in kinds.keys) {
+                if (!field.startsWith(prefix)) continue
+                val parts = partsOf(field)
+                val common = commonPrefixLen(parts, partsOf(group))
+                for (v in instCells(field, parts, common)) {
+                    out += when {
+                        v == null -> CellState.EMPTY
+                        v is Val.Unknown -> CellState.INVALID
+                        else -> CellState.FILLED
+                    }
+                }
+            }
+            return out
+        }
+
         /** The INSTANTIATED cells of a descendant [field]: one cell (its scope reps) when no repeatable level lies
          *  below the scope, else one per instantiated rep-tuple. Each entry is the resolved value, or null (empty). */
         private fun instCells(field: String, parts: List<String>, common: Int): List<Val?> {
