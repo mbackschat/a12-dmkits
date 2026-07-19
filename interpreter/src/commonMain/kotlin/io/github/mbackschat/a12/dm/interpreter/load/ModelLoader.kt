@@ -22,7 +22,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Severity
 
 /**
  * The interpreter's own DM-JSON → [ModelDef] loader — kernel-free and **multiplatform** (JVM + JS), so a
- * standalone consumer (the browser library, a JVM library user) can load a real model without hand-building a
+ * standalone consumer (a Node-hosted JS library or a JVM library user) can load a real model without hand-building a
  * [ModelDef] and without the kernel. It is the engine dmtool's native runtime verbs sit on: `InterpreterModelLoader`
  * (in `:cli`) is a thin JVM delegate over this.
  *
