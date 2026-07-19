@@ -219,11 +219,40 @@ data class RuleDef(
 )
 
 /**
- * One TIERED alternative of a [ComputationDef]: an optional [precondition] (DSL condition text) gating an
- * [operation] (DSL value-expression text). The kernel selects the first alternative whose precondition holds
- * (a null precondition always applies — the unconditional default), KERNEL-FINDINGS §11 "tiered computations".
+ * A computation alternative's tolerance band — the kernel's `toleranceRangeOp` (`Computation.TR{1,2,5,10}`,
+ * serialized as `DiffersWithToleranceRange{N}`). When present, the implicit computation-validation compares the
+ * stored value against the operation with `DiffersWithToleranceRange{N}` (fires iff `|stored − op| > N`) instead
+ * of strict `!=`, so a stored value within ±N does not over-fire (IF148).
  */
-data class ComputationAlternative(val precondition: String?, val operation: String)
+enum class ToleranceBand(val wire: String, val amount: Int) {
+    TR1("DiffersWithToleranceRange1", 1),
+    TR2("DiffersWithToleranceRange2", 2),
+    TR5("DiffersWithToleranceRange5", 5),
+    TR10("DiffersWithToleranceRange10", 10);
+
+    companion object {
+        /** Map a DM-JSON `toleranceRangeOp` value to its band — null/empty → no tolerance (strict `!=`); an
+         *  unknown non-empty value is a **loud reject** (never silently a strict comparison). */
+        fun ofWire(wire: String?): ToleranceBand? {
+            if (wire.isNullOrEmpty()) return null
+            return entries.firstOrNull { it.wire == wire }
+                ?: throw IllegalArgumentException(
+                    "unknown toleranceRangeOp '$wire' — expected one of ${entries.map { it.wire }}")
+        }
+    }
+}
+
+/**
+ * One TIERED alternative of a [ComputationDef]: an optional [precondition] (DSL condition text) gating an
+ * [operation] (DSL value-expression text), with an optional [tolerance] band. The kernel selects the first
+ * alternative whose precondition holds (a null precondition always applies — the unconditional default),
+ * KERNEL-FINDINGS §11 "tiered computations".
+ */
+data class ComputationAlternative(
+    val precondition: String?,
+    val operation: String,
+    val tolerance: ToleranceBand? = null,
+)
 
 /**
  * The declared field-type constraints the kernel auto-validates against a filled value (IF20) — string length

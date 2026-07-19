@@ -187,7 +187,11 @@ public final class RuntimeLaws {
 
     /** One tiered-computation alternative: an optional {@code precondition} gating an {@code operation} (the kernel
      *  selects the first whose precondition holds; a null precondition is unconditional). For {@link #withTieredComputation}. */
-    public record CompAlt(String precondition, String operation) {
+    public record CompAlt(String precondition, String operation, String toleranceRangeOp) {
+        /** A tolerance-less alternative (strict {@code !=} implicit validation). */
+        public CompAlt(String precondition, String operation) {
+            this(precondition, operation, null);
+        }
     }
 
     /**
@@ -206,6 +210,9 @@ public final class RuntimeLaws {
             alts.append("{ ");
             if (a.precondition() != null) {
                 alts.append("\"precondition\": \"").append(esc(a.precondition())).append("\", ");
+            }
+            if (a.toleranceRangeOp() != null) {
+                alts.append("\"toleranceRangeOp\": \"").append(esc(a.toleranceRangeOp())).append("\", ");
             }
             alts.append("\"operation\": \"").append(esc(a.operation())).append("\" }");
         }

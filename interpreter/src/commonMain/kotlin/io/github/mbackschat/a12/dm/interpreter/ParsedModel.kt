@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.interpreter.model.ToleranceBand
 import io.github.mbackschat.a12.dm.interpreter.parse.RefResolver
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import io.github.mbackschat.a12.dm.interpreter.parse.parseExpression
@@ -15,7 +16,7 @@ import io.github.mbackschat.a12.dm.interpreter.parse.parseExpression
  *  precondition holds (null precondition = unconditional); a present common precondition gates them all. */
 internal class ParsedComputation(val commonPrecondition: Cond?, val alternatives: List<ParsedAlternative>)
 
-internal class ParsedAlternative(val precondition: Cond?, val operation: Expr)
+internal class ParsedAlternative(val precondition: Cond?, val operation: Expr, val tolerance: ToleranceBand?)
 
 /**
  * The parse-once caches + the implicit computation-validation rules — a call-invariant collaborator of the
@@ -70,7 +71,7 @@ internal class ParsedModel(private val model: ModelDef) {
 
     private fun parseComputation(c: ComputationDef): ParsedComputation = ParsedComputation(
         c.commonPrecondition?.let { parseCondition(it, c.group, refResolver) },
-        c.alternatives.map { ParsedAlternative(it.precondition?.let { p -> parseCondition(p, c.group, refResolver) }, parseExpression(it.operation, c.group, refResolver)) },
+        c.alternatives.map { ParsedAlternative(it.precondition?.let { p -> parseCondition(p, c.group, refResolver) }, parseExpression(it.operation, c.group, refResolver), it.tolerance) },
     )
 
     /** The parsed condition AST for [rule] — cached for a model rule or an implicit computation-validation rule;
@@ -121,13 +122,15 @@ internal class ParsedModel(private val model: ModelDef) {
      * per-tier semantics, gated by the same preconditions the compute path uses (so `compute` and this validation
      * never disagree on which tier applies). Building the AST from the parsed components (not a re-parsed string)
      * means the operation/precondition ASTs are identical to compute's and cannot fail to re-parse (the initial
-     * string-synthesis attempt introduced parser crashes — IF65). (`@SuppressWarning` + tolerance-`!=` ops are not modeled:
-     * absent from the corpora; a tolerance-op computation would compare with `!=`, a narrow over-fire to revisit.) */
+     * string-synthesis attempt introduced parser crashes — IF65). An alternative that declares a
+     * `toleranceRangeOp` compares with `DiffersWithToleranceRange{N}` (fires iff `|stored − op| > N`) instead of
+     * strict `!=`, so a stored value within the band does not over-fire (IF148, was IG96). */
     private fun implicitComputationCond(comp: ComputationDef): Cond {
         val parsed = parsedOf(comp)
         val fExpr = Expr.Field(comp.targetPath)
         fun alternative(a: ParsedAlternative): Cond {
-            val cmp = Cond.Cmp(CmpOp.NE, fExpr, a.operation)
+            val cmp = a.tolerance?.let { Cond.Tolerance(fExpr, a.operation, dec(it.amount)) }
+                ?: Cond.Cmp(CmpOp.NE, fExpr, a.operation)
             return a.precondition?.let { Cond.And(it, cmp) } ?: cmp
         }
         val body = parsed.alternatives.map(::alternative).reduce { l, r -> Cond.Or(l, r) }

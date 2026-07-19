@@ -9,6 +9,7 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
+import io.github.mbackschat.a12.dm.interpreter.model.ToleranceBand
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
@@ -178,7 +179,8 @@ object ModelLoader {
                             val common = if (c.hasNonNull("commonPrecondition")) c.path("commonPrecondition").asText() else null
                             val alts = c.path("computationAlternatives").elements().map { alt ->
                                 val precond = if (alt.hasNonNull("precondition")) alt.path("precondition").asText() else null
-                                ComputationAlternative(precond, alt.path("operation").asText())
+                                val tolerance = ToleranceBand.ofWire(alt.path("toleranceRangeOp").asTextOrNull())
+                                ComputationAlternative(precond, alt.path("operation").asText(), tolerance)
                             }
                             // The computation's element name is the error code of its implicit validation rule (IF32).
                             val compName = if (node.hasNonNull("name")) node.path("name").asText() else null
