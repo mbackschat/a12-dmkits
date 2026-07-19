@@ -498,7 +498,7 @@ The `^` power operator (parser `CheckOperationImpl`): **unparenthesized nesting 
 - **The regex gate is Java `Pattern.compile` plus a limited `PatternUtils.isPatternValid` check** (the extmp world uses `CommonUtils.isRegExValid` instead). Lookbehind `(?<=a)b` is Java-valid yet rejected with `MVK_INVALID_PATTERN`, so a Java compile pre-check is necessary but not sufficient. The earlier inference that the additional gate enforces a Java/JavaScript-portable subset was false: live kernel checks accept inline flags `(?i)` and Java escapes `\R`/`\h`, all rejected by JS `RegExp` under Kotlin/JS. Kernel-valid and JS-portable are therefore distinct contracts; the interpreter gap is IG90.
 - **The empty pattern `""` is accepted** for document models (the non-extmp branch; extmp additionally requires non-empty).
 
-*(Locked for the slot rules/lookbehind discriminator: `validate.laws.PatternLawsTest` + N7 `PatternMatched`/`PatternViolated` examples. Live acceptance probes for `(?i)`, `\R`, and `\h`: 2026-07-19; cross-platform lock pending IG90.)*
+*(Locked for the slot rules/lookbehind discriminator: `validate.laws.PatternLawsTest` + N7 `PatternMatched`/`PatternViolated` examples. Live acceptance probes for `(?i)`, `\R`, and `\h`: 2026-07-19. IF154 locks the selected `\R`/`\h` translation slice; complete cross-platform legal-pattern coverage remains IG90.)*
 
 ## §7 supplement — string-literal escaping is quote-doubling, not backslashes
 
@@ -1875,27 +1875,31 @@ The kernel has TWO regex loci, and BOTH compile the raw authored pattern string 
 - **Declared STRING/predefined `pattern`** — `FormatDefinitionString`: JVM `Pattern.compile(muster)` held on the format-def (`pattern.matcher(wert).matches()`, full-region); the TS twin (`FormatDefinitionString.ts`) builds `new RegExp("^(?:" + muster + ")$")` at construction and calls `.test(wert)`.
 - **Condition `PatternMatched`/`PatternViolated` literal** — `BedingungsOperatorHelper.getPattern(regex)`: JVM a static `ConcurrentHashMap<String,Pattern>` via `computeIfAbsent(regex, Pattern::compile)`; the TS twin (`BedingungsOperatorHelper.ts`) a static `Map<string,RegExp>` via `new RegExp("^(?:" + regex + ")$")`. Both are **compile-once** (never per row/eval).
 
-**The model check DOES validate the pattern — for BOTH Java and JavaScript compatibility (A12K-30).** *(Corrects this note's first draft, which wrongly said the model check does not validate pattern syntax — that was checked only on `StringType` and missed the two validators below.)* A pattern is rejected (`MVK_INVALID_PATTERN` — "not a valid pattern to compare") unless it BOTH `Pattern.compile`s (Java syntax) AND passes `PatternUtils.isPatternValid`, at BOTH loci: the condition operator (`CheckVergleichsBedingungImpl.checkPatternOp`) and the declared field pattern (`CheckStringPattern`, `ICustomCondition` — "the pattern of a field type string for A12 must be valid"). `isPatternValid` = the pattern must NOT match `FORBIDDEN_PATTERN_PATTERN`:
+**The model check validates Java syntax and a limited additional blacklist; it does not establish JavaScript portability.** *(Corrects this note's first draft, which wrongly said the model check did not validate pattern syntax, and its second draft, which promoted the helper's intent to a complete portability guarantee.)* A pattern is rejected (`MVK_INVALID_PATTERN` — "not a valid pattern to compare") unless it both `Pattern.compile`s and passes `PatternUtils.isPatternValid`, at both loci: the condition operator (`CheckVergleichsBedingungImpl.checkPatternOp`) and the declared field pattern (`CheckStringPattern`). `isPatternValid` means only that the source does not match `FORBIDDEN_PATTERN_PATTERN`:
 
 ```
-([?+}*]\+)          possessive quantifiers  a++ a*+ a?+ a{n}+
-(\(\?[<>])          lookbehind (?<…  and atomic/independent group (?>…
-(\\[AGZzaepQE])     the Java-ONLY escapes  \A \G \Z \z \a \e \p \Q \E
-((?<!\\)\[…(?<!\\)\[)  a nested unescaped [ — char-class intersection [a-z&&[^b]]
+([?+}*]\+)             possessive quantifiers: a++ a*+ a?+ a{n}+
+(\(\?[<>])             every (?<… prefix (lookbehind AND named capture), plus atomic/independent (?>…
+(\\[AGZzaepQE])        exactly \A \G \Z \z \a \e \p \Q \E; uppercase \P is not included
+((?<!\\)\[…(?<!\\)\[) nested unescaped [ syntax; this is not a ban on every && intersection
 ```
 
-Its Javadoc states the intent outright: *"true if the given pattern is valid for java **and for java script**."* So the kernel deliberately **forbids the JS-incompatible constructs** — every one of the above is exactly what JS `RegExp` throws on or has no equivalent for. A model using them is not loadable.
+The helper's Javadoc states a Java-and-JavaScript intent, but the implementation is the finite blacklist above. A model using a listed form is not loadable; a model avoiding those forms is not thereby proved portable.
 
-**The kernel's own JS/TS target then feeds the (already JS-validated) raw pattern to `new RegExp("^(?:" + p + ")$")` — no translation.** Because the legal set is JS-safe by design, the kernel-TS mostly works. But `isPatternValid` is **INCOMPLETE**: it still admits two kernel-LEGAL constructs that JS handles differently, so a raw-`RegExp` JS consumer (the kernel-TS, or Kotlin `Regex` on JS) still diverges on them:
+**The kernel's own JS/TS target feeds the raw accepted pattern to `new RegExp("^(?:" + p + ")$")` — no translation.** The admitted Java-vs-JS divergence is broader than two construct families:
 
 | kernel-LEGAL construct | JS `RegExp` | note |
 |---|---|---|
 | `\R` `\h` `\H` `\v` `\V` | **accepted, WRONG meaning** (identity escape / JS's own smaller `\v`) | silent semantic divergence — the dangerous class |
-| inline flags `(?i)` `(?s)` `(?m)` `(?x)` (global or scoped `(?i:…)`) | **SyntaxError** | throws on JS; `isPatternValid` does not forbid them |
-| ordinary regex, classes, `{n,m}`, `\d \w \s`, `|`, `(?:…)`, `(?=…)`, named groups `(?<n>…)`+`\k<n>` | **identical** | the overwhelming majority — parity on both hosts |
+| inline flag enable/disable/scoped forms, e.g. `(?i)`, `(?i:…)`, `(?-i)` | **SyntaxError** without an explicit translation | the blacklist does not forbid them |
+| `\s`/`\S` on Unicode whitespace | **different membership** | for NBSP U+00A0 Java `\s` is false while JS `\s` is true |
+| `.` on Java line terminators and supplementary code points | **different default/code-unit behavior** | NEL U+0085 and a supplementary code point are concrete whole-match discriminators |
+| unmatched backreferences | **different match behavior** | `(a|(b))\2c` over `ac` is false in Java and true in JS |
+| `[a-z&&c-e]` | **different class interpretation** | the blacklist catches a nested `[` form, not every Java intersection |
+| `\P{…}`, `\x{…}`, `\N{…}`, `\X`, `\b{g}` | **throws or is silently misread** | these Java-valid forms are not in the exact blacklist |
 
 Anchoring: `^(?:…)$` (the non-capturing group is load-bearing — a naive `^…$` mis-anchors top-level alternation, e.g. `^ab|cd$` matches `"abX"`). Full-region match on both hosts, matching JVM `matcher.matches()`.
 
-**Consequence (owner decision, IG90).** The normative semantics are **dynamic-Groovy = Java `Pattern`** (IF136); the kernel-TS raw-`new RegExp` is *another codegen strategy* and its JS limitations are a **recorded, never-adopted** divergence, not the language definition. So a kernel-faithful interpreter implements Java semantics on JS: the forbidden set is **parity by construction** (never in a loadable model); `\h \H \v \V \R` are **translated** to Java semantics; inline flags remain the open residual (INTERPRETER-GAPS IG90 / the graduated `IF<n>`).
+**Consequence (owner decision, IG90).** The normative semantics are **dynamic-Groovy = Java `Pattern`** (IF136); the kernel-TS raw-`new RegExp` limitation is a recorded, never-adopted strategy divergence. IF154 translates the exercised `\h \H \v \V \R` slice and removes per-row condition compilation, while IG90 remains open for the complete admitted Java-pattern domain.
 
-**Relevant to AUTHORING too (rulekit / modelkit / dmtool).** Because `isPatternValid` gates BOTH condition and declared-field patterns, an author who writes a rule condition (`PatternMatched`/`PatternViolated`) or a field `pattern` with a forbidden construct gets a kernel `MVK_INVALID_PATTERN` at `rule check` / `model check` — the authoring surfaces should carry this constraint (operator-catalog gotcha + the diagnostic enricher; see DEV-API-GAPS / FEATURE-GAPS).
+**Relevant to AUTHORING too (rulekit / modelkit / dmtool).** Because the two-stage gate applies to condition and declared-field patterns, an author who writes a Java-invalid or explicitly blacklisted pattern gets `MVK_INVALID_PATTERN` at `rule check` / `model check`. The authoring surface must explain that exact gate without claiming it proves portability; the open catalog/schema/diagnostic/preflight work is recorded once in [DEV-API-GAPS](DEV-API-GAPS.md).
