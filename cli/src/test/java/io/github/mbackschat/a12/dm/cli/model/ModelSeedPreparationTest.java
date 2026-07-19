@@ -7,8 +7,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -22,13 +26,18 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  * verb uses ({@code InterpreterEngine.expandForEval}), not read raw DM-JSON and load it directly. Two
  * consequences of that boundary are locked here over own-domain (insurance / e-commerce) fixtures: an included
  * sub-model's fields are instantiated (the mount is not silently dropped), and an imported typedef field is
- * seeded from its RESOLVED kind (not flattened to STRING). The loader-side refusal of any residue that escapes
- * preparation is the sibling {@code ModelLoaderPreparedGuardTest}; the eval-path twin is
+ * seeded from its RESOLVED kind (not flattened to STRING), and opaque element ids are normalized without losing
+ * structure or constraints. The loader-side refusal of any residue that escapes preparation is the sibling
+ * {@code ModelLoaderPreparedGuardTest}; the eval-path twin is
  * {@code IncludeEvalDefaultPathTest}.
  */
 class ModelSeedPreparationTest {
 
     private static final ObjectMapper M = new ObjectMapper();
+    private static final ObjectMapper DM_JSON = JsonMapper.builder()
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
+            .build();
 
     // ── include: a policy mounting a benefits sub-model ─────────────────────────────────────────────
 
@@ -109,5 +118,41 @@ class ModelSeedPreparationTest {
         // Without it the TypeDefType flattens to STRING and Price would be a "s..." string token instead.
         assertTrue(price.matches("-?\\d+(\\.\\d+)?"),
                 () -> "the imported typedef field is seeded from its resolved NUMBER kind, not STRING: " + seed.out());
+    }
+
+    @Test
+    void seedNormalizesOpaqueElementIdsWithoutLosingStructureOrConstraints(@TempDir Path dir) throws Exception {
+        String prepared = DocumentModelDraft.named("claims").locale("en_US")
+                .rootGroup("Claim", claim -> claim
+                        .stringField("Reference", field -> field.minLength(4).maxLength(4))
+                        .numberField("Amount", field -> field.fractionDigits(2).min("10.00").max("20.00")))
+                .build().toJson();
+        Path namePathModel = dir.resolve("claims-name-path.dm.json");
+        Path opaqueModel = dir.resolve("claims-opaque.dm.json");
+        Files.writeString(namePathModel, prepared);
+        Files.writeString(opaqueModel, withOpaqueElementIds(prepared));
+
+        CliTestSupport.Result namePathSeed = CliTestSupport.run(
+                "-m", namePathModel.toString(), "model", "seed", "--seed", "19");
+        CliTestSupport.Result opaqueSeed = CliTestSupport.run(
+                "-m", opaqueModel.toString(), "model", "seed", "--seed", "19");
+
+        assertEquals(0, namePathSeed.code(), () -> "name-path seed succeeds: " + namePathSeed.out() + namePathSeed.err());
+        assertEquals(0, opaqueSeed.code(), () -> "opaque-id seed succeeds: " + opaqueSeed.out() + opaqueSeed.err());
+        assertEquals(M.readTree(namePathSeed.out()).path("fields"), M.readTree(opaqueSeed.out()).path("fields"),
+                "opaque ids cross ModelReader.expand and preserve the prepared model's structure and constraints");
+    }
+
+    private static String withOpaqueElementIds(String json) throws IOException {
+        JsonNode root = DM_JSON.readTree(json);
+        replaceElementIds(root);
+        return DM_JSON.writeValueAsString(root);
+    }
+
+    private static void replaceElementIds(JsonNode node) {
+        if (node instanceof ObjectNode object && object.hasNonNull("type") && object.hasNonNull("id")) {
+            object.put("id", "opaque-" + object.path("name").asText());
+        }
+        node.forEach(ModelSeedPreparationTest::replaceElementIds);
     }
 }

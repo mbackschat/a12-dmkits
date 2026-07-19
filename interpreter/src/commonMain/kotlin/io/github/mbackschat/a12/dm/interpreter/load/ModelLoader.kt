@@ -41,9 +41,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.Severity
  *
  * ## Scope — EXPANDED, SELF-CONTAINED models only, ENFORCED
  * The loader handles a **single, fully-expanded** model: no `modelReferences`/`imports` resolution and no
- * `TypeDefType` de-referencing. Includes and type-definition libraries are resolved **upstream** by the kernel's
- * `expand()` (native-safe via the read tier) before the DM-JSON reaches here. This boundary is **enforced, not
- * assumed** ([requirePrepared], IF145): a model that still carries an unexpanded include (`modelAlias`), an
+ * `TypeDefType` de-referencing. Includes, type-definition libraries, and opaque element ids are resolved
+ * **upstream** by the kernel-free `dm.core.ModelReader.expand` preparation path before the DM-JSON reaches here.
+ * This boundary is **enforced, not assumed** ([requirePrepared], IF145): a model that still carries an
+ * unexpanded include (`modelAlias`), an
  * unresolved `TypeDefType`, or a non-name-path (opaque) id is **rejected loud** with a corrective message —
  * never loaded as a structurally plausible but wrong model (a dropped mount, a typedef silently flattened to
  * STRING, an opaque id trusted as a path). Every CLI consumer prepares upstream via `ModelReader.expand`; this
