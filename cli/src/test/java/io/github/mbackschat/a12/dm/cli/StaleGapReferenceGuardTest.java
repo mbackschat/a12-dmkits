@@ -7,6 +7,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -26,11 +27,10 @@ import org.junit.jupiter.api.Test;
  * origin-labels: "the IG44 drill", "the IG56 E3 hunt", "IG13 residual" — all legitimate history, not to be
  * touched). The mechanical signal is <b>present-tense-OPEN framing</b>: a deleted gap cited as {@code pending IGn}
  * / {@code awaits IGn} / {@code future work … IGn} / {@code not yet … IGn} / {@code TODO … IGn} is a CURRENT-STATE
- * claim that misleads (it reads as open work), whereas a bare descriptive cite is history. So the guard scans the
- * non-Markdown source ({@code .kt}/{@code .java}/{@code .gradle}) for a <b>case-sensitive</b> {@code IGn} token
- * (a lowercase {@code ig44.vcv} drill namespace is not a reference), and fails only when: the {@code n} is not a
- * LIVE ledger row ({@code docs/INTERPRETER-GAPS.md}), the line frames it as OPEN, AND the line is not explicitly
- * historical ({@code no longer}, {@code once …}, {@code was IGn}, {@code graduated}, {@code IGn -> IFm}). Repointing
+ * claim that misleads (it reads as open work), whereas a bare descriptive cite is history. The guard derives every
+ * repository module source root plus every module build file, then delegates to
+ * {@link StaleGapReferenceClassifier}: block/consecutive-line comments are read as logical comments, and each
+ * reference is classified locally so another reference's historical/open wording cannot leak across it. Repointing
  * a graduated gap's <i>bare</i> cite to its {@code IFn} is a doc-discipline practice, deliberately not mechanized
  * here — that would ban the provenance the gap protects.
  */
@@ -39,99 +39,122 @@ public class StaleGapReferenceGuardTest {
     private static final Path ROOT = Path.of("..").toAbsolutePath().normalize();
     private static final Path LEDGER = ROOT.resolve("docs/INTERPRETER-GAPS.md");
 
-    /** Source trees whose comments cite interpreter gaps — the interpreter engine, its `:adapter` differential/perf
-     *  estate, and the CLI. (The kit modules — rulekit/modelkit/edit/core — carry dmkit gaps, not interpreter IGs.)
-     *  These are declared as the `staleGapGuardTest` task's inputs (cli/build.gradle), the docGuardTest pattern. */
-    private static final List<Path> SRC_ROOTS = List.of(
-            ROOT.resolve("interpreter/src"), ROOT.resolve("adapter/src"), ROOT.resolve("cli/src"));
-
-    private static final List<Path> GRADLE_FILES = List.of(
-            ROOT.resolve("interpreter/build.gradle"), ROOT.resolve("adapter/build.gradle"),
-            ROOT.resolve("cli/build.gradle"));
-
-    /** This file names deleted gaps as examples in its own doc — exempt it from its own scan. */
-    private static final String SELF = "StaleGapReferenceGuardTest.java";
-
-    /** A gap reference: uppercase {@code IG} + digits, word-bounded. Case-sensitive by construction. */
-    private static final Pattern IG = Pattern.compile("\\bIG(\\d+)\\b");
-
-    /** Present-tense-OPEN framing — a deleted gap here is a misleading current-state claim, not history. */
-    private static final Pattern OPEN = Pattern.compile(
-            "\\b(pending|awaits?|await|not yet|not-yet|future work|blocked on|TODO)\\b");
-
-    /** An explicit historical form that turns a present-tense-looking line back into provenance (so it is OK). */
-    private static final Pattern HISTORICAL = Pattern.compile(
-            "no longer|\\bonce\\b|was IG\\d+|graduated|formerly|retired|closes? IG\\d+|IG\\d+ ?-?[>→] ?IF");
+    /** The classifier and this guard contain deliberate deleted-gap canaries; they cannot scan themselves. */
+    private static final String SELF_PREFIX = "StaleGapReference";
+    private static final Pattern GAP_ROW = Pattern.compile("^- \\*\\*IG(\\d+) — ");
 
     @Test
     public void noPresentTenseReferenceToADeletedGap() throws IOException {
         Set<Integer> live = liveGapRows();
-        assertTrue(live.size() >= 15, () -> "sanity: expected many live gap rows, found " + live.size()
-                + " — did the ledger move or its row format change?");
 
         List<String> violations = new ArrayList<>();
-        for (Path root : SRC_ROOTS) {
-            if (!Files.isDirectory(root)) {
-                continue;
-            }
+        for (Path root : sourceRoots()) {
             try (Stream<Path> files = Files.walk(root)) {
                 files.filter(StaleGapReferenceGuardTest::isScannable).forEach(p -> scan(p, live, violations));
             }
         }
-        for (Path g : GRADLE_FILES) {
-            if (Files.isRegularFile(g)) {
-                scan(g, live, violations);
-            }
+        for (Path buildFile : buildFiles()) {
+            scan(buildFile, live, violations);
         }
 
         assertTrue(violations.isEmpty(), () -> "present-tense references to DELETED interpreter gaps — repoint to the "
                 + "graduated IFn (or the current IG), or use an explicit historical form (`IGn -> IFm`, `was IGn`, "
-                + "`graduated from IGn`, or a `[IGn]` tool label):\n  " + String.join("\n  ", violations));
+                + "or `graduated from IGn`):\n  " + String.join("\n  ", violations));
+    }
+
+    @Test
+    public void sourceDiscoveryIncludesSharedKitModules() throws IOException {
+        Set<Path> roots = new HashSet<>(sourceRoots());
+        assertTrue(roots.contains(ROOT.resolve("core/src")), "core can carry interpreter contracts and must be scanned");
+        assertTrue(roots.contains(ROOT.resolve("rulekit/src")), "rulekit source must stay in the derived scan");
+        assertTrue(roots.contains(ROOT.resolve("modelkit/src")), "modelkit source must stay in the derived scan");
+        assertTrue(roots.contains(ROOT.resolve("edit/src")), "edit source must stay in the derived scan");
     }
 
     /** The live gaps are the ledger's own row headers (`- **IGn — …`). A graduated gap's row is deleted, so it
      *  drops out of this set and every bare cite of it becomes a violation. */
     private Set<Integer> liveGapRows() throws IOException {
-        Pattern row = Pattern.compile("^- \\*\\*IG(\\d+) ");
+        assertTrue(Files.isRegularFile(LEDGER), "missing interpreter gap ledger: " + LEDGER);
+        List<String> lines = Files.readAllLines(LEDGER);
+        assertTrue(!lines.isEmpty() && lines.getFirst().equals("# interpreter — gaps & open issues"),
+                "unexpected interpreter gap ledger title/shape: " + LEDGER);
+        assertTrue(lines.contains("## 1. Open (to fix)")
+                        && lines.stream().anyMatch(line -> line.startsWith("## 2. "))
+                        && lines.stream().anyMatch(line -> line.startsWith("## 3. ")),
+                "interpreter gap ledger must retain its three lifecycle sections");
+
         Set<Integer> live = new HashSet<>();
-        for (String line : Files.readAllLines(LEDGER)) {
-            Matcher m = row.matcher(line);
-            if (m.find()) {
-                live.add(Integer.parseInt(m.group(1)));
+        List<String> malformed = new ArrayList<>();
+        List<Integer> duplicates = new ArrayList<>();
+        for (String line : lines) {
+            Matcher matcher = GAP_ROW.matcher(line);
+            if (line.startsWith("- **IG")) {
+                if (!matcher.find()) {
+                    malformed.add(line);
+                } else {
+                    int gap = Integer.parseInt(matcher.group(1));
+                    if (!live.add(gap)) {
+                        duplicates.add(gap);
+                    }
+                }
             }
         }
+        assertTrue(malformed.isEmpty(), () -> "malformed interpreter gap row(s):\n  " + String.join("\n  ", malformed));
+        assertTrue(duplicates.isEmpty(), () -> "duplicate interpreter gap ids: " + duplicates);
         return live;
     }
 
     private static boolean isScannable(Path p) {
         String s = p.toString();
-        if (s.endsWith(SELF)) {
+        if (p.getFileName().toString().startsWith(SELF_PREFIX)) {
             return false;
         }
-        return s.endsWith(".kt") || s.endsWith(".java") || s.endsWith(".gradle");
+        return s.endsWith(".kt") || s.endsWith(".java") || s.endsWith(".gradle") || s.endsWith(".gradle.kts");
+    }
+
+    private static List<Path> sourceRoots() throws IOException {
+        List<Path> roots = new ArrayList<>();
+        if (Files.isDirectory(ROOT.resolve("src"))) {
+            roots.add(ROOT.resolve("src"));
+        }
+        try (Stream<Path> children = Files.list(ROOT)) {
+            children.filter(Files::isDirectory)
+                    .map(child -> child.resolve("src"))
+                    .filter(Files::isDirectory)
+                    .forEach(roots::add);
+        }
+        return roots.stream().distinct().sorted().toList();
+    }
+
+    private static List<Path> buildFiles() throws IOException {
+        List<Path> files = new ArrayList<>();
+        for (String name : List.of("build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts")) {
+            Path file = ROOT.resolve(name);
+            if (Files.isRegularFile(file)) {
+                files.add(file);
+            }
+        }
+        try (Stream<Path> children = Files.list(ROOT)) {
+            children.filter(Files::isDirectory).forEach(child -> {
+                for (String name : List.of("build.gradle", "build.gradle.kts")) {
+                    Path file = child.resolve(name);
+                    if (Files.isRegularFile(file)) {
+                        files.add(file);
+                    }
+                }
+            });
+        }
+        return files.stream().distinct().sorted(Comparator.naturalOrder()).toList();
     }
 
     private void scan(Path p, Set<Integer> live, List<String> violations) {
-        List<String> lines;
+        String source;
         try {
-            lines = Files.readAllLines(p);
+            source = Files.readString(p);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        for (int i = 0; i < lines.size(); i++) {
-            String line = lines.get(i);
-            // A defect needs present-tense-OPEN framing that is NOT explicitly re-cast as history.
-            if (!OPEN.matcher(line).find() || HISTORICAL.matcher(line).find()) {
-                continue;
-            }
-            Matcher m = IG.matcher(line);
-            while (m.find()) {
-                int n = Integer.parseInt(m.group(1));
-                if (live.contains(n)) {
-                    continue;
-                }
-                violations.add(ROOT.relativize(p) + ":" + (i + 1) + "  IG" + n + "  |  " + line.trim());
-            }
-        }
+        StaleGapReferenceClassifier.deletedOpenReferenceHits(source, live).forEach(hit ->
+                violations.add(ROOT.relativize(p) + ":" + hit.line() + "  IG" + hit.gap() + "  |  " + hit.excerpt()));
     }
 }

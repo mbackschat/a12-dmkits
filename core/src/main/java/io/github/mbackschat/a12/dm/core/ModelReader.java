@@ -127,8 +127,8 @@ public final class ModelReader {
      * <em>verbatim</em> — i.e. whose conditions the kernel would relativize (the vanished included-root-group
      * name) but the reader does not (yet) rewrite. Empty for the common case (rules live on the base model,
      * referencing mounted fields — those need no rewrite). A consumer that must not silently mis-evaluate
-     * (the CLI eval pre-expansion, A4 / IG67) refuses when this is non-empty rather than feed possibly-wrong
-     * conditions to the engine.
+     * (the CLI eval pre-expansion, A4 / IF122; remaining legal reference shapes are IG87) refuses when this is
+     * non-empty rather than feed possibly-wrong conditions to the engine.
      */
     public List<String> includedRulesNeedingRelativization() {
         return includedRulesNeedingRelativization;
@@ -325,7 +325,7 @@ public final class ModelReader {
      *  include's absolute ref. The common SINGLE_RG {@code /RootGroup/rest} reference is rewritten to its relative
      *  post-mount form and needs no signal; every relative reference already resolves against the rule's post-mount
      *  group unchanged (KERNEL-FINDINGS "DocumentModel expansion"). A recorded residual makes a correctness-critical
-     *  consumer refuse rather than mis-evaluate (A4 / IG67). */
+     *  consumer refuse rather than mis-evaluate (A4 / IF122; remaining legal reference shapes are IG87). */
     private static void recordIncludedRulesNeedingRelativization(JsonNode node, List<String> warnings) {
         ElementType type = ElementType.of(node);
         if (type == ElementType.RULE) {
