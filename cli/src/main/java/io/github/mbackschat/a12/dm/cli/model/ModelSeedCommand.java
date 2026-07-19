@@ -11,11 +11,18 @@ import java.util.Map;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
+import io.github.mbackschat.a12.dm.cli.interp.IncludeRelativizationException;
+import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterModelLoader;
 import io.github.mbackschat.a12.dm.cli.interp.JsonInstanceSink;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 import io.github.mbackschat.a12.dm.interpreter.gen.SeedGenerator;
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 
 /**
@@ -25,6 +32,12 @@ import picocli.CommandLine.Option;
  * {@code {"fields": {…}}} tree (see {@code schema model eval}) that round-trips straight into
  * {@code model eval}/{@code compute}/{@code rule eval} as {@code --instance}. Native-safe (no kernel); deterministic
  * for a fixed {@code --seed}. Emits the document JSON directly (an artifact, not the result envelope).
+ *
+ * <p>The model is prepared through the SAME kernel-free boundary the runtime verbs use
+ * ({@link InterpreterEngine#expandForEval}) — includes mounted, imported typedefs inlined, opaque ids
+ * normalized to name-paths — so a multi-file model is seeded from its real, self-contained structure (IG91).
+ * A refusal (a relativization residual or an unresolved reference) is the structured {@code refused} envelope;
+ * the document artifact is emitted only on success.
  */
 @Command(name = "seed", mixinStandardHelpOptions = true,
         description = "Generate a best-effort, model-derived sample candidate document INSTANCE (JSON) from the model "
@@ -47,6 +60,9 @@ final class ModelSeedCommand extends BaseCommand {
             description = "rows for any repeatable group not named by --rows (default: ${DEFAULT-VALUE})")
     int rowsDefault;
 
+    @Mixin
+    WorkspaceOption workspace = new WorkspaceOption();
+
     @Override
     public Integer call() {
         String model = model();
@@ -60,9 +76,28 @@ final class ModelSeedCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
 
+        // Prepare through the SAME kernel-free boundary the runtime verbs use (IG91): mount includes + inline
+        // imported typedefs + normalize opaque ids to name-paths, so an includes/typedef/opaque-id model is
+        // seeded from its real, self-contained structure rather than the raw stub the loader would otherwise
+        // silently under-read (a dropped mount, a typedef flattened to STRING). A rare relativization residual
+        // refuses loudly here — seed never consumes rule conditions, but one boundary beats a divergent seed path.
+        ModelResolver resolver = workspace.resolverFor(model);
+        String interpJson;
+        try {
+            interpJson = InterpreterEngine.expandForEval(modelJson, resolver);
+        } catch (IncludeRelativizationException e) {
+            return refusePrecheck("model", "seed", RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED,
+                    e.getMessage(), model, RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED.fix());
+        } catch (UnresolvedReferenceException e) {
+            return refusePrecheck("model", "seed", RkCode.UNRESOLVED_REFERENCE, e.getMessage(), model,
+                    RkCode.UNRESOLVED_REFERENCE.fix());
+        } catch (RuntimeException e) {
+            return fail("cannot expand model: " + e.getMessage());
+        }
+
         ModelDef def;
         try {
-            def = InterpreterModelLoader.load(modelJson);
+            def = InterpreterModelLoader.load(interpJson);
         } catch (RuntimeException badModel) {
             return fail("cannot load model: " + badModel.getMessage());
         }
