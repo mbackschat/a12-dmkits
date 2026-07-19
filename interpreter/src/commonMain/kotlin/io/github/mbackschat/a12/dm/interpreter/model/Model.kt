@@ -1,5 +1,8 @@
 package io.github.mbackschat.a12.dm.interpreter.model
 
+import io.github.mbackschat.a12.dm.interpreter.regex.CompiledPattern
+import io.github.mbackschat.a12.dm.interpreter.regex.compilePattern
+
 /**
  * The structured model the interpreter evaluates — the interpreter owns its types (a clean data contract,
  * not a shared object model; proposal §6/§7). A consumer can build a [ModelDef] directly, or load one from
@@ -61,7 +64,7 @@ enum class MsgType { VALUE, OMISSION }
  * register them through the function-valued [CustomFieldType] SPI.
  */
 data class PredefinedType(val minLength: Int? = null, val maxLength: Int? = null, val pattern: String? = null) {
-    private val regex: Regex? = pattern?.let { Regex(it) }
+    private val regex: CompiledPattern? = pattern?.let { compilePattern(it) }
 
     /** Whether [value] is a valid instance of this type — within the length bounds AND a full pattern match. */
     fun accepts(value: String): Boolean =
@@ -335,7 +338,7 @@ data class FieldConstraints(
     /** NUMBER `maxLength` — value-string length above it → `zahlZuLang`. */
     val numberMaxLength: Int? = null,
 ) {
-    val patternRegex: Regex? = pattern?.let { Regex(it) }
+    val patternRegex: CompiledPattern? = pattern?.let { compilePattern(it) }
 
     /** Whether this field carries any NON-DEFAULT constraint, so it must be stored (else [NONE] — whose false
      *  booleans already encode the kernel defaults — is used). The `*Allowed`/`*NotAllowed` flags count only when

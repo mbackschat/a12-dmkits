@@ -1875,19 +1875,27 @@ The kernel has TWO regex loci, and BOTH compile the raw authored pattern string 
 - **Declared STRING/predefined `pattern`** — `FormatDefinitionString`: JVM `Pattern.compile(muster)` held on the format-def (`pattern.matcher(wert).matches()`, full-region); the TS twin (`FormatDefinitionString.ts`) builds `new RegExp("^(?:" + muster + ")$")` at construction and calls `.test(wert)`.
 - **Condition `PatternMatched`/`PatternViolated` literal** — `BedingungsOperatorHelper.getPattern(regex)`: JVM a static `ConcurrentHashMap<String,Pattern>` via `computeIfAbsent(regex, Pattern::compile)`; the TS twin (`BedingungsOperatorHelper.ts`) a static `Map<string,RegExp>` via `new RegExp("^(?:" + regex + ")$")`. Both are **compile-once** (never per row/eval).
 
-**Two source facts drive the cross-host behavior:**
+**The model check DOES validate the pattern — for BOTH Java and JavaScript compatibility (A12K-30).** *(Corrects this note's first draft, which wrongly said the model check does not validate pattern syntax — that was checked only on `StringType` and missed the two validators below.)* A pattern is rejected (`MVK_INVALID_PATTERN` — "not a valid pattern to compare") unless it BOTH `Pattern.compile`s (Java syntax) AND passes `PatternUtils.isPatternValid`, at BOTH loci: the condition operator (`CheckVergleichsBedingungImpl.checkPatternOp`) and the declared field pattern (`CheckStringPattern`, `ICustomCondition` — "the pattern of a field type string for A12 must be valid"). `isPatternValid` = the pattern must NOT match `FORBIDDEN_PATTERN_PATTERN`:
 
-1. **The model check does NOT validate pattern syntax.** `StringType.pattern` is a plain stored `String`; there is no MVK pattern-syntax rule (the only pattern-adjacent model rejections are the incidental ones — `noValueValidation` forbidding `pattern`, and a pattern literal that itself contains a line break). So a pattern using a Java-only construct is model-VALID and loadable, and only `Pattern.compile` (runtime) would object — which it does not, because Java accepts it.
-2. **The kernel's own JS/TS target feeds the raw Java pattern to `new RegExp` — no translation.** Therefore the kernel is **not host-uniform** for regex: kernel-Java (JVM, `java.util.regex.Pattern`) accepts constructs that JS `RegExp` throws on or reads differently, and the kernel-TS reproduces the JS behavior exactly (it IS `new RegExp`).
+```
+([?+}*]\+)          possessive quantifiers  a++ a*+ a?+ a{n}+
+(\(\?[<>])          lookbehind (?<…  and atomic/independent group (?>…
+(\\[AGZzaepQE])     the Java-ONLY escapes  \A \G \Z \z \a \e \p \Q \E
+((?<!\\)\[…(?<!\\)\[)  a nested unescaped [ — char-class intersection [a-z&&[^b]]
+```
 
-**The Java→JS construct split** (`new RegExp("^(?:" + p + ")$")`, verified on Node):
+Its Javadoc states the intent outright: *"true if the given pattern is valid for java **and for java script**."* So the kernel deliberately **forbids the JS-incompatible constructs** — every one of the above is exactly what JS `RegExp` throws on or has no equivalent for. A model using them is not loadable.
 
-| Java `Pattern` construct | JS `RegExp` | consequence on the kernel-TS AND any raw-RegExp JS consumer |
+**The kernel's own JS/TS target then feeds the (already JS-validated) raw pattern to `new RegExp("^(?:" + p + ")$")` — no translation.** Because the legal set is JS-safe by design, the kernel-TS mostly works. But `isPatternValid` is **INCOMPLETE**: it still admits two kernel-LEGAL constructs that JS handles differently, so a raw-`RegExp` JS consumer (the kernel-TS, or Kotlin `Regex` on JS) still diverges on them:
+
+| kernel-LEGAL construct | JS `RegExp` | note |
 |---|---|---|
-| inline flags `(?i)` `(?s)` `(?m)` `(?x)`, possessive `a++`/`a*+`, atomic `(?>…)` | **SyntaxError** | model construction / eval throws on JS |
-| `\R` `\h` `\H` `\v` `\V`, `\p{Alpha}`/POSIX names, `\A` `\z` `\Z`, `[a-z&&[^bc]]` intersection, `[:alpha:]` | **accepted, DIFFERENT meaning** (identity-escape / literal / different class) | silent semantic divergence on JS |
-| ordinary regex, `[…]`, `{n,m}`, `\d \w \s`, `|`, named groups `(?<n>…)` + `\k<n>` | **identical** | the overwhelming majority — parity on both hosts |
+| `\R` `\h` `\H` `\v` `\V` | **accepted, WRONG meaning** (identity escape / JS's own smaller `\v`) | silent semantic divergence — the dangerous class |
+| inline flags `(?i)` `(?s)` `(?m)` `(?x)` (global or scoped `(?i:…)`) | **SyntaxError** | throws on JS; `isPatternValid` does not forbid them |
+| ordinary regex, classes, `{n,m}`, `\d \w \s`, `|`, `(?:…)`, `(?=…)`, named groups `(?<n>…)`+`\k<n>` | **identical** | the overwhelming majority — parity on both hosts |
 
-Anchoring: the kernel-TS wraps `^(?:…)$` (the non-capturing group is load-bearing — a naive `^…$` mis-anchors top-level alternation, e.g. `^ab|cd$` matches `"abX"`). Full-region match on both hosts, matching JVM `matcher.matches()`.
+Anchoring: `^(?:…)$` (the non-capturing group is load-bearing — a naive `^…$` mis-anchors top-level alternation, e.g. `^ab|cd$` matches `"abX"`). Full-region match on both hosts, matching JVM `matcher.matches()`.
 
-**Consequence for a kernel-faithful interpreter.** A JS consumer that does raw `new RegExp` (as the kernel-TS does, and as Kotlin `Regex` does on JS) reproduces the kernel's OWN JS behavior — including the throw-set and the silent-divergence-set. Making JS instead behave like Java `Pattern` (via translation or a portable engine) would make the consumer DIVERGE from the kernel's own JS runtime, not converge on it. See INTERPRETER-GAPS IG90 for the interpreter-side decision.
+**Consequence (owner decision, IG90).** The normative semantics are **dynamic-Groovy = Java `Pattern`** (IF136); the kernel-TS raw-`new RegExp` is *another codegen strategy* and its JS limitations are a **recorded, never-adopted** divergence, not the language definition. So a kernel-faithful interpreter implements Java semantics on JS: the forbidden set is **parity by construction** (never in a loadable model); `\h \H \v \V \R` are **translated** to Java semantics; inline flags remain the open residual (INTERPRETER-GAPS IG90 / the graduated `IF<n>`).
+
+**Relevant to AUTHORING too (rulekit / modelkit / dmtool).** Because `isPatternValid` gates BOTH condition and declared-field patterns, an author who writes a rule condition (`PatternMatched`/`PatternViolated`) or a field `pattern` with a forbidden construct gets a kernel `MVK_INVALID_PATTERN` at `rule check` / `model check` — the authoring surfaces should carry this constraint (operator-catalog gotcha + the diagnostic enricher; see DEV-API-GAPS / FEATURE-GAPS).
