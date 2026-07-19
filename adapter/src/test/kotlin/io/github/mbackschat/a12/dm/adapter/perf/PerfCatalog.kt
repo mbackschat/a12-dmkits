@@ -210,8 +210,8 @@ object PerfCatalog {
         scenario("B5 deep-nested-star",
             perfRoot.errorRule("DN", cost.field(), Dsl.sum(perfRoot.flatten("Lines*/Subs*/Cost")).gt(0)), ::nestedRows)
 
-    /** **Multi-star `$`-correlation** (IG98) — a per-Sub `MoreThanOneFieldFilled(Lines* then Subs* then Cost
-     *  Having [Cost] == [$Cost])`: each Sub correlates against EVERY Line's Subs by equal Cost. Before IG98 the
+    /** **Multi-star `$`-correlation** (IF144) — a per-Sub `MoreThanOneFieldFilled(Lines* then Subs* then Cost
+     *  Having [Cost] == [$Cost])`: each Sub correlates against EVERY Line's Subs by equal Cost. Before IF144 the
      *  multi-star operand forced the O(N²) naive scan (interp measured worse than the kernel, ratio 0.51→1.21);
      *  the first-star-scope hash join makes it O(rows). Costs cycle by SUB index (`msCorrValues`) so every Line's
      *  same-index Subs share a Cost → large cross-Line buckets, the worst case for the correlation. */

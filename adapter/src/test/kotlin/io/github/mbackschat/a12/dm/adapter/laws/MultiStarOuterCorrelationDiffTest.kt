@@ -1,11 +1,14 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
@@ -14,17 +17,17 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * Differential lock (IG98) — a **MULTI-star** `$`-equality-correlated FILL QUANTIFIER
+ * Differential lock (IF144, graduated from IG98) — a **MULTI-star** `$`-equality-correlated FILL QUANTIFIER
  * (`MoreThanOneFieldFilled(/Perf/Lines* then Subs* then Cost Having [Cost] == [$Cost])`, a per-Sub rule whose
  * star spans EVERY Line's Subs). This is the shape `Interpreter.starQuantTally` used to route unconditionally to
- * the O(N²) `naiveStarQuantTally` (because `isMultiStar` is true); IF… now sends the recognized equality join
+ * the O(N²) `naiveStarQuantTally` (because `isMultiStar` is true); IF144 now sends the recognized equality join
  * through the O(1) hash join with the FIRST-star bind-depth scope — EXCEPT a multi-star `$`-correlation carrying
  * a `CurrentRepetition` self-exclusion (which drops more than one row: every row sharing the outer's leaf index
  * across the wider scope), which the hash join's single-row self-subtraction cannot express, so it stays naive.
  *
  * This test pins interp == kernel across both paths: the no-self-exclusion cases exercise the NEW multi-star hash
  * join (a Cost shared ACROSS Lines is counted across Lines — the multi-star scope, not the current Line's Subs;
- * empty keys and unevaluated rows drop); the self-exclusion case exercises the naive fallback. IG98's legality
+ * empty keys and unevaluated rows drop); the self-exclusion case exercises the naive fallback. IF144's legality
  * was settled here (kernel MVK-accepts + interp matches); the scaling win is `MultiStarCorrelationPerfTest`.
  */
 class MultiStarOuterCorrelationDiffTest {
@@ -97,11 +100,104 @@ class MultiStarOuterCorrelationDiffTest {
         agree(corrExcl, t(1, 1, "5"), t(2, 1, "5"))
     }
 
+    // Four repeatable levels let the same hash-join path prove both boundary bind depths from IF144's residual:
+    // every level starred (bindDepth=0), and only Lines/Bins starred below a bound Network/Region (bindDepth=2).
+    private val deepBase = DocumentModelDraft.named("network").locale("en_US")
+        .rootGroup("Network") { network ->
+            network.repeatable(20).stringField("NetworkKey") { }.indexField("NetworkKey")
+            network.group("Regions") { region ->
+                region.repeatable(20).stringField("RegionKey") { }.indexField("RegionKey")
+                region.group("Lines") { line ->
+                    line.repeatable(20).stringField("LineKey") { }.indexField("LineKey")
+                    line.group("Bins") { bin ->
+                        bin.repeatable(20).stringField("BinKey") { }
+                            .numberField("Cost") { it.fractionDigits(0) }.indexField("BinKey")
+                    }
+                }
+            }
+        }.build().toJson()
+    private val deepModel = BoundModel.ofJson(deepBase)
+    private val deepCost = deepModel.num(DEEP_COST)
+    private val bindDepth0 = render(deepCost.filled().and(
+        Dsl.moreThanOneFieldFilled(
+            deepModel.flatten("/Network*/Regions*/Lines*/Bins*/Cost").having(deepCost.eq(deepCost.outer())))))
+    private val bindDepth2 = render(deepCost.filled().and(
+        Dsl.moreThanOneFieldFilled(
+            deepModel.flatten("/Network/Regions/Lines*/Bins*/Cost").having(deepCost.eq(deepCost.outer())))))
+
+    private data class DeepRow(
+        val network: Int,
+        val region: Int,
+        val line: Int,
+        val bin: Int,
+        val cost: String?,
+    )
+
+    private fun deepDocs(def: ModelDef, rows: List<DeepRow>): Pair<RuntimeLaws.Doc, Document> {
+        val kernel = RuntimeLaws.doc()
+        val interpreter = def.newDocument()
+        for ((network, region, line, bin, cost) in rows) {
+            kernel.group(NETWORK, network).field(NETWORK_KEY, "N$network", network, 1)
+            interpreter.group(NETWORK, network).field(NETWORK_KEY, "N$network", network, 1)
+            kernel.group(REGIONS, network, region).field(REGION_KEY, "R$network-$region", network, region, 1)
+            interpreter.group(REGIONS, network, region).field(REGION_KEY, "R$network-$region", network, region, 1)
+            kernel.group(LINES, network, region, line).field(LINE_KEY_DEEP, "L$line", network, region, line, 1)
+            interpreter.group(LINES, network, region, line).field(LINE_KEY_DEEP, "L$line", network, region, line, 1)
+            kernel.group(BINS, network, region, line, bin).field(BIN_KEY, "B$bin", network, region, line, bin, 1)
+            interpreter.group(BINS, network, region, line, bin).field(BIN_KEY, "B$bin", network, region, line, bin, 1)
+            if (cost != null) {
+                kernel.field(DEEP_COST, cost, network, region, line, bin, 1)
+                interpreter.field(DEEP_COST, cost, network, region, line, bin, 1)
+            }
+        }
+        return kernel to interpreter
+    }
+
+    private fun deepAgree(cond: String, expected: Int, rows: List<DeepRow>) {
+        val kernelModel = RuntimeLaws.withRule(deepBase, NETWORK, "DEEP", "../Regions/Lines/Bins/Cost", "DEEP", cond)
+        val def = ModelLoader.load(kernelModel)
+        val (dynamicDoc, interpreterDoc) = deepDocs(def, rows)
+        val dynamic = RuntimeLaws.messages(kernelModel, dynamicDoc).count { it.code() == "DEEP" }
+        val staticEngine = RuntimeLaws.kernelJavaEngine(kernelModel)
+        val staticDoc = deepDocs(def, rows).first
+        val static = staticEngine.messages(staticEngine.instance(staticDoc)).count { it.code() == "DEEP" }
+        val interpreter = DmInterpreter(def).validateFull(interpreterDoc).count { it.code == "DEEP" }
+        assertEquals(expected, dynamic, "Groovy-dynamic expected count")
+        assertEquals(dynamic, static, "static-Java must agree at this bind depth")
+        assertEquals(dynamic, interpreter, "interpreter must agree at this bind depth")
+    }
+
+    @Test fun threePlusLevelCorrelationLocksBindDepthZeroAndTwo() {
+        deepAgree(bindDepth0, expected = 2, rows = listOf(
+            DeepRow(1, 1, 1, 1, "5"),
+            DeepRow(2, 1, 1, 1, "5"), // duplicate only across Network roots: bindDepth=0 must see both
+            DeepRow(1, 1, 1, 2, null),
+            DeepRow(2, 1, 1, 2, "bad"), // empty and malformed join keys never enter a bucket
+        ))
+        deepAgree(bindDepth2, expected = 2, rows = listOf(
+            DeepRow(1, 1, 1, 1, "7"),
+            DeepRow(1, 1, 2, 1, "7"), // same Network/Region, across Lines: both fire
+            DeepRow(1, 2, 1, 1, "9"),
+            DeepRow(2, 1, 1, 1, "9"), // duplicate only across bound scopes: neither fires
+            DeepRow(1, 1, 1, 2, null),
+            DeepRow(1, 1, 2, 2, "bad"),
+        ))
+    }
+
     private fun t(l: Int, s: Int, c: String?) = Triple(l, s, c)
 
     private companion object {
         const val LINE_KEY = "/Perf/Lines/LineKey"
         const val SUB_KEY = "/Perf/Lines/Subs/SubKey"
         const val COST = "/Perf/Lines/Subs/Cost"
+        const val NETWORK = "/Network"
+        const val NETWORK_KEY = "/Network/NetworkKey"
+        const val REGIONS = "/Network/Regions"
+        const val REGION_KEY = "/Network/Regions/RegionKey"
+        const val LINES = "/Network/Regions/Lines"
+        const val LINE_KEY_DEEP = "/Network/Regions/Lines/LineKey"
+        const val BINS = "/Network/Regions/Lines/Bins"
+        const val BIN_KEY = "/Network/Regions/Lines/Bins/BinKey"
+        const val DEEP_COST = "/Network/Regions/Lines/Bins/Cost"
     }
 }

@@ -663,7 +663,7 @@ class Document(internal val config: DocumentConfig) {
                 kinds.keys.filter { it.startsWith("$groupPath/") }.sorted()
             }
 
-        // [bindDepth] widens the bucket scope for a MULTI-star operand (IG98): −1 keeps the single-star leaf-parent
+        // [bindDepth] widens the bucket scope for a MULTI-star operand (IF144): −1 keeps the single-star leaf-parent
         // scope; a multi-star first-star bind depth caps the shared prefix higher, so the buckets span every A's
         // B-rows (the same rows `rowContexts(groupPath, bindDepth)` — the naive scan — iterates).
         override fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String, bindDepth: Int): Map<List<Val>, IntArray> =

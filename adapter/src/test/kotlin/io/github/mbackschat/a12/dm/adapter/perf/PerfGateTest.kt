@@ -218,7 +218,7 @@ class PerfGateTest {
     }
 
     /**
-     * Guards the **multi-star `$`-correlation** (IG98) against the O(rows²) naive scan it used before the
+     * Guards the **multi-star `$`-correlation** (IF144) against the O(rows²) naive scan it used before the
      * first-star-scope hash join: `MoreThanOneFieldFilled(Lines* then Subs* then Cost Having [Cost] == [$Cost])`,
      * per-Sub, correlates each Sub against EVERY Line's Subs. The naive scan was measured WORSE than the kernel
      * (interp/kernel ratio widened 0.51→1.21); the hash join makes it O(rows). Time the interpreter (only) at N

@@ -139,7 +139,7 @@ interface EvalContext {
      * O(N) inner scan — the kernel's own linear strategy. Built + **cached per (group, scope)** by the general
      * [Document] (shared across every outer row); the flat spike contexts don't model rows. [bindDepth] widens the
      * bucket scope to the FIRST `*`-marked level for a MULTI-star operand (`A* / B* / F`, IF94) so the join spans
-     * every A's B-rows, not just the current one (IG98); −1 = the single-star leaf-parent scope. */
+     * every A's B-rows, not just the current one (IF144); −1 = the single-star leaf-parent scope. */
     fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String, bindDepth: Int = -1): Map<List<Val>, IntArray> =
         throw UnsupportedConstructException("correlation buckets need the general Document context, not $this")
 
