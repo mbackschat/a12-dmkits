@@ -83,10 +83,23 @@ class DmInterpreter @JvmOverloads constructor(
     /**
      * Run every rule over each row of its iteration scope and return one [Message] per firing — the
      * runtime twin of the kernel's `validateFull`. A rule fires when its error condition is TRUE on a row.
-     * Convenience over [validate] returning just the messages (drops the unsupported-rule report).
+     *
+     * The messages-only convenience over [validate]. It **fails loudly** (throws) when any rule is
+     * [ValidationOutcome.unsupported] — a state the kernel can never reach (it supports every construct), so a
+     * silent messages-only projection there would be a FALSE-CLEAN result (IF139). Callers that want the raw
+     * firings plus the unsupported report use [validate]; a caller that deliberately wants messages while
+     * ignoring unsupported writes `validate(doc).messages` explicitly.
      */
-    fun validateFull(doc: Document, locale: String = "en_US"): List<Message> =
-        validate(doc, locale).messages
+    fun validateFull(doc: Document, locale: String = "en_US"): List<Message> {
+        val outcome = validate(doc, locale)
+        check(outcome.unsupported.isEmpty()) {
+            "validateFull would silently drop ${outcome.unsupported.size} unsupported rule(s): " +
+                outcome.unsupported.joinToString(prefix = "[", postfix = "]") { "${it.rulePath} (${it.reason})" } +
+                " — use validate(doc) for the ValidationOutcome (messages + unsupported), or " +
+                "validate(doc).messages to project messages only on purpose."
+        }
+        return outcome.messages
+    }
 
     /**
      * The tolerant whole-document validation: each rule's firings as [Message]s, plus the rules that use

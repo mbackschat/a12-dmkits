@@ -157,7 +157,7 @@ Hold these from day one and extraction (§8) stays cheap.
 
 **What "drop-in" requires — the eval surface:**
 - **(a) model ASSEMBLY parity** — expand includes (`modelReferences`), resolve typedef imports and effective types, normalize ids, and relativize included rules/computations against kernel expansion. The dmtool eval path prepares through `InterpreterEngine.expandForEval` / `dm.core.ModelReader`; legal reference residuals remain IG87, the commonMain assembler is IG68, and the enforced preparation boundary/seed bypass is IG91.
-- **(b) evaluate / compute / formal-check parity** — 0 differential divergences on both prepared corpora, nice + hostile, over the exercised surface. The live ledger records legal-input dimensions outside those corpora and tests, including IG83/IG88–IG97; IG81 affects mutate-after-cache reuse.
+- **(b) evaluate / compute / formal-check parity** — 0 differential divergences on both prepared corpora, nice + hostile, over the exercised surface. The live ledger records legal-input dimensions outside those corpora and tests, including IG83/IG88–IG96 (IG97 shipped as IF139); IG81 affects mutate-after-cache reuse.
 - **(c) messages** — interpolated + localized (EN/DE), differentially locked today.
 - **(d) the customization/configuration surface** — custom conditions/field types, charset, clock, locale, and the model time zone (see [`../interpreter/CLAUDE.md`](../interpreter/CLAUDE.md) "Customization-surface parity").
 - **(e) output-shape parity** — or a documented-accepted difference (the `field` pointer is the resolved path, not the kernel's verbose pointer object).
