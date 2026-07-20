@@ -1011,10 +1011,18 @@ public final class RuntimeLaws {
          * at all is what {@code JavaStaticPartialBaselineDiffTest} pins.
          */
         List<Msg> messagesPart(Doc doc, Set<Relevant> relevant) {
+            return messagesPart(doc, relevant, Map.of());
+        }
+
+        /** Static-Java partial validation with the same per-call custom-condition callbacks as the dynamic path. */
+        List<Msg> messagesPart(
+                Doc doc, Set<Relevant> relevant, Map<String, ICustomCondition> customConditions) {
             DocumentV2 v2 = instance(doc);
             Set<DocumentMultiPointer> relevantPointers = relevant.stream()
                     .map(r -> DocumentMultiPointer.of(r.path(), r.reps())).collect(Collectors.toSet());
-            return rt.validatePart(v2, relevantPointers, config(null, Locale.US)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+            DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US)
+                    .customConditionFactory(ICustomConditionFactory.fromMap(customConditions)).build();
+            return rt.validatePart(v2, relevantPointers, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
         }
 
         // ---- modern clock-pinnable path (the corpus tri-verification's java-static leg, §9) ----------

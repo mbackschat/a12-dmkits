@@ -25,10 +25,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer;
  * contract — the very one the kernel's own metamodel conditions and the JS/TS codegen runtime use) onto the
  * interpreter's kernel-free {@link CustomCondition} SPI. This is the "works with existing implementations"
  * seam: a JVM consumer hands us the same condition object the kernel runs, and the kernel-free interpreter
- * runs it unchanged — so the interpreter can replace the kernel's generated code. The interpreter still
- * gates <em>when</em> the condition is invoked (evaluated row, formally-correct relevant fields, polarity
- * VALUE, no-fire on an empty row); the condition itself only decides true/false. KERNEL-FINDINGS
- * "CustomCondition".
+ * runs it unchanged — so the interpreter can replace the kernel's generated code. Once ordinary condition
+ * evaluation reaches the leaf, the condition receives the same relevance, formal-invalid, and exact error-field
+ * inputs and owns its hidden dependency decision; the interpreter does not infer that footprint. A true result
+ * contributes VALUE polarity. KERNEL-FINDINGS "CustomCondition".
  *
  * <p><b>Boundary.</b> This is JVM-only adapter glue (it links the kernel core API) — the SPI it targets is
  * pure and multiplatform, so a Kotlin/JS or TypeScript consumer implements {@link CustomCondition} directly
@@ -57,7 +57,7 @@ public final class KernelCustomConditions {
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> fromCore(e.getValue())));
     }
 
-    /** A read-only kernel {@link IData} backed by the interpreter's resolved-row {@link CustomConditionData}. */
+    /** A read-only kernel {@link IData} backed by the interpreter's document-wide {@link CustomConditionData}. */
     private static IData dataView(CustomConditionData data) {
         return new IData() {
             @Override public String getValue(IIdentifier entity) {

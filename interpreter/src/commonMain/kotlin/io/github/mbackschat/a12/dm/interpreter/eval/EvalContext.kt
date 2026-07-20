@@ -159,10 +159,9 @@ interface EvalContext {
     fun fillScope(scopePath: String, isGroup: Boolean): FillScope =
         throw UnsupportedConstructException("group-scoped field-fill needs the general Document context, not $this")
 
-    /** The row's data view for a `CustomCondition` — the kernel's `IData` surface (read field values by
-     *  path+indices, enumerate present fields). The general [Document] resolves it document-wide (a custom
-     *  condition's `IData` spans the document; the row is carried by the error-field pointer); the flat spike
-     *  contexts don't model it. */
+    /** The document-wide data view for a `CustomCondition` — the kernel's `IData` surface (read field values by
+     *  path+indices, enumerate present fields). The row is carried separately by the error-field pointer; flat
+     *  spike contexts do not model this document view. */
     fun customConditionData(): CustomConditionData =
         throw UnsupportedConstructException("custom-condition data needs the general Document context, not $this")
 

@@ -2069,7 +2069,10 @@
       "does not satisfy the error-field rule on its own — pair it with a field reference"
     ],
     "gotchas": [
-      { "text": "the kernel only parses/places it; whether the registered implementation exists is the consuming system's concern, not checkConsistency's", "kind": "SURPRISE" }
+      { "text": "the kernel only parses/places it; whether the registered implementation exists is the consuming system's concern, not checkConsistency's", "kind": "SURPRISE" },
+      { "text": "the callback Boolean is the error condition: true makes the rule fire; it does not mean the document is valid", "kind": "AUTHORING" },
+      { "text": "the host callback owns hidden dependencies: inspect the supplied full-or-partial relevant set and exact formally-invalid field pointers and return false when a needed field was not checked or is invalid; the evaluator does not infer or pre-suppress that footprint", "kind": "AUTHORING" },
+      { "text": "a CustomCondition leaf is structurally eligible on an empty row; use FieldFilled(error) And CustomCondition X when blank-row invocation is unwanted, while an Or branch may deliberately reach it", "kind": "SURPRISE" }
     ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And CustomCondition NotReverse", "note": "host code decides; the FieldFilled conjunct references the error field" },
     "sinceKernel": "30.8.x"

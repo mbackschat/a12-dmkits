@@ -224,8 +224,11 @@ class DmInterpreter @JvmOverloads constructor(
                     + checks.uniquenessMessages(dup, locale, isRelevant) + checks.overRepetitionMessages(doc, locale, isRelevant)).toMutableList()
             // The per-call seam (IF117): the formal-status memo spans ALL rules of this validation (the doc is
             // immutable here), and the EvalConfig is built once for the whole call.
+            val formallyIncorrect by lazy(LazyThreadSafetyMode.NONE) {
+                checks.formallyIncorrectPointers(doc, formalResults, isRelevant)
+            }
             val pass = ValidationPass(doc, locale, isRelevant, dup,
-                validationConfig(isRelevant, customRelevant, starRelevant), formalResults)
+                validationConfig(isRelevant, customRelevant, starRelevant), formalResults, { formallyIncorrect })
             for (rule in model.rules) {
                 try {
                     // RepetitionNotUnique now flows through the ordinary rule path as a 3VL leaf (IF149) — no
@@ -328,13 +331,18 @@ class DmInterpreter @JvmOverloads constructor(
     private fun evalRule(rule: RuleDef, doc: Document, locale: String): RuleResult = observeCaches(doc) {
         // A single-rule pass (fresh formal-status memo, everything relevant) — the testRule/evalCandidate shape.
         val dup = checks.duplicateIndexCells(doc)
+        val formalResults = FormalResultCache(checks, locale, dup)
+        val formallyIncorrect by lazy(LazyThreadSafetyMode.NONE) {
+            checks.formallyIncorrectPointers(doc, formalResults, ALL_RELEVANT)
+        }
         val pass = ValidationPass(
             doc,
             locale,
             ALL_RELEVANT,
             dup,
             validationConfig(ALL_RELEVANT, null, null),
-            FormalResultCache(checks, locale, dup),
+            formalResults,
+            { formallyIncorrect },
         )
         val rows = rowOutcomes(rule, pass)
         rows.firstNotNullOfOrNull { it as? RowOutcome.Fired }?.let {

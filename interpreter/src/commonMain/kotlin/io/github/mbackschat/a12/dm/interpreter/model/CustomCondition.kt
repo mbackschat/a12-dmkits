@@ -9,16 +9,20 @@ package io.github.mbackschat.a12.dm.interpreter.model
  * (core directly, or a modern `DocumentV2` one via a JVM-only view adapter). KERNEL-FINDINGS "CustomCondition".
  *
  * `check` returns true when the condition holds (the rule FIRES). It must not mutate the data and must be
- * thread-safe (the kernel contract). It is invoked only on an evaluated row whose relevant fields are formally
- * correct (the interpreter gates this), and must return false when the fields to validate are not relevant.
+ * thread-safe (the kernel contract). Once ordinary condition evaluation reaches the leaf, the callback owns
+ * its hidden dependencies: it must use [relevant] and [formallyIncorrect] to return false when a necessary
+ * field was not checked or is formally invalid. The evaluator does not infer or pre-suppress that footprint.
  */
 fun interface CustomCondition {
     /**
-     * @param data the row's data view (the kernel's `IData`)
+     * @param data the document-wide data view (the kernel's `IData`)
      * @param relevant the relevant entities (fields/groups) for this validation, or null for a full validation
-     *   (mirrors the kernel's `relevantEntities`); a partial validation passes the relevant subset
-     * @param formallyIncorrect the fields whose value is formally invalid (the kernel's `formallyIncorrectFields`)
-     * @param errorField the field this rule attaches to (the kernel's `errorField` identifier)
+     *   (mirrors the kernel's `relevantEntities`); a partial validation passes the exact externally addressed
+     *   relevant subset
+     * @param formallyIncorrect the exact externally addressed fields found formally invalid in this validation's
+     *   formal pass; partial validation includes only formally checked relevant fields, independently of the
+     *   [relevant] channel
+     * @param errorField the exact field instance this rule attaches to (the kernel's `errorField` identifier)
      */
     fun check(
         data: CustomConditionData,
@@ -29,8 +33,9 @@ fun interface CustomCondition {
 }
 
 /**
- * The read-only data view a [CustomCondition] sees — the kernel's `IData` surface (cross-platform). A
- * consumer reads field values by [FieldPointer]; the interpreter resolves them against the current row.
+ * The read-only document-wide data view a [CustomCondition] sees — the kernel's `IData` surface
+ * (cross-platform). A consumer reads field values by exact [FieldPointer]; the current rule row is carried
+ * separately by the callback's `errorField`.
  */
 interface CustomConditionData {
     /** The value at [field] (path + 1-based repetition indices), or null if empty/absent — the kernel's

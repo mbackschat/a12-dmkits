@@ -69,7 +69,7 @@ internal fun nonStarredRefs(cond: Cond): List<String> = when (cond) {
     is Cond.Not -> nonStarredRefs(cond.c)
     is Cond.Pred -> cond.args.flatMap { exprRefs(it) }
     is Cond.Pattern -> exprRefs(cond.value) + exprRefs(cond.pattern)
-    is Cond.Custom -> emptyList()   // the name references no field in the text — the rule is guarded by a field ref
+    is Cond.Custom -> emptyList()   // the name carries no textual ref; the complete rule must reference its error field elsewhere
 }
 
 /**

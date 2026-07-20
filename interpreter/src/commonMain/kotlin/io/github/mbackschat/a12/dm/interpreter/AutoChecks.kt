@@ -18,6 +18,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.uniqueIndexText
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldValidationContext
 import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection
+import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import io.github.mbackschat.a12.dm.interpreter.model.Message
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -149,6 +150,35 @@ internal class AutoChecks(
         }
         return out
     }
+
+    /**
+     * The complete externally-addressed formal-invalid FIELD set supplied to a custom-condition callback.
+     * Materialized once per validation pass from the same [FormalResultCache] that classifies built-in reads,
+     * never reconstructed from valued cells, the current row, or rendered message strings. [isRelevant] selects
+     * the fields that this formal pass actually checked; it is not itself treated as formal invalidity.
+     *
+     * Every declared field contributes its real instantiated addresses: the deepest repeatable ancestor supplies
+     * its rows, while an all-non-repeatable field has one canonical all-1s address even when its group is absent.
+     * This includes format/custom-validator failures, required-empty cells, duplicate-index cells, and
+     * over-limit fields; valid/optional-empty cells and group-only over-repetition messages are absent.
+     */
+    fun formallyIncorrectPointers(
+        doc: Document,
+        cache: FormalResultCache,
+        isRelevant: Relevance,
+    ): Set<FieldPointer> =
+        buildSet {
+            for (path in model.kinds.keys) {
+                val contexts = lowestRepeatableAncestor(path)?.let(doc::contextsFor)
+                    ?: doc.onceContextFor(rootGroupOf(path))
+                for (ctx in contexts) {
+                    val reps = ctx.repsOf(path)
+                    if (isRelevant(path, reps) && cache.resultAt(path, reps, ctx) is FormalResult.Invalid) {
+                        add(FieldPointer(path, reps))
+                    }
+                }
+            }
+        }
 
     /** One `uniqueIndex` [Message] per duplicate-index cell (the kernel flags every participant). */
     fun uniquenessMessages(dup: Set<Pair<String, List<Int>>>, locale: String, isRelevant: Relevance): List<Message> =

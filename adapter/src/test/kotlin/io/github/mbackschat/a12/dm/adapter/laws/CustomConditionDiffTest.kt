@@ -25,8 +25,10 @@ import org.junit.jupiter.api.Test
  * [KernelCustomConditions] bridge, while the kernel oracle runs the SAME logic as an md condition over its
  * modern `validateFull(DocumentV2, …customConditionFactory)` path (the path that reliably invokes data-reading
  * conditions — KERNEL-FINDINGS "CustomCondition"). Identical firing + polarity across scenarios proves the
- * interpreter's MECHANISM matches the kernel (evaluated row, formally-correct gating, polarity VALUE, no-fire
- * on an empty row) AND that the bridge faithfully feeds an existing core condition the row's data.
+ * interpreter's MECHANISM matches the kernel for the common `FieldFilled(error) And CustomCondition` shape
+ * (guarded row, polarity VALUE) AND that the bridge faithfully feeds an existing core condition the data.
+ * Callback-owned formal/relevance decisions and fieldless-leaf empty eligibility are locked separately by
+ * [CustomConditionInvocationDiffTest].
  *
  * Both sides express the same trivial business logic ("the error field's value is ACME"); the differential
  * verifies the surrounding mechanism, not the (identical) predicate.
@@ -84,7 +86,7 @@ class CustomConditionDiffTest {
 
     @Test fun acmeFires() = agree("ACME", "value ACME → condition true → fires VALUE")
     @Test fun otherNoFire() = agree("Other", "value Other → condition false → no fire")
-    @Test fun emptyNoFire() = agree(null, "empty row → condition not evaluated → no fire")
+    @Test fun guardedAndIsSilentWhenEmpty() = agree(null, "empty guard blocks the complete And → no fire")
 
     private companion object {
         const val NAME = "/Order/CustomerName"

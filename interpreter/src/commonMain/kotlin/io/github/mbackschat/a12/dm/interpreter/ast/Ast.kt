@@ -90,9 +90,11 @@ sealed interface Cond {
     /**
      * A `CustomCondition <name>` — the rule delegates its fire/don't-fire decision to a consumer-supplied
      * custom condition resolved by [name] (the kernel's `ICustomCondition` client SPI, cross-platform JVM+JS).
-     * Fires iff the registered condition's `check` returns true on an evaluated, formally-correct row; an
-     * unregistered name makes the rule unsupported. (Always guarded by a field reference — a bare custom
-     * condition is a kernel `MVK_ERROR_FIELD_NOT_REFERENCED`.)
+     * Once reached, fires iff the registered condition's `check` returns true; the callback receives relevance,
+     * formal-invalid addresses, and the exact error pointer and owns its hidden dependency decision. An
+     * unregistered name makes the rule unsupported. The complete rule must reference its error field somewhere
+     * (a bare custom condition is a kernel `MVK_ERROR_FIELD_NOT_REFERENCED`), but that reference need not guard
+     * callback invocation.
      */
     data class Custom(val name: String) : Cond
 }

@@ -32,6 +32,8 @@ internal class ValidationPass(
      *  content, strictly fewer allocations) and shared by every per-row interpreter of the call. */
     val config: EvalConfig,
     private val formalResults: FormalResultCache,
+    /** Lazy, call-local complete external formal-invalid addresses for a reached CustomCondition. */
+    private val formallyIncorrect: () -> Set<FieldPointer> = { emptySet() },
 ) {
     /**
      * The "unknown-operand" code of the field instance at [path] in [ctx], or null when the field is usable.
@@ -67,5 +69,6 @@ internal class ValidationPass(
                 val reps = ctx.repsOf(path)   // computed once, reused for the formal check AND relevance
                 !isRelevant(path, reps) || formalErrorAt(path, reps, ctx) != null
             },
-            rnuOutcome = rnuOutcome)
+            rnuOutcome = rnuOutcome,
+            customFormallyIncorrect = formallyIncorrect)
 }

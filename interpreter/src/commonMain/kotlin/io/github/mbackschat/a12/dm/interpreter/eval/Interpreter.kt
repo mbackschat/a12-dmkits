@@ -73,6 +73,23 @@ class Interpreter(
      */
     internal val rnuOutcome: ((EvalContext) -> MsgType?)? = null,
 ) {
+    /**
+     * Explicit internal rule-evaluation seam for CustomCondition's call-level formal-address provider. The
+     * public primary constructor stays ABI-identical; only [ValidationPass] selects this constructor. The
+     * provider is lazy, so a pass that never reaches a registered custom leaf never scans formal addresses.
+     */
+    internal constructor(
+        ctx: EvalContext,
+        config: EvalConfig,
+        customErrorField: FieldPointer,
+        invalid: (String) -> Boolean,
+        rnuOutcome: ((EvalContext) -> MsgType?)?,
+        customFormallyIncorrect: () -> Set<FieldPointer>,
+    ) : this(ctx, config, customErrorField, invalid, rnuOutcome = rnuOutcome) {
+        this.customFormallyIncorrect = customFormallyIncorrect
+    }
+
+    private var customFormallyIncorrect: (() -> Set<FieldPointer>)? = null
 
     // The config bundle destructured into the fields the walk reads — keeps every internal reference and its
     // direct-field read speed unchanged while the constructor stays small ([EvalConfig]); the config object
@@ -189,7 +206,7 @@ class Interpreter(
         is Cond.Or -> canFireEmpty(cond.left) || canFireEmpty(cond.right)
         is Cond.Not -> !canFireEmpty(cond.c)
         is Cond.Pred -> predFiresOnEmpty(cond)
-        is Cond.Custom -> false   // a custom condition is guarded by a field ref; an all-empty row is not evaluated
+        is Cond.Custom -> true    // hidden dependencies are callback-owned; the leaf is structurally empty-eligible
     }
 
     /** Whether a presence predicate is TRUE when all its operands are empty (k = 0 filled). */
@@ -258,9 +275,11 @@ class Interpreter(
     /**
      * `CustomCondition <name>` — delegate to the consumer-supplied [CustomCondition] (the kernel's
      * `ICustomCondition` SPI). Fires iff `check` returns true; an **unregistered** name → the rule is reported
-     * unsupported (fail-fast). Passes the row's data view + the rule's error field; [customRelevant] (null in
-     * full validation, the relevant set in partial — IF38) and `formallyIncorrect` = the row's formally-invalid
-     * fields, mirroring the kernel's call.
+     * unsupported (fail-fast). Passes the document data view + the rule's exact error field; [customRelevant] (null in
+     * full validation, the relevant set in partial — IF38) and the complete externally addressed
+     * `formallyIncorrect` set produced by that validation's formal pass, mirroring the kernel's call. The two
+     * channels stay distinct: a non-relevant field is not invented as a formal error. The callback owns its
+     * hidden dependency checks; this evaluator does not pre-suppress it merely because the set is non-empty.
      */
     internal fun evalCustom(c: Cond.Custom): Tri {
         val condition = customConditions[c.name]
@@ -268,7 +287,10 @@ class Interpreter(
         val errorField = customErrorField
             ?: throw UnsupportedConstructException("custom condition \"${c.name}\" needs the rule's error field — unavailable in this context")
         val data = ctx.customConditionData()
-        val formallyIncorrect = data.fields().filter { invalid(it.path) }.toSet()
+        // The model-aware DmInterpreter path supplies the exact call-level formal set. Retain the former
+        // best-effort behavior for direct low-level Interpreter users, whose context has no ModelDef/formal pass.
+        val formallyIncorrect = customFormallyIncorrect?.invoke()
+            ?: data.fields().filter { invalid(it.path) }.toSet()
         return Tri.of(condition.check(data, relevant = customRelevant, formallyIncorrect = formallyIncorrect, errorField = errorField))
     }
 

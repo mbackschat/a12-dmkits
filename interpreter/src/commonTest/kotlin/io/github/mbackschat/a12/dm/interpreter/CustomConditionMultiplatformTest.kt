@@ -16,10 +16,11 @@ import kotlin.test.assertTrue
  * `CustomCondition <name>` over the **multiplatform** SPI — runs on JVM AND JS (Node), proving the
  * cross-platform requirement: a pure-Kotlin [CustomCondition] (the twin of the kernel's `IData`-based
  * `ICustomCondition`, identical on JVM core + TypeScript) plugs into the interpreter on every target. The
- * kernel semantics (fire iff `check` true, polarity VALUE, no-fire on an empty row, suppressed-by being
- * unregistered) are confirmed against the live kernel in `adapter` (the differential); this locks them on the
- * pure engine + the JS target. A JVM consumer adapts an existing kernel `ICustomCondition`; here we use a
- * pure-Kotlin impl reading the error field's value via the data view.
+ * common guarded-And semantics (fire iff `check` true after the guard, polarity VALUE, unregistered reported
+ * unsupported) are confirmed against the live kernel in `adapter`; this locks them on the pure engine + JS.
+ * Callback inputs and structural empty eligibility are locked by [CustomConditionInvocationTest]. A JVM
+ * consumer adapts an existing kernel `ICustomCondition`; here we use a pure-Kotlin impl reading the error
+ * field's value via the data view.
  */
 class CustomConditionMultiplatformTest {
 
@@ -43,7 +44,8 @@ class CustomConditionMultiplatformTest {
 
     @Test fun firesWhenConditionHolds() = assertEquals(true, message("ACME") != null, "ACME → custom condition true → fires")
     @Test fun noFireWhenConditionFalse() = assertEquals(false, message("Other") != null, "Other → custom condition false → no fire")
-    @Test fun noFireWhenEmpty() = assertEquals(false, message(null) != null, "empty row → not evaluated → no fire")
+    @Test fun guardedAndIsSilentWhenEmpty() =
+        assertEquals(false, message(null) != null, "empty FieldFilled guard blocks the complete And")
     @Test fun polarityIsValue() = assertEquals(MsgType.VALUE, message("ACME")?.type, "a fired custom condition is a VALUE error")
 
     @Test fun unregisteredConditionIsReportedUnsupported() {
