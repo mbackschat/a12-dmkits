@@ -56,6 +56,16 @@ public final class StructuralKernelFix {
     }
 
     private static final Map<String, Hint> HINTS = Map.ofEntries(
+            Map.entry("MVK_INVALID_PATTERN", new Hint(
+                    "Use a Java-valid regular expression that also avoids the kernel 30.8.x admission restrictions: "
+                            + "possessive quantifiers, lookbehind/named-capture `(?<…`, atomic `(?>…)`, "
+                            + "the A12K-30 escapes `\\A \\G \\Z \\z \\a \\e \\p \\Q \\E`, nested unescaped "
+                            + "`[` class syntax, and the typed/full-model `\\P` rejection. Passing this gate does "
+                            + "NOT prove JavaScript portability.",
+                    "The kernel first requires Java Pattern syntax, then applies its finite A12K-30 blacklist; "
+                            + "the typed/full-model oracle additionally rejects uppercase `\\P`. "
+                            + "MVK_INVALID_PATTERN can therefore mean invalid Java syntax or a Java-valid "
+                            + "kernel-rejected form; it is not a general cross-runtime portability check.")),
             Map.entry("MVK_NO_WILDCARD", new Hint(
                     "A repeatable group is referenced from a rule that does not iterate over it — the fix is "
                             + "operator-dependent. For an AGGREGATE, flatten the repetitions with the `*` wildcard: "

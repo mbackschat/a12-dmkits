@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl.operators;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -42,9 +43,15 @@ class PatternConditionTest {
     @Test
     void patternHandleFailsFastOnAJavaInvalidRegex() {
         // Necessary-condition pre-check for MVK_INVALID_PATTERN: anything Java's Pattern rejects,
-        // the kernel rejects too. The kernel's *portable-subset* gate (e.g. lookbehind is rejected
-        // although Java-valid) stays kernel-delegated — F4/N7 has the final word.
+        // the kernel rejects too. Its additional admission restrictions (e.g. lookbehind is rejected
+        // although Java-valid) are checked by the same shared preflight; F4/N7 remains the final oracle.
         assertThrows(IllegalArgumentException.class, () -> m.str(NAME).matches("("));
         assertThrows(IllegalArgumentException.class, () -> m.str(NAME).violates("["));
+    }
+
+    @Test
+    void patternHandleNamesTheAdditionalKernelBlacklist() {
+        var rejected = assertThrows(IllegalArgumentException.class, () -> m.str(NAME).matches("(?<=a)b"));
+        assertTrue(rejected.getMessage().contains("pattern-admission gate"), rejected::getMessage);
     }
 }

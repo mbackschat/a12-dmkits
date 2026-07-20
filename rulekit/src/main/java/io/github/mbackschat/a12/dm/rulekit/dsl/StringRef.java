@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import io.github.mbackschat.a12.dm.core.KernelPatternPolicy;
+
 /**
  * A typed handle to a string field. Offers string equality (the kernel has no ordering on strings —
  * §5b) and {@code Length(...)} as a numeric expression. Obtain from {@link BoundModel#str(String)}.
@@ -154,19 +156,10 @@ public record StringRef(FieldRef field, boolean correlated) {
     }
 
     /**
-     * Fail-fast necessary-condition check for {@code MVK_INVALID_PATTERN}: the kernel's gate is
-     * Java {@code Pattern.compile} <em>plus</em> a portable-subset check (e.g. lookbehind is
-     * Java-valid yet rejected — verified 2026-06-04, KERNEL-FINDINGS §7). Anything Java rejects the
-     * kernel rejects too; the subset itself stays kernel-delegated (F4/N7 has the final word).
+     * Fail-fast check for {@code MVK_INVALID_PATTERN}: Java syntax followed by the kernel 30.8.x
+     * admission restrictions. Passing them is kernel admission, not a JavaScript-portability guarantee.
      */
     private static String checkRegex(String regex) {
-        try {
-            java.util.regex.Pattern.compile(regex);
-        } catch (java.util.regex.PatternSyntaxException e) {
-            throw new IllegalArgumentException(
-                    "not a valid regular expression (the kernel would reject it with MVK_INVALID_PATTERN): "
-                            + regex, e);
-        }
-        return regex;
+        return KernelPatternPolicy.requireAccepted(regex);
     }
 }

@@ -33,7 +33,7 @@ class CapabilityEvidenceMatrixTest {
     /** The independently declared non-operator capability universe. */
     private enum class CapabilityId(val axis: Axis, val title: String) {
         FORMAL_LENGTH(Axis.FORMAL, "length (min/max, UTF-16 units)"),
-        FORMAL_PATTERN(Axis.FORMAL, "pattern (declared + predefined)"),
+        FORMAL_PATTERN(Axis.FORMAL, "declared field pattern"),
         FORMAL_VALUE_BOUNDS(Axis.FORMAL, "value bounds (min/max value)"),
         FORMAL_NUMBER_SHAPE(Axis.FORMAL, "scale / sign / precision"),
         FORMAL_LEGAL_CHARSET_RUNTIME(Axis.FORMAL, "legal charset matching (BMP / DIN-91379 / graphemes)"),
@@ -106,8 +106,8 @@ class CapabilityEvidenceMatrixTest {
             Static.Tri(AbsLengthDiffTest::class),
         )),
         Capability(CapabilityId.FORMAL_PATTERN, Coverage.Evidence(
-            PatternDiffTest::class,
-            Static.Tri(PatternDiffTest::class),
+            FieldConstraintFormalDiffTest::class,
+            Static.Tri(FieldConstraintFormalDiffTest::class),
         )),
         Capability(CapabilityId.FORMAL_VALUE_BOUNDS, Coverage.Evidence(
             FieldConstraintFormalDiffTest::class,

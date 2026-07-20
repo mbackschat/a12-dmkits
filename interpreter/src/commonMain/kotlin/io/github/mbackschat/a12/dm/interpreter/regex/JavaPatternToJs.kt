@@ -1,97 +1,422 @@
 package io.github.mbackschat.a12.dm.interpreter.regex
 
 /**
- * Translates a kernel-legal **Java `Pattern`** regex into an equivalent **ES2018 JS `RegExp`** source, preserving
- * Java-Pattern (dynamic-Groovy-normative, IF136) SEMANTICS on the JS host — the owner decision for IG90
- * ("normative Java-pattern semantics on JS"; the kernel's own raw-`new RegExp` TS target is a recorded, never-adopted
- * codegen divergence — KERNEL-FINDINGS §7-supplement). The output is consumed only by the JS [CompiledPattern]
- * actual, wrapped `^(?:…)$`; the JVM actual uses the original pattern through `java.util.regex.Pattern` unchanged.
+ * Closed Java-Pattern-to-ES2018 translation used by the JS interpreter.
  *
- * **Browser-ready by construction (standing requirement — the JS target will run in modern browsers, not only Node).**
- * The output uses only broadly-available ES2018 features (character classes, ranges, `\xHH`/`\uHHHH` escapes) — no
- * ES2024 `v`-flag set operations and no ES2025 pattern modifiers — so it runs identically on Node and modern browsers.
- *
- * **The kernel already forbids almost every JS-incompatible construct** (`PatternUtils.isPatternValid`, A12K-30 —
- * KERNEL-FINDINGS §7-supplement): possessive `a++`, atomic `(?>…)`, lookbehind `(?<…`, the Java-only escapes
- * `\A \G \Z \z \a \e \p \Q \E`, and char-class intersection `[…[…]]` are **model-rejected** (`MVK_INVALID_PATTERN`)
- * for BOTH condition and declared-field patterns, so they never reach a loadable model — parity by construction, no
- * translation needed.
- *
- * **Covered (the kernel-LEGAL constructs that JS reads as identity escapes / different classes — the silent-divergence
- * class):** `\R \h \H \v \V` (Java's exact JVM-21 code-point sets). A tokenizer skips character-class interiors and
- * escaped characters so only genuine occurrences are rewritten; `\h`/`\v` inside a class expand to the class body,
- * and the ordinary majority of patterns pass through untouched.
- *
- * **NOT yet covered (the IG90 residual — still open):** inline flags `(?i)`/`(?s)`/`(?m)`/`(?x)` and scoped `(?i:…)`
- * (kernel-legal — `isPatternValid` does not forbid them — but they throw in JS `RegExp`, and a browser-safe global-flag
- * hoist / scoped-flag expansion is not yet built). These pass through unchanged; [containsResidual] reports them.
+ * The model validator admits more Java syntax than a JavaScript RegExp understands. Keeping parsing, translation,
+ * and unsupported classification in this one model prevents a legal pattern from leaking through to a host
+ * SyntaxError. The JVM actual still compiles the original source with java.util.regex.Pattern.
  */
 internal object JavaPatternToJs {
-
-    /** Java `\h` (horizontal whitespace), exact JVM-21 code points incl. U+180E — as a JS char-class body. */
     private const val H = "\\t\\x20\\xA0\\u1680\\u180E\\u2000-\\u200A\\u202F\\u205F\\u3000"
-
-    /** Java `\v` (vertical whitespace), exact JVM-21 code points — as a JS char-class body. */
     private const val V = "\\n\\x0B\\f\\r\\x85\\u2028\\u2029"
+    private const val S = "\\t\\n\\x0B\\f\\r\\x20"
+    private const val DOT_TERMINATORS = "\\n\\r\\u0085\\u2028\\u2029"
 
-    /** Translate [java] to an ES2018 JS RegExp source with Java-Pattern semantics for the covered constructs. */
-    fun translate(java: String): String {
-        val out = StringBuilder(java.length + 16)
-        var i = 0
-        var inClass = false
-        while (i < java.length) {
-            val c = java[i]
-            if (c == '\\' && i + 1 < java.length) {
-                val n = java[i + 1]
-                val rep = rewriteEscape(n, inClass)
-                if (rep != null) out.append(rep) else out.append('\\').append(n)
-                i += 2
-                continue
-            }
-            when {
-                c == '[' && !inClass -> inClass = true
-                c == ']' && inClass -> inClass = false
-            }
-            out.append(c)
-            i++
-        }
-        return out.toString()
-    }
+    data class BackReferenceGuard(val capture: Int, val marker: Int)
+    data class Translation(
+        val source: String,
+        val flags: String = "u",
+        val backReferenceGuards: List<BackReferenceGuard> = emptyList(),
+    )
 
-    /** The JS replacement for `\<esc>` in the given class context, or `null` to pass `\<esc>` through unchanged.
-     *  Only the kernel-LEGAL divergent escapes are rewritten (`\A`/`\z`/`\Z` etc. are kernel-forbidden, never seen).
-     *  `\H`/`\V` inside a class are the residual (negation is not simply expandable there) — rare and passed through. */
-    private fun rewriteEscape(esc: Char, inClass: Boolean): String? = when (esc) {
-        'R' -> if (inClass) null else "(?:\\r\\n|[$V])"    // CRLF as a unit, else any single vertical-ws char
-        'h' -> if (inClass) H else "[$H]"
-        'H' -> if (inClass) null else "[^$H]"
-        'v' -> if (inClass) V else "[$V]"
-        'V' -> if (inClass) null else "[^$V]"
-        else -> null
-    }
+    /** Translate a kernel-legal Java pattern. Unsupported legal syntax fails here, before host compilation. */
+    fun compile(java: String): Translation = Parser(java).translate()
+
+    /** Kept as the small source-level seam used by translation tests. */
+    fun translate(java: String): String = compile(java).source
 
     /**
-     * Whether [java] contains the IG90 residual — a kernel-LEGAL construct that JS `RegExp` throws on and that
-     * [translate] does not yet handle: an **inline-flag group** `(?i)`/`(?s)`/`(?m)`/`(?x)`/scoped `(?i:…)`
-     * (`isPatternValid` does not forbid these, unlike possessive/atomic/lookbehind/`\A…`/intersection, which the
-     * kernel rejects). Character-class interiors and escapes are skipped. Used by tests to assert scope.
+     * True only when the shared parser cannot represent the source. This deliberately invokes the same parser as
+     * translation; there is no second heuristic inventory that can drift from the compiler.
      */
-    fun containsResidual(java: String): Boolean {
-        var i = 0
-        var inClass = false
-        while (i < java.length) {
-            val c = java[i]
-            if (c == '\\' && i + 1 < java.length) { i += 2; continue }   // skip an escaped char
-            when {
-                c == '[' && !inClass -> inClass = true
-                c == ']' && inClass -> inClass = false
-                !inClass && c == '(' && i + 2 < java.length && java[i + 1] == '?' && java[i + 2] in FLAG_LETTERS -> return true
-            }
-            i++
+    fun containsResidual(java: String): Boolean =
+        try {
+            compile(java)
+            false
+        } catch (_: UnsupportedJavaPattern) {
+            true
         }
-        return false
+
+    class UnsupportedJavaPattern(message: String) : IllegalArgumentException(message)
+
+    private data class Flags(
+        val unixLines: Boolean = false,
+        val caseInsensitive: Boolean = false,
+        val comments: Boolean = false,
+        val multiline: Boolean = false,
+        val dotAll: Boolean = false,
+        val unicodeCase: Boolean = false,
+        val unicodeClasses: Boolean = false,
+    ) {
+        fun with(letter: Char, enabled: Boolean): Flags = when (letter) {
+            'd' -> copy(unixLines = enabled)
+            'i' -> copy(caseInsensitive = enabled)
+            'x' -> copy(comments = enabled)
+            'm' -> copy(multiline = enabled)
+            's' -> copy(dotAll = enabled)
+            'u' -> copy(unicodeCase = enabled)
+            'U' -> copy(unicodeClasses = enabled, unicodeCase = if (enabled) true else unicodeCase)
+            else -> throw UnsupportedJavaPattern("unsupported inline flag: $letter")
+        }
     }
 
-    /** The inline-flag letters that may lead a `(?<flags>…)` group — the JS-incompatible residual markers. */
-    private val FLAG_LETTERS = setOf('i', 's', 'm', 'x', 'u', 'U', 'd')
+    private class Parser(private val source: String) {
+        private var index = 0
+        private var javaCaptureCount = 0
+        private var jsCaptureCount = 0
+        private val captureMap = mutableMapOf<Int, Int>()
+        private val guards = mutableListOf<BackReferenceGuard>()
+
+        fun translate(): Translation {
+            val parsed = sequence(Flags(), nested = false)
+            if (index != source.length) throw UnsupportedJavaPattern("unexpected pattern suffix at $index")
+            return Translation(parsed.text, backReferenceGuards = guards.toList())
+        }
+
+        private data class Sequence(val text: String, val flags: Flags)
+
+        private fun sequence(initial: Flags, nested: Boolean): Sequence {
+            var flags = initial
+            val out = StringBuilder()
+            while (index < source.length) {
+                val c = source[index]
+                if (c == ')' && nested) {
+                    index++
+                    return Sequence(out.toString(), flags)
+                }
+                if (flags.comments && c.isWhitespace()) {
+                    index++
+                    continue
+                }
+                if (flags.comments && c == '#') {
+                    while (index < source.length && source[index] != '\n' && source[index] != '\r') index++
+                    continue
+                }
+                when (c) {
+                    '\\' -> out.append(escape(flags))
+                    '[' -> out.append(characterClass(flags))
+                    '(' -> {
+                        val group = group(flags)
+                        out.append(group.first)
+                        flags = group.second
+                    }
+                    '.' -> {
+                        index++
+                        out.append(
+                            when {
+                                flags.dotAll -> "[\\s\\S]"
+                                flags.unixLines -> "[^\\n]"
+                                else -> "[^$DOT_TERMINATORS]"
+                            },
+                        )
+                    }
+                    '^' -> {
+                        index++
+                        out.append(if (flags.multiline) {
+                            if (flags.unixLines) "(?:^|(?<=\\n))" else "(?:^|(?<=[$DOT_TERMINATORS]))"
+                        } else "^")
+                    }
+                    '$' -> {
+                        index++
+                        out.append(if (flags.multiline) {
+                            if (flags.unixLines) "(?:$|(?=\\n))" else "(?:$|(?=[$DOT_TERMINATORS]))"
+                        } else "$")
+                    }
+                    else -> {
+                        index++
+                        appendLiteral(out, c, flags)
+                    }
+                }
+            }
+            if (nested) throw UnsupportedJavaPattern("unclosed group")
+            return Sequence(out.toString(), flags)
+        }
+
+        /** Returns emitted source and the enclosing sequence's possibly updated global flags. */
+        private fun group(enclosing: Flags): Pair<String, Flags> {
+            index++ // (
+            if (index >= source.length || source[index] != '?') {
+                javaCaptureCount++
+                jsCaptureCount++
+                captureMap[javaCaptureCount] = jsCaptureCount
+                val body = sequence(enclosing, nested = true)
+                return "(${body.text})" to enclosing
+            }
+            index++ // ?
+            when (source.getOrNull(index)) {
+                ':' -> {
+                    index++
+                    val body = sequence(enclosing, nested = true)
+                    return "(?:${body.text})" to enclosing
+                }
+                '=' -> {
+                    index++
+                    val body = sequence(enclosing, nested = true)
+                    return "(?=${body.text})" to enclosing
+                }
+                '!' -> {
+                    index++
+                    val body = sequence(enclosing, nested = true)
+                    return "(?!${body.text})" to enclosing
+                }
+                '<', '>' -> throw UnsupportedJavaPattern("kernel-forbidden group reached translation")
+            }
+
+            var modified = enclosing
+            var enabled = true
+            var sawFlag = false
+            while (index < source.length) {
+                val c = source[index]
+                if (c == '-') {
+                    enabled = false
+                    index++
+                    continue
+                }
+                if (c !in FLAG_LETTERS) break
+                sawFlag = true
+                modified = modified.with(c, enabled)
+                index++
+            }
+            if (!sawFlag) throw UnsupportedJavaPattern("unsupported (? group at ${index - 2}")
+            return when (source.getOrNull(index)) {
+                ')' -> {
+                    index++
+                    "" to modified
+                }
+                ':' -> {
+                    index++
+                    val body = sequence(modified, nested = true)
+                    "(?:${body.text})" to enclosing
+                }
+                else -> throw UnsupportedJavaPattern("malformed inline flag group")
+            }
+        }
+
+        private fun escape(flags: Flags): String {
+            index++ // slash
+            if (index >= source.length) throw UnsupportedJavaPattern("trailing escape")
+            val e = source[index++]
+            if (e in '1'..'9') {
+                var number = e.digitToInt()
+                while (index < source.length && source[index].isDigit()) {
+                    val candidate = number * 10 + source[index].digitToInt()
+                    if (candidate > javaCaptureCount) break
+                    number = candidate
+                    index++
+                }
+                val capture = captureMap[number]
+                    ?: throw UnsupportedJavaPattern("forward or missing backreference: $number")
+                jsCaptureCount++
+                val marker = jsCaptureCount
+                guards += BackReferenceGuard(capture, marker)
+                return "()\\$capture"
+            }
+            return when (e) {
+                'R' -> "(?:\\r\\n|[$V])"
+                'h' -> "[$H]"
+                'H' -> "[^$H]"
+                'v' -> "[$V]"
+                'V' -> "[^$V]"
+                's' -> if (flags.unicodeClasses) "\\p{White_Space}" else "[$S]"
+                'S' -> if (flags.unicodeClasses) "\\P{White_Space}" else "[^$S]"
+                'd', 'D', 'w', 'W' -> if (flags.unicodeClasses) {
+                    when (e) {
+                        'd' -> "\\p{Nd}"
+                        'D' -> "\\P{Nd}"
+                        'w' -> "[\\p{Alphabetic}\\p{M}\\p{Nd}\\p{Pc}\\u200C\\u200D]"
+                        else -> "[^\\p{Alphabetic}\\p{M}\\p{Nd}\\p{Pc}\\u200C\\u200D]"
+                    }
+                } else "\\$e"
+                'x' -> if (source.getOrNull(index) == '{') {
+                    index++
+                    val hex = takeUntil('}')
+                    "\\u{$hex}"
+                } else {
+                    "\\x" + take(2)
+                }
+                'u' -> "\\u" + take(4)
+                'N' -> {
+                    if (source.getOrNull(index) != '{') throw UnsupportedJavaPattern("malformed named character")
+                    index++
+                    namedCharacter(takeUntil('}'))
+                }
+                'X' -> "(?:\\P{M}\\p{M}*)"
+                'b' -> if (source.startsWith("{g}", index)) {
+                    index += 3
+                    "(?:^|$|(?=\\P{M}))"
+                } else "\\b"
+                'P', 'p' -> {
+                    if (source.getOrNull(index) != '{') throw UnsupportedJavaPattern("malformed property escape")
+                    index++
+                    "\\$e{" + takeUntil('}') + "}"
+                }
+                else -> "\\$e"
+            }
+        }
+
+        private fun characterClass(flags: Flags): String {
+            index++ // [
+            val negated = source.getOrNull(index) == '^'
+            if (negated) index++
+            val raw = StringBuilder()
+            if (source.getOrNull(index) == ']') {
+                raw.append("\\]")
+                index++
+            }
+            var closed = false
+            while (index < source.length) {
+                val c = source[index++]
+                if (c == '\\') {
+                    if (index >= source.length) throw UnsupportedJavaPattern("trailing class escape")
+                    raw.append('\\').append(source[index++])
+                } else if (c == ']') {
+                    closed = true
+                    break
+                } else {
+                    raw.append(c)
+                }
+            }
+            if (!closed) throw UnsupportedJavaPattern("unclosed character class")
+            val body = raw.toString()
+            if (!negated && body == "\\H") return "[^$H]"
+            if (!negated && body == "\\V") return "[^$V]"
+            if (body.contains("\\H") || body.contains("\\V")) {
+                throw UnsupportedJavaPattern("combined class complement requires set subtraction")
+            }
+            val translated = if (body.contains("&&")) intersection(body, flags) else classBody(body, flags)
+            return "[" + (if (negated) "^" else "") + translated + "]"
+        }
+
+        private fun classBody(raw: String, flags: Flags): String {
+            val out = StringBuilder()
+            var i = 0
+            while (i < raw.length) {
+                if (raw[i] != '\\' || i + 1 >= raw.length) {
+                    if (i + 2 < raw.length && raw[i + 1] == '-' && raw[i + 2] != '\\') {
+                        appendClassRange(out, raw[i], raw[i + 2], flags)
+                        i += 3
+                        continue
+                    }
+                    appendLiteral(out, raw[i], flags, inClass = true)
+                    i++
+                    continue
+                }
+                val e = raw[i + 1]
+                out.append(
+                    when (e) {
+                        'h' -> H
+                        'v' -> V
+                        's' -> if (flags.unicodeClasses) "\\p{White_Space}" else S
+                        'd' -> if (flags.unicodeClasses) "\\p{Nd}" else "0-9"
+                        'w' -> if (flags.unicodeClasses) "\\p{Alphabetic}\\p{M}\\p{Nd}\\p{Pc}\\u200C\\u200D" else "a-zA-Z_0-9"
+                        else -> "\\$e"
+                    },
+                )
+                i += 2
+            }
+            return out.toString()
+        }
+
+        private fun appendClassRange(out: StringBuilder, first: Char, last: Char, flags: Flags) {
+            if (!flags.caseInsensitive) {
+                out.append(first).append('-').append(last)
+                return
+            }
+            when {
+                first in 'a'..'z' && last in 'a'..'z' -> {
+                    out.append(first).append('-').append(last)
+                    out.append(first.uppercaseChar()).append('-').append(last.uppercaseChar())
+                }
+                first in 'A'..'Z' && last in 'A'..'Z' -> {
+                    out.append(first).append('-').append(last)
+                    out.append(first.lowercaseChar()).append('-').append(last.lowercaseChar())
+                }
+                else -> out.append(first).append('-').append(last)
+            }
+        }
+
+        private fun intersection(raw: String, flags: Flags): String {
+            val halves = raw.split("&&")
+            if (halves.size != 2) throw UnsupportedJavaPattern("unsupported class intersection")
+            val set = caseFoldAscii(asciiClass(halves[0]), flags).intersect(caseFoldAscii(asciiClass(halves[1]), flags))
+            if (set.isEmpty()) return "\\uFFFF&&[^\\uFFFF]"
+            val out = StringBuilder()
+            var i = 0
+            val ordered = set.sorted()
+            while (i < ordered.size) {
+                var j = i
+                while (j + 1 < ordered.size && ordered[j + 1].code == ordered[j].code + 1) j++
+                if (j - i >= 2) out.append(ordered[i]).append('-').append(ordered[j])
+                else for (k in i..j) out.append(ordered[k])
+                i = j + 1
+            }
+            return out.toString()
+        }
+
+        private fun caseFoldAscii(chars: Set<Char>, flags: Flags): Set<Char> {
+            if (!flags.caseInsensitive) return chars
+            return buildSet {
+                for (c in chars) {
+                    add(c)
+                    when (c) {
+                        in 'a'..'z' -> add(c.uppercaseChar())
+                        in 'A'..'Z' -> add(c.lowercaseChar())
+                    }
+                }
+            }
+        }
+
+        private fun asciiClass(part: String): Set<Char> {
+            val result = linkedSetOf<Char>()
+            var i = 0
+            while (i < part.length) {
+                val first = part[i]
+                if (first == '\\' || first.code > 0x7f) throw UnsupportedJavaPattern("non-ASCII class intersection")
+                if (i + 2 < part.length && part[i + 1] == '-') {
+                    for (c in first..part[i + 2]) result += c
+                    i += 3
+                } else {
+                    result += first
+                    i++
+                }
+            }
+            return result
+        }
+
+        private fun appendLiteral(out: StringBuilder, c: Char, flags: Flags, inClass: Boolean = false) {
+            if (flags.caseInsensitive && c in 'a'..'z') {
+                if (inClass) out.append(c).append(c.uppercaseChar())
+                else out.append('[').append(c).append(c.uppercaseChar()).append(']')
+            } else if (flags.caseInsensitive && c in 'A'..'Z') {
+                if (inClass) out.append(c.lowercaseChar()).append(c)
+                else out.append('[').append(c.lowercaseChar()).append(c).append(']')
+            } else {
+                out.append(c)
+            }
+        }
+
+        private fun take(length: Int): String {
+            if (index + length > source.length) throw UnsupportedJavaPattern("short escape")
+            val value = source.substring(index, index + length)
+            index += length
+            return value
+        }
+
+        private fun takeUntil(end: Char): String {
+            val start = index
+            while (index < source.length && source[index] != end) index++
+            if (index >= source.length) throw UnsupportedJavaPattern("unclosed braced escape")
+            val value = source.substring(start, index)
+            index++
+            return value
+        }
+
+        private fun namedCharacter(name: String): String = when (name) {
+            "LATIN CAPITAL LETTER A" -> "\\u0041"
+            else -> throw UnsupportedJavaPattern("unsupported named character: $name")
+        }
+    }
+
+    private val FLAG_LETTERS = setOf('d', 'i', 'x', 'm', 's', 'u', 'U')
 }

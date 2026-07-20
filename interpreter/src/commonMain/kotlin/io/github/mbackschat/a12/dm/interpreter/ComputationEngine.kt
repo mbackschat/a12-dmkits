@@ -14,7 +14,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.CellState
 import io.github.mbackschat.a12.dm.interpreter.eval.UNKNOWN_REP
 import io.github.mbackschat.a12.dm.interpreter.eval.renderDateToFormat
 import io.github.mbackschat.a12.dm.interpreter.eval.storedComputedNumber
-import io.github.mbackschat.a12.dm.interpreter.eval.typeFormatError
+import io.github.mbackschat.a12.dm.interpreter.eval.typeFormatErrorCached
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.Computed
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
@@ -23,6 +23,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
+import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
 
 /**
  * The computation engine — the cascade (overlay / poison / cleared), the parallel join-by-key iteration,
@@ -40,6 +41,7 @@ internal class ComputationEngine(
     private val preparedModel: PreparedModel,
     private val scopes: IterationScopes,
     private val checks: AutoChecks,
+    private val patterns: PatternRegistry,
     private val cacheObserver: () -> CacheObserver? = { null },
 ) {
 
@@ -117,6 +119,7 @@ internal class ComputationEngine(
             timeZone = model.timeZone,
             predefinedTypes = predefinedTypes,
             customFieldTypes = customFieldTypes,
+            patternMatches = patterns::matches,
             computeScanState = { cell ->
                 when {
                     cell.baseState != CellState.FILLED -> cell.baseState
@@ -312,9 +315,9 @@ internal class ComputationEngine(
      *  value gets, so a computed string may legally start/end with a blank). */
     private fun computedOutcome(targetPath: String, rendered: String): ComputeOutcome {
         val kind = model.kinds[targetPath] ?: return ComputeOutcome.VALUE
-        val invalid = typeFormatError(kind, rendered, model.scaleOf(targetPath), model.dateLikeFormatOf(targetPath),
+        val invalid = typeFormatErrorCached(kind, rendered, model.scaleOf(targetPath), model.dateLikeFormatOf(targetPath),
             model.datePrecisionOf(targetPath), model.rangeSeparatorOf(targetPath), model.constraintsOf(targetPath),
-            model.baseYear ?: 2000, model.timeZone) != null
+            model.baseYear ?: 2000, model.timeZone, patterns::matches) != null
         return if (invalid) ComputeOutcome.ERRORED else ComputeOutcome.VALUE
     }
 

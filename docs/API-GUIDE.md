@@ -155,7 +155,7 @@ tier.category("Pricing").is("BASIC")   // fails fast — BASIC is an enum value,
 m.num(FEE).matches(".*")               // does not compile — patterns work on string fields only
                                        //   (MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON erased; enums too)
 email.matches("(")                     // fails fast — not a compilable regex (MVK_INVALID_PATTERN pre-checked;
-                                       //   the kernel's portable-subset gate has the final word: lookbehind dies at F4)
+                                       //   Java-valid kernel-rejected forms such as lookbehind fail at the same preflight)
 renew.in("x")                          // does not exist — value lists exclude booleans/confirms
                                        //   (MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED erased)
 fee.in(10.50)                          // does not compile — value-list numbers are INTEGER literals only

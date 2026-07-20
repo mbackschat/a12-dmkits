@@ -80,6 +80,28 @@ class CheckVerbTest {
     }
 
     @Test
+    void invalidRulePatternGetsTheTwoStageCorrective(@TempDir Path dir) throws Exception {
+        Path m = model(dir);
+        var res = CliTestSupport.run("-m", m.toString(), "rule", "check",
+                "--field", "/Subscription/Billing/InvoiceEmail",
+                "--condition", "[InvoiceEmail] PatternMatched \"(?<=a)b\"", "--code", "X");
+        assertEquals(1, res.code());
+        JsonNode diagnostics = MAPPER.readTree(res.out()).path("diagnostics");
+        assertTrue(hasPatternCorrective(diagnostics), () -> "rule check pattern corrective: " + res.out());
+    }
+
+    private static boolean hasPatternCorrective(JsonNode diagnostics) {
+        for (JsonNode diagnostic : diagnostics) {
+            if ("MVK_INVALID_PATTERN".equals(diagnostic.path("code").asText())
+                    && diagnostic.path("fix").asText().contains("A12K-30")
+                    && diagnostic.path("explain").asText().contains("Java Pattern")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Test
     void fieldThatIsAFilePathGetsATailoredError(@TempDir Path dir) throws Exception {
         // the recurring N6 slip: the <model.json> file path pasted into --field. The ModelPaths guard
         // now names the exact confusion instead of a generic "not a field".

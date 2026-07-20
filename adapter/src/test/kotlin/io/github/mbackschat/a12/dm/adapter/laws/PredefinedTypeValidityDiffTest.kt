@@ -101,7 +101,7 @@ class PredefinedTypeValidityDiffTest {
         val def = ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "VT", "../CustomerName")))
         val javaEngine = RuntimeLaws.kernelJavaEngine(model)
 
-        listOf(valid to "VALUE_ERROR", invalid to null).forEach { (name, expected) ->
+        listOf(valid to "VALUE_ERROR", invalid to null, "a\u00a0@b.co" to "VALUE_ERROR").forEach { (name, expected) ->
             val kDoc = RuntimeLaws.doc().group("/Order", 1).field(NAME, name, 1, 1)
             val iDoc = def.newDocument().group("/Order", 1).field(NAME, name, 1, 1)
             val groovy = RuntimeLaws.messages(model, kDoc, factory)

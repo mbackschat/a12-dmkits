@@ -176,7 +176,7 @@ One of the catalog's **four honesty anchors** (PROJECT-DESIGN §9/N3 — v2 adde
 The kernel facts live in `KERNEL-FINDINGS.md` §7; rulekit's treatment:
 
 - **Renderer `quote()` uses the kernel's quote-doubling** (`"` → `""`), no backslash handling — backslash is a plain character in DSL string literals, so regexes render verbatim. (The original C-style escaping would have corrupted every `\`-bearing regex and quote-bearing string; fixed 2026-06-04, locked by `RenderConditionTest.quotesStringLiteralsTheKernelWay` + `validate.laws.PatternLawsTest`.)
-- **Pattern slot rules are typed away**: only `StringRef` offers `matches`/`violates`; the left side is always a bare field value, the right always a `String` regex — the four slot-rule `MVK_*` codes are erased (see `MVK-LEDGER.md`). `Pattern.compile` runs as a fail-fast *necessary-condition* check for `MVK_INVALID_PATTERN`; the kernel's portable-subset gate (lookbehind etc.) is deliberately delegated to F4/N7.
+- **Pattern slot rules are typed away**: only `StringRef` offers `matches`/`violates`; the left side is always a bare field value, the right always a `String` regex — the four slot-rule `MVK_*` codes are erased (see `MVK-LEDGER.md`). `KernelPatternPolicy` single-sources Java compilation plus the kernel 30.8.x admission restrictions for rulekit and modelkit, while F4/N7 remains the final oracle. Passing admission does not claim JavaScript portability.
 
 ## DM-JSON write path (F6) — and the includes-safety rule
 

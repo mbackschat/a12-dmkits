@@ -95,7 +95,7 @@ Caveats that hold across all four paths:
 | `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON` | kernel-delegated | law: the range-overlap condition takes exactly one unstarred date-range field — F4 arbitrates |
 | `MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON` | erased | `PatternCondition` left side is always a bare string field value — expressions unrepresentable (KERNEL-FINDINGS §7) |
 | `MVK_INVALID_PARAMS_FOR_OP` | erased | H-model row-number uniformity law — legacy-only, no H-model authoring surface |
-| `MVK_INVALID_PATTERN` | pre-checked | `StringRef.matches/violates` fail fast via `Pattern.compile` (necessary condition only — the portable-subset gate stays kernel-delegated; locked: `validate.laws.PatternLawsTest`) |
+| `MVK_INVALID_PATTERN` | pre-checked | `StringRef.matches/violates` and modelkit STRING/typedef patterns share `KernelPatternPolicy`: Java syntax is distinguished from Java-valid kernel-admission rejection; F4/N7 remains the final oracle (locked: `KernelPatternPolicyTest`, `PatternConditionTest`, `FieldConfigTest`, `validate.laws.PatternLawsTest`) |
 | `MVK_INVALID_PREDEFINED_TYPE` | kernel-delegated | dormant — no firing site found in kernel 30.8.1; nothing to pre-check |
 | `MVK_INVALID_RAW_TYPE` | kernel-delegated | law: no-value-validation fields are barred from most ops — model data, F4 arbitrates |
 | `MVK_INVALID_ROOT_GROUP` | pre-checked | root-group handles exist only for model entities; CLI pre-flight fails fast on unknown names |

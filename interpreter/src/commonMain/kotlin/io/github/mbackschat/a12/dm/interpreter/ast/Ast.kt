@@ -5,8 +5,6 @@ import io.github.mbackschat.a12.dm.interpreter.dec
 import io.github.mbackschat.a12.dm.interpreter.decOrNull
 import io.github.mbackschat.a12.dm.interpreter.DEC_ZERO
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
-import io.github.mbackschat.a12.dm.interpreter.regex.CompiledPattern
-import io.github.mbackschat.a12.dm.interpreter.regex.compilePattern
 
 /**
  * The interpreter's condition/value AST, in commonMain so it compiles to BOTH JVM and JS.
@@ -71,12 +69,7 @@ sealed interface Cond {
      * is anchored over the WHOLE value (kernel semantics). [expectMatch] = PatternMatched (fires when the
      * value matches); PatternViolated fires when a *present* value does NOT match (empty → not evaluated).
      */
-    data class Pattern(val value: Expr, val pattern: Expr, val expectMatch: Boolean) : Cond {
-        /** The regex literal compiled ONCE (with Java-Pattern semantics on both hosts, IG90) and reused across
-         *  every evaluated row — the kernel caches globally; this caches per AST node. Not part of data-class
-         *  identity. [by lazy] is thread-safe; the pattern is always a [Expr.StrLit] on a valid model. */
-        val compiled: CompiledPattern by lazy { compilePattern((pattern as Expr.StrLit).v) }
-    }
+    data class Pattern(val value: Expr, val pattern: Expr, val expectMatch: Boolean) : Cond
 
     /**
      * The infix tolerance comparison `left DiffersWithToleranceRangeN right` — fires iff `|left − right| >

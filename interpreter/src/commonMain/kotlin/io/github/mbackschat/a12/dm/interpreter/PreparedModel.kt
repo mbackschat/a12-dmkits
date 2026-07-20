@@ -14,6 +14,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
+import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
 
 /** One rule's fully prepared, value-independent execution plan. */
 internal data class PreparedRulePlan(
@@ -28,6 +29,7 @@ internal data class PreparationSupport(
     val predefinedTypes: Map<String, PredefinedType>,
     val customConditions: Map<String, CustomCondition>,
     val customFieldTypes: Map<String, CustomFieldType>,
+    val patterns: PatternRegistry,
 )
 
 /**
@@ -58,10 +60,19 @@ internal class PreparedModel(
         computationPlans.getValue(computation).value
 
     fun audit(): List<UnsupportedRule> = buildList {
+        model.fieldConstraints.forEach { (path, constraints) ->
+            constraints.pattern?.let { pattern ->
+                capture(path, this) { support.patterns.pattern(pattern) }
+            }
+        }
         model.customTypes.forEach { (path, declaration) ->
             if (declaration.name !in support.predefinedTypes && declaration.name !in support.customFieldTypes) {
                 add(UnsupportedRule(path,
                     "unregistered custom field type \"${declaration.name}\" — register it in the predefined-type or custom-field-type registry"))
+            } else {
+                support.predefinedTypes[declaration.name]?.pattern?.let { pattern ->
+                    capture(path, this) { support.patterns.pattern(pattern) }
+                }
             }
         }
         model.rules.forEach { auditRule(it, this) }
@@ -137,13 +148,14 @@ internal class PreparedModel(
                         throw UnsupportedConstructException(
                             "unknown predefined type \"$typeName\" — register it in the predefined-type or custom-field-type registry")
                     }
+                    support.predefinedTypes[typeName]?.pattern?.let { support.patterns.pattern(it) }
                 }
             }
             is Cond.Pattern -> {
                 auditExpr(cond.value, outerAllowed, starAllowed = false)
                 auditExpr(cond.pattern, outerAllowed, starAllowed = false)
                 try {
-                    cond.compiled
+                    support.patterns.pattern((cond.pattern as Expr.StrLit).v)
                 } catch (e: IllegalArgumentException) {
                     throw UnsupportedConstructException(
                         "unsupported pattern for this runtime: ${e.message ?: "pattern compilation failed"}")

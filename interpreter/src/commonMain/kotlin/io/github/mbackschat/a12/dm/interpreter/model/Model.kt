@@ -1,6 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.model
 
-import io.github.mbackschat.a12.dm.interpreter.regex.CompiledPattern
+import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
 import io.github.mbackschat.a12.dm.interpreter.regex.compilePattern
 
 /**
@@ -64,13 +64,17 @@ enum class MsgType { VALUE, OMISSION }
  * register them through the function-valued [CustomFieldType] SPI.
  */
 data class PredefinedType(val minLength: Int? = null, val maxLength: Int? = null, val pattern: String? = null) {
-    private val regex: CompiledPattern? = pattern?.let { compilePattern(it) }
-
     /** Whether [value] is a valid instance of this type — within the length bounds AND a full pattern match. */
     fun accepts(value: String): Boolean =
+        accepts(value) { source, candidate -> compilePattern(source).matches(candidate) }
+
+    internal fun accepts(value: String, patterns: PatternRegistry): Boolean =
+        accepts(value, patterns::matches)
+
+    private fun accepts(value: String, matches: (String, String) -> Boolean): Boolean =
         (minLength == null || value.length >= minLength) &&
             (maxLength == null || value.length <= maxLength) &&
-            (regex == null || regex.matches(value))
+            (pattern == null || matches(pattern, value))
 }
 
 /**
@@ -300,7 +304,8 @@ data class ComputationAlternative(
 /**
  * The declared field-type constraints the kernel auto-validates against a filled value (IF20) — string length
  * + pattern, enum value-domain membership, number range, and the minimum-fractional-digits rule. Built per
- * field from the DM-JSON field type; [NONE] for an unconstrained field. The compiled [patternRegex] is cached.
+ * field from the DM-JSON field type; [NONE] for an unconstrained field. Pattern compilation belongs to the
+ * interpreter owner's distinct-pattern registry, not this value object.
  * (`zeroAllowed` is a runtime-only INumberType quality with no DM-JSON serialization. The integer-digit cap —
  * explicit `maxIntegerDigits` / implicit `trait:"amount"` — and the number `min/maxLength` DO serialize and are
  * modeled here; see INTERPRETER-FINDINGS IF30.)
@@ -338,8 +343,6 @@ data class FieldConstraints(
     /** NUMBER `maxLength` — value-string length above it → `zahlZuLang`. */
     val numberMaxLength: Int? = null,
 ) {
-    val patternRegex: CompiledPattern? = pattern?.let { compilePattern(it) }
-
     /** Whether this field carries any NON-DEFAULT constraint, so it must be stored (else [NONE] — whose false
      *  booleans already encode the kernel defaults — is used). The `*Allowed`/`*NotAllowed` flags count only when
      *  `true` (the non-default); the default-forbidden newline/leading-zeros checks still run via [NONE]. */

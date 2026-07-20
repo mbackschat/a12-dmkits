@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter.gen
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.regex.compilePattern
 import kotlin.random.Random
 
 /**
@@ -209,7 +210,7 @@ object ValidValues : ValueStrategy {
      * = MEDIUM, with the leave-empty fallback). Handled: literals, escapes (`\d`→digit, `\w`→letter, `\s`→space),
      * `.`, `[...]` classes (first member / range start), and the quantifiers `{n}` / `{n,m}` / `+` / `*` / `?`; a
      * `(group)` is skipped only when its quantifier permits zero (`*` / `?` / `{0,…}`), else the sampler bails.
-     * **The candidate is always verified** with a full-match against the real [Regex] — a wrong guess yields
+     * **The candidate is always verified** through the interpreter's compatible pattern abstraction — a wrong guess yields
      * `null` (an empty cell), never an invalid value — so an over-simple sampler stays SOUND, just less covering.
      */
     private fun patternSample(pattern: String): String? {
@@ -240,7 +241,7 @@ object ValidValues : ValueStrategy {
             }
         }
         val sample = sb.toString()
-        return if (Regex(pattern).matches(sample)) sample else null
+        return if (compilePattern(pattern).matches(sample)) sample else null
     }
 
     /** Append [atom] repeated per the quantifier at [qi] (min count: `{n}`→n, `{n,m}`→n, `+`→1, `*`/`?`→0, none→1);

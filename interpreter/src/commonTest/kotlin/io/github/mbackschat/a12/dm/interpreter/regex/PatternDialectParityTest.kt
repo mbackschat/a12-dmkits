@@ -6,7 +6,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * IG90 — a kernel-legal Java `Pattern` must carry the SAME (dynamic-Groovy-normative, IF136) semantics on the JS
+ * IF164 — an admitted Java `Pattern` carries the SAME (dynamic-Groovy-normative, IF136) semantics on the JS
  * host. These vectors run on both actuals (`:interpreter:check` → jvmTest + jsNodeTest): the JVM actual IS Java
  * `Pattern` (the oracle), so an expected value is Java's real result, and the JS actual (the [JavaPatternToJs]
  * translation) must reproduce it. Before the translation, JS `RegExp` read `\h`/`\v`/`\R`/`\A`/`\z` as identity
@@ -54,11 +54,63 @@ class PatternDialectParityTest {
         assertFalse(m("\\H", " "), "space is not \\H")
         assertTrue(m("\\V", " "), "space IS non-vertical-ws")
         assertFalse(m("\\V", "\n"), "newline is not \\V")
+        assertTrue(m("[\\H]", "a"), "\\H inside a class")
+        assertFalse(m("[\\H]", " "), "\\H inside a class excludes horizontal whitespace")
+        assertTrue(m("[\\V]", " "), "\\V inside a class")
+        assertFalse(m("[\\V]", "\n"), "\\V inside a class excludes vertical whitespace")
     }
 
-    // (\A \z \Z and possessive/atomic/lookbehind/\p{}/intersection are KERNEL-FORBIDDEN — MVK_INVALID_PATTERN,
-    //  A12K-30 — so they never reach a loadable model; the interpreter needs no translation. Proven kernel-rejected
-    //  by adapter.laws.PatternDialectDiffTest.)
+    @Test fun defaultJavaClassesAndCodePoints() {
+        assertFalse(m("\\s", "\u00A0"), "Java's default \\s is ASCII; JS's native \\s is not")
+        assertTrue(m("\\s", "\t"), "ASCII tab remains whitespace")
+        assertTrue(m("[^@\\s]+@[^@\\s]+\\.[^@\\s]+", "a\u00A0@b.co"), "Java's EMail pattern admits NBSP where JS's native \\s would not")
+        assertFalse(m(".", "\u0085"), "Java dot excludes NEL")
+        assertTrue(m(".", "😀"), "Java dot consumes one supplementary code point")
+    }
+
+    @Test fun captureParticipationAndClassIntersection() {
+        assertFalse(m("(a|(b))\\2c", "ac"), "a backreference to an unmatched group fails in Java")
+        assertTrue(m("(a|(b))\\2c", "bbc"), "the same backreference succeeds when its capture participated")
+        assertFalse(m("[a-z&&c-e]+", "a"), "Java class intersection excludes a")
+        assertTrue(m("[a-z&&c-e]+", "cde"), "Java class intersection retains c-e")
+    }
+
+    @Test fun javaUnicodePrimitiveConstructs() {
+        assertTrue(m("\\P{L}+", "123"), "the primitive defensively supports uppercase Unicode-property complement")
+        assertFalse(m("\\P{L}+", "abc"), "letters are excluded by \\P{L}")
+        assertTrue(m("\\x{1F600}", "😀"), "Java code-point hex escape")
+        assertTrue(m("\\N{LATIN CAPITAL LETTER A}", "A"), "Java named-character escape")
+        assertTrue(m("\\X", "e\u0301"), "Java extended grapheme cluster")
+        assertTrue(m("\\b{g}A\\b{g}", "A"), "Java grapheme boundaries")
+    }
+
+    @Test fun classBoundariesAreParsedRatherThanGuessed() {
+        assertTrue(m("[]\\h]", "]"), "a leading ] is a literal class member")
+        assertTrue(m("[]\\h]", " "), "translation stays inside the leading-] class")
+        assertTrue(m("[^]\\h]", "a"), "negated leading-] class accepts an ordinary letter")
+        assertFalse(m("[^]\\h]", "]"), "negated leading-] class excludes ]")
+        assertFalse(m("[^]\\h]", " "), "negated leading-] class excludes horizontal whitespace")
+    }
+
+    @Test fun completeInlineFlagForms() {
+        assertTrue(m("(?i)abc", "ABC"), "global enable")
+        assertTrue(m("(?i:abc)DEF", "AbCDEF"), "scoped enable")
+        assertFalse(m("(?i:abc)DEF", "AbCdef"), "scope restores case sensitivity")
+        assertTrue(m("(?i)abc(?-i)DEF", "AbCDEF"), "global disable")
+        assertFalse(m("(?i)abc(?-i)DEF", "AbCdef"), "disabled suffix stays case-sensitive")
+        assertTrue(m("(?s)a.b", "a\nb"), "dotall")
+        assertTrue(m("(?x)a  # ignored comment\n b", "ab"), "comments/extended mode")
+        assertTrue(m("(?im)^abc$\n^def$", "ABC\ndef"), "combined flags")
+    }
+
+    @Test fun caseInsensitiveClassesAndRanges() {
+        assertTrue(m("(?i)[abc]+", "CBA"), "global case folding applies inside a class")
+        assertTrue(m("(?i)[a-c]+", "AbC"), "global case folding expands both sides of a range")
+        assertFalse(m("(?i)[a-c]+", "D"), "range expansion must not admit characters outside the Java range")
+        assertTrue(m("(?i)[a-z&&c-e]+", "CDE"), "case folding applies to both sides of an intersection")
+        assertTrue(m("(?i:[a-c]+)DEF", "AbCDEF"), "scoped case folding applies inside a range")
+        assertFalse(m("(?i:[a-c]+)DEF", "AbCdef"), "the scoped flag remains local after a class")
+    }
 
     // ── ordinary regex is untouched (the majority — must still work identically) ─────────────────────────────
     @Test fun ordinaryPatternsUnaffected() {
@@ -70,16 +122,16 @@ class PatternDialectParityTest {
         assertFalse(m("ab|cd", "abcd"), "top-level alternation is whole-value anchored (the ^(?:…)$ wrap)")
     }
 
-    // ── the translation output (documented) + the IG90 residual detector ─────────────────────────────────────
+    // ── the translation output and shared support classifier ─────────────────────────────────────────────────
     @Test fun translationAndResidual() {
         assertEquals("[\\t\\x20\\xA0\\u1680\\u180E\\u2000-\\u200A\\u202F\\u205F\\u3000]", JavaPatternToJs.translate("\\h"),
             "\\h translates to Java's exact horizontal-ws class body")
         assertEquals("\\d+", JavaPatternToJs.translate("\\d+"), "ordinary escapes pass through")
-        // the still-open IG90 residual is inline-flag groups (kernel-LEGAL but JS-throwing, not yet translated)
-        for (r in listOf("(?i)abc", "(?s).*", "(?m)^x", "(?i:abc)", "(?x) a b"))
-            assertTrue(JavaPatternToJs.containsResidual(r), "inline-flag residual flagged: $r")
-        // covered / ordinary / non-capturing / lookahead / kernel-forbidden are NOT the interpreter's residual
-        for (ok in listOf("\\d+", "a\\Rb", "[\\h\\v]", "(?:ab)", "(?=x)", "(?<name>x)", "a++"))
-            assertFalse(JavaPatternToJs.containsResidual(ok), "not an inline-flag residual: $ok")
+        for (supported in listOf(
+            "(?i)abc", "(?s).*", "(?m)^x", "(?i:abc)", "(?-i)a", "(?x) a b",
+            "\\P{L}+", "\\x{1F600}", "\\N{LATIN CAPITAL LETTER A}", "\\X", "\\b{g}",
+        )) {
+            assertFalse(JavaPatternToJs.containsResidual(supported), "shared primitive construct must be supported: $supported")
+        }
     }
 }

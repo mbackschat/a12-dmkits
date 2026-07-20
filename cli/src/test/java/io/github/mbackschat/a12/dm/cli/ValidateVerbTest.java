@@ -43,4 +43,24 @@ class ValidateVerbTest {
         assertFalse(j.get("valid").asBoolean(), "valid is false");
         assertTrue(j.get("diagnostics").size() > 0, () -> "with at least one diagnostic: " + res.out());
     }
+
+    @Test
+    void invalidStoredPatternGetsTheTwoStageCorrective(@TempDir Path dir) throws Exception {
+        String broken = ModelWriter.replaceCondition(
+                CliTestSupport.modelWithRuleJson(),
+                CliTestSupport.RULE_FULL_NAME,
+                "[MonthlyFee] > 0 And [/Subscription/Billing/InvoiceEmail] PatternMatched \"(?<=a)b\"");
+        Path file = dir.resolve("bad-pattern.dm.json");
+        Files.writeString(file, broken);
+        var res = CliTestSupport.run("-m", file.toString(), "model", "check");
+        assertEquals(1, res.code());
+        JsonNode diagnostics = MAPPER.readTree(res.out()).path("diagnostics");
+        boolean corrective = false;
+        for (JsonNode diagnostic : diagnostics) {
+            corrective |= "MVK_INVALID_PATTERN".equals(diagnostic.path("code").asText())
+                    && diagnostic.path("fix").asText().contains("A12K-30")
+                    && diagnostic.path("explain").asText().contains("Java Pattern");
+        }
+        assertTrue(corrective, () -> "model check pattern corrective: " + res.out());
+    }
 }

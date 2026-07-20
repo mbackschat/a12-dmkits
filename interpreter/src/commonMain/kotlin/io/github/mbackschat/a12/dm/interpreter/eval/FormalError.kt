@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldConstraints
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
+import io.github.mbackschat.a12.dm.interpreter.regex.compilePattern
 
 /**
  * Formal-error detection — whether a raw field value is *well-formed for its kind*. The kernel runs this
@@ -209,12 +210,28 @@ fun formalError(
      *  `datumFormatFalsch` (the kernel's non-lenient zone-set parse rejects it; KERNEL-FINDINGS §6). */
     timeZone: ModelTimeZone = ModelTimeZone.UTC,
 ): FormalErrorCode? {
+    return formalErrorCached(
+        kind, raw, scale, format, datePrecision, rangeSep, constraints, legalCharset, baseYear, timeZone,
+    ) { pattern, value -> compilePattern(pattern).matches(value) }
+}
+
+internal fun formalErrorCached(
+    kind: Kind, raw: String, scale: Int? = null, format: String? = null,
+    datePrecision: DatePrecision = DatePrecision.FULL, rangeSep: String? = null,
+    constraints: FieldConstraints = FieldConstraints.NONE,
+    legalCharset: LegalCharset = LegalCharset.BMP,
+    baseYear: Int = 2000,
+    timeZone: ModelTimeZone = ModelTimeZone.UTC,
+    patternMatches: (String, String) -> Boolean,
+): FormalErrorCode? {
     if (raw.isEmpty()) return null
     // BASELINE value checks the kernel runs for EVERY kind before the type format (`checkFieldValueFormat`,
     // IF43): legal charset (default BMP; [legalCharset] customizes it, e.g. DIN 91379), then leading blank, then
     // trailing blank. They pre-empt the type-specific check (a ` 2024-01-01` DATE is `fuehrendesBlank`).
     baselineValueError(raw, legalCharset)?.let { return it }
-    return typeFormatError(kind, raw, scale, format, datePrecision, rangeSep, constraints, baseYear, timeZone)
+    return typeFormatErrorCached(
+        kind, raw, scale, format, datePrecision, rangeSep, constraints, baseYear, timeZone, patternMatches,
+    )
 }
 
 /**
@@ -231,6 +248,19 @@ fun typeFormatError(
     constraints: FieldConstraints = FieldConstraints.NONE,
     baseYear: Int = 2000,
     timeZone: ModelTimeZone = ModelTimeZone.UTC,
+): FormalErrorCode? {
+    return typeFormatErrorCached(
+        kind, raw, scale, format, datePrecision, rangeSep, constraints, baseYear, timeZone,
+    ) { pattern, value -> compilePattern(pattern).matches(value) }
+}
+
+internal fun typeFormatErrorCached(
+    kind: Kind, raw: String, scale: Int? = null, format: String? = null,
+    datePrecision: DatePrecision = DatePrecision.FULL, rangeSep: String? = null,
+    constraints: FieldConstraints = FieldConstraints.NONE,
+    baseYear: Int = 2000,
+    timeZone: ModelTimeZone = ModelTimeZone.UTC,
+    patternMatches: (String, String) -> Boolean,
 ): FormalErrorCode? {
     if (raw.isEmpty()) return null
     return when (kind) {
@@ -304,7 +334,7 @@ fun typeFormatError(
         }
         // A STRING (incl. an ENUM, which is STRING-kind) is well-formed by construction; its only formal
         // errors are the declared constraints (pattern / enum-domain, then length).
-        Kind.STRING -> stringConstraintError(raw, constraints)
+        Kind.STRING -> stringConstraintError(raw, constraints, patternMatches)
         Kind.BOOLEAN, Kind.CONFIRM -> null
     }
 }
@@ -314,7 +344,11 @@ fun typeFormatError(
  * **pattern / enum-domain BEFORE the length** (probe-verified: a value that is both out-of-pattern and too short
  * reports `stringFalschesMuster`, not `stringZuKurz`).
  */
-private fun stringConstraintError(raw: String, c: FieldConstraints): FormalErrorCode? {
+private fun stringConstraintError(
+    raw: String,
+    c: FieldConstraints,
+    patternMatches: (String, String) -> Boolean,
+): FormalErrorCode? {
     // `noValueValidation` short-circuits the WHOLE string format check (the kernel's
     // FormatDefinitionString.validiereFormat returns Valid immediately) — so pattern / length / newline are all
     // skipped. A kernel-valid such field carries no pattern/minLength and allows line breaks, so this effectively
@@ -332,7 +366,7 @@ private fun stringConstraintError(raw: String, c: FieldConstraints): FormalError
     // A plain STRING: pattern → length. [raw] arrives CRLF-normalized (the Document's eval-ingestion
     // normalization, IF124), so a permitted "\r\n" measures ONE unit here — exactly the kernel, which
     // normalizes inside `validiereFormat` before these clauses.
-    if (c.patternRegex != null && !c.patternRegex.matches(raw)) return FormalErrorCode.PATTERN
+    if (c.pattern != null && !patternMatches(c.pattern, raw)) return FormalErrorCode.PATTERN
     if (c.minLength != null && raw.length < c.minLength) return FormalErrorCode.STRING_TOO_SHORT
     if (c.maxLength != null && raw.length > c.maxLength) return FormalErrorCode.STRING_TOO_LONG
     return null

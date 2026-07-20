@@ -58,7 +58,7 @@ Finally, setting big.js `PE`/`NE` to `±1,000,000` does not make rendering uncon
 
 **Acceptance checks:** Add JVM/Node exact-value locks for `+`, `-`, the positive-power discriminators above, the division discriminator above, negative power, and exponent-render boundaries. Add tri-engine observable differentials where the result reaches rule/computation behavior. Cover `0^0`, `0^-1`, exponent boundaries `±1000`/outside, and nested legal magnitudes. Add a power-growth guard proving that JS does not materialize the entire exact `base^1000` result before rounding.
 
-**Resolution:** Open.
+**Resolution:** Fixed by `a297b220` (`fix(interpreter): complete decimal host parity`). Both actuals now apply one `MathContext(50)` contract to all arithmetic; JS positive/negative power uses bounded working precision, division performs one magnitude-independent significant-digit rounding, and plain rendering derives from coefficient/exponent state. `DecimalHostParityTest` covers the exact JVM/Node vectors and exponent boundaries, `DecimalPowerGrowthTest` proves bounded `base^1000` work, and `DecimalPrecisionParityDiffTest` tri-checks observable `+`/`−`/division/positive-power/negative-power splits against Groovy-dynamic and generated Java. `:interpreter:check`, the focused adapter differential, and `staleGapGuardTest` passed.
 
 ### RV-2026-07-20-01-2 — IF153's status and evidence prose overstate the partial fix
 
@@ -70,7 +70,7 @@ Finally, setting big.js `PE`/`NE` to `±1,000,000` does not make rendering uncon
 
 **Acceptance checks:** `rg` finds no “IG89 closed,” “JS decimal parity shipped,” “full MathContext parity,” or equivalent claim outside explicitly historical review text while IG89 remains open. Every evidence statement names whether it is a common JVM/Node primitive lock or a real-kernel tri-engine differential.
 
-**Resolution:** Open.
+**Resolution:** Fixed by `a297b220`. IF153 is retained as the accepted first increment and IF163 records the completed contract; IG89 was deleted. The architecture, specification, certificate, performance contract, kernel finding, build comment, and direct finding/gap references now distinguish common JVM/Node primitive evidence from the real-kernel tri-engine differential.
 
 ### RV-2026-07-20-01-3 — IG90's legal-pattern inventory is materially incomplete
 
@@ -92,7 +92,7 @@ The current docs instead say only `R/h/H/v/V` and inline flags diverge and class
 
 **Acceptance checks:** Add the concrete discriminators above and sibling classes to JVM/Node locks and tri-engine tests. Exercise both condition operators, declared STRING patterns, and consumer-supplied predefined-type patterns. Include an end-to-end built-in `EMail` NBSP discriminator. No kernel-legal pattern may throw a host `SyntaxError`.
 
-**Resolution:** Open.
+**Resolution:** Fixed by `daca28f7`, `f213efd2`, and `8fe472a0`. `JavaPatternToJs` now carries one closed ES2018 parser/translator for the reviewed dialect families and `PatternRegistry` routes every model-static pattern locus plus seed verification through one engine-owned boundary. `PatternDialectParityTest` locks the primitive on JVM+Node; `PatternDialectDiffTest`, `FieldConstraintFormalDiffTest`, and `PredefinedTypeValidityDiffTest` provide the model-observable differential evidence; `PatternPerfTest` supplies exact tri-engine preflight plus the paired N/4N guard. **Oracle correction found during implementation:** uppercase `\P{L}` is rejected by the typed/full kernel model with `MVK_INVALID_PATTERN` despite being absent from the textual A12K-30 blacklist, so its common primitive lock is retained defensively but it is not claimed as kernel-admitted.
 
 ### RV-2026-07-20-01-4 — the translator and residual detector have independent parser defects
 
@@ -106,7 +106,7 @@ The current docs instead say only `R/h/H/v/V` and inline flags diverge and class
 
 **Acceptance checks:** Lock leading-literal-`]` classes, negated classes, `[\H]`/`[\V]`, global/scoped flags, negative flags, combined flags, escapes, and nested groups. Add a guard proving that every known legal-but-unimplemented form is classified before JS compilation.
 
-**Resolution:** Open.
+**Resolution:** Fixed by `daca28f7`, with the independent-gate correction in `9bf4410f`. Translation and `containsResidual` invoke the same closed parser. Leading-literal-`]` and negated classes, standalone `[\H]`/`[\V]`, global/scoped/negative/combined flags, case-insensitive class literals/ranges/intersections, escapes, and nested groups are JVM+Node locked; unsupported syntax is classified before host compilation. The follow-up corrected class-body emission so inline case folding expands members and range endpoints inside the existing class instead of emitting invalid nested classes; global and scoped forms are also tri-engine locked.
 
 ### RV-2026-07-20-01-5 — compile-once and coverage claims exceed the evidence
 
@@ -122,7 +122,7 @@ The production seed generator also validates generated pattern candidates throug
 
 **Acceptance checks:** Compilation count is no greater than the number of distinct model-static patterns per engine. Pattern-heavy N/4N growth is subquadratic without a first-answer regression. Add an end-to-end JVM/Node seed case for a legal dialect-sensitive field pattern. The evidence matrix either supplies specialist declared/predefined tests or narrows/splits the capability label.
 
-**Resolution:** Open.
+**Resolution:** Fixed by `f213efd2`. The interpreter-owner `PatternRegistry` deduplicates equal sources across conditions, declared fields, predefined types, and computation formal checks; seed verification uses the same compatible abstraction. `PatternRegistryTest` locks the compilation bound and JVM/Node seed case, the capability matrix now names the actual declared-pattern evidence, and `PatternPerfTest` protects pattern-heavy N/4N growth with exact semantic preflight.
 
 ### RV-2026-07-20-01-6 — the dmkits/dmtool authoring gap is real but inaccurately described
 
@@ -134,7 +134,7 @@ The production seed generator also validates generated pattern candidates throug
 
 **Acceptance checks:** Catalog examples are kernel-checked, schema examples are executed, both CLI rejection paths return a corrective diagnostic, and typed authoring distinguishes Java syntax failure from the A12K-30 blacklist. On ship, delete the DEV-API gap row and graduate the durable API rationale into `API-FINDINGS.md`.
 
-**Resolution:** Open.
+**Resolution:** Fixed by `552432d3`. `KernelPatternPolicy` single-sources Java-syntax versus Java-valid/kernel-admission rejection for rulekit and modelkit; both pattern operators carry AUTHORING gotchas and kernel-executed invalid/fix examples; field/typedef schemas explain the admission contract; and `MVK_INVALID_PATTERN` is corrective for both `rule check` and `model check`. The durable rationale graduated to API-FINDINGS finding 73 and the DEV-API gap row was deleted. The wording records the direct `\P` oracle correction rather than mislabeling it part of the textual blacklist.
 
 ### RV-2026-07-20-01-7 — direct documentation contradictions remain
 
@@ -146,11 +146,11 @@ The production seed generator also validates generated pattern candidates throug
 
 **Acceptance checks:** The doc guards pass, links resolve, and a repository search finds no remaining claim that `isPatternValid` proves Java/JavaScript portability or that the currently translated regex subset exhausts the legal divergences.
 
-**Resolution:** Open.
+**Resolution:** Fixed by `8fe472a0`. KERNEL-FINDINGS now distinguishes the finite source blacklist from the direct typed/full `\P` rejection, records the complete IF164 treatment and its evidence boundaries, and no longer points authoring work at an open gap. The direct architecture/specification/certificate/performance/README/semantics-map claims were aligned without broadening unrelated conformance language.
 
 ### Chapter resolution
 
-Open. An implementor should resolve issues 1–2 together in one decimal-context pass, issues 3–5 together in one regex/parser/evidence pass, and issues 6–7 in the same regex landing while that contract is warm. Do not close IG89 or IG90 until every acceptance check above is green.
+Resolved. Decimal issues 1–2 shipped in `a297b220` and were recorded in `f0d0eee0`. Regex/parser/evidence issues 3–5 shipped in `daca28f7` and `f213efd2`, with the independent-gate class-emission correction in `9bf4410f`; authoring issue 6 shipped in `552432d3`; issue 7 and the IF164 graduation shipped in `8fe472a0`. IG89/IG90 and the regex DEV-API row were deleted only after their acceptance checks were implemented. The direct typed/full-kernel `\P` rejection corrects the review's earlier source-only inference and is left explicit for independent verification.
 
 ## RV-2026-07-20-02 — IG83 → IF155 Route-B timezone review
 

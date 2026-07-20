@@ -7,7 +7,7 @@ class PatternLawsTest {
 
     @Test
     void lookbehindIsOutsideThePortableSubset() {
-        // The regex gate is Java Pattern.compile PLUS a portable-subset check — lookbehind is
+        // The regex gate is Java Pattern.compile PLUS additional kernel admission restrictions — lookbehind is
         // Java-valid yet rejected, so rulekit's Pattern.compile pre-check is necessary-only.
         KernelLaws.rejects("/Subscription/Billing", "../InvoiceEmail",
                 "[InvoiceEmail] PatternMatched \"(?<=a)b\"", "MVK_INVALID_PATTERN");

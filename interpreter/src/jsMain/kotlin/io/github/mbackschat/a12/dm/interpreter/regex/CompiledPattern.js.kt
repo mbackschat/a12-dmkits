@@ -2,12 +2,23 @@ package io.github.mbackschat.a12.dm.interpreter.regex
 
 import kotlin.js.RegExp
 
-/** JS actual — a `RegExp` on the [JavaPatternToJs]-translated source, wrapped `^(?:…)$` for whole-value match (the
- *  kernel-TS anchoring; the non-capturing group is load-bearing for top-level alternation). Compiled once; `.test`
- *  is stateless (no `g` flag). Browser-ready: the translated source uses only ES2018 features. */
-actual class CompiledPattern(private val re: RegExp) {
-    actual fun matches(text: String): Boolean = re.test(text)
+/** JS actual. The post-match guards restore Java's “unmatched backreference fails” rule. */
+actual class CompiledPattern(
+    private val re: RegExp,
+    private val guards: List<Pair<Int, Int>>,
+) {
+    actual fun matches(text: String): Boolean {
+        val match = re.asDynamic().exec(text) ?: return false
+        return guards.all { guard ->
+            match[guard.second] == null || match[guard.first] != null
+        }
+    }
 }
 
-actual fun compilePattern(pattern: String): CompiledPattern =
-    CompiledPattern(RegExp("^(?:" + JavaPatternToJs.translate(pattern) + ")$"))
+actual fun compilePattern(pattern: String): CompiledPattern {
+    val translated = JavaPatternToJs.compile(pattern)
+    return CompiledPattern(
+        RegExp("^(?:" + translated.source + ")$", translated.flags),
+        translated.backReferenceGuards.map { it.capture to it.marker },
+    )
+}

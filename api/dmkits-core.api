@@ -82,6 +82,16 @@ public enum io.github.mbackschat.a12.dm.core.ElementType
   public static io.github.mbackschat.a12.dm.core.ElementType[] values()
   public java.lang.String wireName()
 
+public final class io.github.mbackschat.a12.dm.core.KernelPatternPolicy
+  public static java.util.Optional<io.github.mbackschat.a12.dm.core.KernelPatternPolicy.Rejection> rejection(java.lang.String)
+  public static java.lang.String requireAccepted(java.lang.String)
+
+public static enum io.github.mbackschat.a12.dm.core.KernelPatternPolicy.Rejection
+  public static final io.github.mbackschat.a12.dm.core.KernelPatternPolicy.Rejection JAVA_SYNTAX
+  public static final io.github.mbackschat.a12.dm.core.KernelPatternPolicy.Rejection KERNEL_ADMISSION
+  public static io.github.mbackschat.a12.dm.core.KernelPatternPolicy.Rejection valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.core.KernelPatternPolicy.Rejection[] values()
+
 public class io.github.mbackschat.a12.dm.core.ModelConsistencyException extends java.lang.RuntimeException
   public ModelConsistencyException(java.lang.String, java.lang.Throwable)
   public ModelConsistencyException(java.util.List<io.github.mbackschat.a12.dm.core.Notification>)

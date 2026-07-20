@@ -50,6 +50,28 @@ class FieldConstraintFormalDiffTest {
     @Test fun patternBeatsLength() = agree(codeField, codeDef, "/Order/Code", "ab", "len2 AND pattern → pattern wins")
     @Test fun stringValid() = agree(codeField, codeDef, "/Order/Code", "ABC", "valid → no formal error")
 
+    @Test
+    fun declaredPatternDialectHasGeneratedJavaTriEvidence() {
+        val fieldJson = """{ "type": "Field", "id": "/Order/Dialect", "name": "Dialect", "Field": { "fieldType": {
+            "type": "StringType", "StringType": { "pattern": "(?i:abc)*",
+              "errorMessage": [ { "locale": "en_US", "text": "bad" }, { "locale": "de_DE", "text": "bad" } ] } } } },"""
+        val model = withField(fieldJson)
+        val engine = RuntimeLaws.kernelJavaEngine(model)
+        val field = FieldDef("/Order/Dialect", Kind.STRING, pattern = "(?i:abc)*")
+        val def = ModelDef(listOf(field), emptyList())
+        listOf("ABCabc" to null, "x" to "stringFalschesMuster").forEach { (value, expected) ->
+            val kDoc = RuntimeLaws.doc().group("/Order", 1).field(field.path, value, 1, 1)
+            val groovy = RuntimeLaws.messages(model, kDoc).map { it.code() }.firstOrNull { it == "stringFalschesMuster" }
+            val javaStatic = engine.messages(engine.instance(kDoc)).map { it.code() }.firstOrNull { it == "stringFalschesMuster" }
+            val interpreter = DmInterpreter(def).validate(
+                def.newDocument().group("/Order", 1).field(field.path, value, 1, 1),
+            ).messages.firstOrNull { it.rulePath == FORMAL_RULE_PATH }?.code
+            assertEquals(expected, groovy, "$value discriminator")
+            assertEquals(groovy, javaStatic, "$value — Groovy-dynamic vs generated Java")
+            assertEquals(groovy, interpreter, "$value — Groovy-dynamic vs interpreter")
+        }
+    }
+
     private val scoreField = """{ "type": "Field", "id": "/Order/Score", "name": "Score", "Field": { "fieldType": {
         "type": "NumberType", "NumberType": { "maxFractionalDigits": 2, "minFractionalDigits": 2, "minValue": 1, "maxValue": 99 } } } },"""
     private val scoreDef = FieldDef("/Order/Score", Kind.NUMBER, scale = 2, minValue = "1", maxValue = "99", minFractionalDigits = 2)

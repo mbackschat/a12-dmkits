@@ -40,6 +40,11 @@ class EvalConfig(
      *  of `Valid(field, "Name")` / `Invalid(field, "Name")`, consulted ONLY after [predefinedTypes] misses (so that
      *  declarative path stays monomorphic). Default empty. */
     val customFieldTypes: Map<String, CustomFieldType> = emptyMap(),
+    /** Engine-owned full-match seam. DmInterpreter supplies its distinct-pattern registry; direct low-level
+     *  Interpreter consumers retain the same semantics through the default compiler. */
+    val patternMatches: (String, String) -> Boolean = { pattern, value ->
+        io.github.mbackschat.a12.dm.interpreter.regex.compilePattern(pattern).matches(value)
+    },
     /** Partial validation only: whether a star-aggregate CELL at `(path, reps)` is relevant — "cell" being the
      *  declared house term for a repetition's field value (the House ↔ kernel vocabulary table in
      *  docs/KERNEL-SEMANTICS.md). A starred aggregate with ANY non-relevant cell evaluates to

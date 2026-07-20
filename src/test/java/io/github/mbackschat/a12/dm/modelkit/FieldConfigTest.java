@@ -112,6 +112,14 @@ class FieldConfigTest {
         assertThrows(IllegalArgumentException.class, () -> DocumentModelDraft.named("m").locale("en_US")
                 .rootGroup("G", g -> g.stringField("F", s -> s.noValueValidation()))
                 .build());
+        // String and typedef patterns share the same kernel-admission preflight as rulekit.
+        assertThrows(IllegalArgumentException.class, () -> DocumentModelDraft.named("m").locale("en_US")
+                .rootGroup("G", g -> g.stringField("F", s -> s.pattern("(?<=a)b", "invalid")))
+                .build());
+        assertThrows(IllegalArgumentException.class, () -> DocumentModelDraft.named("m").locale("en_US")
+                .typeDef("T", t -> t.string(s -> s.pattern("\\P{L}+", "invalid")))
+                .rootGroup("G", g -> g.typedefField("F", "T"))
+                .build());
     }
 
     @Test

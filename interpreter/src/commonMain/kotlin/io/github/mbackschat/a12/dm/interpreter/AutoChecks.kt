@@ -9,7 +9,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.OVER_REPETITION_CONTEXT
 import io.github.mbackschat.a12.dm.interpreter.eval.OVER_REPETITION_ROW
 import io.github.mbackschat.a12.dm.interpreter.eval.UNIQUE_INDEX
 import io.github.mbackschat.a12.dm.interpreter.eval.customTypeInvalidText
-import io.github.mbackschat.a12.dm.interpreter.eval.formalError
+import io.github.mbackschat.a12.dm.interpreter.eval.formalErrorCached
 import io.github.mbackschat.a12.dm.interpreter.eval.formalErrorText
 import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.mandatoryFieldText
@@ -26,6 +26,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
 import io.github.mbackschat.a12.dm.interpreter.model.Requiredness
 import io.github.mbackschat.a12.dm.interpreter.model.Severity
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
+import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
 
 /**
  * The auto-check emitter + the formal-status oracle — a call-invariant collaborator of the I2 eval-state
@@ -40,6 +41,7 @@ internal class AutoChecks(
     private val legalCharset: LegalCharset,
     private val predefinedTypes: Map<String, PredefinedType>,
     private val customFieldTypes: Map<String, CustomFieldType>,
+    private val patterns: PatternRegistry,
 ) {
 
     /**
@@ -195,9 +197,9 @@ internal class AutoChecks(
         }
         if (raw != null) {
             val kind = model.kinds[path] ?: return FormalResult.Valid
-            formalError(kind, raw, model.scaleOf(path), model.dateLikeFormatOf(path), model.datePrecisionOf(path),
+            formalErrorCached(kind, raw, model.scaleOf(path), model.dateLikeFormatOf(path), model.datePrecisionOf(path),
                 model.rangeSeparatorOf(path), model.constraintsOf(path), legalCharset, model.baseYear ?: 2000,
-                model.timeZone)?.let { return FormalResult.Invalid(FormalFailure.Format(it)) }
+                model.timeZone, patterns::matches)?.let { return FormalResult.Invalid(FormalFailure.Format(it)) }
             try {
                 customTypeRejection(path, raw, locale)?.let {
                     return FormalResult.Invalid(FormalFailure.Custom(it))
@@ -222,7 +224,7 @@ internal class AutoChecks(
     private fun customTypeRejection(path: String, raw: String, locale: String): CustomTypeRejection? {
         val declaration = model.customTypeOf(path) ?: return null
         predefinedTypes[declaration.name]?.let {
-            return if (it.accepts(raw)) null else CustomTypeRejection(CUSTOM_TYPE_INVALID)
+            return if (it.accepts(raw, patterns)) null else CustomTypeRejection(CUSTOM_TYPE_INVALID)
         }
         customFieldTypes[declaration.name]?.let {
             return it.check(

@@ -835,7 +835,8 @@ class Interpreter(
         val v = evalExpr(p.value)
         if (v is Val.Unknown) return Tri.UNKNOWN
         val text = (v as? Val.Txt)?.v ?: error("pattern comparison needs a string value, got $v")
-        val matched = p.compiled.matches(text)   // compiled once per AST node (IG90), not per row
+        val pattern = (p.pattern as Expr.StrLit).v
+        val matched = config.patternMatches(pattern, text)
         return Tri.of(if (p.expectMatch) matched else !matched)
     }
 

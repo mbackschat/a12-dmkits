@@ -931,15 +931,16 @@
     "constraints": [
       "the left side must be a bare string field value — no expressions, no constants, no enums",
       "the right side must be a string constant holding a valid regex",
-      "only the regex subset portable across the kernel's target languages is accepted (e.g. lookbehind is rejected although Java-valid)"
+      "the regex must compile as Java Pattern and pass the kernel 30.8.x admission restrictions; passing that finite gate does not prove JavaScript portability"
     ],
     "gotchas": [
       { "text": "the match is anchored over the WHOLE value — '@' does not find an @ somewhere, use '.*@.*'", "kind": "SURPRISE" },
       { "text": "in DSL string literals a backslash is a plain character and an embedded quote is doubled (\"\"), so regex character classes like \\d are written as-is", "kind": "SURPRISE" },
+      { "text": "authoring first requires valid Java Pattern syntax, then applies the kernel 30.8.x restrictions: the finite A12K-30 blacklist (possessive quantifiers, (?<… / (?>…), \\A \\G \\Z \\z \\a \\e \\p \\Q \\E, nested unescaped [) plus the typed/full-model \\P rejection; passing them is not a JavaScript-portability guarantee", "kind": "AUTHORING" },
       { "text": "a backtracking-prone pattern such as (a+)+ is a performance/security risk (KERNEL-SEMANTICS §7)", "kind": "SURPRISE" }
     , { "text": "an empty field is not evaluated — the match never fires on absence", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(ProductCode) And [ProductCode] PatternMatched \"[A-Z]{2}-[0-9]{4}\"", "note": "fires when ProductCode has the legacy XX-9999 format" },
-    "invalidExample": { "dsl": "[Quantity] PatternMatched \".*\"", "error": "MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON", "fix": "pattern comparison works on string fields only" },
+    "invalidExample": { "dsl": "[ProductCode] PatternMatched \"(?<=A)B\"", "error": "MVK_INVALID_PATTERN", "fix": "use a Java-valid pattern outside the finite A12K-30 blacklist; for example, replace the lookbehind with an explicit matched prefix such as \"AB.*\"" },
     "sinceKernel": "30.8.x"
   },
   {
@@ -955,13 +956,14 @@
     "constraints": [
       "the left side must be a bare string field value — no expressions, no constants, no enums",
       "the right side must be a string constant holding a valid regex",
-      "only the regex subset portable across the kernel's target languages is accepted"
+      "the regex must compile as Java Pattern and pass the kernel 30.8.x admission restrictions; passing that finite gate does not prove JavaScript portability"
     ],
     "gotchas": [
-      { "text": "an empty field is not evaluated — guard with FieldFilled when the rule should fire only on present-but-malformed values", "kind": "SURPRISE" }
+      { "text": "an empty field is not evaluated — guard with FieldFilled when the rule should fire only on present-but-malformed values", "kind": "SURPRISE" },
+      { "text": "authoring first requires valid Java Pattern syntax, then applies the kernel 30.8.x restrictions: the finite A12K-30 blacklist (possessive quantifiers, (?<… / (?>…), \\A \\G \\Z \\z \\a \\e \\p \\Q \\E, nested unescaped [) plus the typed/full-model \\P rejection; passing them is not a JavaScript-portability guarantee", "kind": "AUTHORING" }
     ],
     "validExample": { "dsl": "FieldFilled(BillingAddress/PostalCode) And [BillingAddress/PostalCode] PatternViolated \"[0-9]{5}\"", "note": "fires when a present postal code is not exactly five digits" },
-    "invalidExample": { "dsl": "[CustomerName] PatternViolated \"(\"", "error": "MVK_INVALID_PATTERN", "fix": "the right side must be a valid (portable-subset) regular expression" },
+    "invalidExample": { "dsl": "[CustomerName] PatternViolated \"\\P{L}+\"", "error": "MVK_INVALID_PATTERN", "fix": "replace the blacklisted property escape with an explicit admitted class for the intended domain, or reformulate the validation without that escape" },
     "sinceKernel": "30.8.x"
   },
   {

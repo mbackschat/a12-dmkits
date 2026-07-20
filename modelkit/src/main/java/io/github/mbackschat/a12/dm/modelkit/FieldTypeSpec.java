@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
+import io.github.mbackschat.a12.dm.core.KernelPatternPolicy;
+
 /**
  * The typed configuration of a field — one record per kind, carrying only the slots that kind
  * actually has, so a string can't be given a numeric range and vice versa (illegal config is
@@ -59,6 +61,9 @@ public sealed interface FieldTypeSpec {
             }
             if ((pattern == null) != (patternMessage == null)) {
                 throw new IllegalArgumentException("a pattern and its error message must be set together");
+            }
+            if (pattern != null) {
+                KernelPatternPolicy.requireAccepted(pattern);
             }
             // KERNEL-FINDINGS IF29: a no-value-validation string MUST permit line breaks — the kernel rejects
             // the pair otherwise (MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK). Fail fast with our own message.

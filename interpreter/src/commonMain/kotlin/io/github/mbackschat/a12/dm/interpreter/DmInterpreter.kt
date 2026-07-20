@@ -28,6 +28,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Suppression
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
 import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.Verdict
+import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
 import kotlin.jvm.JvmOverloads
 
 /**
@@ -72,9 +73,10 @@ class DmInterpreter @JvmOverloads constructor(
     /** The effective legal charset: the model-declared `supportedCharacters` ([ModelDef.legalCharset], IF120) when
      *  present, else the consumer-supplied [legalCharset] SPI. */
     private val effectiveLegalCharset: LegalCharset = model.legalCharset ?: legalCharset
+    private val patterns = PatternRegistry()
 
     /** The auto-check emitter + formal-status oracle — the call-invariant I2 seam collaborator (IF117). */
-    private val checks = AutoChecks(model, effectiveLegalCharset, predefinedTypes, customFieldTypes)
+    private val checks = AutoChecks(model, effectiveLegalCharset, predefinedTypes, customFieldTypes, patterns)
 
     /** The iteration-scope machinery + the RepetitionNotUnique evaluator — call-invariant I2 seam collaborators (IF117). */
     private val scopes = IterationScopes(model)
@@ -92,6 +94,7 @@ class DmInterpreter @JvmOverloads constructor(
             predefinedTypes = predefinedTypes,
             customConditions = customConditions,
             customFieldTypes = customFieldTypes,
+            patterns = patterns,
         ),
     )
     private val engine = ComputationEngine(
@@ -102,6 +105,7 @@ class DmInterpreter @JvmOverloads constructor(
         preparedModel,
         scopes,
         checks,
+        patterns = patterns,
         cacheObserver = { cacheObserver },
     )
 
@@ -112,6 +116,9 @@ class DmInterpreter @JvmOverloads constructor(
      * [validate] remains the per-instance outcome-bearing check for failures raised by a registered callback.
      */
     fun supportAudit(): List<UnsupportedRule> = preparedModel.audit()
+
+    /** Test/measurement seam: number of distinct sources compiled by this engine owner. */
+    internal fun patternCompilationCount(): Int = patterns.compilationCount
 
     /**
      * Run every rule over each row of its iteration scope and return one [Message] per firing — the
@@ -362,6 +369,7 @@ class DmInterpreter @JvmOverloads constructor(
             starRelevant: ((String) -> Boolean)?): EvalConfig =
         EvalConfig(clock, model.baseYear, model.indexFields, timeZone = model.timeZone,
             predefinedTypes = predefinedTypes, customConditions = customConditions, customFieldTypes = customFieldTypes,
+            patternMatches = patterns::matches,
             cellRelevant = if (isRelevant === ALL_RELEVANT) null else { path, reps -> isRelevant(path, reps) },
             starRelevant = starRelevant, customRelevant = customRelevant)
 
