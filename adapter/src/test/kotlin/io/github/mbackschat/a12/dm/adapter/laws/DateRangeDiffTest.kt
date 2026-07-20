@@ -59,8 +59,8 @@ class DateRangeDiffTest {
     private val overlapFields = fields + FieldDef(IC, Kind.DATE_RANGE, format = "dd.MM.yyyy", rangeSeparator = "-")
     private val items = "/Order/Items*/ItemCoverage"
     private val overlapCond = render(m.date(OD).filled().and(Dsl.dateRangesOverlap(m.field(CW), m.flatten(items))))
-    // The `In`-syntax sibling — kernel-probed semantically identical to DateRangesOverlap (KERNEL-FINDINGS §6),
-    // so the SAME scenarios must agree. (The kernel grammar's `In` token is distinct from the value-list `In`.)
+    // The `In`-syntax sibling shares these scalar-vs-list closed-interval controls, but not DateRangesOverlap's
+    // any-pair shape or reached-filter polarity (KERNEL-FINDINGS §6). The token is distinct from value-list `In`.
     private val atLeastOneCond = render(m.date(OD).filled().and(Dsl.atLeastOneDateRangeOverlaps(m.field(CW), m.flatten(items))))
 
     /** [cond] (rule [code]) over CoverageWindow vs N ItemCoverage rows — kernel and interpreter agree on firing. */
@@ -89,7 +89,7 @@ class DateRangeDiffTest {
     @Test fun anyRowOverlaps() = overlapAgree("01.06.2024-30.06.2024", listOf("01.01.2025-31.01.2025", "15.06.2024-15.07.2024"), "overlaps any row (2nd)")
     @Test fun noRowOverlaps() = overlapAgree("01.06.2024-30.06.2024", listOf("01.01.2025-31.01.2025", "01.02.2025-28.02.2025"), "no row overlaps")
 
-    // AtLeastOneDateRangeOverlaps (IN syntax) — must match DateRangesOverlap on the same scenarios.
+    // AtLeastOneDateRangeOverlaps (IN syntax) — shared scalar-vs-list boundary controls only.
     @Test fun inTouchingOverlaps() = atLeastOneAgree("01.01.2024-31.01.2024", listOf("31.01.2024-28.02.2024"), "IN: touching ranges overlap")
     @Test fun inBackToBackDoNot() = atLeastOneAgree("01.01.2024-31.01.2024", listOf("01.02.2024-28.02.2024"), "IN: adjacent-day ranges do not overlap")
     @Test fun inContainedOverlaps() = atLeastOneAgree("01.01.2024-31.12.2024", listOf("01.06.2024-30.06.2024"), "IN: a contained range overlaps")

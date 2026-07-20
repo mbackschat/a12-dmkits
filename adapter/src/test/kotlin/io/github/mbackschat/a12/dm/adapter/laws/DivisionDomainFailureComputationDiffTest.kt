@@ -71,6 +71,28 @@ class DivisionDomainFailureComputationDiffTest {
     }
 
     @Test
+    fun domainFailedLoweredLeftStillReachesAPoisonedRightAtRuntime() {
+        val model = oneComputation("RoundAccounting({1 / 0} + [Later], 2)")
+        val documents = docs(model) {
+            field(LATER, "007", 1, 1)
+            field(RESULT, "9.00", 1, 1)
+        }
+
+        assertKernelDetail(
+            model,
+            documents.kernel,
+            expectedOutcomes = listOf("$RESULT|CLEARED"),
+            expectedFormal = listOf("zahlHatFuehrendeNullen|/Calc[1]/Later"),
+        )
+        assertEquals(
+            ComputeOutcome.CLEARED,
+            DmInterpreter(ModelLoader.load(model)).compute(documents.interpreter)
+                .single { it.path == RESULT }.outcome,
+            "the domain failure must not suppress the poisoned right read",
+        )
+    }
+
+    @Test
     fun generatedCalculationSourceLocksTheOnePassLoweredReadOrder() {
         val method = generatedCalculationMethod("RoundAccounting({[Source] / 2} * [Later], 2)")
         val later = identifierFor(method, "Later")
@@ -83,6 +105,62 @@ class DivisionDomainFailureComputationDiffTest {
             "feldWertAlsZahl(idx, $source)",
             ".divide(",
             """makeDecimal("2")""",
+        )
+    }
+
+    @Test
+    fun publicKernelComputeDetailCannotIdentifyTheFirstLoweredPoison() {
+        val model = oneComputation("RoundAccounting({[Source] / 2} * [Later], 2)")
+        val laterFirst = docs(model) {
+            field(SOURCE, "1", 1, 1)
+            field(LATER, "abc", 1, 1)
+            field(RESULT, "9.00", 1, 1)
+        }
+        val sourceSecond = docs(model) {
+            field(SOURCE, "abc", 1, 1)
+            field(LATER, "1", 1, 1)
+            field(RESULT, "9.00", 1, 1)
+        }
+        val both = docs(model) {
+            field(SOURCE, "abc", 1, 1)
+            field(LATER, "abc", 1, 1)
+            field(RESULT, "9.00", 1, 1)
+        }
+
+        val laterDetail = assertKernelDetail(
+            model,
+            laterFirst.kernel,
+            expectedOutcomes = listOf("$RESULT|CLEARED"),
+            expectedFormal = listOf("zahlHatUngueltigeZeichen|/Calc[1]/Later"),
+        )
+        val sourceDetail = assertKernelDetail(
+            model,
+            sourceSecond.kernel,
+            expectedOutcomes = listOf("$RESULT|CLEARED"),
+            expectedFormal = listOf("zahlHatUngueltigeZeichen|/Calc[1]/Source"),
+        )
+        assertKernelDetail(
+            model,
+            both.kernel,
+            expectedOutcomes = listOf("$RESULT|CLEARED"),
+            // Generated source proves Later throws before Source can be read, yet the public formal channel
+            // inventories both invalid raw inputs. It is therefore not a causal access trace.
+            expectedFormal = listOf(
+                "zahlHatUngueltigeZeichen|/Calc[1]/Later",
+                "zahlHatUngueltigeZeichen|/Calc[1]/Source",
+            ),
+        )
+        assertEquals(laterDetail.first, sourceDetail.first, "first-vs-second poison has the same public delta")
+        assertEquals(
+            laterDetail.second.map { it.substringBefore('|') },
+            sourceDetail.second.map { it.substringBefore('|') },
+            "the formal projection identifies invalid input, not its read ordinal",
+        )
+        assertEquals(
+            ComputeOutcome.CLEARED,
+            DmInterpreter(ModelLoader.load(model)).compute(laterFirst.interpreter)
+                .single { it.path == RESULT }.outcome,
+            "the interpreter's observing-poison test separately locks the selected Later-first read",
         )
     }
 
@@ -189,7 +267,7 @@ class DivisionDomainFailureComputationDiffTest {
         doc: RuntimeLaws.Doc,
         expectedOutcomes: List<String>,
         expectedFormal: List<String>,
-    ) {
+    ): Pair<List<String>, List<String>> {
         fun detail(detail: RuntimeLaws.ComputationDetail): Pair<List<String>, List<String>> {
             val outcomes = detail.outcomes().map {
                 "${it.path()}|${if (it.cleared()) "CLEARED" else if (it.errored()) "ERRORED" else "VALUE:${it.value().orElse("")}"}"
@@ -204,6 +282,7 @@ class DivisionDomainFailureComputationDiffTest {
         assertEquals(expectedOutcomes.sorted(), dynamic.first, "dynamic-Groovy public delta")
         assertEquals(expectedFormal, dynamic.second, "dynamic-Groovy formal operand errors")
         assertEquals(dynamic, static, "static-Java agrees with dynamic-Groovy")
+        return dynamic
     }
 }
 

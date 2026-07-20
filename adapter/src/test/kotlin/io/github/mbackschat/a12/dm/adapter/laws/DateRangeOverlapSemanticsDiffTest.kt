@@ -77,9 +77,11 @@ class DateRangeOverlapSemanticsDiffTest {
         return DmInterpreter(def) to doc
     }
 
-    // The kernel requires the error field to be REFERENCED in the condition (MVK_ERROR_FIELD_NOT_REFERENCED), so
-    // each rule's error field is the range field it references: `../ItemCoverage` (a per-row rule on /Order/Items)
-    // or `../CoverageWindow` (a rule on /Order). Referenced ≠ filled — an EMPTY referenced range is still legal.
+    // The kernel requires the error field to be REFERENCED in the condition (MVK_ERROR_FIELD_NOT_REFERENCED).
+    // Ordinary cases therefore attach to `../ItemCoverage` (a per-row rule) or `../CoverageWindow` (an /Order
+    // rule). The malformed-scalar discriminator deliberately guards on and attaches to `../CustomerName`, so
+    // CoverageWindow's independent formal error cannot suppress the overlap rule before the evaluator runs.
+    // Referenced ≠ filled — an EMPTY referenced range is still legal.
     /** Assert the three engines agree on how many times [code] fires; return the (shared) count. */
     private fun triCount(group: String, errRel: String, code: String, cond: String,
                          scalars: List<Cell>, coverages: List<String?>): Int {
@@ -201,6 +203,27 @@ class DateRangeOverlapSemanticsDiffTest {
     @Test fun atLeastOneEmptyScalarNoFire() =
         assertEquals(0, triCount("/Order", "../CoverageWindow", "AOE",
             "AtLeastOneDateRangeOverlaps(CoverageWindow In Items*/ItemCoverage)", listOf(acme), cov))
+
+    /** A formally unavailable scalar exits before the list scan. The any-pair control still reaches the two
+     * internally overlapping list cells, proving this is scalar-first termination rather than generic formal
+     * suppression of the rule. CustomerName is the filled, referenced error field so CoverageWindow's formal
+     * error does not suppress either rule before its overlap evaluator runs. */
+    @Test fun atLeastOneMalformedScalarExitsBeforeAListInternalPair() {
+        val unavailable = listOf(acme, Cell(CW, intArrayOf(1, 1), "not-a-range"))
+        val scalarVsList = render(model.str(CN).filled().and(
+            Dsl.atLeastOneDateRangeOverlaps(model.field(CW), itemCoverages),
+        ))
+        val anyPair = render(model.str(CN).filled().and(
+            Dsl.dateRangesOverlap(model.field(CW), itemCoverages),
+        ))
+
+        assertEquals(0, triCount(
+            "/Order", "../CustomerName", "AOM", scalarVsList, unavailable, cov,
+        ))
+        assertEquals(1, triCount(
+            "/Order", "../CustomerName", "AOM_CONTROL", anyPair, unavailable, cov,
+        ))
+    }
 
     // ---- D. filter-derived polarity -------------------------------------------------------------------------
 
