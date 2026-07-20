@@ -527,6 +527,8 @@ Condition c = m.str("/Order/CustomerName").eq(
         Dsl.text("C-").plus(Dsl.fieldValueAsString(m.num("/Order/Items/Count").semanticIndex("SKU-1"))));
 ```
 
+Both indexed shapes are bidirectional: `KernelAdapter.read` reconstructs the same `SemanticIndex` payload for foreign `FieldFilled([… For …])`, `FieldNotFilled([… For …])`, and `FieldValueAsString([… For …])` expressions instead of reducing them to the underlying field.
+
 **The rule's own group.** `Dsl.ruleGroup()` is the self-reference to the rule's containing group (the kernel's `RegelKontext`); it renders the reserved keyword (EN `RuleGroup`, DE `RegelKontext`), never a path. On a rule iterating a repeatable group it is the "is this row present" guard — the shape behind attachment/row-content rules (finding 60):
 
 <!-- snippet: rule-group -->
@@ -622,6 +624,8 @@ Computation comp = m.computation(m.num("/Order/BackorderQuantity"))
         .message(Dsl.en("Backorder derived from the unit price."))
         .build();
 ```
+
+`KernelAdapter.readComputation` recovers the suppression list from the source `IComputation`, so the typed read → modify → write cycle preserves it together with the parsed calculation slots (finding 74).
 
 ---
 

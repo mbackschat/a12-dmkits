@@ -110,8 +110,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberOfValueInFields;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoolLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexFieldValue;
-import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance;
@@ -299,6 +298,17 @@ final class ConditionConverter {
             return fieldFillQuantifier(name, fieldPaths.toArray(String[]::new), entityList);
         }
         if (entities.get(0).isField()) {
+            // FieldFilled([Field For key]) / FieldNotFilled(...): the semantic index is part of the
+            // entity id, not a separate condition node. Preserve it before the ordinary field-list
+            // path below reduces the entity to getFullName().
+            if (single && hasSemanticIndex(entities.get(0))) {
+                SemanticIndex index = semanticIndex(entities.get(0), entityList);
+                return switch (name) {
+                    case AllFieldsFilled -> index.filled();
+                    case NoFieldFilled -> index.notFilled();
+                    default -> throw unsupported("semantic-index presence with operator " + name, entityList);
+                };
+            }
             // A wildcard scope with a Having filter (e.g. AtLeastOneFieldFilled(Group*/Field Having …)):
             // build the filtered FieldListRef (flattenScope converts the filter — threading any $) and apply
             // the quantifier over it. The plain path form below drops the wildcard + filter, so it must not
@@ -733,31 +743,18 @@ final class ConditionConverter {
         boolean leftOuter = field.getField().isOuter();
         // a semantic index ([field For X]) reads the field's value in the repetition whose group index field
         // equals X — it rides on getSemanticIndex(). The kernel's index is always a single element: a constant
-        // String key ([field For "x"] → SemanticIndexValue) or a field-ref IEntityId key ([field For keyField]
-        // → SemanticIndexFieldValue, the current value of keyField). We model both on a NUMBER field; a
-        // semantic index on a non-number field stays Opaque (never a silent drop).
-        java.util.List<Object> semIdx = field.getField().getSemanticIndex();
-        if (semIdx != null && !semIdx.isEmpty()) {
-            if (semIdx.size() == 1) {
-                // Build the semantic-index value node — a constant String key (SemanticIndexValue) or a
-                // field-ref IEntityId key (SemanticIndexFieldValue) — then compare it through the indexed
-                // field's OWN kind's machinery. A semantic index has the kind of the field it indexes, and
-                // the kernel places no kind restriction on it (its flagship example is an enum). DG15.
-                Object key = semIdx.get(0);
-                Calculation semantic = key instanceof String constKey
-                        ? new SemanticIndexValue(model.field(path), constKey)
-                        : new SemanticIndexFieldValue(model.field(path), model.field(((IEntityId) key).getFullName()));
-                return switch (kind) {
-                    case NUMBER -> numberExprComparison(new NumberExpr(semantic), op, other, origin);
-                    case STRING -> stringExprComparison(new StringExpr(semantic), op, other, origin);
-                    case ENUMERATION -> enumExprComparison(new EnumExpr(semantic), op, other, origin);
-                    case DATE, DATE_FRAGMENT -> dateComparison(new DateExpr(semantic), op, other, origin);
-                    case TIME -> timeComparison(new TimeExpr(semantic), op, other, origin);
-                    case DATE_TIME -> dateTimeComparison(new DateTimeExpr(semantic), op, other, origin);
-                    default -> throw unsupported("semantic index ([field For …]) on a " + kind + " field", origin);
-                };
-            }
-            throw unsupported("semantic index ([field For …]) with a multi-element key", origin);
+        // String key ([field For "x"]) or a field-ref IEntityId key ([field For keyField]).
+        if (hasSemanticIndex(field.getField())) {
+            Calculation semantic = semanticIndex(field.getField(), origin).index();
+            return switch (kind) {
+                case NUMBER -> numberExprComparison(new NumberExpr(semantic), op, other, origin);
+                case STRING -> stringExprComparison(new StringExpr(semantic), op, other, origin);
+                case ENUMERATION -> enumExprComparison(new EnumExpr(semantic), op, other, origin);
+                case DATE, DATE_FRAGMENT -> dateComparison(new DateExpr(semantic), op, other, origin);
+                case TIME -> timeComparison(new TimeExpr(semantic), op, other, origin);
+                case DATE_TIME -> dateTimeComparison(new DateTimeExpr(semantic), op, other, origin);
+                default -> throw unsupported("semantic index ([field For …]) on a " + kind + " field", origin);
+            };
         }
         // an enum field navigated to one of its categories ([field -> Cat]) rides on getCategoryName()
         String category = field.getField().getCategoryName();
@@ -1249,7 +1246,9 @@ final class ConditionConverter {
     private StringExpr stringCoercion(IFieldIdOperation field) {
         String path = field.getField().getFullName();
         return switch (field.getOperatorName()) {
-            case FieldValueAsString -> Dsl.fieldValueAsString(model.field(path));
+            case FieldValueAsString -> hasSemanticIndex(field.getField())
+                    ? Dsl.fieldValueAsString(semanticIndex(field.getField(), field))
+                    : Dsl.fieldValueAsString(model.field(path));
             case RangeAsString -> {
                 // the kernel stores a 0-based start; the rule-language syntax is 1-based (verified by round-trip)
                 IFieldIdOperationWithParameters params = (IFieldIdOperationWithParameters) field;
@@ -1257,6 +1256,33 @@ final class ConditionConverter {
             }
             default -> throw unsupported("string coercion " + field.getOperatorName(), field);
         };
+    }
+
+    /** Whether this entity carries the kernel's {@code [Field For key]} semantic-index payload. */
+    private static boolean hasSemanticIndex(IEntityId entity) {
+        List<Object> key = entity.getSemanticIndex();
+        return key != null && !key.isEmpty();
+    }
+
+    /**
+     * Convert the one-element semantic-index payload once for every condition/operation locus that embeds
+     * an {@link IEntityId}. A key is either a string literal or another entity id; any other or composite
+     * shape remains explicitly opaque.
+     */
+    private SemanticIndex semanticIndex(IEntityId entity, Object origin) {
+        List<Object> keys = entity.getSemanticIndex();
+        if (keys == null || keys.size() != 1) {
+            throw unsupported("semantic index ([field For …]) with a non-single key", origin);
+        }
+        FieldRef field = model.field(entity.getFullName());
+        Object key = keys.get(0);
+        if (key instanceof String literal) {
+            return field.semanticIndex(literal);
+        }
+        if (key instanceof IEntityId keyField) {
+            return field.semanticIndex(model.field(keyField.getFullName()));
+        }
+        throw unsupported("semantic index ([field For …]) with key " + key.getClass().getSimpleName(), origin);
     }
 
     /** A comparison whose left operand is a string expression (a coercion) — vs a constant, field, or coercion. */
@@ -1814,7 +1840,8 @@ final class ConditionConverter {
      * computation's recovered error {@code messages}. Non-{@code EXACT} rounding is unmodeled — rulekit
      * authors exact computations only — so it raises the strict signal (→ {@link ReadComputation.Opaque}).
      */
-    Computation convertComputation(ICalculationInfo info, List<LocalizedText> messages) {
+    Computation convertComputation(ICalculationInfo info, List<LocalizedText> messages,
+            List<String> errorCodesToSuppress) {
         if (info.getRoundingMode() != RoundingMode.EXACT) {
             throw unsupported("computation with non-EXACT rounding (" + info.getRoundingMode()
                     + ") — rulekit models exact computations only", info.getCalculatedField());
@@ -1838,7 +1865,8 @@ final class ConditionConverter {
         String name = info.getName().substring(info.getName().lastIndexOf('/') + 1);
         // a read computation carries no comments on the AST (concrete syntax stays in the stored slot
         // texts); authoring/preservation populate the side-channel, not the converter.
-        return new Computation(groupPath, name, computed, common, alternatives, messages, Comments.none());
+        return new Computation(groupPath, name, computed, common, alternatives, messages, Comments.none(),
+                errorCodesToSuppress);
     }
 
     private static UnsupportedConstructException unsupported(String what, Object node) {

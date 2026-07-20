@@ -41,7 +41,7 @@ public record Computation(
         errorCodesToSuppress = List.copyOf(errorCodesToSuppress);
     }
 
-    /** No suppressions — keeps pre-{@code errorCodesToSuppress} constructors (e.g. read-back) unchanged. */
+    /** No suppressions — keeps pre-{@code errorCodesToSuppress} construction sites source-compatible. */
     public Computation(String groupPath, String name, FieldRef computedField,
             Optional<Condition> commonPrecondition, List<Alternative> alternatives,
             List<LocalizedText> messages, Comments comments) {

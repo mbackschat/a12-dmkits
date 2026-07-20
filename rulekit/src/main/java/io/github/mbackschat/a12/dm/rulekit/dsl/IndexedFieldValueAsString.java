@@ -9,8 +9,8 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * {@link Calculation} that composes in string comparisons and concatenations, its operand rendered as the
  * bare {@code Field For key} index body (like the presence form, no {@code [ ]} value brackets). Build via
  * {@link Dsl#fieldValueAsString(SemanticIndex)} — the operand is an {@link SemanticIndex} handle
- * ({@code ref.semanticIndex(key)}), so number/date/enum cells all coerce uniformly. Read-back is deferred
- * for the same {@code ICalculationInfo} reason as the presence form (finding 59).
+ * ({@code ref.semanticIndex(key)}), so number/date/enum cells all coerce uniformly. Kernel-adapter read-back
+ * preserves the embedded semantic-index payload (API-FINDINGS finding 74).
  */
 public record IndexedFieldValueAsString(IndexedFieldValue index) implements Calculation {
 

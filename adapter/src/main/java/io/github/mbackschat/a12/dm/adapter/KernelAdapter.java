@@ -25,6 +25,7 @@ import com.mgmtp.a12.kernel.md.model.a12internal.services.ElementContainer;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
+import com.mgmtp.a12.kernel.md.model.internal.service.mapping.IRuleFromComputation;
 import com.mgmtp.a12.kernel.md.serializer.model.internal.service.ExternalDocumentModelSerializerService;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -582,8 +583,11 @@ public final class KernelAdapter {
             if (info.isEmpty()) {
                 return new ReadComputation.Opaque(verbatim, "the kernel could not extract calculation info");
             }
+            List<String> errorCodesToSuppress = cr.getRule() instanceof IRuleFromComputation source
+                    ? source.getOriginalComputation().getErrorCodesToSuppress()
+                    : List.of();
             Computation computation = new ConditionConverter(model)
-                    .convertComputation(info.get(), recoverMessages(cr.getRule()));
+                    .convertComputation(info.get(), recoverMessages(cr.getRule()), errorCodesToSuppress);
             return new ReadComputation.Converted(computation);
         } catch (UnsupportedConstructException unconverted) {
             return new ReadComputation.Opaque(verbatim, unconverted.getMessage());
