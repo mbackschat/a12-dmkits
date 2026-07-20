@@ -736,7 +736,7 @@ Note how 3.3's fragment library closes the loop: **re-expression frequently mean
 
 ## 5b. Editing the model — structure *and* rules (modelkit + `EditSession`)
 
-The use case in one place: **read a DM → add fields/groups → add/modify rules → maybe delete → write back.** modelkit (`ModelDocument`) edits *structure*; rulekit edits *rules*; they are siblings over `dm.core` that cannot see each other (`dm.modelkit ⊥ dm.rulekit`), so `dm.edit.EditSession` is the orchestration layer above both. Every edit is surgical on the **authored** DM-JSON tree (includes preserved, never inlined) and the **real kernel is the gate** — nothing structural is reimplemented.
+The use case in one place: **read a DM → add fields/groups → add/modify rules → maybe delete → write back.** modelkit (`ModelDocument`) edits *structure*; rulekit edits *rules*; they are siblings over `dm.core` that cannot see each other (`dm.modelkit ⊥ dm.rulekit`), so `dm.edit.EditSession` is the orchestration layer above both. Every edit is surgical on the **authored** DM-JSON tree (includes preserved, never inlined). The kernel-free `dm.core.ModelReader` owns structural parsing, include/type-def expansion, id normalization, and indexing; when the backend is present, its real `checkConsistency` verdict remains the semantic write gate, while a no-backend binding is explicitly structural-only and never presented as kernel-confirmed.
 
 ### Create a model from scratch (`DocumentModelDraft`)
 
@@ -1012,7 +1012,7 @@ address(order, "BillingAddress",  Country.US);                      // … and r
 
 ## 5d. Working across models — includes & type-defs
 
-Real apps compose models: a shared sub-model is **included** into a base and mounted at one or more places, and the base authors rules over the mounted fields exactly as if they were local. rulekit binds a model **with includes** by threading a resolver (`EditSession.read(json, resolver)` / `BoundModel.ofJson(json, resolver)`), expands it through the kernel, and writes back **without inlining** the include — the `modelAlias` link is preserved (F6/D9). A field from an include is addressed by its **mount-name path** (`/Catalog/Retail/ListPrice` = the mount `Retail` + the included field `ListPrice`); a **type-def** field behaves as its underlying kind.
+Real apps compose models: a shared sub-model is **included** into a base and mounted at one or more places, and the base authors rules over the mounted fields exactly as if they were local. rulekit binds a model **with includes** by threading a kernel-free resolver (`EditSession.read(json, resolver)` / `BoundModel.ofJson(json, resolver)`) into `ModelReader`, which expands the structure, imports effective typedefs, and normalizes name-path ids; an available backend separately supplies the kernel consistency verdict. Mounting is a reference-aware **MOVE**: included rules/computations are bound before the move and their element references are remapped to the mounted path, while literals and comments are not rewritten. The retained authored JSON writes back **without inlining** the include — the `modelAlias` link is preserved (F6/D9). A field from an include is addressed by its **mount-name path** (`/Catalog/Retail/ListPrice` = the mount `Retail` + the included field `ListPrice`); a **type-def** field behaves as its underlying kind.
 
 <!-- teaser -->
 ```java
@@ -1076,11 +1076,12 @@ So you can prove a rule *behaves* — run a passing and a violating document and
 // minValue of 100.50 stays "100.50" (never round-tripped through a Double/JS number).
 val model: ModelDef = ModelLoader.load(dmJson)
 
-// …build a Document for the instance, then evaluate with NO kernel on the classpath:
-val fired = DmInterpreter(model).validate(document, "en_US").messages.map { it.code }
+// …build a Document for the instance, then evaluate with NO kernel on the classpath.
+// validateFull fails loudly if the model contains an unsupported construct.
+val fired = DmInterpreter(model).validateFull(document, "en_US").map { it.code }
 ```
 
-dmtool's JVM `InterpreterModelLoader.load` is a thin delegate over this same loader — parity across every fixture model is CI-guarded (`ModelLoaderParityTest`), so the native runtime verbs and a JS library see identical `ModelDef`s. *Test-backed: `interpreter/…/load/ModelLoaderTest` (JVM + JS), `cli.interp.ModelLoaderParityTest`, `cli.interp.InterpreterRealModelDiffTest`.*
+Use `validate(document)` when a tolerant caller needs the full `ValidationOutcome` and will handle both `messages` and `unsupported`; projecting only `.messages` is an explicit decision to discard the unsupported report. dmtool's JVM `InterpreterModelLoader.load` is a thin delegate over this same loader — parity across every fixture model is CI-guarded (`ModelLoaderParityTest`), so the native runtime verbs and a JS library see identical `ModelDef`s. *Test-backed: `interpreter/…/load/ModelLoaderTest` (JVM + JS), `cli.interp.ModelLoaderParityTest`, `cli.interp.InterpreterRealModelDiffTest`.*
 
 The same façade computes, whole-document or one field at a time. `compute(document)` runs **every** computation (the twin of the kernel's `compute()`); `computeField(fieldPath, document)` runs **one** computed field "like a function" — only its transitive computed-dependency closure, in dependency order, so a cascade operand is never read stale (the single-computation twin of `testRule`; IF129). It returns one `Computed` per target-cell instance (a repeated computed field → one per row) and throws if no computation targets the field:
 
