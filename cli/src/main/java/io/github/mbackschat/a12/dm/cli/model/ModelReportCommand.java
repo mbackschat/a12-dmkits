@@ -14,29 +14,51 @@ import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.core.Suggest;
 import io.github.mbackschat.a12.dm.rulekit.context.ModelCard;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
+import picocli.CommandLine.Option;
 
 /**
  * {@code dmtool model report} — the comprehension read (MODEL-REVIEW-SPEC §4): in one call, the model's
- * <b>identity</b>, a <b>structure outline</b> (field paths + kinds, group repeatability), the field→referrers
- * <b>usage</b> map, and a <b>glossed rules/computations catalog</b> — every rule/computation in plain language
+ * <b>identity</b>, a <b>structure outline</b> (field paths + kinds, group repeatability), the unreferenced
+ * (dead-field) set, and a <b>glossed rules/computations catalog</b> — every rule/computation in plain language
  * (a tool-computed gloss) with its <b>polarity</b> (a rule fires on the violation) and its <b>verbatim stored
  * message</b>, so a reviewer sees what each condition DOES next to what it CLAIMS. The understand-the-whole-model
  * companion to {@code model diff}. A read op: the payload rides {@code data} (shape: {@code model-report.schema}).
  */
 @Command(name = "report", mixinStandardHelpOptions = true,
-        description = "Comprehension report: identity, a structure outline, the field→referrers usage map, and a "
+        description = "Comprehension report: identity, a structure outline, the dead-field set, and a "
                 + "glossed rules/computations catalog (plain-language gloss + polarity + the stored message), in "
-                + "`data`. The understand-the-whole-model companion to `model diff`. Shape: `model-report.schema`.")
+                + "`data`. Add --tree for a flat, document-ordered per-node projection; --text draws that projection "
+                + "as a hierarchy. The understand-the-whole-model companion to `model diff`. "
+                + "Shape: `model-report.schema`.")
 final class ModelReportCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Mixin
     WorkspaceOption workspace = new WorkspaceOption();
+
+    @Option(names = "--tree", description = "replace the ordinary report payload with a flat per-node tree "
+            + "projection (human --text draws the same records as a hierarchy)")
+    boolean tree;
+
+    @Option(names = "--root", paramLabel = "<path>", description = "tree subtree root; its node is depth 0 "
+            + "(requires --tree; default: the synthetic model root /)")
+    String root;
+
+    @Option(names = "--depth", paramLabel = "<N>", description = "maximum descendant depth in the tree "
+            + "projection (requires --tree; root is depth 0)")
+    Integer depth;
+
+    @Option(names = "--include", split = ",", paramLabel = "<facets>", description = "comma-separated rich "
+            + "tree facets: rules,computations,descriptions,annotations,enum, or all (requires --tree)")
+    List<String> includes = List.of();
 
     @Override
     public Integer call() {
@@ -50,8 +72,32 @@ final class ModelReportCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         }
+        if (!tree && (root != null || depth != null || !includes.isEmpty())) {
+            return fail("--root, --depth, and --include require --tree");
+        }
         try {
-            ModelReport report = ModelReport.of(json, workspace.resolverFor(model));
+            ModelResolver resolver = workspace.resolverFor(model);
+            ModelReport report = ModelReport.of(json, resolver);
+            if (tree) {
+                ModelTreeData.Projection projection =
+                        ModelTreeData.project(json, resolver, report, root, depth, includes);
+                if (!projection.found()) {
+                    String hint = Suggest.hint(projection.missingRoot(), projection.candidates());
+                    return refuseNotFound("model", "report", RkCode.NO_SUCH_ELEMENT,
+                            "no element at '" + projection.missingRoot() + "'" + hint,
+                            projection.missingRoot(),
+                            "pass an existing field/group path" + hint + " (see `model describe`)");
+                }
+                ObjectNode summary = (ObjectNode) projection.data().path("summary");
+                ResultEnvelope env = ResultEnvelope.read("model", "report",
+                        summary.path("fields").asInt() + " field(s), "
+                                + summary.path("groups").asInt() + " group(s), "
+                                + summary.path("rules").asInt() + " rule(s), "
+                                + summary.path("computations").asInt() + " computation(s)",
+                        true, List.of(), projection.data());
+                out().print(env.toJsonString());
+                return env.exitCode();
+            }
             ResultEnvelope env = ResultEnvelope.read("model", "report",
                     report.rules().size() + " rule(s), " + report.computations().size() + " computation(s); "
                             + report.usage().unreferenced().size() + " unreferenced field(s)",

@@ -177,6 +177,11 @@ public final class ModelIndex {
         return reader.paths().stream().filter(this::isField);
     }
 
+    /** Paths of all groups and fields in their mixed document order. */
+    public java.util.stream.Stream<String> elementPaths() {
+        return reader.paths().stream();
+    }
+
     /** Paths of all groups (root groups included), in model order. */
     public java.util.stream.Stream<String> groupPaths() {
         return reader.paths().stream().filter(this::isGroup);
@@ -219,6 +224,21 @@ public final class ModelIndex {
     /** The element-level {@link Annotation annotations} of the group at {@code groupPath}. */
     public List<Annotation> annotationsOfGroup(String groupPath) {
         return annotations(groupNode(groupPath));
+    }
+
+    /**
+     * The id of the included model mounted at this group, when the group is an include boundary. Included
+     * descendants remain ordinary inline nodes; nested mounts carry their own origin.
+     */
+    public Optional<String> originOf(String path) {
+        require(path);
+        return Optional.ofNullable(reader.origin(path));
+    }
+
+    /** The field's authored named type before effective-type inlining, when it used a type definition. */
+    public Optional<String> typeReferenceOf(String path) {
+        fieldNode(path);
+        return Optional.ofNullable(reader.typeRef(path));
     }
 
     // --- node access + config readers (over the reader's expanded, typedef-inlined nodes) --------

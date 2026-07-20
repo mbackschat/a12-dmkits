@@ -906,6 +906,15 @@ public final class ModelDocument {
         return localizedOf(metaElement(pathOrTypeDefId), DmKeys.EXTERNAL_DESCRIPTION);
     }
 
+    /** Read a field's per-locale helper text; groups and other describable elements return an empty map. */
+    public Map<String, String> helperText(String pathOrTypeDefId) {
+        ObjectNode element = metaElement(pathOrTypeDefId);
+        if (!DmNodes.is(ElementType.FIELD, element)) {
+            return Map.of();
+        }
+        return localizedOf((ObjectNode) element.path(ElementType.FIELD.wireName()), "helperText");
+    }
+
     /** Read an element's annotations as a name→value map. */
     public Map<String, String> annotations(String pathOrTypeDefId) {
         Map<String, String> out = new java.util.LinkedHashMap<>();

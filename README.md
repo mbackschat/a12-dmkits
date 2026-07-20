@@ -192,9 +192,13 @@ dmtool -m order.dm.json model usage
 # the comprehension dashboard: identity + structure outline + the dead-field set
 # + a GLOSSED rules/computations catalog (each in plain language, next to its stored message)
 dmtool -m order.dm.json model report
+
+# an agent-first flat subtree (JSON) or the same records drawn for a human
+dmtool -m order.dm.json model report --tree --root /Order --depth 2
+dmtool --text -m order.dm.json model report --tree --root /Order --include rules,computations
 ```
 
-`model report` is the *understand-the-whole-model* companion to `model diff` below: where the others read one facet, it assembles the lot — and renders every rule/computation in **plain language** (a tool-computed gloss) next to its **stored message**, so you can see what a rule *does* against what it *claims*.
+`model report` is the *understand-the-whole-model* companion to `model diff` below: where the others read one facet, it assembles the lot — and renders every rule/computation in **plain language** (a tool-computed gloss) next to its **stored message**, so you can see what a rule *does* against what it *claims*. `--tree` keeps JSON agent-friendly as one document-ordered `nodes[]` list with paths, depths, types, repeatability, and provenance; add `--include rules,computations,descriptions,annotations,enum` for richer facets, while `--text` draws the same records with `├─/└─`.
 
 ### Review what changed — a semantic diff
 

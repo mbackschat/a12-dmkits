@@ -168,6 +168,33 @@ class SchemaExamplesGuardTest {
     }
 
     @Test
+    void modelReportTreeExamplesAndBothModesStayExecutable(@TempDir Path dir) throws Exception {
+        JsonNode examples = schema("model-report").path("examples");
+        assertEquals(2, examples.size(), "model-report publishes a lean and a rich tree example");
+        for (JsonNode example : examples) {
+            assertTrue(SpecKeys.forSchema("model-report").validate(example).isEmpty(),
+                    () -> "model-report tree example uses only its published keys: " + example);
+        }
+
+        Path model = CliTestSupport.modelWithRuleAndComputation(dir);
+        var leanRun = CliTestSupport.run("-m", model.toString(), "model", "report",
+                "--tree", "--root", "/Subscription");
+        var richRun = CliTestSupport.run("-m", model.toString(), "model", "report",
+                "--tree", "--root", "/Subscription",
+                "--include", "rules,computations,descriptions,annotations,enum");
+        assertEquals(0, leanRun.code(), leanRun::err);
+        assertEquals(0, richRun.code(), richRun::err);
+        JsonNode lean = MAPPER.readTree(leanRun.out()).path("data");
+        JsonNode rich = MAPPER.readTree(richRun.out()).path("data");
+
+        assertTrue(lean.path("nodes").isArray() && rich.path("nodes").isArray(),
+                "both documented tree projection modes execute");
+        assertTrue(java.util.stream.StreamSupport.stream(rich.path("nodes").spliterator(), false)
+                        .anyMatch(node -> node.has("rules") || node.has("computation")),
+                "the rich mode actually emits its logic facets");
+    }
+
+    @Test
     void resultExamplesConformToTheResultSchema() throws Exception {
         JsonNode resultSchema = schema("result");
         JsonNode diagnosticSchema = schema("diagnostic");

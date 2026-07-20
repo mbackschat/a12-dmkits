@@ -2,10 +2,19 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/model-report.schema.json",
   "title": "ModelReport",
-  "description": "The `data` payload of `dmtool -m <model> model report` (MODEL-REVIEW-SPEC §4) — the comprehension read. `identity` is the header card; `structure` is a lean outline (field paths + kinds, group repeatability — full per-kind config is a `field read` drill-down); `polarity` is the model-level constant (an A12 rule fires on the VIOLATION), carried ONCE; `unreferenced` is the dead-field set (the full field→referrers map is `model usage`, not duplicated here); `rules`/`computations` are the glossed catalog — each in plain language (`gloss`, the tool-computed half) and the verbatim stored `messages` (the modeller's own text), so a reviewer sees what a condition DOES next to what it CLAIMS. A condition rulekit can't model is reported `explained:false` with its kernel-canonical text, never dropped.",
+  "description": "The `data` payload of `dmtool -m <model> model report` (MODEL-REVIEW-SPEC §4). The default branch is the stable whole-model comprehension bundle. `--tree` selects the alternative flat, document-ordered node projection `{root,summary,nodes[]}`; hierarchy is recoverable from path/parent/depth and only `--text` draws it.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["identity", "structure", "polarity", "unreferenced", "rules", "computations"],
+  "oneOf": [
+    {
+      "title": "ordinary comprehension report",
+      "required": ["identity", "structure", "polarity", "unreferenced", "rules", "computations"]
+    },
+    {
+      "title": "tree projection",
+      "required": ["root", "summary", "nodes"]
+    }
+  ],
   "properties": {
     "identity": {
       "type": "object",
@@ -146,6 +155,181 @@
           }
         }
       }
+    },
+    "root": {
+      "type": "string",
+      "description": "the selected subtree root (`/` is the synthetic model root)"
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fields", "groups", "rules", "computations", "maxDepth", "repeatableGroups"],
+      "properties": {
+        "fields": { "type": "integer" },
+        "groups": { "type": "integer" },
+        "rules": { "type": "integer" },
+        "computations": { "type": "integer" },
+        "maxDepth": { "type": "integer" },
+        "repeatableGroups": { "type": "integer" }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "description": "flat node records in deterministic mixed document order; path/parent/depth recover hierarchy",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "parent", "depth", "kind"],
+        "properties": {
+          "path": { "type": "string" },
+          "parent": { "type": ["string", "null"] },
+          "depth": { "type": "integer" },
+          "kind": { "type": "string", "enum": ["model", "group", "field"] },
+          "type": { "type": "string", "description": "field value kind" },
+          "scale": { "type": "integer" },
+          "min": { "type": "number" },
+          "max": { "type": "number" },
+          "minLength": { "type": "integer" },
+          "maxLength": { "type": "integer" },
+          "pattern": { "type": "string" },
+          "computed": { "type": "boolean" },
+          "values": { "type": "array", "items": { "type": "string" } },
+          "valueCount": { "type": "integer", "description": "complete enum-domain size" },
+          "truncated": { "type": "boolean", "description": "true when values is only a preview; use `--include enum` for all values" },
+          "categories": {
+            "type": "object",
+            "description": "enum category name to its distinct values",
+            "additionalProperties": { "type": "array", "items": { "type": "string" } }
+          },
+          "repeatable": { "type": "boolean" },
+          "maxRepetitions": { "type": "integer" },
+          "origin": { "type": "string", "description": "included model id, present only on an include-mount group boundary" },
+          "typeRef": { "type": "string", "description": "the field's authored named type before effective-type inlining" },
+          "descriptions": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "internal": { "type": "object", "additionalProperties": { "type": "string" } },
+              "external": { "type": "object", "additionalProperties": { "type": "string" } },
+              "helper": { "type": "object", "additionalProperties": { "type": "string" } }
+            }
+          },
+          "annotations": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          },
+          "rules": {
+            "type": "array",
+            "description": "rules anchored once at their error entity (model-level rules at the selected root)",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "dsl"],
+              "properties": {
+                "name": { "type": "string" },
+                "dsl": { "type": "string" }
+              }
+            }
+          },
+          "computation": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "dsl"],
+            "properties": {
+              "name": { "type": "string" },
+              "dsl": { "type": "string" }
+            }
+          }
+        }
+      }
     }
-  }
+  },
+  "examples": [
+    {
+      "root": "/Order",
+      "summary": {
+        "fields": 1,
+        "groups": 1,
+        "rules": 0,
+        "computations": 0,
+        "maxDepth": 1,
+        "repeatableGroups": 0
+      },
+      "nodes": [
+        {
+          "path": "/Order",
+          "parent": null,
+          "depth": 0,
+          "kind": "group",
+          "repeatable": false,
+          "maxRepetitions": 1
+        },
+        {
+          "path": "/Order/Channel",
+          "parent": "/Order",
+          "depth": 1,
+          "kind": "field",
+          "type": "ENUMERATION",
+          "computed": false,
+          "values": ["WEB", "STORE", "PHONE", "PARTNER", "APP"],
+          "valueCount": 10,
+          "truncated": true
+        }
+      ]
+    },
+    {
+      "root": "/Order",
+      "summary": {
+        "fields": 2,
+        "groups": 1,
+        "rules": 1,
+        "computations": 1,
+        "maxDepth": 1,
+        "repeatableGroups": 0
+      },
+      "nodes": [
+        {
+          "path": "/Order",
+          "parent": null,
+          "depth": 0,
+          "kind": "group",
+          "repeatable": false,
+          "maxRepetitions": 1
+        },
+        {
+          "path": "/Order/ContactEmail",
+          "parent": "/Order",
+          "depth": 1,
+          "kind": "field",
+          "type": "STRING",
+          "computed": false,
+          "typeRef": "EmailType",
+          "descriptions": {
+            "internal": { "en_US": "Customer contact address" },
+            "helper": { "en_US": "Use the order contact." }
+          },
+          "annotations": { "classification": "pii" },
+          "rules": [
+            {
+              "name": "/Order/EmailRequired",
+              "dsl": "FieldNotFilled(ContactEmail)"
+            }
+          ]
+        },
+        {
+          "path": "/Order/Total",
+          "parent": "/Order",
+          "depth": 1,
+          "kind": "field",
+          "type": "NUMBER",
+          "scale": 0,
+          "computed": true,
+          "computation": {
+            "name": "/Order/TotalComputation",
+            "dsl": "[Quantity]"
+          }
+        }
+      ]
+    }
+  ]
 }

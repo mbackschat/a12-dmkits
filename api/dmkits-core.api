@@ -105,6 +105,7 @@ public final class io.github.mbackschat.a12.dm.core.ModelIndex
   public java.util.List<io.github.mbackschat.a12.dm.core.Annotation> annotationsOf(java.lang.String)
   public java.util.List<io.github.mbackschat.a12.dm.core.Annotation> annotationsOfGroup(java.lang.String)
   public java.util.List<io.github.mbackschat.a12.dm.core.ComputationInfo> computations()
+  public java.util.stream.Stream<java.lang.String> elementPaths()
   public java.util.Map<java.lang.String, java.util.List<java.lang.String>> enumCategories(java.lang.String)
   public java.util.List<java.lang.String> enumValues(java.lang.String)
   public java.util.stream.Stream<java.lang.String> fieldPaths()
@@ -123,9 +124,11 @@ public final class io.github.mbackschat.a12.dm.core.ModelIndex
   public static io.github.mbackschat.a12.dm.core.ModelIndex of(io.github.mbackschat.a12.dm.core.ModelReader)
   public static io.github.mbackschat.a12.dm.core.ModelIndex of(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
   public static io.github.mbackschat.a12.dm.core.ModelIndex ofSelfContained(java.lang.String)
+  public java.util.Optional<java.lang.String> originOf(java.lang.String)
   public java.util.OptionalInt stringMaxLength(java.lang.String)
   public java.util.OptionalInt stringMinLength(java.lang.String)
   public java.util.Optional<java.lang.String> stringPattern(java.lang.String)
+  public java.util.Optional<java.lang.String> typeReferenceOf(java.lang.String)
 
 public final class io.github.mbackschat.a12.dm.core.ModelLoader
   public static void loadAndCheck(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)

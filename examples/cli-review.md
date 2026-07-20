@@ -41,6 +41,94 @@ dmtool -m examples/models/order-ruled.dm.json model report \
 
 → One read gives the whole picture: the model id, 15 fields, and all three rules in **plain language** — a postal-code pattern, the delivery-date order, an eligibility custom condition. `polarity: "violation"` is carried once (a rule's condition is true on the state to *reject*, not the requirement — the same fact for every rule, so it isn't repeated per entry). The full payload also carries the structure outline, the dead-field set, and each rule's **stored message** — so a reviewer sees what a rule *does* (the gloss) next to what it *claims* (the message). The full field→referrers map is `model usage` (report doesn't duplicate it).
 
+### The structure/comprehension tree — flat for agents, drawn for humans
+
+`--tree` reprojects the report into one deterministic, document-ordered `nodes[]` list. `--root` and `--depth` keep the payload focused without inventing filter flags; every record carries its canonical path and depth, so an agent can query it directly and feed the same paths back to edit verbs. Here the depth-one projection shows the four groups and makes the repeatable iteration boundary explicit:
+
+```bash
+dmtool -m examples/models/order-ruled.dm.json model report --tree --root /Order --depth 1 \
+  | jq '{summary, root:.data.root, counts:.data.summary, groups:[.data.nodes[] | select(.kind=="group") | {path, depth, repeatable, maxRepetitions}]}'
+```
+
+```output
+{
+  "summary": "10 field(s), 4 group(s), 2 rule(s), 0 computation(s)",
+  "root": "/Order",
+  "counts": {
+    "fields": 10,
+    "groups": 4,
+    "rules": 2,
+    "computations": 0,
+    "maxDepth": 1,
+    "repeatableGroups": 1
+  },
+  "groups": [
+    {
+      "path": "/Order",
+      "depth": 0,
+      "repeatable": false,
+      "maxRepetitions": 1
+    },
+    {
+      "path": "/Order/ShippingAddress",
+      "depth": 1,
+      "repeatable": false,
+      "maxRepetitions": 1
+    },
+    {
+      "path": "/Order/BillingAddress",
+      "depth": 1,
+      "repeatable": false,
+      "maxRepetitions": 1
+    },
+    {
+      "path": "/Order/Items",
+      "depth": 1,
+      "repeatable": true,
+      "maxRepetitions": 50
+    }
+  ]
+}
+```
+
+The rich facets are opt-in. `--include rules,computations` anchors each rule once at its error entity and each computation once at its target; `--text` draws those exact flat records rather than switching to a second data model:
+
+```bash
+dmtool --text -m examples/models/order-ruled.dm.json model report \
+  --tree --root /Order --depth 2 --include rules,computations
+```
+
+```output
+15 field(s), 4 group(s), 3 rule(s), 0 computation(s)
+  (read · valid)
+
+/Order  (group)
+├─ CustomerName  STRING
+│  └─ rule EligibilityCheck :  FieldFilled(/Order/CustomerName) And CustomCondition ExternalEligibility
+├─ ProductCode  STRING
+├─ Quantity  NUMBER scale0
+├─ UnitPrice  NUMBER scale2
+├─ BackorderQuantity  NUMBER scale0
+├─ ExpressShipping  BOOLEAN
+├─ TermsConfirmed  CONFIRM
+├─ ShippingAddress  (group)
+│  ├─ Street  STRING
+│  └─ City  STRING
+├─ BillingAddress  (group)
+│  └─ PostalCode  STRING
+│     └─ rule PostalCodeFormat :  FieldFilled(/Order/BillingAddress/PostalCode) And [/Order/BillingAddress/PostalCode] PatternViolated "[0-9]{5}"
+├─ Items  (group · repeatable · max 50)
+│  ├─ Sku  STRING
+│  └─ Count  NUMBER scale0
+├─ Priority  ENUMERATION {STANDARD, EXPRESS, OVERNIGHT}
+├─ OrderDate  DATE
+└─ DeliveryDate  DATE
+   └─ rule DeliveryNotBeforeOrder :  AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate) < 0
+fields 15 · groups 4 · rules 3 · computations 0 · repeatable 1
+```
+
+→ JSON stays flat and jq-able; only the boundary renderer spends characters on `├─/└─`. Large enum domains report a visible preview count and `truncated:true`; add `--include enum` for every value, or `descriptions,annotations` for the token-heavier authoring context.
+
 ## model diff — review what changed
 
 When an agent edits a model on your behalf, raw JSON diffs are unreadable. `model diff <base> <head>` compares two model files **structurally** (it parses both into the model, so a pure reformat is never reported) and reports the fields and rules **added / removed / modified** — each with a **risk** tier. Risk follows *loosening > tightening*: a removed or loosened rule silently accepts bad data (HIGH), while a tightened or added one fails loudly (MEDIUM). Projected here to the headline plus the high-risk changes.
@@ -233,4 +321,3 @@ MEDIUM (11)
 ### The review entrypoint — `--since <ref>`
 
 The two-file form is the testable core, but the everyday review question is "what did the agent change since the last commit?" In a git repo that's one command — `dmtool -m order.dm.json model diff --since HEAD` — which materializes the BASE from `git show HEAD:order.dm.json` and diffs it against the working file, so you never hand-roll a `git show` into a temp file. (It's the one deliberate git touch; the diff engine itself stays git-free.)
-

@@ -76,14 +76,19 @@ public final class ModelReader {
     /** Surviving mounted rules/computations whose fragments retain a genuine unmappable reference. */
     private final List<String> includedElementsWithUnmappedReferences;
     private final List<ComputationInfo> computations;
+    /** Include-mount group path → included model id. Kept separately from the expanded wire format. */
+    private final Map<String, String> originsByPath;
+    /** Field path → authored type-definition id. Kept separately after effective-type inlining. */
+    private final Map<String, String> typeRefsByPath;
 
-    private ModelReader(ObjectNode expanded, Map<String, JsonNode> byPath, List<String> locales,
-            List<String> includedElementsWithUnmappedReferences, List<ComputationInfo> computations) {
-        this.expanded = expanded;
-        this.byPath = byPath;
-        this.locales = locales;
-        this.includedElementsWithUnmappedReferences = includedElementsWithUnmappedReferences;
-        this.computations = computations;
+    private ModelReader(State state) {
+        this.expanded = state.expanded();
+        this.byPath = state.index().byPath();
+        this.locales = state.model().locales();
+        this.includedElementsWithUnmappedReferences = state.model().unmappedReferences();
+        this.computations = state.index().computations();
+        this.originsByPath = state.provenance().originsByPath();
+        this.typeRefsByPath = state.provenance().typeRefsByPath();
     }
 
     /**
@@ -98,16 +103,25 @@ public final class ModelReader {
         ObjectNode root = parse(dmJson);
         Map<String, JsonNode> typeDefs = new HashMap<>();
         Set<ObjectNode> elementsWithResiduals = Collections.newSetFromMap(new IdentityHashMap<>());
-        expandContent(root, resolver, typeDefs, new HashSet<>(), elementsWithResiduals);
+        Map<ObjectNode, String> origins = new IdentityHashMap<>();
+        Map<ObjectNode, String> typeRefs = new IdentityHashMap<>();
+        expandContent(root, resolver, typeDefs, new HashSet<>(), elementsWithResiduals, origins);
         JsonNode modelRoot = root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT);
+        captureTypeDefRefs(modelRoot, typeRefs);
         inlineTypeDefs(modelRoot, typeDefs, new HashSet<>());
         normalizeIds(modelRoot, "");
+        Map<String, String> originsByPath = provenanceByPath(origins);
+        Map<String, String> typeRefsByPath = provenanceByPath(typeRefs);
         List<String> unmappedReferences = residualElementPaths(modelRoot, elementsWithResiduals);
         stripVestigialModelReferences(root);
         Map<String, JsonNode> byPath = new LinkedHashMap<>();
         List<ComputationInfo> computations = new ArrayList<>();
         indexRootGroups(modelRoot, byPath, computations);
-        return new ModelReader(root, byPath, readLocales(root), unmappedReferences, List.copyOf(computations));
+        Provenance provenance = new Provenance(Map.copyOf(originsByPath), Map.copyOf(typeRefsByPath));
+        return new ModelReader(new State(root,
+                new IndexState(byPath, List.copyOf(computations)),
+                new ModelState(readLocales(root), unmappedReferences),
+                provenance));
     }
 
     // ── outputs ─────────────────────────────────────────────────────────────────────────────────────────
@@ -163,11 +177,33 @@ public final class ModelReader {
         return computations;
     }
 
+    private record State(ObjectNode expanded, IndexState index, ModelState model, Provenance provenance) {
+    }
+
+    private record IndexState(Map<String, JsonNode> byPath, List<ComputationInfo> computations) {
+    }
+
+    private record ModelState(List<String> locales, List<String> unmappedReferences) {
+    }
+
+    private record Provenance(Map<String, String> originsByPath, Map<String, String> typeRefsByPath) {
+    }
+
+    /** The included-model id whose content is mounted at {@code path}, or {@code null}. */
+    String origin(String path) {
+        return originsByPath.get(path);
+    }
+
+    /** The authored typedef id behind the now-inlined field at {@code path}, or {@code null}. */
+    String typeRef(String path) {
+        return typeRefsByPath.get(path);
+    }
+
     // ── expansion ─────────────────────────────────────────────────────────────────────────────────────────
 
     /** Collect this model's type-definitions, resolve header typedef imports, then expand every include mount. */
     private static void expandContent(ObjectNode root, ModelResolver resolver, Map<String, JsonNode> typeDefs,
-            Set<String> visiting, Set<ObjectNode> elementsWithResiduals) {
+            Set<String> visiting, Set<ObjectNode> elementsWithResiduals, Map<ObjectNode, String> origins) {
         JsonNode content = root.path(DmKeys.CONTENT);
         collectTypeDefs(content, typeDefs);
         // Header "typeDefinitions"-purpose imports are ingested only when the model declares no local ones
@@ -176,7 +212,7 @@ public final class ModelReader {
             importTypeDefs(root, resolver, typeDefs, visiting);
         }
         JsonNode rootGroups = content.path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS);
-        expandElements(rootGroups, root, resolver, typeDefs, visiting, elementsWithResiduals, "");
+        expandElements(rootGroups, root, resolver, typeDefs, visiting, elementsWithResiduals, origins, "");
     }
 
     /** Merge {@code content.typeDefinitions} into {@code typeDefs} (keyed by id; first wins — the kernel dedups
@@ -216,7 +252,7 @@ public final class ModelReader {
      *  own absolute path is known — the anchor the condition remap rewrites included references onto. */
     private static void expandElements(JsonNode elements, ObjectNode baseRoot, ModelResolver resolver,
             Map<String, JsonNode> typeDefs, Set<String> visiting, Set<ObjectNode> elementsWithResiduals,
-            String parentPath) {
+            Map<ObjectNode, String> origins, String parentPath) {
         if (!elements.isArray()) {
             return;
         }
@@ -232,9 +268,10 @@ public final class ModelReader {
             // idempotency guard (an already-mounted group is not re-expanded).
             if (!alias.isEmpty() && (existing.isMissingNode() || existing.isEmpty())) {
                 mount(groupNode, body, alias, baseRoot, resolver, typeDefs, visiting, elementsWithResiduals,
-                        groupPath);
+                        origins, groupPath);
             } else {
-                expandElements(existing, baseRoot, resolver, typeDefs, visiting, elementsWithResiduals, groupPath);
+                expandElements(existing, baseRoot, resolver, typeDefs, visiting, elementsWithResiduals, origins,
+                        groupPath);
             }
         }
     }
@@ -243,15 +280,17 @@ public final class ModelReader {
      *  children (SINGLE_RG) or every top-level group (MODEL_ROOT), after fully expanding the included model. */
     private static void mount(ObjectNode mountGroup, ObjectNode mountBody, String alias, ObjectNode baseRoot,
             ModelResolver resolver, Map<String, JsonNode> typeDefs, Set<String> visiting,
-            Set<ObjectNode> elementsWithResiduals, String mountPath) {
+            Set<ObjectNode> elementsWithResiduals, Map<ObjectNode, String> origins, String mountPath) {
         String reference = referenceForAlias(baseRoot, alias);
         if (visiting.contains(reference)) {
             throw new IllegalArgumentException("include cycle detected at reference \"" + reference + "\"");
         }
         ObjectNode includedRoot = resolve(resolver, reference);
         visiting.add(reference);
-        expandContent(includedRoot, resolver, typeDefs, visiting, elementsWithResiduals);
+        expandContent(includedRoot, resolver, typeDefs, visiting, elementsWithResiduals, origins);
         visiting.remove(reference);
+        String sourceModel = includedRoot.path(DmKeys.HEADER).path(DmKeys.ID).asText(reference);
+        origins.put(mountGroup, sourceModel);
 
         boolean modelRoot = "MODEL_ROOT".equals(mountBody.path("includeLevel").asText());
         boolean excludeRules = mountBody.path("excludeRules").asBoolean(false);
@@ -488,6 +527,41 @@ public final class ModelReader {
     }
 
     // ── effective types (typedef inlining) ────────────────────────────────────────────────────────────────
+
+    /**
+     * Remember each field's authored named type before effective-type inlining removes that distinction.
+     * Object identity survives include mounting, inlining, and id normalization, so this side table can be
+     * keyed by the final path without leaking provenance into the expanded DM-JSON.
+     */
+    private static void captureTypeDefRefs(JsonNode node, Map<ObjectNode, String> typeRefs) {
+        if (node.isObject()) {
+            ObjectNode obj = (ObjectNode) node;
+            if (ElementType.FIELD.matches(obj)) {
+                JsonNode fieldType = obj.path(ElementType.FIELD.wireName()).path(DmKeys.FIELD_TYPE);
+                if ("TypeDefType".equals(fieldType.path(DmKeys.TYPE).asText())) {
+                    String id = fieldType.path("TypeDefType").path(DmKeys.TYPE_DEFINITION_ID).asText("");
+                    if (!id.isEmpty()) {
+                        typeRefs.put(obj, id);
+                    }
+                }
+            }
+            obj.forEach(child -> captureTypeDefRefs(child, typeRefs));
+        } else if (node.isArray()) {
+            node.forEach(child -> captureTypeDefRefs(child, typeRefs));
+        }
+    }
+
+    /** Re-key one identity side table by the normalized element ids written by {@link #normalizeIds}. */
+    private static Map<String, String> provenanceByPath(Map<ObjectNode, String> byNode) {
+        Map<String, String> out = new LinkedHashMap<>();
+        byNode.forEach((node, value) -> {
+            String path = node.path(DmKeys.ID).asText("");
+            if (!path.isEmpty()) {
+                out.put(path, value);
+            }
+        });
+        return out;
+    }
 
     /** Inline every field's {@code TypeDefType} fieldType with the referenced definition's concrete fieldType. */
     private static void inlineTypeDefs(JsonNode node, Map<String, JsonNode> typeDefs, Set<String> onPath) {
