@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Prove that the expensive Kotlin/JVM, Kotlin/JS, and adapter test compilation outputs are relocatable across
-# two clean worktrees of the same commit. This verifies the optimization structurally; wall-clock timings are
-# printed for diagnosis but are deliberately not a machine-dependent gate.
+# two clean worktrees of the same commit. Gradle runs offline, so only the local cache can satisfy the second
+# worktree. This verifies the optimization structurally; timings are diagnostic, not a machine-dependent gate.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -49,7 +49,7 @@ run_probe() {
   started="$(date +%s)"
   (
     cd "$worktree"
-    ./build.sh --console=plain "${TASKS[@]}"
+    ./build.sh --offline --console=plain "${TASKS[@]}"
   ) 2>&1 | tee "$log"
   echo "verify-build-cache: $label completed in $(( $(date +%s) - started ))s"
 }
