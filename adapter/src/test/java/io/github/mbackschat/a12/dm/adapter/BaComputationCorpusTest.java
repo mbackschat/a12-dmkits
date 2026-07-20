@@ -77,7 +77,7 @@ class BaComputationCorpusTest {
         Computation comp = m.computation(m.num("/Order/Discount")).name("DiscountComp")
                 .when(m.num("/Order/Subtotal").lt(100)).calc(NumberLiteral.of(0))
                 .when(m.num("/Order/Subtotal").ge(100))
-                .calc(Dsl.roundUp(m.num("/Order/Subtotal").asNumber().times(Dsl.number("0.05")), 0).expression())
+                .calc(Dsl.roundUp(m.num("/Order/Subtotal").asNumber().times(Dsl.number("0.05"))).expression())
                 .message(en("Discount is 5% above 100, rounded up.")).build();
         roundTrips(m, comp, "/Order/DiscountComp");
     }
@@ -94,7 +94,7 @@ class BaComputationCorpusTest {
         // Total = RoundDown(Labor * (1 + TaxRate / 100))
         NumberExpr factor = Dsl.number("1").plus(m.num("/Project/TaxRate").asNumber().dividedBy(Dsl.number("100")));
         Computation comp = m.computation(m.num("/Project/Total")).name("TotalComp")
-                .calc(Dsl.roundDown(m.num("/Project/Labor").asNumber().times(factor), 0).expression())
+                .calc(Dsl.roundDown(m.num("/Project/Labor").asNumber().times(factor)).expression())
                 .message(en("Total is labor plus tax, rounded down.")).build();
         roundTrips(m, comp, "/Project/TotalComp");
     }

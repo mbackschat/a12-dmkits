@@ -2,7 +2,10 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.interpreter.conformance.Op
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog
+import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -11,28 +14,53 @@ import org.junit.jupiter.api.Test
  * Live-catalog strategy evidence for every ordinary condition-form operator.
  *
  * Every catalog [io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry.validExample] is already
- * kernel-acceptance-locked by N7. This test injects all ordinary examples into one model, materializes one
- * deterministic non-empty instance, and evaluates that exact model through the interpreter,
- * Groovy-dynamic anchor, and generated-Java strategy. One generated model keeps the test cheap while each
- * catalog entry remains an independently derived matrix cell. The four SPI/computation specialists have
- * dedicated tri-checks because they need a consumer callback or the compute API.
+ * kernel-acceptance-locked by N7. This test partitions ordinary examples by their fixture domain into the
+ * Order model and the Warehouse multi-star model, materializes deterministic non-empty instances, and
+ * evaluates each model through the interpreter, Groovy-dynamic anchor, and generated-Java strategy. Two
+ * generated models keep the test cheap while each catalog entry remains an independently derived matrix
+ * cell. Consumer-SPI specialists and computation-only operators keep their dedicated tri-checks.
  */
 class CatalogOperatorStrategyDiffTest {
 
     private val catalog = OperatorCatalog.load()
     private val base = RuntimeLaws.model("models/order.dm.json")
     private val baseDef = ModelLoader.load(base)
+    private val multiStarBase = DocumentModelDraft.named("warehouse").locale("en_US")
+        .rootGroup("Warehouse") { warehouse ->
+            warehouse.group("Aisles") { aisles ->
+                aisles.repeatable(20).group("Bins") { bins ->
+                    bins.repeatable(20).numberField("Quantity") { }
+                }
+            }
+        }
+        .build().toJson()
+    private val multiStarDef = ModelLoader.load(multiStarBase)
 
     @Test
     fun everyOrdinaryCatalogOperatorRunsThroughBothKernelStrategies() {
         val entries = catalog.entries().filter { it.validExample() != null && it.id() !in SPECIALISTS }
-        val model = entries.fold(base) { json, entry ->
+        assertStrategyEvidence(base, baseDef, "/Order", entries.filter { it.id() !in MULTI_STAR_IDS })
+        assertStrategyEvidence(
+            multiStarBase,
+            multiStarDef,
+            "/Warehouse",
+            entries.filter { it.id() in MULTI_STAR_IDS },
+        )
+    }
+
+    private fun assertStrategyEvidence(
+        fixture: String,
+        fixtureDef: ModelDef,
+        ruleGroup: String,
+        entries: List<OperatorEntry>,
+    ) {
+        val model = entries.fold(fixture) { json, entry ->
             val condition = entry.validExample().dsl()
             RuntimeLaws.withRule(
                 json,
-                "/Order",
+                ruleGroup,
                 "StrategyEvidence_${entry.id()}",
-                "../${referencedErrorField(condition)}",
+                "../${referencedErrorField(condition, fixtureDef, ruleGroup)}",
                 evidenceCode(entry.id()),
                 condition,
             )
@@ -43,8 +71,8 @@ class CatalogOperatorStrategyDiffTest {
         val interpreter = CorpusEngines.interpret(model, placements, Op.ValidateFull)
         val javaStatic = CorpusEngines.javaStatic(model, placements, Op.ValidateFull)
 
-        assertEquals(groovy, interpreter, "live catalog model: interpreter differs from Groovy-dynamic")
-        assertEquals(groovy, javaStatic, "live catalog model: generated Java differs from Groovy-dynamic")
+        assertEquals(groovy, interpreter, "live catalog model $ruleGroup: interpreter differs from Groovy-dynamic")
+        assertEquals(groovy, javaStatic, "live catalog model $ruleGroup: generated Java differs from Groovy-dynamic")
     }
 
     @Test
@@ -66,13 +94,13 @@ class CatalogOperatorStrategyDiffTest {
         assertTrue((SPECIALISTS intersect computationOnly).isEmpty())
     }
 
-    private fun referencedErrorField(condition: String): String {
-        val relativeFields = baseDef.fields.map { it.path.removePrefix("/Order/") }
+    private fun referencedErrorField(condition: String, fixtureDef: ModelDef, ruleGroup: String): String {
+        val relativeFields = fixtureDef.fields.map { it.path.removePrefix("$ruleGroup/") }
         return relativeFields.firstOrNull { condition.references(it) }
             ?: relativeFields.firstOrNull { field ->
                 field.substringBefore('/').takeIf { it != field }?.let { condition.references(it) } == true
             }
-            ?: error("no /Order field or group is referenced by catalog example: $condition")
+            ?: error("no $ruleGroup field or group is referenced by catalog example: $condition")
     }
 
     private fun String.references(pathOrName: String): Boolean =
@@ -81,6 +109,7 @@ class CatalogOperatorStrategyDiffTest {
     companion object {
         /** Consumer-SPI operators whose generated-Java checks live in their dedicated differential. */
         val SPECIALISTS: Set<String> = setOf("CustomCondition", "ValidType", "InvalidType")
+        val MULTI_STAR_IDS: Set<String> = setOf("Having", "CurrentRepetition")
 
         fun evidenceCode(operatorId: String): String = "EVIDENCE_$operatorId"
     }

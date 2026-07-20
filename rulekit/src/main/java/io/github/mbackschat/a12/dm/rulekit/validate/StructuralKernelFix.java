@@ -26,8 +26,9 @@ import java.util.Optional;
  *       case), {@code MVK_NO_GROUPS_ALLOWED} (FieldFilled documents it as "you passed a group, use
  *       GroupFilled", but an AGGREGATE / {@code Having} filter given a bare group wildcard raises it too —
  *       there the fix is to flatten to a repetition field list, not to swap in GroupFilled) and
- *       {@code MVK_INVALID_COMPARE_DEC_PLACES} (Equal/NotEqual document it as a field-vs-field
- *       comparison, but a computed field whose scale differs from its expression raises it too — the
+ *       {@code MVK_INVALID_COMPARE_DEC_PLACES} (Equal/NotEqual document it for incompatible numeric
+ *       {@code ==}/{@code !=} operands, but a computed field whose scale differs from its expression raises
+ *       it too — the
  *       "round one with RoundDown" comparison fix mis-stamps the computation case, where the fix is to
  *       match the computed field's scale). The catalog can only see operators, never these other triggers,
  *       so the corrective must be authored here at the code level.</li>

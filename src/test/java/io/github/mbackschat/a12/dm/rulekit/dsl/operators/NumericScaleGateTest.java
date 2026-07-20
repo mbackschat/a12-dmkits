@@ -28,11 +28,16 @@ class NumericScaleGateTest {
 
         assertDoesNotThrow(() -> scale2.eq(Dsl.number("0")));
         assertDoesNotThrow(() -> Dsl.number("0").eq(scale2));
-        assertDoesNotThrow(() -> scale0.eq(Dsl.number("1000")),
-                "an integer literal keeps its stripped negative scale and remains expandable");
+        var negativeScaleCapable = Dsl.number("1000").times(scale2);
+        assertDoesNotThrow(() -> scale0.eq(negativeScaleCapable),
+                "1000's stripped scale -3 plus the field's scale 2 yields a capable derived scale -1");
+        assertDoesNotThrow(() -> negativeScaleCapable.eq(scale0));
 
         assertScaleGate(() -> scale0.eq(Dsl.number("0.00")));
         assertScaleGate(() -> Dsl.number("0.00").eq(scale0));
+        var positiveScaleCapable = Dsl.number("1").times(scale2);
+        assertScaleGate(() -> scale0.eq(positiveScaleCapable));
+        assertScaleGate(() -> positiveScaleCapable.eq(scale0));
     }
 
     @Test

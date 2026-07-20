@@ -12,13 +12,21 @@ class NumberLawsTest {
         KernelLaws.acceptsOrder("/Order", "../UnitPrice",
                 "FieldFilled(UnitPrice) And 0 == [UnitPrice]");
         KernelLaws.acceptsOrder("/Order", "../Quantity",
-                "FieldFilled(Quantity) And [Quantity] == 1000");
+                "AllFieldsFilled(Quantity, UnitPrice) And [Quantity] == 1000 * [UnitPrice]");
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                "AllFieldsFilled(Quantity, UnitPrice) And 1000 * [UnitPrice] == [Quantity]");
 
         KernelLaws.rejectsOrder("/Order", "../Quantity",
                 "FieldFilled(Quantity) And [Quantity] == 0.00",
                 "MVK_INVALID_COMPARE_DEC_PLACES");
         KernelLaws.rejectsOrder("/Order", "../Quantity",
                 "FieldFilled(Quantity) And 0.00 == [Quantity]",
+                "MVK_INVALID_COMPARE_DEC_PLACES");
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "AllFieldsFilled(Quantity, UnitPrice) And [Quantity] == 1 * [UnitPrice]",
+                "MVK_INVALID_COMPARE_DEC_PLACES");
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "AllFieldsFilled(Quantity, UnitPrice) And 1 * [UnitPrice] == [Quantity]",
                 "MVK_INVALID_COMPARE_DEC_PLACES");
     }
 

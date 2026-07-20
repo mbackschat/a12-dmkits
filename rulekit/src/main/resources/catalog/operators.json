@@ -2050,7 +2050,7 @@
       { "text": "CurrentRepetition(Bins) != CurrentRepetition($Bins) inside a multi-star filter excludes every candidate that shares the outer row's leaf index across different ancestor rows, not merely one physical row", "kind": "SURPRISE" },
       { "text": "a $-marked group resolves from the complete captured outer environment by that group's path: CurrentRepetition($Parent) and CurrentRepetition($Parent/Child) can return different coordinates in the same filter", "kind": "AUTHORING" }
     ],
-    "validExample": { "dsl": "FieldFilled(/Warehouse/Aisles/Bins/Quantity) And AtLeastOneFieldFilled(/Warehouse/Aisles*/Bins*/Quantity Having (CurrentRepetition(/Warehouse/Aisles/Bins) != CurrentRepetition($/Warehouse/Aisles/Bins) And [/Warehouse/Aisles/Bins/Quantity] == [$/Warehouse/Aisles/Bins/Quantity]))", "note": "finds another equal-valued bin while excluding every candidate with the outer bin's leaf index across all aisles" },
+    "validExample": { "dsl": "FieldFilled(/Warehouse/Aisles/Bins/Quantity) And AtLeastOneFieldFilled(/Warehouse/Aisles*/Bins*/Quantity Having CurrentRepetition(/Warehouse/Aisles/Bins) != CurrentRepetition($/Warehouse/Aisles/Bins) And [/Warehouse/Aisles/Bins/Quantity] == [$/Warehouse/Aisles/Bins/Quantity])", "note": "finds another equal-valued bin while excluding every candidate with the outer bin's leaf index across all aisles" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And CurrentRepetition(Items) > 1", "error": "MVK_NO_WILDCARD", "fix": "CurrentRepetition needs the rule to iterate over the group — put the error field inside Items" },
     "seeAlso": ["Having"],
     "sinceKernel": "30.8.x"

@@ -8,10 +8,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
@@ -21,10 +23,11 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
  * Renderer-vs-kernel parity (task #9): every SUPPORTED catalog {@code validExample} is read, our
  * {@link DslRenderer} re-renders it, and the kernel's canonical formatter (its {@code FormatterVisitor},
  * reached via {@code KernelAdapter.canonicalConditionText}) must format <em>our render</em> identically
- * to the original example. Both sides pass through the kernel formatter, so kernel-side formatting
- * (line breaks, spacing, path normalization) cancels out — only a genuine token/structure difference in
- * our render survives. This is the strong form of the round-trip oracle: not just "our render re-parses
- * to our AST" but "the kernel sees our render as the same condition as the curated example".
+ * to the original example. Both sides pass through the kernel formatter, so whitespace formatting
+ * cancels out; path form and explicit grouping remain part of the canonical spelling, and each fixture
+ * therefore uses the catalog example's path policy. This is the strong form of the round-trip oracle:
+ * not just "our render re-parses to our AST" but "the kernel sees our render as the same condition as
+ * the curated example".
  *
  * <p>Examples that read {@code Opaque} (a deliberately-unmodeled construct) are preserved verbatim, so
  * their render is the example text — trivially equal; they are reported, not asserted.
@@ -41,14 +44,14 @@ class CatalogRenderCanonicalParityTest {
     private static final Map<String, String> ORDER_GROUP_FIELDS = Map.of(
             "ShippingAddress", "ShippingAddress/Street", "BillingAddress", "BillingAddress/PostalCode");
 
-    // render relative to the rule's group (as Rule.render does) — the kernel's canonical form is relative
-    // too, so this neutralizes the path-form policy difference and the audit compares real structure.
-    private static final DslRenderer RENDER = new DslRenderer(ConditionLanguage.EN, "/Order");
-    private static final DslRenderer RENDER_DE = new DslRenderer(ConditionLanguage.DE, "/Order");
     private static final String MODEL = read("models/order.dm.json");
-    // a German-condition-language twin of the fixture (same structure, decimalSeparator kept "." so integer
-    // literals parse unchanged) — used to feed our German render back through the kernel's DE parser.
-    private static final String MODEL_DE = MODEL.replace("en_US", "de_DE");
+    private static final Set<String> MULTI_STAR_IDS = Set.of("Having", "CurrentRepetition");
+    private static final String MULTI_STAR_MODEL = DocumentModelDraft.named("warehouse").locale("en_US")
+            .rootGroup("Warehouse", warehouse -> warehouse
+                    .group("Aisles", aisles -> aisles.repeatable(20)
+                            .group("Bins", bins -> bins.repeatable(20)
+                                    .numberField("Quantity", field -> { }))))
+            .build().toJson();
 
     @Test
     void ourRenderCanonicalizesIdenticallyToEachCatalogExample() {
@@ -61,21 +64,22 @@ class CatalogRenderCanonicalParityTest {
                 continue;
             }
             String dsl = e.validExample().dsl();
-            String field = firstReferencedField(dsl);
+            Fixture fixture = fixture(e, dsl, "en_US");
+            DslRenderer renderer = new DslRenderer(ConditionLanguage.EN, fixture.renderBase());
             String ourRender = null;
             try {
                 // K1: the kernel's canonical form of the curated example
-                KernelAdapter a1 = KernelAdapter.ofJson(inject(MODEL, "Ex", field, dsl, "en_US"));
-                String k1 = norm(a1.canonicalConditionText("/Order/Ex"));
-                ReadResult ing = a1.read("/Order/Ex");
+                KernelAdapter a1 = KernelAdapter.ofJson(inject(fixture, "Ex", dsl, "en_US"));
+                String k1 = norm(a1.canonicalConditionText(fixture.rulePath("Ex")));
+                ReadResult ing = a1.read(fixture.rulePath("Ex"));
                 if (!(ing instanceof ReadResult.Converted converted)) {
                     opaque.add(e.id());
                     continue;
                 }
                 // K2: the kernel's canonical form of OUR re-render of the same condition
-                ourRender = RENDER.render(converted.condition());
-                KernelAdapter a2 = KernelAdapter.ofJson(inject(MODEL, "Re", field, ourRender, "en_US"));
-                String k2 = norm(a2.canonicalConditionText("/Order/Re"));
+                ourRender = renderer.render(converted.condition());
+                KernelAdapter a2 = KernelAdapter.ofJson(inject(fixture, "Re", ourRender, "en_US"));
+                String k2 = norm(a2.canonicalConditionText(fixture.rulePath("Re")));
                 checked++;
                 if (!k1.equals(k2)) {
                     mismatches.add(String.format("%n  [%s] example canonical: %s%n        our-render canonical: %s%n        our raw render: %s",
@@ -84,10 +88,11 @@ class CatalogRenderCanonicalParityTest {
                 // DE parity: render the SAME AST in German, parse it back through the kernel's DE model, and
                 // assert it re-reads to the same condition — its EN render equals our EN render. Catches a
                 // bad/unparseable German keyword or structure that the EN check can't see.
-                String deRender = RENDER_DE.render(converted.condition());
-                KernelAdapter aDe = KernelAdapter.ofJson(inject(MODEL_DE, "De", field, deRender, "de_DE"));
-                ReadResult deIng = aDe.read("/Order/De");
-                String reEn = deIng instanceof ReadResult.Converted c2 ? RENDER.render(c2.condition()) : "(opaque)";
+                Fixture deFixture = fixture(e, dsl, "de_DE");
+                String deRender = new DslRenderer(ConditionLanguage.DE, deFixture.renderBase()).render(converted.condition());
+                KernelAdapter aDe = KernelAdapter.ofJson(inject(deFixture, "De", deRender, "de_DE"));
+                ReadResult deIng = aDe.read(deFixture.rulePath("De"));
+                String reEn = deIng instanceof ReadResult.Converted c2 ? renderer.render(c2.condition()) : "(opaque)";
                 if (!reEn.equals(ourRender)) {
                     deMismatches.add(String.format("%n  [%s] our DE render: %s%n        DE→kernel→EN: %s%n        expected EN: %s",
                             e.id(), deRender, reEn, ourRender));
@@ -118,14 +123,32 @@ class CatalogRenderCanonicalParityTest {
                 .orElseThrow(() -> new IllegalStateException("no Order field referenced in: " + dsl));
     }
 
-    private static String inject(String modelJson, String name, String errorField, String cond, String locale) {
+    private static Fixture fixture(OperatorEntry entry, String dsl, String locale) {
+        if (MULTI_STAR_IDS.contains(entry.id())) {
+            return new Fixture(localize(MULTI_STAR_MODEL, locale), "/Warehouse", "Aisles/Bins/Quantity", null);
+        }
+        return new Fixture(localize(MODEL, locale), "/Order", firstReferencedField(dsl), "/Order");
+    }
+
+    private static String localize(String modelJson, String locale) {
+        return locale.equals("en_US") ? modelJson : modelJson.replace("en_US", locale);
+    }
+
+    private static String inject(Fixture fixture, String name, String cond, String locale) {
         String escaped = cond.replace("\\", "\\\\").replace("\"", "\\\"");
-        String block = "{ \"type\": \"Rule\", \"id\": \"/Order/" + name + "\", \"name\": \"" + name
-                + "\", \"Rule\": { \"errorEntityRelPath\": \"../" + errorField + "\", \"errorCode\": \"C\","
+        String block = "{ \"type\": \"Rule\", \"id\": \"" + fixture.rulePath(name) + "\", \"name\": \"" + name
+                + "\", \"Rule\": { \"errorEntityRelPath\": \"../" + fixture.errorField() + "\", \"errorCode\": \"C\","
                 + " \"errorCondition\": \"" + escaped + "\", \"severity\": \"ERROR\","
                 + " \"errorMessage\": [ { \"locale\": \"" + locale + "\", \"text\": \"x\" } ] } },\n";
+        String modelJson = fixture.modelJson();
         int br = modelJson.indexOf('[', modelJson.indexOf("\"elements\""));
         return modelJson.substring(0, br + 1) + "\n" + block + modelJson.substring(br + 1);
+    }
+
+    private record Fixture(String modelJson, String group, String errorField, String renderBase) {
+        String rulePath(String name) {
+            return group + "/" + name;
+        }
     }
 
     private static String read(String path) {
