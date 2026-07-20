@@ -12,12 +12,13 @@
 #   3. ONE run = self-consistent numbers (interp_ms, kernel-Java_ms and the ratio are all measured together),
 #      so an absolute column can never contradict the ratio column (the bug that motivated this).
 #
-# Usage:  scripts/perf.sh <mode> [counts | method-pattern]
+# Usage:  scripts/perf.sh <mode> [counts | method-pattern | scenario-id]
 #   gate          PerfGateTest — the ROUTINE gate: the sub-quadratic growth guards + the rich-model kernel
 #                 canary (fast; run at every landing). Optional 2nd arg = a method pattern to run ONE check
 #                 during a drill loop, e.g.  scripts/perf.sh gate 'semanticIndex*'
-#   bench         PerfBenchTest — the KERNEL-RATIO benchmarks (per-scenario Groovy codegen + baselines; the
-#                 slow tier — run at perf-relevant checkpoints, not every landing). Same optional method pattern.
+#   bench         PerfBenchTest — the KERNEL-RATIO benchmarks (per-scenario Groovy/Java codegen + baselines; the
+#                 slow tier — run at perf-relevant checkpoints, not every landing). Optional 2nd arg = one exact
+#                 scenario id, e.g. scripts/perf.sh bench B9-berlin-datetime; an unknown id fails.
 #   crossover     rule-count sweep vs kernel-Groovy/-Java, both firing regimes.   counts default 6,12,24,48,96,192,384
 #   distributed   1-rule-per-field "wide form" sweep vs kernel (kernel codegens fine here).   counts default 192,512,1000,2000
 #   scaling       startup + row-scaling (interp-only).
@@ -34,7 +35,7 @@ mkdir -p build
 out="build/perf-${mode}.log"
 
 # Result-line markers the perf tests emit (so the extractor stays accurate as tests are added).
-markers='\[edge\]|\[perf\]|\[jsperf\]|^\s*rules=|^\s*distributed|^\s*B[0-9] |^\s*groups=|µs/row|us/row|interp=|MethodTooLarge|KERNEL CODEGEN FAILED|cold=|warm-best='
+markers='\[edge\]|\[perf\]|\[jsperf\]|^\s*rules=|^\s*distributed|^\s*B[0-9] |^\s*groups=|µs/row|us/row|interp=|MethodTooLarge|KERNEL CODEGEN FAILED|unknown benchmark scenario|cold=|warm-best='
 
 run_gradle() {  # $1.. = extra gradle args; writes RAW to $out (no pipe!)
     # The perf tests are @Tag("perf"), excluded from :adapter:test unless opted in (adapter/build.gradle) — so
@@ -48,7 +49,11 @@ case "$mode" in
         # counts doubles as an optional METHOD pattern: 'semanticIndex*' → --tests "*PerfGateTest.semanticIndex*"
         run_gradle --tests "*PerfGateTest${counts:+.$counts}" ;;
     bench)
-        run_gradle --tests "*PerfBenchTest${counts:+.$counts}" ;;
+        if [ -n "$counts" ]; then
+            run_gradle --tests "*PerfBenchTest.gatesEveryInventoryScenario" -Dperf.scenario="$counts"
+        else
+            run_gradle --tests "*PerfBenchTest"
+        fi ;;
     crossover)
         run_gradle --tests "*KernelEdgeTest.ruleCountCrossover" --tests "*KernelEdgeTest.ruleCountCrossoverLowFiring" \
             -Dperf.edge=true -Dperf.edge.counts="${counts:-6,12,24,48,96,192,384}" ;;

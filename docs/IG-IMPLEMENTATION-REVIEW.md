@@ -345,7 +345,7 @@ The identity is also absent from the measurement artifact. `PerfRow`/`RepeatedRo
 
 **Acceptance checks:** Removing B1, B8, B9, or the UTC control fails; adding a catalog case without inventory/exclusion fails. Every Java-capable row successfully builds and tri-checks its Java engine. `scripts/perf.sh bench B9-berlin-datetime` runs exactly that scenario, while an unknown id exits nonzero.
 
-**Resolution:** Open.
+**Resolution:** Corrected 2026-07-20. `BenchmarkScenario` is the closed expected catalog; its exhaustive `when` maps every entry to an included row or a reasoned exclusion, and `PerfInventory.cases` is derived from those dispositions. The default set pins B1–B8 plus the exact B9 Europe/Berlin/UTC pair (and the tiered/parallel cases); B8 is the full combined model at its generated-Java-feasible N=500 scale. `fairJavaCapable` now controls `PerfHarness.runScenario(..., withJava=...)`, so every current row tri-checks and reports the generated-Java ratio. `perf.scenario` plus `scripts/perf.sh bench <scenario-id>` selects exactly one row and rejects an unknown id with a nonzero exit.
 
 ### RV-2026-07-20-03-5 — IF159 turns a known quadratic path into a required behavior
 

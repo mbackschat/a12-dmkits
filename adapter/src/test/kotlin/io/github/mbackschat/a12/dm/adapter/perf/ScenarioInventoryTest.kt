@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -15,6 +16,48 @@ import org.junit.jupiter.api.Test
  * contract guard, not a timing benchmark.
  */
 class ScenarioInventoryTest {
+
+    @Test
+    fun closedCatalogIsExhaustivelyDispositionedAndPinsTheRequiredCases() {
+        val expected = setOf(
+            "B1-per-row",
+            "B2-star-aggregate",
+            "B3-nested-per-sub",
+            "B4-cross-level-ref",
+            "B5-deep-nested-star",
+            "B6-many-rules",
+            "B7-compute",
+            "B8-combined",
+            "B9-berlin-datetime",
+            "B9-utc-control",
+            "tiered-compute",
+            "parallel-iteration",
+        )
+        assertEquals(expected, BenchmarkScenario.entries.map { it.id }.toSet(),
+            "removing a required benchmark case must fail the closed-catalog guard")
+        assertEquals(BenchmarkScenario.entries.toSet(), PerfInventory.dispositions.keys,
+            "every closed-catalog case must be included or carry an explicit exclusion")
+        PerfInventory.dispositions.values.filterIsInstance<InventoryDisposition.Excluded>().forEach {
+            assertTrue(it.reason.isNotBlank(), "an inventory exclusion must explain why the case is not benchmarked")
+        }
+    }
+
+    @Test
+    fun exactScenarioSelectionIncludesThePinnedB9PairAndRejectsUnknownIds() {
+        assertEquals(listOf("B9-berlin-datetime"),
+            PerfInventory.select("B9-berlin-datetime").map { it.id.id })
+        assertEquals(setOf("B9-berlin-datetime", "B9-utc-control"),
+            PerfInventory.cases.map { it.id.id }.filter { it.startsWith("B9-") }.toSet())
+        assertThrows(IllegalArgumentException::class.java) {
+            PerfInventory.select("not-a-benchmark-scenario")
+        }
+    }
+
+    @Test
+    fun everyIncludedCaseDeclaresTheGeneratedJavaLeg() {
+        assertTrue(PerfInventory.cases.all { it.id.fairJavaCapable },
+            "an included case without generated-Java support must instead have an explicit reasoned disposition")
+    }
 
     @Test
     fun everyCaseHasAUniqueVersionedId() {

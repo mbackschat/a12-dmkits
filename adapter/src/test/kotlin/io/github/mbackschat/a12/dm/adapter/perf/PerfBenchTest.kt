@@ -12,26 +12,27 @@ import org.junit.jupiter.api.Test
  * The **kernel-ratio benchmark tier** (`scripts/perf.sh bench`) — the against-kernel scenario sweeps split out
  * of [PerfGateTest] (2026-07-10) so the routine gate stays fast: each scenario here pays kernel Groovy codegen +
  * baseline runs, which dominated the old single-tier gate's wall clock. Its sweep is **derived from
- * [PerfInventory]** (IG77 — the versioned default B-scenario inventory), so a fair-Java-capable scenario is
- * benchmarked *iff* it is registered there; adding/removing a default benchmark case is one inventory row, not a
- * hand-edited list here. Run this tier at perf-relevant checkpoints (a hot-path change, a release); the routine
- * landing gate is [PerfGateTest]. Same correctness-first discipline ([PerfHarness.runScenario] preflights +
- * asserts interp == kernel before timing) and the same [PerfBounds] trips. The fairness caveat: [PerfBounds.CAVEAT].
+ * [PerfInventory]** (IG77 — the closed, versioned default B-scenario inventory), so a fair-Java-capable scenario
+ * is benchmarked against generated Java *iff* its exhaustive inventory disposition includes it. Run this tier at
+ * perf-relevant checkpoints (a hot-path change, a release); the routine landing gate is [PerfGateTest]. Same
+ * correctness-first discipline ([PerfHarness.runScenario] preflights + asserts interp == Groovy == generated Java
+ * before timing) and the same [PerfBounds] trips. Set `perf.scenario` to one exact inventory id for a targeted
+ * drill; an unmatched id fails. The fairness caveat: [PerfBounds.CAVEAT].
  */
 @Tag("perf")
 class PerfBenchTest {
 
     @Test
     fun gatesEveryInventoryScenario() {
-        // Groovy-only for the routine bench (fast — no per-scenario Java codegen+compile). The Groovy tax (~1.0–1.3×)
-        // is pinned by KernelEdgeTest + KernelJavaBaselineDiffTest; the fair Java ratio lives in the analysis log.
+        val selectedCases = PerfInventory.select(System.getProperty("perf.scenario")?.takeIf(String::isNotBlank))
+
         // Stream each scenario's result AS it completes (live to build/perf-progress.log) — Gradle otherwise buffers
         // all test stdout until the task ends, so a slow multi-scenario sweep looks frozen.
-        val rows = PerfInventory.cases.associateWith { case ->
+        val rows = selectedCases.associateWith { case ->
             val scenario = case.scenario()
             val identity = scenario.identity
             PerfHarness.step("gate ${identity.id.id}@${identity.id.version} fingerprint=${identity.fingerprint} @N=${case.n}") {
-                PerfHarness.runScenario(scenario, case.n, withJava = false)
+                PerfHarness.runScenario(scenario, case.n, withJava = case.id.fairJavaCapable)
             }.also { PerfHarness.progress(PerfHarness.format(it, CAVEAT)) }
         }
 
