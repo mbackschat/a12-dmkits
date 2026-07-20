@@ -126,7 +126,7 @@ dmtool operators DifferenceInDays | jq '{id,kind,meaning}'
 {
   "id": "DifferenceInDays",
   "kind": "FUNCTION",
-  "meaning": "The number of whole days from the first date to the second."
+  "meaning": "The signed number of complete model-zone legacy-calendar day steps from the first date/date-time to the second."
 }
 ```
 

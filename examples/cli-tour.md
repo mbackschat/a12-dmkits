@@ -132,10 +132,9 @@ dmtool -m examples/models/order-ruled.dm.json rule explain /Order/DeliveryNotBef
       "id": "AllFieldsFilled",
       "keyword": "AllFieldsFilled",
       "kind": "PREDICATE",
-      "meaning": "True iff every listed field has a value.",
+      "meaning": "In validation, true iff every declared slot is known filled; a known empty, unavailable, or declared-but-uninstantiated slot prevents firing.",
       "gotchas": [
-        "a field carrying a formal error is removed from evaluation (see FieldFilled)",
-        "with a group operand, contained cells stream recursively in declaration order (field-major, then repetition-major) and evaluation stops as soon as the result is decisive; a malformed later cell is not read, while one reached before the decision can poison a computation"
+        "validation is an extensional tally: an unavailable slot stays in the range but counts as neither filled nor empty. In a computation, group cells scan recursively in declaration order (field-major, then repetition-major); the first empty slot decides, a reached invalid slot poisons, and a suffix after the decision is unread"
       ]
     },
     {
@@ -148,9 +147,9 @@ dmtool -m examples/models/order-ruled.dm.json rule explain /Order/DeliveryNotBef
       "id": "DifferenceInDays",
       "keyword": "DifferenceInDays",
       "kind": "FUNCTION",
-      "meaning": "The number of whole days from the first date to the second.",
+      "meaning": "The signed number of complete model-zone legacy-calendar day steps from the first date/date-time to the second.",
       "gotchas": [
-        "differences are a floor, not a calendar count (DifferenceInMonths(31.01,30.03)=1); fractional offsets truncate"
+        "this is calendar stepping, not elapsed or wall-label seconds divided by 86,400: time of day matters, and a DST-gap landing can change the retained clock for later steps (Berlin 2024-03-30T02:30 to 2024-03-31T01:45 is 1)"
       ]
     }
   ],
