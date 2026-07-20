@@ -97,6 +97,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
@@ -283,8 +284,8 @@ final class ConditionConverter {
         boolean single = paths.size() == 1;
         String[] p = paths.toArray(String[]::new);
         // a field-fill quantifier over a MIXED group+field scope (FieldsNotCollectivelyFilled(A, B/G2), where A
-        // is a group and B/G2 a field): the kernel expands each group to its contained fields — make that
-        // explicit and build a field-list quantifier over the flattened field paths.
+        // is a group and B/G2 a field): the kernel expands each group to every descendant field recursively
+        // — make that explicit and build a field-list quantifier over the flattened field paths.
         if (isFieldFillQuantifier(name) && entities.stream().anyMatch(e -> !e.isField())
                 && entities.stream().anyMatch(IEntityId::isField)) {
             List<String> fieldPaths = new ArrayList<>();
@@ -292,7 +293,7 @@ final class ConditionConverter {
                 if (e.isField()) {
                     fieldPaths.add(e.getFullName());
                 } else {
-                    model.fields(model.group(e.getFullName())).forEach(f -> fieldPaths.add(f.path()));
+                    descendantFields(e).forEach(f -> fieldPaths.add(f.path()));
                 }
             }
             return fieldFillQuantifier(name, fieldPaths.toArray(String[]::new), entityList);
@@ -897,20 +898,27 @@ final class ConditionConverter {
     }
 
     /**
-     * The contained number fields of a group, each as a flattened wildcard list — the explicit expansion
+     * The descendant number fields of a group, each as a flattened wildcard list — the recursive expansion
      * of a group-scoped aggregate ({@code Sum(Group*)} becomes a Sum over each {@code Group* / fN} list),
      * matching the kernel's "a group argument is expanded to its contained fields" semantic (KERNEL-FINDINGS §9).
      */
     private FieldOperand[] groupNumberFieldOperands(IEntityId groupEntity, IEntityListOperation origin) {
+        String groupPath = groupEntity.getFullName();
         String star = reconstructStarPath(groupEntity);
-        FieldOperand[] ops = model.fields(model.group(groupEntity.getFullName()))
+        FieldOperand[] ops = descendantFields(groupEntity).stream()
                 .filter(f -> f.kind() == ValueKind.NUMBER)
-                .map(f -> (FieldOperand) model.flatten(star + "/" + f.name()))
+                .map(f -> (FieldOperand) model.flatten(star + f.path().substring(groupPath.length())))
                 .toArray(FieldOperand[]::new);
         if (ops.length == 0) {
             throw unsupported("group-scope aggregate over a group with no number fields", origin);
         }
         return ops;
+    }
+
+    /** Every field below a group, recursively and in model order. */
+    private List<FieldInfo> descendantFields(IEntityId groupEntity) {
+        String prefix = model.group(groupEntity.getFullName()).path() + "/";
+        return model.fields().filter(field -> field.path().startsWith(prefix)).toList();
     }
 
     /** {@code getFullName()} drops the wildcard; re-insert {@code *} after each segment marked WILDCARD in indices. */
