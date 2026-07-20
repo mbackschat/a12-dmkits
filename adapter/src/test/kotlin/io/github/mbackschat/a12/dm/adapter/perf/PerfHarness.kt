@@ -243,6 +243,35 @@ object PerfHarness {
         return stats(times)
     }
 
+    /** Cap on the rows the [preflight] materializes — an unsupported construct is a STRUCTURAL property of the
+     *  model (independent of row count), so a small instance that still instantiates every group proves it, cheaply
+     *  (every catalog scenario instantiates each group at n ≥ 1). Keeps the per-sample preflight ~sub-ms. */
+    private const val PREFLIGHT_MAX_ROWS = 200
+
+    /**
+     * **Semantic preflight (IG77 → IF156): no sample times a fiction.** Before any timing, build the interpreter
+     * for [scenario], materialize its canonical instance at a cost-capped scale ([PREFLIGHT_MAX_ROWS]), and assert
+     * on the **outcome-bearing** [DmInterpreter.validate] API that nothing is unsupported. `validate` surfaces both
+     * an unsupported **rule** and an unsupported **computation** (it runs the implicit computation-validity checks),
+     * so this one uniform check covers VALIDATE and COMPUTE scenarios alike. This is the explicit before-timing
+     * proof INTERPRETER-PERFORMANCE.md mandates ("Measure AGAINST the kernel"): a silently-unsupported construct
+     * would make the interpreter look fast by doing **less** work than the kernel, so the harness REFUSES to time
+     * it (naming the construct) rather than relying on `validateFull` to throw incidentally mid-timed-run. The
+     * tri-engine outcome agreement (interp == groovy == java) is asserted separately, at the timed N, in
+     * [runScenario]/[runRepeated].
+     */
+    fun preflight(scenario: PerfScenario, n: Int) {
+        val model = scenario.interpModel
+        val doc = model.newDocument()
+        scenario.instance(doc.asSink(), n.coerceAtMost(PREFLIGHT_MAX_ROWS), 0)
+        val outcome = DmInterpreter(model).validate(doc)
+        check(outcome.unsupported.isEmpty()) {
+            "${scenario.name} (preflight): refusing to time — ${outcome.unsupported.size} unsupported construct(s) " +
+                "would be a timed fiction (the interpreter would look fast by doing less than the kernel): " +
+                outcome.unsupported.joinToString(prefix = "[", postfix = "]") { "${it.rulePath} (${it.reason})" }
+        }
+    }
+
     /**
      * **Cold first-call latency** (ms): the MIN over [repeats] FRESH attempts — each a fresh [DmInterpreter] +
      * a fresh [Document] at scale [n] + exactly ONE `validateFull`, with **no warmup**. This is the realistic
@@ -251,11 +280,13 @@ object PerfHarness {
      * O(N²) hid. Cold/startup is a **co-equal goal** with steady-state, so it gets its own gate (the growth
      * factor across N catches a reintroduced cold O(N²); min-of-fresh is robust to scheduler noise).
      */
-    fun coldRunMillis(scenario: PerfScenario, n: Int, repeats: Int = 3): Double =
-        (0 until repeats).minOf {
+    fun coldRunMillis(scenario: PerfScenario, n: Int, repeats: Int = 3): Double {
+        preflight(scenario, n)
+        return (0 until repeats).minOf {
             val inst = InterpreterPerfEngine.build(scenario).instance(n)   // fresh engine + fresh doc (outside timing)
             val t = System.nanoTime(); inst.run(); (System.nanoTime() - t) / 1e6
         }
+    }
 
     /**
      * Single-document mode: build all three engines (interp, kernel-Groovy, kernel-Java), materialize the
@@ -264,6 +295,7 @@ object PerfHarness {
      * Pass [withJava] = false to skip the (compile-cost) Java baseline when only the interp/Groovy gate is wanted.
      */
     fun runScenario(scenario: PerfScenario, n: Int, warmup: Int = 12, iters: Int = 8, withJava: Boolean = true): PerfRow {
+        preflight(scenario, n)
         val iInst = InterpreterPerfEngine.build(scenario).instance(n)
         val gInst = KernelPerfEngine.build(scenario).instance(n)
         val jInst = if (withJava) KernelJavaPerfEngine.build(scenario).instance(n) else null
@@ -288,6 +320,7 @@ object PerfHarness {
         scenario: PerfScenario, n: Int, variants: Int = 20, warmupLoops: Int = 3, timedLoops: Int = 5,
         withJava: Boolean = true,
     ): RepeatedRow {
+        preflight(scenario, n)
         val iEng = InterpreterPerfEngine.build(scenario)
         val gEng = KernelPerfEngine.build(scenario)
         val jEng = if (withJava) KernelJavaPerfEngine.build(scenario) else null
@@ -306,6 +339,7 @@ object PerfHarness {
 
     /** Time the INTERPRETER only at scale [n] (profile/scaling use — no kernel, so high N stays cheap). */
     fun timeInterpreter(scenario: PerfScenario, n: Int, warmup: Int, iters: Int): Stats {
+        preflight(scenario, n)
         val inst = InterpreterPerfEngine.build(scenario).instance(n)
         inst.run()   // correctness is the gate's job; here we only profile the engine
         return measure(warmup, iters) { inst.run() }
