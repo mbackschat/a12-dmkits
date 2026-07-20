@@ -1391,7 +1391,7 @@ In a **parallel iteration** (a rule referencing two repeatable groups that share
 
 > Fold: not-foldable — authoring-tier slot laws; the missing-row semantics they accompany are canonical in §9.
 
-`Sum`/`MaxValue`/`MinValue` (DE `Summe`/`MaxWert`/`MinWert`; grammar `feldListenOp` — its sibling `SumOfProducts` is now implemented, `adapter.SumOfProductsReadTest`; `FirstFilledValue` is implemented for number/date/string/enum, `adapter.FirstFilledValueReadTest`) and `NumberOfDifferentValues` (DE `AnzahlVerschiedenerWerte`; third member of the count family):
+`Sum`/`MaxValue`/`MinValue` (DE `Summe`/`MaxWert`/`MinWert`; grammar `feldListenOp` — its sibling `SumOfProducts` is now implemented, `adapter.SumOfProductsReadTest`; `FirstFilledValue` is implemented for number/date/string/enum and preserves a kernel-legal ordered list of multiple flattened and plain operands, `adapter.FirstFilledValueReadTest` and `adapter.MultiOperandFirstFilledValueReadTest`) and `NumberOfDifferentValues` (DE `AnzahlVerschiedenerWerte`; third member of the count family):
 
 - **Param law is shared with the count aggregates** — more than one field or a group (`MVK_PARAMSIZE_INVALIDN`); **a single flattened (`*`) operand satisfies it** (it expands to many fields), so `Sum(Items*/Count)` is the canonical shape. Mixed starred + plain operands and mixed scales are legal.
 - **Duplicate operands are rejected** — `Sum(A, A)` draws **`MVK_DUPLICATE_PARAM1`** (fires before the type checks; applies to the whole entity-list family incl. `NumberOfFilledFields`).

@@ -831,6 +831,9 @@ final class ConditionConverter {
             FieldOperand[] fields = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
             return new NumberExpr(new NumberOfValueInFields(value, java.util.List.of(fields)));
         }
+        if (name == EntityListOperationName.FirstFilledValue) {
+            return new NumberExpr(convertFirstFilledValue(aggregate, ValueKind.NUMBER));
+        }
         // NumberOfFilledGroups(Group*): a single repeatable group, all reps — a group scope, not a field.
         if (name == EntityListOperationName.NumberOfFilledGroups
                 && entities.size() == 1 && !entities.get(0).isField()) {
@@ -885,8 +888,47 @@ final class ConditionConverter {
             case MinValue -> Dsl.minValue(scope);
             case NumberOfDifferentValues -> Dsl.numberOfDifferentValues(scope);
             case NumberOfFilledFields -> Dsl.numberOfFilledFields(scope);
-            case FirstFilledValue -> Dsl.firstFilledNumber(scope);
             default -> throw unsupported("aggregate operator " + name, aggregate);
+        };
+    }
+
+    /**
+     * Rebuild a kind-homogeneous {@code FirstFilledValue} operand list without collapsing its authored
+     * encounter order. The compatible typed surface requires the first operand to remain a repetition
+     * list; every later operand may independently be another list or a plain field.
+     */
+    private Calculation convertFirstFilledValue(IEntityListOperation aggregate, ValueKind expectedKind) {
+        if (aggregate.getOperatorName() != EntityListOperationName.FirstFilledValue) {
+            throw unsupported("non-FirstFilledValue operation at the FirstFilledValue seam", aggregate);
+        }
+        List<IEntityId> entities = aggregate.getEntityList().getEntityIdList();
+        if (entities.isEmpty() || entities.stream().anyMatch(entity -> !entity.isField())) {
+            throw unsupported("FirstFilledValue over an empty or non-field operand list", aggregate);
+        }
+        List<FieldOperand> operands = entities.stream().map(this::toFieldOperand).toList();
+        if (!(operands.getFirst() instanceof FieldListRef scope)) {
+            throw unsupported("FirstFilledValue whose first operand is not a repetition list", aggregate);
+        }
+        if (operands.stream().anyMatch(operand -> operand.kind() != expectedKind)) {
+            throw unsupported("FirstFilledValue with operands outside its " + expectedKind + " result kind", aggregate);
+        }
+        if (operands.size() == 1) {
+            return switch (expectedKind) {
+                case NUMBER -> Dsl.firstFilledNumber(scope).expression();
+                case STRING -> Dsl.firstFilledString(scope).expression();
+                case DATE -> Dsl.firstFilledDate(scope).expression();
+                case ENUMERATION -> Dsl.firstFilledEnum(scope).expression();
+                default -> throw unsupported("FirstFilledValue with result kind " + expectedKind, aggregate);
+            };
+        }
+        FieldOperand second = operands.get(1);
+        FieldOperand[] rest = operands.subList(2, operands.size()).toArray(FieldOperand[]::new);
+        return switch (expectedKind) {
+            case NUMBER -> Dsl.firstFilledNumber(scope, second, rest).expression();
+            case STRING -> Dsl.firstFilledString(scope, second, rest).expression();
+            case DATE -> Dsl.firstFilledDate(scope, second, rest).expression();
+            case ENUMERATION -> Dsl.firstFilledEnum(scope, second, rest).expression();
+            default -> throw unsupported("FirstFilledValue with result kind " + expectedKind, aggregate);
         };
     }
 
@@ -1269,14 +1311,13 @@ final class ConditionConverter {
     /** A string-valued aggregate ({@code FirstFilledValue} over a string repetition list) as a {@link StringExpr}. */
     private StringExpr stringAggregate(IEntityListOperation aggregate) {
         List<IEntityId> entities = aggregate.getEntityList().getEntityIdList();
+        if (aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue) {
+            return new StringExpr(convertFirstFilledValue(aggregate, ValueKind.STRING));
+        }
         if (entities.size() != 1 || !entities.get(0).isField()) {
             throw unsupported("string aggregate over a non-single-field scope", aggregate);
         }
-        FieldListRef scope = flattenScope(entities.get(0));
-        return switch (aggregate.getOperatorName()) {
-            case FirstFilledValue -> Dsl.firstFilledString(scope);
-            default -> throw unsupported("string aggregate operator " + aggregate.getOperatorName(), aggregate);
-        };
+        throw unsupported("string aggregate operator " + aggregate.getOperatorName(), aggregate);
     }
 
     /** Whether {@code op} is a string-coercion field operation ({@code FieldValueAsString} / {@code RangeAsString}). */
@@ -1406,7 +1447,7 @@ final class ConditionConverter {
         // an enum-valued FirstFilledValue over an enum repetition list ([enum] != FirstFilledValue(items*/Cat))
         if (right instanceof IEntityListOperation aggregate
                 && aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue) {
-            EnumExpr other = Dsl.firstFilledEnum(flattenScope(aggregate.getEntityList().getEntityIdList().get(0)));
+            EnumExpr other = new EnumExpr(convertFirstFilledValue(aggregate, ValueKind.ENUMERATION));
             return switch (op) {
                 case EQ -> left.is(other);
                 case NE -> left.isNot(other);
@@ -1839,13 +1880,20 @@ final class ConditionConverter {
             return false;
         }
         List<IEntityId> entities = aggregate.getEntityList().getEntityIdList();
-        return entities.size() == 1 && entities.get(0).isField()
-                && model.fieldAt(entities.get(0).getFullName()).map(i -> i.kind() == ValueKind.DATE).orElse(false);
+        if (name == EntityListOperationName.FirstFilledValue) {
+            return !entities.isEmpty() && entities.stream().allMatch(entity -> entity.isField()
+                    && model.fieldAt(entity.getFullName()).map(i -> i.kind() == ValueKind.DATE).orElse(false));
+        }
+        return entities.size() == 1 && entities.getFirst().isField()
+                && model.fieldAt(entities.getFirst().getFullName()).map(i -> i.kind() == ValueKind.DATE).orElse(false);
     }
 
     /** {@code MaxValue}/{@code MinValue} over a date repetition list, as a date operand (the date variant of the numeric aggregate). */
     private DateOperand convertDateAggregate(IEntityListOperation aggregate) {
         List<IEntityId> entities = aggregate.getEntityList().getEntityIdList();
+        if (aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue) {
+            return new DateExpr(convertFirstFilledValue(aggregate, ValueKind.DATE));
+        }
         if (entities.size() != 1 || !entities.get(0).isField()) {
             throw unsupported("date aggregate over a non-single-field scope", aggregate);
         }
@@ -1853,7 +1901,6 @@ final class ConditionConverter {
         return switch (aggregate.getOperatorName()) {
             case MaxValue -> Dsl.latestOf(scope);
             case MinValue -> Dsl.earliestOf(scope);
-            case FirstFilledValue -> Dsl.firstFilledDate(scope);
             default -> throw unsupported("date aggregate operator " + aggregate.getOperatorName(), aggregate);
         };
     }
@@ -1905,7 +1952,7 @@ final class ConditionConverter {
         // an enum-valued FirstFilledValue over an enum repetition list (SomeEnum = FirstFilledValue(items*/Cat))
         if (computedKind == ValueKind.ENUMERATION && op instanceof IEntityListOperation enumAgg
                 && enumAgg.getOperatorName() == EntityListOperationName.FirstFilledValue) {
-            return Dsl.firstFilledEnum(flattenScope(enumAgg.getEntityList().getEntityIdList().get(0))).expression();
+            return convertFirstFilledValue(enumAgg, ValueKind.ENUMERATION);
         }
         throw unsupported("computation operation " + op.getClass().getSimpleName()
                 + " into a " + computedKind + " field", op);
