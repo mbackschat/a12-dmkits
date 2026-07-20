@@ -113,7 +113,9 @@ How an unspecified field affects a comparison depends on its **type**:
 |---|---|
 | number | a default of `0` is substituted |
 | confirm | treated as `False` |
-| string, date, boolean, enumeration, custom | the comparison is **not evaluated** (no error) |
+| boolean, string, enumeration, date, time, date-time | the comparison is **not evaluated** (no error) |
+
+Other model types — such as date-fragment, date-range, and custom fields — have explicit type-family or registered-validator clauses; this primitive header does not silently define their empty behavior.
 
 ```
 [Amount] < 100      ;; number: fires on an EMPTY Amount, because 0 < 100
@@ -471,7 +473,11 @@ The join's mechanics, verified: the iteration value-set is the **union** of the 
 Sum(Products*/Quantity Having [Products/ProductName] == "N33") > 100
 ```
 
+A candidate is retained only when the **complete filter result is known TRUE**. FALSE or UNKNOWN drops it before the aggregate or quantifier reads the selected cell; this is still ordinary three-valued condition evaluation, so a complete condition such as `TRUE Or UNKNOWN` is TRUE and keeps the candidate.
+
 The **`$` operator** — usable **only inside a filter condition** — pins a reference to the **current outer repetition** of the iterating rule, turning the filter into a *correlated subquery* (e.g. "holidays whose date equals the current stop's ETA"). Not every reference in a filter may be `$`-marked. `$` is not optional sugar: a filter may only iterate the repetition levels the filtered field stars, so `$` is the **sole** way a filter references an out-of-scope (outer) field *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §9, locked by `CorrelationLawsTest`)*.
+
+Correlation does not imply self-exclusion. A same-group candidate set includes the current outer coordinate unless the filter explicitly excludes it with `CurrentRepetition(G) != CurrentRepetition($G)`. `CurrentRepetition(G)` compares the coordinate of the **named repetition level**, not physical-row identity: in an `A*/B*` candidate set, comparing only `B` excludes every candidate with the same `B` leaf index across different `A` rows *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §9, locked by `CorrelationLawsTest` + `SelfCorrelatedOverlapQuantifierDiffTest` + `MultiStarOuterCorrelationDiffTest`)*.
 
 ### Where a star binds — the anchor rules
 
@@ -554,7 +560,7 @@ Behind that per-context split sits one shared **store gate: the root store takes
 A CLEARED cell is not one thing; *why* it cleared decides what a downstream computation sees:
 
 - **A precondition-clear cascades as EMPTY.** A field its own computation cleared silently — false `commonPrecondition`, no matching alternative, an unevaluated operation (division by zero is one: it computes nothing and clears a stale value) — reads as plainly *empty* in a dependent: `FieldFilled(dep)` is false, a number operand reads empty-as-0. The mechanism is that a calculation run strips every calculated field's *input* value from its working data, so an un-computed calculated field reads empty regardless of what the document stored *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §11 / IF77, locked by `CascadeClearedDependencyDiffTest` + `ComputationEvaluationLawsTest`)*.
-- **An invalidity-clear POISONS.** Reading a formally-invalid cell (an invalid operand's target, an ERRORED computed value, [§3](#3-formal-errors-and-the-unknown-state)'s third state generally) throws inside the computing instance: it aborts, skips its remaining alternatives, produces no value, and is itself marked invalid — so its dependents' reads poison in turn. The poison is **read-driven and therefore order-dependent**: compute's `And`/`Or` collapse each conjunct two-valued and short-circuit (a false *or unknown* left side skips the right entirely), and the quantifier scans stop at their deciding cell — an invalid cell beyond the stop is never read and never poisons *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §11 / IF85 + IF40, locked by `ComputePoisonReadDiffTest` + `ComputeCascadeErroredDiffTest`)*. `FirstFilledValue` is the one **stop-at-first** value combiner: it consumes its selection only until the first filled cell, so an invalid *tail* cell is invisible, while an invalid cell *before* the first given one clears the computation *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §11 / IF111, locked by `FirstFilledValueInvalidTailDiffTest`)*.
+- **An invalidity-clear POISONS.** Reading a formally-invalid cell (an invalid operand's target, an ERRORED computed value, [§3](#3-formal-errors-and-the-unknown-state)'s third state generally) throws inside the computing instance: it aborts, skips its remaining alternatives, produces no value, and is itself marked invalid — so its dependents' reads poison in turn. The poison is **read-driven and therefore order-dependent**: for a clean left result, compute's `And` skips the right on FALSE or UNKNOWN, while `Or` skips the right only on TRUE; a poisoned left aborts either expression. The quantifier scans likewise stop at their deciding cell, so an invalid cell beyond the stop is never read and never poisons *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §11 / IF85 + IF40, locked by `ComputePoisonReadDiffTest` + `ComputeCascadeErroredDiffTest`)*. `FirstFilledValue` is the one **stop-at-first** value combiner: it consumes its selection only until the first filled cell, so an invalid *tail* cell is invisible, while an invalid cell *before* the first given one clears the computation *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §11 / IF111, locked by `FirstFilledValueInvalidTailDiffTest`)*.
 - **Both cascade read-rules reach *inside* a downstream computation's `Having` filter and its preconditions' quantifiers** — a silently-cleared upstream target reads EMPTY there, a poisoned one poisons the reading computation *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §11 / IF98, locked by `HavingOverComputedDependencyDiffTest`)*.
 
 What `compute` *reports* is a delta against the input, not a report-all: a VALUE only on typed change, CLEARED only when the input cell was filled, ERRORED unconditionally *(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §11, locked by `ComputeGranularityTest` + `CorpusCaptureTest`)*.

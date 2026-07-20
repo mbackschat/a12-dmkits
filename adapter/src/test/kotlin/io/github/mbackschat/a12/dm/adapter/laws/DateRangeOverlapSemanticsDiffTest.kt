@@ -18,9 +18,9 @@ import org.junit.jupiter.api.Test
  *     distinguished first operand). So the same row's cell arriving via a scalar ref AND via the star is two
  *     members → the **self-pair** fires; a list-internal pair (arg0 disjoint) fires though arg0-vs-list misses it.
  *  2. Empty / malformed cells are SKIPPED (no unknown-suppression); an INVALID range (start > end) never overlaps.
- *  3. A `Having` filter on a rep-list arg is legal and APPLIED per cell — **keep iff the filter is NOT FALSE**
- *     (TRUE keeps, FALSE drops, and a `$`-bearing term has no outer binding for a plain predicate's arg →
- *     UNKNOWN → the cell is KEPT). So a `!= $RuleGroup` / `== $RuleGroup` self-"exclusion" keeps ALL rows.
+ *  3. A `Having` filter on a rep-list arg is legal and APPLIED per cell — **keep iff the complete filter is
+ *     TRUE**. A `$`-bearing term has no outer binding for a plain predicate's arg, so the codegen makes the
+ *     complete comparison/predicate trivially TRUE. Thus `!= $RuleGroup` / `== $RuleGroup` keeps ALL rows.
  *  4. Polarity is **filter-derived**: OMISSION iff a filled cell of a filter-bearing operand was processed
  *     at/before the fire (operand-order-dependent), VALUE otherwise.
  *  5. `AtLeastOneDateRangeOverlaps(scalar, list)` is genuinely scalar-vs-list (no self-pair); a not-filled
@@ -142,19 +142,18 @@ class DateRangeOverlapSemanticsDiffTest {
         assertEquals(0, triCount("/Order/Items", "../ItemCoverage", "AF",
             having("CurrentRepetition(/Order/Items) != CurrentRepetition(/Order/Items)"), listOf(acme), cov))
 
-    /** A `$`-self-"exclusion" `!=` — the `$` term has no outer binding here → UNKNOWN → keeps ALL rows → the
-     *  self-pair fires every row. (There is NO self-exclusion for a plain predicate's arg, unlike a quantifier.) */
+    /** A `$`-self-"exclusion" `!=` — the `$` term has no outer binding here, so the complete comparison is
+     *  trivially TRUE and keeps ALL rows; the self-pair fires every row. */
     @Test fun dollarSelfExclusionKeepsAll() =
         assertEquals(3, triCount("/Order/Items", "../ItemCoverage", "DSE",
             having("CurrentRepetition(/Order/Items) != CurrentRepetition(\$/Order/Items)"), listOf(acme), cov))
 
-    /** A `$`-self-"inclusion" `==` likewise UNKNOWN → keeps ALL rows → 3 (the mirror of the `!=` case). */
+    /** A `$`-self-"inclusion" `==` is likewise trivially TRUE and keeps ALL rows (the mirror of the `!=` case). */
     @Test fun dollarSelfInclusionKeepsAll() =
         assertEquals(3, triCount("/Order/Items", "../ItemCoverage", "DSI",
             having("CurrentRepetition(/Order/Items) == CurrentRepetition(\$/Order/Items)"), listOf(acme), cov))
 
-    /** A FALSE conjunct ANDed with a `$` term: `FALSE And UNKNOWN` = FALSE (Kleene) → drops all → set = {arg0}
-     *  → 0. (Proves per-cell 3VL, not a whole-filter drop on `$`-presence.) */
+    /** A FALSE conjunct ANDed with a trivially-TRUE `$` term is FALSE, so it drops all and leaves only arg0. */
     @Test fun falseAndDollarDropsAll() =
         assertEquals(0, triCount("/Order/Items", "../ItemCoverage", "FAD",
             having("CurrentRepetition(/Order/Items) != CurrentRepetition(/Order/Items) " +

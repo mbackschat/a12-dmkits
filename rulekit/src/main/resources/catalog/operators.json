@@ -2008,12 +2008,14 @@
     "keywords": { "en": "Having", "de": "Mit" },
     "operands": [ { "type": "repetition-list" }, { "type": "filter-condition" } ],
     "returns": "repetition-list",
-    "meaning": "Filters a *-repetition list down to the repetitions where the condition holds, before an aggregate or quantifier consumes it.",
+    "meaning": "Filters a *-repetition list, keeping only candidates whose complete condition is known true, before an aggregate or quantifier consumes selected cells.",
     "constraints": [
       "the filtered field must carry an asterisk (MVK_WILDCARDS_REQUIRED) — only flattened lists can be filtered",
       "the filter condition may not contain CustomCondition, RepetitionNotUnique, a semantic index, a parallel iteration, or a nested Having (MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION)"
     ],
     "gotchas": [
+      { "text": "a false or unknown filter result drops the candidate before the aggregate or quantifier reads its selected cell", "kind": "SURPRISE" },
+      { "text": "correlation includes the current outer coordinate by default; exclude it explicitly with CurrentRepetition(G) != CurrentRepetition($G) at the named repetition level", "kind": "AUTHORING" },
       { "text": "inside the filter, the $ operator pins a reference to the rule's current (outer) repetition — correlated subquery", "kind": "AUTHORING" },
       { "text": "a multi-star path binds at its first starred segment: /Warehouse/Aisles*/Bins*/Quantity spans Bins across every Aisles row, not only the current leaf branch; leave an ancestor unstarred when it must remain outer-bound", "kind": "SURPRISE" },
       { "text": "in a multi-star filter, CurrentRepetition(Bins) != CurrentRepetition($Bins) compares the leaf index and therefore excludes every candidate with the outer row's leaf index across different ancestor rows — it is not SQL-style physical-row identity", "kind": "SURPRISE" }

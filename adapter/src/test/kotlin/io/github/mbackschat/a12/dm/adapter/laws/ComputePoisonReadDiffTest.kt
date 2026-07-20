@@ -27,8 +27,7 @@ import java.util.function.Consumer
  *   after the stop is never read, so a later invalid cell does NOT poison;
  * - `And` short-circuits a not-TRUE left (FALSE and UNKNOWN alike — the generated `isKnownAndTrue` collapse),
  *   `Or` a TRUE left;
- * - a compute-side `Having` keeps only TRUE rows (the 2-valued collapse — validation's not-FALSE keep-law does
- *   not apply on the compute path).
+ * - a compute-side `Having` keeps only TRUE rows.
  *
  * A **precondition-false / no-alternative clear stays a plain clear** — dependents read it EMPTY (IF77's
  * boundary, unchanged). Own-domain (e-commerce cart); tri-check groovy-dynamic == java-static == interpreter.
@@ -247,8 +246,7 @@ class ComputePoisonReadDiffTest {
     }
 
     @Test fun computeSideHavingKeepsOnlyTrueRows() {
-        // An UNKNOWN filter row (empty-string comparison) is DROPPED on the compute path — the 2-valued
-        // collapse, not validation's not-FALSE keep-law.
+        // An UNKNOWN filter row (empty-string comparison) is DROPPED before the selected cell is consumed.
         val m = RuntimeLaws.withTieredComputation(base, "/Cart", "Ref2Comp", "../Ref2", null,
             listOf(RuntimeLaws.CompAlt(null, "Sum(Lines* / Price Having ([Lines/Tag] == \"X\"))")))
         agree(m, "row 1's UNKNOWN filter drops the row — Sum = row 2 only",

@@ -170,8 +170,10 @@ class OperatorCatalogTest {
     @Test
     void headerDeclaresEmptyOperandDefaultsForEveryComparableKind() {
         var defaults = CATALOG.emptyOperandDefaults();
-        for (String kind : java.util.List.of("number", "string", "enum", "boolean", "confirm",
-                "date", "time", "date-time")) {
+        var expectedKinds = java.util.Set.of("number", "string", "enum", "boolean", "confirm",
+                "date", "time", "date-time");
+        assertEquals(expectedKinds, defaults.keySet(), "primitive default header must declare exactly its eight kinds");
+        for (String kind : expectedKinds) {
             OperatorCatalog.EmptyOperandDefault d = defaults.get(kind);
             assertNotNull(d, () -> "emptyOperandDefaults missing kind '" + kind + "'");
             assertNotNull(d.behavior(), () -> kind + ": default missing behavior");

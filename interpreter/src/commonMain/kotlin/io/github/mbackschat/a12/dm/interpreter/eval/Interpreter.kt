@@ -61,8 +61,8 @@ class Interpreter(
     private val outer: EvalContext? = null,
     /** The overlap-predicate `Having` filter (a plain boolean predicate's rep-list arg) has NO enclosing
      *  iteration to bind `$` to — unlike a quantifier's `Having`, whose star iterates. So here a `$`-marked
-     *  ref is UNBOUND and resolves to UNKNOWN (the kernel then keeps the cell: keep-law = not-FALSE keeps),
-     *  rather than binding to [outer] or throwing. Set only by [overlapFilterInterp] (KERNEL-FINDINGS §6, IF72). */
+     *  ref is UNBOUND; [evalCmp]/[evalPred] reproduce the kernel codegen's trivially-TRUE whole term rather
+     *  than binding to [outer] or throwing. Set only by [overlapFilterInterp] (KERNEL-FINDINGS §6, IF72). */
     private val outerUnbound: Boolean = false,
     /**
      * The per-row `RepetitionNotUnique` outcome for THIS rule (IF149) — `(row ctx) → VALUE / OMISSION / null`
@@ -100,7 +100,7 @@ class Interpreter(
     }
 
     /** Whether a `$`-marked node is UNBOUND in this context — an overlap-predicate `Having` ([outerUnbound]) has
-     *  no enclosing iteration, so a `$` ref there resolves to UNKNOWN (not [outer], not a throw). */
+     *  no enclosing iteration; its complete comparison/predicate becomes trivially TRUE (not [outer], not a throw). */
     internal fun outerUnknown(node: Expr): Boolean = outerUnbound && when (node) {
         is Expr.Field -> node.outer
         is Expr.Star -> node.outer
@@ -129,8 +129,8 @@ class Interpreter(
         Interpreter(rc, config, customErrorField, invalid, outer = ctx)
 
     /** A sub-interpreter for the overlap predicates' `Having` filter row [rc] — like [havingInterp] but with NO
-     *  outer binding ([outerUnbound]): a plain boolean predicate's rep-list arg has no enclosing iteration, so a
-     *  `$` term in its filter is unbound → UNKNOWN → the cell is KEPT (keep-law: not-FALSE keeps; KERNEL-FINDINGS §6). */
+     *  outer binding ([outerUnbound]): a plain boolean predicate's rep-list arg has no enclosing iteration, so
+     *  the codegen makes a `$`-bearing comparison/predicate trivially TRUE (KERNEL-FINDINGS §6). */
     private fun overlapFilterInterp(rc: EvalContext): Interpreter =
         Interpreter(rc, config, customErrorField, invalid, outer = null, outerUnbound = true)
 
