@@ -190,7 +190,7 @@ final class ApplyCommand extends BaseCommand {
                 Applied applied = dispatch(session, op, resolver);
                 session = applied.session();          // a refactor op re-homes the session; Local ops keep it
                 results.add(applied.env().toJson());
-            } catch (RefactorRefused r) {
+            } catch (OperationRefused r) {
                 results.add(r.envelope().toJson());   // the §6 safety gate refused — same corrective diagnostics
                 failedAt = i;
                 break; // rollback — the refactor's gate stops the sequence, nothing written
@@ -351,7 +351,7 @@ final class ApplyCommand extends BaseCommand {
                 GroupRemoval.Plan plan = GroupRemoval.plan(adapter, path, cascade,
                         "set \"cascade\": true to remove the referrers too, or remove them first");
                 if (plan.refused()) {
-                    throw new RefactorRefused("group", "remove", plan.refusal().get());
+                    throw new OperationRefused("group", "remove", plan.refusal().get());
                 }
                 changed.put("removed", path);
                 ArrayNode cascaded = changed.putArray("cascaded");
@@ -536,6 +536,10 @@ final class ApplyCommand extends BaseCommand {
                             + "condition-language, label, annotation, comment, clear-comment, add-locale, remove-locale, "
                             + "role, clear-roles, supported-character, base-year, field-ref-by-short-name, remove-annotation");
                 }
+                Optional<Refusal> refusal = mod.firstFailure();
+                if (refusal.isPresent()) {
+                    throw new OperationRefused(which.target, which.op, refusal.get());
+                }
                 mod.applyTo(session, changed);
                 yield staged(which, changed, mod.advisories(), session);
             }
@@ -632,7 +636,7 @@ final class ApplyCommand extends BaseCommand {
      * Apply a refactor op (rename/move, CLI-SPEC §6) to the shared session: run the op's safety gate against
      * the CURRENT (transiently-edited) model — so it sees prior ops' effects — then rewrite every reference +
      * apply the node change, and re-home the result into a fresh session for the next op. A failing
-     * precondition throws {@link RefactorRefused} → the loop rolls the whole sequence back, nothing written.
+     * precondition throws {@link OperationRefused} → the loop rolls the whole sequence back, nothing written.
      * Validation is deferred to the one terminal gate (apply's invariant), like every other op.
      */
     private Applied applyRefactor(EditSession session, ModelResolver resolver, StructureRefactor r) {
@@ -641,7 +645,7 @@ final class ApplyCommand extends BaseCommand {
         KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
         Optional<Refusal> refusal = r.firstFailure(doc, adapter);
         if (refusal.isPresent()) {
-            throw new RefactorRefused(r.target(), r.op(), refusal.get());
+            throw new OperationRefused(r.target(), r.op(), refusal.get());
         }
         Set<String> rewrote = r.referrers(adapter, doc);
         EditSession next = EditSession.read(r.rewriteAndMutate(modelJson).toJson(), resolver);
@@ -655,14 +659,14 @@ final class ApplyCommand extends BaseCommand {
     }
 
     /**
-     * A refactor op's safety gate refused (CLI-SPEC §6) — carried out of {@link #dispatch} as an exception so
-     * the loop rolls the whole sequence back, surfacing the gate's structured {@code data} + corrective
-     * diagnostic in the failing op's {@code refused} envelope (exactly as the standalone verb would).
+     * An op's authoring/safety gate refused before mutation — carried out of {@link #dispatch} as an exception
+     * so the loop rolls the whole sequence back, surfacing the same structured corrective diagnostic as the
+     * standalone verb.
      */
-    private static final class RefactorRefused extends RuntimeException {
+    private static final class OperationRefused extends RuntimeException {
         private final transient ResultEnvelope envelope;
 
-        RefactorRefused(String target, String op, Refusal refusal) {
+        OperationRefused(String target, String op, Refusal refusal) {
             super(refusal.summary());
             this.envelope = ResultEnvelope.refused(target, op, refusal.summary(), refusal.data(),
                     refusal.diagnostics());

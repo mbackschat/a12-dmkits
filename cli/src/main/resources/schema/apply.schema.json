@@ -11,7 +11,14 @@
     "properties": {
       "target": { "type": "string", "description": "the element family acted on: field | group | rule | … (see `manifest`)" },
       "op": { "type": "string", "description": "the operation: add | modify | remove | read | rename | move (valid for the target; see `manifest`)" },
-      "time-zone": { "type": "string", "description": "for config modify: absence defaults UTC; exact UTC, GMT, Europe/Berlin are interpreter-supported; another kernel-valid Java id is accepted with an evaluator-scope warning; blank/unknown ids are rejected" }
+      "time-zone": { "type": "string", "description": "for config modify: absence defaults UTC; exact UTC, GMT, Europe/Berlin are interpreter-supported; another kernel-valid Java id is accepted with an evaluator-scope warning; blank/unknown ids are rejected" },
+      "supported-character": {
+        "description": "for config modify: one singleton BMP character, inclusive x-y range, or atomic combined grapheme per entry; an empty/absent model list selects the full BMP excluding surrogates (not supplementary-plane characters)",
+        "oneOf": [
+          { "type": "string" },
+          { "type": "array", "items": { "type": "string" } }
+        ]
+      }
     }
   },
   "examples": [
@@ -61,7 +68,7 @@
       { "target": "config", "op": "modify", "role": [ "admin", "editor" ], "comment": "managed by the platform team" }
     ],
     [
-      { "target": "config", "op": "modify", "supported-character": [ "A-Z", "0-9" ] }
+      { "target": "config", "op": "modify", "supported-character": [ "A-Z", "e\u0301" ] }
     ],
     [
       { "target": "config", "op": "modify", "time-zone": "America/New_York" }

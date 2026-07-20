@@ -43,9 +43,11 @@ public final class ConfigEditor {
     }
 
     /**
-     * Set the allowed-character set the kernel validates field values against: each entry a single
-     * character or a range like {@code " -~"}. Pass nothing to clear the restriction (all characters
-     * allowed). Chains.
+     * Set the allowed-character set the kernel validates field values against: each entry is a singleton
+     * BMP character, an inclusive range such as {@code " -~"}, or one atomic combined grapheme. Pass
+     * nothing to select the full-BMP default (surrogates/supplementary characters remain illegal). Chains.
+     *
+     * @see io.github.mbackschat.a12.dm.modelkit.SupportedCharactersContract
      */
     public ConfigEditor supportedCharacters(String... chars) {
         session.setSupportedCharacters(java.util.List.of(chars));

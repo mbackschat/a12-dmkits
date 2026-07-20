@@ -134,7 +134,8 @@ dmtool -m examples/models/order-ruled.dm.json rule explain /Order/DeliveryNotBef
       "kind": "PREDICATE",
       "meaning": "True iff every listed field has a value.",
       "gotchas": [
-        "a field carrying a formal error is removed from evaluation (see FieldFilled)"
+        "a field carrying a formal error is removed from evaluation (see FieldFilled)",
+        "with a group operand, contained cells stream recursively in declaration order (field-major, then repetition-major) and evaluation stops as soon as the result is decisive; a malformed later cell is not read, while one reached before the decision can poison a computation"
       ]
     },
     {

@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -12,8 +13,10 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.cli.RolesMerge;
+import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract;
+import io.github.mbackschat.a12.dm.modelkit.SupportedCharactersContract;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
@@ -81,6 +84,17 @@ public record ConfigModification(
                 && labels.isEmpty() && annotations.isEmpty() && supportedCharacters.isEmpty() && comment == null
                 && addLocales.isEmpty() && removeLocales.isEmpty() && roles.isEmpty() && !clearRoles
                 && baseYear == null && fieldRefByShortName == null && !clearComment && removeAnnotations.isEmpty();
+    }
+
+    /** The first authoring-contract refusal shared by standalone {@code config modify} and atomic {@code apply}. */
+    public Optional<Refusal> firstFailure() {
+        return SupportedCharactersContract.firstProblem(supportedCharacters).map(problem -> {
+            Diagnostic diagnostic = Diagnostic.precheck(Optional.of(RkCode.INVALID_CONFIG_VALUE.code()),
+                    problem.message(), Diagnostic.Where.arg(null, "--supported-character"),
+                    Optional.of(SupportedCharactersContract.FIX),
+                    Optional.of(RkCode.INVALID_CONFIG_VALUE.meaning()));
+            return new Refusal(problem.message(), null, diagnostic);
+        });
     }
 
     /** Run the config setter cascade on {@code session}, recording each change in {@code changed}. */

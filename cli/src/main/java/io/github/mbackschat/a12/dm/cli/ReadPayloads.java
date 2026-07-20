@@ -70,7 +70,7 @@ public final class ReadPayloads {
         data.put("timeZone", c.timeZone());
         data.put("conditionLanguage", c.conditionLanguage());
         data.put("fieldRefByShortNameAllowed", c.fieldRefByShortNameAllowed());
-        // the allowed-character set (each entry a char or a range like " -~"); empty = all characters allowed
+        // singleton/range/atomic-grapheme entries; empty selects the BMP default (never supplementary chars)
         ArrayNode supported = data.putArray("supportedCharacters");
         c.supportedCharacters().forEach(supported::add);
         // the model-level per-locale label (header.labels) — the read peer of `config modify --label`

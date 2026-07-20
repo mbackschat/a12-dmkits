@@ -1159,16 +1159,20 @@ public final class ModelDocument {
     }
 
     /**
-     * Set the {@code modelConfig} allowed-character set (the kernel checks string/enum/custom field values
-     * against it). Each entry is a single character or a range like {@code " -~"}; an empty list clears the
-     * restriction (all of Unicode-Plane-0 allowed).
+     * Set the {@code modelConfig} allowed-character set (checked against string/enum/custom values). Each
+     * entry is a singleton BMP character, an inclusive range such as {@code " -~"}, or one atomic combined
+     * grapheme. An empty list removes the slot and selects the full-BMP default; surrogates and supplementary
+     * characters remain illegal.
+     *
+     * @see SupportedCharactersContract
      */
     public ModelDocument setSupportedCharacters(List<String> chars) {
+        List<String> valid = SupportedCharactersContract.requireValid(chars);
         ObjectNode config = modelConfig();
         config.remove(DmKeys.SUPPORTED_CHARACTERS);
-        if (!chars.isEmpty()) {
+        if (!valid.isEmpty()) {
             ArrayNode array = config.putArray(DmKeys.SUPPORTED_CHARACTERS);
-            chars.forEach(array::add);
+            valid.forEach(array::add);
         }
         return this;
     }
@@ -1988,7 +1992,10 @@ public final class ModelDocument {
     /** A declared model include (an entry of the header's {@code modelReferences}). */
     public record Include(String alias, String reference) {}
 
-    /** The model-level document configuration (content {@code modelConfig}). */
+    /**
+     * The model-level document configuration (content {@code modelConfig}). {@code supportedCharacters}
+     * retains singleton/range/atomic-grapheme entries verbatim; an empty list denotes the full-BMP default.
+     */
     public record DocConfig(String decimalSeparator, String timeZone, String conditionLanguage,
             boolean fieldRefByShortNameAllowed, List<String> supportedCharacters) {}
 }

@@ -14,8 +14,8 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 /**
  * Config: <b>supported characters</b> (FEATURE-GAPS) — the {@code modelConfig}
  * allowed-character set the kernel validates field values against. Each entry is a single character or a
- * range like {@code " -~"} (space through tilde); an empty list means all Unicode-Plane-0 characters are
- * allowed ({@code IDocumentModelConfig}).
+ * range like {@code " -~"} (space through tilde), or one atomic combined grapheme; an empty list selects
+ * the full BMP except surrogate code units ({@code IDocumentModelConfig}).
  *
  * <p>Verified by a <b>kernel read-back</b> through the typed config API
  * ({@code IDocumentModelConfig.getSupportedCharacters()}), not just emit + load: the DM-JSON deserializer
@@ -44,8 +44,8 @@ class SupportedCharactersTest {
         String base = DocumentModelDraft.named("permit").locale("en_US")
                 .rootGroup("Permit", p -> p.field("Ref", FieldKind.STRING))
                 .build().toJson();
-        // a model authored without the slot defaults to "all characters allowed" (empty list)
-        assertTrue(supportedCharactersAfterRoundTrip(base).isEmpty(), "no slot → empty (all allowed)");
+        // a model authored without the slot selects the full-BMP default (empty list; surrogates stay illegal)
+        assertTrue(supportedCharactersAfterRoundTrip(base).isEmpty(), "no slot → empty (full-BMP default)");
 
         EditSession session = EditSession.read(base);
         session.config().supportedCharacters("A-Z", "0-9");

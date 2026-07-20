@@ -688,6 +688,23 @@ public final class io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder exten
   protected io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
   public io.github.mbackschat.a12.dm.modelkit.StringFieldBuilder suggestions(java.lang.String, java.lang.String[])
 
+public final class io.github.mbackschat.a12.dm.modelkit.SupportedCharactersContract
+  public static final java.lang.String CLI_OPTION_DESCRIPTION
+  public static final java.lang.String DEFAULT_DESCRIPTION
+  public static final java.lang.String ENTRY_DESCRIPTION
+  public static final java.lang.String FIX
+  public static java.util.Optional<io.github.mbackschat.a12.dm.modelkit.SupportedCharactersContract.Problem> firstProblem(java.util.List<java.lang.String>)
+  public static java.util.List<java.lang.String> requireValid(java.util.List<java.lang.String>)
+
+public static record io.github.mbackschat.a12.dm.modelkit.SupportedCharactersContract.Problem
+  public Problem(int, java.lang.String)
+  public java.lang.String detail()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public int index()
+  public java.lang.String message()
+  public final java.lang.String toString()
+
 public final class io.github.mbackschat.a12.dm.modelkit.TimeFieldBuilder extends io.github.mbackschat.a12.dm.modelkit.FieldAttrs<io.github.mbackschat.a12.dm.modelkit.TimeFieldBuilder>
   public TimeFieldBuilder()
   public io.github.mbackschat.a12.dm.modelkit.TimeFieldBuilder format(java.lang.String)

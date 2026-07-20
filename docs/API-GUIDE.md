@@ -785,6 +785,24 @@ String json = DocumentModelDraft.named("orders").locale("en_US")
 
 The smallest valid model is just `named(id).locale(l).rootGroup(name, g -> {})` — an empty root group is accepted. For a type-def-only library, `DocumentModelDraft.typeDefModel(id)` (a consumer pulls it in via `importTypeDefs(ref)`). *This is the shape every test fixture is built with (e.g. `ModelDrafts`).*
 
+The model-level legal charset accepts a singleton BMP character, an inclusive `x-y` range, or one atomic combined grapheme. The atomic entry remains one list item; its base and combining mark do not become independently legal. An absent/empty list selects the full BMP except surrogate code units, so it does not admit supplementary-plane characters:
+
+<!-- teaser -->
+```java
+String decomposedEAcute = "e\u0301";
+String restricted = DocumentModelDraft.named("permit").locale("en_US")
+        .supportedCharacters("A-Z", decomposedEAcute)
+        .rootGroup("Permit", p -> p.field("Name", FieldKind.STRING))
+        .build().toJson();
+
+EditSession charsetEdit = EditSession.read(restricted);
+charsetEdit.config().supportedCharacters(decomposedEAcute);
+ModelDocument.read(charsetEdit.validate().toJson()).config().supportedCharacters();
+// ["é"] — exactly one atomic list entry
+```
+
+`SupportedCharactersContract` is the shared typed/CLI definition gate: it rejects an empty entry, a surrogate, a reversed range, a plain multi-character non-grapheme, a combined entry above three UTF-16 units, and the kernel's ambiguous-overlap shape before mutation. `config modify --supported-character` and its `apply` peer return the same `RK_INVALID_CONFIG_VALUE` corrective, while the IF151 differential proves the runtime admits the whole configured grapheme but rejects its base, combining mark, reverse, and repeated fragments (finding 78).
+
 ### Read & enumerate an existing model
 
 `ModelDocument.read(json)` reads the authored source tree — **kernel-free**, so a model with unresolved includes still reads — enumerates its structure name-path-addressed, and round-trips losslessly (the generic Jackson tree, not the kernel's `NON_EMPTY`/`NON_DEFAULT` typed serializer):

@@ -18,6 +18,7 @@ import java.util.Optional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.modelkit.SupportedCharactersContract;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.edit.EditSession;
@@ -77,9 +78,8 @@ final class ConfigModifyCommand extends BaseCommand {
     boolean clearRoles;
 
     @ParamKind(ParamKind.Kind.SCALAR)
-    @Option(names = "--supported-character", paramLabel = "<char-or-range>",
-            description = "restrict allowed characters (repeatable): a char or a range like 'A-Z'. "
-                    + "Replaces the whole set; pass none to leave it unchanged. e.g. --supported-character A-Z")
+    @Option(names = "--supported-character", paramLabel = "<singleton-range-or-grapheme>",
+            description = SupportedCharactersContract.CLI_OPTION_DESCRIPTION)
     java.util.List<String> supportedCharacters = new java.util.ArrayList<>();
 
     @ParamKind(ParamKind.Kind.SCALAR)
@@ -156,6 +156,10 @@ final class ConfigModifyCommand extends BaseCommand {
         }
         if (!roles.isEmpty() && clearRoles) {
             return fail("pass either --role <name> (add roles) or --clear-roles, not both");
+        }
+        Optional<Refusal> configRefusal = mod.firstFailure();
+        if (configRefusal.isPresent()) {
+            return refuse("config", "modify", configRefusal.get());
         }
         String modelJson;
         try {

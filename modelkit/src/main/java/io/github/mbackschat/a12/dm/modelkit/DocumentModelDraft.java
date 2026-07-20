@@ -80,7 +80,7 @@ public final class DocumentModelDraft {
         this.baseYear = b.baseYear;
         this.labels = Map.copyOf(b.labels);
         this.annotations = List.copyOf(b.annotations);
-        this.supportedCharacters = List.copyOf(b.supportedCharacters);
+        this.supportedCharacters = SupportedCharactersContract.requireValid(b.supportedCharacters);
         this.typeDefImports = List.copyOf(b.typeDefImports);
         this.comment = b.comment;
     }
@@ -167,7 +167,7 @@ public final class DocumentModelDraft {
         config.putObject(DmKeys.CONDITION_LANGUAGE).put(DmKeys.CODE, DEFAULT_CONDITION_LANGUAGE);
         config.put(DmKeys.FIELD_REF_BY_SHORT_NAME_ALLOWED, true);
         if (!supportedCharacters.isEmpty()) {
-            // the allowed-character set: each entry a char or a range like " -~"; empty = all of Unicode-Plane-0
+            // each entry is one singleton/range/atomic grapheme; an absent list selects the BMP default
             ArrayNode chars = config.putArray(DmKeys.SUPPORTED_CHARACTERS);
             supportedCharacters.forEach(chars::add);
         }
@@ -705,12 +705,19 @@ public final class DocumentModelDraft {
         }
 
         /**
-         * Restrict the {@code modelConfig} allowed-character set: each entry is a single character or a
-         * range like {@code " -~"} (space through tilde). The kernel checks string/enum/custom field
-         * values against this set. Omit (or pass nothing) to allow all of Unicode-Plane-0.
+         * Restrict the {@code modelConfig} allowed-character set. Each entry is a singleton BMP character,
+         * an inclusive range such as {@code " -~"}, or one atomic combined grapheme (for example decomposed
+         * {@code "e\u0301"}). The kernel checks string/enum/custom values against the complete entries. Omit
+         * or pass nothing for the full-BMP default (surrogates/supplementary characters remain illegal).
+         *
+         * @see SupportedCharactersContract
          */
         public Builder supportedCharacters(String... chars) {
-            supportedCharacters.addAll(List.of(chars));
+            List<String> additional = List.of(chars);
+            List<String> prospective = new ArrayList<>(supportedCharacters);
+            prospective.addAll(additional);
+            SupportedCharactersContract.requireValid(prospective);
+            supportedCharacters.addAll(additional);
             return this;
         }
 

@@ -17,8 +17,9 @@ import picocli.CommandLine.Command;
 /**
  * {@code dmtool config read} — read the model's document configuration. A read op: the payload rides {@code
  * data} ({@code decimalSeparator}, {@code timeZone}, {@code conditionLanguage}, {@code fieldRefByShortNameAllowed},
- * {@code supportedCharacters} — the allowed-character set, empty = all allowed — {@code locales}, the declared
- * message locales that a rule/computation must each carry a message for, and the model-level metadata:
+ * {@code supportedCharacters} — singleton/range/atomic-grapheme entries, empty = full-BMP default (surrogates
+ * excluded) — {@code locales}, the declared message locales that a rule/computation must each carry a message for,
+ * and the model-level metadata:
  * {@code label} (per-locale, the read peer of {@code config modify --label}), {@code comment}, {@code baseYear},
  * and {@code annotations}).
  */
