@@ -109,6 +109,57 @@ def verifyInterpreterPurity = tasks.register('verifyInterpreterPurity') {
 }
 tasks.named('check') { dependsOn verifyInterpreterPurity }
 
+// --- Relative footprint: the NFR-F1 hard-zero + a reproducible runtime-closure measurement (IG79 → IF160) ---
+// `verifyInterpreterPurity` guards the IMPORT boundary; this guards the RESOLVED DEPENDENCY graph. NFR-F1's
+// hard-zero is absolute — the interpreter carries NO runtime edge to the kernel (com.mgmtp), Groovy, dmtool, or
+// any other intra-repo kit — so a forbidden RESOLVED artifact fails the build (a structural invariant, not a
+// candidate number). It also RECORDS the non-JDK runtime closure size reproducibly (superseding the hand-measured
+// 2026-07-18 baseline), so the closure number a future NFR-F1 ratio would cite is derived, not hand-counted. The
+// ratio to an equivalent kernel-backed closure + the ≤50% bar remain the owner-gated part of IG79.
+def interpreterRuntimeClosure = tasks.register('interpreterRuntimeClosure') {
+    group = 'verification'
+    description = 'Enforce the NFR-F1 hard-zero (no kernel/Groovy/dmtool/intra-repo runtime edge) and record the reproducible non-JDK runtime closure size.'
+    def runtime = configurations.named('jvmRuntimeClasspath')
+    def jarFile = tasks.named('jvmJar').flatMap { it.archiveFile }
+    def reportFile = layout.buildDirectory.file('reports/interpreter-closure/runtime-closure.txt')
+    inputs.files(runtime)
+    inputs.files(jarFile)
+    outputs.file(reportFile)
+    doLast {
+        def forbidden = []
+        def entries = []
+        long total = 0
+        def jar = jarFile.get().asFile
+        total += jar.length()
+        entries << "${jar.length()}  ${jar.name}  (the interpreter's own artifact)".toString()
+        runtime.get().resolvedConfiguration.resolvedArtifacts.each { a ->
+            def id = a.moduleVersion.id
+            def comp = a.id.componentIdentifier
+            def coord = "${id.group}:${id.name}:${id.version}".toString()
+            long bytes = a.file.length()
+            total += bytes
+            entries << "${bytes}  ${coord}".toString()
+            if (comp instanceof org.gradle.api.artifacts.component.ProjectComponentIdentifier) {
+                forbidden << "${coord} — an intra-repo project module; the interpreter must carry NO runtime edge to another kit or the kernel".toString()
+            } else if (id.group?.startsWith('com.mgmtp')) {
+                forbidden << "${coord} — a kernel (com.mgmtp) runtime dependency".toString()
+            } else if (id.name?.toLowerCase()?.contains('groovy')) {
+                forbidden << "${coord} — a Groovy runtime dependency".toString()
+            }
+        }
+        entries.sort()
+        def f = reportFile.get().asFile
+        f.parentFile.mkdirs()
+        f.text = "interpreter JVM runtime closure (NFR-F1) — ${entries.size()} non-JDK artifacts, ${total} bytes total\n" +
+            entries.collect { "  $it" }.join('\n') + '\n'
+        println "[closure] interpreter JVM runtime closure: ${total} bytes across ${entries.size()} non-JDK artifacts → ${f}"
+        if (forbidden) {
+            throw new GradleException("interpreter runtime closure violates the NFR-F1 hard-zero:\n  " + forbidden.join('\n  '))
+        }
+    }
+}
+tasks.named('check') { dependsOn interpreterRuntimeClosure }
+
 // --- Conformance corpus replay (WI-6) --------------------------------------------------------------
 // CorpusReplayCommonTest replays the committed corpus/cases tree through the interpreter on BOTH targets
 // (jvm + js). It locates the corpus via CORPUS_DIR (the robust Gradle-provided path — never a fragile
