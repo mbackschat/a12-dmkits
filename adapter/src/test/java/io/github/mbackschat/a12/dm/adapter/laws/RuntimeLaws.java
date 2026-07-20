@@ -579,7 +579,12 @@ public final class RuntimeLaws {
     }
 
     private static List<Computed> computeDetail(IDocumentRtService rt, DocumentV2 instance, Locale locale) {
-        return computeDetailOf(rt.compute(instance, config(null, locale)));
+        return computeDetail(rt, instance, config(null, locale));
+    }
+
+    private static List<Computed> computeDetail(
+            IDocumentRtService rt, DocumentV2 instance, DocumentProcessingConfig config) {
+        return computeDetailOf(rt.compute(instance, config));
     }
 
     private static ComputationDetail computeDetailWithFormalErrors(IDocumentRtService rt, DocumentV2 instance) {
@@ -613,9 +618,28 @@ public final class RuntimeLaws {
     /** As {@link #config(Date)} but at an explicit {@code locale} — the kernel rejects a locale the model does not
      *  declare (the real-corpus sweep passes a model-declared locale; signatures are locale-independent). */
     static DocumentProcessingConfig config(Date clock, Locale locale) {
+        return config(clock, locale, Map.of());
+    }
+
+    /** The benchmark/corpus config with identical per-call custom conditions on both kernel strategies. */
+    static DocumentProcessingConfig config(
+            Date clock, Locale locale, Map<String, ICustomCondition> customConditions) {
+        return config(clock, locale, customConditions, null);
+    }
+
+    /** The benchmark/corpus config with identical per-call runtime bindings on both kernel strategies. */
+    static DocumentProcessingConfig config(Date clock, Locale locale,
+            Map<String, ICustomCondition> customConditions, ICustomFieldTypeFactory fieldTypeFactory) {
         var b = DocumentProcessingConfig.builder(locale);
         if (clock != null) {
-            b.currentDateForTest(clock);
+            b.currentDateForTest(new Date(clock.getTime()));
+        }
+        Map<String, ICustomCondition> conditions = Map.copyOf(customConditions);
+        if (!conditions.isEmpty()) {
+            b.customConditionFactory(ICustomConditionFactory.fromMap(conditions));
+        }
+        if (fieldTypeFactory != null) {
+            b.customFieldTypeFactory(fieldTypeFactory);
         }
         return b.build();
     }
@@ -806,6 +830,19 @@ public final class RuntimeLaws {
                     .map(RuntimeLaws::validationSignature).sorted().toList();
         }
 
+        /** Full signatures under explicit runtime bindings; model/document construction stays build-once. */
+        public List<String> validationSignaturesSorted(DocumentV2 instance, Locale locale, Date clock,
+                Map<String, ICustomCondition> customConditions) {
+            return validationSignaturesSorted(instance, locale, clock, customConditions, null);
+        }
+
+        /** Full signatures under explicit runtime bindings; model/document construction stays build-once. */
+        public List<String> validationSignaturesSorted(DocumentV2 instance, Locale locale, Date clock,
+                Map<String, ICustomCondition> customConditions, ICustomFieldTypeFactory fieldTypeFactory) {
+            return rt.validateFull(instance, config(clock, locale, customConditions, fieldTypeFactory)).getMessages().stream()
+                    .map(RuntimeLaws::validationSignature).sorted().toList();
+        }
+
         /** Every computed-field outcome for an already-built instance, normalized + <b>sorted</b> (the B7 compute payload). */
         public List<String> computeOutcomesSorted(DocumentV2 instance) {
             return computeSorted(rt, instance);
@@ -818,6 +855,18 @@ public final class RuntimeLaws {
 
         public List<String> computationSignaturesSorted(DocumentV2 instance, Locale locale) {
             return computeSignaturesSorted(rt, instance, locale);
+        }
+
+        /** Full computation signatures under the same explicit runtime bindings as validation. */
+        public List<String> computationSignaturesSorted(DocumentV2 instance, Locale locale, Date clock,
+                Map<String, ICustomCondition> customConditions) {
+            return computationSignaturesSorted(instance, locale, clock, customConditions, null);
+        }
+
+        /** Full computation signatures under the same explicit runtime bindings as validation. */
+        public List<String> computationSignaturesSorted(DocumentV2 instance, Locale locale, Date clock,
+                Map<String, ICustomCondition> customConditions, ICustomFieldTypeFactory fieldTypeFactory) {
+            return computeSignaturesSorted(rt, instance, config(clock, locale, customConditions, fieldTypeFactory));
         }
     }
 
@@ -848,7 +897,12 @@ public final class RuntimeLaws {
     }
 
     private static List<String> computeSignaturesSorted(IDocumentRtService rt, DocumentV2 instance, Locale locale) {
-        return computeDetail(rt, instance, locale).stream().map(c -> {
+        return computeSignaturesSorted(rt, instance, config(null, locale));
+    }
+
+    private static List<String> computeSignaturesSorted(
+            IDocumentRtService rt, DocumentV2 instance, DocumentProcessingConfig config) {
+        return computeDetail(rt, instance, config).stream().map(c -> {
             if (c.cleared()) {
                 return c.pointer() + "|CLEARED";
             }
@@ -923,6 +977,19 @@ public final class RuntimeLaws {
                     .map(RuntimeLaws::validationSignature).sorted().toList();
         }
 
+        /** Full signatures under explicit runtime bindings; code generation remains outside every timed call. */
+        public List<String> validationSignaturesSorted(DocumentV2 instance, Locale locale, Date clock,
+                Map<String, ICustomCondition> customConditions) {
+            return validationSignaturesSorted(instance, locale, clock, customConditions, null);
+        }
+
+        /** Full signatures under explicit runtime bindings; code generation remains outside every timed call. */
+        public List<String> validationSignaturesSorted(DocumentV2 instance, Locale locale, Date clock,
+                Map<String, ICustomCondition> customConditions, ICustomFieldTypeFactory fieldTypeFactory) {
+            return rt.validateFull(instance, config(clock, locale, customConditions, fieldTypeFactory)).getMessages().stream()
+                    .map(RuntimeLaws::validationSignature).sorted().toList();
+        }
+
         /** Every computed-field outcome for an already-built instance, normalized + <b>sorted</b> (the B7 compute payload). */
         public List<String> computeOutcomesSorted(DocumentV2 instance) {
             return computeSorted(rt, instance);
@@ -935,6 +1002,18 @@ public final class RuntimeLaws {
 
         public List<String> computationSignaturesSorted(DocumentV2 instance, Locale locale) {
             return computeSignaturesSorted(rt, instance, locale);
+        }
+
+        /** Full computation signatures under the same explicit runtime bindings as validation. */
+        public List<String> computationSignaturesSorted(DocumentV2 instance, Locale locale, Date clock,
+                Map<String, ICustomCondition> customConditions) {
+            return computationSignaturesSorted(instance, locale, clock, customConditions, null);
+        }
+
+        /** Full computation signatures under the same explicit runtime bindings as validation. */
+        public List<String> computationSignaturesSorted(DocumentV2 instance, Locale locale, Date clock,
+                Map<String, ICustomCondition> customConditions, ICustomFieldTypeFactory fieldTypeFactory) {
+            return computeSignaturesSorted(rt, instance, config(clock, locale, customConditions, fieldTypeFactory));
         }
 
         /**

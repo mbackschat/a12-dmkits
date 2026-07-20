@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.VALIDATION_LOW_FIRI
 import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.VALIDATION_MIXED
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
+import java.time.Instant
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -44,7 +45,6 @@ class ScenarioIdentityFingerprintTest {
                 rules = scenario.interpModel.rules + RuleDef("/Perf/Extra", "/Perf", "1 == 2", "EXTRA", "../Lines/Qty"),
             ),
             scenario.op,
-            scenario.interpreterFactory,
             scenario.locale,
             scenario.instance,
         )
@@ -55,7 +55,6 @@ class ScenarioIdentityFingerprintTest {
             scenario.kernelModel,
             scenario.interpModel,
             scenario.op,
-            scenario.interpreterFactory,
         ) { sink, n, variant ->
             scenario.instance(sink, n, variant)
             sink.field(PerfCatalog.QTY, "999", 1, 1, 1)
@@ -85,7 +84,6 @@ class ScenarioIdentityFingerprintTest {
             scenario.kernelModel,
             scenario.interpModel.copy(legalCharset = charset),
             scenario.op,
-            scenario.interpreterFactory,
             scenario.locale,
             scenario.instance,
         )
@@ -101,7 +99,6 @@ class ScenarioIdentityFingerprintTest {
             scenario.kernelModel,
             scenario.interpModel,
             scenario.op,
-            scenario.interpreterFactory,
             locale = "de_DE",
             instance = scenario.instance,
         )
@@ -125,5 +122,20 @@ class ScenarioIdentityFingerprintTest {
             assertTrue(identity.fingerprint in line, line)
         }
         assertNotEquals(identity.id.version.toString(), identity.fingerprint)
+    }
+
+    @Test
+    fun runtimeBindingsArePartOfTheFingerprint() {
+        val scenario = PerfCatalog.b1()
+        fun at(instant: String) = scenario.withRuntimeBindings(
+            PerfRuntimeBindings.builder()
+                .clock("2026-07-21", "2026-07-21T12:00:00", Instant.parse(instant))
+                .build(),
+        )
+
+        val morning = draft().fingerprintFor(at("2026-07-21T10:00:00Z"), n = 4)
+        val evening = draft().fingerprintFor(at("2026-07-21T20:00:00Z"), n = 4)
+
+        assertNotEquals(morning, evening)
     }
 }

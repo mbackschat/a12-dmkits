@@ -115,10 +115,11 @@ class PerfPreflightTest {
             "middle-variant",
             "{}",
             model,
-            interpreterFactory = { DmInterpreter(it, customFieldTypes = mapOf("VariantType" to checker)) },
         ) { sink, _, variant ->
             sink.group("/C", 1)
             sink.field(code, listOf("first", "middle", "last")[variant], 1, 1)
+        }.withInterpreterOnlyFactory("variant-type-throws-on-middle") {
+            DmInterpreter(it, customFieldTypes = mapOf("VariantType" to checker))
         }
 
         val ex = assertThrows<IllegalStateException> {
@@ -143,13 +144,14 @@ class PerfPreflightTest {
             "late-registered-callback",
             "{}",
             model,
-            interpreterFactory = { DmInterpreter(it, customFieldTypes = mapOf("LateType" to checker)) },
         ) { sink, n, _ ->
             sink.group("/C", 1)
             for (row in 1..n) {
                 sink.group("/C/Rows", 1, row)
                 sink.field(code, if (row == 201) "late" else "ok", 1, row, 1)
             }
+        }.withInterpreterOnlyFactory("late-type-throws-after-preflight-cap") {
+            DmInterpreter(it, customFieldTypes = mapOf("LateType" to checker))
         }
 
         val cold = assertThrows<IllegalStateException> {
@@ -209,11 +211,12 @@ class PerfPreflightTest {
             "locale-bound",
             "{}",
             model,
-            interpreterFactory = { DmInterpreter(it, customFieldTypes = mapOf("LocaleType" to checker)) },
             locale = "de_DE",
         ) { sink, _, _ ->
             sink.group("/C", 1)
             sink.field(code, "value", 1, 1)
+        }.withInterpreterOnlyFactory("locale-observer") {
+            DmInterpreter(it, customFieldTypes = mapOf("LocaleType" to checker))
         }
 
         InterpreterPerfEngine.build(scenario).instance(1).outcome()

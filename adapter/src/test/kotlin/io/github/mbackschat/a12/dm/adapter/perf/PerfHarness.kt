@@ -72,9 +72,17 @@ class PerfScenario private constructor(
     /** Whether this scenario times `validateFull` or `compute` (default validate). */
     val op: PerfOp = PerfOp.VALIDATE,
     /** Builds the prepared interpreter, including any scenario-required customization registries. */
-    val interpreterFactory: (ModelDef) -> DmInterpreter = { DmInterpreter(it) },
+    val interpreterFactory: (ModelDef) -> DmInterpreter,
     /** The locale both interpreter and kernel engines receive for this scenario. */
     val locale: String = "en_US",
+    /** Clock and callbacks supplied to both build-once kernel strategies on every evaluation. */
+    internal val kernelConfig: KernelPerfConfig,
+    /** Stable runtime-binding descriptors included in every scenario fingerprint. */
+    internal val runtimeIdentity: Map<String, String>,
+    /** False only for interpreter-only preflight tests that cannot make a kernel comparison. */
+    private val comparativeBindings: Boolean,
+    /** Explicit metadata for parameterized, non-certified scenarios such as synthesized profiles. */
+    internal val diagnosticMetadata: DiagnosticScenarioMetadata?,
     private val identityBinding: ScenarioBinding?,
     /**
      * Build the instance at scale [n], perturbed by [variant], into [sink]. `variant = 0` is the canonical
@@ -88,10 +96,19 @@ class PerfScenario private constructor(
         kernelModel: String,
         interpModel: ModelDef,
         op: PerfOp = PerfOp.VALIDATE,
-        interpreterFactory: (ModelDef) -> DmInterpreter = { DmInterpreter(it) },
         locale: String = "en_US",
         instance: (sink: PlacementSink, n: Int, variant: Int) -> Unit,
-    ) : this(name, kernelModel, interpModel, op, interpreterFactory, locale, identityBinding = null, instance)
+    ) : this(
+        name, kernelModel, interpModel, op,
+        PerfRuntimeBindings.DEFAULT::interpreter,
+        locale,
+        PerfRuntimeBindings.DEFAULT.kernelConfig(),
+        PerfRuntimeBindings.DEFAULT.identity,
+        comparativeBindings = true,
+        diagnosticMetadata = null,
+        identityBinding = null,
+        instance,
+    )
 
     init {
         require(locale.isNotBlank()) { "$name: locale must not be blank" }
@@ -102,7 +119,40 @@ class PerfScenario private constructor(
         get() = checkNotNull(identityBinding) { "$name has no reviewed scenario identity" }
 
     internal fun withIdentity(identity: ScenarioBinding): PerfScenario =
-        PerfScenario(name, kernelModel, interpModel, op, interpreterFactory, locale, identity, instance)
+        PerfScenario(
+            name, kernelModel, interpModel, op, interpreterFactory, locale, kernelConfig, runtimeIdentity,
+            comparativeBindings, diagnosticMetadata, identity, instance,
+        )
+
+    /** Derive both interpreter and kernel runtime configuration from one immutable source. */
+    internal fun withRuntimeBindings(bindings: PerfRuntimeBindings): PerfScenario = PerfScenario(
+        name, kernelModel, interpModel, op, bindings::interpreter, locale, bindings.kernelConfig(), bindings.identity,
+        comparativeBindings = true, diagnosticMetadata, identityBinding, instance,
+    )
+
+    /** Interpreter-only seam for support/preflight guards. Comparative methods reject this scenario. */
+    internal fun withInterpreterOnlyFactory(
+        contractId: String,
+        factory: (ModelDef) -> DmInterpreter,
+    ): PerfScenario {
+        require(contractId.isNotBlank()) { "interpreter-only runtime contract id must not be blank" }
+        return PerfScenario(
+            name, kernelModel, interpModel, op, factory, locale, PerfRuntimeBindings.DEFAULT.kernelConfig(),
+            mapOf("interpreter-only" to contractId), comparativeBindings = false, diagnosticMetadata,
+            identityBinding, instance,
+        )
+    }
+
+    internal fun withDiagnosticMetadata(metadata: DiagnosticScenarioMetadata): PerfScenario = PerfScenario(
+        name, kernelModel, interpModel, op, interpreterFactory, locale, kernelConfig, runtimeIdentity,
+        comparativeBindings, metadata, identityBinding, instance,
+    )
+
+    internal fun requireComparativeBindings() {
+        check(comparativeBindings) {
+            "$name: comparative timing requires one PerfRuntimeBindings source for interpreter and kernel"
+        }
+    }
 
     internal fun measurementLabel(n: Int, variants: List<Int> = listOf(0)): String {
         val identity = identityBinding?.also {
@@ -186,6 +236,7 @@ object KernelPerfEngine : PerfEngine {
     override fun build(scenario: PerfScenario): ReusableEngine {
         val engine = RuntimeLaws.kernelEngine(scenario.kernelModel)   // model deserialize + expand + Groovy codegen, once
         val locale = scenario.javaLocale()
+        val config = scenario.kernelConfig
         return object : ReusableEngine {
             override val label = "groovy"
             override fun instance(n: Int, variant: Int): RunInstance {
@@ -195,8 +246,12 @@ object KernelPerfEngine : PerfEngine {
                 return object : RunInstance {
                     override fun outcome(): PerfOutcome = PerfOutcome(
                         when (scenario.op) {
-                            PerfOp.VALIDATE -> engine.validationSignaturesSorted(instance, locale)
-                            PerfOp.COMPUTE -> engine.computationSignaturesSorted(instance, locale)
+                            PerfOp.VALIDATE -> engine.validationSignaturesSorted(
+                                instance, locale, config.freshClock(), config.customConditions,
+                                config.customFieldTypeFactory)
+                            PerfOp.COMPUTE -> engine.computationSignaturesSorted(
+                                instance, locale, config.freshClock(), config.customConditions,
+                                config.customFieldTypeFactory)
                         },
                     )
                 }
@@ -216,6 +271,7 @@ object KernelJavaPerfEngine : PerfEngine {
     override fun build(scenario: PerfScenario): ReusableEngine {
         val engine = RuntimeLaws.kernelJavaEngine(scenario.kernelModel)   // codegen + in-memory compile, once
         val locale = scenario.javaLocale()
+        val config = scenario.kernelConfig
         return object : ReusableEngine {
             override val label = "java"
             override fun instance(n: Int, variant: Int): RunInstance {
@@ -225,8 +281,12 @@ object KernelJavaPerfEngine : PerfEngine {
                 return object : RunInstance {
                     override fun outcome(): PerfOutcome = PerfOutcome(
                         when (scenario.op) {
-                            PerfOp.VALIDATE -> engine.validationSignaturesSorted(instance, locale)
-                            PerfOp.COMPUTE -> engine.computationSignaturesSorted(instance, locale)
+                            PerfOp.VALIDATE -> engine.validationSignaturesSorted(
+                                instance, locale, config.freshClock(), config.customConditions,
+                                config.customFieldTypeFactory)
+                            PerfOp.COMPUTE -> engine.computationSignaturesSorted(
+                                instance, locale, config.freshClock(), config.customConditions,
+                                config.customFieldTypeFactory)
                         },
                     )
                 }
@@ -263,6 +323,15 @@ data class Stats(val medianMs: Double, val minMs: Double, val p90Ms: Double)
 /** The result of the IF137-ratified [PerfHarness.pairedGrowth] estimator: the median within-pair growth [ratio]
  *  and a representative [smallMs]/[largeMs] (the medians across pairs) for the log line. */
 data class Growth(val ratio: Double, val smallMs: Double, val largeMs: Double)
+
+/** A complete same-run N/4N comparison, paired independently for all three engines. */
+data class PairedPerfCurve(
+    val small: PerfRow,
+    val large: PerfRow,
+    val interpreterGrowth: Growth,
+    val groovyGrowth: Growth,
+    val javaGrowth: Growth,
+)
 
 /**
  * One single-document scenario row: the interpreter's stats at scale [n] vs BOTH kernel baselines — [groovy]
@@ -420,6 +489,7 @@ object PerfHarness {
     fun assertSemanticAgreement(scenario: PerfScenario, scales: List<Int>, withJava: Boolean = true) {
         require(scales.isNotEmpty()) { "at least one semantic-agreement scale is required" }
         require(scales.all { it > 0 }) { "semantic-agreement scales must be positive" }
+        scenario.requireComparativeBindings()
         preflight(scenario, scales.max())
         val interpreter = InterpreterPerfEngine.build(scenario)
         val groovy = KernelPerfEngine.build(scenario)
@@ -463,6 +533,7 @@ object PerfHarness {
      * Pass [withJava] = false to skip the (compile-cost) Java baseline when only the interp/Groovy gate is wanted.
      */
     fun runScenario(scenario: PerfScenario, n: Int, warmup: Int = 12, iters: Int = 8, withJava: Boolean = true): PerfRow {
+        scenario.requireComparativeBindings()
         preflight(scenario, n)
         val iInst = InterpreterPerfEngine.build(scenario).instance(n)
         val gInst = KernelPerfEngine.build(scenario).instance(n)
@@ -504,6 +575,7 @@ object PerfHarness {
         scenario: PerfScenario, n: Int, variants: Int = 20, warmupLoops: Int = 3, timedLoops: Int = 5,
         withJava: Boolean = true,
     ): RepeatedRow {
+        scenario.requireComparativeBindings()
         preflightVariants(scenario, n, variants)
         val iEng = InterpreterPerfEngine.build(scenario)
         val gEng = KernelPerfEngine.build(scenario)
@@ -559,6 +631,100 @@ object PerfHarness {
             smalls[i] = s; larges[i] = l; ratios[i] = l / s
         }
         return Growth(median(ratios), median(smalls), median(larges))
+    }
+
+    /**
+     * Apply the paired estimator to interpreter, dynamic Groovy, and generated Java in one reusable-engine run.
+     * Both exact instances are tri-checked before timing. The result is accepted only when the interpreter beats
+     * both strategies at N and 4N and its median within-pair growth is no worse than either kernel strategy.
+     */
+    fun pairedScenarioGrowth(
+        scenario: PerfScenario,
+        small: Int,
+        large: Int,
+        pairs: Int = PerfBounds.GROWTH_PAIRS,
+        warmup: Int = 12,
+        iters: Int = 8,
+    ): PairedPerfCurve {
+        require(small > 0) { "small scale must be positive" }
+        require(large > small) { "large scale must be greater than small scale" }
+        require(pairs > 0 && pairs % 2 == 1) { "pairs must be a positive odd number" }
+        require(warmup >= 0) { "warmup must not be negative" }
+        require(iters > 0) { "iters must be positive" }
+        scenario.requireComparativeBindings()
+        preflight(scenario, large)
+
+        val interpreter = InterpreterPerfEngine.build(scenario)
+        val groovy = KernelPerfEngine.build(scenario)
+        val java = KernelJavaPerfEngine.build(scenario)
+        val iSmall = interpreter.instance(small)
+        val gSmall = groovy.instance(small)
+        val jSmall = java.instance(small)
+        val iLarge = interpreter.instance(large)
+        val gLarge = groovy.instance(large)
+        val jLarge = java.instance(large)
+        val smallResult = assertInstanceAgreement(scenario, small, iSmall, gSmall, jSmall)
+        val largeResult = assertInstanceAgreement(scenario, large, iLarge, gLarge, jLarge)
+
+        val iSmallMs = DoubleArray(pairs)
+        val gSmallMs = DoubleArray(pairs)
+        val jSmallMs = DoubleArray(pairs)
+        val iLargeMs = DoubleArray(pairs)
+        val gLargeMs = DoubleArray(pairs)
+        val jLargeMs = DoubleArray(pairs)
+        for (pair in 0 until pairs) {
+            gSmallMs[pair] = measure(warmup, iters) { gSmall.run() }.medianMs
+            jSmallMs[pair] = measure(warmup, iters) { jSmall.run() }.medianMs
+            iSmallMs[pair] = measure(warmup, iters) { iSmall.run() }.medianMs
+            gLargeMs[pair] = measure(warmup, iters) { gLarge.run() }.medianMs
+            jLargeMs[pair] = measure(warmup, iters) { jLarge.run() }.medianMs
+            iLargeMs[pair] = measure(warmup, iters) { iLarge.run() }.medianMs
+        }
+
+        val smallRow = PerfRow(
+            scenario.completeIdentity(small, listOf(smallResult.size), listOf(0)),
+            small,
+            smallResult.size,
+            stats(iSmallMs.copyOf()),
+            stats(gSmallMs.copyOf()),
+            stats(jSmallMs.copyOf()),
+        )
+        val largeRow = PerfRow(
+            scenario.completeIdentity(large, listOf(largeResult.size), listOf(0)),
+            large,
+            largeResult.size,
+            stats(iLargeMs.copyOf()),
+            stats(gLargeMs.copyOf()),
+            stats(jLargeMs.copyOf()),
+        )
+        val iGrowth = growth(iSmallMs, iLargeMs, small, large)
+        val gGrowth = growth(gSmallMs, gLargeMs, small, large)
+        val jGrowth = growth(jSmallMs, jLargeMs, small, large)
+        requireInterpreterBeatsBoth(scenario, smallRow)
+        requireInterpreterBeatsBoth(scenario, largeRow)
+        check(iGrowth.ratio <= gGrowth.ratio && iGrowth.ratio <= jGrowth.ratio) {
+            "${scenario.name}: interpreter growth ${"%.2f".format(iGrowth.ratio)}x must be no worse than " +
+                "Groovy ${"%.2f".format(gGrowth.ratio)}x and Java ${"%.2f".format(jGrowth.ratio)}x"
+        }
+        return PairedPerfCurve(smallRow, largeRow, iGrowth, gGrowth, jGrowth)
+    }
+
+    private fun growth(smalls: DoubleArray, larges: DoubleArray, smallScale: Int, largeScale: Int): Growth {
+        val ratios = DoubleArray(smalls.size) { index ->
+            val small = checkedGrowthObservation(smalls[index], smallScale, index)
+            val large = checkedGrowthObservation(larges[index], largeScale, index)
+            large / small
+        }
+        return Growth(median(ratios), median(smalls), median(larges))
+    }
+
+    private fun requireInterpreterBeatsBoth(scenario: PerfScenario, row: PerfRow) {
+        val groovy = checkNotNull(row.ratioGroovy)
+        val java = checkNotNull(row.ratioJava)
+        check(groovy < 1.0 && java < 1.0) {
+            "${scenario.name}: interpreter must beat both kernel strategies at N=${row.n}; " +
+                "ratioGroovy=${"%.2f".format(groovy)}, ratioJava=${"%.2f".format(java)}"
+        }
     }
 
     private fun checkedGrowthObservation(value: Double, scale: Int, pair: Int): Double {

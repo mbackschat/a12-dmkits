@@ -34,6 +34,19 @@ data class GeneratorIdentity(
     }
 }
 
+/** Explicit identity fields for a parameterized diagnostic scenario that is not in [PerfInventory]. */
+data class DiagnosticScenarioMetadata(
+    val resultRegime: ResultRegime,
+    val complexity: Complexity,
+    val generator: GeneratorIdentity,
+    val scaleAxis: String,
+    val fairJavaCapable: Boolean,
+) {
+    init {
+        require(scaleAxis.isNotBlank()) { "diagnostic scale axis must not be blank" }
+    }
+}
+
 /**
  * Reviewed scenario contract. [reviewedFingerprint] is stored beside [version]; changing any bound content
  * without updating both makes [bind] fail before a benchmark can produce a row.
@@ -171,17 +184,31 @@ data class ScenarioIdentity(
  * the `diagnostic/` prefix and generator status make its unreviewed posture explicit.
  */
 internal fun PerfScenario.diagnosticIdentity(n: Int, observed: List<Int>, variants: List<Int>): ScenarioIdentity {
+    val metadata = diagnosticMetadata ?: DiagnosticScenarioMetadata(
+        resultRegime = if (op == PerfOp.VALIDATE) ResultRegime.VALIDATION_MIXED else ResultRegime.COMPUTE_MIXED,
+        complexity = Complexity.LINEAR,
+        generator = GeneratorIdentity(
+            "$name/runtime",
+            parameters = mapOf("status" to "unreviewed"),
+            variants = variants,
+        ),
+        scaleAxis = "n",
+        fairJavaCapable = false,
+    )
+    check(metadata.generator.variants == variants) {
+        "$name: diagnostic generator variants=${metadata.generator.variants}, run requested variants=$variants"
+    }
     val spec = ScenarioId.builder("diagnostic/${name.replace(Regex("[^A-Za-z0-9._-]+"), "-").trim('-')}")
         .operation(op)
-        .resultRegime(if (op == PerfOp.VALIDATE) ResultRegime.VALIDATION_MIXED else ResultRegime.COMPUTE_MIXED)
-        .complexity(Complexity.LINEAR)
-        .generator(GeneratorIdentity("$name/runtime", parameters = mapOf("status" to "unreviewed"), variants = variants))
-        .scaleAxis("n")
+        .resultRegime(metadata.resultRegime)
+        .complexity(metadata.complexity)
+        .generator(metadata.generator)
+        .scaleAxis(metadata.scaleAxis)
         .expectedResultCardinality(observed)
         .reviewedFingerprint("0".repeat(64))
         .zone(interpModel.timeZone)
         .locale(locale)
-        .fairJavaCapable(false)
+        .fairJavaCapable(metadata.fairJavaCapable)
         .build()
     return ScenarioIdentity(spec, n, ScenarioFingerprint.compute(spec, this, n), observed)
 }
@@ -211,6 +238,9 @@ private object ScenarioFingerprint {
         digest.put("scenario-name", scenario.name)
         digest.put("kernel-model", scenario.kernelModel)
         digest.putModel(scenario.interpModel)
+        scenario.runtimeIdentity.toSortedMap().forEach { (key, value) ->
+            digest.put("runtime-binding:$key", value)
+        }
         for (variant in id.generator.variants) {
             digest.put("instance-variant", variant.toString())
             scenario.instance(DigestPlacementSink(digest), n, variant)
