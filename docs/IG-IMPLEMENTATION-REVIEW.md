@@ -417,6 +417,8 @@ Direct current-facing contradictions also remain: `INTERPRETER-GAPS.md` calls th
 
 **Resolution:** Corrected 2026-07-20 by the `docs(interpreter): correct performance ownership status` commit. IG77 and IG79 remain in the active ledger with the already-shipped IF156–IF161 increments separated from the ordinary executable work still required. That active work now explicitly includes both validation firing regimes, representative VALUE/CLEARED/ERRORED computations, model-static counters, true first-answer and fair-Java runners, complete JVM/production-JS closure measurement, equivalent/production artifacts, and sound forked JVM/Node retained-heap/allocation/owner-release tooling. Only numerical promotion and CI scheduling are owner-gated. Current-facing comments/specs no longer call the gate singular, describe complete signatures as fired-code-only, claim first/last-only repeated checks, leave identity/inventory/correlation work open, or present the in-process retained-heap endpoints as no-leak certification. Historical review evidence remains explicitly historical. Verification: `:cli:docGuardTest`, `:cli:staleGapGuardTest`, focused `RetainedHeapProbeTest`, and `git diff --check` passed.
 
+**Final resolution:** Corrected 2026-07-20 by IF170–IF173. IF170–IF172 completed the remaining IG77 executable regime/preparation/fresh-process/throughput/fair-Java work; IG77 now contains only the ratified owner gates for numerical promotion and CI scheduling. IF173 completed every functional IG79 artifact base and current/previous clean-revision comparison. Direct execution exposed the one genuine external boundary: with no IG85-exported JS API, Kotlin's production output is an empty DCE shell with no `.d.ts`, so counting it would be fictional. IG79 is deleted; the existing owner-deferred IG85 row now makes functional npm packing, type output, non-repo consumer smoke, and previous-release measurement mandatory in the same publication increment. No ordinary executable residual remains open.
+
 ### Review verification
 
 - At review time, green: focused `ScenarioInventoryTest` and `PerfPreflightTest`; `:interpreter:interpreterRuntimeClosure` (report 3,091,274 bytes); focused `RetainedHeapProbeTest` rerun (informative 1.00 scale fit and displayed 0.0 MB two-point delta).
@@ -425,7 +427,7 @@ Direct current-facing contradictions also remain: `INTERPRETER-GAPS.md` calls th
 
 ### Chapter resolution
 
-Open. Resolve issues 1–5 together while the IG77 harness/scenario context is warm, then issues 6–8 as the IG79 closure/footprint lane. Apply issue 9 in those same commits so status travels with behavior. Do not move ordinary unfinished measurement work behind an owner gate; pause only before promoting a numerical release bar or changing CI scheduling. Preserve the IF159 high-repeatability same-model repair and do not open a duplicate over-repetition semantic gap.
+Resolved 2026-07-20 by IF170–IF173. Issues 1–5 are closed by the prepared eligibility/paired estimator/content-bound inventory/ordered-correlation/performance-evidence chain. Issues 6–8 are closed by the fully reconciled host graphs, deterministic cache-owner locks, forked JVM/Node retained/allocation lane, and same-collector delivery ratchet. Issue 9 is closed: IG77 retains only the explicit owner decisions, IG79 is graduated and removed, and the impossible-to-measure pre-publication npm base is a mandatory part of IG85's already owner-deferred external trigger rather than ordinary unfinished work.
 
 ## Resolved chapter archive
 

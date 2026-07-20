@@ -1,0 +1,316 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+import org.gradle.api.tasks.Exec
+import org.gradle.api.tasks.Sync
+import org.gradle.api.tasks.bundling.Zip
+
+/*
+ * Cross-revision IG79 measurement tasks. This is an init script rather than build logic on purpose: the
+ * current collector can be injected into the previous release checkout, so both sides use one definition.
+ */
+
+long byteSize(File file) {
+    if (file.isFile()) return file.length()
+    if (!file.isDirectory()) return 0L
+    long total = 0L
+    file.eachFileRecurse { child -> if (child.isFile()) total += child.length() }
+    total
+}
+
+String sha256(File file) {
+    def digest = MessageDigest.getInstance('SHA-256')
+    if (file.isFile()) {
+        file.withInputStream { input ->
+            byte[] buffer = new byte[64 * 1024]
+            for (int read = input.read(buffer); read >= 0; read = input.read(buffer)) {
+                if (read > 0) digest.update(buffer, 0, read)
+            }
+        }
+    } else {
+        def root = file.toPath()
+        def files = []
+        file.eachFileRecurse { child -> if (child.isFile()) files << child }
+        files.sort { a, b -> root.relativize(a.toPath()).toString() <=> root.relativize(b.toPath()).toString() }
+            .each { child ->
+                def relative = root.relativize(child.toPath()).toString().replace(File.separatorChar, '/' as char)
+                digest.update(relative.getBytes(StandardCharsets.UTF_8))
+                digest.update((byte) 0)
+                child.withInputStream { input ->
+                    byte[] buffer = new byte[64 * 1024]
+                    for (int read = input.read(buffer); read >= 0; read = input.read(buffer)) {
+                        if (read > 0) digest.update(buffer, 0, read)
+                    }
+                }
+            }
+    }
+    digest.digest().collect { String.format('%02x', it & 0xff) }.join()
+}
+
+Map runCommand(List<String> command) {
+    def process = new ProcessBuilder(command).redirectErrorStream(true).start()
+    def output = process.inputStream.getText(StandardCharsets.UTF_8.name())
+    def exit = process.waitFor()
+    if (exit != 0) {
+        throw new GradleException("command failed (${exit}): ${command.join(' ')}\n${output}")
+    }
+    [output: output, exit: exit]
+}
+
+Map smokeCli(File executable, File model, File instance, String expectedVersion) {
+    def version = runCommand([executable.absolutePath, '--version']).output.readLines().find { !it.isBlank() }
+    if (version != "a12-dmkits ${expectedVersion}") {
+        throw new GradleException("${executable} reports '${version}', expected a12-dmkits ${expectedVersion}")
+    }
+    def result = runCommand([
+        executable.absolutePath,
+        '-m', model.absolutePath,
+        'model', 'eval',
+        '--instance', instance.absolutePath,
+        '--no-computations',
+    ])
+    def envelope = new JsonSlurper().parseText(result.output)
+    if (envelope.ok != true || envelope.valid != true ||
+        !(envelope.data?.fired instanceof List) || !envelope.data.fired.isEmpty() ||
+        !(envelope.diagnostics instanceof List) || !envelope.diagnostics.isEmpty()) {
+        throw new GradleException("${executable} failed the exact low-firing evaluation smoke: ${result.output}")
+    }
+    [version: version, outcome: 'ok/valid/fired=0/diagnostics=0']
+}
+
+gradle.projectsEvaluated {
+    def root = gradle.rootProject
+    def interpreter = root.project(':interpreter')
+    def cli = root.project(':cli')
+    def deliveryDir = root.layout.buildDirectory.dir('reports/interpreter-delivery-footprint')
+
+    def packedJvm = interpreter.tasks.register('deliveryPackedJvm', Zip) {
+        group = 'measurement'
+        description = 'Pack the interpreter JVM artifact and its exact runtime closure reproducibly.'
+        dependsOn interpreter.tasks.named('jvmJar')
+        archiveFileName = 'interpreter-jvm-runtime.zip'
+        destinationDirectory = interpreter.layout.buildDirectory.dir('delivery-footprint')
+        preserveFileTimestamps = false
+        reproducibleFileOrder = true
+        duplicatesStrategy = DuplicatesStrategy.FAIL
+        from(interpreter.tasks.named('jvmJar').flatMap { it.archiveFile }) { into 'lib' }
+        from(interpreter.configurations.named('jvmRuntimeClasspath')) { into 'lib' }
+    }
+
+    def nativeEquivalentInput = root.tasks.register('deliveryNativeEquivalentJvmInput', Sync) {
+        group = 'measurement'
+        description = 'Stage the same Groovy-excluded dependency set the native dmtool image receives.'
+        dependsOn cli.tasks.named('jar')
+        into deliveryDir.map { it.dir('native-equivalent-jvm-input') }
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        from(cli.tasks.named('jar').flatMap { it.archiveFile })
+        from(cli.configurations.named('nativeImageClasspath'))
+    }
+
+    def trimmedJvm = root.tasks.register('deliveryTrimmedJvmImage', Exec) {
+        group = 'measurement'
+        description = 'Build an equivalent trimmed JVM dmtool app image through jpackage/jlink.'
+        dependsOn nativeEquivalentInput
+        def destination = deliveryDir.map { it.dir('trimmed-jvm') }
+        inputs.dir(deliveryDir.map { it.dir('native-equivalent-jvm-input') })
+        outputs.dir(destination)
+        doFirst {
+            File output = destination.get().asFile
+            root.delete(output)
+            output.mkdirs()
+            File jpackage = new File(System.getProperty('java.home'), 'bin/jpackage')
+            if (!jpackage.canExecute()) {
+                throw new GradleException("JDK jpackage is unavailable: ${jpackage}")
+            }
+            File input = deliveryDir.get().dir('native-equivalent-jvm-input').asFile
+            File mainJar = cli.tasks.named('jar').get().archiveFile.get().asFile
+            commandLine(
+                jpackage.absolutePath,
+                '--type', 'app-image',
+                '--name', 'dmtool-jvm',
+                '--dest', output.absolutePath,
+                '--input', input.absolutePath,
+                '--main-jar', mainJar.name,
+                '--main-class', 'io.github.mbackschat.a12.dm.cli.CliMain',
+                '--jlink-options', '--strip-debug --no-man-pages --no-header-files --compress=zip-6',
+            )
+        }
+    }
+
+    def nativeOverride = root.providers.gradleProperty('deliveryNativeBinary')
+    def snapshot = root.tasks.register('interpreterDeliveryFootprintSnapshot') {
+        group = 'measurement'
+        description = 'Write exact thin/packed/npm/native/trimmed-JVM delivery byte bases and previous-release deltas.'
+        dependsOn packedJvm
+        dependsOn trimmedJvm
+        dependsOn interpreter.tasks.named('jsJar')
+        if (!nativeOverride.isPresent()) dependsOn cli.tasks.named('nativeCompile')
+        def outputProvider = root.providers.gradleProperty('deliveryOutput')
+            .map { root.file(it) }
+            .orElse(deliveryDir.map { it.file('delivery-footprint.json').asFile })
+        outputs.file(outputProvider)
+        doLast {
+            String commit = root.providers.gradleProperty('deliveryCommit').orNull
+            String runner = root.providers.gradleProperty('deliveryRunner').orNull
+            String label = root.providers.gradleProperty('deliveryLabel').orNull
+            String collectorSha = root.providers.gradleProperty('deliveryCollectorSha256').orNull
+            if (!(commit ==~ /[0-9a-f]{8,64}/)) {
+                throw new GradleException('deliveryCommit must be an 8–64 character lowercase hexadecimal identity')
+            }
+            if (!(collectorSha ==~ /[0-9a-f]{64}/)) {
+                throw new GradleException('deliveryCollectorSha256 must be a lowercase SHA-256 identity')
+            }
+            if (!runner?.trim() || !label?.trim()) {
+                throw new GradleException('deliveryRunner and deliveryLabel are required')
+            }
+
+            File jvmJar = interpreter.tasks.named('jvmJar').get().archiveFile.get().asFile
+            File packed = packedJvm.get().archiveFile.get().asFile
+            File jsJar = interpreter.tasks.named('jsJar').get().archiveFile.get().asFile
+
+            File nativeBinary = nativeOverride.isPresent()
+                ? root.file(nativeOverride.get())
+                : cli.layout.buildDirectory.file('native/nativeCompile/dmtool').get().asFile
+            if (!nativeBinary.isFile() || !nativeBinary.canExecute()) {
+                throw new GradleException("native dmtool is missing or not executable: ${nativeBinary}")
+            }
+            File trimmedRoot = deliveryDir.get().dir('trimmed-jvm').asFile
+            def appImages = trimmedRoot.listFiles()?.findAll { it.isDirectory() } ?: []
+            if (appImages.size() != 1) {
+                throw new GradleException("expected exactly one trimmed JVM app image under ${trimmedRoot}, found ${appImages}")
+            }
+            File trimmedImage = appImages[0]
+            def trimmedLaunchers = []
+            trimmedImage.eachFileRecurse { file ->
+                if (file.isFile() && file.canExecute() && file.name == 'dmtool-jvm') trimmedLaunchers << file
+            }
+            if (trimmedLaunchers.size() != 1) {
+                throw new GradleException(
+                    "expected exactly one dmtool-jvm launcher in ${trimmedImage}, found ${trimmedLaunchers}")
+            }
+            File smokeModel = root.file(root.providers.gradleProperty('deliverySmokeModel').orNull ?: '')
+            File smokeInstance = root.file(root.providers.gradleProperty('deliverySmokeInstance').orNull ?: '')
+            if (!smokeModel.isFile() || !smokeInstance.isFile()) {
+                throw new GradleException('deliverySmokeModel and deliverySmokeInstance must name real files')
+            }
+            boolean skipSmoke = root.providers.gradleProperty('deliverySkipArtifactSmoke')
+                .map { it.toBoolean() }.getOrElse(false)
+            def artifactSmoke = skipSmoke
+                ? [status: 'SKIPPED_FOR_COLLECTOR_TEST_ONLY']
+                : [
+                    nativeCli: smokeCli(nativeBinary, smokeModel, smokeInstance, root.version.toString()),
+                    trimmedJvmCli: smokeCli(trimmedLaunchers[0], smokeModel, smokeInstance, root.version.toString()),
+                ]
+
+            def bases = [
+                [
+                    id: 'jvm-thin',
+                    definition: 'interpreter JVM jar only',
+                    bytes: jvmJar.length(),
+                    sha256: sha256(jvmJar),
+                ],
+                [
+                    id: 'jvm-packed',
+                    definition: 'reproducible zip of the interpreter JVM jar plus exact non-JDK runtime files',
+                    bytes: packed.length(),
+                    sha256: sha256(packed),
+                ],
+                [
+                    id: 'js-klib',
+                    definition: 'interpreter Kotlin/JS KLIB only; not a production npm package',
+                    bytes: jsJar.length(),
+                    sha256: sha256(jsJar),
+                ],
+                [
+                    id: 'native-cli',
+                    definition: 'GraalVM native dmtool executable',
+                    bytes: nativeBinary.length(),
+                    sha256: sha256(nativeBinary),
+                ],
+                [
+                    id: 'trimmed-jvm-app',
+                    definition: 'jpackage app image with a jlink-trimmed JDK and the same Groovy-excluded classpath as native dmtool',
+                    bytes: byteSize(trimmedImage),
+                    sha256: sha256(trimmedImage),
+                ],
+            ]
+
+            def report = [
+                protocolVersion: 1,
+                informativeOnly: true,
+                collectorSha256: collectorSha,
+                commit: commit,
+                label: label,
+                runner: runner,
+                projectVersion: root.version.toString(),
+                host: [
+                    os: System.getProperty('os.name'),
+                    arch: System.getProperty('os.arch'),
+                    javaRuntime: System.getProperty('java.runtime.version'),
+                    javaVendor: System.getProperty('java.vendor'),
+                ],
+                artifactSmoke: artifactSmoke,
+                bases: bases,
+                deferredSurfaces: [
+                    productionNpm: [
+                        measured: false,
+                        ownerDecision: 'IG85',
+                        reason: 'No functional production npm package exists: publication/API/.d.ts/consumer smoke are owner-deferred.',
+                        reopenRule: 'The IG85 publication increment must pack and consumer-smoke the real production npm package, then add it to this previous-release comparison.',
+                    ],
+                ],
+                nativeToTrimmedJvmRatio: (bases.find { it.id == 'native-cli' }.bytes as double) /
+                    (bases.find { it.id == 'trimmed-jvm-app' }.bytes as double),
+            ]
+
+            def previousPath = root.providers.gradleProperty('deliveryPreviousReport').orNull
+            if (previousPath) {
+                File previousFile = root.file(previousPath)
+                if (!previousFile.isFile()) throw new GradleException("previous delivery report is missing: ${previousFile}")
+                def previous = new JsonSlurper().parse(previousFile)
+                if (previous.protocolVersion != 1) {
+                    throw new GradleException("unsupported previous delivery protocol ${previous.protocolVersion}")
+                }
+                if (previous.collectorSha256 != collectorSha) {
+                    throw new GradleException('previous delivery report used a different collector definition')
+                }
+                if (previous.runner != runner) {
+                    throw new GradleException(
+                        "previous delivery report runner ${previous.runner} does not match ${runner}")
+                }
+                if (previous.host != report.host) {
+                    throw new GradleException(
+                        "previous delivery report host/toolchain ${previous.host} does not match ${report.host}")
+                }
+                def previousById = previous.bases.collectEntries { [(it.id): it] }
+                if (previousById.keySet() != bases*.id.toSet()) {
+                    throw new GradleException(
+                        "previous delivery bases ${previousById.keySet()} do not match current ${bases*.id.toSet()}")
+                }
+                report.previous = [
+                    commit: previous.commit,
+                    label: previous.label,
+                    projectVersion: previous.projectVersion,
+                ]
+                report.comparisons = bases.collect { current ->
+                    def old = previousById[current.id]
+                    double ratio = (current.bytes as double) / (old.bytes as double)
+                    [
+                        id: current.id,
+                        previousBytes: old.bytes,
+                        currentBytes: current.bytes,
+                        deltaBytes: (current.bytes as long) - (old.bytes as long),
+                        ratio: ratio,
+                        candidateReviewSignalOverTenPercent: ratio > 1.10d,
+                    ]
+                }
+            }
+
+            File output = outputProvider.get()
+            output.parentFile.mkdirs()
+            output.text = JsonOutput.prettyPrint(JsonOutput.toJson(report)) + System.lineSeparator()
+            println "[delivery-footprint] ${label}@${commit}: ${bases.collect { "${it.id}=${it.bytes}" }.join(' ')} → ${output}"
+        }
+    }
+}
