@@ -47,7 +47,6 @@ object Polarity {
     fun neFillable(leftLessThanRight: Boolean, l: Fill, r: Fill): Boolean =
         if (leftLessThanRight) l.canGrow || r.canShrink else l.canShrink || r.canGrow
 
-    /** EQ-like fillability: either operand can move at all. Also the tolerance-band (`DiffersWithToleranceRange`)
-     *  rule — OMISSION iff filling either operand toward the other could close the gap. */
+    /** EQ-like fillability: either operand can move at all. */
     fun anyMove(l: Fill, r: Fill): Boolean = l.canGrow || l.canShrink || r.canGrow || r.canShrink
 }

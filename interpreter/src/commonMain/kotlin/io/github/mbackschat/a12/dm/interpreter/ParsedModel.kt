@@ -141,8 +141,9 @@ internal class ParsedModel(
      * never disagree on which tier applies). Building the AST from the parsed components (not a re-parsed string)
      * means the operation/precondition ASTs are identical to compute's and cannot fail to re-parse (the initial
      * string-synthesis attempt introduced parser crashes — IF65). An alternative that declares a
-     * `toleranceRangeOp` compares with `DiffersWithToleranceRange{N}` (fires iff `|stored − op| > N`) instead of
-     * strict `!=`, so a stored value within the band does not over-fire (IF148, was IG96). */
+     * `toleranceRangeOp` compares with `DiffersWithToleranceRange{N}` (fires iff
+     * `|R19(stored) − R19(op)| > N`) instead of strict `!=`, so a stored value within the band does not
+     * over-fire (IF148/IF174, was IG96). */
     private fun implicitComputationCond(comp: ComputationDef): Cond {
         val parsed = parsedOf(comp)
         val fExpr = Expr.Field(comp.targetPath)

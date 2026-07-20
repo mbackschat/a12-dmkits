@@ -362,10 +362,17 @@ private fun Interpreter.neFillable(left: Expr, right: Expr, l: Fill, r: Fill): B
 
 private fun orderable(v: Val): Boolean = v is Val.Num || v is Val.Txt
 
-/** Tolerance polarity is EQ-like (kernel-probed): OMISSION when filling an empty operand toward the other
- *  could close the gap and clear the firing, else VALUE — so it is fillable iff either operand can move. */
-private fun Interpreter.toleranceType(c: Cond.Tolerance): MsgType =
-    if (Polarity.anyMove(fill(c.left), fill(c.right))) MsgType.OMISSION else MsgType.VALUE
+/** Tolerance reuses numeric `!=` polarity: only movement of the smaller side upward or the larger side
+ * downward can close a firing gap. Operand ordering uses the same scale-19 normalization as truth. */
+private fun Interpreter.toleranceType(c: Cond.Tolerance): MsgType {
+    val left = (evalCmpOperand(c.left, c.right) as? Val.Num)?.v ?: return MsgType.VALUE
+    val right = (evalCmpOperand(c.right, c.left) as? Val.Num)?.v ?: return MsgType.VALUE
+    return if (ToleranceOps.fillable(left, right, fill(c.left), fill(c.right))) {
+        MsgType.OMISSION
+    } else {
+        MsgType.VALUE
+    }
+}
 
 /**
  * The value-vs-omission polarity of a fired predicate. Non-quantifier predicates carry a static

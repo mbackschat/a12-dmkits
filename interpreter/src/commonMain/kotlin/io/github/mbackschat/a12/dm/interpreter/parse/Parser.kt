@@ -512,7 +512,7 @@ private class ConditionParser(private val src: String, private val base: String,
         val PATTERN_OPS = setOf("PatternMatched", "PatternViolated")
 
         /** The fixed-band tolerance comparisons (infix keyword → its band): `a DiffersWithToleranceRangeN b`
-         *  fires iff `|a − b| > N`. `readIdent` reads the whole keyword, so `Range10` can't collide with `Range1`. */
+         *  fires iff `|R19(a) − R19(b)| > N`. `readIdent` reads the whole keyword, so `Range10` can't collide with `Range1`. */
         val TOLERANCE_OPS = mapOf(
             "DiffersWithToleranceRange1" to dec("1"), "DiffersWithToleranceRange2" to dec("2"),
             "DiffersWithToleranceRange5" to dec("5"), "DiffersWithToleranceRange10" to dec("10"),

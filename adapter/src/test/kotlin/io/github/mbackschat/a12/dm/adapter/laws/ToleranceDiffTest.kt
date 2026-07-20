@@ -15,11 +15,14 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * `a DiffersWithToleranceRangeN b` against the kernel. Probed semantics: fires iff `|a − b| > N` (a STRICT
+ * `a DiffersWithToleranceRangeN b` against the kernel. Probed semantics: fires iff
+ * `|R19(a) − R19(b)| > N` (a STRICT
  * band — a difference exactly equal to the band does NOT fire), an empty numeric operand reads as 0, a
- * malformed operand suppresses. Polarity is EQ-like (kernel-probed): both operands present → **VALUE**; an
- * empty (fillable) operand whose filling could close the gap → **OMISSION**. The single [agree] helper compares
- * the fired message **TYPE** (null = not fired), so each case locks BOTH the firing and the polarity at once.
+ * malformed operand suppresses. Polarity is directional like numeric `!=`: only movement of the smaller side
+ * upward or the larger side downward can close a firing gap. These signed fields can move in both directions,
+ * so their empty-operand examples are OMISSION; `ToleranceExactnessDiffTest` carries the unsigned separators.
+ * The single [agree] helper compares the fired message **TYPE** (null = not fired), so each case locks BOTH the
+ * firing and the polarity at once.
  * On /Order `Quantity`/`BackorderQuantity` (signed, scale 0).
  */
 class ToleranceDiffTest {

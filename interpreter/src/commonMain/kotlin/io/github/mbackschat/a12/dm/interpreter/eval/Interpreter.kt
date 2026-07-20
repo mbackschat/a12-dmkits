@@ -226,13 +226,13 @@ class Interpreter(
     /**
      * `left DiffersWithToleranceRangeN right` — fires iff `|left − right| > [Cond.Tolerance.tolerance]` (the
      * band is STRICT). Numbers only; an empty operand resolves to `Val.Num(0)` (empty-as-0, like any
-     * comparison); a malformed / non-numeric operand → Unknown → the rule is suppressed. The band compare
-     * rescales to scale 19, like the kernel's `vergleiche`.
+     * comparison); a malformed / non-numeric operand → Unknown → the rule is suppressed. Like the kernel's
+     * `vergleiche`, each operand is independently normalized to scale 19 before the difference is taken.
      */
     internal fun evalTolerance(c: Cond.Tolerance): Tri {
-        val a = (evalExpr(c.left) as? Val.Num)?.v ?: return Tri.UNKNOWN
-        val b = (evalExpr(c.right) as? Val.Num)?.v ?: return Tri.UNKNOWN
-        return Tri.of((a - b).abs().scale19().compareTo(c.tolerance.scale19()) > 0)
+        val a = (evalCmpOperand(c.left, c.right) as? Val.Num)?.v ?: return Tri.UNKNOWN
+        val b = (evalCmpOperand(c.right, c.left) as? Val.Num)?.v ?: return Tri.UNKNOWN
+        return Tri.of(ToleranceOps.differs(a, b, c.tolerance))
     }
 
     private fun evalCond(c: Cond): Tri = when (c) {

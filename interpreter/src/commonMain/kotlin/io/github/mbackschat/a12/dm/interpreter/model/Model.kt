@@ -268,8 +268,9 @@ data class RuleDef(
 /**
  * A computation alternative's tolerance band — the kernel's `toleranceRangeOp` (`Computation.TR{1,2,5,10}`,
  * serialized as `DiffersWithToleranceRange{N}`). When present, the implicit computation-validation compares the
- * stored value against the operation with `DiffersWithToleranceRange{N}` (fires iff `|stored − op| > N`) instead
- * of strict `!=`, so a stored value within ±N does not over-fire (IF148).
+ * stored value against the operation with `DiffersWithToleranceRange{N}` (fires iff
+ * `|R19(stored) − R19(op)| > N`) instead of strict `!=`, so a stored value within ±N does not over-fire
+ * (IF148/IF174).
  */
 enum class ToleranceBand(val wire: String, val amount: Int) {
     TR1("DiffersWithToleranceRange1", 1),

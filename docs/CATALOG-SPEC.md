@@ -47,7 +47,7 @@ Design rules, fixed by the WI-5a slice and held through the WI-5b dimensions:
 
 | value | meaning | canonical lock |
 |---|---|---|
-| `STRICT` | the endpoint is **excluded** — the endpoint value does not satisfy the operator | `<`/`>` (definition); the tolerance band `DiffersWithToleranceRangeN` (`ToleranceDiffTest`: fires iff `|a − b| > N` — exactly-N does not fire) |
+| `STRICT` | the endpoint is **excluded** — the endpoint value does not satisfy the operator | `<`/`>` (definition); the tolerance band `DiffersWithToleranceRangeN` (`ToleranceExactnessDiffTest`: fires iff `|R₁₉(a) − R₁₉(b)| > N` — exactly-N does not fire) |
 | `INCLUSIVE` | the endpoint is **included** — the endpoint value satisfies the operator | `<=`/`>=` (definition); the date-range overlap predicates (IF72 / `DateRangeOverlapSemanticsDiffTest`: CLOSED intervals, `end1 ≥ start2 ∧ end2 ≥ start1`, so touching ranges overlap) |
 
 The consumer this serves (the §21D razor): the eval judge, to reason that `[Q] < 100` ≡ `[Q] <= 99` over integers but `[Q] < 100` ≢ `[Q] <= 100`, and that touching date ranges overlap. Each claim's probe pins a document whose operand sits **exactly at** the endpoint, so a STRICT/INCLUSIVE mistake flips `fires`. Populated over the ten threshold/interval operators — the four orderings (`<` `>` `<=` `>=`), the four tolerance ops, and the two date-range overlap predicates; `Equal`/`NotEqual` carry no boundary (equality has no interval endpoint).
