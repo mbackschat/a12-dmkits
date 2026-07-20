@@ -36,10 +36,10 @@ import java.util.Locale
  *   and the mode where the kernel's compiled rules most out-run the interpreter's per-call tree-WALK (parsing is
  *   one-and-done — cached in `ParsedModel` at construction; the #31 re-parse cost is retired).
  *
- * **Correctness first (a named non-negotiable):** both modes assert the engines produce the SAME fired codes
- * (a sorted *multiset* — same codes AND per-row firing count) BEFORE timing; a fast-but-wrong path is no win.
- * The row-level differential stays the `*DiffTest` (in `laws/`) job; here it gates that the benchmarked
- * instance is evaluated equivalently.
+ * **Correctness first (a named non-negotiable):** before timing, comparison modes assert complete validation
+ * signatures (`code|type|indexed-pointer`) or computation signatures (`indexed-pointer|outcome|value`) across
+ * every eligible engine. Every repeated variant is checked, and every actual interpreter-only instance retains
+ * its outcome-bearing eligibility check. A fast-but-wrong or silently partial path is no win.
  *
  * **⭐ Code generation is NEVER inside the timed region.** The kernel's real architecture is **generate code
  * ONCE, ahead of validation, then validate/compute many documents against it** (model-load time → codegen →
@@ -129,8 +129,16 @@ interface RunInstance {
     /** The full outcome-bearing semantic result, used before timing. */
     fun outcome(): PerfOutcome
 
-    /** The timed projection. Full signatures are materialized inside the clocked call. */
-    fun run(): List<String> = outcome().signatures
+    /** The timed projection. Full signatures are materialized inside the clocked call; unsupported work can
+     *  never be projected away, even when a diagnostic caller reaches this lower-level surface directly. */
+    fun run(): List<String> {
+        val result = outcome()
+        check(result.unsupported.isEmpty()) {
+            "RunInstance cannot project an unsupported outcome: " +
+                result.unsupported.joinToString { "${it.rulePath} (${it.reason})" }
+        }
+        return result.signatures
+    }
 }
 
 /** A reusable engine for a scenario, built ONCE — then many instances run through it (the model-reuse layer). */
@@ -329,9 +337,9 @@ object PerfHarness {
         return stats(times)
     }
 
-    /** Cap on the rows the [preflight] materializes — an unsupported construct is a STRUCTURAL property of the
-     *  model (independent of row count), so a small instance that still instantiates every group proves it, cheaply
-     *  (every catalog scenario instantiates each group at n ≥ 1). Keeps the per-sample preflight ~sub-ms. */
+    /** Cap on the diagnostic document [preflight] materializes. Value-independent support is proved by the
+     *  prepared-model audit; exact-N and per-variant outcome checks separately catch data-sensitive callback
+     *  failures. The capped sample therefore stays cheap without pretending to prove later rows. */
     private const val PREFLIGHT_MAX_ROWS = 200
 
     private fun preparedAudit(scenario: PerfScenario) {
@@ -450,7 +458,7 @@ object PerfHarness {
 
     /**
      * Single-document mode: build all three engines (interp, kernel-Groovy, kernel-Java), materialize the
-     * canonical instance (variant 0) for each, assert the fired-code multisets agree THREE-way (correctness
+     * canonical instance (variant 0) for each, assert complete semantic signatures agree THREE-way (correctness
      * first — interp == groovy == java), then time each. The O(N²) gate + the Groovy-vs-Java fairness measure.
      * Pass [withJava] = false to skip the (compile-cost) Java baseline when only the interp/Groovy gate is wanted.
      */
@@ -486,7 +494,7 @@ object PerfHarness {
 
     /**
      * **Repeated-eval mode (form-input / batch).** Build each engine ONCE, pre-build [variants] slightly-
-     * different instances (variant 0..M-1, OUTSIDE timing), assert correctness on the first + last variant,
+     * different instances (variant 0..M-1, OUTSIDE timing), assert complete correctness on every variant,
      * then time the LOOP of M evaluations and report **per-eval** stats. This is the reuse pattern the kernel's
      * codegen + per-run caches are tuned for; comparing its ratio to the single-document [runScenario] ratio
      * reveals whether the interpreter's per-call tree-WALK (parsing is one-and-done — cached in `ParsedModel`)

@@ -63,14 +63,14 @@ class PerfBenchTest {
      * codegen + per-run caches are tuned for. A different MODE from [gatesEveryInventoryScenario]'s single-document
      * sweep (the engine is built ONCE and M variant instances are looped), so it is kept explicit rather than
      * inventory-derived; the printed PER-EVAL ratio, read against the single-document ratio, says whether the
-     * interpreter's per-call tree-walk costs it under reuse. Correctness on the first + last (differing) variant is
+     * interpreter's per-call tree-walk costs it under reuse. Complete correctness on every differing variant is
      * asserted inside [PerfHarness.runRepeated]; the gate bound is generous (this mode is primarily diagnostic).
      */
     @Test
     fun repeatedEvalOverVaryingDocuments() {
         val rows = listOf(
-            PerfHarness.runRepeated(PerfCatalog.b1(), n = 1_500, variants = 20, withJava = false),
-            PerfHarness.runRepeated(PerfCatalog.b3(), n = 300, variants = 20, withJava = false),   // × 5 subs = 1500 Sub rows
+            PerfHarness.runRepeated(PerfCatalog.b1(), n = 1_500, variants = 20, withJava = true),
+            PerfHarness.runRepeated(PerfCatalog.b3(), n = 300, variants = 20, withJava = true),   // × 5 subs = 1500 Sub rows
         )
         rows.forEach { println(PerfHarness.formatRepeated(it, CAVEAT)) }
         rows.forEach { row ->

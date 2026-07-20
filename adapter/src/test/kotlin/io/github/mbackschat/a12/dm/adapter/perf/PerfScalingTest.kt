@@ -50,6 +50,7 @@ class PerfScalingTest {
     @Test
     fun startupCost() {
         val scenario = PerfCatalog.manyRules(48)
+        PerfHarness.assertSemanticAgreement(scenario, listOf(48), withJava = true)
         val tEng = System.nanoTime()
         val eng = InterpreterPerfEngine.build(scenario)          // lazy — builds AST wrappers, no parse
         val buildMs = (System.nanoTime() - tEng) / 1e6

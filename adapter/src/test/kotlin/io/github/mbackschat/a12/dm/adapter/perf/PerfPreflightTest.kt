@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Tag
@@ -62,6 +63,21 @@ class PerfPreflightTest {
     fun preflightPassesAFullySupportedScenario() {
         // B1 (per-row Qty>50) — every construct supported, so the preflight returns cleanly (no throw).
         PerfHarness.preflight(PerfCatalog.b1(), n = 50)
+    }
+
+    @Test
+    fun timedProjectionCannotDiscardAnUnsupportedOutcome() {
+        val instance = object : RunInstance {
+            override fun outcome() = PerfOutcome(
+                signatures = emptyList(),
+                unsupported = listOf(UnsupportedRule("/C/R", "unsupported callback")),
+            )
+        }
+
+        val ex = assertThrows<IllegalStateException> { instance.run() }
+
+        assertTrue("/C/R" in (ex.message ?: ""), "the projection refusal names the unsupported rule: ${ex.message}")
+        assertTrue("unsupported callback" in (ex.message ?: ""), "the projection refusal retains the reason: ${ex.message}")
     }
 
     @Test

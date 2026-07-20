@@ -10,9 +10,11 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 
 /**
  * Perf gate — the two `$` self-correlation regimes, each measured AGAINST the kernel's same operation on the SAME
@@ -34,6 +36,7 @@ import org.junit.jupiter.api.Test
  * Robust estimator (IF137 paired: interleaved N/4N, median of within-pair ratios) mirrors `PerfGateTest`.
  */
 @Tag("perf")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class OuterCorrelationPerfTest {
 
     private val base = DocumentModelDraft.named("order").locale("en_US")
@@ -73,6 +76,13 @@ class OuterCorrelationPerfTest {
         for (r in 1..n) {
             sink.group("/Order/Items", 1, r)
             sink.field(COUNT, flat(r), 1, r, 1)
+        }
+    }
+
+    @BeforeAll
+    fun assertExactTriEngineEligibility() {
+        for (scenario in listOf(eqScenario, gtScenario)) {
+            PerfHarness.assertSemanticAgreement(scenario, listOf(N, N * 4), withJava = true)
         }
     }
 
@@ -147,7 +157,6 @@ class OuterCorrelationPerfTest {
     /** The `>` no-witness discriminator must be exact at both scales and stay below the shared quadratic trip. */
     @Test
     fun nonEqualityOuterCorrelationIsExactAndSubQuadratic() {
-        PerfHarness.assertSemanticAgreement(gtScenario, listOf(N, N * 4), withJava = true)
         val g = PerfHarness.pairedGrowth(N, N * 4) { medianMs(defGt, it, ::flat) }
         println("[perf] %s → %s \$ non-equality correlation: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
             .format(

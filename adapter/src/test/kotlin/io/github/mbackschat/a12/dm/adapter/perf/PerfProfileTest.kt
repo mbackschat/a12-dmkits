@@ -37,6 +37,7 @@ class PerfProfileTest {
 
     private fun profile(scenario: PerfScenario, n: Int) {
         val measurement = PerfHarness.measurementLabel(scenario, n)
+        PerfHarness.assertSemanticAgreement(scenario, listOf(n), withJava = true)
         val prep = InterpreterPerfEngine.build(scenario).instance(n)
         val firings = prep.run().size   // also the correctness payload, though profile mode does not gate
         println("[profile] $measurement ${scenario.name} N=$n firings=$firings — warming…")
