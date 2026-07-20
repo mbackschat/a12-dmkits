@@ -176,6 +176,10 @@ private class KernelDocSink(private val doc: RuntimeLaws.Doc) : PlacementSink {
 /** Wall-clock distribution (ms) of a timed operation — robust stats, not a single cold number. */
 data class Stats(val medianMs: Double, val minMs: Double, val p90Ms: Double)
 
+/** The result of the IF137-ratified [PerfHarness.pairedGrowth] estimator: the median within-pair growth [ratio]
+ *  and a representative [smallMs]/[largeMs] (the medians across pairs) for the log line. */
+data class Growth(val ratio: Double, val smallMs: Double, val largeMs: Double)
+
 /**
  * One single-document scenario row: the interpreter's stats at scale [n] vs BOTH kernel baselines — [groovy]
  * (dynamic, the production path) and [java] (the kernel's own validator compiled as Java, the Groovy-tax-free
@@ -336,6 +340,33 @@ object PerfHarness {
         val iStats = measureLoop(warmupLoops, timedLoops, iInsts)
         return RepeatedRow(scenario.name, n, variants, iStats, gStats, jStats)
     }
+
+    /**
+     * **The IF137-ratified paired growth estimator** — interleaved N/4N samples, the **median of the within-pair
+     * ratios**. Each of [pairs] pairs measures [small] then [large] back-to-back (interleaved, so both share the
+     * same machine-load slice), and the within-pair ratio is `large/small`; the estimator is the **median** of
+     * those ratios. Median (not the old min-of-repeats) is the robust central value the contract requires: a min
+     * understates under a single clean slice (the min hack "flipped pass↔fail on identical code"
+     * INTERPRETER-PERFORMANCE.md) and a mean is dragged by one contended slice. [measureAt] returns a representative
+     * ms at a scale — each gate supplies its own (a least-contended `timeInterpreter(...).minMs`, a `coldRunMillis`,
+     * or a specialist `minMs`). A linear axis medians ≈4×, a quadratic one ≈16×; the trip line is
+     * [PerfBounds.SUB_QUADRATIC_MAX] (the ratified backstop — a tighter bar is an owner-gated per-number promotion,
+     * IF137). Reported [Growth.smallMs]/[Growth.largeMs] are the medians across pairs, for the log line.
+     */
+    fun pairedGrowth(small: Int, large: Int, pairs: Int = PerfBounds.GROWTH_PAIRS, measureAt: (Int) -> Double): Growth {
+        val ratios = DoubleArray(pairs)
+        val smalls = DoubleArray(pairs)
+        val larges = DoubleArray(pairs)
+        for (i in 0 until pairs) {
+            val s = measureAt(small)
+            val l = measureAt(large)
+            smalls[i] = s; larges[i] = l; ratios[i] = l / s
+        }
+        return Growth(median(ratios), median(smalls), median(larges))
+    }
+
+    /** The middle value of a sorted copy (does not mutate the caller's array). */
+    private fun median(a: DoubleArray): Double = a.sortedArray().let { it[it.size / 2] }
 
     /** Time the INTERPRETER only at scale [n] (profile/scaling use — no kernel, so high N stays cheap). */
     fun timeInterpreter(scenario: PerfScenario, n: Int, warmup: Int, iters: Int): Stats {

@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test
  * O(N²) scan. Four times the rows must therefore cost well below quadratic growth (≈16×); the generous `<9×`
  * catastrophe floor catches loss of the hash-join path while tolerating timing noise. The single-star
  * `CurrentRepetition` self-exclusion remains hash-joinable because the current row can be subtracted from its bucket.
- * Robust estimator (min-of-repeats, small+large back-to-back) mirrors `PerfGateTest.scalingIsSubQuadratic`.
+ * Robust estimator (IF137 paired: interleaved N/4N, median of within-pair ratios) mirrors `PerfGateTest`.
  */
 @Tag("perf")
 class OuterCorrelationPerfTest {
@@ -71,19 +71,12 @@ class OuterCorrelationPerfTest {
 
     @Test
     fun equalityOuterCorrelationStaysSubQuadratic() {
-        var best = Double.MAX_VALUE
-        var small = 0.0
-        var large = 0.0
-        repeat(3) {
-            val s = minMs(N)
-            val l = minMs(N * 4)
-            val growth = l / s
-            if (growth < best) { best = growth; small = s; large = l }
-        }
-        println("[perf] \$ equality correlation: %.1fms@%d → %.1fms@%d  min-growth=%.1f× (linear≈4, quadratic≈16)"
-            .format(small, N, large, N * 4, best))
-        assertTrue(best < 9.0,
-            "\$ equality correlation scaling looks quadratic: 4× the rows took ${best}× the time (linear≈4, quadratic≈16)")
+        // IF137 paired estimator: interleaved N/4N, median of within-pair ratios (via the shared PerfHarness helper).
+        val g = PerfHarness.pairedGrowth(N, N * 4) { minMs(it) }
+        println("[perf] \$ equality correlation: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
+            .format(g.smallMs, N, g.largeMs, N * 4, g.ratio))
+        assertTrue(g.ratio < PerfBounds.SUB_QUADRATIC_MAX,
+            "\$ equality correlation scaling looks quadratic: 4× the rows took ${g.ratio}× the time (linear≈4, quadratic≈16)")
     }
 
     /**

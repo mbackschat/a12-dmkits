@@ -72,18 +72,15 @@ class CustomTypePerfTest {
     }
 
     @Test fun customTypeValidationStaysSubQuadratic() {
-        val small = doc(N_SMALL)
-        val large = doc(N_SMALL * 4)
+        val docs = mapOf(N_SMALL to doc(N_SMALL), N_SMALL * 4 to doc(N_SMALL * 4))
         fun run(d: Document) = DmInterpreter(customDef, predefinedTypes = registry).validate(d)
-        repeat(WARM) { run(small); run(large) }
-        var best = Double.MAX_VALUE
-        repeat(GROWTH_REPEATS) {
-            val sMs = measureTime { run(small) }.inWholeMicroseconds / 1000.0
-            val lMs = measureTime { run(large) }.inWholeMicroseconds / 1000.0
-            if (sMs > 0) best = minOf(best, lMs / sMs)
+        repeat(WARM) { docs.values.forEach { run(it) } }
+        // IF137 paired estimator: interleaved N/4N, median of within-pair ratios (via the shared PerfHarness helper).
+        val g = PerfHarness.pairedGrowth(N_SMALL, N_SMALL * 4) { n ->
+            measureTime { run(docs.getValue(n)) }.inWholeMicroseconds / 1000.0
         }
-        assertTrue(best < SUB_QUADRATIC_MAX,
-            "custom-type validation growth for 4× rows was ${"%.2f".format(best)}× (linear≈4, quadratic≈16) — an O(N²) regression")
+        assertTrue(g.ratio < SUB_QUADRATIC_MAX,
+            "custom-type validation growth for 4× rows was ${"%.2f".format(g.ratio)}× (linear≈4, quadratic≈16) — an O(N²) regression")
     }
 
     private companion object {
@@ -94,7 +91,6 @@ class CustomTypePerfTest {
         const val WARM = 3
         const val REPEATS = 5
         const val FACTOR = 6             // generous; a per-cell virtual-call/boxing blowup is far larger (+ 50 ms slack)
-        const val GROWTH_REPEATS = 5
         const val SUB_QUADRATIC_MAX = 8.0 // linear≈4; trips well before quadratic≈16
     }
 }

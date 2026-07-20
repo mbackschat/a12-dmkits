@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.ABS_CEILING_MS
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.CAVEAT
-import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.GROWTH_REPEATS
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.N_SMALL
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.RATIO_CEILING
 import io.github.mbackschat.a12.dm.adapter.perf.PerfBounds.SUB_QUADRATIC_MAX
@@ -14,15 +13,33 @@ import org.junit.jupiter.api.Test
  * The **routine performance gate** (`scripts/perf.sh gate` — INTERPRETER-PERFORMANCE.md "The regression gate
  * (mechanics)"): the **sub-quadratic growth guards** — interpreter-only, so high N stays cheap — plus ONE
  * against-kernel canary ([complexRealWorldAgreesWithKernel], whose reduced model keeps kernel codegen fast).
- * A growth check times N and 4N back-to-back: a linear engine grows ≈4×, a quadratic one ≈16×; the min-growth
- * over a few repeats is robust to machine load (a single-scale absolute bound can't tell linear from
- * quadratic, but a growth factor across scales can). This tier runs at EVERY landing; the kernel-ratio
- * benchmark sweeps live in [PerfBenchTest] (`scripts/perf.sh bench`, 2026-07-10 split — their per-scenario
- * Groovy codegen + baselines dominated the old single-tier wall clock). Bounds + the fairness caveat:
- * [PerfBounds]. Pure engine, no CLI.
+ * Each growth guard runs the **IF137-ratified paired estimator** ([PerfHarness.pairedGrowth] via
+ * [assertSubQuadratic]): interleaved N/4N samples, the **median of the within-pair ratios** — a linear engine
+ * medians ≈4×, a quadratic one ≈16×. (Median replaced the earlier min-of-repeats, which "flipped pass↔fail on
+ * identical code"; the trip line stays the ratified `<9×` backstop — a tighter bar is an owner-gated per-number
+ * promotion, IF137.) This tier runs at EVERY landing; the kernel-ratio benchmark sweeps live in [PerfBenchTest]
+ * (`scripts/perf.sh bench`, 2026-07-10 split — their per-scenario Groovy codegen + baselines dominated the old
+ * single-tier wall clock). Bounds + the fairness caveat: [PerfBounds]. Pure engine, no CLI.
  */
 @Tag("perf")
 class PerfGateTest {
+
+    /**
+     * Run the [PerfHarness.pairedGrowth] estimator for a gate and assert the median within-pair growth stays under
+     * the sub-quadratic trip line. [measureAt] returns a representative ms at a scale (the gate supplies its own —
+     * a least-contended `timeInterpreter(...).minMs`, or `coldRunMillis`); [small]/[large] (default 4×[small]) are
+     * the two scales, [unit] labels the scaled axis, and [culprit] names the likely regression when it trips.
+     */
+    private fun assertSubQuadratic(
+        label: String, small: Int, unit: String, culprit: String,
+        large: Int = small * 4, measureAt: (Int) -> Double,
+    ) {
+        val g = PerfHarness.pairedGrowth(small, large, measureAt = measureAt)
+        println("[perf] %s: %.1fms@%d → %.1fms@%d %s  median-growth=%.2f× (linear≈4, quadratic≈16)"
+            .format(label, g.smallMs, small, g.largeMs, large, unit, g.ratio))
+        assertTrue(g.ratio < SUB_QUADRATIC_MAX,
+            "$label scaling looks super-linear: 4× $unit took ${g.ratio}× the time ($culprit)")
+    }
 
     /**
      * The precise O(N²) detector: time the interpreter (only — no kernel, so high N stays cheap) on B1 at N and
@@ -32,24 +49,9 @@ class PerfGateTest {
     @Test
     fun scalingIsSubQuadratic() {
         val b1 = PerfCatalog.b1()
-        // Robust estimator against machine load (this gate flipped pass↔fail on identical code):
-        //  - per N, take the MIN time (least-contended single-thread run; noise only inflates);
-        //  - measure small+large back-to-back so a repeat's two Ns share the same load → their RATIO is stable;
-        //  - take the MIN growth over a few repeats → the least-contended pairing. (A single min/min could still
-        //    inflate under SUSTAINED load if large-N never got a clean slot while small-N did; min-of-repeats does not.)
-        var best = Double.MAX_VALUE
-        var bestSmall = 0.0
-        var bestLarge = 0.0
-        repeat(GROWTH_REPEATS) {
-            val small = PerfHarness.timeInterpreter(b1, N_SMALL, warmup = 5, iters = 7)
-            val large = PerfHarness.timeInterpreter(b1, N_SMALL * 4, warmup = 5, iters = 7)
-            val growth = large.minMs / small.minMs
-            if (growth < best) { best = growth; bestSmall = small.minMs; bestLarge = large.minMs }
+        assertSubQuadratic("B1 sub-quadratic check", N_SMALL, "rows", "the #28 indexing regressed to a linear scan?") { n ->
+            PerfHarness.timeInterpreter(b1, n, warmup = 5, iters = 7).minMs
         }
-        println("[perf] B1 sub-quadratic check: ${"%.1f".format(bestSmall)}ms@$N_SMALL → " +
-            "${"%.1f".format(bestLarge)}ms@${N_SMALL * 4}  min-growth=${"%.2f".format(best)}× (linear≈4, quadratic≈16)")
-        assertTrue(best < SUB_QUADRATIC_MAX,
-            "B1 scaling looks super-linear: 4× the rows took ${best}× the time (quadratic would be ~16×)")
     }
 
     /**
@@ -60,18 +62,9 @@ class PerfGateTest {
     @Test
     fun semanticIndexStaysSubQuadratic() {
         val si = PerfCatalog.semanticIndexPerRow()
-        var best = Double.MAX_VALUE
-        var bSmall = 0.0; var bLarge = 0.0
-        repeat(GROWTH_REPEATS) {
-            val small = PerfHarness.timeInterpreter(si, N_SMALL, warmup = 5, iters = 7)
-            val large = PerfHarness.timeInterpreter(si, N_SMALL * 4, warmup = 5, iters = 7)
-            val g = large.minMs / small.minMs
-            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        assertSubQuadratic("semantic-index sub-quadratic", N_SMALL, "rows", "the row-prefix index regressed?") { n ->
+            PerfHarness.timeInterpreter(si, n, warmup = 5, iters = 7).minMs
         }
-        println("[perf] semantic-index sub-quadratic: ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
-            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4}  min-growth=${"%.2f".format(best)}× (linear≈4, old-quadratic≈16)")
-        assertTrue(best < SUB_QUADRATIC_MAX,
-            "semantic-index scaling looks super-linear: 4× rows took ${best}× the time (the row-prefix index regressed?)")
     }
 
     /**
@@ -84,19 +77,9 @@ class PerfGateTest {
     @Test
     fun deepNestedHavingStaysSubQuadratic() {
         val dr = PerfCatalog.deepRich(firing = false)
-        val small0 = 250
-        var best = Double.MAX_VALUE
-        var bSmall = 0.0; var bLarge = 0.0
-        repeat(GROWTH_REPEATS) {
-            val small = PerfHarness.timeInterpreter(dr, small0, warmup = 5, iters = 7)
-            val large = PerfHarness.timeInterpreter(dr, small0 * 4, warmup = 5, iters = 7)
-            val g = large.minMs / small.minMs
-            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        assertSubQuadratic("deep-nested Having sub-quadratic", 250, "vendors", "rowContextsScoped prefix-index regressed?") { n ->
+            PerfHarness.timeInterpreter(dr, n, warmup = 5, iters = 7).minMs
         }
-        println("[perf] deep-nested Having sub-quadratic: ${"%.1f".format(bSmall)}ms@$small0 → " +
-            "${"%.1f".format(bLarge)}ms@${small0 * 4} vendors  min-growth=${"%.2f".format(best)}× (linear≈4, old-quadratic≈16)")
-        assertTrue(best < SUB_QUADRATIC_MAX,
-            "deep-nested Having scaling looks super-linear: 4× vendors took ${best}× the time (rowContextsScoped prefix-index regressed?)")
     }
 
     /**
@@ -108,18 +91,10 @@ class PerfGateTest {
     @Test
     fun numberOfDifferentValuesStaysSubQuadratic() {
         val ndv = PerfCatalog.numDifferentValues()
-        var best = Double.MAX_VALUE
-        var bSmall = 0.0; var bLarge = 0.0
-        repeat(GROWTH_REPEATS) {
-            val small = PerfHarness.timeInterpreter(ndv, N_SMALL, warmup = 5, iters = 7)
-            val large = PerfHarness.timeInterpreter(ndv, N_SMALL * 4, warmup = 5, iters = 7)
-            val g = large.minMs / small.minMs
-            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        assertSubQuadratic("NumberOfDifferentValues sub-quadratic", N_SMALL, "values",
+            "the distinct sort regressed to a linear scan?") { n ->
+            PerfHarness.timeInterpreter(ndv, n, warmup = 5, iters = 7).minMs
         }
-        println("[perf] NumberOfDifferentValues sub-quadratic: ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
-            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4} values  min-growth=${"%.2f".format(best)}× (n·log n≈4–5, old-quadratic≈16)")
-        assertTrue(best < SUB_QUADRATIC_MAX,
-            "NumberOfDifferentValues scaling looks quadratic: 4× values took ${best}× the time (the distinct sort regressed to a linear scan?)")
     }
 
     /**
@@ -131,18 +106,10 @@ class PerfGateTest {
     @Test
     fun fieldValuesNotUniqueStaysSubQuadratic() {
         val fvnu = PerfCatalog.fieldValuesNotUniqueStar()
-        var best = Double.MAX_VALUE
-        var bSmall = 0.0; var bLarge = 0.0
-        repeat(GROWTH_REPEATS) {
-            val small = PerfHarness.timeInterpreter(fvnu, N_SMALL, warmup = 5, iters = 7)
-            val large = PerfHarness.timeInterpreter(fvnu, N_SMALL * 4, warmup = 5, iters = 7)
-            val g = large.minMs / small.minMs
-            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        assertSubQuadratic("FieldValuesNotUnique sub-quadratic", N_SMALL, "values",
+            "the key-set regressed to a pairwise scan?") { n ->
+            PerfHarness.timeInterpreter(fvnu, n, warmup = 5, iters = 7).minMs
         }
-        println("[perf] FieldValuesNotUnique sub-quadratic: ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
-            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4} values  min-growth=${"%.2f".format(best)}× (linear≈4, old-quadratic≈16)")
-        assertTrue(best < SUB_QUADRATIC_MAX,
-            "FieldValuesNotUnique scaling looks quadratic: 4× values took ${best}× the time (the key-set regressed to a pairwise scan?)")
     }
 
     /**
@@ -153,19 +120,9 @@ class PerfGateTest {
      */
     @Test
     fun wideGroupsStaysSubQuadratic() {
-        val small0 = 50
-        var best = Double.MAX_VALUE
-        var bSmall = 0.0; var bLarge = 0.0
-        repeat(GROWTH_REPEATS) {
-            val small = PerfHarness.timeInterpreter(PerfCatalog.wideGroups(small0), 20, warmup = 5, iters = 7)
-            val large = PerfHarness.timeInterpreter(PerfCatalog.wideGroups(small0 * 4), 20, warmup = 5, iters = 7)
-            val g = large.minMs / small.minMs
-            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        assertSubQuadratic("wide sibling-groups sub-quadratic", 50, "groups", "per-group setup scans the whole model?") { g ->
+            PerfHarness.timeInterpreter(PerfCatalog.wideGroups(g), 20, warmup = 5, iters = 7).minMs
         }
-        println("[perf] wide sibling-groups sub-quadratic: ${"%.1f".format(bSmall)}ms@$small0 → " +
-            "${"%.1f".format(bLarge)}ms@${small0 * 4} groups  min-growth=${"%.2f".format(best)}× (linear≈4, per-group-scan≈16)")
-        assertTrue(best < SUB_QUADRATIC_MAX,
-            "wide sibling-groups scaling looks super-linear: 4× groups took ${best}× the time (per-group setup scans the whole model?)")
     }
 
     /**
@@ -179,18 +136,9 @@ class PerfGateTest {
     @Test
     fun tieredComputationStaysSubQuadratic() {
         val tc = PerfCatalog.tieredComputation()
-        var best = Double.MAX_VALUE
-        var bSmall = 0.0; var bLarge = 0.0
-        repeat(GROWTH_REPEATS) {
-            val small = PerfHarness.timeInterpreter(tc, N_SMALL, warmup = 5, iters = 7)
-            val large = PerfHarness.timeInterpreter(tc, N_SMALL * 4, warmup = 5, iters = 7)
-            val g = large.minMs / small.minMs
-            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        assertSubQuadratic("tiered compute sub-quadratic", N_SMALL, "rows", "precondition selection rescans per row?") { n ->
+            PerfHarness.timeInterpreter(tc, n, warmup = 5, iters = 7).minMs
         }
-        println("[perf] tiered compute sub-quadratic: ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
-            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4} rows  min-growth=${"%.2f".format(best)}× (linear≈4, per-row-rescan≈16)")
-        assertTrue(best < SUB_QUADRATIC_MAX,
-            "tiered-computation compute scaling looks super-linear: 4× rows took ${best}× the time (precondition selection rescans per row?)")
     }
 
     /**
@@ -203,18 +151,10 @@ class PerfGateTest {
     @Test
     fun constrainedFieldsStaySubQuadratic() {
         val cf = PerfCatalog.constrainedFields()
-        var best = Double.MAX_VALUE
-        var bSmall = 0.0; var bLarge = 0.0
-        repeat(GROWTH_REPEATS) {
-            val small = PerfHarness.timeInterpreter(cf, N_SMALL, warmup = 5, iters = 7)
-            val large = PerfHarness.timeInterpreter(cf, N_SMALL * 4, warmup = 5, iters = 7)
-            val g = large.minMs / small.minMs
-            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        assertSubQuadratic("constrained-field formal check sub-quadratic", N_SMALL, "rows",
+            "the per-cell constraint check rescans?") { n ->
+            PerfHarness.timeInterpreter(cf, n, warmup = 5, iters = 7).minMs
         }
-        println("[perf] constrained-field formal check sub-quadratic: ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
-            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4} rows  min-growth=${"%.2f".format(best)}× (linear≈4, per-row-rescan≈16)")
-        assertTrue(best < SUB_QUADRATIC_MAX,
-            "constrained-field formal check looks super-linear: 4× rows took ${best}× the time (the per-cell constraint check rescans?)")
     }
 
     /**
@@ -227,18 +167,9 @@ class PerfGateTest {
     @Test
     fun multiStarCorrelationStaysSubQuadratic() {
         val ms = PerfCatalog.multiStarCorrelation()
-        var best = Double.MAX_VALUE
-        var bSmall = 0.0; var bLarge = 0.0
-        repeat(GROWTH_REPEATS) {
-            val small = PerfHarness.timeInterpreter(ms, N_SMALL, warmup = 5, iters = 7)
-            val large = PerfHarness.timeInterpreter(ms, N_SMALL * 4, warmup = 5, iters = 7)
-            val g = large.minMs / small.minMs
-            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        assertSubQuadratic("multi-star \$-correlation sub-quadratic", N_SMALL, "lines", "reverted to the naive scan?") { n ->
+            PerfHarness.timeInterpreter(ms, n, warmup = 5, iters = 7).minMs
         }
-        println("[perf] multi-star \$-correlation sub-quadratic: ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
-            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4} lines  min-growth=${"%.2f".format(best)}× (linear≈4, naive-scan≈16)")
-        assertTrue(best < SUB_QUADRATIC_MAX,
-            "multi-star \$-correlation scaling looks super-linear: 4× lines took ${best}× the time (reverted to the naive scan?)")
     }
 
     /**
@@ -249,18 +180,9 @@ class PerfGateTest {
     @Test
     fun parallelIterationStaysSubQuadratic() {
         val pi = PerfCatalog.parallel()
-        var best = Double.MAX_VALUE
-        var bSmall = 0.0; var bLarge = 0.0
-        repeat(GROWTH_REPEATS) {
-            val small = PerfHarness.timeInterpreter(pi, N_SMALL, warmup = 5, iters = 7)
-            val large = PerfHarness.timeInterpreter(pi, N_SMALL * 4, warmup = 5, iters = 7)
-            val g = large.minMs / small.minMs
-            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        assertSubQuadratic("parallel-iteration sub-quadratic", N_SMALL, "rows", "nested-loop join regression?") { n ->
+            PerfHarness.timeInterpreter(pi, n, warmup = 5, iters = 7).minMs
         }
-        println("[perf] parallel-iteration sub-quadratic: ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
-            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4}  min-growth=${"%.2f".format(best)}× (linear≈4, nested-loop≈16)")
-        assertTrue(best < SUB_QUADRATIC_MAX,
-            "parallel-iteration scaling looks super-linear: 4× rows took ${best}× the time (nested-loop join regression?)")
     }
 
     /**
@@ -274,18 +196,10 @@ class PerfGateTest {
     @Test
     fun parallelFramedStaysSubQuadratic() {
         val pf = PerfCatalog.parallelFramed()
-        var best = Double.MAX_VALUE
-        var bSmall = 0.0; var bLarge = 0.0
-        repeat(GROWTH_REPEATS) {
-            val small = PerfHarness.timeInterpreter(pf, N_SMALL, warmup = 5, iters = 7)
-            val large = PerfHarness.timeInterpreter(pf, N_SMALL * 4, warmup = 5, iters = 7)
-            val g = large.minMs / small.minMs
-            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        assertSubQuadratic("framed parallel-iteration sub-quadratic", N_SMALL, "rows",
+            "clean-group map not hoisted out of the frame loop?") { n ->
+            PerfHarness.timeInterpreter(pf, n, warmup = 5, iters = 7).minMs
         }
-        println("[perf] framed parallel-iteration sub-quadratic: ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
-            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4}  min-growth=${"%.2f".format(best)}× (linear≈4, un-hoisted≈16)")
-        assertTrue(best < SUB_QUADRATIC_MAX,
-            "framed parallel-iteration scaling looks super-linear: 4× rows took ${best}× the time (clean-group map not hoisted out of the frame loop?)")
     }
 
     /**
@@ -297,18 +211,9 @@ class PerfGateTest {
     @Test
     fun coldStartStaysSubQuadratic() {
         val b1 = PerfCatalog.b1()
-        var best = Double.MAX_VALUE
-        var bSmall = 0.0; var bLarge = 0.0
-        repeat(GROWTH_REPEATS) {
-            val small = PerfHarness.coldRunMillis(b1, N_SMALL)
-            val large = PerfHarness.coldRunMillis(b1, N_SMALL * 4)
-            val g = large / small
-            if (g < best) { best = g; bSmall = small; bLarge = large }
+        assertSubQuadratic("COLD first-call (startup)", N_SMALL, "rows", "a cold-path O(N²) regression?") { n ->
+            PerfHarness.coldRunMillis(b1, n)
         }
-        println("[perf] COLD first-call (startup): ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
-            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4}  min-growth=${"%.2f".format(best)}× (linear≈4, quadratic≈16)")
-        assertTrue(best < SUB_QUADRATIC_MAX,
-            "cold first-call scaling looks super-linear: 4× rows took ${best}× the time (a cold-path O(N²) regression?)")
     }
 
     /**
@@ -345,20 +250,10 @@ class PerfGateTest {
     @Test
     fun complexRealWorldStaysSubQuadratic() {
         val sc = PerfCatalog.complexRealWorldFull(firing = false)
-        val small0 = 250
-        var best = Double.MAX_VALUE
-        var bSmall = 0.0; var bLarge = 0.0
-        repeat(GROWTH_REPEATS) {
-            val small = PerfHarness.timeInterpreter(sc, small0, warmup = 4, iters = 6)
-            val large = PerfHarness.timeInterpreter(sc, small0 * 4, warmup = 4, iters = 6)
-            val g = large.minMs / small.minMs
-            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
-        }
-        println("[perf] complex real-world (${sc.interpModel.fields.size}f/${sc.interpModel.rules.size}r) sub-quadratic: " +
-            "${"%.1f".format(bSmall)}ms@$small0 → ${"%.1f".format(bLarge)}ms@${small0 * 4} claims  " +
-            "min-growth=${"%.2f".format(best)}× (linear≈4, quadratic≈16)")
-        assertTrue(best < SUB_QUADRATIC_MAX,
-            "complex real-world scaling looks super-linear: 4× claims took ${best}× the time (an interaction O(N²)?)")
+        assertSubQuadratic(
+            "complex real-world (${sc.interpModel.fields.size}f/${sc.interpModel.rules.size}r) sub-quadratic",
+            250, "claims", "an interaction O(N²)?",
+        ) { n -> PerfHarness.timeInterpreter(sc, n, warmup = 4, iters = 6).minMs }
     }
 
     /**
@@ -373,18 +268,9 @@ class PerfGateTest {
     @Test
     fun berlinDateTimeStaysSubQuadratic() {
         val dt = PerfCatalog.berlinDateTime()
-        var best = Double.MAX_VALUE
-        var bSmall = 0.0; var bLarge = 0.0
-        repeat(GROWTH_REPEATS) {
-            val small = PerfHarness.timeInterpreter(dt, N_SMALL, warmup = 5, iters = 7)
-            val large = PerfHarness.timeInterpreter(dt, N_SMALL * 4, warmup = 5, iters = 7)
-            val g = large.minMs / small.minMs
-            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        assertSubQuadratic("Berlin DATE_TIME sub-quadratic", N_SMALL, "rows", "the offset path regressed?") { n ->
+            PerfHarness.timeInterpreter(dt, n, warmup = 5, iters = 7).minMs
         }
-        println("[perf] Berlin DATE_TIME sub-quadratic: ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
-            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4} rows  min-growth=${"%.2f".format(best)}× (linear≈4, per-conversion-blowup≈16)")
-        assertTrue(best < SUB_QUADRATIC_MAX,
-            "Berlin DATE_TIME scaling looks super-linear: 4× rows took ${best}× the time (the offset path regressed?)")
     }
 
     /**
@@ -396,9 +282,13 @@ class PerfGateTest {
      * (linear)** at 1500/6000. Trip well below the ~16× a reintroduced per-Row rebuild would show.
      */
     @Test
-    fun computeOverlaySemanticIndexStaysSubQuadratic() = overlaySubQuadratic(
-        PerfCatalog.computeOverlaySemanticIndex(), "compute-overlay index-column", CO_N,
-        "the OverlayContext rebuilds indexColumn per outer Row instead of caching per step?")
+    fun computeOverlaySemanticIndexStaysSubQuadratic() {
+        val sc = PerfCatalog.computeOverlaySemanticIndex()
+        assertSubQuadratic("compute-overlay index-column sub-quadratic", CO_N, "rows",
+            "the OverlayContext rebuilds indexColumn per outer Row instead of caching per step?") { n ->
+            PerfHarness.timeInterpreter(sc, n, warmup = 8, iters = 7).minMs
+        }
+    }
 
     /**
      * A **soft** guard on the compute-overlay `$`-correlation path (IF143). Unlike the index-column path (a HARD
@@ -410,25 +300,12 @@ class PerfGateTest {
      * [computeOverlayAgreesWithKernel] + `interpreter.OverlayDerivedViewCacheTest`.
      */
     @Test
-    fun computeOverlayCorrelationStaysSubQuadratic() = overlaySubQuadratic(
-        PerfCatalog.computeOverlayCorrelation(), "compute-overlay \$-correlation", CO_N,
-        "the OverlayContext rebuilds correlationBuckets per outer Row with a large constant?")
-
-    /** Shared sub-quadratic estimator for the two compute-overlay scenarios (IF143) — smaller N than the validate
-     *  gates (the compute path runs a two-computation cascade per Row, so it is heavier), same min-of-repeats. */
-    private fun overlaySubQuadratic(sc: PerfScenario, label: String, n: Int, culprit: String) {
-        var best = Double.MAX_VALUE
-        var bSmall = 0.0; var bLarge = 0.0
-        repeat(GROWTH_REPEATS) {
-            val small = PerfHarness.timeInterpreter(sc, n, warmup = 8, iters = 7)
-            val large = PerfHarness.timeInterpreter(sc, n * 4, warmup = 8, iters = 7)
-            val g = large.minMs / small.minMs
-            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+    fun computeOverlayCorrelationStaysSubQuadratic() {
+        val sc = PerfCatalog.computeOverlayCorrelation()
+        assertSubQuadratic("compute-overlay \$-correlation sub-quadratic", CO_N, "rows",
+            "the OverlayContext rebuilds correlationBuckets per outer Row with a large constant?") { n ->
+            PerfHarness.timeInterpreter(sc, n, warmup = 8, iters = 7).minMs
         }
-        println("[perf] $label sub-quadratic: ${"%.1f".format(bSmall)}ms@$n → " +
-            "${"%.1f".format(bLarge)}ms@${n * 4} rows  min-growth=${"%.2f".format(best)}× (linear≈4, old-per-row-rebuild≈16)")
-        assertTrue(best < SUB_QUADRATIC_MAX,
-            "$label scaling looks super-linear: 4× rows took ${best}× the time ($culprit)")
     }
 
     /**
