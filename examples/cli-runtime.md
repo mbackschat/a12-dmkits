@@ -41,7 +41,8 @@ dmtool schema model eval \
     "fired",
     "messages",
     "rule",
-    "unsupported"
+    "unsupported",
+    "validationMode"
   ]
 }
 ```
@@ -130,6 +131,44 @@ dmtool -m examples/models/order-ruled.dm.json \
 ```
 
 → `data.rule.fired: false`, empty `fired`/`messages` — the compliant order does **not** trip the rule. The two runs together are the proof: flip the one date that matters and the verdict flips with it. Same rule, opposite data, opposite outcome.
+
+## model eval — partial validation for one page
+
+`--relevant` exposes the form engine's partial/wizard-page validation. The JSON array names the field or group instances currently relevant; an omitted index or `[*]` means every repetition, while `[n]` selects one row. A rule runs only when its error field is relevant, and an omitted operand is UNKNOWN. Selecting only `DeliveryDate` therefore suppresses the date comparison because `OrderDate` is not on this page:
+
+```bash
+dmtool -m examples/models/order-ruled.dm.json \
+  model eval --instance /tmp/rt-order-violation.json --no-computations \
+  --relevant '["/Order/DeliveryDate"]' \
+  | jq '{mode:.data.validationMode,fired:.data.fired}'
+```
+
+```output
+{
+  "mode": "partial",
+  "fired": []
+}
+```
+
+Selecting the `Order` group makes all of its descendants relevant, so the same violation fires:
+
+```bash
+dmtool -m examples/models/order-ruled.dm.json \
+  model eval --instance /tmp/rt-order-violation.json --no-computations \
+  --relevant '["/Order"]' \
+  | jq '{mode:.data.validationMode,fired:.data.fired}'
+```
+
+```output
+{
+  "mode": "partial",
+  "fired": [
+    "DELIVERY_BEFORE_ORDER"
+  ]
+}
+```
+
+Global fields are added automatically even when the caller omits them. A concrete repetition pointer such as `/Order/Lines[2]/Quantity` selects row 2; `/Order/Lines[*]/Quantity` selects all rows.
 
 ## rule eval — one rule, three outcomes (fired / passed / suppressed)
 

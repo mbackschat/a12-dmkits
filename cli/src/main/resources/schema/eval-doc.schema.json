@@ -2,11 +2,16 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/eval-doc.schema.json",
   "title": "EvalDocResult",
-  "description": "Output of `model eval` — the runtime verdict over a document INSTANCE: which rules fired on the data (validateFull), via the native-safe interpreter (the sole runtime eval engine on every target). Computations are NOT run; a computed field reads as whatever the document supplies. The INPUT --instance is a nested tree under \"fields\" (repeatable group = array of row objects, non-repeatable group = nested object, field = its text value; null/\"\" = present-but-unfilled, an absent key = no instance).",
+  "description": "Output of `model eval` — the runtime verdict over a document INSTANCE: which rules fired on the data, via the native-safe interpreter (the sole runtime eval engine on every target). By default this is full validation. `--relevant <json>` selects partial validation: a JSON array of current-page field/group instance paths; an omitted index or `[*]` means every repetition (ALL_SEMANTIC), while `[n]` selects one 1-based row. Global fields are auto-relevant. The INPUT --instance is a nested tree under \"fields\" (repeatable group = array of row objects, non-repeatable group = nested object, field = its text value; null/\"\" = present-but-unfilled, an absent key = no instance).",
   "type": "object",
   "required": ["fired", "messages"],
   "additionalProperties": false,
   "properties": {
+    "validationMode": {
+      "type": "string",
+      "const": "partial",
+      "description": "present only when `--relevant` selected partial validation; absent means full validation"
+    },
     "fired": {
       "type": "array",
       "items": { "type": "string" },

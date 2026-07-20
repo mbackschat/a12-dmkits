@@ -83,6 +83,12 @@ final class ModelEvalCommand extends BaseCommand {
             description = "the evaluation locale (default: ${DEFAULT-VALUE})")
     String localeTag;
 
+    @Option(names = "--relevant", paramLabel = "<json>",
+            description = "PARTIAL validation: JSON array of current-page field/group instance paths. Omitted "
+                    + "indices or [*] mean every repetition (ALL_SEMANTIC); [n] selects one row, e.g. "
+                    + "'[\"/Order/Name\",\"/Order/Lines[2]/Quantity\"]'. Global fields are auto-relevant.")
+    String relevant;
+
     @Option(names = "--no-computations",
             description = "validate the document's STORED values as-is (the bare validateFull). By DEFAULT, "
                     + "eval first runs the model's computations and applies their values (the form-engine flow), so a "
@@ -164,7 +170,7 @@ final class ModelEvalCommand extends BaseCommand {
                 data = InterpreterEngine.evalCandidateData(interpJson, fields, localeTag,
                         effectiveGroup, name, errorEntityRelPath, condition, code, severity,
                         customSupport.predefinedTypes(), customSupport.customConditions(),
-                        customSupport.customFieldTypes(), !noComputations);
+                        customSupport.customFieldTypes(), !noComputations, relevant);
             } else {
                 // a structured refusal for an unknown --rule narrowing — otherwise it would silently report
                 // the missing rule as fired:false.
@@ -174,7 +180,7 @@ final class ModelEvalCommand extends BaseCommand {
                 }
                 data = InterpreterEngine.evalData(interpJson, fields, localeTag, ruleId,
                         customSupport.predefinedTypes(), customSupport.customConditions(),
-                        customSupport.customFieldTypes(), !noComputations);
+                        customSupport.customFieldTypes(), !noComputations, relevant);
             }
         } catch (UnsupportedModelTimeZoneException e) {
             return refuseExplainedPrecheck("model", "eval", RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED, e.getMessage(),

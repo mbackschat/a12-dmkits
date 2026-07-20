@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli.interp;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -20,6 +21,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType;
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType;
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef;
 import io.github.mbackschat.a12.dm.interpreter.model.RuleResult;
+import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity;
 import io.github.mbackschat.a12.dm.interpreter.model.Severity;
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule;
 import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome;
@@ -77,8 +79,16 @@ public final class InterpreterEngine {
     public static ObjectNode evalData(String modelJson, Map<String, Object> fields, String locale, String targetRule,
             Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
             Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {
+        return evalData(modelJson, fields, locale, targetRule, predefinedTypes, customConditions,
+                customFieldTypes, applyComputations, null);
+    }
+
+    /** Whole- or partial-document evaluation; non-null {@code relevantJson} selects {@code validatePart}. */
+    public static ObjectNode evalData(String modelJson, Map<String, Object> fields, String locale, String targetRule,
+            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
+            Map<String, CustomFieldType> customFieldTypes, boolean applyComputations, String relevantJson) {
         return evalFor(InterpreterModelLoader.load(modelJson), fields, locale, targetRule,
-                predefinedTypes, customConditions, customFieldTypes, applyComputations);
+                predefinedTypes, customConditions, customFieldTypes, applyComputations, relevantJson);
     }
 
     /**
@@ -92,11 +102,20 @@ public final class InterpreterEngine {
             String group, String name, String errorEntityRelPath, String condition, String code, String severity,
             Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
             Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {
+        return evalCandidateData(modelJson, fields, locale, group, name, errorEntityRelPath, condition, code,
+                severity, predefinedTypes, customConditions, customFieldTypes, applyComputations, null);
+    }
+
+    /** Candidate evaluation with optional partial-validation relevance. */
+    public static ObjectNode evalCandidateData(String modelJson, Map<String, Object> fields, String locale,
+            String group, String name, String errorEntityRelPath, String condition, String code, String severity,
+            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
+            Map<String, CustomFieldType> customFieldTypes, boolean applyComputations, String relevantJson) {
         RuleDef candidate = new RuleDef(group + "/" + name, group, condition, code, errorEntityRelPath,
                 Severity.valueOf(severity.toUpperCase()), Map.of(locale, name));
         ModelDef def = InterpreterModelLoader.load(modelJson).withRule(candidate);
         return evalFor(def, fields, locale, candidate.getPath(),
-                predefinedTypes, customConditions, customFieldTypes, applyComputations);
+                predefinedTypes, customConditions, customFieldTypes, applyComputations, relevantJson);
     }
 
     /**
@@ -109,13 +128,19 @@ public final class InterpreterEngine {
      */
     private static ObjectNode evalFor(ModelDef def, Map<String, Object> fields, String locale, String targetRule,
             Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
-            Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {
+            Map<String, CustomFieldType> customFieldTypes, boolean applyComputations, String relevantJson) {
         Document doc = InterpreterModelLoader.document(fields, def);
         DmInterpreter interp = new DmInterpreter(def, null, predefinedTypes, customConditions, customFieldTypes);
         Document evalDoc = applyComputations ? interp.applyComputations(doc, locale) : doc;
-        ValidationOutcome outcome = interp.validate(evalDoc, locale);
+        Set<RelevantEntity> relevant = relevantJson == null ? null : RelevantSelection.parse(relevantJson, def);
+        ValidationOutcome outcome = relevant == null
+                ? interp.validate(evalDoc, locale)
+                : interp.validatePart(evalDoc, relevant, locale);
 
         ObjectNode data = MAPPER.createObjectNode();
+        if (relevant != null) {
+            data.put("validationMode", "partial");
+        }
         ArrayNode fired = data.putArray("fired");
         outcome.getMessages().stream().map(Message::getCode).distinct().forEach(fired::add);
         ArrayNode messages = data.putArray("messages");
