@@ -2,16 +2,24 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
 import org.junit.jupiter.api.Test;
 
-/** KERNEL-FINDINGS §5 — numeric literals are exempt from the scale check; string ordering is illegal. */
+/** KERNEL-FINDINGS §5 — derived numeric scale/capability, arithmetic authoring regions, and string ordering. */
 class NumberLawsTest {
 
     @Test
-    void scaleFreeNumericLiteralsAreAcceptedOnEquality() {
-        // The decimal-scale check (MVK_INVALID_COMPARE_DEC_PLACES) applies to field-vs-field only —
-        // numeric LITERALS are accepted at any written scale against a scale-2 field.
-        for (String cond : new String[]{"[MonthlyFee] == 0", "[MonthlyFee] == 0.0", "[MonthlyFee] != 0"}) {
-            KernelLaws.accepts("/Subscription/Addons", "../MonthlyFee", "FieldFilled(MonthlyFee) And " + cond);
-        }
+    void onlyACapableSmallerScaleSideMayBePadded() {
+        KernelLaws.acceptsOrder("/Order", "../UnitPrice",
+                "FieldFilled(UnitPrice) And [UnitPrice] == 0");
+        KernelLaws.acceptsOrder("/Order", "../UnitPrice",
+                "FieldFilled(UnitPrice) And 0 == [UnitPrice]");
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And [Quantity] == 1000");
+
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And [Quantity] == 0.00",
+                "MVK_INVALID_COMPARE_DEC_PLACES");
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And 0.00 == [Quantity]",
+                "MVK_INVALID_COMPARE_DEC_PLACES");
     }
 
     @Test
@@ -58,20 +66,54 @@ class NumberLawsTest {
 
     @Test
     void powerOperatorRejectsUnparenthesizedNesting() {
-        // KERNEL-FINDINGS §5 / BA "power operator": a^b^c is rejected — nesting needs explicit grouping.
+        // Only the parser-reachable direct-left chain is rejected. Either explicit grouping is a fresh region.
         KernelLaws.rejectsOrder("/Order", "../Quantity",
                 "FieldFilled(Quantity) And [Quantity] ^ [Quantity] ^ [Quantity] > 1",
                 "MVK_TOO_MANY_POW_FOR_CALC");
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And { [Quantity] ^ [Quantity] } ^ [Quantity] > 1");
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And [Quantity] ^ { [Quantity] ^ 2 } > 1");
     }
 
     @Test
     void powerExponentMustHaveNoDecimalPlaces() {
-        // The exponent must be a whole number: a scale-2 field (UnitPrice) is rejected; a scale-0 field
-        // (Quantity) is a valid exponent. (CheckOperationImpl.checkNoFractionalDigitsInExponent.)
+        // This is a shared authoring rejection before either runtime strategy can legally execute the rule.
+        // A scale-2 field and a fractional literal are rejected; a scale-0 field is a valid exponent.
         KernelLaws.rejectsOrder("/Order", "../Quantity",
                 "AllFieldsFilled(Quantity, UnitPrice) And [Quantity] ^ [UnitPrice] > 1",
                 "MVK_INVALID_NUMBER_FOR_EXP");
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And [Quantity] ^ 0.5 > 1",
+                "MVK_INVALID_NUMBER_FOR_EXP");
         KernelLaws.acceptsOrder("/Order", "../Quantity",
                 "AllFieldsFilled(Quantity, UnitPrice) And [UnitPrice] ^ [Quantity] > 1");
+    }
+
+    @Test
+    void powerScaleZeroExceptionStillClearsConstantExpandability() {
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And [Quantity] == [Quantity] ^ 0");
+        KernelLaws.rejectsOrder("/Order", "../UnitPrice",
+                "FieldFilled(UnitPrice) And [UnitPrice] == 0 ^ 2",
+                "MVK_INVALID_COMPARE_DEC_PLACES");
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And [Quantity] == [Quantity] ^ -1",
+                "MVK_INVALID_COMPARE_DEC_PLACES");
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And [Quantity] < [Quantity] ^ -1");
+    }
+
+    @Test
+    void plainArithmeticCountsDivisionContributionsUntilAReset() {
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And [Quantity] / 2 / 3 > 0",
+                "MVK_TOO_MANY_DIV_FOR_CALC");
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And { [Quantity] / 2 } / 3 > 0");
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And [Quantity] / { 2 / 3 } > 0");
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And [Quantity] / 2 + [Quantity] / 3 > 0");
     }
 }

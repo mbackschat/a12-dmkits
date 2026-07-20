@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.math.BigDecimal;
+import java.util.Objects;
 
 /**
  * A numeric-valued expression that can be compared — a field value, a {@code Length(...)}, an
@@ -8,13 +9,40 @@ import java.math.BigDecimal;
  * compares the same way ({@link NumberRef} delegates here).
  *
  * <p>Literal overloads are <strong>scale-faithful</strong>: {@code eq("0.00")} renders exactly
- * {@code == 0.00} (study finding 2). Note the kernel's decimal-scale check
- * ({@code MVK_INVALID_COMPARE_DEC_PLACES}) applies to <em>field-vs-field</em> comparisons only —
- * numeric literals are accepted at any written scale (verified; see
- * {@code KERNEL-INTEGRATION-NOTES.md}). Field-vs-field comparison and its cheap scale pre-check
- * (D13) are a later increment.
+ * {@code == 0.00}. Equality and inequality use the kernel's derived signed-scale summary plus its
+ * independent multiplicative-constant capability. Only a capable smaller-scale side may be padded;
+ * ordering deliberately bypasses this gate.
  */
-public record NumberExpr(Calculation expression) {
+public final class NumberExpr {
+
+    private final Calculation expression;
+    private final NumericScaleSummary scaleSummary;
+
+    /**
+     * Wrap a numeric calculation whose model-derived scale metadata is not available at this boundary.
+     * Self-describing literal/arithmetic/rounding/count shapes are summarized; otherwise the live kernel
+     * remains the authoring oracle instead of this wrapper inventing a scale.
+     */
+    public NumberExpr(Calculation expression) {
+        this(expression, NumericScaleSummary.from(expression));
+    }
+
+    private NumberExpr(Calculation expression, NumericScaleSummary scaleSummary) {
+        this.expression = Objects.requireNonNull(expression, "expression");
+        this.scaleSummary = Objects.requireNonNull(scaleSummary, "scaleSummary");
+    }
+
+    static NumberExpr field(Calculation expression, int scale) {
+        return new NumberExpr(expression, NumericScaleSummary.field(scale));
+    }
+
+    static NumberExpr fixedScale(Calculation expression, int scale) {
+        return new NumberExpr(expression, NumericScaleSummary.known(scale, false));
+    }
+
+    public Calculation expression() {
+        return expression;
+    }
 
     /** {@code this < literal} — a numeric ordering comparison. catalog:LessThan */
     public Condition lt(long literal) {
@@ -68,7 +96,7 @@ public record NumberExpr(Calculation expression) {
         return cmp(CompareOp.GE, new NumberLiteral(literal));
     }
 
-    /** {@code this == literal} — a numeric equality comparison (scale-faithful; the kernel's dec-places gate is field-vs-field). catalog:Equal */
+    /** {@code this == literal} — a scale-faithful numeric equality comparison using the shared derived-scale gate. catalog:Equal */
     public Condition eq(long literal) {
         return cmp(CompareOp.EQ, NumberLiteral.of(literal));
     }
@@ -95,9 +123,9 @@ public record NumberExpr(Calculation expression) {
     }
 
     // --- expression-vs-expression comparison (e.g. [Quantity] < Sum(...), Sum(...) > [Cap]) ---------
-    // Scale-faithful equality isn't pre-checked here: an aggregate's declared scale isn't tracked, so
-    // == / != defer the kernel's decimal-scale check (F11 — the live kernel arbitrates). Ordering
-    // ignores scale anyway.
+    // == / != use the shared derived-scale gate whenever both summaries are available. A generic
+    // expression whose model-derived scale is unavailable defers to the live kernel (F11); ordering
+    // ignores scale.
 
     public Condition lt(NumberExpr other) {
         return exprCmp(CompareOp.LT, other);
@@ -168,14 +196,39 @@ public record NumberExpr(Calculation expression) {
     }
 
     private NumberExpr arith(Arithmetic.Op op, NumberExpr other) {
-        return new NumberExpr(new Arithmetic(op, expression, other.expression()));
+        var arithmetic = new Arithmetic(op, expression, other.expression());
+        return new NumberExpr(arithmetic,
+                NumericScaleSummary.arithmetic(op, scaleSummary, other.scaleSummary, other.expression));
     }
 
     private Condition exprCmp(CompareOp op, NumberExpr other) {
+        requireCompatibleScale(op, other.scaleSummary);
         return new ComparisonCondition(expression, op, other.expression());
     }
 
     private Condition cmp(CompareOp op, NumberLiteral literal) {
+        requireCompatibleScale(op, NumericScaleSummary.literal(literal));
         return new ComparisonCondition(expression, op, literal);
+    }
+
+    private void requireCompatibleScale(CompareOp op, NumericScaleSummary other) {
+        if (op == CompareOp.EQ || op == CompareOp.NE) {
+            scaleSummary.requireEqualityCompatible(other);
+        }
+    }
+
+    @Override
+    public final boolean equals(Object other) {
+        return this == other || other instanceof NumberExpr that && expression.equals(that.expression);
+    }
+
+    @Override
+    public final int hashCode() {
+        return expression.hashCode();
+    }
+
+    @Override
+    public final String toString() {
+        return "NumberExpr[expression=" + expression + "]";
     }
 }

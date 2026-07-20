@@ -249,24 +249,52 @@ public final class DslRenderer {
     /**
      * Render an arithmetic operand, wrapping it in a {@code { … }} group when its operator binds LOOSER than
      * the parent's (so the parse round-trips). Precedence: {@code +}/{@code -} &lt; {@code *}/{@code /} &lt;
-     * {@code ^}. A same-precedence child needs a group only where associativity would otherwise re-parse it:
-     * the RIGHT operand of left-associative {@code -}/{@code /} ({@code a - {b - c}}), and the LEFT operand of
-     * right-associative {@code ^} ({@code {a ^ b} ^ c}). DEV-API-GAPS DG7 — without this, e.g.
+     * {@code ^}. Every right same-precedence child needs a group because every arithmetic node rounds
+     * independently, so even {@code +} and {@code *} are not freely associative. A left power child also
+     * needs a group because the grammar admits only one direct power, and a left division under division
+     * needs one to reconstruct the plain-arithmetic authoring-region reset. That reset is a static legality
+     * boundary only; it does not hide the subtree from the later runtime division rewrite. DEV-API-GAPS DG7 — without this, e.g.
      * {@code times(plus(1, 1))} mis-rendered as {@code … * 1 + 1} (re-parsing to the wrong tree).
      */
     private String arithOperand(Calculation child, Arithmetic.Op parent, boolean isLeft) {
         if (child instanceof Arithmetic a) {
-            int childPrec = arithPrec(a.op());
-            int parentPrec = arithPrec(parent);
-            boolean group = childPrec < parentPrec
-                    || (childPrec == parentPrec && !isLeft
-                            && (parent == Arithmetic.Op.SUBTRACT || parent == Arithmetic.Op.DIVIDE))
-                    || (childPrec == parentPrec && isLeft && parent == Arithmetic.Op.POWER);
-            if (group) {
+            if (needsArithmeticGroup(a, parent, isLeft)) {
                 return "{ " + render(child) + " }";
             }
         }
         return render(child);
+    }
+
+    private boolean needsArithmeticGroup(Arithmetic child, Arithmetic.Op parent, boolean isLeft) {
+        int childPrec = arithPrec(child.op());
+        int parentPrec = arithPrec(parent);
+        return childPrec < parentPrec
+                || (childPrec == parentPrec && !isLeft)
+                || (childPrec == parentPrec && isLeft && parent == Arithmetic.Op.POWER)
+                || (parent == Arithmetic.Op.DIVIDE && openDivisionContribution(child) > 0);
+    }
+
+    /**
+     * The division count this expression contributes to its enclosing plain multiplication/division region
+     * after this renderer's own child groups are applied. Addition, subtraction, and power are fresh regions.
+     */
+    private int openDivisionContribution(Calculation expression) {
+        if (!(expression instanceof Arithmetic arithmetic)
+                || arithmetic.op() == Arithmetic.Op.ADD
+                || arithmetic.op() == Arithmetic.Op.SUBTRACT
+                || arithmetic.op() == Arithmetic.Op.POWER) {
+            return 0;
+        }
+        int contribution = arithmetic.op() == Arithmetic.Op.DIVIDE ? 1 : 0;
+        if (arithmetic.left() instanceof Arithmetic left
+                && !needsArithmeticGroup(left, arithmetic.op(), true)) {
+            contribution += openDivisionContribution(left);
+        }
+        if (arithmetic.right() instanceof Arithmetic right
+                && !needsArithmeticGroup(right, arithmetic.op(), false)) {
+            contribution += openDivisionContribution(right);
+        }
+        return contribution;
     }
 
     private static int arithPrec(Arithmetic.Op op) {

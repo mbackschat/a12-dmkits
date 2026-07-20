@@ -108,13 +108,14 @@ class DiagnosticEnricherTest {
         // MVK_INVALID_COMPARE_DEC_PLACES, but the catalog-join stamped the COMPARISON operators'
         // ("round one with RoundDown") fix — wrong for the computed-field-scale context. A CROSS-CONTEXT code:
         // StructuralKernelFix supplies the two-context corrective (match the computed field's scale; or, for
-        // == / !=, RoundDown / allowDifferingDecimals), and it wins over the join.
+        // == / !=, use the exact derived-scale rule / allowDifferingDecimals), and it wins over the join.
         Diagnostic enriched = ENRICHER.enrich(raw("MVK_INVALID_COMPARE_DEC_PLACES"));
         String fix = enriched.fix().orElse("");
         assertTrue(fix.contains("computed field") && fix.contains("ONE `apply`"),
                 () -> "names the computed-field-scale corrective, got: " + fix);
-        assertTrue(fix.contains("RoundDown") && fix.contains("allowDifferingDecimals"),
-                () -> "names the == / != comparison correctives, got: " + fix);
+        assertTrue(fix.contains("DERIVED") && fix.contains("SMALLER-scale")
+                        && fix.contains("allowDifferingDecimals"),
+                () -> "names the derived-scale/capability == / != corrective, got: " + fix);
     }
 
     @Test

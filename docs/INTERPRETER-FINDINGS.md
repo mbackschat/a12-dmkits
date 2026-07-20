@@ -242,7 +242,7 @@ Mechanism: `FieldDef`/`FieldConstraints` gained `minLength`/`maxLength`/`pattern
 
 **Kernel law surfaced while fixing — `MVK_ERROR_EMPTY_PRECONDITION`.** A trailing **unconditional** alternative mixed with guarded ones is a *kernel-invalid* model ("Empty prerequisite is not allowed here") — an empty/absent precondition is valid only as the **sole** alternative (the ordinary non-tiered computation). So the interpreter never has to match a "default after guards" shape (it can't be authored); a null precondition is still treated as always-true for the sole-alternative case. Recorded in KERNEL-FINDINGS §11 (the TIERED-computations supplement).
 
-**Performance — MEASURED, not asserted (the standing perf discipline).** A precondition is a `Cond` evaluated once per computed-field instance, O(condition size) per row, folded into the model-static computation dependency order — **no new N² term, confirmed**: `PerfGateTest.tieredComputationStaysSubQuadratic` measured **1.53× growth for 4× rows** (linear≈4, a per-row-rescan quadratic≈16), and the tiered-compute case (now swept by `PerfBenchTest.gatesEveryInventoryScenario`, derived from `PerfInventory`) measured **interp 0.90ms vs kernel-Groovy 150.88ms at 3000 rows** with interp == kernel correctness asserted. The benchmark uses scale-exempt literal operations (Amount is scale-2, Qty scale-0 — a field operand would trip the kernel's `MVK_INVALID_COMPARE_DEC_PLACES` scale gate; the per-row *precondition* selection is what it stresses).
+**Performance — MEASURED, not asserted (the standing perf discipline).** A precondition is a `Cond` evaluated once per computed-field instance, O(condition size) per row, folded into the model-static computation dependency order — **no new N² term, confirmed**: `PerfGateTest.tieredComputationStaysSubQuadratic` measured **1.53× growth for 4× rows** (linear≈4, a per-row-rescan quadratic≈16), and the tiered-compute case (now swept by `PerfBenchTest.gatesEveryInventoryScenario`, derived from `PerfInventory`) measured **interp 0.90ms vs kernel-Groovy 150.88ms at 3000 rows** with interp == kernel correctness asserted. The benchmark's literal operations are scale-compatible with the scale-2 Amount target: `9.99` matches scale 2 and the capable scale-0 literal `0` may pad upward; a scale-0 field operand would not carry that capability and would trip `MVK_INVALID_COMPARE_DEC_PLACES`. The per-row precondition selection is the measured work.
 
 ### IF22 — Model-element parity sweep: the complete verdict (audit, 2026-06-26)
 
@@ -692,7 +692,7 @@ IF69's sibling, at the same `Fill`-propagation root but one level up: a fired co
 
 | function | kernel op | fill rule |
 |---|---|---|
-| `RoundDown/Up/Accounting([expr], n)` + `*Value(field)` | `setScale` | **PRESERVES** `kannGroesser`/`kannKleiner` exactly → `fill(arg0)` unchanged (the places literal is fixed) |
+| `RoundDown/Up/Accounting([expr][, n])` + `*Value(field[, n])` | `setScale` | **PRESERVES** `kannGroesser`/`kannKleiner` exactly → `fill(arg0)` unchanged (the optional places argument is fixed) |
 | `Abs([expr])` / `AbsValue(field)` | `abs` | **TRANSFORMS** with the operand's value sign: `g' = g∨s`, `s' = (pos∧s)∨(neg∧g)` — `\|x\|` grows off either direction, shrinks only toward 0 (so `\|x\| ≥ 0` never shrinks → `> −n` is VALUE) |
 | `Min(…)` / `Max(…)` (operand-list) | `min`/`max` | **COMBINE** directionally, folded over the operands: min shrinks via EITHER operand and grows via the SMALLER (equal → both); max mirrors — needs the operands' value ORDER |
 | `RangeAsNumber(field, s, e)` | `bereichAlsZahl` | **GROW-ONLY** (`kannKleiner=false`, a value ≥ 0; `kannGroesser` = the source string is empty) — the count-aggregate shape |
@@ -1738,6 +1738,50 @@ The decimal actuals already apply `MathContext(50, HALF_UP)` to all five arithme
 This changes legal interpreter results exactly where operation-local precision makes the authored tree, one-pass tree, and fixed-point tree observably different; JVM and Node share the common lowering. No public interpreter type or DM-JSON shape changed. `model eval`, `rule eval`, and computation evaluation all consume the corrected cached AST. The typed rulekit renderer still preserves braces for authoring legality and fold structure; braces deliberately do not make a division opaque to this later runtime transform.
 
 *Locked:* `adapter.laws.ArithmeticLoweringDiffTest` tri-checks direct-vs-lowered, one-pass-vs-fixed-point, and the corrected three-thirds pre-round witness against dynamic Groovy and generated Java; multiplatform `interpreter.ArithmeticLoweringTest` locks the exact prepared tree on JVM+Node. `RoundingLawsTest` now uses the real three-thirds discriminator instead of the superseded multiplied-third example.
+
+### IF180 — typed numeric equality carries signed scale and constant capability (SHIPPED 2026-07-20; SPEC-2026-07-19-09)
+
+The former D13 precheck encoded the stale rule “field equality needs equal declared scales; literals are exempt.” The missing inverse probe refuted it: a scale-2 field may equal literal `0`, but a scale-0 field may not equal literal `0.00`, in either operand order. The kernel checks a shared expression summary with two independent dimensions: known signed scale or unknown, and multiplicative-constant capability. Only a capable operand on the smaller-scale side may be padded; ordering bypasses the gate.
+
+`NumericScaleSummary` now composes that metadata once across the typed surface. Fractional literals retain authored scale, integer literals strip trailing zeros, fields carry declared scale, addition/subtraction take maximum scale with capability AND, multiplication sums scales with capability OR, division is unknown/non-capable, explicit rounding supplies its result scale, and power is unknown/non-capable except for a known scale-0 base with a simple nonnegative constant exponent whose derived scale is ≤ 0. Count/integer functions are known scale 0. A generic `NumberExpr(Calculation)` whose model-derived scale cannot be recovered is `DEFERRED`: the live kernel remains the oracle instead of rulekit fabricating a precheck.
+
+This deliberately changes typed authoring acceptance: known-illegal equalities fail earlier, and legal constant-padding shapes no longer fail the old equal-scale shortcut; runtime values for already-legal models do not change. Raw/parser/read paths still preserve and kernel-check conditions, while the catalog, diagnostic enrichment, schema, and CLI `allowDifferingDecimals` language now teach the derived rule. DM-JSON syntax is unchanged.
+
+Public compatibility is explicit. `NumberExpr` retains the public `(Calculation)` constructor, `expression()` accessor, comparison/arithmetic method descriptors, value equality/hash, and record-style text, so ordinary source and JVM call sites remain compatible. It is now a final value class rather than a Java record so it can retain private summary metadata: record patterns/deconstruction stop compiling; reflection/serialization consumers that require `isRecord()`/record components or `java.lang.Record` as the superclass must migrate to `expression()`. The API golden records that deliberate boundary.
+
+*Locked:* real-kernel `NumberLawsTest` carries both operand orders, signed literal scale, the narrow power exception, fractional-exponent authoring rejection, and ordering bypass; `NumericScaleGateTest` locks the typed summary and no-capability-through-power rule.
+
+### IF181 — power evidence names staged positive precision and closes the legal endpoint matrix (SHIPPED 2026-07-20; SPEC-2026-07-19-10)
+
+IF163 already put both decimal actuals on the correct mechanism: positive power follows OpenJDK 21 X3.274 `BigDecimal.pow(int, MathContext)` numeric-value staging with working precision `50 + decimalDigits(exponent) + 1`, then rounds to 50; a negative exponent first rounds `1/base` at precision 50 and feeds that reciprocal into the positive algorithm. The named positive separator ends `…3319` rather than exact-power/final-round `…3318`, and the negative separator ends `…7036` rather than reciprocal-after-power `…7037`.
+
+The remaining evidence is now closed against both kernel strategies: `+1000` and `−1000` execute, `+1001` and `−1001` are quiet invalids, `0^0 = 1`, and `0^-1` is quiet invalid. A fractional exponent is not a runtime endpoint: the shared authoring parser rejects it with `MVK_INVALID_NUMBER_FOR_EXP`, locked beside a legal scale-0 field exponent in `NumberLawsTest`. The peer interpreter is triangulation only; dynamic Groovy remains the oracle and generated Java agrees on every legal matrix arm.
+
+This increment adds evidence and corrects prose; it does not change the already-shipped JVM/Node arithmetic mechanism, public interpreter API, serialized model form, rulekit factories, or dmtool behavior.
+
+*Locked:* multiplatform `DecimalHostParityTest` holds the staged positive/negative primitive separators; `DecimalPrecisionParityDiffTest` carries the complete legal dual-route endpoint matrix; `NumberLawsTest.powerExponentMustHaveNoDecimalPlaces` owns the fractional authoring boundary.
+
+### IF182 — arithmetic fillability has executable joint-term and conservative-power branch coverage (SHIPPED 2026-07-20; SPEC-2026-07-19-11)
+
+The existing `ArithFill` implementation was source-aligned, but its evidence and canonical account reduced multiplication/division to “sign-dependent” and power to “parity.” The completed pure matrix now locks both direction bits for multiplication's joint terms (including current zero signs), reciprocal/division directions, exponent zero, fixed bases `1`, `0.5`, `0`, and `−1`, negative reciprocal staging, the both-variable grow-only branch, and every invalid domain. Domain-invalid arithmetic returns unknown/fixed fill and never reaches comparison typing as an ordinary value.
+
+The surprising policy separator is intentional and shared: both kernel strategies and the interpreter compute `0^0 = 1`, yet `0 ^ empty-unsigned > 0` fires OMISSION while the signed-exponent twin fires VALUE. This is a conservative dispatch heuristic over current value, fill directions, base regions, and parity—not exact reachable-set analysis.
+
+No runtime result, public API, authoring legality, serialized form, or dmtool surface changed; this increment hardens the already-correct common JVM/Node implementation and replaces non-executable prose with the exact formulas.
+
+*Locked:* `ArithmeticFillBranchTest` is the multiplatform two-bit branch matrix; `ArithmeticFillPolarityDiffTest` tri-checks the zero-base discriminator against dynamic Groovy and generated Java.
+
+### IF183 — typed arithmetic rendering preserves fold order and exact plain authoring regions (SHIPPED 2026-07-20; SPEC-2026-07-19-14)
+
+The former renderer grouped same-precedence children only for conventional subtraction/division associativity. That is insufficient when every arithmetic node rounds independently, and it could flatten a typed nested-division tree into a kernel-illegal region. `DslRenderer` now groups every right same-precedence arithmetic child, a left power child, and a left division-bearing region before an enclosing division. Its open-division summary models the exact plain rule after the renderer's own child groups: grouping/addition/subtraction/power reset, multiplication/division combine ungrouped child contributions, and division adds one.
+
+This preserves both typed fold and parse legality: `(8/4)/2` renders `{ 8 / 4 } / 2`; `(8/4*2)/3` renders `{ 8 / 4 * 2 } / 3`; `8*(4/2)/3` needs only `8 * { 4 / 2 } / 3`; and either nested power side is grouped. Braces remain an authoring/reset boundary only and do not block IF179's later runtime lowering. Operation-valued wrappers remain kernel-delegated because their legacy reset control flow is not covered by the plain summary.
+
+The public AST and method descriptors are unchanged. Serialized/rendered condition text gains braces for affected typed trees, which is a behaviorally compatible correction: it preserves the original tree and changes formerly illegal or incorrectly re-associated output into kernel-accepted output. Raw dmtool conditions and foreign-rule text are not rewritten merely by evaluation; typed authoring/formatting that invokes the renderer receives the corrected canonical grouping.
+
+The IF179 differential now fails before runtime if its exact rendered witness produces any kernel consistency diagnostic, closing the earlier evidence hole where an illegal model could be passed to both engines. The renderer locks the two exact witness shapes independently.
+
+*Locked:* `ArithmeticGroupingRenderTest`, real-kernel `NumberLawsTest.plainArithmeticCountsDivisionContributionsUntilAReset`/`powerOperatorRejectsUnparenthesizedNesting`, and the authoring-guarded dual-route `ArithmeticLoweringDiffTest`.
 
 ### IF164 — one ES2018 parser/translator and one distinct-pattern registry reproduce admitted Java-pattern semantics on JVM and Node (SHIPPED 2026-07-20, graduated from IG90)
 

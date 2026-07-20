@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -67,6 +68,13 @@ class ArithmeticFillPolarityDiffTest {
         val k = kType(s); val i = iType(s)
         assertEquals(expected, k, "$msg — scenario must FIRE $expected on the KERNEL [kernel=$k]")
         assertEquals(k, i, "$msg [kernel=$k interp=$i]")
+    }
+
+    private fun agreeBothStrategies(s: Scenario, expected: String, msg: String) {
+        agree(s, expected, msg)
+        val engine = RuntimeLaws.kernelJavaEngine(s.kModel)
+        val javaStatic = engine.messages(engine.instance(s.kDoc)).firstOrNull { it.code() == CODE }?.type()?.name
+        assertEquals(expected, javaStatic, "$msg [java-static=$javaStatic]")
     }
 
     /** As [scenario], but injects a COMPUTATION (`../BackorderQuantity = operation`) instead of a rule, plus a
@@ -175,6 +183,21 @@ class ArithmeticFillPolarityDiffTest {
     @Test fun powEverythingVariable() =
         agree(scenario(render(n(Q).toThePowerOf(n(SOH)).lt(100)), "../Quantity", mapOf(), listOf(Q, SOH)),
             "OMISSION_ERROR", "(Q^SOH) < 100 (both empty): fillable → OMISSION")
+
+    // 0^empty reads 0^0=1 in both cases, but the conservative fill bits intentionally split by exponent sign.
+    @Test fun powZeroToEmptyUnsignedExponentIsOmission() =
+        agreeBothStrategies(
+            scenario(render(Dsl.number(0).toThePowerOf(n(SOH)).gt(0)), "../StockOnHand", mapOf(), listOf(SOH)),
+            "OMISSION_ERROR",
+            "0^empty-unsigned > 0: exponent is grow-only, so the zero-base branch is shrink-only",
+        )
+
+    @Test fun powZeroToEmptySignedExponentIsValue() =
+        agreeBothStrategies(
+            scenario(render(Dsl.number(0).toThePowerOf(n(Q)).gt(0)), "../Quantity", mapOf(), listOf(Q)),
+            "VALUE_ERROR",
+            "0^empty-signed > 0: a shrinkable exponent selects grow-only, which cannot clear >",
+        )
 
     // ── nested arithmetic: fill propagates through the tree ─────────────────────────────────────────────────
     @Test fun nestedAddTimesCanGrow() =

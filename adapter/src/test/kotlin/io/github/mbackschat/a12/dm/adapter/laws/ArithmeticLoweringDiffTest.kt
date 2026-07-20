@@ -8,7 +8,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule
+import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
@@ -72,6 +75,13 @@ class ArithmeticLoweringDiffTest {
     private fun agree(condition: Condition, expected: Boolean, label: String) {
         val rendered = DslRenderer().render(condition)
         val kModel = RuntimeLaws.withRule(base, "/Probe", "R", "../Anchor", CODE, rendered)
+        val authoring = RuleValidator().check(
+            base,
+            DraftRule("/Probe", "R", "../Anchor", rendered, CODE, "ERROR"),
+        )
+        assertTrue(authoring.ok()) {
+            "$label — the exact rendered witness must pass the kernel authoring gate: ${authoring.diagnostics()} [$rendered]"
+        }
         val kDoc = RuntimeLaws.doc().group("/Probe", 1).field(ANCHOR, "present", 1, 1)
         val groovy = RuntimeLaws.messages(kModel, kDoc).any { it.code() == CODE }
         val engine = RuntimeLaws.kernelJavaEngine(kModel)

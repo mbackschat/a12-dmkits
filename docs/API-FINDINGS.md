@@ -7,7 +7,7 @@
 ## Design findings
 
 1. **`Dsl.*` is a handles-only static facade; string-path convenience stays on `BoundModel`** — keeps typo-able path strings out of the immutable AST.
-2. **Scale-aware literal overloads are rendering-fidelity, not a pre-check** — the kernel's decimal-scale check is *field-vs-field only*; literals are exempt (D13's pre-check is reserved for field-operand comparisons).
+2. **Numeric scale metadata is a shared typed summary, not a field/literal syntax exception** — the kernel carries a known signed scale or unknown independently from multiplicative-constant capability, and only a capable smaller-scale equality operand may be padded. The typed surface therefore composes the summary through fields, literals, arithmetic, counts, and rounding; model-derived shapes unavailable at a generic read boundary defer to the live kernel. Carrying that private metadata required `NumberExpr` to become a final value class rather than a record while retaining its constructor/accessor/value equality; record-pattern/reflection consumers are the explicit incompatibility, not something hidden as an additive change.
 3. **`transform` is a bottom-up, identity-preserving rewriter** — the calculation twin triggers at the first nesting calculation node.
 4. **Foreign-rule identity is designed *with* the authoring object, not after** — `ExistingRule` (full name + slots + raw text) shares a surface with the `Rule` builder so read and author stay symmetric.
 5. **Converter gaps are data, not exceptions** — `read` returns a sealed `ReadResult` (`Converted`/`Opaque`); an unmodeled construct is preserved verbatim, never corrupt (F11 "preserve the unknown"). The strict `UnsupportedConstructException` stays the converter's *internal* unwind signal only.

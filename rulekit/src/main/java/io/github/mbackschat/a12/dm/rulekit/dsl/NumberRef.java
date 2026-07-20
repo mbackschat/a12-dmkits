@@ -5,8 +5,8 @@ import java.math.BigDecimal;
 /**
  * A typed handle to a number field. Only number fields get the comparison builders, so a
  * type-illegal ordering can't be written (§5b). The declared {@code scale} (decimal places) is read
- * from the model and will feed the field-vs-field scale pre-check (D13) once comparisons take field
- * operands. All comparisons delegate to {@link NumberExpr} — one implementation, every overload
+ * from the model and feeds the shared signed-scale/constant-capability equality gate. All comparisons
+ * delegate to {@link NumberExpr} — one implementation, every overload
  * (long / scale-faithful String / BigDecimal).
  */
 public record NumberRef(FieldRef field, int scale, boolean correlated) {
@@ -38,7 +38,7 @@ public record NumberRef(FieldRef field, int scale, boolean correlated) {
 
     /** This field's value as a comparable numeric expression. */
     public NumberExpr asNumber() {
-        return new NumberExpr(value());
+        return NumberExpr.field(value(), scale);
     }
 
     public Condition lt(long literal) {
@@ -120,7 +120,7 @@ public record NumberRef(FieldRef field, int scale, boolean correlated) {
      * {@code MVK_NO_INDEX_FIELD} — kernel-delegated). catalog:SemanticIndex
      */
     public NumberExpr forIndex(String indexValue) {
-        return new NumberExpr(new SemanticIndexValue(field, indexValue));
+        return NumberExpr.field(new SemanticIndexValue(field, indexValue), scale);
     }
 
     /**
@@ -129,7 +129,7 @@ public record NumberRef(FieldRef field, int scale, boolean correlated) {
      * constant or a Field" form; the constant-key peer is {@link #forIndex(String)}). DEV-API-GAPS DG8.
      */
     public NumberExpr forIndex(FieldRef keyField) {
-        return new NumberExpr(new SemanticIndexFieldValue(field, keyField));
+        return NumberExpr.field(new SemanticIndexFieldValue(field, keyField), scale);
     }
 
     /** This field's semantic index as a PRESENCE handle — {@code semanticIndex(key).filled()}; see {@link FieldRef#semanticIndex(String)}. */
@@ -143,8 +143,7 @@ public record NumberRef(FieldRef field, int scale, boolean correlated) {
     }
 
     // --- field-vs-field comparison (finding 18) --------------------------------------------------
-    // Ordering ignores scale; == / != require equal declared scale (MVK_INVALID_COMPARE_DEC_PLACES,
-    // pre-checked here — verified 2026-06-04, the D13 gate made cheap since rulekit knows both scales).
+    // Ordering ignores scale; == / != use the same derived-scale gate as every NumberExpr.
 
     public Condition lt(NumberRef other) {
         return fieldCmp(CompareOp.LT, other);
@@ -163,19 +162,17 @@ public record NumberRef(FieldRef field, int scale, boolean correlated) {
     }
 
     public Condition eq(NumberRef other) {
-        requireSameScale(other);
-        return fieldCmp(CompareOp.EQ, other);
+        return asNumber().eq(other.asNumber());
     }
 
     public Condition ne(NumberRef other) {
-        requireSameScale(other);
-        return fieldCmp(CompareOp.NE, other);
+        return asNumber().ne(other.asNumber());
     }
 
     /**
      * Null-safe field agreement: both filled and equal, <em>or</em> both empty — renders
      * {@code (AllFieldsFilled(a,b) And [a]==[b]) Or NoFieldFilled(a,b)}. Inherits {@link #eq(NumberRef)}'s
-     * equal-scale gate. The string peer is {@link StringRef#agreesWith(StringRef)} (study §3.4a/§3.6).
+     * derived-scale gate. The string peer is {@link StringRef#agreesWith(StringRef)} (study §3.4a/§3.6).
      */
     public Condition agreesWith(NumberRef other) {
         return Dsl.allFieldsFilled(field, other.field).and(eq(other))
@@ -215,14 +212,6 @@ public record NumberRef(FieldRef field, int scale, boolean correlated) {
 
     public Condition ne(NumberExpr other) {
         return asNumber().ne(other);
-    }
-
-    private void requireSameScale(NumberRef other) {
-        if (scale != other.scale) {
-            throw new IllegalArgumentException("cannot compare number fields of different scale with == / !="
-                    + " (" + field.path() + " scale " + scale + " vs " + other.field.path() + " scale "
-                    + other.scale + ") — MVK_INVALID_COMPARE_DEC_PLACES; ordering (< <= > >=) is exempt");
-        }
     }
 
     /**

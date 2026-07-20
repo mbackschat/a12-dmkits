@@ -27,6 +27,7 @@ class DecimalPrecisionParityDiffTest {
 
     private companion object {
         const val RATE = "/Policy/Rate"
+        const val EXPONENT = "/Policy/Exponent"
         // the kernel value of 0.3 ^ -64 is …4484006 ; the old 1/(0.3^64) form was …4484025 ; this splits them
         const val SPLIT = "2912324058756262786433368781182555.3552912554484015"
         const val BELOW = "1000000"                                   // far under the ~2.9e33 result → both fire
@@ -34,23 +35,33 @@ class DecimalPrecisionParityDiffTest {
     }
 
     private val base = DocumentModelDraft.named("policy").locale("en_US")
-        .rootGroup("Policy") { g -> g.numberField("Rate") { it.fractionDigits(0, 14) } }
+        .rootGroup("Policy") { g ->
+            g.numberField("Rate") { it.fractionDigits(0, 14) }
+            g.numberField("Exponent") { it.fractionDigits(0) }
+        }
         .build().toJson()
 
     private val m = BoundModel.ofJson(base)
     private fun render(c: Condition): String = DslRenderer().render(c)
 
     /** Tri-check a legal condition against both real kernel strategies and the interpreter. */
-    private fun agree(condition: Condition, rate: String, msg: String) {
+    private fun agree(condition: Condition, rate: String, msg: String, expected: Boolean? = null) {
+        agree(condition, mapOf(RATE to rate), msg, expected)
+    }
+
+    private fun agree(condition: Condition, values: Map<String, String>, msg: String, expected: Boolean? = null) {
         val cond = render(condition)
         val kModel = RuntimeLaws.withRule(base, "/Policy", "R", "../Rate", "NEGPOW", cond)
         val def = ModelLoader.load(kModel)
-        val kDoc = RuntimeLaws.doc().group("/Policy", 1).field(RATE, rate, 1, 1)
+        val kDoc = RuntimeLaws.doc().group("/Policy", 1)
+        values.forEach { (path, value) -> kDoc.field(path, value, 1, 1) }
         val groovy = RuntimeLaws.messages(kModel, kDoc).any { it.code() == "NEGPOW" }
         val engine = RuntimeLaws.kernelJavaEngine(kModel)
         val javaStatic = engine.firedCodesSorted(engine.instance(kDoc)).contains("NEGPOW")
-        val iDoc = def.newDocument().group("/Policy", 1).field(RATE, rate, 1, 1)
+        val iDoc = def.newDocument().group("/Policy", 1)
+        values.forEach { (path, value) -> iDoc.field(path, value, 1, 1) }
         val interp = DmInterpreter(def).validateFull(iDoc).any { it.code == "NEGPOW" }
+        expected?.let { assertEquals(it, groovy, "$msg — expected kernel outcome [$cond]") }
         assertEquals(groovy, javaStatic, "$msg — groovy-dynamic vs java-static [$cond]")
         assertEquals(groovy, interp, "$msg — kernel vs interpreter [$cond]")
     }
@@ -93,5 +104,24 @@ class DecimalPrecisionParityDiffTest {
             "1",
             "one-round division is below the double-round split",
         )
+    }
+
+    @Test fun powerDomainEndpointsAndQuietInvalidControls() {
+        val exponent = m.num(EXPONENT).asNumber()
+        val one = Dsl.number("1")
+        val zero = Dsl.number("0")
+
+        agree(m.field(RATE).filled().and(one.toThePowerOf(exponent).gt(0)), mapOf(RATE to "1", EXPONENT to "1000"),
+            "+1000 is admitted", expected = true)
+        agree(m.field(RATE).filled().and(one.toThePowerOf(exponent).gt(0)), mapOf(RATE to "1", EXPONENT to "-1000"),
+            "-1000 is admitted", expected = true)
+        agree(m.field(RATE).filled().and(one.toThePowerOf(exponent).gt(0)), mapOf(RATE to "1", EXPONENT to "1001"),
+            "+1001 is a quiet invalid runtime power", expected = false)
+        agree(m.field(RATE).filled().and(one.toThePowerOf(exponent).gt(0)), mapOf(RATE to "1", EXPONENT to "-1001"),
+            "-1001 is a quiet invalid runtime power", expected = false)
+        agree(m.field(RATE).filled().and(zero.toThePowerOf(exponent).gt(0)), mapOf(RATE to "1", EXPONENT to "0"),
+            "0^0 is one", expected = true)
+        agree(m.field(RATE).filled().and(zero.toThePowerOf(exponent).gt(0)), mapOf(RATE to "1", EXPONENT to "-1"),
+            "0^-1 is a quiet invalid runtime power", expected = false)
     }
 }

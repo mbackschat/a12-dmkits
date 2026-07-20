@@ -656,9 +656,9 @@ object PerfCatalog {
      * Subs are not populated (the computation reads only the Line-level `Qty`). Qty straddles the two tiers.
      */
     fun tieredComputation(): PerfScenario {
-        // Operations are scale-EXEMPT literals (KERNEL-FINDINGS §5) — Amount is scale-2 and Qty is scale-0, so a
-        // field operand would trip the kernel's scale gate (MVK_INVALID_COMPARE_DEC_PLACES); the precondition over
-        // Qty (ordering is scale-exempt) is what's evaluated per row, which is the cost this benchmark stresses.
+        // The operations are scale-compatible with Amount(scale 2): 9.99 matches and capable literal 0 may pad.
+        // A scale-0 FIELD operand lacks that capability and would trip MVK_INVALID_COMPARE_DEC_PLACES. The
+        // scale-exempt Qty ordering precondition is the per-row work this benchmark stresses.
         val comp = lines.computation(amount) {
             it.name("TierComp")
                 .`when`(qty.lt(100)).calc(NumberLiteral.of("9.99"))   // [Qty] < 100 → 9.99

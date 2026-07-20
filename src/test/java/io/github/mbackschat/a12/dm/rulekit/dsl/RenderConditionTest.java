@@ -102,8 +102,8 @@ class RenderConditionTest {
     @Test
     void rendersScaleExplicitLiteralsFromStringAndBigDecimalOverloads() {
         // Scale-aware ergonomics (study finding 2): the written scale is preserved exactly.
-        // Literals are scale-flexible at the kernel (verified — see NumberLawsTest), so these
-        // overloads are about faithful rendering, not about dodging MVK_INVALID_COMPARE_DEC_PLACES.
+        // Written scale participates in the kernel's signed-scale/constant-capability summary (NumberLawsTest);
+        // these overloads preserve it exactly rather than treating every literal as scale-exempt.
         assertEquals("[/Subscription/Addons/MonthlyFee] == 0.00",
                 new DslRenderer().render(m.num(MONTHLY_FEE).eq("0.00")));
         assertEquals("[/Subscription/Addons/MonthlyFee] >= 19.90",

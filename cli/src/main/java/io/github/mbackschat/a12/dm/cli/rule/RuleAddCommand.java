@@ -88,7 +88,7 @@ final class RuleAddCommand extends BaseCommand {
         // an explanatory ;; comment, attached as a leading line on the condition (the kernel tolerates it)
         condition = io.github.mbackschat.a12.dm.rulekit.dsl.Comments.withLeadingComment(text(spec, "comment"), condition);
         // G7b: "Allow Differing Decimal Places" — prepend the kernel's one suppressible-warning directive so a
-        // field-vs-field == across differing decimal scales is accepted (the directive must lead, before any ;; comment)
+        // an otherwise-incompatible numeric == / != derived-scale pair is accepted (the directive must lead)
         if (spec.path("allowDifferingDecimals").asBoolean(false)) {
             condition = "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) " + condition;
         }

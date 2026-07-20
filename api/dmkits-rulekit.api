@@ -1709,7 +1709,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.Now implements io.github.m
   public java.lang.String operatorId()
   public final java.lang.String toString()
 
-public record io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
+public final class io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
   public NumberExpr(io.github.mbackschat.a12.dm.rulekit.dsl.Calculation)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition differsWithTolerance(io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr dividedBy(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)

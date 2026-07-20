@@ -10,7 +10,8 @@ import org.junit.jupiter.api.Test;
  * <ul>
  *   <li>{@code @SuppressWarning(NAME)} (DE {@code @UnterdrueckeWarnung}) prefixes a condition and
  *       suppresses exactly <b>one</b> supported warning: {@code MVK_INVALID_COMPARE_DEC_PLACES} —
- *       the field-vs-field equality scale gate (NumberLawsTest locks the unsuppressed rejection).
+ *       the numeric equality derived-scale gate. This class uses a differing-scale field pair as its
+ *       focused witness; NumberLawsTest locks the complete unsuppressed rule.
  *       Any other name draws {@code MVK_INVALID_SUPPRESSED_WARNING}.</li>
  *   <li>{@code RuleGroup} (DE {@code RegelKontext}) references the rule's containing group as an
  *       entity; a star on it is rejected (the grammar permits the token only for a nicer error).</li>

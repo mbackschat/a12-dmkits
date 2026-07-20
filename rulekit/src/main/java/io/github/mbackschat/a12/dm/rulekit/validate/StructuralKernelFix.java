@@ -191,19 +191,20 @@ public final class StructuralKernelFix {
                             + "tightens the generated max length); every other Length use of a raw-type field is "
                             + "rejected because its value is never available to evaluation.")),
             Map.entry("MVK_INVALID_COMPARE_DEC_PLACES", new Hint(
-                    "The two decimal operands here must share the SAME declared scale (fractional digits) — only "
-                            + "== / != and a computed-field assignment are checked; ORDERING (< <= > >=) is exempt. TWO "
-                            + "contexts trigger it: (1) a COMPUTED FIELD whose declared scale differs from its "
-                            + "expression's operands (e.g. a field re-scaled to 2 places while the Sum-computed field "
-                            + "stays scale 0) — re-scale the computed field (or the operands) so their fractional digits "
-                            + "agree, doing both edits in ONE `apply` so the terminal gate sees a consistent model; "
-                            + "(2) a field-vs-field == / != across differing scales — either round one side to the "
-                            + "other's scale with RoundDown(expr, n), or accept the mismatch with "
+                    "The kernel could not establish compatible DERIVED decimal scales here. Numeric == / != carries "
+                            + "a known SIGNED scale or unknown plus an independent multiplicative-constant capability: "
+                            + "when known scales differ, only a capable SMALLER-scale side may be padded; an unknown "
+                            + "scale rejects. ORDERING (< <= > >=) is exempt. TWO contexts trigger this code: "
+                            + "(1) a COMPUTED FIELD whose declared scale is incompatible with its expression "
+                            + "(e.g. a field re-scaled to 2 places while the Sum-computed field stays scale 0) — "
+                            + "re-scale the computed field or explicitly round the expression, doing both edits in ONE "
+                            + "`apply` so the terminal gate sees a consistent model; (2) numeric == / != with "
+                            + "incompatible derived scales — round one side to a known compatible scale, or accept it with "
                             + "allowDifferingDecimals:true on the rule spec (the kernel's one suppressible warning — it "
                             + "prepends @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)).",
                     "MVK_INVALID_COMPARE_DEC_PLACES (\"the fractional digits of lhs and rhs are different\") fires "
-                            + "wherever the kernel compares two decimal operands of unequal declared scale — an == / != "
-                            + "field comparison OR a computed field whose scale doesn't match its expression. It is not "
+                            + "when numeric == / != cannot reconcile the operands' derived signed-scale/capability "
+                            + "summaries, OR when a computed field is incompatible with its expression. It is not "
                             + "specific to any one operator (Sum, Equal, …); the scale-coupling is the constraint, so the "
                             + "corrective is context-dependent.")));
 
