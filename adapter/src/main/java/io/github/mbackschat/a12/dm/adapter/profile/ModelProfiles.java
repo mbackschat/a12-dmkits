@@ -3,7 +3,8 @@ package io.github.mbackschat.a12.dm.adapter.profile;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 /**
- * Public string boundary for extracting the current identifier-free model-performance profile.
+ * Public string boundary for extracting and comparing current identifier-free model-performance
+ * profiles.
  *
  * <p>The returned JSON is the bare, deterministic current profile artifact. Profile records remain
  * implementation details so the public surface does not make an internal planning shape a compatibility
@@ -26,5 +27,22 @@ public final class ModelProfiles {
      */
     public static String extract(String modelJson, ModelResolver resolver) {
         return ModelProfileJson.write(ModelProfileExtractor.extract(modelJson, resolver));
+    }
+
+    /**
+     * Compare two current profile artifacts for performance-calibration fidelity.
+     *
+     * <p>Each input may be either a bare profile artifact or the normal result envelope containing
+     * one under {@code data}. The returned deterministic JSON is the comparison data itself: it
+     * reports the overall result and every classified axis without exposing the internal profile
+     * records.
+     *
+     * @param targetJson the target current-profile artifact or extraction envelope
+     * @param actualJson the actual current-profile artifact or extraction envelope
+     */
+    public static String compare(String targetJson, String actualJson) {
+        var target = ModelProfileJson.read(targetJson);
+        var actual = ModelProfileJson.read(actualJson);
+        return ProfileComparisonJson.write(ModelProfileComparator.compare(target, actual));
     }
 }

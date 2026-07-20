@@ -18,10 +18,15 @@ final class ProfileJsonWriter {
 
     static String write(ModelProfile profile) {
         Objects.requireNonNull(profile, "profile");
+        return canonicalJson(profile(profile));
+    }
+
+    static String canonicalJson(ObjectNode root) {
+        Objects.requireNonNull(root, "root");
         try {
-            return JSON.writer(PRETTY).writeValueAsString(profile(profile)) + "\n";
+            return JSON.writer(PRETTY).writeValueAsString(root) + "\n";
         } catch (JsonProcessingException e) {
-            throw new IllegalStateException("failed to serialize model profile", e);
+            throw new IllegalStateException("failed to serialize profile JSON", e);
         }
     }
 
@@ -235,13 +240,13 @@ final class ProfileJsonWriter {
         return node;
     }
 
-    private static ObjectNode histogram(LongHistogram histogram) {
+    static ObjectNode histogram(LongHistogram histogram) {
         var node = JSON.createObjectNode();
         histogram.counts().forEach(node::put);
         return node;
     }
 
-    private static ObjectNode distribution(LongDistribution distribution) {
+    static ObjectNode distribution(LongDistribution distribution) {
         var node = JSON.createObjectNode();
         node.put("count", distribution.count());
         node.put("min", distribution.min());

@@ -1396,6 +1396,13 @@ String profileJson = ModelProfiles.extract(modelJson);
 
 The one-argument form requires a self-contained model. For a model with includes or imported type definitions, pass the same kernel-free `ModelResolver` used by `BoundModel.ofJson`; extraction expands the effective model before measuring it. The artifact contains counts, distributions, categorical vocabulary, and bounded/unbounded capacities, but no model identifiers, paths, literals, patterns, messages, descriptions, or raw rule/computation text. It is a performance-calibration description, not a behavioral substitute for the source model.
 
+Compare a synthesized model's re-extracted profile with its target through the same JSON-only boundary. Each input may be a bare artifact or the normal extraction result envelope; the returned deterministic JSON reports `matches` plus every classified axis with its policy, target, actual, verdict, and rule:
+
+<!-- snippet: profile-compare -->
+```java
+String comparisonJson = ModelProfiles.compare(targetProfileJson, actualProfileJson);
+```
+
 ## 7. The LLM session — the loop the skill teaches, for both personas
 
 > **Skill status:** the first BA-path skill draft exists and was **eval-measured** (a clean Opus subagent, given only the CLI + catalog + skill, went from multi-attempt/medium-confidence to **first-attempt/high-confidence** on the T1 authoring task, with the silent-inversion polarity trap closed by the skill's polarity section). Method, lifts, and caveats in [`EVAL-SPEC.md`](./EVAL-SPEC.md). Structurally-distinct benchmark tasks **T2–T6** now span the families (field-vs-field, pattern, aggregate+Having, date, value-list+boolean; golds kernel-verified) — answering the "T1 ≈ the skill's worked example" caveat — and **T7** adds the first **comprehension** task (the `order-ruled` fixture; the oracle asserts its rules read to `Converted`, readable by `explain`). Remaining: the **Workflow pass@k runner** that drives the agent passes (T3–T6 authoring + T7 explanation).

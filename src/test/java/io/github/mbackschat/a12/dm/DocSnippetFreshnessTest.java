@@ -57,6 +57,9 @@ class DocSnippetFreshnessTest {
     private static final String PROFILE_FACADE =
             "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/profile/ModelProfilesTest.java";
 
+    private static final String PROFILE_COMPARE =
+            "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/profile/ModelProfilesCompareTest.java";
+
     private static final List<Lock> LOCKS = List.of(
             new Lock("cs-bind", "docs/API-GUIDE.md", CASE_STUDY),
             new Lock("cs-author", "docs/API-GUIDE.md", CASE_STUDY),
@@ -95,7 +98,8 @@ class DocSnippetFreshnessTest {
                     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WildcardGroupFillQuantifierReadTest.java"),
             new Lock("computation-suppress", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("bulk-program-write", "docs/API-GUIDE.md", BULK_WRITE),
-            new Lock("profile-extract", "docs/API-GUIDE.md", PROFILE_FACADE));
+            new Lock("profile-extract", "docs/API-GUIDE.md", PROFILE_FACADE),
+            new Lock("profile-compare", "docs/API-GUIDE.md", PROFILE_COMPARE));
 
     /** The guide whose every {@code ```java} block must be classified — locked or teaser-marked. */
     private static final String STUDY = "docs/API-GUIDE.md";
