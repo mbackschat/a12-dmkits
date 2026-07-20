@@ -14,14 +14,12 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * Differential — the field-list **quantifiers with a not-check-relevant (malformed) operand** (the sibling of
- * the `FieldFilled` 3VL fix). The kernel's `isWertAngegeben` is **3-valued**: a present-but-malformed field is
- * UNKNOWN, counted as NEITHER filled (TRUE) nor empty (FALSE). Over `(Quantity, BackorderQuantity)` with one
- * malformed: `AllFieldsFilled`/`MoreThanOneFieldFilled`/`NotExactlyOneFieldFilled`/`AtLeastOneFieldFilled`/
- * `FieldsNotCollectivelyFilled` need a real TRUE the malformed field doesn't supply; `NotAllFieldsFilled`/
- * `NoFieldFilled` key off a real FALSE (empty). A binary "present = filled" count (the bug) fires several of
- * these where the kernel does not. On the **non-repeatable** `/Order` (the negative quantifiers can't iterate a
- * repeatable group — `MVK_NEG_CONDITION_IN_ITERATION`); firing must agree.
+ * Differential — unfiltered validation field-list quantifiers with a formally unavailable (malformed)
+ * operand. The cell stays in the selected range but counts as NEITHER known-filled nor known-empty. The leaf's
+ * silent outcome is observed only as the kernel's collapsed `FALSE_OR_UNKNOWN`; this test does not infer a
+ * hidden false-versus-unknown state. Over `(Quantity, BackorderQuantity)`, each positive or negative formula
+ * therefore needs its own sufficient known witness. On the non-repeatable `/Order` (negative quantifiers
+ * cannot iterate a repeatable group — `MVK_NEG_CONDITION_IN_ITERATION`), firing must agree.
  */
 class QuantifierMalformedDiffTest {
 

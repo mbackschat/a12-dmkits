@@ -7,7 +7,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-/** The catalog must expose every typed bare-group overload and its computation-sensitive traversal law. */
+/** The catalog must expose every typed bare-group overload and distinguish validation from computation. */
 class BareGroupFillCatalogTest {
 
     private static final List<String> OPERATORS = List.of(
@@ -20,7 +20,7 @@ class BareGroupFillCatalogTest {
             "MoreThanOneFieldFilled");
 
     @Test
-    void allSevenFieldFillQuantifiersExposeGroupScopeAndLazyDeclarationOrder() {
+    void allSevenFieldFillQuantifiersExposeBothEvaluationPhases() {
         OperatorCatalog catalog = OperatorCatalog.load();
         for (String id : OPERATORS) {
             OperatorEntry entry = catalog.byId(id).orElseThrow();
@@ -30,9 +30,11 @@ class BareGroupFillCatalogTest {
                     () -> id + " must explain the group operand");
             assertTrue(entry.gotchas().stream().anyMatch(gotcha ->
                             gotcha.kind() == GotchaKind.SURPRISE
+                                    && gotcha.text().contains("validation")
+                                    && gotcha.text().contains("computation")
                                     && gotcha.text().contains("declaration order")
-                                    && gotcha.text().contains("stops")),
-                    () -> id + " must expose declaration-order lazy stopping");
+                                    && gotcha.text().contains("unavailable")),
+                    () -> id + " must distinguish the extensional validation tally from the ordered computation scan");
             assertTrue(entry.validExample().dsl().contains("(ShippingAddress)"),
                     () -> id + " must carry a kernel-executed bare-group example");
         }

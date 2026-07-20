@@ -17,8 +17,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
  * A boolean presence predicate (a `Cond.Pred`), evaluated to a three-valued [Tri]. [polarity] is the message
  * type when the predicate fires: a "not filled" predicate is fixable by FILLING → OMISSION, a positive
  * presence check → VALUE (KERNEL-FINDINGS §3 — value-vs-omission typing). It is **null for the field-list
- * quantifiers**, whose polarity is *data-dependent* (e.g. `NotExactlyOneFieldFilled` is OMISSION at k=0 but
- * VALUE at k=2) and is computed dynamically by `Interpreter.predType` from the filled-count.
+ * quantifiers**, whose polarity is *data-dependent* (e.g. `NotExactlyOneFieldFilled` is OMISSION in its
+ * zero-filled/no-unavailable region but VALUE at two known-filled cells) and is computed dynamically by
+ * `Interpreter.predType` from the extensional tally.
  */
 enum class PredicateOp(val kernelName: String, val polarity: MsgType?, val countsGroups: Boolean = false) {
     FIELD_FILLED("FieldFilled", MsgType.VALUE),
@@ -50,16 +51,16 @@ enum class PredicateOp(val kernelName: String, val polarity: MsgType?, val count
     VALID("Valid", MsgType.VALUE),
     INVALID("Invalid", null),
 
-    // List quantifiers — fire by the count k of filled OPERANDS among the N (fields, or groups when
-    // [countsGroups]); KERNEL-FINDINGS §1. polarity = null → computed dynamically (fixable-by-filling →
-    // OMISSION, else VALUE). The firing law per op is `Interpreter.quantifierFires`.
-    ALL_FIELDS_FILLED("AllFieldsFilled", null),                          // k == N
-    NO_FIELD_FILLED("NoFieldFilled", null),                              // k == 0
-    AT_LEAST_ONE_FIELD_FILLED("AtLeastOneFieldFilled", null),            // k >= 1
-    MORE_THAN_ONE_FIELD_FILLED("MoreThanOneFieldFilled", null),          // k >= 2
-    NOT_ALL_FIELDS_FILLED("NotAllFieldsFilled", null),                   // k <  N
-    NOT_EXACTLY_ONE_FIELD_FILLED("NotExactlyOneFieldFilled", null),      // k != 1
-    FIELDS_NOT_COLLECTIVELY_FILLED("FieldsNotCollectivelyFilled", null), // 0 < k < N
+    // Validation list quantifiers use the extensional (true, false, unavailable) tally; an unavailable operand
+    // is in N but in neither count. Computation uses the separate ordered scans in Interpreter. polarity = null
+    // means the fired message type is computed from the reached data (KERNEL-FINDINGS §1).
+    ALL_FIELDS_FILLED("AllFieldsFilled", null),                          // t == N
+    NO_FIELD_FILLED("NoFieldFilled", null),                              // f == N
+    AT_LEAST_ONE_FIELD_FILLED("AtLeastOneFieldFilled", null),            // t >= 1
+    MORE_THAN_ONE_FIELD_FILLED("MoreThanOneFieldFilled", null),          // t >= 2
+    NOT_ALL_FIELDS_FILLED("NotAllFieldsFilled", null),                   // f >= 1
+    NOT_EXACTLY_ONE_FIELD_FILLED("NotExactlyOneFieldFilled", null),      // f == N || t >= 2
+    FIELDS_NOT_COLLECTIVELY_FILLED("FieldsNotCollectivelyFilled", null), // t >= 1 && f >= 1
     ALL_GROUPS_FILLED("AllGroupsFilled", null, countsGroups = true),                          // k == N
     NO_GROUP_FILLED("NoGroupFilled", null, countsGroups = true),                              // k == 0
     AT_LEAST_ONE_GROUP_FILLED("AtLeastOneGroupFilled", null, countsGroups = true),            // k >= 1
@@ -171,12 +172,11 @@ enum class FunctionOp(val kernelName: String) {
 }
 
 /**
- * Whether a list quantifier [op] fires for a tally of [t] TRUE + [f] FALSE operands among [n] (the rest
- * UNKNOWN) — the kernel's runtime quantifier semantics (`alleEntitiesAngegeben`/`keineEntityAngegeben`/…,
- * KERNEL-FINDINGS §1/§3). Reduces to the binary count law when no operand is UNKNOWN (`f = n − t`); field
- * and group quantifiers share it. A **pure, strategy-agnostic** function over the resolved tally (no AST-walk,
- * no `EvalContext`), co-located with [PredicateOp] so the interpreter tree-walk and a future generator share
- * one definition (INTERPRETER-FINDINGS IF10).
+ * Whether an unfiltered validation list quantifier [op] fires for an extensional tally of [t] known-filled +
+ * [f] known-empty operands among [n]; the rest are formally unavailable and belong to neither bucket. The
+ * caller projects a non-fire to the kernel-visible collapsed `FALSE_OR_UNKNOWN`. Computation does not call
+ * this function: it uses the ordered, poison-on-read scans in `Interpreter.computeFillQuantifier`. Field and
+ * group quantifiers share this pure tally function (KERNEL-FINDINGS §1/§3).
  */
 fun quantifierFires(op: PredicateOp, t: Int, f: Int, n: Int): Boolean = when (op) {
     PredicateOp.ALL_FIELDS_FILLED, PredicateOp.ALL_GROUPS_FILLED -> t == n

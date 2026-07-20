@@ -209,7 +209,7 @@ class Interpreter(
         is Cond.Custom -> true    // hidden dependencies are callback-owned; the leaf is structurally empty-eligible
     }
 
-    /** Whether a presence predicate is TRUE when all its operands are empty (k = 0 filled). */
+    /** Whether a presence predicate is TRUE when every operand is known empty (t = 0, f = n, u = 0). */
     private fun predFiresOnEmpty(p: Cond.Pred): Boolean = when (val op = PredicateOp.byName(p.name)) {
         null, PredicateOp.FIELD_FILLED, PredicateOp.GROUP_FILLED,
         PredicateOp.FIELD_VALUE_IN_LIST, PredicateOp.FIELD_VALUE_NOT_IN_LIST,
@@ -409,7 +409,8 @@ class Interpreter(
      * cell, so a cell after the stop is never read (kernel `mindestensEineEntityAngegeben` stops at the first
      * filled; `keineEntityAngegeben` at the first filled; `alleEntitiesAngegeben` / `nichtAlleOderKeine…` at the
      * first empty — the latter two over the DECLARED range, where an un-instantiated rep reads empty without a
-     * value read). `NotExactlyOne` and `FieldsNotCollectivelyFilled` compose two scans, like the kernel.
+     * value read). `NotExactlyOne` and `FieldsNotCollectivelyFilled` compose two scans and restart the second
+     * scan from the beginning, like the kernel.
      * During compute there is no not-relevant UNKNOWN (the kernel resets the sets and throws instead), so a
      * cell is simply FILLED or EMPTY. Locked by `adapter.laws.ComputePoisonReadDiffTest`.
      */
@@ -450,12 +451,13 @@ class Interpreter(
                 for (cell in c.starScanCells(a.path, a.bindDepth, declaredTail)) yield(filledOrPoison(cell))
             }
             a is Expr.Star -> {
-                // A filtered star: the filter runs per row inside the scan (its reads poison row-correctly); an
+                // A filtered star: the filter runs per row inside the scan (its reads poison row-correctly); a
+                // kept candidate retains path+reps+raw through the complete call-local formal oracle. An
                 // un-instantiated declared rep cannot pass a filter, so there is no declared tail.
                 val group = a.path.substringBeforeLast('/')
                 for (rc in ctxOf(a).rowContexts(group, a.bindDepth)) {
                     if (!havingInterp(rc).fires(a.having!!)) continue
-                    yield(filledOrPoison(a.path, rc.cellState(a.path)))
+                    yield(filledOrPoison(scanCell(a.path, rc)))
                 }
             }
             a is Expr.Field && ctxOf(a).declaredKind(a.path) == null -> {
@@ -477,16 +479,13 @@ class Interpreter(
         }
     }
 
+    private fun scanCell(path: String, ctx: EvalContext) =
+        ScanCell(path, ctx.repsOf(path), ctx.displayValue(path), ctx.cellState(path))
+
     internal fun filledOrPoison(cell: ScanCell): Boolean = when (
         if (cell.baseState == CellState.FILLED) computeScanState?.invoke(cell) ?: cell.baseState else cell.baseState
     ) {
         CellState.INVALID -> throw PoisonedReadException(cell.path)
-        CellState.FILLED -> true
-        CellState.EMPTY -> false
-    }
-
-    private fun filledOrPoison(path: String, state: CellState): Boolean = when (state) {
-        CellState.INVALID -> throw PoisonedReadException(path)
         CellState.FILLED -> true
         CellState.EMPTY -> false
     }

@@ -77,11 +77,12 @@ class AdvisorTest {
     }
 
     @Test
-    void aGotchaFreeOperatorProducesNothing() {
-        // NoFieldFilled carries no catalog gotchas, and field refs apply no operator.
+    void fillQuantifierAdviceKeepsValidationAndComputationDistinct() {
         Condition c = Dsl.noFieldFilled(SUB.field(NAME), SUB.field(EMAIL));
 
-        assertTrue(advisor.advise(c).isEmpty(), () -> "unexpected gotchas: " + advisor.advise(c));
+        Diagnostic d = withOperator(advisor.advise(c), "NoFieldFilled");
+        assertTrue(d.summary().contains("validation"), () -> "missing validation contract: " + d.summary());
+        assertTrue(d.summary().contains("computation"), () -> "missing computation contract: " + d.summary());
     }
 
     private static Diagnostic withOperator(List<Diagnostic> diagnostics, String operatorId) {

@@ -393,8 +393,8 @@ private fun Interpreter.toleranceType(c: Cond.Tolerance): MsgType {
  * The value-vs-omission polarity of a fired predicate. Non-quantifier predicates carry a static
  * [PredicateOp.polarity]; a field-list quantifier's polarity is **data-dependent** and computed the way
  * the kernel does — OMISSION iff filling some currently-empty operand could clear the firing (so the
- * error is fixable by filling), else VALUE. (E.g. `NotExactlyOneFieldFilled` is OMISSION at k=0 but
- * VALUE at k=2 — KERNEL-FINDINGS §1.)
+ * error is fixable by filling), else VALUE. (E.g. `NotExactlyOneFieldFilled` is OMISSION in its
+ * zero-filled/no-unavailable firing region but VALUE at two known-filled cells — KERNEL-FINDINGS §1.)
  */
 private fun Interpreter.predType(p: Cond.Pred): MsgType {
     val op = PredicateOp.byName(p.name) ?: return MsgType.VALUE
@@ -445,8 +445,8 @@ private fun Interpreter.leafOmission(e: Expr): Boolean = when (e) {
 }
 
 /** The message polarity of a fired group/starred-scope fill quantifier — the kernel's fixed WF/AF per op
- *  (`NoField`/`NotAll`/`FieldsNotCollectively` are omission errors; `NotExactlyOne` is omission at 0 filled,
- *  value at ≥2; the rest are value errors). IF49. */
+ *  (`NoField`/`NotAll`/`FieldsNotCollectively` are omission errors; `NotExactlyOne` is omission in its
+ *  zero-filled/no-unavailable region and value at ≥2 known-filled; the rest are value errors). IF49. */
 private fun Interpreter.fillScopeType(op: PredicateOp, fs: FillScope): MsgType = when (op) {
     PredicateOp.NO_FIELD_FILLED, PredicateOp.NOT_ALL_FIELDS_FILLED,
     PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED -> MsgType.OMISSION

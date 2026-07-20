@@ -69,6 +69,17 @@ class OperatorsVerbTest {
     }
 
     @Test
+    void servesTheFieldFillPhaseBoundary() throws Exception {
+        CliTestSupport.Result result = CliTestSupport.run("operators", "NotExactlyOneFieldFilled");
+        assertEquals(0, result.code(), result::err);
+        JsonNode operator = MAPPER.readTree(result.out());
+        String gotchas = operator.path("gotchas").toString();
+        assertTrue(gotchas.contains("validation"), () -> "missing validation contract: " + operator);
+        assertTrue(gotchas.contains("computation"), () -> "missing computation contract: " + operator);
+        assertTrue(gotchas.contains("restarts"), () -> "missing staged-scan restart: " + operator);
+    }
+
+    @Test
     void unknownOperatorFails() {
         CliTestSupport.Result res = CliTestSupport.run("operators", "NoSuchOp");
         assertEquals(2, res.code());

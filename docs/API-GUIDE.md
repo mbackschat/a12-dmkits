@@ -747,7 +747,7 @@ The flat `operators` list answers *which* constructs appear; the **`tree`** answ
     { "id":"And",        "keyword":"And", "kind":"OPERATOR",  "meaning":"True iff both boolean operands are true.",
       "gotchas":["there is no 'Not' operator"] },
     { "id":"FieldFilled","keyword":"FieldFilled","kind":"PREDICATE","meaning":"True iff the referenced field currently holds a value.",
-      "gotchas":["a field carrying a formal error is removed from evaluation, so 'FieldFilled(F) Or FieldNotFilled(F)' is not a tautology"] },
+      "gotchas":["a field carrying a formal error makes FieldFilled and FieldNotFilled unavailable rather than treating the cell as empty, so 'FieldFilled(F) Or FieldNotFilled(F)' is not a tautology"] },
     { "id":"GreaterThan","keyword":">", "kind":"OPERATOR",  "meaning":"True iff the left operand is strictly greater than the right." },
     { "id":"Sum",        "keyword":"Sum","kind":"FUNCTION",  "meaning":"The sum of the listed number fields' values, typically over a repetition list.",
       "gotchas":["an UNSPECIFIED field counts as 0 — unlike MaxValue/MinValue, which ignore unspecified fields (KERNEL-SEMANTICS §9)"] }

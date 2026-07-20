@@ -16,8 +16,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * Differential — the field-list quantifiers over a two-field list (`CustomerName`, `ProductCode`), by the
- * count k of filled operands: `NoFieldFilled` (k=0), `AtLeastOneFieldFilled` (k≥1), `MoreThanOneFieldFilled`
+ * Differential — the all-valid baseline for field-list quantifiers over a two-field list (`CustomerName`,
+ * `ProductCode`), by the count k of filled operands: `NoFieldFilled` (k=0), `AtLeastOneFieldFilled` (k≥1), `MoreThanOneFieldFilled`
  * (k≥2), `NotAllFieldsFilled` (k<N), `NotExactlyOneFieldFilled` (k≠1), `FieldsNotCollectivelyFilled` (0<k<N).
  * The three negatives disagree at the all-empty edge (KERNEL-FINDINGS §1) — that trap is exercised here. A
  * sibling field (`Quantity`) is always filled so the ROW is evaluated and it is the *list* fields' emptiness

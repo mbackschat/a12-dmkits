@@ -89,7 +89,7 @@
     "returns": "boolean",
     "meaning": "True iff the referenced field currently holds a value.",
     "constraints": [ "the operand is a single field reference, not a bracketed field-value expression" ],
-    "gotchas": [ { "text": "a field carrying a formal error is removed from evaluation, so 'FieldFilled(F) Or FieldNotFilled(F)' is not a tautology", "kind": "SURPRISE" } ],
+    "gotchas": [ { "text": "a field carrying a formal error makes FieldFilled and FieldNotFilled unavailable rather than treating the cell as empty, so 'FieldFilled(F) Or FieldNotFilled(F)' is not a tautology", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(Quantity)", "note": "true when Quantity has a value" },
     "invalidExample": { "dsl": "FieldFilled(ShippingAddress) And FieldNotFilled(ShippingAddress/Street)", "error": "MVK_NO_GROUPS_ALLOWED", "fix": "FieldFilled takes a field — for a group use GroupFilled" },
     "sinceKernel": "30.8.x"
@@ -492,9 +492,9 @@
     "keywords": { "en": "AllFieldsFilled", "de": "AlleFelderAngegeben" },
     "operands": [ { "type": "field-list-or-groups" } ],
     "returns": "boolean",
-    "meaning": "True iff every listed field has a value.",
+    "meaning": "In validation, true iff every declared slot is known filled; a known empty, unavailable, or declared-but-uninstantiated slot prevents firing.",
     "constraints": [ "the operand is a field-reference list (typically two or more fields), or one or more groups whose recursively contained fields form the scope" ],
-    "gotchas": [ { "text": "a field carrying a formal error is removed from evaluation (see FieldFilled)", "kind": "SURPRISE" }, { "text": "with a group operand, contained cells stream recursively in declaration order (field-major, then repetition-major) and evaluation stops as soon as the result is decisive; a malformed later cell is not read, while one reached before the decision can poison a computation", "kind": "SURPRISE" } ],
+    "gotchas": [ { "text": "validation is an extensional tally: an unavailable slot stays in the range but counts as neither filled nor empty. In a computation, group cells scan recursively in declaration order (field-major, then repetition-major); the first empty slot decides, a reached invalid slot poisons, and a suffix after the decision is unread", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(ShippingAddress)", "note": "true when every field recursively contained in the shipping-address group is filled" },
     "semantics": {
       "iterationRange": {
@@ -529,9 +529,9 @@
     "keywords": { "en": "NoFieldFilled", "de": "KeinFeldAngegeben" },
     "operands": [ { "type": "field-list-or-groups" } ],
     "returns": "boolean",
-    "meaning": "True iff none of the listed fields has a value.",
+    "meaning": "In validation, true iff no instantiated slot is filled and no instantiated slot is unavailable.",
     "constraints": [ "the operand is a field-reference list, or one or more groups whose recursively contained fields form the scope" ],
-    "gotchas": [ { "text": "with a group operand, contained cells stream recursively in declaration order (field-major, then repetition-major) and evaluation stops as soon as the result is decisive; a malformed later cell is not read, while one reached before the decision can poison a computation", "kind": "SURPRISE" } ],
+    "gotchas": [ { "text": "validation is an extensional tally: an unavailable slot stays in the range but counts as neither filled nor empty, so unavailable alone is not the same as empty. In a computation, group cells scan recursively in declaration order (field-major, then repetition-major); the first filled slot decides, a reached invalid slot poisons, and a suffix after the decision is unread", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "NoFieldFilled(ShippingAddress)", "note": "true when no field recursively contained in the shipping-address group is filled" },
     "sinceKernel": "30.8.x"
   },
@@ -543,9 +543,9 @@
     "keywords": { "en": "AtLeastOneFieldFilled", "de": "MindestensEinFeldAngegeben" },
     "operands": [ { "type": "field-list-or-groups" } ],
     "returns": "boolean",
-    "meaning": "True iff at least one of the listed fields has a value.",
+    "meaning": "In validation, true iff at least one instantiated slot is known filled; unavailable slots contribute no witness.",
     "constraints": [ "the operand is a field-reference list, or one or more groups whose recursively contained fields form the scope" ],
-    "gotchas": [ { "text": "with a group operand, contained cells stream recursively in declaration order (field-major, then repetition-major) and evaluation stops as soon as the result is decisive; a malformed later cell is not read, while one reached before the decision can poison a computation", "kind": "SURPRISE" } ],
+    "gotchas": [ { "text": "validation is an extensional tally: an unavailable slot stays in the range but counts as neither filled nor empty. In a computation, group cells scan recursively in declaration order (field-major, then repetition-major); the first filled slot decides, a reached invalid slot poisons, and a suffix after the decision is unread", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AtLeastOneFieldFilled(ShippingAddress)", "note": "true when any field recursively contained in the shipping-address group is filled" },
     "sinceKernel": "30.8.x"
   },
@@ -557,9 +557,9 @@
     "keywords": { "en": "NotAllFieldsFilled", "de": "NichtAlleFelderOderKeinFeldAngegeben" },
     "operands": [ { "type": "field-list-or-groups" } ],
     "returns": "boolean",
-    "meaning": "True iff at least one listed field is empty — including when none are filled (the all-empty case is included).",
+    "meaning": "In validation, true iff at least one declared slot is known empty or declared-but-uninstantiated; an unavailable slot alone is not empty.",
     "constraints": [ "the operand is a field-reference list, or one or more groups whose recursively contained fields form the scope" ],
-    "gotchas": [ { "text": "NOT the complement of NoFieldFilled: they agree when all listed fields are empty but diverge on a partial fill — NotAllFieldsFilled fires (at least one empty), NoFieldFilled does not. The DE keyword NichtAlleFelderOderKeinFeldAngegeben spells out the 'or none' branch.", "kind": "SURPRISE" }, { "text": "with a group operand, contained cells stream recursively in declaration order (field-major, then repetition-major) and evaluation stops as soon as the result is decisive; a malformed later cell is not read, while one reached before the decision can poison a computation", "kind": "SURPRISE" } ],
+    "gotchas": [ { "text": "NOT the complement of NoFieldFilled: they agree when all listed fields are empty but diverge on a partial fill — NotAllFieldsFilled fires (at least one empty), NoFieldFilled does not. The DE keyword NichtAlleFelderOderKeinFeldAngegeben spells out the 'or none' branch.", "kind": "SURPRISE" }, { "text": "validation is an extensional tally: an unavailable slot stays in the range but counts as neither filled nor empty. In a computation, group cells scan recursively in declaration order (field-major, then repetition-major); the first empty slot in the declared range decides, a reached invalid slot poisons, and a suffix after the decision is unread", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "NotAllFieldsFilled(ShippingAddress)", "note": "true when at least one field recursively contained in the shipping-address group is empty" },
     "semantics": {
       "iterationRange": {
@@ -593,9 +593,9 @@
     "keywords": { "en": "FieldsNotCollectivelyFilled", "de": "FelderNichtGemeinsamAngegeben" },
     "operands": [ { "type": "field-list-or-groups" } ],
     "returns": "boolean",
-    "meaning": "True iff the listed fields are not collectively filled — some filled and some not (a partial-fill check).",
+    "meaning": "In validation, true iff at least one instantiated slot is known filled and at least one declared slot is known empty or uninstantiated; unavailable slots contribute to neither witness.",
     "constraints": [ "the operand is a field-reference list, or one or more groups whose recursively contained fields form the scope" ],
-    "gotchas": [ { "text": "a strict partial-fill check — fires only when at least one listed field is filled AND at least one is empty; the all-empty case does NOT fire (contrast NotAllFieldsFilled, which includes all-empty).", "kind": "SURPRISE" }, { "text": "with a group operand, contained cells stream recursively in declaration order (field-major, then repetition-major) and evaluation stops as soon as the result is decisive; a malformed later cell is not read, while one reached before the decision can poison a computation", "kind": "SURPRISE" } ],
+    "gotchas": [ { "text": "a strict partial-fill check — fires only when at least one listed field is filled AND at least one is empty; the all-empty case does NOT fire (contrast NotAllFieldsFilled, which includes all-empty).", "kind": "SURPRISE" }, { "text": "validation is an extensional tally: an unavailable slot stays in the range but counts as neither filled nor empty. In a computation, the instantiated at-least-one scan runs in declaration order; after a filled witness, the declared-range not-all scan restarts from the beginning. Each stage stops independently, and any invalid slot it reaches poisons", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldsNotCollectivelyFilled(ShippingAddress)", "note": "true when the shipping-address group's recursively contained fields are partially filled" },
     "semantics": {
       "iterationRange": {
@@ -629,9 +629,9 @@
     "keywords": { "en": "NotExactlyOneFieldFilled", "de": "NichtGenauEinFeldAngegeben" },
     "operands": [ { "type": "field-list-or-groups" } ],
     "returns": "boolean",
-    "meaning": "True iff the number of filled fields among the listed is not exactly one (zero, or two or more).",
+    "meaning": "In validation, true iff no instantiated slot is filled and none is unavailable, or at least two instantiated slots are known filled.",
     "constraints": [ "the operand is a field-reference list, or one or more groups whose recursively contained fields form the scope" ],
-    "gotchas": [ { "text": "with a group operand, contained cells stream recursively in declaration order (field-major, then repetition-major) and evaluation stops as soon as the result is decisive; a malformed later cell is not read, while one reached before the decision can poison a computation", "kind": "SURPRISE" } ],
+    "gotchas": [ { "text": "validation is an extensional tally: an unavailable slot stays in the range but counts as neither filled nor empty, so zero known filled does not fire when unavailable slots remain. In a computation, the no-filled scan runs in declaration order; after a filled witness, the more-than-one scan restarts from the beginning. Each stage stops independently, and any invalid slot it reaches poisons", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "NotExactlyOneFieldFilled(ShippingAddress)", "note": "true unless exactly one field recursively contained in the shipping-address group is filled" },
     "sinceKernel": "30.8.x"
   },
@@ -642,9 +642,9 @@
     "keywords": { "en": "MoreThanOneFieldFilled", "de": "MehrAlsEinFeldAngegeben" },
     "operands": [ { "type": "field-list-or-groups" } ],
     "returns": "boolean",
-    "meaning": "True iff two or more of the listed fields are filled. Also applies over a group scope (the fields inside the group).",
+    "meaning": "In validation, true iff at least two instantiated slots are known filled; unavailable slots contribute no witness. Also applies over a group scope.",
     "constraints": [ "the operand is a field-reference list, or one or more groups whose recursively contained fields form the scope" ],
-    "gotchas": [ { "text": "with a group operand, contained cells stream recursively in declaration order (field-major, then repetition-major) and evaluation stops as soon as the result is decisive; a malformed later cell is not read, while one reached before the decision can poison a computation", "kind": "SURPRISE" } ],
+    "gotchas": [ { "text": "validation is an extensional tally: an unavailable slot stays in the range but counts as neither filled nor empty. In a computation, group cells scan recursively in declaration order (field-major, then repetition-major); the second filled slot decides, a reached invalid slot poisons, and a suffix after the decision is unread", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "MoreThanOneFieldFilled(ShippingAddress)", "note": "true when two or more fields recursively contained in the shipping-address group are filled" },
     "sinceKernel": "30.8.x"
   },
