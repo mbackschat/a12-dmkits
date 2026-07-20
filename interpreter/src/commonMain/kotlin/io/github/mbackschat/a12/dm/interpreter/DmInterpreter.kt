@@ -80,6 +80,8 @@ class DmInterpreter @JvmOverloads constructor(
     private val scopes = IterationScopes(model)
     private val rnuEval = RepetitionNotUniqueEvaluator(model, scopes)
     private val parsedModel = ParsedModel(model)
+    /** Nullable, instance-local structural seam used only by the cache-lifetime guard. */
+    internal var cacheObserver: CacheObserver? = null
     private val preparedModel = PreparedModel(
         model,
         parsedModel,
@@ -92,7 +94,16 @@ class DmInterpreter @JvmOverloads constructor(
             customFieldTypes = customFieldTypes,
         ),
     )
-    private val engine = ComputationEngine(model, clock, predefinedTypes, customFieldTypes, preparedModel, scopes, checks)
+    private val engine = ComputationEngine(
+        model,
+        clock,
+        predefinedTypes,
+        customFieldTypes,
+        preparedModel,
+        scopes,
+        checks,
+        cacheObserver = { cacheObserver },
+    )
 
     /**
      * Audit this prepared model without consulting document values. Every stored rule, implicit computation
@@ -189,43 +200,47 @@ class DmInterpreter @JvmOverloads constructor(
      * field's relevance.
      */
     private fun validateWith(doc: Document, locale: String, isRelevant: Relevance,
-            customRelevant: Set<FieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null): ValidationOutcome {
-        val dup = checks.duplicateIndexCells(doc, isRelevant)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
-        val formalResults = FormalResultCache(checks, locale, dup)
-        // Custom-type unsupported is collected up front (cells whose type is in NEITHER registry); formalErrors
-        // ADDS to it any REGISTERED code-based type whose validate() can't run (a JS worker down / errored), so
-        // that degrades to unsupported per cell rather than crashing the whole validation.
-        val unsupported = checks.customTypeUnsupported(doc, isRelevant).toMutableList()
-        val messages = (checks.formalErrors(doc, locale, isRelevant, formalResults, unsupported) +
-                checks.mandatoryErrors(doc, locale, isRelevant)
-                + checks.uniquenessMessages(dup, locale, isRelevant) + checks.overRepetitionMessages(doc, locale, isRelevant)).toMutableList()
-        // The per-call seam (IF117): the formal-status memo spans ALL rules of this validation (the doc is
-        // immutable here), and the EvalConfig is built once for the whole call.
-        val pass = ValidationPass(doc, locale, isRelevant, dup,
-            validationConfig(isRelevant, customRelevant, starRelevant), formalResults)
-        for (rule in model.rules) {
-            try {
-                // RepetitionNotUnique now flows through the ordinary rule path as a 3VL leaf (IF149) — no
-                // recognizer/emitter special-casing; [rowOutcomes] builds its duplicate cache and threads it in.
-                messages += messagesFor(rule, pass)
-            } catch (e: UnsupportedConstructException) {
-                unsupported += UnsupportedRule(rule.path, e.message ?: "unsupported construct")
+            customRelevant: Set<FieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null): ValidationOutcome =
+        observeCaches(doc) {
+            val dup = checks.duplicateIndexCells(doc, isRelevant)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
+            val formalResults = FormalResultCache(checks, locale, dup)
+            // Custom-type unsupported is collected up front (cells whose type is in NEITHER registry); formalErrors
+            // ADDS to it any REGISTERED code-based type whose validate() can't run (a JS worker down / errored), so
+            // that degrades to unsupported per cell rather than crashing the whole validation.
+            val unsupported = checks.customTypeUnsupported(doc, isRelevant).toMutableList()
+            val messages = (checks.formalErrors(doc, locale, isRelevant, formalResults, unsupported) +
+                    checks.mandatoryErrors(doc, locale, isRelevant)
+                    + checks.uniquenessMessages(dup, locale, isRelevant) + checks.overRepetitionMessages(doc, locale, isRelevant)).toMutableList()
+            // The per-call seam (IF117): the formal-status memo spans ALL rules of this validation (the doc is
+            // immutable here), and the EvalConfig is built once for the whole call.
+            val pass = ValidationPass(doc, locale, isRelevant, dup,
+                validationConfig(isRelevant, customRelevant, starRelevant), formalResults)
+            for (rule in model.rules) {
+                try {
+                    // RepetitionNotUnique now flows through the ordinary rule path as a 3VL leaf (IF149) — no
+                    // recognizer/emitter special-casing; [rowOutcomes] builds its duplicate cache and threads it in.
+                    messages += messagesFor(rule, pass)
+                } catch (e: UnsupportedConstructException) {
+                    unsupported += UnsupportedRule(rule.path, e.message ?: "unsupported construct")
+                }
             }
-        }
-        // Every computation is ALSO a validation rule (KERNEL-FINDINGS, IF32/IF65): the kernel auto-generates one
-        // implicit validation per computation — a field gate `FieldFilled(F) And` then the guard/tier selection
-        // and `[F] != <selected operation>` — that fires under the computation's NAME when a stored computed value
-        // disagrees with what the (guard-selected) tier computes. This covers GUARDED/TIERED computations, not
-        // just the degenerate single-unconditional one (IF65). Evaluated through the same rule machinery.
-        for (implicit in parsedModel.implicitRules) {
-            try {
-                messages += messagesFor(implicit, pass)
-            } catch (e: UnsupportedConstructException) {
-                unsupported += UnsupportedRule(implicit.errorEntityRelPath, e.message ?: "unsupported computation validation")
+            // Every computation is ALSO a validation rule (KERNEL-FINDINGS, IF32/IF65): the kernel auto-generates one
+            // implicit validation per computation — a field gate `FieldFilled(F) And` then the guard/tier selection
+            // and `[F] != <selected operation>` — that fires under the computation's NAME when a stored computed value
+            // disagrees with what the (guard-selected) tier computes. This covers GUARDED/TIERED computations, not
+            // just the degenerate single-unconditional one (IF65). Evaluated through the same rule machinery.
+            for (implicit in parsedModel.implicitRules) {
+                try {
+                    messages += messagesFor(implicit, pass)
+                } catch (e: UnsupportedConstructException) {
+                    unsupported += UnsupportedRule(
+                        implicit.errorEntityRelPath,
+                        e.message ?: "unsupported computation validation",
+                    )
+                }
             }
+            ValidationOutcome(messages, unsupported)
         }
-        return ValidationOutcome(messages, unsupported)
-    }
 
     /**
      * Evaluate a SINGLE stored rule against the instance — the `rule eval` shape. [Verdict.FIRED] (a
@@ -258,7 +273,7 @@ class DmInterpreter @JvmOverloads constructor(
      * [io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity].
      */
     fun compute(doc: Document, locale: String = "en_US"): List<Computed> =
-        engine.computeInstances(doc, locale)
+        observeCaches(doc) { engine.computeInstances(doc, locale) }
 
     /**
      * Evaluate a SINGLE computed field against the instance — the single-computation twin of [testRule], the
@@ -273,7 +288,7 @@ class DmInterpreter @JvmOverloads constructor(
      */
     fun computeField(fieldPath: String, doc: Document, locale: String = "en_US"): List<Computed> {
         require(model.computations.any { it.targetPath == fieldPath }) { "no computation targets field: $fieldPath" }
-        return engine.computeField(fieldPath, doc, locale)
+        return observeCaches(doc) { engine.computeField(fieldPath, doc, locale) }
     }
 
     /**
@@ -289,15 +304,17 @@ class DmInterpreter @JvmOverloads constructor(
      * `model eval` verb (a required-but-computed field is filled by the computation before the required check
      * runs, so it is not a false `mandatoryField`).
      */
-    fun applyComputations(doc: Document, locale: String = "en_US"): Document {
-        val overrides = HashMap<Pair<String, List<Int>>, String?>()
-        for (computed in engine.computeInstances(doc, locale)) {
-            overrides[computed.path to computed.indices] = if (computed.outcome == ComputeOutcome.VALUE) computed.value else null
+    fun applyComputations(doc: Document, locale: String = "en_US"): Document =
+        observeCaches(doc) {
+            val overrides = HashMap<Pair<String, List<Int>>, String?>()
+            for (computed in engine.computeInstances(doc, locale)) {
+                overrides[computed.path to computed.indices] =
+                    if (computed.outcome == ComputeOutcome.VALUE) computed.value else null
+            }
+            doc.withComputed(overrides)
         }
-        return doc.withComputed(overrides)
-    }
 
-    private fun evalRule(rule: RuleDef, doc: Document, locale: String): RuleResult {
+    private fun evalRule(rule: RuleDef, doc: Document, locale: String): RuleResult = observeCaches(doc) {
         // A single-rule pass (fresh formal-status memo, everything relevant) — the testRule/evalCandidate shape.
         val dup = checks.duplicateIndexCells(doc)
         val pass = ValidationPass(
@@ -310,13 +327,23 @@ class DmInterpreter @JvmOverloads constructor(
         )
         val rows = rowOutcomes(rule, pass)
         rows.firstNotNullOfOrNull { it as? RowOutcome.Fired }?.let {
-            return RuleResult(rule.path, Verdict.FIRED, it.message.text, it.message.type)
+            return@observeCaches RuleResult(rule.path, Verdict.FIRED, it.message.text, it.message.type)
         }
         // No firing: a referenced field being formally invalid means the rule was NOT evaluated (the
         // kernel skips it) → SUPPRESSED, not PASSED. PASSED only when every row was cleanly evaluated.
         val suppressed = rows.filterIsInstance<RowOutcome.Suppressed>().map { it.suppression }
-        return if (suppressed.isNotEmpty()) RuleResult(rule.path, Verdict.SUPPRESSED, suppressedBy = suppressed)
+        if (suppressed.isNotEmpty()) RuleResult(rule.path, Verdict.SUPPRESSED, suppressedBy = suppressed)
         else RuleResult(rule.path, Verdict.PASSED)
+    }
+
+    private inline fun <T> observeCaches(doc: Document, action: () -> T): T {
+        val observer = cacheObserver ?: return action()
+        return try {
+            action()
+        } finally {
+            doc.observeCacheEntries(observer)
+            parsedModel.observeCacheEntries(observer)
+        }
     }
 
     /** Every firing of one rule across its iteration-scope rows, as [Message]s (suppressed rows produce none). */

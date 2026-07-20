@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
+import io.github.mbackschat.a12.dm.interpreter.CacheObserver
+import io.github.mbackschat.a12.dm.interpreter.CacheOwnerKind
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
@@ -181,6 +183,33 @@ class Document(internal val config: DocumentConfig) {
     private var cachedIndex: Index? = null
 
     private fun index(): Index = cachedIndex ?: build().also { cachedIndex = it }
+
+    /**
+     * Logical entries held by this document's derived caches. The observer sees structure, not heap estimates:
+     * every cache container contributes its retained entry count, so a per-evaluation insertion has an exact slope.
+     */
+    internal fun observeCacheEntries(observer: CacheObserver) {
+        val indexEntries = cachedIndex?.let { idx ->
+            idx.valueByKey.values.sumOf { it.size } +
+                idx.rowsByGroup.values.sumOf { it.size } +
+                idx.valued.size +
+                idx.content.size +
+                idx.partsByPath.size +
+                idx.attachByGroup.size +
+                idx.contextsByGroup.size +
+                idx.prefixRowsByGroup.size +
+                idx.nonRepFilledByGroup.size +
+                idx.indexRowByValue.size +
+                idx.indexColumnByScope.size +
+                idx.containedFieldsByGroup.size +
+                idx.containedFieldsInDeclarationOrderByGroup.size
+        } ?: 0
+        observer.cacheEntries(
+            this,
+            CacheOwnerKind.DOCUMENT,
+            indexEntries + rowContextsCache.size + correlationBucketCache.size + orderedCorrelationCache.size,
+        )
+    }
 
     private fun build(): Index {
         val byKey = HashMap<String, HashMap<List<Int>, Placement>>()

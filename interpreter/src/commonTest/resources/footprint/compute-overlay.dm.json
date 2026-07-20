@@ -1,0 +1,149 @@
+{
+  "header" : {
+    "id" : "footprint-compute",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "footprint-compute",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/FootprintCompute",
+        "name" : "FootprintCompute",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Group",
+            "id" : "/FootprintCompute/Row",
+            "name" : "Row",
+            "Group" : {
+              "repeatability" : 1000000,
+              "indexFieldName" : "Key",
+              "elements" : [ {
+                "type" : "Field",
+                "id" : "/FootprintCompute/Row/Key",
+                "name" : "Key",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "StringType"
+                  }
+                }
+              }, {
+                "type" : "Field",
+                "id" : "/FootprintCompute/Row/Source",
+                "name" : "Source",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "NumberType",
+                    "NumberType" : {
+                      "maxFractionalDigits" : 0
+                    }
+                  }
+                }
+              }, {
+                "type" : "Field",
+                "id" : "/FootprintCompute/Row/Intermediate",
+                "name" : "Intermediate",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "NumberType",
+                    "NumberType" : {
+                      "maxFractionalDigits" : 0
+                    }
+                  }
+                }
+              }, {
+                "type" : "Field",
+                "id" : "/FootprintCompute/Row/Correlated",
+                "name" : "Correlated",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "NumberType",
+                    "NumberType" : {
+                      "maxFractionalDigits" : 0
+                    }
+                  }
+                }
+              }, {
+                "type" : "Field",
+                "id" : "/FootprintCompute/Row/Indexed",
+                "name" : "Indexed",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "NumberType",
+                    "NumberType" : {
+                      "maxFractionalDigits" : 0
+                    }
+                  }
+                }
+              }, {
+                "type" : "Computation",
+                "id" : "/FootprintCompute/Row/BuildIntermediate",
+                "name" : "BuildIntermediate",
+                "Computation" : {
+                  "computedFieldRelPath" : "../Intermediate",
+                  "computationAlternatives" : [ {
+                    "operation" : "[Source] + 100"
+                  } ],
+                  "errorMessage" : [ {
+                    "locale" : "en_US",
+                    "text" : "Build the intermediate footprint value."
+                  } ]
+                }
+              }, {
+                "type" : "Computation",
+                "id" : "/FootprintCompute/Row/CopyCorrelated",
+                "name" : "CopyCorrelated",
+                "Computation" : {
+                  "computedFieldRelPath" : "../Correlated",
+                  "computationAlternatives" : [ {
+                    "precondition" : "MoreThanOneFieldFilled(../Row*/Intermediate Having [Intermediate] == [$Intermediate])",
+                    "operation" : "[Intermediate]"
+                  } ],
+                  "errorMessage" : [ {
+                    "locale" : "en_US",
+                    "text" : "Copy a correlated intermediate value."
+                  } ]
+                }
+              }, {
+                "type" : "Computation",
+                "id" : "/FootprintCompute/Row/ReadIndexed",
+                "name" : "ReadIndexed",
+                "Computation" : {
+                  "computedFieldRelPath" : "../Indexed",
+                  "computationAlternatives" : [ {
+                    "operation" : "[Source For \"kb\"]"
+                  } ],
+                  "errorMessage" : [ {
+                    "locale" : "en_US",
+                    "text" : "Read the indexed footprint source."
+                  } ]
+                }
+              } ]
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
+import io.github.mbackschat.a12.dm.interpreter.CacheObserver
+import io.github.mbackschat.a12.dm.interpreter.CacheOwnerKind
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 
 /**
@@ -166,17 +168,17 @@ internal class OverlayContext(
  * step**, bounded by its distinct views, and never spans a step; a later step cannot read a view built against a
  * superseded overlay.
  */
-internal class OverlayViews {
+internal class OverlayViews(private val observer: CacheObserver? = null) {
     private val indexColumns = HashMap<Pair<String, List<Int>>, IndexColumn>()
     private val correlations = HashMap<List<Any?>, Map<List<Val>, IntArray>>()
     private val orderedCorrelations = HashMap<List<Any?>, OrderedCorrelation>()
 
     fun indexColumn(path: String, scope: List<Int>, build: () -> IndexColumn): IndexColumn =
-        indexColumns.getOrPut(path to scope, build)
+        indexColumns.getOrPut(path to scope, build).also { observe() }
 
     fun correlation(groupPath: String, scope: List<Int>, joinFields: List<String>, starPath: String,
                     build: () -> Map<List<Val>, IntArray>): Map<List<Val>, IntArray> =
-        correlations.getOrPut(listOf(groupPath, scope, joinFields, starPath), build)
+        correlations.getOrPut(listOf(groupPath, scope, joinFields, starPath), build).also { observe() }
 
     fun orderedCorrelation(
         groupPath: String,
@@ -185,5 +187,20 @@ internal class OverlayViews {
         starPath: String,
         build: () -> OrderedCorrelation,
     ): OrderedCorrelation =
-        orderedCorrelations.getOrPut(listOf(groupPath, scope, innerField, starPath), build)
+        orderedCorrelations.getOrPut(listOf(groupPath, scope, innerField, starPath), build).also { observe() }
+
+    /** End the computation-step lifetime explicitly, including exceptional/early-exit paths. */
+    fun release() {
+        if (observer == null) return
+        indexColumns.clear()
+        correlations.clear()
+        orderedCorrelations.clear()
+        observe()
+    }
+
+    private fun observe() {
+        val active = observer ?: return
+        active.cacheEntries(this, CacheOwnerKind.OVERLAY_VIEWS,
+            indexColumns.size + correlations.size + orderedCorrelations.size)
+    }
 }

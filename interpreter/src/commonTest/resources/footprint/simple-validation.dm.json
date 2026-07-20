@@ -1,0 +1,71 @@
+{
+  "header" : {
+    "id" : "footprint-simple",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "footprint-simple",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/FootprintSimple",
+        "name" : "FootprintSimple",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Group",
+            "id" : "/FootprintSimple/Row",
+            "name" : "Row",
+            "Group" : {
+              "repeatability" : 1000000,
+              "elements" : [ {
+                "type" : "Field",
+                "id" : "/FootprintSimple/Row/Value",
+                "name" : "Value",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "StringType"
+                  }
+                }
+              }, {
+                "type" : "Rule",
+                "id" : "/FootprintSimple/Row/PresentValue",
+                "name" : "PresentValue",
+                "Rule" : {
+                  "errorEntityRelPath" : "../Value",
+                  "errorCode" : "SIMPLE_REQUIRED",
+                  "errorCondition" : "FieldFilled(Value)",
+                  "severity" : "ERROR",
+                  "errorMessage" : [ {
+                    "locale" : "en_US",
+                    "text" : "The footprint row carries a value."
+                  } ]
+                }
+              } ]
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

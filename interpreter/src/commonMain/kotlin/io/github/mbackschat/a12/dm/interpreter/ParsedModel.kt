@@ -140,4 +140,12 @@ internal class ParsedModel(private val model: ModelDef) {
 
     /** The implicit per-computation validation rules (IF32/IF65), evaluated through the same rule machinery. */
     val implicitRules: Collection<RuleDef> get() = implicitComputationAst.keys
+
+    /** Logical initialized-cache entries for the structural cache-lifetime guard. */
+    internal fun observeCacheEntries(observer: CacheObserver) {
+        val initialized = ruleCondAst.values.count { it.isInitialized() } +
+            compParsedAst.values.count { it.isInitialized() } +
+            implicitComputationAst.values.count { it.isInitialized() }
+        observer.cacheEntries(this, CacheOwnerKind.PARSED_MODEL, initialized)
+    }
 }

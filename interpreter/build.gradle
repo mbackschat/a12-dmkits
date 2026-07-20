@@ -47,6 +47,56 @@ kotlin {
     }
 }
 
+// The footprint workers must stay KMP/kernel-free, while their models must be authored through the public
+// modelkit/EditSession/rulekit surface. :adapter owns that typed author + freshness guard; this task turns its
+// three committed canonical serializations into commonTest constants consumed identically by JVM and Node.
+def footprintModelFixtureDir = file('src/commonTest/resources/footprint')
+def footprintModelFixtures = [
+    SIMPLE_VALIDATION  : new File(footprintModelFixtureDir, 'simple-validation.dm.json'),
+    EQUALITY_CORRELATION: new File(footprintModelFixtureDir, 'equality-correlation.dm.json'),
+    COMPUTE_OVERLAY    : new File(footprintModelFixtureDir, 'compute-overlay.dm.json'),
+]
+def generatedFootprintFixtureDir = layout.buildDirectory
+    .dir('generated/footprintFixtures/commonTest/kotlin')
+    .get()
+    .asFile
+def generatedFootprintFixtureSource = new File(
+    generatedFootprintFixtureDir,
+    'io/github/mbackschat/a12/dm/interpreter/footprint/FootprintModelFixtures.kt',
+)
+def generateFootprintFixtureSource = tasks.register('generateFootprintFixtureSource') {
+    group = 'build'
+    description = 'Embed the typed-authored canonical footprint models for common JVM/Node tests.'
+    inputs.files(footprintModelFixtures.values())
+        .withPropertyName('typedFootprintModels')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    outputs.file(generatedFootprintFixtureSource)
+    doLast {
+        def missing = footprintModelFixtures.findAll { ignored, fixture -> !fixture.isFile() }
+        if (missing) {
+            throw new GradleException(
+                "missing typed footprint model(s) ${missing.values()}; run :adapter:syncFootprintFixtures")
+        }
+        def cases = footprintModelFixtures.collect { scenario, fixture ->
+            def literal = groovy.json.JsonOutput.toJson(fixture.getText('UTF-8')).replace('$', '\\$')
+            "        FootprintScenario.${scenario} -> ${literal}"
+        }.join('\n')
+        generatedFootprintFixtureSource.parentFile.mkdirs()
+        generatedFootprintFixtureSource.text = """\
+package io.github.mbackschat.a12.dm.interpreter.footprint
+
+internal object FootprintModelFixtures {
+    fun jsonFor(scenario: FootprintScenario): String = when (scenario) {
+${cases}
+    }
+}
+"""
+    }
+}
+kotlin.sourceSets.commonTest.kotlin.srcDir(generatedFootprintFixtureDir)
+tasks.named('compileTestKotlinJvm') { dependsOn generateFootprintFixtureSource }
+tasks.named('compileTestKotlinJs') { dependsOn generateFootprintFixtureSource }
+
 // --- Separation by linting (proposal §8) ------------------------------------------------------------
 // The engine must never couple to the kernel or dmtool. A forbidden import fails the build, so the
 // kernel-free / native-safe / publication-eligible standalone boundary can't silently erode as the engine grows.
@@ -110,55 +160,485 @@ def verifyInterpreterPurity = tasks.register('verifyInterpreterPurity') {
 tasks.named('check') { dependsOn verifyInterpreterPurity }
 
 // --- Relative footprint: the NFR-F1 hard-zero + a reproducible runtime-closure measurement (IG79 → IF160) ---
+enum RuntimeClosureEntryKind {
+    PROJECT,
+    MODULE,
+    OPAQUE_FILE,
+    NPM_PACKAGE
+}
+
+class RuntimeClosurePolicy {
+    private static final String PROJECT_GROUP = 'io.github.mbackschat.a12.dm'
+
+    static String violation(Map entry) {
+        switch (entry.kind as RuntimeClosureEntryKind) {
+            case RuntimeClosureEntryKind.PROJECT:
+                return "${entry.identity} — an intra-repo project module"
+            case RuntimeClosureEntryKind.MODULE:
+                if (entry.group?.startsWith('com.mgmtp')) {
+                    return "${entry.identity} — a kernel (com.mgmtp) runtime dependency"
+                }
+                if (entry.group == PROJECT_GROUP) {
+                    return "${entry.identity} — a published dmkits/dmtool/adapter runtime dependency"
+                }
+                if (isGroovy(entry.group as String, entry.name as String)) {
+                    return "${entry.identity} — a Groovy runtime dependency"
+                }
+                return null
+            case RuntimeClosureEntryKind.OPAQUE_FILE:
+                return "${entry.identity} — an opaque runtime file/directory cannot satisfy the hard-zero"
+            case RuntimeClosureEntryKind.NPM_PACKAGE:
+                def name = (entry.name ?: '').toString().toLowerCase()
+                def normalizedName = name.replaceAll('[/_.]+', '-')
+                if (normalizedName.contains('dmkits') || normalizedName.contains('dmtool') ||
+                    normalizedName.contains('a12-kernel') || normalizedName.contains('a12-adapter') ||
+                    normalizedName.contains('groovy')) {
+                    return "${entry.identity} — a forbidden dmkits/dmtool/adapter/kernel/Groovy npm package"
+                }
+                return null
+        }
+        throw new IllegalStateException("unhandled runtime closure entry kind: ${entry.kind}")
+    }
+
+    private static boolean isGroovy(String group, String name) {
+        def g = group?.toLowerCase() ?: ''
+        def n = name?.toLowerCase() ?: ''
+        g.contains('groovy') || n.contains('groovy')
+    }
+}
+
+class RuntimeClosureReconciler {
+    static Map reconcile(Collection<File> runtimeFiles, Collection<Map> artifacts) {
+        def errors = []
+        def filesByPath = [:]
+        runtimeFiles.each { file ->
+            def path = file.canonicalPath
+            if (filesByPath.put(path, file) != null) {
+                errors << "runtime file occurs more than once: ${path}".toString()
+            }
+        }
+        def artifactsByPath = artifacts.groupBy { (it.file as File).canonicalPath }
+        artifactsByPath.each { path, matches ->
+            if (!filesByPath.containsKey(path)) {
+                errors << "resolved artifact is absent from runtime files: ${path}".toString()
+            }
+            if (matches.size() != 1) {
+                errors << "runtime file maps to ${matches.size()} resolved artifacts instead of exactly one: ${path}".toString()
+            }
+        }
+        def entries = filesByPath.keySet().sort().collect { path ->
+            def file = filesByPath[path] as File
+            def matches = artifactsByPath[path] ?: []
+            def entry = matches.size() == 1
+                ? new LinkedHashMap(matches[0].entry as Map)
+                : [kind: RuntimeClosureEntryKind.OPAQUE_FILE, identity: "opaque:${file.name}", key: "opaque:${path}"]
+            entry.file = file
+            entry.bytes = byteSize(file)
+            entry
+        }
+        [entries: entries, errors: errors]
+    }
+
+    static long byteSize(File file) {
+        if (file.isFile()) return file.length()
+        if (!file.isDirectory()) return 0L
+        long total = 0L
+        file.eachFileRecurse { child ->
+            if (child.isFile()) total += child.length()
+        }
+        total
+    }
+}
+
+class NpmProductionClosure {
+    static Map resolve(File publicPackageJson, File nodeModulesRoot) {
+        def root = parse(publicPackageJson)
+        def queue = []
+        enqueueDependencies(root.dependencies, root.optionalDependencies, publicPackageJson.parentFile, queue)
+        enqueuePeers(root.peerDependencies, root.peerDependenciesMeta, publicPackageJson.parentFile, queue)
+        def seen = [] as Set
+        def entries = []
+        def errors = []
+        while (!queue.isEmpty()) {
+            def request = queue.remove(0)
+            def packageDir = findPackage(request.name as String, request.requester as File, nodeModulesRoot)
+            if (packageDir == null) {
+                def declaration = [
+                    kind: RuntimeClosureEntryKind.NPM_PACKAGE,
+                    identity: "${request.name}@${request.version} (${request.relation} declaration)".toString(),
+                    key: "npm-declaration:${request.requester}:${request.name}:${request.relation}".toString(),
+                    name: request.name,
+                    version: request.version,
+                    bytes: 0L,
+                ]
+                if (RuntimeClosurePolicy.violation(declaration) != null) entries << declaration
+                if (!request.optional) {
+                    errors << "required npm package is not installed: ${request.name}".toString()
+                }
+                continue
+            }
+            def path = packageDir.canonicalPath
+            if (!seen.add(path)) continue
+            def manifest = new File(packageDir, 'package.json')
+            if (!manifest.isFile()) {
+                errors << "installed npm package has no package.json: ${path}".toString()
+                continue
+            }
+            def data = parse(manifest)
+            def identity = "${data.name}@${data.version}".toString()
+            entries << [
+                kind: RuntimeClosureEntryKind.NPM_PACKAGE,
+                identity: identity,
+                key: "npm:${path}".toString(),
+                name: data.name,
+                version: data.version,
+                file: packageDir,
+                bytes: packageBytes(packageDir),
+            ]
+            enqueueDependencies(data.dependencies, data.optionalDependencies, packageDir, queue)
+            enqueuePeers(data.peerDependencies, data.peerDependenciesMeta, packageDir, queue)
+        }
+        [entries: entries, errors: errors]
+    }
+
+    private static void enqueueDependencies(
+            Object dependencies,
+            Object optionalDependencies,
+            File requester,
+            List queue) {
+        def optionalNames = optionalDependencies instanceof Map ? optionalDependencies.keySet() : Set.of()
+        def required = dependencies instanceof Map
+            ? dependencies.findAll { name, ignored -> !optionalNames.contains(name) }
+            : dependencies
+        enqueue(required, false, requester, queue)
+        enqueue(optionalDependencies, true, requester, queue)
+    }
+
+    private static void enqueue(Object dependencies, boolean optional, File requester, List queue) {
+        if (!(dependencies instanceof Map)) return
+        dependencies.keySet().sort().each { name ->
+            queue << [
+                name: name.toString(),
+                version: dependencies[name]?.toString(),
+                optional: optional,
+                relation: optional ? 'optional' : 'dependency',
+                requester: requester,
+            ]
+        }
+    }
+
+    private static void enqueuePeers(Object dependencies, Object metadata, File requester, List queue) {
+        if (!(dependencies instanceof Map)) return
+        dependencies.keySet().sort().each { name ->
+            def peerMetadata = metadata instanceof Map ? metadata[name] : null
+            def optional = peerMetadata instanceof Map && peerMetadata.optional == true
+            queue << [
+                name: name.toString(),
+                version: dependencies[name]?.toString(),
+                optional: optional,
+                relation: 'peer',
+                requester: requester,
+            ]
+        }
+    }
+
+    private static File findPackage(String name, File requester, File nodeModulesRoot) {
+        def boundary = nodeModulesRoot.parentFile.canonicalFile
+        def requesterPath = requester.canonicalFile.toPath()
+        if (requesterPath.startsWith(boundary.toPath())) {
+            File cursor = requester.canonicalFile
+            while (cursor != null) {
+                if (cursor.name != 'node_modules') {
+                    def candidate = new File(cursor, "node_modules/${name}")
+                    if (candidate.isDirectory()) return candidate
+                }
+                if (cursor == boundary) break
+                cursor = cursor.parentFile
+            }
+        }
+        def rootPackage = new File(nodeModulesRoot, name)
+        rootPackage.isDirectory() ? rootPackage : null
+    }
+
+    private static Object parse(File file) {
+        new groovy.json.JsonSlurper().parse(file)
+    }
+
+    private static long packageBytes(File packageDir) {
+        long total = 0L
+        def root = packageDir.toPath()
+        packageDir.eachFileRecurse { file ->
+            def relative = root.relativize(file.toPath())
+            def insideNestedModules = relative.any { it.toString() == 'node_modules' }
+            if (file.isFile() && !insideNestedModules) {
+                total += file.length()
+            }
+        }
+        total
+    }
+}
+
+def runtimeEntry = { component ->
+    if (component instanceof org.gradle.api.artifacts.component.ProjectComponentIdentifier) {
+        return [kind: RuntimeClosureEntryKind.PROJECT, identity: "project ${component.projectPath}".toString(),
+                key: "project:${component.projectPath}".toString()]
+    }
+    if (component instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier) {
+        def identity = "${component.group}:${component.module}:${component.version}".toString()
+        return [kind: RuntimeClosureEntryKind.MODULE, identity: identity, key: "module:${identity}".toString(),
+                group: component.group, name: component.module, version: component.version]
+    }
+    [kind: RuntimeClosureEntryKind.OPAQUE_FILE, identity: "component ${component.displayName}".toString(),
+     key: "component:${component.displayName}".toString()]
+}
+
+def collectClosure = { configuration ->
+    def artifacts = configuration.incoming.artifactView {}.artifacts.artifacts.collect { artifact ->
+        [file: artifact.file, entry: runtimeEntry(artifact.id.componentIdentifier)]
+    }
+    def reconciled = RuntimeClosureReconciler.reconcile(configuration.files, artifacts)
+    def artifactKeys = artifacts.collect { it.entry.key }.toSet()
+    def graphOnly = []
+    configuration.incoming.resolutionResult.allComponents.each { component ->
+        def entry = runtimeEntry(component.id)
+        def ownRoot = component.id instanceof org.gradle.api.artifacts.component.ProjectComponentIdentifier &&
+            component.id.projectPath == project.path
+        if (!ownRoot && !artifactKeys.contains(entry.key)) {
+            graphOnly << entry
+        }
+    }
+    [entries: reconciled.entries, graphOnly: graphOnly, errors: reconciled.errors]
+}
+
+def projectRuntimeGraphFixture = configurations.detachedConfiguration(
+    dependencies.project(path: ':rulekit'),
+)
+def moduleRuntimeGraphFixture = configurations.detachedConfiguration(
+    dependencies.create('org.jetbrains:annotations:13.0'),
+)
+def opaqueGraphFile = layout.buildDirectory.file('tmp/runtime-closure-policy/opaque-file.jar').get().asFile
+def opaqueGraphDir = layout.buildDirectory.dir('tmp/runtime-closure-policy/opaque-dir').get().asFile
+def opaqueRuntimeGraphFixture = configurations.detachedConfiguration(
+    dependencies.create(files(opaqueGraphFile, opaqueGraphDir)),
+)
+
+def interpreterRuntimeClosurePolicyTest = tasks.register('interpreterRuntimeClosurePolicyTest') {
+    group = 'verification'
+    description = 'Exercise the NFR-F1 collector and policy against live-graph and synthetic does-fire fixtures.'
+    inputs.files(projectRuntimeGraphFixture)
+    inputs.files(moduleRuntimeGraphFixture)
+    doLast {
+        def fixtures = [
+            [kind: RuntimeClosureEntryKind.PROJECT, identity: 'project :rulekit'],
+            [kind: RuntimeClosureEntryKind.MODULE, identity: 'io.github.mbackschat.a12.dm:dmkits-core:0.8.2',
+             group: 'io.github.mbackschat.a12.dm', name: 'dmkits-core'],
+            [kind: RuntimeClosureEntryKind.MODULE, identity: 'com.mgmtp.a12.kernel:kernel-md-runtime:30.8.1',
+             group: 'com.mgmtp.a12.kernel', name: 'kernel-md-runtime'],
+            [kind: RuntimeClosureEntryKind.MODULE, identity: 'org.apache.groovy:groovy:4.0.0',
+             group: 'org.apache.groovy', name: 'groovy'],
+            [kind: RuntimeClosureEntryKind.OPAQUE_FILE, identity: '/tmp/opaque-runtime.jar'],
+            [kind: RuntimeClosureEntryKind.NPM_PACKAGE, identity: '@a12/dmtool@0.8.2',
+             name: '@a12/dmtool'],
+            [kind: RuntimeClosureEntryKind.NPM_PACKAGE, identity: '@a12/adapter@0.8.2',
+             name: '@a12/adapter'],
+            [kind: RuntimeClosureEntryKind.NPM_PACKAGE, identity: '@a12/kernel@30.8.1',
+             name: '@a12/kernel'],
+        ]
+        def missed = fixtures.findAll { RuntimeClosurePolicy.violation(it) == null }
+        if (missed) {
+            throw new GradleException("runtime-closure policy failed to reject fixtures: " +
+                missed.collect { it.identity }.join(', '))
+        }
+
+        def fixtureDir = temporaryDir
+        def first = new File(fixtureDir, 'first.jar').tap { text = 'first' }
+        def second = new File(fixtureDir, 'second.jar').tap { text = 'second' }
+        def reconciled = RuntimeClosureReconciler.reconcile([first, second], [
+            [file: first, entry: [kind: RuntimeClosureEntryKind.MODULE, identity: 'org.example:first:1',
+                                  key: 'module:org.example:first:1', group: 'org.example', name: 'first']],
+            [file: second, entry: [kind: RuntimeClosureEntryKind.MODULE, identity: 'org.example:second:1',
+                                   key: 'module:org.example:second:1', group: 'org.example', name: 'second']],
+        ])
+        if (reconciled.errors || reconciled.entries*.file*.canonicalPath.toSet() != [first, second]*.canonicalPath.toSet()) {
+            throw new GradleException("runtime-file reconciliation did not account for every canonical file exactly once")
+        }
+        def duplicate = RuntimeClosureReconciler.reconcile([first], [
+            [file: first, entry: fixtures[1]],
+            [file: first, entry: fixtures[2]],
+        ])
+        if (!duplicate.errors.any { it.contains('exactly one') }) {
+            throw new GradleException("duplicate artifact ownership fixture did not fail reconciliation")
+        }
+        def opaqueFile = new File(fixtureDir, 'unmatched.jar').tap { text = 'opaque' }
+        def opaqueDir = new File(fixtureDir, 'unmatched-dir').tap { mkdirs() }
+        def opaque = RuntimeClosureReconciler.reconcile([opaqueFile, opaqueDir], [])
+        if (opaque.entries.size() != 2 ||
+            opaque.entries.any { it.kind != RuntimeClosureEntryKind.OPAQUE_FILE ||
+                RuntimeClosurePolicy.violation(it) == null }) {
+            throw new GradleException("unmatched runtime file/directory fixtures did not become rejected opaque entries")
+        }
+
+        def projectIds = projectRuntimeGraphFixture.incoming.artifactView {}.artifacts.artifacts*.id*.componentIdentifier
+        def projectClosure = collectClosure(projectRuntimeGraphFixture)
+        if (!projectIds.any { it instanceof org.gradle.api.artifacts.component.ProjectComponentIdentifier } ||
+            projectClosure.errors ||
+            !(projectClosure.entries + projectClosure.graphOnly).any {
+                it.kind == RuntimeClosureEntryKind.PROJECT && RuntimeClosurePolicy.violation(it) != null
+            }) {
+            throw new GradleException("live project graph did not flow through runtimeEntry → reconcile → policy rejection")
+        }
+        def moduleIds = moduleRuntimeGraphFixture.incoming.artifactView {}.artifacts.artifacts*.id*.componentIdentifier
+        def moduleClosure = collectClosure(moduleRuntimeGraphFixture)
+        def annotations = (moduleClosure.entries + moduleClosure.graphOnly).find {
+            it.kind == RuntimeClosureEntryKind.MODULE &&
+                it.group == 'org.jetbrains' &&
+                it.name == 'annotations'
+        }
+        if (!moduleIds.any { it instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier } ||
+            moduleClosure.errors ||
+            annotations == null ||
+            RuntimeClosurePolicy.violation(annotations) != null) {
+            throw new GradleException("live module graph did not flow through runtimeEntry → reconcile → safe policy result")
+        }
+        opaqueGraphFile.parentFile.mkdirs()
+        opaqueGraphFile.text = 'opaque-file'
+        opaqueGraphDir.mkdirs()
+        new File(opaqueGraphDir, 'payload').text = 'opaque-directory'
+        def opaqueGraphClosure = collectClosure(opaqueRuntimeGraphFixture)
+        if (opaqueGraphClosure.errors ||
+            opaqueGraphClosure.entries.size() != 2 ||
+            opaqueGraphClosure.entries.any {
+                it.kind != RuntimeClosureEntryKind.OPAQUE_FILE || RuntimeClosurePolicy.violation(it) == null
+            }) {
+            throw new GradleException("live file-dependency graph did not flow through runtimeEntry → reconcile → policy rejection")
+        }
+
+        def npmRoot = new File(fixtureDir, 'node_modules')
+        def safe = new File(npmRoot, 'safe-parent').tap { mkdirs() }
+        new File(fixtureDir, 'package.json').text = '{"dependencies":{"safe-parent":"1.0.0"}}'
+        new File(safe, 'package.json').text =
+            '{"name":"safe-parent","version":"1.0.0","dependencies":{' +
+            '"@a12/dmtool":"0.8.2","nested-carrier":"1.0.0","shadowed":"1.0.0"},' +
+            '"optionalDependencies":{"@a12/kernel":"30.8.1","shadowed":"2.0.0"},' +
+            '"peerDependencies":{"@a12/adapter":"0.8.2"},' +
+            '"peerDependenciesMeta":{"@a12/adapter":{"optional":true}}}'
+        def forbiddenNpm = new File(npmRoot, '@a12/dmtool').tap { mkdirs() }
+        new File(forbiddenNpm, 'package.json').text = '{"name":"@a12/dmtool","version":"0.8.2"}'
+        def hoistedCarrier = new File(npmRoot, 'nested-carrier').tap { mkdirs() }
+        new File(hoistedCarrier, 'package.json').text =
+            '{"name":"nested-carrier","version":"1.0.0","dependencies":{}}'
+        def nestedCarrier = new File(safe, 'node_modules/nested-carrier').tap { mkdirs() }
+        new File(nestedCarrier, 'package.json').text =
+            '{"name":"nested-carrier","version":"2.0.0",' +
+            '"optionalDependencies":{"@a12/dmtool-nested":"0.8.2"}}'
+        def npm = NpmProductionClosure.resolve(new File(fixtureDir, 'package.json'), npmRoot)
+        def rejectedNpm = npm.entries.findAll { RuntimeClosurePolicy.violation(it)?.contains('forbidden') }*.name.toSet()
+        if (npm.errors ||
+            !rejectedNpm.containsAll(['@a12/dmtool', '@a12/dmtool-nested', '@a12/kernel', '@a12/adapter'])) {
+            throw new GradleException("recursive production npm fixture missed forbidden dependency/optional/peer declarations: " +
+                "${rejectedNpm}")
+        }
+
+        def outsidePackage = new File(fixtureDir, 'outside-package/package.json').tap {
+            parentFile.mkdirs()
+            text = '{"dependencies":{"root-only":"1.0.0"}}'
+        }
+        def separateModules = new File(fixtureDir, 'separate-workspace/node_modules')
+        def rootOnly = new File(separateModules, 'root-only').tap { mkdirs() }
+        new File(rootOnly, 'package.json').text = '{"name":"root-only","version":"1.0.0"}'
+        def outside = NpmProductionClosure.resolve(outsidePackage, separateModules)
+        if (outside.errors || outside.entries*.name != ['root-only']) {
+            throw new GradleException("package outside the npm workspace did not use the explicit root node_modules fallback")
+        }
+    }
+}
+tasks.named('check') { dependsOn interpreterRuntimeClosurePolicyTest }
+
 // `verifyInterpreterPurity` guards the IMPORT boundary; this guards the RESOLVED DEPENDENCY graph. NFR-F1's
 // hard-zero is absolute — the interpreter carries NO runtime edge to the kernel (com.mgmtp), Groovy, dmtool, or
 // any other intra-repo kit — so a forbidden RESOLVED artifact fails the build (a structural invariant, not a
-// candidate number). It also RECORDS the non-JDK runtime closure size reproducibly (superseding the hand-measured
-// 2026-07-18 baseline), so the closure number a future NFR-F1 ratio would cite is derived, not hand-counted. The
-// ratio to an equivalent kernel-backed closure + the ≤50% bar remain the owner-gated part of IG79.
+// candidate number). The JVM and Node-production graphs have separate deterministic reports; each runtime file
+// is reconciled exactly once with its resolution result, and production npm dependency, optional-dependency, and
+// peer-dependency declarations are walked recursively.
+
+def writeClosureReport = { File report, String host, List ownEntries, Map closure, List extraEntries ->
+    def allEntries = ownEntries + closure.entries + closure.graphOnly + extraEntries
+    def violations = new ArrayList(closure.errors)
+    allEntries.each { entry ->
+        def violation = entry.kind == null ? null : RuntimeClosurePolicy.violation(entry)
+        if (violation) violations << violation
+    }
+    long total = allEntries.sum { (it.bytes ?: 0L) as long } ?: 0L
+    def lines = allEntries.sort { a, b -> a.identity <=> b.identity }.collect { entry ->
+        def disposition = entry.bytes == null ? 'graph-only' : "${entry.bytes} bytes"
+        "  ${disposition}  ${entry.identity}".toString()
+    }
+    report.parentFile.mkdirs()
+    report.text = "interpreter ${host} production runtime closure (NFR-F1)\n" +
+        "reconciled-files=${closure.entries.size()} graph-only=${closure.graphOnly.size()} " +
+        "entries=${allEntries.size()} bytes=${total}\n" + lines.join('\n') + '\n'
+    [entries: allEntries, total: total, violations: violations]
+}
+
 def interpreterRuntimeClosure = tasks.register('interpreterRuntimeClosure') {
     group = 'verification'
-    description = 'Enforce the NFR-F1 hard-zero (no kernel/Groovy/dmtool/intra-repo runtime edge) and record the reproducible non-JDK runtime closure size.'
+    description = 'Reconcile every JVM runtime file, enforce the NFR-F1 hard-zero, and write the JVM closure report.'
     def runtime = configurations.named('jvmRuntimeClasspath')
     def jarFile = tasks.named('jvmJar').flatMap { it.archiveFile }
-    def reportFile = layout.buildDirectory.file('reports/interpreter-closure/runtime-closure.txt')
+    def reportFile = layout.buildDirectory.file('reports/interpreter-closure/jvm-runtime-closure.txt')
     inputs.files(runtime)
     inputs.files(jarFile)
     outputs.file(reportFile)
     doLast {
-        def forbidden = []
-        def entries = []
-        long total = 0
         def jar = jarFile.get().asFile
-        total += jar.length()
-        entries << "${jar.length()}  ${jar.name}  (the interpreter's own artifact)".toString()
-        runtime.get().resolvedConfiguration.resolvedArtifacts.each { a ->
-            def id = a.moduleVersion.id
-            def comp = a.id.componentIdentifier
-            def coord = "${id.group}:${id.name}:${id.version}".toString()
-            long bytes = a.file.length()
-            total += bytes
-            entries << "${bytes}  ${coord}".toString()
-            if (comp instanceof org.gradle.api.artifacts.component.ProjectComponentIdentifier) {
-                forbidden << "${coord} — an intra-repo project module; the interpreter must carry NO runtime edge to another kit or the kernel".toString()
-            } else if (id.group?.startsWith('com.mgmtp')) {
-                forbidden << "${coord} — a kernel (com.mgmtp) runtime dependency".toString()
-            } else if (id.name?.toLowerCase()?.contains('groovy')) {
-                forbidden << "${coord} — a Groovy runtime dependency".toString()
-            }
-        }
-        entries.sort()
-        def f = reportFile.get().asFile
-        f.parentFile.mkdirs()
-        f.text = "interpreter JVM runtime closure (NFR-F1) — ${entries.size()} non-JDK artifacts, ${total} bytes total\n" +
-            entries.collect { "  $it" }.join('\n') + '\n'
-        println "[closure] interpreter JVM runtime closure: ${total} bytes across ${entries.size()} non-JDK artifacts → ${f}"
-        if (forbidden) {
-            throw new GradleException("interpreter runtime closure violates the NFR-F1 hard-zero:\n  " + forbidden.join('\n  '))
+        def closure = collectClosure(runtime.get())
+        def result = writeClosureReport(reportFile.get().asFile, 'JVM', [
+            [identity: "${jar.name} (the interpreter's own artifact)", bytes: jar.length()],
+        ], closure, [])
+        println "[closure] interpreter JVM closure: ${result.total} bytes across ${result.entries.size()} entries → ${reportFile.get().asFile}"
+        if (result.violations) {
+            throw new GradleException("interpreter JVM runtime closure violates the NFR-F1 hard-zero:\n  " +
+                result.violations.join('\n  '))
         }
     }
 }
-tasks.named('check') { dependsOn interpreterRuntimeClosure }
+
+def interpreterJsRuntimeClosure = tasks.register('interpreterJsRuntimeClosure') {
+    group = 'verification'
+    description = 'Reconcile the JS runtime graph and recursive production npm closure, enforce the hard-zero, and write the JS report.'
+    def runtime = configurations.named('jsRuntimeClasspath')
+    def publicPackageTask = tasks.named('jsPublicPackageJson')
+    def ownJar = tasks.named('jsJar').flatMap { it.archiveFile }
+    def reportFile = layout.buildDirectory.file('reports/interpreter-closure/js-runtime-closure.txt')
+    dependsOn publicPackageTask
+    dependsOn rootProject.tasks.named('kotlinNpmInstall')
+    dependsOn ownJar
+    inputs.files(runtime)
+    inputs.files(publicPackageTask.map { it.packageJsonFile })
+    inputs.files(ownJar)
+    inputs.file(rootProject.layout.buildDirectory.file('js/yarn.lock'))
+    outputs.file(reportFile)
+    doLast {
+        def publicPackage = publicPackageTask.get().packageJsonFile as File
+        def nodeModules = rootProject.layout.buildDirectory.dir('js/node_modules').get().asFile
+        def npm = NpmProductionClosure.resolve(publicPackage, nodeModules)
+        def closure = collectClosure(runtime.get())
+        closure.errors.addAll(npm.errors)
+        def jar = ownJar.get().asFile
+        def result = writeClosureReport(reportFile.get().asFile, 'JS/Node', [
+            [identity: "${jar.name} (the interpreter's own JS artifact)", bytes: jar.length()],
+        ], closure, npm.entries)
+        println "[closure] interpreter JS/Node closure: ${result.total} bytes across ${result.entries.size()} entries → ${reportFile.get().asFile}"
+        if (result.violations) {
+            throw new GradleException("interpreter JS/Node runtime closure violates the NFR-F1 hard-zero:\n  " +
+                result.violations.join('\n  '))
+        }
+    }
+}
+tasks.named('check') {
+    dependsOn interpreterRuntimeClosure
+    dependsOn interpreterJsRuntimeClosure
+}
 
 // --- Conformance corpus replay (WI-6) --------------------------------------------------------------
 // CorpusReplayCommonTest replays the committed corpus/cases tree through the interpreter on BOTH targets
@@ -173,5 +653,170 @@ def corpusFiles = rootProject.fileTree('corpus') { include '**/*.json' }
     tasks.named(taskName) {
         environment 'CORPUS_DIR', corpusCasesDir.absolutePath
         inputs.files(corpusFiles).withPropertyName('conformanceCorpus').optional()
+    }
+}
+
+// --- Local retained-heap/allocation worker forks (IG79 / RV-2026-07-20-03-8) ---------------------
+// These measurement runs are deliberately opt-in: without -PfootprintForks the extra JVM/Node test runs
+// are not even registered, so `check` and CI scheduling stay unchanged. Each fork is a separate Gradle test
+// task and therefore a separate host process. The workers communicate only through one unique JSON file;
+// stdout remains owned by the Gradle/Kotlin test harness.
+def footprintForkCountProperty = providers.gradleProperty('footprintForks')
+def footprintRun = tasks.register('interpreterFootprint') {
+    group = 'measurement'
+    description = 'Run independently forked JVM and Node retained-heap/allocation measurements (local opt-in).'
+}
+
+if (!footprintForkCountProperty.isPresent()) {
+    footprintRun.configure {
+        doLast {
+            throw new GradleException(
+                'interpreterFootprint is local opt-in; supply -PfootprintForks=5, -PfootprintCommit=<git-sha>, ' +
+                    '-PfootprintScales=N,2N,4N,8N, -PfootprintWarmup=<n>, and -PfootprintRepetitions=<n>.')
+        }
+    }
+} else {
+    def forkCount = footprintForkCountProperty.get().toInteger()
+    if (forkCount < 5) {
+        throw new GradleException("footprintForks must be at least 5, was ${forkCount}")
+    }
+    def requiredProperty = { String name ->
+        def value = providers.gradleProperty(name)
+        if (!value.isPresent() || value.get().isBlank()) {
+            throw new GradleException("interpreterFootprint requires -P${name}=...")
+        }
+        value.get()
+    }
+    def commit = requiredProperty('footprintCommit')
+    if (!(commit ==~ /[0-9a-f]{8,64}/)) {
+        throw new GradleException('footprintCommit must be an 8–64 character lowercase hexadecimal git identity')
+    }
+    def scalesText = requiredProperty('footprintScales')
+    def scales = scalesText.split(',').collect { it.trim().toInteger() }
+    if (scales.size() != 4 || scales[0] <= 0 ||
+        (1..<scales.size()).any { index -> scales[index] != scales[index - 1] * 2 }) {
+        throw new GradleException("footprintScales must be exactly N,2N,4N,8N, was ${scalesText}")
+    }
+    def warmup = requiredProperty('footprintWarmup').toInteger()
+    def repetitions = requiredProperty('footprintRepetitions').toInteger()
+    if (warmup <= 0 || repetitions <= 0) {
+        throw new GradleException('footprintWarmup and footprintRepetitions must be positive')
+    }
+    def jvmHeap = providers.gradleProperty('footprintJvmHeap').getOrElse('512m')
+    def nodeHeapMb = providers.gradleProperty('footprintNodeHeapMb').getOrElse('512')
+    def nodeTimeout = providers.gradleProperty('footprintNodeTimeout').getOrElse('120s')
+    if (!(nodeHeapMb ==~ /[1-9][0-9]*/)) {
+        throw new GradleException('footprintNodeHeapMb must be a positive integer')
+    }
+
+    def rawReportDir = layout.buildDirectory.dir('reports/interpreter-footprint/raw')
+    def commonEnvironment = { task, String host, int fork, File output ->
+        task.environment 'FOOTPRINT_ENABLED', 'true'
+        task.environment 'FOOTPRINT_OUTPUT', output.absolutePath
+        task.environment 'FOOTPRINT_INVOCATION_ID', "${host.toLowerCase(Locale.ROOT)}-${fork}"
+        task.environment 'FOOTPRINT_COMMIT', commit
+        task.environment 'FOOTPRINT_SCALES', scalesText
+        task.environment 'FOOTPRINT_WARMUP', warmup.toString()
+        task.environment 'FOOTPRINT_REPETITIONS', repetitions.toString()
+        task.outputs.file(output).withPropertyName('footprintResult')
+        task.outputs.upToDateWhen { false }
+        task.outputs.cacheIf { false }
+        task.doFirst {
+            project.delete(output)
+            output.parentFile.mkdirs()
+        }
+        task.doLast {
+            if (!output.isFile() || output.length() == 0L) {
+                throw new GradleException("${task.path} did not write its structured result to ${output}")
+            }
+        }
+    }
+
+    def jvmTest = tasks.named('jvmTest', Test)
+    def workerTasks = []
+    (1..forkCount).each { fork ->
+        def output = rawReportDir.get().file("jvm-${fork}.json").asFile
+        workerTasks << tasks.register("footprintJvmFork${fork}", Test) {
+            group = 'measurement'
+            description = "Run JVM footprint sample fork ${fork}."
+            dependsOn tasks.named('jvmTestClasses')
+            testClassesDirs = jvmTest.get().testClassesDirs
+            classpath = jvmTest.get().classpath
+            filter {
+                includeTestsMatching(
+                    'io.github.mbackschat.a12.dm.interpreter.footprint.FootprintJvmWorkerTest')
+            }
+            maxParallelForks = 1
+            forkEvery = 1
+            failFast = true
+            minHeapSize = jvmHeap
+            maxHeapSize = jvmHeap
+            jvmArgs '-XX:+UseSerialGC', '-XX:-DisableExplicitGC'
+            commonEnvironment(delegate, 'JVM', fork, output)
+        }
+    }
+
+    def jsTarget = kotlin.targets.getByName('js')
+    (1..forkCount).each { fork ->
+        def runName = "footprintNodeFork${fork}"
+        jsTarget.testRuns.create(runName)
+        def output = rawReportDir.get().file("node-${fork}.json").asFile
+        workerTasks << tasks.named(
+            "jsNode${runName.capitalize()}Test",
+            org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest,
+        ) {
+            group = 'measurement'
+            description = "Run Node footprint sample fork ${fork}."
+            filter.includeTestsMatching(
+                'io.github.mbackschat.a12.dm.interpreter.footprint.FootprintNodeWorkerTest')
+            useMocha {
+                timeout = nodeTimeout
+            }
+            nodeJsArgs.add('--expose-gc')
+            nodeJsArgs.add("--max-old-space-size=${nodeHeapMb}")
+            commonEnvironment(delegate, 'NODE', fork, output)
+        }
+    }
+
+    def aggregateOutput = layout.buildDirectory.file('reports/interpreter-footprint/footprint-report.json')
+    def aggregateTask = tasks.register('footprintAggregateReport', Test) {
+        group = 'measurement'
+        description = 'Validate raw JVM/Node footprint forks and write informative median/curve JSON.'
+        dependsOn workerTasks
+        dependsOn tasks.named('jvmTestClasses')
+        testClassesDirs = jvmTest.get().testClassesDirs
+        classpath = jvmTest.get().classpath
+        filter {
+            includeTestsMatching(
+                'io.github.mbackschat.a12.dm.interpreter.footprint.FootprintAggregateWorkerTest')
+        }
+        maxParallelForks = 1
+        forkEvery = 1
+        failFast = true
+        environment 'FOOTPRINT_AGGREGATE_ENABLED', 'true'
+        environment 'FOOTPRINT_AGGREGATE_DIR', rawReportDir.get().asFile.absolutePath
+        environment 'FOOTPRINT_AGGREGATE_OUTPUT', aggregateOutput.get().asFile.absolutePath
+        environment 'FOOTPRINT_AGGREGATE_FORKS', forkCount.toString()
+        inputs.files(workerTasks.collect { task -> task.flatMap { it.outputs.files.elements } })
+            .withPropertyName('rawFootprintForks')
+        outputs.file(aggregateOutput).withPropertyName('footprintAggregate')
+        outputs.upToDateWhen { false }
+        outputs.cacheIf { false }
+        doFirst {
+            project.delete(aggregateOutput)
+        }
+        doLast {
+            if (!aggregateOutput.get().asFile.isFile() || aggregateOutput.get().asFile.length() == 0L) {
+                throw new GradleException("footprint aggregation did not write ${aggregateOutput.get().asFile}")
+            }
+        }
+    }
+
+    footprintRun.configure {
+        dependsOn aggregateTask
+        doLast {
+            println "[footprint] validated ${forkCount} JVM + ${forkCount} Node process results → " +
+                aggregateOutput.get().asFile
+        }
     }
 }

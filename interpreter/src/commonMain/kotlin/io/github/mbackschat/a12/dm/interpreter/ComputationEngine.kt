@@ -40,6 +40,7 @@ internal class ComputationEngine(
     private val preparedModel: PreparedModel,
     private val scopes: IterationScopes,
     private val checks: AutoChecks,
+    private val cacheObserver: () -> CacheObserver? = { null },
 ) {
 
     /**
@@ -135,94 +136,98 @@ internal class ComputationEngine(
             // The overlay's derived-view cache is FRESH per computation step: within a step only comp.targetPath is
             // written, so a cached index-column / correlation view over any OTHER column is stable and shared across
             // the step's outer rows (IF143); a new step starts clean so a self-write can't read a superseded view.
-            val views = OverlayViews()
-            val parsed = preparedModel.computation(comp)
-            // A computation iterates where it WRITES (the target's scope), not where it is DECLARED. When neither
-            // the operands nor the target has a repeatable ancestor (an all-non-repeatable target), fall back to
-            // the TARGET's parent group — NOT `comp.group` (IF89): a computation declared in a separate,
-            // uninstantiated container group (a `*_Rules` group) targeting a field in another subtree would
-            // otherwise resolve its scope to that empty container and compute nothing, where the kernel computes
-            // the single instance at the target (non-repeatable groups are implicitly present).
-            val scopeRefs = computationScopeRefs(parsed)
-            val scope = scopes.scopeFromRefs(scopeRefs + comp.targetPath, parentGroup(comp.targetPath))
+            val views = OverlayViews(cacheObserver())
+            try {
+                val parsed = preparedModel.computation(comp)
+                // A computation iterates where it WRITES (the target's scope), not where it is DECLARED. When neither
+                // the operands nor the target has a repeatable ancestor (an all-non-repeatable target), fall back to
+                // the TARGET's parent group — NOT `comp.group` (IF89): a computation declared in a separate,
+                // uninstantiated container group (a `*_Rules` group) targeting a field in another subtree would
+                // otherwise resolve its scope to that empty container and compute nothing, where the kernel computes
+                // the single instance at the target (non-repeatable groups are implicitly present).
+                val scopeRefs = computationScopeRefs(parsed)
+                val scope = scopes.scopeFromRefs(scopeRefs + comp.targetPath, parentGroup(comp.targetPath))
 
-            // Evaluate the computation in one instance context and record its outcome (shared by the plain and
-            // the parallel iteration arms).
-            fun computeAt(ctx: EvalContext) {
-                val targetKey = comp.targetPath to ctx.repsOf(comp.targetPath)
-                if (targetKey in decided) return   // an earlier computation's non-empty outcome already won (IF87)
-                val ectx = if (overlay.isEmpty() && cleared.isEmpty() && poisoned.isEmpty()) ctx
-                    else OverlayContext(ctx, overlay, cleared, poisoned, emptyOf, minFracOf, views, comp.targetPath)
-                val interp = Interpreter(ectx, computeConfig,
-                    // The compute gate THROWS (IF85): consulting it on a filled formally-invalid operand IS the
-                    // kernel's poisoning read (validation's gate stays Boolean → the 3VL exclusion).
-                    invalid = { path ->
-                        if (operandNotCheckRelevant(path, ectx, formalResults)) throw PoisonedReadException(path)
-                        else false
-                    })
-                // A read of a formally-invalid cell — an input field, or a POISONED computed dependency — aborts
-                // this instance (IF85, the kernel's CalculationFieldException → "fehlerhaft berechnet"): it skips
-                // the remaining alternatives, produces no value (reported CLEARED under the report-all contract;
-                // the kernel reports it only when input-filled — kernelComputeGranularity projects), and joins
-                // the poison set so ITS dependents' reads poison transitively. The poison is READ-driven: a
-                // dependent that never actually reads the poisoned target (a short-circuit skipped it) computes
-                // normally — there is no static dependency pre-skip.
-                val computed = try {
-                    val v = evalComputation(parsed, interp)
-                    // ERRORED: poison the target + do NOT overlay — a dependent's READ of it must poison, not read
-                    // the bad value. A resolved VALUE overlays (dependents read the computed result) and DECIDES the
-                    // cell. A CLEARED — an EMPTY (Unknown) result, or a final empty TEXT (IF123: the kernel's
-                    // no-value store decision) — is a no-op (IF87): recorded as a tentative clear (dependents read
-                    // it EMPTY, IF77) but NOT decided, so a later computation for the SAME cell can still win.
-                    toComputed(comp, v, targetKey.second).also { c ->
-                        when (c.outcome) {
-                            ComputeOutcome.ERRORED -> { poisoned += targetKey; cleared -= targetKey; decided += targetKey }
-                            ComputeOutcome.VALUE -> { overlay[targetKey] = v; cleared -= targetKey; decided += targetKey }
-                            ComputeOutcome.CLEARED -> cleared += targetKey
+                // Evaluate the computation in one instance context and record its outcome (shared by the plain and
+                // the parallel iteration arms).
+                fun computeAt(ctx: EvalContext) {
+                    val targetKey = comp.targetPath to ctx.repsOf(comp.targetPath)
+                    if (targetKey in decided) return   // an earlier computation's non-empty outcome already won (IF87)
+                    val ectx = if (overlay.isEmpty() && cleared.isEmpty() && poisoned.isEmpty()) ctx
+                        else OverlayContext(ctx, overlay, cleared, poisoned, emptyOf, minFracOf, views, comp.targetPath)
+                    val interp = Interpreter(ectx, computeConfig,
+                        // The compute gate THROWS (IF85): consulting it on a filled formally-invalid operand IS the
+                        // kernel's poisoning read (validation's gate stays Boolean → the 3VL exclusion).
+                        invalid = { path ->
+                            if (operandNotCheckRelevant(path, ectx, formalResults)) throw PoisonedReadException(path)
+                            else false
+                        })
+                    // A read of a formally-invalid cell — an input field, or a POISONED computed dependency — aborts
+                    // this instance (IF85, the kernel's CalculationFieldException → "fehlerhaft berechnet"): it skips
+                    // the remaining alternatives, produces no value (reported CLEARED under the report-all contract;
+                    // the kernel reports it only when input-filled — kernelComputeGranularity projects), and joins
+                    // the poison set so ITS dependents' reads poison transitively. The poison is READ-driven: a
+                    // dependent that never actually reads the poisoned target (a short-circuit skipped it) computes
+                    // normally — there is no static dependency pre-skip.
+                    val computed = try {
+                        val v = evalComputation(parsed, interp)
+                        // ERRORED: poison the target + do NOT overlay — a dependent's READ of it must poison, not read
+                        // the bad value. A resolved VALUE overlays (dependents read the computed result) and DECIDES the
+                        // cell. A CLEARED — an EMPTY (Unknown) result, or a final empty TEXT (IF123: the kernel's
+                        // no-value store decision) — is a no-op (IF87): recorded as a tentative clear (dependents read
+                        // it EMPTY, IF77) but NOT decided, so a later computation for the SAME cell can still win.
+                        toComputed(comp, v, targetKey.second).also { c ->
+                            when (c.outcome) {
+                                ComputeOutcome.ERRORED -> { poisoned += targetKey; cleared -= targetKey; decided += targetKey }
+                                ComputeOutcome.VALUE -> { overlay[targetKey] = v; cleared -= targetKey; decided += targetKey }
+                                ComputeOutcome.CLEARED -> cleared += targetKey
+                            }
                         }
-                    }
-                } catch (p: PoisonedReadException) {
-                    poisoned += targetKey; cleared -= targetKey; decided += targetKey
-                    Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = targetKey.second)
-                }
-                outcomeByCell[targetKey] = computed   // a decided cell is skipped above → a value/poison overwrites a prior tentative clear
-            }
-
-            // PARALLEL ITERATION for computations (IF96): operands referencing OUT-OF-SCOPE sibling repeatable
-            // groups join them to the target's scope by the shared INDEX field — the target row for key K reads
-            // each sibling's row with the SAME key (join-by-key, never physical position). Two calc-specific
-            // rules on top of the rule-side join: (1) an INVALID index in ANY joined group (a duplicated or
-            // empty key cell) marks EVERY instance of this computation "incorrectly calculated" — the kernel's
-            // CalculationCache.markFieldsUsingInvalidIndexGroupsAsIncorrectlyCalculated, deliberately "more
-            // instances than strictly necessary" — poisoned + CLEARED; (2) the calc never CREATES a repetition
-            // ("no additional repetitions should be created by calculation"): only join rows where the TARGET's
-            // row exists compute — a side-only key is skipped; an unmatched SIDE reads empty (empty-as-0).
-            // The join anchors on the TARGET's OWN scope (the calc iterates where it WRITES — IF89): the
-            // referenced out-of-scope groups are the joined SIDES, never the iteration anchor ([scope], derived
-            // from ALL refs, may resolve to a referenced side — which would collapse every join row onto one
-            // target key).
-            val targetScope = scopes.scopeFromRefs(listOf(comp.targetPath), parentGroup(comp.targetPath))
-            val parallelGroups = scopeRefs.flatMap { ancestorGroups(it).filter { g -> g in model.repeatable } }
-                .distinct().filter { it != targetScope && !targetScope.startsWith("$it/") }
-            if (parallelGroups.isNotEmpty()) {
-                val joined = (listOf(targetScope) + parallelGroups).distinct()
-                if (joined.any { g -> invalidIndexGroup(doc, g) }) {
-                    for (ctx in doc.computeContexts(targetScope)) {
-                        val targetKey = comp.targetPath to ctx.repsOf(comp.targetPath)
-                        if (targetKey in decided) continue
+                    } catch (p: PoisonedReadException) {
                         poisoned += targetKey; cleared -= targetKey; decided += targetKey
-                        outcomeByCell[targetKey] = Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = targetKey.second)
+                        Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = targetKey.second)
+                    }
+                    outcomeByCell[targetKey] = computed   // a decided cell is skipped above → a value/poison overwrites a prior tentative clear
+                }
+
+                // PARALLEL ITERATION for computations (IF96): operands referencing OUT-OF-SCOPE sibling repeatable
+                // groups join them to the target's scope by the shared INDEX field — the target row for key K reads
+                // each sibling's row with the SAME key (join-by-key, never physical position). Two calc-specific
+                // rules on top of the rule-side join: (1) an INVALID index in ANY joined group (a duplicated or
+                // empty key cell) marks EVERY instance of this computation "incorrectly calculated" — the kernel's
+                // CalculationCache.markFieldsUsingInvalidIndexGroupsAsIncorrectlyCalculated, deliberately "more
+                // instances than strictly necessary" — poisoned + CLEARED; (2) the calc never CREATES a repetition
+                // ("no additional repetitions should be created by calculation"): only join rows where the TARGET's
+                // row exists compute — a side-only key is skipped; an unmatched SIDE reads empty (empty-as-0).
+                // The join anchors on the TARGET's OWN scope (the calc iterates where it WRITES — IF89): the
+                // referenced out-of-scope groups are the joined SIDES, never the iteration anchor ([scope], derived
+                // from ALL refs, may resolve to a referenced side — which would collapse every join row onto one
+                // target key).
+                val targetScope = scopes.scopeFromRefs(listOf(comp.targetPath), parentGroup(comp.targetPath))
+                val parallelGroups = scopeRefs.flatMap { ancestorGroups(it).filter { g -> g in model.repeatable } }
+                    .distinct().filter { it != targetScope && !targetScope.startsWith("$it/") }
+                if (parallelGroups.isNotEmpty()) {
+                    val joined = (listOf(targetScope) + parallelGroups).distinct()
+                    if (joined.any { g -> invalidIndexGroup(doc, g) }) {
+                        for (ctx in doc.computeContexts(targetScope)) {
+                            val targetKey = comp.targetPath to ctx.repsOf(comp.targetPath)
+                            if (targetKey in decided) continue
+                            poisoned += targetKey; cleared -= targetKey; decided += targetKey
+                            outcomeByCell[targetKey] = Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = targetKey.second)
+                        }
+                        continue
+                    }
+                    for (pctx in scopes.parallelIterationContexts(targetScope, parallelGroups, doc)) {
+                        val reps = pctx.repsOf(comp.targetPath)
+                        if (UNKNOWN_REP in reps) continue   // no TARGET row for this key — the calc creates none
+                        computeAt(pctx)
                     }
                     continue
                 }
-                for (pctx in scopes.parallelIterationContexts(targetScope, parallelGroups, doc)) {
-                    val reps = pctx.repsOf(comp.targetPath)
-                    if (UNKNOWN_REP in reps) continue   // no TARGET row for this key — the calc creates none
-                    computeAt(pctx)
-                }
-                continue
+                for (ctx in doc.computeContexts(scope)) computeAt(ctx)
+            } finally {
+                views.release()
             }
-            for (ctx in doc.computeContexts(scope)) computeAt(ctx)
         }
         return outcomeByCell.values.toList()
     }

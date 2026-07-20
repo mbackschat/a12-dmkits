@@ -1,0 +1,71 @@
+{
+  "header" : {
+    "id" : "footprint-correlation",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "footprint-correlation",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/FootprintCorrelation",
+        "name" : "FootprintCorrelation",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Group",
+            "id" : "/FootprintCorrelation/Row",
+            "name" : "Row",
+            "Group" : {
+              "repeatability" : 1000000,
+              "elements" : [ {
+                "type" : "Field",
+                "id" : "/FootprintCorrelation/Row/Key",
+                "name" : "Key",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "StringType"
+                  }
+                }
+              }, {
+                "type" : "Rule",
+                "id" : "/FootprintCorrelation/Row/EqualPair",
+                "name" : "EqualPair",
+                "Rule" : {
+                  "errorEntityRelPath" : "../Key",
+                  "errorCode" : "EQUAL_PAIR",
+                  "errorCondition" : "FieldFilled(Key) And MoreThanOneFieldFilled(../Row*/Key Having [Key] == [$Key])",
+                  "severity" : "ERROR",
+                  "errorMessage" : [ {
+                    "locale" : "en_US",
+                    "text" : "The footprint row shares its key."
+                  } ]
+                }
+              } ]
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

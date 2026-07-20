@@ -34,6 +34,26 @@ tasks.withType(JavaCompile).configureEach {
 
 def kernelVersion = '30.8.1'
 
+def kernelClosureConsumerCompile = configurations.create('kernelClosureConsumerCompileDeps') {
+    canBeConsumed = false
+    canBeResolved = true
+    description = 'Exactly the compile dependencies used by the fresh kernel validation consumer.'
+}
+def kernelClosureConsumerRuntime = configurations.create('kernelClosureConsumerRuntimeDeps') {
+    canBeConsumed = false
+    canBeResolved = true
+    extendsFrom kernelClosureConsumerCompile
+    description = 'Exactly the runtime dependencies used by the fresh kernel validation consumer.'
+}
+
+sourceSets {
+    kernelClosureConsumer {
+        java.srcDir 'src/kernelClosureConsumer/java'
+        compileClasspath = kernelClosureConsumerCompile
+        runtimeClasspath = output + kernelClosureConsumerRuntime
+    }
+}
+
 dependencies {
     // The kernel-free kits — BoundModel/Rule/Dsl + ReferenceResolvers + the SPI ports this backend implements.
     // Stage-4 module cut: the single root project split into per-kit modules, so `api project(':')` becomes an
@@ -67,6 +87,11 @@ dependencies {
     implementation "com.mgmtp.a12.kernel:kernel-md-document-api:${kernelVersion}"  // IDocument, IDocumentFactory, IEntityInstance
     runtimeOnly "com.mgmtp.a12.kernel:kernel-md-runtime-service:${kernelVersion}"  // DocumentDynamicRtService impl behind the facade
 
+    // The fresh comparator derives its graph from the executable consumer source set: facade at compile time,
+    // the dynamic runtime implementation at runtime. Their metadata supplies every needed API/transitive edge.
+    add('kernelClosureConsumerCompileDeps', "com.mgmtp.a12.kernel:kernel-md-facade:${kernelVersion}")
+    add('kernelClosureConsumerRuntimeDeps', "com.mgmtp.a12.kernel:kernel-md-runtime-service:${kernelVersion}")
+
     // CORE custom-condition SPI (the IData-based contract the kernel's own conditions + JS/TS codegen use) —
     // for KernelCustomConditions, the JVM bridge that runs a project's EXISTING kernel ICustomCondition on the
     // interpreter. core-runtime-api resolves to 32.3.4 in the 30.8.1 distribution (already on the runtime
@@ -96,6 +121,79 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
+
+def kernelClosureConsumerJar = tasks.register('kernelClosureConsumerJar', Jar) {
+    archiveBaseName = 'kernel-closure-consumer'
+    archiveVersion = ''
+    from sourceSets.kernelClosureConsumer.output
+    dependsOn tasks.named('kernelClosureConsumerClasses')
+}
+
+def kernelClosureConsumerRun = tasks.register('kernelClosureConsumerRun', JavaExec) {
+    group = 'verification'
+    description = 'Execute the fresh kernel validation consumer before measuring its runtime closure.'
+    dependsOn kernelClosureConsumerJar
+    classpath = files(kernelClosureConsumerJar.flatMap { it.archiveFile }) + kernelClosureConsumerRuntime
+    mainClass = 'io.github.mbackschat.a12.dm.adapter.closure.KernelValidationConsumer'
+}
+
+def kernelRuntimeClosureReport = tasks.register('kernelRuntimeClosureReport') {
+    group = 'verification'
+    description = 'Write the informative fresh-consumer kernel runtime closure; this task promotes no NFR number.'
+    def reportFile = layout.buildDirectory.file('reports/interpreter-closure/kernel-runtime-closure.txt')
+    inputs.files(kernelClosureConsumerRuntime)
+    inputs.files(kernelClosureConsumerJar.flatMap { it.archiveFile })
+    outputs.file(reportFile)
+    dependsOn kernelClosureConsumerRun
+    doLast {
+        def runtime = kernelClosureConsumerRuntime
+        def files = runtime.files.collectEntries { [(it.canonicalPath): it] }
+        def artifacts = runtime.incoming.artifactView {}.artifacts.artifacts
+        def byPath = artifacts.groupBy { it.file.canonicalPath }
+        def errors = []
+        files.each { path, file ->
+            def matches = byPath[path] ?: []
+            if (matches.size() != 1) {
+                errors << "${path} maps to ${matches.size()} resolved artifacts instead of exactly one".toString()
+            }
+        }
+        byPath.keySet().findAll { !files.containsKey(it) }.each {
+            errors << "${it} is a resolved artifact absent from runtime files".toString()
+        }
+        if (errors) {
+            throw new GradleException("kernel closure comparator reconciliation failed:\n  " + errors.join('\n  '))
+        }
+        def own = kernelClosureConsumerJar.get().archiveFile.get().asFile
+        def fileEntries = files.keySet().sort().collect { path ->
+            def artifact = byPath[path][0]
+            def component = artifact.id.componentIdentifier
+            def identity = component instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier
+                ? "${component.group}:${component.module}:${component.version}".toString()
+                : component.displayName
+            [identity: identity, bytes: files[path].length()]
+        }
+        def artifactComponents = artifacts*.id*.componentIdentifier.toSet()
+        def graphOnly = runtime.incoming.resolutionResult.allComponents.findAll { component ->
+            def ownRoot = component.id instanceof org.gradle.api.artifacts.component.ProjectComponentIdentifier &&
+                component.id.projectPath == project.path
+            !ownRoot && !artifactComponents.contains(component.id)
+        }.collect { component ->
+            [identity: component.id.displayName]
+        }
+        def entries = fileEntries + graphOnly
+        long total = own.length() + (fileEntries.sum { it.bytes as long } ?: 0L)
+        def report = reportFile.get().asFile
+        report.parentFile.mkdirs()
+        report.text = "kernel fresh-consumer JVM runtime closure — INFORMATIVE ONLY; no threshold promoted\n" +
+            "reconciled-files=${fileEntries.size()} graph-only=${graphOnly.size()} entries=${entries.size() + 1} bytes=${total}\n" +
+            "  ${own.length()} bytes  ${own.name} (fresh validation consumer)\n" +
+            entries.sort { it.identity }.collect {
+                "  ${it.bytes == null ? 'graph-only' : "${it.bytes} bytes"}  ${it.identity}"
+            }.join('\n') + '\n'
+        println "[closure] informative kernel comparator: ${total} bytes across ${entries.size() + 1} entries → ${report}"
+    }
+}
+tasks.named('check') { dependsOn kernelRuntimeClosureReport }
 
 tasks.named('test') {
     // Gate tiering (docs/TESTING-SPEC "Test tiers"): the 8-min perf benchmark (@Tag 'perf') + the differential
@@ -138,13 +236,51 @@ tasks.named('test') {
     def jfr = System.getProperty('perf.jfr')
     if (jfr != null) jvmArgs "-XX:StartFlightRecording=settings=profile,filename=${jfr},dumponexit=true"
     dependsOn 'corpusReplayTest'
+    dependsOn 'footprintFixtureGuardTest'
     // The corpus guards read corpus/cases/** at runtime; they live in corpusReplayTest (with those files declared
     // as its inputs) so a case edit re-runs ONLY them (not the whole kernel-heavy suite) and can't go up-to-date /
     // restore from the build cache into a FALSE GREEN. `test` dependsOn it, so CI + local always drive it.
     filter {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusReplayTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusSchemaGuardTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.FootprintScenarioFixtureGuardTest'
     }
+}
+
+def footprintFixtureDirectory = rootProject.file('interpreter/src/commonTest/resources/footprint')
+def footprintFixtureFiles = rootProject.fileTree(footprintFixtureDirectory) { include '*.dm.json' }
+def footprintFixtureOutputs = [
+    'simple-validation.dm.json',
+    'equality-correlation.dm.json',
+    'compute-overlay.dm.json',
+].collect { new File(footprintFixtureDirectory, it) }
+
+tasks.register('footprintFixtureGuardTest', Test) {
+    description = 'Verify the shared JVM/Node footprint models match their typed kit author.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    systemProperty 'footprint.fixture.dir', footprintFixtureDirectory.absolutePath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.FootprintScenarioFixtureGuardTest'
+    }
+    rootProject.guardInputs(it, ['typed footprint model fixtures': footprintFixtureFiles])
+}
+
+tasks.register('syncFootprintFixtures', Test) {
+    description = 'Regenerate the shared JVM/Node footprint models through modelkit/EditSession/rulekit.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    systemProperty 'footprint.fixture.dir', footprintFixtureDirectory.absolutePath
+    systemProperty 'footprint.fixtures.fix', 'true'
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.FootprintScenarioFixtureGuardTest'
+    }
+    outputs.files(footprintFixtureOutputs)
+    outputs.upToDateWhen { false }
 }
 
 // The conformance-corpus guards read the committed corpus tree (cases/** + shared models/**) at runtime — a
