@@ -237,6 +237,7 @@ tasks.named('test') {
     if (jfr != null) jvmArgs "-XX:StartFlightRecording=settings=profile,filename=${jfr},dumponexit=true"
     dependsOn 'corpusReplayTest'
     dependsOn 'footprintFixtureGuardTest'
+    dependsOn 'performanceFixtureGuardTest'
     dependsOn 'perfScriptGuardTest'
     // The corpus guards read corpus/cases/** at runtime; they live in corpusReplayTest (with those files declared
     // as its inputs) so a case edit re-runs ONLY them (not the whole kernel-heavy suite) and can't go up-to-date /
@@ -245,6 +246,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusReplayTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusSchemaGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.FootprintScenarioFixtureGuardTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerformanceScenarioFixtureGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfScriptContractTest'
     }
 }
@@ -297,6 +299,136 @@ tasks.register('syncFootprintFixtures', Test) {
     }
     outputs.files(footprintFixtureOutputs)
     outputs.upToDateWhen { false }
+}
+
+def performanceFixtureDirectory = rootProject.file('interpreter/src/commonTest/resources/performance')
+def performanceFixtureFiles = rootProject.fileTree(performanceFixtureDirectory) { include '*.json' }
+def performanceFixtureOutputs = [
+    'b1.dm.json',
+    'b2.dm.json',
+    'many-rules-48.dm.json',
+    'many-rules-192.dm.json',
+    'many-rules-48.instance.json',
+].collect { new File(performanceFixtureDirectory, it) }
+
+tasks.register('performanceFixtureGuardTest', Test) {
+    description = 'Verify the shared JVM/Node/native performance fixtures match their typed catalog author.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    systemProperty 'performance.fixture.dir', performanceFixtureDirectory.absolutePath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerformanceScenarioFixtureGuardTest'
+    }
+    rootProject.guardInputs(it, ['typed performance fixtures': performanceFixtureFiles])
+}
+
+tasks.register('syncPerformanceFixtures', Test) {
+    description = 'Regenerate shared JVM/Node/native performance fixtures through the typed performance catalog.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    systemProperty 'performance.fixture.dir', performanceFixtureDirectory.absolutePath
+    systemProperty 'performance.fixtures.fix', 'true'
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerformanceScenarioFixtureGuardTest'
+    }
+    outputs.files(performanceFixtureOutputs)
+    outputs.upToDateWhen { false }
+}
+
+tasks.register('performanceEligibilityTest', Test) {
+    description = 'Tri-check the shared JVM/Node/native performance fixtures before process measurement.'
+    group = 'verification'
+    dependsOn 'performanceFixtureGuardTest'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerformanceScenarioEligibilityTest'
+    }
+}
+
+def performanceCommitProperty = providers.gradleProperty('performanceCommit')
+def performanceRunnerProperty = providers.gradleProperty('performanceRunner')
+def fairJavaOutput = layout.buildDirectory.file('reports/interpreter-performance/fair-java-report.json')
+tasks.register('interpreterFairJavaReport', Test) {
+    description = 'Write the pinned-runner, same-process interpreter/generated-Java ratio report.'
+    group = 'measurement'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.FairJavaReportTest'
+    }
+    maxParallelForks = 1
+    forkEvery = 1
+    failFast = true
+    environment 'FAIR_JAVA_REPORT_ENABLED', 'true'
+    environment 'PERFORMANCE_COMMIT', performanceCommitProperty.getOrElse('')
+    environment 'PERFORMANCE_RUNNER', performanceRunnerProperty.getOrElse('')
+    environment 'FAIR_JAVA_WARMUP', providers.gradleProperty('fairJavaWarmup').getOrElse('12')
+    environment 'FAIR_JAVA_ITERATIONS', providers.gradleProperty('fairJavaIterations').getOrElse('8')
+    environment 'FAIR_JAVA_SCENARIOS', providers.gradleProperty('fairJavaScenarios').getOrElse('')
+    environment 'FAIR_JAVA_OUTPUT', fairJavaOutput.get().asFile.absolutePath
+    outputs.file(fairJavaOutput).withPropertyName('fairJavaReport')
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+    doFirst {
+        if (!performanceCommitProperty.isPresent() || !performanceRunnerProperty.isPresent()) {
+            throw new GradleException(
+                'interpreterFairJavaReport requires -PperformanceCommit=<git-sha> and ' +
+                    '-PperformanceRunner=<pinned-runner-id>')
+        }
+        project.delete(fairJavaOutput)
+    }
+    doLast {
+        if (!fairJavaOutput.get().asFile.isFile() || fairJavaOutput.get().asFile.length() == 0L) {
+            throw new GradleException("fair-Java report did not write ${fairJavaOutput.get().asFile}")
+        }
+        println "[performance] fair-Java report → ${fairJavaOutput.get().asFile}"
+    }
+}
+
+def nativePerformanceOutput =
+    layout.buildDirectory.file('reports/interpreter-performance/native-first-answer-report.json')
+tasks.register('interpreterNativePerformance', JavaExec) {
+    description = 'Measure native dmtool launch through complete model-eval envelope and exit.'
+    group = 'measurement'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.mbackschat.a12.dm.adapter.perf.NativePerformanceRunner'
+    def binary = providers.gradleProperty('performanceNativeBinary').getOrElse('')
+    def samples = providers.gradleProperty('performanceNativeSamples').getOrElse('50')
+    args binary,
+        rootProject.file('interpreter/src/commonTest/resources/performance/many-rules-48.dm.json').absolutePath,
+        rootProject.file('interpreter/src/commonTest/resources/performance/many-rules-48.instance.json').absolutePath,
+        samples,
+        performanceCommitProperty.getOrElse(''),
+        performanceRunnerProperty.getOrElse(''),
+        nativePerformanceOutput.get().asFile.absolutePath
+    outputs.file(nativePerformanceOutput).withPropertyName('nativePerformanceReport')
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+    doFirst {
+        if (!providers.gradleProperty('performanceNativeBinary').isPresent() ||
+            !performanceCommitProperty.isPresent() || !performanceRunnerProperty.isPresent()) {
+            throw new GradleException(
+                'interpreterNativePerformance requires -PperformanceNativeBinary=<dmtool>, ' +
+                    '-PperformanceCommit=<git-sha>, and -PperformanceRunner=<pinned-runner-id>')
+        }
+        project.delete(nativePerformanceOutput)
+    }
+    doLast {
+        if (!nativePerformanceOutput.get().asFile.isFile() ||
+            nativePerformanceOutput.get().asFile.length() == 0L) {
+            throw new GradleException(
+                "native first-answer report did not write ${nativePerformanceOutput.get().asFile}")
+        }
+        println "[performance] native first-answer report → ${nativePerformanceOutput.get().asFile}"
+    }
 }
 
 // The conformance-corpus guards read the committed corpus tree (cases/** + shared models/**) at runtime — a

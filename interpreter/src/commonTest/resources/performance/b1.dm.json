@@ -1,0 +1,130 @@
+{
+  "header": {
+    "id": "perf",
+    "modelType": "document",
+    "modelVersion": "28.4.0",
+    "locales": [
+      {
+        "code": "en_US"
+      }
+    ],
+    "labels": [],
+    "annotations": [],
+    "modelReferences": []
+  },
+  "content": {
+    "modelInfo": {
+      "name": "perf",
+      "variant": "cockpit",
+      "revision": "Arbeitsversion",
+      "immutable": false
+    },
+    "modelConfig": {
+      "decimalSeparator": ".",
+      "timeZone": "Europe/Berlin",
+      "conditionLanguage": {
+        "code": "en_US"
+      },
+      "fieldRefByShortNameAllowed": true
+    },
+    "modelRoot": {
+      "rootGroups": [
+        {
+          "type": "Group",
+          "id": "/Perf",
+          "name": "Perf",
+          "Group": {
+            "repeatability": 1,
+            "elements": [
+              {
+                "type": "Group",
+                "id": "/Perf/Lines",
+                "name": "Lines",
+                "Group": {
+                  "repeatability": 200000,
+                  "indexFieldName": "LineKey",
+                  "elements": [
+{ "type": "Rule", "id": "/Perf/Lines/R_HQ", "name": "R_HQ", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "HQ", "errorCondition": "FieldFilled(Qty) And [Qty] > 50", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+                    {
+                      "type": "Field",
+                      "id": "/Perf/Lines/LineKey",
+                      "name": "LineKey",
+                      "Field": {
+                        "fieldType": {
+                          "type": "StringType",
+                          "StringType": {}
+                        }
+                      }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Perf/Lines/Qty",
+                      "name": "Qty",
+                      "Field": {
+                        "fieldType": {
+                          "type": "NumberType",
+                          "NumberType": {
+                            "maxFractionalDigits": 0
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Perf/Lines/Amount",
+                      "name": "Amount",
+                      "Field": {
+                        "fieldType": {
+                          "type": "NumberType",
+                          "NumberType": {
+                            "maxFractionalDigits": 2
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "type": "Group",
+                      "id": "/Perf/Lines/Subs",
+                      "name": "Subs",
+                      "Group": {
+                        "repeatability": 200000,
+                        "indexFieldName": "SubKey",
+                        "elements": [
+                          {
+                            "type": "Field",
+                            "id": "/Perf/Lines/Subs/SubKey",
+                            "name": "SubKey",
+                            "Field": {
+                              "fieldType": {
+                                "type": "StringType",
+                                "StringType": {}
+                              }
+                            }
+                          },
+                          {
+                            "type": "Field",
+                            "id": "/Perf/Lines/Subs/Cost",
+                            "name": "Cost",
+                            "Field": {
+                              "fieldType": {
+                                "type": "NumberType",
+                                "NumberType": {
+                                  "maxFractionalDigits": 2
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

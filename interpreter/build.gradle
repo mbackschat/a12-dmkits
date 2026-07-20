@@ -97,6 +97,57 @@ kotlin.sourceSets.commonTest.kotlin.srcDir(generatedFootprintFixtureDir)
 tasks.named('compileTestKotlinJvm') { dependsOn generateFootprintFixtureSource }
 tasks.named('compileTestKotlinJs') { dependsOn generateFootprintFixtureSource }
 
+// Typed performance models follow the same boundary as the footprint fixtures: :adapter authors and
+// freshness-checks them through the kits; common JVM/Node workers consume one generated source without adding
+// a kit dependency to the standalone interpreter.
+def performanceModelFixtureDir = file('src/commonTest/resources/performance')
+def performanceModelFixtures = [
+    B1            : new File(performanceModelFixtureDir, 'b1.dm.json'),
+    B2            : new File(performanceModelFixtureDir, 'b2.dm.json'),
+    MANY_RULES_48 : new File(performanceModelFixtureDir, 'many-rules-48.dm.json'),
+    MANY_RULES_192: new File(performanceModelFixtureDir, 'many-rules-192.dm.json'),
+]
+def generatedPerformanceFixtureDir = layout.buildDirectory
+    .dir('generated/performanceFixtures/commonTest/kotlin')
+    .get()
+    .asFile
+def generatedPerformanceFixtureSource = new File(
+    generatedPerformanceFixtureDir,
+    'io/github/mbackschat/a12/dm/interpreter/performance/PerformanceModelFixtures.kt',
+)
+def generatePerformanceFixtureSource = tasks.register('generatePerformanceFixtureSource') {
+    group = 'build'
+    description = 'Embed the typed-authored canonical performance models for common JVM/Node tests.'
+    inputs.files(performanceModelFixtures.values())
+        .withPropertyName('typedPerformanceModels')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    outputs.file(generatedPerformanceFixtureSource)
+    doLast {
+        def missing = performanceModelFixtures.findAll { ignored, fixture -> !fixture.isFile() }
+        if (missing) {
+            throw new GradleException(
+                "missing typed performance model(s) ${missing.values()}; run :adapter:syncPerformanceFixtures")
+        }
+        def cases = performanceModelFixtures.collect { scenario, fixture ->
+            def literal = groovy.json.JsonOutput.toJson(fixture.getText('UTF-8')).replace('$', '\\$')
+            "        PerformanceModel.${scenario} -> ${literal}"
+        }.join('\n')
+        generatedPerformanceFixtureSource.parentFile.mkdirs()
+        generatedPerformanceFixtureSource.text = """\
+package io.github.mbackschat.a12.dm.interpreter.performance
+
+internal object PerformanceModelFixtures {
+    fun jsonFor(model: PerformanceModel): String = when (model) {
+${cases}
+    }
+}
+"""
+    }
+}
+kotlin.sourceSets.commonTest.kotlin.srcDir(generatedPerformanceFixtureDir)
+tasks.named('compileTestKotlinJvm') { dependsOn generatePerformanceFixtureSource }
+tasks.named('compileTestKotlinJs') { dependsOn generatePerformanceFixtureSource }
+
 // --- Separation by linting (proposal §8) ------------------------------------------------------------
 // The engine must never couple to the kernel or dmtool. A forbidden import fails the build, so the
 // kernel-free / native-safe / publication-eligible standalone boundary can't silently erode as the engine grows.
@@ -817,6 +868,225 @@ if (!footprintForkCountProperty.isPresent()) {
         doLast {
             println "[footprint] validated ${forkCount} JVM + ${forkCount} Node process results → " +
                 aggregateOutput.get().asFile
+        }
+    }
+}
+
+// --- Local NFR-S/P evidence: independent first-answer processes + absolute JVM/Node throughput (IG77) ----
+// Opt-in only. The lane records evidence and promotes no candidate number or CI schedule. A calibrating run may
+// use fewer processes; a per-number certification must supply the sample count ratified for that number.
+def performanceForkCountProperty = providers.gradleProperty('performanceForks')
+def performanceRun = tasks.register('interpreterPerformance') {
+    group = 'measurement'
+    description = 'Run fresh-process JVM/Node first-answer and absolute warm-throughput measurements.'
+}
+
+if (!performanceForkCountProperty.isPresent()) {
+    performanceRun.configure {
+        doLast {
+            throw new GradleException(
+                'interpreterPerformance is local opt-in; supply -PperformanceForks=<n>, ' +
+                    '-PperformanceCommit=<git-sha>, and -PperformanceRunner=<pinned-runner-id>.')
+        }
+    }
+} else {
+    def performanceForks = performanceForkCountProperty.get().toInteger()
+    if (performanceForks <= 0) {
+        throw new GradleException("performanceForks must be positive, was ${performanceForks}")
+    }
+    def requiredPerformanceProperty = { String name ->
+        def value = providers.gradleProperty(name)
+        if (!value.isPresent() || value.get().isBlank()) {
+            throw new GradleException("interpreterPerformance requires -P${name}=...")
+        }
+        value.get()
+    }
+    def performanceCommit = requiredPerformanceProperty('performanceCommit')
+    if (!(performanceCommit ==~ /[0-9a-f]{8,64}/)) {
+        throw new GradleException(
+            'performanceCommit must be an 8–64 character lowercase hexadecimal git identity')
+    }
+    def performanceRunner = requiredPerformanceProperty('performanceRunner')
+    def performanceWarmup = providers.gradleProperty('performanceWarmup').getOrElse('3').toInteger()
+    def performanceRepetitions = providers.gradleProperty('performanceRepetitions').getOrElse('5').toInteger()
+    if (performanceWarmup <= 0 || performanceRepetitions <= 0 || performanceRepetitions % 2 == 0) {
+        throw new GradleException('performanceWarmup must be positive and performanceRepetitions positive and odd')
+    }
+    def performanceJvmHeap = providers.gradleProperty('performanceJvmHeap').getOrElse('1g')
+    def performanceNodeHeapMb = providers.gradleProperty('performanceNodeHeapMb').getOrElse('1024')
+    def performanceNodeTimeout = providers.gradleProperty('performanceNodeTimeout').getOrElse('180s')
+    if (!(performanceNodeHeapMb ==~ /[1-9][0-9]*/)) {
+        throw new GradleException('performanceNodeHeapMb must be a positive integer')
+    }
+
+    def performanceRawDir = layout.buildDirectory.dir('reports/interpreter-performance/raw')
+    def cleanPerformanceRaw = tasks.register('cleanPerformanceRaw') {
+        doLast { project.delete(performanceRawDir) }
+    }
+    def configurePerformanceWorker = { task, String host, String scenario, String invocation, File output,
+        int warmup, int repetitions ->
+        task.dependsOn cleanPerformanceRaw
+        task.environment 'PERFORMANCE_ENABLED', 'true'
+        task.environment 'PERFORMANCE_OUTPUT', output.absolutePath
+        task.environment 'PERFORMANCE_INVOCATION_ID', invocation
+        task.environment 'PERFORMANCE_COMMIT', performanceCommit
+        task.environment 'PERFORMANCE_RUNNER', performanceRunner
+        task.environment 'PERFORMANCE_SCENARIO', scenario
+        task.environment 'PERFORMANCE_WARMUP', warmup.toString()
+        task.environment 'PERFORMANCE_REPETITIONS', repetitions.toString()
+        task.outputs.file(output).withPropertyName('performanceResult')
+        task.outputs.upToDateWhen { false }
+        task.outputs.cacheIf { false }
+        task.doFirst {
+            project.delete(output)
+            output.parentFile.mkdirs()
+        }
+        task.doLast {
+            if (!output.isFile() || output.length() == 0L) {
+                throw new GradleException("${task.path} did not write ${output}")
+            }
+        }
+    }
+
+    def performanceJvmTest = tasks.named('jvmTest', Test)
+    def performanceWorkers = []
+    def jvmFirstAnswerScenarios = [
+        'jvm-48-rules-500-rows-first-answer',
+        'jvm-192-rules-500-rows-first-answer',
+        'jvm-b1-100000-rows-first-answer',
+    ]
+    jvmFirstAnswerScenarios.eachWithIndex { scenario, scenarioIndex ->
+        (1..performanceForks).each { fork ->
+            def taskName = "performanceJvmFirst${scenarioIndex + 1}Fork${fork}"
+            def output = performanceRawDir.get().file("${taskName}.json").asFile
+            performanceWorkers << tasks.register(taskName, Test) {
+                group = 'measurement'
+                description = "Run fresh JVM first-answer process ${fork} for ${scenario}."
+                dependsOn tasks.named('jvmTestClasses')
+                testClassesDirs = performanceJvmTest.get().testClassesDirs
+                classpath = performanceJvmTest.get().classpath
+                filter {
+                    includeTestsMatching(
+                        'io.github.mbackschat.a12.dm.interpreter.performance.PerformanceJvmWorkerTest')
+                }
+                maxParallelForks = 1
+                forkEvery = 1
+                failFast = true
+                minHeapSize = performanceJvmHeap
+                maxHeapSize = performanceJvmHeap
+                configurePerformanceWorker(
+                    delegate, 'JVM', scenario, "jvm-first-${scenarioIndex + 1}-${fork}", output, 0, 1)
+            }
+        }
+    }
+
+    def jvmThroughputScenario = 'jvm-b1-100000-rows-warm-throughput'
+    def jvmThroughputOutput = performanceRawDir.get().file('jvm-throughput.json').asFile
+    performanceWorkers << tasks.register('performanceJvmThroughput', Test) {
+        group = 'measurement'
+        description = 'Run the pinned JVM 100k-row absolute warm-throughput sample.'
+        dependsOn tasks.named('jvmTestClasses')
+        testClassesDirs = performanceJvmTest.get().testClassesDirs
+        classpath = performanceJvmTest.get().classpath
+        filter {
+            includeTestsMatching(
+                'io.github.mbackschat.a12.dm.interpreter.performance.PerformanceJvmWorkerTest')
+        }
+        maxParallelForks = 1
+        forkEvery = 1
+        failFast = true
+        minHeapSize = performanceJvmHeap
+        maxHeapSize = performanceJvmHeap
+        configurePerformanceWorker(
+            delegate, 'JVM', jvmThroughputScenario, 'jvm-throughput', jvmThroughputOutput,
+            performanceWarmup, performanceRepetitions)
+    }
+
+    def performanceJsTarget = kotlin.targets.getByName('js')
+    (1..performanceForks).each { fork ->
+        def runName = "performanceNodeFirstFork${fork}"
+        performanceJsTarget.testRuns.create(runName)
+        def output = performanceRawDir.get().file("node-first-${fork}.json").asFile
+        performanceWorkers << tasks.named(
+            "jsNode${runName.capitalize()}Test",
+            org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest,
+        ) {
+            group = 'measurement'
+            description = "Run fresh Node first-answer process ${fork}."
+            filter.includeTestsMatching(
+                'io.github.mbackschat.a12.dm.interpreter.performance.PerformanceNodeWorkerTest')
+            useMocha { timeout = performanceNodeTimeout }
+            nodeJsArgs.add("--max-old-space-size=${performanceNodeHeapMb}")
+            configurePerformanceWorker(
+                delegate, 'NODE', 'node-b1-10000-rows-first-answer', "node-first-${fork}",
+                output, 0, 1)
+        }
+    }
+    [
+        'node-b1-2500-10000-rows-warm-throughput',
+        'node-b2-2500-10000-rows-warm-throughput',
+    ].eachWithIndex { scenario, index ->
+        def runName = "performanceNodeThroughput${index + 1}"
+        performanceJsTarget.testRuns.create(runName)
+        def output = performanceRawDir.get().file("node-throughput-${index + 1}.json").asFile
+        performanceWorkers << tasks.named(
+            "jsNode${runName.capitalize()}Test",
+            org.jetbrains.kotlin.gradle.targets.js.testing.KotlinJsTest,
+        ) {
+            group = 'measurement'
+            description = "Run pinned Node warm-throughput sample for ${scenario}."
+            filter.includeTestsMatching(
+                'io.github.mbackschat.a12.dm.interpreter.performance.PerformanceNodeWorkerTest')
+            useMocha { timeout = performanceNodeTimeout }
+            nodeJsArgs.add("--max-old-space-size=${performanceNodeHeapMb}")
+            configurePerformanceWorker(
+                delegate, 'NODE', scenario, "node-throughput-${index + 1}", output,
+                performanceWarmup, performanceRepetitions)
+        }
+    }
+
+    def performanceOutput = layout.buildDirectory.file(
+        'reports/interpreter-performance/library-performance-report.json')
+    def performanceAggregate = tasks.register('performanceAggregateReport', Test) {
+        group = 'measurement'
+        description = 'Validate JVM/Node process samples and write informative p95/throughput JSON.'
+        dependsOn performanceWorkers
+        dependsOn tasks.named('jvmTestClasses')
+        testClassesDirs = performanceJvmTest.get().testClassesDirs
+        classpath = performanceJvmTest.get().classpath
+        filter {
+            includeTestsMatching(
+                'io.github.mbackschat.a12.dm.interpreter.performance.PerformanceAggregateWorkerTest')
+        }
+        maxParallelForks = 1
+        forkEvery = 1
+        failFast = true
+        environment 'PERFORMANCE_AGGREGATE_ENABLED', 'true'
+        environment 'PERFORMANCE_AGGREGATE_DIR', performanceRawDir.get().asFile.absolutePath
+        environment 'PERFORMANCE_AGGREGATE_OUTPUT', performanceOutput.get().asFile.absolutePath
+        environment 'PERFORMANCE_AGGREGATE_FORKS', performanceForks.toString()
+        inputs.files(performanceWorkers.collect { task -> task.flatMap { it.outputs.files.elements } })
+            .withPropertyName('rawPerformanceProcesses')
+        outputs.file(performanceOutput).withPropertyName('performanceAggregate')
+        outputs.upToDateWhen { false }
+        outputs.cacheIf { false }
+        doFirst { project.delete(performanceOutput) }
+        doLast {
+            if (!performanceOutput.get().asFile.isFile() ||
+                performanceOutput.get().asFile.length() == 0L) {
+                throw new GradleException(
+                    "performance aggregation did not write ${performanceOutput.get().asFile}")
+            }
+        }
+    }
+
+    performanceRun.configure {
+        dependsOn ':adapter:performanceFixtureGuardTest'
+        dependsOn ':adapter:performanceEligibilityTest'
+        dependsOn performanceAggregate
+        doLast {
+            println "[performance] validated ${performanceForks} fresh processes per startup scenario + " +
+                "pinned JVM/Node throughput → ${performanceOutput.get().asFile}"
         }
     }
 }

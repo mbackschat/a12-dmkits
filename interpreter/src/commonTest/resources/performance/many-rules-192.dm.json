@@ -1,0 +1,512 @@
+{
+  "header": {
+    "id": "perf",
+    "modelType": "document",
+    "modelVersion": "28.4.0",
+    "locales": [
+      {
+        "code": "en_US"
+      }
+    ],
+    "labels": [],
+    "annotations": [],
+    "modelReferences": []
+  },
+  "content": {
+    "modelInfo": {
+      "name": "perf",
+      "variant": "cockpit",
+      "revision": "Arbeitsversion",
+      "immutable": false
+    },
+    "modelConfig": {
+      "decimalSeparator": ".",
+      "timeZone": "Europe/Berlin",
+      "conditionLanguage": {
+        "code": "en_US"
+      },
+      "fieldRefByShortNameAllowed": true
+    },
+    "modelRoot": {
+      "rootGroups": [
+        {
+          "type": "Group",
+          "id": "/Perf",
+          "name": "Perf",
+          "Group": {
+            "repeatability": 1,
+            "elements": [
+{ "type": "Rule", "id": "/Perf/R_R191", "name": "R_R191", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R191", "errorCondition": "Sum(Lines*/Amount) > 1191", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R187", "name": "R_R187", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R187", "errorCondition": "Sum(Lines*/Amount) > 1187", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R183", "name": "R_R183", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R183", "errorCondition": "Sum(Lines*/Amount) > 1183", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R179", "name": "R_R179", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R179", "errorCondition": "Sum(Lines*/Amount) > 1179", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R175", "name": "R_R175", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R175", "errorCondition": "Sum(Lines*/Amount) > 1175", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R171", "name": "R_R171", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R171", "errorCondition": "Sum(Lines*/Amount) > 1171", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R167", "name": "R_R167", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R167", "errorCondition": "Sum(Lines*/Amount) > 1167", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R163", "name": "R_R163", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R163", "errorCondition": "Sum(Lines*/Amount) > 1163", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R159", "name": "R_R159", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R159", "errorCondition": "Sum(Lines*/Amount) > 1159", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R155", "name": "R_R155", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R155", "errorCondition": "Sum(Lines*/Amount) > 1155", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R151", "name": "R_R151", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R151", "errorCondition": "Sum(Lines*/Amount) > 1151", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R147", "name": "R_R147", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R147", "errorCondition": "Sum(Lines*/Amount) > 1147", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R143", "name": "R_R143", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R143", "errorCondition": "Sum(Lines*/Amount) > 1143", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R139", "name": "R_R139", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R139", "errorCondition": "Sum(Lines*/Amount) > 1139", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R135", "name": "R_R135", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R135", "errorCondition": "Sum(Lines*/Amount) > 1135", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R131", "name": "R_R131", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R131", "errorCondition": "Sum(Lines*/Amount) > 1131", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R127", "name": "R_R127", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R127", "errorCondition": "Sum(Lines*/Amount) > 1127", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R123", "name": "R_R123", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R123", "errorCondition": "Sum(Lines*/Amount) > 1123", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R119", "name": "R_R119", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R119", "errorCondition": "Sum(Lines*/Amount) > 1119", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R115", "name": "R_R115", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R115", "errorCondition": "Sum(Lines*/Amount) > 1115", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R111", "name": "R_R111", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R111", "errorCondition": "Sum(Lines*/Amount) > 1111", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R107", "name": "R_R107", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R107", "errorCondition": "Sum(Lines*/Amount) > 1107", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R103", "name": "R_R103", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R103", "errorCondition": "Sum(Lines*/Amount) > 1103", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R099", "name": "R_R099", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R099", "errorCondition": "Sum(Lines*/Amount) > 1099", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R095", "name": "R_R095", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R095", "errorCondition": "Sum(Lines*/Amount) > 1095", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R091", "name": "R_R091", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R091", "errorCondition": "Sum(Lines*/Amount) > 1091", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R087", "name": "R_R087", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R087", "errorCondition": "Sum(Lines*/Amount) > 1087", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R083", "name": "R_R083", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R083", "errorCondition": "Sum(Lines*/Amount) > 1083", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R079", "name": "R_R079", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R079", "errorCondition": "Sum(Lines*/Amount) > 1079", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R075", "name": "R_R075", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R075", "errorCondition": "Sum(Lines*/Amount) > 1075", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R071", "name": "R_R071", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R071", "errorCondition": "Sum(Lines*/Amount) > 1071", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R067", "name": "R_R067", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R067", "errorCondition": "Sum(Lines*/Amount) > 1067", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R063", "name": "R_R063", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R063", "errorCondition": "Sum(Lines*/Amount) > 1063", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R059", "name": "R_R059", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R059", "errorCondition": "Sum(Lines*/Amount) > 1059", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R055", "name": "R_R055", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R055", "errorCondition": "Sum(Lines*/Amount) > 1055", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R051", "name": "R_R051", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R051", "errorCondition": "Sum(Lines*/Amount) > 1051", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R047", "name": "R_R047", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R047", "errorCondition": "Sum(Lines*/Amount) > 1047", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R043", "name": "R_R043", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R043", "errorCondition": "Sum(Lines*/Amount) > 1043", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R039", "name": "R_R039", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R039", "errorCondition": "Sum(Lines*/Amount) > 1039", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R035", "name": "R_R035", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R035", "errorCondition": "Sum(Lines*/Amount) > 1035", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R031", "name": "R_R031", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R031", "errorCondition": "Sum(Lines*/Amount) > 1031", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R027", "name": "R_R027", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R027", "errorCondition": "Sum(Lines*/Amount) > 1027", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R023", "name": "R_R023", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R023", "errorCondition": "Sum(Lines*/Amount) > 1023", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R019", "name": "R_R019", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R019", "errorCondition": "Sum(Lines*/Amount) > 1019", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R015", "name": "R_R015", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R015", "errorCondition": "Sum(Lines*/Amount) > 1015", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R011", "name": "R_R011", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R011", "errorCondition": "Sum(Lines*/Amount) > 1011", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R007", "name": "R_R007", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R007", "errorCondition": "Sum(Lines*/Amount) > 1007", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/R_R003", "name": "R_R003", "Rule": { "errorEntityRelPath": "../Lines/Amount", "errorCode": "R003", "errorCondition": "Sum(Lines*/Amount) > 1003", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+              {
+                "type": "Group",
+                "id": "/Perf/Lines",
+                "name": "Lines",
+                "Group": {
+                  "repeatability": 200000,
+                  "indexFieldName": "LineKey",
+                  "elements": [
+{ "type": "Rule", "id": "/Perf/Lines/R_R189", "name": "R_R189", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R189", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R188", "name": "R_R188", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R188", "errorCondition": "FieldFilled(Qty) And [Qty] > 238", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R185", "name": "R_R185", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R185", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R184", "name": "R_R184", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R184", "errorCondition": "FieldFilled(Qty) And [Qty] > 234", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R181", "name": "R_R181", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R181", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R180", "name": "R_R180", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R180", "errorCondition": "FieldFilled(Qty) And [Qty] > 230", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R177", "name": "R_R177", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R177", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R176", "name": "R_R176", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R176", "errorCondition": "FieldFilled(Qty) And [Qty] > 226", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R173", "name": "R_R173", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R173", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R172", "name": "R_R172", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R172", "errorCondition": "FieldFilled(Qty) And [Qty] > 222", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R169", "name": "R_R169", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R169", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R168", "name": "R_R168", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R168", "errorCondition": "FieldFilled(Qty) And [Qty] > 218", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R165", "name": "R_R165", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R165", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R164", "name": "R_R164", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R164", "errorCondition": "FieldFilled(Qty) And [Qty] > 214", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R161", "name": "R_R161", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R161", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R160", "name": "R_R160", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R160", "errorCondition": "FieldFilled(Qty) And [Qty] > 210", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R157", "name": "R_R157", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R157", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R156", "name": "R_R156", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R156", "errorCondition": "FieldFilled(Qty) And [Qty] > 206", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R153", "name": "R_R153", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R153", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R152", "name": "R_R152", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R152", "errorCondition": "FieldFilled(Qty) And [Qty] > 202", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R149", "name": "R_R149", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R149", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R148", "name": "R_R148", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R148", "errorCondition": "FieldFilled(Qty) And [Qty] > 198", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R145", "name": "R_R145", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R145", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R144", "name": "R_R144", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R144", "errorCondition": "FieldFilled(Qty) And [Qty] > 194", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R141", "name": "R_R141", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R141", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R140", "name": "R_R140", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R140", "errorCondition": "FieldFilled(Qty) And [Qty] > 190", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R137", "name": "R_R137", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R137", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R136", "name": "R_R136", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R136", "errorCondition": "FieldFilled(Qty) And [Qty] > 186", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R133", "name": "R_R133", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R133", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R132", "name": "R_R132", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R132", "errorCondition": "FieldFilled(Qty) And [Qty] > 182", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R129", "name": "R_R129", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R129", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R128", "name": "R_R128", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R128", "errorCondition": "FieldFilled(Qty) And [Qty] > 178", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R125", "name": "R_R125", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R125", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R124", "name": "R_R124", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R124", "errorCondition": "FieldFilled(Qty) And [Qty] > 174", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R121", "name": "R_R121", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R121", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R120", "name": "R_R120", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R120", "errorCondition": "FieldFilled(Qty) And [Qty] > 170", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R117", "name": "R_R117", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R117", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R116", "name": "R_R116", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R116", "errorCondition": "FieldFilled(Qty) And [Qty] > 166", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R113", "name": "R_R113", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R113", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R112", "name": "R_R112", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R112", "errorCondition": "FieldFilled(Qty) And [Qty] > 162", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R109", "name": "R_R109", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R109", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R108", "name": "R_R108", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R108", "errorCondition": "FieldFilled(Qty) And [Qty] > 158", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R105", "name": "R_R105", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R105", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R104", "name": "R_R104", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R104", "errorCondition": "FieldFilled(Qty) And [Qty] > 154", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R101", "name": "R_R101", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R101", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R100", "name": "R_R100", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R100", "errorCondition": "FieldFilled(Qty) And [Qty] > 150", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R097", "name": "R_R097", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R097", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R096", "name": "R_R096", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R096", "errorCondition": "FieldFilled(Qty) And [Qty] > 146", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R093", "name": "R_R093", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R093", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R092", "name": "R_R092", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R092", "errorCondition": "FieldFilled(Qty) And [Qty] > 142", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R089", "name": "R_R089", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R089", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R088", "name": "R_R088", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R088", "errorCondition": "FieldFilled(Qty) And [Qty] > 138", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R085", "name": "R_R085", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R085", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R084", "name": "R_R084", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R084", "errorCondition": "FieldFilled(Qty) And [Qty] > 134", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R081", "name": "R_R081", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R081", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R080", "name": "R_R080", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R080", "errorCondition": "FieldFilled(Qty) And [Qty] > 130", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R077", "name": "R_R077", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R077", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R076", "name": "R_R076", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R076", "errorCondition": "FieldFilled(Qty) And [Qty] > 126", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R073", "name": "R_R073", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R073", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R072", "name": "R_R072", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R072", "errorCondition": "FieldFilled(Qty) And [Qty] > 122", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R069", "name": "R_R069", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R069", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R068", "name": "R_R068", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R068", "errorCondition": "FieldFilled(Qty) And [Qty] > 118", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R065", "name": "R_R065", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R065", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R064", "name": "R_R064", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R064", "errorCondition": "FieldFilled(Qty) And [Qty] > 114", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R061", "name": "R_R061", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R061", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R060", "name": "R_R060", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R060", "errorCondition": "FieldFilled(Qty) And [Qty] > 110", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R057", "name": "R_R057", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R057", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R056", "name": "R_R056", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R056", "errorCondition": "FieldFilled(Qty) And [Qty] > 106", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R053", "name": "R_R053", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R053", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R052", "name": "R_R052", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R052", "errorCondition": "FieldFilled(Qty) And [Qty] > 102", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R049", "name": "R_R049", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R049", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R048", "name": "R_R048", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R048", "errorCondition": "FieldFilled(Qty) And [Qty] > 98", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R045", "name": "R_R045", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R045", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R044", "name": "R_R044", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R044", "errorCondition": "FieldFilled(Qty) And [Qty] > 94", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R041", "name": "R_R041", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R041", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R040", "name": "R_R040", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R040", "errorCondition": "FieldFilled(Qty) And [Qty] > 90", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R037", "name": "R_R037", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R037", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R036", "name": "R_R036", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R036", "errorCondition": "FieldFilled(Qty) And [Qty] > 86", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R033", "name": "R_R033", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R033", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R032", "name": "R_R032", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R032", "errorCondition": "FieldFilled(Qty) And [Qty] > 82", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R029", "name": "R_R029", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R029", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R028", "name": "R_R028", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R028", "errorCondition": "FieldFilled(Qty) And [Qty] > 78", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R025", "name": "R_R025", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R025", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R024", "name": "R_R024", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R024", "errorCondition": "FieldFilled(Qty) And [Qty] > 74", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R021", "name": "R_R021", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R021", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R020", "name": "R_R020", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R020", "errorCondition": "FieldFilled(Qty) And [Qty] > 70", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R017", "name": "R_R017", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R017", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R016", "name": "R_R016", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R016", "errorCondition": "FieldFilled(Qty) And [Qty] > 66", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R013", "name": "R_R013", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R013", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R012", "name": "R_R012", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R012", "errorCondition": "FieldFilled(Qty) And [Qty] > 62", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R009", "name": "R_R009", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R009", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R008", "name": "R_R008", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R008", "errorCondition": "FieldFilled(Qty) And [Qty] > 58", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R005", "name": "R_R005", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R005", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R004", "name": "R_R004", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R004", "errorCondition": "FieldFilled(Qty) And [Qty] > 54", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R001", "name": "R_R001", "Rule": { "errorEntityRelPath": "../Amount", "errorCode": "R001", "errorCondition": "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/R_R000", "name": "R_R000", "Rule": { "errorEntityRelPath": "../Qty", "errorCode": "R000", "errorCondition": "FieldFilled(Qty) And [Qty] > 50", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+                    {
+                      "type": "Field",
+                      "id": "/Perf/Lines/LineKey",
+                      "name": "LineKey",
+                      "Field": {
+                        "fieldType": {
+                          "type": "StringType",
+                          "StringType": {}
+                        }
+                      }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Perf/Lines/Qty",
+                      "name": "Qty",
+                      "Field": {
+                        "fieldType": {
+                          "type": "NumberType",
+                          "NumberType": {
+                            "maxFractionalDigits": 0
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Perf/Lines/Amount",
+                      "name": "Amount",
+                      "Field": {
+                        "fieldType": {
+                          "type": "NumberType",
+                          "NumberType": {
+                            "maxFractionalDigits": 2
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "type": "Group",
+                      "id": "/Perf/Lines/Subs",
+                      "name": "Subs",
+                      "Group": {
+                        "repeatability": 200000,
+                        "indexFieldName": "SubKey",
+                        "elements": [
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R190", "name": "R_R190", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R190", "errorCondition": "FieldFilled(Cost) And [Cost] > 80", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R186", "name": "R_R186", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R186", "errorCondition": "FieldFilled(Cost) And [Cost] > 76", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R182", "name": "R_R182", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R182", "errorCondition": "FieldFilled(Cost) And [Cost] > 72", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R178", "name": "R_R178", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R178", "errorCondition": "FieldFilled(Cost) And [Cost] > 68", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R174", "name": "R_R174", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R174", "errorCondition": "FieldFilled(Cost) And [Cost] > 64", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R170", "name": "R_R170", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R170", "errorCondition": "FieldFilled(Cost) And [Cost] > 60", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R166", "name": "R_R166", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R166", "errorCondition": "FieldFilled(Cost) And [Cost] > 56", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R162", "name": "R_R162", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R162", "errorCondition": "FieldFilled(Cost) And [Cost] > 52", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R158", "name": "R_R158", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R158", "errorCondition": "FieldFilled(Cost) And [Cost] > 48", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R154", "name": "R_R154", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R154", "errorCondition": "FieldFilled(Cost) And [Cost] > 44", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R150", "name": "R_R150", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R150", "errorCondition": "FieldFilled(Cost) And [Cost] > 40", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R146", "name": "R_R146", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R146", "errorCondition": "FieldFilled(Cost) And [Cost] > 86", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R142", "name": "R_R142", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R142", "errorCondition": "FieldFilled(Cost) And [Cost] > 82", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R138", "name": "R_R138", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R138", "errorCondition": "FieldFilled(Cost) And [Cost] > 78", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R134", "name": "R_R134", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R134", "errorCondition": "FieldFilled(Cost) And [Cost] > 74", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R130", "name": "R_R130", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R130", "errorCondition": "FieldFilled(Cost) And [Cost] > 70", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R126", "name": "R_R126", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R126", "errorCondition": "FieldFilled(Cost) And [Cost] > 66", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R122", "name": "R_R122", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R122", "errorCondition": "FieldFilled(Cost) And [Cost] > 62", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R118", "name": "R_R118", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R118", "errorCondition": "FieldFilled(Cost) And [Cost] > 58", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R114", "name": "R_R114", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R114", "errorCondition": "FieldFilled(Cost) And [Cost] > 54", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R110", "name": "R_R110", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R110", "errorCondition": "FieldFilled(Cost) And [Cost] > 50", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R106", "name": "R_R106", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R106", "errorCondition": "FieldFilled(Cost) And [Cost] > 46", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R102", "name": "R_R102", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R102", "errorCondition": "FieldFilled(Cost) And [Cost] > 42", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R098", "name": "R_R098", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R098", "errorCondition": "FieldFilled(Cost) And [Cost] > 88", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R094", "name": "R_R094", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R094", "errorCondition": "FieldFilled(Cost) And [Cost] > 84", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R090", "name": "R_R090", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R090", "errorCondition": "FieldFilled(Cost) And [Cost] > 80", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R086", "name": "R_R086", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R086", "errorCondition": "FieldFilled(Cost) And [Cost] > 76", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R082", "name": "R_R082", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R082", "errorCondition": "FieldFilled(Cost) And [Cost] > 72", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R078", "name": "R_R078", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R078", "errorCondition": "FieldFilled(Cost) And [Cost] > 68", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R074", "name": "R_R074", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R074", "errorCondition": "FieldFilled(Cost) And [Cost] > 64", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R070", "name": "R_R070", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R070", "errorCondition": "FieldFilled(Cost) And [Cost] > 60", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R066", "name": "R_R066", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R066", "errorCondition": "FieldFilled(Cost) And [Cost] > 56", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R062", "name": "R_R062", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R062", "errorCondition": "FieldFilled(Cost) And [Cost] > 52", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R058", "name": "R_R058", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R058", "errorCondition": "FieldFilled(Cost) And [Cost] > 48", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R054", "name": "R_R054", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R054", "errorCondition": "FieldFilled(Cost) And [Cost] > 44", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R050", "name": "R_R050", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R050", "errorCondition": "FieldFilled(Cost) And [Cost] > 40", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R046", "name": "R_R046", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R046", "errorCondition": "FieldFilled(Cost) And [Cost] > 86", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R042", "name": "R_R042", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R042", "errorCondition": "FieldFilled(Cost) And [Cost] > 82", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R038", "name": "R_R038", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R038", "errorCondition": "FieldFilled(Cost) And [Cost] > 78", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R034", "name": "R_R034", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R034", "errorCondition": "FieldFilled(Cost) And [Cost] > 74", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R030", "name": "R_R030", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R030", "errorCondition": "FieldFilled(Cost) And [Cost] > 70", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R026", "name": "R_R026", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R026", "errorCondition": "FieldFilled(Cost) And [Cost] > 66", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R022", "name": "R_R022", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R022", "errorCondition": "FieldFilled(Cost) And [Cost] > 62", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R018", "name": "R_R018", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R018", "errorCondition": "FieldFilled(Cost) And [Cost] > 58", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R014", "name": "R_R014", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R014", "errorCondition": "FieldFilled(Cost) And [Cost] > 54", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R010", "name": "R_R010", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R010", "errorCondition": "FieldFilled(Cost) And [Cost] > 50", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R006", "name": "R_R006", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R006", "errorCondition": "FieldFilled(Cost) And [Cost] > 46", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+{ "type": "Rule", "id": "/Perf/Lines/Subs/R_R002", "name": "R_R002", "Rule": { "errorEntityRelPath": "../Cost", "errorCode": "R002", "errorCondition": "FieldFilled(Cost) And [Cost] > 42", "severity": "ERROR", "errorMessage": [ { "locale": "en_US", "text": "x" }, { "locale": "de_DE", "text": "x" } ] } },
+
+                          {
+                            "type": "Field",
+                            "id": "/Perf/Lines/Subs/SubKey",
+                            "name": "SubKey",
+                            "Field": {
+                              "fieldType": {
+                                "type": "StringType",
+                                "StringType": {}
+                              }
+                            }
+                          },
+                          {
+                            "type": "Field",
+                            "id": "/Perf/Lines/Subs/Cost",
+                            "name": "Cost",
+                            "Field": {
+                              "fieldType": {
+                                "type": "NumberType",
+                                "NumberType": {
+                                  "maxFractionalDigits": 2
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
