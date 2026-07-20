@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -20,7 +21,6 @@ import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelReader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ValueKind;
-import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 
 /**
  * G44's agent-first model tree projection. The JSON remains a flat, document-ordered node list; only
@@ -87,7 +87,6 @@ final class ModelTreeData {
         }
 
         String expandedJson = reader.toJson();
-        ModelDocument expanded = ModelDocument.read(expandedJson);
         JsonNode expandedRoot;
         try {
             expandedRoot = MAPPER.readTree(expandedJson);
@@ -95,6 +94,10 @@ final class ModelTreeData {
             throw new IllegalStateException("failed to read the expanded model tree", e);
         }
         EnumSet<Facet> facets = Facet.parse(includes);
+        Optional<ModelTreeMetadataIndex> metadataIndex =
+                facets.contains(Facet.DESCRIPTIONS) || facets.contains(Facet.ANNOTATIONS)
+                        ? Optional.of(ModelTreeMetadataIndex.from(expandedRoot))
+                        : Optional.empty();
         Map<String, ComputationSource> computationsByPath = computationSources(expandedRoot, index);
         Set<String> computedFields = computedFields(computationsByPath.values());
 
@@ -146,11 +149,14 @@ final class ModelTreeData {
                     index.typeReferenceOf(path).ifPresent(typeRef -> node.put("typeRef", typeRef));
                 }
             }
-            if (facets.contains(Facet.DESCRIPTIONS) && !"/".equals(path)) {
-                putDescriptions(node, expanded, path);
-            }
-            if (facets.contains(Facet.ANNOTATIONS) && !"/".equals(path)) {
-                putAnnotations(node, expanded.annotations(path));
+            if (metadataIndex.isPresent() && !"/".equals(path)) {
+                ModelTreeMetadataIndex.Metadata metadata = metadataIndex.orElseThrow().metadata(path);
+                if (facets.contains(Facet.DESCRIPTIONS)) {
+                    putDescriptions(node, metadata);
+                }
+                if (facets.contains(Facet.ANNOTATIONS)) {
+                    putAnnotations(node, metadata.annotations());
+                }
             }
             if (facets.contains(Facet.RULES)) {
                 putRules(node, rulesByAnchor.getOrDefault(path, List.of()));
@@ -248,17 +254,14 @@ final class ModelTreeData {
         }
     }
 
-    private static void putDescriptions(ObjectNode node, ModelDocument model, String path) {
-        Map<String, String> internal = model.internalDescription(path);
-        Map<String, String> external = model.externalDescription(path);
-        Map<String, String> helper = model.helperText(path);
-        if (internal.isEmpty() && external.isEmpty() && helper.isEmpty()) {
+    private static void putDescriptions(ObjectNode node, ModelTreeMetadataIndex.Metadata metadata) {
+        if (metadata.internal().isEmpty() && metadata.external().isEmpty() && metadata.helper().isEmpty()) {
             return;
         }
         ObjectNode descriptions = node.putObject("descriptions");
-        putMap(descriptions, "internal", internal);
-        putMap(descriptions, "external", external);
-        putMap(descriptions, "helper", helper);
+        putMap(descriptions, "internal", metadata.internal());
+        putMap(descriptions, "external", metadata.external());
+        putMap(descriptions, "helper", metadata.helper());
     }
 
     private static void putAnnotations(ObjectNode node, Map<String, String> annotations) {
