@@ -11,6 +11,8 @@ uvx showboat@0.6.1 verify examples/cli-tour.md   # exit 0 = output still matches
 
 The demos use the bare `dmtool` and read their sample models from [`models/`](models/) — the demos' **own** fixtures, kept separate from the JUnit test fixtures (`cli/src/test/resources/models/`): same kind of model, different purpose (user-facing showcase vs. internal test coverage). Both the demos and `models/` are published to the release mirror, so the walkthroughs run there too.
 
+The [`profiles/`](profiles/) directory carries the three approved domain-blind performance-calibration artifacts used by the profile-driven synthesis and interpreter scalability workflow. They are current-format `profile′` outputs from own-domain synthesized models, not copies or profiles of private source models.
+
 ## Demos in this folder
 
 Thematic demos that together exercise **every verb** + the cross-cutting features (the result envelope, `--dry-run`/`-o`, `-w/--workspace`, the safe-delete gate, op-arg/cross-type correctives, the schema contracts, the version surface):
