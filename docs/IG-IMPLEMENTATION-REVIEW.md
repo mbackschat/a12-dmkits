@@ -24,6 +24,7 @@ Keep every correction within the recorded findings, including the instruction no
 
 - [RV-2026-07-20-01 — IG89 → IF153 and IG90 → IF154 JS host-semantics review](#rv-2026-07-20-01--ig89--if153-and-ig90--if154-js-host-semantics-review)
 - [RV-2026-07-20-02 — IG83 → IF155 Route-B timezone review](#rv-2026-07-20-02--ig83--if155-route-b-timezone-review)
+- [RV-2026-07-20-03 — IG77 and IG79 performance and footprint review](#rv-2026-07-20-03--ig77-and-ig79-performance-and-footprint-review)
 
 ### Resolution index
 
@@ -274,6 +275,157 @@ The review independently compared all 62 committed pairs and found no bad entry.
 ### Chapter resolution
 
 Open. Resolve issues 1–3 together as the Route-B classification/evidence pass, issue 4 in the same public-diagnostic landing, issue 5 as the focused historical-`AddDays` performance cleanup, and issues 6–7 with those implementation commits while their exact contracts are warm. Resolve issue 8 independently as the narrow demo/test correction. Do not describe IF155 as fully certified or move Route A to the deferred section until issues 1–7 are green.
+
+## RV-2026-07-20-03 — IG77 and IG79 performance and footprint review
+
+**Verdict:** Changes required. The fair high-repeatability model repair in IF159 is correct and important, `PerfHarness.pairedGrowth` is a useful consolidation direction, B9 is now represented in an inventory, the JVM closure report currently derives the stated 3,091,274-byte total, and the retained-heap run is useful calibration. The completion claims nevertheless exceed the guards: semantic eligibility is data/variant-sensitive and lossy, the scenario identity is neither content-bound nor omission-safe, IF159 locks a known quadratic implementation in place, the hard-zero covers only part of the JVM graph and none of the JS/npm graph, and the retained-heap test cannot prove either no leak or owner release. The forked JVM/Node retained-heap and allocation probe named as task #49 was not implemented. IG77 and IG79 must remain active for these ordinary actionable corrections; only promotion of numerical bars and CI scheduling remain owner-gated.
+
+**Reviewed scope:** `7ccf5e00` (IF156 semantic preflight), `d700e21b` (IF157 paired estimator), `3c006bd4` (count de-numbering), `d6c55f41` (IF158 scenario identity/inventory), `f06dc4a8` (IF159 correlation fallback and fair-model repair), `40ede035` (IF160 JVM closure), and `204c0cca` (IF161 retained-heap probe), plus their direct current-facing specification/finding/gap text. No proposal document was reviewed or changed.
+
+### What the review accepts
+
+- The former `order.dm.json` performance comparison was invalid because the kernel model declared only 50 `/Order/Items` rows while the interpreter-side model overrode the cap to 200,000. IF159 correctly gives both engines one high-repeatability model, so the measured engines now receive the same declared bound.
+- The reported over-limit observation is **not a new interpreter semantic gap**. IF27 and `OverRepetitionDiffTest` already differentially lock flat/nested `zuGrosseZeile`/`zuGrosseKontextnummer` emission plus rule, mandatory, and uniqueness suppression when both engines use the same declared model. The defect was the mismatched benchmark fixture. Do not open another IG for it.
+- `PerfHarness.pairedGrowth` really computes five interleaved N/4N ratios and returns their median. The review issues below concern what callers feed it, the un-migrated sibling, and claims of certification—not that central arithmetic.
+- `PerfInventory` contains B9 Europe/Berlin and its UTC control, and `PerfBenchTest` derives its main sweep from the rows that are present.
+- The current JVM report genuinely lists the interpreter jar, Kotlin stdlib, annotations, and serialization core/json and sums them to 3,091,274 bytes. The focused closure task and structural IG77 tests were green.
+- A focused rerun of `RetainedHeapProbeTest` reproduced the reported informative series (approximately 7.4/14.7/29.2/59.3 MB, exponent 1.00, and a displayed 0.0 MB two-point delta). That confirms repeatability of this run on the current machine, not the stronger no-leak/certification claims reviewed below.
+
+### RV-2026-07-20-03-1 — semantic eligibility and outcome agreement are incomplete
+
+**Severity:** High.
+
+**Evidence:** [`PerfHarness.preflight`](../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/perf/PerfHarness.kt) always evaluates variant 0 and caps the materialized instance at 200 rows. Unsupportedness is not purely structural under the current API: `AutoChecks.customTypeUnsupported` reports an unregistered custom type only for valued cells, row/context gates can prevent a construct from being reached, and a computation alternative can be selected by data. An unsupported construct present only in a later row or another repeated-eval variant can therefore pass the preflight. `coldRunMillis` then discovers it inside the timed `validateFull`, contradicting “before every timed sample”; `runRepeated` preflights once and checks only its first and last variants.
+
+The agreement payload is also not authoritative. Validation compares only the sorted multiset of error codes, so equal codes attributed to different rows pass. Computation comparison deliberately strips indices and compares only a path/value-or-outcome multiset, so values swapped between rows also pass. The default inventory sweep sets `withJava = false`, and the IF159 specialist benchmark bypasses the outcome-bearing preflight and never compares the exact all-equal `>` instances with generated Java. This is narrower than the NFR protocol's full interpreter/dynamic/static semantic eligibility claim.
+
+**Required correction:** Add one prepared-model support audit that traverses every stored rule, implicit computation validation, computation alternative, registered customization requirement, and host-sensitive primitive independent of document values. Retain an outcome-bearing check on every actual timed instance/variant, using complete validation signatures (code, type, indexed pointer) and complete computation signatures (indexed pointer, outcome, value). Run the generated-Java semantic leg for every case declared Java-capable; a characterized static split must be explicitly excluded rather than silently skipped. Specialist performance tests must use the same eligibility boundary.
+
+**Acceptance checks:** Add red/green cases for an unsupported custom type valued only after row 200, an unsupported middle variant whose first/last variants are supported, and an unsupported data-selected computation alternative. A deliberate row-attribution swap and computed-value swap must fail agreement. The exact IF159 N and 4N documents must pass interpreter/dynamic/static full-signature agreement before their clocks start.
+
+**Resolution:** Open.
+
+### RV-2026-07-20-03-2 — IF157 does not yet single-source the ratified estimator
+
+**Severity:** Medium.
+
+**Evidence:** Although `pairedGrowth` takes the median of its within-pair ratios, nearly every caller supplies `timeInterpreter(...).minMs`, a specialist `minMs`, or `coldRunMillis` (itself the minimum of fresh attempts). The old outer “best ratio” was removed, but each nominal paired sample still embeds a best-minimum statistic rather than the warm repeated median described by the performance protocol. The current path may remain a loose catastrophe backstop, but IF157's “implements IF137 exactly” and certification-ready wording is too strong.
+
+`CharsetPerfTest.bmpAndGraphemePathsStayBelowTheFourfoldGrowthCatastropheFloor` is a live growth guard that independently reimplements N/4N pairing, the median, and a literal `9.0` ceiling. IF157 says this test is only a same-N ratio guard and that the whole estate routes through `PerfHarness.pairedGrowth`; both claims are false. There is also no deterministic unit lock for sample order and median selection.
+
+**Required correction:** Define the observation inside a pair unambiguously: use one warmed observation or a repeated median, not an undocumented minimum. Route `CharsetPerfTest` through the shared estimator and `PerfBounds`. Add a cheap deterministic estimator test using scripted observations so interleaving, within-pair division, odd-sample median, and invalid sample handling cannot drift. Keep `<9×` unchanged unless separately owner-promoted.
+
+**Acceptance checks:** A repository search finds one implementation of paired growth and one catastrophe-floor constant. A synthetic sequence distinguishes median-of-ratios from ratio-of-medians and from best-minimum selection. Current growth guards remain green under the unchanged floor, and their prose calls the result a catastrophe guard until a pinned certifying run exists.
+
+**Resolution:** Open.
+
+### RV-2026-07-20-03-3 — the versioned identity is not bound to scenario content or results
+
+**Severity:** High.
+
+**Evidence:** `ScenarioId` carries `id`, a manually maintained integer, operation, firing classification, complexity, zone, locale, and an unused Java-capability flag. It has no model/instance fingerprint, value or computation-outcome regime, expected result cardinality, scale identity, or generator seed. `ScenarioInventoryTest` checks only that the integer is positive and that operation/zone match the built scenario. Changing `kernelModel`, `interpModel`, instance generation, values, scale, or expected results without bumping `version` stays green.
+
+The identity is also absent from the measurement artifact. `PerfRow`/`RepeatedRow` retain only `scenario.name`, and the output prints that bare name rather than `id@version` or a content fingerprint. Therefore an old number can still be silently attributed to changed content—the exact failure IF158 claims to make impossible.
+
+**Required correction:** Make identity a value owned by the scenario and bind it to a deterministic canonical fingerprint of the model, operation, instance generator parameters/seed, scale axes, locale/zone, firing/value/outcome regime, and expected result cardinality. Store the reviewed fingerprint beside the version so content drift without a version bump fails. Thread the complete identity into every result row, structured report, and log line.
+
+**Acceptance checks:** Mutation guards prove that changing the model, one generated value, result regime, or benchmark N without bumping the version fails. Every emitted performance row contains `id@version` and the fingerprint. Validation and computation identities distinguish firing/low-firing and VALUE/CLEARED/ERRORED cases rather than collapsing computations to `NOT_APPLICABLE`.
+
+**Resolution:** Open.
+
+### RV-2026-07-20-03-4 — the inventory is not omission-safe and its Java-capability contract is inert
+
+**Severity:** High.
+
+**Evidence:** `ScenarioInventoryTest` iterates only the rows already present, so deleting B1, B7, the UTC control, or any non-B9 row remains green. Adding a fair-Java-capable catalog scenario without registering it is likewise invisible. B8 is absent even though `KernelEdgeTest` already executes the complex-real-world scenario against generated Java. This contradicts NFR-P2's requirement that every supported B-series scenario be included by default.
+
+`ScenarioId.fairJavaCapable` defaults true but is never read; `PerfBenchTest.gatesEveryInventoryScenario` explicitly runs every inventory row with `withJava = false`. Registration therefore does not imply a fair-Java benchmark. The consolidation also broke the documented `scripts/perf.sh bench <method-pattern>` drill: all scenarios now live in one JUnit method, so former scenario-specific method patterns select no test.
+
+**Required correction:** Define one closed expected scenario catalog (enum/sealed registry or equivalent) with an exhaustive inventory mapping and explicit, reasoned exclusions. Include B8 and pin the exact B9/UTC pair. Make `fairJavaCapable` control an actual cheap generated-Java build/semantic leg and the eventual ratio lane, or remove the misleading field and model exclusions explicitly. Preserve targeted execution through a scenario-id filter or generated per-case tests, failing loudly on an unmatched requested id.
+
+**Acceptance checks:** Removing B1, B8, B9, or the UTC control fails; adding a catalog case without inventory/exclusion fails. Every Java-capable row successfully builds and tri-checks its Java engine. `scripts/perf.sh bench B9-berlin-datetime` runs exactly that scenario, while an unknown id exits nonzero.
+
+**Resolution:** Open.
+
+### RV-2026-07-20-03-5 — IF159 turns a known quadratic path into a required behavior
+
+**Severity:** High.
+
+**Evidence:** `OuterCorrelationPerfTest.nonEqualityOuterCorrelationIsPairwiseAndNoWorseThanKernel` asserts growth greater than `6.0`, so a future optimization that makes `[Count] > [$Count]` linear or N log N fails the suite for being faster. Timing is being used to pin an implementation strategy. The reviewed comparator-only self-correlation is not inherently pairwise: ordered buckets or an extremum/order-statistic summary can answer whether another row is smaller/larger without scanning every pair. Calling the O(N²) path inherent also conflicts with the module's standing rule not to ship a known-slow O(N²) path.
+
+The same test never asserts full outcome equality on its exact scaled documents, has no generated-Java leg, and compares one minimum per engine/scale with a generous 2.5× widening allowance rather than a paired ratio curve. The cited correctness tests cover related but different expressions/inputs. IF159 therefore proves that the present code enters a slow path and happened to be no slower than Groovy on one run; it does not justify closing the performance gap.
+
+**Required correction:** Delete the lower-bound timing assertion. Extend the correlation plan for comparator-only `$` self-correlations (`<`, `<=`, `>`, `>=`, and the applicable equality/inequality siblings) using keyed/ordered tallies with correct self-exclusion and 3VL handling. Use a deterministic strategy/work counter if a test must prove which plan was selected. Retain a general nested fallback only for shapes that cannot be indexed after a documented shape audit, and benchmark it as informative evidence rather than requiring quadratic time.
+
+**Acceptance checks:** The current `>` discriminator passes full tri-engine correctness and a sub-quadratic N/4N guard; making it faster can never fail a lower-bound assertion. Cover duplicates, all-equal values, no witness, boundary witness, self-exclusion, invalid/unknown cells, and both quantifier polarities. Any retained fallback has an explicit supported-shape boundary, deterministic dispatch lock, and no claim that kernel-equivalent slowness satisfies the interpreter's performance goal.
+
+**Resolution:** Open.
+
+### RV-2026-07-20-03-6 — IF160 is a partial JVM artifact check, not the interpreter hard-zero
+
+**Severity:** High.
+
+**Evidence:** `interpreterRuntimeClosure` resolves only `jvmRuntimeClasspath` and iterates `resolvedArtifacts`. JS-only/npm dependencies are invisible—the live `big.js` dependency demonstrates that the JS graph is distinct. Self-resolving file/directory dependencies and graph components without a `ResolvedArtifact` are not reconciled with the files being measured. The classifier rejects project components, `com.mgmtp` groups, and names containing `groovy`, but a published dmkits/dmtool/adapter coordinate outside the current multi-project build can pass.
+
+The generated report is therefore a useful JVM Maven-artifact inventory, but the finding/gap prose overstates it as the resolved hard-zero for the whole KMP interpreter.
+
+**Required correction:** Traverse the JVM resolution result and reconcile every runtime file exactly once, rejecting or explicitly accounting for opaque file/directory dependencies and published dmkits/dmtool/adapter coordinates. Add the corresponding JS/npm production-resolution hard-zero, including project and package dependencies, or explicitly narrow IF160 to JVM and keep the JS half active under IG79.
+
+**Acceptance checks:** Does-fire fixtures prove rejection of an intra-repo project edge, a published kit/dmtool coordinate, a kernel coordinate, Groovy, an opaque file dependency, and a forbidden JS-only package. A reconciliation guard proves the report total covers every resolved runtime file exactly once. Separate JVM and JS reports name their host graph and remain reproducible from a clean checkout.
+
+**Resolution:** Open.
+
+### RV-2026-07-20-03-7 — IF161's two-point heap check cannot prove plateau, no leak, or owner release
+
+**Severity:** High.
+
+**Evidence:** `preparedEnginePlateausAcrossRepeatedEvaluation` holds one engine/document, samples used heap once after warmup and once after 400 evaluations, and passes on any delta below 24 MB. A 1 KB-per-evaluation unbounded leak passes easily; any negative GC movement passes automatically. Because the engine/document are not used after the second evaluation loop, the JVM may regard them as dead before the second forced GC unless reachability is fenced.
+
+The one-owner shape cannot detect the more important sibling: a global cache that retains each document inserts once for this document and then plateaus perfectly while leaking every discarded owner. The test comment's claim that a global cache “would climb without bound” is therefore false. The 24 MB slack is also an unratified numerical threshold presented as a structural invariant, with no planted-leak sensitivity test proving it can fail on the defect class.
+
+**Required correction:** Reclassify the current test as an informative same-owner smoke. Build separate deterministic guards for same-owner plateau and owner release: multiple post-warm checkpoints/slope, explicit reachability fences, creation and disposal of many engines/documents, weak-reference/reference-queue collection, and logical cache-entry counts returning to baseline. Add a synthetic leaking-cache positive control so the guard's sensitivity is executable rather than assumed.
+
+**Acceptance checks:** A small planted per-evaluation leak fails; a global cache retaining discarded documents fails; bounded owner-scoped caches pass; the engine/document are demonstrably live during same-owner sampling and collectable during owner-release sampling. No unpromoted heap-slack number is described as an NFR/release bar.
+
+**Resolution:** Open.
+
+### RV-2026-07-20-03-8 — task #49's forked JVM/Node retained-heap and allocation probe was not delivered
+
+**Severity:** High.
+
+**Evidence:** `RetainedHeapProbeTest` is one JVM-only JUnit class inside the ordinary `:adapter:test` worker. `maxParallelForks` distributes test classes; it does not produce independent samples of this measurement. There is no fork orchestrator, fixed heap/collector/runtime metadata, Node worker with `--expose-gc`, allocation-volume measurement, logical cache-entry report, or structured result artifact. NFR-F2 explicitly requires retained heap **and allocation volume**, yet IF161 says the retained-heap/allocation residual graduated.
+
+The informative scale fit is also not a stable measurement protocol: all scales run sequentially in one JVM against changing baselines, non-positive/noisy deltas are silently replaced with one byte before the logarithm, and only the simple B1 rule is exercised. B1 does not cover `Having`/correlation row-context caches, compute-overlay view lifetimes, or owner release. The printed 1.00 exponent is useful calibration only.
+
+**Required correction:** Implement the task #49 measurement lane now: fork-capable JVM and Node workers, explicit GC viability, retained heap and allocation volume at N/2N/4N/8N, scenario identity, cache-entry counts, owner-release checks, and a structured report carrying commit, runtime, heap/collector, scales, repetitions, and samples. Cover at least simple validation, Having/equality correlation, and compute-overlay cache owners. Reject invalid samples rather than clamping them. Do not gate the candidate exponent/step/count values or change CI scheduling without owner approval.
+
+**Acceptance checks:** At least five independently invocable JVM and Node samples can be collected locally with explicit configuration; each emits valid positive retained/allocation observations and complete metadata. Missing `--expose-gc`, an invalid sample, a leaking owner, or an unsupported/wrong semantic outcome fails the measurement. The aggregation reports medians/curves informatively without promoting a release threshold.
+
+**Resolution:** Open.
+
+### RV-2026-07-20-03-9 — ownership/status classification and current-facing prose are inaccurate
+
+**Severity:** Medium.
+
+**Evidence:** The owner reserved promotion of candidate numbers and push/PR-versus-nightly wiring. That does not block building the fresh-process p95 runner, fair-Java measurement lane, equivalent-kernel closure comparator, forked JVM/Node heap/allocation workers, cache counters, firing/outcome cases, or model-static work counters. The implementation report incorrectly groups much of this executable measurement work under “owner-gated” and leaves ordinary in-estate residuals outside the tasklist.
+
+Direct current-facing contradictions also remain: `INTERPRETER-GAPS.md` calls the retained probe both missing and gated in one row and still says there is one Groovy canary; `INTERPRETER-SPEC.md` says no retained-heap/allocation series exists; `INTERPRETER-PERFORMANCE.md` says identity binding remains, says the non-equality fallback is unbenchmarked, and retains singular-canary language; `scripts/README.md` says no mode implements paired-median measurement; `PerfGateTest` still says “ONE” canary although it contains multiple canaries; IF156/IF157 open-status paragraphs list later-shipped increments as still owed. The intentionally historical IF132/IF134 audit counts may remain historical, but present-tense mechanics/status text may not.
+
+**Required correction:** Keep IG77 and IG79 in the active section with every actionable issue from this chapter plus both firing regimes, VALUE/CLEARED/ERRORED computation cases, model-static work counters, true first-answer runner, equivalent closure measurement, production npm/artifact measurement, and sound JVM/Node footprint tooling. Reserve only numerical promotion and CI scheduling for the owner. Sweep the direct current-facing contradictions, de-number/de-singularize evolving gate counts, and label retained point-in-time evidence explicitly historical.
+
+**Acceptance checks:** The active IG rows distinguish “tooling/measurement to implement now” from “threshold promotion/CI wiring requires owner.” Repository search finds no current statement that IF158 makes omission impossible, every timed sample already has full tri-engine eligibility, IF159's fallback is inherently pairwise, IF160 covers every host graph, or IF161 proves no leak/allocation certification. Doc guards and links pass.
+
+**Resolution:** Open.
+
+### Review verification
+
+- Green: focused `ScenarioInventoryTest` and `PerfPreflightTest`; `:interpreter:interpreterRuntimeClosure` (current report 3,091,274 bytes); focused `RetainedHeapProbeTest` rerun (informative 1.00 scale fit and displayed 0.0 MB two-point delta).
+- Source-verified limitations: Java disabled in the default inventory sweep; `fairJavaCapable` unused; version absent from output; `CharsetPerfTest` duplicates pairing/ceiling; IF159 has a `>6.0` slowness assertion and no exact tri-check; closure task is JVM-artifact-only; heap probe is one JVM process and measures no allocation volume or owner release.
+- No evaluator, harness, build, proposal, or other project file was changed by this review.
+
+### Chapter resolution
+
+Open. Resolve issues 1–5 together while the IG77 harness/scenario context is warm, then issues 6–8 as the IG79 closure/footprint lane. Apply issue 9 in those same commits so status travels with behavior. Do not move ordinary unfinished measurement work behind an owner gate; pause only before promoting a numerical release bar or changing CI scheduling. Preserve the IF159 high-repeatability same-model repair and do not open a duplicate over-repetition semantic gap.
 
 ## Resolved chapter archive
 
