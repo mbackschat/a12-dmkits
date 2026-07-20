@@ -4,65 +4,127 @@ import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 
-/** A recognized `$` equality-correlation `Having`: aligned inner/outer field paths of its equality conjuncts
- *  (`[innerFields[i]] == [$outerFields[i]]`) + whether a `CurrentRepetition(G) != CurrentRepetition($G)`
- *  self-exclusion is present (which drops the outer row from its own bucket). */
-internal class JoinSpec(val innerFields: List<String>, val outerFields: List<String>, val selfExcluded: Boolean)
+/** A recognized, indexable `$` self-correlation shape. */
+internal sealed interface CorrelationPlan {
+    val selfExcluded: Boolean
+}
 
 /**
- * Pure recognition of a starred filter quantifier's `Having` as a `$`-equality self-correlation — the AST-only
- * half of the interpreter's hash-join fast path. Strategy-agnostic runtime semantics: it operates only on the
- * parsed [Cond]/[Expr], with NO `EvalContext` / document walk (the IF10 runtime-vs-strategy split, sibling of
- * [Aggregates] / [ValCompare] / [CorrelationJoin]'s consumer `Interpreter.hashJoinTally`). The resolution-coupled
- * tally that *uses* the recognized [JoinSpec] stays in the strategy; a future generator recognizes the join the
- * same way.
+ * A conjunction of equality joins (`[innerFields[i]] == [$outerFields[i]]`) served by keyed hash tallies.
+ */
+internal data class KeyedCorrelationPlan(
+    val innerFields: List<String>,
+    val outerFields: List<String>,
+    override val selfExcluded: Boolean,
+) : CorrelationPlan
+
+/**
+ * One normalized value comparison (`[innerField] [op] [$outerField]`) served by an ordered tally. [op] always
+ * reads inner-to-outer even when the source condition wrote the operands in the opposite order.
+ */
+internal data class OrderedCorrelationPlan(
+    val innerField: String,
+    val outerField: String,
+    val op: CmpOp,
+    override val selfExcluded: Boolean,
+) : CorrelationPlan
+
+/**
+ * Pure recognition of the indexable `$` self-correlation boundary. A `Having` is indexable only when it is a
+ * conjunction of an optional `CurrentRepetition(G) != CurrentRepetition($G)` self-exclusion and either:
+ *
+ * - one or more plain-field/outer-field equality terms (a keyed join), or
+ * - exactly one plain-field/outer-field `<`, `<=`, `>`, `>=`, or `!=` term (an ordered tally).
+ *
+ * Any extra predicate, expression operand, or multi-comparator range returns null and stays on the documented
+ * general nested fallback. This AST-only classifier contains no document access; its consumer additionally checks
+ * that an ordered field kind has the same comparison semantics as [ValCompare.language].
  */
 internal object CorrelationJoin {
 
-    /** Recognize a `Having` as a PURE equality self-correlation → the hash-join fast path; null otherwise (→ the
-     *  O(N²) fallback). Must be a conjunction of: 0-or-1 self-exclusion `CurrentRepetition(G) !=
-     *  CurrentRepetition($G)` and ≥1 equality `[A] == [$B]` (a plain field == its `$` outer counterpart), and
-     *  NOTHING else — so its exact semantics reduce to a value join (any other shape keeps the general scan). */
-    fun parse(having: Cond, group: String): JoinSpec? {
-        val inner = mutableListOf<String>()
-        val outer = mutableListOf<String>()
+    fun parse(having: Cond, group: String): CorrelationPlan? {
+        val comparisons = mutableListOf<Cond.Cmp>()
         var selfExcluded = false
-        for (c in flattenAnd(having)) {
-            if (isSelfExclusion(c, group)) { selfExcluded = true; continue }
-            val pair = asEqualityJoin(c) ?: return null
-            inner.add(pair.first); outer.add(pair.second)
+        for (condition in flattenAnd(having)) {
+            if (isSelfExclusion(condition, group)) {
+                selfExcluded = true
+                continue
+            }
+            comparisons += condition as? Cond.Cmp ?: return null
         }
-        return if (inner.isEmpty()) null else JoinSpec(inner, outer, selfExcluded)
-    }
+        if (comparisons.isEmpty()) return null
 
-    private fun flattenAnd(c: Cond): List<Cond> =
-        if (c is Cond.And) flattenAnd(c.left) + flattenAnd(c.right) else listOf(c)
-
-    /** `(groupPath, isOuter)` if [e] is `CurrentRepetition(<groupRef>)`, else null. */
-    private fun currentRepOf(e: Expr): Pair<String, Boolean>? {
-        if (e !is Expr.Func || FunctionOp.byName(e.name) != FunctionOp.CURRENT_REPETITION) return null
-        val g = e.args.singleOrNull() as? Expr.Field ?: return null
-        return g.path to g.outer
-    }
-
-    /** Whether [c] is `CurrentRepetition(G) != CurrentRepetition($G)` over the star's [group] (either order). */
-    private fun isSelfExclusion(c: Cond, group: String): Boolean {
-        if (c !is Cond.Cmp || c.op != CmpOp.NE) return false
-        val l = currentRepOf(c.left) ?: return false
-        val r = currentRepOf(c.right) ?: return false
-        return l.first == group && r.first == group && l.second != r.second
-    }
-
-    /** `(innerFieldPath, outerFieldPath)` if [c] is `[A] == [$B]` — one plain field vs one `$` outer field
-     *  (either operand order); null otherwise. */
-    private fun asEqualityJoin(c: Cond): Pair<String, String>? {
-        if (c !is Cond.Cmp || c.op != CmpOp.EQ) return null
-        val l = c.left as? Expr.Field ?: return null
-        val r = c.right as? Expr.Field ?: return null
-        return when {
-            !l.outer && r.outer -> l.path to r.path
-            l.outer && !r.outer -> r.path to l.path
-            else -> null
+        val equalities = comparisons.map { asEqualityJoin(it) }
+        if (equalities.all { it != null }) {
+            val joins = equalities.filterNotNull()
+            return KeyedCorrelationPlan(
+                joins.map { it.first },
+                joins.map { it.second },
+                selfExcluded,
+            )
         }
+
+        if (comparisons.size != 1) return null
+        val comparison = asOrderedComparison(comparisons.single()) ?: return null
+        return OrderedCorrelationPlan(
+            comparison.innerField,
+            comparison.outerField,
+            comparison.op,
+            selfExcluded,
+        )
     }
+
+    private fun flattenAnd(condition: Cond): List<Cond> =
+        if (condition is Cond.And) flattenAnd(condition.left) + flattenAnd(condition.right) else listOf(condition)
+
+    /** `(groupPath, isOuter)` if [expression] is `CurrentRepetition(<groupRef>)`, else null. */
+    private fun currentRepOf(expression: Expr): Pair<String, Boolean>? {
+        if (expression !is Expr.Func || FunctionOp.byName(expression.name) != FunctionOp.CURRENT_REPETITION) return null
+        val group = expression.args.singleOrNull() as? Expr.Field ?: return null
+        return group.path to group.outer
+    }
+
+    /** Whether [condition] is `CurrentRepetition(G) != CurrentRepetition($G)` over [group] (either order). */
+    private fun isSelfExclusion(condition: Cond, group: String): Boolean {
+        if (condition !is Cond.Cmp || condition.op != CmpOp.NE) return false
+        val left = currentRepOf(condition.left) ?: return false
+        val right = currentRepOf(condition.right) ?: return false
+        return left.first == group && right.first == group && left.second != right.second
+    }
+
+    /** `(innerFieldPath, outerFieldPath)` for `[A] == [$B]`, in either operand order. */
+    private fun asEqualityJoin(condition: Cond.Cmp): Pair<String, String>? {
+        if (condition.op != CmpOp.EQ) return null
+        val fields = asInnerOuterFields(condition.left, condition.right)
+            ?: asInnerOuterFields(condition.right, condition.left)
+            ?: return null
+        return fields.inner to fields.outer
+    }
+
+    /** Normalize one field comparison so [NormalizedComparison.op] always compares inner to outer. */
+    private fun asOrderedComparison(condition: Cond.Cmp): NormalizedComparison? {
+        if (condition.op == CmpOp.EQ) return null
+        val direct = asInnerOuterFields(condition.left, condition.right)
+        if (direct != null) return NormalizedComparison(direct.inner, direct.outer, condition.op)
+        val reversed = asInnerOuterFields(condition.right, condition.left) ?: return null
+        return NormalizedComparison(reversed.inner, reversed.outer, reverse(condition.op))
+    }
+
+    private fun asInnerOuterFields(left: Expr, right: Expr): InnerOuterFields? {
+        val inner = left as? Expr.Field ?: return null
+        val outer = right as? Expr.Field ?: return null
+        return if (!inner.outer && outer.outer) InnerOuterFields(inner.path, outer.path) else null
+    }
+
+    private fun reverse(op: CmpOp): CmpOp = when (op) {
+        CmpOp.LT -> CmpOp.GT
+        CmpOp.LE -> CmpOp.GE
+        CmpOp.GT -> CmpOp.LT
+        CmpOp.GE -> CmpOp.LE
+        CmpOp.EQ -> CmpOp.EQ
+        CmpOp.NE -> CmpOp.NE
+    }
+
+    private data class InnerOuterFields(val inner: String, val outer: String)
+    private data class NormalizedComparison(val innerField: String, val outerField: String, val op: CmpOp)
 }

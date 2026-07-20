@@ -135,6 +135,18 @@ internal class OverlayContext(
             correlationBucketsOf(rowContexts(groupPath, bindDepth), joinFields, starPath)
         }
 
+    override fun orderedCorrelation(
+        groupPath: String,
+        innerField: String,
+        starPath: String,
+        bindDepth: Int,
+    ): OrderedCorrelation =
+        if (starPath == selfTarget || innerField == selfTarget)
+            OrderedCorrelation.build(rowContexts(groupPath, bindDepth), innerField, starPath)
+        else views.orderedCorrelation(groupPath, d.scopePrefixOf(groupPath, bindDepth), innerField, starPath) {
+            OrderedCorrelation.build(rowContexts(groupPath, bindDepth), innerField, starPath)
+        }
+
     /** The immediate parent group of a field path (`/Ovl/Row/Src` → `/Ovl/Row`) — matches [Document]'s
      *  `parentGroup`, so the index-column scope key aligns with the raw context's `starScopePrefix`. */
     private fun parentGroupOf(fieldPath: String): String {
@@ -144,20 +156,20 @@ internal class OverlayContext(
 }
 
 /**
- * The compute cascade's per-computation-STEP cache of the overlay's derived views — the index-column
- * ([EvalContext.indexColumn]) and `$`-correlation-bucket ([EvalContext.correlationBuckets]) views an
- * [OverlayContext] would otherwise rebuild from the wrapped cells on EVERY outer row (O(outer×inner) — the pre-IF143 rebuild). A
- * computation step writes only its OWN target column, and a legal computation never reads its own target — the
- * caller passes that target as `selfTarget` and bypasses this cache for it — so within one step every OTHER column
- * is stable, and a view over it is built once and shared across the outer rows (O(outer+inner)). Keyed by
- * (column(s), scope-prefix) exactly as the raw document-level cache is ([Document]'s `indexColumnByScope` /
- * `correlationBucketCache`), so two outer rows of the same scope share the entry. Allocated **fresh per step**
- * (bounded by the distinct views one computation references) and never spanning a step, so a later step's
- * self-write can never read a view built against a superseded overlay.
+ * The compute cascade's per-computation-STEP cache of the overlay's derived views — index columns
+ * ([EvalContext.indexColumn]), `$` equality buckets ([EvalContext.correlationBuckets]), and `$` comparator
+ * ordered tallies ([EvalContext.orderedCorrelation]). An [OverlayContext] would otherwise rebuild one of these
+ * views from the wrapped cells on EVERY outer row. A computation step writes only its OWN target column, and a
+ * legal computation never reads its own target — the caller passes that target as `selfTarget` and bypasses this
+ * cache for it — so within one step every OTHER column is stable and a view is built once and shared across outer
+ * rows. Keys mirror the raw document-level caches' column(s) + scope prefix. The cache is allocated **fresh per
+ * step**, bounded by its distinct views, and never spans a step; a later step cannot read a view built against a
+ * superseded overlay.
  */
 internal class OverlayViews {
     private val indexColumns = HashMap<Pair<String, List<Int>>, IndexColumn>()
     private val correlations = HashMap<List<Any?>, Map<List<Val>, IntArray>>()
+    private val orderedCorrelations = HashMap<List<Any?>, OrderedCorrelation>()
 
     fun indexColumn(path: String, scope: List<Int>, build: () -> IndexColumn): IndexColumn =
         indexColumns.getOrPut(path to scope, build)
@@ -165,4 +177,13 @@ internal class OverlayViews {
     fun correlation(groupPath: String, scope: List<Int>, joinFields: List<String>, starPath: String,
                     build: () -> Map<List<Val>, IntArray>): Map<List<Val>, IntArray> =
         correlations.getOrPut(listOf(groupPath, scope, joinFields, starPath), build)
+
+    fun orderedCorrelation(
+        groupPath: String,
+        scope: List<Int>,
+        innerField: String,
+        starPath: String,
+        build: () -> OrderedCorrelation,
+    ): OrderedCorrelation =
+        orderedCorrelations.getOrPut(listOf(groupPath, scope, innerField, starPath), build)
 }

@@ -116,6 +116,7 @@ class Document(internal val config: DocumentConfig) {
         cachedIndex = null                 // the lazily-built lookup index
         rowContextsCache.clear()           // a `Having` filter's per-row contexts
         correlationBucketCache.clear()     // a `$` equality-correlation's hash buckets
+        orderedCorrelationCache.clear()    // a comparator-only `$` correlation's ordered prefix tallies
     }
 
     private fun autoGroup(path: String, reps: List<Int>) {
@@ -473,6 +474,19 @@ class Document(internal val config: DocumentConfig) {
             correlationBucketsOf(rowContextsScoped(groupPath, scopeReps), joinFields, starPath)
         }
 
+    // Comparator-only `$` correlation, cached at the same immutable group/scope lifetime as equality buckets.
+    private val orderedCorrelationCache = HashMap<List<Any>, OrderedCorrelation>()
+
+    private fun orderedCorrelationScoped(
+        groupPath: String,
+        scopeReps: List<Int>,
+        innerField: String,
+        starPath: String,
+    ): OrderedCorrelation =
+        orderedCorrelationCache.getOrPut(listOf(groupPath, scopeReps, innerField, starPath)) {
+            OrderedCorrelation.build(rowContextsScoped(groupPath, scopeReps), innerField, starPath)
+        }
+
     /** Indices for a referenced path P under a row of group G: shared-prefix indices from the row, else 1. */
     private fun repsFor(refPath: String, group: String, rowReps: List<Int>): List<Int> {
         val refParts = partsOf(refPath)
@@ -678,6 +692,14 @@ class Document(internal val config: DocumentConfig) {
         // B-rows (the same rows `rowContexts(groupPath, bindDepth)` — the naive scan — iterates).
         override fun correlationBuckets(groupPath: String, joinFields: List<String>, starPath: String, bindDepth: Int): Map<List<Val>, IntArray> =
             correlationBucketsScoped(groupPath, groupScopePrefix(groupPath, bindDepth), joinFields, starPath)
+
+        override fun orderedCorrelation(
+            groupPath: String,
+            innerField: String,
+            starPath: String,
+            bindDepth: Int,
+        ): OrderedCorrelation =
+            orderedCorrelationScoped(groupPath, groupScopePrefix(groupPath, bindDepth), innerField, starPath)
 
         // The scope key an overlay-aware derived-view cache shares across outer rows (IF143) — the SAME prefix the
         // raw indexColumnByScope / correlationBucketCache key on, so the overlay's per-step cache matches this row's view.

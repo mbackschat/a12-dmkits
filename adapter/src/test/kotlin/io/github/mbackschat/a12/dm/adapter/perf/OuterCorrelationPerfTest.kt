@@ -21,12 +21,11 @@ import org.junit.jupiter.api.Test
  * - **Equality** (`[Count] == [$Count]`, IF47): recognized as a HASH JOIN — O(N) total, not a nested O(N²) scan.
  *   Four times the rows must cost well below quadratic growth (≈16×); the generous `<9×` catastrophe floor catches
  *   loss of the hash-join path while tolerating timing noise.
- * - **Non-equality** (`[Count] > [$Count]`, IG77 → IF159): has no equality join key, so it takes the interpreter's
- *   genuine O(N²) nested-loop fallback (`naiveStarQuantTally`) — the kernel evaluates an arbitrary `Having` as a
- *   nested loop too. Its growth is therefore inherently **PAIRWISE** (allowed to exceed the linear band); the gate
- *   is that the interpreter stays **NO WORSE than the kernel's same operation** (a stable interp/kernel ratio).
- *   The all-equal `flat` Count means `>` never holds (no witness), forcing BOTH engines to scan every row (neither
- *   early-cancels) — the fair, apples-to-apples measure of the fallback.
+ * - **Comparator-only non-equality** (`[Count] > [$Count]`, IG77 → IF159): an ordered correlation plan must keep
+ *   the full interpreter curve sub-quadratic. The all-equal `flat` Count is the no-witness discriminator that made
+ *   the former nested fallback scan every pair. Complete interpreter/dynamic-Groovy/generated-Java signatures are
+ *   checked on the exact N and 4N documents before timing; the kernel curve remains informative rather than making
+ *   kernel-equivalent slowness a success criterion.
  *
  * **The model repeats FAR beyond the benchmark N** (built here, not `order.dm.json`, whose Items cap of 50 is
  * below N — the kernel would treat over-limit rows as invalid context and skip rule eval on them, making the
@@ -51,7 +50,7 @@ class OuterCorrelationPerfTest {
         Dsl.atLeastOneFieldFilled(m.flatten("/Order/Items*/Count").having(
             selfExcluded().and(m.num(COUNT).eq(m.num(COUNT).outer()))))))
 
-    // …the SAME shape with `>` instead of `==` — no equality key, so the interpreter takes the O(N²) fallback.
+    // …the SAME shape with `>` instead of `==` — the ordered comparator-correlation discriminator.
     private val corrGt = DslRenderer().render(m.field(COUNT).filled().and(
         Dsl.atLeastOneFieldFilled(m.flatten("/Order/Items*/Count").having(
             selfExcluded().and(m.num(COUNT).gt(m.num(COUNT).outer()))))))
@@ -62,6 +61,13 @@ class OuterCorrelationPerfTest {
     private val defGt = ModelLoader.load(kGtModel)
     private val kernelEq = RuntimeLaws.kernelEngine(kEqModel)   // Groovy codegen once
     private val kernelGt = RuntimeLaws.kernelEngine(kGtModel)
+    private val gtScenario = PerfScenario("ordered \$ non-equality correlation", kGtModel, defGt) { sink, n, _ ->
+        sink.group("/Order", 1)
+        for (r in 1..n) {
+            sink.group("/Order/Items", 1, r)
+            sink.field(COUNT, flat(r), 1, r, 1)
+        }
+    }
 
     /** Distinct Counts (mod 50) — the equality regime has real join buckets. */
     private fun spread(r: Int) = (r % 50).toString()
@@ -123,34 +129,24 @@ class OuterCorrelationPerfTest {
             "interp/kernel ratio grew from $ratioSmall× to $ratioLarge× at 4× rows — interp is a worse class than the kernel")
     }
 
-    /**
-     * **The genuine non-equality nested-loop fallback (IG77 → IF159).** `[Count] > [$Count]` has no equality join
-     * key, so the interpreter uses `naiveStarQuantTally` (O(N²)); the kernel evaluates an arbitrary `Having` as a
-     * nested loop too. With an all-equal Count the predicate never holds, so neither engine early-cancels the
-     * quantifier — both scan every row, the fair apples-to-apples fallback measure. The gate: (a) growth IS
-     * pairwise (super-linear — proves the fallback is exercised, not accidentally hash-joined), and (b) the
-     * interpreter stays NO WORSE than the kernel's same operation (a stable interp/kernel ratio). Correctness of
-     * the non-equality fallback is locked by `laws.SelfCorrelatedOverlapQuantifierDiffTest` (witness cases).
-     */
+    /** The `>` no-witness discriminator must be exact at both scales and stay below the shared quadratic trip. */
     @Test
-    fun nonEqualityOuterCorrelationIsPairwiseAndNoWorseThanKernel() {
+    fun nonEqualityOuterCorrelationIsExactAndSubQuadratic() {
+        PerfHarness.assertSemanticAgreement(gtScenario, listOf(N, N * 4), withJava = true)
         val g = PerfHarness.pairedGrowth(N, N * 4) { medianMs(defGt, it, ::flat) }
-        println("[perf] \$ non-equality correlation (pairwise): %.1fms@%d → %.1fms@%d  median-growth=%.1f× (pairwise≈16)"
+        println("[perf] \$ non-equality correlation: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
             .format(g.smallMs, N, g.largeMs, N * 4, g.ratio))
-        // (a) it is genuinely PAIRWISE: a linear hash-join path would be ≈4×; the O(N²) fallback is ≈16×. A floor
-        // of 6× confirms the fallback is exercised (well above linear) while tolerating timing noise below ~16×.
-        assertTrue(g.ratio > 6.0,
-            "expected the genuine O(N²) fallback (growth ~16×), got ${g.ratio}× — was it hash-joined into a linear path?")
+        assertTrue(g.ratio < PerfBounds.SUB_QUADRATIC_MAX,
+            "\$ non-equality correlation scaling looks quadratic: 4× the rows took ${g.ratio}× the time")
 
-        // (b) no worse than the kernel's same nested-loop operation: the interp/kernel ratio must not grow with N.
+        // Informative oracle curve only: the kernel currently evaluates this arbitrary Having with its own scan.
+        // The interpreter's success criterion is the sub-quadratic curve above, never "as slow as the kernel".
         val (iSmall, kSmall) = medianMs(defGt, N, ::flat) to kernelMedianMs(kernelGt, N, ::flat)
         val (iLarge, kLarge) = medianMs(defGt, N * 4, ::flat) to kernelMedianMs(kernelGt, N * 4, ::flat)
         val ratioSmall = iSmall / kSmall
         val ratioLarge = iLarge / kLarge
         println("[perf] \$ non-equality vs kernel: N=%d interp=%.1f kernel=%.1f (%.2f×) | N=%d interp=%.1f kernel=%.1f (%.2f×)"
             .format(N, iSmall, kSmall, ratioSmall, N * 4, iLarge, kLarge, ratioLarge))
-        assertTrue(ratioLarge < ratioSmall * 2.5,
-            "interp/kernel ratio grew from $ratioSmall× to $ratioLarge× at 4× rows — the interpreter's pairwise fallback is a worse class than the kernel's")
     }
 
     private companion object {

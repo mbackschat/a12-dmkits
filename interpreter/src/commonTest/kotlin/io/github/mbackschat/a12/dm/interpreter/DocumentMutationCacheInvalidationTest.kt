@@ -14,11 +14,12 @@ import kotlin.test.assertTrue
 /**
  * IF142 (graduated from IG81) — a [Document] mutation invalidates EVERY document-derived cache, not just the
  * lookup index. `Document.add` cleared `cachedIndex` but left the document-level `rowContextsCache` (a `Having`
- * filter's per-row contexts) and `correlationBucketCache` (a `$` equality-correlation's hash buckets) warm, so on
- * the PUBLIC API a query → mutate → query reused stale row sets / `$`-correlation counts (the internal eval path
- * never mutates after querying, but a library consumer can). The fix routes every mutation through one complete
- * invalidation. This locks the CLASS with one test per cache: warm a `Having`-scoped query and a `$`-correlation
- * query, mutate so each cache's output MUST change, and prove each re-query equals a fresh document. JVM + JS.
+ * filter's per-row contexts), `correlationBucketCache` (a `$` equality-correlation's hash buckets), and
+ * `orderedCorrelationCache` (a `$` comparator-correlation's ordered tallies) warm, so on the PUBLIC API a
+ * query → mutate → query could reuse stale row sets / `$`-correlation counts (the internal eval path never mutates
+ * after querying, but a library consumer can). Every mutation therefore routes through one complete invalidation.
+ * This locks the CLASS with one test per cache: warm the query, mutate so its output MUST change, and prove the
+ * re-query equals a fresh document. JVM + JS.
  */
 class DocumentMutationCacheInvalidationTest {
 
@@ -77,6 +78,21 @@ class DocumentMutationCacheInvalidationTest {
                 "MoreThanOneFieldFilled(/Order/Lines*/Amount Having [/Order/Lines/Tag] == [\$/Order/Lines/Tag])", "RC", "../Amount"),
             seed = { line(it, 1, "10.00", "x") },
             mutate = { line(it, 2, "20.00", "x") },
+        )
+    }
+
+    @Test
+    fun orderedCorrelationCacheIsInvalidatedOnMutation() {
+        // Seed has one line, so no distinct row can be greater than it. Adding a larger line must make the original
+        // row fire; a stale ordered tally would still contain only the seed value.
+        assertMutationMatchesFresh(
+            RuleDef("/Order/Lines/RO", "/Order/Lines",
+                "FieldFilled(Amount) And AtLeastOneFieldFilled(/Order/Lines*/Tag Having " +
+                    "CurrentRepetition(/Order/Lines) != CurrentRepetition(\$/Order/Lines) And " +
+                    "[/Order/Lines/Amount] > [\$/Order/Lines/Amount])",
+                "RO", "../Amount"),
+            seed = { line(it, 1, "10.00", "x") },
+            mutate = { line(it, 2, "20.00", "y") },
         )
     }
 }

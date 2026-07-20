@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test
  * predicate selects. The interpreter must fire on EXACTLY the rows the kernel does — the reported bug was
  * `model eval` crashing at parse on `$`. Covers BOTH evaluation paths: the O(1) hash-join fast path (an equality
  * self-correlation `[X] == [$X]`, with/without the `CurrentRepetition` self-exclusion, incl. empty→0 join keys)
- * AND the O(N²) fallback (a non-equality `<` correlation the join can't index). Each also exercises the filtered
+ * AND the ordered-tally plan (a non-equality `<` correlation). Each also exercises the filtered
  * quantifier over a star (IG25's starred-field form), which the reported condition needs alongside `$`.
  */
 class OuterCorrelationDiffTest {
@@ -42,7 +42,7 @@ class OuterCorrelationDiffTest {
         Dsl.atLeastOneFieldFilled(m.flatten("/Order/Items*/Count").having(
             m.num(COUNT).eq(m.num(COUNT).outer())))))
 
-    /** self-excluded `<` — "another row has a SMALLER Count" (non-equality → O(N²) FALLBACK, still `$`). */
+    /** self-excluded `<` — "another row has a SMALLER Count" (single-comparator ordered plan, still `$`). */
     private val corrLess = render(m.field(COUNT).filled().and(
         Dsl.atLeastOneFieldFilled(m.flatten("/Order/Items*/Count").having(
             selfExcl().and(m.num(COUNT).lt(m.num(COUNT).outer()))))))

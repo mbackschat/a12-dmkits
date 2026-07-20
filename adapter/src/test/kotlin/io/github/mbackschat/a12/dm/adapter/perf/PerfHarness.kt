@@ -361,6 +361,29 @@ object PerfHarness {
     }
 
     /**
+     * Assert complete interpreter/dynamic-Groovy/generated-Java signatures at every requested scale, with all
+     * engines built once and no clocks involved. This is the correctness precondition for a multi-scale curve:
+     * each exact document on the curve is proved semantically eligible before the first timed observation.
+     */
+    fun assertSemanticAgreement(scenario: PerfScenario, scales: List<Int>, withJava: Boolean = true) {
+        require(scales.isNotEmpty()) { "at least one semantic-agreement scale is required" }
+        require(scales.all { it > 0 }) { "semantic-agreement scales must be positive" }
+        preflight(scenario, scales.max())
+        val interpreter = InterpreterPerfEngine.build(scenario)
+        val groovy = KernelPerfEngine.build(scenario)
+        val java = if (withJava) KernelJavaPerfEngine.build(scenario) else null
+        scales.forEach { n ->
+            assertInstanceAgreement(
+                scenario,
+                n,
+                interpreter.instance(n),
+                groovy.instance(n),
+                java?.instance(n),
+            )
+        }
+    }
+
+    /**
      * **Cold first-call latency** (ms): the MEDIAN over [repeats] FRESH attempts — each a fresh [DmInterpreter] +
      * a fresh [Document] at scale [n] + exactly ONE `validateFull`, with **no warmup**. This is the realistic
      * **startup / one-shot / first-call** cost (the lazy index build + first parse + un-JIT-warmed execution)
@@ -389,16 +412,29 @@ object PerfHarness {
         val iInst = InterpreterPerfEngine.build(scenario).instance(n)
         val gInst = KernelPerfEngine.build(scenario).instance(n)
         val jInst = if (withJava) KernelJavaPerfEngine.build(scenario).instance(n) else null
-        val iOutcome = iInst.outcome()
-        requireEligible(scenario, n, 0, iOutcome)
-        val iResult = iOutcome.signatures
-        assertSignaturesAgree(scenario.name, n, "interp", iResult, "groovy", gInst.run())
-        if (jInst != null) assertSignaturesAgree(scenario.name, n, "groovy", gInst.run(), "java", jInst.run())
+        val iResult = assertInstanceAgreement(scenario, n, iInst, gInst, jInst)
         val identity = scenario.completeIdentity(n, observed = listOf(iResult.size), variants = listOf(0))
         val gStats = measure(warmup, iters) { gInst.run() }
         val jStats = jInst?.let { measure(warmup, iters) { it.run() } }
         val iStats = measure(warmup, iters) { iInst.run() }
         return PerfRow(identity, n, iResult.size, iStats, gStats, jStats)
+    }
+
+    private fun assertInstanceAgreement(
+        scenario: PerfScenario,
+        n: Int,
+        interpreter: RunInstance,
+        groovy: RunInstance,
+        java: RunInstance?,
+    ): List<String> {
+        val iOutcome = interpreter.outcome()
+        requireEligible(scenario, n, 0, iOutcome)
+        val groovyResult = groovy.run()
+        assertSignaturesAgree(scenario.name, n, "interp", iOutcome.signatures, "groovy", groovyResult)
+        java?.run()?.let { javaResult ->
+            assertSignaturesAgree(scenario.name, n, "groovy", groovyResult, "java", javaResult)
+        }
+        return iOutcome.signatures
     }
 
     /**

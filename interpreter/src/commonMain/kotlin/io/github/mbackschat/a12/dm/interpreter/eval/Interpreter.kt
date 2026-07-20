@@ -11,9 +11,13 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldValidationContext
 import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
+
+/** The closed `$` correlation dispatch, exposed internally for deterministic plan/fallback tests. */
+internal enum class CorrelationStrategy { KEYED, ORDERED, NESTED }
 
 /**
  * A tree-walking interpreter for the condition AST over an [EvalContext] — pure static common code
@@ -565,27 +569,54 @@ class Interpreter(
      * Tally a STARRED field-list quantifier operand — `AtLeastOneFieldFilled(Group* / Field Having …)`: iterate
      * the star's group rows, keep those the optional `Having` filter accepts, and count each kept row's cell as
      * TRUE (present + check-relevant) / FALSE (empty) / neither (malformed) — the same 3-state as [quantTally].
-     * **Linear in the group's rows** (O(1) per row: the filter's `$` refs resolve against the fixed enclosing
-     * row via [havingInterp], and `filled`/`rowContexts` are O(1)/O(rows)). Returns `(t, f, n = kept rows)`.
+     * Indexable `$` equality/comparator correlations use keyed/ordered tallies; arbitrary filters retain the
+     * general scan. Returns `(t, f, n = kept rows)`.
      */
     private fun starQuantTally(star: Expr.Star): Triple<Int, Int, Int> {
         val group = star.path.substringBeforeLast('/')
-        // Fast path: an equality self-correlation Having (`[X] == [$X]` ± a CurrentRepetition self-exclusion) is
-        // a HASH JOIN — O(1) per outer row against buckets the Document builds + caches once (O(N)). This is the
-        // kernel's own linear strategy; the O(N²) scan below is the fallback for an arbitrary Having. A MULTI-star
-        // operand (bindDepth above the leaf group's parent — IF94) hash-joins too (IF144): the buckets widen to the
-        // first-star scope via [hashJoinTally]'s `bindDepth`. The one multi-star shape that STAYS naive is a
-        // SELF-EXCLUSION (`CurrentRepetition(G) != CurrentRepetition($G)`): across the wider scope it drops EVERY
-        // row sharing the outer's leaf index, not just the outer's own row, which the hash join's single-row
-        // self-subtraction cannot express (the single-star scope makes that index unique, so single-star is safe).
-        val join = star.having?.let { CorrelationJoin.parse(it, group) }
-        if (join != null && (!isMultiStar(star) || !join.selfExcluded)) return hashJoinTally(star, group, join)
-        return naiveStarQuantTally(star, group)
+        return when (val plan = correlationPlan(star, group)) {
+            is KeyedCorrelationPlan -> hashJoinTally(star, group, plan)
+            is OrderedCorrelationPlan -> orderedCorrelationTally(star, group, plan)
+            null -> naiveStarQuantTally(star, group)
+        }
     }
 
     /** Whether [star] binds ABOVE its leaf group's parent — a multi-star operand (`A* / B* / F`, IF94). */
     private fun isMultiStar(star: Expr.Star): Boolean =
         star.bindDepth >= 0 && star.bindDepth < star.path.trim('/').split('/').size - 2
+
+    /**
+     * Runtime-qualified correlation plan. A multi-star self-exclusion stays general because it excludes every row
+     * sharing the outer leaf index, not one physical row. Ordered plans are limited to kinds whose runtime order is
+     * exactly [ValCompare.language]; non-UTC DATE_TIME needs instant ordering and therefore stays on the fallback.
+     */
+    private fun correlationPlan(star: Expr.Star, group: String): CorrelationPlan? {
+        val plan = star.having?.let { CorrelationJoin.parse(it, group) } ?: return null
+        if (isMultiStar(star) && plan.selfExcluded) return null
+        if (plan is OrderedCorrelationPlan && !orderedCorrelationSupported(plan)) return null
+        return plan
+    }
+
+    private fun orderedCorrelationSupported(plan: OrderedCorrelationPlan): Boolean {
+        val innerKind = ctx.declaredKind(plan.innerField)
+        val outerKind = ctx.declaredKind(plan.outerField)
+        if (innerKind == null || innerKind != outerKind) return false
+        return when (innerKind) {
+            Kind.NUMBER, Kind.STRING, Kind.DATE, Kind.TIME -> true
+            Kind.DATE_TIME -> timeZone == ModelTimeZone.UTC
+            Kind.BOOLEAN, Kind.CONFIRM, Kind.DATE_RANGE -> false
+        }
+    }
+
+    /** Deterministic shape-dispatch seam for the plan/fallback lock. */
+    internal fun correlationStrategy(star: Expr.Star): CorrelationStrategy {
+        val group = star.path.substringBeforeLast('/')
+        return when (correlationPlan(star, group)) {
+            is KeyedCorrelationPlan -> CorrelationStrategy.KEYED
+            is OrderedCorrelationPlan -> CorrelationStrategy.ORDERED
+            null -> CorrelationStrategy.NESTED
+        }
+    }
 
     /**
      * The O(N²) inner-scan `(t, f, n)` tally of a starred filter quantifier — the general fallback for an
@@ -631,17 +662,18 @@ class Interpreter(
     }
 
     /**
-     * **Property 6 (hash-join ≡ nested-loop).** For a starred filter quantifier [star] whose `Having` is a
-     * recognized `$`-equality self-correlation, the `(t, f, n)` tally computed by the O(1) hash-join fast path
-     * ([hashJoinTally]) paired with the O(N²) naive inner scan ([naiveStarQuantTally]) — the property asserts the
-     * two are equal on every sampled input. Returns null when [star] carries no recognized correlation `Having`
-     * (no fast path exists to compare against the scan).
+     * **Property 6 (indexed correlation ≡ nested-loop).** For a starred filter quantifier [star] whose `Having`
+     * has a keyed/ordered plan, pair the indexed tally with the general scan so the property pack can assert exact
+     * equality. Returns null for the documented fallback boundary.
      */
     internal fun correlationTallyBothWays(star: Expr.Star): Pair<Triple<Int, Int, Int>, Triple<Int, Int, Int>>? {
         val group = star.path.substringBeforeLast('/')
-        val join = star.having?.let { CorrelationJoin.parse(it, group) } ?: return null
-        if (isMultiStar(star) && join.selfExcluded) return null   // this shape uses the naive path only — no fast path to compare (IF144)
-        return hashJoinTally(star, group, join) to naiveStarQuantTally(star, group)
+        val fast = when (val plan = correlationPlan(star, group)) {
+            is KeyedCorrelationPlan -> hashJoinTally(star, group, plan)
+            is OrderedCorrelationPlan -> orderedCorrelationTally(star, group, plan)
+            null -> return null
+        }
+        return fast to naiveStarQuantTally(star, group)
     }
 
     /**
@@ -651,28 +683,50 @@ class Interpreter(
      * in its own bucket iff its inner-field values equal its outer-field values). Returns exactly what the scan
      * would for well-formed data (the differential + fuzz lock it). Buckets are built + cached by the Document.
      */
-    private fun hashJoinTally(star: Expr.Star, group: String, join: JoinSpec): Triple<Int, Int, Int> {
+    private fun hashJoinTally(star: Expr.Star, group: String, join: KeyedCorrelationPlan): Triple<Int, Int, Int> {
         val buckets = ctx.correlationBuckets(group, join.innerFields, star.path, star.bindDepth)
         val outerKey = join.outerFields.map { p -> if (invalid(p)) Val.Unknown else ctx.field(p) }
         if (outerKey.any { it is Val.Unknown }) return Triple(0, 0, 0)   // an Unknown outer value never matches
         val tfn = buckets[outerKey] ?: return Triple(0, 0, 0)
-        var t = tfn[0]
-        var f = tfn[1]
-        var n = tfn[2]
+        var tally = Triple(tfn[0], tfn[1], tfn[2])
         if (join.selfExcluded && ctx.evaluated) {
             val outerInnerKey = join.innerFields.map { p -> if (invalid(p)) Val.Unknown else ctx.field(p) }
             if (outerInnerKey == outerKey) {           // the outer row is in its own bucket → drop it
-                n--
-                when {
-                    ctx.presenceUnknown(star.path) -> {}
-                    !ctx.filled(star.path) -> f--
-                    // a filled-but-INVALID own cell contributed to NEITHER bucket (IF105) — nothing to undo
-                    ctx.field(star.path) is Val.Unknown -> {}
-                    else -> t--
-                }
+                tally = subtractOwnContribution(star, tally)
             }
         }
-        return Triple(t, f, n)
+        return tally
+    }
+
+    /** Ordered-prefix equivalent of [hashJoinTally], O(log distinct values) for one outer row. */
+    private fun orderedCorrelationTally(
+        star: Expr.Star,
+        group: String,
+        plan: OrderedCorrelationPlan,
+    ): Triple<Int, Int, Int> {
+        val outer = if (invalid(plan.outerField)) Val.Unknown else ctx.field(plan.outerField)
+        if (outer is Val.Unknown) return Triple(0, 0, 0)
+        var tally = ctx.orderedCorrelation(group, plan.innerField, star.path, star.bindDepth).tally(plan.op, outer)
+        if (plan.selfExcluded && ctx.evaluated) {
+            val inner = if (invalid(plan.innerField)) Val.Unknown else ctx.field(plan.innerField)
+            if (inner !is Val.Unknown && orderedComparisonMatches(plan.op, inner, outer)) {
+                tally = subtractOwnContribution(star, tally)
+            }
+        }
+        return tally
+    }
+
+    private fun subtractOwnContribution(star: Expr.Star, tally: Triple<Int, Int, Int>): Triple<Int, Int, Int> {
+        var (trueCount, falseCount, rows) = tally
+        rows--
+        when {
+            ctx.presenceUnknown(star.path) -> {}
+            !ctx.filled(star.path) -> falseCount--
+            // A filled-but-invalid own cell contributes to neither truth bucket (IF105).
+            ctx.field(star.path) is Val.Unknown -> {}
+            else -> trueCount--
+        }
+        return Triple(trueCount, falseCount, rows)
     }
 
     /**

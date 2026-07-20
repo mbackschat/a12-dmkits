@@ -144,6 +144,19 @@ interface EvalContext {
         throw UnsupportedConstructException("correlation buckets need the general Document context, not $this")
 
     /**
+     * Ordered prefix tallies for one comparator-only `$` correlation over [groupPath]'s rows. Built and cached per
+     * immutable (group, scope, [innerField], [starPath]) view, so one O(rows log rows) preparation serves every
+     * outer-row O(log rows) query. [bindDepth] has the same multi-star scope semantics as [correlationBuckets].
+     */
+    fun orderedCorrelation(
+        groupPath: String,
+        innerField: String,
+        starPath: String,
+        bindDepth: Int = -1,
+    ): OrderedCorrelation =
+        throw UnsupportedConstructException("ordered correlation needs the general Document context, not $this")
+
+    /**
      * The fill tally of a **group-scoped** (or starred-field) fill-quantifier operand — `AllFieldsFilled(/Group*)`,
      * `AtLeastOneFieldFilled(/Addr)` (IF49). A group scope means "the fields INSIDE the group" (recursively, incl.
      * nested subgroups — the kernel `ExpandService` → `getAllContainedFields`); a bare field path is that one field.
