@@ -47,13 +47,13 @@ Keeping synthesis under `profile` avoids presenting it as general model authorin
 
 ## 3. Profile format
 
-### 3.1 Version and compatibility
+### 3.1 One current format
 
-New extraction emits `profileVersion: 2`. A missing version denotes the PR's legacy V1 format. `profile synthesize` and `profile compare` accept both an envelope and bare profile data.
+The unmerged PR is research material, not a released compatibility contract. This implementation defines one corrected profile format from current `main`; it has no legacy parser, version branch, compatibility adapter, or migration surface. `profile synthesize` and `profile compare` accept both the current result envelope and its bare `data` artifact.
 
 The three PR example profiles are clean `profile′` artifacts: they were extracted from own-domain synthesized models after the private real-model target had driven synthesis. They remain committed as compact, breadth-shaped, and depth-shaped calibration fixtures. The private target profiles and source models are not included.
 
-V1 input remains useful calibration material. V2 corrects metrics whose V1 meaning was ambiguous or wrong; comparison reports an axis as unavailable when V1 lacks enough information rather than inventing a value.
+The example profiles are adapted to the final current format before landing. Removed or superseded PR fields are not revived merely to consume the examples.
 
 ### 3.2 Identifier-free boundary
 
@@ -69,11 +69,11 @@ The same expanded model must produce byte-identical profile JSON across separate
 
 Profile input is schema-validated and then invariant-validated before allocation or synthesis. Counts and bucket values are non-negative, distribution totals agree, bucket labels are canonical and unique, enum-like keys belong to their declared vocabulary, capacities use `long`, and internally related totals agree. Invalid input fails with a precise structured diagnostic; it never reaches `Random.nextInt`, a division, or an allocation loop.
 
-Unbounded repeatability is represented explicitly. It is never silently converted to capacity one. V1/V2 extraction can report it, but synthesis refuses a profile containing an unbounded scope or scan until an explicit bounded calibration policy is supplied.
+Unbounded repeatability is represented explicitly. It is never silently converted to capacity one. Extraction can report it, but synthesis refuses a profile containing an unbounded scope or scan until an explicit bounded calibration policy is supplied.
 
 ## 4. Performance metric boundary
 
-The profile records only an axis with a named consumer in report or interpreter performance work. Derived heuristics such as V1's overflow-prone `interactionIndex` are omitted; consumers can derive a ranking from the lossless axes they need.
+The profile records only an axis with a named consumer in report or interpreter performance work. Derived heuristics such as the PR's overflow-prone `interactionIndex` are omitted; consumers can derive a ranking from the lossless axes they need.
 
 ### 4.1 Structure and report cost
 
@@ -93,7 +93,7 @@ The walk is iterative or otherwise stack-safe and visits each AST node once. Sam
 
 ### 4.3 Evaluation multiplicity
 
-V2 separates three quantities that V1 conflated:
+The current format separates three quantities that the PR conflated:
 
 - `scopeCapacity`: how many rule/computation contexts its own placement can create.
 - `listScanCapacity`: how many cells/rows an explicit collection operand can scan. Only actual list operands count: flattened field/group refs, the starred filled-group count, and root-group count. A plain scalar reference inside a repeatable scope is not a list scan.
@@ -122,7 +122,7 @@ Given the same normalized profile and seed, synthesis is byte-identical across s
 
 ## 6. Fidelity contract
 
-[`MODEL-SYNTHESIS-FIDELITY-LEDGER.md`](MODEL-SYNTHESIS-FIDELITY-LEDGER.md) classifies every profile axis as `EXACT`, `AT_LEAST`, `BUCKET`, `INFORMATIVE`, or `UNAVAILABLE`. `profile compare` derives its output and pass/fail decision from that classification; the implementation cannot silently omit a profile field.
+[`MODEL-SYNTHESIS-FIDELITY-LEDGER.md`](MODEL-SYNTHESIS-FIDELITY-LEDGER.md) classifies every profile axis as `EXACT`, `AT_LEAST`, `BUCKET`, or `INFORMATIVE`. `profile compare` derives its output and pass/fail decision from that classification; the implementation cannot silently omit a profile field.
 
 Performance-critical mechanism presence and tail capacities are never allowed to under-represent the target. Structural cardinalities that determine report size are exact. Validity-constrained distributions use declared bucket tolerances. Opaque constructs are reported, never faked.
 

@@ -12,7 +12,6 @@ The executable registry is authoritative once G52 ships. A guard compares that r
 | `AT_LEAST` | Actual is greater than or equal to target; used for performance-critical mechanisms where under-representation would produce a falsely cheap benchmark. |
 | `BUCKET` | Actual lands in the same or adjacent declared logarithmic bucket; the comparator reports the exact delta. |
 | `INFORMATIVE` | Reported but does not decide the comparison outcome. |
-| `UNAVAILABLE` | The input version cannot express the corrected axis; reported explicitly and never treated as zero. |
 
 ## Axis classification
 
@@ -42,11 +41,9 @@ The executable registry is authoritative once G52 ships. A guard compares that r
 | Computation dependency | feeding-computation count and maximum cascade depth | `EXACT` for maximum depth; `AT_LEAST` for feeding count | Cascade depth determines staged evaluation; feeding work must not disappear. |
 | Wiring | referenced-field count and field fan-out | `BUCKET` | Dense and sparse dependency surfaces must remain distinguishable. |
 | Opaque elements | opaque rule/computation counts and reasons | `INFORMATIVE`; never synthesized as a fake typed construct | The profile records a coverage ceiling; synthesis cannot honestly reproduce unknown semantics. |
-| Legacy V1 `starCapture`/`reachProduct` | values retained when reading legacy profiles | `UNAVAILABLE` for V2 scan fidelity | V1 counted plain scalar references as star scans, so the values cannot be treated as corrected list-scan evidence. |
-| Legacy V1 `interactionIndex` | retained only for input compatibility | `INFORMATIVE` | It is derived, overflow-prone, and has no unique consumer. |
 
 ## Committed calibration profiles
 
 The compact, breadth-shaped, and depth-shaped JSON files imported from the PR are `profile′` results extracted from synthesized own-domain models. They are approved committed fixtures. Their private real-model source profiles are not present.
 
-The files remain byte-for-byte provenance fixtures for legacy V1 intake. New V2 tests may add derived expectations beside them, but must not rewrite them and accidentally claim they were freshly extracted under corrected V2 semantics.
+The PR artifacts are adapted once to the final current schema before landing. The implementation does not retain removed PR fields or a compatibility reader. Their provenance remains `profile′` from synthesized own-domain models; adapting the schema must not turn that into a claim that they were extracted from the private targets.
