@@ -1,10 +1,9 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 /**
- * A temporal value an extraction can read from — a {@link DateOperand date}, a {@link TimeOperand
- * time}, or a {@link DateTimeOperand date-time}. The kernel's component extractions ({@code YearFromDate},
- * {@code HoursFromTime}, …) accept a date-, time-, or date-time-typed source; this is the common
- * supertype so one builder serves them all. The source always renders BARE (an entity reference).
+ * Closed marker for the three temporal value families: {@link DateOperand date}, {@link TimeOperand time},
+ * and {@link DateTimeOperand date-time}. Kernel operations accept specific subsets, so public DSL methods use
+ * the exact operand interfaces or overloads rather than this broad marker.
  */
 public sealed interface TemporalOperand permits DateOperand, TimeOperand, DateTimeOperand {
 

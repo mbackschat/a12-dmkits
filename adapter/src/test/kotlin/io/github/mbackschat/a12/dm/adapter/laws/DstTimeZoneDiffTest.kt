@@ -31,7 +31,8 @@ import org.junit.jupiter.api.Test
  *  - `Add{Hours,…}` is **instant arithmetic**, and a chained result keeps its exact instant: adding 1 h to
  *    `01:30` CEST lands ON the ambiguous hour as the *daylight* instant, which is NOT the instant the stored
  *    `"02:30:00"` re-parses to (standard) — 60 minutes apart ([chainedAddKeepsItsInstantIdentity]).
- *  - Under the default `UTC` everything stays the naive 86 400 s/day arithmetic ([utcModelStaysNaive]).
+ *  - Under the default `UTC`, wall clock equals instant time for the sub-day operations
+ *    ([utcModelStaysNaive]); day differences retain their separately locked calendar-step rule.
  */
 class DstTimeZoneDiffTest {
 

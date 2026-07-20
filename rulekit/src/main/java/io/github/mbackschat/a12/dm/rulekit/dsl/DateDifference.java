@@ -3,9 +3,9 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
- * {@code DifferenceInDays|Months|Years(d1, d2)} (over dates) and {@code DifferenceInHours|Minutes|Seconds(dt1, dt2)}
- * (over date-times) — a numeric difference (§6: a floor, not a calendar count). Operands are temporal
- * expressions, rendered BARE (entity refs, not bracketed values).
+ * A numeric temporal difference. {@code DifferenceInDays} accepts dates, date-times, and mixed pairs and
+ * counts complete model-zone legacy-calendar steps. Months/years accept dates only and count complete calendar
+ * periods. Hours/minutes/seconds accept date-times only and divide elapsed instants. Entity refs render bare.
  */
 public record DateDifference(Unit unit, Calculation left, Calculation right) implements Calculation {
 

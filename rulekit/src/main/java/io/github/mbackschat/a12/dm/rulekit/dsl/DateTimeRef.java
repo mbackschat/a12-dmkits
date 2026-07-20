@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 /**
- * A typed handle to a date-time field — the {@link TemporalOperand source} a date-time is decomposed
+ * A typed handle to a date-time field — the {@link DateTimeOperand source} a date-time is decomposed
  * from: its date part ({@link Dsl#dateFromDateTime}), its time part ({@link Dsl#timeFromDateTime}),
  * or any numeric component ({@link Dsl#yearFromDate}, {@link Dsl#hoursFromTime}, …). Obtain from
  * {@link BoundModel#dateTime(String)}. As a {@link DateTimeOperand} it also compares directly to

@@ -15,11 +15,11 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
- * KERNEL-FINDINGS §6 — runtime behaviour of {@code Valid}/{@code Invalid} over a constructed date
- * (BA "Valid or invalid dates"). They are <b>not</b> logical complements: {@code Invalid} fires when a
- * referenced part is <em>unspecified</em> OR the parts don't form a real date; {@code Valid} fires only
- * when all parts are specified AND the date is real. So an unspecified part fires {@code Invalid} but not
- * {@code Valid} — prefix {@code AllFieldsFilled(...)} to fire only on a complete-but-impossible date.
+ * KERNEL-FINDINGS §6 — runtime behaviour of {@code Valid}/{@code Invalid} over a constructed date.
+ * Their strong-Kleene truth projections are exact complements. The full verdict is not derivable from
+ * truth alone: {@code Invalid} is OMISSION for an unspecified part and VALUE for a present-but-unreal
+ * date, while malformed makes both predicates Unknown. Prefix {@code AllFieldsFilled(...)} to fire only
+ * on a complete-but-impossible date.
  */
 class DateValidityLawsTest {
 

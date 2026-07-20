@@ -692,9 +692,11 @@ final class ConditionConverter {
                 default -> numberExprComparison(convertDateExtraction(ext), op, right, comparison);
             };
         }
-        // a date shift on the left ([AddDays(date, n)] <op> [field] / Today) — compare it as a date operand
+        // a date/date-time shift on the left — preserve the result family selected by the shift and its base
         if (left instanceof IDateAddOperation add) {
-            return dateComparison(convertDateAdd(add), op, convertDateOperand(right, comparison), comparison);
+            return isDateTimeValue(add)
+                    ? dateTimeComparison(convertDateTimeAdd(add), op, right, comparison)
+                    : dateComparison(convertDateAdd(add), op, convertDateOperand(right, comparison), comparison);
         }
         if (left instanceof IFieldIdOperation lenOp && lenOp.getOperatorName() == FieldIdOperationName.Length) {
             return numberExprComparison(model.str(lenOp.getField().getFullName()).length(), op, right, comparison);
@@ -1498,9 +1500,9 @@ final class ConditionConverter {
             Calculation time = convertTimeOperand(dtc.getTime(), dtc).expression();
             return new DateTimeExpr(new DateTimeConstruction(date, time));
         }
-        // a sub-day shift (AddHours/Minutes/Seconds) yields a date-time
+        // a sub-day shift, or AddDays over a date-time, yields a date-time
         if (op instanceof IDateAddOperation add) {
-            return new DateTimeExpr(convertDateAdd(add).expression());
+            return convertDateTimeAdd(add);
         }
         // Now / BaseYear as a date-time operand (both compare to a date-time field)
         if (op instanceof IPointInTimeOperation pit) {
@@ -1513,36 +1515,70 @@ final class ConditionConverter {
         throw unsupported("date-time operand " + op.getClass().getSimpleName(), origin);
     }
 
-    /** {@code DifferenceInDays/Months/Years(a, b)} (dates) or {@code DifferenceInHours/Minutes/Seconds(a, b)} (date-times). */
+    /** Date/time differences, dispatched through the exact operand families each kernel operation accepts. */
     private NumberExpr convertDateDiff(IDateDiffOperation diff) {
-        TemporalOperand a = temporalOperand(diff.getDateSpec1(), diff);
-        TemporalOperand b = temporalOperand(diff.getDateSpec2(), diff);
         DateDiffOperationName name = diff.getOperatorName();
         return switch (name) {
-            case DifferenceInDays -> Dsl.differenceInDays(a, b);
-            case DifferenceInMonths -> Dsl.differenceInMonths(a, b);
-            case DifferenceInYears -> Dsl.differenceInYears(a, b);
-            case DifferenceInHours -> Dsl.differenceInHours(a, b);
-            case DifferenceInMinutes -> Dsl.differenceInMinutes(a, b);
-            case DifferenceInSeconds -> Dsl.differenceInSeconds(a, b);
+            case DifferenceInDays -> differenceInDays(
+                    convertDateOrDateTimeOperand(diff.getDateSpec1(), diff),
+                    convertDateOrDateTimeOperand(diff.getDateSpec2(), diff), diff);
+            case DifferenceInMonths -> Dsl.differenceInMonths(
+                    convertDateOperand(diff.getDateSpec1(), diff), convertDateOperand(diff.getDateSpec2(), diff));
+            case DifferenceInYears -> Dsl.differenceInYears(
+                    convertDateOperand(diff.getDateSpec1(), diff), convertDateOperand(diff.getDateSpec2(), diff));
+            case DifferenceInHours -> Dsl.differenceInHours(
+                    convertDateTimeOperand(diff.getDateSpec1(), diff),
+                    convertDateTimeOperand(diff.getDateSpec2(), diff));
+            case DifferenceInMinutes -> Dsl.differenceInMinutes(
+                    convertDateTimeOperand(diff.getDateSpec1(), diff),
+                    convertDateTimeOperand(diff.getDateSpec2(), diff));
+            case DifferenceInSeconds -> Dsl.differenceInSeconds(
+                    convertDateTimeOperand(diff.getDateSpec1(), diff),
+                    convertDateTimeOperand(diff.getDateSpec2(), diff));
             default -> throw unsupported("date-diff operator " + name, diff);
         };
     }
 
-    /**
-     * A temporal operand for a difference/shift — a {@code DATE_TIME} field (the sub-day {@code Add*}/
-     * {@code DifferenceIn*Hours/Minutes/Seconds} operate on date-times), else a {@link DateOperand} (a
-     * date field, {@code Today}, an aggregate, a shift, a range bound, or a date constant). Both are
-     * {@link TemporalOperand}s, so they render as a bare entity ref in argument position either way.
-     */
-    private TemporalOperand temporalOperand(IOperation op, Object origin) {
-        if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue
-                && model.fieldAt(field.getField().getFullName())
-                        .map(i -> i.kind() == ValueKind.DATE_TIME).orElse(false)) {
-            DateTimeRef dt = model.dateTime(field.getField().getFullName());
-            return field.getField().isOuter() ? dt.outer() : dt;   // $ correlation (D13)
+    private NumberExpr differenceInDays(TemporalOperand a, TemporalOperand b, Object origin) {
+        if (a instanceof DateOperand dateA && b instanceof DateOperand dateB) {
+            return Dsl.differenceInDays(dateA, dateB);
         }
-        return convertDateOperand(op, origin);
+        if (a instanceof DateOperand dateA && b instanceof DateTimeOperand dateTimeB) {
+            return Dsl.differenceInDays(dateA, dateTimeB);
+        }
+        if (a instanceof DateTimeOperand dateTimeA && b instanceof DateOperand dateB) {
+            return Dsl.differenceInDays(dateTimeA, dateB);
+        }
+        if (a instanceof DateTimeOperand dateTimeA && b instanceof DateTimeOperand dateTimeB) {
+            return Dsl.differenceInDays(dateTimeA, dateTimeB);
+        }
+        throw unsupported("DifferenceInDays over a non-date temporal operand", origin);
+    }
+
+    /** The exact date-or-date-time union accepted by {@code DifferenceInDays}. */
+    private TemporalOperand convertDateOrDateTimeOperand(IOperation op, Object origin) {
+        return isDateTimeValue(op) ? convertDateTimeOperand(op, origin) : convertDateOperand(op, origin);
+    }
+
+    /** Operation-shape discriminator for values whose kernel family is date-time rather than date. */
+    private boolean isDateTimeValue(IOperation op) {
+        if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
+            return model.fieldAt(field.getField().getFullName())
+                    .map(i -> i.kind() == ValueKind.DATE_TIME).orElse(false);
+        }
+        if (op instanceof IDateTimeConstructionOperation) {
+            return true;
+        }
+        if (op instanceof IDateAddOperation add) {
+            return switch (add.getOperatorName()) {
+                case AddHours, AddMinutes, AddSeconds -> true;
+                case AddDays -> isDateTimeValue(add.getDateSpec());
+                case AddMonths, AddYears -> false;
+                default -> false;
+            };
+        }
+        return op instanceof IPointInTimeOperation pit
+                && pit.getOperatorName() == PointInTimeOperationName.Now;
     }
 
     /** A date-valued operand: a date field ({@code FieldValue}), a date constant, or a point-in-time ({@code Today}). */
@@ -1588,7 +1624,7 @@ final class ConditionConverter {
         // DateFromDateTime(dt) → the date part of a date-time, as a date operand
         if (op instanceof IDateExtractionOperation ext
                 && ext.getOperatorName() == DateExtractionOperationName.DateFromDateTime) {
-            return Dsl.dateFromDateTime(dateTimeSource(ext.getDateSpec(), ext));
+            return Dsl.dateFromDateTime(convertDateTimeOperand(ext.getDateSpec(), ext));
         }
         // StartOfDateRange(range) / EndOfDateRange(range) → a bound of a date-range, as a date operand
         if (op instanceof IDateRangeExtractionOperation rangeExt) {
@@ -1647,7 +1683,7 @@ final class ConditionConverter {
         // TimeFromDateTime(dt) → the time part of a date-time, as a time operand
         if (op instanceof IDateExtractionOperation ext
                 && ext.getOperatorName() == DateExtractionOperationName.TimeFromDateTime) {
-            return Dsl.timeFromDateTime(dateTimeSource(ext.getDateSpec(), ext));
+            return Dsl.timeFromDateTime(convertDateTimeOperand(ext.getDateSpec(), ext));
         }
         throw unsupported("time operand " + op.getClass().getSimpleName(), origin);
     }
@@ -1660,48 +1696,62 @@ final class ConditionConverter {
      */
     private NumberExpr convertDateExtraction(IDateExtractionOperation ext) {
         DateExtractionOperationName name = ext.getOperatorName();
-        TemporalOperand source = convertTemporalSource(ext.getDateSpec(), ext);
         return switch (name) {
-            case DayFromDate -> Dsl.dayFromDate(source);
-            case MonthFromDate -> Dsl.monthFromDate(source);
-            case YearFromDate -> Dsl.yearFromDate(source);
-            case QuarterFromDate -> Dsl.quarterFromDate(source);
-            case HoursFromTime -> Dsl.hoursFromTime(source);
-            case MinutesFromTime -> Dsl.minutesFromTime(source);
-            case SecondsFromTime -> Dsl.secondsFromTime(source);
+            case DayFromDate -> dayFromDate(convertDateOrDateTimeOperand(ext.getDateSpec(), ext), ext);
+            case MonthFromDate -> monthFromDate(convertDateOrDateTimeOperand(ext.getDateSpec(), ext), ext);
+            case YearFromDate -> yearFromDate(convertDateOrDateTimeOperand(ext.getDateSpec(), ext), ext);
+            case QuarterFromDate -> quarterFromDate(convertDateOrDateTimeOperand(ext.getDateSpec(), ext), ext);
+            case HoursFromTime -> hoursFromTime(convertTimeOrDateTimeOperand(ext.getDateSpec(), ext), ext);
+            case MinutesFromTime -> minutesFromTime(convertTimeOrDateTimeOperand(ext.getDateSpec(), ext), ext);
+            case SecondsFromTime -> secondsFromTime(convertTimeOrDateTimeOperand(ext.getDateSpec(), ext), ext);
             default -> throw unsupported("date/time extraction " + name, ext);
         };
     }
 
-    /** A temporal extraction source — a date, time, or date-time field, or {@code Today}. */
-    private TemporalOperand convertTemporalSource(IOperation op, Object origin) {
-        if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
-            String path = field.getField().getFullName();
-            ValueKind kind = model.fieldAt(path)
-                    .orElseThrow(() -> unsupported("extraction over unknown field " + path, origin)).kind();
-            boolean outer = field.getField().isOuter();   // $ correlation (D13)
-            return switch (kind) {
-                case DATE -> outer ? model.date(path).outer() : model.date(path);
-                case TIME -> outer ? model.time(path).outer() : model.time(path);
-                case DATE_TIME -> outer ? model.dateTime(path).outer() : model.dateTime(path);
-                case DATE_FRAGMENT -> outer ? model.dateFragment(path).outer() : model.dateFragment(path);
-                default -> throw unsupported("extraction over a " + kind + " field", origin);
-            };
-        }
-        // a point-in-time extraction source — Today / Now / BaseYear (all date-valued here); convertDateOperand
-        // resolves each, so YearFromDate(BaseYear) / MonthFromDate(Now) read as well as YearFromDate(Today).
-        if (op instanceof IPointInTimeOperation) {
-            return convertDateOperand(op, origin);
-        }
-        // a shifted date-time as the extraction source, e.g. HoursFromTime(AddHours(scheduledAt, 2))
-        if (op instanceof IDateAddOperation add) {
-            return convertDateAdd(add);
-        }
-        // a date-valued bound of a date-range as the extraction source, e.g. DayFromDate(EndOfDateRange(range))
-        if (op instanceof IDateRangeExtractionOperation) {
-            return convertDateOperand(op, origin);
-        }
-        throw unsupported("temporal extraction source " + op.getClass().getSimpleName(), origin);
+    private TemporalOperand convertTimeOrDateTimeOperand(IOperation op, Object origin) {
+        return isDateTimeValue(op) ? convertDateTimeOperand(op, origin) : convertTimeOperand(op, origin);
+    }
+
+    private NumberExpr dayFromDate(TemporalOperand source, Object origin) {
+        if (source instanceof DateOperand date) return Dsl.dayFromDate(date);
+        if (source instanceof DateTimeOperand dateTime) return Dsl.dayFromDate(dateTime);
+        throw unsupported("DayFromDate over a non-date temporal operand", origin);
+    }
+
+    private NumberExpr monthFromDate(TemporalOperand source, Object origin) {
+        if (source instanceof DateOperand date) return Dsl.monthFromDate(date);
+        if (source instanceof DateTimeOperand dateTime) return Dsl.monthFromDate(dateTime);
+        throw unsupported("MonthFromDate over a non-date temporal operand", origin);
+    }
+
+    private NumberExpr yearFromDate(TemporalOperand source, Object origin) {
+        if (source instanceof DateOperand date) return Dsl.yearFromDate(date);
+        if (source instanceof DateTimeOperand dateTime) return Dsl.yearFromDate(dateTime);
+        throw unsupported("YearFromDate over a non-date temporal operand", origin);
+    }
+
+    private NumberExpr quarterFromDate(TemporalOperand source, Object origin) {
+        if (source instanceof DateOperand date) return Dsl.quarterFromDate(date);
+        if (source instanceof DateTimeOperand dateTime) return Dsl.quarterFromDate(dateTime);
+        throw unsupported("QuarterFromDate over a non-date temporal operand", origin);
+    }
+
+    private NumberExpr hoursFromTime(TemporalOperand source, Object origin) {
+        if (source instanceof TimeOperand time) return Dsl.hoursFromTime(time);
+        if (source instanceof DateTimeOperand dateTime) return Dsl.hoursFromTime(dateTime);
+        throw unsupported("HoursFromTime over a non-time temporal operand", origin);
+    }
+
+    private NumberExpr minutesFromTime(TemporalOperand source, Object origin) {
+        if (source instanceof TimeOperand time) return Dsl.minutesFromTime(time);
+        if (source instanceof DateTimeOperand dateTime) return Dsl.minutesFromTime(dateTime);
+        throw unsupported("MinutesFromTime over a non-time temporal operand", origin);
+    }
+
+    private NumberExpr secondsFromTime(TemporalOperand source, Object origin) {
+        if (source instanceof TimeOperand time) return Dsl.secondsFromTime(time);
+        if (source instanceof DateTimeOperand dateTime) return Dsl.secondsFromTime(dateTime);
+        throw unsupported("SecondsFromTime over a non-time temporal operand", origin);
     }
 
     /** The {@code DATE_RANGE} field source of {@code Start|EndOfDateRange} (a {@code BaseYear} point-in-time stays opaque). */
@@ -1715,32 +1765,32 @@ final class ConditionConverter {
         throw unsupported("date-range source " + op.getClass().getSimpleName(), origin);
     }
 
-    /** A date-time field source for {@code Date|TimeFromDateTime} — must be a {@code DATE_TIME} field. */
-    private DateTimeRef dateTimeSource(IOperation op, Object origin) {
-        if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue
-                && model.fieldAt(field.getField().getFullName())
-                        .map(i -> i.kind() == ValueKind.DATE_TIME).orElse(false)) {
-            DateTimeRef dt = model.dateTime(field.getField().getFullName());
-            return field.getField().isOuter() ? dt.outer() : dt;   // $ correlation (D13)
-        }
-        throw unsupported("date-time extraction source " + op.getClass().getSimpleName(), origin);
-    }
-
-    /** {@code AddDays/Months/Years(date, n)} (→ date) or {@code AddHours/Minutes/Seconds(dateTime, n)} (→ date-time). */
+    /** {@code AddDays/Months/Years(date, n)} (→ date). */
     private DateOperand convertDateAdd(IDateAddOperation add) {
-        TemporalOperand base = temporalOperand(add.getDateSpec(), add);
+        DateOperand base = convertDateOperand(add.getDateSpec(), add);
         NumberExpr amount = arithmeticOperand(add.getAmountSpec(), add);   // constant, field, or expression
         return switch (add.getOperatorName()) {
             case AddDays -> Dsl.addDays(base, amount);
             case AddMonths -> Dsl.addMonths(base, amount);
             case AddYears -> Dsl.addYears(base, amount);
-            // sub-day shifts yield a date-time; the authoring builders return a DateTimeExpr, but this read
-            // method's contract is a DateOperand carrying the shift calc (the caller re-wraps it as a
-            // DateTimeExpr where needed, see the date-time-extraction-source path), so build the node directly.
-            case AddHours -> new DateExpr(new DateShift(DateShift.Unit.HOURS, base.expression(), amount.expression()));
-            case AddMinutes -> new DateExpr(new DateShift(DateShift.Unit.MINUTES, base.expression(), amount.expression()));
-            case AddSeconds -> new DateExpr(new DateShift(DateShift.Unit.SECONDS, base.expression(), amount.expression()));
+            case AddHours, AddMinutes, AddSeconds ->
+                throw unsupported(add.getOperatorName() + " over a date operand", add);
             default -> throw unsupported("date-add operator " + add.getOperatorName(), add);
+        };
+    }
+
+    /** {@code AddDays/Hours/Minutes/Seconds(dateTime, n)} (→ date-time). */
+    private DateTimeOperand convertDateTimeAdd(IDateAddOperation add) {
+        DateTimeOperand base = convertDateTimeOperand(add.getDateSpec(), add);
+        NumberExpr amount = arithmeticOperand(add.getAmountSpec(), add);
+        return switch (add.getOperatorName()) {
+            case AddDays -> Dsl.addDays(base, amount);
+            case AddHours -> Dsl.addHours(base, amount);
+            case AddMinutes -> Dsl.addMinutes(base, amount);
+            case AddSeconds -> Dsl.addSeconds(base, amount);
+            case AddMonths, AddYears ->
+                throw unsupported(add.getOperatorName() + " over a date-time operand", add);
+            default -> throw unsupported("date-time-add operator " + add.getOperatorName(), add);
         };
     }
 

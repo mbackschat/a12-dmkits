@@ -20,9 +20,9 @@ import org.junit.jupiter.api.Test
  * 1–12, `BirthYear` 1900–2100) + the `PickupTime` time field:
  *  - `Date(day, month, year)` — a real construction extracts (year/month/day); an UNREAL one (31,2,…) is
  *    non-evaluable (the extractors see no value, kernel-probed).
- *  - `Valid`/`Invalid(Date(...))` — Valid iff real-and-all-present; Invalid its complement (unreal OR an empty
- *    part), with OMISSION polarity when an empty part is fillable, VALUE when present-but-unreal; a malformed
- *    part makes both quiet (suppressed). Locks both firing AND polarity.
+ *  - `Valid`/`Invalid(Date(...))` — exact strong-Kleene truth complements; Invalid carries OMISSION when an
+ *    empty part is fillable and VALUE when present-but-unreal, while a malformed part makes both Unknown.
+ *    Locks both truth and the non-derivable full verdict polarity.
  *  - `Time("h","m","s")` — composes a time, verified by equality to a TIME field and via `HoursFromTime`.
  * Fully deterministic — no clock. Kernel-probed.
  */

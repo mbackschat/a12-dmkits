@@ -13,9 +13,9 @@ import io.github.mbackschat.a12.dm.interpreter.InvalidModelTimeZoneException
  * the host's Java registry accepts it. The JVM consumer supplies that legal-versus-invalid classification
  * before this neutral supported-set boundary (KERNEL-FINDINGS §6).
  *
- * Under [UTC] (the DM-JSON default) wall-clock time equals instant time and every datetime computation is
- * plain 86 400 s/day arithmetic — the interpreter's historical behavior, unchanged. Under [EUROPE_BERLIN]
- * the DST transitions make wall clock and instants diverge; the zone math lives in
+ * Under [UTC] (the DM-JSON default) wall-clock time equals instant time. Under [EUROPE_BERLIN] the DST
+ * transitions make wall clock and instants diverge. Sub-day operations use instants; DifferenceInDays uses
+ * stateful model-zone calendar steps; date construction uses the model-zone legacy hybrid calendar. The math lives in
  * [io.github.mbackschat.a12.dm.interpreter.eval.DateMath].
  */
 enum class ModelTimeZone {

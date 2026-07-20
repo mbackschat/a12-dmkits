@@ -5,7 +5,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * {@link DateOperand}: the kernel collapses a date fragment into a plain {@code Date} for
  * parsing/checking/rendering/comparison (KERNEL-FINDINGS §6), so a fragment compares like a date field
  * ({@code <, <=, >, >=, ==, !=}) against a date field, another fragment, {@code Date(...)},
- * {@link Dsl#today() Today}, or a date expression. It is also usable as the {@link TemporalOperand
+ * {@link Dsl#today() Today}, or a date expression. It is also usable as the {@link DateOperand
  * source} of a component extraction ({@link Dsl#monthFromDate}, {@link Dsl#yearFromDate}). Obtain from
  * {@link BoundModel#dateFragment(String)}. The kernel enforces one extra rule at validation time — two
  * date values are comparable only if both carry a year or neither does (the year-class partition, §6).

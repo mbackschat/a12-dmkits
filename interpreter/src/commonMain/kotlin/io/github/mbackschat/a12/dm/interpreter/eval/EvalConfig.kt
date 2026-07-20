@@ -24,9 +24,9 @@ class EvalConfig(
     /** Repeatable groups' index-field paths (the kernel's `indexFieldName`s) — the `SemanticIndex`
      *  (`[field For "value"]`) lookup resolves a group's index field from this. */
     val indexFields: Set<String> = emptySet(),
-    /** The model's configured time zone ([ModelTimeZone], `modelConfig.timeZone`, default UTC) — drives the
-     *  DST-aware datetime instant math (`Add{Hours,…}`/`DifferenceIn{Hours,…}`/datetime comparison) for a
-     *  Europe/Berlin model; UTC is the naive 86 400 s/day arithmetic, unchanged (KERNEL-FINDINGS §6). */
+    /** The model's configured time zone ([ModelTimeZone], `modelConfig.timeZone`, default UTC) — drives
+     *  datetime instant math, stateful `DifferenceInDays` calendar steps, wall-day AddDays landings, and
+     *  legacy-calendar Date construction (KERNEL-FINDINGS §6). */
     val timeZone: ModelTimeZone = ModelTimeZone.UTC,
     /** The consumer-supplied predefined-type registry (the kernel's `IPredefinedType` client SPI) — the
      *  validation domain for `Valid(field, "Name")` / `Invalid(field, "Name")`. An unregistered type name →

@@ -101,9 +101,9 @@ class DateFunctionsOverDateTimeDiffTest {
     @Test fun secondsFromDateTimeExtractsTheSeconds() =
         quad("SecondsFromTime(LoggedAt)", TS, "VALUE|7", "SecondsFromTime over a datetime")
 
-    // ── the date DIFFS accept datetime operands too (the same shared date resolution) ───────────────────
+    // ── DifferenceInDays accepts datetime operands; month/year differences do not ────────────────────────
 
-    @Test fun differenceInDaysBetweenDateTimesUsesTheDateParts() {
+    @Test fun differenceInDaysBetweenDateTimesCountsCalendarStepsWithTheClockRetained() {
         val m = model("DifferenceInDays(LoggedAt, DeliveredAt)")
         val def = ModelLoader.load(m)
         fun kdoc() = RuntimeLaws.doc().group("/Ops", 1).group("/Ops/Shipment", 1, 1)
@@ -116,14 +116,14 @@ class DateFunctionsOverDateTimeDiffTest {
         val engine = RuntimeLaws.kernelJavaEngine(m)
         val javaStatic = sig(engine.compute(engine.instance(kdoc())).firstOrNull { it.path() == OUT })
         val interp = iSig(DmInterpreter(def).compute(idoc).firstOrNull { it.path == OUT })
-        assertEquals("VALUE|2", legacy, "the diff uses the DATE parts (times ignored)")
+        assertEquals("VALUE|2", legacy, "two complete same-clock calendar steps fit before the endpoint")
         assertEquals(legacy, javaStatic, "groovy vs java-static")
         assertEquals(legacy, interp, "kernel vs interpreter")
     }
 
     /** The reachability control: `AddYears` over a DATE_TIME operand is REJECTED at codegen ("Wrong date
-     *  format"), so the date-ARITHMETIC family over datetime is parity by construction — only the extractors
-     *  and the diffs are reachable. */
+     *  format"). The legal DATE_TIME surface is the component extractors, `DifferenceInDays`, and `AddDays`;
+     *  month/year differences and shifts remain date-only. */
     @Test fun addYearsOverADateTimeIsRejectedAtCodegen() {
         val thrown = org.junit.jupiter.api.Assertions.assertThrows(Exception::class.java) {
             RuntimeLaws.compute(model("AddYears(LoggedAt, 1)"),

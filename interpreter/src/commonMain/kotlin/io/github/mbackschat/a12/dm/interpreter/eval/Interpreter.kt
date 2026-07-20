@@ -301,7 +301,8 @@ class Interpreter(
             PredicateOp.REPETITION_NOT_UNIQUE -> Tri.of(rnuOutcomeAt() != null)
             // Valid/Invalid(Date(...)): 3VL over the construction's status. A malformed part makes the whole
             // non-evaluable (UNKNOWN — both go quiet, the formal error fires); else Valid iff real-and-all-present,
-            // Invalid its complement (unreal OR an empty part).
+            // Invalid its strong-Kleene TRUTH complement (unreal OR an empty part). Full verdicts are not
+            // interchangeable: polarity still distinguishes incomplete OMISSION from unreal-present VALUE.
             // Two overloads share the Valid/Invalid keyword, disambiguated by arity: the date-construct form
             // `Valid(Date(...))` (1 arg) and the predefined-type form `Valid(field, "TypeName")` (2 args).
             PredicateOp.VALID -> if (p.args.size == 2) predefinedTypeValidity(p.args, expectValid = true)

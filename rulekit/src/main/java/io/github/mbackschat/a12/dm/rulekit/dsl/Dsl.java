@@ -390,68 +390,118 @@ public final class Dsl {
         return timeValue(time.format(TIME_LITERAL_FORMAT));
     }
 
-    /** {@code DifferenceInDays(a, b)} — a numeric date difference (a floor, not a calendar count). catalog:DifferenceInDays */
-    public static NumberExpr differenceInDays(TemporalOperand a, TemporalOperand b) {
+    /** {@code DifferenceInDays(a, b)} over dates — signed complete model-zone legacy-calendar day steps. catalog:DifferenceInDays */
+    public static NumberExpr differenceInDays(DateOperand a, DateOperand b) {
+        return new NumberExpr(new DateDifference(DateDifference.Unit.DAYS, a.expression(), b.expression()));
+    }
+
+    /** Mixed date/date-time {@code DifferenceInDays}; a date is model-zone midnight. */
+    public static NumberExpr differenceInDays(DateOperand a, DateTimeOperand b) {
+        return new NumberExpr(new DateDifference(DateDifference.Unit.DAYS, a.expression(), b.expression()));
+    }
+
+    /** Mixed date-time/date {@code DifferenceInDays}; a date is model-zone midnight. */
+    public static NumberExpr differenceInDays(DateTimeOperand a, DateOperand b) {
+        return new NumberExpr(new DateDifference(DateDifference.Unit.DAYS, a.expression(), b.expression()));
+    }
+
+    /** Date-time {@code DifferenceInDays}; clocks participate in complete calendar-step counting. */
+    public static NumberExpr differenceInDays(DateTimeOperand a, DateTimeOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.DAYS, a.expression(), b.expression()));
     }
 
     /** {@code DifferenceInMonths(a, b)} — the whole-months date difference, as a number (a floor, not rounded). catalog:DifferenceInMonths */
-    public static NumberExpr differenceInMonths(TemporalOperand a, TemporalOperand b) {
+    public static NumberExpr differenceInMonths(DateOperand a, DateOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.MONTHS, a.expression(), b.expression()));
     }
 
     /** {@code DifferenceInYears(a, b)} — the whole-years date difference, as a number (a floor, not rounded). catalog:DifferenceInYears */
-    public static NumberExpr differenceInYears(TemporalOperand a, TemporalOperand b) {
+    public static NumberExpr differenceInYears(DateOperand a, DateOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.YEARS, a.expression(), b.expression()));
     }
 
     /** {@code DifferenceInHours(dt1, dt2)} — the whole-hours difference between two date-times, as a number. catalog:DifferenceInHours */
-    public static NumberExpr differenceInHours(TemporalOperand a, TemporalOperand b) {
+    public static NumberExpr differenceInHours(DateTimeOperand a, DateTimeOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.HOURS, a.expression(), b.expression()));
     }
 
     /** {@code DifferenceInMinutes(dt1, dt2)} — the whole-minutes difference between two date-times. catalog:DifferenceInMinutes */
-    public static NumberExpr differenceInMinutes(TemporalOperand a, TemporalOperand b) {
+    public static NumberExpr differenceInMinutes(DateTimeOperand a, DateTimeOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.MINUTES, a.expression(), b.expression()));
     }
 
     /** {@code DifferenceInSeconds(dt1, dt2)} — the whole-seconds difference between two date-times. catalog:DifferenceInSeconds */
-    public static NumberExpr differenceInSeconds(TemporalOperand a, TemporalOperand b) {
+    public static NumberExpr differenceInSeconds(DateTimeOperand a, DateTimeOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.SECONDS, a.expression(), b.expression()));
     }
 
-    /** {@code YearFromDate(date)} — the year component of a date (or date-time) as a number. catalog:YearFromDate */
-    public static NumberExpr yearFromDate(TemporalOperand date) {
+    /** {@code YearFromDate(date)} — the year component of a date as a number. catalog:YearFromDate */
+    public static NumberExpr yearFromDate(DateOperand date) {
+        return new NumberExpr(new DateExtraction(DateExtraction.Unit.YEAR, date.expression()));
+    }
+
+    /** {@code YearFromDate(dateTime)} — the year component of a date-time as a number. */
+    public static NumberExpr yearFromDate(DateTimeOperand date) {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.YEAR, date.expression()));
     }
 
     /** {@code MonthFromDate(date)} — the month component (1-12) as a number. catalog:MonthFromDate */
-    public static NumberExpr monthFromDate(TemporalOperand date) {
+    public static NumberExpr monthFromDate(DateOperand date) {
+        return new NumberExpr(new DateExtraction(DateExtraction.Unit.MONTH, date.expression()));
+    }
+
+    /** {@code MonthFromDate(dateTime)} — the month component (1-12) of a date-time. */
+    public static NumberExpr monthFromDate(DateTimeOperand date) {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.MONTH, date.expression()));
     }
 
     /** {@code DayFromDate(date)} — the day-of-month component as a number. catalog:DayFromDate */
-    public static NumberExpr dayFromDate(TemporalOperand date) {
+    public static NumberExpr dayFromDate(DateOperand date) {
+        return new NumberExpr(new DateExtraction(DateExtraction.Unit.DAY, date.expression()));
+    }
+
+    /** {@code DayFromDate(dateTime)} — the day-of-month component of a date-time. */
+    public static NumberExpr dayFromDate(DateTimeOperand date) {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.DAY, date.expression()));
     }
 
     /** {@code QuarterFromDate(date)} — the calendar quarter (1-4) as a number. catalog:QuarterFromDate */
-    public static NumberExpr quarterFromDate(TemporalOperand date) {
+    public static NumberExpr quarterFromDate(DateOperand date) {
+        return new NumberExpr(new DateExtraction(DateExtraction.Unit.QUARTER, date.expression()));
+    }
+
+    /** {@code QuarterFromDate(dateTime)} — the calendar quarter (1-4) of a date-time. */
+    public static NumberExpr quarterFromDate(DateTimeOperand date) {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.QUARTER, date.expression()));
     }
 
     /** {@code HoursFromTime(time)} — the hour-of-day component (0-23) of a time (or date-time) as a number. catalog:HoursFromTime */
-    public static NumberExpr hoursFromTime(TemporalOperand time) {
+    public static NumberExpr hoursFromTime(TimeOperand time) {
+        return new NumberExpr(new DateExtraction(DateExtraction.Unit.HOURS, time.expression()));
+    }
+
+    /** {@code HoursFromTime(dateTime)} — the hour-of-day component (0-23) of a date-time. */
+    public static NumberExpr hoursFromTime(DateTimeOperand time) {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.HOURS, time.expression()));
     }
 
     /** {@code MinutesFromTime(time)} — the minute component (0-59) as a number. catalog:MinutesFromTime */
-    public static NumberExpr minutesFromTime(TemporalOperand time) {
+    public static NumberExpr minutesFromTime(TimeOperand time) {
+        return new NumberExpr(new DateExtraction(DateExtraction.Unit.MINUTES, time.expression()));
+    }
+
+    /** {@code MinutesFromTime(dateTime)} — the minute component (0-59) of a date-time. */
+    public static NumberExpr minutesFromTime(DateTimeOperand time) {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.MINUTES, time.expression()));
     }
 
     /** {@code SecondsFromTime(time)} — the second component (0-59) as a number. catalog:SecondsFromTime */
-    public static NumberExpr secondsFromTime(TemporalOperand time) {
+    public static NumberExpr secondsFromTime(TimeOperand time) {
+        return new NumberExpr(new DateExtraction(DateExtraction.Unit.SECONDS, time.expression()));
+    }
+
+    /** {@code SecondsFromTime(dateTime)} — the second component (0-59) of a date-time. */
+    public static NumberExpr secondsFromTime(DateTimeOperand time) {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.SECONDS, time.expression()));
     }
 
@@ -496,12 +546,14 @@ public final class Dsl {
         return new DateRangeConstruction(start.expression(), end.expression());
     }
 
-    /** {@code Valid(dateConstruct)} — true iff the constructed date is a real calendar date. catalog:Valid */
+    /** {@code Valid(dateConstruct)} — true iff the constructed date is complete and real. Its strong-Kleene
+     *  truth is the complement of {@link #invalid(DateOperand)}; full error polarity is not. catalog:Valid */
     public static Condition valid(DateOperand dateConstruct) {
         return new DateValidity(true, dateConstruct.expression());
     }
 
-    /** {@code Invalid(dateConstruct)} — true iff the constructed date is not a real calendar date. catalog:Invalid */
+    /** {@code Invalid(dateConstruct)} — true for an unreal or incomplete construction; incomplete yields
+     *  OMISSION while present-but-unreal yields VALUE, and malformed stays Unknown. catalog:Invalid */
     public static Condition invalid(DateOperand dateConstruct) {
         return new DateValidity(false, dateConstruct.expression());
     }
@@ -580,7 +632,7 @@ public final class Dsl {
     }
 
     /** {@code AddDays(date, n)} — shifts a date by an integer constant, yielding a date (comparable). catalog:AddDays */
-    public static DateExpr addDays(TemporalOperand date, long amount) {
+    public static DateExpr addDays(DateOperand date, long amount) {
         return addDays(date, number(Long.toString(amount)));
     }
 
@@ -590,17 +642,17 @@ public final class Dsl {
     }
 
     /** {@code AddMonths(date, n)} — shifts a date by an integer constant number of months, yielding a date. catalog:AddMonths */
-    public static DateExpr addMonths(TemporalOperand date, long amount) {
+    public static DateExpr addMonths(DateOperand date, long amount) {
         return addMonths(date, number(Long.toString(amount)));
     }
 
     /** {@code AddYears(date, n)} — shifts a date by an integer constant number of years, yielding a date. catalog:AddYears */
-    public static DateExpr addYears(TemporalOperand date, long amount) {
+    public static DateExpr addYears(DateOperand date, long amount) {
         return addYears(date, number(Long.toString(amount)));
     }
 
     /** {@code AddDays(date, n)} where the amount is a numeric expression (e.g. a field, {@code AddDays(d, [n])}). */
-    public static DateExpr addDays(TemporalOperand date, NumberExpr amount) {
+    public static DateExpr addDays(DateOperand date, NumberExpr amount) {
         return new DateExpr(new DateShift(DateShift.Unit.DAYS, date.expression(), amount.expression()));
     }
 
@@ -609,11 +661,11 @@ public final class Dsl {
         return new DateTimeExpr(new DateShift(DateShift.Unit.DAYS, dateTime.expression(), amount.expression()));
     }
 
-    public static DateExpr addMonths(TemporalOperand date, NumberExpr amount) {
+    public static DateExpr addMonths(DateOperand date, NumberExpr amount) {
         return new DateExpr(new DateShift(DateShift.Unit.MONTHS, date.expression(), amount.expression()));
     }
 
-    public static DateExpr addYears(TemporalOperand date, NumberExpr amount) {
+    public static DateExpr addYears(DateOperand date, NumberExpr amount) {
         return new DateExpr(new DateShift(DateShift.Unit.YEARS, date.expression(), amount.expression()));
     }
 
@@ -621,30 +673,30 @@ public final class Dsl {
      *  ({@code n} may be negative). Returns a {@link DateTimeExpr} (a sub-day shift is a date-time, matching
      *  {@code DateShift.Unit.HOURS}'s declared kind), so it composes as a date-time operand — comparisons AND
      *  {@code dateFromDateTime}/{@code timeFromDateTime} (DG9). catalog:AddHours */
-    public static DateTimeExpr addHours(TemporalOperand dateTime, long amount) {
+    public static DateTimeExpr addHours(DateTimeOperand dateTime, long amount) {
         return addHours(dateTime, number(Long.toString(amount)));
     }
 
     /** {@code AddMinutes(dateTime, n)} — shifts a date-time by an integer constant number of minutes ({@code n} may be negative). catalog:AddMinutes */
-    public static DateTimeExpr addMinutes(TemporalOperand dateTime, long amount) {
+    public static DateTimeExpr addMinutes(DateTimeOperand dateTime, long amount) {
         return addMinutes(dateTime, number(Long.toString(amount)));
     }
 
     /** {@code AddSeconds(dateTime, n)} — shifts a date-time by an integer constant number of seconds ({@code n} may be negative). catalog:AddSeconds */
-    public static DateTimeExpr addSeconds(TemporalOperand dateTime, long amount) {
+    public static DateTimeExpr addSeconds(DateTimeOperand dateTime, long amount) {
         return addSeconds(dateTime, number(Long.toString(amount)));
     }
 
     /** {@code AddHours(dateTime, n)} where the amount is a numeric expression (yields a date-time — DG9). */
-    public static DateTimeExpr addHours(TemporalOperand dateTime, NumberExpr amount) {
+    public static DateTimeExpr addHours(DateTimeOperand dateTime, NumberExpr amount) {
         return new DateTimeExpr(new DateShift(DateShift.Unit.HOURS, dateTime.expression(), amount.expression()));
     }
 
-    public static DateTimeExpr addMinutes(TemporalOperand dateTime, NumberExpr amount) {
+    public static DateTimeExpr addMinutes(DateTimeOperand dateTime, NumberExpr amount) {
         return new DateTimeExpr(new DateShift(DateShift.Unit.MINUTES, dateTime.expression(), amount.expression()));
     }
 
-    public static DateTimeExpr addSeconds(TemporalOperand dateTime, NumberExpr amount) {
+    public static DateTimeExpr addSeconds(DateTimeOperand dateTime, NumberExpr amount) {
         return new DateTimeExpr(new DateShift(DateShift.Unit.SECONDS, dateTime.expression(), amount.expression()));
     }
 

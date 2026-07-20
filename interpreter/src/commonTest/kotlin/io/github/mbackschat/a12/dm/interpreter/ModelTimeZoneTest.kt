@@ -19,7 +19,7 @@ import kotlin.test.assertTrue
  * `adapter.laws.WallDayArithmeticDiffTest`; this proves the kernel-free build reproduces them end-to-end:
  * a `Europe/Berlin` model's datetime arithmetic is DST-aware (instant diffs, standard-time resolution of the
  * ambiguous fall-back hour, the spring gap as `datumFormatFalsch`, the no-overshoot `AddDays` landings), the
- * wall-day `DifferenceInDays` count is time-of-day aware, and UTC keeps the naive arithmetic.
+ * `DifferenceInDays` is time-of-day-aware stateful calendar stepping, and UTC keeps ordinary controls.
  */
 class ModelTimeZoneTest {
 
@@ -118,11 +118,11 @@ class ModelTimeZoneTest {
             "a backward gap landing takes the later instant")
     }
 
-    @Test fun differenceInDaysCountsWholeWallDays() {
+    @Test fun differenceInDaysCountsCompleteCalendarSteps() {
         assertTrue(fires("DifferenceInDays(ReportedAt, SettledAt) == 0", "2024-06-15T23:00:00", "2024-06-16T01:00:00"),
-            "2 wall hours into the next date = 0 whole days")
+            "the next same-clock calendar landing is still after the endpoint")
         assertTrue(fires("DifferenceInDays(ReportedAt, SettledAt) == 1", "2024-03-30T12:00:00", "2024-03-31T12:00:00"),
-            "the 23-real-hour Berlin day is still 1 WALL day")
+            "one model-zone calendar-day landing reaches the endpoint")
     }
 
     private companion object {

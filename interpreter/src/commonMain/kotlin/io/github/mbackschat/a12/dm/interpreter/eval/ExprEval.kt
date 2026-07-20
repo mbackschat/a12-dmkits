@@ -407,22 +407,22 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     // no-value (Unknown), not the number combiner's 0 (DateAggregateDiffTest).
     // operand-list forms: every operand counts (an empty number arrives as the substituted 0; a DATE-like
     // empty operand is SKIPPED — the kernel's `minDatum` combine keeps the date-bearing side)
-    FunctionOp.MIN -> combine(minMaxOperandVals(f)) { Aggregates.min(it, minMaxEmpty(f)) }
-    FunctionOp.MAX -> combine(minMaxOperandVals(f)) { Aggregates.max(it, minMaxEmpty(f)) }
+    FunctionOp.MIN -> if (dateAggregate(f)) evalTemporal(f).asTemporalVal()
+        else combine(minMaxOperandVals(f)) { Aggregates.min(it, minMaxEmpty(f)) }
+    FunctionOp.MAX -> if (dateAggregate(f)) evalTemporal(f).asTemporalVal()
+        else combine(minMaxOperandVals(f)) { Aggregates.max(it, minMaxEmpty(f)) }
     // starred aggregates: empties are SKIPPED (Sum substitutes 0 = same result; Max/distinct ignore)
     FunctionOp.SUM -> combine(starVals(f), Aggregates::sum)
     FunctionOp.MAX_VALUE -> combine(starVals(f)) { Aggregates.max(it, minMaxEmpty(f)) }
     FunctionOp.MIN_VALUE -> combine(starVals(f)) { Aggregates.min(it, minMaxEmpty(f)) }
     FunctionOp.NUMBER_OF_DIFFERENT_VALUES -> combine(starVals(f), Aggregates::numberOfDifferentValues)
-    // DifferenceInDays(a, b) = b − a in whole WALL-CLOCK days (Δ wall-seconds / 86 400, truncated toward
-    // zero) — over DATE_TIME operands the count is TIME-OF-DAY AWARE (23:00 → 01:00 next day is 0 days, and a
-    // DST-shortened Berlin day still counts as one wall day; kernel-probed, KERNEL-FINDINGS §6). A DATE
-    // operand reads as midnight (mixed pairs are legal); two plain dates reduce to the day-number difference.
+    // DifferenceInDays(a, b) = b − a as signed MODEL-ZONE CALENDAR STEPS. The earlier legacy-calendar
+    // operand advances by whole days until its next landing would pass the later operand, so time-of-day still
+    // matters (23:00 → 01:00 next day is 0), while a Berlin special-hour landing can differ from naive
+    // wall-seconds / 86 400. A DATE operand reads as midnight; mixed DATE/DATE_TIME pairs are legal.
     // An EMPTY operand reads as the fillable 0 (either empty → 0, kernel getDatumsDiff); MALFORMED → Unknown.
-    FunctionOp.DIFFERENCE_IN_DAYS -> dateDiffEmpty(f.args[0], f.args[1]) ?: run {
-        val a = wallSecondsOf(f.args[0])
-        val b = wallSecondsOf(f.args[1])
-        if (a == null || b == null) Val.Unknown else Val.Num(dec(((b - a) / 86_400L).toString()))
+    FunctionOp.DIFFERENCE_IN_DAYS -> temporalDifference(f.args) { a, b ->
+        Val.Num(dec(differenceInCalendarDays(a.instant(timeZone), b.instant(timeZone), timeZone)))
     }
     // Count-of-filled functions (used in a comparison, e.g. NumberOfFilledFields(a, b, c) < 2).
     FunctionOp.NUMBER_OF_FILLED_FIELDS -> filledFieldsValue(f.args)
@@ -440,22 +440,18 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     // DateFromDateTime/TimeFromDateTime: split the canonical ISO date-time `yyyy-MM-dd'T'HH:mm:ss` at the
     // `T` into its DATE part (a `yyyy-MM-dd` the date extractors read) and its TIME part (an `HH:mm:ss` the
     // time extractors read). Empty/malformed operand (no `T`) → Unknown.
-    FunctionOp.DATE_FROM_DATE_TIME -> dateTimePart(f.args[0], time = false)
-    FunctionOp.TIME_FROM_DATE_TIME -> dateTimePart(f.args[0], time = true)
+    FunctionOp.DATE_FROM_DATE_TIME -> evalTemporal(f).asTemporalVal()
+    FunctionOp.TIME_FROM_DATE_TIME -> evalTime(f).asTimeVal()
     // DateTime(date, time): compose a DATE (`yyyy-MM-dd`) and a TIME (`HH:mm:ss`) into the canonical
     // date-time `yyyy-MM-dd'T'HH:mm:ss`. Either operand empty/malformed → Unknown.
-    FunctionOp.DATE_TIME -> {
-        val date = (evalExpr(f.args[0]) as? Val.Txt)?.v
-        val time = (evalExpr(f.args[1]) as? Val.Txt)?.v
-        if (date == null || time == null) Val.Unknown else Val.Txt("${date}T$time")
-    }
+    FunctionOp.DATE_TIME -> evalTemporal(f).asTemporalVal()
     // Date(day, month, year): the constructed calendar date as ISO text — Unknown when the date is not real
     // or a part is empty/malformed (kernel-probed: the extractors see no value). Valid/Invalid inspect the
     // construction directly (they distinguish unreal from empty from malformed; this value path does not).
-    FunctionOp.DATE -> analyzeDate(f.args).let { if (it.status == DateStatus.REAL) Val.Txt(it.iso!!) else Val.Unknown }
+    FunctionOp.DATE -> evalTemporal(f).asTemporalVal()
     // Time(hours, minutes, seconds): the constructed time as `HH:mm:ss`. Components are in range by model
     // validity (an out-of-range constant is MVK_WRONG_DATE_FORMAT_FOR_OP at codegen); empty/malformed → Unknown.
-    FunctionOp.TIME -> timeCompose(f.args)
+    FunctionOp.TIME -> evalTime(f).asTimeVal()
     // DateRange(start, end): a date range from two date operands (computation-only — the kernel rejects it in
     // a condition). Rendered to the target field's format at the compute() boundary. Empty/malformed → Unknown.
     FunctionOp.DATE_RANGE -> {
@@ -468,21 +464,23 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     // raw value + the field's format (the canonicalized Val is Unknown for a `00`-day value).
     FunctionOp.VALUE_AS_DATE -> valueAsDate(f.args)
     // Date-time arithmetic — reduces to integer seconds, so a day boundary carries automatically.
-    FunctionOp.ADD_HOURS -> dateTimeShift(f.args, 3_600L)
-    FunctionOp.ADD_MINUTES -> dateTimeShift(f.args, 60L)
-    FunctionOp.ADD_SECONDS -> dateTimeShift(f.args, 1L)
+    FunctionOp.ADD_HOURS, FunctionOp.ADD_MINUTES, FunctionOp.ADD_SECONDS -> evalTemporal(f).asTemporalVal()
     // DifferenceInUnit(a, b) = (epochSecond(b) − epochSecond(a)) / unit, TRUNCATED toward zero (kernel-probed:
     // a reverse difference of −5.5 units yields −5, not −6 — so plain integer division, not floor).
-    FunctionOp.DIFFERENCE_IN_HOURS -> dateTimeDiff(f.args, 3_600L)
-    FunctionOp.DIFFERENCE_IN_MINUTES -> dateTimeDiff(f.args, 60L)
-    FunctionOp.DIFFERENCE_IN_SECONDS -> dateTimeDiff(f.args, 1L)
+    FunctionOp.DIFFERENCE_IN_HOURS -> temporalDifference(f.args) { a, b ->
+        Val.Num(dec(((b.instant(timeZone) - a.instant(timeZone)) / 3_600L).toString()))
+    }
+    FunctionOp.DIFFERENCE_IN_MINUTES -> temporalDifference(f.args) { a, b ->
+        Val.Num(dec(((b.instant(timeZone) - a.instant(timeZone)) / 60L).toString()))
+    }
+    FunctionOp.DIFFERENCE_IN_SECONDS -> temporalDifference(f.args) { a, b ->
+        Val.Num(dec((b.instant(timeZone) - a.instant(timeZone)).toString()))
+    }
     // Date arithmetic — date + n days / months / years → a date (ISO text). Empty/absent date → Unknown.
     // AddDays ALSO accepts a DATE_TIME operand (kernel-probed; AddMonths/AddYears reject one at MVK).
-    FunctionOp.ADD_DAYS -> addDaysValue(f.args)
-    FunctionOp.ADD_MONTHS -> dateShift(f.args, ::addMonths)
-    FunctionOp.ADD_YEARS -> dateShift(f.args, ::addYears)
-    FunctionOp.DIFFERENCE_IN_MONTHS -> dateDiff(f.args, ::differenceInMonths)
-    FunctionOp.DIFFERENCE_IN_YEARS -> dateDiff(f.args, ::differenceInYears)
+    FunctionOp.ADD_DAYS, FunctionOp.ADD_MONTHS, FunctionOp.ADD_YEARS -> evalTemporal(f).asTemporalVal()
+    FunctionOp.DIFFERENCE_IN_MONTHS -> dateDiff(f.args, FunctionOp.DIFFERENCE_IN_MONTHS)
+    FunctionOp.DIFFERENCE_IN_YEARS -> dateDiff(f.args, FunctionOp.DIFFERENCE_IN_YEARS)
     // Date-range endpoint extractors — a DATE_RANGE operand → its start / end as an ISO date (so the
     // *FromDate extractors and date comparisons read it like any date). Empty/absent range → Unknown.
     FunctionOp.START_OF_DATE_RANGE -> (evalExpr(f.args[0]) as? Val.Range)?.let { Val.Txt(it.start) } ?: Val.Unknown
@@ -673,22 +671,18 @@ private fun Interpreter.emptyCheckRelevant(e: Expr): Boolean =
  *  is suppressed) — malformed BEATS empty (checked first in `getDatumsDiff`). */
 private fun Interpreter.malformedField(e: Expr): Boolean = e is Expr.Field && invalid(e.path)
 
-/** The empty/malformed short-circuit shared by the date diffs (`getDatumsDiff`): EITHER operand malformed →
- *  Unknown (suppress); else EITHER an empty check-relevant operand → the fillable **0** (fires; the fill is
- *  symmetric via `funcFill`'s leaf); null when both are real values (compute the actual difference). */
-private fun Interpreter.dateDiffEmpty(a: Expr, b: Expr): Val? = when {
-    malformedField(a) || malformedField(b) -> Val.Unknown
-    emptyCheckRelevant(a) || emptyCheckRelevant(b) -> Val.Num(DEC_ZERO)
-    else -> null
-}
-
 /** `DifferenceIn{Months,Years}(a, b)` → a signed whole-period count; an empty operand reads as the fillable 0
  *  (either empty → 0, kernel `getDatumsDiff`); a malformed operand → Unknown (suppressed). */
-private fun Interpreter.dateDiff(args: List<Expr>, diff: (String, String) -> Int?): Val {
-    dateDiffEmpty(args[0], args[1])?.let { return it }
-    val a = (evalExpr(args[0]) as? Val.Txt)?.v ?: return Val.Unknown
-    val b = (evalExpr(args[1]) as? Val.Txt)?.v ?: return Val.Unknown
-    return diff(dateOnly(a), dateOnly(b))?.let { Val.Num(dec(it)) } ?: Val.Unknown
+private fun Interpreter.dateDiff(args: List<Expr>, op: FunctionOp): Val = temporalDifference(args) { a, b ->
+    val legacy = a.basis == DateCalendarBasis.LEGACY_HYBRID || b.basis == DateCalendarBasis.LEGACY_HYBRID
+    val result = when (op) {
+        FunctionOp.DIFFERENCE_IN_MONTHS ->
+            if (legacy) differenceInLegacyCalendarMonths(a.date, b.date) else differenceInMonths(a.date, b.date)
+        FunctionOp.DIFFERENCE_IN_YEARS ->
+            if (legacy) differenceInLegacyCalendarYears(a.date, b.date) else differenceInYears(a.date, b.date)
+        else -> error("not a month/year date difference: $op")
+    }
+    result?.let { Val.Num(dec(it)) } ?: Val.Unknown
 }
 
 /** A number picked from a date operand's (year, month, day); an EMPTY date → the fillable **0** (kernel
@@ -696,8 +690,11 @@ private fun Interpreter.dateDiff(args: List<Expr>, diff: (String, String) -> Int
  *  operand extracts from its DATE part (IF95 — the kernel has no datetime format definition: the field rides
  *  `FormatDefinitionDatum` with a time-bearing format, so `feldWertAlsDatum` accepts it). */
 private fun Interpreter.dateComponent(e: Expr, pick: (Int, Int, Int) -> Int): Val {
-    if (emptyCheckRelevant(e)) return Val.Num(DEC_ZERO)
-    val parts = (coerceDate(evalExpr(e)) as? Val.Txt)?.let { dateParts(dateOnly(it.v)) } ?: return Val.Unknown
+    val value = when (val evaluated = evalTemporal(e)) {
+        is Evaluated.Present -> evaluated.value
+        is Evaluated.NoValue -> return evaluated.numericDefault()
+    }
+    val parts = calendarDateParts(value.date, value.basis) ?: return Val.Unknown
     return Val.Num(dec(pick(parts.first, parts.second, parts.third)))
 }
 
@@ -711,18 +708,12 @@ private fun dateOnly(v: String): String = v.substringBefore('T')
  *  extracts from its TIME part (IF95's time half — the kernel parses the datetime with the field's own
  *  time-bearing format, so `HoursFromTime(<datetime>)` is legal and reads the clock time). */
 private fun Interpreter.timeComponent(e: Expr, pick: (Int, Int, Int) -> Int): Val {
-    if (emptyCheckRelevant(e)) return Val.Num(DEC_ZERO)
-    val m = (evalExpr(e) as? Val.Txt)?.let { TIME.matchEntire(it.v.substringAfter('T')) } ?: return Val.Unknown
+    val value = when (val evaluated = evalTime(e)) {
+        is Evaluated.Present -> evaluated.value
+        is Evaluated.NoValue -> return evaluated.numericDefault()
+    }
+    val m = TIME.matchEntire(value) ?: return Val.Unknown
     return Val.Num(dec(pick(m.groupValues[1].toInt(), m.groupValues[2].toInt(), m.groupValues[3].toInt())))
-}
-
-/** The DATE (`time=false`) or TIME (`time=true`) part of a date-time operand — the substring before / after
- *  the canonical `T`. Unknown when the operand is empty/malformed (no `T`). */
-private fun Interpreter.dateTimePart(e: Expr, time: Boolean): Val {
-    val v = (evalExpr(e) as? Val.Txt)?.v ?: return Val.Unknown
-    val t = v.indexOf('T')
-    if (t < 0) return Val.Unknown
-    return Val.Txt(if (time) v.substring(t + 1) else v.substring(0, t))
 }
 
 /** The status of a `Date(day, month, year)` construction — the basis for the constructor's value AND the
@@ -749,8 +740,276 @@ private fun Interpreter.analyzeDate(parts: List<Expr>): DateAnalysis {
     val d = nums[0]; val m = nums[1]
     // 4-arg century form splits the year into century + 2-digit year: full year = century*100 + year.
     val y = if (parts.size == 3) nums[2] else nums[2] * 100 + nums[3]
-    return if (isRealDate(y, m, d)) DateAnalysis(DateStatus.REAL, isoDate(y, m, d))
+    val componentGate = d != 0 && m != 0 && if (parts.size == 3) y != 0 else nums[2] != 0
+    return if (componentGate && isConstructibleDate(y, m, d, timeZone)) DateAnalysis(DateStatus.REAL, isoDate(y, m, d))
     else DateAnalysis(DateStatus.UNREAL_PRESENT, null)
+}
+
+/**
+ * One evaluated temporal value, carrying the information the kernel's `VkDate` keeps but a plain ISO string
+ * loses: calendar provenance, exact instant identity, and why a legal expression has no value.
+ */
+private sealed interface Evaluated<out T> {
+    data class Present<T>(val value: T) : Evaluated<T>
+    data class NoValue(val reason: NoValueReason) : Evaluated<Nothing>
+}
+
+private enum class NoValueReason {
+    /** Empty or present-but-unreal: numeric temporal consumers receive their fillable default `0`. */
+    NOT_GIVEN,
+
+    /** Malformed/formally-invalid: the expression is not check-relevant and numeric consumers suppress. */
+    NON_RELEVANT,
+}
+
+private data class TemporalValue(
+    val text: String,
+    val basis: DateCalendarBasis,
+    val exactInstant: Long? = null,
+) {
+    val date: String get() = dateOnly(text)
+    val isDateTime: Boolean get() = 'T' in text
+
+    fun instant(timeZone: io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone): Long =
+        exactInstant ?: checkNotNull(calendarOperandInstant(text, timeZone, basis)) {
+            "real temporal value has no model-zone instant: $text ($basis, $timeZone)"
+        }
+}
+
+private fun Evaluated<TemporalValue>.asTemporalVal(): Val = when (this) {
+    is Evaluated.Present -> Val.Txt(value.text)
+    is Evaluated.NoValue -> Val.Unknown
+}
+
+private fun Evaluated<String>.asTimeVal(): Val = when (this) {
+    is Evaluated.Present -> Val.Txt(value)
+    is Evaluated.NoValue -> Val.Unknown
+}
+
+private fun Evaluated.NoValue.numericDefault(): Val =
+    if (reason == NoValueReason.NOT_GIVEN) Val.Num(DEC_ZERO) else Val.Unknown
+
+/** NON_RELEVANT dominates NOT_GIVEN, matching the runtime's not-check-relevant precedence. */
+private fun dominantNoValue(vararg values: Evaluated<*>): Evaluated.NoValue? {
+    val absent = values.filterIsInstance<Evaluated.NoValue>()
+    return when {
+        absent.any { it.reason == NoValueReason.NON_RELEVANT } ->
+            Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+        absent.isNotEmpty() -> Evaluated.NoValue(NoValueReason.NOT_GIVEN)
+        else -> null
+    }
+}
+
+/**
+ * Evaluate a date/date-time expression once as a reason-bearing value. Every legal temporal producer maps
+ * here, so composition retains both no-value reason and legacy-calendar/instant identity instead of
+ * re-discovering them from selected AST shapes at each consumer.
+ */
+private fun Interpreter.evalTemporal(e: Expr): Evaluated<TemporalValue> {
+    if (e is Expr.Func) {
+        return when (FunctionOp.byName(e.name)) {
+            FunctionOp.DATE -> evaluateDateConstruction(e.args)
+            FunctionOp.DATE_TIME -> composeDateTime(e.args)
+            FunctionOp.DATE_FROM_DATE_TIME -> mapTemporal(e.args.single()) { value ->
+                value.copy(text = value.date, exactInstant = null)
+            }
+            FunctionOp.ADD_DAYS, FunctionOp.ADD_MONTHS, FunctionOp.ADD_YEARS,
+            FunctionOp.ADD_HOURS, FunctionOp.ADD_MINUTES, FunctionOp.ADD_SECONDS -> shiftTemporal(e)
+            FunctionOp.MIN, FunctionOp.MAX -> aggregateTemporal(e)
+            else -> temporalLeaf(e)
+        }
+    }
+    return temporalLeaf(e)
+}
+
+private fun Interpreter.evaluateDateConstruction(args: List<Expr>): Evaluated<TemporalValue> {
+    val analysis = analyzeDate(args)
+    return when (analysis.status) {
+        DateStatus.REAL -> Evaluated.Present(
+            TemporalValue(analysis.iso!!, DateCalendarBasis.LEGACY_HYBRID),
+        )
+        DateStatus.UNREAL_PRESENT, DateStatus.HAS_EMPTY -> Evaluated.NoValue(NoValueReason.NOT_GIVEN)
+        DateStatus.MALFORMED -> Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+    }
+}
+
+private fun Interpreter.temporalLeaf(e: Expr): Evaluated<TemporalValue> {
+    val evaluated = coerceDate(evalExpr(e))
+    if (evaluated is Val.Txt) {
+        val basis = DateCalendarBasis.PROLEPTIC_GREGORIAN
+        val instant = calendarOperandInstant(evaluated.v, timeZone, basis)
+            ?: return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+        return Evaluated.Present(TemporalValue(evaluated.v, basis, instant))
+    }
+    return when {
+        malformedField(e) -> Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+        emptyCheckRelevant(e) -> Evaluated.NoValue(NoValueReason.NOT_GIVEN)
+        else -> Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+    }
+}
+
+private fun Interpreter.composeDateTime(args: List<Expr>): Evaluated<TemporalValue> {
+    if (args.size != 2) return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+    val date = evalTemporal(args[0])
+    val time = evalTime(args[1])
+    dominantNoValue(date, time)?.let { return it }
+    val dateValue = (date as Evaluated.Present).value
+    val timeValue = (time as Evaluated.Present).value
+    val text = "${dateValue.date}T$timeValue"
+    val instant = calendarOperandInstant(text, timeZone, dateValue.basis)
+        ?: return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+    return Evaluated.Present(TemporalValue(text, dateValue.basis, instant))
+}
+
+private fun Interpreter.evalTime(e: Expr): Evaluated<String> {
+    if (e is Expr.Func) {
+        return when (FunctionOp.byName(e.name)) {
+            FunctionOp.TIME -> evaluateTimeConstruction(e.args)
+            FunctionOp.TIME_FROM_DATE_TIME -> timePart(evalTemporal(e.args.single()))
+            FunctionOp.DATE_TIME, FunctionOp.ADD_DAYS, FunctionOp.ADD_HOURS,
+            FunctionOp.ADD_MINUTES, FunctionOp.ADD_SECONDS -> timePart(evalTemporal(e))
+            else -> timeLeaf(e)
+        }
+    }
+    return timeLeaf(e)
+}
+
+private fun Interpreter.timeLeaf(e: Expr): Evaluated<String> {
+    val evaluated = evalExpr(e)
+    if (evaluated is Val.Txt) {
+        val time = evaluated.v.substringAfter('T')
+        if (TIME.matches(time)) return Evaluated.Present(time)
+    }
+    return when {
+        malformedField(e) -> Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+        emptyCheckRelevant(e) -> Evaluated.NoValue(NoValueReason.NOT_GIVEN)
+        else -> Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+    }
+}
+
+private fun timePart(value: Evaluated<TemporalValue>): Evaluated<String> = when (value) {
+    is Evaluated.NoValue -> value
+    is Evaluated.Present -> {
+        val time = value.value.text.substringAfter('T', missingDelimiterValue = "")
+        if (TIME.matches(time)) Evaluated.Present(time)
+        else Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+    }
+}
+
+private fun Interpreter.evaluateTimeConstruction(args: List<Expr>): Evaluated<String> {
+    if (args.size != 3) return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+    var hasEmpty = false
+    var hasMalformed = false
+    val components = IntArray(3)
+    for (i in args.indices) {
+        val arg = args[i]
+        if (malformedField(arg)) {
+            hasMalformed = true
+            continue
+        }
+        if (emptyCheckRelevant(arg)) {
+            hasEmpty = true
+            continue
+        }
+        components[i] = valToInt(evalExpr(arg)) ?: run {
+            hasMalformed = true
+            0
+        }
+    }
+    if (hasMalformed) return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+    if (hasEmpty) return Evaluated.NoValue(NoValueReason.NOT_GIVEN)
+    val (hour, minute, second) = Triple(components[0], components[1], components[2])
+    if (hour !in 0..23 || minute !in 0..59 || second !in 0..59) {
+        return Evaluated.NoValue(NoValueReason.NOT_GIVEN)
+    }
+    return Evaluated.Present("${pad2(hour)}:${pad2(minute)}:${pad2(second)}")
+}
+
+private fun Interpreter.mapTemporal(
+    source: Expr,
+    transform: (TemporalValue) -> TemporalValue,
+): Evaluated<TemporalValue> = when (val value = evalTemporal(source)) {
+    is Evaluated.NoValue -> value
+    is Evaluated.Present -> Evaluated.Present(transform(value.value))
+}
+
+private fun Interpreter.shiftTemporal(e: Expr.Func): Evaluated<TemporalValue> {
+    val source = evalTemporal(e.args[0])
+    val amountValue = evalExpr(e.args[1])
+    val amount = (amountValue as? Val.Num)?.v?.display()?.toLongOrNull()
+    val amountState: Evaluated<Long> = when {
+        amount != null -> Evaluated.Present(amount)
+        malformedField(e.args[1]) -> Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+        emptyCheckRelevant(e.args[1]) -> Evaluated.NoValue(NoValueReason.NOT_GIVEN)
+        else -> Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+    }
+    dominantNoValue(source, amountState)?.let { return it }
+    val value = (source as Evaluated.Present).value
+    val n = (amountState as Evaluated.Present).value
+    val shifted = when (FunctionOp.byName(e.name)) {
+        FunctionOp.ADD_DAYS -> if (value.isDateTime) {
+            val landing = wallDayLandingInstant(instantToLocal(value.instant(timeZone), timeZone), n.toInt(), timeZone)
+            TemporalValue(
+                isoFromCalendarInstant(landing, timeZone, value.basis),
+                value.basis,
+                landing,
+            )
+        } else {
+            val date = if (value.basis == DateCalendarBasis.LEGACY_HYBRID)
+                addLegacyCalendarDays(value.date, n.toInt()) else addDays(value.date, n.toInt())
+            date?.let { TemporalValue(it, value.basis) }
+        }
+        FunctionOp.ADD_MONTHS -> {
+            val date = if (value.basis == DateCalendarBasis.LEGACY_HYBRID)
+                addLegacyCalendarMonths(value.date, n.toInt()) else addMonths(value.date, n.toInt())
+            date?.let { TemporalValue(it, value.basis) }
+        }
+        FunctionOp.ADD_YEARS -> {
+            val date = if (value.basis == DateCalendarBasis.LEGACY_HYBRID)
+                addLegacyCalendarYears(value.date, n.toInt()) else addYears(value.date, n.toInt())
+            date?.let { TemporalValue(it, value.basis) }
+        }
+        FunctionOp.ADD_HOURS, FunctionOp.ADD_MINUTES, FunctionOp.ADD_SECONDS -> {
+            val unit = when (FunctionOp.byName(e.name)) {
+                FunctionOp.ADD_HOURS -> 3_600L
+                FunctionOp.ADD_MINUTES -> 60L
+                else -> 1L
+            }
+            val instant = value.instant(timeZone) + n * unit
+            TemporalValue(isoFromCalendarInstant(instant, timeZone, value.basis), value.basis, instant)
+        }
+        else -> error("not a temporal shift: ${e.name}")
+    }
+    return shifted?.let { Evaluated.Present(it) } ?: Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+}
+
+private fun Interpreter.aggregateTemporal(e: Expr.Func): Evaluated<TemporalValue> {
+    val values = e.args.map(::evalTemporal)
+    if (values.filterIsInstance<Evaluated.NoValue>()
+            .any { it.reason == NoValueReason.NON_RELEVANT }) {
+        return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+    }
+    val present = values.filterIsInstance<Evaluated.Present<TemporalValue>>().map { it.value }
+    if (present.isEmpty()) return Evaluated.NoValue(NoValueReason.NOT_GIVEN)
+    val selected = when (FunctionOp.byName(e.name)) {
+        FunctionOp.MIN -> present.minBy { it.instant(timeZone) }
+        FunctionOp.MAX -> present.maxBy { it.instant(timeZone) }
+        else -> error("not a temporal aggregate: ${e.name}")
+    }
+    return Evaluated.Present(selected)
+}
+
+private fun Interpreter.temporalDifference(
+    args: List<Expr>,
+    difference: (TemporalValue, TemporalValue) -> Val,
+): Val {
+    val left = evalTemporal(args[0])
+    val right = evalTemporal(args[1])
+    dominantNoValue(left, right)?.let { return it.numericDefault() }
+    return difference(
+        (left as Evaluated.Present).value,
+        (right as Evaluated.Present).value,
+    )
 }
 
 /** The [DateStatus] of a `Valid`/`Invalid` predicate's single operand — its `Date(...)` construction;
@@ -759,21 +1018,6 @@ internal fun Interpreter.dateStatusOf(arg: Expr): DateStatus {
     val parts = (arg as? Expr.Func)?.takeIf { FunctionOp.byName(it.name) == FunctionOp.DATE }?.args
         ?: return DateStatus.MALFORMED
     return analyzeDate(parts).status
-}
-
-/** `Time(hours, minutes, seconds)` → `HH:mm:ss`; a non-evaluable (empty field / malformed / out-of-range)
- *  component → Unknown. Components arrive as number fields or quoted-constant strings. */
-private fun Interpreter.timeCompose(args: List<Expr>): Val {
-    if (args.size != 3) return Val.Unknown
-    val c = IntArray(3)
-    for (i in 0..2) {
-        val e = args[i]
-        if (e is Expr.Field && !ctx.filled(e.path)) return Val.Unknown
-        c[i] = valToInt(evalExpr(e)) ?: return Val.Unknown
-    }
-    val (h, m, s) = Triple(c[0], c[1], c[2])
-    if (h !in 0..23 || m !in 0..59 || s !in 0..59) return Val.Unknown
-    return Val.Txt("${pad2(h)}:${pad2(m)}:${pad2(s)}")
 }
 
 /** An integer from a number value or a digit-string constant (the `Date`/`Time` components); null otherwise. */
@@ -785,64 +1029,9 @@ private fun valToInt(v: Val): Int? = when (v) {
 
 private fun pad2(n: Int): String = n.toString().padStart(2, '0')
 
-/** `Add{Hours,Minutes,Seconds}(dateTime, n)` → the date-time shifted by `n · [unitSeconds]` of **instant**
- *  time (day boundary carried; under a Europe/Berlin model the shift crosses a DST transition in real hours —
- *  `01:30 CET + 1 h = 03:30 CEST`), rendered back to the zone's wall clock; Unknown if the date-time or count
- *  is absent/malformed. Under UTC instant == wall, the historical arithmetic. */
-private fun Interpreter.dateTimeShift(args: List<Expr>, unitSeconds: Long): Val {
-    val instant = dateTimeInstant(args[0]) ?: return Val.Unknown
-    val n = (evalExpr(args[1]) as? Val.Num)?.v?.display()?.toLongOrNull() ?: return Val.Unknown
-    return Val.Txt(isoFromZonedInstant(instant + n * unitSeconds, timeZone))
-}
-
-/** `DifferenceIn{Hours,Minutes,Seconds}(a, b)` → `(instant(b) − instant(a)) / [unitSeconds]`, truncated toward
- *  zero — the kernel subtracts zone-parsed INSTANTS (`getCalenderDiff` on epoch millis), so a Europe/Berlin
- *  pair straddling a DST transition counts real hours, not wall hours (KERNEL-FINDINGS §6). An EMPTY date-time
- *  operand reads as the fillable 0 (either empty → 0, kernel `getDatumsDiff`) and FIRES; a MALFORMED operand →
- *  Unknown (suppressed). */
-private fun Interpreter.dateTimeDiff(args: List<Expr>, unitSeconds: Long): Val {
-    dateDiffEmpty(args[0], args[1])?.let { return it }
-    val a = dateTimeInstant(args[0]) ?: return Val.Unknown
-    val b = dateTimeInstant(args[1]) ?: return Val.Unknown
-    return Val.Num(dec(((b - a) / unitSeconds).toString()))
-}
-
-/**
- * The zone INSTANT of a date-time-valued expression — the kernel evaluates the datetime operator family on
- * `VkDate` instants end-to-end, so a **chained** result keeps its exact instant even where its wall-clock
- * rendering is ambiguous (probe P5: `AddHours(01:30 CEST, 1)` is the DAYLIGHT side of the fall-back hour,
- * NOT the instant the equal-looking stored `"02:30:00"` re-parses to). So the instant is derived
- * STRUCTURALLY: an `Add{Hours,Minutes,Seconds}` chain adds instant seconds, an `AddDays` over a date-time
- * re-applies the wall-day landing rule, and any other expression resolves via its canonical local rendering
- * ([zonedInstantOf] — the parse resolution: ambiguous → standard, gap → null/suppressed). Under UTC this is
- * exactly the naive [epochSecond] everywhere.
- */
-internal fun Interpreter.dateTimeInstant(e: Expr): Long? {
-    if (e is Expr.Func) when (FunctionOp.byName(e.name)) {
-        FunctionOp.ADD_HOURS -> return chainedShiftInstant(e, 3_600L)
-        FunctionOp.ADD_MINUTES -> return chainedShiftInstant(e, 60L)
-        FunctionOp.ADD_SECONDS -> return chainedShiftInstant(e, 1L)
-        FunctionOp.ADD_DAYS -> {
-            // Only a DATE_TIME operand takes the wall-day landing; a plain DATE rides the generic path below
-            // (its rendered value carries no 'T' and the datetime ops never legally see it — MVK-gated).
-            val local = (evalExpr(e.args[0]) as? Val.Txt)?.v
-            if (local != null && 'T' in local) {
-                val n = (evalExpr(e.args[1]) as? Val.Num)?.v?.display()?.toIntOrNull() ?: return null
-                return epochSecond(local)?.let { wallDayLandingInstant(it, n, timeZone) }
-            }
-        }
-        else -> {}
-    }
-    return (evalExpr(e) as? Val.Txt)?.v?.let { zonedInstantOf(it, timeZone) }
-}
-
-/** The instant of an `Add{Hours,Minutes,Seconds}` node — the operand's instant plus `n` units (recursive,
- *  so nested shifts chain in instant space exactly like the kernel's `VkDate` arithmetic). */
-private fun Interpreter.chainedShiftInstant(e: Expr.Func, unitSeconds: Long): Long? {
-    val base = dateTimeInstant(e.args[0]) ?: return null
-    val n = (evalExpr(e.args[1]) as? Val.Num)?.v?.display()?.toLongOrNull() ?: return null
-    return base + n * unitSeconds
-}
+/** Exact instant identity of a legal date-time expression, carried by [evalTemporal] through composition. */
+internal fun Interpreter.dateTimeInstant(e: Expr): Long? =
+    (evalTemporal(e) as? Evaluated.Present)?.value?.takeIf { it.isDateTime }?.instant(timeZone)
 
 /** `ValueAsDate(field, FirstDay|LastDay)` — resolve a (DAY_OPTIONAL) date field's raw value to a concrete
  *  date: a specified day → itself, an omitted `00` day → the month's first (`FirstDay`) or last (`LastDay`)
@@ -853,32 +1042,6 @@ private fun Interpreter.valueAsDate(args: List<Expr>): Val {
     val raw = ctx.displayValue(path) ?: return Val.Unknown
     val lastDay = (args[1] as? Expr.Const)?.name == "LastDay"
     return resolvePartialDate(raw, ctx.dateFormatOf(path) ?: "yyyy-MM-dd", lastDay)?.let { Val.Txt(it) } ?: Val.Unknown
-}
-
-/** `Add{Days,Months,Years}(date, n)` → the [shift]ed date as ISO text; Unknown if the date or count is absent. */
-private fun Interpreter.dateShift(args: List<Expr>, shift: (String, Int) -> String?): Val {
-    val date = (coerceDate(evalExpr(args[0])) as? Val.Txt)?.v ?: return Val.Unknown
-    val n = (evalExpr(args[1]) as? Val.Num)?.v?.display()?.toIntOrNull() ?: return Val.Unknown
-    return shift(date, n)?.let { Val.Txt(it) } ?: Val.Unknown
-}
-
-/** WALL-clock seconds of a date-or-datetime-valued expression: a DATE_TIME's naive wall seconds, a DATE as
- *  its midnight (`DifferenceInDays`' basis — wall clock, not instants); null if empty/malformed. */
-private fun Interpreter.wallSecondsOf(e: Expr): Long? = (coerceDate(evalExpr(e)) as? Val.Txt)?.v?.let { v ->
-    if ('T' in v) epochSecond(v) else epochDay(v)?.times(86_400L)
-}
-
-/** `AddDays(x, n)` — a DATE operand shifts by calendar days ([addDays]); a DATE_TIME operand is legal too
- *  and TIME-PRESERVING (kernel-probed): a wall-day add on the zone calendar, a special-hour landing resolved
- *  by the no-overshoot rule ([wallDayLandingInstant]). Unknown if the operand or count is absent/malformed. */
-private fun Interpreter.addDaysValue(args: List<Expr>): Val {
-    val v = (coerceDate(evalExpr(args[0])) as? Val.Txt)?.v ?: return Val.Unknown
-    val n = (evalExpr(args[1]) as? Val.Num)?.v?.display()?.toIntOrNull() ?: return Val.Unknown
-    if ('T' in v) {
-        val local = epochSecond(v) ?: return Val.Unknown
-        return Val.Txt(isoFromZonedInstant(wallDayLandingInstant(local, n, timeZone), timeZone))
-    }
-    return addDays(v, n)?.let { Val.Txt(it) } ?: Val.Unknown
 }
 
 /**
@@ -997,19 +1160,8 @@ private fun Interpreter.dateAggregate(f: Expr.Func): Boolean = f.args.any { a ->
 /** The min/max empty-fold identity by operand kind: dates → no value; numbers → `0` (see [dateAggregate]). */
 private fun Interpreter.minMaxEmpty(f: Expr.Func): Val = if (dateAggregate(f)) Val.Unknown else Val.Num(DEC_ZERO)
 
-/**
- * Operand values for the operand-list `Min`/`Max`. A NUMBER operand always counts — an empty number field
- * arrives as the substituted `0` (the kernel feeds every operand's `feldWertAlsZahl` to the combiner). A
- * DATE-like field operand that is EMPTY (and not formally invalid) is SKIPPED — the kernel's `minDatum`
- * combine keeps the date-bearing side when the other is a valueless `VkDate` — while a malformed or
- * required-but-empty one still resolves [Val.Unknown] and poisons via [combine] (`feldWertAlsDatum` returns
- * nicht-prüfungsrelevant there). `DateAggregateDiffTest`.
- */
-private fun Interpreter.minMaxOperandVals(f: Expr.Func): List<Val> = f.args.mapNotNull { a ->
-    val skippableEmptyDate = a is Expr.Field && dateLike(ctxOf(a).declaredKind(a.path))
-        && !ctxOf(a).filled(a.path) && !invalid(a.path)
-    if (skippableEmptyDate) null else evalExpr(a)
-}
+/** Numeric operand-list Min/Max values. Date Min/Max use [aggregateTemporal], which preserves reason and basis. */
+private fun Interpreter.minMaxOperandVals(f: Expr.Func): List<Val> = f.args.map(::evalExpr)
 
 /**
  * The FILLED values feeding a value aggregate (`Sum`/`MaxValue`/`MinValue`/`NumberOfDifferentValues`),

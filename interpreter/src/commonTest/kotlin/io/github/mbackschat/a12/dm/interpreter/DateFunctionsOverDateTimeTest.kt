@@ -58,8 +58,8 @@ class DateFunctionsOverDateTimeTest {
     @Test fun emptyDateTimeExtractsTheFillableZero() =
         assertEquals(ComputeOutcome.VALUE to "0", outcome("DayFromDate(LoggedAt)", null))
 
-    @Test fun differenceInDaysUsesTheDateParts() =
+    @Test fun differenceInDaysCountsCalendarStepsWithTheClockRetained() =
         assertEquals(ComputeOutcome.VALUE to "2",
             outcome("DifferenceInDays(LoggedAt, DeliveredAt)", TS, "2024-06-27T23:59:59"),
-            "the times are ignored — whole-day date-part difference")
+            "two complete same-clock calendar steps land before the later 23:59:59 endpoint")
 }
