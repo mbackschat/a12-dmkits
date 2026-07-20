@@ -28,8 +28,10 @@ class PerfBenchTest {
         // Stream each scenario's result AS it completes (live to build/perf-progress.log) — Gradle otherwise buffers
         // all test stdout until the task ends, so a slow multi-scenario sweep looks frozen.
         val rows = PerfInventory.cases.associateWith { case ->
-            PerfHarness.step("gate ${case.id.id} @N=${case.n}") {
-                PerfHarness.runScenario(case.scenario(), case.n, withJava = false)
+            val scenario = case.scenario()
+            val identity = scenario.identity
+            PerfHarness.step("gate ${identity.id.id}@${identity.id.version} fingerprint=${identity.fingerprint} @N=${case.n}") {
+                PerfHarness.runScenario(scenario, case.n, withJava = false)
             }.also { PerfHarness.progress(PerfHarness.format(it, CAVEAT)) }
         }
 

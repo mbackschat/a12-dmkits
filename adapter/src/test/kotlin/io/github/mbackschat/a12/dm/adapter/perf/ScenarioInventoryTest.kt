@@ -9,8 +9,8 @@ import org.junit.jupiter.api.Test
  * IG77 → IF158 — the default B-scenario inventory ([PerfInventory]) is the single, **versioned** source of the
  * kernel-ratio benchmark sweep ([PerfBenchTest] derives its sweep from it, so registration here IS benchmark
  * inclusion — a fair-Java-capable scenario can't be silently dropped). This guard locks the inventory's shape so a
- * case can't drift from its declared identity: unique versioned ids, an identity that matches the built scenario
- * (op + zone), B9 Europe/Berlin present, and every case executable with zero unsupported constructs. It is
+ * case can't drift from its declared identity: unique versioned ids, reviewed content fingerprints and expected
+ * cardinalities, identity/model agreement, B9 Europe/Berlin present, and zero unsupported constructs. It is
  * **untagged** (runs in the default `:adapter:test`, not gated behind `-PrunPerf`) because it is a cheap structural
  * contract guard, not a timing benchmark.
  */
@@ -48,5 +48,17 @@ class ScenarioInventoryTest {
         // Reuse the harness preflight (IF156): each case must build and evaluate with ZERO unsupported constructs —
         // a case that can't run (or silently degrades) is not a valid benchmark. Cheap: preflight caps the row count.
         PerfInventory.cases.forEach { case -> PerfHarness.preflight(case.scenario(), case.n) }
+    }
+
+    @Test
+    fun reviewedFingerprintsAndExpectedCardinalitiesMatchCurrentContent() {
+        PerfInventory.cases.forEach { case ->
+            val scenario = case.unboundScenario()
+            val count = InterpreterPerfEngine.build(scenario).instance(case.n).outcome().signatures.size
+            assertEquals(case.id.expectedResultCardinality, listOf(count),
+                "${case.id.id}: update the scenario version, expected cardinality, and reviewed fingerprint together")
+            assertEquals(case.id.reviewedFingerprint, case.id.fingerprintFor(scenario, case.n),
+                "${case.id.id}: update the scenario version and reviewed fingerprint together")
+        }
     }
 }

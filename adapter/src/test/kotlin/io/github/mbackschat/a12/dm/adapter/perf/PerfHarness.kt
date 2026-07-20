@@ -62,7 +62,7 @@ enum class PerfOp { VALIDATE, COMPUTE }
  * variant-parameterized instance generator. The two model representations describe the same rule(s)/
  * computation(s); [PerfCatalog] builds them from one set of params so they cannot drift.
  */
-class PerfScenario(
+class PerfScenario private constructor(
     val name: String,
     /** The base DM-JSON with the scenario's rule(s) injected — the kernel's model (`RuntimeLaws.withRule`). */
     val kernelModel: String,
@@ -72,13 +72,38 @@ class PerfScenario(
     val op: PerfOp = PerfOp.VALIDATE,
     /** Builds the prepared interpreter, including any scenario-required customization registries. */
     val interpreterFactory: (ModelDef) -> DmInterpreter = { DmInterpreter(it) },
+    private val identityBinding: ScenarioBinding?,
     /**
      * Build the instance at scale [n], perturbed by [variant], into [sink]. `variant = 0` is the canonical
      * instance; a non-zero variant shifts a value so the document differs slightly (mimicking a form edit /
      * the next batch record) — used by [PerfHarness.runRepeated].
      */
     val instance: (sink: PlacementSink, n: Int, variant: Int) -> Unit,
-)
+) {
+    constructor(
+        name: String,
+        kernelModel: String,
+        interpModel: ModelDef,
+        op: PerfOp = PerfOp.VALIDATE,
+        interpreterFactory: (ModelDef) -> DmInterpreter = { DmInterpreter(it) },
+        instance: (sink: PlacementSink, n: Int, variant: Int) -> Unit,
+    ) : this(name, kernelModel, interpModel, op, interpreterFactory, identityBinding = null, instance)
+
+    /** The reviewed, content-bound identity. Available after [ScenarioId.bind]. */
+    val identity: ScenarioBinding
+        get() = checkNotNull(identityBinding) { "$name has no reviewed scenario identity" }
+
+    internal fun withIdentity(identity: ScenarioBinding): PerfScenario =
+        PerfScenario(name, kernelModel, interpModel, op, interpreterFactory, identity, instance)
+
+    internal fun completeIdentity(n: Int, observed: List<Int>, variants: List<Int>): ScenarioIdentity =
+        identityBinding?.also {
+            check(it.n == n) { "${it.id.id}@${it.id.version}: bound at N=${it.n}, run requested N=$n" }
+            check(it.id.generator.variants == variants) {
+                "${it.id.id}@${it.id.version}: bound variants=${it.id.generator.variants}, run requested variants=$variants"
+            }
+        }?.complete(observed) ?: diagnosticIdentity(n, observed, variants)
+}
 
 /** Full semantic result of one instance. [unsupported] is non-empty only for the interpreter leg. */
 data class PerfOutcome(val signatures: List<String>, val unsupported: List<UnsupportedRule> = emptyList())
@@ -215,9 +240,10 @@ data class Growth(val ratio: Double, val smallMs: Double, val largeMs: Double)
  * is how much slower Groovy execution is than Java for this scenario.
  */
 data class PerfRow(
-    val scenario: String, val n: Int, val firings: Int,
+    val identity: ScenarioIdentity, val n: Int, val firings: Int,
     val interp: Stats, val groovy: Stats?, val java: Stats?,
 ) {
+    val scenario: String get() = identity.id.id
     /** interp_median / groovy_median — tax-inflated (Groovy is slower than Java; read with the fairness caveat). */
     val ratioGroovy: Double? get() = groovy?.let { interp.medianMs / it.medianMs }
     /** interp_median / java_median — the FAIR algorithmic ratio (kernel logic, Groovy tax removed). */
@@ -228,9 +254,10 @@ data class PerfRow(
 
 /** One repeated-eval row: engine built ONCE, [variants] varying instances looped — PER-EVAL stats + the two ratios. */
 data class RepeatedRow(
-    val scenario: String, val n: Int, val variants: Int,
+    val identity: ScenarioIdentity, val n: Int, val variants: Int,
     val interp: Stats, val groovy: Stats?, val java: Stats?,
 ) {
+    val scenario: String get() = identity.id.id
     val ratioGroovy: Double? get() = groovy?.let { interp.medianMs / it.medianMs }
     val ratioJava: Double? get() = java?.let { interp.medianMs / it.medianMs }
     val groovyTax: Double? get() = if (groovy != null && java != null) groovy.medianMs / java.medianMs else null
@@ -367,10 +394,11 @@ object PerfHarness {
         val iResult = iOutcome.signatures
         assertSignaturesAgree(scenario.name, n, "interp", iResult, "groovy", gInst.run())
         if (jInst != null) assertSignaturesAgree(scenario.name, n, "groovy", gInst.run(), "java", jInst.run())
+        val identity = scenario.completeIdentity(n, observed = listOf(iResult.size), variants = listOf(0))
         val gStats = measure(warmup, iters) { gInst.run() }
         val jStats = jInst?.let { measure(warmup, iters) { it.run() } }
         val iStats = measure(warmup, iters) { iInst.run() }
-        return PerfRow(scenario.name, n, iResult.size, iStats, gStats, jStats)
+        return PerfRow(identity, n, iResult.size, iStats, gStats, jStats)
     }
 
     /**
@@ -392,20 +420,27 @@ object PerfHarness {
         val iInsts = (0 until variants).map { iEng.instance(n, it) }
         val gInsts = (0 until variants).map { gEng.instance(n, it) }
         val jInsts = jEng?.let { e -> (0 until variants).map { e.instance(n, it) } }
+        val cardinalities = IntArray(variants)
         // Every actual variant is tri-checked at full signature granularity before any timed loop.
         for (variant in 0 until variants) {
             val iOutcome = iInsts[variant].outcome()
             requireEligible(scenario, n, variant, iOutcome)
+            cardinalities[variant] = iOutcome.signatures.size
             val groovy = gInsts[variant].run()
             assertSignaturesAgree(scenario.name, n, "interp", iOutcome.signatures, "groovy", groovy)
             jInsts?.get(variant)?.run()?.let { java ->
                 assertSignaturesAgree(scenario.name, n, "groovy", groovy, "java", java)
             }
         }
+        val identity = scenario.completeIdentity(
+            n,
+            observed = cardinalities.toList(),
+            variants = (0 until variants).toList(),
+        )
         val gStats = measureLoop(warmupLoops, timedLoops, gInsts)
         val jStats = jInsts?.let { measureLoop(warmupLoops, timedLoops, it) }
         val iStats = measureLoop(warmupLoops, timedLoops, iInsts)
-        return RepeatedRow(scenario.name, n, variants, iStats, gStats, jStats)
+        return RepeatedRow(identity, n, variants, iStats, gStats, jStats)
     }
 
     /**
@@ -485,11 +520,13 @@ object PerfHarness {
 
     /** A one-line single-document log row: interp vs the kernel baseline(s) + ratios (+ the Java tax when present). */
     fun format(row: PerfRow, caveat: String = ""): String =
-        "[perf] ${row.scenario} N=${row.n} firings=${row.firings}  ${triple(row.interp, row.groovy, row.java, row.ratioGroovy, row.ratioJava, row.groovyTax)}  $caveat"
+        "[perf] ${row.identity.label} fingerprint=${row.identity.fingerprint} N=${row.n} firings=${row.firings}  " +
+            "${triple(row.interp, row.groovy, row.java, row.ratioGroovy, row.ratioJava, row.groovyTax)}  $caveat"
 
     /** A one-line repeated-eval log row (per-eval, engine reused). */
     fun formatRepeated(row: RepeatedRow, caveat: String = ""): String =
-        "[perf] ${row.scenario} REPEATED N=${row.n} ×${row.variants} variants (per-eval)  " +
+        "[perf] ${row.identity.label} fingerprint=${row.identity.fingerprint} REPEATED N=${row.n} " +
+            "×${row.variants} variants (per-eval)  " +
             "${triple(row.interp, row.groovy, row.java, row.ratioGroovy, row.ratioJava, row.groovyTax)}  $caveat"
 
     private fun triple(interp: Stats, groovy: Stats?, java: Stats?, ratioGroovy: Double?, ratioJava: Double?, groovyTax: Double?): String =

@@ -1,0 +1,95 @@
+package io.github.mbackschat.a12.dm.adapter.perf
+
+import io.github.mbackschat.a12.dm.adapter.perf.Complexity.LINEAR
+import io.github.mbackschat.a12.dm.adapter.perf.PerfOp.COMPUTE
+import io.github.mbackschat.a12.dm.adapter.perf.PerfOp.VALIDATE
+import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.COMPUTE_CLEARED
+import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.COMPUTE_ERRORED
+import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.COMPUTE_VALUE
+import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.VALIDATION_LOW_FIRING
+import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.VALIDATION_MIXED
+import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertDoesNotThrow
+import org.junit.jupiter.api.assertThrows
+
+class ScenarioIdentityFingerprintTest {
+
+    private fun draft(
+        op: PerfOp = VALIDATE,
+        regime: ResultRegime = VALIDATION_MIXED,
+    ) = ScenarioId.builder("test-case")
+        .operation(op)
+        .resultRegime(regime)
+        .complexity(LINEAR)
+        .generator(GeneratorIdentity("fixed-test-generator", seed = 17, parameters = mapOf("shape" to "flat")))
+        .scaleAxis("rows")
+        .expectedResultCardinality(listOf(2))
+        .build()
+
+    @Test
+    fun reviewedFingerprintRejectsModelValueRegimeAndScaleDriftWithoutAVersionUpdate() {
+        val scenario = PerfCatalog.b1()
+        val draft = draft()
+        val reviewed = draft.review(scenario, n = 4)
+        assertDoesNotThrow { reviewed.bind(scenario, n = 4) }
+
+        val changedModel = PerfScenario(
+            scenario.name,
+            scenario.kernelModel,
+            scenario.interpModel.copy(
+                rules = scenario.interpModel.rules + RuleDef("/Perf/Extra", "/Perf", "1 == 2", "EXTRA", "../Lines/Qty"),
+            ),
+            scenario.op,
+            scenario.interpreterFactory,
+            scenario.instance,
+        )
+        assertThrows<IllegalStateException> { reviewed.bind(changedModel, n = 4) }
+
+        val changedValue = PerfScenario(
+            scenario.name,
+            scenario.kernelModel,
+            scenario.interpModel,
+            scenario.op,
+            scenario.interpreterFactory,
+        ) { sink, n, variant ->
+            scenario.instance(sink, n, variant)
+            sink.field(PerfCatalog.QTY, "999", 1, 1, 1)
+        }
+        assertThrows<IllegalStateException> { reviewed.bind(changedValue, n = 4) }
+        assertThrows<IllegalStateException> {
+            reviewed.withResultRegime(VALIDATION_LOW_FIRING).bind(scenario, n = 4)
+        }
+        assertThrows<IllegalStateException> { reviewed.bind(scenario, n = 5) }
+    }
+
+    @Test
+    fun computationOutcomeRegimesHaveDistinctContentIdentities() {
+        val scenario = PerfCatalog.b7()
+        val fingerprints = listOf(COMPUTE_VALUE, COMPUTE_CLEARED, COMPUTE_ERRORED).map { regime ->
+            draft(op = COMPUTE, regime = regime).fingerprintFor(scenario, n = 2)
+        }
+
+        assertTrue(fingerprints.toSet().size == 3, "VALUE/CLEARED/ERRORED must not collapse to one computation identity")
+    }
+
+    @Test
+    fun formattedRowsCarryTheCompleteIdentity() {
+        val scenario = PerfCatalog.b1()
+        val draft = draft()
+        val reviewed = draft.review(scenario, n = 4)
+        val identity = reviewed.bind(scenario, n = 4).identity.complete(observedResultCardinality = listOf(2))
+        val stats = Stats(medianMs = 1.0, minMs = 0.9, p90Ms = 1.1)
+
+        val single = PerfHarness.format(PerfRow(identity, n = 4, firings = 2, stats, null, null))
+        val repeated = PerfHarness.formatRepeated(RepeatedRow(identity, n = 4, variants = 1, stats, null, null))
+
+        for (line in listOf(single, repeated)) {
+            assertTrue("test-case@1" in line, line)
+            assertTrue(identity.fingerprint in line, line)
+        }
+        assertNotEquals(identity.id.version.toString(), identity.fingerprint)
+    }
+}

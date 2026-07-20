@@ -331,7 +331,7 @@ The identity is also absent from the measurement artifact. `PerfRow`/`RepeatedRo
 
 **Acceptance checks:** Mutation guards prove that changing the model, one generated value, result regime, or benchmark N without bumping the version fails. Every emitted performance row contains `id@version` and the fingerprint. Validation and computation identities distinguish firing/low-firing and VALUE/CLEARED/ERRORED cases rather than collapsing computations to `NOT_APPLICABLE`.
 
-**Resolution:** Open.
+**Resolution:** Corrected 2026-07-20. Each reviewed scenario owns a SHA-256 identity over the kernel/interpreter models, generated placements, generator name/seed/parameters/variants, scale, operation, locale/zone, semantic result regime, and expected cardinality. The reviewed hash is stored beside its version and checked by the default suite; mutation guards cover model, value, regime, and N drift. `PerfRow` and `RepeatedRow` retain the complete identity, and their formatted/progress lines emit `id@version` plus the full fingerprint.
 
 ### RV-2026-07-20-03-4 — the inventory is not omission-safe and its Java-capability contract is inert
 
