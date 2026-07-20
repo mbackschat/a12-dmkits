@@ -23,6 +23,19 @@ record ModelProfile(
         Objects.requireNonNull(rules, "rules");
         Objects.requireNonNull(computations, "computations");
         Objects.requireNonNull(wiring, "wiring");
+        requireEqual(
+                "rule element count",
+                structure.elementCount("RULE"),
+                rules.conversion().total());
+        requireEqual(
+                "computation element count",
+                structure.elementCount("COMPUTATION"),
+                computations.programs().conversion().total());
+        if (wiring.referencedFields().counts().getOrDefault("ANY", 0L)
+                > structure.elementCount("FIELD")) {
+            throw new IllegalArgumentException(
+                    "referenced-field count cannot exceed field element count");
+        }
     }
 
     record StructureProfile(
@@ -35,6 +48,26 @@ record ModelProfile(
             Objects.requireNonNull(topology, "topology");
             Objects.requireNonNull(fields, "fields");
             Objects.requireNonNull(repeatability, "repeatability");
+            long fieldCount = elements.counts().getOrDefault("FIELD", 0L);
+            long groupCount = elements.counts().getOrDefault("GROUP", 0L);
+            requireEqual("field element count", fieldCount, fields.kinds().total());
+            requireEqual(
+                    "group element count",
+                    groupCount,
+                    topology.fieldsPerGroup().count());
+            requireEqual(
+                    "field chain-capacity count",
+                    fieldCount,
+                    repeatability.capacities().fieldChains().count());
+            if (fields.numberScale().count() > fieldCount
+                    || fields.enumCardinality().count() > fieldCount) {
+                throw new IllegalArgumentException(
+                        "field-specific distributions cannot exceed the field element count");
+            }
+        }
+
+        long elementCount(String kind) {
+            return elements.counts().getOrDefault(kind, 0L);
         }
     }
 
@@ -69,6 +102,16 @@ record ModelProfile(
             Objects.requireNonNull(outcomes, "outcomes");
             Objects.requireNonNull(topology, "topology");
             Objects.requireNonNull(capacities, "capacities");
+            long count = outcomes.total();
+            requireEqual("repeatable exact-depth count", count, topology.exactDepth().total());
+            requireEqual(
+                    "repeatable max-repetition count",
+                    count,
+                    capacities.maxRepetitions().count());
+            requireEqual(
+                    "repeatable group-chain count",
+                    count,
+                    capacities.groupChains().count());
         }
     }
 
@@ -118,6 +161,29 @@ record ModelProfile(
             Objects.requireNonNull(conversion, "conversion");
             Objects.requireNonNull(syntax, "syntax");
             Objects.requireNonNull(runtime, "runtime");
+            long converted = conversion.converted();
+            requireEqual("converted-program AST count", converted, syntax.ast().count());
+            requireEqual(
+                    "converted-program construct-combination count",
+                    converted,
+                    syntax.dispatch().constructCombinations().total());
+            requireEqual(
+                    "program scope count",
+                    conversion.total(),
+                    runtime.scope().classes().total());
+            requireEqual(
+                    "converted-program work-capacity count",
+                    converted,
+                    runtime.evaluation().combinedWork().capacity().count());
+            requireEqual(
+                    "scan joint count",
+                    runtime.evaluation().scans().kinds().total(),
+                    runtime.evaluation().combinedWork().scopeByScan().total());
+            long scopedConstructs = runtimeScopedConstructCount(syntax.dispatch());
+            requireEqual(
+                    "construct-by-scope count",
+                    syntax.dispatch().constructs().total(),
+                    scopedConstructs);
         }
     }
 
@@ -135,6 +201,10 @@ record ModelProfile(
 
         long total() {
             return outcomes.total();
+        }
+
+        long converted() {
+            return outcomes.counts().getOrDefault("CONVERTED", 0L);
         }
     }
 
@@ -165,6 +235,10 @@ record ModelProfile(
                 throw new IllegalArgumentException(
                         "all AST distributions must describe the same converted-program count");
             }
+        }
+
+        long count() {
+            return nodeCount.count();
         }
     }
 
@@ -283,6 +357,25 @@ record ModelProfile(
             Objects.requireNonNull(programs, "programs");
             Objects.requireNonNull(shape, "shape");
             Objects.requireNonNull(dependencies, "dependencies");
+            long total = programs.conversion().total();
+            long converted = programs.conversion().converted();
+            requireEqual(
+                    "computed-field kind count",
+                    total,
+                    shape.computedFieldKinds().total());
+            requireEqual(
+                    "computation-table count",
+                    converted,
+                    shape.tables().alternatives().count());
+            requireEqual(
+                    "computation-archetype count",
+                    converted,
+                    shape.archetypes().total());
+            if (dependencies.feedingComputations() > total
+                    || dependencies.maxCascadeDepth() > total) {
+                throw new IllegalArgumentException(
+                        "computation dependency facts cannot exceed the computation count");
+            }
         }
     }
 
@@ -348,5 +441,20 @@ record ModelProfile(
             }
         });
         return Collections.unmodifiableSortedMap(copy);
+    }
+
+    private static long runtimeScopedConstructCount(DispatchProfile dispatch) {
+        long total = 0;
+        for (LongHistogram histogram : dispatch.constructsByScope().values()) {
+            total = Math.addExact(total, histogram.total());
+        }
+        return total;
+    }
+
+    private static void requireEqual(String fact, long expected, long actual) {
+        if (expected != actual) {
+            throw new IllegalArgumentException(
+                    fact + " must agree: expected " + expected + " but was " + actual);
+        }
     }
 }

@@ -99,6 +99,10 @@ dependencies {
     // (the kernel documents the caller does so) — it constructs no kernel `…Impl` (N8/D15 guardrail).
     implementation "com.mgmtp.a12.kernel:kernel-core-runtime-api:32.3.4"           // ICustomCondition (core), IData, IIdentifier
 
+    // The model-performance profile is a standalone JSON artifact consumed by both the adapter facade
+    // and the CLI. Its package-private codec validates the current profile shape before synthesis.
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+
     // modelkit (structure builder) folded into the root project (2026-06-09) — its classes arrive via
     // `api project(':')`, so a read round-trip's test can author a model with it without a separate dep.
 
@@ -111,11 +115,6 @@ dependencies {
     // (e.g. a pattern-based "EMail") in the kernel oracle, so `Valid(field, "EMail")` does a REAL check (the
     // bare kernel ships none → degenerate no-op). The impl 30.8.1 depends on this api 28.2.0 (ABI-consistent).
     testImplementation "com.mgmtp.a12.kernel:kernel-core-customfieldtype-api:28.2.0"
-
-    // The corpus/laws test tooling (CorpusModelPreparer / ModelShrinker / ParserCorpusSweep) parses and
-    // rewrites DM-JSON model trees with Jackson at the repo-standard pin (already implementation-scoped in
-    // core/rulekit/modelkit/cli) — a live test dependency, not a published one.
-    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
 
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
