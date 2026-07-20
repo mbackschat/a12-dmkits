@@ -94,6 +94,7 @@ class DataSchemaConformanceTest {
                 new Run("model-report", new String[]{"-m", reportModel.toString(), "model", "report",
                         "--tree", "--root", "/Subscription",
                         "--include", "rules,computations,descriptions,annotations,enum"}),
+                new Run("profile", new String[]{"-m", order.toString(), "profile", "extract"}),
                 new Run("read", new String[]{"-m", sub.toString(), "rule", "read", CliTestSupport.RULE_FULL_NAME}),
                 new Run("read", new String[]{"-m", sub.toString(), "rule", "read"}),
                 new Run("explain", new String[]{"-m", sub.toString(), "rule", "explain", CliTestSupport.RULE_FULL_NAME}),
@@ -201,7 +202,7 @@ class DataSchemaConformanceTest {
     /** Tripwire: if a new {@code DATA_SCHEMA} verb is added, it must be covered above or reasoned-exempt. */
     @Test
     void everyDataSchemaIsCoveredOrExempt() {
-        Set<String> covered = Set.of("model-info", "describe", "model-diff", "model-report", "model-usage", "read",
+        Set<String> covered = Set.of("model-info", "describe", "model-diff", "model-report", "model-usage", "profile", "read",
                 "explain", "where-used", "field-read", "group-read", "typedef-read", "eval-doc", "compute-doc",
                 "workspace-list");
         List<String> uncovered = new ArrayList<>();

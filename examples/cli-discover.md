@@ -26,6 +26,7 @@ model compute
 model seed
 model import-jsonschema
 model export-jsonschema
+profile extract
 rule check
 rule read
 rule explain
@@ -90,7 +91,30 @@ diagnostics
 manifest
 ```
 
-→ The surface is **two axes**: a *target* (`model`, `rule`, `computation`, `field`, `group`, `typedef`, `include`, `config`, `workspace`) crossed with an *op* (`add`/`read`/`modify`/`remove`, plus per-target verbs like `rule check` or `model check`). (`workspace` is the cross-model exception — it scans a *directory*, not the `-m` model.) The manifest carries each verb's `target`/`op`, its params (with the op-record `key`), and a `schema` pointer. The tool describes itself — the skill teaches *judgment* (polarity, the traps), not this catalog.
+→ The surface is **two axes**: a *target* (`model`, `profile`, `rule`, `computation`, `field`, `group`, `typedef`, `include`, `config`, `workspace`) crossed with an *op* (`add`/`read`/`modify`/`remove`, plus per-target verbs like `profile extract`, `rule check`, or `model check`). (`workspace` is the cross-model exception — it scans a *directory*, not the `-m` model.) The manifest carries each verb's `target`/`op`, its params (with the op-record `key`), and a `schema` pointer. The tool describes itself — the skill teaches *judgment* (polarity, the traps), not this catalog.
+
+## profile extract
+
+`profile extract` turns a model into the domain-blind workload shape used for performance calibration. The ordinary form is a read: the profile rides `data`. This projection keeps the demonstration compact while proving the current artifact's four top-level sections.
+
+```bash
+dmtool -m examples/models/order-ruled.dm.json profile extract \
+  | jq '{outcome, sections: (.data|keys)}'
+```
+
+```output
+{
+  "outcome": "read",
+  "sections": [
+    "computations",
+    "rules",
+    "structure",
+    "wiring"
+  ]
+}
+```
+
+→ Use `-o target.profile.json` when the profile is a reusable artifact: the file is the bare profile and stdout becomes an `applied` write receipt. `schema profile extract` describes the current profile shape; there is no profile-version selector.
 
 ## operators
 

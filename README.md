@@ -333,6 +333,18 @@ This is the empirical check a static "is it valid?" can't give — it's how you 
 
 > **The interpreter is kernel-exact *and* fast** — clean-room, no kernel code, verified rule-for-rule against the real kernel. The full story (library use on JVM + JS, the verification estate, the measured performance): [the interpreter section](#the-interpreter--kernel-free-runtime-evaluation) below.
 
+### Extract a performance-calibration profile
+
+```sh
+# envelope mode: inspect or pipe the identifier-free profile under .data
+dmtool -m real.dm.json profile extract
+
+# artifact mode: persist the bare current profile; stdout is an applied write receipt
+dmtool -m real.dm.json profile extract -o target.profile.json
+```
+
+The profile records the model shapes that drive evaluation cost — structure and repeatability, rule/computation work, and field wiring — without carrying domain identifiers, literals, messages, or source expressions. Includes and imported type definitions are resolved through the same `-w/--workspace` boundary as other model reads. Its exact current shape is discoverable from `dmtool schema profile extract`; there is no V1/V2 or `profileVersion` mode.
+
 ### Edit, with a preview diff
 
 ```sh
@@ -452,7 +464,7 @@ The [`examples/`](examples/) directory has **verifiable** walkthroughs of every 
 | Demo | Shows |
 |---|---|
 | [`cli-tour`](examples/cli-tour.md) | read one model: `model check` / `model describe` / `model read` · `model usage` · `rule read` / `rule explain` / `rule format` / `rule check` · `field read` / `group read` / `config read` |
-| [`cli-discover`](examples/cli-discover.md) | the self-describing surface: `manifest` · `operators` · `patterns` · `diagnostics` · `schema` |
+| [`cli-discover`](examples/cli-discover.md) | the self-describing surface: `manifest` · `operators` · `patterns` · `diagnostics` · `schema` · `profile extract` |
 | [`cli-review`](examples/cli-review.md) | review & comprehend: `model report` (the glossed catalog) · `model diff` (the risk-ranked semantic diff, incl. `POLARITY_INVERTED`) |
 | [`cli-workspace`](examples/cli-workspace.md) | multi-file models: `model info` · `workspace list` / `workspace graph` / `workspace roles` |
 | [`cli-edit-loop`](examples/cli-edit-loop.md) | author/modify rules & computations, `where-used`, `batch`, `;;` comments, the re-express loop |

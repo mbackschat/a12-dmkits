@@ -1,0 +1,284 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/profile.schema.json",
+  "title": "ModelPerformanceProfile",
+  "description": "The current, identifier-free model-performance profile returned in `data` by `dmtool -m <model> profile extract`. It records structure, rule/computation work shapes, and wiring distributions for reproducible synthesis and performance calibration. It deliberately carries no source identifiers, literals, messages, regex patterns, or profile-version switch.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["structure", "rules", "computations", "wiring"],
+  "properties": {
+    "structure": { "$ref": "#/$defs/structure" },
+    "rules": { "$ref": "#/$defs/program" },
+    "computations": { "$ref": "#/$defs/computations" },
+    "wiring": { "$ref": "#/$defs/wiring" }
+  },
+  "$defs": {
+    "histogram": {
+      "type": "object",
+      "description": "Named category counts; keys are the closed current vocabulary for this axis.",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "bucket": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lower", "upper", "count"],
+      "properties": {
+        "lower": { "type": "integer" },
+        "upper": { "type": "integer" },
+        "count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "distribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "min", "median", "p90", "max", "buckets"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "min": { "type": "integer" },
+        "median": { "type": "integer" },
+        "p90": { "type": "integer" },
+        "max": { "type": "integer" },
+        "buckets": { "type": "array", "items": { "$ref": "#/$defs/bucket" } }
+      }
+    },
+    "capacity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bounded", "unboundedCauses"],
+      "properties": {
+        "bounded": { "$ref": "#/$defs/distribution" },
+        "unboundedCauses": { "$ref": "#/$defs/histogram" }
+      }
+    },
+    "structure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["elements", "topology", "fields", "repeatability"],
+      "properties": {
+        "elements": { "$ref": "#/$defs/histogram" },
+        "topology": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["maxGroupDepth", "fieldsPerGroup"],
+          "properties": {
+            "maxGroupDepth": { "type": "integer", "minimum": 0 },
+            "fieldsPerGroup": { "$ref": "#/$defs/distribution" }
+          }
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kinds", "constrainedFields", "numberScale", "enumCardinality"],
+          "properties": {
+            "kinds": { "$ref": "#/$defs/histogram" },
+            "constrainedFields": { "$ref": "#/$defs/histogram" },
+            "numberScale": { "$ref": "#/$defs/distribution" },
+            "enumCardinality": { "$ref": "#/$defs/distribution" }
+          }
+        },
+        "repeatability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["outcomes", "topology", "capacities"],
+          "properties": {
+            "outcomes": { "$ref": "#/$defs/histogram" },
+            "topology": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["maxDepth", "exactDepth", "siblingFan"],
+              "properties": {
+                "maxDepth": { "type": "integer", "minimum": 0 },
+                "exactDepth": { "$ref": "#/$defs/histogram" },
+                "siblingFan": { "$ref": "#/$defs/distribution" }
+              }
+            },
+            "capacities": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["maxRepetitions", "groupChains", "fieldChains"],
+              "properties": {
+                "maxRepetitions": { "$ref": "#/$defs/capacity" },
+                "groupChains": { "$ref": "#/$defs/capacity" },
+                "fieldChains": { "$ref": "#/$defs/capacity" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ast": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeCount", "depth", "booleanArity", "variadicArity", "distinctFanIn"],
+      "properties": {
+        "nodeCount": { "$ref": "#/$defs/distribution" },
+        "depth": { "$ref": "#/$defs/distribution" },
+        "booleanArity": { "$ref": "#/$defs/distribution" },
+        "variadicArity": { "$ref": "#/$defs/distribution" },
+        "distinctFanIn": { "$ref": "#/$defs/distribution" }
+      }
+    },
+    "dispatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["catalogOperators", "intrinsicOperators", "constructs", "constructCombinations", "constructsByScope"],
+      "properties": {
+        "catalogOperators": { "$ref": "#/$defs/histogram" },
+        "intrinsicOperators": { "$ref": "#/$defs/histogram" },
+        "constructs": { "$ref": "#/$defs/histogram" },
+        "constructCombinations": { "$ref": "#/$defs/histogram" },
+        "constructsByScope": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/histogram" }
+        }
+      }
+    },
+    "scan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kinds", "starDepth", "capacity", "filterComplexity"],
+      "properties": {
+        "kinds": { "$ref": "#/$defs/histogram" },
+        "starDepth": { "$ref": "#/$defs/distribution" },
+        "capacity": { "$ref": "#/$defs/capacity" },
+        "filterComplexity": { "$ref": "#/$defs/distribution" }
+      }
+    },
+    "work": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capacity", "scopeByScan"],
+      "properties": {
+        "capacity": { "$ref": "#/$defs/capacity" },
+        "scopeByScan": { "$ref": "#/$defs/histogram" }
+      }
+    },
+    "mechanism": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shape", "capacity"],
+      "properties": {
+        "shape": { "$ref": "#/$defs/distribution" },
+        "capacity": { "$ref": "#/$defs/capacity" }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "evaluation", "resolution"],
+      "properties": {
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["classes", "capacity"],
+          "properties": {
+            "classes": { "$ref": "#/$defs/histogram" },
+            "capacity": { "$ref": "#/$defs/capacity" }
+          }
+        },
+        "evaluation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["scans", "combinedWork", "mechanisms", "outerCorrelation"],
+          "properties": {
+            "scans": { "$ref": "#/$defs/scan" },
+            "combinedWork": { "$ref": "#/$defs/work" },
+            "mechanisms": {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/mechanism" }
+            },
+            "outerCorrelation": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["forms", "capacity"],
+              "properties": {
+                "forms": { "$ref": "#/$defs/histogram" },
+                "capacity": { "$ref": "#/$defs/capacity" }
+              }
+            }
+          }
+        },
+        "resolution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["walkUpDistance"],
+          "properties": {
+            "walkUpDistance": { "$ref": "#/$defs/distribution" }
+          }
+        }
+      }
+    },
+    "program": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["conversion", "syntax", "runtime"],
+      "properties": {
+        "conversion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["outcomes", "opaqueReasons"],
+          "properties": {
+            "outcomes": { "$ref": "#/$defs/histogram" },
+            "opaqueReasons": { "$ref": "#/$defs/histogram" }
+          }
+        },
+        "syntax": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ast", "dispatch"],
+          "properties": {
+            "ast": { "$ref": "#/$defs/ast" },
+            "dispatch": { "$ref": "#/$defs/dispatch" }
+          }
+        },
+        "runtime": { "$ref": "#/$defs/runtime" }
+      }
+    },
+    "computations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["programs", "shape", "dependencies"],
+      "properties": {
+        "programs": { "$ref": "#/$defs/program" },
+        "shape": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["computedFieldKinds", "tables", "archetypes", "aggregateScaleMatch"],
+          "properties": {
+            "computedFieldKinds": { "$ref": "#/$defs/histogram" },
+            "tables": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["alternatives", "preconditions", "toleranceBands"],
+              "properties": {
+                "alternatives": { "$ref": "#/$defs/distribution" },
+                "preconditions": { "$ref": "#/$defs/distribution" },
+                "toleranceBands": { "$ref": "#/$defs/histogram" }
+              }
+            },
+            "archetypes": { "$ref": "#/$defs/histogram" },
+            "aggregateScaleMatch": { "$ref": "#/$defs/histogram" }
+          }
+        },
+        "dependencies": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["maxCascadeDepth", "feedingComputations"],
+          "properties": {
+            "maxCascadeDepth": { "type": "integer", "minimum": 0 },
+            "feedingComputations": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "wiring": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["referencedFields", "fieldFanOut"],
+      "properties": {
+        "referencedFields": { "$ref": "#/$defs/histogram" },
+        "fieldFanOut": { "$ref": "#/$defs/distribution" }
+      }
+    }
+  }
+}
