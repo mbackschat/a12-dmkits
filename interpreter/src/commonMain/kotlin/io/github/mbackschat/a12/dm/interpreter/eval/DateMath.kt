@@ -397,7 +397,7 @@ private fun buildIso(values: List<String>, comps: List<Char>): String? {
  *  value carries; the datetime-comparison dispatch keys on it. */
 fun isIsoDateTime(s: String): Boolean = ISO_DATE_TIME.matches(s)
 
-// ---- model-timezone (DST) instant math — the Europe/Berlin axis (IG83 → KERNEL-FINDINGS §6) -------------
+// ---- model-timezone (DST) instant math — the Europe/Berlin axis (IF155 → KERNEL-FINDINGS §6) -------------
 //
 // The kernel parses every DATE/DATE_TIME with a zone-set formatter, so under a `Europe/Berlin` model wall
 // clock and instants diverge across the DST transitions. The interpreter keeps its canonical LOCAL ISO form
