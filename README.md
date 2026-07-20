@@ -342,11 +342,14 @@ dmtool -m real.dm.json profile extract
 # artifact mode: persist the bare current profile; stdout is an applied write receipt
 dmtool -m real.dm.json profile extract -o target.profile.json
 
+# synthesize a deterministic own-domain model with the target workload shape
+dmtool profile synthesize --input target.profile.json --seed 42 -o calibration.dm.json
+
 # compare every classified axis after synthesis and re-extraction
 dmtool profile compare --target target.profile.json --actual actual.profile.json
 ```
 
-The profile records the model shapes that drive evaluation cost — structure and repeatability, rule/computation work, and field wiring — without carrying domain identifiers, literals, messages, or source expressions. Includes and imported type definitions are resolved through the same `-w/--workspace` boundary as other model reads. `profile compare` accepts either bare artifacts or extraction envelopes, returns the overall match plus every `EXACT`/`AT_LEAST`/`BUCKET`/`INFORMATIVE` axis in `data`, and uses the normal read-verdict convention: a mismatch is `valid:false` with exit 1. The exact current contracts are discoverable from `dmtool schema profile extract` and `dmtool schema profile compare`; there is no V1/V2 or `profileVersion` mode.
+The profile records the model shapes that drive evaluation cost — structure and repeatability, rule/computation work, and field wiring — without carrying domain identifiers, literals, messages, or source expressions. Includes and imported type definitions are resolved through the same `-w/--workspace` boundary as other model reads. `profile synthesize` is the inverse artifact step: it accepts the bare artifact or an extraction envelope and uses typed dmkits to emit a deterministic own-domain DM-JSON model; stdout carries the model unless `-o` writes it and returns an applied receipt. Every capacity must be bounded: synthesis refuses an unbounded profile instead of silently substituting a cheaper workload. `profile compare` accepts either bare artifacts or extraction envelopes, returns the overall match plus every `EXACT`/`AT_LEAST`/`BUCKET`/`INFORMATIVE` axis in `data`, and uses the normal read-verdict convention: a mismatch is `valid:false` with exit 1. The exact current profile and comparison contracts are discoverable from `dmtool schema profile extract` and `dmtool schema profile compare`; synthesis is classified as a model-artifact producer in the manifest. There is no V1/V2 or `profileVersion` mode.
 
 ### Edit, with a preview diff
 
@@ -467,7 +470,7 @@ The [`examples/`](examples/) directory has **verifiable** walkthroughs of every 
 | Demo | Shows |
 |---|---|
 | [`cli-tour`](examples/cli-tour.md) | read one model: `model check` / `model describe` / `model read` · `model usage` · `rule read` / `rule explain` / `rule format` / `rule check` · `field read` / `group read` / `config read` |
-| [`cli-discover`](examples/cli-discover.md) | the self-describing surface: `manifest` · `operators` · `patterns` · `diagnostics` · `schema` · `profile extract`/`compare` |
+| [`cli-discover`](examples/cli-discover.md) | the self-describing surface: `manifest` · `operators` · `patterns` · `diagnostics` · `schema` · `profile extract`/`synthesize`/`compare` |
 | [`cli-review`](examples/cli-review.md) | review & comprehend: `model report` (the glossed catalog) · `model diff` (the risk-ranked semantic diff, incl. `POLARITY_INVERTED`) |
 | [`cli-workspace`](examples/cli-workspace.md) | multi-file models: `model info` · `workspace list` / `workspace graph` / `workspace roles` |
 | [`cli-edit-loop`](examples/cli-edit-loop.md) | author/modify rules & computations, `where-used`, `batch`, `;;` comments, the re-express loop |

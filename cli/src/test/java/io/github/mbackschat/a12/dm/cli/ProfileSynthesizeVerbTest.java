@@ -1,0 +1,100 @@
+package io.github.mbackschat.a12.dm.cli;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import io.github.mbackschat.a12.dm.adapter.profile.ModelProfiles;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+
+/** The current-only {@code profile synthesize} artifact-producing CLI boundary. */
+class ProfileSynthesizeVerbTest {
+
+    private static final ObjectMapper JSON = new ObjectMapper();
+
+    @Test
+    void synthesizesADeterministicKernelValidModelArtifact(@TempDir Path dir) throws Exception {
+        Path profile = profile(dir);
+
+        CliTestSupport.Result first = CliTestSupport.run(
+                "profile", "synthesize", "--input", profile.toString(), "--seed", "42");
+        CliTestSupport.Result second = CliTestSupport.run(
+                "profile", "synthesize", "--input", profile.toString(), "--seed", "42");
+
+        assertEquals(0, first.code(), first::err);
+        assertEquals(first.out(), second.out(), "the same current profile and seed reproduce byte-identically");
+        assertFalse(JSON.readTree(first.out()).path("header").path("id").asText().isBlank());
+        BoundModel.ofJson(first.out());
+    }
+
+    @Test
+    void outputWritesTheModelAndReturnsAnAppliedReceipt(@TempDir Path dir) throws Exception {
+        Path output = dir.resolve("ProfileCalibration.dm.json");
+
+        CliTestSupport.Result result = CliTestSupport.run(
+                "profile", "synthesize",
+                "--input", profile(dir).toString(),
+                "--seed", "7",
+                "-o", output.toString());
+
+        assertEquals(0, result.code(), result::err);
+        BoundModel.ofJson(Files.readString(output));
+        JsonNode receipt = JSON.readTree(result.out());
+        assertEquals("profile", receipt.path("target").asText());
+        assertEquals("synthesize", receipt.path("op").asText());
+        assertEquals("applied", receipt.path("outcome").asText());
+        assertEquals(output.toString(), receipt.path("output").asText());
+    }
+
+    @Test
+    void exposesOnlyTheCurrentInputAndArtifactContract() throws Exception {
+        CliTestSupport.Result help = CliTestSupport.run("profile", "synthesize", "--help");
+        assertEquals(0, help.code(), help::err);
+        assertTrue(help.out().contains("--input"));
+        assertTrue(help.out().contains("--seed"));
+        assertTrue(help.out().contains("unbounded"));
+        assertFalse(help.out().contains("profile-version"));
+
+        JsonNode manifest = JSON.readTree(CliTestSupport.run("manifest").out());
+        JsonNode verb = findVerb(manifest, "profile synthesize");
+        assertFalse(verb.has("schema"), "a model artifact producer has no result-envelope contract");
+        assertTrue(SchemaCommand.CONTRACT_EXEMPT.containsKey("profile synthesize"));
+
+        assertEquals(2, CliTestSupport.run("model", "synthesize", "--input", "unused").code());
+        assertEquals(2, CliTestSupport.run(
+                "profile", "synthesize", "--input", "unused", "--profile-version", "1").code());
+    }
+
+    private static Path profile(Path dir) throws Exception {
+        String model = DocumentModelDraft.named("CalibrationSource").locale("en_US")
+                .rootGroup("Portfolio", root -> root
+                        .field("Name", FieldKind.STRING)
+                        .group("Positions", positions -> positions
+                                .repeatable(25)
+                                .field("Amount", FieldKind.NUMBER)))
+                .build()
+                .toJson();
+        Path profile = dir.resolve("target.profile.json");
+        Files.writeString(profile, ModelProfiles.extract(model));
+        return profile;
+    }
+
+    private static JsonNode findVerb(JsonNode manifest, String name) {
+        for (JsonNode verb : manifest.path("verbs")) {
+            if (name.equals(verb.path("verb").asText())) {
+                return verb;
+            }
+        }
+        throw new AssertionError("manifest is missing " + name);
+    }
+}

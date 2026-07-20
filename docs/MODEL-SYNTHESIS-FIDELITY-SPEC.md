@@ -1,6 +1,6 @@
-# Model synthesis fidelity ledger
+# Model synthesis fidelity specification
 
-This ledger is the complete classification of the model-performance profile axes consumed by `profile compare`. Unlike a `-GAPS` document, it keeps every row: its purpose is to prevent an extractor, synthesizer, comparator, or schema change from adding or dropping an axis without assigning an explicit fidelity policy.
+This specification defines the complete classification of the model-performance profile axes consumed by `profile compare`. It keeps every axis because an extractor, synthesizer, comparator, or schema change must not add or drop one without assigning an explicit fidelity policy.
 
 The executable registry is authoritative once G52 ships. A guard compares that registry with the profile schema and this table, and fails on an unclassified or stale axis.
 

@@ -53,7 +53,8 @@ final class SchemaCommand extends BaseCommand {
             "field add", "field-add",
             "field modify", "field-add",
             "typedef add", "typedef-add",
-            "typedef modify", "typedef-add");
+            "typedef modify", "typedef-add",
+            "profile synthesize", "profile");
 
     /** Ops that consume a {@code --instance} document INSTANCE → the schema describing that instance tree. */
     static final Map<String, String> DOC_INPUT = Map.of(
@@ -108,20 +109,22 @@ final class SchemaCommand extends BaseCommand {
      * emit a <b>rendered artifact</b> rather than the {@code {outcome,…}} envelope. Everything else is an
      * envelope op with a discoverable contract.
      */
-    static final Map<String, String> CONTRACT_EXEMPT = Map.of(
-            "manifest", "emits the verb/param map itself — run it",
-            "schema", "emits schemas itself — run it",
-            "operators", "emits the operator catalog itself — run it",
-            "patterns", "emits the validation-idiom catalog (and a scaffolded rule-spec) itself — run it",
-            "diagnostics", "emits the diagnostic registry itself — run it",
-            "export", "renders an artifact (model card / dot / …), not the result envelope",
-            "model new", "emits a brand-new model document (an artifact) to stdout; with -o stdout carries an "
-                    + "additive write-confirmation envelope, but the primary form has no directional contract",
-            "model seed", "emits a generated sample document instance (an artifact), not the result envelope",
-            "model import-jsonschema", "reads a JSON Schema file and emits the imported model as a DM-JSON "
-                    + "artifact to stdout (report on stderr); with -o the model goes to file + a write envelope",
-            "model export-jsonschema", "emits the model as a JSON Schema artifact to stdout (report on stderr); "
-                    + "with -o stdout carries a write-confirmation envelope");
+    static final Map<String, String> CONTRACT_EXEMPT = Map.ofEntries(
+            Map.entry("manifest", "emits the verb/param map itself — run it"),
+            Map.entry("schema", "emits schemas itself — run it"),
+            Map.entry("operators", "emits the operator catalog itself — run it"),
+            Map.entry("patterns", "emits the validation-idiom catalog (and a scaffolded rule-spec) itself — run it"),
+            Map.entry("diagnostics", "emits the diagnostic registry itself — run it"),
+            Map.entry("export", "renders an artifact (model card / dot / …), not the result envelope"),
+            Map.entry("model new", "emits a brand-new model document (an artifact) to stdout; with -o stdout carries "
+                    + "an additive write-confirmation envelope, but the primary form has no directional contract"),
+            Map.entry("model seed", "emits a generated sample document instance (an artifact), not the result envelope"),
+            Map.entry("profile synthesize", "reads a current profile and emits a synthesized DM-JSON model artifact "
+                    + "to stdout; with -o the model goes to a file and stdout carries an applied receipt"),
+            Map.entry("model import-jsonschema", "reads a JSON Schema file and emits the imported model as a DM-JSON "
+                    + "artifact to stdout (report on stderr); with -o the model goes to file + a write envelope"),
+            Map.entry("model export-jsonschema", "emits the model as a JSON Schema artifact to stdout (report on "
+                    + "stderr); with -o stdout carries a write-confirmation envelope"));
 
     /** Leaf op-names whose verb returns a read payload in the envelope's {@code data}. */
     private static final Set<String> READ_OPS =

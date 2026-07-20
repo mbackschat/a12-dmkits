@@ -122,7 +122,7 @@ Given the same normalized profile and seed, synthesis is byte-identical across s
 
 ## 6. Fidelity contract
 
-[`MODEL-SYNTHESIS-FIDELITY-LEDGER.md`](MODEL-SYNTHESIS-FIDELITY-LEDGER.md) classifies every profile axis as `EXACT`, `AT_LEAST`, `BUCKET`, or `INFORMATIVE`. `profile compare` derives its output and pass/fail decision from that classification; the implementation cannot silently omit a profile field.
+[`MODEL-SYNTHESIS-FIDELITY-SPEC.md`](MODEL-SYNTHESIS-FIDELITY-SPEC.md) classifies every profile axis as `EXACT`, `AT_LEAST`, `BUCKET`, or `INFORMATIVE`. `profile compare` derives its output and pass/fail decision from that classification; the implementation cannot silently omit a profile field.
 
 Performance-critical mechanism presence and tail capacities are never allowed to under-represent the target. Structural cardinalities that determine report size are exact. Validity-constrained distributions use declared bucket tolerances. Opaque constructs are reported, never faked.
 

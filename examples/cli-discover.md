@@ -27,6 +27,7 @@ model seed
 model import-jsonschema
 model export-jsonschema
 profile extract
+profile synthesize
 profile compare
 rule check
 rule read
@@ -92,9 +93,9 @@ diagnostics
 manifest
 ```
 
-→ The surface is **two axes**: a *target* (`model`, `profile`, `rule`, `computation`, `field`, `group`, `typedef`, `include`, `config`, `workspace`) crossed with an *op* (`add`/`read`/`modify`/`remove`, plus per-target verbs like `profile extract`/`compare`, `rule check`, or `model check`). (`workspace` is the cross-model exception — it scans a *directory*, not the `-m` model.) The manifest carries each verb's `target`/`op`, its params (with the op-record `key`), and a `schema` pointer. The tool describes itself — the skill teaches *judgment* (polarity, the traps), not this catalog.
+→ The surface is **two axes**: a *target* (`model`, `profile`, `rule`, `computation`, `field`, `group`, `typedef`, `include`, `config`, `workspace`) crossed with an *op* (`add`/`read`/`modify`/`remove`, plus per-target verbs like `profile extract`/`synthesize`/`compare`, `rule check`, or `model check`). (`workspace` is the cross-model exception — it scans a *directory*, not the `-m` model.) The manifest carries each verb's `target`/`op`, its params (with the op-record `key`), and a schema pointer for envelope verbs; artifact producers are explicitly classified. The tool describes itself — the skill teaches *judgment* (polarity, the traps), not this catalog.
 
-## profile extract and compare
+## profile extract, synthesize, and compare
 
 `profile extract` turns a model into the domain-blind workload shape used for performance calibration. The ordinary form is a read: the profile rides `data`. This projection keeps the demonstration compact while proving the current artifact's four top-level sections.
 
@@ -116,6 +117,24 @@ dmtool -m examples/models/order-ruled.dm.json profile extract \
 ```
 
 → Use `-o target.profile.json` when the profile is a reusable artifact: the file is the bare profile and stdout becomes an `applied` write receipt. `schema profile extract` describes the current profile shape; there is no profile-version selector.
+
+`profile synthesize` consumes that current artifact and emits an own-domain DM-JSON model. Its seed makes the result reproducible; it is an artifact producer rather than a result-envelope read.
+
+```bash
+dmtool profile synthesize \
+  --input examples/profiles/compact.json \
+  --seed 42 \
+  | jq '{hasId: ((.header.id // "") | length > 0), hasGroup: ([.. | objects | select(.type? == "Group")] | length > 0)}'
+```
+
+```output
+{
+  "hasId": true,
+  "hasGroup": true
+}
+```
+
+→ Add `-o calibration.dm.json` to write the synthesized model and receive an `applied` receipt on stdout. The input can also be a complete `profile extract` envelope; no compatibility or legacy-version path exists.
 
 `profile compare` classifies every fidelity axis after synthesis and re-extraction. A match is a normal successful read; a mismatch keeps every failed axis visible in `data`, sets `valid:false`, and exits 1.
 
