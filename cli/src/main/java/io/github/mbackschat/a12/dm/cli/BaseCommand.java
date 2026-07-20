@@ -208,6 +208,19 @@ public abstract class BaseCommand implements Callable<Integer> {
     }
 
     /**
+     * Preserve input-domain rejections caught by a broad command-local {@link RuntimeException} boundary.
+     * Strict model readers still use their local failure text for ordinary parse/render failures, but an invalid
+     * stored model or unresolved model reference must escape to {@link Cli}'s single structured-envelope mapper.
+     * Use this only around loading the caller-supplied model, never around validation of an edited candidate.
+     */
+    protected int failOrRethrowDomainRejection(String messagePrefix, RuntimeException failure) {
+        if (failure instanceof ModelConsistencyException || failure instanceof UnresolvedReferenceException) {
+            throw failure;
+        }
+        return fail(messagePrefix + failure.getMessage());
+    }
+
+    /**
      * Build (don't print) the {@code rejected} envelope for a kernel consistency failure — its {@code MVK_*}
      * notifications as enriched {@link Diagnostic}s. Static + shared so the {@link Cli} execution-exception
      * handler can map an <em>escaped</em> {@link ModelConsistencyException} (a verb that LOADS an

@@ -74,7 +74,7 @@ final class ExportCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         } catch (RuntimeException e) {
-            return fail("export failed: " + e.getMessage());
+            return failOrRethrowDomainRejection("export failed: ", e);
         }
     }
 

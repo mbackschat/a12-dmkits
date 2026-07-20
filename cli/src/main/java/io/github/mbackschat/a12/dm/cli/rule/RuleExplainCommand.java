@@ -78,7 +78,7 @@ final class RuleExplainCommand extends BaseCommand {
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {
-            return fail("explain failed: " + e.getMessage());
+            return failOrRethrowDomainRejection("explain failed: ", e);
         }
     }
 }

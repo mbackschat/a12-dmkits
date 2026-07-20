@@ -12,7 +12,6 @@ import java.util.List;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.rulekit.context.ModelContext;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import picocli.CommandLine.Command;
@@ -44,12 +43,10 @@ final class ModelDescribeCommand extends BaseCommand {
             ResultEnvelope env = ResultEnvelope.read("model", "describe", "model card", true, List.of(), card);
             out().print(env.toJsonString());
             return env.exitCode();
-        } catch (ModelConsistencyException e) {
-            throw e; // G14: an invalid-on-disk model → the one Cli handler renders the structured `rejected` envelope (CLI-SPEC §3)
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         } catch (RuntimeException e) {
-            return fail("describe failed: " + e.getMessage());
+            return failOrRethrowDomainRejection("describe failed: ", e);
         }
     }
 }

@@ -88,7 +88,7 @@ final class ComputationExplainCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("explain failed: " + e.getMessage());
         } catch (RuntimeException e) {
-            return fail("explain failed: " + e.getMessage());
+            return failOrRethrowDomainRejection("explain failed: ", e);
         }
     }
 }

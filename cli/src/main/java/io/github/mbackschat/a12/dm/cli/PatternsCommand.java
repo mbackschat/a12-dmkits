@@ -165,7 +165,7 @@ final class PatternsCommand extends BaseCommand {
         } catch (IllegalArgumentException bad) {
             return fail(bad.getMessage());          // missing --arg, unresolved path, bad enum value, …
         } catch (RuntimeException e) {
-            return fail("cannot scaffold from '" + pattern.id() + "': " + e.getMessage());
+            return failOrRethrowDomainRejection("cannot scaffold from '" + pattern.id() + "': ", e);
         }
 
         return switch (inst) {

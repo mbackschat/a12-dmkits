@@ -7,9 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -23,6 +26,12 @@ import org.junit.jupiter.api.io.TempDir;
 class InvalidModelLoadDiagnosticTest {
 
     private static final ObjectMapper M = new ObjectMapper();
+
+    private record StrictLoadCase(String name, List<String> args) {
+        private StrictLoadCase(String name, String... args) {
+            this(name, List.of(args));
+        }
+    }
 
     /** A model that DESERIALIZES but fails checkConsistency at load: a rule whose operand names a foreign root. */
     private static Path invalidModel(Path dir) throws Exception {
@@ -51,41 +60,55 @@ class InvalidModelLoadDiagnosticTest {
     }
 
     @Test
-    void ruleModifyOnAnInvalidStoredModelGivesAStructuredRejection_notAStackTrace(@TempDir Path dir) throws Exception {
-        Path m = invalidModel(dir);
-        CliTestSupport.Result res = CliTestSupport.run("-m", m.toString(), "rule", "modify", "/R/BAD",
-                "--condition", "FieldFilled(/R/A)");
-        assertNotEquals(0, res.code(), "an invalid-on-disk model is a refusal, not success");
-        assertNoStackTrace(res);
-        // structured envelope on stdout carrying the kernel's code
-        var env = M.readTree(res.out());
-        assertEquals("rejected", env.path("outcome").asText(), () -> "a structured rejected envelope: " + res.out());
-        assertTrue(res.out().contains("MVK_INVALID_ROOT_GROUP"),
-                () -> "the kernel's code surfaces in the envelope: " + res.out());
+    void everyStrictReaderPreservesAnInvalidStoredModelAsTheCentralStructuredRejection(@TempDir Path dir)
+            throws Exception {
+        Path model = invalidModel(dir);
+        List<StrictLoadCase> cases = List.of(
+                new StrictLoadCase("model describe", "model", "describe"),
+                new StrictLoadCase("model read", "model", "read"),
+                new StrictLoadCase("model report", "model", "report"),
+                new StrictLoadCase("model usage", "model", "usage"),
+                new StrictLoadCase("rule read", "rule", "read", "/R/BAD"),
+                new StrictLoadCase("rule deps", "rule", "deps", "/R/BAD"),
+                new StrictLoadCase("rule explain", "rule", "explain", "/R/BAD"),
+                new StrictLoadCase("rule format", "rule", "format", "/R/BAD"),
+                new StrictLoadCase("computation read", "computation", "read"),
+                new StrictLoadCase("computation explain", "computation", "explain", "/R/AnyComputation"),
+                new StrictLoadCase("computation format", "computation", "format", "/R/AnyComputation"),
+                new StrictLoadCase("where-used", "where-used", "/R/A"),
+                new StrictLoadCase("export", "export", "card"));
+
+        for (StrictLoadCase testCase : cases) {
+            List<String> args = new ArrayList<>(List.of("-m", model.toString()));
+            args.addAll(testCase.args());
+            CliTestSupport.Result res = CliTestSupport.run(args.toArray(String[]::new));
+
+            assertNotEquals(0, res.code(), testCase.name() + ": an invalid-on-disk model is a refusal, not success");
+            assertNoStackTrace(res);
+            var env = M.readTree(res.out());
+            assertEquals("rejected", env.path("outcome").asText(),
+                    () -> testCase.name() + ": expected the central structured rejection: " + res.out());
+            assertTrue(res.out().contains("MVK_INVALID_ROOT_GROUP"),
+                    () -> testCase.name() + ": the kernel code must surface in the envelope: " + res.out());
+        }
     }
 
     @Test
-    void modelDescribeOnAnInvalidStoredModelGivesAStructuredRejection_notAStackTrace(@TempDir Path dir) throws Exception {
-        // the class, not one verb: another load verb on the same invalid model must give the SAME structured
-        // envelope (G14 — it used to catch the exception into a plain "describe failed:" string, not the envelope)
-        CliTestSupport.Result res = CliTestSupport.run("-m", invalidModel(dir).toString(), "model", "describe");
-        assertNotEquals(0, res.code());
-        assertNoStackTrace(res);
-        var env = M.readTree(res.out());
-        assertEquals("rejected", env.path("outcome").asText(), () -> "a structured rejected envelope: " + res.out());
-        assertTrue(res.out().contains("MVK_INVALID_ROOT_GROUP"),
-                () -> "the kernel's code surfaces in the envelope: " + res.out());
-    }
+    void strictReaderPreservesAnUnresolvedIncludeAsTheCentralDomainRejection(@TempDir Path dir) throws Exception {
+        String json = DocumentModelDraft.named("host").locale("en_US")
+                .include("missing-library", "missing-library")
+                .rootGroup("Host", host -> host.mount("Missing", "missing-library"))
+                .build().toJson();
+        Path model = dir.resolve("host.json");
+        Files.writeString(model, json);
 
-    @Test
-    void ruleReadOnAnInvalidStoredModelGivesAStructuredRejection_notAStackTrace(@TempDir Path dir) throws Exception {
-        // rule read caught the load exception into a plain "read failed:" string (G14) — same model, same fix
-        CliTestSupport.Result res = CliTestSupport.run("-m", invalidModel(dir).toString(), "rule", "read", "/R/BAD");
-        assertNotEquals(0, res.code(), "an invalid-on-disk model is a refusal, not success");
+        CliTestSupport.Result res = CliTestSupport.run("-m", model.toString(), "model", "read");
+
+        assertEquals(1, res.code(), "an unresolved model reference is an input rejection");
         assertNoStackTrace(res);
         var env = M.readTree(res.out());
-        assertEquals("rejected", env.path("outcome").asText(), () -> "a structured rejected envelope: " + res.out());
-        assertTrue(res.out().contains("MVK_INVALID_ROOT_GROUP"),
-                () -> "the kernel's code surfaces in the envelope: " + res.out());
+        assertEquals("rejected", env.path("outcome").asText(), res::out);
+        assertEquals("RK_UNRESOLVED_REFERENCE",
+                env.path("diagnostics").path(0).path("code").asText(), res::out);
     }
 }

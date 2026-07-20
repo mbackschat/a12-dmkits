@@ -109,7 +109,7 @@ final class ComputationReadCommand extends BaseCommand {
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {
-            return fail("read failed: " + e.getMessage());
+            return failOrRethrowDomainRejection("read failed: ", e);
         }
     }
 }

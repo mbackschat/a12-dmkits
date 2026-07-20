@@ -13,7 +13,6 @@ import io.github.mbackschat.a12.dm.adapter.review.ModelReport;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
-import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.Suggest;
 import io.github.mbackschat.a12.dm.rulekit.context.ModelCard;
@@ -104,10 +103,8 @@ final class ModelReportCommand extends BaseCommand {
                     true, List.of(), toData(report));
             out().print(env.toJsonString());
             return env.exitCode();
-        } catch (ModelConsistencyException e) {
-            throw e; // G14: invalid-on-disk → the Cli seam renders the structured `rejected` envelope
         } catch (RuntimeException e) {
-            return fail("report failed: " + e.getMessage());
+            return failOrRethrowDomainRejection("report failed: ", e);
         }
     }
 
