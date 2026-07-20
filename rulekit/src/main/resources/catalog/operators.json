@@ -2009,10 +2009,13 @@
       "the filter condition may not contain CustomCondition, RepetitionNotUnique, a semantic index, a parallel iteration, or a nested Having (MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION)"
     ],
     "gotchas": [
-      { "text": "inside the filter, the $ operator pins a reference to the rule's current (outer) repetition — correlated subquery", "kind": "AUTHORING" }
+      { "text": "inside the filter, the $ operator pins a reference to the rule's current (outer) repetition — correlated subquery", "kind": "AUTHORING" },
+      { "text": "a multi-star path binds at its first starred segment: /Warehouse/Aisles*/Bins*/Quantity spans Bins across every Aisles row, not only the current leaf branch; leave an ancestor unstarred when it must remain outer-bound", "kind": "SURPRISE" },
+      { "text": "in a multi-star filter, CurrentRepetition(Bins) != CurrentRepetition($Bins) compares the leaf index and therefore excludes every candidate with the outer row's leaf index across different ancestor rows — it is not SQL-style physical-row identity", "kind": "SURPRISE" }
     ],
-    "validExample": { "dsl": "FieldFilled(CustomerName) And Sum(Items*/Count Having [Items/Sku] == \"A\") > 5", "note": "sums only the line items whose Sku is A" },
+    "validExample": { "dsl": "FieldFilled(/Warehouse/Aisles/Bins/Quantity) And MoreThanOneFieldFilled(/Warehouse/Aisles*/Bins*/Quantity Having [/Warehouse/Aisles/Bins/Quantity] == [$/Warehouse/Aisles/Bins/Quantity])", "note": "the first star widens the candidate set across all aisles; $Quantity stays correlated to the current outer bin" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And Sum(Items*/Count Having RepetitionNotUnique(Items/Sku)) > 0", "error": "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION", "fix": "RepetitionNotUnique is not allowed inside a filter condition" },
+    "seeAlso": ["CurrentRepetition"],
     "sinceKernel": "30.8.x"
   },
   {
@@ -2029,10 +2032,13 @@
     ],
     "gotchas": [
       { "text": "for a non-repeatable group the index is constant (accepted, rarely useful)", "kind": "AUTHORING" },
-      { "text": "the rule must iterate over the group (its error field lies under it); from a non-iterating rule the kernel rejects it (MVK_NO_WILDCARD)", "kind": "SURPRISE" }
+      { "text": "the rule must iterate over the group (its error field lies under it); from a non-iterating rule the kernel rejects it (MVK_NO_WILDCARD)", "kind": "SURPRISE" },
+      { "text": "a multi-star Having path binds at its first starred segment; leave an ancestor unstarred when it must remain outer-bound", "kind": "SURPRISE" },
+      { "text": "CurrentRepetition(Bins) != CurrentRepetition($Bins) inside a multi-star filter excludes every candidate that shares the outer row's leaf index across different ancestor rows, not merely one physical row", "kind": "SURPRISE" }
     ],
-    "validExample": { "dsl": "FieldFilled(Items/Count) And CurrentRepetition(Items) > 1", "note": "fires from the second line item onward (the error field under Items makes the rule iterate)" },
+    "validExample": { "dsl": "FieldFilled(/Warehouse/Aisles/Bins/Quantity) And AtLeastOneFieldFilled(/Warehouse/Aisles*/Bins*/Quantity Having (CurrentRepetition(/Warehouse/Aisles/Bins) != CurrentRepetition($/Warehouse/Aisles/Bins) And [/Warehouse/Aisles/Bins/Quantity] == [$/Warehouse/Aisles/Bins/Quantity]))", "note": "finds another equal-valued bin while excluding every candidate with the outer bin's leaf index across all aisles" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And CurrentRepetition(Items) > 1", "error": "MVK_NO_WILDCARD", "fix": "CurrentRepetition needs the rule to iterate over the group — put the error field inside Items" },
+    "seeAlso": ["Having"],
     "sinceKernel": "30.8.x"
   },
   {

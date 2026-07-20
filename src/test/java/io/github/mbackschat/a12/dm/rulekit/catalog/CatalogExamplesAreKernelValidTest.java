@@ -18,6 +18,7 @@ import org.junit.jupiter.api.TestFactory;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 
 /**
  * N7 — self-verifying catalog: every {@code validExample} is accepted and every {@code invalidExample}
@@ -48,6 +49,7 @@ class CatalogExamplesAreKernelValidTest {
     private static final RuleValidator VALIDATOR = new RuleValidator();
 
     private static String modelJson;
+    private static String multiStarModelJson;
 
     @BeforeAll
     static void loadFixture() throws Exception {
@@ -56,6 +58,12 @@ class CatalogExamplesAreKernelValidTest {
             assertNotNull(in, "order.dm.json fixture not found");
             modelJson = new String(in.readAllBytes(), StandardCharsets.UTF_8);
         }
+        multiStarModelJson = DocumentModelDraft.named("warehouse").locale("en_US")
+                .rootGroup("Warehouse", warehouse -> warehouse
+                        .group("Aisles", aisles -> aisles.repeatable(20)
+                                .group("Bins", bins -> bins.repeatable(20)
+                                        .numberField("Quantity", field -> { }))))
+                .build().toJson();
     }
 
     @TestFactory
@@ -63,10 +71,20 @@ class CatalogExamplesAreKernelValidTest {
         return CATALOG.entries().stream()
                 .filter(e -> e.validExample() != null)
                 .map(e -> dynamicTest(e.id() + " · valid", () -> {
-                    ValidationResult result = check(e.validExample().dsl());
+                    ValidationResult result = checkValid(e);
                     assertTrue(result.ok(),
                             () -> e.id() + " validExample '" + e.validExample().dsl() + "' rejected: " + result.diagnostics());
                 }));
+    }
+
+    private static ValidationResult checkValid(OperatorEntry entry) {
+        if (entry.id().equals("Having") || entry.id().equals("CurrentRepetition")) {
+            DraftRule rule = new DraftRule(
+                    "/Warehouse", "CatalogExampleRule", "../Aisles/Bins/Quantity",
+                    entry.validExample().dsl(), "CATALOG_EXAMPLE", "ERROR");
+            return VALIDATOR.check(multiStarModelJson, rule);
+        }
+        return check(entry.validExample().dsl());
     }
 
     @TestFactory

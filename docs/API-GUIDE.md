@@ -288,7 +288,9 @@ public final class SubscriptionIdioms {
 }
 ```
 
-No framework, no registry — a fragment library is a Java class; discoverability comes from javadoc + the skill. `AddDays` is temporal-output-polymorphic: a DATE operand yields `DateExpr`, while a DATE_TIME operand yields `DateTimeExpr`; the compiler therefore preserves the kernel's time-preserving wall-day semantics instead of narrowing the result to a date (finding 71). (This is the Zod lesson: schemas-are-code.)
+No framework, no registry — a fragment library is a Java class; discoverability comes from javadoc + the catalog. `AddDays` is temporal-output-polymorphic: a DATE operand yields `DateExpr`, while a DATE_TIME operand yields `DateTimeExpr`; the compiler therefore preserves the kernel's time-preserving wall-day semantics instead of narrowing the result to a date (finding 71). (This is the Zod lesson: schemas-are-code.)
+
+For a multi-star `Having`, binding begins at the first starred segment. Thus `Aisles*/Bins*/Quantity` spans bins across every aisle; leave `Aisles` unstarred when the current aisle must remain outer-bound. Inside that filter, `CurrentRepetition(Bins) != CurrentRepetition($Bins)` compares the leaf index, not physical row identity, and excludes every candidate with the outer bin's leaf index across aisle rows. The `Having` and `CurrentRepetition` catalog entries cross-link the equality-correlation and self-exclusion examples (finding 76).
 
 ### 3.4 Parameterized *rules* — templates over the model (message interpolation — `Dsl.fieldValue`)
 
@@ -348,6 +350,7 @@ Condition e = allOf(List.of(r1, r2, r3));   // the LIST form — fold clauses a 
 
 All seven field-fill quantifiers also accept a `GroupListRef`: the group is expanded recursively to its contained fields, so authors do not have to duplicate the group's structure as a hand-maintained field list. A bare group comes from `flattenGroup("/Order/ShippingAddress")`; starred forms keep their repetition scope (`flattenGroup("/Order/Items*")`).
 
+<!-- teaser -->
 ```java
 GroupListRef address = m.flattenGroup("/Order/ShippingAddress");
 Condition complete = Dsl.allFieldsFilled(address);
