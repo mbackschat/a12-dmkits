@@ -3,8 +3,8 @@ package io.github.mbackschat.a12.dm.interpreter.gen
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
-import io.github.mbackschat.a12.dm.interpreter.regex.compilePattern
 import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
+import io.github.mbackschat.a12.dm.interpreter.regex.compilePattern
 import kotlin.random.Random
 
 /**
@@ -13,8 +13,8 @@ import kotlin.random.Random
  * the model's group tree (derived from the field paths + the declared repeatable groups), instantiates the
  * requested number of rows per repeatable group, and emits a value per field from a [ValueStrategy] — by
  * default a best-effort in-format value for the field's [Kind] (respecting NUMBER scale/sign, date/time/range
- * formats). It is a candidate, **not** a guarantee: placements are addressable, but caller-selected row counts
- * may exceed a group's declared maximum, so the output is not necessarily structurally or model accepted.
+ * formats). It is a candidate, **not** a model-acceptance guarantee: placements are addressable and row counts
+ * respect declared repeatability, but a local value heuristic cannot prove whole-model rule consistency.
  *
  * Kernel-free and multiplatform — so it serves three consumers from one place:
  * - the **`:adapter` differential fuzz** net (random generated documents, assert interp == kernel);
@@ -50,8 +50,11 @@ class SeedGenerator(private val model: ModelDef) {
     /**
      * Populate [sink] with a full instance. [rowsOf] decides how many rows to instantiate for each repeatable
      * group (given its parent row's indices + the RNG — so counts can vary per parent / per run); a
-     * non-repeatable group always gets exactly one row. [value] decides each field's value (null = leave the
-     * field empty). Both receive the shared seeded [Random], so a random strategy is reproducible from [seed].
+     * non-repeatable group always gets exactly one row. The complete row topology is planned and checked before
+     * the first [PlacementSink] call, so a late sibling/nested overflow cannot leave a partially mutated sink.
+     * [value] decides each field's value (null = leave the field empty). Row and value strategies receive
+     * independent seeded [Random] streams, so topology validation needs no speculative value generation and
+     * both strategies remain reproducible from [seed].
      */
     fun populate(
         sink: PlacementSink,
@@ -59,9 +62,12 @@ class SeedGenerator(private val model: ModelDef) {
         rowsOf: (group: String, parentReps: List<Int>, rnd: Random) -> Int,
         value: ValueStrategy = ValidValues,
     ) {
-        val rnd = Random(seed)
+        val rows = planRows(seed, rowsOf)
+        val cursor = rows.cursor()
+        val valueRnd = Random(seed xor VALUE_SEED_SALT)
         val preparedValue = if (value === ValidValues) validValues else value
-        roots.forEach { emit(sink, it, emptyList(), rnd, rowsOf, preparedValue) }
+        roots.forEach { emit(sink, it, emptyList(), valueRnd, cursor, preparedValue) }
+        cursor.requireExhausted()
     }
 
     /**
@@ -70,19 +76,75 @@ class SeedGenerator(private val model: ModelDef) {
      * default [ValidValues] strategy (a best-effort per-field heuristic, not a validity guarantee). Avoids passing a Kotlin function/`Random`
      * from Java.
      */
-    fun populate(sink: PlacementSink, seed: Long, rowsByGroup: Map<String, Int>, defaultRows: Int) =
+    fun populate(sink: PlacementSink, seed: Long, rowsByGroup: Map<String, Int>, defaultRows: Int) {
+        rowsByGroup.keys.sorted().firstOrNull { it !in model.repeatable }?.let { unknown ->
+            throw IllegalArgumentException(
+                "row count requested for '$unknown', but it is not a declared repeatable group",
+            )
+        }
+        model.repeatable.sorted().forEach { group ->
+            validateRowCount(group, rowsByGroup[group] ?: defaultRows)
+        }
         populate(sink, seed, { group, _, _ -> rowsByGroup[group] ?: defaultRows }, ValidValues)
+    }
 
     internal fun patternCompilationCount(): Int = validValues.patternCompilationCount
 
     internal fun patternPreparationCount(): Int = validValues.patternPreparationCount
 
-    private fun emit(
-        sink: PlacementSink, group: String, parentReps: List<Int>, rnd: Random,
-        rowsOf: (String, List<Int>, Random) -> Int, value: ValueStrategy,
+    private fun planRows(
+        seed: Long,
+        rowsOf: (String, List<Int>, Random) -> Int,
+    ): RowPlan {
+        val plan = RowPlan.Builder()
+        val rnd = Random(seed)
+        roots.forEach { planGroup(it, emptyList(), rnd, rowsOf, plan) }
+        return plan.build()
+    }
+
+    private fun planGroup(
+        group: String,
+        parentReps: List<Int>,
+        rnd: Random,
+        rowsOf: (String, List<Int>, Random) -> Int,
+        plan: RowPlan.Builder,
     ) {
-        val n = if (group in model.repeatable) rowsOf(group, parentReps, rnd) else 1
-        for (idx in 1..n) {
+        val n = if (group in model.repeatable) {
+            rowsOf(group, parentReps, rnd).also { count ->
+                validateRowCount(group, count)
+                plan.add(count)
+            }
+        } else {
+            1
+        }
+        repeat(n) { zeroBased ->
+            val reps = parentReps + (zeroBased + 1)
+            childGroups[group]?.forEach { child -> planGroup(child, reps, rnd, rowsOf, plan) }
+        }
+    }
+
+    private fun validateRowCount(group: String, count: Int) {
+        require(count >= 0) {
+            "row count for repeatable group '$group' must be non-negative: requested $count"
+        }
+        model.declaredReps[group]?.let { cap ->
+            require(count <= cap) {
+                "row count for repeatable group '$group' exceeds declared repeatability: requested $count, cap $cap"
+            }
+        }
+    }
+
+    private fun emit(
+        sink: PlacementSink,
+        group: String,
+        parentReps: List<Int>,
+        rnd: Random,
+        rows: RowPlan.Cursor,
+        value: ValueStrategy,
+    ) {
+        val n = if (group in model.repeatable) rows.next() else 1
+        repeat(n) { zeroBased ->
+            val idx = zeroBased + 1
             val reps = parentReps + idx
             sink.group(group, *reps.toIntArray())
             fieldsByGroup[group]?.forEach { f ->
@@ -92,11 +154,48 @@ class SeedGenerator(private val model: ModelDef) {
                     else -> sink.field(f.path, v, *fieldReps)
                 }
             }
-            childGroups[group]?.forEach { child -> emit(sink, child, reps, rnd, rowsOf, value) }
+            childGroups[group]?.forEach { child -> emit(sink, child, reps, rnd, rows, value) }
+        }
+    }
+
+    private class RowPlan private constructor(
+        private val counts: IntArray,
+        private val size: Int,
+    ) {
+        fun cursor(): Cursor = Cursor(counts, size)
+
+        class Builder {
+            private var counts = IntArray(16)
+            private var size = 0
+
+            fun add(count: Int) {
+                if (size == counts.size) counts = counts.copyOf(counts.size * 2)
+                counts[size++] = count
+            }
+
+            fun build(): RowPlan = RowPlan(counts, size)
+        }
+
+        class Cursor(
+            private val counts: IntArray,
+            private val size: Int,
+        ) {
+            private var index = 0
+
+            fun next(): Int {
+                check(index < size) { "seed row plan exhausted before emission completed" }
+                return counts[index++]
+            }
+
+            fun requireExhausted() {
+                check(index == size) { "seed row plan retained ${size - index} unconsumed counts" }
+            }
         }
     }
 
     private companion object {
+        const val VALUE_SEED_SALT = -7046029254386353131L
+
         fun prefixes(path: String): List<String> {
             val parts = path.trim('/').split('/')
             return (1..parts.size).map { "/" + parts.take(it).joinToString("/") }
