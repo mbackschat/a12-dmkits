@@ -8,10 +8,13 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.SortedSet;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BaseYear;
@@ -119,6 +122,23 @@ final class ConditionComplexity {
         ROOT_GROUP_REPETITIONS
     }
 
+    enum GroupFillForm {
+        GROUP_PRESENCE,
+        RULE_GROUP_PRESENCE,
+        GROUP_LIST_PREDICATE,
+        GROUP_SCOPED_FIELD_FILL
+    }
+
+    enum AggregateForm {
+        COUNT,
+        LIST,
+        DATE_LIST,
+        FIRST_FILLED,
+        NUMBER_OF_VALUE_IN_FIELDS,
+        SUM_OF_PRODUCTS,
+        ROOT_GROUP_COUNT
+    }
+
     record CorrelationOccurrence(OuterCorrelation form, String targetPath) {
         CorrelationOccurrence {
             Objects.requireNonNull(form, "form");
@@ -141,6 +161,51 @@ final class ConditionComplexity {
                 throw new IllegalArgumentException(
                         "a present filter must contain at least one AST node");
             }
+        }
+    }
+
+    record GroupFillOccurrence(
+            GroupFillForm form,
+            Optional<String> targetGroupPath) {
+        GroupFillOccurrence {
+            Objects.requireNonNull(form, "form");
+            targetGroupPath = Objects.requireNonNull(targetGroupPath, "targetGroupPath")
+                    .map(path -> requirePath(path, "group-fill target"));
+            if (form != GroupFillForm.RULE_GROUP_PRESENCE && targetGroupPath.isEmpty()) {
+                throw new IllegalArgumentException(
+                        form + " must name its concrete target group");
+            }
+        }
+    }
+
+    record SemanticIndexOccurrence(String targetFieldPath) {
+        SemanticIndexOccurrence {
+            targetFieldPath = requirePath(targetFieldPath, "semantic-index target");
+        }
+    }
+
+    record UniquenessOccurrence(
+            List<String> keyFieldPaths,
+            Optional<String> fromGroupPath) {
+        UniquenessOccurrence {
+            keyFieldPaths = List.copyOf(keyFieldPaths);
+            if (keyFieldPaths.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "a uniqueness occurrence needs at least one key field");
+            }
+            keyFieldPaths.forEach(path -> requirePath(path, "uniqueness key"));
+            fromGroupPath = Objects.requireNonNull(fromGroupPath, "fromGroupPath")
+                    .map(path -> requirePath(path, "uniqueness @From scope"));
+        }
+    }
+
+    record AggregateOccurrence(
+            AggregateForm form,
+            List<String> operandFieldPaths) {
+        AggregateOccurrence {
+            Objects.requireNonNull(form, "form");
+            operandFieldPaths = List.copyOf(operandFieldPaths);
+            operandFieldPaths.forEach(path -> requirePath(path, "aggregate operand"));
         }
     }
 
@@ -227,23 +292,77 @@ final class ConditionComplexity {
         }
     }
 
+    record References(
+            SortedSet<String> fieldPaths,
+            SortedSet<String> groupPaths) {
+        References {
+            fieldPaths = immutableSortedSet(fieldPaths);
+            groupPaths = immutableSortedSet(groupPaths);
+            fieldPaths.forEach(path -> requirePath(path, "field reference"));
+            groupPaths.forEach(path -> requirePath(path, "group reference"));
+        }
+    }
+
+    record GroupFills(List<GroupFillOccurrence> occurrences) {
+        GroupFills {
+            occurrences = List.copyOf(occurrences);
+        }
+    }
+
+    record SemanticIndexes(List<SemanticIndexOccurrence> occurrences) {
+        SemanticIndexes {
+            occurrences = List.copyOf(occurrences);
+        }
+    }
+
+    record UniquenessChecks(List<UniquenessOccurrence> occurrences) {
+        UniquenessChecks {
+            occurrences = List.copyOf(occurrences);
+        }
+    }
+
+    record Aggregates(List<AggregateOccurrence> occurrences) {
+        Aggregates {
+            occurrences = List.copyOf(occurrences);
+        }
+    }
+
+    record Mechanisms(
+            GroupFills groupFills,
+            SemanticIndexes semanticIndexes,
+            UniquenessChecks uniquenessChecks,
+            Aggregates aggregates) {
+        Mechanisms {
+            Objects.requireNonNull(groupFills, "groupFills");
+            Objects.requireNonNull(semanticIndexes, "semanticIndexes");
+            Objects.requireNonNull(uniquenessChecks, "uniquenessChecks");
+            Objects.requireNonNull(aggregates, "aggregates");
+        }
+    }
+
     record Syntax(
             TreeShape tree,
             OperatorMix operators,
-            Set<Construct> constructs) {
+            Set<Construct> constructs,
+            References references) {
         Syntax {
             Objects.requireNonNull(tree, "tree");
             Objects.requireNonNull(operators, "operators");
             constructs = constructs.isEmpty()
                     ? Collections.emptySet()
                     : Collections.unmodifiableSet(EnumSet.copyOf(constructs));
+            Objects.requireNonNull(references, "references");
         }
     }
 
-    record Evaluation(Correlations correlations, CollectionAccesses collections) {
+    record Evaluation(
+            Correlations correlations,
+            CollectionAccesses collections,
+            Mechanisms mechanisms) {
         Evaluation {
             Objects.requireNonNull(correlations, "correlations");
             Objects.requireNonNull(collections, "collections");
+            Objects.requireNonNull(mechanisms, "mechanisms");
         }
     }
 
@@ -265,6 +384,10 @@ final class ConditionComplexity {
             return syntax.constructs();
         }
 
+        References references() {
+            return syntax.references();
+        }
+
         Correlations correlations() {
             return evaluation.correlations();
         }
@@ -272,22 +395,49 @@ final class ConditionComplexity {
         CollectionAccesses collections() {
             return evaluation.collections();
         }
+
+        GroupFills groupFills() {
+            return evaluation.mechanisms().groupFills();
+        }
+
+        SemanticIndexes semanticIndexes() {
+            return evaluation.mechanisms().semanticIndexes();
+        }
+
+        UniquenessChecks uniquenessChecks() {
+            return evaluation.mechanisms().uniquenessChecks();
+        }
+
+        Aggregates aggregates() {
+            return evaluation.mechanisms().aggregates();
+        }
     }
 
     private ConditionComplexity() {}
 
     static Result of(Condition condition) {
         Objects.requireNonNull(condition, "condition");
-        return new Walker(new ConditionWork(condition, 1, null)).walk();
+        return new Walker(new ConditionWork(condition, 1, null), Optional.empty()).walk();
+    }
+
+    static Result of(Condition condition, String ruleGroupPath) {
+        Objects.requireNonNull(condition, "condition");
+        return new Walker(
+                new ConditionWork(condition, 1, null),
+                Optional.of(requirePath(ruleGroupPath, "rule group"))).walk();
     }
 
     static Result of(Calculation calculation) {
         Objects.requireNonNull(calculation, "calculation");
-        return new Walker(new CalculationWork(calculation, 1)).walk();
+        return new Walker(new CalculationWork(calculation, 1), Optional.empty()).walk();
     }
 
     private static SortedMap<String, Integer> immutableSorted(Map<String, Integer> source) {
         return Collections.unmodifiableSortedMap(new TreeMap<>(source));
+    }
+
+    private static SortedSet<String> immutableSortedSet(Set<String> source) {
+        return Collections.unmodifiableSortedSet(new TreeSet<>(source));
     }
 
     private static <E extends Enum<E>> Map<E, Integer> immutableEnumMap(
@@ -315,7 +465,15 @@ final class ConditionComplexity {
 
     private record FieldOperandWork(FieldOperand operand, int depth) implements Work {}
 
-    private record GroupScopeWork(GroupListRef scope, int depth) implements Work {}
+    private enum GroupScopeUse {
+        GROUP_PREDICATE,
+        FIELD_FILL
+    }
+
+    private record GroupScopeWork(
+            GroupListRef scope,
+            int depth,
+            GroupScopeUse use) implements Work {}
 
     private record GroupOperandWork(GroupRef group, int depth) implements Work {}
 
@@ -340,6 +498,7 @@ final class ConditionComplexity {
 
     private static final class Walker {
         private final ArrayDeque<Work> pending = new ArrayDeque<>();
+        private final Optional<String> ruleGroupPath;
         private int nodeCount;
         private int maxDepth;
         private int maxBooleanArity;
@@ -354,8 +513,15 @@ final class ConditionComplexity {
                 new EnumMap<>(CollectionKind.class);
         private final List<CollectionOccurrence> collectionOccurrences = new ArrayList<>();
         private int maxStarDepth;
+        private final SortedSet<String> fieldReferences = new TreeSet<>();
+        private final SortedSet<String> groupReferences = new TreeSet<>();
+        private final List<GroupFillOccurrence> groupFillOccurrences = new ArrayList<>();
+        private final List<SemanticIndexOccurrence> semanticIndexOccurrences = new ArrayList<>();
+        private final List<UniquenessOccurrence> uniquenessOccurrences = new ArrayList<>();
+        private final List<AggregateOccurrence> aggregateOccurrences = new ArrayList<>();
 
-        private Walker(Work root) {
+        private Walker(Work root, Optional<String> ruleGroupPath) {
+            this.ruleGroupPath = Objects.requireNonNull(ruleGroupPath, "ruleGroupPath");
             pending.push(root);
             if (root instanceof ConditionWork) {
                 maxBooleanArity = 1;
@@ -384,10 +550,16 @@ final class ConditionComplexity {
                     new OperatorMix(
                             new CatalogOperators(catalogOperators),
                             new IntrinsicOperators(intrinsicOperators)),
-                    constructs);
+                    constructs,
+                    new References(fieldReferences, groupReferences));
             var evaluation = new Evaluation(
                     new Correlations(correlations, correlationOccurrences),
-                    new CollectionAccesses(collections, collectionOccurrences, maxStarDepth));
+                    new CollectionAccesses(collections, collectionOccurrences, maxStarDepth),
+                    new Mechanisms(
+                            new GroupFills(groupFillOccurrences),
+                            new SemanticIndexes(semanticIndexOccurrences),
+                            new UniquenessChecks(uniquenessOccurrences),
+                            new Aggregates(aggregateOccurrences)));
             return new Result(syntax, evaluation);
         }
 
@@ -396,6 +568,7 @@ final class ConditionComplexity {
             catalog(work.condition().operatorId());
             switch (work.condition()) {
                 case FieldPresenceCondition presence -> {
+                    fieldReference(presence.field().path());
                     if (presence.field().correlated()) {
                         correlation(
                                 OuterCorrelation.FIELD_OPERAND, presence.field().path());
@@ -411,21 +584,41 @@ final class ConditionComplexity {
                     calculation(comparison.left(), work.depth() + 1);
                 }
                 case LogicCondition logic -> visitLogic(logic, work);
-                case GroupPresenceCondition ignored -> constructs.add(Construct.GROUP_FILL);
-                case RuleGroupPresenceCondition ignored -> constructs.add(Construct.GROUP_FILL);
+                case GroupPresenceCondition presence -> {
+                    constructs.add(Construct.GROUP_FILL);
+                    groupReference(presence.group().path());
+                    groupFillOccurrences.add(new GroupFillOccurrence(
+                            GroupFillForm.GROUP_PRESENCE,
+                            Optional.of(presence.group().path())));
+                }
+                case RuleGroupPresenceCondition ignored -> {
+                    constructs.add(Construct.GROUP_FILL);
+                    ruleGroupPath.ifPresent(this::groupReference);
+                    groupFillOccurrences.add(new GroupFillOccurrence(
+                            GroupFillForm.RULE_GROUP_PRESENCE,
+                            ruleGroupPath));
+                }
                 case IndexedPresenceCondition presence -> {
                     constructs.add(Construct.SEMANTIC_INDEX);
                     calculation(presence.index(), work.depth() + 1);
                 }
                 case GroupListPredicate predicate -> {
                     constructs.add(Construct.QUANTIFIER);
+                    constructs.add(Construct.GROUP_FILL);
                     variadic(predicate.operands().size());
-                    pushGroupScopes(predicate.operands(), work.depth() + 1);
+                    pushGroupScopes(
+                            predicate.operands(),
+                            work.depth() + 1,
+                            GroupScopeUse.GROUP_PREDICATE);
                 }
-                case PatternCondition ignored -> constructs.add(Construct.PATTERN);
+                case PatternCondition pattern -> {
+                    constructs.add(Construct.PATTERN);
+                    fieldReference(pattern.field().path());
+                }
                 case ValueListCondition values -> {
                     constructs.add(Construct.VALUE_LIST);
                     variadic(values.values().size() + 1);
+                    fieldReference(values.field().path());
                     pushCalculations(values.values(), work.depth() + 1);
                 }
                 case FieldListValueListCondition values -> {
@@ -448,12 +641,21 @@ final class ConditionComplexity {
                     variadic(fill.scopes().size());
                     for (int index = fill.scopes().size() - 1; index >= 0; index--) {
                         pending.push(new GroupScopeWork(
-                                fill.scopes().get(index), work.depth() + 1));
+                                fill.scopes().get(index),
+                                work.depth() + 1,
+                                GroupScopeUse.FIELD_FILL));
                     }
                 }
                 case RepetitionNotUniqueCondition uniqueness -> {
                     constructs.add(Construct.UNIQUENESS);
                     variadic(uniqueness.keys().size());
+                    var keyPaths = uniqueness.keys().stream()
+                            .map(FieldRef::path)
+                            .toList();
+                    keyPaths.forEach(this::fieldReference);
+                    uniquenessOccurrences.add(new UniquenessOccurrence(
+                            keyPaths,
+                            uniqueness.scope().map(GroupRef::path)));
                     if (uniqueness.scope().isPresent()) {
                         catalog("FromScope");
                     }
@@ -463,7 +665,10 @@ final class ConditionComplexity {
                     constructs.add(Construct.DATE_MATH);
                     calculation(validity.dateConstruct(), work.depth() + 1);
                 }
-                case CustomTypeValidity ignored -> constructs.add(Construct.CUSTOM);
+                case CustomTypeValidity validity -> {
+                    constructs.add(Construct.CUSTOM);
+                    fieldReference(validity.field().path());
+                }
             }
         }
 
@@ -491,6 +696,7 @@ final class ConditionComplexity {
             node(work.depth());
             switch (work.calculation()) {
                 case FieldValue value -> {
+                    fieldReference(value.field().path());
                     if (value.outer()) {
                         correlation(OuterCorrelation.FIELD_VALUE, value.field().path());
                     }
@@ -501,9 +707,13 @@ final class ConditionComplexity {
                 case TimeLiteral ignored -> {}
                 case EnumValueLiteral ignored -> {}
                 case BoolLiteral literal -> catalog(literal.operatorId());
-                case LengthOf length -> catalog(length.operatorId());
+                case LengthOf length -> {
+                    catalog(length.operatorId());
+                    fieldReference(length.field().path());
+                }
                 case EnumCategoryAccess category -> {
                     catalog(category.operatorId());
+                    fieldReference(category.field().path());
                     if (category.outer()) {
                         correlation(OuterCorrelation.ENUM_CATEGORY, category.field().path());
                     }
@@ -513,11 +723,15 @@ final class ConditionComplexity {
                     catalog(aggregate.operatorId());
                     constructs.add(Construct.AGGREGATE);
                     variadic(aggregate.operands().size());
-                    pushFieldOperands(aggregate.operands(), work.depth() + 1);
+                    aggregate(
+                            AggregateForm.LIST,
+                            aggregate.operands(),
+                            work.depth() + 1);
                 }
                 case CurrentRepetition repetition -> {
                     catalog(repetition.operatorId());
                     constructs.add(Construct.CURRENT_REPETITION);
+                    groupReference(repetition.group().path());
                     if (repetition.outer()) {
                         correlation(
                                 OuterCorrelation.CURRENT_REPETITION,
@@ -548,8 +762,14 @@ final class ConditionComplexity {
                     calculation(shift.amount(), work.depth() + 1);
                     calculation(shift.date(), work.depth() + 1);
                 }
-                case SemanticIndexValue index -> semanticIndex(index.operatorId());
-                case SemanticIndexFieldValue index -> semanticIndex(index.operatorId());
+                case SemanticIndexValue index -> semanticIndex(
+                        index.operatorId(),
+                        index.field().path(),
+                        Optional.empty());
+                case SemanticIndexFieldValue index -> semanticIndex(
+                        index.operatorId(),
+                        index.field().path(),
+                        Optional.of(index.indexField().path()));
                 case Arithmetic arithmetic -> {
                     intrinsic(arithmetic.op().symbol());
                     constructs.add(Construct.ARITHMETIC);
@@ -571,22 +791,40 @@ final class ConditionComplexity {
                     catalog(aggregate.operatorId());
                     constructs.add(Construct.AGGREGATE);
                     constructs.add(Construct.DATE_MATH);
-                    fieldOperand(aggregate.scope(), work.depth() + 1);
+                    aggregate(
+                            AggregateForm.DATE_LIST,
+                            List.of(aggregate.scope()),
+                            work.depth() + 1);
                 }
                 case FirstFilledValue first -> {
                     catalog(first.operatorId());
                     constructs.add(Construct.AGGREGATE);
                     variadic(first.operands().size());
-                    pushFieldOperands(first.operands(), work.depth() + 1);
+                    aggregate(
+                            AggregateForm.FIRST_FILLED,
+                            first.operands(),
+                            work.depth() + 1);
                 }
-                case FieldValueAsString conversion -> catalog(conversion.operatorId());
+                case FieldValueAsString conversion -> {
+                    catalog(conversion.operatorId());
+                    fieldReference(conversion.field().path());
+                }
                 case IndexedFieldValueAsString conversion -> {
                     catalog(conversion.operatorId());
                     calculation(conversion.index(), work.depth() + 1);
                 }
-                case RangeAsString conversion -> catalog(conversion.operatorId());
-                case FieldValueAsNumber conversion -> catalog(conversion.operatorId());
-                case RangeAsNumber conversion -> catalog(conversion.operatorId());
+                case RangeAsString conversion -> {
+                    catalog(conversion.operatorId());
+                    fieldReference(conversion.field().path());
+                }
+                case FieldValueAsNumber conversion -> {
+                    catalog(conversion.operatorId());
+                    fieldReference(conversion.field().path());
+                }
+                case RangeAsNumber conversion -> {
+                    catalog(conversion.operatorId());
+                    fieldReference(conversion.field().path());
+                }
                 case OpListMath operation -> {
                     catalog(operation.operatorId());
                     constructs.add(Construct.ARITHMETIC);
@@ -597,13 +835,17 @@ final class ConditionComplexity {
                     catalog(count.operatorId());
                     constructs.add(Construct.AGGREGATE);
                     variadic(count.fields().size() + 1);
-                    pushFieldOperands(count.fields(), work.depth() + 1);
+                    aggregate(
+                            AggregateForm.NUMBER_OF_VALUE_IN_FIELDS,
+                            count.fields(),
+                            work.depth() + 1);
                     calculation(count.value(), work.depth() + 1);
                 }
                 case ValueAsDate value -> {
                     catalog(value.operatorId());
                     catalog(value.dayKeywordId());
                     constructs.add(Construct.DATE_MATH);
+                    fieldReference(value.field().path());
                 }
                 case DateExtraction extraction -> {
                     catalog(extraction.operatorId());
@@ -619,8 +861,10 @@ final class ConditionComplexity {
                     catalog(sum.operatorId());
                     constructs.add(Construct.AGGREGATE);
                     variadic(2);
-                    fieldOperand(sum.right(), work.depth() + 1);
-                    fieldOperand(sum.left(), work.depth() + 1);
+                    aggregate(
+                            AggregateForm.SUM_OF_PRODUCTS,
+                            List.of(sum.left(), sum.right()),
+                            work.depth() + 1);
                 }
                 case DateConstruction date -> {
                     catalog(date.operatorId());
@@ -648,6 +892,7 @@ final class ConditionComplexity {
                 case FieldRounding rounding -> {
                     catalog(rounding.operatorId());
                     constructs.add(Construct.ARITHMETIC);
+                    fieldReference(rounding.field().path());
                 }
                 case DateRangeBound bound -> {
                     catalog(bound.operatorId());
@@ -662,6 +907,9 @@ final class ConditionComplexity {
                             count.rootGroup().path(),
                             List.of(count.rootGroup().path()),
                             OptionalInt.empty());
+                    aggregateOccurrences.add(new AggregateOccurrence(
+                            AggregateForm.ROOT_GROUP_COUNT,
+                            List.of()));
                     pending.push(new GroupOperandWork(count.rootGroup(), work.depth() + 1));
                 }
                 case DateRangeConstruction range -> {
@@ -689,16 +937,23 @@ final class ConditionComplexity {
                         OptionalInt.empty());
             }
             pushGroups(aggregate.groups(), depth + 1);
-            pushFieldOperands(aggregate.fields(), depth + 1);
+            aggregate(AggregateForm.COUNT, aggregate.fields(), depth + 1);
         }
 
-        private void semanticIndex(String operatorId) {
+        private void semanticIndex(
+                String operatorId,
+                String targetFieldPath,
+                Optional<String> keyFieldPath) {
             catalog(operatorId);
             constructs.add(Construct.SEMANTIC_INDEX);
+            fieldReference(targetFieldPath);
+            keyFieldPath.ifPresent(this::fieldReference);
+            semanticIndexOccurrences.add(new SemanticIndexOccurrence(targetFieldPath));
         }
 
         private void visit(FieldOperandWork work) {
             node(work.depth());
+            fieldReference(work.operand().fieldPath());
             switch (work.operand()) {
                 case FieldRef field -> {
                     if (field.correlated()) {
@@ -729,6 +984,14 @@ final class ConditionComplexity {
 
         private void visit(GroupScopeWork work) {
             node(work.depth());
+            groupReference(work.scope().group().path());
+            var groupFillForm = switch (work.use()) {
+                case GROUP_PREDICATE -> GroupFillForm.GROUP_LIST_PREDICATE;
+                case FIELD_FILL -> GroupFillForm.GROUP_SCOPED_FIELD_FILL;
+            };
+            groupFillOccurrences.add(new GroupFillOccurrence(
+                    groupFillForm,
+                    Optional.of(work.scope().group().path())));
             if (!work.scope().flattened().isEmpty()) {
                 collection(
                         CollectionKind.FLATTENED_GROUP,
@@ -740,6 +1003,7 @@ final class ConditionComplexity {
 
         private void visit(GroupOperandWork work) {
             node(work.depth());
+            groupReference(work.group().path());
         }
 
         private void visit(FilterBoundaryWork work) {
@@ -793,6 +1057,28 @@ final class ConditionComplexity {
                     filterNodeCount));
         }
 
+        private void aggregate(
+                AggregateForm form,
+                List<? extends FieldOperand> operands,
+                int depth) {
+            var operandFieldPaths = new ArrayList<String>(operands.size());
+            for (int index = operands.size() - 1; index >= 0; index--) {
+                var operand = operands.get(index);
+                operandFieldPaths.add(operand.fieldPath());
+                fieldOperand(operand, depth);
+            }
+            Collections.reverse(operandFieldPaths);
+            aggregateOccurrences.add(new AggregateOccurrence(form, operandFieldPaths));
+        }
+
+        private void fieldReference(String path) {
+            fieldReferences.add(requirePath(path, "field reference"));
+        }
+
+        private void groupReference(String path) {
+            groupReferences.add(requirePath(path, "group reference"));
+        }
+
         private static List<String> groupPaths(List<GroupRef> groups) {
             return groups.stream().map(GroupRef::path).toList();
         }
@@ -825,9 +1111,12 @@ final class ConditionComplexity {
             }
         }
 
-        private void pushGroupScopes(List<GroupListRef> scopes, int depth) {
+        private void pushGroupScopes(
+                List<GroupListRef> scopes,
+                int depth,
+                GroupScopeUse use) {
             for (int index = scopes.size() - 1; index >= 0; index--) {
-                pending.push(new GroupScopeWork(scopes.get(index), depth));
+                pending.push(new GroupScopeWork(scopes.get(index), depth, use));
             }
         }
     }
