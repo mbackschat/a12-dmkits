@@ -38,6 +38,9 @@ class CustomFieldTypeJsContractTest {
 
         assertEquals(0, result.code(), result::err);
         assertTrue(fired(result.out(), "CONTEXT_SEEN"), result::out);
+        JsonNode message = message(result.out(), "CONTEXT_SEEN");
+        assertEquals("bad Iban", message.path("message").asText(), result::out);
+        assertTrue(!message.has("text"), () -> "the public result key is message, never text: " + result.out());
     }
 
     @Test
@@ -127,6 +130,15 @@ class CustomFieldTypeJsContractTest {
             }
         }
         return false;
+    }
+
+    private static JsonNode message(String output, String code) throws Exception {
+        for (JsonNode message : MAPPER.readTree(output).path("data").path("messages")) {
+            if (code.equals(message.path("code").asText())) {
+                return message;
+            }
+        }
+        throw new AssertionError("no message for " + code + ": " + output);
     }
 
     private static String unsupported(String output) throws Exception {

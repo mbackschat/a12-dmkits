@@ -289,6 +289,24 @@ class PerfGateTest {
     }
 
     /**
+     * Guards DATE_TIME `AddDays` wall-landings across ordinary hours, spring gaps, and fall overlaps in both
+     * directions, including the historical CEMT offset. Semantic agreement is proved at both measured scales
+     * before timing; the paired N/4N estimator then keeps the path below the existing catastrophe floor.
+     */
+    @Test
+    fun berlinAddDaysStaysSubQuadratic() {
+        val dt = PerfCatalog.berlinAddDays()
+        PerfHarness.assertSemanticAgreement(dt, listOf(AD_N, AD_N * 4), withJava = true)
+        assertSubQuadratic(
+            "Berlin historical AddDays sub-quadratic",
+            AD_N,
+            "rows",
+            "wall-day landing rebuilt candidate collections per row?",
+            identityAt = { n -> PerfHarness.measurementLabel(dt, n) },
+        ) { n -> PerfHarness.timeInterpreter(dt, n, warmup = 5, iters = 7).medianMs }
+    }
+
+    /**
      * Guards the **compute-overlay index-column view** (IF143) — the HARD O(rows²): under an ACTIVE cascade
      * overlay, a per-Row `[Src For "K1"]` read rebuilt `indexColumn(Key)` from the wrapped cells on EVERY outer Row
      * (the [io.github.mbackschat.a12.dm.interpreter.eval.OverlayContext] bypassed the raw document-level cache), and
@@ -343,6 +361,9 @@ class PerfGateTest {
     }
 
     private companion object {
+        /** Rows for the historical AddDays gate: enough repetitions to expose per-row allocation/scaling. */
+        const val AD_N = 1_000
+
         /** Row count for the index-column compute-overlay gate — smaller than [N_SMALL] (the compute cascade is
          *  heavier), yet the per-row `indexColumn` rebuild dominates, so the O(rows²) is unmistakable here. */
         const val CO_N = 1_500

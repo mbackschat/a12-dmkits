@@ -10,7 +10,8 @@
     "additionalProperties": true,
     "properties": {
       "target": { "type": "string", "description": "the element family acted on: field | group | rule | … (see `manifest`)" },
-      "op": { "type": "string", "description": "the operation: add | modify | remove | read | rename | move (valid for the target; see `manifest`)" }
+      "op": { "type": "string", "description": "the operation: add | modify | remove | read | rename | move (valid for the target; see `manifest`)" },
+      "time-zone": { "type": "string", "description": "for config modify: absence defaults UTC; exact UTC, GMT, Europe/Berlin are interpreter-supported; another kernel-valid Java id is accepted with an evaluator-scope warning; blank/unknown ids are rejected" }
     }
   },
   "examples": [
@@ -61,6 +62,9 @@
     ],
     [
       { "target": "config", "op": "modify", "supported-character": [ "A-Z", "0-9" ] }
+    ],
+    [
+      { "target": "config", "op": "modify", "time-zone": "America/New_York" }
     ]
   ]
 }

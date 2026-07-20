@@ -1132,7 +1132,12 @@ public final class ModelDocument {
         return this;
     }
 
-    /** Set the model's time zone (e.g. {@code "Europe/Berlin"}, {@code "UTC"}). */
+    /**
+     * Set the model's time zone. A missing slot defaults to UTC; exact {@code UTC}, {@code GMT}, and
+     * {@code Europe/Berlin} are supported by the interpreter-backed evaluator. Another known Java time-zone
+     * id is kernel-valid but outside that evaluator set, while null, blank, and unknown/typo ids are invalid.
+     * The next kernel validation remains authoritative.
+     */
     public ModelDocument setTimeZone(String timeZone) {
         modelConfig().put(DmKeys.TIME_ZONE, timeZone);
         return this;

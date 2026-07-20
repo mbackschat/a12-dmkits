@@ -1120,6 +1120,8 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.DateValidity implements io
 public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr abs(io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr absValue(io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr addDays(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr addDays(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand, long)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr addDays(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr addDays(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, long)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr addHours(io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand, io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr)
@@ -2408,6 +2410,7 @@ public enum io.github.mbackschat.a12.dm.rulekit.validate.RkCode
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INCOMPLETE_RULE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INTERNAL_ERROR
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INTERPRETER_INCLUDE_RULES_UNSUPPORTED
+  public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INTERPRETER_TIMEZONE_UNSUPPORTED
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INVALID_CONFIG_VALUE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INVALID_VALUE
   public static final io.github.mbackschat.a12.dm.rulekit.validate.RkCode INVERTED_REQUIREDNESS

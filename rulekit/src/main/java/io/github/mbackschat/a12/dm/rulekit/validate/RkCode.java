@@ -100,10 +100,11 @@ public enum RkCode {
                     + "author the rule on the INCLUDING model referencing the mounted fields, or use a relative form."),
     INTERPRETER_TIMEZONE_UNSUPPORTED(Severity.ERROR, DiagnosticSource.PRECHECK,
             "the model's modelConfig.timeZone is outside the interpreter-backed evaluator's supported set "
-                    + "{UTC, GMT, Europe/Berlin}. The kernel accepts the wider Java TimeZone id domain, so a "
-                    + "kernel-valid model can carry a zone the kernel-free interpreter deliberately does not model "
-                    + "(a documented scope limit, IG83) — evaluation is refused so it never runs under the wrong "
-                    + "DST rules.",
+                    + "{UTC, GMT, Europe/Berlin}. At the JVM boundary this code is emitted only after the id is "
+                    + "known to be legal in the Java TimeZone domain; blank, null, and unknown/typo ids are invalid "
+                    + "configuration instead. A kernel-valid model can therefore carry a zone the kernel-free "
+                    + "interpreter deliberately does not model — evaluation is refused so it never runs under the "
+                    + "wrong DST rules.",
             "set modelConfig.timeZone to UTC, GMT, or Europe/Berlin to evaluate with the interpreter; the "
                     + "kernel-backed 'model check' still validates the wider zone domain."),
     MOUNT_NOT_EDITABLE(Severity.ERROR, DiagnosticSource.PRECHECK,

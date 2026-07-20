@@ -768,6 +768,12 @@ public final class RuntimeLaws {
                     .map(IMessage::getErrorCode).sorted().toList();
         }
 
+        /** Fired codes under an exact injected clock, retaining this engine's prepared model/runtime service. */
+        public List<String> firedCodesSorted(DocumentV2 instance, Date clock) {
+            return rt.validateFull(instance, config(clock, Locale.US)).getMessages().stream()
+                    .map(IMessage::getErrorCode).sorted().toList();
+        }
+
         /** Full validation signatures ({@code code|type|indexed-pointer}), sorted for exact perf eligibility. */
         public List<String> validationSignaturesSorted(DocumentV2 instance) {
             return validationSignaturesSorted(instance, Locale.US);
@@ -876,6 +882,12 @@ public final class RuntimeLaws {
         /** Every fired error code for an already-built instance, <b>sorted</b> — the multiset (see {@link KernelEngine}). */
         public List<String> firedCodesSorted(DocumentV2 instance) {
             return rt.validateFull(instance, config(null, Locale.US)).getMessages().stream()
+                    .map(IMessage::getErrorCode).sorted().toList();
+        }
+
+        /** Fired codes under an exact injected clock, retaining this generated-Java runtime service. */
+        public List<String> firedCodesSorted(DocumentV2 instance, Date clock) {
+            return rt.validateFull(instance, config(clock, Locale.US)).getMessages().stream()
                     .map(IMessage::getErrorCode).sorted().toList();
         }
 

@@ -513,6 +513,11 @@ public final class Dsl {
         return addDays(date, number(Long.toString(amount)));
     }
 
+    /** {@code AddDays(dateTime, n)} — shifts a date-time by whole wall days while preserving its date-time type. */
+    public static DateTimeExpr addDays(DateTimeOperand dateTime, long amount) {
+        return addDays(dateTime, number(Long.toString(amount)));
+    }
+
     /** {@code AddMonths(date, n)} — shifts a date by an integer constant number of months, yielding a date. catalog:AddMonths */
     public static DateExpr addMonths(TemporalOperand date, long amount) {
         return addMonths(date, number(Long.toString(amount)));
@@ -526,6 +531,11 @@ public final class Dsl {
     /** {@code AddDays(date, n)} where the amount is a numeric expression (e.g. a field, {@code AddDays(d, [n])}). */
     public static DateExpr addDays(TemporalOperand date, NumberExpr amount) {
         return new DateExpr(new DateShift(DateShift.Unit.DAYS, date.expression(), amount.expression()));
+    }
+
+    /** {@code AddDays(dateTime, n)} with a numeric expression, preserving the date-time result type. */
+    public static DateTimeExpr addDays(DateTimeOperand dateTime, NumberExpr amount) {
+        return new DateTimeExpr(new DateShift(DateShift.Unit.DAYS, dateTime.expression(), amount.expression()));
     }
 
     public static DateExpr addMonths(TemporalOperand date, NumberExpr amount) {

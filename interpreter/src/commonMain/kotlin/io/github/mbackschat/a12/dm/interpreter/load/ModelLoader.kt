@@ -74,9 +74,11 @@ object ModelLoader {
         // legal charset the kernel enforces at runtime (ZeichenNichtImZeichensatz); empty/absent → no restriction (IF120).
         val legalCharset = LegalCharset.ofSupportedCharacters(
             modelConfig.path("supportedCharacters").elements().mapNotNull { it.asTextOrNull() })
-        // content.modelConfig.timeZone (default UTC) — the parse-time zone axis; an id beyond the kernel's two
-        // documented values (UTC / Europe/Berlin, GMT collapsing to UTC) is refused loud (KERNEL-FINDINGS §6).
-        val timeZone = ModelTimeZone.of(modelConfig.path("timeZone").asTextOrNull())
+        // Only an ABSENT timeZone slot defaults to UTC. An explicit null/blank is an invalid config value;
+        // outside-set ids reach ModelTimeZone's neutral common refusal. The JVM consumer classifies those ids
+        // against java.util.TimeZone before this kernel-free JVM+JS boundary.
+        val timeZoneNode = (modelConfig as? JsonObject)?.get("timeZone")
+        val timeZone = if (timeZoneNode == null) ModelTimeZone.UTC else ModelTimeZone.of(timeZoneNode.asTextOrNull())
         return ModelDef(sink.fields, sink.rules, sink.comps, sink.repeatable, sink.declaredReps, sink.indexFields,
             baseYear, fieldRefByShortNameAllowed = shortNameRefs, legalCharset = legalCharset, timeZone = timeZone)
     }

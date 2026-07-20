@@ -13,6 +13,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.cli.RolesMerge;
 import io.github.mbackschat.a12.dm.edit.EditSession;
+import io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract;
+import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 /**
  * The shared {@code config modify} setter cascade (T4) — a value object holding the document-config
@@ -138,6 +141,25 @@ public record ConfigModification(
             session.removeModelAnnotation("roles");
             changed.putNull("roles");
         }
+    }
+
+    /**
+     * Nonblocking authoring diagnostics for a successful mutation. The live kernel remains the validity
+     * authority; this warns only about the narrower interpreter evaluation scope.
+     */
+    public List<Diagnostic> advisories() {
+        if (ModelTimeZoneContract.classify(timeZone != null, timeZone)
+                != ModelTimeZoneContract.Domain.KERNEL_LEGAL_INTERPRETER_UNSUPPORTED) {
+            return List.of();
+        }
+        RkCode code = RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED;
+        return List.of(Diagnostic.precheckWarning(
+                java.util.Optional.of(code.code()),
+                "modelConfig.timeZone '" + timeZone
+                        + "' is kernel-valid but unsupported by the interpreter-backed evaluator",
+                Diagnostic.Where.arg(null, "--time-zone"),
+                java.util.Optional.of(code.fix()),
+                java.util.Optional.of(code.meaning())));
     }
 
     /** Add/remove display locales idempotently — only actually-changed codes are applied and reported (as arrays). */

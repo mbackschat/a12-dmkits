@@ -281,10 +281,14 @@ public final class SubscriptionIdioms {
         return allOf(order.filled(), delivery.filled(),
                 delivery.after(addDays(order, days)));        // [Delivery] > AddDays(Order, days)
     }
+    /** A DATE_TIME AddDays keeps its DATE_TIME result type, including a field-valued day count. */
+    public static Condition sameWallTimeTomorrow(DateTimeRef start, DateTimeRef expected) {
+        return addDays(start, 1).eq(expected);                 // AddDays(datetime, 1) == [datetime]
+    }
 }
 ```
 
-No framework, no registry — a fragment library is a Java class; discoverability comes from javadoc + the skill. (This is the Zod lesson: schemas-are-code.)
+No framework, no registry — a fragment library is a Java class; discoverability comes from javadoc + the skill. `AddDays` is temporal-output-polymorphic: a DATE operand yields `DateExpr`, while a DATE_TIME operand yields `DateTimeExpr`; the compiler therefore preserves the kernel's time-preserving wall-day semantics instead of narrowing the result to a date (finding 71). (This is the Zod lesson: schemas-are-code.)
 
 ### 3.4 Parameterized *rules* — templates over the model (message interpolation — `Dsl.fieldValue`)
 
@@ -810,6 +814,8 @@ ModelDocument.read(json)
     .validate(resolver);   // includes validate against the referenced model via a resolver
 ```
 *Locked by `modelkit.ModelStructureCoverageTest`.*
+
+The time-zone slot has four authoring domains, exposed by `ModelTimeZoneContract.classify(slotPresent, value)`: an absent slot defaults to UTC; exact `UTC`/`GMT`/`Europe/Berlin` are interpreter-supported; a known Java zone such as `America/New_York` is kernel-valid but outside the current evaluator set; and blank/whitespace/unknown ids are kernel-invalid. The typed setters preserve the value for the kernel gate rather than silently normalizing it. dmtool reports an invalid id correctively and warns on a successful outside-set mutation before a later runtime verb refuses it (finding 72).
 
 ### Richer field types & element metadata
 

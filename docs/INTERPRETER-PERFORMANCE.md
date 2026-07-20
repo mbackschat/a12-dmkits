@@ -338,6 +338,8 @@ Each scenario is a real DM-JSON model + an instance built at parameterized scale
 
 The catalog must favor **non-obvious** combinations (nesting × aggregation × cross-level), not just "more rows of the flat case" — **B8** is the combine-everything case (`PerfCatalog.complexRealWorld*` → `ComplexRealWorld`, authored with the dmkits). Use own-domain fixtures (the license-safe rule); a dedicated `models/perf-*.dm.json` set is fine.
 
+**Specialist Berlin wall-day guard (IF166).** `PerfCatalog.berlinAddDays()` is deliberately outside the closed B1–B9 comparison inventory: it is a focused regression scenario for the `AddDays(DATE_TIME, …)` landing path. Rows cycle ordinary, gap, and overlap landings in both directions, including the 1945 CEST↔CEMT transitions; exact interpreter/dynamic-Groovy/generated-Java signatures are checked at N and 4N before timing. On the same Apple Silicon runner, the pre-fix collection path measured 12.3 ms at 1,000 rows and 50.4 ms at 4,000 (4.14×); the scalar-loop path measured 12.6/49.4 ms (3.93×). These are dated implementation evidence under IF137's paired estimator and existing `<9×` catastrophe floor, not a promoted release number.
+
 ## The regression gate (mechanics)
 
 - **Home:** `adapter/src/test/.../perf/` (has the kernel; mirrors the `laws/` differential layout). Not in `:interpreter` (kernel-free) and not in the cold-agent surfaces.

@@ -166,7 +166,7 @@ JSON
 dmtool -m examples/models/payment-customtype.dm.json \
   model eval --instance /tmp/ct-fr.json \
   --custom-field-types-js /tmp/ct-js \
-  | jq '{fired: .data.fired, msg: [.data.messages[] | {code, field, text}]}'
+  | jq '{fired: .data.fired, msg: [.data.messages[] | {code, field, message}]}'
 
 ```
 
@@ -179,7 +179,7 @@ dmtool -m examples/models/payment-customtype.dm.json \
     {
       "code": "invalidIban",
       "field": "/Payment[1]/Iban",
-      "text": "Invalid Iban"
+      "message": "Invalid Iban"
     }
   ]
 }

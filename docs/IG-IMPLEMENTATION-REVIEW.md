@@ -178,7 +178,7 @@ The classifier has a second sibling defect. Every other outside-set value become
 
 **Acceptance checks:** Add common JVM/Node loader cases for missing, `""`, whitespace, `UTC`, `GMT`, `Europe/Berlin`, `Europe/Berln`, and `America/New_York`. Add CLI cases proving `model eval`, `model compute`, and `rule eval` never evaluate explicit blank/whitespace, distinguish the invalid typo from the legal New York scope refusal, and return structured corrective diagnostics rather than a bare failure or UTC result.
 
-**Resolution:** Open.
+**Resolution:** Corrected by `3afbaa0a`. The common loader distinguishes absence from explicit invalid input and makes no unchecked legality claim; the JVM `ModelTimeZoneContract` supplies the four-domain classification used by every runtime verb. `ModelTimeZoneTest`, `ModelTimeZoneContractTest`, `EvalUnsupportedTimeZoneRefusalTest`, and `ConfigTimeZoneContractTest` cover the named cases on their applicable JVM/Node/CLI surfaces.
 
 ### RV-2026-07-20-02-2 — “complete history” and tzdb-drift claims exceed representative evidence
 
@@ -192,7 +192,7 @@ The review independently compared all 62 committed pairs and found no bad entry.
 
 **Acceptance checks:** The guard detects a one-second epoch mutation, an offset mutation, a missing/extra/reordered pair, and a wrong gap/overlap choice. It covers pre-first and post-last behavior and reports the pinned JDK/tzdb profile. Every document and test comment states exactly which strategy and transition set its named lock exercises.
 
-**Resolution:** Open.
+**Resolution:** Corrected by `3afbaa0a`, documented by `86a77e75`. `BerlinHistoricalTzTest` now compares an independent JDK 21.0.11/tzdb2026a vector with all 62 production pairs, before/at/after behavior, gap/overlap classes, outer regimes, and the named mutation classes. `BerlinTransitionOracleDiffTest` reuses prepared dynamic-Groovy and generated-Java engines across every transition and reports the profiles; the stale KDoc and overclaims are corrected.
 
 ### RV-2026-07-20-02-3 — the CLI refusal/check-valid lock proves less than IF155 says
 
@@ -204,7 +204,7 @@ The review independently compared all 62 committed pairs and found no bad entry.
 
 **Acceptance checks:** All three runtime verbs exit nonzero with `outcome: refused`, `RK_INTERPRETER_TIMEZONE_UNSUPPORTED`, the offending zone, and a nonblank corrective fix. The same unmodified New York model exits 0 from `model check` with its successful outcome/valid flag. Add negative controls for issue 1's invalid ids.
 
-**Resolution:** Open.
+**Resolution:** Corrected by `3afbaa0a`. `EvalUnsupportedTimeZoneRefusalTest` exercises all three verbs with the same exact refusal/code/zone/fix/explanation; its unchanged New York fixture must exit 0 from `model check` with a successful outcome and `valid:true`. Invalid-id controls prove those inputs take the configuration-error path instead.
 
 ### RV-2026-07-20-02-4 — the public rulekit API golden was not updated
 
@@ -216,7 +216,7 @@ The review independently compared all 62 committed pairs and found no bad entry.
 
 **Acceptance checks:** `./build.sh apiGuardTest` and the root test/check path are green, and the reviewed golden diff contains the deliberate time-zone diagnostic API change.
 
-**Resolution:** Open.
+**Resolution:** Corrected by `86a77e75`. `dumpKitApi` regenerated the modelkit/rulekit goldens; the reviewed diff contains only `ModelTimeZoneContract`/its enum, the deliberate timezone `RkCode`, and the separately required DATE_TIME `AddDays` overloads. `apiGuardTest` passes.
 
 ### RV-2026-07-20-02-5 — historical `AddDays` adds avoidable hot-path allocations and has no matching measurement
 
@@ -228,7 +228,7 @@ The review independently compared all 62 committed pairs and found no bad entry.
 
 **Acceptance checks:** The hot function contains no per-call collection construction; correctness remains locked for normal, gap, and overlap landings in both travel directions, including a CEMT-era transition. The targeted N/4N case stays below the existing catastrophe floor and a same-run before/after measurement supports any retained “no regression” wording.
 
-**Resolution:** Open.
+**Resolution:** Corrected by `1d2062b6`, documented by `86a77e75`. `wallDayLandingInstant` now uses one scalar loop. `PerfCatalog.berlinAddDays` covers the named landings, tri-checks both N/4N documents before timing, and measures 4.14× before versus 3.93× after under the unchanged `<9×` floor; no number was promoted.
 
 ### RV-2026-07-20-02-6 — lifecycle and direct status prose still describe the pre-IF155 state
 
@@ -240,7 +240,7 @@ The review independently compared all 62 committed pairs and found no bad entry.
 
 **Acceptance checks:** The gap ledger has no entry whose prose says “deferred” under §1 after Route B is complete. No current-status sentence says Berlin remains modern-only or is still being pinned. Links resolve, doc guards pass, and IF128 remains recognizable as historical provenance rather than silently rewritten history.
 
-**Resolution:** Open.
+**Resolution:** Corrected by `86a77e75`. Route-B work is gone from §1; only owner-deferred IG83 Route A remains in §2 with its original trigger. Current KERNEL-SEMANTICS/KERNEL-FINDINGS/IF155/certificate/performance prose states the pinned profile and exact evidence, while IF128 remains dated provenance.
 
 ### RV-2026-07-20-02-7 — the dmkits/dmtool authoring impact is real and needs the four-domain contract
 
@@ -252,7 +252,7 @@ The review independently compared all 62 committed pairs and found no bad entry.
 
 **Acceptance checks:** Typed docs and CLI discovery explain the four domains. `config modify`/apply and `model check` give a corrective invalid-id diagnostic for empty/whitespace/typo inputs. A New York mutation remains authorable and kernel-valid but carries a clear evaluator-scope warning; all three runtime verbs then produce the precise scope refusal. On ship, delete the DEV-API gap row and graduate the durable API rationale into `API-FINDINGS.md`.
 
-**Resolution:** Open.
+**Resolution:** Corrected by `3afbaa0a`, graduated by `86a77e75`. Invalid ids receive corrective enrichment; successful outside-set mutations warn; typed setter Javadocs and CLI help/schema describe the domains. The DEV-API row is deleted and API-FINDINGS finding 72 owns the rationale.
 
 ### RV-2026-07-20-02-8 — `cli-custom-types` projects the wrong result key
 
@@ -264,7 +264,7 @@ The review independently compared all 62 committed pairs and found no bad entry.
 
 **Acceptance checks:** Run `CustomFieldTypeJsContractTest` with Node available and `uvx showboat@0.6.1 verify examples/cli-custom-types.md`; both are green, and the test fails if the interpolated message disappears or moves keys.
 
-**Resolution:** Open.
+**Resolution:** Corrected 2026-07-20 by `a1af1e24` (`fix(cli): correct custom type message projection`). The demo now projects the schema-defined `message` key, and `CustomFieldTypeJsContractTest` locks the interpolated `bad Iban` value while rejecting a stray `text` key. Verification: the focused test passed with Node 22.18.0 explicitly on `PATH`, and `uvx showboat@0.6.1 verify examples/cli-custom-types.md` passed against the locally installed CLI distribution.
 
 ### Review verification
 
@@ -274,7 +274,7 @@ The review independently compared all 62 committed pairs and found no bad entry.
 
 ### Chapter resolution
 
-Open. Resolve issues 1–3 together as the Route-B classification/evidence pass, issue 4 in the same public-diagnostic landing, issue 5 as the focused historical-`AddDays` performance cleanup, and issues 6–7 with those implementation commits while their exact contracts are warm. Resolve issue 8 independently as the narrow demo/test correction. Do not describe IF155 as fully certified or move Route A to the deferred section until issues 1–7 are green.
+Resolved 2026-07-20 by `a1af1e24`, `3afbaa0a`, `1d2062b6`, and `86a77e75`. Every issue 1–8 acceptance path is implemented and has a commit-linked resolution above. Route B is complete and evidence-bounded; IG83 Route A remains only as the owner-ratified deferred capability with its external re-open trigger. Independent review should replay the named focused guards plus the API/doc/stale-gap guards; the branch's semantics-map guard has only the three pre-existing RV03 unmapped classes (`CorrelationPlanDispatchTest`, `OrderedOuterCorrelationDiffTest`, `PreparedPlanSupportTest`), none from this chapter.
 
 ## RV-2026-07-20-03 — IG77 and IG79 performance and footprint review
 

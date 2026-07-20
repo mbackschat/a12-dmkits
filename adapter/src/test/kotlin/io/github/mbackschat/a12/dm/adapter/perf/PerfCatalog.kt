@@ -933,6 +933,101 @@ object PerfCatalog {
      *  isolates the DST offset cost. */
     fun utcDateTimeControl(): PerfScenario = dateTimeScenario("DT UTC control", dtUtcJson, ModelTimeZone.UTC)
 
+    // ---- Europe/Berlin wall-day AddDays: every row lands in an ordinary hour, a spring gap, or a fall
+    //      overlap in both directions. The historic cases cross the 1945 CEST↔CEMT transitions, so all three
+    //      supported Berlin offsets participate in the wall-day landing path.
+    private const val AD_RUNS = "/Schedule/Runs"
+    private const val AD_KEY = "$AD_RUNS/RunKey"
+    private const val AD_START = "$AD_RUNS/StartedAt"
+    private const val AD_ANCHOR = "$AD_RUNS/AnchorAt"
+    private const val AD_DAYS = "$AD_RUNS/Days"
+    private const val AD_EXPECTED = "$AD_RUNS/ExpectedMinutes"
+
+    private data class AddDaysCase(
+        val startedAt: String,
+        val days: String,
+        val anchorAt: String,
+        val expectedMinutes: String,
+    )
+
+    private val addDaysCases = listOf(
+        AddDaysCase("2024-06-10T08:15:00", "1", "2024-06-11T08:15:00", "0"),
+        AddDaysCase("2024-06-10T08:15:00", "-1", "2024-06-09T08:15:00", "0"),
+        AddDaysCase("2024-03-30T02:30:00", "1", "2024-03-31T03:30:00", "60"),
+        AddDaysCase("2024-04-01T02:30:00", "-1", "2024-03-31T03:30:00", "0"),
+        AddDaysCase("2024-10-26T02:30:00", "1", "2024-10-27T03:30:00", "120"),
+        AddDaysCase("2024-10-28T02:30:00", "-1", "2024-10-27T03:30:00", "60"),
+        AddDaysCase("1945-05-23T02:30:00", "1", "1945-05-24T03:30:00", "60"),
+        AddDaysCase("1945-05-25T02:30:00", "-1", "1945-05-24T03:30:00", "0"),
+        AddDaysCase("1945-09-23T02:30:00", "1", "1945-09-24T03:30:00", "120"),
+        AddDaysCase("1945-09-25T02:30:00", "-1", "1945-09-24T03:30:00", "60"),
+    )
+
+    private val addDaysJson: String by lazy {
+        DocumentModelDraft.named("scheduleAddDays").locale("en_US")
+            .rootGroup("Schedule", Consumer { root ->
+                root.group("Runs", Consumer { g ->
+                    g.repeatable(DECLARED_MAX).indexField("RunKey")
+                    g.field("RunKey", FieldKind.STRING)
+                    g.dateTimeField("StartedAt", Consumer<DateTimeFieldBuilder> { })
+                    g.dateTimeField("AnchorAt", Consumer<DateTimeFieldBuilder> { })
+                    g.numberField("Days", Consumer<NumberFieldBuilder> { it.fractionDigits(0) })
+                    g.numberField("ExpectedMinutes", Consumer<NumberFieldBuilder> { it.fractionDigits(0) })
+                })
+            }).build().toJson()
+    }
+
+    /**
+     * A historical Berlin DATE_TIME `AddDays` scenario. Its repeated rows cover ordinary landings plus gap and
+     * overlap landings in both directions, including the 1945 CEMT (+03:00) window. The typed condition keeps
+     * the DATE_TIME result of `AddDays` and compares its instant-distance to the per-row expected value.
+     */
+    fun berlinAddDays(): PerfScenario {
+        val runs = EditSession.read(addDaysJson).group(AD_RUNS)
+        val started = runs.dateTime("StartedAt")
+        val anchor = runs.dateTime("AnchorAt")
+        val days = runs.num("Days")
+        val expected = runs.num("ExpectedMinutes")
+        val condition = Dsl.allFieldsFilled(started.field(), anchor.field(), days.field(), expected.field()).and(
+            Dsl.differenceInMinutes(Dsl.addDays(started, days.asNumber()), anchor).eq(expected.asNumber()),
+        )
+        val rule = runs.errorRule("ADH", started.field(), condition)
+        val kernelModel = TypedRules.inject(addDaysJson, rule)
+        val fields = listOf(
+            FieldDef(AD_KEY, Kind.STRING),
+            FieldDef(AD_START, Kind.DATE_TIME, format = DT_FMT),
+            FieldDef(AD_ANCHOR, Kind.DATE_TIME, format = DT_FMT),
+            FieldDef(AD_DAYS, Kind.NUMBER, scale = 0),
+            FieldDef(AD_EXPECTED, Kind.NUMBER, scale = 0),
+        )
+        val interpModel = ModelDef(
+            fields,
+            listOf(TypedRules.def(rule)),
+            repeatableGroups = setOf(AD_RUNS),
+            declaredReps = mapOf(AD_RUNS to DECLARED_MAX),
+            indexFields = setOf(AD_KEY),
+            timeZone = ModelTimeZone.EUROPE_BERLIN,
+        )
+        val gen = SeedGenerator(interpModel)
+        return PerfScenario("Berlin AddDays historical", kernelModel, interpModel) { sink, n, variant ->
+            gen.populate(
+                sink,
+                rowsOf = { group, _, _ -> if (group == AD_RUNS) n else 0 },
+                value = ValueStrategy { field, reps, _ ->
+                    val c = addDaysCases[(reps[1] + variant - 1) % addDaysCases.size]
+                    when (field.path) {
+                        AD_KEY -> "K" + reps.joinToString("_")
+                        AD_START -> c.startedAt
+                        AD_ANCHOR -> c.anchorAt
+                        AD_DAYS -> c.days
+                        AD_EXPECTED -> c.expectedMinutes
+                        else -> "0"
+                    }
+                },
+            )
+        }
+    }
+
     /** Every catalog scenario, in order — for the gate to sweep. */
     fun all(): List<PerfScenario> = listOf(b1(), b2(), b3(), b4(), b5(), b6())
 

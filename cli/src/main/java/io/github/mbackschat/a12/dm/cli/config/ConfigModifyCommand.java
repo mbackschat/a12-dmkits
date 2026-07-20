@@ -44,7 +44,9 @@ final class ConfigModifyCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--time-zone", paramLabel = "<tz>",
-            description = "the time zone, e.g. Europe/Berlin or UTC")
+            description = "the model time-zone id: omitted defaults to UTC; exact UTC, GMT, Europe/Berlin are "
+                    + "interpreter-supported; another kernel-valid Java id (e.g. America/New_York) is authored "
+                    + "with an evaluator-scope warning; blank/unknown ids are rejected")
     String timeZone;
 
     @ParamKind(ParamKind.Kind.SCALAR)
@@ -183,8 +185,10 @@ final class ConfigModifyCommand extends BaseCommand {
         } catch (RuntimeException e) {
             return fail(e.getMessage());
         }
+        var advisories = mod.advisories();
         if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("config", "modify", "would change document config", changed);
+            ResultEnvelope env = ResultEnvelope.preview(
+                    "config", "modify", "would change document config", changed, advisories);
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -194,7 +198,8 @@ final class ConfigModifyCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied("config", "modify", "changed document config", changed, dest);
+        ResultEnvelope env = ResultEnvelope.applied(
+                "config", "modify", "changed document config", changed, advisories, dest);
         out().print(env.toJsonString());
         return env.exitCode();
     }

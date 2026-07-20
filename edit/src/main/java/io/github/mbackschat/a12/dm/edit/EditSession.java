@@ -305,6 +305,11 @@ public final class EditSession {
         return ModelDocument.read(json).locales();
     }
 
+    /**
+     * Set {@code modelConfig.timeZone}: UTC/GMT/Europe/Berlin are interpreter-supported; another known Java
+     * id remains kernel-valid but evaluator-unsupported, and null/blank/unknown ids fail the kernel gate.
+     * Omitting the slot, rather than setting an empty value, selects the UTC default.
+     */
     public EditSession setTimeZone(String timeZone) {
         return editStructure(d -> d.setTimeZone(timeZone));
     }

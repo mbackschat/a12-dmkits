@@ -537,7 +537,7 @@ final class ApplyCommand extends BaseCommand {
                             + "role, clear-roles, supported-character, base-year, field-ref-by-short-name, remove-annotation");
                 }
                 mod.applyTo(session, changed);
-                yield staged(which, changed, session);
+                yield staged(which, changed, mod.advisories(), session);
             }
             case FIELD_RENAME -> applyRefactor(session, resolver,
                     StructureRefactor.fieldRename(req(op, "fieldPathInModel"), req(op, "to")));
@@ -600,8 +600,14 @@ final class ApplyCommand extends BaseCommand {
 
     /** An edit op's per-op envelope — its mutation is {@code staged} until the terminal gate commits the sequence. */
     private static Applied staged(Op which, ObjectNode changed, EditSession session) {
+        return staged(which, changed, List.of(), session);
+    }
+
+    /** A staged mutation carrying nonblocking authoring diagnostics. */
+    private static Applied staged(
+            Op which, ObjectNode changed, List<Diagnostic> diagnostics, EditSession session) {
         return new Applied(new ResultEnvelope(which.target, which.op, ResultEnvelope.Outcome.STAGED,
-                "staged " + which.label(), changed, null, List.of(), null, false, null, null), session);
+                "staged " + which.label(), changed, null, diagnostics, null, false, null, null), session);
     }
 
     /** The clean ValueKind name of a just-staged field, read back from the session — the SAME resolver

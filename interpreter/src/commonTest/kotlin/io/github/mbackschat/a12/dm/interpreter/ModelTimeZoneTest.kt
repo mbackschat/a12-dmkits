@@ -24,11 +24,13 @@ import kotlin.test.assertTrue
 class ModelTimeZoneTest {
 
     // ---- the loader mapping -------------------------------------------------------------------------------
-    private fun claimModel(timeZone: String?) = """
+    private fun claimModel(timeZone: String?) = claimModelValue(timeZone?.let { "\"$it\"" })
+
+    private fun claimModelValue(timeZoneJson: String?) = """
         {
           "header": { "id": "claims" },
           "content": {
-            ${if (timeZone == null) "" else "\"modelConfig\": { \"timeZone\": \"$timeZone\" },"}
+            ${if (timeZoneJson == null) "" else "\"modelConfig\": { \"timeZone\": $timeZoneJson },"}
             "modelRoot": { "rootGroups": [ {
               "type": "Group", "id": "/Claim", "name": "Claim", "Group": { "elements": [
                 { "type": "Field", "id": "/Claim/ReportedAt", "name": "ReportedAt", "Field": { "fieldType": {"type":"DateTimeType","DateTimeType":{"format":"yyyy-MM-dd'T'HH:mm:ss"}} } }
@@ -42,16 +44,29 @@ class ModelTimeZoneTest {
     @Test fun absentSlotDefaultsToUtc() =
         assertEquals(ModelTimeZone.UTC, ModelLoader.load(claimModel(null)).timeZone)
 
+    @Test fun utcMapsToUtc() =
+        assertEquals(ModelTimeZone.UTC, ModelLoader.load(claimModel("UTC")).timeZone)
+
     @Test fun gmtCollapsesToUtc() =
         assertEquals(ModelTimeZone.UTC, ModelLoader.load(claimModel("GMT")).timeZone)
 
-    @Test fun anUnmodeledZoneIsRefusedLoud() {
-        // A kernel-LEGAL zone the interpreter does not model → a loud, corrective refusal (the documented
-        // scope limit, IG83), not a bare IllegalArgumentException and never a silent evaluation.
-        val e = assertFailsWith<UnsupportedModelTimeZoneException> { ModelLoader.load(claimModel("America/New_York")) }
-        val msg = e.message ?: ""
-        assertTrue("America/New_York" in msg, "the refusal names the zone: $msg")
-        assertTrue("UTC" in msg && "Europe/Berlin" in msg, "the refusal names the supported set: $msg")
+    @Test fun explicitNullEmptyAndWhitespaceAreInvalidConfiguration() {
+        for ((label, json) in listOf("null" to "null", "empty" to "\"\"", "whitespace" to "\"   \\t\"")) {
+            val e = assertFailsWith<InvalidModelTimeZoneException> { ModelLoader.load(claimModelValue(json)) }
+            val msg = e.message ?: ""
+            assertTrue("timeZone" in msg && "invalid" in msg, "$label is an explicit invalid config value: $msg")
+        }
+    }
+
+    @Test fun outsideSetIsRefusedWithoutGuessingWhetherJavaAcceptsIt() {
+        for (id in listOf("America/New_York", "Europe/Berln")) {
+            val e = assertFailsWith<UnsupportedModelTimeZoneException> { ModelLoader.load(claimModel(id)) }
+            val msg = e.message ?: ""
+            assertTrue(id in msg, "the refusal names the zone: $msg")
+            assertTrue("UTC" in msg && "Europe/Berlin" in msg, "the refusal names the supported set: $msg")
+            assertTrue("kernel-legal" !in msg && "kernel accepts" !in msg,
+                "common code stays neutral about the host Java id domain: $msg")
+        }
     }
 
     // ---- Berlin evaluation semantics (the kernel truths, kernel-free) --------------------------------------

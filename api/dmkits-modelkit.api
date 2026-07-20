@@ -598,6 +598,17 @@ public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.Include
   public java.lang.String reference()
   public final java.lang.String toString()
 
+public final class io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract
+  public static io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract.Domain classify(boolean, java.lang.String)
+
+public static enum io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract.Domain
+  public static final io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract.Domain ABSENT_DEFAULT
+  public static final io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract.Domain INTERPRETER_SUPPORTED
+  public static final io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract.Domain KERNEL_INVALID
+  public static final io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract.Domain KERNEL_LEGAL_INTERPRETER_UNSUPPORTED
+  public static io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract.Domain valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract.Domain[] values()
+
 public record io.github.mbackschat.a12.dm.modelkit.MountOptions
   public MountOptions(int, boolean, boolean, io.github.mbackschat.a12.dm.modelkit.IncludeLevel)
   public io.github.mbackschat.a12.dm.modelkit.MountOptions asModelRoot()

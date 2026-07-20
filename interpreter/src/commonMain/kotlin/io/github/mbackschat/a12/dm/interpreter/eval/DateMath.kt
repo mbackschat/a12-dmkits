@@ -407,7 +407,7 @@ fun isIsoDateTime(s: String): Boolean = ISO_DATE_TIME.matches(s)
 // below: `java.util` DROPS the pre-1916 LMT (Berlin is flat CET +1 h before the first DST transition), and
 // Berlin has THREE historical offsets — CET (+1 h), CEST (+2 h), and CEMT (+3 h, the 1945/47 double-summer
 // windows). The [BERLIN_TX_EPOCH]/[BERLIN_TX_OFFSET] transitions (1916→1997) are the kernel's own step
-// function (pinned to JDK 21 tzdb 2026a — settled history, stable across releases, differential-locked);
+// function (pinned to the JDK 21.0.11 / tzdb 2026a profile and exhaustively differential-locked);
 // beyond them the recurring EU rule governs (CEST from the last Sunday of March 01:00Z to the last Sunday
 // of October 01:00Z). UTC is the identity on every function here.
 
@@ -483,6 +483,11 @@ private val BERLIN_TX_OFFSET = longArrayOf(
           7200L,  3600L,  7200L,  3600L,  7200L,  3600L,
           7200L,  3600L,
     )
+
+/** Test-visible pinned-profile accessors; evaluation still reads the private arrays directly. */
+internal val berlinPinnedTransitionCount: Int get() = BERLIN_TX_EPOCH.size
+internal fun berlinPinnedTransitionEpoch(index: Int): Long = BERLIN_TX_EPOCH[index]
+internal fun berlinPinnedTransitionOffset(index: Int): Long = BERLIN_TX_OFFSET[index]
 
 /** Berlin's UTC offset in seconds at [instant] over its COMPLETE history — flat CET before 1916 (the kernel's
  *  java.util path drops the LMT), the pinned [BERLIN_TX_EPOCH]/[BERLIN_TX_OFFSET] transitions through 1997
@@ -560,15 +565,31 @@ fun isGapLocal(iso: String, tz: ModelTimeZone): Boolean =
 fun wallDayLandingInstant(localSeconds: Long, n: Int, tz: ModelTimeZone): Long {
     val nominal = localSeconds + n * 86_400L
     if (tz == ModelTimeZone.UTC) return nominal
-    // Every consistent instant for the nominal wall time (0 in a gap, 1 normally, 2 in an ambiguous overlap).
-    val consistent = BERLIN_OFFSETS.filter { berlinOffsetSeconds(nominal - it) == it }.map { nominal - it }
-    if (consistent.isNotEmpty()) {
+
+    var earliestConsistent = Long.MAX_VALUE
+    var latestConsistent = Long.MIN_VALUE
+    var gapAfterOffset = Long.MIN_VALUE
+    var gapBeforeOffset = Long.MIN_VALUE
+    for (offset in BERLIN_OFFSETS) {
+        val instant = nominal - offset
+        val actualOffset = berlinOffsetSeconds(instant)
+        if (actualOffset == offset) {
+            earliestConsistent = minOf(earliestConsistent, instant)
+            latestConsistent = maxOf(latestConsistent, instant)
+        } else if (actualOffset < offset && gapAfterOffset == Long.MIN_VALUE) {
+            gapAfterOffset = offset
+        } else if (actualOffset > offset) {
+            gapBeforeOffset = offset
+        }
+    }
+    if (earliestConsistent != Long.MAX_VALUE) {
         // No overshoot: a FORWARD add takes the DAYLIGHT (earliest) instant, a BACKWARD add the STANDARD (latest).
-        return if (n > 0) consistent.min() else consistent.max()
+        return if (n > 0) earliestConsistent else latestConsistent
     }
     // The gap: no consistent instant. The bracketing transition is oBefore→oAfter (oAfter the larger offset);
     // forward straddles to the daylight (earlier) instant `nominal − oAfter`, backward to the standard `nominal − oBefore`.
-    val oAfter = BERLIN_OFFSETS.first { berlinOffsetSeconds(nominal - it) < it }
-    val oBefore = BERLIN_OFFSETS.last { berlinOffsetSeconds(nominal - it) > it }
-    return if (n > 0) nominal - oAfter else nominal - oBefore
+    check(gapAfterOffset != Long.MIN_VALUE && gapBeforeOffset != Long.MIN_VALUE) {
+        "Berlin wall-day landing has no consistent or bracketing offset for local=$nominal"
+    }
+    return if (n > 0) nominal - gapAfterOffset else nominal - gapBeforeOffset
 }

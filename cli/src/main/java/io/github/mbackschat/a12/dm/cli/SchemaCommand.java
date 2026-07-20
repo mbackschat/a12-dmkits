@@ -61,6 +61,13 @@ final class SchemaCommand extends BaseCommand {
             "model compute", "document-instance",
             "rule eval", "document-instance");
 
+    /** Directional contract notes for flag-only verbs whose cross-value relation is not a JSON input shape. */
+    static final Map<String, String> CONTRACT_NOTES = Map.of(
+            "config modify",
+            "time-zone has four domains: absence defaults UTC; exact UTC, GMT, Europe/Berlin are "
+                    + "interpreter-supported; another kernel-valid Java id is accepted with an evaluator-scope "
+                    + "warning; explicit null/blank/unknown ids are rejected");
+
     /** Read ops whose {@code data} payload has a published schema → surfaced so the agent learns the output shape. */
     static final Map<String, String> DATA_SCHEMA = Map.ofEntries(
             Map.entry("model info", "model-info"),
@@ -179,6 +186,10 @@ final class SchemaCommand extends BaseCommand {
         }
         c.put("returns", "result");
         c.put("resultSchema", "result");
+        String note = CONTRACT_NOTES.get(verb);
+        if (note != null) {
+            c.put("notes", note);
+        }
         if (VERDICT_OPS.contains(verb)) {
             // a verdict verb carries its result in the envelope's valid + diagnostics, not a data payload
             c.put("verdict", "the kernel verdict rides the envelope's `valid` (true iff no ERROR diagnostic)"

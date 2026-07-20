@@ -12,10 +12,10 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
- * Differential — Europe/Berlin's **complete history** (IG83): the pinned transition table (`DateMath`, from the
- * kernel's own `java.util.TimeZone` step function) must reproduce the REAL kernel across the historical
- * transitions the pre-2026 1996+-only rule got wrong. Each arm crosses a genuine historical transition, so the
- * real-hour count is offset-sensitive and would DIVERGE under the old rule (recorded per arm):
+ * Differential — representative Europe/Berlin historical discriminators (IF155). The dynamic-Groovy arms
+ * cover pre-1916/1916, 1945, 1947, and 1980 behavior; the generated-Java arm tri-checks the 1980 transition
+ * plus a summer control. Each transition arm is offset-sensitive and would DIVERGE under the old 1996+-only
+ * rule (recorded per arm):
  *
  *  - **1980 fall-back was the last Sunday of SEPTEMBER**, not October — the old EU-October rule kept CEST, so
  *    it counted one hour too few across 1980-09-28.
@@ -23,8 +23,10 @@ import org.junit.jupiter.api.Test
  *  - **pre-1916 is flat CET** (the kernel path drops the LMT) with NO DST — a same-era pair is plain wall
  *    arithmetic, and the first-ever DST spring (1916) is a real transition.
  *
- * Companion kernel-free lock (JVM + JS): `interpreter … BerlinHistoricalTzTest`. Modern-regime cases:
- * [DstTimeZoneDiffTest] / [WallDayArithmeticDiffTest].
+ * The exhaustive both-strategy guard is [BerlinTransitionOracleDiffTest]: immediately before, at, and after
+ * every one of the 62 pinned transitions. The independent table/mutation and kernel-free JVM+JS lock is
+ * `interpreter … BerlinHistoricalTzTest`. Modern-regime cases: [DstTimeZoneDiffTest] /
+ * [WallDayArithmeticDiffTest].
  */
 class BerlinHistoricalTzDiffTest {
 

@@ -20,7 +20,11 @@ public final class ConfigEditor {
         return this;
     }
 
-    /** Set the model time zone (e.g. {@code "Europe/Berlin"}, {@code "UTC"}). Chains. */
+    /**
+     * Set the model time zone. UTC/GMT/Europe/Berlin are interpreter-supported; another known Java id is
+     * kernel-valid but evaluator-unsupported, while null/blank/unknown ids are invalid. Absence defaults UTC.
+     * Chains.
+     */
     public ConfigEditor timeZone(String timeZone) {
         session.setTimeZone(timeZone);
         return this;

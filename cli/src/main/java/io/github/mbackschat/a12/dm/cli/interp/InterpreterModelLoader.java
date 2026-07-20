@@ -4,10 +4,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.github.mbackschat.a12.dm.interpreter.InvalidModelTimeZoneException;
+import io.github.mbackschat.a12.dm.interpreter.UnsupportedModelTimeZoneException;
 import io.github.mbackschat.a12.dm.interpreter.eval.Document;
 import io.github.mbackschat.a12.dm.interpreter.eval.DocumentKt;
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader;
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef;
+import io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract;
 
 /**
  * The JVM bridge onto the kernel-free interpreter for {@code dmtool}: a DM-JSON model → {@link ModelDef} and a
@@ -23,12 +30,43 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef;
  */
 public final class InterpreterModelLoader {
 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private InterpreterModelLoader() {
     }
 
     /** Load an expanded, self-contained DM-JSON model into a {@link ModelDef} (delegates to {@link ModelLoader}). */
     public static ModelDef load(String modelJson) {
+        requireSupportedTimeZone(modelJson);
         return ModelLoader.load(modelJson);
+    }
+
+    /**
+     * JVM preparation owns the Java {@code TimeZone} id-domain decision that common JVM/JS code cannot
+     * honestly make. This is the single four-domain boundary used by every interpreter-backed CLI verb.
+     */
+    private static void requireSupportedTimeZone(String modelJson) {
+        JsonNode root;
+        try {
+            root = MAPPER.readTree(modelJson);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("not valid DM-JSON", e);
+        }
+        JsonNode config = root.path("content").path("modelConfig");
+        boolean present = config.has("timeZone");
+        JsonNode node = present ? config.get("timeZone") : null;
+        String id = node != null && node.isTextual() ? node.asText() : null;
+        switch (ModelTimeZoneContract.classify(present, id)) {
+            case ABSENT_DEFAULT, INTERPRETER_SUPPORTED -> {
+                return;
+            }
+            case KERNEL_INVALID -> throw new InvalidModelTimeZoneException(
+                    "invalid modelConfig.timeZone '" + (id == null ? "null" : id)
+                            + "' — pass a valid Java time-zone id, or omit the slot to use UTC");
+            case KERNEL_LEGAL_INTERPRETER_UNSUPPORTED -> throw new UnsupportedModelTimeZoneException(
+                    "unsupported model timeZone '" + id + "' — this Java time-zone id is kernel-valid, but "
+                            + "the interpreter-backed evaluator supports only UTC, GMT, and Europe/Berlin");
+        }
     }
 
     /** Build a {@link Document} from a nested fields map (the {@code DocInstance.readFields} output).
