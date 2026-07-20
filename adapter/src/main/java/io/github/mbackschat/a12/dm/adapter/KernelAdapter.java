@@ -1,8 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter;
 
-import java.io.IOException;
-import java.io.StringReader;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -18,13 +15,10 @@ import com.mgmtp.a12.kernel.core.tool.a12internal.api.services.ICalculationServi
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.services.IBaseCalculationService.ICalculationRule;
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.ado.serviceparams.ICalculationInfo;
 import com.mgmtp.a12.kernel.core.facade.a12internal.ServiceFactory;
-import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.model.a12internal.DocumentModel;
 import com.mgmtp.a12.kernel.md.model.a12internal.services.DocumentModelService;
 import com.mgmtp.a12.kernel.md.model.a12internal.services.ElementContainer;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
-import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.kernel.md.model.internal.service.mapping.IRuleFromComputation;
 import com.mgmtp.a12.kernel.md.serializer.model.internal.service.ExternalDocumentModelSerializerService;
 
@@ -43,7 +37,6 @@ import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
-import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
@@ -107,7 +100,6 @@ public final class KernelAdapter {
 
     /** Discards problems — the bootstrap reads validity from return values; IProblem→Diagnostic is F10. */
     private static final IProblemReporter SILENT = problem -> { };
-    private static final DocumentModelServiceFactory FACTORY = new DocumentModelServiceFactory();
     /** The header id is the first {@code "id"} in the DM-JSON (the document-model id passed to the runtime). */
     private static final Pattern HEADER_ID = Pattern.compile("\"id\"\\s*:\\s*\"([^\"]+)\"");
 
@@ -134,7 +126,18 @@ public final class KernelAdapter {
     public static KernelAdapter of(BoundModel model) {
         ModelResolver resolver =
                 model.resolver() != null ? model.resolver() : ReferenceResolvers.selfContained();
-        return new KernelAdapter(buildService(model.toJson(), resolver), model);
+        return new KernelAdapter(buildService(model.toJson(), resolver, ConsistencyGate.SKIP), model);
+    }
+
+    /**
+     * Run the consistency gate and open an adapter over the same kernel preparation. The supplied binding may
+     * be lenient; it must retain source JSON and its resolver. This is the shared large-model path for consumers
+     * that need both a {@link BoundModel} projection and kernel reads without deserializing the kernel model twice.
+     */
+    public static KernelAdapter checkAndOpen(BoundModel model) {
+        ModelResolver resolver =
+                model.resolver() != null ? model.resolver() : ReferenceResolvers.selfContained();
+        return new KernelAdapter(buildService(model.toJson(), resolver, ConsistencyGate.REQUIRED), model);
     }
 
     /** Open an adapter over a model given as DM-JSON: deserialize + expand, then bootstrap the MVK service. */
@@ -149,22 +152,25 @@ public final class KernelAdapter {
      * so a rule referencing an included model's field reads instead of failing to load.
      */
     public static KernelAdapter ofJson(String modelJson, ModelResolver resolver) {
-        return new KernelAdapter(buildService(modelJson, resolver), BoundModel.ofJson(modelJson, resolver));
+        return checkAndOpen(BoundModel.ofJsonLenient(modelJson, resolver));
     }
 
-    /** Deserialize + expand the DM-JSON (public path), convert to internal, and bootstrap the MVK service. */
-    private static IMVK_Service buildService(String modelJson, ModelResolver resolver) {
-        IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
-        IDocumentModelService service = FACTORY.createDocumentModelService();
-        try {
-            IDocumentModel pub = serializer.deserialize(new StringReader(modelJson));
-            service.expand(pub, KernelResolvers.of(resolver));
-            String variant = service.extractUsedVariants(pub).stream().findFirst().orElse("");
-            DocumentModel intern = ExternalDocumentModelSerializerService.getInternDocumentModel(pub);
-            return new DocumentModelService().getMvkServiceForModel(intern, variant, SILENT);
-        } catch (IOException e) {
-            throw new UncheckedIOException("failed to deserialize the model DM-JSON", e);
+    /** Deserialize + expand once, optionally check, convert to internal, and bootstrap the MVK service. */
+    private static IMVK_Service buildService(
+            String modelJson,
+            ModelResolver resolver,
+            ConsistencyGate gate) {
+        KernelModelPreparation.ExpandedModel expanded = KernelModelPreparation.expand(modelJson, resolver);
+        if (gate == ConsistencyGate.REQUIRED) {
+            expanded.requireConsistent();
         }
+        DocumentModel intern = ExternalDocumentModelSerializerService.getInternDocumentModel(expanded.model());
+        return new DocumentModelService().getMvkServiceForModel(intern, expanded.variant(), SILENT);
+    }
+
+    private enum ConsistencyGate {
+        SKIP,
+        REQUIRED
     }
 
     /**
@@ -877,24 +883,7 @@ public final class KernelAdapter {
      * exactly (behaviour-neutral for dmtool).
      */
     private static IDocumentModel loadExpanded(String modelJson, ModelResolver resolver) {
-        IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
-        IDocumentModelService service = FACTORY.createDocumentModelService();
-        try {
-            IDocumentModel expanded = serializer.deserialize(new StringReader(modelJson));
-            service.expand(expanded, KernelResolvers.of(resolver));
-            java.util.List<io.github.mbackschat.a12.dm.core.Notification> errors = new java.util.ArrayList<>();
-            service.checkConsistency(expanded, n -> {
-                if (n.getSeverity() == com.mgmtp.a12.model.notification.Severity.ERROR) {
-                    errors.add(KernelNotifications.toCore(n));
-                }
-            });
-            if (!errors.isEmpty()) {
-                throw new ModelConsistencyException(errors);
-            }
-            return expanded;
-        } catch (IOException e) {
-            throw new UncheckedIOException("failed to load the model for evaluation", e);
-        }
+        return KernelModelPreparation.expand(modelJson, resolver).requireConsistent();
     }
 
     /**

@@ -296,7 +296,7 @@ public record ModelReport(Identity identity, ModelCard structure, Usage usage,
 
     /** Assemble the comprehension view of {@code modelJson} (a self-contained, kernel-loadable model). */
     public static ModelReport of(String modelJson) {
-        return of(modelJson, BoundModel.ofJson(modelJson));
+        return of(modelJson, io.github.mbackschat.a12.dm.core.ReferenceResolvers.selfContained());
     }
 
     /**
@@ -305,13 +305,11 @@ public record ModelReport(Identity identity, ModelCard structure, Usage usage,
      * uses (a {@code id → DM-JSON} SAM), so a consumer need not import {@code com.mgmtp.*}. {@code null} = none.
      */
     public static ModelReport of(String modelJson, io.github.mbackschat.a12.dm.core.ModelResolver resolver) {
-        return of(modelJson, resolver == null ? BoundModel.ofJson(modelJson) : BoundModel.ofJson(modelJson, resolver));
-    }
-
-    /** The shared assembly over an already-bound model — the public overloads differ only in how the
-     *  {@link BoundModel} was resolved. */
-    private static ModelReport of(String modelJson, BoundModel model) {
-        return assemble(modelJson, model, KernelAdapter.of(model));
+        io.github.mbackschat.a12.dm.core.ModelResolver effective = resolver == null
+                ? io.github.mbackschat.a12.dm.core.ReferenceResolvers.selfContained()
+                : resolver;
+        BoundModel model = BoundModel.ofJsonLenient(modelJson, effective);
+        return assemble(modelJson, model, KernelAdapter.checkAndOpen(model));
     }
 
     /**
