@@ -292,7 +292,7 @@ No framework, no registry — a fragment library is a Java class; discoverabilit
 
 A `Having` keeps a candidate only when its complete filter result is known TRUE; FALSE or UNKNOWN drops the candidate before the aggregate or quantifier reads the selected cell. Correlation includes the current outer coordinate by default, so exclude it explicitly with `CurrentRepetition(G) != CurrentRepetition($G)` when the intended relation is "another row."
 
-For a multi-star `Having`, binding begins at the first starred segment. Thus `Aisles*/Bins*/Quantity` spans bins across every aisle; leave `Aisles` unstarred when the current aisle must remain outer-bound. Inside that filter, `CurrentRepetition(Bins) != CurrentRepetition($Bins)` compares the leaf index, not physical row identity, and excludes every candidate with the outer bin's leaf index across aisle rows. The `Having` and `CurrentRepetition` catalog entries cross-link the equality-correlation and self-exclusion examples (finding 76).
+For a multi-star `Having`, binding begins at the first starred segment. Thus `Aisles*/Bins*/Quantity` spans bins across every aisle; leave `Aisles` unstarred when the current aisle must remain outer-bound. Inside that filter, `CurrentRepetition(Bins) != CurrentRepetition($Bins)` compares the leaf index, not physical row identity, and excludes every candidate with the outer bin's leaf index across aisle rows. More generally, `$` captures the complete named outer repetition environment: `CurrentRepetition($Aisles)` reads the captured aisle coordinate while `CurrentRepetition($Aisles/Bins)` reads the captured bin coordinate from the same outer rule instance. Do not model `$` as one scalar outer row number. The `Having` and `CurrentRepetition` catalog entries cross-link the equality-correlation and self-exclusion examples (finding 76; full-environment lock IF178).
 
 `RepetitionNotUnique` is an ordinary three-valued leaf under legal `And`/`Or` composition, but one condition tree may contain only one such leaf. Put every component of a composite uniqueness key into that call. Its duplicate relation covers the full declared scope regardless of sibling guards: formally invalid and required-empty keys exclude a row, all-empty composite keys are skipped, optional-empty components participate with omission polarity, numeric equality is scale-insensitive, and every row in a duplicate set fires. An iterating `Or` branch containing a negative-presence predicate is separately model-illegal (`MVK_NEG_CONDITION_IN_ITERATION`); rewrite that branch as a positively guarded `And` instead of treating it as a limitation of uniqueness composition (finding 77).
 
@@ -532,6 +532,18 @@ Condition earliestBeforeCutoff =
                 .before(Dsl.dateValue("20.03.2026"));   // Min([A], [B]) < "20.03.2026"
 ```
 
+**Rounding with an optional scale.** Both the expression `roundDown`/`roundUp`/`roundAccounting` family and its bare-field `…Value` siblings retain the kernel's optional decimal-places argument on the typed AST. The domain is `0..14`; every one-argument form means zero places. `RoundDown` is floor, `RoundUp` is ceiling, and accounting is `HALF_UP`, each after the kernel's scale-19 pre-round:
+
+<!-- snippet: field-rounding -->
+```java
+// Expression and *Value forms both accept optional 0..14 places; omission means 0.
+NumberExpr wholeUnitPrice = Dsl.roundAccounting(m.num("/Order/UnitPrice").asNumber());
+NumberExpr roundedUnitPrice = Dsl.roundAccountingValue(m.num("/Order/UnitPrice"), 2);
+Condition unitPriceNeedsRounding = m.num("/Order/UnitPrice").ne(roundedUnitPrice);
+```
+
+Persisted explicit zero is semantically identical to omission and the kernel parse tree does not retain that lexical distinction, so typed read-back canonicalizes `RoundDown(expr, 0)` to `RoundDown(expr)` and `RoundDownValue(F, 0)` to `RoundDownValue(F)`. Positive arguments such as `2` remain explicit.
+
 **Presence over a semantic index.** `ref.semanticIndex(key)` is a dedicated handle for a semantic index (`[Field For key]`); `.filled()`/`.notFilled()` author its presence — rendered bare (no value brackets). Presence lives only on this handle, never on the `forIndex(...)` value expression, so the non-index misuse `sum(...).filled()` is a compile error rather than a runtime throw (finding 63, superseding finding 59):
 
 <!-- snippet: indexed-presence -->
@@ -630,7 +642,7 @@ Computation tiered = m.computation(m.num("/Subscription/Billing/EffectiveFee")) 
         .build();
 ```
 
-**The original sketch here used `.otherwise(...)` — that was kernel-illegal** (verified: mixing preconditioned and unconditional alternatives draws `MVK_ERROR_EMPTY_PRECONDITION`), so the API doesn't offer it: either one unconditional `calc(...)` or all-preconditioned `when(...).calc(...)`. The optional `ToleranceBand` overload carries one of the kernel's four closed `toleranceRangeOp` values on that alternative; it changes the computation's implicit validation from strict inequality to “difference exceeds N” and round-trips through read/modify/write. Further slot rules pre-checked at `build()` with the code named: the computed field must not appear in preconditions *or* operations (`MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` — both verified), operation **kind** must match the computed field (`Calculation.kind()` — the typed AST now carries the §5b lattice), message required. Mutual exclusivity of preconditions stays the kernel/runtime's judgment; result *scale* stays the kernel's call (D13).
+**The original sketch here used `.otherwise(...)` — that was kernel-illegal** (verified: mixing preconditioned and unconditional alternatives draws `MVK_ERROR_EMPTY_PRECONDITION`), so the API doesn't offer it: either one unconditional `calc(...)` or all-preconditioned `when(...).calc(...)`. The optional `ToleranceBand` overload carries one of the kernel's four closed `toleranceRangeOp` values on that alternative; it changes the computation's implicit validation from strict inequality to “difference exceeds N” and round-trips through read/modify/write. Further slot rules pre-checked at `build()` with the code named: the computed field must not appear in preconditions *or* operations (`MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` — both verified), operation **kind** must match the computed field (`Calculation.kind()` — the typed AST now carries the §5b lattice), message required. Keep tier preconditions mutually exclusive: computation takes the first holding alternative in declaration order, but the generated validation rule retains every holding alternative's mismatch. With overlapping guards, the first operation can supply the computed value while a later operation still makes that stored value invalid. The linter warns on the always-overlapping identical-precondition case; true logical overlap remains the author/kernel's judgment. Result *scale* stays the kernel's call (D13).
 
 **Cross-slot reuse for free:** `SubscriptionIdioms.paidTier(tier)` drops unchanged into a rule `errorCondition` *or* a computation `precondition` — one expression language, many slots (§5). That is the concrete payoff of combinators + the slot model.
 

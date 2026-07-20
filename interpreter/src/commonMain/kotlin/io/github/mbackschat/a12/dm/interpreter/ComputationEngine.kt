@@ -197,10 +197,18 @@ internal class ComputationEngine(
                         // no-value store decision) — is a no-op (IF87): recorded as a tentative clear (dependents read
                         // it EMPTY, IF77) but NOT decided, so a later computation for the SAME cell can still win.
                         toComputed(comp, v, targetKey.second).also { c ->
-                            when (c.outcome) {
-                                ComputeOutcome.ERRORED -> { poisoned += targetKey; cleared -= targetKey; decided += targetKey }
-                                ComputeOutcome.VALUE -> { overlay[targetKey] = v; cleared -= targetKey; decided += targetKey }
-                                ComputeOutcome.CLEARED -> cleared += targetKey
+                            if (v is Val.DomainFailure) {
+                                // No stored value/delta distinguishes a domain failure from an ordinary clear,
+                                // but the target is invalid for the rest of this computation cascade.
+                                poisoned += targetKey
+                                cleared -= targetKey
+                                decided += targetKey
+                            } else {
+                                when (c.outcome) {
+                                    ComputeOutcome.ERRORED -> { poisoned += targetKey; cleared -= targetKey; decided += targetKey }
+                                    ComputeOutcome.VALUE -> { overlay[targetKey] = v; cleared -= targetKey; decided += targetKey }
+                                    ComputeOutcome.CLEARED -> cleared += targetKey
+                                }
                             }
                         }
                     } catch (p: PoisonedReadException) {
@@ -292,8 +300,9 @@ internal class ComputationEngine(
     /** One computed-field outcome for [comp] at target-cell [reps] from its evaluated [v]: VALUE (resolved,
      *  empty-as-0 applies) / CLEARED (an Unknown, or a final empty text — IF123; no value) / ERRORED (a
      *  formally-invalid or no-fit result — [Computed.value] retains the ATTEMPTED rendered value, matching
-     *  the kernel's store-and-flag, IF34/IF92; feedback F11a). [reps] rides onto [Computed.indices] for the
-     *  per-row identity (§7). */
+     *  the kernel's store-and-flag, IF34/IF92). A numeric domain failure has no value and therefore retains
+     *  the public CLEARED/no-value delta while its target is internally poisoned for dependent reads.
+     *  [reps] rides onto [Computed.indices] for the per-row identity (§7). */
     private fun toComputed(comp: ComputationDef, v: Val, reps: List<Int>): Computed {
         // Render the computed value to the TARGET field's stored form: a Num → canonical decimal; a DATE Txt →
         // the field's date format (IF33; `AddYears(...)` into `dd.MM.yyyy` → `30.06.2026`); a date-RANGE → the
@@ -321,6 +330,7 @@ internal class ComputationEngine(
             is Val.Bool -> v.v.toString()
             is Val.Range -> renderRange(v, comp.targetPath)
             is Val.Unknown -> return Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps)
+            is Val.DomainFailure -> return Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = reps)
         }
         return Computed(comp.targetPath, computedOutcome(comp.targetPath, rendered), rendered, reps)
     }

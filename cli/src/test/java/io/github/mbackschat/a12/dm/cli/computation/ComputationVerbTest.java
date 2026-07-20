@@ -164,8 +164,8 @@ class ComputationVerbTest {
 
     @Test
     void overlappingPreconditionsRideTheAppliedEnvelopeAsAWarning(@TempDir Path dir) throws Exception {
-        // two alternatives with an identical precondition: the kernel accepts (it takes the first match in
-        // declaration order), but G5 warns that the second can never win — a WARNING alongside APPLIED.
+        // two alternatives with an identical precondition: the kernel accepts; computation takes the first
+        // match, but the later guarded mismatch remains active in implicit validation — a WARNING alongside APPLIED.
         Path model = CliTestSupport.modelWithRule(dir);
         Path spec = dir.resolve("comp.json");
         Files.writeString(spec, """

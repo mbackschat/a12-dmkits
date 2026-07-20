@@ -117,6 +117,7 @@ internal class OverlayContext(
         is Val.Bool -> value.v.toString()
         is Val.Range -> "${value.start}/${value.end}"
         is Val.Unknown -> null
+        is Val.DomainFailure -> null
     }
 
     // A `Having` filter / group-star iteration reads the cascade too: every row context is overlay-WRAPPED,

@@ -22,7 +22,7 @@ A third corpus, **committed** (unlike 1 & 2): rules *transferred* from the kerne
 - **The former residual tail is fully cleared (2026-06-07) — Corpus-1 read is 100%.** Each was a distinct construct from the synthetic tutorial/calculator/predicate demo models; all now convert:
     1. **`Date(...)` construction + `Valid`/`Invalid`** (5 rules) — `DateConstruction`/`DateValidity` nodes, bounded component fields, `MonthFromDate`/`YearFromDate` over a `DATE_FRAGMENT` source.
     2. **group-scope `Sum`/`Max`/`Min`/`NumberOfDifferentValues`** (2 rules) — `Sum(Group*)` converts by making the kernel's expansion explicit, a Sum over each contained number field (`Sum(Group*/A, Group*/B)`; KERNEL-FINDINGS §9).
-    3. **field-level rounding/abs** (2 rules) — `RoundDownValue`/`RoundUpValue`/`RoundAccountingValue`/`AbsValue` (the `FieldRounding` node; distinct from the operand-list `RoundDown(expr, n)`).
+    3. **field-level rounding/abs** (2 rules) — `RoundDownValue`/`RoundUpValue`/`RoundAccountingValue`/`AbsValue` (the `FieldRounding` node; distinct from the operand-list `RoundDown(expr[, n])`).
     4. **a field-fill quantifier over a *mixed* group+field scope** (1 rule) — `FieldsNotCollectivelyFilled(A, B/G2)` (`A` a group, `B/G2` a field) converts by expanding each group operand to its contained fields, matching the kernel.
     5. **a value-list with a *field* entry** (1 rule) — `FieldValueIncludedInValueList(Choice, [Allowed])`, where an entry is a field, not a constant (the converter builds the membership with a field-valued operand).
 

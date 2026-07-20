@@ -969,10 +969,17 @@ final class ConditionConverter {
                 default -> null;
             };
             if (field != null) {
+                int places = fieldOp instanceof IFieldIdOperationWithParameters params
+                        ? params.getNumberOfDecimalPlaces()
+                        : 0;
+                boolean explicitPlaces = fieldOp instanceof IFieldIdOperationWithParameters && places > 0;
                 return switch (fieldOp.getOperatorName()) {
-                    case RoundDownValue -> Dsl.roundDownValue(field);
-                    case RoundUpValue -> Dsl.roundUpValue(field);
-                    case RoundAccountingValue -> Dsl.roundAccountingValue(field);
+                    case RoundDownValue -> explicitPlaces
+                            ? Dsl.roundDownValue(field, places) : Dsl.roundDownValue(field);
+                    case RoundUpValue -> explicitPlaces
+                            ? Dsl.roundUpValue(field, places) : Dsl.roundUpValue(field);
+                    case RoundAccountingValue -> explicitPlaces
+                            ? Dsl.roundAccountingValue(field, places) : Dsl.roundAccountingValue(field);
                     case AbsValue -> Dsl.absValue(field);
                     default -> null;
                 };
@@ -1010,16 +1017,18 @@ final class ConditionConverter {
         return null;
     }
 
-    /** {@code RoundDown/RoundUp/RoundAccounting(expr, n)} — the kernel's operand-list rounding over an expression. */
+    /** {@code RoundDown/RoundUp/RoundAccounting(expr[, n])} — kernel operand-list rounding over an expression. */
     private NumberExpr convertRounding(IOpListOperationWithParameter rounding) {
-        // The rounding op-list always wraps exactly one operation (the value to round); n = decimal places.
+        // The parse object stores omission and explicit zero alike as 0, so read-back canonicalizes both
+        // to the one-argument spelling. A positive argument remains explicit.
         NumberExpr operand = arithmeticOperand(rounding.getOperations().get(0), rounding);
         int places = rounding.getNumberOfDecimalPlaces();
         OpListOperationName name = rounding.getOperatorName();
         return switch (name) {
-            case RoundDown -> Dsl.roundDown(operand, places);
-            case RoundUp -> Dsl.roundUp(operand, places);
-            case RoundAccounting -> Dsl.roundAccounting(operand, places);
+            case RoundDown -> places > 0 ? Dsl.roundDown(operand, places) : Dsl.roundDown(operand);
+            case RoundUp -> places > 0 ? Dsl.roundUp(operand, places) : Dsl.roundUp(operand);
+            case RoundAccounting -> places > 0
+                    ? Dsl.roundAccounting(operand, places) : Dsl.roundAccounting(operand);
             default -> throw unsupported("operand-list operator " + name, rounding);
         };
     }

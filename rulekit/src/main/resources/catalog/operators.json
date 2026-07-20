@@ -855,9 +855,9 @@
     "gotchas": [
       { "text": "the symbols (+ - * / ^) are language-independent — identical in every condition language, not localized keywords", "kind": "RENDERING" }
     , { "text": "every arithmetic node rounds independently to 50 significant digits (HALF_UP); before evaluation one ordered post-order pass pulls only immediate division-root operands out of each original multiplication, preserves factor/division encounter order, and never revisits generated products — this is not global or fixed-point normalization", "kind": "SURPRISE" }
-    , { "text": "division by zero evaluates quietly: the condition becomes unknown (no fire), a computation computes nothing and clears a stale value; a bare division also has unknown scale — wrap it in RoundAccounting(expr, n) to assign to a scaled field", "kind": "SURPRISE" }
+    , { "text": "division by zero is consumer-sensitive: a condition becomes unknown (no fire), but a legal rounded numeric computation preserves target invalidity, reports no fresh value / clears a stale value, emits berechnungsWertFehler, and poisons dependent reads; a bare division has unknown scale, so wrap it in RoundAccounting(expr, n)", "kind": "SURPRISE" }
     , { "text": "operator precedence is ^ first, then * and /, then + and -; group arithmetic sub-expressions with CURLY braces { } (e.g. 3 ^ {2 + 1}), not round or square brackets", "kind": "AUTHORING" }
-    , { "text": "the power a ^ b is not executed — so a rule using it silently does NOT fire — when the exponent is out of the range [-1000, 1000], or for 0 raised to a negative power; the same quiet behavior as division by zero", "kind": "SURPRISE" } ],
+    , { "text": "a rule using power silently does NOT fire when the exponent is outside [-1000, 1000] or for 0 raised to a negative power; this catalog claim does not classify invalid-power computations", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And [Quantity] < [BackorderQuantity] + 2", "note": "fires when Quantity is below the backorder count plus two" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And [Quantity] < [ProductCode] + 1", "error": "arithmetic needs numeric operands", "fix": "ProductCode is a string; arithmetic operands must be numeric" },
     "sinceKernel": "30.8.x"
@@ -1635,11 +1635,11 @@
     "dslEntry": ["roundDown"],
     "kind": "function",
     "keywords": { "en": "RoundDown", "de": "Abrunden" },
-    "operands": [ { "type": "number" }, { "type": "decimal-places" } ],
+    "operands": [ { "type": "number" }, { "type": "decimal-places", "optional": true } ],
     "returns": "number",
-    "meaning": "Rounds a numeric expression DOWN (toward zero) to the given number of decimal places. The first operand is any numeric expression (a field, an arithmetic expression, an aggregate), not just a field.",
+    "meaning": "Floors a numeric expression toward minus infinity to the requested number of decimal places after the shared scale-19 HALF_UP pre-round. The first operand is any numeric expression (a field, an arithmetic expression, an aggregate), not just a field.",
     "constraints": [
-      "the first operand is a numeric expression; the second is the integer count of decimal places (0–14, else MVK_INVALID_DIGIT_FOR_ROUNDING)"
+      "the first operand is a numeric expression; the optional second operand is the integer count of decimal places (0–14 inclusive, else MVK_INVALID_DIGIT_FOR_ROUNDING); omission means 0"
     ],
     "gotchas": [
       { "text": "distinct from the field-only RoundDownValue family — this operand-list form rounds the result of an expression", "kind": "AUTHORING" }
@@ -1652,11 +1652,12 @@
     "dslEntry": ["roundDownValue"],
     "kind": "function",
     "keywords": { "en": "RoundDownValue", "de": "AbrundenWert" },
-    "operands": [ { "type": "number" } ],
+    "operands": [ { "type": "number" }, { "type": "decimal-places", "optional": true } ],
     "returns": "number",
-    "meaning": "A field's value rounded DOWN to an integer. The field-level sibling of the operand-list RoundDown(expr, n) — it takes a single field and renders it bare.",
-    "constraints": [ "the operand is a single number field" ],
-    "validExample": { "dsl": "FieldFilled(Quantity) And [Quantity] != RoundDownValue(BackorderQuantity)", "note": "fires when the quantity disagrees with the backorder quantity rounded down" },
+    "meaning": "Floors a field's value toward minus infinity to the requested decimal places after the shared scale-19 HALF_UP pre-round. The field-level sibling of RoundDown(expr, n) takes a bare number field; omission means 0 places.",
+    "constraints": [ "the first operand is a single number field; the optional decimal-places operand is 0–14 inclusive (else MVK_INVALID_DIGIT_FOR_ROUNDING)" ],
+    "gotchas": [ { "text": "floor is not truncation: RoundDownValue(field, 0) maps -1.4 to -2; omission is the same zero-place operation", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "FieldFilled(UnitPrice) And [UnitPrice] != RoundDownValue(UnitPrice, 2)", "note": "fires when UnitPrice is not already floored to two decimal places" },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1664,11 +1665,12 @@
     "dslEntry": ["roundUpValue"],
     "kind": "function",
     "keywords": { "en": "RoundUpValue", "de": "AufrundenWert" },
-    "operands": [ { "type": "number" } ],
+    "operands": [ { "type": "number" }, { "type": "decimal-places", "optional": true } ],
     "returns": "number",
-    "meaning": "A field's value rounded UP to an integer (the field-level sibling of RoundUp).",
-    "constraints": [ "the operand is a single number field" ],
-    "validExample": { "dsl": "FieldFilled(Quantity) And [Quantity] != RoundUpValue(BackorderQuantity)", "note": "fires when the quantity disagrees with the backorder quantity rounded up" },
+    "meaning": "Ceilings a field's value toward plus infinity to the requested decimal places after the shared scale-19 HALF_UP pre-round. The field-level sibling of RoundUp takes a bare number field; omission means 0 places.",
+    "constraints": [ "the first operand is a single number field; the optional decimal-places operand is 0–14 inclusive (else MVK_INVALID_DIGIT_FOR_ROUNDING)" ],
+    "gotchas": [ { "text": "ceiling is not away-from-zero rounding: RoundUpValue(field, 0) maps -1.4 to -1; omission is the same zero-place operation", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "FieldFilled(UnitPrice) And [UnitPrice] != RoundUpValue(UnitPrice, 2)", "note": "fires when UnitPrice is not already ceiling-rounded to two decimal places" },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1676,11 +1678,12 @@
     "dslEntry": ["roundAccountingValue"],
     "kind": "function",
     "keywords": { "en": "RoundAccountingValue", "de": "RundenWert" },
-    "operands": [ { "type": "number" } ],
+    "operands": [ { "type": "number" }, { "type": "decimal-places", "optional": true } ],
     "returns": "number",
-    "meaning": "A field's value rounded to an integer using banker's rounding (the field-level sibling of RoundAccounting).",
-    "constraints": [ "the operand is a single number field" ],
-    "validExample": { "dsl": "FieldFilled(Quantity) And [Quantity] != RoundAccountingValue(BackorderQuantity)", "note": "fires when the quantity disagrees with the backorder quantity rounded to nearest" },
+    "meaning": "Rounds a field's value to the nearest requested decimal place using HALF_UP (ties away from zero) after the shared scale-19 HALF_UP pre-round. The field-level sibling of RoundAccounting takes a bare number field; omission means 0 places.",
+    "constraints": [ "the first operand is a single number field; the optional decimal-places operand is 0–14 inclusive (else MVK_INVALID_DIGIT_FOR_ROUNDING)" ],
+    "gotchas": [ { "text": "this is HALF_UP, not banker's half-even: RoundAccountingValue(field, 0) maps -2.5 to -3; omission is the same zero-place operation", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "FieldFilled(UnitPrice) And [UnitPrice] != RoundAccountingValue(UnitPrice, 2)", "note": "fires when UnitPrice is not commercially rounded to two decimal places" },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1875,11 +1878,11 @@
     "dslEntry": ["roundUp"],
     "kind": "function",
     "keywords": { "en": "RoundUp", "de": "Aufrunden" },
-    "operands": [ { "type": "number" }, { "type": "decimal-places" } ],
+    "operands": [ { "type": "number" }, { "type": "decimal-places", "optional": true } ],
     "returns": "number",
-    "meaning": "Rounds a numeric expression UP (away from zero) to the given number of decimal places.",
+    "meaning": "Ceilings a numeric expression toward plus infinity to the requested number of decimal places after the shared scale-19 HALF_UP pre-round.",
     "constraints": [
-      "the first operand is a numeric expression; the second is the integer count of decimal places (0–14, else MVK_INVALID_DIGIT_FOR_ROUNDING)"
+      "the first operand is a numeric expression; the optional second operand is the integer count of decimal places (0–14 inclusive, else MVK_INVALID_DIGIT_FOR_ROUNDING); omission means 0"
     ],
     "gotchas": [ { "text": "rounds toward plus infinity (ceiling): RoundUp(-1.4, 0) = -1", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(UnitPrice) And RoundUp([UnitPrice], 1) > 1000", "note": "fires when the unit price rounded up to one decimal exceeds 1000" },
@@ -1890,11 +1893,11 @@
     "dslEntry": ["roundAccounting"],
     "kind": "function",
     "keywords": { "en": "RoundAccounting", "de": "Runden" },
-    "operands": [ { "type": "number" }, { "type": "decimal-places" } ],
+    "operands": [ { "type": "number" }, { "type": "decimal-places", "optional": true } ],
     "returns": "number",
-    "meaning": "Rounds a numeric expression to the given number of decimal places using commercial (accounting) rounding.",
+    "meaning": "Rounds a numeric expression to the nearest requested decimal place using HALF_UP (ties away from zero) after the shared scale-19 HALF_UP pre-round.",
     "constraints": [
-      "the first operand is a numeric expression; the second is the integer count of decimal places (0–14, else MVK_INVALID_DIGIT_FOR_ROUNDING)"
+      "the first operand is a numeric expression; the optional second operand is the integer count of decimal places (0–14 inclusive, else MVK_INVALID_DIGIT_FOR_ROUNDING); omission means 0"
     ],
     "gotchas": [ { "text": "half-up, away from zero on the .5 boundary in both signs: RoundAccounting(-2.5, 0) = -3", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And RoundAccounting([UnitPrice] * [Quantity], 2) > 10000", "note": "fires when the commercially-rounded line total exceeds 10000" },
@@ -2017,7 +2020,7 @@
     "gotchas": [
       { "text": "a false or unknown filter result drops the candidate before the aggregate or quantifier reads its selected cell", "kind": "SURPRISE" },
       { "text": "correlation includes the current outer coordinate by default; exclude it explicitly with CurrentRepetition(G) != CurrentRepetition($G) at the named repetition level", "kind": "AUTHORING" },
-      { "text": "inside the filter, the $ operator pins a reference to the rule's current (outer) repetition — correlated subquery", "kind": "AUTHORING" },
+      { "text": "inside the filter, $ captures the rule's complete named outer repetition environment; each marked path selects its own level's coordinate, so $Parent and $Parent/Child may differ in one rule row — it is not one scalar outer index", "kind": "AUTHORING" },
       { "text": "a multi-star path binds at its first starred segment: /Warehouse/Aisles*/Bins*/Quantity spans Bins across every Aisles row, not only the current leaf branch; leave an ancestor unstarred when it must remain outer-bound", "kind": "SURPRISE" },
       { "text": "in a multi-star filter, CurrentRepetition(Bins) != CurrentRepetition($Bins) compares the leaf index and therefore excludes every candidate with the outer row's leaf index across different ancestor rows — it is not SQL-style physical-row identity", "kind": "SURPRISE" }
     ],
@@ -2042,7 +2045,8 @@
       { "text": "for a non-repeatable group the index is constant (accepted, rarely useful)", "kind": "AUTHORING" },
       { "text": "the rule must iterate over the group (its error field lies under it); from a non-iterating rule the kernel rejects it (MVK_NO_WILDCARD)", "kind": "SURPRISE" },
       { "text": "a multi-star Having path binds at its first starred segment; leave an ancestor unstarred when it must remain outer-bound", "kind": "SURPRISE" },
-      { "text": "CurrentRepetition(Bins) != CurrentRepetition($Bins) inside a multi-star filter excludes every candidate that shares the outer row's leaf index across different ancestor rows, not merely one physical row", "kind": "SURPRISE" }
+      { "text": "CurrentRepetition(Bins) != CurrentRepetition($Bins) inside a multi-star filter excludes every candidate that shares the outer row's leaf index across different ancestor rows, not merely one physical row", "kind": "SURPRISE" },
+      { "text": "a $-marked group resolves from the complete captured outer environment by that group's path: CurrentRepetition($Parent) and CurrentRepetition($Parent/Child) can return different coordinates in the same filter", "kind": "AUTHORING" }
     ],
     "validExample": { "dsl": "FieldFilled(/Warehouse/Aisles/Bins/Quantity) And AtLeastOneFieldFilled(/Warehouse/Aisles*/Bins*/Quantity Having (CurrentRepetition(/Warehouse/Aisles/Bins) != CurrentRepetition($/Warehouse/Aisles/Bins) And [/Warehouse/Aisles/Bins/Quantity] == [$/Warehouse/Aisles/Bins/Quantity]))", "note": "finds another equal-valued bin while excluding every candidate with the outer bin's leaf index across all aisles" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And CurrentRepetition(Items) > 1", "error": "MVK_NO_WILDCARD", "fix": "CurrentRepetition needs the rule to iterate over the group — put the error field inside Items" },

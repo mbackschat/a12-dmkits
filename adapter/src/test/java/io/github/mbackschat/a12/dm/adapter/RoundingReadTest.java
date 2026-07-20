@@ -22,7 +22,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
- * F10 read tail — the operand-list rounding functions {@code RoundDown/RoundUp/RoundAccounting(expr, n)}
+ * F10 read tail — the operand-list rounding functions {@code RoundDown/RoundUp/RoundAccounting(expr[, n])}
  * on the right of a computed-field consistency rule (Corpus-1's largest opaque shape: a stored value
  * compared against a re-derived one). The kernel emits these as an {@code IOpListOperationWithParameter}
  * wrapping one operation plus a decimal-place count; the converter now models them as a {@code Rounding}

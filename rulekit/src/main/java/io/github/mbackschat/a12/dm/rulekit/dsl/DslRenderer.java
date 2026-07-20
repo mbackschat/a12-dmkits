@@ -345,7 +345,8 @@ public final class DslRenderer {
                     + "(" + renderArg(s.date()) + ", " + render(s.amount()) + ")";
             case Arithmetic a -> arithOperand(a.left(), a.op(), true) + " " + a.op().symbol()
                     + " " + arithOperand(a.right(), a.op(), false);
-            case Rounding r -> keyword(r.operatorId()) + "(" + render(r.operand()) + ", " + r.decimalPlaces() + ")";
+            case Rounding r -> keyword(r.operatorId()) + "(" + render(r.operand())
+                    + r.decimalPlaces().map(places -> ", " + places).orElse("") + ")";
             case Concatenation c -> c.parts().stream().map(this::render)
                     .collect(java.util.stream.Collectors.joining(" + "));
             case DateListAggregate a -> keyword(a.operatorId()) + "(" + operand(a.scope()) + ")";
@@ -375,7 +376,8 @@ public final class DslRenderer {
                     + renderArg(dtc.time()) + ")";
             case DateRangeConstruction dr -> keyword(dr.operatorId()) + "(" + renderArg(dr.start()) + ", "
                     + renderArg(dr.end()) + ")";
-            case FieldRounding r -> keyword(r.operatorId()) + "(" + path(r.field().path()) + ")";
+            case FieldRounding r -> keyword(r.operatorId()) + "(" + path(r.field().path())
+                    + r.decimalPlaces().map(places -> ", " + places).orElse("") + ")";
             case DateRangeBound b -> keyword(b.operatorId()) + "(" + renderArg(b.source()) + ")";
             case RootGroupCount c -> keyword(c.operatorId()) + "(" + path(c.rootGroup().path()) + "*)";
         };

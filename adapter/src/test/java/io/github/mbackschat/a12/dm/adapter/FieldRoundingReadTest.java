@@ -21,10 +21,10 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
- * F10 read tail — field-level rounding/abs functions: {@code RoundDownValue(f)}/{@code RoundUpValue(f)}/
- * {@code RoundAccountingValue(f)} (round a field's value to an integer) and {@code AbsValue(f)}
+ * F10 read tail — field-level rounding/abs functions: {@code RoundDownValue(f[, n])}/{@code RoundUpValue(f[, n])}/
+ * {@code RoundAccountingValue(f[, n])} (optional {@code 0..14}; omission means zero) and {@code AbsValue(f)}
  * (absolute value), the kernel's {@code FieldIdOperationWithParameters} numeric ops — distinct from the
- * operand-list {@code RoundDown(expr, n)}. Own domain: a ledger whose rounded/absolute roll-ups must
+ * operand-list {@code RoundDown(expr[, n])}. Own domain: a ledger whose rounded/absolute roll-ups must
  * match the per-entry amount.
  */
 class FieldRoundingReadTest {

@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test
 
 /**
  * Differential — the rounding functions: the operand-list `RoundDown`/`RoundUp`/`RoundAccounting([expr], n)`
- * and their bare-field `*Value(field)` siblings (round to an integer). The headline exact-match risk is the
+ * and their bare-field `*Value(field[, n])` siblings (the cases here omit `n`, so they round to an integer). The headline exact-match risk is the
  * SIGN of the direction: the kernel's `RoundDown` is **FLOOR** (toward −∞, NOT toward zero — `RoundDown(-1.4, 0)
  * = -2`), `RoundUp` is **CEILING** (toward +∞ — `RoundUp(-1.4, 0) = -1`), and `RoundAccounting` is **HALF_UP**
  * away-from-zero on the `.5` boundary (`RoundAccounting(-2.5, 0) = -3`, NOT half-even's -2). Each case is
@@ -70,7 +70,7 @@ class RoundDiffTest {
     @Test fun roundAccountingExpression() =
         agree(render(m.num(PRICE).filled().and(Dsl.roundAccounting(m.num(PRICE).asNumber().times(m.num(QTY).asNumber()), 1).gt("4.6"))), "A", "3", "1.55", "HALF_UP(4.65, 1) = 4.7 > 4.6")
 
-    // *Value forms — round a bare field to an integer (0 places), same direction as their siblings.
+    // One-argument *Value forms — round a bare field to an integer (0 places), same direction as their siblings.
     @Test fun roundDownValueNegative() =
         agree(render(m.num(PRICE).filled().and(Dsl.roundDownValue(m.num(PRICE)).lt(-1))), "A", "1", "-1.40", "RoundDownValue(-1.40) = -2 < -1")
     @Test fun roundUpValueNegative() =

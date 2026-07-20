@@ -54,10 +54,9 @@ class Interpreter(
      * which has no formal-error increment yet). [DmInterpreter] supplies it from the model + context.
      */
     internal val invalid: (String) -> Boolean = { false },
-    /** The ENCLOSING iteration's context for `$` outer-correlation refs (KERNEL-FINDINGS §"$ correlation"):
-     *  set only while evaluating a `Having` filter, so a `$`-marked ref inside the filter resolves against the
-     *  row the aggregate/quantifier is iterating FROM, not the inner filtered row. Null at top level (a `$`
-     *  there is an error — it needs an enclosing iteration). */
+    /** The complete ENCLOSING repetition context for `$` refs: set only while evaluating a `Having`
+     *  filter. A marked ref resolves its own named path's coordinate from this environment, not one
+     *  scalar index and not the inner filtered row. Null at top level. */
     private val outer: EvalContext? = null,
     /** The overlap-predicate `Having` filter (a plain boolean predicate's rep-list arg) has NO enclosing
      *  iteration to bind `$` to — unlike a quantifier's `Having`, whose star iterates. So here a `$`-marked
@@ -91,7 +90,8 @@ class Interpreter(
     private val computeScanState = config.computeScanState
     internal val computeMode = config.computeMode
 
-    /** The context a node resolves against: the enclosing (`outer`) iteration for a `$`-marked ref, else [ctx]. */
+    /** The context a node resolves against: the complete enclosing environment for `$`, else [ctx].
+     *  Path-specific resolution within that context selects the marked node's named coordinate. */
     internal fun ctxOf(node: Expr): EvalContext = when {
         node is Expr.Field && node.outer -> outerOrThrow()
         node is Expr.Star && node.outer -> outerOrThrow()
@@ -123,8 +123,8 @@ class Interpreter(
         else -> false
     }
 
-    /** A sub-interpreter for a `Having` filter row [rc], carrying the SAME config and setting the enclosing
-     *  iteration ([ctx]) as its `outer` — so a `$`-marked ref in the filter resolves against this row. */
+    /** A sub-interpreter for a `Having` candidate [rc], carrying the SAME config and capturing the
+     *  enclosing iteration's complete [ctx] environment for path-specific `$` resolution. */
     internal fun havingInterp(rc: EvalContext): Interpreter =
         Interpreter(rc, config, customErrorField, invalid, outer = ctx)
 
@@ -847,7 +847,7 @@ class Interpreter(
         if (outerUnbound && (hasUnboundOuter(c.left) || hasUnboundOuter(c.right))) return Tri.TRUE
         val l = evalCmpOperand(c.left, c.right)
         val r = evalCmpOperand(c.right, c.left)
-        if (l is Val.Unknown || r is Val.Unknown) return Tri.UNKNOWN
+        if (l is Val.Unknown || r is Val.Unknown || l is Val.DomainFailure || r is Val.DomainFailure) return Tri.UNKNOWN
         // The kernel's `vergleicheSTRING` returns false when EITHER operand is the empty string — for `==` AND
         // `!=` alike (an empty operand never matches and never differs). So an empty `RangeAsString` result, or a
         // literal `""`, suppresses the comparison (it does not fire) rather than comparing as a value. An empty

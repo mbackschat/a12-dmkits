@@ -40,6 +40,19 @@ class NewShapesSnippetsTest {
     }
 
     @Test
+    void fieldRoundingSnippet() {
+        // tag::field-rounding[]
+        // Expression and *Value forms both accept optional 0..14 places; omission means 0.
+        NumberExpr wholeUnitPrice = Dsl.roundAccounting(m.num("/Order/UnitPrice").asNumber());
+        NumberExpr roundedUnitPrice = Dsl.roundAccountingValue(m.num("/Order/UnitPrice"), 2);
+        Condition unitPriceNeedsRounding = m.num("/Order/UnitPrice").ne(roundedUnitPrice);
+        // end::field-rounding[]
+        assertEquals("RoundAccounting([/Order/UnitPrice])", new DslRenderer().render(wholeUnitPrice.expression()));
+        assertEquals("[/Order/UnitPrice] != RoundAccountingValue(/Order/UnitPrice, 2)",
+                new DslRenderer().render(unitPriceNeedsRounding));
+    }
+
+    @Test
     void indexedPresenceSnippet() {
         // tag::indexed-presence[]
         // semanticIndex(key) is the presence handle for the field value a semantic index resolves to;

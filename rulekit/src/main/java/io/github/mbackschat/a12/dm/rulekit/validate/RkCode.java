@@ -51,8 +51,8 @@ public enum RkCode {
             "a computation precondition uses a construct the kernel forbids in computations — CustomCondition or RepetitionNotUnique — so the kernel will reject it (MVK_ERROR_INVALID_LANGUAGE_FEATURE).",
             "remove the forbidden construct from the precondition; CustomCondition and RepetitionNotUnique are not allowed in a computation."),
     COMPUTATION_OVERLAPPING_PRECONDITIONS(Severity.WARNING, DiagnosticSource.LINT,
-            "two computation alternatives share an identical precondition, so they overlap — the kernel evaluates alternatives in declaration order, so the second can never win.",
-            "make the alternatives' preconditions mutually exclusive (the first matching alternative wins)."),
+            "two computation alternatives share an identical precondition, so they overlap — computation takes the first match, but every guarded mismatch remains active in implicit validation.",
+            "make the alternatives' preconditions mutually exclusive; a later overlap cannot compute but can still make validation fire."),
 
     // --- build-time / structure prechecks (ERROR; PRECHECK) -------------------------------------
     INCOMPLETE_RULE(Severity.ERROR, DiagnosticSource.PRECHECK,

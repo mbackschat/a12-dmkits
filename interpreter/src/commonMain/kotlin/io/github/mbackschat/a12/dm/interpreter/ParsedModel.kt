@@ -136,9 +136,10 @@ internal class ParsedModel(
      * `ValidationModelConverter.getComputationStatement`): a **field gate** `FieldFilled(F) And`, then the optional
      * `(commonPrecondition) And`, then the alternatives — a SINGLE alternative is `[(precondition) And] [F] != op`;
      * **>1** alternatives are the `Or` of each so-gated comparison. So the field is flagged when it is filled and,
-     * for a tier whose precondition holds, its stored value disagrees with that tier's operation — the exact
-     * per-tier semantics, gated by the same preconditions the compute path uses (so `compute` and this validation
-     * never disagree on which tier applies). Building the AST from the parsed components (not a re-parsed string)
+     * for ANY tier whose precondition holds, its stored value disagrees with that tier's operation. This differs
+     * deliberately from computation, whose ordered scan selects only the first holding alternative: overlapping
+     * guards can compute the first operation while a later guarded mismatch still fires validation. Building the
+     * AST from the parsed components (not a re-parsed string)
      * means the operation/precondition ASTs are identical to compute's and cannot fail to re-parse (the initial
      * string-synthesis attempt introduced parser crashes — IF65). An alternative that declares a
      * `toleranceRangeOp` compares with `DiffersWithToleranceRange{N}` (fires iff

@@ -308,8 +308,10 @@ private fun Interpreter.baseYearNumber(): Val = Val.Num(dec(baseYearOrThrow()))
 private fun Interpreter.baseYearOrThrow(): Int = baseYear
     ?: throw UnsupportedConstructException("BaseYear needs the model's base year (modelInfo.baseYear)")
 
-/** Binary arithmetic; an empty numeric operand already arrives as 0, Unknown propagates. `+` is overloaded:
- *  STRING CONCATENATION when an operand is textual, else numeric addition (IF48). */
+/** Binary arithmetic; an empty numeric operand already arrives as 0, Unknown propagates. A numeric
+ *  [Val.DomainFailure] propagates after both operands have been evaluated, preserving the kernel's
+ *  left-to-right poisoning reads. `+` is overloaded: STRING CONCATENATION when an operand is textual,
+ *  else numeric addition (IF48). */
 private fun Interpreter.evalArith(a: Expr.Arith): Val {
     val l = evalExpr(a.left)
     val r = evalExpr(a.right)
@@ -325,6 +327,7 @@ private fun Interpreter.evalArith(a: Expr.Arith): Val {
         if (concatOperandInvalid(a.left) || concatOperandInvalid(a.right)) return Val.Unknown
         return Val.Txt(concatText(l) + concatText(r))
     }
+    if (l is Val.DomainFailure || r is Val.DomainFailure) return Val.DomainFailure
     if (l is Val.Unknown || r is Val.Unknown) return Val.Unknown
     val x = num(l)
     val y = num(r)
@@ -332,9 +335,9 @@ private fun Interpreter.evalArith(a: Expr.Arith): Val {
         ArithOp.ADD -> Val.Num(x + y)
         ArithOp.SUB -> Val.Num(x - y)
         ArithOp.MUL -> Val.Num(x * y)
-        // Division by zero is QUIET — the expression is non-evaluable → Unknown, so a referencing rule
-        // simply does not fire / a computation clears (KERNEL-FINDINGS / operators.json Arithmetic).
-        ArithOp.DIV -> if (y.compareTo(DEC_ZERO) == 0) Val.Unknown else Val.Num(x.div(y))
+        // A rule comparison projects this domain failure to UNKNOWN (does not fire). Computation keeps
+        // a no-value/CLEARED public delta but marks the target invalid for dependent reads.
+        ArithOp.DIV -> if (y.compareTo(DEC_ZERO) == 0) Val.DomainFailure else Val.Num(x.div(y))
         ArithOp.POW -> power(x, y)
     }
 }
@@ -484,15 +487,16 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     // *FromDate extractors and date comparisons read it like any date). Empty/absent range → Unknown.
     FunctionOp.START_OF_DATE_RANGE -> (evalExpr(f.args[0]) as? Val.Range)?.let { Val.Txt(it.start) } ?: Val.Unknown
     FunctionOp.END_OF_DATE_RANGE -> (evalExpr(f.args[0]) as? Val.Range)?.let { Val.Txt(it.end) } ?: Val.Unknown
-    // |x| — Abs over an expression, AbsValue over a field; a non-numeric/Unknown operand → Unknown.
-    FunctionOp.ABS, FunctionOp.ABS_VALUE -> (evalExpr(f.args[0]) as? Val.Num)?.let { Val.Num(it.v.abs()) } ?: Val.Unknown
+    // |x| — Abs over an expression, AbsValue over a field. Kernel VkBigDecimal.abs preserves its invalid
+    // numeric sentinel, so an arithmetic domain failure must survive this legal wrapper; Unknown remains Unknown.
+    FunctionOp.ABS, FunctionOp.ABS_VALUE -> mapNumber(evalExpr(f.args[0])) { Val.Num(it.abs()) }
     // The UTF-16 code-unit count of a string field's value. A CHECK-RELEVANT empty/absent operand → 0 (the
     // kernel's `laenge` fills an unspecified string as "", grow-only — IF73); a malformed, wrong-kind, or
     // otherwise non-evaluable operand → Unknown (suppressed). An operator-specific exception to the direct
     // String comparison (which an empty operand suppresses).
     FunctionOp.LENGTH -> if (emptyCheckRelevant(f.args[0])) Val.Num(DEC_ZERO)
         else (evalExpr(f.args[0]) as? Val.Txt)?.let { Val.Num(dec(it.v.length)) } ?: Val.Unknown
-    // Rounding — `Round*([expr], n)` to n decimal places; the `*Value(field)` siblings to an integer (0).
+    // Rounding — both `Round*(expr[, n])` and `Round*Value(field[, n])`; omission means 0 places.
     FunctionOp.ROUND_DOWN -> roundExpr(f.args, RoundMode.FLOOR)
     FunctionOp.ROUND_UP -> roundExpr(f.args, RoundMode.CEILING)
     FunctionOp.ROUND_ACCOUNTING -> roundExpr(f.args, RoundMode.HALF_UP)
@@ -532,10 +536,15 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
  *  hardcoded 0 even with a digits argument present). A non-numeric/Unknown value or a non-whole places
  *  operand → Unknown. */
 private fun Interpreter.roundExpr(args: List<Expr>, mode: RoundMode): Val {
-    val v = (evalExpr(args[0]) as? Val.Num)?.v ?: return Val.Unknown
+    val value = evalExpr(args[0])
+    if (value !is Val.Num) return value.numericNonValue()
     val places = if (args.size < 2) 0
-        else (evalExpr(args[1]) as? Val.Num)?.v?.display()?.toIntOrNull() ?: return Val.Unknown
-    return Val.Num(v.roundTo(places, mode))
+        else {
+            val placeValue = evalExpr(args[1])
+            if (placeValue !is Val.Num) return placeValue.numericNonValue()
+            placeValue.v.display().toIntOrNull() ?: return Val.Unknown
+        }
+    return Val.Num(value.v.roundTo(places, mode))
 }
 
 /**
@@ -608,6 +617,7 @@ private fun Interpreter.fieldValueAsString(arg: Expr): Val = when (arg) {
         when (val cell = computeGuardedIndexCell(arg)) {
             null -> Val.Unknown
             is Val.Unknown -> Val.Unknown
+            is Val.DomainFailure -> Val.DomainFailure
             is Val.Num -> Val.Txt(cell.v.display())
             is Val.Txt -> cell
             is Val.Bool -> Val.Txt(cell.v.toString())
@@ -1008,13 +1018,25 @@ private fun Interpreter.starOperandVals(star: Expr.Star): List<Val> {
 
 /**
  * Apply a numeric combiner ([Min]/[Max]/[Sum]/[MaxValue]/[MinValue]/[NumberOfDifferentValues]) to its
- * value list — but if ANY element is malformed (resolved to [Val.Unknown]), the WHOLE combiner is
- * non-evaluable and yields [Val.Unknown], so the referencing rule is **suppressed**. This matches the
- * kernel exactly (a formal-error operand makes the aggregate/combiner non-evaluable — verified for `Sum`
- * via the differential; KERNEL-FINDINGS §3/§1, `AggMalformedDiffTest`). Empties never reach a starred
- * aggregate (the star drops absent/empty cells); only a FILLED-but-malformed value is [Val.Unknown].
+ * value list. A [Val.DomainFailure] wins and propagates: the kernel's `VkBigDecimal.min`/`max` preserve
+ * `INVALID_NUMBER`, independent of operand order. Otherwise, if ANY element is malformed (resolved to
+ * [Val.Unknown]), the whole combiner is non-evaluable and yields [Val.Unknown]. Empties never reach a
+ * starred aggregate (the star drops absent/empty cells); only a filled-but-malformed value is [Val.Unknown].
  */
 private inline fun combine(vals: List<Val>, op: (List<Val>) -> Val): Val =
-    if (vals.any { it is Val.Unknown }) Val.Unknown else op(vals)
+    when {
+        vals.any { it is Val.DomainFailure } -> Val.DomainFailure
+        vals.any { it is Val.Unknown } -> Val.Unknown
+        else -> op(vals)
+    }
+
+/** Apply a unary numeric function while preserving the kernel's invalid-number sentinel. */
+private inline fun mapNumber(value: Val, op: (Dec) -> Val): Val = when (value) {
+    is Val.Num -> op(value.v)
+    else -> value.numericNonValue()
+}
+
+/** A numeric consumer's non-value projection: preserve domain failure; all other wrong/non-values are Unknown. */
+private fun Val.numericNonValue(): Val = if (this is Val.DomainFailure) this else Val.Unknown
 
 private fun num(v: Val): Dec = (v as? Val.Num)?.v ?: error("expected a number, got $v")

@@ -23,7 +23,9 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
  *   <li><b>forbidden constructs</b> — {@code CustomCondition} / {@code RepetitionNotUnique} are not allowed in
  *       a computation precondition (the kernel rejects with {@code MVK_ERROR_INVALID_LANGUAGE_FEATURE});</li>
  *   <li><b>non-exclusive preconditions</b> — alternatives are meant to be mutually exclusive; the kernel takes
- *       the first match in declaration order, so two identical preconditions mean the later one can never win.</li>
+ *       the first match in declaration order for computation, while implicit validation retains every guarded
+ *       mismatch. Two identical preconditions therefore make the later operation unable to compute but still able
+ *       to make validation fire.</li>
  * </ul>
  *
  * <p>It works on the {@link DraftComputation}'s precondition <em>texts</em> (no parse needed): the forbidden
@@ -87,7 +89,8 @@ public final class ComputationLinter {
                 out.add(new Diagnostic(Severity.WARNING, DiagnosticSource.LINT,
                         Optional.of(RkCode.COMPUTATION_OVERLAPPING_PRECONDITIONS.code()),
                         "alternatives #" + earlier + " and #" + (i + 1) + " share an identical precondition, so they"
-                                + " overlap — the kernel takes the first match, so #" + (i + 1) + " can never win",
+                                + " overlap — #" + (i + 1) + " cannot supply the computed value, but its guarded"
+                                + " mismatch still participates in implicit validation",
                         new Diagnostic.Where(path, Optional.empty()),
                         Optional.of("make the alternatives' preconditions mutually exclusive"),
                         Optional.empty()));

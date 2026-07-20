@@ -22,9 +22,11 @@ enum class Tri {
     }
 }
 
-/** A resolved, typed value — or [Unknown] when the operand is "not evaluated". */
+/** A resolved, typed value, [Unknown] when the operand is not evaluated, or [DomainFailure] when a
+ *  numeric expression was evaluated but has no value in its domain (for example division by zero). */
 sealed interface Val {
     data object Unknown : Val
+    data object DomainFailure : Val
     data class Num(val v: Dec) : Val
     data class Txt(val v: String) : Val
     data class Bool(val v: Boolean) : Val
@@ -96,14 +98,15 @@ sealed interface Cond {
 }
 
 /** Binary arithmetic operators (language-independent symbols). All five are evaluated and differential-locked
- *  by `DivPowDiffTest` (incl. divide-by-zero → Unknown and the `^` > `*`/`/` > `+`/`-` precedence). */
+ *  by `DivPowDiffTest` and `DivisionDomainFailureComputationDiffTest`: divide-by-zero is a domain failure,
+ *  projected to UNKNOWN by comparisons but retained as invalidity by numeric computations. */
 enum class ArithOp { ADD, SUB, MUL, DIV, POW }
 
 /** Expression AST. */
 sealed interface Expr {
-    /** A field/value reference. [outer] marks the `$` outer-iteration correlation (KERNEL-FINDINGS §"$
-     *  correlation"): inside a `Having` filter it resolves against the ENCLOSING iteration row, not the inner
-     *  filtered row. Default `false` (an ordinary reference). */
+    /** A field/value reference. [outer] marks the `$` correlation: inside a `Having` filter it resolves
+     *  its own named path against the complete ENCLOSING repetition environment, not the inner filtered
+     *  row. Different paths can select different captured repetition coordinates. Default `false`. */
     data class Field(val path: String, val outer: Boolean = false) : Expr
 
     /** A numeric literal. [asVal] is the typed value, built ONCE at parse (the AST is cached per rule, #31)

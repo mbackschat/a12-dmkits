@@ -1,16 +1,20 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import java.util.Objects;
+import java.util.Optional;
+
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
- * {@code RoundDown(expr, n)} / {@code RoundUp(expr, n)} / {@code RoundAccounting(expr, n)} — round a
- * numeric expression to {@code n} decimal places (the kernel's operand-list rounding,
+ * {@code RoundDown(expr[, n])} / {@code RoundUp(expr[, n])} /
+ * {@code RoundAccounting(expr[, n])} — round a numeric expression to the optional {@code n} decimal
+ * places; omission means zero (the kernel's operand-list rounding,
  * {@code IOpListOperationWithParameter}; distinct from the field-only {@code RoundDownValue} family).
  * Unlike {@link Arithmetic} the operand is an arbitrary numeric expression, so these compose anywhere
  * a numeric operand is expected — typically the right side of a computed-field consistency rule
  * ({@code [Density] != RoundDown([Population] / [Area], 2)}). Build via {@link Dsl#roundDown}, etc.
  */
-public record Rounding(Mode mode, Calculation operand, int decimalPlaces) implements Calculation {
+public record Rounding(Mode mode, Calculation operand, Optional<Integer> decimalPlaces) implements Calculation {
 
     /** The three rounding directions (kernel {@code OpListOperationName}) with their catalog operator-ids. */
     public enum Mode {
@@ -30,9 +34,24 @@ public record Rounding(Mode mode, Calculation operand, int decimalPlaces) implem
     }
 
     public Rounding {
-        if (decimalPlaces < 0) {
-            throw new IllegalArgumentException("rounding decimal places must be >= 0, was " + decimalPlaces);
-        }
+        Objects.requireNonNull(mode, "mode");
+        Objects.requireNonNull(operand, "operand");
+        decimalPlaces = Objects.requireNonNull(decimalPlaces, "decimalPlaces");
+        decimalPlaces.ifPresent(places -> {
+            if (places < 0 || places > 14) {
+                throw new IllegalArgumentException("rounding decimal places must be in 0..14, was " + places);
+            }
+        });
+    }
+
+    /** Backward-compatible constructor for the explicit-places spelling. */
+    public Rounding(Mode mode, Calculation operand, int decimalPlaces) {
+        this(mode, operand, Optional.of(decimalPlaces));
+    }
+
+    /** The one-argument spelling; omitted decimal places mean zero. */
+    public Rounding(Mode mode, Calculation operand) {
+        this(mode, operand, Optional.empty());
     }
 
     @Override

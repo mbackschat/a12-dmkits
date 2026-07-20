@@ -539,6 +539,11 @@ public final class RuntimeLaws {
     record Computed(String path, String pointer, Optional<String> value, boolean cleared, boolean errored) {
     }
 
+    /** Public compute deltas plus the otherwise-hidden formal operand errors that make a no-value
+     * computation target invalid for dependent reads. */
+    record ComputationDetail(List<Computed> outcomes, List<Msg> formalErrorsInOperands) {
+    }
+
     /**
      * Run the kernel's {@code compute()} over an explicit document instance and return every
      * computed-field outcome (value / cleared / errored). The discriminator for "does an empty operand
@@ -554,6 +559,16 @@ public final class RuntimeLaws {
         return computeDetail(rt, v2);
     }
 
+    static ComputationDetail computeWithFormalErrors(String modelJson, Doc doc) {
+        IDocumentModel model = expandedModel(modelJson);
+        IDocumentModelResolver resolver = id -> model;
+        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
+        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
+        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(
+                buildInstance(modelJson, dsf.createDocumentFactory(), doc));
+        return computeDetailWithFormalErrors(rt, v2);
+    }
+
     /**
      * Map a {@code compute()} run over {@code instance} to its value/cleared/errored detail — shared by the
      * Groovy {@link #compute(String, Doc)} and the {@link JavaKernelEngine#compute(DocumentV2)} tri-differential
@@ -565,6 +580,13 @@ public final class RuntimeLaws {
 
     private static List<Computed> computeDetail(IDocumentRtService rt, DocumentV2 instance, Locale locale) {
         return computeDetailOf(rt.compute(instance, config(null, locale)));
+    }
+
+    private static ComputationDetail computeDetailWithFormalErrors(IDocumentRtService rt, DocumentV2 instance) {
+        IDocumentComputationResult result = rt.compute(instance, config(null, Locale.US));
+        return new ComputationDetail(
+                computeDetailOf(result),
+                result.getFormalErrorsInOperands().stream().map(RuntimeLaws::toMsg).toList());
     }
 
     /** Map a {@link IDocumentComputationResult} to its value/cleared/errored detail — shared by the legacy
@@ -958,6 +980,10 @@ public final class RuntimeLaws {
          *  tri-differential payload, mirroring the Groovy {@link RuntimeLaws#compute(String, Doc)}. */
         List<Computed> compute(DocumentV2 instance) {
             return computeDetail(rt, instance);
+        }
+
+        ComputationDetail computeWithFormalErrors(DocumentV2 instance) {
+            return computeDetailWithFormalErrors(rt, instance);
         }
 
         /** The post-application cell states over the static-JAVA strategy — the twin of

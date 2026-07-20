@@ -20,7 +20,8 @@ expect class Dec : Comparable<Dec> {
     operator fun times(other: Dec): Dec
 
     /** This ÷ [other], capped at the kernel's `MathContext(50)` HALF_UP (`VkBigDecimal.INTERNAL_PRECISION`) — a
-     *  non-terminating quotient is rounded to 50 significant digits. The caller guards division by zero (→ Unknown). */
+     *  non-terminating quotient is rounded to 50 significant digits. The evaluator classifies zero first as a
+     *  domain failure, which comparisons project to UNKNOWN and numeric computations retain as target invalidity. */
     fun div(other: Dec): Dec
 
     /** This raised to a whole-number [exponent], at `MathContext(50)` HALF_UP. The caller guards the kernel's quiet

@@ -15,7 +15,8 @@ import org.junit.jupiter.api.Test
 
 /**
  * Differential — arithmetic **division `/`** and **power `^`** (operators.json `Arithmetic`; KERNEL-SEMANTICS
- * "Division by zero and power-operator edge cases evaluate quietly"). Precedence `^` > `*`/`/` > `+`/`-`,
+ * "Arithmetic domain failures are consumer-sensitive"). This class locks the rule-side projection;
+ * `DivisionDomainFailureComputationDiffTest` owns computation invalidity. Precedence `^` > `*`/`/` > `+`/`-`,
  * grouped with `{ }`. The exact-match subtleties: division carries `MathContext(50)` precision; **division by
  * zero is quiet** (the expression is non-evaluable → the rule does not fire, never an error); a power's
  * exponent is whole, and `0` to a negative power or an exponent outside `[-1000, 1000]` is likewise quiet.

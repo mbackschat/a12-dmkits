@@ -25,7 +25,7 @@
     "commonPrecondition": { "type": "string", "description": "(computation) optional guard (A12 DSL) shared by all alternatives" },
     "alternatives": {
       "type": "array",
-      "description": "(computation) ≥1 (precondition?, operation, toleranceRangeOp?) tier — either one unconditional {operation} or all preconditioned {precondition, operation} (the kernel rejects mixing)",
+      "description": "(computation) ≥1 (precondition?, operation, toleranceRangeOp?) tier — either one unconditional {operation} or all preconditioned {precondition, operation} (the kernel rejects mixing). Computation takes the first holding tier, but implicit validation retains every holding tier's mismatch, so preconditions must be mutually exclusive",
       "minItems": 1,
       "items": {
         "type": "object",

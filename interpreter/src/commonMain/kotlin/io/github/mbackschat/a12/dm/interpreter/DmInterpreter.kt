@@ -236,10 +236,10 @@ class DmInterpreter @JvmOverloads constructor(
                 }
             }
             // Every computation is ALSO a validation rule (KERNEL-FINDINGS, IF32/IF65): the kernel auto-generates one
-            // implicit validation per computation — a field gate `FieldFilled(F) And` then the guard/tier selection
-            // and `[F] != <selected operation>` — that fires under the computation's NAME when a stored computed value
-            // disagrees with what the (guard-selected) tier computes. This covers GUARDED/TIERED computations, not
-            // just the degenerate single-unconditional one (IF65). Evaluated through the same rule machinery.
+            // implicit validation per computation — a field gate `FieldFilled(F) And` then one guarded
+            // `[F] != <operation>` branch PER alternative. Unlike computation's first-holding-alternative scan,
+            // every holding mismatch remains in this OR, so an overlapping later tier can fire validation even
+            // though it cannot supply the computed value (IF175). Evaluated through the same rule machinery.
             for (implicit in parsedModel.implicitRules) {
                 try {
                     messages += messagesFor(implicit, pass)

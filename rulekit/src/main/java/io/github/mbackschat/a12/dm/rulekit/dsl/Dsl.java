@@ -111,19 +111,34 @@ public final class Dsl {
         return new NumberExpr(new SumOfProducts(left, right));
     }
 
-    /** {@code RoundDownValue(field)} — the field's value rounded down to an integer. catalog:RoundDownValue */
+    /** {@code RoundDownValue(field)} — floor the field value to zero decimal places. catalog:RoundDownValue */
     public static NumberExpr roundDownValue(NumberRef field) {
         return new NumberExpr(new FieldRounding(FieldRounding.Mode.ROUND_DOWN, field.field()));
     }
 
-    /** {@code RoundUpValue(field)} — the field's value rounded up to an integer. catalog:RoundUpValue */
+    /** {@code RoundDownValue(field, n)} — floor the field value to {@code n} decimal places ({@code 0..14}). catalog:RoundDownValue */
+    public static NumberExpr roundDownValue(NumberRef field, int decimalPlaces) {
+        return new NumberExpr(new FieldRounding(FieldRounding.Mode.ROUND_DOWN, field.field(), decimalPlaces));
+    }
+
+    /** {@code RoundUpValue(field)} — ceiling the field value to zero decimal places. catalog:RoundUpValue */
     public static NumberExpr roundUpValue(NumberRef field) {
         return new NumberExpr(new FieldRounding(FieldRounding.Mode.ROUND_UP, field.field()));
     }
 
-    /** {@code RoundAccountingValue(field)} — the field's value rounded to an integer (banker's rounding). catalog:RoundAccountingValue */
+    /** {@code RoundUpValue(field, n)} — ceiling the field value to {@code n} decimal places ({@code 0..14}). catalog:RoundUpValue */
+    public static NumberExpr roundUpValue(NumberRef field, int decimalPlaces) {
+        return new NumberExpr(new FieldRounding(FieldRounding.Mode.ROUND_UP, field.field(), decimalPlaces));
+    }
+
+    /** {@code RoundAccountingValue(field)} — commercial rounding to zero decimal places. catalog:RoundAccountingValue */
     public static NumberExpr roundAccountingValue(NumberRef field) {
         return new NumberExpr(new FieldRounding(FieldRounding.Mode.ROUND_ACCOUNTING, field.field()));
+    }
+
+    /** {@code RoundAccountingValue(field, n)} — commercial rounding to {@code n} decimal places ({@code 0..14}). catalog:RoundAccountingValue */
+    public static NumberExpr roundAccountingValue(NumberRef field, int decimalPlaces) {
+        return new NumberExpr(new FieldRounding(FieldRounding.Mode.ROUND_ACCOUNTING, field.field(), decimalPlaces));
     }
 
     /** {@code AbsValue(field)} — the absolute value of the field. catalog:AbsValue */
@@ -247,17 +262,32 @@ public final class Dsl {
 
     // --- rounding (operand-list, over an arbitrary numeric expression) -------------------------
 
-    /** {@code RoundDown(expr, n)} — round a numeric expression down to {@code n} decimal places. catalog:RoundDown */
+    /** {@code RoundDown(expr)} — floor a numeric expression to zero decimal places. catalog:RoundDown */
+    public static NumberExpr roundDown(NumberExpr operand) {
+        return new NumberExpr(new Rounding(Rounding.Mode.DOWN, operand.expression()));
+    }
+
+    /** {@code RoundDown(expr, n)} — floor a numeric expression to {@code n} decimal places ({@code 0..14}). catalog:RoundDown */
     public static NumberExpr roundDown(NumberExpr operand, int decimalPlaces) {
         return new NumberExpr(new Rounding(Rounding.Mode.DOWN, operand.expression(), decimalPlaces));
     }
 
-    /** {@code RoundUp(expr, n)} — round a numeric expression up to {@code n} decimal places. catalog:RoundUp */
+    /** {@code RoundUp(expr)} — ceiling a numeric expression to zero decimal places. catalog:RoundUp */
+    public static NumberExpr roundUp(NumberExpr operand) {
+        return new NumberExpr(new Rounding(Rounding.Mode.UP, operand.expression()));
+    }
+
+    /** {@code RoundUp(expr, n)} — ceiling a numeric expression to {@code n} decimal places ({@code 0..14}). catalog:RoundUp */
     public static NumberExpr roundUp(NumberExpr operand, int decimalPlaces) {
         return new NumberExpr(new Rounding(Rounding.Mode.UP, operand.expression(), decimalPlaces));
     }
 
-    /** {@code RoundAccounting(expr, n)} — round a numeric expression to {@code n} decimal places (commercial rounding). catalog:RoundAccounting */
+    /** {@code RoundAccounting(expr)} — commercial rounding to zero decimal places. catalog:RoundAccounting */
+    public static NumberExpr roundAccounting(NumberExpr operand) {
+        return new NumberExpr(new Rounding(Rounding.Mode.ACCOUNTING, operand.expression()));
+    }
+
+    /** {@code RoundAccounting(expr, n)} — commercial rounding to {@code n} decimal places ({@code 0..14}). catalog:RoundAccounting */
     public static NumberExpr roundAccounting(NumberExpr operand, int decimalPlaces) {
         return new NumberExpr(new Rounding(Rounding.Mode.ACCOUNTING, operand.expression(), decimalPlaces));
     }
@@ -638,9 +668,9 @@ public final class Dsl {
     }
 
     /**
-     * {@code CurrentRepetition($group)} — the <em>outer</em> iteration's index (the {@code $}
-     * correlation, D13), for a self-exclusion like {@code CurrentRepetition(G) != CurrentRepetition($G)}
-     * inside a {@code Having} filter.
+     * {@code CurrentRepetition($group)} — the named group's coordinate in the complete <em>outer</em>
+     * repetition environment (the {@code $} correlation, D13). Different group paths can select
+     * different captured coordinates in one nested outer row; this is not one scalar outer index.
      */
     public static NumberExpr currentRepetition(GroupRef group, boolean outer) {
         return new NumberExpr(new CurrentRepetition(group, outer));
