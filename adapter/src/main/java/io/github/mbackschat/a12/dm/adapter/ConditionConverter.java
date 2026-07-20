@@ -315,16 +315,7 @@ final class ConditionConverter {
             // be taken here.
             if (single && entities.get(0).getFilterCondition() != null) {
                 FieldListRef scope = flattenScope(entities.get(0));
-                return switch (name) {
-                    case AllFieldsFilled -> Dsl.allFieldsFilled(scope);
-                    case NoFieldFilled -> Dsl.noFieldFilled(scope);
-                    case AtLeastOneFieldFilled -> Dsl.atLeastOneFieldFilled(scope);
-                    case NotAllFieldsFilled -> Dsl.notAllFieldsFilled(scope);
-                    case FieldsNotCollectivelyFilled -> Dsl.fieldsNotCollectivelyFilled(scope);
-                    case NotExactlyOneFieldFilled -> Dsl.notExactlyOneFieldFilled(scope);
-                    case MoreThanOneFieldFilled -> Dsl.moreThanOneFieldFilled(scope);
-                    default -> throw unsupported("filtered field-list quantifier " + name, entityList);
-                };
+                return fieldFillQuantifier(name, new FieldOperand[] {scope}, entityList);
             }
             // $-correlated presence predicate (e.g. NoFieldFilled($a, $b) inside a filter, D13): build
             // outer-marked field operands so the $ survives — else the count-check refuses the conversion.
@@ -332,17 +323,14 @@ final class ConditionConverter {
                 FieldOperand[] ops = entities.stream()
                         .map(e -> e.isOuter() ? model.field(e.getFullName()).outer() : model.field(e.getFullName()))
                         .toArray(FieldOperand[]::new);
-                FieldOperand[] rest = Arrays.copyOfRange(ops, 1, ops.length);
-                return switch (name) {
-                    case AllFieldsFilled -> Dsl.allFieldsFilled(ops[0], rest);
-                    case NoFieldFilled -> Dsl.noFieldFilled(ops[0], rest);
-                    case AtLeastOneFieldFilled -> Dsl.atLeastOneFieldFilled(ops[0], rest);
-                    case NotAllFieldsFilled -> Dsl.notAllFieldsFilled(ops[0], rest);
-                    case FieldsNotCollectivelyFilled -> Dsl.fieldsNotCollectivelyFilled(ops[0], rest);
-                    case NotExactlyOneFieldFilled -> Dsl.notExactlyOneFieldFilled(ops[0], rest);
-                    case MoreThanOneFieldFilled -> Dsl.moreThanOneFieldFilled(ops[0], rest);
-                    default -> throw unsupported("$-correlated field-list condition " + name, entityList);
-                };
+                return fieldFillQuantifier(name, ops, entityList);
+            }
+            // An unfiltered wildcard field-fill quantifier is still a list operation. Route every operand
+            // through the wildcard-aware converter so a single starred operand and mixed starred/plain lists
+            // retain their per-repetition meaning instead of falling into the plain-path canonicalization.
+            if (isFieldFillQuantifier(name) && entities.stream().anyMatch(ConditionConverter::isWildcard)) {
+                FieldOperand[] operands = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
+                return fieldFillQuantifier(name, operands, entityList);
             }
             return switch (name) {
                 // single-field FieldFilled/FieldNotFilled canonicalize to AllFieldsFilled/NoFieldFilled[x]
@@ -413,6 +401,21 @@ final class ConditionConverter {
             case FieldsNotCollectivelyFilled -> model.fieldsNotCollectivelyFilled(p);
             case NotExactlyOneFieldFilled -> model.notExactlyOneFieldFilled(p);
             case MoreThanOneFieldFilled -> model.moreThanOneFieldFilled(p);
+            default -> throw unsupported("field-fill quantifier " + name, origin);
+        };
+    }
+
+    /** A field-fill quantifier over field operands, preserving flattened wildcard lists. */
+    private Condition fieldFillQuantifier(EntityListConditionName name, FieldOperand[] operands, ICondition origin) {
+        FieldOperand[] rest = Arrays.copyOfRange(operands, 1, operands.length);
+        return switch (name) {
+            case AllFieldsFilled -> Dsl.allFieldsFilled(operands[0], rest);
+            case NoFieldFilled -> Dsl.noFieldFilled(operands[0], rest);
+            case AtLeastOneFieldFilled -> Dsl.atLeastOneFieldFilled(operands[0], rest);
+            case NotAllFieldsFilled -> Dsl.notAllFieldsFilled(operands[0], rest);
+            case FieldsNotCollectivelyFilled -> Dsl.fieldsNotCollectivelyFilled(operands[0], rest);
+            case NotExactlyOneFieldFilled -> Dsl.notExactlyOneFieldFilled(operands[0], rest);
+            case MoreThanOneFieldFilled -> Dsl.moreThanOneFieldFilled(operands[0], rest);
             default -> throw unsupported("field-fill quantifier " + name, origin);
         };
     }
