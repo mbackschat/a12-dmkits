@@ -4,10 +4,9 @@ import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
-import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
-import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
-import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
@@ -20,19 +19,28 @@ import org.junit.jupiter.api.Test
  * scope `/Order/Items*` expands to every descendant field cell across all rows, so a naive tally could be
  * O(rows·fields); this asserts sub-quadratic growth (4× the rows ≪ 16× the time) AND that the interpreter stays
  * in the kernel's complexity class (the interp/kernel ratio must not grow with N). Mirrors `OuterCorrelationPerfTest`.
+ *
+ * **The model repeats FAR beyond the benchmark N** (built here, not `order.dm.json`, whose Items cap of 50 is
+ * below N — the kernel would treat over-limit rows as invalid context and skip rule eval on them, so the
+ * against-kernel comparison would measure the kernel's context-error overhead, not group-fill). ONE model is
+ * loaded into both engines so they evaluate the identical rule at scale.
  */
 @Tag("perf")
 class GroupScopedFillPerfTest {
 
-    private val order = RuntimeLaws.model("models/order.dm.json")
-    private val m = BoundModel.ofJson(order)
+    private val base = DocumentModelDraft.named("order").locale("en_US")
+        .rootGroup("Order") { o ->
+            o.stringField("CustomerName") { }
+            o.group("Items") { it -> it.repeatable(MAX).stringField("Sku") { } }
+        }.build().toJson()
+    private val m = BoundModel.ofJson(base)
 
-    // FieldFilled(CustomerName) And AtLeastOneFieldFilled(/Order/Items*)  — the instantiated-range tally over all cells
+    // FieldFilled(CustomerName) And AtLeastOneFieldFilled(/Order/Items*)  — the instantiated-range tally over all cells.
     private val cond = DslRenderer().render(m.field(CN).filled().and(Dsl.atLeastOneFieldFilled(m.flattenGroup("/Order/Items*"))))
 
-    private val fields = listOf(FieldDef(CN, Kind.STRING), FieldDef(SKU, Kind.STRING), FieldDef(COUNT, Kind.NUMBER, scale = 0))
-    private val def = ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "NF", "../CustomerName")),
-        repeatableGroups = setOf("/Order/Items"), declaredReps = mapOf("/Order/Items" to 200_000), indexFields = setOf(SKU))
+    private val kModel = RuntimeLaws.withRule(base, "/Order", "R", "../CustomerName", "NF", cond)
+    private val def: ModelDef = ModelLoader.load(kModel)
+    private val kernelEngine = RuntimeLaws.kernelEngine(kModel)
 
     private fun doc(n: Int): Document {
         val d = def.newDocument()
@@ -41,19 +49,17 @@ class GroupScopedFillPerfTest {
         return d
     }
 
+    private fun kDoc(n: Int): RuntimeLaws.Doc {
+        val d = RuntimeLaws.doc().group("/Order", 1).field(CN, "Acme", 1, 1)
+        for (r in 1..n) d.group("/Order/Items", 1, r).field(SKU, "S$r", 1, r, 1)
+        return d
+    }
+
     private fun minMs(n: Int): Double {
         val interp = DmInterpreter(def)
         val d = doc(n)
         repeat(2) { interp.validateFull(d) }
         return (1..3).minOf { val t = System.nanoTime(); interp.validateFull(d); (System.nanoTime() - t) / 1e6 }
-    }
-
-    private val kernelEngine = RuntimeLaws.kernelEngine(RuntimeLaws.withRule(order, "/Order", "R", "../CustomerName", "NF", cond))
-
-    private fun kDoc(n: Int): RuntimeLaws.Doc {
-        val d = RuntimeLaws.doc().group("/Order", 1).field(CN, "Acme", 1, 1)
-        for (r in 1..n) d.group("/Order/Items", 1, r).field(SKU, "S$r", 1, r, 1)
-        return d
     }
 
     private fun kernelMinMs(n: Int): Double {
@@ -85,8 +91,8 @@ class GroupScopedFillPerfTest {
 
     private companion object {
         const val N = 2000
+        const val MAX = 200_000   // Items repeatability — FAR above 4×N, so the kernel evaluates group-fill at scale
         const val CN = "/Order/CustomerName"
         const val SKU = "/Order/Items/Sku"
-        const val COUNT = "/Order/Items/Count"
     }
 }
