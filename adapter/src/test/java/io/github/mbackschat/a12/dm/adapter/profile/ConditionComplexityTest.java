@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.OptionalInt;
+
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.core.ValueKind;
@@ -93,6 +95,30 @@ class ConditionComplexityTest {
                 "FirstFilledValue, all three authored operands, and the Having condition");
         assertEquals(1, result.operators().catalog().counts().get("Having"));
         assertTrue(result.constructs().contains(ConditionComplexity.Construct.FILTER));
+        assertEquals(
+                List.of(
+                        new ConditionComplexity.CollectionOccurrence(
+                                FLATTENED_FIELD,
+                                SCORE.path(),
+                                List.of(SECTIONS.path(), ANSWERS.path()),
+                                OptionalInt.of(1)),
+                        new ConditionComplexity.CollectionOccurrence(
+                                FLATTENED_FIELD,
+                                "/Survey/Sections/Score",
+                                List.of(SECTIONS.path()),
+                                OptionalInt.empty())),
+                result.collections().occurrences());
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> result.collections().occurrences().add(
+                        result.collections().occurrences().getFirst()));
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> result.collections()
+                        .occurrences()
+                        .getFirst()
+                        .repeatableGroupPaths()
+                        .add("/Survey/Other"));
     }
 
     @Test
@@ -125,6 +151,23 @@ class ConditionComplexityTest {
         assertEquals(1, correlations.get(FIELD_VALUE));
         assertEquals(1, correlations.get(ENUM_CATEGORY));
         assertEquals(1, correlations.get(CURRENT_REPETITION));
+        assertEquals(
+                List.of(
+                        new ConditionComplexity.CorrelationOccurrence(FIELD_OPERAND, KEY.path()),
+                        new ConditionComplexity.CorrelationOccurrence(FIELD_OPERAND, SCORE.path()),
+                        new ConditionComplexity.CorrelationOccurrence(FIELD_LIST, SCORE.path()),
+                        new ConditionComplexity.CorrelationOccurrence(FIELD_VALUE, SCORE.path()),
+                        new ConditionComplexity.CorrelationOccurrence(ENUM_CATEGORY, KEY.path()),
+                        new ConditionComplexity.CorrelationOccurrence(
+                                CURRENT_REPETITION, ANSWERS.path())),
+                ConditionComplexity.of(all).correlations().occurrences());
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> ConditionComplexity.of(all)
+                        .correlations()
+                        .occurrences()
+                        .add(new ConditionComplexity.CorrelationOccurrence(
+                                FIELD_VALUE, "/Survey/Other")));
     }
 
     @Test
@@ -137,22 +180,38 @@ class ConditionComplexityTest {
         var fillResult = ConditionComplexity.of(groupFill);
         assertEquals(1, fillResult.collections().counts().get(FLATTENED_GROUP));
         assertEquals(2, fillResult.collections().maxStarDepth());
+        assertEquals(
+                List.of(
+                        new ConditionComplexity.CollectionOccurrence(
+                                FLATTENED_GROUP,
+                                ANSWERS.path(),
+                                List.of(SECTIONS.path(), ANSWERS.path()),
+                                OptionalInt.empty())),
+                fillResult.collections().occurrences());
 
         var filledGroups =
                 new CountAggregate(CountAggregate.CountOp.FILLED_GROUPS, List.of(), List.of(ANSWERS));
+        var filledGroupsResult = ConditionComplexity.of(filledGroups);
+        assertEquals(1, filledGroupsResult.collections().counts().get(FILLED_GROUP_REPETITIONS));
         assertEquals(
-                1,
-                ConditionComplexity.of(filledGroups)
-                        .collections()
-                        .counts()
-                        .get(FILLED_GROUP_REPETITIONS));
+                List.of(
+                        new ConditionComplexity.CollectionOccurrence(
+                                FILLED_GROUP_REPETITIONS,
+                                ANSWERS.path(),
+                                List.of(ANSWERS.path()),
+                                OptionalInt.empty())),
+                filledGroupsResult.collections().occurrences());
 
+        var rootResult = ConditionComplexity.of(new RootGroupCount(ROOT));
+        assertEquals(1, rootResult.collections().counts().get(ROOT_GROUP_REPETITIONS));
         assertEquals(
-                1,
-                ConditionComplexity.of(new RootGroupCount(ROOT))
-                        .collections()
-                        .counts()
-                        .get(ROOT_GROUP_REPETITIONS));
+                List.of(
+                        new ConditionComplexity.CollectionOccurrence(
+                                ROOT_GROUP_REPETITIONS,
+                                ROOT.path(),
+                                List.of(ROOT.path()),
+                                OptionalInt.empty())),
+                rootResult.collections().occurrences());
     }
 
     @Test

@@ -1,11 +1,14 @@
 package io.github.mbackschat.a12.dm.adapter.profile;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -116,6 +119,31 @@ final class ConditionComplexity {
         ROOT_GROUP_REPETITIONS
     }
 
+    record CorrelationOccurrence(OuterCorrelation form, String targetPath) {
+        CorrelationOccurrence {
+            Objects.requireNonNull(form, "form");
+            targetPath = requirePath(targetPath, "correlation target");
+        }
+    }
+
+    record CollectionOccurrence(
+            CollectionKind kind,
+            String targetPath,
+            List<String> repeatableGroupPaths,
+            OptionalInt filterNodeCount) {
+        CollectionOccurrence {
+            Objects.requireNonNull(kind, "kind");
+            targetPath = requirePath(targetPath, "collection target");
+            repeatableGroupPaths = List.copyOf(repeatableGroupPaths);
+            repeatableGroupPaths.forEach(path -> requirePath(path, "repeatable group"));
+            filterNodeCount = Objects.requireNonNull(filterNodeCount, "filterNodeCount");
+            if (filterNodeCount.isPresent() && filterNodeCount.getAsInt() < 1) {
+                throw new IllegalArgumentException(
+                        "a present filter must contain at least one AST node");
+            }
+        }
+    }
+
     record TreeShape(int nodeCount, int depth, int maxBooleanArity, int maxVariadicArity) {
         static Builder builder() {
             return new Builder();
@@ -172,9 +200,12 @@ final class ConditionComplexity {
         }
     }
 
-    record Correlations(Map<OuterCorrelation, Integer> counts) {
+    record Correlations(
+            Map<OuterCorrelation, Integer> counts,
+            List<CorrelationOccurrence> occurrences) {
         Correlations {
             counts = immutableEnumMap(OuterCorrelation.class, counts);
+            occurrences = List.copyOf(occurrences);
         }
 
         int total() {
@@ -182,9 +213,13 @@ final class ConditionComplexity {
         }
     }
 
-    record CollectionAccesses(Map<CollectionKind, Integer> counts, int maxStarDepth) {
+    record CollectionAccesses(
+            Map<CollectionKind, Integer> counts,
+            List<CollectionOccurrence> occurrences,
+            int maxStarDepth) {
         CollectionAccesses {
             counts = immutableEnumMap(CollectionKind.class, counts);
+            occurrences = List.copyOf(occurrences);
         }
 
         int total() {
@@ -262,10 +297,17 @@ final class ConditionComplexity {
         return Collections.unmodifiableMap(copy);
     }
 
-    private sealed interface Work
-            permits ConditionWork, CalculationWork, FieldOperandWork, GroupScopeWork, GroupOperandWork {
-        int depth();
+    private static String requirePath(String path, String role) {
+        Objects.requireNonNull(path, role);
+        if (path.isBlank()) {
+            throw new IllegalArgumentException(role + " path must not be blank");
+        }
+        return path;
     }
+
+    private sealed interface Work
+            permits ConditionWork, CalculationWork, FieldOperandWork, GroupScopeWork, GroupOperandWork,
+                    FilterBoundaryWork {}
 
     private record ConditionWork(Condition condition, int depth, BooleanChain chain) implements Work {}
 
@@ -276,6 +318,16 @@ final class ConditionComplexity {
     private record GroupScopeWork(GroupListRef scope, int depth) implements Work {}
 
     private record GroupOperandWork(GroupRef group, int depth) implements Work {}
+
+    private record PendingCollection(
+            CollectionKind kind, String targetPath, List<String> repeatableGroupPaths) {
+        private PendingCollection {
+            repeatableGroupPaths = List.copyOf(repeatableGroupPaths);
+        }
+    }
+
+    private record FilterBoundaryWork(PendingCollection collection, int nodesBeforeFilter)
+            implements Work {}
 
     private static final class BooleanChain {
         private final LogicCondition.Op operator;
@@ -297,8 +349,10 @@ final class ConditionComplexity {
         private final Set<Construct> constructs = EnumSet.noneOf(Construct.class);
         private final Map<OuterCorrelation, Integer> correlations =
                 new EnumMap<>(OuterCorrelation.class);
+        private final List<CorrelationOccurrence> correlationOccurrences = new ArrayList<>();
         private final Map<CollectionKind, Integer> collections =
                 new EnumMap<>(CollectionKind.class);
+        private final List<CollectionOccurrence> collectionOccurrences = new ArrayList<>();
         private int maxStarDepth;
 
         private Walker(Work root) {
@@ -316,6 +370,7 @@ final class ConditionComplexity {
                     case FieldOperandWork operand -> visit(operand);
                     case GroupScopeWork scope -> visit(scope);
                     case GroupOperandWork group -> visit(group);
+                    case FilterBoundaryWork boundary -> visit(boundary);
                 }
             }
             var tree = TreeShape.builder()
@@ -331,7 +386,8 @@ final class ConditionComplexity {
                             new IntrinsicOperators(intrinsicOperators)),
                     constructs);
             var evaluation = new Evaluation(
-                    new Correlations(correlations), new CollectionAccesses(collections, maxStarDepth));
+                    new Correlations(correlations, correlationOccurrences),
+                    new CollectionAccesses(collections, collectionOccurrences, maxStarDepth));
             return new Result(syntax, evaluation);
         }
 
@@ -341,7 +397,8 @@ final class ConditionComplexity {
             switch (work.condition()) {
                 case FieldPresenceCondition presence -> {
                     if (presence.field().correlated()) {
-                        correlation(OuterCorrelation.FIELD_OPERAND);
+                        correlation(
+                                OuterCorrelation.FIELD_OPERAND, presence.field().path());
                     }
                 }
                 case FieldListPredicate predicate -> {
@@ -389,8 +446,9 @@ final class ConditionComplexity {
                     constructs.add(Construct.QUANTIFIER);
                     constructs.add(Construct.GROUP_FILL);
                     variadic(fill.scopes().size());
-                    for (var scope : fill.scopes()) {
-                        pending.push(new GroupScopeWork(scope, work.depth() + 1));
+                    for (int index = fill.scopes().size() - 1; index >= 0; index--) {
+                        pending.push(new GroupScopeWork(
+                                fill.scopes().get(index), work.depth() + 1));
                     }
                 }
                 case RepetitionNotUniqueCondition uniqueness -> {
@@ -434,7 +492,7 @@ final class ConditionComplexity {
             switch (work.calculation()) {
                 case FieldValue value -> {
                     if (value.outer()) {
-                        correlation(OuterCorrelation.FIELD_VALUE);
+                        correlation(OuterCorrelation.FIELD_VALUE, value.field().path());
                     }
                 }
                 case NumberLiteral ignored -> {}
@@ -447,7 +505,7 @@ final class ConditionComplexity {
                 case EnumCategoryAccess category -> {
                     catalog(category.operatorId());
                     if (category.outer()) {
-                        correlation(OuterCorrelation.ENUM_CATEGORY);
+                        correlation(OuterCorrelation.ENUM_CATEGORY, category.field().path());
                     }
                 }
                 case CountAggregate aggregate -> visitCountAggregate(aggregate, work.depth());
@@ -461,7 +519,9 @@ final class ConditionComplexity {
                     catalog(repetition.operatorId());
                     constructs.add(Construct.CURRENT_REPETITION);
                     if (repetition.outer()) {
-                        correlation(OuterCorrelation.CURRENT_REPETITION);
+                        correlation(
+                                OuterCorrelation.CURRENT_REPETITION,
+                                repetition.group().path());
                     }
                 }
                 case Today today -> {
@@ -597,7 +657,11 @@ final class ConditionComplexity {
                 case RootGroupCount count -> {
                     catalog(count.operatorId());
                     constructs.add(Construct.AGGREGATE);
-                    collection(CollectionKind.ROOT_GROUP_REPETITIONS, 1);
+                    collection(
+                            CollectionKind.ROOT_GROUP_REPETITIONS,
+                            count.rootGroup().path(),
+                            List.of(count.rootGroup().path()),
+                            OptionalInt.empty());
                     pending.push(new GroupOperandWork(count.rootGroup(), work.depth() + 1));
                 }
                 case DateRangeConstruction range -> {
@@ -617,7 +681,12 @@ final class ConditionComplexity {
                     && aggregate.fields().isEmpty()
                     && aggregate.groups().size() == 1
                     && aggregate.groups().getFirst().repeating()) {
-                collection(CollectionKind.FILLED_GROUP_REPETITIONS, 1);
+                var group = aggregate.groups().getFirst();
+                collection(
+                        CollectionKind.FILLED_GROUP_REPETITIONS,
+                        group.path(),
+                        List.of(group.path()),
+                        OptionalInt.empty());
             }
             pushGroups(aggregate.groups(), depth + 1);
             pushFieldOperands(aggregate.fields(), depth + 1);
@@ -633,19 +702,27 @@ final class ConditionComplexity {
             switch (work.operand()) {
                 case FieldRef field -> {
                     if (field.correlated()) {
-                        correlation(OuterCorrelation.FIELD_OPERAND);
+                        correlation(OuterCorrelation.FIELD_OPERAND, field.path());
                     }
                 }
                 case FieldListRef list -> {
-                    collection(CollectionKind.FLATTENED_FIELD, list.flattened().size());
                     if (list.correlated()) {
-                        correlation(OuterCorrelation.FIELD_LIST);
+                        correlation(OuterCorrelation.FIELD_LIST, list.field().path());
                     }
-                    list.filter().ifPresent(filter -> {
+                    var collection = new PendingCollection(
+                            CollectionKind.FLATTENED_FIELD,
+                            list.field().path(),
+                            groupPaths(list.flattened()));
+                    collectionSummary(collection.kind(), collection.repeatableGroupPaths().size());
+                    if (list.filter().isPresent()) {
                         catalog("Having");
                         constructs.add(Construct.FILTER);
-                        pending.push(new ConditionWork(filter, work.depth() + 1, null));
-                    });
+                        pending.push(new FilterBoundaryWork(collection, nodeCount));
+                        pending.push(new ConditionWork(
+                                list.filter().orElseThrow(), work.depth() + 1, null));
+                    } else {
+                        collectionOccurrence(collection, OptionalInt.empty());
+                    }
                 }
             }
         }
@@ -653,12 +730,21 @@ final class ConditionComplexity {
         private void visit(GroupScopeWork work) {
             node(work.depth());
             if (!work.scope().flattened().isEmpty()) {
-                collection(CollectionKind.FLATTENED_GROUP, work.scope().flattened().size());
+                collection(
+                        CollectionKind.FLATTENED_GROUP,
+                        work.scope().group().path(),
+                        groupPaths(work.scope().flattened()),
+                        OptionalInt.empty());
             }
         }
 
         private void visit(GroupOperandWork work) {
             node(work.depth());
+        }
+
+        private void visit(FilterBoundaryWork work) {
+            collectionOccurrence(
+                    work.collection(), OptionalInt.of(nodeCount - work.nodesBeforeFilter()));
         }
 
         private void node(int depth) {
@@ -678,13 +764,37 @@ final class ConditionComplexity {
             intrinsicOperators.merge(operatorId, 1, Integer::sum);
         }
 
-        private void correlation(OuterCorrelation correlation) {
+        private void correlation(OuterCorrelation correlation, String targetPath) {
             correlations.merge(correlation, 1, Integer::sum);
+            correlationOccurrences.add(new CorrelationOccurrence(correlation, targetPath));
         }
 
-        private void collection(CollectionKind kind, int starDepth) {
+        private void collection(
+                CollectionKind kind,
+                String targetPath,
+                List<String> repeatableGroupPaths,
+                OptionalInt filterNodeCount) {
+            var occurrence = new PendingCollection(kind, targetPath, repeatableGroupPaths);
+            collectionSummary(kind, repeatableGroupPaths.size());
+            collectionOccurrence(occurrence, filterNodeCount);
+        }
+
+        private void collectionSummary(CollectionKind kind, int starDepth) {
             collections.merge(kind, 1, Integer::sum);
             maxStarDepth = Math.max(maxStarDepth, starDepth);
+        }
+
+        private void collectionOccurrence(
+                PendingCollection collection, OptionalInt filterNodeCount) {
+            collectionOccurrences.add(new CollectionOccurrence(
+                    collection.kind(),
+                    collection.targetPath(),
+                    collection.repeatableGroupPaths(),
+                    filterNodeCount));
+        }
+
+        private static List<String> groupPaths(List<GroupRef> groups) {
+            return groups.stream().map(GroupRef::path).toList();
         }
 
         private void calculation(Calculation calculation, int depth) {
@@ -696,20 +806,20 @@ final class ConditionComplexity {
         }
 
         private void pushCalculations(
-                java.util.List<? extends Calculation> calculations, int depth) {
+                List<? extends Calculation> calculations, int depth) {
             for (int index = calculations.size() - 1; index >= 0; index--) {
                 calculation(calculations.get(index), depth);
             }
         }
 
         private void pushFieldOperands(
-                java.util.List<? extends FieldOperand> operands, int depth) {
+                List<? extends FieldOperand> operands, int depth) {
             for (int index = operands.size() - 1; index >= 0; index--) {
                 fieldOperand(operands.get(index), depth);
             }
         }
 
-        private void pushGroups(java.util.List<GroupRef> groups, int depth) {
+        private void pushGroups(List<GroupRef> groups, int depth) {
             for (int index = groups.size() - 1; index >= 0; index--) {
                 pending.push(new GroupOperandWork(groups.get(index), depth));
             }
