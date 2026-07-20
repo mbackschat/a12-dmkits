@@ -178,6 +178,8 @@ class Document(internal val config: DocumentConfig) {
         val containedFieldsByGroup: MutableMap<String, List<String>> = HashMap()
         /** group path → its declared field paths in model declaration order, cached once for compute scans. */
         val containedFieldsInDeclarationOrderByGroup: MutableMap<String, List<String>> = HashMap()
+        /** Canonical message-pointer strings, partitioned by path to avoid flat-key collision clusters. */
+        val formattedPointersByPath: MutableMap<String, MutableMap<List<Int>, String>> = HashMap()
     }
 
     private var cachedIndex: Index? = null
@@ -202,7 +204,8 @@ class Document(internal val config: DocumentConfig) {
                 idx.indexRowByValue.size +
                 idx.indexColumnByScope.size +
                 idx.containedFieldsByGroup.size +
-                idx.containedFieldsInDeclarationOrderByGroup.size
+                idx.containedFieldsInDeclarationOrderByGroup.size +
+                idx.formattedPointersByPath.values.sumOf { it.size }
         } ?: 0
         observer.cacheEntries(
             this,
@@ -253,6 +256,11 @@ class Document(internal val config: DocumentConfig) {
      */
     fun valuedFields(): List<ValuedField> =
         index().valued.map { ValuedField(it.path, it.reps, it.value!!) }
+
+    /** Canonical pointer text retained with the immutable document index and discarded on mutation (IF191/IF142). */
+    internal fun formattedPointer(path: String, reps: List<Int>): String =
+        index().formattedPointersByPath.getOrPut(path) { HashMap() }
+            .getOrPut(reps) { formatPointer(path, reps) }
 
     /**
      * A copy of this document with computed values applied — the interpreter's twin of the kernel's

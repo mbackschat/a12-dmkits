@@ -7,7 +7,6 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.FunctionOp
-import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.renderMessage
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.Computed
@@ -221,7 +220,8 @@ class DmInterpreter @JvmOverloads constructor(
             val unsupported = checks.customTypeUnsupported(doc, isRelevant).toMutableList()
             val messages = (checks.formalErrors(doc, locale, isRelevant, formalResults, unsupported) +
                     checks.mandatoryErrors(doc, locale, isRelevant)
-                    + checks.uniquenessMessages(dup, locale, isRelevant) + checks.overRepetitionMessages(doc, locale, isRelevant)).toMutableList()
+                    + checks.uniquenessMessages(doc, dup, locale, isRelevant)
+                    + checks.overRepetitionMessages(doc, locale, isRelevant)).toMutableList()
             // The per-call seam (IF117): the formal-status memo spans ALL rules of this validation (the doc is
             // immutable here), and the EvalConfig is built once for the whole call.
             val formallyIncorrect by lazy(LazyThreadSafetyMode.NONE) {
@@ -429,6 +429,10 @@ class DmInterpreter @JvmOverloads constructor(
         // group/asterisk key, a too-deep scope) — the caller's per-rule tolerance reports it unsupported.
         val rnuCache = rnuEval.outcomes(prepared.repetitionNotUnique, pass)
         val ordinaryMessageRefs = if (rnuCache == null) refs else nonRnuMessageRefs(ast).distinct()
+        val ordinaryRefsOutsideRnuKeys = rnuCache?.let { cache ->
+            val rnuKeys = cache.keys.toSet()
+            ordinaryMessageRefs.filterNot(rnuKeys::contains)
+        }
         val rnuSeam: ((EvalContext) -> MsgType?)? =
             rnuCache?.let { cache -> { context -> cache.rows[context.repsOf(errorPath)]?.type } }
         return scopes.iterationContexts(prepared.iteration, pass.doc).map { ctx ->
@@ -454,28 +458,43 @@ class DmInterpreter @JvmOverloads constructor(
             if (firedType != null) {
                 val type = firedType
                 val text = rule.messages[pass.locale]?.let { renderMessage(it, rule.group, ctx) { p -> model.labelOf(p, pass.locale) } } ?: ""
-                val ordinaryPointers = ordinaryMessageRefs.map { formatPointer(it, ctx.repsOf(it)) }
-                val rnuOutcome = rnuCache?.rows?.get(ctx.repsOf(errorPath))
-                val rnuPointers =
-                    if (rnuOutcome?.type == type) {
-                        rnuOutcome.peerKeyRepetitions.flatMap { peerRepetitions ->
-                            rnuCache.keys.zip(peerRepetitions).map { (path, reps) -> formatPointer(path, reps) }
-                        }
-                    } else {
-                        emptyList()
-                    }
-                val referenced = (ordinaryPointers + rnuPointers).distinct()
+                val matchingRnuOutcome = rnuCache?.rows?.get(ctx.repsOf(errorPath))?.takeIf { it.type == type }
+                // When the RNU leaf contributes this message's polarity, its cluster projection already contains
+                // every occurrence of an RNU key path. Drop a same-path ordinary occurrence, render the remaining
+                // small prefix, and expose an O(1) immutable joined view over the shared cluster list. This keeps
+                // exact list semantics without copying the N-entry peer projection into every one of N messages.
+                val ordinaryRefs = if (matchingRnuOutcome != null) ordinaryRefsOutsideRnuKeys.orEmpty() else ordinaryMessageRefs
+                val ordinaryPointers = ordinaryRefs.map { pass.doc.formattedPointer(it, ctx.repsOf(it)) }
+                val rnuPointers = matchingRnuOutcome?.peerKeyPointers.orEmpty()
+                val referenced = joinedList(ordinaryPointers, rnuPointers)
                 // refOmissionErrorResponsible: for an OMISSION error the kernel attaches ALL the operands the
                 // omission depends on (verified — both the filled and the empty operand of an And), so filling/
                 // changing any could resolve it. Empty for a VALUE error (no fill fixes a value).
                 val fillToFix = if (type == MsgType.OMISSION) referenced else emptyList()
-                RowOutcome.Fired(Message(rule.errorCode, rule.path, formatPointer(errorPath, ctx.repsOf(errorPath)),
+                RowOutcome.Fired(Message(rule.errorCode, rule.path, pass.doc.formattedPointer(errorPath, ctx.repsOf(errorPath)),
                     rule.severity, type, text, referenced, fillToFix))
             } else {
                 // Not fired: a formally-invalid operand means the rule was NOT cleanly evaluated → SUPPRESSED
                 // (the `rule eval` third verdict), naming the offending field/code; else a clean PASSED.
                 pass.firstSuppressor(refs, ctx)?.let { RowOutcome.Suppressed(it) } ?: RowOutcome.Passed
             }
+        }
+    }
+
+    /** Immutable concatenation without copying either input; both inputs are call-local immutable projections. */
+    private fun <T> joinedList(prefix: List<T>, suffix: List<T>): List<T> = when {
+        prefix.isEmpty() -> suffix
+        suffix.isEmpty() -> prefix
+        else -> JoinedList(prefix, suffix)
+    }
+
+    private class JoinedList<T>(private val prefix: List<T>, private val suffix: List<T>) : AbstractList<T>() {
+        override val size: Int = prefix.size + suffix.size
+
+        override fun get(index: Int): T = when {
+            index < 0 || index >= size -> throw IndexOutOfBoundsException("index $index, size $size")
+            index < prefix.size -> prefix[index]
+            else -> suffix[index - prefix.size]
         }
     }
 

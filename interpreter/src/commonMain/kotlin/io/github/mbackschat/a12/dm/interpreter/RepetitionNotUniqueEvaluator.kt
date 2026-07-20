@@ -7,10 +7,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 
-/** One duplicate row's RNU-leaf polarity and the repetitions of every key field in its duplicate cluster. */
+/** One duplicate row's RNU-leaf polarity and the shared pointer projection of its duplicate cluster. */
 internal data class RnuRowOutcome(
     val type: MsgType,
-    val peerKeyRepetitions: List<List<List<Int>>>,
+    val peerKeyPointers: List<String>,
 )
 
 /** The call-scoped RNU cache: typed-key paths plus O(1) error-row lookup. */
@@ -62,8 +62,8 @@ internal class RepetitionNotUniqueEvaluator(private val model: ModelDef, private
 
     /**
      * The per-row RNU cache for [rule]'s condition — each duplicate row carries VALUE when every key component
-     * is present, OMISSION when a fillable component is empty, and the repetitions of every key in its duplicate
-     * cluster for rich-message projection. Returns **null** when [cond] contains no `RepetitionNotUnique`
+     * is present, OMISSION when a fillable component is empty, and one shared rich-message pointer projection for
+     * its duplicate cluster. Returns **null** when [cond] contains no `RepetitionNotUnique`
      * predicate (a normal rule — no cache needed). The cache is guard-independent: it scans ALL relevant-key rows
      * of the keys' repeatable group, exactly like the kernel's once-built cache, and the surrounding `And`/`Or`
      * composition is applied by the ordinary boolean walk over this leaf.
@@ -134,12 +134,17 @@ internal class RepetitionNotUniqueEvaluator(private val model: ModelDef, private
             .groupBy { it.errorReps.take(scopeLen) }           // scope: per reference-group parent row (basic version)
             .forEach { (_, scopeRows) ->
                 scopeRows.groupBy { it.key }.values.filter { it.size > 1 }.forEach { duplicates ->
-                    val peerKeyReps = duplicates.map { it.keyReps }
+                    // Every firing row in one duplicate cluster exposes the same peer-pointer set. Prepare that
+                    // immutable projection once; rebuilding it per message turns a dense N-row result into N
+                    // separately allocated N-entry lists even though the logical output is identical.
+                    val peerKeyPointers = duplicates.flatMap { duplicate ->
+                        keys.zip(duplicate.keyReps).map { (path, reps) -> pass.doc.formattedPointer(path, reps) }
+                    }.distinct()
                     for (row in duplicates) {
                         // RNU's own polarity: OMISSION when a (fillable) key component is empty, else VALUE. The
                         // surrounding And/Or combines this with any guard/branch via the ordinary 3VL walk.
                         val type = if (row.key.any { it == null }) MsgType.OMISSION else MsgType.VALUE
-                        out[row.errorReps] = RnuRowOutcome(type, peerKeyReps)
+                        out[row.errorReps] = RnuRowOutcome(type, peerKeyPointers)
                     }
                 }
             }

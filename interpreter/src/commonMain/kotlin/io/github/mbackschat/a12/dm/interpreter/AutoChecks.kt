@@ -11,7 +11,6 @@ import io.github.mbackschat.a12.dm.interpreter.eval.UNIQUE_INDEX
 import io.github.mbackschat.a12.dm.interpreter.eval.customTypeInvalidText
 import io.github.mbackschat.a12.dm.interpreter.eval.formalErrorCached
 import io.github.mbackschat.a12.dm.interpreter.eval.formalErrorText
-import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.mandatoryFieldText
 import io.github.mbackschat.a12.dm.interpreter.eval.overRepetitionText
 import io.github.mbackschat.a12.dm.interpreter.eval.uniqueIndexText
@@ -58,7 +57,7 @@ internal class AutoChecks(
                 FormalResult.Valid -> null
                 is FormalResult.Unsupported -> {
                     customUnsupported += UnsupportedRule(
-                        formatPointer(vf.path, vf.reps),
+                        doc.formattedPointer(vf.path, vf.reps),
                         result.reason,
                     )
                     null
@@ -67,7 +66,7 @@ internal class AutoChecks(
                     is FormalFailure.Format -> Message(
                         failure.code,
                         FORMAL_RULE_PATH,
-                        formatPointer(vf.path, vf.reps),
+                        doc.formattedPointer(vf.path, vf.reps),
                         Severity.ERROR,
                         MsgType.VALUE,
                         formalErrorText(failure.error, locale, model.scaleOf(vf.path)),
@@ -75,7 +74,7 @@ internal class AutoChecks(
                     is FormalFailure.Custom -> Message(
                         failure.code,
                         FORMAL_RULE_PATH,
-                        formatPointer(vf.path, vf.reps),
+                        doc.formattedPointer(vf.path, vf.reps),
                         Severity.ERROR,
                         MsgType.VALUE,
                         customMessage(failure.rejection, vf.path, locale),
@@ -102,13 +101,15 @@ internal class AutoChecks(
         for (path in model.requiredFieldPaths) {
             if (model.requirednessOf(path) == Requiredness.ABSOLUTE && lowestRepeatableAncestor(path) == null) {
                 val reps = List(pathParts(path).size) { 1 }
-                if (!doc.filledAt(path, reps) && isRelevant(path, reps)) out += mandatoryMessage(path, reps, locale)
+                if (!doc.filledAt(path, reps) && isRelevant(path, reps)) {
+                    out += mandatoryMessage(doc, path, reps, locale)
+                }
             } else {
                 for (ctx in doc.contextsFor(emissionScope(path))) {
                     val r = ctx.repsOf(path)
                     // An over-limit row's mandatory check is suppressed (it carries the over-repetition code instead).
                     if (requiredEmpty(path, ctx) && isRelevant(path, r) && overLimitLevel(path, r) == null) {
-                        out += mandatoryMessage(path, r, locale)
+                        out += mandatoryMessage(doc, path, r, locale)
                     }
                 }
             }
@@ -181,14 +182,15 @@ internal class AutoChecks(
         }
 
     /** One `uniqueIndex` [Message] per duplicate-index cell (the kernel flags every participant). */
-    fun uniquenessMessages(dup: Set<Pair<String, List<Int>>>, locale: String, isRelevant: Relevance): List<Message> =
+    fun uniquenessMessages(doc: Document, dup: Set<Pair<String, List<Int>>>, locale: String,
+            isRelevant: Relevance): List<Message> =
         dup.filter { (path, reps) -> isRelevant(path, reps) }.map { (path, reps) ->
-            Message(UNIQUE_INDEX, uniqueRulePath(path), formatPointer(path, reps), Severity.ERROR, MsgType.VALUE,
+            Message(UNIQUE_INDEX, uniqueRulePath(path), doc.formattedPointer(path, reps), Severity.ERROR, MsgType.VALUE,
                 uniqueIndexText(locale))
         }
 
-    private fun mandatoryMessage(path: String, reps: List<Int>, locale: String): Message {
-        val ptr = formatPointer(path, reps)
+    private fun mandatoryMessage(doc: Document, path: String, reps: List<Int>, locale: String): Message {
+        val ptr = doc.formattedPointer(path, reps)
         return Message(MANDATORY_FIELD, mandatoryRulePath(path), ptr, Severity.ERROR, MsgType.OMISSION,
             mandatoryFieldText(locale), listOf(ptr), listOf(ptr))
     }
@@ -282,7 +284,7 @@ internal class AutoChecks(
             val declaration = model.customTypeOf(vf.path) ?: return@mapNotNull null
             if (declaration.name in predefinedTypes || declaration.name in customFieldTypes) null
             else UnsupportedRule(
-                formatPointer(vf.path, vf.reps),
+                doc.formattedPointer(vf.path, vf.reps),
                 "custom field type '${declaration.name}' has no registered validator",
             )
         }
@@ -314,7 +316,7 @@ internal class AutoChecks(
         val out = mutableListOf<Message>()
         for (vf in doc.valuedFields()) {
             if (overLimitLevel(vf.path, vf.reps) != null && isRelevant(vf.path, vf.reps)) {
-                out += Message(OVER_REPETITION_CONTEXT, FORMAL_RULE_PATH, formatPointer(vf.path, vf.reps),
+                out += Message(OVER_REPETITION_CONTEXT, FORMAL_RULE_PATH, doc.formattedPointer(vf.path, vf.reps),
                     Severity.ERROR, MsgType.VALUE, overRepetitionText(locale, row = false))
             }
         }
@@ -326,7 +328,7 @@ internal class AutoChecks(
                 if (!isRelevant(group, row)) continue
                 val isRow = lvl == ownLevel
                 out += Message(if (isRow) OVER_REPETITION_ROW else OVER_REPETITION_CONTEXT, FORMAL_RULE_PATH,
-                    formatPointer(group, row), Severity.ERROR, MsgType.VALUE, overRepetitionText(locale, isRow))
+                    doc.formattedPointer(group, row), Severity.ERROR, MsgType.VALUE, overRepetitionText(locale, isRow))
             }
         }
         return out
