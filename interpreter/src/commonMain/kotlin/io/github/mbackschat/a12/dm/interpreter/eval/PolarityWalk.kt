@@ -212,10 +212,13 @@ private fun Interpreter.signOf(e: Expr): Int = when (val value = evalExpr(e)) {
 
 /** The resolved numeric value of an operand. [Val.DomainFailure] and [Val.Unknown] remain distinct in the
  *  value algebra even though both project to null at this comparison-polarity boundary. */
-private fun Interpreter.numValOrNull(e: Expr): Dec? = when (val value = evalExpr(e)) {
-    is Val.Num -> value.v
-    Val.DomainFailure -> null
-    else -> null
+private fun Interpreter.numValOrNull(e: Expr): Dec? = evalExpr(e).numericOrNull()
+
+/** Numeric comparison projection. [Val.DomainFailure] and [Val.Unknown] deliberately share the no-value
+ *  result here, but remain explicit cases in the exhaustive value-algebra dispatch. */
+private fun Val.numericOrNull(): Dec? = when (this) {
+    is Val.Num -> v
+    is Val.Txt, is Val.Bool, is Val.Range, Val.Unknown, Val.DomainFailure -> null
 }
 
 /**
@@ -310,8 +313,8 @@ private fun Interpreter.countFill(f: Expr.Func): Fill {
  *  min/max carries only the symmetric `nichtAngegeben`, matching [leafOmission]). */
 private fun Interpreter.minMaxFill(f: Expr.Func): Fill {
     val isMin = FunctionOp.byName(f.name) == FunctionOp.MIN
-    val terms = f.args.map { it to (evalExpr(it) as? Val.Num)?.v }
-    // A non-numeric / DATE-like / Unknown operand → the symmetric leaf (kernel date min/max is symmetric).
+    val terms = f.args.map { it to evalExpr(it).numericOrNull() }
+    // A non-numeric / DATE-like / Unknown / domain-failed operand → the symmetric leaf (kernel date min/max is symmetric).
     if (terms.any { it.second == null }) return leafOmission(f).let { Fill.of(it, it) }
     return terms.drop(1).fold(fill(terms[0].first) to terms[0].second!!) { (accFill, accVal), (e, v) ->
         val less = accVal.compareTo(v!!)                 // running selection vs the next operand
@@ -374,8 +377,8 @@ private fun orderable(v: Val): Boolean = v is Val.Num || v is Val.Txt
 /** Tolerance reuses numeric `!=` polarity: only movement of the smaller side upward or the larger side
  * downward can close a firing gap. Operand ordering uses the same scale-19 normalization as truth. */
 private fun Interpreter.toleranceType(c: Cond.Tolerance): MsgType {
-    val left = (evalCmpOperand(c.left, c.right) as? Val.Num)?.v ?: return MsgType.VALUE
-    val right = (evalCmpOperand(c.right, c.left) as? Val.Num)?.v ?: return MsgType.VALUE
+    val left = evalCmpOperand(c.left, c.right).numericOrNull() ?: return MsgType.VALUE
+    val right = evalCmpOperand(c.right, c.left).numericOrNull() ?: return MsgType.VALUE
     return if (ToleranceOps.fillable(left, right, fill(c.left), fill(c.right))) {
         MsgType.OMISSION
     } else {
