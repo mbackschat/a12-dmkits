@@ -3,12 +3,13 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 import java.util.List;
 
 /**
- * A group scope for the field-fill quantifiers — "the fields of this group", optionally across all
- * repetitions of one or more starred groups (the group analogue of {@link FieldListRef}). The
- * terminal {@link #group} is the group whose fields are checked; {@link #flattened} lists the starred
- * segments (each a repeatable group), so {@code Categories*}{@code /Values*} keeps <em>both</em> stars
- * on round-trip. A bare group (no stars) has an empty {@code flattened}. Obtain via
- * {@link BoundModel#flattenGroup(String)}.
+ * An exact group scope, optionally across all repetitions of one or more starred groups (the group
+ * analogue of {@link FieldListRef}). The terminal {@link #group} is the addressed group;
+ * {@link #flattened} lists the starred segments (each a repeatable group), so
+ * {@code Categories*}{@code /Values*} keeps <em>both</em> stars on round-trip. A bare group (no
+ * stars) has an empty {@code flattened}. Group-scoped field-fill quantifiers use it for "the fields
+ * of this group"; the legal {@code NoGroupFilled(G*)}/{@code AtLeastOneGroupFilled(G*)} forms use it
+ * to scan instantiated group repetitions. Obtain via {@link BoundModel#flattenGroup(String)}.
  */
 public record GroupListRef(GroupRef group, List<GroupRef> flattened) {
 

@@ -24,6 +24,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CurrentRepetition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
@@ -188,6 +189,18 @@ class ConditionComplexityTest {
                                 List.of(SECTIONS.path(), ANSWERS.path()),
                                 OptionalInt.empty())),
                 fillResult.collections().occurrences());
+
+        var starredGroupPresence = ConditionComplexity.of(Dsl.noGroupFilled(
+                new GroupListRef(ANSWERS, List.of(SECTIONS, ANSWERS))));
+        assertEquals(1, starredGroupPresence.collections().counts().get(FLATTENED_GROUP));
+        assertEquals(
+                List.of(
+                        new ConditionComplexity.CollectionOccurrence(
+                                FLATTENED_GROUP,
+                                ANSWERS.path(),
+                                List.of(SECTIONS.path(), ANSWERS.path()),
+                                OptionalInt.empty())),
+                starredGroupPresence.collections().occurrences());
 
         var filledGroups =
                 new CountAggregate(CountAggregate.CountOp.FILLED_GROUPS, List.of(), List.of(ANSWERS));

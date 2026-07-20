@@ -378,6 +378,19 @@ Condition multiple = Dsl.moreThanOneFieldFilled(address);
 
 The traversal order is observable in computations: fields stream recursively in declaration order, field-major then repetition-major, and each quantifier stops as soon as its result is decisive. A malformed cell after that decision is not read; one reached before it can poison the computation. The typed render/read forms are locked by `GroupScopedFieldFillReadTest`; the transitive poison discriminator is `BareGroupComputePoisonDiffTest`.
 
+### 3.5b Group-count quantifiers over repetitions
+
+`NoGroupFilled` and `AtLeastOneGroupFilled` accept the exact `GroupListRef` returned by `flattenGroup` for their kernel-legal single-star form. These predicates count instantiated repetitions: an empty created row is still an existing row. Use the ordinary `GroupRef.notFilled()`/`filled()` form for scalar group presence.
+
+<!-- snippet: group-count-quantifiers -->
+```java
+GroupListRef samples = m.flattenGroup("/Calibration/Samples*");
+Condition noRows = Dsl.noGroupFilled(samples);
+Condition someRows = Dsl.atLeastOneGroupFilled(samples);
+```
+
+Typed read-back retains the star and the collection-scan meaning; `WildcardGroupFillQuantifierReadTest` locks the render → parse → typed-read → render identity for both polarity siblings.
+
 ### 3.6 Study — a real, highly-repetitive rule, rebuilt (before → after)
 
 **Where this comes from.** A12 models *forms*, and a real pattern in them is that the same logical block is captured in more than one place. Here (an **insurance** application submitted through a broker portal): the policyholder block restated on the **policy schedule** (`Schedule/*`) — a section captured apart from where the underlying name and address were entered — must stay **consistent with** the application data. The engine can't auto-sync across form sections, so a **consistency rule** enforces that the schedule block **mirrors** whichever source the application's flags select — *null-safe*, so a not-yet-filled block (both empty) is allowed. The source is a **2×2**: policyholder type (organization vs person → which **name**) × whether a separate correspondence address was given (correspondence vs residence → which **locality**).

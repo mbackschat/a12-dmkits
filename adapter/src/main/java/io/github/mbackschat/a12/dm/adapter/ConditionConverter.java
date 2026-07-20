@@ -363,6 +363,17 @@ final class ConditionConverter {
                 default -> throw unsupported("field-list condition " + name, entityList);
             };
         }
+        // The two kernel-legal starred group-count forms are list scans, even with one operand.
+        // Preserve the exact scope before the ordinary single-group canonicalization below reduces
+        // NoGroupFilled(G) to scalar GroupNotFilled(G). AtLeastOneGroupFilled is the polarity sibling.
+        if ((name == EntityListConditionName.NoGroupFilled
+                        || name == EntityListConditionName.AtLeastOneGroupFilled)
+                && entities.stream().anyMatch(ConditionConverter::isWildcard)) {
+            GroupListRef[] scopes = entities.stream()
+                    .map(e -> model.flattenGroup(reconstructStarPath(e)))
+                    .toArray(GroupListRef[]::new);
+            return groupFillQuantifier(name, scopes, entityList);
+        }
         return switch (name) {
             // single-group GroupFilled/GroupNotFilled canonicalize to AllGroupsFilled/NoGroupFilled[g]
             case AllGroupsFilled -> single ? model.group(p[0]).filled() : groups(paths, Dsl::allGroupsFilled);
@@ -379,6 +390,17 @@ final class ConditionConverter {
             case NotExactlyOneFieldFilled -> groupScopedFieldFill(entities, Dsl::notExactlyOneFieldFilled);
             case MoreThanOneFieldFilled -> groupScopedFieldFill(entities, Dsl::moreThanOneFieldFilled);
             default -> throw unsupported("group-list condition " + name, entityList);
+        };
+    }
+
+    /** A group-count quantifier over exact group scopes, preserving starred repetition scans. */
+    private Condition groupFillQuantifier(
+            EntityListConditionName name, GroupListRef[] scopes, ICondition origin) {
+        GroupListRef[] rest = Arrays.copyOfRange(scopes, 1, scopes.length);
+        return switch (name) {
+            case NoGroupFilled -> Dsl.noGroupFilled(scopes[0], rest);
+            case AtLeastOneGroupFilled -> Dsl.atLeastOneGroupFilled(scopes[0], rest);
+            default -> throw unsupported("starred group-list condition " + name, origin);
         };
     }
 

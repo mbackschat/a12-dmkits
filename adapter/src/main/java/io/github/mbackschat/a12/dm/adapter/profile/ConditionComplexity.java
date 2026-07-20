@@ -419,8 +419,8 @@ final class ConditionComplexity {
                 }
                 case GroupListPredicate predicate -> {
                     constructs.add(Construct.QUANTIFIER);
-                    variadic(predicate.groups().size());
-                    pushGroups(predicate.groups(), work.depth() + 1);
+                    variadic(predicate.operands().size());
+                    pushGroupScopes(predicate.operands(), work.depth() + 1);
                 }
                 case PatternCondition ignored -> constructs.add(Construct.PATTERN);
                 case ValueListCondition values -> {
@@ -822,6 +822,12 @@ final class ConditionComplexity {
         private void pushGroups(List<GroupRef> groups, int depth) {
             for (int index = groups.size() - 1; index >= 0; index--) {
                 pending.push(new GroupOperandWork(groups.get(index), depth));
+            }
+        }
+
+        private void pushGroupScopes(List<GroupListRef> scopes, int depth) {
+            for (int index = scopes.size() - 1; index >= 0; index--) {
+                pending.push(new GroupScopeWork(scopes.get(index), depth));
             }
         }
     }

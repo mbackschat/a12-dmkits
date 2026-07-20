@@ -85,6 +85,8 @@ class DocSnippetFreshnessTest {
             new Lock("indexed-coercion", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("rule-group", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("starred-value-list", "docs/API-GUIDE.md", NEW_SHAPES),
+            new Lock("group-count-quantifiers", "docs/API-GUIDE.md",
+                    "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WildcardGroupFillQuantifierReadTest.java"),
             new Lock("computation-suppress", "docs/API-GUIDE.md", NEW_SHAPES));
 
     /** The guide whose every {@code ```java} block must be classified — locked or teaser-marked. */

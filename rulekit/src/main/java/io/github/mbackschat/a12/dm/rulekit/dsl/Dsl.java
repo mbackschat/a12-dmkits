@@ -1261,6 +1261,24 @@ public final class Dsl {
         return groupList(GroupQuantifier.AT_LEAST_ONE_GROUP_FILLED, first, rest);
     }
 
+    /**
+     * {@code NoGroupFilled(G*)} over an exact group scope. A starred operand counts instantiated
+     * repetitions rather than testing scalar group presence. catalog:NoGroupFilled
+     */
+    public static Condition noGroupFilled(GroupListRef first, GroupListRef... rest) {
+        return GroupListPredicate.overScopes(GroupQuantifier.NO_GROUP_FILLED, first, rest);
+    }
+
+    /**
+     * {@code AtLeastOneGroupFilled(G*)} over an exact group scope. A starred operand counts
+     * instantiated repetitions rather than testing scalar group presence.
+     * catalog:AtLeastOneGroupFilled
+     */
+    public static Condition atLeastOneGroupFilled(GroupListRef first, GroupListRef... rest) {
+        return GroupListPredicate.overScopes(
+                GroupQuantifier.AT_LEAST_ONE_GROUP_FILLED, first, rest);
+    }
+
     /** {@code NotAllGroupsFilled(g1, g2, …)} — at least one of the listed groups is absent. catalog:NotAllGroupsFilled */
     public static Condition notAllGroupsFilled(GroupRef first, GroupRef... rest) {
         return groupList(GroupQuantifier.NOT_ALL_GROUPS_FILLED, first, rest);

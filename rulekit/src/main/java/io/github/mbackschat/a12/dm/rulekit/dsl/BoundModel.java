@@ -338,9 +338,11 @@ public final class BoundModel {
     }
 
     /**
-     * A group scope for the field-fill quantifiers from a (possibly starred) group path, e.g.
-     * {@code /MVK/Categories*&#47;Values*} or a bare {@code /MVK/SortFields}. Every starred segment must
-     * be a repeatable group ({@code MVK_INVALID_WILDCARD}); the path resolves to a group (the group
+     * An exact group scope from a (possibly starred) group path, e.g.
+     * {@code /MVK/Categories*&#47;Values*} or a bare {@code /MVK/SortFields}. Group-scoped field-fill
+     * quantifiers use it for contained fields; {@code NoGroupFilled}/{@code AtLeastOneGroupFilled}
+     * use the legal starred single-group form to count repetitions. Every starred segment must be a
+     * repeatable group ({@code MVK_INVALID_WILDCARD}); the path resolves to a group (the group
      * analogue of {@link #flatten(String)}).
      */
     public GroupListRef flattenGroup(String starGroupPath) {

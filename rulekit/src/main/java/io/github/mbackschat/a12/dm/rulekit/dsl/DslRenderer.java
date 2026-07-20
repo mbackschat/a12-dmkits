@@ -192,7 +192,8 @@ public final class DslRenderer {
             case RuleGroupPresenceCondition r -> keyword(r.operatorId()) + "(" + ruleGroupKeyword() + ")";
             case IndexedPresenceCondition p -> keyword(p.operatorId()) + "(" + indexBody(p.index()) + ")";
             case GroupListPredicate p -> keyword(p.operatorId()) + "("
-                    + p.groups().stream().map(g -> path(g.path())).collect(java.util.stream.Collectors.joining(", "))
+                    + p.operands().stream().map(g -> path(g.renderedPath()))
+                            .collect(java.util.stream.Collectors.joining(", "))
                     + ")";
             case PatternCondition p ->
                     "[" + path(p.field().path()) + "] " + keyword(p.operatorId()) + " " + quote(p.regex());
