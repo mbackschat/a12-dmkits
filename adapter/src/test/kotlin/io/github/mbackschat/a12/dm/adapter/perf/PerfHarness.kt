@@ -12,6 +12,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Message
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
+import java.util.Locale
 
 /**
  * The reusable **against-kernel performance harness** (INTERPRETER-PERFORMANCE.md). It does double duty: it
@@ -72,6 +73,8 @@ class PerfScenario private constructor(
     val op: PerfOp = PerfOp.VALIDATE,
     /** Builds the prepared interpreter, including any scenario-required customization registries. */
     val interpreterFactory: (ModelDef) -> DmInterpreter = { DmInterpreter(it) },
+    /** The locale both interpreter and kernel engines receive for this scenario. */
+    val locale: String = "en_US",
     private val identityBinding: ScenarioBinding?,
     /**
      * Build the instance at scale [n], perturbed by [variant], into [sink]. `variant = 0` is the canonical
@@ -86,15 +89,28 @@ class PerfScenario private constructor(
         interpModel: ModelDef,
         op: PerfOp = PerfOp.VALIDATE,
         interpreterFactory: (ModelDef) -> DmInterpreter = { DmInterpreter(it) },
+        locale: String = "en_US",
         instance: (sink: PlacementSink, n: Int, variant: Int) -> Unit,
-    ) : this(name, kernelModel, interpModel, op, interpreterFactory, identityBinding = null, instance)
+    ) : this(name, kernelModel, interpModel, op, interpreterFactory, locale, identityBinding = null, instance)
+
+    init {
+        require(locale.isNotBlank()) { "$name: locale must not be blank" }
+    }
 
     /** The reviewed, content-bound identity. Available after [ScenarioId.bind]. */
     val identity: ScenarioBinding
         get() = checkNotNull(identityBinding) { "$name has no reviewed scenario identity" }
 
     internal fun withIdentity(identity: ScenarioBinding): PerfScenario =
-        PerfScenario(name, kernelModel, interpModel, op, interpreterFactory, identity, instance)
+        PerfScenario(name, kernelModel, interpModel, op, interpreterFactory, locale, identity, instance)
+
+    internal fun measurementLabel(n: Int, variants: List<Int> = listOf(0)): String {
+        val identity = identityBinding?.also {
+            check(it.n == n) { "${it.id.id}@${it.id.version}: bound at N=${it.n}, measurement requested N=$n" }
+        }?.let { ScenarioIdentity(it.id, n, it.fingerprint, emptyList()) }
+            ?: diagnosticIdentity(n, observed = emptyList(), variants)
+        return "${identity.label} fingerprint=${identity.fingerprint}"
+    }
 
     internal fun completeIdentity(n: Int, observed: List<Int>, variants: List<Int>): ScenarioIdentity =
         identityBinding?.also {
@@ -143,10 +159,12 @@ object InterpreterPerfEngine : PerfEngine {
                 scenario.instance(doc.asSink(), n, variant)
                 return object : RunInstance {
                     override fun outcome(): PerfOutcome = when (scenario.op) {
-                        PerfOp.VALIDATE -> interp.validate(doc).let { result ->
+                        PerfOp.VALIDATE -> interp.validate(doc, scenario.locale).let { result ->
                             PerfOutcome(result.messages.map(::validationSignature).sorted(), result.unsupported)
                         }
-                        PerfOp.COMPUTE -> PerfOutcome(interp.compute(doc).map(::computationSignature).sorted())
+                        PerfOp.COMPUTE -> PerfOutcome(
+                            interp.compute(doc, scenario.locale).map(::computationSignature).sorted(),
+                        )
                     }
                 }
             }
@@ -159,6 +177,7 @@ object KernelPerfEngine : PerfEngine {
     override val label = "groovy"
     override fun build(scenario: PerfScenario): ReusableEngine {
         val engine = RuntimeLaws.kernelEngine(scenario.kernelModel)   // model deserialize + expand + Groovy codegen, once
+        val locale = scenario.javaLocale()
         return object : ReusableEngine {
             override val label = "groovy"
             override fun instance(n: Int, variant: Int): RunInstance {
@@ -168,8 +187,8 @@ object KernelPerfEngine : PerfEngine {
                 return object : RunInstance {
                     override fun outcome(): PerfOutcome = PerfOutcome(
                         when (scenario.op) {
-                            PerfOp.VALIDATE -> engine.validationSignaturesSorted(instance)
-                            PerfOp.COMPUTE -> engine.computationSignaturesSorted(instance)
+                            PerfOp.VALIDATE -> engine.validationSignaturesSorted(instance, locale)
+                            PerfOp.COMPUTE -> engine.computationSignaturesSorted(instance, locale)
                         },
                     )
                 }
@@ -188,6 +207,7 @@ object KernelJavaPerfEngine : PerfEngine {
     override val label = "java"
     override fun build(scenario: PerfScenario): ReusableEngine {
         val engine = RuntimeLaws.kernelJavaEngine(scenario.kernelModel)   // codegen + in-memory compile, once
+        val locale = scenario.javaLocale()
         return object : ReusableEngine {
             override val label = "java"
             override fun instance(n: Int, variant: Int): RunInstance {
@@ -197,8 +217,8 @@ object KernelJavaPerfEngine : PerfEngine {
                 return object : RunInstance {
                     override fun outcome(): PerfOutcome = PerfOutcome(
                         when (scenario.op) {
-                            PerfOp.VALIDATE -> engine.validationSignaturesSorted(instance)
-                            PerfOp.COMPUTE -> engine.computationSignaturesSorted(instance)
+                            PerfOp.VALIDATE -> engine.validationSignaturesSorted(instance, locale)
+                            PerfOp.COMPUTE -> engine.computationSignaturesSorted(instance, locale)
                         },
                     )
                 }
@@ -218,6 +238,9 @@ private fun computationSignature(computed: Computed): String {
         ComputeOutcome.ERRORED -> "$pointer|ERRORED|${computed.value ?: ""}"
     }
 }
+
+private fun PerfScenario.javaLocale(): Locale =
+    Locale.forLanguageTag(locale.replace('_', '-'))
 
 /** Feeds a [PerfScenario]'s placements into a [RuntimeLaws.Doc] — shared by both kernel engines (Groovy + Java). */
 private class KernelDocSink(private val doc: RuntimeLaws.Doc) : PlacementSink {
@@ -280,6 +303,10 @@ object PerfHarness {
         println(msg)
         runCatching { progressFile.appendText(msg + "\n") }
     }
+
+    /** `id@version fingerprint=<sha256>` for every reviewed or diagnostic measurement line. */
+    fun measurementLabel(scenario: PerfScenario, n: Int, variants: List<Int> = listOf(0)): String =
+        scenario.measurementLabel(n, variants)
 
     /** Time [block], streaming a `<label> …` line before and the `<label> = <ms>` after (live [progress]). */
     inline fun <T> step(label: String, block: () -> T): T {

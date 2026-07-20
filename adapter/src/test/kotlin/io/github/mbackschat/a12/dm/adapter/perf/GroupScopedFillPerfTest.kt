@@ -76,8 +76,12 @@ class GroupScopedFillPerfTest {
     fun groupScopedFillScalesSubQuadratically() {
         // IF137 paired estimator: interleaved N/4N, median of within-pair ratios (via the shared PerfHarness helper).
         val g = PerfHarness.pairedGrowth(N, N * 4) { medianMs(it) }
-        println("[perf] group-scope fill: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
-            .format(g.smallMs, N, g.largeMs, N * 4, g.ratio))
+        println("[perf] %s → %s group-scope fill: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
+            .format(
+                PerfHarness.measurementLabel(scenario, N),
+                PerfHarness.measurementLabel(scenario, N * 4),
+                g.smallMs, N, g.largeMs, N * 4, g.ratio,
+            ))
         assertTrue(g.ratio < PerfBounds.SUB_QUADRATIC_MAX,
             "group-scope fill scaling looks quadratic: 4× the rows took ${g.ratio}× the time (linear≈4, quadratic≈16)")
     }
@@ -87,8 +91,12 @@ class GroupScopedFillPerfTest {
         val (iSmall, kSmall) = medianMs(N) to kernelMedianMs(N)
         val (iLarge, kLarge) = medianMs(N * 4) to kernelMedianMs(N * 4)
         val ratioSmall = iSmall / kSmall; val ratioLarge = iLarge / kLarge
-        println("[perf] group-scope fill vs kernel: N=%d interp=%.1f kernel=%.1f (%.2f×) | N=%d interp=%.1f kernel=%.1f (%.2f×)"
-            .format(N, iSmall, kSmall, ratioSmall, N * 4, iLarge, kLarge, ratioLarge))
+        println("[perf] %s | %s group-scope fill vs kernel: N=%d interp=%.1f kernel=%.1f (%.2f×) | N=%d interp=%.1f kernel=%.1f (%.2f×)"
+            .format(
+                PerfHarness.measurementLabel(scenario, N),
+                PerfHarness.measurementLabel(scenario, N * 4),
+                N, iSmall, kSmall, ratioSmall, N * 4, iLarge, kLarge, ratioLarge,
+            ))
         assertTrue(ratioLarge < ratioSmall * 2.5,
             "interp/kernel ratio grew from $ratioSmall× to $ratioLarge× at 4× rows — interp is a worse class than the kernel")
     }

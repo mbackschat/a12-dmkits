@@ -23,15 +23,17 @@ class PerfScalingTest {
      */
     @Test
     fun rowScaling() {
+        val scenario = PerfCatalog.b1()
         println("[scaling] B1 per-row, interp vs groovy (the routine shortcut baseline):")
         for (n in listOf(1_000, 3_000, 10_000, 30_000)) {
-            val row = PerfHarness.runScenario(PerfCatalog.b1(), n, withJava = false)
+            val row = PerfHarness.runScenario(scenario, n, withJava = false)
             println("  N=%6d  %s".format(n, PerfHarness.format(row)))
         }
         println("[scaling] interp-only at production scale (linearity check — no kernel, stays cheap):")
         for (n in listOf(30_000, 100_000, 300_000)) {
-            val s = PerfHarness.timeInterpreter(PerfCatalog.b1(), n, warmup = 4, iters = 6)
-            println("  N=%7d  interp=%.1fms (min %.1fms)  -> %.2f µs/row".format(n, s.medianMs, s.minMs, s.minMs * 1000 / n))
+            val s = PerfHarness.timeInterpreter(scenario, n, warmup = 4, iters = 6)
+            println("  %s N=%7d  interp=%.1fms (min %.1fms)  -> %.2f µs/row".format(
+                PerfHarness.measurementLabel(scenario, n), n, s.medianMs, s.minMs, s.minMs * 1000 / n))
         }
     }
 
@@ -54,12 +56,14 @@ class PerfScalingTest {
         val inst = eng.instance(48)                              // small doc, built OUTSIDE the timed region
         val coldMs = timeOnce { inst.run() }                     // first call: lazy index build + first parse + eval
         val warmMs = (0 until 8).minOf { timeOnce { inst.run() } }   // steady-state per call
+        val measurement = PerfHarness.measurementLabel(scenario, 48)
 
         println("[startup] interpreter, 48-rule model (kernel preparation/compile is outside this interpreter-only measurement):")
-        println("  engine build       = %.2f ms (lazy AST wrappers, no parse)".format(buildMs))
-        println("  first validateFull = %.2f ms (one-time lazy index build + first parse)".format(coldMs))
-        println("  steady-state/call  = %.2f ms".format(warmMs))
-        println("  → one-time startup overhead ≈ %.2f ms; no generated-validator preparation".format(buildMs + (coldMs - warmMs)))
+        println("  %s engine build       = %.2f ms (lazy AST wrappers, no parse)".format(measurement, buildMs))
+        println("  %s first validateFull = %.2f ms (one-time lazy index build + first parse)".format(measurement, coldMs))
+        println("  %s steady-state/call  = %.2f ms".format(measurement, warmMs))
+        println("  %s → one-time startup overhead ≈ %.2f ms; no generated-validator preparation"
+            .format(measurement, buildMs + (coldMs - warmMs)))
     }
 
     /**
@@ -73,13 +77,17 @@ class PerfScalingTest {
         println("[startup] cold first-call (fresh engine + fresh doc + ONE validateFull, NO warmup):")
         // Axis 1 — rule count, small document (~500 sub rows): the first-parse-of-N-rules cost.
         for (rules in listOf(6, 48, 192)) {
-            val ms = PerfHarness.freshRunMedianMillis(PerfCatalog.manyRules(rules), n = 100, repeats = 1)
-            println("  rules=%-3d  small doc (100 Lines × 5)   cold = %.1f ms".format(rules, ms))
+            val scenario = PerfCatalog.manyRules(rules)
+            val ms = PerfHarness.freshRunMedianMillis(scenario, n = 100, repeats = 1)
+            println("  %s rules=%-3d  small doc (100 Lines × 5)   cold = %.1f ms".format(
+                PerfHarness.measurementLabel(scenario, 100), rules, ms))
         }
         // Axis 2 — document size, one rule: the lazy index build + cold (un-JIT-warmed) per-row eval.
+        val scenario = PerfCatalog.b1()
         for (n in listOf(10_000, 100_000)) {
-            val ms = PerfHarness.freshRunMedianMillis(PerfCatalog.b1(), n, repeats = 1)
-            println("  1 rule    %-7d rows              cold = %.1f ms".format(n, ms))
+            val ms = PerfHarness.freshRunMedianMillis(scenario, n, repeats = 1)
+            println("  %s 1 rule    %-7d rows              cold = %.1f ms".format(
+                PerfHarness.measurementLabel(scenario, n), n, ms))
         }
     }
 

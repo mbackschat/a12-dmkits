@@ -75,7 +75,11 @@ class KernelEdgeTest {
         )) {
             val small = PerfHarness.timeInterpreter(sc, 2000, warmup = 5, iters = 6)
             val large = PerfHarness.timeInterpreter(sc, 8000, warmup = 5, iters = 6)
-            println("  %-24s %.1fms@2000 → %.1fms@8000  x%.2f".format(name, small.medianMs, large.medianMs, large.medianMs / small.medianMs))
+            println("  %s → %s %-24s %.1fms@2000 → %.1fms@8000  x%.2f".format(
+                PerfHarness.measurementLabel(sc, 2000),
+                PerfHarness.measurementLabel(sc, 8000),
+                name, small.medianMs, large.medianMs, large.medianMs / small.medianMs,
+            ))
         }
     }
 
@@ -127,17 +131,27 @@ class KernelEdgeTest {
     fun hugeDocScaling() {
         val maxRows = System.getProperty("perf.edge.rows", "20000").toInt()
         println("[edge] HUGE-DOC interp scaling (per-row B1):")
+        val b1 = PerfCatalog.b1()
         var prev = 0.0
+        var prevRows: Int? = null
         for (rows in listOf(1_000, 5_000, 10_000, maxRows)) {
-            val s = PerfHarness.timeInterpreter(PerfCatalog.b1(), rows, warmup = 3, iters = 5)
-            val growth = if (prev > 0) "  ×%.2f".format(s.medianMs / prev) else ""
-            println("  B1 per-row     N=%6d  interp=%8.2fms  %.4f ms/row%s".format(rows, s.medianMs, s.medianMs / rows, growth))
+            val s = PerfHarness.timeInterpreter(b1, rows, warmup = 3, iters = 5)
+            val growth = prevRows?.let {
+                "  ×%.2f vs %s".format(s.medianMs / prev, PerfHarness.measurementLabel(b1, it))
+            } ?: ""
+            println("  %s B1 per-row     N=%6d  interp=%8.2fms  %.4f ms/row%s".format(
+                PerfHarness.measurementLabel(b1, rows), rows, s.medianMs, s.medianMs / rows, growth))
             prev = s.medianMs
+            prevRows = rows
         }
         println("[edge] HUGE-DOC interp scaling (deep nested-star B5, ×5 subs/line):")
+        val b5 = PerfCatalog.b5()
         for (rows in listOf(1_000, 2_000, maxRows / 5)) {
-            val s = PerfHarness.timeInterpreter(PerfCatalog.b5(), rows, warmup = 3, iters = 5)
-            println("  B5 nested-star N=%6d (=%d sub rows)  interp=%8.2fms".format(rows, rows * PerfCatalog.SUBS_PER_LINE, s.medianMs))
+            val s = PerfHarness.timeInterpreter(b5, rows, warmup = 3, iters = 5)
+            println("  %s B5 nested-star N=%6d (=%d sub rows)  interp=%8.2fms".format(
+                PerfHarness.measurementLabel(b5, rows),
+                rows, rows * PerfCatalog.SUBS_PER_LINE, s.medianMs,
+            ))
         }
         println("[edge] interp vs kernel-Java at a large doc (B1 per-row):")
         for (rows in listOf(10_000, maxRows)) {
@@ -184,13 +198,19 @@ class KernelEdgeTest {
         println("[edge] INTERP-ONLY scaling @ N=$n (the kernel cannot codegen past ~512–768 rules — 64KB method limit):")
         for (firing in listOf(true, false)) {
             var prev = 0.0
+            var previousScenario: PerfScenario? = null
             val regime = if (firing) "firing    " else "low-firing"
             for (count in counts) {
-                val s = PerfHarness.timeInterpreter(PerfCatalog.manyRules(count, firing = firing), n, warmup = 8, iters = 8)
+                val scenario = PerfCatalog.manyRules(count, firing = firing)
+                val s = PerfHarness.timeInterpreter(scenario, n, warmup = 8, iters = 8)
                 val perRule = "%.3fms/rule".format(s.medianMs / count)
-                val growth = if (prev > 0) "  ×%.2f".format(s.medianMs / prev) else ""
-                println("  %s rules=%4d  interp=%7.2fms  %s%s".format(regime, count, s.medianMs, perRule, growth))
+                val growth = previousScenario?.let {
+                    "  ×%.2f vs %s".format(s.medianMs / prev, PerfHarness.measurementLabel(it, n))
+                } ?: ""
+                println("  %s %s rules=%4d  interp=%7.2fms  %s%s".format(
+                    PerfHarness.measurementLabel(scenario, n), regime, count, s.medianMs, perRule, growth))
                 prev = s.medianMs
+                previousScenario = scenario
             }
         }
     }
@@ -241,7 +261,11 @@ class KernelEdgeTest {
         // 8× the rows: linear ≈ ×8 (+ fixed overhead), quadratic ≈ ×64. Trip well below quadratic.
         org.junit.jupiter.api.Assertions.assertTrue(last / first < 20.0,
             "semantic-index scaling looks super-linear: 8× rows took ${last / first}× the time (the row-prefix index regressed?)")
-        println("  (8× rows ⇒ linear ~×8, quadratic ~×64; measured ×${"%.1f".format(last / first)})")
+        println("  %s → %s (8× rows ⇒ linear ~×8, quadratic ~×64; measured ×${"%.1f".format(last / first)})"
+            .format(
+                PerfHarness.measurementLabel(sc, 500),
+                PerfHarness.measurementLabel(sc, 4000),
+            ))
     }
 
     /**
@@ -286,8 +310,12 @@ class KernelEdgeTest {
             // interp-ONLY N→4N growth (the interaction-O(N²) detector at the real scale — no giant kernel doc)
             val n1 = PerfHarness.timeInterpreter(sc, small, warmup = 4, iters = 6)
             val n4 = PerfHarness.timeInterpreter(sc, small * 4, warmup = 4, iters = 6)
-            println("  %s interp-only  %.1fms@%d → %.1fms@%d claims  N→4N=×%.2f (linear≈4, quadratic≈16)".format(
-                regime, n1.medianMs, small, n4.medianMs, small * 4, n4.medianMs / n1.medianMs))
+            println("  %s → %s %s interp-only  %.1fms@%d → %.1fms@%d claims  N→4N=×%.2f (linear≈4, quadratic≈16)"
+                .format(
+                    PerfHarness.measurementLabel(sc, small),
+                    PerfHarness.measurementLabel(sc, small * 4),
+                    regime, n1.medianMs, small, n4.medianMs, small * 4, n4.medianMs / n1.medianMs,
+                ))
         }
     }
 }

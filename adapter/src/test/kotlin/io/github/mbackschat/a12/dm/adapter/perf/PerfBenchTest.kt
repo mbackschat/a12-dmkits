@@ -51,7 +51,11 @@ class PerfBenchTest {
         val berlin = rows.entries.firstOrNull { it.key.id.zone == ModelTimeZone.EUROPE_BERLIN }?.value
         val utc = rows.entries.firstOrNull { it.key.id.id == "B9-utc-control" }?.value
         if (berlin != null && utc != null)
-            println("[perf] Berlin/UTC offset overhead: %.2f×".format(berlin.interp.medianMs / utc.interp.medianMs))
+            println("[perf] %s | %s Berlin/UTC offset overhead: %.2f×".format(
+                "${berlin.identity.label} fingerprint=${berlin.identity.fingerprint}",
+                "${utc.identity.label} fingerprint=${utc.identity.fingerprint}",
+                berlin.interp.medianMs / utc.interp.medianMs,
+            ))
     }
 
     /**

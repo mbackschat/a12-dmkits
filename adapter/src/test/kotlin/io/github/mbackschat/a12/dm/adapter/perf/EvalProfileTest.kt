@@ -31,6 +31,7 @@ class EvalProfileTest {
         System.getProperty("perf.n", "500").toInt(), "deepRich")
 
     private fun profile(scenario: io.github.mbackschat.a12.dm.adapter.perf.PerfScenario, n: Int, label: String) {
+        val measurement = PerfHarness.measurementLabel(scenario, n)
         val model = scenario.interpModel
         val doc = model.newDocument()
         scenario.instance(doc.asSink(), n, 0)
@@ -39,7 +40,7 @@ class EvalProfileTest {
         val deadline = System.nanoTime() + SECONDS * 1_000_000_000L
         var loops = 0
         while (System.nanoTime() < deadline) { interp.validateFull(doc); loops++ }
-        println("[profile] $label @ N=$n: $loops validateFull calls in ~${SECONDS}s")
+        println("[profile] $measurement $label @ N=$n: $loops validateFull calls in ~${SECONDS}s")
     }
 
     private companion object { const val SECONDS = 20 }

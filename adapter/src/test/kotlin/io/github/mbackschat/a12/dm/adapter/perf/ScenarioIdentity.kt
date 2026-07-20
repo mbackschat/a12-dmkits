@@ -79,6 +79,9 @@ class ScenarioId private constructor(builder: Builder) {
         check(scenario.interpModel.timeZone == zone) {
             "$id@$version: declared zone $zone != model zone ${scenario.interpModel.timeZone}"
         }
+        check(scenario.locale == locale) {
+            "$id@$version: declared locale $locale != scenario locale ${scenario.locale}"
+        }
         val actual = fingerprintFor(scenario, n)
         check(actual == reviewedFingerprint) {
             "$id@$version: scenario content drifted without a version/fingerprint update: " +
@@ -177,6 +180,7 @@ internal fun PerfScenario.diagnosticIdentity(n: Int, observed: List<Int>, varian
         .expectedResultCardinality(observed)
         .reviewedFingerprint("0".repeat(64))
         .zone(interpModel.timeZone)
+        .locale(locale)
         .fairJavaCapable(false)
         .build()
     return ScenarioIdentity(spec, n, ScenarioFingerprint.compute(spec, this, n), observed)
@@ -252,7 +256,7 @@ private class CanonicalDigest {
         put("interp-index-fields", model.indexFields.sorted().joinToString(","))
         put("interp-base-year", model.baseYear?.toString() ?: "<absent>")
         put("interp-short-names", model.fieldRefByShortNameAllowed.toString())
-        put("interp-legal-charset", if (model.legalCharset == null) "<absent>" else "<declared>")
+        put("interp-legal-charset", model.legalCharset?.toString() ?: "<absent>")
         put("interp-time-zone", model.timeZone.name)
     }
 

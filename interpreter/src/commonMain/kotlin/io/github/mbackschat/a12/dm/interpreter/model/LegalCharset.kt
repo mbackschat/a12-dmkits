@@ -71,6 +71,19 @@ class LegalCharset private constructor(
      * without a timing threshold or a per-code-point callback. */
     internal fun matchWork(s: String): Int = scan(s).work
 
+    /**
+     * Deterministic, content-complete definition used by model/scenario fingerprints. Unlike the default object
+     * identity string, this changes when any allowed range or atomic grapheme changes and is stable across runs.
+     */
+    override fun toString(): String {
+        if (isBmp) return "LegalCharset(BMP)"
+        val rangeContent = ranges.joinToString(",") { "${it.first.toString(16)}-${it.last.toString(16)}" }
+        val graphemeContent = graphemes.joinToString(",") { grapheme ->
+            grapheme.joinToString(".") { it.toString(16) }
+        }
+        return "LegalCharset(ranges=$rangeContent;graphemes=$graphemeContent)"
+    }
+
     private fun scan(s: String): MatchScan {
         if (isBmp) {
             var work = 0

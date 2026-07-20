@@ -61,6 +61,13 @@ class OuterCorrelationPerfTest {
     private val defGt = ModelLoader.load(kGtModel)
     private val kernelEq = RuntimeLaws.kernelEngine(kEqModel)   // Groovy codegen once
     private val kernelGt = RuntimeLaws.kernelEngine(kGtModel)
+    private val eqScenario = PerfScenario("equality \$ correlation", kEqModel, defEq) { sink, n, _ ->
+        sink.group("/Order", 1)
+        for (r in 1..n) {
+            sink.group("/Order/Items", 1, r)
+            sink.field(COUNT, spread(r), 1, r, 1)
+        }
+    }
     private val gtScenario = PerfScenario("ordered \$ non-equality correlation", kGtModel, defGt) { sink, n, _ ->
         sink.group("/Order", 1)
         for (r in 1..n) {
@@ -104,8 +111,12 @@ class OuterCorrelationPerfTest {
     fun equalityOuterCorrelationStaysSubQuadratic() {
         // IF137 paired estimator: interleaved N/4N, median of within-pair ratios (via the shared PerfHarness helper).
         val g = PerfHarness.pairedGrowth(N, N * 4) { medianMs(defEq, it, ::spread) }
-        println("[perf] \$ equality correlation: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
-            .format(g.smallMs, N, g.largeMs, N * 4, g.ratio))
+        println("[perf] %s → %s \$ equality correlation: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
+            .format(
+                PerfHarness.measurementLabel(eqScenario, N),
+                PerfHarness.measurementLabel(eqScenario, N * 4),
+                g.smallMs, N, g.largeMs, N * 4, g.ratio,
+            ))
         assertTrue(g.ratio < PerfBounds.SUB_QUADRATIC_MAX,
             "\$ equality correlation scaling looks quadratic: 4× the rows took ${g.ratio}× the time (linear≈4, quadratic≈16)")
     }
@@ -121,8 +132,12 @@ class OuterCorrelationPerfTest {
         val (iLarge, kLarge) = medianMs(defEq, N * 4, ::spread) to kernelMedianMs(kernelEq, N * 4, ::spread)
         val ratioSmall = iSmall / kSmall
         val ratioLarge = iLarge / kLarge
-        println("[perf] \$ correlation vs kernel: N=%d interp=%.1f kernel=%.1f (%.2f×) | N=%d interp=%.1f kernel=%.1f (%.2f×)"
-            .format(N, iSmall, kSmall, ratioSmall, N * 4, iLarge, kLarge, ratioLarge))
+        println("[perf] %s | %s \$ correlation vs kernel: N=%d interp=%.1f kernel=%.1f (%.2f×) | N=%d interp=%.1f kernel=%.1f (%.2f×)"
+            .format(
+                PerfHarness.measurementLabel(eqScenario, N),
+                PerfHarness.measurementLabel(eqScenario, N * 4),
+                N, iSmall, kSmall, ratioSmall, N * 4, iLarge, kLarge, ratioLarge,
+            ))
         // The ratio must not GROW materially with N. Generous 2.5× headroom for timing noise; a reverted nested
         // interpreter scan should widen it materially at 4× rows.
         assertTrue(ratioLarge < ratioSmall * 2.5,
@@ -134,8 +149,12 @@ class OuterCorrelationPerfTest {
     fun nonEqualityOuterCorrelationIsExactAndSubQuadratic() {
         PerfHarness.assertSemanticAgreement(gtScenario, listOf(N, N * 4), withJava = true)
         val g = PerfHarness.pairedGrowth(N, N * 4) { medianMs(defGt, it, ::flat) }
-        println("[perf] \$ non-equality correlation: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
-            .format(g.smallMs, N, g.largeMs, N * 4, g.ratio))
+        println("[perf] %s → %s \$ non-equality correlation: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
+            .format(
+                PerfHarness.measurementLabel(gtScenario, N),
+                PerfHarness.measurementLabel(gtScenario, N * 4),
+                g.smallMs, N, g.largeMs, N * 4, g.ratio,
+            ))
         assertTrue(g.ratio < PerfBounds.SUB_QUADRATIC_MAX,
             "\$ non-equality correlation scaling looks quadratic: 4× the rows took ${g.ratio}× the time")
 
@@ -145,8 +164,12 @@ class OuterCorrelationPerfTest {
         val (iLarge, kLarge) = medianMs(defGt, N * 4, ::flat) to kernelMedianMs(kernelGt, N * 4, ::flat)
         val ratioSmall = iSmall / kSmall
         val ratioLarge = iLarge / kLarge
-        println("[perf] \$ non-equality vs kernel: N=%d interp=%.1f kernel=%.1f (%.2f×) | N=%d interp=%.1f kernel=%.1f (%.2f×)"
-            .format(N, iSmall, kSmall, ratioSmall, N * 4, iLarge, kLarge, ratioLarge))
+        println("[perf] %s | %s \$ non-equality vs kernel: N=%d interp=%.1f kernel=%.1f (%.2f×) | N=%d interp=%.1f kernel=%.1f (%.2f×)"
+            .format(
+                PerfHarness.measurementLabel(gtScenario, N),
+                PerfHarness.measurementLabel(gtScenario, N * 4),
+                N, iSmall, kSmall, ratioSmall, N * 4, iLarge, kLarge, ratioLarge,
+            ))
     }
 
     private companion object {

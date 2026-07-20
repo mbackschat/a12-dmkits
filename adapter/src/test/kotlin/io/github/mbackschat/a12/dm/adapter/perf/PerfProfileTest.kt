@@ -36,16 +36,17 @@ class PerfProfileTest {
     fun profileComplexRealWorld() = profile(PerfCatalog.complexRealWorldFull(firing = false), n / 50)
 
     private fun profile(scenario: PerfScenario, n: Int) {
+        val measurement = PerfHarness.measurementLabel(scenario, n)
         val prep = InterpreterPerfEngine.build(scenario).instance(n)
         val firings = prep.run().size   // also the correctness payload, though profile mode does not gate
-        println("[profile] ${scenario.name} N=$n firings=$firings — warming…")
+        println("[profile] $measurement ${scenario.name} N=$n firings=$firings — warming…")
         repeat(WARMUP) { prep.run() }
         val times = DoubleArray(ITERS) {
             val t = System.nanoTime(); prep.run(); (System.nanoTime() - t) / 1e6
         }
-        times.forEachIndexed { i, ms -> println("  iter ${i + 1}: ${"%.1f".format(ms)}ms") }
+        times.forEachIndexed { i, ms -> println("  $measurement iter ${i + 1}: ${"%.1f".format(ms)}ms") }
         val sorted = times.sorted()
-        println("[profile] ${scenario.name} N=$n  median=${"%.1f".format(sorted[ITERS / 2])}ms " +
+        println("[profile] $measurement ${scenario.name} N=$n  median=${"%.1f".format(sorted[ITERS / 2])}ms " +
             "min=${"%.1f".format(sorted.first())}ms max=${"%.1f".format(sorted.last())}ms")
     }
 

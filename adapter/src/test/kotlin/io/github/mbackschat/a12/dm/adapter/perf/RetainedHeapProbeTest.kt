@@ -46,8 +46,11 @@ class RetainedHeapProbeTest {
         val afterRepeats = retainedBytes()
 
         val growthMb = (afterRepeats - warmed) / 1e6
-        println("[heap] plateau: warmed=%.1fMB → after %d evals=%.1fMB  Δ=%.1fMB (bound %.0fMB)"
-            .format(warmed / 1e6, REPEATS, afterRepeats / 1e6, growthMb, PLATEAU_SLACK_MB))
+        println("[heap] %s plateau: warmed=%.1fMB → after %d evals=%.1fMB  Δ=%.1fMB (bound %.0fMB)"
+            .format(
+                PerfHarness.measurementLabel(sc, N),
+                warmed / 1e6, REPEATS, afterRepeats / 1e6, growthMb, PLATEAU_SLACK_MB,
+            ))
         // Generous: a real per-eval leak over REPEATS evals is orders of magnitude past this; noise is not.
         assertTrue(growthMb < PLATEAU_SLACK_MB,
             "retained heap grew ${"%.1f".format(growthMb)}MB across $REPEATS repeated evaluations of the SAME " +
@@ -58,23 +61,26 @@ class RetainedHeapProbeTest {
     fun retainedHeapAcrossScalesIsRecorded() {
         // Informative only (NOT a gate): a single in-process run calibrates; the ≤1.25 exponent / ≤8× step
         // certification needs ≥5 forked processes + the six-point gate (owner-gated, IF137).
+        val sc = PerfCatalog.b1()
         val scales = intArrayOf(N, N * 2, N * 4, N * 8)
         val retained = DoubleArray(scales.size)
         for ((i, n) in scales.withIndex()) {
-            val sc = PerfCatalog.b1()
             val model = sc.interpModel
             val base = retainedBytes()
             val interp = DmInterpreter(model)
             val doc = model.newDocument().also { sc.instance(it.asSink(), n, 0) }
             repeat(WARM) { interp.validateFull(doc) }
             retained[i] = (retainedBytes() - base).toDouble().coerceAtLeast(1.0)
-            println("[heap] N=$n retained≈%.1fMB".format(retained[i] / 1e6))
+            println("[heap] %s N=$n retained≈%.1fMB".format(
+                PerfHarness.measurementLabel(sc, n), retained[i] / 1e6))
             // keep interp+doc reachable until measured, then let the next iteration reclaim them
             check(interp.validateFull(doc).size >= 0)
         }
         // Fit a log-log space exponent over the 4 scales (record only).
         val exponent = spaceExponent(scales, retained)
-        println("[heap] fitted log-log space exponent ≈ %.2f (informative; certified bar ≤1.25 is owner-gated, IG79)".format(exponent))
+        val identities = scales.joinToString(" | ") { PerfHarness.measurementLabel(sc, it) }
+        println(("[heap] $identities fitted log-log space exponent ≈ %.2f " +
+            "(informative; certified bar ≤1.25 is owner-gated, IG79)").format(exponent))
     }
 
     /** Least-squares slope of ln(retained) vs ln(n) — the space-complexity exponent (1 = linear). */

@@ -560,7 +560,11 @@ public final class RuntimeLaws {
      * path, so both codegen strategies report compute outcomes at the same granularity as the interpreter.
      */
     private static List<Computed> computeDetail(IDocumentRtService rt, DocumentV2 instance) {
-        return computeDetailOf(rt.compute(instance, config(null, Locale.US)));
+        return computeDetail(rt, instance, Locale.US);
+    }
+
+    private static List<Computed> computeDetail(IDocumentRtService rt, DocumentV2 instance, Locale locale) {
+        return computeDetailOf(rt.compute(instance, config(null, locale)));
     }
 
     /** Map a {@link IDocumentComputationResult} to its value/cleared/errored detail — shared by the legacy
@@ -766,7 +770,11 @@ public final class RuntimeLaws {
 
         /** Full validation signatures ({@code code|type|indexed-pointer}), sorted for exact perf eligibility. */
         public List<String> validationSignaturesSorted(DocumentV2 instance) {
-            return rt.validateFull(instance, config(null, Locale.US)).getMessages().stream()
+            return validationSignaturesSorted(instance, Locale.US);
+        }
+
+        public List<String> validationSignaturesSorted(DocumentV2 instance, Locale locale) {
+            return rt.validateFull(instance, config(null, locale)).getMessages().stream()
                     .map(RuntimeLaws::validationSignature).sorted().toList();
         }
 
@@ -777,7 +785,11 @@ public final class RuntimeLaws {
 
         /** Full computation signatures ({@code indexed-pointer|outcome|value}), sorted for exact perf eligibility. */
         public List<String> computationSignaturesSorted(DocumentV2 instance) {
-            return computeSignaturesSorted(rt, instance);
+            return computationSignaturesSorted(instance, Locale.US);
+        }
+
+        public List<String> computationSignaturesSorted(DocumentV2 instance, Locale locale) {
+            return computeSignaturesSorted(rt, instance, locale);
         }
     }
 
@@ -807,8 +819,8 @@ public final class RuntimeLaws {
         return message.getErrorCode() + "|" + message.getMessageType().name() + "|" + fmtPointer(message.getErrorFieldPointer());
     }
 
-    private static List<String> computeSignaturesSorted(IDocumentRtService rt, DocumentV2 instance) {
-        return computeDetail(rt, instance).stream().map(c -> {
+    private static List<String> computeSignaturesSorted(IDocumentRtService rt, DocumentV2 instance, Locale locale) {
+        return computeDetail(rt, instance, locale).stream().map(c -> {
             if (c.cleared()) {
                 return c.pointer() + "|CLEARED";
             }
@@ -869,7 +881,11 @@ public final class RuntimeLaws {
 
         /** Full validation signatures ({@code code|type|indexed-pointer}), sorted for exact perf eligibility. */
         public List<String> validationSignaturesSorted(DocumentV2 instance) {
-            return rt.validateFull(instance, config(null, Locale.US)).getMessages().stream()
+            return validationSignaturesSorted(instance, Locale.US);
+        }
+
+        public List<String> validationSignaturesSorted(DocumentV2 instance, Locale locale) {
+            return rt.validateFull(instance, config(null, locale)).getMessages().stream()
                     .map(RuntimeLaws::validationSignature).sorted().toList();
         }
 
@@ -880,7 +896,11 @@ public final class RuntimeLaws {
 
         /** Full computation signatures ({@code indexed-pointer|outcome|value}), sorted for exact perf eligibility. */
         public List<String> computationSignaturesSorted(DocumentV2 instance) {
-            return computeSignaturesSorted(rt, instance);
+            return computationSignaturesSorted(instance, Locale.US);
+        }
+
+        public List<String> computationSignaturesSorted(DocumentV2 instance, Locale locale) {
+            return computeSignaturesSorted(rt, instance, locale);
         }
 
         /**

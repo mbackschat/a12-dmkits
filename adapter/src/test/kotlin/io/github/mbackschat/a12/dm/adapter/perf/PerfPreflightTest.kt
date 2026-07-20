@@ -11,6 +11,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -174,5 +175,33 @@ class PerfPreflightTest {
 
         val ex = assertThrows<IllegalStateException> { PerfHarness.preflight(scenario, n = 1) }
         assertTrue("UnsupportedFunction" in (ex.message ?: ""), "the unselected alternative is still audited: ${ex.message}")
+    }
+
+    @Test
+    fun scenarioLocaleIsTheLocaleTheInterpreterEngineExecutes() {
+        val code = "/C/Code"
+        val model = ModelDef(
+            fields = listOf(FieldDef(code, Kind.STRING, customType = CustomFieldTypeDeclaration("LocaleType"))),
+            rules = emptyList(),
+        )
+        var observedLocale = ""
+        val checker = CustomFieldType { _, context ->
+            observedLocale = context.locale
+            null
+        }
+        val scenario = PerfScenario(
+            "locale-bound",
+            "{}",
+            model,
+            interpreterFactory = { DmInterpreter(it, customFieldTypes = mapOf("LocaleType" to checker)) },
+            locale = "de_DE",
+        ) { sink, _, _ ->
+            sink.group("/C", 1)
+            sink.field(code, "value", 1, 1)
+        }
+
+        InterpreterPerfEngine.build(scenario).instance(1).outcome()
+
+        assertEquals("de_DE", observedLocale)
     }
 }

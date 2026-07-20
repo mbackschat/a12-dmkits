@@ -9,6 +9,7 @@ import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.COMPUTE_VALUE
 import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.VALIDATION_LOW_FIRING
 import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.VALIDATION_MIXED
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -44,6 +45,7 @@ class ScenarioIdentityFingerprintTest {
             ),
             scenario.op,
             scenario.interpreterFactory,
+            scenario.locale,
             scenario.instance,
         )
         assertThrows<IllegalStateException> { reviewed.bind(changedModel, n = 4) }
@@ -76,6 +78,37 @@ class ScenarioIdentityFingerprintTest {
     }
 
     @Test
+    fun legalCharsetContentAndExecutionLocaleAreIdentityBound() {
+        val scenario = PerfCatalog.b1()
+        fun withCharset(charset: LegalCharset) = PerfScenario(
+            scenario.name,
+            scenario.kernelModel,
+            scenario.interpModel.copy(legalCharset = charset),
+            scenario.op,
+            scenario.interpreterFactory,
+            scenario.locale,
+            scenario.instance,
+        )
+        val az = withCharset(LegalCharset.ofRanges('A'.code..'Z'.code))
+        val ay = withCharset(LegalCharset.ofRanges('A'.code..'Y'.code))
+        val reviewed = draft().review(az, n = 4)
+
+        assertNotEquals(reviewed.fingerprintFor(az, n = 4), reviewed.fingerprintFor(ay, n = 4))
+        assertThrows<IllegalStateException> { reviewed.bind(ay, n = 4) }
+
+        val german = PerfScenario(
+            scenario.name,
+            scenario.kernelModel,
+            scenario.interpModel,
+            scenario.op,
+            scenario.interpreterFactory,
+            locale = "de_DE",
+            instance = scenario.instance,
+        )
+        assertThrows<IllegalStateException> { draft().review(scenario, n = 4).bind(german, n = 4) }
+    }
+
+    @Test
     fun formattedRowsCarryTheCompleteIdentity() {
         val scenario = PerfCatalog.b1()
         val draft = draft()
@@ -85,8 +118,9 @@ class ScenarioIdentityFingerprintTest {
 
         val single = PerfHarness.format(PerfRow(identity, n = 4, firings = 2, stats, null, null))
         val repeated = PerfHarness.formatRepeated(RepeatedRow(identity, n = 4, variants = 1, stats, null, null))
+        val direct = PerfHarness.measurementLabel(reviewed.bind(scenario, n = 4), n = 4)
 
-        for (line in listOf(single, repeated)) {
+        for (line in listOf(single, repeated, direct)) {
             assertTrue("test-case@1" in line, line)
             assertTrue(identity.fingerprint in line, line)
         }
