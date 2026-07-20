@@ -56,6 +56,7 @@ echo "rebuilding previous release $previous_ref@$previous_commit"
         "-PdeliveryCollectorSha256=$collector_sha" \
         "-PdeliverySmokeModel=$smoke_model" \
         "-PdeliverySmokeInstance=$smoke_instance" \
+        "-PdeliveryPreviousBaseline=true" \
         "-PdeliveryOutput=$previous_report"
 )
 

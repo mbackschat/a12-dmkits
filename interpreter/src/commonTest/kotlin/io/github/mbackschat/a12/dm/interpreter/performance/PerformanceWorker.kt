@@ -55,13 +55,14 @@ internal object PerformanceWorker {
         require(config.scenario.host == platform.host) {
             "${config.scenario.id} targets ${config.scenario.host}, worker is ${platform.host}"
         }
-        val samples = when (config.scenario.mode) {
-            PerformanceMode.FIRST_ANSWER -> firstAnswer(config, platform)
-            PerformanceMode.WARM_THROUGHPUT -> throughput(config, platform)
+        val fixtures = config.scenario.scales.map { scale ->
+            PerformanceScenarios.fixture(config.scenario, scale)
         }
-        val identity = platform.sha256(
-            PerformanceScenarios.fixture(config.scenario, config.scenario.scales.first()).contentDefinition,
-        )
+        val samples = when (config.scenario.mode) {
+            PerformanceMode.FIRST_ANSWER -> firstAnswer(config, platform, fixtures.single())
+            PerformanceMode.WARM_THROUGHPUT -> throughput(config, platform, fixtures)
+        }
+        val identity = platform.sha256(PerformanceScenarios.identityContent(fixtures))
         return PerformanceProtocol.validateFork(
             PerformanceFork(
                 protocolVersion = 1,
@@ -81,11 +82,11 @@ internal object PerformanceWorker {
     private fun firstAnswer(
         config: PerformanceWorkerConfig,
         platform: PerformancePlatform,
+        fixture: PerformanceFixture,
     ): List<PerformanceScaleSample> {
         require(config.warmup == 0) { "first-answer workers cannot warm up" }
         require(config.repetitions == 1) { "first-answer workers emit exactly one sample" }
         val scale = config.scenario.scales.single()
-        val fixture = PerformanceScenarios.fixture(config.scenario, scale)
         val started = platform.nanoTime()
         val result = fixture.evaluate(DmInterpreter(fixture.model))
         val elapsed = elapsedMillis(started, platform.nanoTime())
@@ -95,17 +96,17 @@ internal object PerformanceWorker {
     private fun throughput(
         config: PerformanceWorkerConfig,
         platform: PerformancePlatform,
+        fixtures: List<PerformanceFixture>,
     ): List<PerformanceScaleSample> {
         require(config.warmup > 0) { "throughput workers require warmup" }
         require(config.repetitions > 0 && config.repetitions % 2 == 1) {
             "throughput repetitions must be positive and odd"
         }
-        val prepared = config.scenario.scales.map { scale ->
-            val fixture = PerformanceScenarios.fixture(config.scenario, scale)
+        val prepared = fixtures.map { fixture ->
             val interpreter = DmInterpreter(fixture.model)
             val preflight = fixture.evaluate(interpreter)
             repeat(config.warmup) { fixture.evaluate(interpreter) }
-            PreparedScale(scale, fixture, interpreter, preflight, mutableListOf())
+            PreparedScale(fixture.scale, fixture, interpreter, preflight, mutableListOf())
         }
         repeat(config.repetitions) {
             prepared.forEach { sample ->

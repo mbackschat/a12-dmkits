@@ -79,6 +79,103 @@ Map smokeCli(File executable, File model, File instance, String expectedVersion)
     [version: version, outcome: 'ok/valid/fired=0/diagnostics=0']
 }
 
+Map smokeJvmLibrary(
+    def root,
+    File packedRuntime,
+    File thinJar,
+    File workRoot,
+    File model,
+    boolean previousBaseline
+) {
+    root.delete(workRoot)
+    File unpacked = new File(workRoot, 'packed-runtime')
+    root.copy {
+        from root.zipTree(packedRuntime)
+        into unpacked
+    }
+    File lib = new File(unpacked, 'lib')
+    def runtimeJars = (lib.listFiles()?.findAll { it.isFile() && it.name.endsWith('.jar') } ?: [])
+        .sort { a, b -> a.name <=> b.name }
+    if (runtimeJars.isEmpty()) {
+        throw new GradleException("${packedRuntime} contains no lib/*.jar runtime")
+    }
+    File packedThinJar = runtimeJars.find { it.name == thinJar.name }
+    if (packedThinJar == null || sha256(packedThinJar) != sha256(thinJar)) {
+        throw new GradleException("${packedRuntime} does not contain the exact thin interpreter jar ${thinJar.name}")
+    }
+
+    boolean hasModelLoader = new java.util.zip.ZipFile(packedThinJar).withCloseable { zip ->
+        zip.getEntry('io/github/mbackschat/a12/dm/interpreter/load/ModelLoader.class') != null
+    }
+    if (!hasModelLoader) {
+        if (!previousBaseline) {
+            throw new GradleException("${packedThinJar} lacks ModelLoader; current packaged-library smoke is mandatory")
+        }
+        return [
+            status: 'API_PREDATES_SMOKE',
+            package: packedRuntime.name,
+            thinJar: packedThinJar.name,
+            reason: 'The archived baseline thin jar has no ModelLoader class, so its public API predates this consumer smoke.',
+        ]
+    }
+
+    File sourceDir = new File(workRoot, 'consumer-src')
+    File classesDir = new File(workRoot, 'consumer-classes')
+    sourceDir.mkdirs()
+    classesDir.mkdirs()
+    File source = new File(sourceDir, 'ExternalInterpreterConsumer.java')
+    source.text = '''\
+import java.nio.file.Files;
+import java.nio.file.Path;
+import io.github.mbackschat.a12.dm.interpreter.DmInterpreter;
+import io.github.mbackschat.a12.dm.interpreter.eval.DocumentKt;
+import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader;
+
+public final class ExternalInterpreterConsumer {
+    public static void main(String[] args) throws Exception {
+        var model = ModelLoader.load(Files.readString(Path.of(args[0])));
+        var document = DocumentKt.newDocument(model);
+        var outcome = new DmInterpreter(model).validate(document, "en_US");
+        if (!outcome.getMessages().isEmpty() || !outcome.getUnsupported().isEmpty()) {
+            throw new IllegalStateException(
+                "expected messages=0 unsupported=0, got messages=" + outcome.getMessages().size()
+                    + " unsupported=" + outcome.getUnsupported().size());
+        }
+        System.out.println("messages=0 unsupported=0");
+    }
+}
+'''
+    String runtimeClasspath = runtimeJars.collect { it.absolutePath }.join(File.pathSeparator)
+    File javac = new File(System.getProperty('java.home'), 'bin/javac')
+    File java = new File(System.getProperty('java.home'), 'bin/java')
+    if (!javac.canExecute() || !java.canExecute()) {
+        throw new GradleException("JDK java/javac are unavailable under ${System.getProperty('java.home')}")
+    }
+    runCommand([
+        javac.absolutePath,
+        '-cp', runtimeClasspath,
+        '-d', classesDir.absolutePath,
+        source.absolutePath,
+    ])
+    String consumerClasspath = classesDir.absolutePath + File.pathSeparator + runtimeClasspath
+    def result = runCommand([
+        java.absolutePath,
+        '-cp', consumerClasspath,
+        'ExternalInterpreterConsumer',
+        model.absolutePath,
+    ])
+    if (result.output.trim() != 'messages=0 unsupported=0') {
+        throw new GradleException("external packaged-library consumer returned an unexpected result: ${result.output}")
+    }
+    [
+        status: 'EXECUTED',
+        package: packedRuntime.name,
+        thinJar: packedThinJar.name,
+        classpath: 'unpacked lib/*.jar only',
+        outcome: result.output.trim(),
+    ]
+}
+
 gradle.projectsEvaluated {
     def root = gradle.rootProject
     def interpreter = root.project(':interpreter')
@@ -141,7 +238,7 @@ gradle.projectsEvaluated {
     def nativeOverride = root.providers.gradleProperty('deliveryNativeBinary')
     def snapshot = root.tasks.register('interpreterDeliveryFootprintSnapshot') {
         group = 'measurement'
-        description = 'Write exact thin/packed/npm/native/trimmed-JVM delivery byte bases and previous-release deltas.'
+        description = 'Write exact thin/packed/JS-KLIB/native/trimmed-JVM delivery byte bases and previous-release deltas.'
         dependsOn packedJvm
         dependsOn trimmedJvm
         dependsOn interpreter.tasks.named('jsJar')
@@ -196,9 +293,19 @@ gradle.projectsEvaluated {
             }
             boolean skipSmoke = root.providers.gradleProperty('deliverySkipArtifactSmoke')
                 .map { it.toBoolean() }.getOrElse(false)
+            boolean previousBaseline = root.providers.gradleProperty('deliveryPreviousBaseline')
+                .map { it.toBoolean() }.getOrElse(false)
             def artifactSmoke = skipSmoke
                 ? [status: 'SKIPPED_FOR_COLLECTOR_TEST_ONLY']
                 : [
+                    packagedJvmLibrary: smokeJvmLibrary(
+                        root,
+                        packed,
+                        jvmJar,
+                        deliveryDir.get().dir('external-jvm-consumer').asFile,
+                        smokeModel,
+                        previousBaseline,
+                    ),
                     nativeCli: smokeCli(nativeBinary, smokeModel, smokeInstance, root.version.toString()),
                     trimmedJvmCli: smokeCli(trimmedLaunchers[0], smokeModel, smokeInstance, root.version.toString()),
                 ]

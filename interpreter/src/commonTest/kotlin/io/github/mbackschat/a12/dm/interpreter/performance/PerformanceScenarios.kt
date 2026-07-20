@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 
 internal enum class PerformanceHost { JVM, NODE }
 
@@ -20,6 +21,7 @@ internal enum class PerformanceScenario(
     val model: PerformanceModel,
     val scales: List<Int>,
     val workloadIdentity: String,
+    val locale: String = "en_US",
 ) {
     JVM_48_RULES_FIRST_ANSWER(
         "jvm-48-rules-500-rows-first-answer", 1, PerformanceHost.JVM, PerformanceMode.FIRST_ANSWER,
@@ -63,22 +65,50 @@ internal data class PerformanceSemanticResult(
     val outcome: String,
 )
 
-internal class PerformanceFixture(
+internal data class PerformanceFixture(
     val model: ModelDef,
     val document: Document,
-    val contentDefinition: String,
-    private val expected: (PerformanceSemanticResult) -> Boolean,
+    val modelJson: String,
+    val scenario: PerformanceScenario,
+    val scale: Int,
+    val locale: String,
+    val timeZone: ModelTimeZone,
+    val expected: PerformanceSemanticResult,
 ) {
     fun evaluate(interpreter: DmInterpreter): PerformanceSemanticResult {
-        val result = interpreter.validate(document)
+        val result = interpreter.validate(document, locale)
         val codes = result.messages.map { it.code }.distinct()
         val semantic = PerformanceSemanticResult(
             supported = result.unsupported.isEmpty(),
             cardinality = result.messages.size,
             outcome = "codes=${codes.joinToString(",")}",
         )
-        require(expected(semantic)) { "performance scenario semantic mismatch: $semantic" }
+        require(semantic == expected) {
+            "performance scenario semantic mismatch: expected=$expected actual=$semantic"
+        }
         return semantic
+    }
+
+    fun identityContent(): String = canonicalContent {
+        put("format", "a12-performance-scenario-v2")
+        put("scenario", scenario.id)
+        put("version", scenario.version.toString())
+        put("host", scenario.host.name)
+        put("mode", scenario.mode.name)
+        put("model", scenario.model.name)
+        put("workload", scenario.workloadIdentity)
+        put("model-json", modelJson)
+        put("scale", scale.toString())
+        put("locale", locale)
+        put("time-zone", timeZone.name)
+        put("expected-supported", expected.supported.toString())
+        put("expected-cardinality", expected.cardinality.toString())
+        put("expected-outcome", expected.outcome)
+        document.valuedFields().forEach { field ->
+            put("field-path", field.path)
+            put("field-reps", field.reps.joinToString(","))
+            put("field-value", field.raw)
+        }
     }
 }
 
@@ -94,15 +124,26 @@ internal object PerformanceScenarios {
             PerformanceModel.MANY_RULES_48, PerformanceModel.MANY_RULES_192 ->
                 populateNestedLowFiring(document, scale)
         }
-        val expectedCardinality = expectedCardinality(scenario.model, scale)
-        val expectedOutcome = expectedOutcome(scenario.model)
+        val expected = PerformanceSemanticResult(
+            supported = true,
+            cardinality = expectedCardinality(scenario.model, scale),
+            outcome = expectedOutcome(scenario.model),
+        )
         return PerformanceFixture(
-            model,
-            document,
-            "$modelJson\nscenario=${scenario.id}@${scenario.version}\nworkload=${scenario.workloadIdentity}",
-        ) { result ->
-            result.supported && result.cardinality == expectedCardinality && result.outcome == expectedOutcome
-        }
+            model = model,
+            document = document,
+            modelJson = modelJson,
+            scenario = scenario,
+            scale = scale,
+            locale = scenario.locale,
+            timeZone = model.timeZone,
+            expected = expected,
+        )
+    }
+
+    fun identityContent(fixtures: List<PerformanceFixture>): String = canonicalContent {
+        put("format", "a12-performance-scenario-set-v2")
+        fixtures.forEach { fixture -> put("fixture", fixture.identityContent()) }
     }
 
     private fun populateFlat(document: Document, rows: Int) {
@@ -146,4 +187,22 @@ internal object PerformanceScenarios {
     private const val SUB_KEY = "/Perf/Lines/Subs/SubKey"
     private const val COST = "/Perf/Lines/Subs/Cost"
     private const val SUBS_PER_LINE = 5
+}
+
+private inline fun canonicalContent(block: CanonicalPerformanceContent.() -> Unit): String =
+    CanonicalPerformanceContent().apply(block).toString()
+
+private class CanonicalPerformanceContent {
+    private val value = StringBuilder()
+
+    fun put(label: String, content: String) {
+        appendFramed(label)
+        appendFramed(content)
+    }
+
+    override fun toString(): String = value.toString()
+
+    private fun appendFramed(content: String) {
+        value.append(content.length).append(':').append(content)
+    }
 }
