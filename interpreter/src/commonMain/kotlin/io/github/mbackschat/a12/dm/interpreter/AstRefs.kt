@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
+import io.github.mbackschat.a12.dm.interpreter.eval.FunctionOp
 
 // Pure AST reference walks shared by the I2 seam collaborators (IF117) — which field/star paths a
 // condition or expression references, in the two views the engine needs: the star-free SCOPE view
@@ -13,7 +14,14 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 internal fun referencedFieldPaths(expr: Expr): List<String> = when (expr) {
     is Expr.Field -> listOf(expr.path)
     is Expr.Star -> listOf(expr.path) + (expr.having?.let { condDepRefs(it) } ?: emptyList())
-    is Expr.Func -> expr.args.flatMap { referencedFieldPaths(it) }
+    // CurrentRepetition reads a structural row coordinate, not the values contained by its group operand.
+    // Treating that group path as a cell dependency makes expandGroupDependency invent edges to every
+    // computation below the group and can manufacture cycles between otherwise independent computations.
+    is Expr.Func -> if (FunctionOp.byName(expr.name) == FunctionOp.CURRENT_REPETITION) {
+        emptyList()
+    } else {
+        expr.args.flatMap { referencedFieldPaths(it) }
+    }
     is Expr.Arith -> referencedFieldPaths(expr.left) + referencedFieldPaths(expr.right)
     is Expr.EnumCategory -> listOf(expr.path)
     is Expr.SemanticIndex -> listOfNotNull(expr.path, expr.indexFieldPath)

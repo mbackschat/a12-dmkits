@@ -1938,3 +1938,11 @@ Computation consumes the ordered expanded cell stream instead. Every reached inv
 `ValidValues.patternSample` formerly compiled a field pattern for every generated cell, so setup work scaled with patterned fields × rows × regex compilation and could dominate the evaluation whose performance the generated document was meant to measure. The generator-owned `PreparedValidValues` now prepares each distinct pattern source once, reuses the shared `PatternRegistry`, and caches both successful and unavailable samples. The cache is scoped to one `SeedGenerator`; independent generators share no mutable state.
 
 *Locked:* `SeedGeneratorPatternPreparationTest` generates 2,000 rows across three fields with two distinct pattern sources, proves exactly two preparations and compilations, locks deterministic reuse, and proves an independent generator receives its own preparation cache on JVM and Node.
+
+### IF190 — structural `CurrentRepetition` operands do not create computation dependencies (SHIPPED 2026-07-21)
+
+A synthesized depth-shaped model first exposed a false computation-cycle rejection. The dependency walk treated the group operand of `CurrentRepetition(group)` like a value reference, after which group expansion added an edge to every computed field below that group. A legal pair—one computation guarded by the current row coordinate and a second computation reading the first target—therefore became a manufactured cycle.
+
+The dependency projection now excludes only `CurrentRepetition`'s structural group operand. Ordinary function operands remain value dependencies, and the independent scope/message reference walks still retain the group path. This matches the kernel's calculation-operand collector and fixes the dependency mechanism rather than suppressing one generated model.
+
+*Locked:* `CurrentRepetitionComputationDependencyDiffTest` authors a small shipment model through the typed dmkits surface and tri-checks dynamic Groovy, generated Java, and the interpreter; multiplatform `CurrentRepetitionComputationDependencyTest` locks the same structural guard plus real downstream dependency on JVM and Node.
