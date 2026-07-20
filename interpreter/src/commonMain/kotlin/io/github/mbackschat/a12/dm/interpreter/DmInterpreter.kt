@@ -81,7 +81,9 @@ class DmInterpreter @JvmOverloads constructor(
     /** The iteration-scope machinery + the RepetitionNotUnique evaluator — call-invariant I2 seam collaborators (IF117). */
     private val scopes = IterationScopes(model)
     private val rnuEval = RepetitionNotUniqueEvaluator(model, scopes)
-    private val parsedModel = ParsedModel(model)
+    /** Nullable, instance-local deterministic seam used only by model-static performance guards. */
+    internal var preparationObserver: PreparationObserver? = null
+    private val parsedModel = ParsedModel(model) { preparationObserver }
     /** Nullable, instance-local structural seam used only by the cache-lifetime guard. */
     internal var cacheObserver: CacheObserver? = null
     private val preparedModel = PreparedModel(
@@ -89,7 +91,8 @@ class DmInterpreter @JvmOverloads constructor(
         parsedModel,
         scopes,
         rnuEval,
-        PreparationSupport(
+        observer = { preparationObserver },
+        support = PreparationSupport(
             clock = clock,
             predefinedTypes = predefinedTypes,
             customConditions = customConditions,
@@ -107,6 +110,7 @@ class DmInterpreter @JvmOverloads constructor(
         checks,
         patterns = patterns,
         cacheObserver = { cacheObserver },
+        preparationObserver = { preparationObserver },
     )
 
     /**

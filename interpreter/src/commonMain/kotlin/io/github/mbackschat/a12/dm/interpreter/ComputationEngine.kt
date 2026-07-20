@@ -43,7 +43,24 @@ internal class ComputationEngine(
     private val checks: AutoChecks,
     private val patterns: PatternRegistry,
     private val cacheObserver: () -> CacheObserver? = { null },
+    private val preparationObserver: () -> PreparationObserver? = { null },
 ) {
+
+    private val allComputations: Lazy<List<ComputationDef>> = lazy {
+        observePreparation(PreparationWork.ALL_COMPUTATION_ORDER, "<all>")
+        orderedFrom(model.computations.map { it.targetPath })
+    }
+    private val computationClosures: Map<String, Lazy<List<ComputationDef>>> =
+        model.computations.map { it.targetPath }.distinct().associateWith { target ->
+            lazy {
+                observePreparation(PreparationWork.COMPUTATION_CLOSURE, target)
+                orderedFrom(listOf(target))
+            }
+        }
+
+    private fun observePreparation(work: PreparationWork, key: String) {
+        preparationObserver()?.performed(PreparationEvent(work, key))
+    }
 
     /**
      * Every computed-field outcome for the WHOLE model WITH its target cell's repetition indices
@@ -54,7 +71,7 @@ internal class ComputationEngine(
      * computations in dependency order.
      */
     fun computeInstances(doc: Document, locale: String): List<Computed> =
-        computeOver(doc, computationsInDependencyOrder(), locale)
+        computeOver(doc, allComputations.value, locale)
 
     /**
      * Compute ONE computed field — its transitive computed-dependency CLOSURE run in dependency order (so cascade
@@ -322,26 +339,17 @@ internal class ComputationEngine(
     }
 
     /**
-     * The model's computations in **dependency order** — a computation whose expression references another
-     * computation's target field comes AFTER it (the cascade). A DFS topological sort; a cyclic dependency
-     * (which the kernel rejects at codegen) throws. References are taken over ALL field/star paths so a
-     * dependency through an aggregate over a computed field is ordered too.
-     */
-    private fun computationsInDependencyOrder(): List<ComputationDef> =
-        orderedFrom(model.computations.map { it.targetPath })
-
-    /**
      * The transitive computed-dependency CLOSURE of [fieldPath], in dependency order — [fieldPath]'s own
      * computation(s) plus (recursively) every computation whose target [fieldPath] reads, and so on UPSTREAM
      * (never its dependents). The subset [computeField] runs so a cascade operand isn't read stale while unrelated
      * computations are pruned. A non-computed [fieldPath] (no computation targets it) yields an empty list.
      */
     private fun dependencyClosureOf(fieldPath: String): List<ComputationDef> =
-        orderedFrom(listOf(fieldPath))
+        computationClosures[fieldPath]?.value ?: emptyList()
 
     /**
-     * The DFS topological sort shared by [computationsInDependencyOrder] (roots = every target) and
-     * [dependencyClosureOf] (root = one field). Recurses into the targets a computation reads BEFORE emitting it,
+     * The DFS topological sort shared by [allComputations] (roots = every target) and [dependencyClosureOf]
+     * (root = one field). Recurses into the targets a computation reads BEFORE emitting it,
      * so a target is ordered after every target it depends on. A field can be targeted by MULTIPLE computations
      * (a composed base + subtype override — IF87), emitted together in DOCUMENT order ([groupBy] preserves
      * encounter order — the order [computeOver]'s first-non-empty-wins consumes). A cyclic dependency (which the

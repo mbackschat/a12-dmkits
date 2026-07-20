@@ -593,6 +593,60 @@ object PerfCatalog {
         }
     }
 
+    /** Computation regime lock: a stale value is cleared when the common guard does not hold. */
+    fun computeCleared(): PerfScenario {
+        val comp = lines.computation(amount) {
+            it.name("AmountCleared")
+                .commonPrecondition(qty.gt(1_000))
+                .calc(NumberLiteral.of("1"))
+                .message(Dsl.en("x")).build()
+        }
+        return computationOutcomeScenario("compute CLEARED", comp) { field, reps, _ ->
+            when (field.path) {
+                AMOUNT -> "7.00"
+                QTY -> "1"
+                LINE_KEY -> "K" + reps.joinToString("_")
+                else -> null
+            }
+        }
+    }
+
+    /** Computation regime lock: every product exceeds the kernel's 15-significant-digit stored-number form. */
+    fun computeErrored(): PerfScenario {
+        val operation = qty.asNumber().times(Dsl.number("999999999999999")).expression()
+        val comp = lines.computation(amount) {
+            it.name("AmountErrored").calc(operation).message(Dsl.en("x")).build()
+        }
+        return computationOutcomeScenario("compute ERRORED", comp) { field, reps, _ ->
+            when (field.path) {
+                AMOUNT -> null
+                QTY -> "99"
+                LINE_KEY -> "K" + reps.joinToString("_")
+                else -> null
+            }
+        }
+    }
+
+    private fun computationOutcomeScenario(
+        name: String,
+        computation: Computation,
+        values: ValueStrategy,
+    ): PerfScenario {
+        val kernelModel = TypedRules.inject(perfJson, computation)
+        val interpModel = ModelDef(
+            fields,
+            emptyList(),
+            computations = listOf(TypedRules.def(computation)),
+            repeatableGroups = setOf(LINES, SUBS),
+            declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
+            indexFields = setOf(LINE_KEY, SUB_KEY),
+        )
+        val generator = SeedGenerator(interpModel)
+        return PerfScenario(name, kernelModel, interpModel, PerfOp.COMPUTE) { sink, n, _ ->
+            generator.populate(sink, rowsOf = { group, _, _ -> if (group == LINES) n else 0 }, value = values)
+        }
+    }
+
     /**
      * **Tiered-computation compute() at scale (IF21)** — a per-Line `Amount` selected by a `precondition` over
      * `Qty`: `[Qty] < 100 → [Qty]` else `[Qty] >= 100 → 0`. The compute path evaluates the precondition AND

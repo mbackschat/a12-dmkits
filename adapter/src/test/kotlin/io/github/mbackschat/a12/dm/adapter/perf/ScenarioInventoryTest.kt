@@ -26,7 +26,10 @@ class ScenarioInventoryTest {
             "B4-cross-level-ref",
             "B5-deep-nested-star",
             "B6-many-rules",
+            "B6-many-rules-low-firing",
             "B7-compute",
+            "compute-cleared",
+            "compute-errored",
             "B8-combined",
             "B9-berlin-datetime",
             "B9-utc-control",
@@ -40,6 +43,16 @@ class ScenarioInventoryTest {
         PerfInventory.dispositions.values.filterIsInstance<InventoryDisposition.Excluded>().forEach {
             assertTrue(it.reason.isNotBlank(), "an inventory exclusion must explain why the case is not benchmarked")
         }
+    }
+
+    @Test
+    fun requiredValidationAndComputationRegimesAreDeclared() {
+        val regimes = PerfInventory.cases.map { it.id.resultRegime }.toSet()
+        assertTrue(ResultRegime.VALIDATION_FIRING in regimes)
+        assertTrue(ResultRegime.VALIDATION_LOW_FIRING in regimes)
+        assertTrue(ResultRegime.COMPUTE_VALUE in regimes)
+        assertTrue(ResultRegime.COMPUTE_CLEARED in regimes)
+        assertTrue(ResultRegime.COMPUTE_ERRORED in regimes)
     }
 
     @Test

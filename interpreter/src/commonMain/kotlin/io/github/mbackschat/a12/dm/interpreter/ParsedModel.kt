@@ -24,7 +24,10 @@ internal class ParsedAlternative(val precondition: Cond?, val operation: Expr, v
  * the `RepetitionNotUnique` recognizer (via the caller-supplied AST), and the [ComputationEngine]
  * ([parsedOf] + [implicitRules]).
  */
-internal class ParsedModel(private val model: ModelDef) {
+internal class ParsedModel(
+    private val model: ModelDef,
+    private val observer: () -> PreparationObserver? = { null },
+) {
 
     /**
      * The parser's bare-ref resolver, model-aware: `base/name` is used as-is when it is already a declared
@@ -56,10 +59,16 @@ internal class ParsedModel(private val model: ModelDef) {
      * a race. A candidate rule not in the model (an ad-hoc [evalCandidate]) falls back to a one-off parse.
      */
     private val ruleCondAst: Map<RuleDef, Lazy<Cond>> =
-        model.rules.associateWith { r -> lazy { parseCondition(r.conditionText, r.group, refResolver) } }
+        model.rules.associateWith { r -> lazy {
+            observe(PreparationWork.RULE_AST, r.path)
+            parseCondition(r.conditionText, r.group, refResolver)
+        } }
 
     private val compParsedAst: Map<ComputationDef, Lazy<ParsedComputation>> =
-        model.computations.associateWith { c -> lazy { parseComputation(c) } }
+        model.computations.associateWith { c -> lazy {
+            observe(PreparationWork.COMPUTATION_AST, c.targetPath)
+            parseComputation(c)
+        } }
 
     /** The implicit per-computation validation rules (IF32/IF65): one synthetic [RuleDef] per named computation,
      *  with its condition AST **built directly from the already-parsed alternatives** ([parsedOf]) rather than
@@ -67,7 +76,16 @@ internal class ParsedModel(private val model: ModelDef) {
      *  compute path uses, and no fragile string round-trip can fail to re-parse (IF65). The AST is cached (lazy,
      *  forced by [condAstOf]) exactly like a model rule's. */
     private val implicitComputationAst: Map<RuleDef, Lazy<Cond>> =
-        model.computations.mapNotNull { c -> implicitComputationRuleDef(c)?.let { it to lazy { implicitComputationCond(c) } } }.toMap()
+        model.computations.mapNotNull { c -> implicitComputationRuleDef(c)?.let { rule ->
+            rule to lazy {
+                observe(PreparationWork.IMPLICIT_RULE_AST, rule.path)
+                implicitComputationCond(c)
+            }
+        } }.toMap()
+
+    private fun observe(work: PreparationWork, key: String) {
+        observer()?.performed(PreparationEvent(work, key))
+    }
 
     private fun parseComputation(c: ComputationDef): ParsedComputation = ParsedComputation(
         c.commonPrecondition?.let { parseCondition(it, c.group, refResolver) },

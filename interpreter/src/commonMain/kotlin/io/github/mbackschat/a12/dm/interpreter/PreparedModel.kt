@@ -43,13 +43,24 @@ internal class PreparedModel(
     private val parsed: ParsedModel,
     private val scopes: IterationScopes,
     private val repetitionNotUnique: RepetitionNotUniqueEvaluator,
+    private val observer: () -> PreparationObserver? = { null },
     private val support: PreparationSupport,
 ) {
     private val rulePlans: Map<RuleDef, Lazy<PreparedRulePlan>> =
-        (model.rules + parsed.implicitRules).associateWith { rule -> lazy { prepareRule(rule) } }
+        (model.rules + parsed.implicitRules).associateWith { rule -> lazy {
+            observe(PreparationWork.RULE_PLAN, rule.path)
+            prepareRule(rule)
+        } }
 
     private val computationPlans: Map<ComputationDef, Lazy<ParsedComputation>> =
-        model.computations.associateWith { computation -> lazy { prepareComputation(computation) } }
+        model.computations.associateWith { computation -> lazy {
+            observe(PreparationWork.COMPUTATION_PLAN, computation.targetPath)
+            prepareComputation(computation)
+        } }
+
+    private fun observe(work: PreparationWork, key: String) {
+        observer()?.performed(PreparationEvent(work, key))
+    }
 
     /** The prepared plan execution uses for [rule]; ad-hoc candidates are prepared once for that call. */
     fun rule(rule: RuleDef): PreparedRulePlan =

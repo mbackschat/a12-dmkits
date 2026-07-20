@@ -3,6 +3,8 @@ package io.github.mbackschat.a12.dm.adapter.perf
 import io.github.mbackschat.a12.dm.adapter.perf.Complexity.LINEAR
 import io.github.mbackschat.a12.dm.adapter.perf.PerfOp.COMPUTE
 import io.github.mbackschat.a12.dm.adapter.perf.PerfOp.VALIDATE
+import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.COMPUTE_CLEARED
+import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.COMPUTE_ERRORED
 import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.COMPUTE_VALUE
 import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.VALIDATION_FIRING
 import io.github.mbackschat.a12.dm.adapter.perf.ResultRegime.VALIDATION_LOW_FIRING
@@ -17,7 +19,10 @@ enum class BenchmarkScenario(val id: String) {
     B4("B4-cross-level-ref"),
     B5("B5-deep-nested-star"),
     B6("B6-many-rules"),
+    B6_LOW_FIRING("B6-many-rules-low-firing"),
     B7("B7-compute"),
+    COMPUTE_CLEARED("compute-cleared"),
+    COMPUTE_ERRORED("compute-errored"),
     B8("B8-combined"),
     B9_BERLIN("B9-berlin-datetime"),
     B9_UTC("B9-utc-control"),
@@ -136,6 +141,20 @@ object PerfInventory {
             PerfCatalog::b6,
         )
 
+        BenchmarkScenario.B6_LOW_FIRING -> include(
+            ScenarioId.builder(scenario.id)
+                .operation(VALIDATE).resultRegime(VALIDATION_LOW_FIRING).complexity(LINEAR)
+                .generator(GeneratorIdentity("PerfCatalog.manyRules", parameters = mapOf(
+                    "firing" to "false",
+                    "rules" to "12",
+                    "values" to "low-firing-v1",
+                )))
+                .scaleAxis("line-rows").expectedResultCardinality(listOf(0))
+                .reviewedFingerprint("1d233951abf0e9c25255cfcf9780cb8da8b9d55379acc2302cfadbce740d6f6e").build(),
+            600,
+            { PerfCatalog.manyRules(12, firing = false) },
+        )
+
         BenchmarkScenario.B7 -> include(
             ScenarioId.builder(scenario.id)
                 .operation(COMPUTE).resultRegime(COMPUTE_VALUE).complexity(LINEAR)
@@ -144,6 +163,26 @@ object PerfInventory {
                 .reviewedFingerprint("e859c7ebc01f150a7ebf2638ebd060c7c37c69e38fcab88d290d43868142b20c").build(),
             600,
             PerfCatalog::b7,
+        )
+
+        BenchmarkScenario.COMPUTE_CLEARED -> include(
+            ScenarioId.builder(scenario.id)
+                .operation(COMPUTE).resultRegime(COMPUTE_CLEARED).complexity(LINEAR)
+                .generator(GeneratorIdentity("PerfCatalog.computeCleared", parameters = mapOf("values" to "cleared-v1")))
+                .scaleAxis("line-rows").expectedResultCardinality(listOf(1_000))
+                .reviewedFingerprint("41aa9f6e7a53bac09cc94dbc4483ed01402cf2de93a51946c66dfa81be3ae8b1").build(),
+            1_000,
+            PerfCatalog::computeCleared,
+        )
+
+        BenchmarkScenario.COMPUTE_ERRORED -> include(
+            ScenarioId.builder(scenario.id)
+                .operation(COMPUTE).resultRegime(COMPUTE_ERRORED).complexity(LINEAR)
+                .generator(GeneratorIdentity("PerfCatalog.computeErrored", parameters = mapOf("values" to "errored-v1")))
+                .scaleAxis("line-rows").expectedResultCardinality(listOf(1_000))
+                .reviewedFingerprint("a2f88b6932abaa900254cd6c5c71abdd668ad069ae0fccfd525e83ebf86ea5de").build(),
+            1_000,
+            PerfCatalog::computeErrored,
         )
 
         BenchmarkScenario.B8 -> include(
