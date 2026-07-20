@@ -5,6 +5,10 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -21,18 +25,23 @@ import org.junit.jupiter.api.Test
  *  3. A `Having` filter on a rep-list arg is legal and APPLIED per cell — **keep iff the complete filter is
  *     TRUE**. A `$`-bearing term has no outer binding for a plain predicate's arg, so the codegen makes the
  *     complete comparison/predicate trivially TRUE. Thus `!= $RuleGroup` / `== $RuleGroup` keeps ALL rows.
- *  4. Polarity is **filter-derived**: OMISSION iff a filled cell of a filter-bearing operand was processed
- *     at/before the fire (operand-order-dependent), VALUE otherwise.
- *  5. `AtLeastOneDateRangeOverlaps(scalar, list)` is genuinely scalar-vs-list (no self-pair); a not-filled
- *     scalar → no fire; OMISSION iff the MATCHED container has a filter.
+ *  4. Any-pair polarity follows a sticky REACHED-filter flag: only a kept, filled range from a filtered operand
+ *     flips it; an empty filtered container does not taint, while a reached disjoint range can taint a later pair.
+ *  5. `AtLeastOneDateRangeOverlaps(scalar, list)` is genuinely scalar-vs-list (no self-pair); an unavailable
+ *     scalar exits before the list scan, and only the MATCHED list container determines polarity.
  *
  * Own-domain (an insurance/e-commerce order: coverage windows on the order and per-item). Conditions are the
- * kernel's stored form fed to all three engines (the interpreter's PARSER accepting `Having` on a predicate
- * rep-list arg is under test), so they are authored as the string the kernel emits, not re-derived.
+ * kernel's stored form fed to all three engines. The original parser-characterization cases retain their
+ * canonical strings because parsing `Having` on a predicate operand is under test; the reached-scan additions
+ * author through the typed rulekit surface and render that same canonical form.
  */
 class DateRangeOverlapSemanticsDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
+    private val model = BoundModel.ofJson(order)
+    private val items = model.group("/Order/Items")
+    private val itemCoverages get() = model.flatten("/Order/Items*/ItemCoverage")
+    private fun render(condition: Condition): String = DslRenderer().render(condition)
 
     // Three item coverages: rows 1 & 2 OVERLAP (Jan and mid-Jan..mid-Feb), row 3 (March) is disjoint from both.
     private val cov = listOf<String?>("01.01.2026-31.01.2026", "15.01.2026-15.02.2026", "01.03.2026-31.03.2026")
@@ -92,9 +101,12 @@ class DateRangeOverlapSemanticsDiffTest {
         val model = RuntimeLaws.withRule(order, group, "R_$code", errRel, code, cond)
         val kDoc = kDoc(scalars, coverages)
         val groovy = RuntimeLaws.typeOf(model, code, kDoc).map { it.name }.orElse(null)
+        val engine = RuntimeLaws.kernelJavaEngine(model)
+        val javaStatic = engine.messages(engine.instance(kDoc)).firstOrNull { it.code() == code }?.type()?.name
         val (interp, doc) = iDoc(model, scalars, coverages)
         val interpType = interp.validateFull(doc).firstOrNull { it.code == code }
             ?.let { if (it.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR" }
+        assertEquals(groovy, javaStatic, "$cond — polarity groovy-dynamic vs java-static codegen")
         assertEquals(groovy, interpType, "$cond — polarity kernel=$groovy interp=$interpType")
         return groovy
     }
@@ -201,6 +213,50 @@ class DateRangeOverlapSemanticsDiffTest {
     @Test fun polarityFilterBearingIsOmission() =
         assertEquals("OMISSION_ERROR", triType("/Order/Items", "../ItemCoverage", "PO",
             having("CurrentRepetition(/Order/Items) <= 3"), listOf(acme), cov))
+
+    /** Any-pair's sticky flag advances only after a kept, filled cell from the filtered operand is reached.
+     * An empty filtered container therefore cannot taint the later unfiltered overlap. */
+    @Test fun anyPairEmptyFilteredOperandDoesNotTaintLaterUnfilteredPair() {
+        val emptyFiltered = itemCoverages.having(Dsl.currentRepetition(items).ne(Dsl.currentRepetition(items)))
+        val condition = render(Dsl.dateRangesOverlap(model.field(CW), emptyFiltered, itemCoverages))
+        assertEquals("VALUE_ERROR", triType(
+            "/Order", "../CoverageWindow", "PAE", condition,
+            window("10.01.2026-20.01.2026"), cov,
+        ))
+    }
+
+    /** Any-pair's reached filter is sticky even when that filtered range is disjoint from the eventual pair. */
+    @Test fun anyPairReachedFilteredCellTaintsALaterUnfilteredPair() {
+        val disjointFiltered = itemCoverages.having(Dsl.currentRepetition(items).eq(3))
+        val condition = render(Dsl.dateRangesOverlap(disjointFiltered, model.field(CW), itemCoverages))
+        assertEquals("OMISSION_ERROR", triType(
+            "/Order", "../CoverageWindow", "PAR", condition,
+            window("10.01.2026-20.01.2026"), cov,
+        ))
+    }
+
+    /** Scalar-vs-list derives polarity from the matched container only: an earlier filtered, disjoint range
+     * is reached but does not taint the later unfiltered match. */
+    @Test fun scalarListEarlierFilteredDisjointContainerDoesNotTaintUnfilteredMatch() {
+        val disjointFiltered = itemCoverages.having(Dsl.currentRepetition(items).eq(3))
+        val condition = render(Dsl.atLeastOneDateRangeOverlaps(
+            model.field(CW), disjointFiltered, itemCoverages,
+        ))
+        assertEquals("VALUE_ERROR", triType(
+            "/Order", "../CoverageWindow", "PSD", condition,
+            window("10.01.2026-20.01.2026"), cov,
+        ))
+    }
+
+    /** The scalar-vs-list match itself is OMISSION when its containing list operand is filtered. */
+    @Test fun scalarListMatchedFilteredContainerIsOmission() {
+        val matchedFiltered = itemCoverages.having(Dsl.currentRepetition(items).le(2))
+        val condition = render(Dsl.atLeastOneDateRangeOverlaps(model.field(CW), matchedFiltered))
+        assertEquals("OMISSION_ERROR", triType(
+            "/Order", "../CoverageWindow", "PSM", condition,
+            window("10.01.2026-20.01.2026"), cov,
+        ))
+    }
 
     private companion object {
         const val CN = "/Order/CustomerName"

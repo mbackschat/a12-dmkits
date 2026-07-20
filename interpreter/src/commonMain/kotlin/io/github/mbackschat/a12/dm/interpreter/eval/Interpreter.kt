@@ -750,10 +750,10 @@ class Interpreter(
      * range "overlaps" (the self-pair), and a list-internal pair fires even when a scalar operand is disjoint.
      * Empty/malformed cells are SKIPPED (no unknown-suppression); an INVALID range never overlaps ([rangesOverlap]).
      *
-     * Polarity is **filter-derived** (not fill-derived): OMISSION iff a filled cell of a FILTER-bearing operand
-     * (a rep-list arg carrying a `Having`) was processed at/before the fire — the `containsFilter` flag evolves
-     * in operand order, matching the kernel exactly. Returns the (truth, polarity) [Res] so [evalPred] and
-     * [predType] share ONE scan (KERNEL-FINDINGS §6, IF72).
+     * Polarity follows the reached scan: [containsFilter] becomes sticky only after a kept, filled cell from a
+     * filter-bearing operand is processed. An empty/dropped filtered operand therefore cannot taint a later
+     * pair, while a reached filtered range can taint a later pair even when it is disjoint from that pair.
+     * Returns the (truth, polarity) [Res] so [evalPred] and [predType] share ONE scan (KERNEL-FINDINGS §6, IF72).
      */
     internal fun overlapAny(args: List<Expr>): Res {
         val seen = mutableListOf<Val.Range>()
@@ -773,9 +773,10 @@ class Interpreter(
     /**
      * `AtLeastOneDateRangeOverlaps(scalar In list…)` — genuinely scalar-vs-list (kernel
      * `mindestensEinDatumsBereichUeberlappendFL`): the single unstarred [args]`[0]` range is compared against
-     * each list cell; it is NOT a member of the set, so there is no self-pair. A not-filled/malformed scalar →
-     * FALSE (no fire — NOT unknown-suppression). Polarity: OMISSION iff the MATCHED container (the list operand
-     * whose cell overlapped) carries a `Having`, VALUE otherwise (KERNEL-FINDINGS §6, IF72).
+     * each list cell; it is NOT a member of the set, so there is no self-pair. A not-filled, malformed, or
+     * formally unavailable scalar exits FALSE before the list scan. Polarity belongs only to the MATCHED list
+     * container: an earlier filtered-but-disjoint or empty container cannot taint a later unfiltered match
+     * (KERNEL-FINDINGS §6, IF72).
      */
     internal fun atLeastOneOverlap(args: List<Expr>): Res {
         val scalar = evalExpr(args[0]) as? Val.Range ?: return Res.of(Tri.FALSE, MsgType.VALUE)
@@ -822,13 +823,6 @@ class Interpreter(
             .filter { rc -> overlapFilterInterp(rc).fires(star.having) }
             .mapNotNull { rc -> if (rc.filled(star.path)) rc.field(star.path) else null }
     }
-
-    /** Closed-interval overlap of two ISO date ranges (lexicographic compare = chronological on ISO). An INVALID
-     *  range (start > end) never overlaps anything (kernel `DatumBereich.ueberlappt` returns false for either
-     *  side invalid), so both sides must be well-formed first. Overlap ⇔ `end1 ≥ start2 ∧ end2 ≥ start1` (closed —
-     *  touching ranges overlap; KERNEL-FINDINGS §6). */
-    private fun rangesOverlap(x: Val.Range, y: Val.Range): Boolean =
-        x.start <= x.end && y.start <= y.end && x.end >= y.start && y.end >= x.start
 
     /** `value PatternMatched/PatternViolated "regex"` — anchored full-value match; empty → not evaluated. */
     internal fun evalPattern(p: Cond.Pattern): Tri {

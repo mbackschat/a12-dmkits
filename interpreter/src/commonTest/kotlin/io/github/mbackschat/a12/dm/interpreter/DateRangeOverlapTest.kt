@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.eval.rangesOverlap
+import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -9,14 +11,16 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 /**
  * Multiplatform (JVM + JS) lock for the `DateRangesOverlap` / `AtLeastOneDateRangeOverlaps` semantics (IF72) —
  * the PURE interpreter (parser + eval), so the parser accepting a `Having` on a boolean predicate's rep-list arg
- * and the any-pair / keep-law / filter-derived-polarity evaluation run on Kotlin/JS too. The values here are the
- * ones the kernel tri-check locks in `adapter.laws.DateRangeOverlapSemanticsDiffTest` (groovy == java-static);
- * this proves the kernel-free build reproduces them. Own-domain (an insurance/e-commerce order with coverage
- * windows). `dd.MM.yyyy` ranges separated by `-`.
+ * and the any-pair / keep-law / reached-filter-polarity evaluation run on Kotlin/JS too. The direct resolved-range
+ * control also keeps the defensive inversion guard distinct from stored-value formal checking. The values here
+ * are the ones the kernel tri-check locks in `adapter.laws.DateRangeOverlapSemanticsDiffTest`
+ * (groovy == java-static); this proves the kernel-free build reproduces them. Own-domain (an insurance/e-commerce
+ * order with coverage windows). `dd.MM.yyyy` ranges separated by `-`.
  */
 class DateRangeOverlapTest {
 
@@ -71,6 +75,15 @@ class DateRangeOverlapTest {
     @Test fun invalidRangeNeverOverlaps() = assertEquals(0,
         fires("/Order", "../CoverageWindow", "DateRangesOverlap(CoverageWindow, Items*/ItemCoverage)",
             "30.06.2026-01.06.2026", listOf("01.05.2026-31.07.2026", "01.09.2026-30.09.2026", null)))
+
+    /** The resolved interval relation retains its own inverted-range guard even when a caller bypasses the
+     * stored field's earlier formal check. */
+    @Test fun resolvedInvertedRangeNeverOverlaps() = assertFalse(
+        rangesOverlap(
+            Val.Range("2026-06-30", "2026-06-01"),
+            Val.Range("2026-05-01", "2026-07-31"),
+        ),
+    )
 
     // ---- the Having keep-law (`$` unbound → trivially TRUE; malformed → drops) ------------------------------
 
