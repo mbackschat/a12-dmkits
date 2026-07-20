@@ -14,8 +14,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Isolated, init.d-free Gradle home — a sibling dir shared across the public A12 repos (matches the README
-# + the scripts). Respect an explicit GRADLE_USER_HOME (CI sets its own) and default to the sibling locally.
-export GRADLE_USER_HOME="${GRADLE_USER_HOME:-$(cd "$ROOT/.." && pwd)/.gradle-isolated}"
+# + the scripts). A linked worktree may live anywhere (often /private/tmp), so anchor the default at Git's
+# common directory / primary checkout rather than at this worktree's filesystem parent. Respect an explicit
+# GRADLE_USER_HOME (CI sets its own).
+COMMON_GIT_DIR="$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)"
+COMMON_CHECKOUT="$(cd "$COMMON_GIT_DIR/.." && pwd)"
+export GRADLE_USER_HOME="${GRADLE_USER_HOME:-$(cd "$COMMON_CHECKOUT/.." && pwd)/.gradle-isolated}"
 
 # JDK 21 is the build toolchain. On macOS, pin it via java_home (the footgun's second half: the shell's
 # JAVA_HOME may point at a newer JDK). Elsewhere (Linux/CI) leave JAVA_HOME to the caller.

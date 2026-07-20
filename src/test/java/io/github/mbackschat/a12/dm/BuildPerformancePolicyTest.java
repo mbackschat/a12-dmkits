@@ -40,6 +40,16 @@ class BuildPerformancePolicyTest {
                 "the cache smoke must run Gradle offline so a remote cache or dependency download cannot make it pass");
     }
 
+    @Test
+    void buildWrapperDerivesTheSharedHomeFromTheCommonGitDirectory() throws IOException {
+        String script = Files.readString(locate("build.sh"));
+
+        assertTrue(script.contains("rev-parse --path-format=absolute --git-common-dir"),
+                "a linked worktree must resolve the primary checkout instead of using its own filesystem parent");
+        assertTrue(script.contains("COMMON_CHECKOUT"),
+                "the isolated Gradle home must be anchored at the common checkout shared by every worktree");
+    }
+
     private static Properties buildProperties() throws IOException {
         var properties = new Properties();
         try (Reader reader = Files.newBufferedReader(locate("gradle.properties"))) {
