@@ -297,6 +297,8 @@ Not ad-hoc `measureTime` calls sprinkled in tests — a **proper, reusable harne
 
 **Model-driven seed generator + differential fuzz net — built (2026-06-23).** The instances are built by a kernel-free **`SeedGenerator`** (`…interpreter.gen`) through the `PlacementSink` seam, so the perf harness, the **differential fuzz net** (`InterpreterKernelFuzzTest` — the correctness twin of this perf differential), and the `dmtool model seed` verb all share one generator. **Both pieces have their own spec — [SEED-GENERATOR-FUZZ-SPEC.md](SEED-GENERATOR-FUZZ-SPEC.md)** (the generator's contract + the fuzz method, diverse model, value strategy, bug track record, and per-operator extension loop); this doc only consumes the generator for the perf scenarios.
 
+Patterned seeding prepares each distinct model-static pattern once per generator (IF189). Increasing the document row count therefore multiplies value placements, not regex compilation, keeping document construction from contaminating the evaluation timing it feeds.
+
 ## Architecture direction (owner hint, 2026-06-23 — keep in mind)
 
 A structural optimization to design toward (not yet committed work):

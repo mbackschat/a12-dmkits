@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.regex.compilePattern
+import io.github.mbackschat.a12.dm.interpreter.regex.PatternRegistry
 import kotlin.random.Random
 
 /**
@@ -27,6 +28,8 @@ import kotlin.random.Random
  */
 class SeedGenerator(private val model: ModelDef) {
 
+    /** Owner-scoped preparation for the model-static patterns used by the default value strategy. */
+    private val validValues = ValidValues.prepared()
     /** Group path -> its child group paths (document order, then sorted for cross-call determinism). */
     private val childGroups: Map<String, List<String>>
     /** Group path -> the fields declared directly under it, in declaration order. */
@@ -57,7 +60,8 @@ class SeedGenerator(private val model: ModelDef) {
         value: ValueStrategy = ValidValues,
     ) {
         val rnd = Random(seed)
-        roots.forEach { emit(sink, it, emptyList(), rnd, rowsOf, value) }
+        val preparedValue = if (value === ValidValues) validValues else value
+        roots.forEach { emit(sink, it, emptyList(), rnd, rowsOf, preparedValue) }
     }
 
     /**
@@ -68,6 +72,10 @@ class SeedGenerator(private val model: ModelDef) {
      */
     fun populate(sink: PlacementSink, seed: Long, rowsByGroup: Map<String, Int>, defaultRows: Int) =
         populate(sink, seed, { group, _, _ -> rowsByGroup[group] ?: defaultRows }, ValidValues)
+
+    internal fun patternCompilationCount(): Int = validValues.patternCompilationCount
+
+    internal fun patternPreparationCount(): Int = validValues.patternPreparationCount
 
     private fun emit(
         sink: PlacementSink, group: String, parentReps: List<Int>, rnd: Random,
@@ -117,14 +125,24 @@ fun interface ValueStrategy {
  * net's fill-or-empty strategy).
  */
 object ValidValues : ValueStrategy {
-    override fun value(field: FieldDef, reps: List<Int>, rnd: Random): String? = when {
+    override fun value(field: FieldDef, reps: List<Int>, rnd: Random): String? =
+        value(field, reps, rnd) { pattern -> patternSample(pattern) { sample -> compilePattern(pattern).matches(sample) } }
+
+    internal fun prepared(): PreparedValidValues = PreparedValidValues()
+
+    internal fun value(
+        field: FieldDef,
+        reps: List<Int>,
+        rnd: Random,
+        sampleFor: (String) -> String?,
+    ): String? = when {
         // An enumeration field (stored as a STRING with declared members) MUST draw a real member — a generic
         // string would be a non-member, an invalid value. Picks one of the declared values at random.
         field.enumValues.isNotEmpty() -> field.enumValues[rnd.nextInt(field.enumValues.size)]
         // A STRING pattern (unless noValueValidation waives all string checks): satisfy it cheaply, else leave
         // empty (S2 MEDIUM). A satisfying sample is VERIFIED against the pattern before use, so a wrong guess is
         // discarded (→ empty), never emitted; an empty value skips the pattern check (no stringFalschesMuster).
-        field.pattern != null && !field.noValueValidation -> patternSample(field.pattern)
+        field.pattern != null && !field.noValueValidation -> sampleFor(field.pattern)
         else -> byKind(field, reps, rnd)
     }
 
@@ -213,7 +231,7 @@ object ValidValues : ValueStrategy {
      * **The candidate is always verified** through the interpreter's compatible pattern abstraction — a wrong guess yields
      * `null` (an empty cell), never an invalid value — so an over-simple sampler stays SOUND, just less covering.
      */
-    private fun patternSample(pattern: String): String? {
+    internal fun patternSample(pattern: String, matches: (String) -> Boolean): String? {
         val sb = StringBuilder()
         var i = 0
         while (i < pattern.length) {
@@ -241,7 +259,7 @@ object ValidValues : ValueStrategy {
             }
         }
         val sample = sb.toString()
-        return if (compilePattern(pattern).matches(sample)) sample else null
+        return if (matches(sample)) sample else null
     }
 
     /** Append [atom] repeated per the quantifier at [qi] (min count: `{n}`→n, `{n,m}`→n, `+`→1, `*`/`?`→0, none→1);
@@ -301,4 +319,26 @@ object ValidValues : ValueStrategy {
         }
         return null
     }
+}
+
+/**
+ * One seed-generator owner's prepared default values. Pattern samples are model-static, so both sample
+ * construction and compatible-pattern compilation are cached by source instead of repeated for every cell.
+ */
+internal class PreparedValidValues : ValueStrategy {
+    private val patterns = PatternRegistry()
+    private val samples = mutableMapOf<String, String?>()
+
+    override fun value(field: FieldDef, reps: List<Int>, rnd: Random): String? =
+        ValidValues.value(field, reps, rnd, ::sample)
+
+    private fun sample(source: String): String? {
+        if (samples.containsKey(source)) return samples[source]
+        return ValidValues.patternSample(source) { candidate -> patterns.matches(source, candidate) }
+            .also { samples[source] = it }
+    }
+
+    val patternCompilationCount: Int get() = patterns.compilationCount
+
+    val patternPreparationCount: Int get() = samples.size
 }
