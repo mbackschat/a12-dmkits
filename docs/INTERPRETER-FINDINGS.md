@@ -1676,3 +1676,13 @@ NFR-F1's hard-zero — the interpreter carries NO runtime dependency on the kern
 - **Why IG79 stays open.** Still owed: the **equivalent kernel-backed evaluation closure** comparator + the ≤50% ratio (an owner-gated per-number promotion, IF137), the packed thin-artifact / production npm package measurement, the native-vs-trimmed-JVM image comparison, and the forked retained-heap/allocation plateau probe at N/2N/4N/8N (IG79-b). The `≤50%` / `>10%` bars are **not** gated here — measurement + the structural hard-zero only.
 
 *Locked:* `:interpreter:interpreterRuntimeClosure` (in `:interpreter:check`) — the hard-zero fails the build on a forbidden resolved dependency and records the reproducible closure size.
+
+### IF161 — the retained-footprint probe: the plateau/no-leak invariant is gated, the multi-scale space exponent is recorded (PARTIAL 2026-07-20; IG79 remains open for the rest of the footprint lane)
+
+NFR-F2 requires the interpreter's runtime state to grow with the model/document and **reach a plateau** (no leak, no per-eval duplication of document-wide state). Nothing measured this. This graduates IG79's "retained-heap/allocation probe" residual with the two pieces that need no owner promotion.
+
+- **The plateau / no-leak guard (a STRUCTURAL invariant, gated).** `RetainedHeapProbeTest.preparedEnginePlateausAcrossRepeatedEvaluation` warms a prepared engine + document, then evaluates it **400×** more and asserts the retained heap plateaus (measured Δ ≈ **0.0 MB**, generous 24 MB bound). The caches are owned by the engine / `Document`/index and keyed on that document, so repeated evaluation adds no retained state; a leaking/global cache would climb without bound. This is NFR-F2's "reaches a retained-memory plateau" invariant, not a candidate number.
+- **The multi-scale retained-heap RECORDING (informative, NOT gated).** Retained heap at `N, 2N, 4N, 8N` fits a log-log space exponent of ≈**1.00** (linear — 7.4 → 14.7 → 29.3 → 59.2 MB), recorded to the run log. It is deliberately **not** gated on the candidate `≤1.25` exponent / `≤8×` step: an in-process single run calibrates, it does not certify.
+- **Why IG79 stays open.** Owner-gated certification: the `≤1.25` exponent / `≤8×` step / `≤4×` cache-entry bars, the ≥5 forked-process protocol with a defined post-GC method + warmup/plateau criterion, Node `--expose-gc`, and instrumentable logical cache-entry counts. Also owed: the equivalent kernel-backed closure comparator + `≤50%` ratio (IF160), production npm package measurement, and the packed-artifact / native-vs-trimmed-JVM comparisons.
+
+*Locked:* `adapter.perf.RetainedHeapProbeTest.preparedEnginePlateausAcrossRepeatedEvaluation` (the plateau/no-leak invariant; the multi-scale exponent is recorded, not gated).
