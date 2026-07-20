@@ -764,9 +764,20 @@ public final class RuntimeLaws {
                     .map(IMessage::getErrorCode).sorted().toList();
         }
 
+        /** Full validation signatures ({@code code|type|indexed-pointer}), sorted for exact perf eligibility. */
+        public List<String> validationSignaturesSorted(DocumentV2 instance) {
+            return rt.validateFull(instance, config(null, Locale.US)).getMessages().stream()
+                    .map(RuntimeLaws::validationSignature).sorted().toList();
+        }
+
         /** Every computed-field outcome for an already-built instance, normalized + <b>sorted</b> (the B7 compute payload). */
         public List<String> computeOutcomesSorted(DocumentV2 instance) {
             return computeSorted(rt, instance);
+        }
+
+        /** Full computation signatures ({@code indexed-pointer|outcome|value}), sorted for exact perf eligibility. */
+        public List<String> computationSignaturesSorted(DocumentV2 instance) {
+            return computeSignaturesSorted(rt, instance);
         }
     }
 
@@ -790,6 +801,22 @@ public final class RuntimeLaws {
         r.getClearedFieldInstances().forEach(c -> out.add(normComputedPath(c.getPath()) + "|CLEARED"));
         out.sort(null);
         return out;
+    }
+
+    private static String validationSignature(IMessage message) {
+        return message.getErrorCode() + "|" + message.getMessageType().name() + "|" + fmtPointer(message.getErrorFieldPointer());
+    }
+
+    private static List<String> computeSignaturesSorted(IDocumentRtService rt, DocumentV2 instance) {
+        return computeDetail(rt, instance).stream().map(c -> {
+            if (c.cleared()) {
+                return c.pointer() + "|CLEARED";
+            }
+            if (c.errored()) {
+                return c.pointer() + "|ERRORED";
+            }
+            return c.pointer() + "|VALUE|" + c.value().orElse("");
+        }).sorted().toList();
     }
 
     private static String normComputedPath(String path) {
@@ -840,9 +867,20 @@ public final class RuntimeLaws {
                     .map(IMessage::getErrorCode).sorted().toList();
         }
 
+        /** Full validation signatures ({@code code|type|indexed-pointer}), sorted for exact perf eligibility. */
+        public List<String> validationSignaturesSorted(DocumentV2 instance) {
+            return rt.validateFull(instance, config(null, Locale.US)).getMessages().stream()
+                    .map(RuntimeLaws::validationSignature).sorted().toList();
+        }
+
         /** Every computed-field outcome for an already-built instance, normalized + <b>sorted</b> (the B7 compute payload). */
         public List<String> computeOutcomesSorted(DocumentV2 instance) {
             return computeSorted(rt, instance);
+        }
+
+        /** Full computation signatures ({@code indexed-pointer|outcome|value}), sorted for exact perf eligibility. */
+        public List<String> computationSignaturesSorted(DocumentV2 instance) {
+            return computeSignaturesSorted(rt, instance);
         }
 
         /**

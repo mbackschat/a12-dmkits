@@ -1,5 +1,11 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
+import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
+import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
+import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
+import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
+import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldTypeDeclaration
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -55,5 +61,80 @@ class PerfPreflightTest {
     fun preflightPassesAFullySupportedScenario() {
         // B1 (per-row Qty>50) — every construct supported, so the preflight returns cleanly (no throw).
         PerfHarness.preflight(PerfCatalog.b1(), n = 50)
+    }
+
+    @Test
+    fun preparedAuditFindsAnUnregisteredCustomTypeEvenWhenOnlyARowAfterTheSampleCapHasAValue() {
+        val code = "/C/Rows/Code"
+        val model = ModelDef(
+            fields = listOf(FieldDef(code, Kind.STRING, customType = CustomFieldTypeDeclaration("LateType"))),
+            rules = emptyList(),
+            repeatableGroups = setOf("/C/Rows"),
+            declaredReps = mapOf("/C/Rows" to 1_000),
+        )
+        val scenario = PerfScenario("late-custom-type", "{}", model) { sink, n, _ ->
+            sink.group("/C", 1)
+            for (row in 1..n) {
+                sink.group("/C/Rows", 1, row)
+                if (row == 201) sink.field(code, "late", 1, row, 1)
+            }
+        }
+
+        val ex = assertThrows<IllegalStateException> { PerfHarness.preflight(scenario, n = 201) }
+        assertTrue("LateType" in (ex.message ?: ""), "the value-independent audit names the missing type: ${ex.message}")
+    }
+
+    @Test
+    fun everyRepeatedVariantGetsAnOutcomeBearingUnsupportedCheck() {
+        val code = "/C/Code"
+        val model = ModelDef(
+            fields = listOf(FieldDef(code, Kind.STRING, customType = CustomFieldTypeDeclaration("VariantType"))),
+            rules = emptyList(),
+        )
+        val checker = CustomFieldType { value, _ ->
+            if (value == "middle") throw UnsupportedConstructException("middle variant unavailable") else null
+        }
+        val scenario = PerfScenario(
+            "middle-variant",
+            "{}",
+            model,
+            interpreterFactory = { DmInterpreter(it, customFieldTypes = mapOf("VariantType" to checker)) },
+        ) { sink, _, variant ->
+            sink.group("/C", 1)
+            sink.field(code, listOf("first", "middle", "last")[variant], 1, 1)
+        }
+
+        val ex = assertThrows<IllegalStateException> {
+            PerfHarness.preflightVariants(scenario, n = 1, variants = 3)
+        }
+        assertTrue("variant=1" in (ex.message ?: ""), "the refusal identifies the unsupported middle variant: ${ex.message}")
+    }
+
+    @Test
+    fun preparedAuditChecksEveryComputationAlternativeRegardlessOfDataSelection() {
+        val selector = "/C/Selector"
+        val result = "/C/Result"
+        val model = ModelDef(
+            fields = listOf(FieldDef(selector, Kind.NUMBER), FieldDef(result, Kind.NUMBER)),
+            rules = emptyList(),
+            computations = listOf(
+                ComputationDef(
+                    targetPath = result,
+                    group = "/C",
+                    alternatives = listOf(
+                        ComputationAlternative("[$selector] == 1", "1"),
+                        ComputationAlternative("[$selector] == 2", "UnsupportedFunction([$selector])"),
+                    ),
+                    name = "SelectResult",
+                ),
+            ),
+        )
+        val scenario = PerfScenario("selected-alternative", "{}", model) { sink, _, _ ->
+            sink.group("/C", 1)
+            sink.field(selector, "1", 1, 1)
+        }
+
+        val ex = assertThrows<IllegalStateException> { PerfHarness.preflight(scenario, n = 1) }
+        assertTrue("UnsupportedFunction" in (ex.message ?: ""), "the unselected alternative is still audited: ${ex.message}")
     }
 }

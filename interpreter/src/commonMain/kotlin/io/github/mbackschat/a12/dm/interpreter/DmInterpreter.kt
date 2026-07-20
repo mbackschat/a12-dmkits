@@ -83,6 +83,17 @@ class DmInterpreter @JvmOverloads constructor(
     private val engine = ComputationEngine(model, clock, predefinedTypes, customFieldTypes, parsedModel, scopes, checks)
 
     /**
+     * Audit this prepared model without consulting document values. Every stored rule, implicit computation
+     * validation, computation guard/alternative, customization requirement, and host-sensitive primitive is
+     * traversed. A non-empty result means an evaluator must refuse performance/certification work up front;
+     * [validate] remains the per-instance outcome-bearing check for failures raised by a registered callback.
+     */
+    fun supportAudit(): List<UnsupportedRule> =
+        PreparedSupportAudit(
+            model, parsedModel, clock, predefinedTypes, customConditions, customFieldTypes,
+        ).audit()
+
+    /**
      * Run every rule over each row of its iteration scope and return one [Message] per firing — the
      * runtime twin of the kernel's `validateFull`. A rule fires when its error condition is TRUE on a row.
      *

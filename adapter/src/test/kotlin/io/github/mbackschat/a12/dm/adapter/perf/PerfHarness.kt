@@ -7,7 +7,11 @@ import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
 import io.github.mbackschat.a12.dm.interpreter.gen.asSink
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
+import io.github.mbackschat.a12.dm.interpreter.model.Computed
+import io.github.mbackschat.a12.dm.interpreter.model.Message
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
+import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
 
 /**
  * The reusable **against-kernel performance harness** (INTERPRETER-PERFORMANCE.md). It does double duty: it
@@ -66,6 +70,8 @@ class PerfScenario(
     val interpModel: ModelDef,
     /** Whether this scenario times `validateFull` or `compute` (default validate). */
     val op: PerfOp = PerfOp.VALIDATE,
+    /** Builds the prepared interpreter, including any scenario-required customization registries. */
+    val interpreterFactory: (ModelDef) -> DmInterpreter = { DmInterpreter(it) },
     /**
      * Build the instance at scale [n], perturbed by [variant], into [sink]. `variant = 0` is the canonical
      * instance; a non-zero variant shifts a value so the document differs slightly (mimicking a form edit /
@@ -74,10 +80,16 @@ class PerfScenario(
     val instance: (sink: PlacementSink, n: Int, variant: Int) -> Unit,
 )
 
+/** Full semantic result of one instance. [unsupported] is non-empty only for the interpreter leg. */
+data class PerfOutcome(val signatures: List<String>, val unsupported: List<UnsupportedRule> = emptyList())
+
 /** A timed runnable bound to ONE materialized instance — built outside timing; [run] is the timed op. */
-fun interface RunInstance {
-    /** The timed op's result: the fired codes, sorted (the correctness payload AND what is timed). */
-    fun run(): List<String>
+interface RunInstance {
+    /** The full outcome-bearing semantic result, used before timing. */
+    fun outcome(): PerfOutcome
+
+    /** The timed projection. Full signatures are materialized inside the clocked call. */
+    fun run(): List<String> = outcome().signatures
 }
 
 /** A reusable engine for a scenario, built ONCE — then many instances run through it (the model-reuse layer). */
@@ -98,18 +110,18 @@ object InterpreterPerfEngine : PerfEngine {
     override val label = "interp"
     override fun build(scenario: PerfScenario): ReusableEngine {
         val model: ModelDef = scenario.interpModel
-        val interp = DmInterpreter(model)   // built once; rules parsed once + cached at construction (ParsedModel — #31 re-parse retired; per-call cost is the tree-walk)
+        val interp = scenario.interpreterFactory(model)   // built once; rules parsed once + cached at construction (ParsedModel — #31 re-parse retired; per-call cost is the tree-walk)
         return object : ReusableEngine {
             override val label = "interp"
             override fun instance(n: Int, variant: Int): RunInstance {
                 val doc = model.newDocument()
                 scenario.instance(doc.asSink(), n, variant)
-                return RunInstance {
-                    when (scenario.op) {
-                        PerfOp.VALIDATE -> interp.validateFull(doc).map { it.code }.sorted()
-                        PerfOp.COMPUTE -> interp.compute(doc).map {
-                            if (it.outcome == ComputeOutcome.VALUE) "${it.path}|${it.value}" else "${it.path}|${it.outcome}"
-                        }.sorted()
+                return object : RunInstance {
+                    override fun outcome(): PerfOutcome = when (scenario.op) {
+                        PerfOp.VALIDATE -> interp.validate(doc).let { result ->
+                            PerfOutcome(result.messages.map(::validationSignature).sorted(), result.unsupported)
+                        }
+                        PerfOp.COMPUTE -> PerfOutcome(interp.compute(doc).map(::computationSignature).sorted())
                     }
                 }
             }
@@ -128,11 +140,13 @@ object KernelPerfEngine : PerfEngine {
                 val builder = RuntimeLaws.doc()
                 scenario.instance(KernelDocSink(builder), n, variant)
                 val instance = engine.instance(builder)   // build the IDocument once, outside timing
-                return RunInstance {
-                    when (scenario.op) {
-                        PerfOp.VALIDATE -> engine.firedCodesSorted(instance)
-                        PerfOp.COMPUTE -> engine.computeOutcomesSorted(instance)
-                    }
+                return object : RunInstance {
+                    override fun outcome(): PerfOutcome = PerfOutcome(
+                        when (scenario.op) {
+                            PerfOp.VALIDATE -> engine.validationSignaturesSorted(instance)
+                            PerfOp.COMPUTE -> engine.computationSignaturesSorted(instance)
+                        },
+                    )
                 }
             }
         }
@@ -155,14 +169,28 @@ object KernelJavaPerfEngine : PerfEngine {
                 val builder = RuntimeLaws.doc()
                 scenario.instance(KernelDocSink(builder), n, variant)
                 val instance = engine.instance(builder)   // build the IDocument once, outside timing
-                return RunInstance {
-                    when (scenario.op) {
-                        PerfOp.VALIDATE -> engine.firedCodesSorted(instance)
-                        PerfOp.COMPUTE -> engine.computeOutcomesSorted(instance)
-                    }
+                return object : RunInstance {
+                    override fun outcome(): PerfOutcome = PerfOutcome(
+                        when (scenario.op) {
+                            PerfOp.VALIDATE -> engine.validationSignaturesSorted(instance)
+                            PerfOp.COMPUTE -> engine.computationSignaturesSorted(instance)
+                        },
+                    )
                 }
             }
         }
+    }
+}
+
+private fun validationSignature(message: Message): String =
+    "${message.code}|${if (message.type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"}|${message.errorPath}"
+
+private fun computationSignature(computed: Computed): String {
+    val pointer = io.github.mbackschat.a12.dm.interpreter.eval.formatPointer(computed.path, computed.indices)
+    return when (computed.outcome) {
+        ComputeOutcome.VALUE -> "$pointer|VALUE|${computed.value ?: ""}"
+        ComputeOutcome.CLEARED -> "$pointer|CLEARED"
+        ComputeOutcome.ERRORED -> "$pointer|ERRORED"
     }
 }
 
@@ -252,6 +280,24 @@ object PerfHarness {
      *  (every catalog scenario instantiates each group at n ≥ 1). Keeps the per-sample preflight ~sub-ms. */
     private const val PREFLIGHT_MAX_ROWS = 200
 
+    private fun preparedAudit(scenario: PerfScenario) {
+        val unsupported = scenario.interpreterFactory(scenario.interpModel).supportAudit()
+        check(unsupported.isEmpty()) {
+            "${scenario.name} (prepared-model audit): refusing to time — ${unsupported.size} unsupported construct(s) " +
+                "would be a timed fiction: " +
+                unsupported.joinToString(prefix = "[", postfix = "]") { "${it.rulePath} (${it.reason})" }
+        }
+    }
+
+    private fun requireEligible(scenario: PerfScenario, n: Int, variant: Int, outcome: PerfOutcome) {
+        check(outcome.unsupported.isEmpty()) {
+            "${scenario.name} (N=$n, variant=$variant): refusing to time — " +
+                outcome.unsupported.joinToString(prefix = "[", postfix = "]") {
+                    "${it.rulePath} (${it.reason})"
+                }
+        }
+    }
+
     /**
      * **Semantic preflight (IG77 → IF156): no sample times a fiction.** Before any timing, build the interpreter
      * for [scenario], materialize its canonical instance at a cost-capped scale ([PREFLIGHT_MAX_ROWS]), and assert
@@ -265,14 +311,25 @@ object PerfHarness {
      * [runScenario]/[runRepeated].
      */
     fun preflight(scenario: PerfScenario, n: Int) {
-        val model = scenario.interpModel
-        val doc = model.newDocument()
-        scenario.instance(doc.asSink(), n.coerceAtMost(PREFLIGHT_MAX_ROWS), 0)
-        val outcome = DmInterpreter(model).validate(doc)
-        check(outcome.unsupported.isEmpty()) {
-            "${scenario.name} (preflight): refusing to time — ${outcome.unsupported.size} unsupported construct(s) " +
-                "would be a timed fiction (the interpreter would look fast by doing less than the kernel): " +
-                outcome.unsupported.joinToString(prefix = "[", postfix = "]") { "${it.rulePath} (${it.reason})" }
+        preparedAudit(scenario)
+        val sampleN = n.coerceAtMost(PREFLIGHT_MAX_ROWS)
+        val outcome = InterpreterPerfEngine.build(scenario).instance(sampleN, 0).outcome()
+        requireEligible(scenario, sampleN, 0, outcome)
+    }
+
+    /** Check every actual repeated-eval variant on the outcome-bearing interpreter API before timing any loop. */
+    fun preflightVariants(scenario: PerfScenario, n: Int, variants: Int) {
+        require(variants > 0) { "variants must be positive" }
+        preparedAudit(scenario)
+        val engine = InterpreterPerfEngine.build(scenario)
+        for (variant in 0 until variants) {
+            val outcome = try {
+                engine.instance(n, variant).outcome()
+            } catch (e: io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException) {
+                throw IllegalStateException(
+                    "${scenario.name} (N=$n, variant=$variant): refusing to time — ${e.message}", e)
+            }
+            requireEligible(scenario, n, variant, outcome)
         }
     }
 
@@ -303,9 +360,11 @@ object PerfHarness {
         val iInst = InterpreterPerfEngine.build(scenario).instance(n)
         val gInst = KernelPerfEngine.build(scenario).instance(n)
         val jInst = if (withJava) KernelJavaPerfEngine.build(scenario).instance(n) else null
-        val iResult = iInst.run()
-        assertAgree(scenario.name, n, "interp", iResult, "groovy", gInst.run())
-        if (jInst != null) assertAgree(scenario.name, n, "groovy", gInst.run(), "java", jInst.run())
+        val iOutcome = iInst.outcome()
+        requireEligible(scenario, n, 0, iOutcome)
+        val iResult = iOutcome.signatures
+        assertSignaturesAgree(scenario.name, n, "interp", iResult, "groovy", gInst.run())
+        if (jInst != null) assertSignaturesAgree(scenario.name, n, "groovy", gInst.run(), "java", jInst.run())
         val gStats = measure(warmup, iters) { gInst.run() }
         val jStats = jInst?.let { measure(warmup, iters) { it.run() } }
         val iStats = measure(warmup, iters) { iInst.run() }
@@ -324,17 +383,23 @@ object PerfHarness {
         scenario: PerfScenario, n: Int, variants: Int = 20, warmupLoops: Int = 3, timedLoops: Int = 5,
         withJava: Boolean = true,
     ): RepeatedRow {
-        preflight(scenario, n)
+        preflightVariants(scenario, n, variants)
         val iEng = InterpreterPerfEngine.build(scenario)
         val gEng = KernelPerfEngine.build(scenario)
         val jEng = if (withJava) KernelJavaPerfEngine.build(scenario) else null
         val iInsts = (0 until variants).map { iEng.instance(n, it) }
         val gInsts = (0 until variants).map { gEng.instance(n, it) }
         val jInsts = jEng?.let { e -> (0 until variants).map { e.instance(n, it) } }
-        // Correctness on the extremes — the perturbation shifts firings, so first != last exercises the variety.
-        assertAgree(scenario.name, n, "interp", iInsts.first().run(), "groovy", gInsts.first().run())
-        assertAgree(scenario.name, n, "interp", iInsts.last().run(), "groovy", gInsts.last().run())
-        if (jInsts != null) assertAgree(scenario.name, n, "groovy", gInsts.first().run(), "java", jInsts.first().run())
+        // Every actual variant is tri-checked at full signature granularity before any timed loop.
+        for (variant in 0 until variants) {
+            val iOutcome = iInsts[variant].outcome()
+            requireEligible(scenario, n, variant, iOutcome)
+            val groovy = gInsts[variant].run()
+            assertSignaturesAgree(scenario.name, n, "interp", iOutcome.signatures, "groovy", groovy)
+            jInsts?.get(variant)?.run()?.let { java ->
+                assertSignaturesAgree(scenario.name, n, "groovy", groovy, "java", java)
+            }
+        }
         val gStats = measureLoop(warmupLoops, timedLoops, gInsts)
         val jStats = jInsts?.let { measureLoop(warmupLoops, timedLoops, it) }
         val iStats = measureLoop(warmupLoops, timedLoops, iInsts)
@@ -393,10 +458,17 @@ object PerfHarness {
         return Stats(samples[samples.size / 2], samples.first(), p90)
     }
 
-    private fun assertAgree(scenario: String, n: Int, aLabel: String, a: List<String>, bLabel: String, b: List<String>) =
+    internal fun assertSignaturesAgree(
+        scenario: String,
+        n: Int,
+        aLabel: String,
+        a: List<String>,
+        bLabel: String,
+        b: List<String>,
+    ) =
         check(a == b) {
-            "$scenario (N=$n): $aLabel and $bLabel must agree on fired codes.\n" +
-                "  $bLabel(${b.size})=${b.distinct()}\n  $aLabel(${a.size})=${a.distinct()}"
+            "$scenario (N=$n): $aLabel and $bLabel must agree on complete signatures.\n" +
+                "  $bLabel(${b.size})=$b\n  $aLabel(${a.size})=$a"
         }
 
     /** A one-line single-document log row: interp vs the kernel baseline(s) + ratios (+ the Java tax when present). */

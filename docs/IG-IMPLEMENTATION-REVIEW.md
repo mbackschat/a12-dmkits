@@ -303,7 +303,7 @@ The agreement payload is also not authoritative. Validation compares only the so
 
 **Acceptance checks:** Add red/green cases for an unsupported custom type valued only after row 200, an unsupported middle variant whose first/last variants are supported, and an unsupported data-selected computation alternative. A deliberate row-attribution swap and computed-value swap must fail agreement. The exact IF159 N and 4N documents must pass interpreter/dynamic/static full-signature agreement before their clocks start.
 
-**Resolution:** Open.
+**Resolution:** Corrected 2026-07-20. `DmInterpreter.supportAudit()` now audits the complete prepared model independently of values; the perf harness retains an outcome-bearing check for every actual variant and compares complete indexed validation/computation signatures. Red/green guards cover late-row custom types, a middle-only callback failure, an unselected unsupported computation alternative, and row/value swaps.
 
 ### RV-2026-07-20-03-2 — IF157 does not yet single-source the ratified estimator
 
