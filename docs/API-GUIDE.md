@@ -276,6 +276,12 @@ public final class SubscriptionIdioms {
         return sum(m.flatten("/Subscription/Addons*/MonthlyFee")
                 .having(m.num("/Subscription/Addons/MonthlyFee").gt(0))).gt(budget);
     }
+    /** Ordered fallback: later operands are visited only when no earlier operand supplied a value. */
+    public static Condition firstAvailableFeeTooHigh(BoundModel m, String limit) {
+        return firstFilledNumber(
+                m.flatten("/Subscription/Addons*/MonthlyFee"),
+                m.num("/Subscription/Billing/BaseFee").field()).gt(limit);
+    }
     /** Escape hatch (item 8) — the Zod `.refine` analogue: name a host-registered check. */
     public static Condition reversibleTier(EnumRef tier) {
         return tier.is("ENTERPRISE").and(customCondition("NotReverse"));   // host code decides NotReverse

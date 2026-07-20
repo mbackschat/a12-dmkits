@@ -140,9 +140,9 @@ enum class FunctionOp(val kernelName: String) {
     ROUND_DOWN_VALUE("RoundDownValue"),
     ROUND_UP_VALUE("RoundUpValue"),
     ROUND_ACCOUNTING_VALUE("RoundAccountingValue"),
-    // The FIRST specified value over a repetition list, in row order — empties are skipped, and operands after
-    // the first filled one are never read (a formal error there is invisible; a formal error BEFORE/AT the
-    // first filled one suppresses the rule). A `Sum` sibling; returns the scope's element type (number or date).
+    // The FIRST specified value across operands, in authored order — star rows skip empties, each slot's Having
+    // is encountered immediately before that slot, and a filled/formally-unavailable value stops the scan. A
+    // later cell/filter is invisible. A `Sum` sibling; returns the operands' common element type.
     FIRST_FILLED_VALUE("FirstFilledValue"),
     // `NumberOfValueInFields(value In f1, f2, …)` — the count of the listed fields whose FILLED value equals the
     // constant. An empty field is NOT counted (kernel: only `b == TRUE` counts); a formal error → non-evaluable.

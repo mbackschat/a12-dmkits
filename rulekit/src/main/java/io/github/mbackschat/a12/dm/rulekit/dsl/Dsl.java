@@ -175,10 +175,20 @@ public final class Dsl {
         return new NumberExpr(new FirstFilledValue(numberScope));
     }
 
+    /** Multi-operand {@code FirstFilledValue}: each later number field/list is visited only if no earlier operand supplied the result. */
+    public static NumberExpr firstFilledNumber(FieldListRef numberScope, FieldOperand second, FieldOperand... rest) {
+        return new NumberExpr(firstFilledValue(numberScope, ValueKind.NUMBER, "firstFilledNumber", second, rest));
+    }
+
     /** {@code FirstFilledValue(…)} over a date repetition list — the first specified value, as a date. catalog:FirstFilledValue */
     public static DateExpr firstFilledDate(FieldListRef dateScope) {
         requireKind(dateScope, io.github.mbackschat.a12.dm.core.ValueKind.DATE, "firstFilledDate");
         return new DateExpr(new FirstFilledValue(dateScope));
+    }
+
+    /** Multi-operand {@code FirstFilledValue}: each later date field/list is visited only if no earlier operand supplied the result. */
+    public static DateExpr firstFilledDate(FieldListRef dateScope, FieldOperand second, FieldOperand... rest) {
+        return new DateExpr(firstFilledValue(dateScope, ValueKind.DATE, "firstFilledDate", second, rest));
     }
 
     /** {@code NumberOfFilledGroups(/RootGroup*)} — the count of a repeatable root group's filled repetitions. catalog:NumberOfFilledGroups */
@@ -192,10 +202,20 @@ public final class Dsl {
         return new StringExpr(new FirstFilledValue(stringScope));
     }
 
+    /** Multi-operand {@code FirstFilledValue}: each later string field/list is visited only if no earlier operand supplied the result. */
+    public static StringExpr firstFilledString(FieldListRef stringScope, FieldOperand second, FieldOperand... rest) {
+        return new StringExpr(firstFilledValue(stringScope, ValueKind.STRING, "firstFilledString", second, rest));
+    }
+
     /** {@code FirstFilledValue(…)} over an enum repetition list — the first specified value, as an enum. catalog:FirstFilledValue */
     public static EnumExpr firstFilledEnum(FieldListRef enumScope) {
         requireKind(enumScope, io.github.mbackschat.a12.dm.core.ValueKind.ENUMERATION, "firstFilledEnum");
         return new EnumExpr(new FirstFilledValue(enumScope));
+    }
+
+    /** Multi-operand {@code FirstFilledValue}: each later enum field/list is visited only if no earlier operand supplied the result. */
+    public static EnumExpr firstFilledEnum(FieldListRef enumScope, FieldOperand second, FieldOperand... rest) {
+        return new EnumExpr(firstFilledValue(enumScope, ValueKind.ENUMERATION, "firstFilledEnum", second, rest));
     }
 
     private static void requireKind(FieldListRef scope, io.github.mbackschat.a12.dm.core.ValueKind expected,
@@ -204,6 +224,21 @@ public final class Dsl {
             throw new IllegalArgumentException(method + " needs a " + expected + " field list; "
                     + scope.renderedPath() + " is " + scope.kind());
         }
+    }
+
+    private static FirstFilledValue firstFilledValue(FieldListRef scope, ValueKind expected, String method,
+            FieldOperand second, FieldOperand... rest) {
+        requireKind(scope, expected, method);
+        var trailing = new ArrayList<FieldOperand>();
+        trailing.add(second);
+        trailing.addAll(List.of(rest));
+        for (FieldOperand operand : trailing) {
+            if (operand.kind() != expected) {
+                throw new IllegalArgumentException(method + " needs " + expected + " operands; "
+                        + operand.renderedPath() + " is " + operand.kind());
+            }
+        }
+        return new FirstFilledValue(scope, trailing);
     }
 
     private static NumberExpr listAggregate(ListAggregate.AggOp op, FieldOperand first, FieldOperand... rest) {

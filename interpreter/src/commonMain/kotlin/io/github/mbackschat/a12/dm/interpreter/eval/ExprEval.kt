@@ -503,9 +503,9 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     FunctionOp.ROUND_DOWN_VALUE -> roundExpr(f.args, RoundMode.FLOOR)
     FunctionOp.ROUND_UP_VALUE -> roundExpr(f.args, RoundMode.CEILING)
     FunctionOp.ROUND_ACCOUNTING_VALUE -> roundExpr(f.args, RoundMode.HALF_UP)
-    // FirstFilledValue: the first FILLED value in row order (empties already dropped by `star`). NOT
-    // `combine` — a later malformed element is invisible; but if the first filled one is malformed it
-    // arrives as Unknown, so the comparison is Unknown and the rule is suppressed. No filled row → Unknown.
+    // FirstFilledValue: the first terminal value across operands/rows in authored order. NOT `combine` —
+    // a later cell/slot is invisible; a first malformed value is Unknown. An empty selection uses the
+    // operand kind's identity (number 0, otherwise Unknown).
     FunctionOp.FIRST_FILLED_VALUE -> firstFilledValue(f)
     // NumberOfValueInFields(value In f1, f2, …): count the FILLED fields equal to the constant.
     FunctionOp.NUMBER_OF_VALUE_IN_FIELDS -> numberOfValueInFields(f.args)
@@ -881,40 +881,83 @@ private fun Interpreter.addDaysValue(args: List<Expr>): Val {
     return addDays(v, n)?.let { Val.Txt(it) } ?: Val.Unknown
 }
 
-/** `FirstFilled(G* / f)` — the first FILLED cell's value in row order. In PARTIAL validation it is order-aware
- *  (IF42): a NON-relevant cell encountered BEFORE the first filled cell makes the result UNKNOWN (its
- *  filledness is unknown, so we cannot skip past it); the first relevant-FILLED cell's value wins. Full
- *  validation (or a non-star / Having operand): the plain first-filled value. */
-private fun Interpreter.firstFilledValue(f: Expr.Func): Val {
-    val star = f.args.singleOrNull() as? Expr.Star
-    // COMPUTE mode over an unfiltered star: the kernel's `FirstValueCombiner.addValue` IGNORES every cell
-    // once the first FILLED value is captured — an INVALID cell poisons the computation only BEFORE the
-    // first given cell (`nonRelevantFieldBeforeFirstGiven`); an invalid TAIL cell is invisible (IF111).
-    // The generic any-invalid star poison ([starOperandVals]) is the OTHER combiners' rule (Sum/Min/Max
-    // consume every row) and over-suppressed this one. An index-field operand keeps the conservative
-    // whole-column gate (its per-cell not-relevant states — duplicates, mandatory-empty — are a column
-    // property; no corpus unit distinguishes the orders).
-    if (computeMode && star != null && star.having == null) {
-        if (indexOperandNonEvaluable(ctx, star.path, star.bindDepth)) return Val.Unknown
-        for ((_, value) in ctxOf(star).starCells(star.path, star.bindDepth)) {
-            if (value is Val.Unknown) throw PoisonedReadException(star.path)
-            if (value != null) return value
+/**
+ * The one ordered `FirstFilledValue` result consumed by both value evaluation and polarity. Operands are
+ * encountered in authored order. A star's `Having` marker is observed immediately before that slot is
+ * scanned; a filled or formally-unavailable value terminates the whole walk, so no later slot, filter, or
+ * cell is read (IF184). An empty encountered before termination makes the result displaceable by filling;
+ * an encountered filter makes it symmetrically fillable regardless of whether it keeps a row.
+ */
+internal data class FirstFilledScan(val value: Val, val fill: Fill, val encounteredFilter: Boolean)
+
+internal fun Interpreter.firstFilledScan(f: Expr.Func): FirstFilledScan {
+    var fillable = false
+    var encounteredFilter = false
+    for (operand in f.args) when (operand) {
+        is Expr.Star -> {
+            if (operand.having != null) {
+                encounteredFilter = true
+                fillable = true
+            }
+
+            // An index column's empty/duplicate status is column-wide in the kernel cache. Keep the existing
+            // conservative gate, but reach it only when this operand itself is reached.
+            val operandContext = ctxOf(operand)
+            if (operand.having == null &&
+                indexOperandNonEvaluable(operandContext, operand.path, operand.bindDepth)
+            ) {
+                return FirstFilledScan(Val.Unknown, Fill.of(fillable, fillable), encounteredFilter)
+            }
+
+            val group = operand.path.substringBeforeLast('/')
+            val rows = operandContext.rowContexts(group, operand.bindDepth)
+            var visitedRow = false
+            for (row in rows) {
+                if (operand.having != null && !havingInterp(row).fires(operand.having)) continue
+                visitedRow = true
+                val reps = row.repsOf(operand.path)
+                if (cellRelevant != null && !cellRelevant.invoke(operand.path, reps)) {
+                    return FirstFilledScan(Val.Unknown, Fill.of(fillable, fillable), encounteredFilter)
+                }
+                if (computeMode) {
+                    val cell = ScanCell(
+                        operand.path,
+                        reps,
+                        row.displayValue(operand.path),
+                        row.cellState(operand.path),
+                    )
+                    if (!filledOrPoison(cell)) {
+                        fillable = true
+                        continue
+                    }
+                } else if (!row.filled(operand.path)) {
+                    fillable = true
+                    continue
+                }
+                return FirstFilledScan(row.field(operand.path), Fill.of(fillable, fillable), encounteredFilter)
+            }
+            if (!visitedRow) fillable = true
         }
-        return firstFilledEmpty(f)
+        is Expr.Field -> {
+            val operandContext = ctxOf(operand)
+            if (!operandContext.filled(operand.path)) {
+                fillable = true
+                continue
+            }
+            return FirstFilledScan(evalExpr(operand), Fill.of(fillable, fillable), encounteredFilter)
+        }
+        else -> {
+            val value = evalExpr(operand)
+            return FirstFilledScan(value, Fill.of(fillable, fillable), encounteredFilter)
+        }
     }
-    // NO filled value in the selection → the kernel's per-kind `FirstValueCombiner` returns its OWN kind's
-    // "not-given" value ([firstFilledEmpty]): a NUMBER gives the fillable 0 (`NICHT_ANGEGEBENE_ZAHL`, the
-    // empty-as-0 its Sum/Min/Max siblings give — IF80), a DATE/DATE_TIME/TIME/DATE_RANGE/STRING gives a
-    // NOT-GIVEN value → the comparison does not fire / a computation CLEARS (Val.Unknown; IF83, the IF58
-    // sibling — returning Num(0) for a date/string crashed `ValCompare` against the real value). A malformed
-    // FIRST value still arrives as Val.Unknown (rule suppressed) via [starVals].
-    if (cellRelevant == null || star == null || star.having != null) return starVals(f).firstOrNull() ?: firstFilledEmpty(f)
-    for ((reps, value) in ctx.starCells(star.path, star.bindDepth)) {
-        if (!cellRelevant.invoke(star.path, reps)) return Val.Unknown   // a NON-relevant cell precedes → Unknown (partial)
-        if (value != null) return value
-    }
-    return firstFilledEmpty(f)   // all cells relevant + empty → the kind's not-given value
+
+    // NO terminal value → the per-kind FirstValueCombiner identity: NUMBER gives the fillable 0; the
+    // other kinds give NOT-GIVEN. A future value in any exhausted operand can displace that identity.
+    return FirstFilledScan(firstFilledEmpty(f), Fill.of(true, true), encounteredFilter)
 }
+
+private fun Interpreter.firstFilledValue(f: Expr.Func): Val = firstFilledScan(f).value
 
 /** The empty-selection identity of a `FirstFilledValue` by its operand kind (the kernel's per-kind
  *  `FirstValueCombiner`): NUMBER → the fillable `0`; every other kind → NOT-GIVEN ([Val.Unknown], the

@@ -454,7 +454,7 @@ class Interpreter(
         }
     }
 
-    private fun filledOrPoison(cell: ScanCell): Boolean = when (
+    internal fun filledOrPoison(cell: ScanCell): Boolean = when (
         if (cell.baseState == CellState.FILLED) computeScanState?.invoke(cell) ?: cell.baseState else cell.baseState
     ) {
         CellState.INVALID -> throw PoisonedReadException(cell.path)

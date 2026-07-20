@@ -3338,12 +3338,15 @@
     "dslEntry": ["firstFilledDate", "firstFilledEnum", "firstFilledNumber", "firstFilledString"],
     "kind": "function",
     "keywords": { "en": "FirstFilledValue", "de": "ErsterAngegebenerWert" },
-    "operands": [ { "type": "field-list" } ],
-    "returns": "the element type (number or date)",
-    "meaning": "The first specified value over a repetition list, in row order; unspecified rows are skipped (a feldListenOp sibling of Sum). Returns the scope's element type — a number over a number field list, a date over a date field list.",
-    "gotchas": [ { "text": "operands after the first filled one are never read (a formal error there is invisible) — but a formal error BEFORE the first filled operand suppresses the rule", "kind": "SURPRISE" } ],
+    "operands": [ { "type": "field-list-or-fields" } ],
+    "returns": "the operands' common element type",
+    "meaning": "The first specified value across the operands in authored order; a repetition-list operand is scanned in row order and unspecified cells are skipped (a feldListenOp sibling of Sum).",
+    "gotchas": [
+      { "text": "each operand's Having filter is encountered immediately before that operand is scanned: an encountered filter makes a fired comparison OMISSION, but a filter on a later operand is invisible once an earlier operand supplied the first value", "kind": "SURPRISE" },
+      { "text": "operands after the first filled or formally unavailable value are never read (a formal error there is invisible) — but a formal error BEFORE the first filled operand suppresses the rule", "kind": "SURPRISE" }
+    ],
     "constraints": [
-      "a single field over a repetition list (a *-flattened scope)"
+      "one or more type-homogeneous field/list operands; the typed multi-operand factories start with a repetition list"
     ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And FirstFilledValue(Items*/Count) > 10", "note": "fires when the first specified line count exceeds 10" },
     "semantics": {

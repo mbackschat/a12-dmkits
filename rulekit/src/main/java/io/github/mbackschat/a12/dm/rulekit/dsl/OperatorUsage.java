@@ -116,7 +116,7 @@ public final class OperatorUsage {
             }
             case FirstFilledValue a -> {
                 ops.add(a.operatorId());
-                collectOperand(a.scope(), ops);
+                a.operands().forEach(o -> collectOperand(o, ops));
             }
             case FieldValueAsString c -> ops.add(c.operatorId());
             case IndexedFieldValueAsString c -> {

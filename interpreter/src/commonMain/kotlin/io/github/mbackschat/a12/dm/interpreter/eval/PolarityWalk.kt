@@ -121,7 +121,11 @@ private fun Interpreter.orType(a: Res, b: Res): MsgType {
  *  other operand (star aggregate, function, arithmetic) keeps the prior *symmetric* omission notion — so
  *  for those, `leafType` below reduces exactly to the old `leafOmission(left) || leafOmission(right)`. */
 private fun Interpreter.fill(e: Expr): Fill {
-    // The kernel's VALUE combiners mark ANY `Having`-filtered result fillable in BOTH directions
+    // FirstFilledValue is positionally short-circuiting: only a filter on a REACHED operand escalates
+    // polarity. Its shared ordered scan handles that before the general value-combiner rule below (IF184).
+    if (e is Expr.Func && FunctionOp.byName(e.name) == FunctionOp.FIRST_FILLED_VALUE) return fillOf(e)
+
+    // The kernel's ordinary VALUE combiners mark ANY `Having`-filtered result fillable in BOTH directions
     // (`getValue(containsFilter)` → kannGroesser = kannKleiner = true — NumberCombiner and its family), so
     // a fired comparison consuming a filtered star is TRUE_AF → OMISSION in both directions — even when
     // the filter KEPT a filled row (kernel-pinned, IF104; the comparison twin of IF101's quantifier
@@ -141,7 +145,9 @@ private fun Interpreter.isEntityCount(e: Expr): Boolean = e is Expr.Func &&
 /** Whether [e]'s tree consumes a `Having`-FILTERED star (the combiner escalation trigger, IF104). */
 private fun Interpreter.hasHavingStar(e: Expr): Boolean = when (e) {
     is Expr.Star -> e.having != null
-    is Expr.Func -> e.args.any { hasHavingStar(it) }
+    is Expr.Func -> if (FunctionOp.byName(e.name) == FunctionOp.FIRST_FILLED_VALUE)
+        firstFilledScan(e).encounteredFilter
+    else e.args.any { hasHavingStar(it) }
     is Expr.Arith -> hasHavingStar(e.left) || hasHavingStar(e.right)
     else -> false
 }
@@ -238,12 +244,9 @@ private fun Interpreter.funcFill(f: Expr.Func): Fill = when (FunctionOp.byName(f
     // against it is always a VALUE error (kernel-probed). The generic fallback would wrongly read its group
     // argument as an "unfilled field" and type it OMISSION.
     FunctionOp.CURRENT_REPETITION -> Fill.of(false, false)
-    // FirstFilledValue is displaceable by filling only when an instantiated EMPTY row PRECEDES the first
-    // filled one (filling it could become the new first value); else the first value is fixed → VALUE. The
-    // generic fallback (any empty/short star tail → fillable) over-reports OMISSION (kernel-probed).
-    FunctionOp.FIRST_FILLED_VALUE ->
-        ((f.args.singleOrNull() as? Expr.Star)?.let { ctx.firstStarRowEmpty(it.path, it.bindDepth) } ?: false)
-            .let { Fill.of(it, it) }
+    // The value walk and polarity walk share the same positional stop: only empty/filter markers reached
+    // before the terminal value can make it fillable; later operands are invisible (IF184).
+    FunctionOp.FIRST_FILLED_VALUE -> firstFilledScan(f).fill
     // The COUNT aggregates are monotonic NON-DECREASING under filling — filling a field / row / distinct value
     // can only ADD to the count, never remove one. So they grow like an UNSIGNED `Sum`: `canGrow` while a
     // fillable operand remains, `canShrink` NEVER. Directionally this makes a fired `count >= n` / `count > n`
@@ -430,12 +433,13 @@ private fun Interpreter.predType(p: Cond.Pred): MsgType {
 
 private fun Interpreter.leafOmission(e: Expr): Boolean = when (e) {
     is Expr.Field -> !ctx.filled(e.path)
-    // A `Having`-FILTERED star escalates a fired consumer to TRUE_AF unconditionally — the kernel's
-    // filtered-iterator escalation, the same rule the filtered fill quantifiers follow (IF101): even a
-    // comparison whose filter KEPT a filled row fires OMISSION (kernel-pinned, IF104). An unfiltered star
-    // keeps the kept-set omission notion ([EvalContext.starOmission]).
+    // A reached `Having`-FILTERED star escalates a fired consumer to TRUE_AF unconditionally — the kernel's
+    // filtered-iterator escalation (IF101/IF104). FirstFilledValue delegates to its ordered scan so a filter
+    // on an unvisited later slot is excluded (IF184). An ordinary unfiltered star keeps [EvalContext.starOmission].
     is Expr.Star -> e.having != null || ctx.starOmission(e.path, e.bindDepth)
-    is Expr.Func -> e.args.any { leafOmission(it) }
+    is Expr.Func -> if (FunctionOp.byName(e.name) == FunctionOp.FIRST_FILLED_VALUE)
+        firstFilledScan(e).fill.let { it.canGrow || it.canShrink }
+    else e.args.any { leafOmission(it) }
     is Expr.SemanticIndex -> !semanticIndexFilled(e)
     else -> false
 }
