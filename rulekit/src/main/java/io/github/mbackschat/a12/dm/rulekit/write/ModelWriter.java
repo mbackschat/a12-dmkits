@@ -3,7 +3,10 @@ package io.github.mbackschat.a12.dm.rulekit.write;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -144,6 +147,58 @@ public final class ModelWriter {
     public static String addComputation(String modelJson, Computation computation) {
         return DmJson.insertIntoGroup(modelJson, computation.groupPath(),
                 computationNode(computation.draft(), computation.messages()));
+    }
+
+    /**
+     * Adds a complete typed program population with one tree parse and one serialization.
+     *
+     * <p>Group element arrays are cached by path during the append, so a large population does not repeatedly
+     * traverse the model tree either. Callers that need consistency validation should use
+     * {@link io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel#addAll(List, List)}.
+     */
+    public static String addAll(
+            String modelJson,
+            List<Rule> rules,
+            List<Computation> computations) {
+        Objects.requireNonNull(rules, "rules");
+        Objects.requireNonNull(computations, "computations");
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(modelJson);
+            Map<String, ArrayNode> elementsByGroup = new HashMap<>();
+            for (Rule rule : rules) {
+                Objects.requireNonNull(rule, "rule");
+                elements(root, elementsByGroup, rule.group().path()).add(
+                        ruleNode(
+                                rule.group().path() + "/" + rule.name(),
+                                rule.name(),
+                                rule.errorEntityRelPath(),
+                                rule.code(),
+                                rule.render(),
+                                rule.severity().name(),
+                                rule.messages()));
+            }
+            for (Computation computation : computations) {
+                Objects.requireNonNull(computation, "computation");
+                elements(root, elementsByGroup, computation.groupPath()).add(
+                        computationNode(computation.draft(), computation.messages()));
+            }
+            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+        } catch (IOException e) {
+            throw new UncheckedIOException("failed to read/write the model DM-JSON", e);
+        }
+    }
+
+    private static ArrayNode elements(
+            ObjectNode root,
+            Map<String, ArrayNode> elementsByGroup,
+            String groupPath) {
+        return elementsByGroup.computeIfAbsent(groupPath, path -> {
+            ArrayNode elements = DmJson.groupElements(root, path);
+            if (elements == null) {
+                throw PrecheckException.notFound(RkCode.NO_SUCH_GROUP, path);
+            }
+            return elements;
+        });
     }
 
     /**

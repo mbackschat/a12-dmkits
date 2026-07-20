@@ -560,6 +560,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef
 public final class io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
   public io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel add(io.github.mbackschat.a12.dm.rulekit.dsl.Computation)
   public io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel add(io.github.mbackschat.a12.dm.rulekit.dsl.Rule)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel addAll(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Rule>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Computation>)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition allFieldsFilled(java.lang.String[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldFilled(java.lang.String[])
   public io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef bool(java.lang.String)
@@ -2524,6 +2525,7 @@ public record io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult
   public io.github.mbackschat.a12.dm.core.Verification verification()
 
 public final class io.github.mbackschat.a12.dm.rulekit.write.ModelWriter
+  public static java.lang.String addAll(java.lang.String, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Rule>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Computation>)
   public static java.lang.String addComputation(java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Computation)
   public static java.lang.String addComputation(java.lang.String, io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText>)
   public static java.lang.String addRule(java.lang.String, io.github.mbackschat.a12.dm.rulekit.dsl.Rule)

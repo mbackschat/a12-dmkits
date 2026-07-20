@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 import java.util.Arrays;
+import java.util.List;
 
 import io.github.mbackschat.a12.dm.core.Backends;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
@@ -106,6 +107,21 @@ public final class BoundModel {
     public BoundModel add(Computation computation) {
         return ofJson(io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.addComputation(requireWritable(),
                 computation), resolver);
+    }
+
+    /**
+     * Adds a complete typed rule/computation population with one DM-JSON parse, one serialization, and one
+     * terminal consistency gate. The source binding remains unchanged.
+     *
+     * <p>This is the large-model peer of repeated {@link #add(Rule)}/{@link #add(Computation)} calls: every
+     * item is still authored through the typed surface, but program count no longer multiplies whole-model
+     * parse/pretty-print work.
+     */
+    public BoundModel addAll(List<Rule> rules, List<Computation> computations) {
+        return ofJson(
+                io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.addAll(
+                        requireWritable(), rules, computations),
+                resolver);
     }
 
     /**

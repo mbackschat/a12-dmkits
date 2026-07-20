@@ -650,6 +650,15 @@ BoundModel m2 = m.add(rule);                               // snapshot (F0): wri
 m2.writeTo(path);                                          // DM-JSON write path — authored JSON, includes preserved (D9, F6)
 ```
 
+For a generated or profile-derived model, collect typed programs first and append the complete population in one immutable write. This preserves the same terminal consistency gate without multiplying whole-model parse and pretty-print work by the number of rules and computations:
+
+<!-- snippet: bulk-program-write -->
+```java
+BoundModel written = model.addAll(
+        List.of(positiveFee, billingPresent),
+        List.of(effectiveFee));
+```
+
 ### 4.3 A computation, same materials
 
 <!-- snippet: computation -->
