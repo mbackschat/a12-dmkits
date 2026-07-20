@@ -511,6 +511,19 @@ public final class KernelAdapter {
         return names;
     }
 
+    /**
+     * Every computation full name → its calculated field's absolute path, in model order. This reads
+     * {@link ICalculationRule#getCalculatedField()} directly from the existing computation index: it does
+     * not parse conditions, extract/convert computation bodies, or expand the model again. Consequently an
+     * opaque {@link ReadComputation} remains present with its authoritative target.
+     */
+    public Map<String, String> computationTargetFields() {
+        Map<String, String> targets = new java.util.LinkedHashMap<>();
+        calcIndex().forEach((name, computation) ->
+                targets.put(name, computation.getCalculatedField().getFullName()));
+        return java.util.Collections.unmodifiableMap(targets);
+    }
+
     /** The kernel's calculation service, built lazily from the MVK service (which is also its config). */
     private ICalculationService calcService() {
         if (calc == null) {
