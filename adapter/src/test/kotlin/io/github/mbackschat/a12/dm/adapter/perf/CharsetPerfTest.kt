@@ -62,13 +62,15 @@ class CharsetPerfTest {
     @Test fun bmpAndGraphemePathsStayBelowTheFourfoldGrowthCatastropheFloor() {
         val bmpGrowth = medianWithinPairGrowth(LegalCharset.BMP)
         val graphemeGrowth = medianWithinPairGrowth(dinWithGraphemes)
-        assertTrue(bmpGrowth < GROWTH_CEILING,
-            "BMP median within-pair N/4N growth $bmpGrowth must stay below the ${GROWTH_CEILING}× catastrophe floor")
-        assertTrue(graphemeGrowth < GROWTH_CEILING,
-            "grapheme median within-pair N/4N growth $graphemeGrowth must stay below the ${GROWTH_CEILING}× catastrophe floor")
+        assertTrue(bmpGrowth.ratio < PerfBounds.SUB_QUADRATIC_MAX,
+            "BMP median within-pair N/4N growth ${bmpGrowth.ratio} must stay below the " +
+                "${PerfBounds.SUB_QUADRATIC_MAX}× catastrophe floor")
+        assertTrue(graphemeGrowth.ratio < PerfBounds.SUB_QUADRATIC_MAX,
+            "grapheme median within-pair N/4N growth ${graphemeGrowth.ratio} must stay below the " +
+                "${PerfBounds.SUB_QUADRATIC_MAX}× catastrophe floor")
     }
 
-    private fun medianWithinPairGrowth(charset: LegalCharset): Double {
+    private fun medianWithinPairGrowth(charset: LegalCharset): Growth {
         val nModel = model(GROWTH_N)
         val fourNModel = model(GROWTH_N * 4)
         val nEngine = DmInterpreter(nModel, legalCharset = charset)
@@ -81,12 +83,10 @@ class CharsetPerfTest {
         assertClean(runN(), "N semantic preflight")
         assertClean(runFourN(), "4N semantic preflight")
         repeat(WARM) { runN(); runFourN() }
-        val ratios = List(REPEATS) {
-            val nNanos = measureTime { runN() }.inWholeNanoseconds.coerceAtLeast(1)
-            val fourNNanos = measureTime { runFourN() }.inWholeNanoseconds
-            fourNNanos.toDouble() / nNanos
-        }.sorted()
-        return ratios[ratios.size / 2]
+        return PerfHarness.pairedGrowth(GROWTH_N, GROWTH_N * 4) { rows ->
+            val run = if (rows == GROWTH_N) ::runN else ::runFourN
+            PerfHarness.measure(warmup = 0, iters = REPEATS) { run() }.medianMs
+        }
     }
 
     private fun assertClean(outcome: ValidationOutcome, label: String) {
@@ -100,6 +100,5 @@ class CharsetPerfTest {
         const val WARM = 3
         const val REPEATS = 5
         const val FACTOR = 6                       // generous; a virtual-call blowup is 10×+ (+ 50 ms slack for tiny timings)
-        const val GROWTH_CEILING = 9.0             // ratified catastrophe floor, not an NFR-certified target
     }
 }

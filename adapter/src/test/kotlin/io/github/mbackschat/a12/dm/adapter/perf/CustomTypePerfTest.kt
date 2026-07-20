@@ -77,9 +77,9 @@ class CustomTypePerfTest {
         repeat(WARM) { docs.values.forEach { run(it) } }
         // IF137 paired estimator: interleaved N/4N, median of within-pair ratios (via the shared PerfHarness helper).
         val g = PerfHarness.pairedGrowth(N_SMALL, N_SMALL * 4) { n ->
-            measureTime { run(docs.getValue(n)) }.inWholeMicroseconds / 1000.0
+            PerfHarness.measure(warmup = 0, iters = REPEATS) { run(docs.getValue(n)) }.medianMs
         }
-        assertTrue(g.ratio < SUB_QUADRATIC_MAX,
+        assertTrue(g.ratio < PerfBounds.SUB_QUADRATIC_MAX,
             "custom-type validation growth for 4× rows was ${"%.2f".format(g.ratio)}× (linear≈4, quadratic≈16) — an O(N²) regression")
     }
 
@@ -91,6 +91,5 @@ class CustomTypePerfTest {
         const val WARM = 3
         const val REPEATS = 5
         const val FACTOR = 6             // generous; a per-cell virtual-call/boxing blowup is far larger (+ 50 ms slack)
-        const val SUB_QUADRATIC_MAX = 8.0 // linear≈4; trips well before quadratic≈16
     }
 }

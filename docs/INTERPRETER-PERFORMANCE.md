@@ -24,7 +24,7 @@ Library startup measures the time from an already-expanded, in-memory `ModelDef`
 
 Native CLI startup is a separate end-to-end measure: the parent clock starts before process launch and stops after the complete result envelope is read and the process exits. It includes process startup, option parsing, model/instance file reads, JSON/model loading, compute→apply when enabled, validation, serialization, and shutdown. Use warm OS filesystem caches for repeatability and at least 50 independent invocations. The absence of runtime codegen is a capability advantage; kernel codegen is never included in or compared with a startup timing.
 
-Keep the absolute p95 budgets and the row/rule growth checks separate. The former catches a uniformly slow but linear implementation; the latter catches an asymptotic regression. The current `coldRunMillis` helper starts its clock **after** engine/document construction, uses minima, and the current gate checks only row growth, so it is a complexity probe—not NFR-S certification ([IG77](INTERPRETER-GAPS.md)).
+Keep the absolute p95 budgets and the row/rule growth checks separate. The former catches a uniformly slow but linear implementation; the latter catches an asymptotic regression. The current `freshRunMedianMillis` helper takes the median of fresh attempts but starts its clock **after** engine/document construction, and the current gate checks only row growth, so it is a complexity probe—not NFR-S certification ([IG77](INTERPRETER-GAPS.md)).
 
 ### Warm throughput and scaling (NFR-P1 and NFR-P2)
 

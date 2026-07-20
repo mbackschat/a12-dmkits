@@ -81,23 +81,23 @@ class OuterCorrelationPerfTest {
         return d
     }
 
-    private fun minMs(def: ModelDef, n: Int, count: (Int) -> String): Double {
+    private fun medianMs(def: ModelDef, n: Int, count: (Int) -> String): Double {
         val interp = DmInterpreter(def)
         val d = doc(def, n, count)
-        repeat(2) { interp.validateFull(d) }                    // warmup (JIT + lazy index)
-        return (1..3).minOf { val t = System.nanoTime(); interp.validateFull(d); (System.nanoTime() - t) / 1e6 }
+        return PerfHarness.measure(warmup = 2, iters = 3) { interp.validateFull(d) }.medianMs
     }
 
-    private fun kernelMinMs(engine: RuntimeLaws.KernelEngine, n: Int, count: (Int) -> String): Double {
+    private fun kernelMedianMs(engine: RuntimeLaws.KernelEngine, n: Int, count: (Int) -> String): Double {
         val instance = engine.instance(kDoc(n, count))          // build the IDocument once, outside timing
-        repeat(2) { engine.firedCodesSorted(instance) }         // warmup — the timed region is steady-state validate
-        return (1..3).minOf { val t = System.nanoTime(); engine.firedCodesSorted(instance); (System.nanoTime() - t) / 1e6 }
+        return PerfHarness.measure(warmup = 2, iters = 3) {
+            engine.firedCodesSorted(instance)
+        }.medianMs
     }
 
     @Test
     fun equalityOuterCorrelationStaysSubQuadratic() {
         // IF137 paired estimator: interleaved N/4N, median of within-pair ratios (via the shared PerfHarness helper).
-        val g = PerfHarness.pairedGrowth(N, N * 4) { minMs(defEq, it, ::spread) }
+        val g = PerfHarness.pairedGrowth(N, N * 4) { medianMs(defEq, it, ::spread) }
         println("[perf] \$ equality correlation: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
             .format(g.smallMs, N, g.largeMs, N * 4, g.ratio))
         assertTrue(g.ratio < PerfBounds.SUB_QUADRATIC_MAX,
@@ -111,8 +111,8 @@ class OuterCorrelationPerfTest {
      */
     @Test
     fun equalityOuterCorrelationDoesNotWorsenAgainstKernel() {
-        val (iSmall, kSmall) = minMs(defEq, N, ::spread) to kernelMinMs(kernelEq, N, ::spread)
-        val (iLarge, kLarge) = minMs(defEq, N * 4, ::spread) to kernelMinMs(kernelEq, N * 4, ::spread)
+        val (iSmall, kSmall) = medianMs(defEq, N, ::spread) to kernelMedianMs(kernelEq, N, ::spread)
+        val (iLarge, kLarge) = medianMs(defEq, N * 4, ::spread) to kernelMedianMs(kernelEq, N * 4, ::spread)
         val ratioSmall = iSmall / kSmall
         val ratioLarge = iLarge / kLarge
         println("[perf] \$ correlation vs kernel: N=%d interp=%.1f kernel=%.1f (%.2f×) | N=%d interp=%.1f kernel=%.1f (%.2f×)"
@@ -134,7 +134,7 @@ class OuterCorrelationPerfTest {
      */
     @Test
     fun nonEqualityOuterCorrelationIsPairwiseAndNoWorseThanKernel() {
-        val g = PerfHarness.pairedGrowth(N, N * 4) { minMs(defGt, it, ::flat) }
+        val g = PerfHarness.pairedGrowth(N, N * 4) { medianMs(defGt, it, ::flat) }
         println("[perf] \$ non-equality correlation (pairwise): %.1fms@%d → %.1fms@%d  median-growth=%.1f× (pairwise≈16)"
             .format(g.smallMs, N, g.largeMs, N * 4, g.ratio))
         // (a) it is genuinely PAIRWISE: a linear hash-join path would be ≈4×; the O(N²) fallback is ≈16×. A floor
@@ -143,8 +143,8 @@ class OuterCorrelationPerfTest {
             "expected the genuine O(N²) fallback (growth ~16×), got ${g.ratio}× — was it hash-joined into a linear path?")
 
         // (b) no worse than the kernel's same nested-loop operation: the interp/kernel ratio must not grow with N.
-        val (iSmall, kSmall) = minMs(defGt, N, ::flat) to kernelMinMs(kernelGt, N, ::flat)
-        val (iLarge, kLarge) = minMs(defGt, N * 4, ::flat) to kernelMinMs(kernelGt, N * 4, ::flat)
+        val (iSmall, kSmall) = medianMs(defGt, N, ::flat) to kernelMedianMs(kernelGt, N, ::flat)
+        val (iLarge, kLarge) = medianMs(defGt, N * 4, ::flat) to kernelMedianMs(kernelGt, N * 4, ::flat)
         val ratioSmall = iSmall / kSmall
         val ratioLarge = iLarge / kLarge
         println("[perf] \$ non-equality vs kernel: N=%d interp=%.1f kernel=%.1f (%.2f×) | N=%d interp=%.1f kernel=%.1f (%.2f×)"

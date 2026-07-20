@@ -26,8 +26,8 @@ class PerfGateTest {
 
     /**
      * Run the [PerfHarness.pairedGrowth] estimator for a gate and assert the median within-pair growth stays under
-     * the sub-quadratic trip line. [measureAt] returns a representative ms at a scale (the gate supplies its own —
-     * a least-contended `timeInterpreter(...).minMs`, or `coldRunMillis`); [small]/[large] (default 4×[small]) are
+     * the sub-quadratic trip line. [measureAt] returns a repeated median at a scale; [small]/[large] (default
+     * 4×[small]) are
      * the two scales, [unit] labels the scaled axis, and [culprit] names the likely regression when it trips.
      */
     private fun assertSubQuadratic(
@@ -50,7 +50,7 @@ class PerfGateTest {
     fun scalingIsSubQuadratic() {
         val b1 = PerfCatalog.b1()
         assertSubQuadratic("B1 sub-quadratic check", N_SMALL, "rows", "the #28 indexing regressed to a linear scan?") { n ->
-            PerfHarness.timeInterpreter(b1, n, warmup = 5, iters = 7).minMs
+            PerfHarness.timeInterpreter(b1, n, warmup = 5, iters = 7).medianMs
         }
     }
 
@@ -63,7 +63,7 @@ class PerfGateTest {
     fun semanticIndexStaysSubQuadratic() {
         val si = PerfCatalog.semanticIndexPerRow()
         assertSubQuadratic("semantic-index sub-quadratic", N_SMALL, "rows", "the row-prefix index regressed?") { n ->
-            PerfHarness.timeInterpreter(si, n, warmup = 5, iters = 7).minMs
+            PerfHarness.timeInterpreter(si, n, warmup = 5, iters = 7).medianMs
         }
     }
 
@@ -78,7 +78,7 @@ class PerfGateTest {
     fun deepNestedHavingStaysSubQuadratic() {
         val dr = PerfCatalog.deepRich(firing = false)
         assertSubQuadratic("deep-nested Having sub-quadratic", 250, "vendors", "rowContextsScoped prefix-index regressed?") { n ->
-            PerfHarness.timeInterpreter(dr, n, warmup = 5, iters = 7).minMs
+            PerfHarness.timeInterpreter(dr, n, warmup = 5, iters = 7).medianMs
         }
     }
 
@@ -93,7 +93,7 @@ class PerfGateTest {
         val ndv = PerfCatalog.numDifferentValues()
         assertSubQuadratic("NumberOfDifferentValues sub-quadratic", N_SMALL, "values",
             "the distinct sort regressed to a linear scan?") { n ->
-            PerfHarness.timeInterpreter(ndv, n, warmup = 5, iters = 7).minMs
+            PerfHarness.timeInterpreter(ndv, n, warmup = 5, iters = 7).medianMs
         }
     }
 
@@ -108,7 +108,7 @@ class PerfGateTest {
         val fvnu = PerfCatalog.fieldValuesNotUniqueStar()
         assertSubQuadratic("FieldValuesNotUnique sub-quadratic", N_SMALL, "values",
             "the key-set regressed to a pairwise scan?") { n ->
-            PerfHarness.timeInterpreter(fvnu, n, warmup = 5, iters = 7).minMs
+            PerfHarness.timeInterpreter(fvnu, n, warmup = 5, iters = 7).medianMs
         }
     }
 
@@ -121,7 +121,7 @@ class PerfGateTest {
     @Test
     fun wideGroupsStaysSubQuadratic() {
         assertSubQuadratic("wide sibling-groups sub-quadratic", 50, "groups", "per-group setup scans the whole model?") { g ->
-            PerfHarness.timeInterpreter(PerfCatalog.wideGroups(g), 20, warmup = 5, iters = 7).minMs
+            PerfHarness.timeInterpreter(PerfCatalog.wideGroups(g), 20, warmup = 5, iters = 7).medianMs
         }
     }
 
@@ -137,7 +137,7 @@ class PerfGateTest {
     fun tieredComputationStaysSubQuadratic() {
         val tc = PerfCatalog.tieredComputation()
         assertSubQuadratic("tiered compute sub-quadratic", N_SMALL, "rows", "precondition selection rescans per row?") { n ->
-            PerfHarness.timeInterpreter(tc, n, warmup = 5, iters = 7).minMs
+            PerfHarness.timeInterpreter(tc, n, warmup = 5, iters = 7).medianMs
         }
     }
 
@@ -153,7 +153,7 @@ class PerfGateTest {
         val cf = PerfCatalog.constrainedFields()
         assertSubQuadratic("constrained-field formal check sub-quadratic", N_SMALL, "rows",
             "the per-cell constraint check rescans?") { n ->
-            PerfHarness.timeInterpreter(cf, n, warmup = 5, iters = 7).minMs
+            PerfHarness.timeInterpreter(cf, n, warmup = 5, iters = 7).medianMs
         }
     }
 
@@ -168,7 +168,7 @@ class PerfGateTest {
     fun multiStarCorrelationStaysSubQuadratic() {
         val ms = PerfCatalog.multiStarCorrelation()
         assertSubQuadratic("multi-star \$-correlation sub-quadratic", N_SMALL, "lines", "reverted to the naive scan?") { n ->
-            PerfHarness.timeInterpreter(ms, n, warmup = 5, iters = 7).minMs
+            PerfHarness.timeInterpreter(ms, n, warmup = 5, iters = 7).medianMs
         }
     }
 
@@ -181,7 +181,7 @@ class PerfGateTest {
     fun parallelIterationStaysSubQuadratic() {
         val pi = PerfCatalog.parallel()
         assertSubQuadratic("parallel-iteration sub-quadratic", N_SMALL, "rows", "nested-loop join regression?") { n ->
-            PerfHarness.timeInterpreter(pi, n, warmup = 5, iters = 7).minMs
+            PerfHarness.timeInterpreter(pi, n, warmup = 5, iters = 7).medianMs
         }
     }
 
@@ -198,7 +198,7 @@ class PerfGateTest {
         val pf = PerfCatalog.parallelFramed()
         assertSubQuadratic("framed parallel-iteration sub-quadratic", N_SMALL, "rows",
             "clean-group map not hoisted out of the frame loop?") { n ->
-            PerfHarness.timeInterpreter(pf, n, warmup = 5, iters = 7).minMs
+            PerfHarness.timeInterpreter(pf, n, warmup = 5, iters = 7).medianMs
         }
     }
 
@@ -212,7 +212,7 @@ class PerfGateTest {
     fun coldStartStaysSubQuadratic() {
         val b1 = PerfCatalog.b1()
         assertSubQuadratic("COLD first-call (startup)", N_SMALL, "rows", "a cold-path O(N²) regression?") { n ->
-            PerfHarness.coldRunMillis(b1, n)
+            PerfHarness.freshRunMedianMillis(b1, n)
         }
     }
 
@@ -253,7 +253,7 @@ class PerfGateTest {
         assertSubQuadratic(
             "complex real-world (${sc.interpModel.fields.size}f/${sc.interpModel.rules.size}r) sub-quadratic",
             250, "claims", "an interaction O(N²)?",
-        ) { n -> PerfHarness.timeInterpreter(sc, n, warmup = 4, iters = 6).minMs }
+        ) { n -> PerfHarness.timeInterpreter(sc, n, warmup = 4, iters = 7).medianMs }
     }
 
     /**
@@ -269,7 +269,7 @@ class PerfGateTest {
     fun berlinDateTimeStaysSubQuadratic() {
         val dt = PerfCatalog.berlinDateTime()
         assertSubQuadratic("Berlin DATE_TIME sub-quadratic", N_SMALL, "rows", "the offset path regressed?") { n ->
-            PerfHarness.timeInterpreter(dt, n, warmup = 5, iters = 7).minMs
+            PerfHarness.timeInterpreter(dt, n, warmup = 5, iters = 7).medianMs
         }
     }
 
@@ -286,7 +286,7 @@ class PerfGateTest {
         val sc = PerfCatalog.computeOverlaySemanticIndex()
         assertSubQuadratic("compute-overlay index-column sub-quadratic", CO_N, "rows",
             "the OverlayContext rebuilds indexColumn per outer Row instead of caching per step?") { n ->
-            PerfHarness.timeInterpreter(sc, n, warmup = 8, iters = 7).minMs
+            PerfHarness.timeInterpreter(sc, n, warmup = 8, iters = 7).medianMs
         }
     }
 
@@ -304,7 +304,7 @@ class PerfGateTest {
         val sc = PerfCatalog.computeOverlayCorrelation()
         assertSubQuadratic("compute-overlay \$-correlation sub-quadratic", CO_N, "rows",
             "the OverlayContext rebuilds correlationBuckets per outer Row with a large constant?") { n ->
-            PerfHarness.timeInterpreter(sc, n, warmup = 8, iters = 7).minMs
+            PerfHarness.timeInterpreter(sc, n, warmup = 8, iters = 7).medianMs
         }
     }
 

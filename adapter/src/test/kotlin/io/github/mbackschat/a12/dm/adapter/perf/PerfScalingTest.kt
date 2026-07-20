@@ -73,12 +73,12 @@ class PerfScalingTest {
         println("[startup] cold first-call (fresh engine + fresh doc + ONE validateFull, NO warmup):")
         // Axis 1 — rule count, small document (~500 sub rows): the first-parse-of-N-rules cost.
         for (rules in listOf(6, 48, 192)) {
-            val ms = PerfHarness.coldRunMillis(PerfCatalog.manyRules(rules), n = 100, repeats = 1)
+            val ms = PerfHarness.freshRunMedianMillis(PerfCatalog.manyRules(rules), n = 100, repeats = 1)
             println("  rules=%-3d  small doc (100 Lines × 5)   cold = %.1f ms".format(rules, ms))
         }
         // Axis 2 — document size, one rule: the lazy index build + cold (un-JIT-warmed) per-row eval.
         for (n in listOf(10_000, 100_000)) {
-            val ms = PerfHarness.coldRunMillis(PerfCatalog.b1(), n, repeats = 1)
+            val ms = PerfHarness.freshRunMedianMillis(PerfCatalog.b1(), n, repeats = 1)
             println("  1 rule    %-7d rows              cold = %.1f ms".format(n, ms))
         }
     }

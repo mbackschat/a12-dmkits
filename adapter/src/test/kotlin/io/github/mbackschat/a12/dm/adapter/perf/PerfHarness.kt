@@ -334,19 +334,21 @@ object PerfHarness {
     }
 
     /**
-     * **Cold first-call latency** (ms): the MIN over [repeats] FRESH attempts — each a fresh [DmInterpreter] +
+     * **Cold first-call latency** (ms): the MEDIAN over [repeats] FRESH attempts — each a fresh [DmInterpreter] +
      * a fresh [Document] at scale [n] + exactly ONE `validateFull`, with **no warmup**. This is the realistic
      * **startup / one-shot / first-call** cost (the lazy index build + first parse + un-JIT-warmed execution)
      * that the warm [measure]/[runScenario] path deliberately excludes — and exactly where the index-build
      * O(N²) hid. Cold/startup is a **co-equal goal** with steady-state, so it gets its own gate (the growth
-     * factor across N catches a reintroduced cold O(N²); min-of-fresh is robust to scheduler noise).
+     * factor across N catches a reintroduced cold O(N²)); the repeated median rejects scheduler outliers without
+     * cherry-picking the least-contended attempt.
      */
-    fun coldRunMillis(scenario: PerfScenario, n: Int, repeats: Int = 3): Double {
+    fun freshRunMedianMillis(scenario: PerfScenario, n: Int, repeats: Int = 3): Double {
+        require(repeats > 0) { "repeats must be positive" }
         preflight(scenario, n)
-        return (0 until repeats).minOf {
+        return median(DoubleArray(repeats) {
             val inst = InterpreterPerfEngine.build(scenario).instance(n)   // fresh engine + fresh doc (outside timing)
             val t = System.nanoTime(); inst.run(); (System.nanoTime() - t) / 1e6
-        }
+        })
     }
 
     /**
@@ -412,22 +414,32 @@ object PerfHarness {
      * same machine-load slice), and the within-pair ratio is `large/small`; the estimator is the **median** of
      * those ratios. Median (not the old min-of-repeats) is the robust central value the contract requires: a min
      * understates under a single clean slice (the min hack "flipped pass↔fail on identical code"
-     * INTERPRETER-PERFORMANCE.md) and a mean is dragged by one contended slice. [measureAt] returns a representative
-     * ms at a scale — each gate supplies its own (a least-contended `timeInterpreter(...).minMs`, a `coldRunMillis`,
-     * or a specialist `minMs`). A linear axis medians ≈4×, a quadratic one ≈16×; the trip line is
+     * INTERPRETER-PERFORMANCE.md) and a mean is dragged by one contended slice. [measureAt] returns either one
+     * warmed observation or a repeated median at that scale—never an inner minimum. A linear axis medians ≈4×,
+     * a quadratic one ≈16×; the trip line is
      * [PerfBounds.SUB_QUADRATIC_MAX] (the ratified backstop — a tighter bar is an owner-gated per-number promotion,
      * IF137). Reported [Growth.smallMs]/[Growth.largeMs] are the medians across pairs, for the log line.
      */
     fun pairedGrowth(small: Int, large: Int, pairs: Int = PerfBounds.GROWTH_PAIRS, measureAt: (Int) -> Double): Growth {
+        require(small > 0) { "small scale must be positive" }
+        require(large > small) { "large scale must be greater than small scale" }
+        require(pairs > 0 && pairs % 2 == 1) { "pairs must be a positive odd number" }
         val ratios = DoubleArray(pairs)
         val smalls = DoubleArray(pairs)
         val larges = DoubleArray(pairs)
         for (i in 0 until pairs) {
-            val s = measureAt(small)
-            val l = measureAt(large)
+            val s = checkedGrowthObservation(measureAt(small), small, i)
+            val l = checkedGrowthObservation(measureAt(large), large, i)
             smalls[i] = s; larges[i] = l; ratios[i] = l / s
         }
         return Growth(median(ratios), median(smalls), median(larges))
+    }
+
+    private fun checkedGrowthObservation(value: Double, scale: Int, pair: Int): Double {
+        require(value.isFinite() && value > 0.0) {
+            "growth observation must be finite and positive: scale=$scale pair=$pair value=$value"
+        }
+        return value
     }
 
     /** The middle value of a sorted copy (does not mutate the caller's array). */

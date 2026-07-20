@@ -55,23 +55,23 @@ class GroupScopedFillPerfTest {
         return d
     }
 
-    private fun minMs(n: Int): Double {
+    private fun medianMs(n: Int): Double {
         val interp = DmInterpreter(def)
         val d = doc(n)
-        repeat(2) { interp.validateFull(d) }
-        return (1..3).minOf { val t = System.nanoTime(); interp.validateFull(d); (System.nanoTime() - t) / 1e6 }
+        return PerfHarness.measure(warmup = 2, iters = 3) { interp.validateFull(d) }.medianMs
     }
 
-    private fun kernelMinMs(n: Int): Double {
+    private fun kernelMedianMs(n: Int): Double {
         val instance = kernelEngine.instance(kDoc(n))
-        repeat(2) { kernelEngine.firedCodesSorted(instance) }
-        return (1..3).minOf { val t = System.nanoTime(); kernelEngine.firedCodesSorted(instance); (System.nanoTime() - t) / 1e6 }
+        return PerfHarness.measure(warmup = 2, iters = 3) {
+            kernelEngine.firedCodesSorted(instance)
+        }.medianMs
     }
 
     @Test
     fun groupScopedFillScalesSubQuadratically() {
         // IF137 paired estimator: interleaved N/4N, median of within-pair ratios (via the shared PerfHarness helper).
-        val g = PerfHarness.pairedGrowth(N, N * 4) { minMs(it) }
+        val g = PerfHarness.pairedGrowth(N, N * 4) { medianMs(it) }
         println("[perf] group-scope fill: %.1fms@%d → %.1fms@%d  median-growth=%.1f× (linear≈4, quadratic≈16)"
             .format(g.smallMs, N, g.largeMs, N * 4, g.ratio))
         assertTrue(g.ratio < PerfBounds.SUB_QUADRATIC_MAX,
@@ -80,8 +80,8 @@ class GroupScopedFillPerfTest {
 
     @Test
     fun groupScopedFillMatchesKernelComplexityClass() {
-        val (iSmall, kSmall) = minMs(N) to kernelMinMs(N)
-        val (iLarge, kLarge) = minMs(N * 4) to kernelMinMs(N * 4)
+        val (iSmall, kSmall) = medianMs(N) to kernelMedianMs(N)
+        val (iLarge, kLarge) = medianMs(N * 4) to kernelMedianMs(N * 4)
         val ratioSmall = iSmall / kSmall; val ratioLarge = iLarge / kLarge
         println("[perf] group-scope fill vs kernel: N=%d interp=%.1f kernel=%.1f (%.2f×) | N=%d interp=%.1f kernel=%.1f (%.2f×)"
             .format(N, iSmall, kSmall, ratioSmall, N * 4, iLarge, kLarge, ratioLarge))

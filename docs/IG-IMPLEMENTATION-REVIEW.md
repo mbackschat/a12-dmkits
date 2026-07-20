@@ -317,7 +317,7 @@ The agreement payload is also not authoritative. Validation compares only the so
 
 **Acceptance checks:** A repository search finds one implementation of paired growth and one catastrophe-floor constant. A synthetic sequence distinguishes median-of-ratios from ratio-of-medians and from best-minimum selection. Current growth guards remain green under the unchanged floor, and their prose calls the result a catastrophe guard until a pinned certifying run exists.
 
-**Resolution:** Open.
+**Resolution:** Corrected 2026-07-20. Every paired observation is now an already-warmed observation or a repeated median; `CharsetPerfTest` uses `PerfHarness.pairedGrowth` and `PerfBounds.SUB_QUADRATIC_MAX`; and `PerfGrowthEstimatorTest` locks interleaving, within-pair division, odd-median selection, and invalid-input rejection with a sequence that distinguishes the competing aggregations.
 
 ### RV-2026-07-20-03-3 — the versioned identity is not bound to scenario content or results
 
