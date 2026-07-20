@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter.review;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
@@ -56,22 +57,242 @@ public record ModelReport(Identity identity, ModelCard structure, Usage usage,
     /** A localized stored message (the modeller's own NL — the verbatim half of the Hybrid gloss). */
     public record Message(String locale, String text) {}
 
-    /** One rule, glossed for comprehension. {@code gloss} is null when {@code explained} is false (Opaque). Polarity is
-     *  the model-level constant {@link #VIOLATION_POLARITY}, not repeated here. */
-    public record RuleEntry(String rule, String scope, boolean explained, String gloss, String canonicalText,
-            String severity, String code, String errorField, List<Message> messages) {}
+    /** The closed explanation state of a rule catalog entry. */
+    public sealed interface RuleExplanationOutcome permits ExplainedRule, OpaqueExplanation {}
+
+    /** The closed explanation state of a computation catalog entry. */
+    public sealed interface ComputationExplanationOutcome permits ExplainedComputation, OpaqueExplanation {}
+
+    /** A rule that rulekit modeled completely. */
+    public record ExplainedRule(RuleExplanation explanation) implements RuleExplanationOutcome {
+        public ExplainedRule {
+            Objects.requireNonNull(explanation, "explanation");
+        }
+
+        public String gloss() {
+            return explanation.gloss();
+        }
+
+        public String canonicalText() {
+            return explanation.text();
+        }
+    }
 
     /**
-     * One computation, glossed for comprehension. {@code gloss}/{@code computedField} null when Opaque. The
-     * {@code commonPrecondition} (nullable — the gate over the whole computation) and the {@code alternatives}
-     * (each a {@code (precondition?, operation, toleranceRangeOp?)} — the preconditioned or
-     * single-unconditional formulae) mirror
-     * {@code computation read}'s shape exactly, so the two surfaces agree; both are absent/empty for an Opaque
-     * computation.
+     * A computation that rulekit modeled completely, including the same common-precondition and alternative
+     * detail exposed by {@code computation read}.
      */
-    public record ComputationEntry(String computation, String scope, boolean explained, String computedField,
-            String gloss, String canonicalText, String commonPrecondition,
-            List<DraftComputation.Alternative> alternatives, List<Message> messages) {}
+    public record ExplainedComputation(ComputationExplanation explanation, DraftComputation draft,
+            List<Message> messages)
+            implements ComputationExplanationOutcome {
+        public ExplainedComputation {
+            Objects.requireNonNull(explanation, "explanation");
+            Objects.requireNonNull(draft, "draft");
+            messages = List.copyOf(messages);
+        }
+    }
+
+    /** A rule or computation that rulekit preserved verbatim because it could not model one construct. */
+    public record OpaqueExplanation(String canonicalText, String reason)
+            implements RuleExplanationOutcome, ComputationExplanationOutcome {
+        public OpaqueExplanation {
+            Objects.requireNonNull(canonicalText, "canonicalText");
+            Objects.requireNonNull(reason, "reason");
+        }
+
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        public static final class Builder {
+            private String canonicalText;
+            private String reason;
+
+            public Builder canonicalText(String canonicalText) {
+                this.canonicalText = canonicalText;
+                return this;
+            }
+
+            public Builder reason(String reason) {
+                this.reason = reason;
+                return this;
+            }
+
+            public OpaqueExplanation build() {
+                return new OpaqueExplanation(canonicalText, reason);
+            }
+        }
+    }
+
+    /**
+     * One rule, glossed for comprehension. Polarity is the model-level constant
+     * {@link #VIOLATION_POLARITY}, not repeated here.
+     */
+    public record RuleEntry(String rule, String scope, RuleExplanationOutcome explanation,
+            String severity, String code, String errorField, List<Message> messages) {
+        public RuleEntry {
+            Objects.requireNonNull(explanation, "explanation");
+            messages = List.copyOf(messages);
+        }
+
+        public static Builder builder(String rule, String scope, RuleExplanationOutcome explanation) {
+            return new Builder(rule, scope, explanation);
+        }
+
+        public boolean explained() {
+            return explanation instanceof ExplainedRule;
+        }
+
+        public String gloss() {
+            return switch (explanation) {
+                case ExplainedRule explained -> explained.gloss();
+                case OpaqueExplanation ignored -> null;
+            };
+        }
+
+        public String canonicalText() {
+            return switch (explanation) {
+                case ExplainedRule explained -> explained.canonicalText();
+                case OpaqueExplanation opaque -> opaque.canonicalText();
+            };
+        }
+
+        public String reason() {
+            return switch (explanation) {
+                case ExplainedRule ignored -> null;
+                case OpaqueExplanation opaque -> opaque.reason();
+            };
+        }
+
+        public static final class Builder {
+            private final String rule;
+            private final String scope;
+            private final RuleExplanationOutcome explanation;
+            private String severity;
+            private String code;
+            private String errorField;
+            private List<Message> messages = List.of();
+
+            private Builder(String rule, String scope, RuleExplanationOutcome explanation) {
+                this.rule = rule;
+                this.scope = scope;
+                this.explanation = explanation;
+            }
+
+            public Builder severity(String severity) {
+                this.severity = severity;
+                return this;
+            }
+
+            public Builder code(String code) {
+                this.code = code;
+                return this;
+            }
+
+            public Builder errorField(String errorField) {
+                this.errorField = errorField;
+                return this;
+            }
+
+            public Builder messages(List<Message> messages) {
+                this.messages = messages;
+                return this;
+            }
+
+            public RuleEntry build() {
+                return new RuleEntry(rule, scope, explanation, severity, code, errorField, messages);
+            }
+        }
+    }
+
+    /**
+     * One computation, glossed for comprehension. The explained branch carries the computed field,
+     * common precondition, alternatives, and messages together; the Opaque branch carries only the preserved
+     * text and conversion reason, so contradictory branch states cannot be constructed.
+     */
+    public record ComputationEntry(String computation, String scope,
+            ComputationExplanationOutcome explanation) {
+        public ComputationEntry {
+            Objects.requireNonNull(explanation, "explanation");
+        }
+
+        public static Builder builder(String computation, String scope) {
+            return new Builder(computation, scope);
+        }
+
+        public boolean explained() {
+            return explanation instanceof ExplainedComputation;
+        }
+
+        public String computedField() {
+            return switch (explanation) {
+                case ExplainedComputation explained -> explained.explanation().computedField();
+                case OpaqueExplanation ignored -> null;
+            };
+        }
+
+        public String gloss() {
+            return switch (explanation) {
+                case ExplainedComputation explained -> explained.explanation().gloss();
+                case OpaqueExplanation ignored -> null;
+            };
+        }
+
+        public String canonicalText() {
+            return switch (explanation) {
+                case ExplainedComputation ignored -> null;
+                case OpaqueExplanation opaque -> opaque.canonicalText();
+            };
+        }
+
+        public String commonPrecondition() {
+            return switch (explanation) {
+                case ExplainedComputation explained -> explained.draft().commonPrecondition();
+                case OpaqueExplanation ignored -> null;
+            };
+        }
+
+        public List<DraftComputation.Alternative> alternatives() {
+            return switch (explanation) {
+                case ExplainedComputation explained -> explained.draft().alternatives();
+                case OpaqueExplanation ignored -> List.of();
+            };
+        }
+
+        public List<Message> messages() {
+            return switch (explanation) {
+                case ExplainedComputation explained -> explained.messages();
+                case OpaqueExplanation ignored -> List.of();
+            };
+        }
+
+        public String reason() {
+            return switch (explanation) {
+                case ExplainedComputation ignored -> null;
+                case OpaqueExplanation opaque -> opaque.reason();
+            };
+        }
+
+        public static final class Builder {
+            private final String computation;
+            private final String scope;
+            private ComputationExplanationOutcome explanation;
+
+            private Builder(String computation, String scope) {
+                this.computation = computation;
+                this.scope = scope;
+            }
+
+            public Builder explanation(ComputationExplanationOutcome explanation) {
+                this.explanation = explanation;
+                return this;
+            }
+
+            public ComputationEntry build() {
+                return new ComputationEntry(computation, scope, explanation);
+            }
+        }
+    }
 
     /** Assemble the comprehension view of {@code modelJson} (a self-contained, kernel-loadable model). */
     public static ModelReport of(String modelJson) {
@@ -125,19 +346,23 @@ public record ModelReport(Identity identity, ModelCard structure, Usage usage,
         List<RuleEntry> out = new ArrayList<>();
         for (String name : adapter.ruleFullNames()) {
             ReadResult read = adapter.read(name);
-            String gloss = null;
-            String canonical;
-            boolean explained = read instanceof ReadResult.Converted;
-            if (read instanceof ReadResult.Converted converted) {
-                RuleExplanation ex = context.explain(converted.condition());
-                gloss = ex.gloss();
-                canonical = ex.text();
-            } else {
-                canonical = ((ReadResult.Opaque) read).canonicalText();
-            }
-            out.add(new RuleEntry(name, scopeOf(name), explained, gloss, canonical,
-                    adapter.ruleSeverity(name), adapter.ruleErrorCode(name),
-                    adapter.ruleErrorField(name).orElse(null), messages(adapter.ruleMessages(name))));
+            RuleExplanationOutcome explanation = switch (read) {
+                case ReadResult.Converted converted -> {
+                    RuleExplanation explained = context.explain(converted.condition());
+                    yield new ExplainedRule(explained);
+                }
+                case ReadResult.Opaque opaque ->
+                    OpaqueExplanation.builder()
+                            .canonicalText(opaque.canonicalText())
+                            .reason(opaque.reason())
+                            .build();
+            };
+            out.add(RuleEntry.builder(name, scopeOf(name), explanation)
+                    .severity(adapter.ruleSeverity(name))
+                    .code(adapter.ruleErrorCode(name))
+                    .errorField(adapter.ruleErrorField(name).orElse(null))
+                    .messages(messages(adapter.ruleMessages(name)))
+                    .build());
         }
         return out;
     }
@@ -151,11 +376,18 @@ public record ModelReport(Identity identity, ModelCard structure, Usage usage,
                 // the (precondition?, operation) formulae — the SAME DraftComputation `computation read`
                 // emits, so the report and the per-computation read agree on when a field is filled
                 DraftComputation draft = converted.computation().draft();
-                out.add(new ComputationEntry(name, scopeOf(name), true, ex.computedField(), ex.gloss(), null,
-                        draft.commonPrecondition(), draft.alternatives(), computationMessages(ex.messages())));
+                out.add(ComputationEntry.builder(name, scopeOf(name))
+                        .explanation(new ExplainedComputation(
+                                ex, draft, computationMessages(ex.messages())))
+                        .build());
             } else {
-                out.add(new ComputationEntry(name, scopeOf(name), false, null, null,
-                        ((ReadComputation.Opaque) read).canonicalText(), null, List.of(), List.of()));
+                ReadComputation.Opaque opaque = (ReadComputation.Opaque) read;
+                out.add(ComputationEntry.builder(name, scopeOf(name))
+                        .explanation(OpaqueExplanation.builder()
+                                .canonicalText(opaque.canonicalText())
+                                .reason(opaque.reason())
+                                .build())
+                        .build());
             }
         }
         return out;

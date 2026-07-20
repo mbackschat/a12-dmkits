@@ -91,6 +91,7 @@
           "severity": { "type": "string", "description": "ERROR / WARNING / INFO" },
           "code": { "type": "string", "description": "the rule's error code" },
           "errorField": { "type": "string", "description": "the field the diagnostic attaches to (when set)" },
+          "reason": { "type": "string", "description": "the construct rulekit could not model — present only when explained is false" },
           "messages": {
             "type": "array",
             "description": "the verbatim stored messages (the modeller's own text)",
@@ -121,6 +122,7 @@
           "computedField": { "type": "string", "description": "the field this computation fills (when explained)" },
           "gloss": { "type": "string", "description": "the tool-computed plain-language one-liner (absent when Opaque)" },
           "canonicalText": { "type": "string", "description": "the kernel-canonical text (present when Opaque)" },
+          "reason": { "type": "string", "description": "the construct rulekit could not model — present only when explained is false" },
           "commonPrecondition": { "type": "string", "description": "the precondition gating the WHOLE computation, when set — the DSL text (same shape as `computation read`)" },
           "alternatives": {
             "type": "array",

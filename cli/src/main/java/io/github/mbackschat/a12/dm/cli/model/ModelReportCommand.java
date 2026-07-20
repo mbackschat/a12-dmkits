@@ -152,6 +152,9 @@ final class ModelReportCommand extends BaseCommand {
             if (r.errorField() != null) {
                 node.put("errorField", r.errorField());
             }
+            if (r.reason() != null) {
+                node.put("reason", r.reason());
+            }
             putMessages(node, r.messages());
         }
 
@@ -167,6 +170,9 @@ final class ModelReportCommand extends BaseCommand {
             }
             if (c.canonicalText() != null) {
                 node.put("canonicalText", c.canonicalText());
+            }
+            if (c.reason() != null) {
+                node.put("reason", c.reason());
             }
             // the preconditions — same key names/shape as `computation read` so the two surfaces agree
             if (c.commonPrecondition() != null) {
