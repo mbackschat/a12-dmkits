@@ -4,8 +4,23 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
+import io.github.mbackschat.a12.dm.interpreter.eval.FunctionOp
+import io.github.mbackschat.a12.dm.interpreter.eval.PredicateOp
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+
+/** A rule's value-independent iteration decision, prepared once and consumed by every document evaluation. */
+internal sealed interface IterationPlan {
+    data class Rows(val group: String) : IterationPlan
+    data class Once(val rootGroup: String) : IterationPlan
+    data class Parallel(
+        val joined: List<String>,
+        val indexName: String,
+        val commonParent: String,
+        val frameGroup: String?,
+        val deepestFrame: String?,
+    ) : IterationPlan
+}
 
 /**
  * The iteration-scope machinery — a call-invariant collaborator of the I2 eval-state seam (IF117): which
@@ -39,17 +54,34 @@ internal class IterationScopes(private val model: ModelDef) {
      * parallel shape (non-sibling depth, missing / mismatched index field) fails loud (reported unsupported),
      * never silently wrong.
      */
-    fun iterationContexts(rule: RuleDef, ast: Cond, doc: Document): List<EvalContext> {
+    fun prepare(rule: RuleDef, ast: Cond): IterationPlan {
         val refs = nonStarredRefs(ast)
         val scope = deepestRepeatableAnchor(refs) ?: run {
             val starAnchor = starBindingAnchor(ast)
-            return if (starAnchor != null) doc.contextsFor(starAnchor)
-            else doc.onceContextFor(rootGroupOf(resolveErrorPath(rule)))
+            return if (starAnchor != null) IterationPlan.Rows(starAnchor)
+            else IterationPlan.Once(rootGroupOf(resolveErrorPath(rule)))
         }
         val parallelGroups = refs.flatMap { ancestorGroups(it).filter { g -> g in model.repeatable } }
             .distinct().filter { it != scope && !scope.startsWith("$it/") }
-        if (parallelGroups.isNotEmpty()) return parallelIterationContexts(scope, parallelGroups, doc)
-        return doc.contextsFor(scope)
+        if (parallelGroups.isNotEmpty()) {
+            val plan = prepareParallel(scope, parallelGroups)
+            requireParallelDocumentSupport(ast, plan.joined)
+            return plan
+        }
+        return IterationPlan.Rows(scope)
+    }
+
+    /** Execute the already-prepared iteration decision against one document. */
+    fun iterationContexts(plan: IterationPlan, doc: Document): List<EvalContext> = when (plan) {
+        is IterationPlan.Rows -> doc.contextsFor(plan.group)
+        is IterationPlan.Once -> doc.onceContextFor(plan.rootGroup)
+        is IterationPlan.Parallel -> doc.parallelContexts(
+            plan.joined,
+            plan.indexName,
+            plan.commonParent,
+            plan.frameGroup,
+            plan.deepestFrame,
+        )
     }
 
     /** The deepest repeatable BINDING level across the condition's starred refs (tier 2), or null. */
@@ -81,6 +113,12 @@ internal class IterationScopes(private val model: ModelDef) {
      * read 3VL UNKNOWN (KERNEL-FINDINGS §9), and the auto checks still emit `uniqueIndex`/`mandatoryField`.
      */
     fun parallelIterationContexts(scope: String, parallelGroups: List<String>, doc: Document): List<EvalContext> {
+        val plan = prepareParallel(scope, parallelGroups)
+        return iterationContexts(plan, doc)
+    }
+
+    /** Prepare and validate the document-independent shape of one parallel join. */
+    private fun prepareParallel(scope: String, parallelGroups: List<String>): IterationPlan.Parallel {
         val joined = (listOf(scope) + parallelGroups).distinct()
         val commonParent = commonAncestor(joined)
         val parentDepth = pathParts(commonParent).size
@@ -105,7 +143,63 @@ internal class IterationScopes(private val model: ModelDef) {
         }
         val frameGroup = framed.firstOrNull()
         val deepestFrame = frameGroup?.let { g -> frameAncestors(g).maxByOrNull { pathParts(it).size } }
-        return doc.parallelContexts(joined, indexNames.single(), commonParent, frameGroup, deepestFrame)
+        return IterationPlan.Parallel(joined, indexNames.single(), commonParent, frameGroup, deepestFrame)
+    }
+
+    /**
+     * Validate the views a [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s parallel row can supply.
+     * This lives on the preparation boundary used by execution, so value-independent declines cannot hide behind
+     * a branch or an empty document and cannot drift from a separate support-only AST recognizer.
+     */
+    private fun requireParallelDocumentSupport(ast: Cond, joined: List<String>) {
+        if (starRefs(ast).isNotEmpty()) {
+            throw UnsupportedConstructException("an aggregate/filter inside a parallel iteration is not modeled")
+        }
+        parallelGroupReads(ast).firstOrNull { it !in joined }?.let { group ->
+            throw UnsupportedConstructException(
+                "group-filled on a non-parallel group ($group) inside a parallel iteration is not modeled")
+        }
+    }
+
+    /** Bare-group operands that dispatch to [EvalContext.groupFilled] in a parallel row. */
+    private fun parallelGroupReads(cond: Cond): List<String> = when (cond) {
+        is Cond.Cmp -> parallelGroupReads(cond.left) + parallelGroupReads(cond.right)
+        is Cond.And -> parallelGroupReads(cond.left) + parallelGroupReads(cond.right)
+        is Cond.Or -> parallelGroupReads(cond.left) + parallelGroupReads(cond.right)
+        is Cond.Not -> parallelGroupReads(cond.c)
+        is Cond.Pred -> {
+            val op = PredicateOp.byName(cond.name)
+            val own = if (op?.countsGroups == true ||
+                op == PredicateOp.GROUP_FILLED ||
+                op == PredicateOp.GROUP_NOT_FILLED
+            ) {
+                cond.args.mapNotNull { (it as? Expr.Field)?.path }
+            } else {
+                emptyList()
+            }
+            own + cond.args.flatMap(::parallelGroupReads)
+        }
+        is Cond.Pattern -> parallelGroupReads(cond.value) + parallelGroupReads(cond.pattern)
+        is Cond.Tolerance -> parallelGroupReads(cond.left) + parallelGroupReads(cond.right)
+        is Cond.ValueListQuant ->
+            cond.fields.flatMap(::parallelGroupReads) + cond.values.flatMap(::parallelGroupReads)
+        is Cond.Custom -> emptyList()
+    }
+
+    private fun parallelGroupReads(expr: Expr): List<String> = when (expr) {
+        is Expr.Func -> {
+            val own = if (FunctionOp.byName(expr.name) == FunctionOp.NUMBER_OF_FILLED_GROUPS) {
+                expr.args.mapNotNull { (it as? Expr.Field)?.path }
+            } else {
+                emptyList()
+            }
+            own + expr.args.flatMap(::parallelGroupReads)
+        }
+        is Expr.Arith -> parallelGroupReads(expr.left) + parallelGroupReads(expr.right)
+        is Expr.Star -> expr.having?.let(::parallelGroupReads) ?: emptyList()
+        is Expr.SemanticIndex -> emptyList()
+        is Expr.Field, is Expr.NumLit, is Expr.StrLit, is Expr.BoolLit, is Expr.Const, is Expr.EnumCategory ->
+            emptyList()
     }
 
     /** The deepest common ancestor group path of [groups] (their longest shared path prefix). */

@@ -15,23 +15,51 @@ import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
 
+/** One rule's fully prepared, value-independent execution plan. */
+internal data class PreparedRulePlan(
+    val ast: Cond,
+    val iteration: IterationPlan,
+    val repetitionNotUnique: RnuPlan?,
+)
+
+/** Host/customization inputs the value-independent preparation walk must resolve. */
+internal data class PreparationSupport(
+    val clock: EvalClock?,
+    val predefinedTypes: Map<String, PredefinedType>,
+    val customConditions: Map<String, CustomCondition>,
+    val customFieldTypes: Map<String, CustomFieldType>,
+)
+
 /**
- * Value-independent audit of one prepared interpreter. It forces and traverses every stored rule, every
- * implicit computation validation, and every computation guard/alternative before a document is evaluated.
- * Consumer-provided requirements (custom conditions/types and the clock) are checked here too, so unsupported
- * work cannot hide behind an empty cell, a row gate, or an unselected computation alternative.
+ * The authoritative value-independent preparation boundary for one interpreter. Execution consumes the same
+ * cached rule/computation plans that [audit] forces, so support eligibility cannot drift behind a second,
+ * incomplete semantics walk. Consumer-provided requirements (custom conditions/types and the clock) are checked
+ * while each plan is built; iteration and RNU structure are delegated to their actual runtime planners.
  */
-internal class PreparedSupportAudit(
+internal class PreparedModel(
     private val model: ModelDef,
     private val parsed: ParsedModel,
-    private val clock: EvalClock?,
-    private val predefinedTypes: Map<String, PredefinedType>,
-    private val customConditions: Map<String, CustomCondition>,
-    private val customFieldTypes: Map<String, CustomFieldType>,
+    private val scopes: IterationScopes,
+    private val repetitionNotUnique: RepetitionNotUniqueEvaluator,
+    private val support: PreparationSupport,
 ) {
+    private val rulePlans: Map<RuleDef, Lazy<PreparedRulePlan>> =
+        (model.rules + parsed.implicitRules).associateWith { rule -> lazy { prepareRule(rule) } }
+
+    private val computationPlans: Map<ComputationDef, Lazy<ParsedComputation>> =
+        model.computations.associateWith { computation -> lazy { prepareComputation(computation) } }
+
+    /** The prepared plan execution uses for [rule]; ad-hoc candidates are prepared once for that call. */
+    fun rule(rule: RuleDef): PreparedRulePlan =
+        rulePlans[rule]?.value ?: prepareRule(rule)
+
+    /** The parsed and support-checked computation execution uses for [computation]. */
+    fun computation(computation: ComputationDef): ParsedComputation =
+        computationPlans.getValue(computation).value
+
     fun audit(): List<UnsupportedRule> = buildList {
         model.customTypes.forEach { (path, declaration) ->
-            if (declaration.name !in predefinedTypes && declaration.name !in customFieldTypes) {
+            if (declaration.name !in support.predefinedTypes && declaration.name !in support.customFieldTypes) {
                 add(UnsupportedRule(path,
                     "unregistered custom field type \"${declaration.name}\" — register it in the predefined-type or custom-field-type registry"))
             }
@@ -42,26 +70,32 @@ internal class PreparedSupportAudit(
     }.distinct()
 
     private fun auditRule(rule: RuleDef, unsupported: MutableList<UnsupportedRule>) {
-        capture(rule.path, unsupported) { auditCond(parsed.condAstOf(rule), outerAllowed = false) }
+        capture(rule.path, unsupported) { rule(rule) }
     }
 
     private fun auditComputation(comp: ComputationDef, unsupported: MutableList<UnsupportedRule>) {
         val path = comp.name?.let { "${comp.group}/$it" } ?: comp.targetPath
-        val prepared = try {
-            parsed.parsedOf(comp)
-        } catch (e: UnsupportedConstructException) {
-            unsupported += UnsupportedRule(path, e.message ?: "unsupported construct")
-            return
+        capture(path, unsupported) { computation(comp) }
+    }
+
+    private fun prepareRule(rule: RuleDef): PreparedRulePlan {
+        val ast = parsed.condAstOf(rule)
+        auditCond(ast, outerAllowed = false)
+        return PreparedRulePlan(
+            ast,
+            scopes.prepare(rule, ast),
+            repetitionNotUnique.prepare(rule, ast),
+        )
+    }
+
+    private fun prepareComputation(comp: ComputationDef): ParsedComputation {
+        val computation = parsed.parsedOf(comp)
+        computation.commonPrecondition?.let { auditCond(it, outerAllowed = false) }
+        computation.alternatives.forEach { alternative ->
+            alternative.precondition?.let { auditCond(it, outerAllowed = false) }
+            auditExpr(alternative.operation, outerAllowed = false, starAllowed = false)
         }
-        capture("$path common precondition", unsupported) {
-            prepared.commonPrecondition?.let { auditCond(it, outerAllowed = false) }
-        }
-        prepared.alternatives.forEachIndexed { index, alternative ->
-            capture("$path alternative ${index + 1}", unsupported) {
-                alternative.precondition?.let { auditCond(it, outerAllowed = false) }
-                auditExpr(alternative.operation, outerAllowed = false, starAllowed = false)
-            }
-        }
+        return computation
     }
 
     private inline fun capture(
@@ -99,7 +133,7 @@ internal class PreparedSupportAudit(
                     val typeName = (cond.args[1] as? Expr.StrLit)?.v
                         ?: throw UnsupportedConstructException(
                             "predefined-type validity needs a string type name, got ${cond.args[1]}")
-                    if (typeName !in predefinedTypes && typeName !in customFieldTypes) {
+                    if (typeName !in support.predefinedTypes && typeName !in support.customFieldTypes) {
                         throw UnsupportedConstructException(
                             "unknown predefined type \"$typeName\" — register it in the predefined-type or custom-field-type registry")
                     }
@@ -120,10 +154,12 @@ internal class PreparedSupportAudit(
                 auditExpr(cond.right, outerAllowed, starAllowed = false)
             }
             is Cond.ValueListQuant -> {
-                cond.fields.forEach { auditExpr(it, outerAllowed, starAllowed = false) }
-                cond.values.forEach { auditExpr(it, outerAllowed, starAllowed = false) }
+                // Value-list quantifiers are themselves collection operators: a starred field/value list is a
+                // first-class operand, not a bare star outside an aggregate.
+                cond.fields.forEach { auditExpr(it, outerAllowed, starAllowed = true) }
+                cond.values.forEach { auditExpr(it, outerAllowed, starAllowed = true) }
             }
-            is Cond.Custom -> if (cond.name !in customConditions) {
+            is Cond.Custom -> if (cond.name !in support.customConditions) {
                 throw UnsupportedConstructException(
                     "unregistered custom condition \"${cond.name}\" — register it in the custom-condition registry")
             }
@@ -144,7 +180,16 @@ internal class PreparedSupportAudit(
             is Expr.Func -> {
                 val op = FunctionOp.byName(expr.name)
                     ?: throw UnsupportedConstructException("unsupported function ${expr.name}")
-                expr.args.forEach { auditExpr(it, outerAllowed, starAllowed = true) }
+                expr.args.forEachIndexed { index, argument ->
+                    // `ValueAsDate(date, FirstDay|LastDay)` represents its closed boundary selector as a Const
+                    // AST node, but those two tokens are function parameters—not evaluation-clock constants.
+                    if (op == FunctionOp.VALUE_AS_DATE && index == 1 &&
+                        argument is Expr.Const && argument.name in VALUE_AS_DATE_BOUNDARIES
+                    ) {
+                        return@forEachIndexed
+                    }
+                    auditExpr(argument, outerAllowed, starAllowed = true)
+                }
                 if (op == FunctionOp.SUM_OF_PRODUCTS &&
                     expr.args.any { it is Expr.Star && it.having != null }) {
                     throw UnsupportedConstructException("SumOfProducts does not support a Having filter on its operand")
@@ -158,11 +203,11 @@ internal class PreparedSupportAudit(
                 }
             }
             is Expr.Const -> when (ConstantOp.byName(expr.name)) {
-                ConstantOp.TODAY -> if (clock == null) {
+                ConstantOp.TODAY -> if (support.clock == null) {
                     throw UnsupportedConstructException(
                         "Today needs an evaluation clock — construct DmInterpreter with an EvalClock")
                 }
-                ConstantOp.NOW -> if (clock?.now == null) {
+                ConstantOp.NOW -> if (support.clock?.now == null) {
                     throw UnsupportedConstructException(
                         "Now needs an evaluation clock with a current date-time — construct DmInterpreter with an EvalClock(today, now)")
                 }
@@ -196,5 +241,6 @@ internal class PreparedSupportAudit(
 
     private companion object {
         val DATE_LIKE = setOf(Kind.DATE, Kind.TIME, Kind.DATE_RANGE, Kind.DATE_TIME)
+        val VALUE_AS_DATE_BOUNDARIES = setOf("FirstDay", "LastDay")
     }
 }

@@ -111,6 +111,44 @@ class PerfPreflightTest {
     }
 
     @Test
+    fun exactScaleTimingRefusesARegisteredCallbackFailureAfterTheSampleCap() {
+        val code = "/C/Rows/Code"
+        val model = ModelDef(
+            fields = listOf(FieldDef(code, Kind.STRING, customType = CustomFieldTypeDeclaration("LateType"))),
+            rules = emptyList(),
+            repeatableGroups = setOf("/C/Rows"),
+            declaredReps = mapOf("/C/Rows" to 1_000),
+        )
+        val checker = CustomFieldType { value, _ ->
+            if (value == "late") throw UnsupportedConstructException("late row callback unavailable") else null
+        }
+        val scenario = PerfScenario(
+            "late-registered-callback",
+            "{}",
+            model,
+            interpreterFactory = { DmInterpreter(it, customFieldTypes = mapOf("LateType" to checker)) },
+        ) { sink, n, _ ->
+            sink.group("/C", 1)
+            for (row in 1..n) {
+                sink.group("/C/Rows", 1, row)
+                sink.field(code, if (row == 201) "late" else "ok", 1, row, 1)
+            }
+        }
+
+        val cold = assertThrows<IllegalStateException> {
+            PerfHarness.freshRunMedianMillis(scenario, n = 201, repeats = 1)
+        }
+        assertTrue("N=201" in (cold.message ?: ""), "the cold refusal names the exact timed scale: ${cold.message}")
+        assertTrue("late row callback" in (cold.message ?: ""), "the cold refusal names the callback failure: ${cold.message}")
+
+        val warm = assertThrows<IllegalStateException> {
+            PerfHarness.timeInterpreter(scenario, n = 201, warmup = 0, iters = 1)
+        }
+        assertTrue("N=201" in (warm.message ?: ""), "the warm refusal names the exact timed scale: ${warm.message}")
+        assertTrue("late row callback" in (warm.message ?: ""), "the warm refusal names the callback failure: ${warm.message}")
+    }
+
+    @Test
     fun preparedAuditChecksEveryComputationAlternativeRegardlessOfDataSelection() {
         val selector = "/C/Selector"
         val result = "/C/Result"

@@ -37,7 +37,7 @@ internal class ComputationEngine(
     private val clock: EvalClock?,
     private val predefinedTypes: Map<String, PredefinedType>,
     private val customFieldTypes: Map<String, CustomFieldType>,
-    private val parsedModel: ParsedModel,
+    private val preparedModel: PreparedModel,
     private val scopes: IterationScopes,
     private val checks: AutoChecks,
 ) {
@@ -136,7 +136,7 @@ internal class ComputationEngine(
             // written, so a cached index-column / correlation view over any OTHER column is stable and shared across
             // the step's outer rows (IF143); a new step starts clean so a self-write can't read a superseded view.
             val views = OverlayViews()
-            val parsed = parsedModel.parsedOf(comp)
+            val parsed = preparedModel.computation(comp)
             // A computation iterates where it WRITES (the target's scope), not where it is DECLARED. When neither
             // the operands nor the target has a repeatable ancestor (an all-non-repeatable target), fall back to
             // the TARGET's parent group — NOT `comp.group` (IF89): a computation declared in a separate,
@@ -350,7 +350,7 @@ internal class ComputationEngine(
                 throw UnsupportedConstructException("cyclic computation dependency involving $target")
             }
             for (comp in byTarget[target].orEmpty())
-                for (ref in computationDepRefs(parsedModel.parsedOf(comp)))
+                for (ref in computationDepRefs(preparedModel.computation(comp)))
                     if (ref != target && ref in byTarget) visit(ref)
             onStack.remove(target)
             if (done.add(target)) ordered.addAll(byTarget[target].orEmpty())

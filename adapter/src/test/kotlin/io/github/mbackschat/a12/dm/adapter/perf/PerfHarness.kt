@@ -215,7 +215,7 @@ private fun computationSignature(computed: Computed): String {
     return when (computed.outcome) {
         ComputeOutcome.VALUE -> "$pointer|VALUE|${computed.value ?: ""}"
         ComputeOutcome.CLEARED -> "$pointer|CLEARED"
-        ComputeOutcome.ERRORED -> "$pointer|ERRORED"
+        ComputeOutcome.ERRORED -> "$pointer|ERRORED|${computed.value ?: ""}"
     }
 }
 
@@ -325,6 +325,23 @@ object PerfHarness {
         }
     }
 
+    /** Evaluate one exact materialized interpreter instance outside every clock and require full eligibility. */
+    private fun exactEligibleOutcome(
+        scenario: PerfScenario,
+        n: Int,
+        variant: Int = 0,
+        engine: ReusableEngine = InterpreterPerfEngine.build(scenario),
+    ): PerfOutcome {
+        val outcome = try {
+            engine.instance(n, variant).outcome()
+        } catch (e: io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException) {
+            throw IllegalStateException(
+                "${scenario.name} (N=$n, variant=$variant): refusing to time — ${e.message}", e)
+        }
+        requireEligible(scenario, n, variant, outcome)
+        return outcome
+    }
+
     /**
      * **Semantic preflight (IG77 → IF156): no sample times a fiction.** Before any timing, build the interpreter
      * for [scenario], materialize its canonical instance at a cost-capped scale ([PREFLIGHT_MAX_ROWS]), and assert
@@ -395,6 +412,9 @@ object PerfHarness {
     fun freshRunMedianMillis(scenario: PerfScenario, n: Int, repeats: Int = 3): Double {
         require(repeats > 0) { "repeats must be positive" }
         preflight(scenario, n)
+        // The cost-capped preflight cannot prove a registered callback for data that appears only after its cap.
+        // Use a separate exact-N instance so the timed attempts below remain genuine first calls.
+        exactEligibleOutcome(scenario, n)
         return median(DoubleArray(repeats) {
             val inst = InterpreterPerfEngine.build(scenario).instance(n)   // fresh engine + fresh doc (outside timing)
             val t = System.nanoTime(); inst.run(); (System.nanoTime() - t) / 1e6
@@ -519,8 +539,17 @@ object PerfHarness {
     /** Time the INTERPRETER only at scale [n] (profile/scaling use — no kernel, so high N stays cheap). */
     fun timeInterpreter(scenario: PerfScenario, n: Int, warmup: Int, iters: Int): Stats {
         preflight(scenario, n)
-        val inst = InterpreterPerfEngine.build(scenario).instance(n)
-        inst.run()   // correctness is the gate's job; here we only profile the engine
+        val engine = InterpreterPerfEngine.build(scenario)
+        val inst = engine.instance(n)
+        // Full outcome-bearing eligibility on the exact instance is outside the clock; it also primes the
+        // profiling instance without projecting away `unsupported`.
+        val outcome = try {
+            inst.outcome()
+        } catch (e: io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException) {
+            throw IllegalStateException(
+                "${scenario.name} (N=$n, variant=0): refusing to time — ${e.message}", e)
+        }
+        requireEligible(scenario, n, 0, outcome)
         return measure(warmup, iters) { inst.run() }
     }
 

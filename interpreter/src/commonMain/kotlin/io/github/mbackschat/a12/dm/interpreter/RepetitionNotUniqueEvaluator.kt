@@ -19,6 +19,14 @@ internal data class RnuCache(
     val rows: Map<List<Int>, RnuRowOutcome>,
 )
 
+/** The value-independent RNU shape, prepared once and shared by support audit and document execution. */
+internal data class RnuPlan(
+    val keys: List<String>,
+    val keyGroup: String,
+    val errorPath: String,
+    val scopePrefixLength: Int,
+)
+
 /**
  * Kernel RNU numeric-key normalization: `VkBigDecimal.equals` compares at a common scale capped at 19 HALF_UP.
  * Stored keys that would expose the cap are formally invalid (>15 total digits), but keeping the primitive exact
@@ -65,7 +73,7 @@ internal class RepetitionNotUniqueEvaluator(private val model: ModelDef, private
      * group/asterisk (non-`Expr.Field`) key (the kernel forbids those), or an iteration scope DEEPER than the
      * keys' group (an iteration granularity we don't model — none occurs in the real corpora).
      */
-    fun outcomes(rule: RuleDef, cond: Cond, pass: ValidationPass): RnuCache? {
+    fun prepare(rule: RuleDef, cond: Cond): RnuPlan? {
         val rnu = findRnu(cond) ?: return null
         val keys = rnu.keys
         val keyGroup = parentGroup(keys.first())     // the keys' shared repeatable group (kernel: keys on one path)
@@ -78,6 +86,16 @@ internal class RepetitionNotUniqueEvaluator(private val model: ModelDef, private
         }
         val errorPath = resolveErrorPath(rule)
         val scopeLen = scopePrefixLen(rule, rnu)
+        return RnuPlan(keys, keyGroup, errorPath, scopeLen)
+    }
+
+    /** Build one call's duplicate cache from the already-validated, document-independent [plan]. */
+    fun outcomes(plan: RnuPlan?, pass: ValidationPass): RnuCache? {
+        plan ?: return null
+        val keys = plan.keys
+        val keyGroup = plan.keyGroup
+        val errorPath = plan.errorPath
+        val scopeLen = plan.scopePrefixLength
         data class Row(
             val errorReps: List<Int>,
             val key: List<KeyAtom?>,

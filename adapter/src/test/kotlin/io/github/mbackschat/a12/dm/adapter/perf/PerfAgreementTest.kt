@@ -1,6 +1,11 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
+import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
+import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
@@ -38,6 +43,38 @@ class PerfAgreementTest {
         }
         assertDoesNotThrow {
             PerfHarness.assertSignaturesAgree("same", 2, "a", expected, "b", expected)
+        }
+    }
+
+    @Test
+    fun erroredComputationSignaturesRejectAttemptedValueSwaps() {
+        val source = "/C/Source"
+        val target = "/C/Target"
+        val model = ModelDef(
+            fields = listOf(
+                FieldDef(source, Kind.NUMBER),
+                FieldDef(target, Kind.NUMBER, maxValue = "10"),
+            ),
+            rules = emptyList(),
+            computations = listOf(ComputationDef(target, "/C", "[$source]")),
+        )
+        val scenario = PerfScenario(
+            "errored-value-swap",
+            kernelModel = "{}",
+            interpModel = model,
+            op = PerfOp.COMPUTE,
+        ) { sink, _, variant ->
+            sink.group("/C", 1)
+            sink.field(source, if (variant == 0) "11" else "12", 1, 1)
+        }
+        val engine = InterpreterPerfEngine.build(scenario)
+        val eleven = engine.instance(1, 0).outcome().signatures
+        val twelve = engine.instance(1, 1).outcome().signatures
+
+        assertTrue(eleven.single().endsWith("|ERRORED|11"), "$eleven")
+        assertTrue(twelve.single().endsWith("|ERRORED|12"), "$twelve")
+        assertThrows<IllegalStateException> {
+            PerfHarness.assertSignaturesAgree("errored-value-swap", 1, "eleven", eleven, "twelve", twelve)
         }
     }
 }

@@ -813,7 +813,7 @@ public final class RuntimeLaws {
                 return c.pointer() + "|CLEARED";
             }
             if (c.errored()) {
-                return c.pointer() + "|ERRORED";
+                return c.pointer() + "|ERRORED|" + c.value().orElse("");
             }
             return c.pointer() + "|VALUE|" + c.value().orElse("");
         }).sorted().toList();

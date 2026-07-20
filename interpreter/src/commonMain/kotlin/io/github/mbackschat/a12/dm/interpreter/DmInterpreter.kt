@@ -80,7 +80,19 @@ class DmInterpreter @JvmOverloads constructor(
     private val scopes = IterationScopes(model)
     private val rnuEval = RepetitionNotUniqueEvaluator(model, scopes)
     private val parsedModel = ParsedModel(model)
-    private val engine = ComputationEngine(model, clock, predefinedTypes, customFieldTypes, parsedModel, scopes, checks)
+    private val preparedModel = PreparedModel(
+        model,
+        parsedModel,
+        scopes,
+        rnuEval,
+        PreparationSupport(
+            clock = clock,
+            predefinedTypes = predefinedTypes,
+            customConditions = customConditions,
+            customFieldTypes = customFieldTypes,
+        ),
+    )
+    private val engine = ComputationEngine(model, clock, predefinedTypes, customFieldTypes, preparedModel, scopes, checks)
 
     /**
      * Audit this prepared model without consulting document values. Every stored rule, implicit computation
@@ -88,10 +100,7 @@ class DmInterpreter @JvmOverloads constructor(
      * traversed. A non-empty result means an evaluator must refuse performance/certification work up front;
      * [validate] remains the per-instance outcome-bearing check for failures raised by a registered callback.
      */
-    fun supportAudit(): List<UnsupportedRule> =
-        PreparedSupportAudit(
-            model, parsedModel, clock, predefinedTypes, customConditions, customFieldTypes,
-        ).audit()
+    fun supportAudit(): List<UnsupportedRule> = preparedModel.audit()
 
     /**
      * Run every rule over each row of its iteration scope and return one [Message] per firing — the
@@ -353,7 +362,8 @@ class DmInterpreter @JvmOverloads constructor(
     }
 
     private fun rowOutcomes(rule: RuleDef, pass: ValidationPass): List<RowOutcome> {
-        val ast = parsedModel.condAstOf(rule)
+        val prepared = preparedModel.rule(rule)
+        val ast = prepared.ast
         // The nvv META-LENGTH rule is ELIMINATED — never evaluated, no rows (IG71 → IF125). A rule whose WHOLE
         // condition is `Length(nvvField) > constant` (or the mirrored `constant < Length(nvvField)`) is the
         // kernel's disguised max-length declaration for a raw-type field: the codegen REMOVES the rule and only
@@ -370,11 +380,11 @@ class DmInterpreter @JvmOverloads constructor(
         // guard-independent, keyed by error-path reps; the per-row seam looks the current row up in O(1). Null for
         // a normal rule (no cache, no seam). Building here can throw UnsupportedConstructException (>1 RNU, a
         // group/asterisk key, a too-deep scope) — the caller's per-rule tolerance reports it unsupported.
-        val rnuCache = rnuEval.outcomes(rule, ast, pass)
+        val rnuCache = rnuEval.outcomes(prepared.repetitionNotUnique, pass)
         val ordinaryMessageRefs = if (rnuCache == null) refs else nonRnuMessageRefs(ast).distinct()
         val rnuSeam: ((EvalContext) -> MsgType?)? =
             rnuCache?.let { cache -> { context -> cache.rows[context.repsOf(errorPath)]?.type } }
-        return scopes.iterationContexts(rule, ast, pass.doc).map { ctx ->
+        return scopes.iterationContexts(prepared.iteration, pass.doc).map { ctx ->
             // Partial validation: the kernel runs a rule only if its error-field instance is relevant — else
             // the rule is NOT executed for this row (no message, not a suppression). Full validation: always.
             if (!pass.isRelevant(errorPath, ctx.repsOf(errorPath))) return@map RowOutcome.Passed

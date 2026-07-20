@@ -1,18 +1,17 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws
-import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.eval.Document
-import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 
 /**
  * Perf gate — a group-SCOPED field-fill quantifier over a large repeatable group stays **linear** (IF49). The
@@ -26,6 +25,7 @@ import org.junit.jupiter.api.Test
  * loaded into both engines so they evaluate the identical rule at scale.
  */
 @Tag("perf")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class GroupScopedFillPerfTest {
 
     private val base = DocumentModelDraft.named("order").locale("en_US")
@@ -41,12 +41,18 @@ class GroupScopedFillPerfTest {
     private val kModel = RuntimeLaws.withRule(base, "/Order", "R", "../CustomerName", "NF", cond)
     private val def: ModelDef = ModelLoader.load(kModel)
     private val kernelEngine = RuntimeLaws.kernelEngine(kModel)
+    private val scenario = PerfScenario("group-scoped-fill", kModel, def) { sink, n, _ ->
+        sink.group("/Order", 1)
+        sink.field(CN, "Acme", 1, 1)
+        for (r in 1..n) {
+            sink.group("/Order/Items", 1, r)
+            sink.field(SKU, "S$r", 1, r, 1)
+        }
+    }
 
-    private fun doc(n: Int): Document {
-        val d = def.newDocument()
-        d.field(CN, "Acme", 1, 1)
-        for (r in 1..n) d.field(SKU, "S$r", 1, r, 1)
-        return d
+    @BeforeAll
+    fun assertExactTriEngineEligibility() {
+        PerfHarness.assertSemanticAgreement(scenario, listOf(N, N * 4), withJava = true)
     }
 
     private fun kDoc(n: Int): RuntimeLaws.Doc {
@@ -56,9 +62,7 @@ class GroupScopedFillPerfTest {
     }
 
     private fun medianMs(n: Int): Double {
-        val interp = DmInterpreter(def)
-        val d = doc(n)
-        return PerfHarness.measure(warmup = 2, iters = 3) { interp.validateFull(d) }.medianMs
+        return PerfHarness.timeInterpreter(scenario, n, warmup = 2, iters = 3).medianMs
     }
 
     private fun kernelMedianMs(n: Int): Double {
