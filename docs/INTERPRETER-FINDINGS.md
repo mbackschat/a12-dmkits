@@ -1738,3 +1738,11 @@ The IF154 increment translated five Java whitespace escapes and removed per-row 
 - **Evidence boundary.** `PatternDialectParityTest` is the common JVM/Node primitive lock, including `\s`, NEL/supplementary dot behavior, unmatched backreferences, intersection, character/class boundaries, flags, and Java Unicode constructs. `PatternDialectDiffTest` tri-checks the model-observable admitted cases against Groovy-dynamic and generated Java; `FieldConstraintFormalDiffTest` and `PredefinedTypeValidityDiffTest` cover declared and predefined loci, including the EMail/NBSP discriminator. Supplementary-dot and `\x{1F600}` remain primitive locks because the kernel's default legal-charset formal check prevents those values reaching rule evaluation; they are not misrepresented as tri-engine rule fixtures.
 - **Direct-oracle correction.** The A12K-30 source blacklist does not list uppercase `\P`, but a direct typed/full kernel model rejects `\P{L}` with `MVK_INVALID_PATTERN`. The translator defensively supports the primitive on both hosts; neither this finding nor the evidence matrix classifies it as kernel-admitted.
 - **Performance.** `PatternRegistryTest` locks one compilation per distinct source across rule/declared occurrences and the dialect-sensitive seed path. `PatternPerfTest` uses exact tri-engine semantic preflight, then the ratified paired N/4N estimator under the existing catastrophe floor; it protects the registry and per-row match path without promoting a new NFR bar.
+
+### IF170 — the Node performance launcher propagates its test-process exit (SHIPPED 2026-07-20, partial IG77 increment)
+
+`scripts/perf.sh js` used to append `|| true` to the Node/Mocha invocation. Compilation failures were already fatal, but a compiled JS suite that failed assertions or crashed still fell through to the result extractor and exited successfully, turning the Node performance lane into false evidence.
+
+The launcher now retains the Node command's nonzero case status, prints the captured result lines for diagnosis, and exits with that status. `PerfScriptContractTest` runs in a dedicated input-declared `perfScriptGuardTest` task, so editing `scripts/perf.sh` rechecks only this contract and the broad kernel-backed suite cannot restore a stale cached green.
+
+*Locked:* `:adapter:perfScriptGuardTest`.

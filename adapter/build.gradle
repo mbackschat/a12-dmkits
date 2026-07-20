@@ -237,6 +237,7 @@ tasks.named('test') {
     if (jfr != null) jvmArgs "-XX:StartFlightRecording=settings=profile,filename=${jfr},dumponexit=true"
     dependsOn 'corpusReplayTest'
     dependsOn 'footprintFixtureGuardTest'
+    dependsOn 'perfScriptGuardTest'
     // The corpus guards read corpus/cases/** at runtime; they live in corpusReplayTest (with those files declared
     // as its inputs) so a case edit re-runs ONLY them (not the whole kernel-heavy suite) and can't go up-to-date /
     // restore from the build cache into a FALSE GREEN. `test` dependsOn it, so CI + local always drive it.
@@ -244,7 +245,22 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusReplayTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.laws.CorpusSchemaGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.FootprintScenarioFixtureGuardTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfScriptContractTest'
     }
+}
+
+tasks.register('perfScriptGuardTest', Test) {
+    description = 'Verify the performance launcher propagates Node failures.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    def script = rootProject.file('scripts/perf.sh')
+    systemProperty 'perf.script', script.absolutePath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfScriptContractTest'
+    }
+    inputs.file(script)
 }
 
 def footprintFixtureDirectory = rootProject.file('interpreter/src/commonTest/resources/footprint')

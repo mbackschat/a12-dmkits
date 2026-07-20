@@ -77,7 +77,7 @@ case "$mode" in
         echo "running the JS bundle on Node (raw → $out)…"
         "$node" --require "$nm/source-map-support/register.js" "$nm/mocha/bin/mocha.js" "$bundle" \
             --require "$nm/kotlin-web-helpers/dist/kotlin-test-nodejs-runner.js" \
-            --timeout 120000 --reporter spec >> "$out" 2>&1 || true ;;
+            --timeout 120000 --reporter spec >> "$out" 2>&1 ;;
     *)
         echo "unknown mode '$mode' — see the header of $0 for the modes"; exit 2 ;;
 esac
