@@ -201,13 +201,22 @@ private fun Interpreter.concatNotGiven(e: Expr): Boolean = when (e) {
     else -> false
 }
 
-/** The resolved value SIGN (−1 / 0 / +1) of an operand — 0 for empty (empty-as-0) or a non-numeric/Unknown
- *  value (then the whole term is Unknown and its polarity is discarded). */
-private fun Interpreter.signOf(e: Expr): Int = (evalExpr(e) as? Val.Num)?.v?.compareTo(DEC_ZERO) ?: 0
+/** The resolved value SIGN (−1 / 0 / +1) of an operand. A [Val.DomainFailure] is distinct from
+ *  [Val.Unknown], but neither has a comparison value, so polarity projects both to the fixed/non-firing
+ *  shape. */
+private fun Interpreter.signOf(e: Expr): Int = when (val value = evalExpr(e)) {
+    is Val.Num -> value.v.compareTo(DEC_ZERO)
+    Val.DomainFailure -> 0
+    else -> 0
+}
 
-/** The resolved numeric value of an operand, or null when non-numeric/Unknown (a division-by-zero, a
- *  malformed cell) — the caller then reports the term fixed (it never fires). */
-private fun Interpreter.numValOrNull(e: Expr): Dec? = (evalExpr(e) as? Val.Num)?.v
+/** The resolved numeric value of an operand. [Val.DomainFailure] and [Val.Unknown] remain distinct in the
+ *  value algebra even though both project to null at this comparison-polarity boundary. */
+private fun Interpreter.numValOrNull(e: Expr): Dec? = when (val value = evalExpr(e)) {
+    is Val.Num -> value.v
+    Val.DomainFailure -> null
+    else -> null
+}
 
 /**
  * Directional fillability of a value FUNCTION. The starred aggregates carry the kernel's `NumberCombiner`

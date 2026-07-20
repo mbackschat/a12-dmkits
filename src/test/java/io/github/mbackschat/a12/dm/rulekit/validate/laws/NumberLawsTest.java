@@ -66,8 +66,8 @@ class NumberLawsTest {
 
     @Test
     void roundingDecimalPlacesAboveFourteenIsRejected() {
-        // Source CheckOpUtils: reject if dec > 14 || dec < 0 — valid range is 0..14 (the catalog's
-        // RoundDown(...,0) example confirms 0 is allowed; KERNEL-SEMANTICS's "1 to 14" is slightly off).
+        // Source CheckOpUtils: reject if dec > 14 || dec < 0 — valid range is 0..14; omission and
+        // explicit zero are the same canonical whole-number rounding form (IF176).
         KernelLaws.rejectsOrder("/Order", "../UnitPrice",
                 "FieldFilled(UnitPrice) And RoundDown([UnitPrice], 15) > 1", "MVK_INVALID_DIGIT_FOR_ROUNDING");
     }

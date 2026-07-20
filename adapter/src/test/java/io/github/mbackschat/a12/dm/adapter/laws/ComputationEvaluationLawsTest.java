@@ -19,11 +19,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
  * {@code CalculationController} + {@code VkBigDecimal}):
  *
  * <ul>
- *   <li><b>Division by zero computes nothing</b> — probe-corrected: the source-read expected the
- *       errored bucket ({@code VkBigDecimal.divide} returns the invalid number), but {@code compute()}
- *       reports <em>no outcome at all</em> for a fresh field, and <b>clears</b> a stale previously
- *       computed value (an invalid input never leaves a wrong value standing). The quiet swallowing
- *       matches KERNEL-SEMANTICS §5's "evaluates quietly".</li>
+ *   <li><b>Division-by-zero public delta</b> — {@code compute()} reports no outcome for a fresh target and
+ *       <b>clears</b> a stale target. This test observes only that public delta; IF177 proves that the
+ *       underlying numeric domain failure marks the target invalid, carries {@code berechnungsWertFehler},
+ *       and poisons a dependent read.</li>
  *   <li><b>Overlapping preconditions: the first declared alternative wins</b> — alternatives are
  *       tried in declaration order; the computed value is scale-normalized ({@code 1.00} → {@code "1"}).</li>
  *   <li>Consistency-tier corollary found en route: a bare <b>division has unknown scale</b> and
@@ -71,15 +70,14 @@ class ComputationEvaluationLawsTest {
 
     @Test
     void divisionByZeroComputesNothing() {
-        // probe-corrected: the source-read expected the errored bucket (VkBigDecimal.divide returns
-        // the invalid number) — but compute() reports NO outcome at all for the field: the invalid
-        // value is quietly swallowed, the field is left untouched
+        // Public-delta observation only: a fresh target produces no Computed record. IF177's
+        // DivisionDomainFailureComputationDiffTest owns the target-invalid/formal-error channels.
         List<RuntimeLaws.Computed> out = RuntimeLaws.compute(divisionModel(),
                 RuntimeLaws.doc().group("/Order", 1)
                         .field("/Order/Quantity", "10", 1, 1)
                         .field("/Order/BackorderQuantity", "0", 1, 1));
         assertTrue(out.stream().noneMatch(c -> c.path().equals(TARGET)),
-                () -> "10 / 0 yields no outcome at all — no value, no error, no clear; got " + out);
+                () -> "10 / 0 has no fresh-target public delta; got " + out);
     }
 
     @Test

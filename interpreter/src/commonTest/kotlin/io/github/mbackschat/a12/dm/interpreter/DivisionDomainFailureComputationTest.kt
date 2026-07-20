@@ -1,14 +1,20 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
+import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
+import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
+import io.github.mbackschat.a12.dm.interpreter.eval.PoisonedReadException
+import io.github.mbackschat.a12.dm.interpreter.eval.SingleRowDoc
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.interpreter.parse.parseExpression
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 /** Multiplatform lock for the consumer-sensitive division-domain failure. */
@@ -70,10 +76,51 @@ class DivisionDomainFailureComputationTest {
             )
         }
     }
+
+    @Test
+    fun aDomainFailedLeftSubtreeStillReadsAndSelectsThePoisonedRightOperand() {
+        assertSelectedPoison(
+            "RoundAccounting({1 / 0} + [Later], 2)",
+            values = mapOf(LATER to "1"),
+            expectedPath = LATER,
+        )
+    }
+
+    @Test
+    fun onePassLoweringSelectsTheLaterAuthoredOperandAsTheFirstPoisonedRead() {
+        // The kernel's one-pass rewrite lowers `{Source / 2} * Later` to
+        // `(Later * Source) / 2`; the observer must therefore see Later before Source.
+        assertSelectedPoison(
+            "RoundAccounting({[Source] / 2} * [Later], 2)",
+            values = mapOf(SOURCE to "1", LATER to "2"),
+            expectedPath = LATER,
+        )
+    }
+
+    private fun assertSelectedPoison(operation: String, values: Map<String, String>, expectedPath: String) {
+        val observed = mutableListOf<String>()
+        val kinds = values.keys.associateWith { Kind.NUMBER }
+        val interpreter = Interpreter(
+            SingleRowDoc(ROOT, values, kinds),
+            EvalConfig(computeMode = true),
+            invalid = { path ->
+                observed += path
+                throw PoisonedReadException(path)
+            },
+        )
+
+        val poison = assertFailsWith<PoisonedReadException> {
+            interpreter.evalExpression(parseExpression(operation, ROOT))
+        }
+        assertEquals(expectedPath, poison.path)
+        assertEquals(listOf(expectedPath), observed, "the selected poison is the first and only observed invalid read")
+    }
 }
 
 private const val ROOT = "/Calc"
 private const val NUMERATOR = "/Calc/Numerator"
 private const val DIVISOR = "/Calc/Divisor"
+private const val SOURCE = "/Calc/Source"
+private const val LATER = "/Calc/Later"
 private const val RESULT = "/Calc/Result"
 private const val DEPENDENT = "/Calc/Dependent"

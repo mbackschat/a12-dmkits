@@ -15,9 +15,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 /**
- * The computation author-time lint layer (FEATURE-GAPS G5) — the computation peer of {@link Linter}. The
- * kernel BA doc mandates two computation laws an agent stumbles over, and both surface today only as a kernel
- * reject after the round-trip; this anticipates them with a corrective {@code RK_*} advisory:
+ * The computation author-time lint layer (FEATURE-GAPS G5) — the computation peer of {@link Linter}. It
+ * anticipates two easy-to-miss computation laws with corrective {@code RK_*} advisories:
  *
  * <ul>
  *   <li><b>forbidden constructs</b> — {@code CustomCondition} / {@code RepetitionNotUnique} are not allowed in

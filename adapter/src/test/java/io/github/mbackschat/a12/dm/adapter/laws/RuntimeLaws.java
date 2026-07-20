@@ -1053,6 +1053,19 @@ public final class RuntimeLaws {
     }
 
     /**
+     * Generate and join the kernel's Java source for a model without compiling it. Package-private for
+     * structural law locks whose runtime result cannot expose generated evaluation order.
+     */
+    static String generatedJavaSource(String modelJson) {
+        Properties idToPackage = new Properties();
+        return generateSources(expandedModel(modelJson),
+                IValidationCodeGeneratorConfig.ProgrammingLanguage.JAVA, idToPackage).entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> "// " + entry.getKey() + "\n" + entry.getValue())
+                .collect(Collectors.joining("\n"));
+    }
+
+    /**
      * Generate the kernel's validation source for {@code expanded} in {@code lang}; returns {@code zipPath ->
      * source} for the {@code .java} entries and fills {@code idToPackageOut} with the {@code modelId ->
      * generated-package} mapping the static-model path needs. Language-parameterized: Java today, JS later.

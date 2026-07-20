@@ -61,6 +61,12 @@ class CapturedOuterEnvironmentDiffTest {
             .group(CHILDREN, 1, 1, 2)
             .field(CHILD_KEY, "C2", 1, 1, 2, 1)
             .field(PROBE, "two", 1, 1, 2, 1)
+            // Discriminator: a scalar "$ = current child row" implementation would use 2 for BOTH
+            // outer references on child 2, select this parent-2 marker, and fire child 2 incorrectly.
+            // The complete captured environment keeps Parents=1 and Children=2 distinct.
+            .group(PARENTS, 1, 2)
+            .field(PARENT_KEY, "P2", 1, 2, 1)
+            .field(MARKER, "marked-2", 1, 2, 1)
         val definition = ModelLoader.load(modelJson)
         val interpreterDoc = definition.newDocument()
             .group(ROOT, 1)
@@ -73,6 +79,9 @@ class CapturedOuterEnvironmentDiffTest {
             .group(CHILDREN, 1, 1, 2)
             .field(CHILD_KEY, "C2", 1, 1, 2, 1)
             .field(PROBE, "two", 1, 1, 2, 1)
+            .group(PARENTS, 1, 2)
+            .field(PARENT_KEY, "P2", 1, 2, 1)
+            .field(MARKER, "marked-2", 1, 2, 1)
 
         val dynamic = RuntimeLaws.messages(modelJson, dynamicDoc)
             .filter { it.code() == CODE }.map { it.field() }.sorted()

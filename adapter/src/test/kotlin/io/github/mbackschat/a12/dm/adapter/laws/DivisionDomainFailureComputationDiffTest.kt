@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
@@ -55,39 +56,34 @@ class DivisionDomainFailureComputationDiffTest {
     }
 
     @Test
-    fun aDomainFailedLeftSubtreeStillEvaluatesAndPoisonsOnTheRight() {
-        val operation = "RoundAccounting({1 / 0} + [Later], 2)"
-        val model = oneComputation(operation)
-        val documents = docs(model) {
-            field(LATER, "1.5", 1, 1)
-            field(RESULT, "9.00", 1, 1)
-        }
+    fun generatedCalculationSourceEvaluatesTheRightOperandAfterADomainFailedLeftSubtree() {
+        val method = generatedCalculationMethod("RoundAccounting({1 / 0} + [Later], 2)")
+        val later = identifierFor(method, "Later")
 
-        assertKernelDetail(model, documents.kernel,
-            expectedOutcomes = listOf("$RESULT|CLEARED"),
-            expectedFormal = listOf("zahlHatDezimalTrenner|/Calc[1]/Later"))
-        assertEquals(ComputeOutcome.CLEARED,
-            DmInterpreter(ModelLoader.load(model)).compute(documents.interpreter).single { it.path == RESULT }.outcome)
+        assertTokensAreOrderedAndCaught(
+            method,
+            """makeDecimal("1")""",
+            ".divide(",
+            """makeDecimal("0")""",
+            ".add(",
+            "feldWertAlsZahl(idx, $later)",
+        )
     }
 
     @Test
-    fun onePassDivisionLoweringSelectsTheLaterOperandPoisonFirst() {
-        val operation = "RoundAccounting({[Source] / 2} * [Later], 2)"
-        val model = oneComputation(operation)
-        val documents = docs(model) {
-            field(SOURCE, "bad", 1, 1)
-            field(LATER, "1.5", 1, 1)
-            field(RESULT, "9.00", 1, 1)
-        }
+    fun generatedCalculationSourceLocksTheOnePassLoweredReadOrder() {
+        val method = generatedCalculationMethod("RoundAccounting({[Source] / 2} * [Later], 2)")
+        val later = identifierFor(method, "Later")
+        val source = identifierFor(method, "Source")
 
-        assertKernelDetail(model, documents.kernel,
-            expectedOutcomes = listOf("$RESULT|CLEARED"),
-            expectedFormal = listOf(
-                "zahlHatDezimalTrenner|/Calc[1]/Later",
-                "zahlHatUngueltigeZeichen|/Calc[1]/Source",
-            ))
-        assertEquals(ComputeOutcome.CLEARED,
-            DmInterpreter(ModelLoader.load(model)).compute(documents.interpreter).single { it.path == RESULT }.outcome)
+        assertTokensAreOrderedAndCaught(
+            method,
+            "feldWertAlsZahl(idx, $later)",
+            ".multiply(",
+            "feldWertAlsZahl(idx, $source)",
+            ".divide(",
+            """makeDecimal("2")""",
+        )
     }
 
     @Test
@@ -146,6 +142,33 @@ class DivisionDomainFailureComputationDiffTest {
         val result = oneComputation(operation)
         return RuntimeLaws.withTieredComputation(result, ROOT, "DependentComp", "../Dependent", null,
             listOf(RuntimeLaws.CompAlt(null, "RoundAccounting([Result] + 1, 2)")))
+    }
+
+    private fun generatedCalculationMethod(operation: String): String {
+        val generated = RuntimeLaws.generatedJavaSource(oneComputation(operation))
+        val start = generated.indexOf("public void calc_Result")
+        require(start >= 0) { "generated Result calculation method missing" }
+        val end = generated.indexOf("public Set<String> getExpandedOperandFieldsOfCalculations", start)
+        require(end > start) { "generated Result calculation method end missing" }
+        return generated.substring(start, end)
+    }
+
+    private fun identifierFor(method: String, name: String): String =
+        requireNotNull(
+            Regex("""final RtIdentifierTemplate (\w+) = [^;\n]*unqNm\("$name"\)[^;\n]*;""")
+                .find(method)?.groupValues?.get(1),
+        ) { "generated identifier for $name missing" }
+
+    private fun assertTokensAreOrderedAndCaught(method: String, vararg tokens: String) {
+        val compact = method.replace(Regex("""\s+"""), " ")
+        var prior = -1
+        for (token in tokens) {
+            val current = compact.indexOf(token, prior + 1)
+            assertTrue(current > prior, "generated token '$token' missing or out of order:\n$method")
+            prior = current
+        }
+        val poisonCatchIndex = compact.indexOf("catch (CalculationFieldException e)")
+        assertTrue(poisonCatchIndex > prior, "CalculationFieldException must catch the ordered reads")
     }
 
     private data class Documents(val kernel: RuntimeLaws.Doc, val interpreter: Document)
