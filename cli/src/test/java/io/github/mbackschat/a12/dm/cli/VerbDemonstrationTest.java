@@ -19,6 +19,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import io.github.mbackschat.a12.dm.adapter.profile.ModelProfiles;
+
 /**
  * The demonstration gate (CLI-CONFORMANCE-SPEC, the matrix "demonstrated" column) — every worked example in
  * {@code verb-examples.json} (the one the {@code manifest} surfaces to a cold agent) is <b>executed through
@@ -68,9 +70,19 @@ class VerbDemonstrationTest {
             schemaFile = dir.resolve("schema.json");
             Files.writeString(schemaFile, ex.get("schema").toString());
         }
+        Path profile = null;
+        for (JsonNode tok : ex.path("command")) {
+            if ("<profile.json>".equals(tok.asText())) {
+                assertTrue(model != null, () -> verb + " uses <profile.json> but declares no `model`");
+                profile = dir.resolve("profile.json");
+                Files.writeString(profile, ModelProfiles.extract(Files.readString(model)));
+                break;
+            }
+        }
         // a verb that needs an ISOLATED workspace with its own roles.yaml (workspace roles): the shared `dir`
         // accumulates every example's models, so we stage this one's models + roles file in a private subtree.
         Path rolesWorkspace = ex.has("rolesWorkspace") ? materializeRolesWorkspace(ex.get("rolesWorkspace"), dir) : null;
+        Path profileArtifact = profile;
         List<String> out = new ArrayList<>();
         for (JsonNode tok : ex.path("command")) {
             String t = tok.asText();
@@ -86,6 +98,11 @@ class VerbDemonstrationTest {
                 case "<schema.json>" -> {
                     assertTrue(schemaFile != null, () -> verb + " uses <schema.json> but declares no `schema`");
                     yield schemaFile.toString();
+                }
+                case "<profile.json>" -> {
+                    assertTrue(profileArtifact != null,
+                            () -> verb + " uses <profile.json> but no profile artifact was materialized");
+                    yield profileArtifact.toString();
                 }
                 // a directory verb (workspace list): the temp dir, already populated with the example's siblings
                 case "<workspace-dir>" -> dir.toString();

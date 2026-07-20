@@ -77,6 +77,13 @@ class DataSchemaConformanceTest {
         Files.copy(order, renamed);
         CliTestSupport.run("-m", renamed.toString(), "field", "rename", "/Order/OrderDate", "--to", "PlacedDate");
 
+        Path targetProfile = dir.resolve("target.profile.json");
+        Path actualProfile = dir.resolve("actual.profile.json");
+        CliTestSupport.Result extracted = CliTestSupport.run(
+                "-m", order.toString(), "profile", "extract", "-o", targetProfile.toString());
+        assertTrue(extracted.code() == 0, () -> "profile fixture extraction failed: " + extracted.err());
+        Files.copy(targetProfile, actualProfile);
+
         // schemaName -> the data payloads real runs produced (one per documented mode)
         Map<String, List<JsonNode>> emitted = new LinkedHashMap<>();
         List<String> violations = new ArrayList<>();
@@ -95,6 +102,8 @@ class DataSchemaConformanceTest {
                         "--tree", "--root", "/Subscription",
                         "--include", "rules,computations,descriptions,annotations,enum"}),
                 new Run("profile", new String[]{"-m", order.toString(), "profile", "extract"}),
+                new Run("profile-comparison", new String[]{"profile", "compare",
+                        "--target", targetProfile.toString(), "--actual", actualProfile.toString()}),
                 new Run("read", new String[]{"-m", sub.toString(), "rule", "read", CliTestSupport.RULE_FULL_NAME}),
                 new Run("read", new String[]{"-m", sub.toString(), "rule", "read"}),
                 new Run("explain", new String[]{"-m", sub.toString(), "rule", "explain", CliTestSupport.RULE_FULL_NAME}),
@@ -202,9 +211,9 @@ class DataSchemaConformanceTest {
     /** Tripwire: if a new {@code DATA_SCHEMA} verb is added, it must be covered above or reasoned-exempt. */
     @Test
     void everyDataSchemaIsCoveredOrExempt() {
-        Set<String> covered = Set.of("model-info", "describe", "model-diff", "model-report", "model-usage", "profile", "read",
-                "explain", "where-used", "field-read", "group-read", "typedef-read", "eval-doc", "compute-doc",
-                "workspace-list");
+        Set<String> covered = Set.of("model-info", "describe", "model-diff", "model-report", "model-usage", "profile",
+                "profile-comparison", "read", "explain", "where-used", "field-read", "group-read", "typedef-read",
+                "eval-doc", "compute-doc", "workspace-list");
         List<String> uncovered = new ArrayList<>();
         for (String schema : SchemaCommand.DATA_SCHEMA.values()) {
             if (!covered.contains(schema) && !EXEMPT_SCHEMAS.containsKey(schema)) {

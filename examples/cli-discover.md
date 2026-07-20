@@ -27,6 +27,7 @@ model seed
 model import-jsonschema
 model export-jsonschema
 profile extract
+profile compare
 rule check
 rule read
 rule explain
@@ -91,9 +92,9 @@ diagnostics
 manifest
 ```
 
-→ The surface is **two axes**: a *target* (`model`, `profile`, `rule`, `computation`, `field`, `group`, `typedef`, `include`, `config`, `workspace`) crossed with an *op* (`add`/`read`/`modify`/`remove`, plus per-target verbs like `profile extract`, `rule check`, or `model check`). (`workspace` is the cross-model exception — it scans a *directory*, not the `-m` model.) The manifest carries each verb's `target`/`op`, its params (with the op-record `key`), and a `schema` pointer. The tool describes itself — the skill teaches *judgment* (polarity, the traps), not this catalog.
+→ The surface is **two axes**: a *target* (`model`, `profile`, `rule`, `computation`, `field`, `group`, `typedef`, `include`, `config`, `workspace`) crossed with an *op* (`add`/`read`/`modify`/`remove`, plus per-target verbs like `profile extract`/`compare`, `rule check`, or `model check`). (`workspace` is the cross-model exception — it scans a *directory*, not the `-m` model.) The manifest carries each verb's `target`/`op`, its params (with the op-record `key`), and a `schema` pointer. The tool describes itself — the skill teaches *judgment* (polarity, the traps), not this catalog.
 
-## profile extract
+## profile extract and compare
 
 `profile extract` turns a model into the domain-blind workload shape used for performance calibration. The ordinary form is a read: the profile rides `data`. This projection keeps the demonstration compact while proving the current artifact's four top-level sections.
 
@@ -115,6 +116,25 @@ dmtool -m examples/models/order-ruled.dm.json profile extract \
 ```
 
 → Use `-o target.profile.json` when the profile is a reusable artifact: the file is the bare profile and stdout becomes an `applied` write receipt. `schema profile extract` describes the current profile shape; there is no profile-version selector.
+
+`profile compare` classifies every fidelity axis after synthesis and re-extraction. A match is a normal successful read; a mismatch keeps every failed axis visible in `data`, sets `valid:false`, and exits 1.
+
+```bash
+dmtool profile compare \
+  --target examples/profiles/compact.json \
+  --actual examples/profiles/compact.json \
+  | jq '{outcome, valid, matches: .data.matches}'
+```
+
+```output
+{
+  "outcome": "read",
+  "valid": true,
+  "matches": true
+}
+```
+
+→ Both inputs may be bare artifacts or `profile extract` envelopes. `schema profile compare` describes the comparison payload; there is still one current profile format and no compatibility mode.
 
 ## operators
 

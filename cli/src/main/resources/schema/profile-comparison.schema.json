@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/profile-comparison.schema.json",
+  "title": "ProfileComparison",
+  "description": "The complete fidelity classification returned in `data` by `dmtool profile compare`. `matches` is false when any non-informative axis fails; every axis remains visible for calibration diagnosis.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["matches", "axes"],
+  "properties": {
+    "matches": {
+      "type": "boolean",
+      "description": "true iff every EXACT, AT_LEAST, and BUCKET axis passes"
+    },
+    "axes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/axis" }
+    }
+  },
+  "$defs": {
+    "histogram": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "bucket": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lower", "upper", "count"],
+      "properties": {
+        "lower": { "type": "integer" },
+        "upper": { "type": "integer" },
+        "count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "distribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "min", "median", "p90", "max", "buckets"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "min": { "type": "integer" },
+        "median": { "type": "integer" },
+        "p90": { "type": "integer" },
+        "max": { "type": "integer" },
+        "buckets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/bucket" }
+        }
+      }
+    },
+    "value": {
+      "oneOf": [
+        { "type": "integer" },
+        { "$ref": "#/$defs/histogram" },
+        { "$ref": "#/$defs/distribution" }
+      ]
+    },
+    "axis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "policy", "target", "actual", "verdict", "rule"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "policy": { "enum": ["EXACT", "AT_LEAST", "BUCKET", "INFORMATIVE"] },
+        "target": { "$ref": "#/$defs/value" },
+        "actual": { "$ref": "#/$defs/value" },
+        "verdict": { "enum": ["PASS", "FAIL", "INFORMATIVE"] },
+        "rule": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
