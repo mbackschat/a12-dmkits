@@ -88,6 +88,52 @@ class SeedGenerator(private val model: ModelDef) {
         populate(sink, seed, { group, _, _ -> rowsByGroup[group] ?: defaultRows }, ValidValues)
     }
 
+    /**
+     * Populate an exact [totalLeafRows] instances of the selected repeatable [leafGroup], even when that quota
+     * exceeds every single group's per-parent repeatability. The quota is distributed deterministically over
+     * the target's complete repeatable ancestor chain: each parent uses the minimum legal child-row count and
+     * divides its quota by balanced quotient/remainder. Repeatable groups outside that chain use
+     * [unrelatedRows].
+     *
+     * The target, quota, unrelated default, and complete resulting topology are validated before the first
+     * [PlacementSink] call. This is the profile/performance path: it creates an exact legal scale axis without
+     * relying on one group having an unrealistically large declared cap.
+     */
+    fun populateExactLeafRows(
+        sink: PlacementSink,
+        leafGroup: String,
+        totalLeafRows: Int,
+        seed: Long = 0L,
+        unrelatedRows: Int = 1,
+        value: ValueStrategy = ValidValues,
+    ) {
+        require(leafGroup in model.repeatable) {
+            "exact leaf-row target '$leafGroup' is not a declared repeatable group"
+        }
+        require(totalLeafRows >= 0) {
+            "leaf row count for '$leafGroup' must be non-negative: requested $totalLeafRows"
+        }
+        require(unrelatedRows >= 0) {
+            "unrelated repeatable default must be non-negative: requested $unrelatedRows"
+        }
+
+        val repeatableChain = prefixes(leafGroup).filter { it in model.repeatable }
+        val chainSet = repeatableChain.toSet()
+        model.repeatable.sorted().filter { it !in chainSet }.forEach { group ->
+            validateRowCount(group, unrelatedRows)
+        }
+        val exactRows = ExactLeafRowCounts(leafGroup, repeatableChain, totalLeafRows, model.declaredReps)
+
+        populate(
+            sink = sink,
+            seed = seed,
+            rowsOf = { group, parentReps, _ ->
+                if (group in chainSet) exactRows.rowsFor(group, parentReps) else unrelatedRows
+            },
+            value = value,
+        )
+    }
+
     internal fun patternCompilationCount(): Int = validValues.patternCompilationCount
 
     internal fun patternPreparationCount(): Int = validValues.patternPreparationCount
@@ -190,6 +236,78 @@ class SeedGenerator(private val model: ModelDef) {
             fun requireExhausted() {
                 check(index == size) { "seed row plan retained ${size - index} unconsumed counts" }
             }
+        }
+    }
+
+    /**
+     * A compact quota function rather than a materialized row tree. [capacityAfter] is the maximum number of
+     * target rows one concrete row at each chain level can carry through its repeatable descendants, saturated
+     * at the requested total. Missing caps are unbounded and therefore need no value above that saturation.
+     */
+    private class ExactLeafRowCounts(
+        private val leafGroup: String,
+        chain: List<String>,
+        private val totalLeafRows: Int,
+        declaredReps: Map<String, Int>,
+    ) {
+        private val chainGroups = chain.toList()
+        private val chainIndex = chainGroups.withIndex().associate { (index, group) -> group to index }
+        private val chainDepths = chainGroups.map { group -> group.count { it == '/' } }
+        private val capacityAfter = LongArray(chainGroups.size)
+
+        init {
+            val saturation = maxOf(1L, totalLeafRows.toLong())
+            var capacity = 1L
+            for (index in chainGroups.indices.reversed()) {
+                capacityAfter[index] = capacity
+                val group = chainGroups[index]
+                val declared = declaredReps[group]?.toLong()
+                require(declared == null || declared >= 0L) {
+                    "declared repeatability for '$group' must be non-negative: $declared"
+                }
+                capacity = saturatedProduct(capacity, declared ?: saturation, saturation)
+            }
+            require(capacity >= totalLeafRows.toLong()) {
+                "leaf row count for '$leafGroup' is impossible: requested $totalLeafRows, maximum declared capacity $capacity"
+            }
+        }
+
+        fun rowsFor(group: String, parentReps: List<Int>): Int {
+            val currentIndex = checkNotNull(chainIndex[group]) {
+                "exact leaf-row planner was asked for unrelated group '$group'"
+            }
+            var quota = totalLeafRows.toLong()
+            for (ancestorIndex in 0 until currentIndex) {
+                val ancestorRows = rowsNeeded(quota, capacityAfter[ancestorIndex])
+                val repetitionOffset = chainDepths[ancestorIndex] - 1
+                check(repetitionOffset in parentReps.indices) {
+                    "missing ancestor repetition for '${chainGroups[ancestorIndex]}'"
+                }
+                val ancestorRow = parentReps[repetitionOffset]
+                check(ancestorRow in 1..ancestorRows) {
+                    "ancestor repetition $ancestorRow is outside the planned 1..$ancestorRows range"
+                }
+                quota = balancedShare(quota, ancestorRows, ancestorRow)
+            }
+            return rowsNeeded(quota, capacityAfter[currentIndex])
+        }
+
+        private fun rowsNeeded(quota: Long, capacityPerRow: Long): Int {
+            if (quota == 0L) return 0
+            check(capacityPerRow > 0L) { "positive leaf quota has zero descendant capacity" }
+            return (1L + (quota - 1L) / capacityPerRow).toInt()
+        }
+
+        private fun balancedShare(quota: Long, rowCount: Int, oneBasedRow: Int): Long {
+            val quotient = quota / rowCount
+            val remainder = quota % rowCount
+            return quotient + if (oneBasedRow.toLong() <= remainder) 1L else 0L
+        }
+
+        private fun saturatedProduct(left: Long, right: Long, saturation: Long): Long = when {
+            left == 0L || right == 0L -> 0L
+            left >= saturation || right > saturation / left -> saturation
+            else -> minOf(left * right, saturation)
         }
     }
 

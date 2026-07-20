@@ -299,6 +299,8 @@ Not ad-hoc `measureTime` calls sprinkled in tests — a **proper, reusable harne
 
 Patterned seeding prepares each distinct model-static pattern once per generator (IF189). Increasing the document row count therefore multiplies value placements, not regex compilation, keeping document construction from contaminating the evaluation timing it feeds.
 
+Profile-derived nested models use `SeedGenerator.populateExactLeafRows` for their `N`/`4N` axis. The method reaches the exact target cardinality by distributing quota over the selected group's repeatable ancestor chain within every per-parent declared cap; unrelated repeatables stay at a small explicit default. It refuses an impossible scale before mutating either engine's sink, so the benchmark cannot silently time an underfilled model or kernel-illegal excess rows merely because no individual group cap reaches `N`.
+
 ## Architecture direction (owner hint, 2026-06-23 — keep in mind)
 
 A structural optimization to design toward (not yet committed work):

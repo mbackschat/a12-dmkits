@@ -25,6 +25,8 @@ It is **best-effort, model-derived** on purpose: the structure comes from the mo
    (value per field)      │   walks the group tree; per repeatable group asks rowsOf(group, parentReps, rnd)
    RowsFn ────────────►   │   plans + checks every row count before the first sink mutation
    (rows per group)       │
+   Exact leaf quota ───►  SeedGenerator.populateExactLeafRows(sink, leafGroup, totalLeafRows, …)
+                          │   distributes one exact scale over the target's repeatable ancestor chain
                           ▼
                     PlacementSink                 ← the seam: one build, any backing
                     ├─ Document.asSink()          → the interpreter's general Document      (:interpreter)
@@ -45,16 +47,26 @@ gen.populate(
     rowsOf = { group, parentReps, rnd -> … },   // rows to instantiate per repeatable group
     value  = ValidValues,       // a ValueStrategy: the value for each field (null = leave empty)
 )
+
+gen.populateExactLeafRows(
+    sink,
+    leafGroup = "/Orders/Lines/Parts",
+    totalLeafRows = 100_000,
+    unrelatedRows = 1,
+)
 ```
 
 | Concept | Contract |
 |---|---|
 | **`PlacementSink`** | `group(path, *reps)` · `field(path, value, *reps)` · `emptyField(path, *reps)`. The only thing the generator emits into. |
 | **`RowsFn`** = `(group, parentReps, rnd) -> Int` | How many rows to instantiate for a repeatable group under a given parent row. A non-repeatable group always gets exactly one row. Counts may vary per parent and per run (the RNG is passed in), must be non-negative, and may not exceed a present `declaredReps` cap; an absent cap is unbounded. |
+| **Exact leaf-row scale** | `populateExactLeafRows` produces exactly the requested number of instances of one selected repeatable group. It uses the target's complete repeatable ancestor chain, chooses the minimum legal row count at each level, and splits each parent's remaining quota by balanced quotient/remainder. Repeatables outside the chain use the configurable `unrelatedRows` default (normally `1`). |
 | **`ValueStrategy`** = `(field, reps, rnd) -> String?` | The value for one field instance; **`null` leaves it empty** (present-but-unfilled). |
 | **`ValidValues`** (the default strategy) | A **best-effort, constraint-aware** value for each `Kind` (a per-field local heuristic, **not** a whole-document validity guarantee): NUMBER respects scale + sign (never a signed zero — that is a formal error) **and its declared `min/maxValue` range** (draws a declared bound, exercising both ends across seeds), STRING respects its declared **`min/maxLength`**, dates/times/ranges render in the field's format, a CONFIRM is `true` or empty only. A STRING **`pattern`** is cheaply satisfied (always verified against the real regex) or the field is **left empty** (the sanctioned leave-empty fallback) — the one case `ValidValues` returns `null`. Staying inside a field's declared constraints keeps the kernel's per-cell formal checks from firing and *suppressing the rules a differential means to exercise* (WI-7 / S2). Otherwise never empties a field — compose a wrapper for that. |
 
 **Structural refusal is atomic at the sink boundary.** `populate` first plans the complete variable-count topology, rejects a negative count or any count above that group's declared repeatability, and only then emits placements. This includes a late sibling and a nested group's second parent row: neither can leave an earlier valid branch in the sink. A missing `declaredReps` entry means that repeatable group is unbounded. The fixed Java/CLI overload validates every explicit/default count up front and rejects an explicit path that is not a declared repeatable group.
+
+The exact-scale overload applies the same atomic boundary before emission. It rejects an unknown or non-repeatable target, negative quota/default, an unrelated default above its own cap, and a target quota above the product capacity of its repeatable chain. It computes capacities with saturation rather than materializing the future tree, then the ordinary complete topology plan and existing value/emission machinery do the work. This makes `N` an exact legal workload even when no single group allows `N` rows per parent.
 
 **Determinism is the contract that makes the dual-engine differential work.** `populate` walks in a fixed order and owns independent deterministic row-topology and value streams derived from the same seed, so two calls with the same generator instance and seed produce the **identical** document without speculatively generating values during structural preflight. The fuzz net relies on this: it materializes seed *s* into the interpreter and into the kernel from the same generator, and any divergence is therefore a real semantic difference, not a generation artefact — and a failing seed is exactly reproducible.
 
