@@ -292,6 +292,8 @@ No framework, no registry — a fragment library is a Java class; discoverabilit
 
 For a multi-star `Having`, binding begins at the first starred segment. Thus `Aisles*/Bins*/Quantity` spans bins across every aisle; leave `Aisles` unstarred when the current aisle must remain outer-bound. Inside that filter, `CurrentRepetition(Bins) != CurrentRepetition($Bins)` compares the leaf index, not physical row identity, and excludes every candidate with the outer bin's leaf index across aisle rows. The `Having` and `CurrentRepetition` catalog entries cross-link the equality-correlation and self-exclusion examples (finding 76).
 
+`RepetitionNotUnique` is an ordinary three-valued leaf under legal `And`/`Or` composition, but one condition tree may contain only one such leaf. Put every component of a composite uniqueness key into that call. Its duplicate relation covers the full declared scope regardless of sibling guards: formally invalid and required-empty keys exclude a row, all-empty composite keys are skipped, optional-empty components participate with omission polarity, numeric equality is scale-insensitive, and every row in a duplicate set fires. An iterating `Or` branch containing a negative-presence predicate is separately model-illegal (`MVK_NEG_CONDITION_IN_ITERATION`); rewrite that branch as a positively guarded `And` instead of treating it as a limitation of uniqueness composition (finding 77).
+
 ### 3.4 Parameterized *rules* — templates over the model (message interpolation — `Dsl.fieldValue`)
 
 <!-- teaser -->
