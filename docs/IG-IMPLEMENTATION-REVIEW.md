@@ -415,12 +415,12 @@ Direct current-facing contradictions also remain: `INTERPRETER-GAPS.md` calls th
 
 **Acceptance checks:** The active IG rows distinguish “tooling/measurement to implement now” from “threshold promotion/CI wiring requires owner.” Repository search finds no current statement that IF158 makes omission impossible, every timed sample already has full tri-engine eligibility, IF159's fallback is inherently pairwise, IF160 covers every host graph, or IF161 proves no leak/allocation certification. Doc guards and links pass.
 
-**Resolution:** Open.
+**Resolution:** Corrected 2026-07-20 by the `docs(interpreter): correct performance ownership status` commit. IG77 and IG79 remain in the active ledger with the already-shipped IF156–IF161 increments separated from the ordinary executable work still required. That active work now explicitly includes both validation firing regimes, representative VALUE/CLEARED/ERRORED computations, model-static counters, true first-answer and fair-Java runners, complete JVM/production-JS closure measurement, equivalent/production artifacts, and sound forked JVM/Node retained-heap/allocation/owner-release tooling. Only numerical promotion and CI scheduling are owner-gated. Current-facing comments/specs no longer call the gate singular, describe complete signatures as fired-code-only, claim first/last-only repeated checks, leave identity/inventory/correlation work open, or present the in-process retained-heap endpoints as no-leak certification. Historical review evidence remains explicitly historical. Verification: `:cli:docGuardTest`, `:cli:staleGapGuardTest`, focused `RetainedHeapProbeTest`, and `git diff --check` passed.
 
 ### Review verification
 
-- Green: focused `ScenarioInventoryTest` and `PerfPreflightTest`; `:interpreter:interpreterRuntimeClosure` (current report 3,091,274 bytes); focused `RetainedHeapProbeTest` rerun (informative 1.00 scale fit and displayed 0.0 MB two-point delta).
-- Source-verified limitations: Java disabled in the default inventory sweep; `fairJavaCapable` unused; version absent from output; `CharsetPerfTest` duplicates pairing/ceiling; IF159 has a `>6.0` slowness assertion and no exact tri-check; closure task is JVM-artifact-only; heap probe is one JVM process and measures no allocation volume or owner release.
+- At review time, green: focused `ScenarioInventoryTest` and `PerfPreflightTest`; `:interpreter:interpreterRuntimeClosure` (report 3,091,274 bytes); focused `RetainedHeapProbeTest` rerun (informative 1.00 scale fit and displayed 0.0 MB two-point delta).
+- At review time, source-verified limitations were: Java disabled in the default inventory sweep; `fairJavaCapable` unused; version absent from output; `CharsetPerfTest` duplicated pairing/ceiling; IF159 had a `>6.0` slowness assertion and no exact tri-check; the closure task was JVM-artifact-only; the heap probe was one JVM process and measured no allocation volume or owner release.
 - No evaluator, harness, build, proposal, or other project file was changed by this review.
 
 ### Chapter resolution

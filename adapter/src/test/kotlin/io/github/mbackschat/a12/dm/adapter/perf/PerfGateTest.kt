@@ -11,8 +11,9 @@ import org.junit.jupiter.api.Test
 
 /**
  * The **routine performance gate** (`scripts/perf.sh gate` — INTERPRETER-PERFORMANCE.md "The regression gate
- * (mechanics)"): the **sub-quadratic growth guards** — interpreter-only, so high N stays cheap — plus ONE
- * against-kernel canary ([complexRealWorldAgreesWithKernel], whose reduced model keeps kernel codegen fast).
+ * (mechanics)"): the **sub-quadratic growth guards** — interpreter-only, so high N stays cheap — plus the
+ * against-kernel correctness canaries ([complexRealWorldAgreesWithKernel] and [computeOverlayAgreesWithKernel],
+ * whose reduced models keep kernel codegen fast).
  * Each growth guard runs the **IF137-ratified paired estimator** ([PerfHarness.pairedGrowth] via
  * [assertSubQuadratic]): interleaved N/4N samples, the **median of the within-pair ratios** — a linear engine
  * medians ≈4×, a quadratic one ≈16×. (Median replaced the earlier min-of-repeats, which "flipped pass↔fail on

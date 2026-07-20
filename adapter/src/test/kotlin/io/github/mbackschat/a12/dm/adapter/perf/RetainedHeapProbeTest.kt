@@ -9,20 +9,19 @@ import org.junit.jupiter.api.Test
 import kotlin.math.ln
 
 /**
- * NFR-F2 retained-footprint probe (IG79 → IF161) — the interpreter's runtime state must grow with the
+ * NFR-F2 retained-footprint calibration (IG79 → IF161) — the interpreter's runtime state must grow with the
  * model/document it accelerates and **reach a plateau**; it must not leak or duplicate document-wide state per
- * eval. This probe delivers the two pieces that need no owner promotion:
+ * eval. This in-process probe records two diagnostic views but does not prove that contract:
  *
- * - **The plateau / no-leak guard (a STRUCTURAL invariant, gated).** A prepared engine + document evaluated many
- *   times must reach a retained-memory plateau — the caches are owned by the engine / `Document`/index and keyed
- *   on that document, so repeated evaluation adds no retained state. A per-eval leak (an unbounded/global cache)
- *   would climb without bound; a generous bound over hundreds of evals catches it while tolerating GC noise. This
- *   is NFR-F2's "reaches a retained-memory plateau" invariant, not a candidate number.
+ * - **The same-owner endpoint smoke (diagnostic assertion).** One prepared engine + document is sampled after
+ *   warmup and after many more evaluations. The generous slack catches catastrophic growth in this one shape,
+ *   but two endpoints cannot prove a plateau, detect a small per-eval leak, or detect a global cache retaining
+ *   discarded owners; reachability and GC noise also remain uncontrolled.
  * - **The multi-scale retained-heap RECORDING (informative, NOT gated).** Retained heap at `N, 2N, 4N, 8N` with a
  *   fitted log-log space exponent, recorded for the record. It is **not** gated on the candidate `≤1.25` exponent /
- *   `≤8×` step: those bars, the ≥5 forked-process protocol, `--expose-gc` Node, and logical cache-entry counts are
- *   the owner-gated certification (IF137 six-point gate) — an in-process single-run measurement calibrates, it does
- *   not certify. `@Tag("perf")` (opt-in): a GC-sensitive measurement, run at footprint-relevant checkpoints.
+ *   `≤8×` step. Building the forked JVM/Node workers, `--expose-gc` checks, and logical cache counters is active
+ *   IG79 work; only promoting a numerical bar and CI scheduling require owner approval. This single run calibrates,
+ *   it does not certify. `@Tag("perf")` (opt-in): a GC-sensitive measurement, run at relevant checkpoints.
  */
 @Tag("perf")
 class RetainedHeapProbeTest {
@@ -35,7 +34,7 @@ class RetainedHeapProbeTest {
     }
 
     @Test
-    fun preparedEnginePlateausAcrossRepeatedEvaluation() {
+    fun sameOwnerRetainedEndpointsStayWithinDiagnosticSlack() {
         val sc = PerfCatalog.b1()
         val model = sc.interpModel
         val interp = DmInterpreter(model)                    // held live for the whole method → caches can't be GC'd
@@ -46,21 +45,21 @@ class RetainedHeapProbeTest {
         val afterRepeats = retainedBytes()
 
         val growthMb = (afterRepeats - warmed) / 1e6
-        println("[heap] %s plateau: warmed=%.1fMB → after %d evals=%.1fMB  Δ=%.1fMB (bound %.0fMB)"
+        println("[heap] %s same-owner endpoints: warmed=%.1fMB → after %d evals=%.1fMB  Δ=%.1fMB (diagnostic slack %.0fMB)"
             .format(
                 PerfHarness.measurementLabel(sc, N),
-                warmed / 1e6, REPEATS, afterRepeats / 1e6, growthMb, PLATEAU_SLACK_MB,
+                warmed / 1e6, REPEATS, afterRepeats / 1e6, growthMb, ENDPOINT_SLACK_MB,
             ))
-        // Generous: a real per-eval leak over REPEATS evals is orders of magnitude past this; noise is not.
-        assertTrue(growthMb < PLATEAU_SLACK_MB,
+        // Diagnostic only: this catches gross endpoint growth, not bounded slope, owner release, or leak freedom.
+        assertTrue(growthMb < ENDPOINT_SLACK_MB,
             "retained heap grew ${"%.1f".format(growthMb)}MB across $REPEATS repeated evaluations of the SAME " +
-                "prepared engine+document — a cache is leaking / not owned by the document (NFR-F2 plateau breached)")
+                "prepared engine+document — the diagnostic endpoint slack was exceeded; investigate ownership/GC")
     }
 
     @Test
     fun retainedHeapAcrossScalesIsRecorded() {
-        // Informative only (NOT a gate): a single in-process run calibrates; the ≤1.25 exponent / ≤8× step
-        // certification needs ≥5 forked processes + the six-point gate (owner-gated, IF137).
+        // Informative only (NOT a gate): a single in-process run calibrates. The active IG79 tooling still needs
+        // independently forked JVM/Node workers; only promotion of the candidate bars is owner-gated (IF137).
         val sc = PerfCatalog.b1()
         val scales = intArrayOf(N, N * 2, N * 4, N * 8)
         val retained = DoubleArray(scales.size)
@@ -80,7 +79,7 @@ class RetainedHeapProbeTest {
         val exponent = spaceExponent(scales, retained)
         val identities = scales.joinToString(" | ") { PerfHarness.measurementLabel(sc, it) }
         println(("[heap] $identities fitted log-log space exponent ≈ %.2f " +
-            "(informative; certified bar ≤1.25 is owner-gated, IG79)").format(exponent))
+            "(informative; promoting the candidate ≤1.25 bar requires owner approval, IG79)").format(exponent))
     }
 
     /** Least-squares slope of ln(retained) vs ln(n) — the space-complexity exponent (1 = linear). */
@@ -97,6 +96,6 @@ class RetainedHeapProbeTest {
         const val N = 4_000
         const val WARM = 10
         const val REPEATS = 400
-        const val PLATEAU_SLACK_MB = 24.0   // generous: a real per-eval leak over 400 evals is far larger than GC noise
+        const val ENDPOINT_SLACK_MB = 24.0
     }
 }
