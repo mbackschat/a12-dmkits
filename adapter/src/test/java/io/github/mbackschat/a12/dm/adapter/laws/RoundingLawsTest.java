@@ -23,8 +23,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
  *       {@code RoundUp(−1.4) = −1}. The negative-value behavior is the modeller trap.</li>
  *   <li>{@code RoundAccounting} is HALF_UP — away from zero on the .5 boundary in both signs.</li>
  *   <li>Before the target-scale rounding, the value is pre-rounded to the internal scale (19,
- *       HALF_UP), so a repeating-decimal artifact can't leak: {@code RoundDown(q/3·3) = q},
- *       not {@code q−1}.</li>
+ *       HALF_UP), so three independently rounded thirds pre-round to one before the target floor.</li>
  * </ul>
  */
 class RoundingLawsTest {
@@ -90,14 +89,15 @@ class RoundingLawsTest {
 
     @Test
     void theInternalPreRoundingAbsorbsRepeatingDecimals() {
-        // q/3·3 evaluates to 0.99…9 at the internal precision; the pre-rounding to scale 19
-        // HALF_UP restores 1 before the floor — so RoundDown(q/3·3) == q, not q−1
-        String model = rule(render(Dsl.roundDown(
-                M.num("/Order/Quantity").asNumber().dividedBy(Dsl.number("3")).times(Dsl.number("3")), 0)
+        // Three separate divisions remain separate across addition and sum to 1−10^-50; the scale-19
+        // HALF_UP pre-round restores 1 before the floor. A multiplied third is not a discriminator
+        // because the kernel's one-pass arithmetic lowering rewrites that product first.
+        var third = M.num("/Order/Quantity").asNumber().dividedBy(Dsl.number("3"));
+        String model = rule(render(Dsl.roundDown(third.plus(third).plus(third), 0)
                 .eq(M.num("/Order/Quantity").asNumber())));
 
         assertTrue(RuntimeLaws.fires(model, "ROUND_PROBE", ORDER_ROW,
                 Map.of("/Order/Quantity", "1")),
-                "RoundDown(1/3 · 3) = 1 — the repeating decimal does not floor to 0");
+                "RoundDown(1/3 + 1/3 + 1/3) = 1 after the scale-19 pre-round");
     }
 }

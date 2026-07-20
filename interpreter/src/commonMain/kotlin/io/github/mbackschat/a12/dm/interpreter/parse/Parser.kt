@@ -25,11 +25,11 @@ import io.github.mbackschat.a12.dm.interpreter.ast.ValueListQuantOp
  * `;;` comments, `..Name` turning-point paths, and the `For` semantic-index suffix on bare args are handled.
  */
 fun parseCondition(text: String, base: String, resolver: RefResolver = DEFAULT_RESOLVER): Cond =
-    ConditionParser(text, base, resolver).parse()
+    ConditionParser(text, base, resolver).parse().lowerArithmetic()
 
 /** Parse a value expression (a computation's right-hand side), paths relative to [base]. */
 fun parseExpression(text: String, base: String, resolver: RefResolver = DEFAULT_RESOLVER): Expr =
-    ConditionParser(text, base, resolver).parseTopExpr()
+    ConditionParser(text, base, resolver).parseTopExpr().lowerArithmetic()
 
 /**
  * Resolves a **bare, relative, single-segment** reference (`[Name]` / a bare `Name` arg) to its absolute

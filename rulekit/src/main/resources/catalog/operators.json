@@ -854,6 +854,7 @@
     ],
     "gotchas": [
       { "text": "the symbols (+ - * / ^) are language-independent — identical in every condition language, not localized keywords", "kind": "RENDERING" }
+    , { "text": "every arithmetic node rounds independently to 50 significant digits (HALF_UP); before evaluation one ordered post-order pass pulls only immediate division-root operands out of each original multiplication, preserves factor/division encounter order, and never revisits generated products — this is not global or fixed-point normalization", "kind": "SURPRISE" }
     , { "text": "division by zero evaluates quietly: the condition becomes unknown (no fire), a computation computes nothing and clears a stale value; a bare division also has unknown scale — wrap it in RoundAccounting(expr, n) to assign to a scaled field", "kind": "SURPRISE" }
     , { "text": "operator precedence is ^ first, then * and /, then + and -; group arithmetic sub-expressions with CURLY braces { } (e.g. 3 ^ {2 + 1}), not round or square brackets", "kind": "AUTHORING" }
     , { "text": "the power a ^ b is not executed — so a rule using it silently does NOT fire — when the exponent is out of the range [-1000, 1000], or for 0 raised to a negative power; the same quiet behavior as division by zero", "kind": "SURPRISE" } ],
