@@ -237,6 +237,7 @@ tasks.named('test') {
     dependsOn 'corpusReplayTest'
     dependsOn 'footprintFixtureGuardTest'
     dependsOn 'performanceFixtureGuardTest'
+    dependsOn 'profileFixtureGuardTest'
     dependsOn 'perfScriptGuardTest'
     // The corpus guards read corpus/cases/** at runtime; they live in corpusReplayTest (with those files declared
     // as its inputs) so a case edit re-runs ONLY them (not the whole kernel-heavy suite) and can't go up-to-date /
@@ -247,6 +248,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.FootprintScenarioFixtureGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerformanceScenarioFixtureGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfScriptContractTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ProfileFixtureGuardTest'
     }
 }
 
@@ -348,6 +350,30 @@ tasks.register('performanceEligibilityTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerformanceScenarioEligibilityTest'
     }
+}
+
+def profileFixtureDirectory = rootProject.file('examples/profiles')
+def profileFixtureFiles = [
+    'compact.json',
+    'breadth-shaped.json',
+    'depth-shaped.json',
+].collect { new File(profileFixtureDirectory, it) }
+
+tasks.register('profileFixtureGuardTest', Test) {
+    description = 'Verify the three committed performance profiles stay current, canonical, and nontrivial.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    systemProperty 'profile.fixture.dir', profileFixtureDirectory.absolutePath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ProfileFixtureGuardTest'
+    }
+    rootProject.guardInputs(it, [
+        'compact profile': profileFixtureFiles[0],
+        'breadth-shaped profile': profileFixtureFiles[1],
+        'depth-shaped profile': profileFixtureFiles[2],
+    ])
 }
 
 def performanceCommitProperty = providers.gradleProperty('performanceCommit')
