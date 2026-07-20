@@ -22,9 +22,7 @@ Keep every correction within the recorded findings, including the instruction no
 
 ### Active chapters
 
-- [RV-2026-07-20-01 — IG89 → IF153 and IG90 → IF154 JS host-semantics review](#rv-2026-07-20-01--ig89--if153-and-ig90--if154-js-host-semantics-review)
-- [RV-2026-07-20-02 — IG83 → IF155 Route-B timezone review](#rv-2026-07-20-02--ig83--if155-route-b-timezone-review)
-- [RV-2026-07-20-03 — IG77 and IG79 performance and footprint review](#rv-2026-07-20-03--ig77-and-ig79-performance-and-footprint-review)
+None.
 
 ### Resolution index
 
