@@ -4,12 +4,12 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 
 import io.github.mbackschat.a12.dm.rulekit.context.ModelCard;
 
@@ -118,6 +118,11 @@ final class ProfileTopology {
         return product;
     }
 
+    Capacity scopeCapacity(String groupPath) {
+        requireGroup(groupPath);
+        return chainCapacity(groupPath);
+    }
+
     Capacity scanCapacity(Collection<String> repeatableGroupPaths) {
         Capacity product = new Capacity.Bounded(1);
         for (String path : repeatableGroupPaths) {
@@ -173,11 +178,18 @@ final class ProfileTopology {
     }
 
     Set<String> repeatableBranchRoots(Collection<String> referencedPaths) {
-        var branches = new HashSet<String>();
+        var nearestRepeatableGroups = new TreeSet<String>();
         for (String path : referencedPaths) {
             String nearest = nearestRepeatableAncestor(path);
             if (nearest != null) {
-                branches.add(nearest);
+                nearestRepeatableGroups.add(nearest);
+            }
+        }
+        var branches = new TreeSet<String>();
+        for (String candidate : nearestRepeatableGroups) {
+            String next = nearestRepeatableGroups.higher(candidate);
+            if (next == null || !next.startsWith(candidate + "/")) {
+                branches.add(candidate);
             }
         }
         return Set.copyOf(branches);
