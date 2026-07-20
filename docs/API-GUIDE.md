@@ -344,6 +344,23 @@ Condition d = allOf(r1, anyOf(r2, r3));     // "r1 And (r2 Or r3)" — parens pe
 Condition e = allOf(List.of(r1, r2, r3));   // the LIST form — fold clauses a loop/stream built (bulk authoring)
 ```
 
+### 3.5a Field-fill quantifiers over a group
+
+All seven field-fill quantifiers also accept a `GroupListRef`: the group is expanded recursively to its contained fields, so authors do not have to duplicate the group's structure as a hand-maintained field list. A bare group comes from `flattenGroup("/Order/ShippingAddress")`; starred forms keep their repetition scope (`flattenGroup("/Order/Items*")`).
+
+```java
+GroupListRef address = m.flattenGroup("/Order/ShippingAddress");
+Condition complete = Dsl.allFieldsFilled(address);
+Condition empty = Dsl.noFieldFilled(address);
+Condition any = Dsl.atLeastOneFieldFilled(address);
+Condition incomplete = Dsl.notAllFieldsFilled(address);
+Condition partial = Dsl.fieldsNotCollectivelyFilled(address);
+Condition notExactlyOne = Dsl.notExactlyOneFieldFilled(address);
+Condition multiple = Dsl.moreThanOneFieldFilled(address);
+```
+
+The traversal order is observable in computations: fields stream recursively in declaration order, field-major then repetition-major, and each quantifier stops as soon as its result is decisive. A malformed cell after that decision is not read; one reached before it can poison the computation. The typed render/read forms are locked by `GroupScopedFieldFillReadTest`; the transitive poison discriminator is `BareGroupComputePoisonDiffTest`.
+
 ### 3.6 Study — a real, highly-repetitive rule, rebuilt (before → after)
 
 **Where this comes from.** A12 models *forms*, and a real pattern in them is that the same logical block is captured in more than one place. Here (an **insurance** application submitted through a broker portal): the policyholder block restated on the **policy schedule** (`Schedule/*`) — a section captured apart from where the underlying name and address were entered — must stay **consistent with** the application data. The engine can't auto-sync across form sections, so a **consistency rule** enforces that the schedule block **mirrors** whichever source the application's flags select — *null-safe*, so a not-yet-filled block (both empty) is allowed. The source is a **2×2**: policyholder type (organization vs person → which **name**) × whether a separate correspondence address was given (correspondence vs residence → which **locality**).
