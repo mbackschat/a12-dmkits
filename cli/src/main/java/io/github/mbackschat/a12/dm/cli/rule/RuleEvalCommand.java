@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import io.github.mbackschat.a12.dm.interpreter.UnsupportedModelTimeZoneException;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -111,6 +112,9 @@ final class RuleEvalCommand extends BaseCommand {
             ResultEnvelope env = ResultEnvelope.read("rule", "eval", summary(data), true, List.of(), data);
             out().print(env.toJsonString());
             return env.exitCode();
+        } catch (UnsupportedModelTimeZoneException e) {
+            return refusePrecheck("rule", "eval", RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED, e.getMessage(),
+                    modelPath, RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED.fix());
         } catch (IllegalArgumentException badDoc) {
             return fail(badDoc.getMessage());
         } catch (RuntimeException e) {

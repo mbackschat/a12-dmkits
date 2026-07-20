@@ -8,3 +8,13 @@ package io.github.mbackschat.a12.dm.interpreter
  * Genuine bugs (a missing field kind, a malformed AST) throw other exceptions and are NOT swallowed.
  */
 class UnsupportedConstructException(message: String) : RuntimeException(message)
+
+/**
+ * Signals a MODEL the interpreter cannot evaluate because its `modelConfig.timeZone` is outside the
+ * interpreter's supported set (`UTC`/`GMT`/`Europe/Berlin`). Unlike [UnsupportedConstructException] (a
+ * per-rule "unsupported" verdict), this is a whole-model refusal raised at model preparation — the kernel
+ * accepts a wider Java `TimeZone` id domain than the kernel-free interpreter models (a documented scope
+ * limit, IG83), so a valid model can carry a zone we deliberately do not evaluate. It is a LOUD refusal
+ * (never a silent degrade); a CLI consumer maps it to a corrective refusal rather than an internal error.
+ */
+class UnsupportedModelTimeZoneException(message: String) : RuntimeException(message)

@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
+import io.github.mbackschat.a12.dm.interpreter.UnsupportedModelTimeZoneException;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -174,6 +175,9 @@ final class ModelEvalCommand extends BaseCommand {
                         customSupport.predefinedTypes(), customSupport.customConditions(),
                         customSupport.customFieldTypes(), !noComputations);
             }
+        } catch (UnsupportedModelTimeZoneException e) {
+            return refusePrecheck("model", "eval", RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED, e.getMessage(),
+                    model, RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED.fix());
         } catch (IllegalArgumentException badDoc) {
             return fail(badDoc.getMessage());
         } catch (RuntimeException e) {

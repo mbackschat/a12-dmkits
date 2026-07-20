@@ -98,6 +98,14 @@ public enum RkCode {
                     + "the remaining element is refused so evaluation never silently mis-reports.",
             "check every reference in the named included element resolves inside the included model; or "
                     + "author the rule on the INCLUDING model referencing the mounted fields, or use a relative form."),
+    INTERPRETER_TIMEZONE_UNSUPPORTED(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "the model's modelConfig.timeZone is outside the interpreter-backed evaluator's supported set "
+                    + "{UTC, GMT, Europe/Berlin}. The kernel accepts the wider Java TimeZone id domain, so a "
+                    + "kernel-valid model can carry a zone the kernel-free interpreter deliberately does not model "
+                    + "(a documented scope limit, IG83) — evaluation is refused so it never runs under the wrong "
+                    + "DST rules.",
+            "set modelConfig.timeZone to UTC, GMT, or Europe/Berlin to evaluate with the interpreter; the "
+                    + "kernel-backed 'model check' still validates the wider zone domain."),
     MOUNT_NOT_EDITABLE(Severity.ERROR, DiagnosticSource.PRECHECK,
             "the target group mounts an include (it has a modelAlias); adding a local child element would make the kernel use the local elements and STOP expanding the include, silently discarding the mounted content — valid but not what was meant.",
             "add the element to the included model instead (edit that model's structure), or choose a non-mount group."),

@@ -46,8 +46,12 @@ class ModelTimeZoneTest {
         assertEquals(ModelTimeZone.UTC, ModelLoader.load(claimModel("GMT")).timeZone)
 
     @Test fun anUnmodeledZoneIsRefusedLoud() {
-        val e = assertFailsWith<IllegalArgumentException> { ModelLoader.load(claimModel("America/New_York")) }
-        assertTrue("America/New_York" in (e.message ?: ""), "the refusal names the zone: ${e.message}")
+        // A kernel-LEGAL zone the interpreter does not model → a loud, corrective refusal (the documented
+        // scope limit, IG83), not a bare IllegalArgumentException and never a silent evaluation.
+        val e = assertFailsWith<UnsupportedModelTimeZoneException> { ModelLoader.load(claimModel("America/New_York")) }
+        val msg = e.message ?: ""
+        assertTrue("America/New_York" in msg, "the refusal names the zone: $msg")
+        assertTrue("UTC" in msg && "Europe/Berlin" in msg, "the refusal names the supported set: $msg")
     }
 
     // ---- Berlin evaluation semantics (the kernel truths, kernel-free) --------------------------------------

@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter.model
 
+import io.github.mbackschat.a12.dm.interpreter.UnsupportedModelTimeZoneException
+
 /**
  * The model's configured time zone (`content.modelConfig.timeZone`) — the axis the kernel applies to every
  * DATE/DATE_TIME parse at evaluation time (a zone-set, non-lenient `SimpleDateFormat`; the codegen copies the
@@ -19,12 +21,17 @@ enum class ModelTimeZone {
 
     companion object {
         /** Map a `modelConfig.timeZone` string: absent/blank/`UTC`/`GMT` → [UTC] (the kernel default + its
-         *  GMT alias), `Europe/Berlin` → [EUROPE_BERLIN]; any other id is refused loud. */
+         *  GMT alias), `Europe/Berlin` → [EUROPE_BERLIN]; any other id is refused LOUD with a corrective
+         *  message ([UnsupportedModelTimeZoneException]) — the kernel accepts a wider zone-id domain than the
+         *  interpreter models, a documented scope limit (IG83), never a silent evaluation under the wrong rules. */
         fun of(id: String?): ModelTimeZone = when {
             id.isNullOrBlank() || id == "UTC" || id == "GMT" -> UTC
             id == "Europe/Berlin" -> EUROPE_BERLIN
-            else -> throw IllegalArgumentException(
-                "unsupported model timeZone '$id' — the interpreter models the kernel's two documented values, UTC and Europe/Berlin")
+            else -> throw UnsupportedModelTimeZoneException(
+                "unsupported model timeZone '$id' — the interpreter-backed evaluator supports only UTC, GMT, and " +
+                    "Europe/Berlin. The kernel accepts a wider TimeZone id domain, so this is a documented scope " +
+                    "limit (IG83), not a bug; evaluate this model under a supported zone, or use the kernel-backed " +
+                    "'model check' for the wider zone domain.")
         }
     }
 }

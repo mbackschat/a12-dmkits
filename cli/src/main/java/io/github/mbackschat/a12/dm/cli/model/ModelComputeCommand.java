@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.cli.interp.IncludeRelativizationException;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
 import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
+import io.github.mbackschat.a12.dm.interpreter.UnsupportedModelTimeZoneException;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 import java.io.IOException;
@@ -85,6 +86,9 @@ final class ModelComputeCommand extends BaseCommand {
         ObjectNode data;
         try {
             data = InterpreterEngine.computeData(interpJson, fields, localeTag);
+        } catch (UnsupportedModelTimeZoneException e) {
+            return refusePrecheck("model", "compute", RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED, e.getMessage(),
+                    model, RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED.fix());
         } catch (IllegalArgumentException badDoc) {
             return fail(badDoc.getMessage());
         } catch (RuntimeException e) {
