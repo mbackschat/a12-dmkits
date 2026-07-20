@@ -262,8 +262,8 @@ class PerfGateTest {
      * and a per-row `DifferenceInHours` rule runs it once per conversion per row — so it must stay LINEAR in rows.
      * Time the interpreter (only) at N and 4N Berlin datetime rows; linear ≈ 4×, a per-conversion blowup ≈ 16×.
      * This is the committed gate that keeps the IF128 offset optimization from silently regressing (its speedup
-     * was previously probe-only — the datetime hole IF132 named); the against-kernel ratio is
-     * [PerfBenchTest.berlinDateTimeScalesLikeKernel].
+     * was previously probe-only — the datetime hole IF132 named); the against-kernel ratio is the B9-berlin case
+     * in [PerfBenchTest.gatesEveryInventoryScenario] (derived from [PerfInventory]).
      */
     @Test
     fun berlinDateTimeStaysSubQuadratic() {
