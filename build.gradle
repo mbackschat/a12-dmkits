@@ -94,6 +94,7 @@ tasks.named('test') {
     // "Tests that read repo files at runtime").
     filter {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.BuildCachePolicyTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.api.PublicApiGuardTest'
     }
@@ -127,12 +128,13 @@ ext.guardInputs = { Test task, Map<String, ?> named ->
     }
 }
 
-// Two root-project guards read REPO FILES at RUNTIME that Gradle can't infer as test inputs:
+// Three root-project guards read REPO FILES at RUNTIME that Gradle can't infer as test inputs:
 // DocSnippetFreshnessTest reads docs/API-GUIDE.md (its test-source side is covered — a region edit changes
 // bytecode), and DslCatalogBridgeTest reads the dsl package's `catalog:<Id>` Javadoc markers — which compile
 // to IDENTICAL bytecode, so a marker-only edit would leave the plain `test` task up-to-date and skip the very
-// guard the edit needs (the false-green trap). They run HERE with those files declared as THIS task's inputs;
-// `test` dependsOn this, so CI and a plain `:test` always drive both.
+// guard the edit needs (the false-green trap). BuildCachePolicyTest locks the repo-level Gradle cache policy.
+// They run HERE with those files declared as THIS task's inputs; `test` dependsOn this, so CI and a plain
+// `:test` always drive all three.
 tasks.register('docGuardTest', Test) {
     description = 'Freshness/bridge guards that read repo docs + dsl sources at runtime (split out so such an edit re-runs only these).'
     group = 'verification'
@@ -141,10 +143,12 @@ tasks.register('docGuardTest', Test) {
     classpath = sourceSets.test.runtimeClasspath
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.BuildCachePolicyTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
     }
     guardInputs(it, [
             'docs/API-GUIDE.md': file('docs/API-GUIDE.md'),
+            'gradle.properties': file('gradle.properties'),
             // dsl sources + the operator catalog moved to :rulekit in the Stage-4 module cut.
             'dsl sources'      : fileTree('rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl') { include '**/*.java' },
             'operator catalog' : fileTree('rulekit/src/main/resources/catalog')])

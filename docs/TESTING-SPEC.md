@@ -306,6 +306,8 @@ ROOT="$(cd .. && pwd)"; export GRADLE_USER_HOME="$ROOT/.gradle-isolated"; export
 ./gradlew syncDocSnippets                                   # rewrite drifted locked doc snippets (autonomous; never CI)
 ```
 
+The repository-level [`gradle.properties`](../gradle.properties) enables Gradle's local build cache. The isolated Gradle home is intentionally shared across clean worktrees, so identical relocatable interpreter JVM/JS and adapter compiler outputs survive a landing or worktree switch. [`scripts/verify-build-cache.sh`](../scripts/verify-build-cache.sh) is the structural smoke: two clean worktrees at one commit, with the second required to restore every named expensive compiler task `FROM-CACHE`. It gates outcomes, not machine-dependent elapsed seconds. A truly cold run still owes the complete work; automation with a per-command time budget must invoke `:interpreter:check`, `:adapter:test`, and `:cli:test` separately rather than hiding all three behind one timeout.
+
 **Tier 2 — doc-drift demos (showboat).** One command verifies them all — `./scripts/verify-demos.sh` builds the launcher, discovers every demo, and verifies them in parallel (exactly what CI runs). To exact-match a single demo by hand, put `bin/` on PATH so `dmtool` resolves:
 
 ```sh

@@ -805,6 +805,8 @@ export JAVA_HOME="$(/usr/libexec/java_home -v 21)"   # macOS; or point at any JD
 
 **To avoid forgetting either variable** — the machine's global Gradle config can otherwise inject a private registry and fail confusingly ([root cause](docs/KERNEL-INTEGRATION-NOTES.md) under "Build / environment gotchas") — use the committed wrapper `./build.sh test` (it pins both, then runs Gradle), or [`.envrc`](.envrc) if you have [direnv](https://direnv.net).
 
+The repository enables Gradle's local build cache in [`gradle.properties`](gradle.properties). Because `build.sh` uses one isolated Gradle home shared by sibling clean worktrees, relocatable interpreter JVM/JS and adapter compilation is restored instead of repeated after a same-commit landing. [`scripts/verify-build-cache.sh`](scripts/verify-build-cache.sh) proves that contract with two clean worktrees. A truly cold full suite still performs all compilation and tests; for bounded automation, run `:interpreter:check`, `:adapter:test`, and `:cli:test` as separate commands instead of one monolithic invocation.
+
 A green `test` means the kit's output is confirmed by the engine, not just plausible. The suite covers:
 
 - kernel wiring and the model index
