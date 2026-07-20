@@ -125,6 +125,7 @@ public final class io.github.mbackschat.a12.dm.core.ModelIndex
   public static io.github.mbackschat.a12.dm.core.ModelIndex of(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)
   public static io.github.mbackschat.a12.dm.core.ModelIndex ofSelfContained(java.lang.String)
   public java.util.Optional<java.lang.String> originOf(java.lang.String)
+  public static java.lang.String resolvePath(java.lang.String, java.lang.String)
   public java.util.OptionalInt stringMaxLength(java.lang.String)
   public java.util.OptionalInt stringMinLength(java.lang.String)
   public java.util.Optional<java.lang.String> stringPattern(java.lang.String)

@@ -202,7 +202,7 @@
             "additionalProperties": { "type": "array", "items": { "type": "string" } }
           },
           "repeatable": { "type": "boolean" },
-          "maxRepetitions": { "type": "integer" },
+          "maxReps": { "type": "integer" },
           "origin": { "type": "string", "description": "included model id, present only on an include-mount group boundary" },
           "typeRef": { "type": "string", "description": "the field's authored named type before effective-type inlining" },
           "descriptions": {
@@ -262,7 +262,7 @@
           "depth": 0,
           "kind": "group",
           "repeatable": false,
-          "maxRepetitions": 1
+          "maxReps": 1
         },
         {
           "path": "/Order/Channel",
@@ -294,7 +294,7 @@
           "depth": 0,
           "kind": "group",
           "repeatable": false,
-          "maxRepetitions": 1
+          "maxReps": 1
         },
         {
           "path": "/Order/ContactEmail",

@@ -77,10 +77,9 @@ final class ModelReportCommand extends BaseCommand {
         }
         try {
             ModelResolver resolver = workspace.resolverFor(model);
-            ModelReport report = ModelReport.of(json, resolver);
             if (tree) {
                 ModelTreeData.Projection projection =
-                        ModelTreeData.project(json, resolver, report, root, depth, includes);
+                        ModelTreeData.project(json, resolver, root, depth, includes);
                 if (!projection.found()) {
                     String hint = Suggest.hint(projection.missingRoot(), projection.candidates());
                     return refuseNotFound("model", "report", RkCode.NO_SUCH_ELEMENT,
@@ -98,6 +97,7 @@ final class ModelReportCommand extends BaseCommand {
                 out().print(env.toJsonString());
                 return env.exitCode();
             }
+            ModelReport report = ModelReport.of(json, resolver);
             ResultEnvelope env = ResultEnvelope.read("model", "report",
                     report.rules().size() + " rule(s), " + report.computations().size() + " computation(s); "
                             + report.usage().unreferenced().size() + " unreferenced field(s)",

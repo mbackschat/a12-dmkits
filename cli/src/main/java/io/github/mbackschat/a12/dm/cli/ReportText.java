@@ -112,12 +112,12 @@ final class ReportText implements VerbText {
                 details.add("group");
                 if (node.path("repeatable").asBoolean()) {
                     details.add("repeatable");
-                    details.add("max " + node.path("maxRepetitions").asInt());
+                    details.add("max " + node.path("maxReps").asInt());
                 }
                 if (node.has("origin")) {
                     details.add("origin: " + node.path("origin").asText());
                 }
-                yield "(" + String.join(" · ", details) + ")";
+                yield withFacets("(" + String.join(" · ", details) + ")", node);
             }
             case "field" -> {
                 StringBuilder field = new StringBuilder(node.path("type").asText());
@@ -130,26 +130,57 @@ final class ReportText implements VerbText {
                 if (node.has("maxLength")) {
                     field.append(" max").append(node.path("maxLength").asInt());
                 }
+                if (node.has("min")) {
+                    field.append(" min=").append(node.path("min").asText());
+                }
+                if (node.has("max")) {
+                    field.append(" max=").append(node.path("max").asText());
+                }
+                if (node.has("pattern")) {
+                    field.append(" pattern=\"").append(node.path("pattern").asText()).append('"');
+                }
                 if (node.has("values")) {
                     field.append(" {");
                     List<String> values = new ArrayList<>();
                     node.path("values").forEach(value -> values.add(value.asText()));
                     field.append(String.join(", ", values));
                     if (node.path("truncated").asBoolean()) {
-                        field.append(", …");
+                        field.append(", … (").append(node.path("valueCount").asInt()).append(" total)");
                     }
                     field.append('}');
                 }
+                node.path("categories").fields().forEachRemaining(category -> {
+                    List<String> values = new ArrayList<>();
+                    category.getValue().forEach(value -> values.add(value.asText()));
+                    field.append(" →").append(category.getKey()).append('{')
+                            .append(String.join(",", values)).append('}');
+                });
                 if (node.has("typeRef")) {
                     field.append(" typeRef:").append(node.path("typeRef").asText());
                 }
                 if (node.path("computed").asBoolean()) {
                     field.append(" computed");
                 }
-                yield field.toString();
+                yield withFacets(field.toString(), node);
             }
             default -> node.path("kind").asText();
         };
+    }
+
+    private static String withFacets(String base, JsonNode node) {
+        StringBuilder out = new StringBuilder(base);
+        node.path("annotations").fields().forEachRemaining(annotation ->
+                out.append(" @").append(annotation.getKey()).append('=').append(annotation.getValue().asText()));
+        JsonNode descriptions = node.path("descriptions");
+        appendLocalized(out, "internal", descriptions.path("internal"));
+        appendLocalized(out, "external", descriptions.path("external"));
+        appendLocalized(out, "helper", descriptions.path("helper"));
+        return out.toString();
+    }
+
+    private static void appendLocalized(StringBuilder out, String kind, JsonNode values) {
+        values.fields().forEachRemaining(value -> out.append(' ').append(kind).append('[')
+                .append(value.getKey()).append("]=\"").append(value.getValue().asText()).append('"'));
     }
 
     private static void appendLogic(StringBuilder out, JsonNode node, Map<String, JsonNode> byPath,

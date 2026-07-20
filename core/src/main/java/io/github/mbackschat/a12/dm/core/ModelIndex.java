@@ -48,6 +48,14 @@ public final class ModelIndex {
     }
 
     /**
+     * Resolve an absolute or relative element reference against an element path. A sibling reference such as
+     * {@code ../Field} resolves from the rule/computation element, while an absolute path is unchanged.
+     */
+    public static String resolvePath(String elementPath, String reference) {
+        return ModelReader.resolveRelPath(elementPath, reference);
+    }
+
+    /**
      * The model's declared locales (header {@code locales}, e.g. {@code en_US}) — any valid Java locale code is
      * possible, EN/DE are <em>not</em> special here. Error messages must cover every declared locale
      * ({@code MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING}); rulekit additionally rejects messages for

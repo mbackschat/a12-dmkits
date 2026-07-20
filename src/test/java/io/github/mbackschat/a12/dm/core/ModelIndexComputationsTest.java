@@ -87,12 +87,14 @@ class ModelIndexComputationsTest {
         payout.path();              // "/Claim/PayoutCalc"  — the computation element's name-path
         payout.groupPath();         // "/Claim"             — its containing group
         payout.targetFieldPath();   // "/Claim/Payout"      — "../Payout" resolved (rel base = the element)
+        String resolved = ModelIndex.resolvePath(payout.path(), "../Payout"); // shared rule/computation anchor resolver
         // end::model-computations[]
         assertEquals(2, computations.size());
         assertEquals("/Claim/PayoutCalc", payout.path());
         assertEquals("/Claim", payout.groupPath());
         assertEquals("PayoutCalc", payout.name());
         assertEquals("/Claim/Payout", payout.targetFieldPath());
+        assertEquals("/Claim/Payout", resolved);
 
         ComputationInfo cost = computations.get(1);
         assertEquals("/Claim/Repairs/CostCalc", cost.path());

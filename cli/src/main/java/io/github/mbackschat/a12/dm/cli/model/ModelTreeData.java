@@ -8,17 +8,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import io.github.mbackschat.a12.dm.adapter.review.ModelReport;
+import io.github.mbackschat.a12.dm.core.ComputationInfo;
+import io.github.mbackschat.a12.dm.core.DmKeys;
+import io.github.mbackschat.a12.dm.core.ElementType;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelReader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
-import io.github.mbackschat.a12.dm.rulekit.context.ModelCard;
-import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 
 /**
  * G44's agent-first model tree projection. The JSON remains a flat, document-ordered node list; only
@@ -69,8 +71,8 @@ final class ModelTreeData {
     private ModelTreeData() {
     }
 
-    static Projection project(String modelJson, ModelResolver resolver, ModelReport report,
-            String requestedRoot, Integer depthLimit, List<String> includes) {
+    static Projection project(String modelJson, ModelResolver resolver, String requestedRoot,
+            Integer depthLimit, List<String> includes) {
         String root = requestedRoot == null ? "/" : requestedRoot;
         int maxDepth = depthLimit == null ? Integer.MAX_VALUE : depthLimit;
         if (maxDepth < 0) {
@@ -84,17 +86,22 @@ final class ModelTreeData {
             return Projection.missing(root, elementPaths);
         }
 
-        ModelDocument expanded = ModelDocument.read(reader.toJson());
+        String expandedJson = reader.toJson();
+        ModelDocument expanded = ModelDocument.read(expandedJson);
+        JsonNode expandedRoot;
+        try {
+            expandedRoot = MAPPER.readTree(expandedJson);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException("failed to read the expanded model tree", e);
+        }
         EnumSet<Facet> facets = Facet.parse(includes);
-        Map<String, ModelCard.Field> fields = fieldsByPath(report.structure().fields());
-        Map<String, ModelCard.Group> groups = groupsByPath(report.structure().groups());
-        Set<String> computedFields = computedFields(report.computations());
+        Map<String, ComputationSource> computationsByPath = computationSources(expandedRoot, index);
+        Set<String> computedFields = computedFields(computationsByPath.values());
 
         List<String> selectedPaths = selectedPaths(root, maxDepth, elementPaths);
         Set<String> emitted = new LinkedHashSet<>(selectedPaths);
-        Map<String, List<ModelReport.RuleEntry>> rulesByAnchor = rulesByAnchor(report.rules(), root);
-        Map<String, ModelReport.ComputationEntry> computationsByAnchor =
-                computationsByAnchor(report.computations());
+        Map<String, List<RuleSource>> rulesByAnchor = rulesByAnchor(expandedRoot);
+        Map<String, ComputationSource> computationsByAnchor = computationsByAnchor(computationsByPath.values());
 
         ObjectNode data = MAPPER.createObjectNode();
         data.put("root", root);
@@ -118,25 +125,24 @@ final class ModelTreeData {
 
             if ("/".equals(path)) {
                 node.put("kind", "model");
-            } else if (fields.containsKey(path)) {
+            } else if (index.isField(path)) {
                 fieldsCount++;
                 node.put("kind", "field");
-                putField(node, fields.get(path), index, computedFields.contains(path),
-                        facets.contains(Facet.ENUM));
+                putField(node, path, index, computedFields.contains(path), facets.contains(Facet.ENUM));
             } else {
                 groupsCount++;
-                ModelCard.Group group = groups.get(path);
                 node.put("kind", "group");
-                node.put("repeatable", group.repeatable());
-                node.put("maxRepetitions", group.maxRepetitions());
-                if (group.repeatable()) {
+                boolean repeatable = index.isRepeating(path);
+                node.put("repeatable", repeatable);
+                node.put("maxReps", index.maxRepetitions(path));
+                if (repeatable) {
                     repeatableGroups++;
                 }
             }
 
             if (!"/".equals(path)) {
                 index.originOf(path).ifPresent(origin -> node.put("origin", origin));
-                if (fields.containsKey(path)) {
+                if (index.isField(path)) {
                     index.typeReferenceOf(path).ifPresent(typeRef -> node.put("typeRef", typeRef));
                 }
             }
@@ -200,41 +206,30 @@ final class ModelTreeData {
         return slash == 0 ? "/" : path.substring(0, slash);
     }
 
-    private static Map<String, ModelCard.Field> fieldsByPath(List<ModelCard.Field> fields) {
-        Map<String, ModelCard.Field> out = new LinkedHashMap<>();
-        fields.forEach(field -> out.put(field.path(), field));
-        return out;
-    }
-
-    private static Map<String, ModelCard.Group> groupsByPath(List<ModelCard.Group> groups) {
-        Map<String, ModelCard.Group> out = new LinkedHashMap<>();
-        groups.forEach(group -> out.put(group.path(), group));
-        return out;
-    }
-
-    private static Set<String> computedFields(List<ModelReport.ComputationEntry> computations) {
+    private static Set<String> computedFields(Iterable<ComputationSource> computations) {
         Set<String> out = new LinkedHashSet<>();
-        for (ModelReport.ComputationEntry computation : computations) {
-            if (computation.computedField() != null) {
-                out.add(computation.computedField());
-            }
+        for (ComputationSource computation : computations) {
+            out.add(computation.target());
         }
         return out;
     }
 
-    private static void putField(ObjectNode node, ModelCard.Field field, ModelIndex index,
+    private static void putField(ObjectNode node, String path, ModelIndex index,
             boolean computed, boolean fullEnum) {
-        node.put("type", field.kind());
-        field.scale().ifPresent(scale -> node.put("scale", scale));
-        field.min().ifPresent(min -> node.put("min", min));
-        field.max().ifPresent(max -> node.put("max", max));
-        field.minLength().ifPresent(min -> node.put("minLength", min));
-        field.maxLength().ifPresent(max -> node.put("maxLength", max));
-        field.pattern().ifPresent(pattern -> node.put("pattern", pattern));
+        ValueKind kind = index.kindOf(path);
+        node.put("type", kind.name());
+        if (kind == ValueKind.NUMBER) {
+            node.put("scale", index.numberScale(path));
+        }
+        index.numberMin(path).ifPresent(min -> node.put("min", min));
+        index.numberMax(path).ifPresent(max -> node.put("max", max));
+        index.stringMinLength(path).ifPresent(min -> node.put("minLength", min));
+        index.stringMaxLength(path).ifPresent(max -> node.put("maxLength", max));
+        index.stringPattern(path).ifPresent(pattern -> node.put("pattern", pattern));
         node.put("computed", computed);
 
-        if (!field.enumValues().isEmpty()) {
-            List<String> values = field.enumValues();
+        if (kind == ValueKind.ENUMERATION) {
+            List<String> values = index.enumValues(path);
             int limit = fullEnum ? values.size() : Math.min(values.size(), ENUM_PREVIEW_SIZE);
             ArrayNode valueNodes = node.putArray("values");
             values.subList(0, limit).forEach(valueNodes::add);
@@ -242,7 +237,7 @@ final class ModelTreeData {
             if (limit < values.size()) {
                 node.put("truncated", true);
             }
-            Map<String, List<String>> categories = index.enumCategories(field.path());
+            Map<String, List<String>> categories = index.enumCategories(path);
             if (!categories.isEmpty()) {
                 ObjectNode categoryNodes = node.putObject("categories");
                 categories.forEach((name, categoryValues) -> {
@@ -282,63 +277,104 @@ final class ModelTreeData {
         values.forEach(out::put);
     }
 
-    private static Map<String, List<ModelReport.RuleEntry>> rulesByAnchor(
-            List<ModelReport.RuleEntry> rules, String root) {
-        Map<String, List<ModelReport.RuleEntry>> out = new LinkedHashMap<>();
-        for (ModelReport.RuleEntry rule : rules) {
-            String anchor = rule.errorField() == null ? root : rule.errorField();
+    private static Map<String, List<RuleSource>> rulesByAnchor(JsonNode expandedRoot) {
+        List<RuleSource> rules = new ArrayList<>();
+        collectRuleSources(rootGroups(expandedRoot), rules);
+        Map<String, List<RuleSource>> out = new LinkedHashMap<>();
+        for (RuleSource rule : rules) {
+            String anchor = rule.errorEntity() == null ? "/" : rule.errorEntity();
             out.computeIfAbsent(anchor, ignored -> new ArrayList<>()).add(rule);
         }
         return out;
     }
 
-    private static Map<String, ModelReport.ComputationEntry> computationsByAnchor(
-            List<ModelReport.ComputationEntry> computations) {
-        Map<String, ModelReport.ComputationEntry> out = new LinkedHashMap<>();
-        for (ModelReport.ComputationEntry computation : computations) {
-            if (computation.computedField() != null) {
-                out.put(computation.computedField(), computation);
+    private static Map<String, ComputationSource> computationSources(JsonNode expandedRoot, ModelIndex index) {
+        Map<String, JsonNode> bodies = new LinkedHashMap<>();
+        collectComputationBodies(rootGroups(expandedRoot), bodies);
+        Map<String, ComputationSource> out = new LinkedHashMap<>();
+        for (ComputationInfo computation : index.computations()) {
+            JsonNode body = bodies.get(computation.path());
+            if (body != null) {
+                out.put(computation.path(), new ComputationSource(
+                        computation.path(), computation.targetFieldPath(), computationDsl(body)));
             }
         }
         return out;
     }
 
-    private static void putRules(ObjectNode node, List<ModelReport.RuleEntry> rules) {
+    private static Map<String, ComputationSource> computationsByAnchor(Iterable<ComputationSource> computations) {
+        Map<String, ComputationSource> out = new LinkedHashMap<>();
+        for (ComputationSource computation : computations) {
+            out.put(computation.target(), computation);
+        }
+        return out;
+    }
+
+    private static JsonNode rootGroups(JsonNode root) {
+        return root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS);
+    }
+
+    private static void collectRuleSources(JsonNode elements, List<RuleSource> out) {
+        for (JsonNode element : elements) {
+            ElementType type = ElementType.fromWire(element.path(DmKeys.TYPE).asText(null));
+            if (type == ElementType.GROUP) {
+                collectRuleSources(element.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS), out);
+            } else if (type == ElementType.RULE) {
+                String path = element.path(DmKeys.ID).asText();
+                JsonNode body = element.path(ElementType.RULE.wireName());
+                String relativeErrorEntity = body.path("errorEntityRelPath").asText("");
+                String errorEntity = relativeErrorEntity.isEmpty()
+                        ? null
+                        : ModelIndex.resolvePath(path, relativeErrorEntity);
+                out.add(new RuleSource(path, errorEntity, body.path("errorCondition").asText()));
+            }
+        }
+    }
+
+    private static void collectComputationBodies(JsonNode elements, Map<String, JsonNode> out) {
+        for (JsonNode element : elements) {
+            ElementType type = ElementType.fromWire(element.path(DmKeys.TYPE).asText(null));
+            if (type == ElementType.GROUP) {
+                collectComputationBodies(
+                        element.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS), out);
+            } else if (type == ElementType.COMPUTATION) {
+                out.put(element.path(DmKeys.ID).asText(), element.path(ElementType.COMPUTATION.wireName()));
+            }
+        }
+    }
+
+    private static void putRules(ObjectNode node, List<RuleSource> rules) {
         if (rules.isEmpty()) {
             return;
         }
         ArrayNode out = node.putArray("rules");
-        for (ModelReport.RuleEntry rule : rules) {
-            out.addObject().put("name", rule.rule()).put("dsl", rule.canonicalText());
+        for (RuleSource rule : rules) {
+            out.addObject().put("name", rule.name()).put("dsl", rule.dsl());
         }
     }
 
-    private static void putComputation(ObjectNode node, ModelReport.ComputationEntry computation) {
+    private static void putComputation(ObjectNode node, ComputationSource computation) {
         if (computation == null) {
             return;
         }
         node.putObject("computation")
-                .put("name", computation.computation())
-                .put("dsl", computationDsl(computation));
+                .put("name", computation.name())
+                .put("dsl", computation.dsl());
     }
 
-    private static String computationDsl(ModelReport.ComputationEntry computation) {
-        if (computation.canonicalText() != null) {
-            return computation.canonicalText();
-        }
+    private static String computationDsl(JsonNode computation) {
         List<String> alternatives = new ArrayList<>();
-        for (DraftComputation.Alternative alternative : computation.alternatives()) {
-            alternatives.add(alternative.precondition() == null
-                    ? alternative.operation()
-                    : alternative.precondition() + " => " + alternative.operation());
+        for (JsonNode alternative : computation.path("computationAlternatives")) {
+            String operation = alternative.path("operation").asText();
+            String precondition = alternative.path("precondition").asText("");
+            alternatives.add(precondition.isEmpty() ? operation : precondition + " => " + operation);
         }
         String table = String.join("; ", alternatives);
-        return computation.commonPrecondition() == null
-                ? table
-                : computation.commonPrecondition() + " => (" + table + ")";
+        String commonPrecondition = computation.path("commonPrecondition").asText("");
+        return commonPrecondition.isEmpty() ? table : commonPrecondition + " => (" + table + ")";
     }
 
-    private static int countAnchoredRules(Map<String, List<ModelReport.RuleEntry>> rules, Set<String> emitted) {
+    private static int countAnchoredRules(Map<String, List<RuleSource>> rules, Set<String> emitted) {
         int count = 0;
         for (String path : emitted) {
             count += rules.getOrDefault(path, List.of()).size();
@@ -347,7 +383,7 @@ final class ModelTreeData {
     }
 
     private static int countAnchoredComputations(
-            Map<String, ModelReport.ComputationEntry> computations, Set<String> emitted) {
+            Map<String, ComputationSource> computations, Set<String> emitted) {
         int count = 0;
         for (String path : emitted) {
             if (computations.containsKey(path)) {
@@ -355,6 +391,12 @@ final class ModelTreeData {
             }
         }
         return count;
+    }
+
+    private record RuleSource(String name, String errorEntity, String dsl) {
+    }
+
+    private record ComputationSource(String name, String target, String dsl) {
     }
 
     record Projection(ObjectNode data, String missingRoot, List<String> candidates) {

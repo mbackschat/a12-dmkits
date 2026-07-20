@@ -47,7 +47,7 @@ dmtool -m examples/models/order-ruled.dm.json model report \
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json model report --tree --root /Order --depth 1 \
-  | jq '{summary, root:.data.root, counts:.data.summary, groups:[.data.nodes[] | select(.kind=="group") | {path, depth, repeatable, maxRepetitions}]}'
+  | jq '{summary, root:.data.root, counts:.data.summary, groups:[.data.nodes[] | select(.kind=="group") | {path, depth, repeatable, maxReps}]}'
 ```
 
 ```output
@@ -67,25 +67,25 @@ dmtool -m examples/models/order-ruled.dm.json model report --tree --root /Order 
       "path": "/Order",
       "depth": 0,
       "repeatable": false,
-      "maxRepetitions": 1
+      "maxReps": 1
     },
     {
       "path": "/Order/ShippingAddress",
       "depth": 1,
       "repeatable": false,
-      "maxRepetitions": 1
+      "maxReps": 1
     },
     {
       "path": "/Order/BillingAddress",
       "depth": 1,
       "repeatable": false,
-      "maxRepetitions": 1
+      "maxReps": 1
     },
     {
       "path": "/Order/Items",
       "depth": 1,
       "repeatable": true,
-      "maxRepetitions": 50
+      "maxReps": 50
     }
   ]
 }
@@ -104,7 +104,7 @@ dmtool --text -m examples/models/order-ruled.dm.json model report \
 
 /Order  (group)
 ├─ CustomerName  STRING
-│  └─ rule EligibilityCheck :  FieldFilled(/Order/CustomerName) And CustomCondition ExternalEligibility
+│  └─ rule EligibilityCheck :  FieldFilled(CustomerName) And CustomCondition ExternalEligibility
 ├─ ProductCode  STRING
 ├─ Quantity  NUMBER scale0
 ├─ UnitPrice  NUMBER scale2
@@ -116,14 +116,14 @@ dmtool --text -m examples/models/order-ruled.dm.json model report \
 │  └─ City  STRING
 ├─ BillingAddress  (group)
 │  └─ PostalCode  STRING
-│     └─ rule PostalCodeFormat :  FieldFilled(/Order/BillingAddress/PostalCode) And [/Order/BillingAddress/PostalCode] PatternViolated "[0-9]{5}"
+│     └─ rule PostalCodeFormat :  FieldFilled(PostalCode) And [PostalCode] PatternViolated "[0-9]{5}"
 ├─ Items  (group · repeatable · max 50)
 │  ├─ Sku  STRING
 │  └─ Count  NUMBER scale0
-├─ Priority  ENUMERATION {STANDARD, EXPRESS, OVERNIGHT}
+├─ Priority  ENUMERATION {STANDARD, EXPRESS, OVERNIGHT} →SpeedClass{NORMAL,FAST}
 ├─ OrderDate  DATE
 └─ DeliveryDate  DATE
-   └─ rule DeliveryNotBeforeOrder :  AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate) < 0
+   └─ rule DeliveryNotBeforeOrder :  AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) < 0
 fields 15 · groups 4 · rules 3 · computations 0 · repeatable 1
 ```
 

@@ -16,6 +16,12 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 class ModelProvenanceTest {
 
     @Test
+    void resolvesRelativeAndAbsoluteLogicAnchorsThroughTheSharedCorePathResolver() {
+        assertEquals("/Order/Email", ModelIndex.resolvePath("/Order/EmailRequired", "../Email"));
+        assertEquals("/Order/Email", ModelIndex.resolvePath("/Order/EmailRequired", "/Order/Email"));
+    }
+
+    @Test
     void retainsHeaderOriginsNestedMountsNamedTypesAndMixedDocumentOrder() {
         String leaf = DocumentModelDraft.named("LeafHeader").locale("en_US")
                 .rootGroup("Leaf", root -> root.stringField("LeafCode", field -> {}))

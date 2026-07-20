@@ -1334,6 +1334,7 @@ ComputationInfo payout = computations.get(0);
 payout.path();              // "/Claim/PayoutCalc"  — the computation element's name-path
 payout.groupPath();         // "/Claim"             — its containing group
 payout.targetFieldPath();   // "/Claim/Payout"      — "../Payout" resolved (rel base = the element)
+String resolved = ModelIndex.resolvePath(payout.path(), "../Payout"); // shared rule/computation anchor resolver
 ```
 
 ## 7. The LLM session — the loop the skill teaches, for both personas

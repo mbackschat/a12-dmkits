@@ -43,13 +43,17 @@ class ModelReportTreeCliTest {
         assertEquals(1, node(data, "/Order/Lines").path("depth").asInt());
         assertEquals("group", node(data, "/Order/Lines").path("kind").asText());
         assertTrue(node(data, "/Order/Lines").path("repeatable").asBoolean());
-        assertEquals(5, node(data, "/Order/Lines").path("maxRepetitions").asInt());
+        assertEquals(5, node(data, "/Order/Lines").path("maxReps").asInt());
         assertFalse(data.toString().contains("/Order/Lines/Sku"), "--depth 1 omits grandchildren");
 
         JsonNode channel = node(data, "/Order/Channel");
         assertEquals(10, channel.path("valueCount").asInt());
         assertTrue(channel.path("truncated").asBoolean());
         assertTrue(channel.path("values").size() < 10, "large enum is previewed by default");
+        assertEquals(List.of("ONLINE", "PHYSICAL", "OTHER"),
+                strings(channel.path("categories").path("Route")));
+        assertEquals("1", node(data, "/Order/Quantity").path("min").asText());
+        assertEquals("99", node(data, "/Order/Quantity").path("max").asText());
         assertEquals("EmailType", node(data, "/Order/ContactEmail").path("typeRef").asText());
         assertEquals("PaymentModule", node(data, "/Order/Payment").path("origin").asText());
         assertTrue(node(data, "/Order/Total").path("computed").asBoolean());
@@ -104,13 +108,55 @@ class ModelReportTreeCliTest {
         Fixture f = fixture(dir);
         var text = CliTestSupport.run("--text", "-m", f.model().toString(), "-w", dir.toString(),
                 "model", "report", "--tree", "--root", "/Order", "--depth", "2",
-                "--include", "rules,computations");
+                "--include", "all");
         assertEquals(0, text.code(), text::err);
         assertTrue(text.out().contains("/Order  (group)"), text::out);
         assertTrue(text.out().contains("├─ Channel"), text::out);
         assertTrue(text.out().contains("└─ Payment"), text::out);
         assertTrue(text.out().contains("rule EmailRequired"), text::out);
         assertTrue(text.out().contains("comp TotalComputation"), text::out);
+        assertTrue(text.out().contains("min=1") && text.out().contains("max=99"), text::out);
+        assertTrue(text.out().contains("pattern=\".+@.+\""), text::out);
+        assertTrue(text.out().contains("→Route{ONLINE,PHYSICAL,OTHER}"), text::out);
+        assertTrue(text.out().contains("@classification=pii"), text::out);
+        assertTrue(text.out().contains("internal[en_US]=\"Sales channel\""), text::out);
+        assertTrue(text.out().contains("helper[en_US]=\"Choose the intake route.\""), text::out);
+    }
+
+    @Test
+    void treeReadsOpaqueComputationTargetAndDslWithoutBootstrappingTheKernel(@TempDir Path dir) throws Exception {
+        Fixture f = fixture(dir);
+        String original = Files.readString(f.model());
+        String opaque = original.replace("\"operation\" : \"[Quantity]\"",
+                "\"operation\" : \"ProjectOpaque(Quantity)\"");
+        assertFalse(original.equals(opaque), "the foreign-operation discriminator changed the fixture");
+        Files.writeString(f.model(), opaque);
+
+        JsonNode data = data(CliTestSupport.run("-m", f.model().toString(), "-w", dir.toString(),
+                "model", "report", "--tree", "--root", "/Order", "--include", "computations"));
+        JsonNode total = node(data, "/Order/Total");
+        assertTrue(total.path("computed").asBoolean());
+        assertEquals("ProjectOpaque(Quantity)", total.path("computation").path("dsl").asText());
+    }
+
+    @Test
+    void modelLevelRuleStaysAtSyntheticRootAndIsNotReanchoredIntoASubtree(@TempDir Path dir) throws Exception {
+        Fixture f = fixture(dir);
+        String original = Files.readString(f.model());
+        String modelLevel = original.replaceFirst(
+                "(?m)^\\s*\"errorEntityRelPath\"\\s*:\\s*\"\\.\\./ContactEmail\",\\R", "");
+        assertFalse(original.equals(modelLevel), "the fixture's rule became model-level");
+        Files.writeString(f.model(), modelLevel);
+
+        JsonNode whole = data(CliTestSupport.run("-m", f.model().toString(), "-w", dir.toString(),
+                "model", "report", "--tree", "--include", "rules"));
+        assertEquals(1, node(whole, "/").path("rules").size());
+        assertEquals("/Order/EmailRequired", node(whole, "/").path("rules").get(0).path("name").asText());
+
+        JsonNode subtree = data(CliTestSupport.run("-m", f.model().toString(), "-w", dir.toString(),
+                "model", "report", "--tree", "--root", "/Order", "--include", "rules"));
+        assertEquals(0, subtree.path("summary").path("rules").asInt());
+        assertEquals(0, countRule(subtree, "/Order/EmailRequired"));
     }
 
     private static Fixture fixture(Path dir) throws Exception {
@@ -121,16 +167,19 @@ class ModelReportTreeCliTest {
 
         String base = DocumentModelDraft.named("OrderTree").locale("en_US")
                 .include("payment", "PaymentModule")
-                .typeDef("EmailType", type -> type.string(string -> string.minLength(5)))
+                .typeDef("EmailType", type -> type.string(string -> string.minLength(5)
+                        .pattern(".+@.+", "Use an email-like address.")))
                 .rootGroup("Order", order -> order
                         .internalDescription("en_US", "Order intake")
                         .enumField("Channel", channel -> channel
                                 .value("WEB").value("STORE").value("PHONE").value("PARTNER").value("APP")
                                 .value("EMAIL").value("MARKET").value("DIRECT").value("BROKER").value("OTHER")
+                                .category("Route", "ONLINE", "PHYSICAL", "PHYSICAL", "ONLINE", "ONLINE",
+                                        "ONLINE", "ONLINE", "ONLINE", "ONLINE", "OTHER")
                                 .helperText("en_US", "Choose the intake route.")
                                 .internalDescription("en_US", "Sales channel"))
                         .typedefField("ContactEmail", "EmailType")
-                        .numberField("Quantity", number -> number.fractionDigits(0))
+                        .numberField("Quantity", number -> number.fractionDigits(0).min("1").max("99"))
                         .numberField("Total", number -> number.fractionDigits(0))
                         .group("Lines", lines -> lines.repeatable(5)
                                 .stringField("Sku", field -> field.annotation("key", "business")))
@@ -168,6 +217,12 @@ class ModelReportTreeCliTest {
     private static List<String> paths(JsonNode nodes) {
         List<String> out = new ArrayList<>();
         nodes.forEach(node -> out.add(node.path("path").asText()));
+        return out;
+    }
+
+    private static List<String> strings(JsonNode nodes) {
+        List<String> out = new ArrayList<>();
+        nodes.forEach(node -> out.add(node.asText()));
         return out;
     }
 
