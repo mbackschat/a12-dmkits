@@ -23,6 +23,7 @@ Keep every correction within the recorded findings, including the instruction no
 ### Active chapters
 
 - [RV-2026-07-20-01 — IG89 → IF153 and IG90 → IF154 JS host-semantics review](#rv-2026-07-20-01--ig89--if153-and-ig90--if154-js-host-semantics-review)
+- [RV-2026-07-20-02 — IG83 → IF155 Route-B timezone review](#rv-2026-07-20-02--ig83--if155-route-b-timezone-review)
 
 ### Resolution index
 
@@ -149,6 +150,130 @@ The production seed generator also validates generated pattern candidates throug
 ### Chapter resolution
 
 Open. An implementor should resolve issues 1–2 together in one decimal-context pass, issues 3–5 together in one regex/parser/evidence pass, and issues 6–7 in the same regex landing while that contract is warm. Do not close IG89 or IG90 until every acceptance check above is green.
+
+## RV-2026-07-20-02 — IG83 → IF155 Route-B timezone review
+
+**Verdict:** Changes required. The owner-ratified Route B-now / A-later decision stands, and the historical Berlin implementation appears correct on every independently checked transition entry and on the exercised runtime cases. IF155 nevertheless cannot be accepted as complete: the new preparation boundary silently evaluates an explicit invalid time zone as UTC, the full-history and three-verb evidence claims exceed the tests, the public-API guard is red, the changed historical `AddDays` path adds avoidable per-row allocation without matching performance evidence, and direct lifecycle/authoring documentation remains inaccurate. The reported custom-validator failure is also real, but it is a stale demo projection rather than an IF150/IF152 runtime regression.
+
+**Reviewed scope:** `ac743157` (IG83 kernel characterization), `4777b982` (Berlin transition table), `bde3a581` (supported-zone refusal), `318d92f7` (historical differential), and `82c1d005` (IF155 graduation). The review also followed the explicitly reported `cli-custom-types` failure to commits `5fd309d3`/`955ccdc7` and the live CLI output contract. No proposal document was reviewed or changed.
+
+### What the review accepts
+
+- The kernel path really is legacy `java.util.TimeZone` plus non-lenient `SimpleDateFormat`, not `java.time`. Pre-1916 Berlin is flat CET on that path; the 1945/1947 CEMT offset and the 1980–1995 September DST end are real.
+- All 62 committed epoch/offset pairs matched an independent IANA transition scan, and direct `java.util` spot checks confirmed the material pre-1916 and CEMT distinctions. The common JVM/Node tests and representative real-kernel differential pass. The review found an evidence-completeness problem, not a demonstrated bad table entry.
+- `ModelEvalCommand`, `ModelComputeCommand`, and `RuleEvalCommand` each contain the typed `UnsupportedModelTimeZoneException` catch. The missing `rule eval` result is a guard gap, not evidence that the command currently crashes.
+- Route A remains a legitimate owner-deferred capability: a general portable, versioned time-zone database is not required until its recorded consumer/publication trigger fires. The corrections below complete and honestly certify Route B; they do not reopen that decision.
+- The custom-validator implementation preserves `errorMessage`, performs `$<fieldName>$` substitution, and emits the result under the schema-required `data.messages[].message` key. The demo asks jq for the nonexistent `text` key.
+
+### RV-2026-07-20-02-1 — the time-zone boundary conflates absent, invalid, and unsupported values
+
+**Severity:** High.
+
+**Evidence:** [`ModelTimeZone.of`](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/model/ModelTimeZone.kt) uses `id.isNullOrBlank()` to select UTC. A genuinely absent `modelConfig.timeZone` does default to UTC, but an explicitly authored empty or whitespace-only value is not absence: the kernel maps it through `TimeZone.getTimeZone`, observes the GMT fallback, and rejects it as `MVK_INVALID_TIME_ZONE`. The current interpreter therefore evaluates `timeZone: ""` and whitespace under UTC instead of failing closed—the exact wrong-zone behavior Route B was intended to prevent.
+
+The classifier has a second sibling defect. Every other outside-set value becomes `UnsupportedModelTimeZoneException`, whose text and `RK_INTERPRETER_TIMEZONE_UNSUPPORTED` explanation describe a kernel-legal-but-interpreter-unsupported zone. That is true for `America/New_York`, but false for a typo such as `Europe/Berln`, which the kernel rejects. The actual input domains are: absent default, supported exact value, kernel-legal but unsupported value, and kernel-illegal value. The implementation models only supported versus “everything else,” with blank additionally folded into absence.
+
+**Required correction:** Implement one explicit four-domain classification at the preparation/consumer boundary. Only a missing slot defaults to UTC. Exact `UTC`, `GMT`, and `Europe/Berlin` map to supported zones. Explicit empty/whitespace and other kernel-invalid ids must refuse as invalid configuration, while a known kernel-legal outside-set id must retain the deliberate supported-scope refusal. Common code that cannot decide the whole Java-ID domain without Route A must use an honest neutral outside-set result and let the JVM/kernel-backed authoring boundary supply the legal-versus-invalid distinction; it must never assert that an unchecked typo is kernel-legal.
+
+**Acceptance checks:** Add common JVM/Node loader cases for missing, `""`, whitespace, `UTC`, `GMT`, `Europe/Berlin`, `Europe/Berln`, and `America/New_York`. Add CLI cases proving `model eval`, `model compute`, and `rule eval` never evaluate explicit blank/whitespace, distinguish the invalid typo from the legal New York scope refusal, and return structured corrective diagnostics rather than a bare failure or UTC result.
+
+**Resolution:** Open.
+
+### RV-2026-07-20-02-2 — “complete history” and tzdb-drift claims exceed representative evidence
+
+**Severity:** Medium.
+
+**Evidence:** [`DateMath.kt`](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/DateMath.kt) contains 62 transition pairs, but [`BerlinHistoricalTzTest`](../interpreter/src/commonTest/kotlin/io/github/mbackschat/a12/dm/interpreter/BerlinHistoricalTzTest.kt) samples pre-1916, 1945, 1980, and modern/future cases. [`BerlinHistoricalTzDiffTest`](../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/BerlinHistoricalTzDiffTest.kt) checks representative 1916/1945/1947/1980/pre-1916 behavior against Groovy-dynamic; its generated-static-Java leg covers only the 1980 fall-back plus a summer control. This does not support IF155/certificate wording that both kernel strategies lock the full table or that “any JDK-tzdb drift is caught.” A single mistyped unexercised transition could pass the current suite. The common test KDoc also points to `DstTimeZoneDiffTest` instead of the new historical differential.
+
+The review independently compared all 62 committed pairs and found no bad entry. That is useful review evidence, but a one-off audit is not a durable executable certificate.
+
+**Required correction:** Add a versioned, independently sourced transition oracle and a table-driven lock covering immediately before, at, and after every pinned transition, plus every gap/overlap resolution class. Reuse prepared kernel engines so the exhaustive guard remains practical, and compare the interpreter to Groovy-dynamic and generated static Java; do not derive the expected vector from the implementation arrays. If exhaustive second-strategy execution is deliberately not retained, lower every certificate/drift claim to the exact representative evidence instead. Correct the stale test KDoc.
+
+**Acceptance checks:** The guard detects a one-second epoch mutation, an offset mutation, a missing/extra/reordered pair, and a wrong gap/overlap choice. It covers pre-first and post-last behavior and reports the pinned JDK/tzdb profile. Every document and test comment states exactly which strategy and transition set its named lock exercises.
+
+**Resolution:** Open.
+
+### RV-2026-07-20-02-3 — the CLI refusal/check-valid lock proves less than IF155 says
+
+**Severity:** Medium.
+
+**Evidence:** [`EvalUnsupportedTimeZoneRefusalTest`](../cli/src/test/java/io/github/mbackschat/a12/dm/cli/EvalUnsupportedTimeZoneRefusalTest.java) says all three interpreter-backed verbs refuse identically, but `allInterpreterVerbsRefuseAnUnsupportedZone` invokes only `model eval` and `model compute`. Its “same model is kernel-check-valid” test merely asserts that two diagnostic strings are absent; it never requires exit code 0, an `ok` outcome, or an otherwise clean check. An unrelated model-check failure could satisfy the current assertion. IF155 and the certificate cite this class as proof of both stronger claims.
+
+**Required correction:** Exercise `rule eval` on a real stored rule and assert the same exact structured refusal, code, explanation, and fix as the other two verbs. Strengthen the New York control to prove that `model check` succeeds cleanly, not merely that one code is absent.
+
+**Acceptance checks:** All three runtime verbs exit nonzero with `outcome: refused`, `RK_INTERPRETER_TIMEZONE_UNSUPPORTED`, the offending zone, and a nonblank corrective fix. The same unmodified New York model exits 0 from `model check` with its successful outcome/valid flag. Add negative controls for issue 1's invalid ids.
+
+**Resolution:** Open.
+
+### RV-2026-07-20-02-4 — the public rulekit API golden was not updated
+
+**Severity:** Medium.
+
+**Evidence:** `bde3a581` added the public enum constant `RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED`, but [`api/dmkits-rulekit.api`](../api/dmkits-rulekit.api) still jumps from `INTERPRETER_INCLUDE_RULES_UNSUPPORTED` to `INVALID_CONFIG_VALUE`. The review ran `./build.sh apiGuardTest`; `PublicApiGuardTest.everyKitPublicApiMatchesItsGolden` failed on exactly that missing constant. The reported checkpoint omitted the root `apiGuardTest`, so its green module tasks could not detect this release-surface drift.
+
+**Required correction:** Regenerate the public API goldens with the documented `dumpKitApi` task and review the resulting diff. Accept only the intended new enum member unless another independently owned API change is present.
+
+**Acceptance checks:** `./build.sh apiGuardTest` and the root test/check path are green, and the reviewed golden diff contains the deliberate time-zone diagnostic API change.
+
+**Resolution:** Open.
+
+### RV-2026-07-20-02-5 — historical `AddDays` adds avoidable hot-path allocations and has no matching measurement
+
+**Severity:** Medium.
+
+**Evidence:** The new [`wallDayLandingInstant`](../interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/DateMath.kt) computes consistent candidates with `BERLIN_OFFSETS.filter { … }.map { … }`, allocating two collections per Berlin DATE_TIME `AddDays` evaluation. The prior two-offset implementation used scalar locals and allocated no collections. The existing B9 Berlin performance scenario exercises `DifferenceInHours`, not `AddDays`, so it does not cover the changed path. Complexity remains bounded/linear—the review found no O(N²) regression—but IF155's unqualified “no perf regression” claim has neither matching coverage nor measurement.
+
+**Required correction:** Replace the collection pipeline with one scalar loop that tracks the earliest/latest consistent instant and the bracketing offsets without allocation. Add an at-scale Berlin DATE_TIME `AddDays` scenario that crosses historical ordinary/gap/overlap cases, and record the before/after result under the IF137 measurement posture. Do not promote a new numerical release bar without its protocol-compliant certification.
+
+**Acceptance checks:** The hot function contains no per-call collection construction; correctness remains locked for normal, gap, and overlap landings in both travel directions, including a CEMT-era transition. The targeted N/4N case stays below the existing catastrophe floor and a same-run before/after measurement supports any retained “no regression” wording.
+
+**Resolution:** Open.
+
+### RV-2026-07-20-02-6 — lifecycle and direct status prose still describe the pre-IF155 state
+
+**Severity:** Medium.
+
+**Evidence:** IG83 currently sits in §1 “Open” while its row calls Route A owner-deferred with an external reopen trigger; that contradicts [`INTERPRETER-GAPS.md`](INTERPRETER-GAPS.md)'s own section invariant. It must remain open while issues 1–5 are active, but after those corrections only Route A remains and belongs in §2. Direct present-tense stale statements also remain in [`KERNEL-SEMANTICS.md`](KERNEL-SEMANTICS.md) (“modern Berlin only”), the earlier [`KERNEL-FINDINGS.md`](KERNEL-FINDINGS.md) supplement (“being pinned”), and the current-status summary in [`INTERPRETER-FINDINGS.md`](INTERPRETER-FINDINGS.md). IF128's dated historical account may retain what was true at that increment; current-status prose may not.
+
+**Required correction:** While this chapter is open, make IG83's §1 row name the Route-B review residuals and Route A separately. Once issues 1–5 are complete, remove the §1 work and place only the owner-deferred Route-A capability under §2 with its existing trigger. Sweep the direct present-tense IF155/IG83 statements, preserving explicitly dated history. Replace “stable across releases”/automatic-drift claims with the exact pinned-profile and executable-evidence wording established by issue 2.
+
+**Acceptance checks:** The gap ledger has no entry whose prose says “deferred” under §1 after Route B is complete. No current-status sentence says Berlin remains modern-only or is still being pinned. Links resolve, doc guards pass, and IF128 remains recognizable as historical provenance rather than silently rewritten history.
+
+**Resolution:** Open.
+
+### RV-2026-07-20-02-7 — the dmkits/dmtool authoring impact is real and needs the four-domain contract
+
+**Severity:** Medium.
+
+**Evidence:** This is a model-configuration authoring concern, not an operator-catalog concern. The typed mutation surfaces are `ModelDocument.setTimeZone`, `EditSession.setTimeZone`, and `ConfigEditor.timeZone`; dmtool exposes `config modify --time-zone` and the equivalent apply operation. `config modify` already calls `session.validate()`, so a kernel-invalid id is rejected immediately as well as by later `model check`, but the raw `MVK_INVALID_TIME_ZONE` has no corrective enrichment. Conversely, a kernel-legal outside-set id such as New York can be authored and kernel-validated successfully, then is refused by interpreter-backed `model eval`, `model compute`, and `rule eval`; the authoring surfaces provide no advance warning. The existing [`DEV-API-GAPS.md`](DEV-API-GAPS.md) row is the single owning backlog entry and has been corrected by this review to reflect those exact components and behaviors.
+
+**Required correction:** Complete issue 1's classifier first. Then enrich `MVK_INVALID_TIME_ZONE` wherever the kernel-backed authoring/check path emits it; document the accepted-id versus interpreter-supported-set distinction on the public modelkit/edit setters and dmtool help/manifest/schema; and surface a nonblocking warning when a successful config mutation selects a kernel-legal zone outside `{UTC, GMT, Europe/Berlin}`. Do not put this model-config fact in an operator catalog and do not duplicate the gap in `FEATURE-GAPS`.
+
+**Acceptance checks:** Typed docs and CLI discovery explain the four domains. `config modify`/apply and `model check` give a corrective invalid-id diagnostic for empty/whitespace/typo inputs. A New York mutation remains authorable and kernel-valid but carries a clear evaluator-scope warning; all three runtime verbs then produce the precise scope refusal. On ship, delete the DEV-API gap row and graduate the durable API rationale into `API-FINDINGS.md`.
+
+**Resolution:** Open.
+
+### RV-2026-07-20-02-8 — `cli-custom-types` projects the wrong result key
+
+**Severity:** Medium.
+
+**Evidence:** The reported demo failure reproduces with Node available: expected `"text": "Invalid Iban"`, actual `"text": null`. This is not a custom-validator runtime regression. `InterpreterEngine.addMessage` has long emitted the interpolated text under `message`, and [`eval-doc.schema.json`](../cli/src/main/resources/schema/eval-doc.schema.json) requires that key. `955ccdc7` changed [`examples/cli-custom-types.md`](../examples/cli-custom-types.md) to project `{code, field, text}` without changing the CLI contract. The focused `CustomFieldTypeJsContractTest` is green with Node, but it asserts the code/context and never the emitted message value, so the demo typo escaped.
+
+**Required correction:** Change the demo projection and expected block to use `{code, field, message}` and `"message": "Invalid Iban"`. Add a focused CLI assertion that the JS validator's `errorMessage` reaches `data.messages[].message` after `$<fieldName>$` substitution. Keep this out of `DEV-API-GAPS`: custom implementations are intentionally runtime-owned, and the supported projection already works.
+
+**Acceptance checks:** Run `CustomFieldTypeJsContractTest` with Node available and `uvx showboat@0.6.1 verify examples/cli-custom-types.md`; both are green, and the test fails if the interpolated message disappears or moves keys.
+
+**Resolution:** Open.
+
+### Review verification
+
+- Green: focused interpreter JVM + Node `BerlinHistoricalTzTest`/`ModelTimeZoneTest`; focused `BerlinHistoricalTzDiffTest`; focused `EvalUnsupportedTimeZoneRefusalTest`; focused `CustomFieldTypeJsContractTest` with Node explicitly available; CLI document/semantics/stale-gap guards reached by the focused CLI tasks.
+- Red as reviewed: root `apiGuardTest` on the missing public enum constant; `showboat verify examples/cli-custom-types.md` on the `text` versus `message` projection.
+- No evaluator, CLI, kit, proposal, or Lean-repository source file was changed by this review.
+
+### Chapter resolution
+
+Open. Resolve issues 1–3 together as the Route-B classification/evidence pass, issue 4 in the same public-diagnostic landing, issue 5 as the focused historical-`AddDays` performance cleanup, and issues 6–7 with those implementation commits while their exact contracts are warm. Resolve issue 8 independently as the narrow demo/test correction. Do not describe IF155 as fully certified or move Route A to the deferred section until issues 1–7 are green.
 
 ## Resolved chapter archive
 
