@@ -47,3 +47,7 @@ The executable registry is authoritative once G52 ships. A guard compares that r
 The compact, breadth-shaped, and depth-shaped JSON files imported from the PR are `profile′` results extracted from synthesized own-domain models. They are approved committed fixtures. Their private real-model source profiles are not present.
 
 The PR artifacts are adapted once to the final current schema before landing. The implementation does not retain removed PR fields or a compatibility reader. Their provenance remains `profile′` from synthesized own-domain models; adapting the schema must not turn that into a claim that they were extracted from the private targets.
+
+## Generation boundary
+
+Synthesis builds rules and computations through the typed API, then persists the complete program population with one `BoundModel.addAll(rules, computations)` operation. Per-program immutable snapshot writes are not an equivalent implementation: they repeatedly parse, validate, and serialize the growing model and make the committed breadth/depth calibration profiles needlessly superlinear to generate. The bulk boundary preserves the same terminal strict model check and byte-identical output.

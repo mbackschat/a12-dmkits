@@ -6,7 +6,6 @@ import java.util.Set;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
-import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 
 /**
  * Profile-driven own-domain model synthesis.
@@ -48,20 +47,6 @@ public final class ModelSynthesizer {
                 reservation,
                 profile.computations(),
                 seed);
-        return render(model, rules, computations);
-    }
-
-    private static String render(
-            BoundModel model,
-            List<Rule> rules,
-            List<Computation> computations) {
-        String json = model.toJson();
-        for (Rule rule : rules) {
-            json = ModelWriter.addRule(json, rule);
-        }
-        for (Computation computation : computations) {
-            json = ModelWriter.addComputation(json, computation);
-        }
-        return BoundModel.ofJson(json).toJson();
+        return model.addAll(rules, computations).toJson();
     }
 }
