@@ -341,13 +341,19 @@ final class ComputationModelSynthesizer {
 
     private record BudgetClaimResult(Computation claimed, Calculation mainOp) {}
 
+    private enum PreconditionStyle {
+        PROFILED_CONSTRUCTS,
+        PLAIN_FIELD
+    }
+
 
     private static BudgetClaimResult tryBudgetClaims(BoundModel m, Computation.Builder b, FieldInfo c,
             String computedOperand, String plannedOperand, boolean canSplit, List<FieldInfo> localFields,
             String aggFlat, List<String> localNumbers, int depth, int cScale, double filteredFraction,
             Map<String, List<FieldInfo>> fieldsByGroup, Map<String, List<GroupInfo>> childrenOf,
             Set<String> repeatable, Map<String, List<FieldInfo>> numbersAllByGroup, int[] constBudget,
-            int[] parallelBudget, int[] outerBudget, int[] groupFillBudget, Random rnd) {
+            int[] parallelBudget, int[] outerBudget, int[] groupFillBudget, PreconditionStyle preconditionStyle,
+            Random rnd) {
         String scope = c.groupPath();
         boolean budgetEligible = computedOperand == null && plannedOperand == null;
 
@@ -355,7 +361,7 @@ final class ComputationModelSynthesizer {
             constBudget[0]--;
             Calculation lit = new NumberLiteral(java.math.BigDecimal.ZERO.setScale(cScale));
             Computation built = b.commonPrecondition(precondition(m, localFields, 0, rnd, scope, childrenOf,
-                    repeatable, groupFillBudget)).calc(lit).build();
+                    repeatable, groupFillBudget, preconditionStyle)).calc(lit).build();
             return new BudgetClaimResult(built, null);
         }
         Calculation mainOp = kindOperation(m, c, null, aggFlat, localNumbers, depth, cScale, filteredFraction,
@@ -365,9 +371,11 @@ final class ComputationModelSynthesizer {
             if (pair != null) {
                 parallelBudget[0]--;
                 Computation built = b
-                        .when(precondition(m, localFields, 0, rnd, scope, childrenOf, repeatable, groupFillBudget))
+                        .when(precondition(m, localFields, 0, rnd, scope, childrenOf, repeatable, groupFillBudget,
+                                preconditionStyle))
                         .calc(operation(m, null, pair.get(0), localNumbers, depth, cScale, filteredFraction, rnd))
-                        .when(precondition(m, localFields, 1, rnd, scope, childrenOf, repeatable, groupFillBudget))
+                        .when(precondition(m, localFields, 1, rnd, scope, childrenOf, repeatable, groupFillBudget,
+                                preconditionStyle))
                         .calc(operation(m, null, pair.get(1), localNumbers, depth, cScale, filteredFraction, rnd))
                         .build();
                 return new BudgetClaimResult(built, null);
@@ -456,6 +464,10 @@ final class ComputationModelSynthesizer {
         List<FieldInfo> localFields = fieldsByGroup.getOrDefault(scope, List.of()).stream()
                 .filter(f -> !f.path().equals(c.path())).toList();
         boolean canSplit = !localFields.isEmpty();             // preconditioned alternatives need a scope-local key
+        PreconditionStyle preconditionStyle = target.constructs().getOrDefault("QUANTIFIER", 0) == 0
+                        && target.operators().getOrDefault("FieldFilled", 0) > 0
+                ? PreconditionStyle.PLAIN_FIELD
+                : PreconditionStyle.PROFILED_CONSTRUCTS;
         int alternatives = !canSplit ? 1
                 : (target.alternatives() != null && target.alternatives().n() > 0
                         ? Math.max(1, sampleInt(target.alternatives(), rnd))
@@ -470,7 +482,8 @@ final class ComputationModelSynthesizer {
         // otherwise-wasteful RNG consumption is required for byte-identical output, not incidental).
         BudgetClaimResult claim = tryBudgetClaims(m, b, c, computedOperand, plannedOperand, canSplit, localFields,
                 aggFlat, localNumbers, depth, cScale, filteredFraction, fieldsByGroup, childrenOf, repeatable,
-                numbersAllByGroup, constBudget, parallelBudget, outerBudget, groupFillBudget, rnd);
+                numbersAllByGroup, constBudget, parallelBudget, outerBudget, groupFillBudget,
+                preconditionStyle, rnd);
         if (claim.claimed() != null) {
             return claim.claimed();
         }
@@ -491,12 +504,13 @@ final class ComputationModelSynthesizer {
                 // most single-alternative computations still carry a COMMON precondition (~88% even at 1 branch)
                 if (preconditionedFraction(target) > rnd.nextInt(100)) {
                     b.commonPrecondition(precondition(m, localFields, 0, rnd, scope, childrenOf, repeatable,
-                            groupFillBudget));
+                            groupFillBudget, preconditionStyle));
                 }
                 b.calc(mainOp);
             } else {
                 for (int a = 0; a < alts; a++) {
-                    Condition pre = precondition(m, localFields, a, rnd, scope, childrenOf, repeatable, groupFillBudget);
+                    Condition pre = precondition(m, localFields, a, rnd, scope, childrenOf, repeatable,
+                            groupFillBudget, preconditionStyle);
                     // a=0 carries the aggregate/main op; a=1 the round-free feeding copy (if any); the rest are
                     // simple round-free ops over the guaranteed operand — each non-constant, no arithmetic inflation
                     Calculation op = a == 0 ? mainOp
@@ -562,12 +576,21 @@ final class ComputationModelSynthesizer {
 
 
     private static Condition precondition(BoundModel m, List<FieldInfo> localFields, int variant, Random rnd,
-            String scope, Map<String, List<GroupInfo>> childrenOf, Set<String> repeatable, int[] groupFillBudget) {
+            String scope, Map<String, List<GroupInfo>> childrenOf, Set<String> repeatable, int[] groupFillBudget,
+            PreconditionStyle style) {
         if (groupFillBudget[0] > 0) {
             String g = groupFillTarget(scope, childrenOf, repeatable);
             if (g != null) {
                 groupFillBudget[0]--;
                 return m.group(g).filled();
+            }
+        }
+        switch (style) {
+            case PLAIN_FIELD -> {
+                return m.field(localFields.get(variant % localFields.size()).path()).filled();
+            }
+            case PROFILED_CONSTRUCTS -> {
+                // Continue with the profiled construct mix below.
             }
         }
         List<Condition> clauses = new ArrayList<>();

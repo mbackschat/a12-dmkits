@@ -255,6 +255,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.FootprintScenarioFixtureGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerformanceScenarioFixtureGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfScriptContractTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ComputationPreconditionFidelityTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ProfileFixtureGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ProfileFidelityRegistryGuardTest'
     }
@@ -375,6 +376,7 @@ tasks.register('profileFixtureGuardTest', Test) {
     useJUnitPlatform()
     systemProperty 'profile.fixture.dir', profileFixtureDirectory.absolutePath
     filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ComputationPreconditionFidelityTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ProfileFixtureGuardTest'
     }
     rootProject.guardInputs(it, [

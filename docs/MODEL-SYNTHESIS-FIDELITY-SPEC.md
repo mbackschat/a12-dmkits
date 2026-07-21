@@ -54,3 +54,5 @@ The identifier-free boundary is locked metamorphically: the paired typed models 
 ## Generation boundary
 
 Synthesis builds rules and computations through the typed API, then persists the complete program population with one `BoundModel.addAll(rules, computations)` operation. Per-program immutable snapshot writes are not an equivalent implementation: they repeatedly parse, validate, and serialize the growing model and make the committed breadth/depth calibration profiles needlessly superlinear to generate. The bulk boundary preserves the same terminal strict model check and byte-identical output.
+
+Computation preconditions follow the profiled construct/operator mix: a target that requests `FieldFilled` without `QUANTIFIER` receives a plain field precondition rather than an invented field-list quantifier. `ComputationPreconditionFidelityTest` locks the resulting operator, construct-combination, and variadic-arity axes.
