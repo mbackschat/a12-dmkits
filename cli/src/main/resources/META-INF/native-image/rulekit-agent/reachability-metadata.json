@@ -400,7 +400,37 @@
       ]
     },
     {
+      "type": "Com_mgmtp_a12_kernel_generated_order_internal_R1_order$mvk_DeliveryNotBeforeOrder$4",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
       "type": "Com_mgmtp_a12_kernel_generated_order_internal_R1_order$mvk_EligibilityCheck$1",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_order_internal_R1_order$mvk_EvalDocCandidate$3",
       "methods": [
         {
           "name": "<init>",
@@ -605,6 +635,471 @@
     },
     {
       "type": "Com_mgmtp_a12_kernel_generated_order_internal_R_orderCustomizer"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_C1_policy",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getInstance",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_C1_policy$calc_Total",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_C1_policyBeanInfo"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_C1_policyCustomizer"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_C_policy",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_C_policy$getInstance",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_C_policyBeanInfo"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_C_policyCustomizer"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "pruefeParams",
+          "parameterTypes": [
+            "com.mgmtp.a12.kernel.core.rt.a12internal.validation.IData",
+            "com.mgmtp.a12.kernel.core.rt.a12internal.validation.IResult",
+            "com.mgmtp.a12.kernel.core.rt.a12internal.ValidationMode"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$getInstance",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policyBeanInfo"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policyCustomizer"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy",
+      "fields": [
+        {
+          "name": "errorTexts4Req"
+        },
+        {
+          "name": "m_felder"
+        },
+        {
+          "name": "metaFormate"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$_closure1",
+      "methods": [
+        {
+          "name": "doCall",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$getFelder",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policyBeanInfo"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policyCustomizer"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_PfFeld_policy",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.IMetaDataValidierung"
+          ]
+        },
+        {
+          "name": "addLokalePflichtFeldInfos",
+          "parameterTypes": [
+            "java.util.Set"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_PfFeld_policyBeanInfo"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_PfFeld_policyCustomizer"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1",
+      "fields": [
+        {
+          "name": "refAuslassungsEntity"
+        },
+        {
+          "name": "refEntity"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$_initRegelRefs_0_closure1",
+      "methods": [
+        {
+          "name": "doCall",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$_initRegelRefs_0_closure2",
+      "methods": [
+        {
+          "name": "doCall",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$_initRegelRefs_0_closure3",
+      "methods": [
+        {
+          "name": "doCall",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$getRegeln",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1BeanInfo"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1Customizer"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "initContainer_0",
+          "parameterTypes": [
+            "com.mgmtp.a12.kernel.core.rt._30_8.internal.formatdef.Container_t[]"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$_closure1",
+      "methods": [
+        {
+          "name": "doCall",
+          "parameterTypes": [
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$_closure2",
+      "methods": [
+        {
+          "name": "doCall",
+          "parameterTypes": [
+            "java.lang.Object",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$_closure3"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$_closure4"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$getInstance",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$getMetaDataValidierung$0",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$isSpracheUnterstuetzt$1",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policyBeanInfo"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policyCustomizer"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getInstance",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy$mvk_CoverageCapped",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy$mvk_CoveragePositive",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy$mvk_ValuePositive",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policyBeanInfo"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policyCustomizer"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "alleRegeln",
+          "parameterTypes": [
+            "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.MainValidatorController"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$getInstance",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$vordruck__Policy$0",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$vordruck__Policy_lfdNr_0$1",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policyBeanInfo"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policyCustomizer"
     },
     {
       "type": "Com_mgmtp_a12_kernel_generated_storefront_internal_C_storefront",
@@ -1382,6 +1877,60 @@
       "type": "Script_0ef1c1466c7d751a7565e66c3eb21cbeCustomizer"
     },
     {
+      "type": "Script_2567ea84e742f915deaf015ac9a269f7",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getCalculator",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMetaModel",
+          "parameterTypes": []
+        },
+        {
+          "name": "getValidator",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Script_2567ea84e742f915deaf015ac9a269f7BeanInfo"
+    },
+    {
+      "type": "Script_2567ea84e742f915deaf015ac9a269f7Customizer"
+    },
+    {
+      "type": "Script_271da2095331965cd67601719f7885d4",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getCalculator",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMetaModel",
+          "parameterTypes": []
+        },
+        {
+          "name": "getValidator",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Script_271da2095331965cd67601719f7885d4BeanInfo"
+    },
+    {
+      "type": "Script_271da2095331965cd67601719f7885d4Customizer"
+    },
+    {
       "type": "Script_288c84212de1a3fdfa31b71558bbf835",
       "methods": [
         {
@@ -1459,6 +2008,33 @@
       "type": "Script_3b3e9261ec179cf00423256ba92b47ccCustomizer"
     },
     {
+      "type": "Script_3d06110afece692954360efd9f48ca6a",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getCalculator",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMetaModel",
+          "parameterTypes": []
+        },
+        {
+          "name": "getValidator",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Script_3d06110afece692954360efd9f48ca6aBeanInfo"
+    },
+    {
+      "type": "Script_3d06110afece692954360efd9f48ca6aCustomizer"
+    },
+    {
       "type": "Script_64b7d41a142b346202c54ecb4032ddcd",
       "methods": [
         {
@@ -1484,6 +2060,29 @@
     },
     {
       "type": "Script_64b7d41a142b346202c54ecb4032ddcdCustomizer"
+    },
+    {
+      "type": "Script_6dcca3661fabf66794d481395fb026c7",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getCalculator",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMetaModel",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Script_6dcca3661fabf66794d481395fb026c7BeanInfo"
+    },
+    {
+      "type": "Script_6dcca3661fabf66794d481395fb026c7Customizer"
     },
     {
       "type": "Script_7b6c37b0182a9cb50c76d6ba3deb8e65",
@@ -1540,6 +2139,33 @@
       "type": "Script_81556b2ac311fec99848026475cbfe9eCustomizer"
     },
     {
+      "type": "Script_8853e9e0147189f5b2fb41da9acec4d1",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getCalculator",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMetaModel",
+          "parameterTypes": []
+        },
+        {
+          "name": "getValidator",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Script_8853e9e0147189f5b2fb41da9acec4d1BeanInfo"
+    },
+    {
+      "type": "Script_8853e9e0147189f5b2fb41da9acec4d1Customizer"
+    },
+    {
       "type": "Script_8b570b5925e4c698eebd9475a35e6cd0",
       "methods": [
         {
@@ -1588,6 +2214,60 @@
     },
     {
       "type": "Script_b8613c54a93558e13f39499882bff6beCustomizer"
+    },
+    {
+      "type": "Script_ddd7484019a33c7c18d493883980bbcc",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getCalculator",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMetaModel",
+          "parameterTypes": []
+        },
+        {
+          "name": "getValidator",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Script_ddd7484019a33c7c18d493883980bbccBeanInfo"
+    },
+    {
+      "type": "Script_ddd7484019a33c7c18d493883980bbccCustomizer"
+    },
+    {
+      "type": "Script_e17eb444c6b8bceb531d82d2df0275e9",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getCalculator",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMetaModel",
+          "parameterTypes": []
+        },
+        {
+          "name": "getValidator",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Script_e17eb444c6b8bceb531d82d2df0275e9BeanInfo"
+    },
+    {
+      "type": "Script_e17eb444c6b8bceb531d82d2df0275e9Customizer"
     },
     {
       "type": "android.app.Activity"
@@ -2576,6 +3256,32 @@
       "methods": [
         {
           "name": "getFops",
+          "parameterTypes": []
+        },
+        {
+          "name": "getOperatorNameCode",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.OpListOperationWithParameter",
+      "methods": [
+        {
+          "name": "getParameterCode",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.date.DateAddOperation",
+      "methods": [
+        {
+          "name": "getAmountCode",
+          "parameterTypes": []
+        },
+        {
+          "name": "getDatumAngabeCode",
           "parameterTypes": []
         },
         {
@@ -3931,7 +4637,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$feldWertAlsDatum$8",
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$feldWertAlsDatum$11",
       "methods": [
         {
           "name": "<init>",
@@ -3961,7 +4667,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$getDifferenzInTagen$9",
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$getDifferenzInTagen$12",
       "methods": [
         {
           "name": "<init>",
@@ -4006,7 +4712,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$keinFeldAngegeben$12",
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$keinFeldAngegeben$8",
       "methods": [
         {
           "name": "<init>",
@@ -4051,7 +4757,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$makeDecimal$10",
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$makeDecimal$9",
       "methods": [
         {
           "name": "<init>",
@@ -4096,7 +4802,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$vergleiche$11",
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.RuntimeController$vergleiche$10",
       "methods": [
         {
           "name": "<init>",
@@ -5276,6 +5982,12 @@
         },
         {
           "name": "setPrecondition",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setToleranceRangeOp",
           "parameterTypes": [
             "java.lang.String"
           ]
@@ -6627,6 +7339,9 @@
       ]
     },
     {
+      "type": "double"
+    },
+    {
       "type": "groovy.grape.GrabAnnotationTransformation",
       "methods": [
         {
@@ -6822,6 +7537,57 @@
       "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_order_internal_R_orderMetaClass"
     },
     {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_policy_internal_C1_policyMetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_policy_internal_C_policyMetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policyMetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$_closure1MetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policyMetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_policy_internal_Meta_PfFeld_policyMetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$_initRegelRefs_0_closure1MetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$_initRegelRefs_0_closure2MetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$_initRegelRefs_0_closure3MetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1MetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$_closure1MetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$_closure2MetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$_closure3MetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$_closure4MetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policyMetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_policy_internal_R1_policyMetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_policy_internal_R_policyMetaClass"
+    },
+    {
       "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_storefront_internal_C_storefrontMetaClass"
     },
     {
@@ -6918,6 +7684,12 @@
       "type": "groovy.runtime.metaclass.Script_0ef1c1466c7d751a7565e66c3eb21cbeMetaClass"
     },
     {
+      "type": "groovy.runtime.metaclass.Script_2567ea84e742f915deaf015ac9a269f7MetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Script_271da2095331965cd67601719f7885d4MetaClass"
+    },
+    {
       "type": "groovy.runtime.metaclass.Script_288c84212de1a3fdfa31b71558bbf835MetaClass"
     },
     {
@@ -6927,7 +7699,13 @@
       "type": "groovy.runtime.metaclass.Script_3b3e9261ec179cf00423256ba92b47ccMetaClass"
     },
     {
+      "type": "groovy.runtime.metaclass.Script_3d06110afece692954360efd9f48ca6aMetaClass"
+    },
+    {
       "type": "groovy.runtime.metaclass.Script_64b7d41a142b346202c54ecb4032ddcdMetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Script_6dcca3661fabf66794d481395fb026c7MetaClass"
     },
     {
       "type": "groovy.runtime.metaclass.Script_7b6c37b0182a9cb50c76d6ba3deb8e65MetaClass"
@@ -6936,10 +7714,19 @@
       "type": "groovy.runtime.metaclass.Script_81556b2ac311fec99848026475cbfe9eMetaClass"
     },
     {
+      "type": "groovy.runtime.metaclass.Script_8853e9e0147189f5b2fb41da9acec4d1MetaClass"
+    },
+    {
       "type": "groovy.runtime.metaclass.Script_8b570b5925e4c698eebd9475a35e6cd0MetaClass"
     },
     {
       "type": "groovy.runtime.metaclass.Script_b8613c54a93558e13f39499882bff6beMetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Script_ddd7484019a33c7c18d493883980bbccMetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Script_e17eb444c6b8bceb531d82d2df0275e9MetaClass"
     },
     {
       "type": "groovy.runtime.metaclass.com.mgmtp.a12.kernel.core.rt._30_8.internal.core.BedingungsOperatorHelper$VglOpMetaClass"
@@ -7135,6 +7922,535 @@
     },
     {
       "type": "int[][]"
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.adapter.KernelBackendInfo"
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.adapter.KernelConditionReadBack"
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.adapter.KernelConsistencyOracle"
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "int",
+            "int",
+            "int",
+            "double",
+            "int",
+            "int",
+            "java.util.Map"
+          ]
+        },
+        {
+          "name": "buckets",
+          "parameterTypes": []
+        },
+        {
+          "name": "max",
+          "parameterTypes": []
+        },
+        {
+          "name": "mean",
+          "parameterTypes": []
+        },
+        {
+          "name": "median",
+          "parameterTypes": []
+        },
+        {
+          "name": "min",
+          "parameterTypes": []
+        },
+        {
+          "name": "n",
+          "parameterTypes": []
+        },
+        {
+          "name": "p90",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$Structure",
+            "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$Rules",
+            "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$Computations",
+            "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$Wiring"
+          ]
+        },
+        {
+          "name": "computations",
+          "parameterTypes": []
+        },
+        {
+          "name": "rules",
+          "parameterTypes": []
+        },
+        {
+          "name": "structure",
+          "parameterTypes": []
+        },
+        {
+          "name": "wiring",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$Computations",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "int",
+            "int",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "int",
+            "int",
+            "java.util.Map",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$Scope",
+            "int",
+            "java.util.Map",
+            "java.util.Map",
+            "java.util.Map",
+            "java.util.Map",
+            "java.util.Map",
+            "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$ScaleMatch",
+            "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$Iteration",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution"
+          ]
+        },
+        {
+          "name": "aggregateScaleMatch",
+          "parameterTypes": []
+        },
+        {
+          "name": "aggregateStars",
+          "parameterTypes": []
+        },
+        {
+          "name": "alternatives",
+          "parameterTypes": []
+        },
+        {
+          "name": "archetypes",
+          "parameterTypes": []
+        },
+        {
+          "name": "computedFieldKinds",
+          "parameterTypes": []
+        },
+        {
+          "name": "constructCombos",
+          "parameterTypes": []
+        },
+        {
+          "name": "constructs",
+          "parameterTypes": []
+        },
+        {
+          "name": "constructsByScope",
+          "parameterTypes": []
+        },
+        {
+          "name": "count",
+          "parameterTypes": []
+        },
+        {
+          "name": "depth",
+          "parameterTypes": []
+        },
+        {
+          "name": "fanIn",
+          "parameterTypes": []
+        },
+        {
+          "name": "feedingOthers",
+          "parameterTypes": []
+        },
+        {
+          "name": "iteration",
+          "parameterTypes": []
+        },
+        {
+          "name": "maxCascadeDepth",
+          "parameterTypes": []
+        },
+        {
+          "name": "nodeCount",
+          "parameterTypes": []
+        },
+        {
+          "name": "opaqueCount",
+          "parameterTypes": []
+        },
+        {
+          "name": "operators",
+          "parameterTypes": []
+        },
+        {
+          "name": "preconditionedCount",
+          "parameterTypes": []
+        },
+        {
+          "name": "scope",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$Constraints",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "int",
+            "int",
+            "int",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution"
+          ]
+        },
+        {
+          "name": "enumCardinality",
+          "parameterTypes": []
+        },
+        {
+          "name": "numberScale",
+          "parameterTypes": []
+        },
+        {
+          "name": "numbersWithBounds",
+          "parameterTypes": []
+        },
+        {
+          "name": "stringsWithLength",
+          "parameterTypes": []
+        },
+        {
+          "name": "stringsWithPattern",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$Iteration",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "int",
+            "int",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution"
+          ]
+        },
+        {
+          "name": "listScanCapacity",
+          "parameterTypes": []
+        },
+        {
+          "name": "outerCorrelation",
+          "parameterTypes": []
+        },
+        {
+          "name": "parallelIteration",
+          "parameterTypes": []
+        },
+        {
+          "name": "scannedScopeCapacity",
+          "parameterTypes": []
+        },
+        {
+          "name": "scopeCapacity",
+          "parameterTypes": []
+        },
+        {
+          "name": "workCapacity",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$Repeatability",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "int",
+            "int",
+            "int",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "java.util.Map",
+            "java.util.Map"
+          ]
+        },
+        {
+          "name": "chainProduct",
+          "parameterTypes": []
+        },
+        {
+          "name": "chainProductByDepth",
+          "parameterTypes": []
+        },
+        {
+          "name": "fieldChainProduct",
+          "parameterTypes": []
+        },
+        {
+          "name": "maxRepeatableNestingDepth",
+          "parameterTypes": []
+        },
+        {
+          "name": "maxRepetitions",
+          "parameterTypes": []
+        },
+        {
+          "name": "nestingDepth",
+          "parameterTypes": []
+        },
+        {
+          "name": "nestingDepthExact",
+          "parameterTypes": []
+        },
+        {
+          "name": "repeatableGroupCount",
+          "parameterTypes": []
+        },
+        {
+          "name": "siblingBranchFan",
+          "parameterTypes": []
+        },
+        {
+          "name": "unboundedCount",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$Rules",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "int",
+            "int",
+            "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$Scope",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "java.util.Map",
+            "java.util.Map",
+            "java.util.Map",
+            "java.util.Map",
+            "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$Iteration"
+          ]
+        },
+        {
+          "name": "booleanArity",
+          "parameterTypes": []
+        },
+        {
+          "name": "constructCombos",
+          "parameterTypes": []
+        },
+        {
+          "name": "constructs",
+          "parameterTypes": []
+        },
+        {
+          "name": "constructsByScope",
+          "parameterTypes": []
+        },
+        {
+          "name": "count",
+          "parameterTypes": []
+        },
+        {
+          "name": "depth",
+          "parameterTypes": []
+        },
+        {
+          "name": "fanIn",
+          "parameterTypes": []
+        },
+        {
+          "name": "iteration",
+          "parameterTypes": []
+        },
+        {
+          "name": "nodeCount",
+          "parameterTypes": []
+        },
+        {
+          "name": "opaqueCount",
+          "parameterTypes": []
+        },
+        {
+          "name": "operators",
+          "parameterTypes": []
+        },
+        {
+          "name": "repeatableLevelsCrossed",
+          "parameterTypes": []
+        },
+        {
+          "name": "rulesPerErrorField",
+          "parameterTypes": []
+        },
+        {
+          "name": "scope",
+          "parameterTypes": []
+        },
+        {
+          "name": "walkUpDistance",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$ScaleMatch",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "int",
+            "int"
+          ]
+        },
+        {
+          "name": "matched",
+          "parameterTypes": []
+        },
+        {
+          "name": "mismatched",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$Scope",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "int",
+            "int",
+            "int"
+          ]
+        },
+        {
+          "name": "modelLevel",
+          "parameterTypes": []
+        },
+        {
+          "name": "perGroup",
+          "parameterTypes": []
+        },
+        {
+          "name": "perRepeatableRow",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$Structure",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "int",
+            "int",
+            "int",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution",
+            "java.util.Map",
+            "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$Repeatability",
+            "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$Constraints"
+          ]
+        },
+        {
+          "name": "constraints",
+          "parameterTypes": []
+        },
+        {
+          "name": "fieldCount",
+          "parameterTypes": []
+        },
+        {
+          "name": "fieldKinds",
+          "parameterTypes": []
+        },
+        {
+          "name": "fieldsPerGroup",
+          "parameterTypes": []
+        },
+        {
+          "name": "groupCount",
+          "parameterTypes": []
+        },
+        {
+          "name": "maxNestingDepth",
+          "parameterTypes": []
+        },
+        {
+          "name": "repeatability",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.adapter.profile.SynthesisProfile$Wiring",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "int",
+            "int",
+            "int",
+            "io.github.mbackschat.a12.dm.adapter.profile.Distribution"
+          ]
+        },
+        {
+          "name": "fieldFanOut",
+          "parameterTypes": []
+        },
+        {
+          "name": "fieldsReferenced",
+          "parameterTypes": []
+        },
+        {
+          "name": "referencedByComputations",
+          "parameterTypes": []
+        },
+        {
+          "name": "referencedByRules",
+          "parameterTypes": []
+        }
+      ]
     },
     {
       "type": "io.github.mbackschat.a12.dm.cli.ApplyCommand",
@@ -8332,9 +9648,6 @@
           "name": "localeTag"
         },
         {
-          "name": "useKernel"
-        },
-        {
           "name": "workspace"
         }
       ],
@@ -8410,13 +9723,13 @@
           "name": "noComputations"
         },
         {
+          "name": "relevant"
+        },
+        {
           "name": "ruleId"
         },
         {
           "name": "severity"
-        },
-        {
-          "name": "useKernel"
         },
         {
           "name": "workspace"
@@ -8603,6 +9916,18 @@
       "type": "io.github.mbackschat.a12.dm.cli.model.ModelReportCommand",
       "fields": [
         {
+          "name": "depth"
+        },
+        {
+          "name": "includes"
+        },
+        {
+          "name": "root"
+        },
+        {
+          "name": "tree"
+        },
+        {
           "name": "workspace"
         }
       ],
@@ -8624,6 +9949,9 @@
         },
         {
           "name": "seed"
+        },
+        {
+          "name": "workspace"
         }
       ],
       "methods": [
@@ -8638,6 +9966,74 @@
       "fields": [
         {
           "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.profile.ProfileCommand",
+      "fields": [
+        {
+          "name": "spec"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.profile.ProfileCompareCommand",
+      "fields": [
+        {
+          "name": "actualPath"
+        },
+        {
+          "name": "targetPath"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.profile.ProfileExtractCommand",
+      "fields": [
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.profile.ProfileSynthesizeCommand",
+      "fields": [
+        {
+          "name": "inputPath"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "seed"
         }
       ],
       "methods": [
@@ -8753,9 +10149,6 @@
         },
         {
           "name": "rule"
-        },
-        {
-          "name": "useKernel"
         },
         {
           "name": "workspace"
@@ -9828,15 +11221,6 @@
       "type": "java.lang.String[][]"
     },
     {
-      "type": "java.lang.System",
-      "methods": [
-        {
-          "name": "console",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
       "type": "java.lang.Thread"
     },
     {
@@ -10093,6 +11477,9 @@
       "type": "java.util.Collection"
     },
     {
+      "type": "java.util.Collections$UnmodifiableMap"
+    },
+    {
       "type": "java.util.Comparator"
     },
     {
@@ -10146,6 +11533,9 @@
     },
     {
       "type": "java.util.ImmutableCollections$Map1"
+    },
+    {
+      "type": "java.util.ImmutableCollections$MapN"
     },
     {
       "type": "java.util.Iterator"
@@ -11779,6 +13169,570 @@
       "glob": "Com_mgmtp_a12_kernel_generated_order_internal_TVCheckPreliminary_order$MainValidatorController.class"
     },
     {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C1_policy$CalculationController.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C1_policy$CalculationFieldException.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C1_policy$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C1_policy$EbenenIterator.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C1_policy$Exception.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C1_policy$IMetaDataValidierung.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C1_policy$IterationState.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C1_policy$RtIdentifierTemplate.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C1_policy$RtInternalIdentifier.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C1_policy$RuntimeController.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C1_policy$ValidatorException.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C1_policyBeanInfo.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C1_policyCustomizer.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C_policy$CalculationController.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C_policy$Com_mgmtp_a12_kernel_generated_policy_internal_C1_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C_policy$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C_policy$ICalculatorIntern.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C_policy$IMetaDataValidierung.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C_policy$Set.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C_policy$String.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C_policyBeanInfo.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_C_policyCustomizer.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$CalculationCommand.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$Com_mgmtp_a12_kernel_generated_policy_internal_C_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$Com_mgmtp_a12_kernel_generated_policy_internal_R_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$Deprecated.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$ICalculationResult.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$ICustomCondition.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$IData.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$IIdentifier.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$IMetaDataValidierung.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$IResult.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$IllegalArgumentException.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$Map.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$Set.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$String.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$SuppressWarnings.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$ValidationCommand.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$ValidationMode.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy$ValidatorException.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policyBeanInfo.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policyCustomizer.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_E_policy$Collections.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_E_policy$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_E_policy$DynamicEnumerationController.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_E_policy$IDynEnumsIntern.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_E_policy$IMetaDataValidierung.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_E_policy$List.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_E_policy$Pair.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_E_policy$RtInternalIdentifier.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_E_policy$String.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$ArrayList.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$Arrays.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$Closure.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$Feld_t.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$FormatDefinitionString.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$FormatDefinitionZahl.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$HashMap.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$IFormatDefinition.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$Integer.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$List.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$Locale.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$Map.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$MapBuilder.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$Object.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$Pair.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy$String.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policyBeanInfo.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policyCustomizer.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_PfFeld_policy$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_PfFeld_policy$IMetaDataValidierung.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_PfFeld_policy$MetaIdentifier.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_PfFeld_policy$MetaLokalePflichtInfo.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_PfFeld_policy$Set.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_PfFeld_policy$String.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_PfFeld_policyBeanInfo.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_PfFeld_policyCustomizer.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$ArrayList.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$HashMap.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$IIdentifier.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$Identifier_t.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$List.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$Locale.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$Map.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$MapBuilder.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$Object.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$ReferenzTyp.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$Regel_t.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$RtIdentifierTemplate.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1$String.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1BeanInfo.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1Customizer.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$Arrays.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$Com_mgmtp_a12_kernel_generated_policy_internal_E_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_PfFeld_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$Container_t.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$Feld_t.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$HashMap.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$HashSet.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$IExtmpMetaKeysBase.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$IMetaDataValidierung.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$IMetaEntityInternal.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$IMetaKeysInternal.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$List.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$Locale.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$Long.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$Map.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$MapBuilder.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$MetaDataHelper.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$MetaIdentifier.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$MetaLokalePflichtInfo.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$MetaModelImpl.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$Model_t.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$Object.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$PresentationInformation.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$PresentationInformationValues.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$Regel_t.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$Set.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$String.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$SuppressWarnings.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$TrieNode.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy$VersionCompatibilityCheck.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policyBeanInfo.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policyCustomizer.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy$BedingungsOperatorHelper.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy$CustomConditionException.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy$EbenenIterator.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy$Exception.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy$IMetaDataValidierung.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy$IterationState.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy$List.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy$ListBuilder.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy$MainValidatorController.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy$RtIdentifierTemplate.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy$ValidatorException.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy$ValidierungsErgebnis.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policyBeanInfo.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R1_policyCustomizer.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$Collection.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckAlle_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckFehler_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckHinweis_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckInfo_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckPreliminary_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$Consumer.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$IMetaDataValidierung.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$ITeilValidierungChecker.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$IValidatorIntern.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$IllegalArgumentException.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$MainValidatorController.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$Map.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$Math.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$RtInternalIdentifier.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$RuleType.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$String.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$ValidationMode.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policy$ValidatorException.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policyBeanInfo.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_R_policyCustomizer.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckAlle_policy$Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckFehler_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckAlle_policy$Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckHinweis_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckAlle_policy$Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckInfo_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckAlle_policy$ITeilValidierungChecker.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckAlle_policy$MainValidatorController.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckFehler_policy$Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckFehler_policy$Com_mgmtp_a12_kernel_generated_policy_internal_R_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckFehler_policy$ITeilValidierungChecker.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckFehler_policy$IllegalArgumentException.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckFehler_policy$MainValidatorController.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckHinweis_policy$Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckHinweis_policy$Com_mgmtp_a12_kernel_generated_policy_internal_R_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckHinweis_policy$ITeilValidierungChecker.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckHinweis_policy$MainValidatorController.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckInfo_policy$Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckInfo_policy$Com_mgmtp_a12_kernel_generated_policy_internal_R_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckInfo_policy$ITeilValidierungChecker.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckInfo_policy$MainValidatorController.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckPreliminary_policy$Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckPreliminary_policy$Com_mgmtp_a12_kernel_generated_policy_internal_R_policy.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckPreliminary_policy$ITeilValidierungChecker.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckPreliminary_policy$MainValidatorController.class"
+    },
+    {
       "glob": "Com_mgmtp_a12_kernel_generated_storefront_internal_C_storefront$CalculationController.class"
     },
     {
@@ -12784,6 +14738,15 @@
       "glob": "META-INF/native-image/rulekit-agent/reachability-metadata.json"
     },
     {
+      "glob": "META-INF/services/io.github.mbackschat.a12.dm.core.spi.BackendInfo"
+    },
+    {
+      "glob": "META-INF/services/io.github.mbackschat.a12.dm.core.spi.ConsistencyOracle"
+    },
+    {
+      "glob": "META-INF/services/io.github.mbackschat.a12.dm.rulekit.spi.ConditionReadBack"
+    },
+    {
       "glob": "META-INF/services/java.nio.channels.spi.SelectorProvider"
     },
     {
@@ -12868,6 +14831,54 @@
       "glob": "Script_0ef1c1466c7d751a7565e66c3eb21cbeCustomizer.groovy"
     },
     {
+      "glob": "Script_2567ea84e742f915deaf015ac9a269f7$Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy.class"
+    },
+    {
+      "glob": "Script_2567ea84e742f915deaf015ac9a269f7$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
+      "glob": "Script_2567ea84e742f915deaf015ac9a269f7$com$mgmtp$a12$kernel$core$rt$_30_8$internal$core.class"
+    },
+    {
+      "glob": "Script_2567ea84e742f915deaf015ac9a269f7$com$mgmtp$a12$kernel$core$rt$_30_8$internal$formatdef.class"
+    },
+    {
+      "glob": "Script_2567ea84e742f915deaf015ac9a269f7$com$mgmtp$a12$kernel$core$rt$_30_8$internal$meta.class"
+    },
+    {
+      "glob": "Script_2567ea84e742f915deaf015ac9a269f7$com$mgmtp$a12$kernel$core$rt$_30_8$internal$util.class"
+    },
+    {
+      "glob": "Script_2567ea84e742f915deaf015ac9a269f7BeanInfo.groovy"
+    },
+    {
+      "glob": "Script_2567ea84e742f915deaf015ac9a269f7Customizer.groovy"
+    },
+    {
+      "glob": "Script_271da2095331965cd67601719f7885d4$Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy.class"
+    },
+    {
+      "glob": "Script_271da2095331965cd67601719f7885d4$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
+      "glob": "Script_271da2095331965cd67601719f7885d4$com$mgmtp$a12$kernel$core$rt$_30_8$internal$core.class"
+    },
+    {
+      "glob": "Script_271da2095331965cd67601719f7885d4$com$mgmtp$a12$kernel$core$rt$_30_8$internal$formatdef.class"
+    },
+    {
+      "glob": "Script_271da2095331965cd67601719f7885d4$com$mgmtp$a12$kernel$core$rt$_30_8$internal$meta.class"
+    },
+    {
+      "glob": "Script_271da2095331965cd67601719f7885d4$com$mgmtp$a12$kernel$core$rt$_30_8$internal$util.class"
+    },
+    {
+      "glob": "Script_271da2095331965cd67601719f7885d4BeanInfo.groovy"
+    },
+    {
+      "glob": "Script_271da2095331965cd67601719f7885d4Customizer.groovy"
+    },
+    {
       "glob": "Script_288c84212de1a3fdfa31b71558bbf835$Com_mgmtp_a12_kernel_generated_storefront_internal_ERValidator_storefront.class"
     },
     {
@@ -12940,6 +14951,30 @@
       "glob": "Script_3b3e9261ec179cf00423256ba92b47ccCustomizer.groovy"
     },
     {
+      "glob": "Script_3d06110afece692954360efd9f48ca6a$Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy.class"
+    },
+    {
+      "glob": "Script_3d06110afece692954360efd9f48ca6a$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
+      "glob": "Script_3d06110afece692954360efd9f48ca6a$com$mgmtp$a12$kernel$core$rt$_30_8$internal$core.class"
+    },
+    {
+      "glob": "Script_3d06110afece692954360efd9f48ca6a$com$mgmtp$a12$kernel$core$rt$_30_8$internal$formatdef.class"
+    },
+    {
+      "glob": "Script_3d06110afece692954360efd9f48ca6a$com$mgmtp$a12$kernel$core$rt$_30_8$internal$meta.class"
+    },
+    {
+      "glob": "Script_3d06110afece692954360efd9f48ca6a$com$mgmtp$a12$kernel$core$rt$_30_8$internal$util.class"
+    },
+    {
+      "glob": "Script_3d06110afece692954360efd9f48ca6aBeanInfo.groovy"
+    },
+    {
+      "glob": "Script_3d06110afece692954360efd9f48ca6aCustomizer.groovy"
+    },
+    {
       "glob": "Script_64b7d41a142b346202c54ecb4032ddcd$Com_mgmtp_a12_kernel_generated_subscription_internal_ERValidator_subscription.class"
     },
     {
@@ -12962,6 +14997,30 @@
     },
     {
       "glob": "Script_64b7d41a142b346202c54ecb4032ddcdCustomizer.groovy"
+    },
+    {
+      "glob": "Script_6dcca3661fabf66794d481395fb026c7$Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy.class"
+    },
+    {
+      "glob": "Script_6dcca3661fabf66794d481395fb026c7$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
+      "glob": "Script_6dcca3661fabf66794d481395fb026c7$com$mgmtp$a12$kernel$core$rt$_30_8$internal$core.class"
+    },
+    {
+      "glob": "Script_6dcca3661fabf66794d481395fb026c7$com$mgmtp$a12$kernel$core$rt$_30_8$internal$formatdef.class"
+    },
+    {
+      "glob": "Script_6dcca3661fabf66794d481395fb026c7$com$mgmtp$a12$kernel$core$rt$_30_8$internal$meta.class"
+    },
+    {
+      "glob": "Script_6dcca3661fabf66794d481395fb026c7$com$mgmtp$a12$kernel$core$rt$_30_8$internal$util.class"
+    },
+    {
+      "glob": "Script_6dcca3661fabf66794d481395fb026c7BeanInfo.groovy"
+    },
+    {
+      "glob": "Script_6dcca3661fabf66794d481395fb026c7Customizer.groovy"
     },
     {
       "glob": "Script_7b6c37b0182a9cb50c76d6ba3deb8e65$Com_mgmtp_a12_kernel_generated_subscription_internal_ERValidator_subscription.class"
@@ -13012,6 +15071,30 @@
       "glob": "Script_81556b2ac311fec99848026475cbfe9eCustomizer.groovy"
     },
     {
+      "glob": "Script_8853e9e0147189f5b2fb41da9acec4d1$Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy.class"
+    },
+    {
+      "glob": "Script_8853e9e0147189f5b2fb41da9acec4d1$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
+      "glob": "Script_8853e9e0147189f5b2fb41da9acec4d1$com$mgmtp$a12$kernel$core$rt$_30_8$internal$core.class"
+    },
+    {
+      "glob": "Script_8853e9e0147189f5b2fb41da9acec4d1$com$mgmtp$a12$kernel$core$rt$_30_8$internal$formatdef.class"
+    },
+    {
+      "glob": "Script_8853e9e0147189f5b2fb41da9acec4d1$com$mgmtp$a12$kernel$core$rt$_30_8$internal$meta.class"
+    },
+    {
+      "glob": "Script_8853e9e0147189f5b2fb41da9acec4d1$com$mgmtp$a12$kernel$core$rt$_30_8$internal$util.class"
+    },
+    {
+      "glob": "Script_8853e9e0147189f5b2fb41da9acec4d1BeanInfo.groovy"
+    },
+    {
+      "glob": "Script_8853e9e0147189f5b2fb41da9acec4d1Customizer.groovy"
+    },
+    {
       "glob": "Script_8b570b5925e4c698eebd9475a35e6cd0$Com_mgmtp_a12_kernel_generated_order_internal_ERValidator_order.class"
     },
     {
@@ -13058,6 +15141,54 @@
     },
     {
       "glob": "Script_b8613c54a93558e13f39499882bff6beCustomizer.groovy"
+    },
+    {
+      "glob": "Script_ddd7484019a33c7c18d493883980bbcc$Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy.class"
+    },
+    {
+      "glob": "Script_ddd7484019a33c7c18d493883980bbcc$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
+      "glob": "Script_ddd7484019a33c7c18d493883980bbcc$com$mgmtp$a12$kernel$core$rt$_30_8$internal$core.class"
+    },
+    {
+      "glob": "Script_ddd7484019a33c7c18d493883980bbcc$com$mgmtp$a12$kernel$core$rt$_30_8$internal$formatdef.class"
+    },
+    {
+      "glob": "Script_ddd7484019a33c7c18d493883980bbcc$com$mgmtp$a12$kernel$core$rt$_30_8$internal$meta.class"
+    },
+    {
+      "glob": "Script_ddd7484019a33c7c18d493883980bbcc$com$mgmtp$a12$kernel$core$rt$_30_8$internal$util.class"
+    },
+    {
+      "glob": "Script_ddd7484019a33c7c18d493883980bbccBeanInfo.groovy"
+    },
+    {
+      "glob": "Script_ddd7484019a33c7c18d493883980bbccCustomizer.groovy"
+    },
+    {
+      "glob": "Script_e17eb444c6b8bceb531d82d2df0275e9$Com_mgmtp_a12_kernel_generated_order_internal_ERValidator_order.class"
+    },
+    {
+      "glob": "Script_e17eb444c6b8bceb531d82d2df0275e9$Com_mgmtp_a12_kernel_generated_order_internal_Meta_order.class"
+    },
+    {
+      "glob": "Script_e17eb444c6b8bceb531d82d2df0275e9$com$mgmtp$a12$kernel$core$rt$_30_8$internal$core.class"
+    },
+    {
+      "glob": "Script_e17eb444c6b8bceb531d82d2df0275e9$com$mgmtp$a12$kernel$core$rt$_30_8$internal$formatdef.class"
+    },
+    {
+      "glob": "Script_e17eb444c6b8bceb531d82d2df0275e9$com$mgmtp$a12$kernel$core$rt$_30_8$internal$meta.class"
+    },
+    {
+      "glob": "Script_e17eb444c6b8bceb531d82d2df0275e9$com$mgmtp$a12$kernel$core$rt$_30_8$internal$util.class"
+    },
+    {
+      "glob": "Script_e17eb444c6b8bceb531d82d2df0275e9BeanInfo.groovy"
+    },
+    {
+      "glob": "Script_e17eb444c6b8bceb531d82d2df0275e9Customizer.groovy"
     },
     {
       "glob": "catalog/operators.json"
@@ -13324,6 +15455,12 @@
       "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/ICalculatorIntern$Com_mgmtp_a12_kernel_generated_order_internal_Meta_order.class"
     },
     {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/ICalculatorIntern$Com_mgmtp_a12_kernel_generated_policy_internal_C1_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/ICalculatorIntern$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
       "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/ICalculatorIntern$Com_mgmtp_a12_kernel_generated_storefront_internal_Meta_storefront.class"
     },
     {
@@ -13352,6 +15489,9 @@
     },
     {
       "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/IDynEnumsIntern$Com_mgmtp_a12_kernel_generated_order_internal_Meta_order.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/IDynEnumsIntern$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
     },
     {
       "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/IDynEnumsIntern$Com_mgmtp_a12_kernel_generated_storefront_internal_Meta_storefront.class"
@@ -13417,6 +15557,21 @@
       "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/ITeilValidierungChecker$Com_mgmtp_a12_kernel_generated_order_internal_TVCheckInfo_order.class"
     },
     {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/ITeilValidierungChecker$Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/ITeilValidierungChecker$Com_mgmtp_a12_kernel_generated_policy_internal_R_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/ITeilValidierungChecker$Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckFehler_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/ITeilValidierungChecker$Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckHinweis_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/ITeilValidierungChecker$Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckInfo_policy.class"
+    },
+    {
       "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/ITeilValidierungChecker$Com_mgmtp_a12_kernel_generated_storefront_internal_R_storefront.class"
     },
     {
@@ -13478,6 +15633,27 @@
     },
     {
       "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/IValidatorIntern$Com_mgmtp_a12_kernel_generated_order_internal_TVCheckPreliminary_order.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/IValidatorIntern$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/IValidatorIntern$Com_mgmtp_a12_kernel_generated_policy_internal_R1_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/IValidatorIntern$Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckAlle_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/IValidatorIntern$Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckFehler_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/IValidatorIntern$Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckHinweis_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/IValidatorIntern$Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckInfo_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/IValidatorIntern$Com_mgmtp_a12_kernel_generated_policy_internal_TVCheckPreliminary_policy.class"
     },
     {
       "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/core/IValidatorIntern$Com_mgmtp_a12_kernel_generated_storefront_internal_Meta_storefront.class"
@@ -13997,6 +16173,21 @@
     },
     {
       "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/meta/IMetaEntityInternal$Com_mgmtp_a12_kernel_generated_order_internal_Meta_Regel_order_1.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/meta/IMetaEntityInternal$Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/meta/IMetaEntityInternal$Com_mgmtp_a12_kernel_generated_policy_internal_E_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/meta/IMetaEntityInternal$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/meta/IMetaEntityInternal$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_PfFeld_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/meta/IMetaEntityInternal$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1.class"
     },
     {
       "glob": "com/mgmtp/a12/kernel/core/rt/_30_8/internal/meta/IMetaEntityInternal$Com_mgmtp_a12_kernel_generated_storefront_internal_ERValidator_storefront.class"
@@ -14524,6 +16715,21 @@
       "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/meta/IMetaEntity$Com_mgmtp_a12_kernel_generated_order_internal_Meta_Regel_order_1.class"
     },
     {
+      "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/meta/IMetaEntity$Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/meta/IMetaEntity$Com_mgmtp_a12_kernel_generated_policy_internal_E_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/meta/IMetaEntity$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/meta/IMetaEntity$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_PfFeld_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/meta/IMetaEntity$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1.class"
+    },
+    {
       "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/meta/IMetaEntity$Com_mgmtp_a12_kernel_generated_storefront_internal_ERValidator_storefront.class"
     },
     {
@@ -14654,6 +16860,21 @@
     },
     {
       "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/meta/IMetaModel$Com_mgmtp_a12_kernel_generated_order_internal_Meta_Regel_order_1.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/meta/IMetaModel$Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/meta/IMetaModel$Com_mgmtp_a12_kernel_generated_policy_internal_E_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/meta/IMetaModel$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Felder_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/meta/IMetaModel$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_PfFeld_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/meta/IMetaModel$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_Regel_policy_1.class"
     },
     {
       "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/meta/IMetaModel$Com_mgmtp_a12_kernel_generated_storefront_internal_ERValidator_storefront.class"
@@ -14794,6 +17015,15 @@
       "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/validation/ICalculator$Com_mgmtp_a12_kernel_generated_order_internal_R_order.class"
     },
     {
+      "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/validation/ICalculator$Com_mgmtp_a12_kernel_generated_policy_internal_C_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/validation/ICalculator$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/validation/ICalculator$Com_mgmtp_a12_kernel_generated_policy_internal_R_policy.class"
+    },
+    {
       "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/validation/ICalculator$Com_mgmtp_a12_kernel_generated_storefront_internal_C_storefront.class"
     },
     {
@@ -14920,6 +17150,15 @@
       "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/validation/IValidator$Com_mgmtp_a12_kernel_generated_order_internal_R_order.class"
     },
     {
+      "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/validation/IValidator$Com_mgmtp_a12_kernel_generated_policy_internal_C_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/validation/IValidator$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/validation/IValidator$Com_mgmtp_a12_kernel_generated_policy_internal_R_policy.class"
+    },
+    {
       "glob": "com/mgmtp/a12/kernel/core/rt/a12internal/validation/IValidator$Com_mgmtp_a12_kernel_generated_storefront_internal_C_storefront.class"
     },
     {
@@ -15025,6 +17264,12 @@
       "glob": "groovy/lang/GroovyObject$Com_mgmtp_a12_kernel_generated_order_internal_Meta_order.class"
     },
     {
+      "glob": "groovy/lang/GroovyObject$Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy.class"
+    },
+    {
+      "glob": "groovy/lang/GroovyObject$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
       "glob": "groovy/lang/GroovyObject$Com_mgmtp_a12_kernel_generated_storefront_internal_ERValidator_storefront.class"
     },
     {
@@ -15055,6 +17300,12 @@
       "glob": "groovy/lang/GroovyObjectSupport$Com_mgmtp_a12_kernel_generated_order_internal_Meta_order.class"
     },
     {
+      "glob": "groovy/lang/GroovyObjectSupport$Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy.class"
+    },
+    {
+      "glob": "groovy/lang/GroovyObjectSupport$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
+    },
+    {
       "glob": "groovy/lang/GroovyObjectSupport$Com_mgmtp_a12_kernel_generated_storefront_internal_ERValidator_storefront.class"
     },
     {
@@ -15083,6 +17334,12 @@
     },
     {
       "glob": "groovy/lang/Script$Com_mgmtp_a12_kernel_generated_order_internal_Meta_order.class"
+    },
+    {
+      "glob": "groovy/lang/Script$Com_mgmtp_a12_kernel_generated_policy_internal_ERValidator_policy.class"
+    },
+    {
+      "glob": "groovy/lang/Script$Com_mgmtp_a12_kernel_generated_policy_internal_Meta_policy.class"
     },
     {
       "glob": "groovy/lang/Script$Com_mgmtp_a12_kernel_generated_storefront_internal_ERValidator_storefront.class"
@@ -15520,6 +17777,9 @@
       "glob": "internal/templates/validation/groovy/operationsDir/ConstantOperation_zahl.st"
     },
     {
+      "glob": "internal/templates/validation/groovy/operationsDir/DateAddOperation.st"
+    },
+    {
       "glob": "internal/templates/validation/groovy/operationsDir/DateDiffOperation.st"
     },
     {
@@ -15539,6 +17799,9 @@
     },
     {
       "glob": "internal/templates/validation/groovy/operationsDir/OpListOperation.st"
+    },
+    {
+      "glob": "internal/templates/validation/groovy/operationsDir/OpListOperationWithParameter.st"
     },
     {
       "glob": "internal/templates/validation/groovy/root.stg"
@@ -15647,6 +17910,15 @@
     },
     {
       "glob": "internal/templates/validation/groovy/utilDir/AddValidatorMessage_WithErrorType.st"
+    },
+    {
+      "glob": "internal/vk_codegen_no_meta_model_ckecks_error_messages/error_messages.properties"
+    },
+    {
+      "glob": "internal/vk_codegen_no_meta_model_ckecks_error_messages/error_messages_en.properties"
+    },
+    {
+      "glob": "internal/vk_codegen_no_meta_model_ckecks_error_messages/error_messages_en_US.properties"
     },
     {
       "glob": "internal/vk_parser_common_error_messages/error_messages.properties"
@@ -16099,6 +18371,12 @@
       "glob": "schema/model-usage.schema.json"
     },
     {
+      "glob": "schema/profile-comparison.schema.json"
+    },
+    {
+      "glob": "schema/profile.schema.json"
+    },
+    {
       "glob": "schema/read.schema.json"
     },
     {
@@ -16549,6 +18827,9 @@
     },
     {
       "bundle": "internal/_30_8/vk_rt_localization_helper/helper"
+    },
+    {
+      "bundle": "internal/vk_codegen_no_meta_model_ckecks_error_messages/error_messages"
     },
     {
       "bundle": "internal/vk_parser_common_error_messages/error_messages"
