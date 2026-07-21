@@ -19,10 +19,8 @@
 set -euo pipefail
 
 : "${GRAALVM_HOME:?set GRAALVM_HOME to a GraalVM 25 home}"
-export JAVA_HOME="$GRAALVM_HOME"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
-export GRADLE_USER_HOME="${GRADLE_USER_HOME:-$(cd .. && pwd)/.gradle-isolated}"
 
 DEST="cli/src/main/resources/META-INF/native-image/rulekit-agent"
 CFG="${RK_NATIVE_CFG:-/tmp/rk-native-capture}"
@@ -30,7 +28,10 @@ rm -rf "$CFG"; mkdir -p "$DEST" "$CFG"
 
 # Run the whole :cli suite under the agent. A failing assertion still exercises its code path, so capture
 # is robust to a red test; --continue keeps the suite going and `|| true` ignores the test-failure exit.
-./gradlew --continue -PrkNativeAgent "-PrkNativeAgentDir=$CFG" :cli:test || true
+# build.sh keeps the Gradle daemon on the project's JDK 21 and resolves the shared isolated Gradle home
+# through Git's common directory. The rkNativeAgent mode independently launches the traced test JVM from
+# GRAALVM_HOME, so the capture still uses GraalVM without reimplementing the wrapper's environment policy.
+./build.sh --continue -PrkNativeAgent "-PrkNativeAgentDir=$CFG" :cli:test || true
 
 shopt -s nullglob
 files=("$CFG"/*.json)

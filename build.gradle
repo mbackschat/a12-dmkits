@@ -152,6 +152,7 @@ tasks.register('docGuardTest', Test) {
             'gradle.properties': file('gradle.properties'),
             'cache smoke'      : file('scripts/verify-build-cache.sh'),
             'demo verifier'    : file('scripts/verify-demos.sh'),
+            'native capture'   : file('scripts/capture-native-config.sh'),
             // dsl sources + the operator catalog moved to :rulekit in the Stage-4 module cut.
             'dsl sources'      : fileTree('rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl') { include '**/*.java' },
             'operator catalog' : fileTree('rulekit/src/main/resources/catalog')])

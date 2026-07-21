@@ -61,6 +61,16 @@ class BuildPerformancePolicyTest {
                 "the demo verifier must not derive a second Gradle home from a linked worktree's parent");
     }
 
+    @Test
+    void nativeCaptureDelegatesItsBuildToTheWorktreeSafeWrapper() throws IOException {
+        String script = Files.readString(locate("scripts/capture-native-config.sh"));
+
+        assertTrue(script.contains("./build.sh --continue -PrkNativeAgent"),
+                "native capture must reuse build.sh's common-directory-aware Gradle home");
+        assertFalse(script.contains("export GRADLE_USER_HOME"),
+                "native capture must not derive a second Gradle home from a linked worktree's parent");
+    }
+
     private static Properties buildProperties() throws IOException {
         var properties = new Properties();
         try (Reader reader = Files.newBufferedReader(locate("gradle.properties"))) {
