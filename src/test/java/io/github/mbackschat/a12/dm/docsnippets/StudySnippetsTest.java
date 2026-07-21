@@ -109,8 +109,8 @@ class StudySnippetsTest {
         // tag::catalog[]
         OperatorCatalog catalog = OperatorCatalog.load();
         OperatorEntry e = catalog.byId("GroupFilled").orElseThrow();
-        e.meaning();      // "True iff the referenced group is filled. For a repeatable group this means the row EXISTS — ..."
-        e.gotchas();      // ["'filled' means 'row exists', not 'row has data' — ...", "an enclosing GroupFilled(Group) counts as referencing the rule's error field ..."]
+        e.meaning();      // "True iff the referenced group has admitted content. For a repeatable group the row itself is content, ..."
+        e.gotchas();      // ["'filled' means 'row exists' only for a repeatable group; ...", "a non-repeatable group containing only formally invalid values is neither filled nor definitely empty; ...", ...]
         e.keywords().de(); // "KontextAngegeben"
         e.invalidExample(); // dsl + the exact MVK_* + the fix — every example kernel-validated in CI (N7)
         // end::catalog[]

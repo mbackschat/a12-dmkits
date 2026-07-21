@@ -656,10 +656,10 @@
     "keywords": { "en": "GroupFilled", "de": "KontextAngegeben" },
     "operands": [ { "type": "group" } ],
     "returns": "boolean",
-    "meaning": "True iff the referenced group is filled. For a repeatable group this means the repeat row EXISTS — an empty, freshly created row counts as filled.",
+    "meaning": "True iff the referenced group has admitted content. For a repeatable group the row itself is content, so an empty, freshly created row counts as filled. For a non-repeatable group, content means a formally admitted descendant value or an instantiated repeatable descendant row.",
     "constraints": [ "the operand is a group (or root group) reference, never a field" ],
-    "gotchas": [ { "text": "'filled' means 'row exists', not 'row has data' — a blank added repetition satisfies GroupFilled", "kind": "SURPRISE" }, { "text": "an enclosing GroupFilled(Group) counts as referencing the rule's error field (no MVK_ERROR_FIELD_NOT_REFERENCED)", "kind": "AUTHORING" } ],
-    "validExample": { "dsl": "GroupFilled(ShippingAddress)", "note": "true when the shipping address group is present" },
+    "gotchas": [ { "text": "'filled' means 'row exists' only for a repeatable group; a non-repeatable group's own structural presence is not content", "kind": "SURPRISE" }, { "text": "a non-repeatable group containing only formally invalid values is neither filled nor definitely empty; admitted plus invalid content is filled but still not definitely empty", "kind": "SURPRISE" }, { "text": "an enclosing GroupFilled(Group) counts as referencing the rule's error field (no MVK_ERROR_FIELD_NOT_REFERENCED)", "kind": "AUTHORING" } ],
+    "validExample": { "dsl": "GroupFilled(ShippingAddress)", "note": "true when the non-repeatable shipping-address group has formally admitted descendant content" },
     "invalidExample": { "dsl": "GroupFilled(CustomerName)", "error": "MVK_NO_FIELDS_ALLOWED", "fix": "GroupFilled takes a group — for a field use FieldFilled" },
     "sinceKernel": "30.8.x"
   },
@@ -671,10 +671,10 @@
     "keywords": { "en": "GroupNotFilled", "de": "KontextNichtAngegeben" },
     "operands": [ { "type": "group" } ],
     "returns": "boolean",
-    "meaning": "True iff the referenced group is not filled (no row exists / nothing entered).",
+    "meaning": "True iff the referenced group is definitely empty: it has no admitted content and no formally erroneous content. A repeatable group is not empty once its row exists, even when that row has no field values.",
     "constraints": [ "the operand is a group reference, never a field" ],
-    "gotchas": [ { "text": "a negative condition combined with repeatable groups is rejected (MVK_NEG_CONDITION_IN_ITERATION) unless guarded, e.g. GroupFilled(K) And AtLeastOneFieldFilled(K/F)", "kind": "SURPRISE" } ],
-    "validExample": { "dsl": "GroupNotFilled(ShippingAddress)", "note": "true when no shipping address was entered" },
+    "gotchas": [ { "text": "GroupNotFilled is not the Boolean inverse of GroupFilled under formal errors: an invalid-only non-repeatable group is neither filled nor definitely empty", "kind": "SURPRISE" }, { "text": "a negative condition combined with repeatable groups is rejected (MVK_NEG_CONDITION_IN_ITERATION) unless guarded, e.g. GroupFilled(K) And AtLeastOneFieldFilled(K/F)", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "GroupNotFilled(ShippingAddress)", "note": "true when the shipping-address group is cleanly empty, with neither admitted nor formally invalid content" },
     "sinceKernel": "30.8.x"
   },
   {
@@ -685,10 +685,10 @@
     "keywords": { "en": "AllGroupsFilled", "de": "AlleKontexteAngegeben" },
     "operands": [ { "type": "group-list" } ],
     "returns": "boolean",
-    "meaning": "True iff every listed group is filled.",
+    "meaning": "True iff every listed group is definitely filled.",
     "constraints": [ "the operand is a list of group references" ],
-    "gotchas": [ { "text": "see GroupFilled: for repeatable groups, an existing empty row counts as filled", "kind": "SURPRISE" } ],
-    "validExample": { "dsl": "AllGroupsFilled(ShippingAddress, BillingAddress)", "note": "true when both address groups are present" },
+    "gotchas": [ { "text": "see GroupFilled: a repeatable group's existing empty row counts as filled, while a non-repeatable group needs formally admitted content", "kind": "SURPRISE" }, { "text": "group-list validation tallies definitely filled and definitely empty groups separately; a formally erroneous group enters neither bucket", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "AllGroupsFilled(ShippingAddress, BillingAddress)", "note": "true when both address groups are definitely filled" },
     "sinceKernel": "30.8.x"
   },
   {
@@ -699,10 +699,10 @@
     "keywords": { "en": "NoGroupFilled", "de": "KeinKontextAngegeben" },
     "operands": [ { "type": "group-list" } ],
     "returns": "boolean",
-    "meaning": "True iff none of the listed groups is filled.",
+    "meaning": "True iff every listed group is definitely empty.",
     "constraints": [ "the operand is a list of group references" ],
-    "gotchas": [ { "text": "negative semantics — needs guarding when repeatable groups are involved (MVK_NEG_CONDITION_IN_ITERATION)", "kind": "SURPRISE" } ],
-    "validExample": { "dsl": "NoGroupFilled(ShippingAddress, BillingAddress)", "note": "true when neither address group is present" },
+    "gotchas": [ { "text": "a formally erroneous group enters neither the definitely-filled nor definitely-empty bucket, so it cannot witness NoGroupFilled", "kind": "SURPRISE" }, { "text": "negative semantics — needs guarding when repeatable groups are involved (MVK_NEG_CONDITION_IN_ITERATION)", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "NoGroupFilled(ShippingAddress, BillingAddress)", "note": "true when both address groups are definitely empty" },
     "sinceKernel": "30.8.x"
   },
   {
@@ -713,10 +713,10 @@
     "keywords": { "en": "AtLeastOneGroupFilled", "de": "MindestensEinKontextAngegeben" },
     "operands": [ { "type": "group-list" } ],
     "returns": "boolean",
-    "meaning": "True iff at least one of the listed groups is filled.",
+    "meaning": "True iff at least one listed group is definitely filled.",
     "constraints": [ "the operand is a list of group references" ],
-    "gotchas": [  ],
-    "validExample": { "dsl": "AtLeastOneGroupFilled(ShippingAddress, BillingAddress)", "note": "true when any address group is present" },
+    "gotchas": [ { "text": "a formally erroneous group enters neither the definitely-filled nor definitely-empty bucket; only admitted content supplies a positive witness", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "AtLeastOneGroupFilled(ShippingAddress, BillingAddress)", "note": "true when at least one address group is definitely filled" },
     "sinceKernel": "30.8.x"
   },
   {
@@ -727,10 +727,10 @@
     "keywords": { "en": "NotAllGroupsFilled", "de": "NichtAlleOderKeinKontextAngegeben" },
     "operands": [ { "type": "group-list" } ],
     "returns": "boolean",
-    "meaning": "True iff the listed groups are not all filled (at least one is missing).",
+    "meaning": "True iff at least one listed group is definitely empty.",
     "constraints": [ "the operand is a list of group references", "arguments may not use an asterisk (MVK_NO_WILDCARDS_G_ALLOWED) — the same bar applies to GroupsNotCollectivelyFilled and AllGroupsFilled" ],
-    "gotchas": [ { "text": "the German keyword (NichtAlleOderKein...) spells out that the none-filled case also satisfies it", "kind": "SURPRISE" } ],
-    "validExample": { "dsl": "NotAllGroupsFilled(ShippingAddress, BillingAddress)", "note": "fires when at least one address group is missing" },
+    "gotchas": [ { "text": "a formally erroneous group enters neither the definitely-filled nor definitely-empty bucket; inability to prove all groups filled does not by itself satisfy NotAllGroupsFilled", "kind": "SURPRISE" }, { "text": "the German keyword (NichtAlleOderKein...) spells out that the none-filled case also satisfies it", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "NotAllGroupsFilled(ShippingAddress, BillingAddress)", "note": "fires when at least one address group is definitely empty" },
     "sinceKernel": "30.8.x"
   },
   {
@@ -740,10 +740,10 @@
     "keywords": { "en": "GroupsNotCollectivelyFilled", "de": "KontexteNichtGemeinsamAngegeben" },
     "operands": [ { "type": "group-list" } ],
     "returns": "boolean",
-    "meaning": "True iff the listed groups are not collectively filled — some filled and some not (a partial-fill check).",
+    "meaning": "True iff at least one listed group is definitely filled and at least one is definitely empty (a partial-fill check).",
     "constraints": [ "the operand is a list of group references" ],
-    "gotchas": [  ],
-    "validExample": { "dsl": "GroupsNotCollectivelyFilled(ShippingAddress, BillingAddress)", "note": "fires when some but not all listed groups are filled (with two groups that means exactly one)" },
+    "gotchas": [ { "text": "a formally erroneous group enters neither the definitely-filled nor definitely-empty bucket and supplies no witness for either side of the partial-fill check", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "GroupsNotCollectivelyFilled(ShippingAddress, BillingAddress)", "note": "fires when at least one address group is definitely filled and at least one is definitely empty" },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1350,14 +1350,14 @@
     "keywords": { "en": "NumberOfFilledGroups", "de": "AnzahlAngegebenerKontexte" },
     "operands": [ { "type": "group-list" } ],
     "returns": "number",
-    "meaning": "Counts the listed groups that are filled/exist (the count/number of filled groups) — e.g. how many rows of a repeatable group.",
+    "meaning": "The plain multi-group form counts definitely filled groups; the starred single-repeatable-group form counts instantiated rows structurally, including empty rows.",
     "constraints": [
       "more than one group, OR a single repeatable group as a wildcard (Group*) counting its filled repetitions (MVK_PARAMSIZE_INVALIDGN); groups only (MVK_NO_FIELDS_ALLOWED); a root group is allowed only as the sole, starred operand (NumberOfFilledGroups(/Root*)), never alongside another group"
     ],
     "gotchas": [
       { "text": "the operand is EITHER a group list of two or more groups — NumberOfFilledGroups(ShippingAddress, BillingAddress) — OR a single repeatable group as a wildcard counting its filled rows — NumberOfFilledGroups(Items*); it takes groups, not fields (MVK_NO_FIELDS_ALLOWED), and the bare group wildcard is how you count a repeatable group's rows", "kind": "AUTHORING" }
-    , { "text": "'filled' means the group row exists, not that it has data (same trap as GroupFilled)", "kind": "SURPRISE" }
-    , { "text": "a counted field in the formal-error state suppresses the count entirely", "kind": "SURPRISE" } ],
+    , { "text": "in the plain multi-group form, a non-repeatable group needs formally admitted content and any erroneous operand group makes the entire count unavailable rather than returning the admitted subset's count", "kind": "SURPRISE" }
+    , { "text": "the starred single-group form is structural: every instantiated repeat row counts even when empty or containing a formally invalid field value", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And NumberOfFilledGroups(Items*) < 1", "note": "the starred-repeatable-group form — fires when the order has no line items (counts a repeatable group's filled rows; a group list of two or more groups is also legal)" },
     "invalidExample": { "dsl": "NumberOfFilledGroups(ShippingAddress, CustomerName) < 1", "error": "MVK_NO_FIELDS_ALLOWED", "fix": "NumberOfFilledGroups takes groups — count fields with NumberOfFilledFields" },
     "semantics": {

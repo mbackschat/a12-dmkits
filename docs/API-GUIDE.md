@@ -192,7 +192,7 @@ static Condition requiredTogether(FieldRef first, FieldRef... rest) {
     return fieldsNotCollectivelyFilled(first, rest);
 }
 
-/** A group that exists must have real content — guards the "blank added row" trap (GroupFilled = row exists). */
+/** A repeatable group row that exists must have real field content — GroupFilled already sees the row itself. */
 static Condition groupNotBlank(GroupRef group, FieldRef witness) {
     return groupFilled(group).and(fieldNotFilled(witness));
 }
@@ -378,9 +378,13 @@ Condition multiple = Dsl.moreThanOneFieldFilled(address);
 
 The traversal order is observable in computations: fields stream recursively in declaration order, field-major then repetition-major, and each quantifier stops as soon as its result is decisive. A malformed cell after that decision is not read; one reached before it can poison the computation. The typed render/read forms are locked by `GroupScopedFieldFillReadTest`; the transitive poison discriminator is `BareGroupComputePoisonDiffTest`.
 
-### 3.5b Group-count quantifiers over repetitions
+### 3.5b Group presence and group-count quantifiers
 
-`NoGroupFilled` and `AtLeastOneGroupFilled` accept the exact `GroupListRef` returned by `flattenGroup` for their kernel-legal single-star form. These predicates count instantiated repetitions: an empty created row is still an existing row. Use the ordinary `GroupRef.notFilled()`/`filled()` form for scalar group presence.
+Group presence is validation-stage state, not merely JSON object existence. For a repeatable group, an instantiated row is content even when every field in that row is empty. For a non-repeatable group, `GroupRef.filled()` needs a formally admitted descendant value or an instantiated repeatable descendant row; the group's own structural presence is not enough. A non-repeatable group containing only formally invalid values is neither filled nor definitely empty, so `filled()` and `notFilled()` are not strict Boolean complements in that state.
+
+The five group-list predicates (`AllGroupsFilled`, `NoGroupFilled`, `AtLeastOneGroupFilled`, `NotAllGroupsFilled`, and `GroupsNotCollectivelyFilled`) tally operands into definitely-filled and definitely-empty buckets. A formally erroneous group enters neither bucket: it can be bypassed only when the known groups already provide the predicate's decisive witness, not treated as filled or empty.
+
+`NoGroupFilled` and `AtLeastOneGroupFilled` also accept the exact `GroupListRef` returned by `flattenGroup` for their kernel-legal single-star form. These predicates count instantiated repetitions: an empty created row is still an existing row. Use the ordinary `GroupRef.notFilled()`/`filled()` form for scalar group presence.
 
 <!-- snippet: group-count-quantifiers -->
 ```java
@@ -390,6 +394,8 @@ Condition someRows = Dsl.atLeastOneGroupFilled(samples);
 ```
 
 Typed read-back retains the star and the collection-scan meaning; `WildcardGroupFillQuantifierReadTest` locks the render → parse → typed-read → render identity for both polarity siblings.
+
+`NumberOfFilledGroups` has two different contracts. The plain form takes two or more groups and counts their definitely-filled states, but the result is unavailable when any operand group is formally erroneous; it never silently returns the count of only the admitted subset. The single-star form (`NumberOfFilledGroups(Items*)`) is a structural row count: every instantiated repetition counts, including an empty row or a row whose field value is formally invalid.
 
 ### 3.6 Study — a real, highly-repetitive rule, rebuilt (before → after)
 
@@ -1268,8 +1274,8 @@ The semantics an agent reads — the queryable operator catalog, the model-conte
 ```java
 OperatorCatalog catalog = OperatorCatalog.load();
 OperatorEntry e = catalog.byId("GroupFilled").orElseThrow();
-e.meaning();      // "True iff the referenced group is filled. For a repeatable group this means the row EXISTS — ..."
-e.gotchas();      // ["'filled' means 'row exists', not 'row has data' — ...", "an enclosing GroupFilled(Group) counts as referencing the rule's error field ..."]
+e.meaning();      // "True iff the referenced group has admitted content. For a repeatable group the row itself is content, ..."
+e.gotchas();      // ["'filled' means 'row exists' only for a repeatable group; ...", "a non-repeatable group containing only formally invalid values is neither filled nor definitely empty; ...", ...]
 e.keywords().de(); // "KontextAngegeben"
 e.invalidExample(); // dsl + the exact MVK_* + the fix — every example kernel-validated in CI (N7)
 ```
