@@ -1,0 +1,196 @@
+{
+  "header": {
+    "id": "schedule",
+    "modelType": "document",
+    "modelVersion": "28.4.0",
+    "locales": [
+      {
+        "code": "en_US"
+      }
+    ],
+    "labels": [],
+    "annotations": [],
+    "modelReferences": []
+  },
+  "content": {
+    "modelInfo": {
+      "name": "schedule",
+      "variant": "cockpit",
+      "revision": "Arbeitsversion",
+      "immutable": false
+    },
+    "modelConfig": {
+      "decimalSeparator": ".",
+      "timeZone": "Europe/Berlin",
+      "conditionLanguage": {
+        "code": "en_US"
+      },
+      "fieldRefByShortNameAllowed": true
+    },
+    "modelRoot": {
+      "rootGroups": [
+        {
+          "type": "Group",
+          "id": "/Schedule",
+          "name": "Schedule",
+          "Group": {
+            "repeatability": 1,
+            "elements": [
+              {
+                "type": "Field",
+                "id": "/Schedule/WindowStart",
+                "name": "WindowStart",
+                "Field": {
+                  "fieldType": {
+                    "type": "TimeType",
+                    "TimeType": {
+                      "format": "HH:mm:ss"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Schedule/WindowEnd",
+                "name": "WindowEnd",
+                "Field": {
+                  "fieldType": {
+                    "type": "TimeType",
+                    "TimeType": {
+                      "format": "HH:mm:ss"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Schedule/CheckInA",
+                "name": "CheckInA",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateTimeType",
+                    "DateTimeType": {
+                      "format": "yyyy-MM-dd'T'HH:mm:ss"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Schedule/CheckInB",
+                "name": "CheckInB",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateTimeType",
+                    "DateTimeType": {
+                      "format": "yyyy-MM-dd'T'HH:mm:ss"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Schedule/PlannedDate",
+                "name": "PlannedDate",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateType",
+                    "DateType": {
+                      "format": "yyyy-MM-dd"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Schedule/EarliestSlotTime",
+                "name": "EarliestSlotTime",
+                "Field": {
+                  "fieldType": {
+                    "type": "TimeType",
+                    "TimeType": {
+                      "format": "HH:mm:ss"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Schedule/EarliestSlotStamp",
+                "name": "EarliestSlotStamp",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateTimeType",
+                    "DateTimeType": {
+                      "format": "yyyy-MM-dd'T'HH:mm:ss"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Group",
+                "id": "/Schedule/Slots",
+                "name": "Slots",
+                "Group": {
+                  "repeatability": 50,
+                  "elements": [
+                    {
+                      "type": "Field",
+                      "id": "/Schedule/Slots/SlotName",
+                      "name": "SlotName",
+                      "Field": {
+                        "fieldType": {
+                          "type": "StringType",
+                          "StringType": {}
+                        }
+                      }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Schedule/Slots/SlotTime",
+                      "name": "SlotTime",
+                      "Field": {
+                        "fieldType": {
+                          "type": "TimeType",
+                          "TimeType": {
+                            "format": "HH:mm:ss"
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Schedule/Slots/SlotStamp",
+                      "name": "SlotStamp",
+                      "Field": {
+                        "fieldType": {
+                          "type": "DateTimeType",
+                          "DateTimeType": {
+                            "format": "yyyy-MM-dd'T'HH:mm:ss"
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Schedule/Slots/SlotDate",
+                      "name": "SlotDate",
+                      "Field": {
+                        "fieldType": {
+                          "type": "DateType",
+                          "DateType": {
+                            "format": "yyyy-MM-dd"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

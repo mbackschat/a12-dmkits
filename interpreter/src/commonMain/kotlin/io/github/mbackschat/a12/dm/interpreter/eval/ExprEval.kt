@@ -779,10 +779,20 @@ private data class TemporalValue(
     val date: String get() = dateOnly(text)
     val isDateTime: Boolean get() = 'T' in text
 
+    /** A pure time-of-day (`HH:mm:ss`, no date) — it has no model-zone instant and folds by its decoded
+     *  time coordinate, not a resolved instant (SPEC-2026-07-21-07). */
+    val isTimeOnly: Boolean get() = TIME.matchEntire(text) != null
+
     fun instant(timeZone: io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone): Long =
         exactInstant ?: checkNotNull(calendarOperandInstant(text, timeZone, basis)) {
             "real temporal value has no model-zone instant: $text ($basis, $timeZone)"
         }
+}
+
+/** The decoded seconds-of-day of a `HH:mm:ss` time-of-day (its zone-independent fold coordinate). */
+private fun timeOfDaySeconds(text: String): Long {
+    val (h, m, s) = TIME.matchEntire(text)!!.destructured
+    return h.toLong() * 3_600 + m.toLong() * 60 + s.toLong()
 }
 
 private fun Evaluated<TemporalValue>.asTemporalVal(): Val = when (this) {
@@ -846,6 +856,9 @@ private fun Interpreter.temporalLeaf(e: Expr): Evaluated<TemporalValue> {
     val evaluated = coerceDate(evalExpr(e))
     if (evaluated is Val.Txt) {
         val basis = DateCalendarBasis.PROLEPTIC_GREGORIAN
+        // A pure time-of-day has no date and therefore no model-zone instant; it carries only its decoded
+        // time coordinate (the operand-list Min/Max over TIME folds on that, SPEC-2026-07-21-07).
+        if (TIME.matchEntire(evaluated.v) != null) return Evaluated.Present(TemporalValue(evaluated.v, basis))
         val instant = calendarOperandInstant(evaluated.v, timeZone, basis)
             ?: return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
         return Evaluated.Present(TemporalValue(evaluated.v, basis, instant))
@@ -1000,9 +1013,12 @@ private fun Interpreter.aggregateTemporal(e: Expr.Func): Evaluated<TemporalValue
     }
     val present = values.filterIsInstance<Evaluated.Present<TemporalValue>>().map { it.value }
     if (present.isEmpty()) return Evaluated.NoValue(NoValueReason.NOT_GIVEN)
+    // Fold coordinate: a pure time-of-day by its decoded seconds, any dated value by its resolved instant
+    // (SPEC-2026-07-21-07). Authored operands are homogeneous, so one key kind decides the whole fold.
+    fun key(v: TemporalValue): Long = if (v.isTimeOnly) timeOfDaySeconds(v.text) else v.instant(timeZone)
     val selected = when (FunctionOp.byName(e.name)) {
-        FunctionOp.MIN -> present.minBy { it.instant(timeZone) }
-        FunctionOp.MAX -> present.maxBy { it.instant(timeZone) }
+        FunctionOp.MIN -> present.minBy(::key)
+        FunctionOp.MAX -> present.maxBy(::key)
         else -> error("not a temporal aggregate: ${e.name}")
     }
     return Evaluated.Present(selected)
