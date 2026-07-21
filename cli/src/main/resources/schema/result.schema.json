@@ -30,7 +30,7 @@
     {
       "target": "field", "op": "read", "outcome": "read", "ok": true, "valid": true,
       "summary": "read /Order/Quantity",
-      "data": { "field": "/Order/Quantity", "type": "NumberType" },
+      "data": { "field": "/Order/Quantity", "kind": "NUMBER", "required": true },
       "diagnostics": [], "written": false
     },
     {
