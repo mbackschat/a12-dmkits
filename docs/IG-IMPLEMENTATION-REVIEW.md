@@ -26,21 +26,25 @@ None.
 
 ### Resolution index
 
-None.
+- [RV-2026-07-20-01 — IG89 → IF153 and IG90 → IF154 JS host-semantics review](#rv-2026-07-20-01--ig89--if153-and-ig90--if154-js-host-semantics-review)
+- [RV-2026-07-20-02 — IG83 → IF155 Route-B timezone review](#rv-2026-07-20-02--ig83--if155-route-b-timezone-review)
+- [RV-2026-07-20-03 — IG77 and IG79 performance and footprint review](#rv-2026-07-20-03--ig77-and-ig79-performance-and-footprint-review)
 
-## RV-2026-07-20-01 — IG89 → IF153 and IG90 → IF154 JS host-semantics review
+## Resolved chapter archive
+
+### RV-2026-07-20-01 — IG89 → IF153 and IG90 → IF154 JS host-semantics review
 
 **Verdict:** Changes required. Commits `41ecfc51` (IF153) and `128f3f99` (IF154) contain useful partial fixes, but their closure/evidence language exceeds the implemented behavior. IG89 must be restored as open, IG90 must remain open with a broader legal-pattern inventory, and the authoring gap must describe the kernel's actual limited blacklist rather than a Java/JavaScript portability guarantee.
 
 **Reviewed scope:** `41ecfc51` (`feat(interpreter): honor the MathContext(50)/plain-render decimal contract on JS`), `517ef65b` (IG90 research), and `128f3f99` (`feat(interpreter): carry Java-Pattern semantics on JS and compile patterns once`). The unrelated proposal documents were not reviewed or changed. `0fb913f3` was checked only for its claimed documentation-index effect.
 
-### What the review accepts
+#### What the review accepts
 
 - IF153 genuinely isolates the interpreter's big.js constructor from mutable host globals, caps multiplication at 50 significant digits, fixes ordinary-range plain rendering, and changes negative power to the kernel's reciprocal-first form. `DecimalPrecisionParityDiffTest` provides real tri-engine evidence for the negative-power discriminator.
 - IF154 genuinely removes the condition evaluator's per-row pattern compilation and adds correct Java-semantics translations for the exercised `\R`, `\h`, `\H`, `\v`, and `\V` cases. The common JVM/Node tests are useful primitive-level evidence for those cases.
 - The owner decision remains unchanged: Groovy-dynamic/Java `Pattern` is the normative behavior on a legal strategy split (IF136). The kernel's raw-RegExp TypeScript behavior is evidence of a strategy divergence, not the interpreter's target.
 
-### RV-2026-07-20-01-1 — the decimal contract is still observably wrong
+#### RV-2026-07-20-01-1 — the decimal contract is still observably wrong
 
 **Severity:** High.
 
@@ -58,7 +62,7 @@ Finally, setting big.js `PE`/`NE` to `±1,000,000` does not make rendering uncon
 
 **Resolution:** Fixed by `a297b220` (`fix(interpreter): complete decimal host parity`). Both actuals now apply one `MathContext(50)` contract to all arithmetic; JS positive/negative power uses bounded working precision, division performs one magnitude-independent significant-digit rounding, and plain rendering derives from coefficient/exponent state. `DecimalHostParityTest` covers the exact JVM/Node vectors and exponent boundaries, `DecimalPowerGrowthTest` proves bounded `base^1000` work, and `DecimalPrecisionParityDiffTest` tri-checks observable `+`/`−`/division/positive-power/negative-power splits against Groovy-dynamic and generated Java. `:interpreter:check`, the focused adapter differential, and `staleGapGuardTest` passed.
 
-### RV-2026-07-20-01-2 — IF153's status and evidence prose overstate the partial fix
+#### RV-2026-07-20-01-2 — IF153's status and evidence prose overstate the partial fix
 
 **Severity:** Medium.
 
@@ -70,7 +74,7 @@ Finally, setting big.js `PE`/`NE` to `±1,000,000` does not make rendering uncon
 
 **Resolution:** Fixed by `a297b220`. IF153 is retained as the accepted first increment and IF163 records the completed contract; IG89 was deleted. The architecture, specification, certificate, performance contract, kernel finding, build comment, and direct finding/gap references now distinguish common JVM/Node primitive evidence from the real-kernel tri-engine differential.
 
-### RV-2026-07-20-01-3 — IG90's legal-pattern inventory is materially incomplete
+#### RV-2026-07-20-01-3 — IG90's legal-pattern inventory is materially incomplete
 
 **Severity:** High.
 
@@ -92,7 +96,7 @@ The current docs instead say only `R/h/H/v/V` and inline flags diverge and class
 
 **Resolution:** Fixed by `daca28f7`, `f213efd2`, and `8fe472a0`. `JavaPatternToJs` now carries one closed ES2018 parser/translator for the reviewed dialect families and `PatternRegistry` routes every model-static pattern locus plus seed verification through one engine-owned boundary. `PatternDialectParityTest` locks the primitive on JVM+Node; `PatternDialectDiffTest`, `FieldConstraintFormalDiffTest`, and `PredefinedTypeValidityDiffTest` provide the model-observable differential evidence; `PatternPerfTest` supplies exact tri-engine preflight plus the paired N/4N guard. **Oracle correction found during implementation:** uppercase `\P{L}` is rejected by the typed/full kernel model with `MVK_INVALID_PATTERN` despite being absent from the textual A12K-30 blacklist, so its common primitive lock is retained defensively but it is not claimed as kernel-admitted.
 
-### RV-2026-07-20-01-4 — the translator and residual detector have independent parser defects
+#### RV-2026-07-20-01-4 — the translator and residual detector have independent parser defects
 
 **Severity:** High.
 
@@ -106,7 +110,7 @@ The current docs instead say only `R/h/H/v/V` and inline flags diverge and class
 
 **Resolution:** Fixed by `daca28f7`, with the independent-gate correction in `9bf4410f`. Translation and `containsResidual` invoke the same closed parser. Leading-literal-`]` and negated classes, standalone `[\H]`/`[\V]`, global/scoped/negative/combined flags, case-insensitive class literals/ranges/intersections, escapes, and nested groups are JVM+Node locked; unsupported syntax is classified before host compilation. The follow-up corrected class-body emission so inline case folding expands members and range endpoints inside the existing class instead of emitting invalid nested classes; global and scoped forms are also tri-engine locked.
 
-### RV-2026-07-20-01-5 — compile-once and coverage claims exceed the evidence
+#### RV-2026-07-20-01-5 — compile-once and coverage claims exceed the evidence
 
 **Severity:** Medium.
 
@@ -122,7 +126,7 @@ The production seed generator also validates generated pattern candidates throug
 
 **Resolution:** Fixed by `f213efd2`. The interpreter-owner `PatternRegistry` deduplicates equal sources across conditions, declared fields, predefined types, and computation formal checks; seed verification uses the same compatible abstraction. `PatternRegistryTest` locks the compilation bound and JVM/Node seed case, the capability matrix now names the actual declared-pattern evidence, and `PatternPerfTest` protects pattern-heavy N/4N growth with exact semantic preflight.
 
-### RV-2026-07-20-01-6 — the dmkits/dmtool authoring gap is real but inaccurately described
+#### RV-2026-07-20-01-6 — the dmkits/dmtool authoring gap is real but inaccurately described
 
 **Severity:** Medium.
 
@@ -134,7 +138,7 @@ The production seed generator also validates generated pattern candidates throug
 
 **Resolution:** Fixed by `552432d3`. `KernelPatternPolicy` single-sources Java-syntax versus Java-valid/kernel-admission rejection for rulekit and modelkit; both pattern operators carry AUTHORING gotchas and kernel-executed invalid/fix examples; field/typedef schemas explain the admission contract; and `MVK_INVALID_PATTERN` is corrective for both `rule check` and `model check`. The durable rationale graduated to API-FINDINGS finding 73 and the DEV-API gap row was deleted. The wording records the direct `\P` oracle correction rather than mislabeling it part of the textual blacklist.
 
-### RV-2026-07-20-01-7 — direct documentation contradictions remain
+#### RV-2026-07-20-01-7 — direct documentation contradictions remain
 
 **Severity:** Medium.
 
@@ -146,17 +150,17 @@ The production seed generator also validates generated pattern candidates throug
 
 **Resolution:** Fixed by `8fe472a0`. KERNEL-FINDINGS now distinguishes the finite source blacklist from the direct typed/full `\P` rejection, records the complete IF164 treatment and its evidence boundaries, and no longer points authoring work at an open gap. The direct architecture/specification/certificate/performance/README/semantics-map claims were aligned without broadening unrelated conformance language.
 
-### Chapter resolution
+#### Chapter resolution
 
 Resolved. Decimal issues 1–2 shipped in `a297b220` and were recorded in `f0d0eee0`. Regex/parser/evidence issues 3–5 shipped in `daca28f7` and `f213efd2`, with the independent-gate class-emission correction in `9bf4410f`; authoring issue 6 shipped in `552432d3`; issue 7 and the IF164 graduation shipped in `8fe472a0`. IG89/IG90 and the regex DEV-API row were deleted only after their acceptance checks were implemented. The direct typed/full-kernel `\P` rejection corrects the review's earlier source-only inference and is left explicit for independent verification.
 
-## RV-2026-07-20-02 — IG83 → IF155 Route-B timezone review
+### RV-2026-07-20-02 — IG83 → IF155 Route-B timezone review
 
 **Verdict:** Changes required. The owner-ratified Route B-now / A-later decision stands, and the historical Berlin implementation appears correct on every independently checked transition entry and on the exercised runtime cases. IF155 nevertheless cannot be accepted as complete: the new preparation boundary silently evaluates an explicit invalid time zone as UTC, the full-history and three-verb evidence claims exceed the tests, the public-API guard is red, the changed historical `AddDays` path adds avoidable per-row allocation without matching performance evidence, and direct lifecycle/authoring documentation remains inaccurate. The reported custom-validator failure is also real, but it is a stale demo projection rather than an IF150/IF152 runtime regression.
 
 **Reviewed scope:** `ac743157` (IG83 kernel characterization), `4777b982` (Berlin transition table), `bde3a581` (supported-zone refusal), `318d92f7` (historical differential), and `82c1d005` (IF155 graduation). The review also followed the explicitly reported `cli-custom-types` failure to commits `5fd309d3`/`955ccdc7` and the live CLI output contract. No proposal document was reviewed or changed.
 
-### What the review accepts
+#### What the review accepts
 
 - The kernel path really is legacy `java.util.TimeZone` plus non-lenient `SimpleDateFormat`, not `java.time`. Pre-1916 Berlin is flat CET on that path; the 1945/1947 CEMT offset and the 1980–1995 September DST end are real.
 - All 62 committed epoch/offset pairs matched an independent IANA transition scan, and direct `java.util` spot checks confirmed the material pre-1916 and CEMT distinctions. The common JVM/Node tests and representative real-kernel differential pass. The review found an evidence-completeness problem, not a demonstrated bad table entry.
@@ -164,7 +168,7 @@ Resolved. Decimal issues 1–2 shipped in `a297b220` and were recorded in `f0d0e
 - Route A remains a legitimate owner-deferred capability: a general portable, versioned time-zone database is not required until its recorded consumer/publication trigger fires. The corrections below complete and honestly certify Route B; they do not reopen that decision.
 - The custom-validator implementation preserves `errorMessage`, performs `$<fieldName>$` substitution, and emits the result under the schema-required `data.messages[].message` key. The demo asks jq for the nonexistent `text` key.
 
-### RV-2026-07-20-02-1 — the time-zone boundary conflates absent, invalid, and unsupported values
+#### RV-2026-07-20-02-1 — the time-zone boundary conflates absent, invalid, and unsupported values
 
 **Severity:** High.
 
@@ -178,7 +182,7 @@ The classifier has a second sibling defect. Every other outside-set value become
 
 **Resolution:** Corrected by `3afbaa0a`. The common loader distinguishes absence from explicit invalid input and makes no unchecked legality claim; the JVM `ModelTimeZoneContract` supplies the four-domain classification used by every runtime verb. `ModelTimeZoneTest`, `ModelTimeZoneContractTest`, `EvalUnsupportedTimeZoneRefusalTest`, and `ConfigTimeZoneContractTest` cover the named cases on their applicable JVM/Node/CLI surfaces.
 
-### RV-2026-07-20-02-2 — “complete history” and tzdb-drift claims exceed representative evidence
+#### RV-2026-07-20-02-2 — “complete history” and tzdb-drift claims exceed representative evidence
 
 **Severity:** Medium.
 
@@ -192,7 +196,7 @@ The review independently compared all 62 committed pairs and found no bad entry.
 
 **Resolution:** Corrected by `3afbaa0a`, documented by `86a77e75`. `BerlinHistoricalTzTest` now compares an independent JDK 21.0.11/tzdb2026a vector with all 62 production pairs, before/at/after behavior, gap/overlap classes, outer regimes, and the named mutation classes. `BerlinTransitionOracleDiffTest` reuses prepared dynamic-Groovy and generated-Java engines across every transition and reports the profiles; the stale KDoc and overclaims are corrected.
 
-### RV-2026-07-20-02-3 — the CLI refusal/check-valid lock proves less than IF155 says
+#### RV-2026-07-20-02-3 — the CLI refusal/check-valid lock proves less than IF155 says
 
 **Severity:** Medium.
 
@@ -204,7 +208,7 @@ The review independently compared all 62 committed pairs and found no bad entry.
 
 **Resolution:** Corrected by `3afbaa0a`. `EvalUnsupportedTimeZoneRefusalTest` exercises all three verbs with the same exact refusal/code/zone/fix/explanation; its unchanged New York fixture must exit 0 from `model check` with a successful outcome and `valid:true`. Invalid-id controls prove those inputs take the configuration-error path instead.
 
-### RV-2026-07-20-02-4 — the public rulekit API golden was not updated
+#### RV-2026-07-20-02-4 — the public rulekit API golden was not updated
 
 **Severity:** Medium.
 
@@ -216,7 +220,7 @@ The review independently compared all 62 committed pairs and found no bad entry.
 
 **Resolution:** Corrected by `86a77e75`. `dumpKitApi` regenerated the modelkit/rulekit goldens; the reviewed diff contains only `ModelTimeZoneContract`/its enum, the deliberate timezone `RkCode`, and the separately required DATE_TIME `AddDays` overloads. `apiGuardTest` passes.
 
-### RV-2026-07-20-02-5 — historical `AddDays` adds avoidable hot-path allocations and has no matching measurement
+#### RV-2026-07-20-02-5 — historical `AddDays` adds avoidable hot-path allocations and has no matching measurement
 
 **Severity:** Medium.
 
@@ -228,7 +232,7 @@ The review independently compared all 62 committed pairs and found no bad entry.
 
 **Resolution:** Corrected by `1d2062b6`, documented by `86a77e75`. `wallDayLandingInstant` now uses one scalar loop. `PerfCatalog.berlinAddDays` covers the named landings, tri-checks both N/4N documents before timing, and measures 4.14× before versus 3.93× after under the unchanged `<9×` floor; no number was promoted.
 
-### RV-2026-07-20-02-6 — lifecycle and direct status prose still describe the pre-IF155 state
+#### RV-2026-07-20-02-6 — lifecycle and direct status prose still describe the pre-IF155 state
 
 **Severity:** Medium.
 
@@ -240,7 +244,7 @@ The review independently compared all 62 committed pairs and found no bad entry.
 
 **Resolution:** Corrected by `86a77e75`. Route-B work is gone from §1; only owner-deferred IG83 Route A remains in §2 with its original trigger. Current KERNEL-SEMANTICS/KERNEL-FINDINGS/IF155/certificate/performance prose states the pinned profile and exact evidence, while IF128 remains dated provenance.
 
-### RV-2026-07-20-02-7 — the dmkits/dmtool authoring impact is real and needs the four-domain contract
+#### RV-2026-07-20-02-7 — the dmkits/dmtool authoring impact is real and needs the four-domain contract
 
 **Severity:** Medium.
 
@@ -252,7 +256,7 @@ The review independently compared all 62 committed pairs and found no bad entry.
 
 **Resolution:** Corrected by `3afbaa0a`, graduated by `86a77e75`. Invalid ids receive corrective enrichment; successful outside-set mutations warn; typed setter Javadocs and CLI help/schema describe the domains. The DEV-API row is deleted and API-FINDINGS finding 72 owns the rationale.
 
-### RV-2026-07-20-02-8 — `cli-custom-types` projects the wrong result key
+#### RV-2026-07-20-02-8 — `cli-custom-types` projects the wrong result key
 
 **Severity:** Medium.
 
@@ -264,23 +268,23 @@ The review independently compared all 62 committed pairs and found no bad entry.
 
 **Resolution:** Corrected 2026-07-20 by `a1af1e24` (`fix(cli): correct custom type message projection`). The demo now projects the schema-defined `message` key, and `CustomFieldTypeJsContractTest` locks the interpolated `bad Iban` value while rejecting a stray `text` key. Verification: the focused test passed with Node 22.18.0 explicitly on `PATH`, and `uvx showboat@0.6.1 verify examples/cli-custom-types.md` passed against the locally installed CLI distribution.
 
-### Review verification
+#### Review verification
 
 - Green: focused interpreter JVM + Node `BerlinHistoricalTzTest`/`ModelTimeZoneTest`; focused `BerlinHistoricalTzDiffTest`; focused `EvalUnsupportedTimeZoneRefusalTest`; focused `CustomFieldTypeJsContractTest` with Node explicitly available; CLI document/semantics/stale-gap guards reached by the focused CLI tasks.
 - Red as reviewed: root `apiGuardTest` on the missing public enum constant; `showboat verify examples/cli-custom-types.md` on the `text` versus `message` projection.
 - No evaluator, CLI, kit, proposal, or Lean-repository source file was changed by this review.
 
-### Chapter resolution
+#### Chapter resolution
 
 Resolved 2026-07-20 by `a1af1e24`, `3afbaa0a`, `1d2062b6`, and `86a77e75`. Every issue 1–8 acceptance path is implemented and has a commit-linked resolution above. Route B is complete and evidence-bounded; IG83 Route A remains only as the owner-ratified deferred capability with its external re-open trigger. Independent review should replay the named focused guards plus the API/doc/stale-gap guards; the branch's semantics-map guard has only the three pre-existing RV03 unmapped classes (`CorrelationPlanDispatchTest`, `OrderedOuterCorrelationDiffTest`, `PreparedPlanSupportTest`), none from this chapter.
 
-## RV-2026-07-20-03 — IG77 and IG79 performance and footprint review
+### RV-2026-07-20-03 — IG77 and IG79 performance and footprint review
 
 **Verdict:** Changes required. The fair high-repeatability model repair in IF159 is correct and important, `PerfHarness.pairedGrowth` is a useful consolidation direction, B9 is now represented in an inventory, the JVM closure report currently derives the stated 3,091,274-byte total, and the retained-heap run is useful calibration. The completion claims nevertheless exceed the guards: semantic eligibility is data/variant-sensitive and lossy, the scenario identity is neither content-bound nor omission-safe, IF159 locks a known quadratic implementation in place, the hard-zero covers only part of the JVM graph and none of the JS/npm graph, and the retained-heap test cannot prove either no leak or owner release. The forked JVM/Node retained-heap and allocation probe named as task #49 was not implemented. IG77 and IG79 must remain active for these ordinary actionable corrections; only promotion of numerical bars and CI scheduling remain owner-gated.
 
 **Reviewed scope:** `7ccf5e00` (IF156 semantic preflight), `d700e21b` (IF157 paired estimator), `3c006bd4` (count de-numbering), `d6c55f41` (IF158 scenario identity/inventory), `f06dc4a8` (IF159 correlation fallback and fair-model repair), `40ede035` (IF160 JVM closure), and `204c0cca` (IF161 retained-heap probe), plus their direct current-facing specification/finding/gap text. No proposal document was reviewed or changed.
 
-### What the review accepts
+#### What the review accepts
 
 - The former `order.dm.json` performance comparison was invalid because the kernel model declared only 50 `/Order/Items` rows while the interpreter-side model overrode the cap to 200,000. IF159 correctly gives both engines one high-repeatability model, so the measured engines now receive the same declared bound.
 - The reported over-limit observation is **not a new interpreter semantic gap**. IF27 and `OverRepetitionDiffTest` already differentially lock flat/nested `zuGrosseZeile`/`zuGrosseKontextnummer` emission plus rule, mandatory, and uniqueness suppression when both engines use the same declared model. The defect was the mismatched benchmark fixture. Do not open another IG for it.
@@ -289,7 +293,7 @@ Resolved 2026-07-20 by `a1af1e24`, `3afbaa0a`, `1d2062b6`, and `86a77e75`. Every
 - The current JVM report genuinely lists the interpreter jar, Kotlin stdlib, annotations, and serialization core/json and sums them to 3,091,274 bytes. The focused closure task and structural IG77 tests were green.
 - A focused rerun of `RetainedHeapProbeTest` reproduced the reported informative series (approximately 7.4/14.7/29.2/59.3 MB, exponent 1.00, and a displayed 0.0 MB two-point delta). That confirms repeatability of this run on the current machine, not the stronger no-leak/certification claims reviewed below.
 
-### RV-2026-07-20-03-1 — semantic eligibility and outcome agreement are incomplete
+#### RV-2026-07-20-03-1 — semantic eligibility and outcome agreement are incomplete
 
 **Severity:** High.
 
@@ -303,7 +307,7 @@ The agreement payload is also not authoritative. Validation compares only the so
 
 **Resolution:** Corrected 2026-07-20 by the `fix(perf): unify exact eligibility preparation` and `fix(perf): close direct timing eligibility gaps` feature commits. `DmInterpreter.supportAudit()` now forces the cached RNU/iteration/parallel plans execution consumes instead of relying on an incomplete structural shadow walk; the perf harness checks an outcome-bearing exact-N instance for cold/warm interpreter timing as well as every repeated variant, and complete computation signatures retain ERRORED attempted values. The low-level `RunInstance.run()` projection itself refuses unsupported outcomes, so profile/startup callers cannot silently discard them; those callers establish exact pre-clock interpreter/dynamic/generated-Java agreement. Both equality and comparator specialist curves tri-check their exact N/4N documents through the common prepared/full-signature/generated-Java boundary, and repeated B1/B3 measurements retain the Java leg. Red/green guards cover the projection refusal, late registered callback after row 200, RNU/parallel structural declines, an unselected unsupported computation alternative, middle-only callback failure, and row/VALUE/ERRORED swaps. Verification: `:interpreter:check`; full `:adapter:test`; and focused `-PrunPerf` runs of `PerfPreflightTest`, `PerfAgreementTest`, `GroupScopedFillPerfTest`, `OuterCorrelationPerfTest`, `PerfScalingTest.startupCost`, `PerfProfileTest.profilePerRow_B1`, and `PerfBenchTest.repeatedEvalOverVaryingDocuments` all passed.
 
-### RV-2026-07-20-03-2 — IF157 does not yet single-source the ratified estimator
+#### RV-2026-07-20-03-2 — IF157 does not yet single-source the ratified estimator
 
 **Severity:** Medium.
 
@@ -317,7 +321,7 @@ The agreement payload is also not authoritative. Validation compares only the so
 
 **Resolution:** Corrected 2026-07-20. Every paired observation is now an already-warmed observation or a repeated median; `CharsetPerfTest` uses `PerfHarness.pairedGrowth` and `PerfBounds.SUB_QUADRATIC_MAX`; and `PerfGrowthEstimatorTest` locks interleaving, within-pair division, odd-median selection, and invalid-input rejection with a sequence that distinguishes the competing aggregations.
 
-### RV-2026-07-20-03-3 — the versioned identity is not bound to scenario content or results
+#### RV-2026-07-20-03-3 — the versioned identity is not bound to scenario content or results
 
 **Severity:** High.
 
@@ -333,7 +337,7 @@ The identity is also absent from the measurement artifact. `PerfRow`/`RepeatedRo
 
 **Independent-verification follow-up:** Corrected by `b86a6550`. IF172's separate JVM/Node worker now builds the exact fixture object for every declared scale once, measures those objects, and hashes their typed model JSON, actual ordered `Document.valuedFields()` path/repetition/value sequence, scenario/scale/locale/zone, and exact expected support/cardinality/outcome. Mutation guards cover a document value, expected result, locale, zone, scale, and a non-first scale in the multi-scale set, so the structured lane can no longer identify an approximation reconstructed from only its first scale. Focused JVM and Node performance-protocol tests passed.
 
-### RV-2026-07-20-03-4 — the inventory is not omission-safe and its Java-capability contract is inert
+#### RV-2026-07-20-03-4 — the inventory is not omission-safe and its Java-capability contract is inert
 
 **Severity:** High.
 
@@ -347,7 +351,7 @@ The identity is also absent from the measurement artifact. `PerfRow`/`RepeatedRo
 
 **Resolution:** Corrected 2026-07-20. `BenchmarkScenario` is the closed expected catalog; its exhaustive `when` maps every entry to an included row or a reasoned exclusion, and `PerfInventory.cases` is derived from those dispositions. The default set pins B1–B8 plus the exact B9 Europe/Berlin/UTC pair (and the tiered/parallel cases); B8 is the full combined model at its generated-Java-feasible N=500 scale. `fairJavaCapable` now controls `PerfHarness.runScenario(..., withJava=...)`, so every current row tri-checks and reports the generated-Java ratio. `perf.scenario` plus `scripts/perf.sh bench <scenario-id>` selects exactly one row and rejects an unknown id with a nonzero exit.
 
-### RV-2026-07-20-03-5 — IF159 turns a known quadratic path into a required behavior
+#### RV-2026-07-20-03-5 — IF159 turns a known quadratic path into a required behavior
 
 **Severity:** High.
 
@@ -361,7 +365,7 @@ The same test never asserts full outcome equality on its exact scaled documents,
 
 **Resolution:** Corrected 2026-07-20. `CorrelationJoin` now has a closed keyed/ordered/general plan boundary: equality conjunctions retain hash buckets; one comparable inner-field/outer-field `<`, `<=`, `>`, `>=`, or applicable `!=` uses a document/scope-cached ordered prefix tally; compound predicates, unsupported kinds, non-UTC datetime ordering, and multi-star multi-row self-exclusion remain on the explicit general scan. The ordered plan preserves physical self-exclusion and the full `(true, false, rows)` 3VL tally. `OrderedOuterCorrelationDiffTest` tri-checks dynamic Groovy, generated Java, and the interpreter for all six comparisons and both fill-quantifier polarities across duplicate/boundary, all-equal/no-witness, one-row self-exclusion, and malformed/empty cases. `CorrelationPlanDispatchTest` deterministically locks every indexed and fallback shape, while the document-mutation guard covers the new cache. The exact all-equal `>` N/4N instances now pass full tri-engine signatures before timing, and the sole timing assertion is the shared sub-quadratic ceiling; the corrected run measured 2.2 ms at N=400 and 8.4 ms at N=1,600 (4.1×), with the kernel curve retained as information only.
 
-### RV-2026-07-20-03-6 — IF160 is a partial JVM artifact check, not the interpreter hard-zero
+#### RV-2026-07-20-03-6 — IF160 is a partial JVM artifact check, not the interpreter hard-zero
 
 **Severity:** High.
 
@@ -377,7 +381,7 @@ The generated report is therefore a useful JVM Maven-artifact inventory, but the
 
 **Independent-verification follow-up:** Corrected by `b86a6550`. IF173 now unpacks the measured `jvm-packed` ZIP, proves its interpreter jar is byte-identical to the measured `jvm-thin` base, compiles a Java consumer outside the project against only the unpacked `lib/*.jar`, and executes `ModelLoader → newDocument → DmInterpreter.validate` with the exact zero-message/zero-unsupported result. A current artifact without that API fails; an archived baseline whose thin jar has no `ModelLoader` records `API_PREDATES_SMOKE` and never claims execution. The focused collector executed the external consumer plus both delivery CLI smokes successfully.
 
-### RV-2026-07-20-03-7 — IF161's two-point heap check cannot prove plateau, no leak, or owner release
+#### RV-2026-07-20-03-7 — IF161's two-point heap check cannot prove plateau, no leak, or owner release
 
 **Severity:** High.
 
@@ -391,7 +395,7 @@ The one-owner shape cannot detect the more important sibling: a global cache tha
 
 **Resolution:** Corrected 2026-07-20 by the `test(interpreter): lock cache owner lifetimes` commit. `CacheLifetimeGuardTest` exercises the real `Document`, `ParsedModel`, and `OverlayViews` cache owners through an internal nullable per-interpreter observer: five post-warm logical-count checkpoints have an exact zero slope while explicit fences keep the engine/document live; an overlay semantic-index view is observed non-empty and every computation-step cache is then cleared in `finally`; and twelve discarded engine/document pairs reach a `ReferenceQueue` while the weak observer returns to baseline. A one-entry-per-evaluation planted leak fails the slope guard, and a global list retaining discarded `Document` owners fails the release guard before passing after it is cleared. The earlier 24 MB two-endpoint test remains explicitly informative and is not an NFR/release bar. Verification: focused `CacheLifetimeGuardTest`, `:interpreter:check`, `:cli:docGuardTest`, `:cli:staleGapGuardTest`, and `git diff --check` passed.
 
-### RV-2026-07-20-03-8 — task #49's forked JVM/Node retained-heap and allocation probe was not delivered
+#### RV-2026-07-20-03-8 — task #49's forked JVM/Node retained-heap and allocation probe was not delivered
 
 **Severity:** High.
 
@@ -405,7 +409,7 @@ The informative scale fit is also not a stable measurement protocol: all scales 
 
 **Resolution:** Corrected 2026-07-20 by the `feat(interpreter): add forked footprint measurement` feature commit. The local-only `interpreterFootprint` task launches at least five independent fixed-heap JVM processes and five independent fixed-heap Node processes from one clean commit, with explicit GC viability and complete runtime/collector/method metadata. Each process preflights the exact semantics, then measures positive post-GC retained heap and allocation volume at `N, 2N, 4N, 8N` for simple validation, equality correlation, and computation-overlay scenarios; JVM allocation uses `ThreadMXBean`, Node allocation uses V8 Inspector heap sampling, and setup plus warmup stay outside the allocation interval. The canonical scenario models are authored through modelkit/EditSession/rulekit, freshness-guarded in `:adapter`, and embedded unchanged for both KMP hosts; identity hashes that serialization plus explicit workload-generator metadata, and compute preflight covers every target/value/row identity in the cascade. Exact result cardinality, logical document/parsed-model/overlay counts, and weak owner release are protocol requirements. Missing GC support, non-positive samples, reused process identities, incomplete scales, unsupported/wrong outcomes, non-empty released-owner baselines, or leaking owners fail instead of being clamped. The aggregate report preserves all raw fork metadata and samples and derives informative per-host/per-scenario medians, log-log curves, and worst 4× steps without thresholds or a CI edge. `scripts/interpreter-footprint.sh` enforces the clean-commit and ≥5-fork entry contract.
 
-### RV-2026-07-20-03-9 — ownership/status classification and current-facing prose are inaccurate
+#### RV-2026-07-20-03-9 — ownership/status classification and current-facing prose are inaccurate
 
 **Severity:** Medium.
 
@@ -423,16 +427,12 @@ Direct current-facing contradictions also remain: `INTERPRETER-GAPS.md` calls th
 
 **Final resolution:** Corrected 2026-07-20 by IF170–IF173. IF170–IF172 completed the remaining IG77 executable regime/preparation/fresh-process/throughput/fair-Java work. The 2026-07-21 owner policy then closed IG77 without promoting a candidate number: `-PrunPerf` remains the nightly/manual catastrophe and regression lane, while the complete IF172 collector remains manual release/performance evidence. IF173 completed every functional IG79 artifact base and current/previous clean-revision comparison. Direct execution exposed the one genuine external boundary: with no IG85-exported JS API, Kotlin's production output is an empty DCE shell with no `.d.ts`, so counting it would be fictional. IG79 is deleted; the existing owner-deferred IG85 row now makes functional npm packing, type output, non-repo consumer smoke, and previous-release measurement mandatory in the same publication increment. No ordinary executable residual remains open.
 
-### Review verification
+#### Review verification
 
 - At review time, green: focused `ScenarioInventoryTest` and `PerfPreflightTest`; `:interpreter:interpreterRuntimeClosure` (report 3,091,274 bytes); focused `RetainedHeapProbeTest` rerun (informative 1.00 scale fit and displayed 0.0 MB two-point delta).
 - At review time, source-verified limitations were: Java disabled in the default inventory sweep; `fairJavaCapable` unused; version absent from output; `CharsetPerfTest` duplicated pairing/ceiling; IF159 had a `>6.0` slowness assertion and no exact tri-check; the closure task was JVM-artifact-only; the heap probe was one JVM process and measured no allocation volume or owner release.
 - No evaluator, harness, build, proposal, or other project file was changed by this review.
 
-### Chapter resolution
+#### Chapter resolution
 
 Resolved 2026-07-20 by IF170–IF173, with the 2026-07-21 owner policy closing the remaining IG77 governance decisions without promoting a candidate number or adding a push/PR performance lane. Issues 1–5 are closed by the prepared eligibility/paired estimator/content-bound inventory/ordered-correlation/performance-evidence chain. Issues 6–8 are closed by the fully reconciled host graphs, deterministic cache-owner locks, forked JVM/Node retained/allocation lane, and same-collector delivery ratchet. Issue 9 is closed: IG79 is graduated and removed, and the impossible-to-measure pre-publication npm base is a mandatory part of IG85's already owner-deferred external trigger rather than ordinary unfinished work.
-
-## Resolved chapter archive
-
-None.
