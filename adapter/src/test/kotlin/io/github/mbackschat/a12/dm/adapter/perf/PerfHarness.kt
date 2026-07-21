@@ -365,6 +365,17 @@ data class RepeatedRow(
 
 object PerfHarness {
 
+    private const val SIGNATURE_SAMPLE_LIMIT = 10
+    private const val SIGNATURE_DISPLAY_LIMIT = 240
+
+    private data class SignatureSample(val signature: String, val occurrences: Int)
+
+    private data class SignatureDelta(
+        val occurrences: Int,
+        val distinct: Int,
+        val samples: List<SignatureSample>,
+    )
+
     /**
      * Emit a LIVE progress line during a long perf run. Gradle buffers a test's captured stdout until the whole
      * task ENDS, so a slow multi-scenario gate looks frozen with no output — this writes to a **tailable file**
@@ -780,9 +791,48 @@ object PerfHarness {
         b: List<String>,
     ) =
         check(a == b) {
+            val aCounts = signatureCounts(a)
+            val bCounts = signatureCounts(b)
+            val onlyA = signatureDelta(aCounts, bCounts)
+            val onlyB = signatureDelta(bCounts, aCounts)
             "$scenario (N=$n): $aLabel and $bLabel must agree on complete signatures.\n" +
-                "  $bLabel(${b.size})=$b\n  $aLabel(${a.size})=$a"
+                "  ${renderSignatureDelta(aLabel, onlyA)}\n" +
+                "  ${renderSignatureDelta(bLabel, onlyB)}"
         }
+
+    private fun signatureCounts(signatures: List<String>): Map<String, Int> =
+        linkedMapOf<String, Int>().apply {
+            signatures.forEach { signature -> merge(signature, 1, Int::plus) }
+        }
+
+    private fun signatureDelta(left: Map<String, Int>, right: Map<String, Int>): SignatureDelta {
+        var occurrences = 0
+        var distinct = 0
+        val samples = mutableListOf<SignatureSample>()
+        left.forEach { (signature, leftOccurrences) ->
+            val excess = leftOccurrences - (right[signature] ?: 0)
+            if (excess > 0) {
+                occurrences += excess
+                distinct++
+                if (samples.size < SIGNATURE_SAMPLE_LIMIT) samples += SignatureSample(signature, excess)
+            }
+        }
+        return SignatureDelta(occurrences, distinct, samples)
+    }
+
+    private fun renderSignatureDelta(label: String, delta: SignatureDelta): String {
+        val renderedSamples = delta.samples.joinToString(prefix = "[", postfix = "]") { sample ->
+            val multiplicity = if (sample.occurrences == 1) "" else " ×${sample.occurrences}"
+            boundedSignature(sample.signature) + multiplicity
+        }
+        val omitted = delta.distinct - delta.samples.size
+        val omittedSuffix = if (omitted == 0) "" else " ($omitted distinct sample(s) omitted)"
+        return "only-$label(${delta.occurrences})=$renderedSamples$omittedSuffix"
+    }
+
+    private fun boundedSignature(signature: String): String =
+        if (signature.length <= SIGNATURE_DISPLAY_LIMIT) signature
+        else signature.take(SIGNATURE_DISPLAY_LIMIT - 1) + "…"
 
     /** A one-line single-document log row: interp vs the kernel baseline(s) + ratios (+ the Java tax when present). */
     fun format(row: PerfRow, caveat: String = ""): String =

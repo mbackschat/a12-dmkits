@@ -77,4 +77,34 @@ class PerfAgreementTest {
             PerfHarness.assertSignaturesAgree("errored-value-swap", 1, "eleven", eleven, "twelve", twelve)
         }
     }
+
+    @Test
+    fun largeSignatureMismatchReportsBoundedMultisetDeltas() {
+        val longSignature = "LONG|" + "x".repeat(10_000)
+        val expected = buildList {
+            repeat(4) { add("DUPLICATE") }
+            add(longSignature)
+            addAll((0 until 100).map { "EXPECTED-$it" })
+        }
+        val actual = buildList {
+            add("DUPLICATE")
+            addAll((0 until 120).map { "ACTUAL-$it" })
+        }
+
+        val error = assertThrows<IllegalStateException> {
+            PerfHarness.assertSignaturesAgree("large-mismatch", 100, "expected", expected, "actual", actual)
+        }
+        val message = checkNotNull(error.message)
+
+        assertTrue(message.length < 6_000, "mismatch diagnostics must remain bounded; length=${message.length}")
+        assertTrue(message.contains("only-expected(104)"), message)
+        assertTrue(message.contains("only-actual(120)"), message)
+        assertTrue(message.contains("DUPLICATE ×3"), message)
+        assertTrue(message.contains("LONG|"), message)
+        assertTrue(!message.contains(longSignature), "the 10,000-character signature must be truncated")
+        assertTrue(message.contains("EXPECTED-7"), message)
+        assertTrue(!message.contains("EXPECTED-8"), "each side must stop after ten distinct samples")
+        assertTrue(message.contains("ACTUAL-9"), message)
+        assertTrue(!message.contains("ACTUAL-10"), "each side must stop after ten distinct samples")
+    }
 }
