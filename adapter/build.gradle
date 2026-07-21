@@ -382,6 +382,32 @@ tasks.register('profileFixtureGuardTest', Test) {
     ])
 }
 
+tasks.register('profileCliPerfTest', Test) {
+    description = 'Run the opt-in profile-shaped model describe/report JVM-process catastrophe canary.'
+    group = 'measurement'
+    dependsOn ':cli:installDist', 'profileFixtureGuardTest'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    maxParallelForks = 1
+    failFast = true
+    systemProperty 'perf.profile.cli', 'true'
+    systemProperty 'perf.profile.cli.launcher',
+        rootProject.file('cli/build/install/dmtool/bin/dmtool').absolutePath
+    systemProperty 'perf.profile.cli.profileDir', profileFixtureDirectory.absolutePath
+    systemProperty 'perf.profile.cli.pairs', providers.gradleProperty('profileCliPairs').getOrElse('3')
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.ProfileCliPerfTest'
+    }
+    rootProject.guardInputs(it, [
+        'compact profile': profileFixtureFiles[0],
+        'breadth-shaped profile': profileFixtureFiles[1],
+        'depth-shaped profile': profileFixtureFiles[2],
+    ])
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 def performanceCommitProperty = providers.gradleProperty('performanceCommit')
 def performanceRunnerProperty = providers.gradleProperty('performanceRunner')
 def fairJavaOutput = layout.buildDirectory.file('reports/interpreter-performance/fair-java-report.json')

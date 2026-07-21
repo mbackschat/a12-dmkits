@@ -259,6 +259,7 @@ The full kernel-backed suite was ~12 min, but **two categories accounted for ~10
 | **default** (inner loop) | `./build.sh :adapter:test :cli:test` | everything **except** perf + fuzz (~2–3 min) |
 | + fuzzers | `./build.sh :adapter:test -PrunFuzz` | adds the differential fuzzers |
 | + perf | `./build.sh :adapter:test -PrunPerf` | adds the perf lane (BOTH tiers — gate + bench) |
+| profile-shaped CLI canary | `./build.sh :adapter:profileCliPerfTest` | opt-in installed-JVM-process `model describe` + default `model report` paired catastrophe checks over the three committed profiles; synthesis and exact-cardinality preflight stay outside timing |
 | everything | `./build.sh :adapter:test -PallTests` | both |
 
 **Nothing is dropped — CI runs them on a defined trigger:** the fuzzers on **every push/PR** (`-PrunFuzz` — correctness nets, interpreter == kernel), the perf gate **nightly + on `workflow_dispatch`** (`-PrunPerf` — a ratio gate, not a per-commit check). `GateTierWiringTest` fails the build if either lane is dropped from the CI workflow (F11 loud-detection). **Tagging rule:** a new perf benchmark gets `@Tag("perf")`, a new differential fuzzer `@Tag("fuzz")` — so it joins the right lane automatically.
