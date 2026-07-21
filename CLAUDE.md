@@ -8,6 +8,10 @@ Design and rationale live under [`docs/`](docs/) — **[`docs/README.md`](docs/R
 
 English is the project default: code, identifiers, comments, docs, and the **default render target** (`DslRenderer` defaults to `ConditionLanguage.EN`) are English. **German is a supported render target, not the default** — the operator catalog carries verified `de` keywords and `new DslRenderer(ConditionLanguage.DE)` renders to it. Translations are welcome; English stays canonical.
 
+## Commits
+
+Automatically commit each finished, verified feature set unless the user explicitly asks not to commit. Never commit partial, failing, or unrelated work. A prompt shortcut that explicitly forbids committing, such as the global `F:` shortcut, remains an exception.
+
 ## Eat your own dogfood (the #1 standing requirement, 2026-06-26)
 
 **Be your own consumer of the dmkits, feel the friction, and improve the library on the fly.** Every piece of *internal* code that touches a document model — tests, fixtures, benchmarks, demos, the CLI, the eval harness, the interpreter's differential — is a **first-class consumer of rulekit/modelkit/`dm.edit`** and MUST author through the typed surface a real user would reach for, never reach *around* it for low-level strings. This is the project's central discipline: the kits earn their design by being *used* by their own author.
