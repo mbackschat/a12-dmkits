@@ -2019,7 +2019,7 @@ The root fix is at the one document-ingestion boundary. A field placement always
 
 The exact compact N=100/400 tri-engine semantic preflight now passes and the five false firings disappear before timing. *Locked:* typed own-domain `EmptyStringIngestionDiffTest` tri-checks dynamic Groovy, generated Java, and the interpreter for positive/negative field presence, non-repeatable group presence, requiredness, exact polarity, and indexed pointers; multiplatform `EmptyStringIngestionTest` locks the retained `PresentEmpty` placement plus unfilled evaluation on JVM and Node.
 
-### IF199 — compute comparison prepares immutable seed state once per reusable instance (SHIPPED 2026-07-21; graduated from IG100)
+### IF199 — compute comparison prepares immutable seed state once per reusable instance (SHIPPED 2026-07-21)
 
 The compact COMPUTE curve exposed an adapter-side false bottleneck. IF197 correctly made interpreter report-all results comparable with the kernel's delta-only results, but the one-shot `kernelComputeGranularity` helper rebuilt a pointer→seed map by scanning every input placement inside every timed call. The profiled computation produced one result at every scale, so this O(document placements) projection preparation—not evaluator computation—made interpreter growth lose to dynamic Groovy even while the interpreter was much faster absolutely.
 
@@ -2027,4 +2027,4 @@ The compact COMPUTE curve exposed an adapter-side false bottleneck. IF197 correc
 
 The exact five-pair, 12-warmup, 20-iteration compact curve at N=100→400 changed from interpreter 0.151→0.188 ms with 1.71× paired growth to 0.03→0.05 ms with 0.99× growth; dynamic Groovy measured 2.82→4.33 ms (1.52×) and generated Java 0.78→2.26 ms (2.80×). The larger N=1,000→4,000 confirmation held interpreter medians at 0.03→0.03 ms with 1.37× paired growth versus Groovy 6.29→18.99 ms (3.02×) and Java 4.46→17.32 ms (3.88×). Exact tri-engine semantic preflight passed at every scale. These are diagnostic same-run measurements, not promoted NFR bars.
 
-*Locked:* multiplatform `ComputeGranularityTest.preparedProjectionDoesNotRescanInputPlacementsPerResult` proves preparation reads each placement exactly once and repeated projections never revisit them; `PerfComputeGranularityTest` retains the adapter integration and unchanged-string delta behavior; both compact paired curves enforce absolute and growth wins against dynamic Groovy and generated Java.
+*Locked:* multiplatform `ComputeGranularityTest` proves preparation reads each placement exactly once, repeated projections never revisit them, and an explicitly stored empty string remains unfilled for delta projection. `PerfComputeGranularityTest` retains the adapter integration and tri-checks unchanged-value plus present-empty clear behavior. The property-driven `SynthesizedModelPerfTest` enforces absolute and growth wins for each invoked curve; the two compact curves above are recorded executions of that opt-in guard.

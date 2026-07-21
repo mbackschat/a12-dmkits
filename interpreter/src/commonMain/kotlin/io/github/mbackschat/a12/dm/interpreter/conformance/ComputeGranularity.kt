@@ -25,7 +25,8 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
  * `BigDecimal`/`Instant`/`Boolean` — never equal to the raw seed string; kernel-probe-verified,
  * KERNEL-FINDINGS "compute reporting granularity"). Hence:
  * - a `VALUE` equal to the cell's placement value is dropped iff the target is [Kind.STRING];
- * - a `CLEARED` on a cell no placement filled (unseeded, or an [PlacementKind.EMPTY] placement) is dropped;
+ * - a `CLEARED` on a cell no placement filled (unseeded, [PlacementKind.EMPTY], or an empty/null field value)
+ *   is dropped;
  * - an `ERRORED` is always kept.
  */
 class KernelComputeProjection private constructor(private val seeded: Map<String, SeededCell>) {
@@ -47,9 +48,9 @@ class KernelComputeProjection private constructor(private val seeded: Map<String
         fun prepare(placements: List<Placement>, model: ModelDef): KernelComputeProjection {
             val seeded = HashMap<String, SeededCell>()
             for (placement in placements) {
-                if (placement.kind == PlacementKind.FIELD) {
+                if (placement.kind == PlacementKind.FIELD && !placement.value.isNullOrEmpty()) {
                     seeded[formatPointer(placement.path, placement.reps)] = SeededCell(
-                        placement.value ?: "",
+                        placement.value,
                         model.kinds[placement.path],
                     )
                 }

@@ -110,6 +110,20 @@ class ComputeGranularityTest {
     }
 
     @Test
+    fun storedEmptyStringIsPresentButNotFilledForClearProjection() {
+        val projection = KernelComputeProjection.prepare(
+            listOf(Placement(PlacementKind.FIELD, "/Order/Note", listOf(1, 1), "")),
+            model,
+        )
+
+        assertEquals(
+            emptyList(),
+            projection.project(listOf("/Order[1]/Note|CLEARED")),
+            "an explicitly stored empty string is unfilled, so the kernel reports no clear delta",
+        )
+    }
+
+    @Test
     fun preparedProjectionDoesNotRescanInputPlacementsPerResult() {
         val counted = ReadCountingList(placements)
         val projection = KernelComputeProjection.prepare(counted, model)

@@ -37,8 +37,46 @@ class PerfComputeGranularityTest {
         assertEquals(emptyList<String>(), InterpreterPerfEngine.build(scenario).instance(1).outcome().signatures)
     }
 
+    @Test
+    fun clearOfAStoredEmptyStringIsSilentInEveryEngine() {
+        val base = DocumentModelDraft.named("perf-compute-present-empty").locale("en_US")
+            .rootGroup("Case") { group ->
+                group.stringField("Left") {}
+                group.stringField("Right") {}
+                group.stringField("Status") {}
+            }
+            .build()
+            .toJson()
+        val bound = BoundModel.ofJson(base)
+        val computation = bound.computation(bound.str(STATUS))
+            .name("ClearStatus")
+            .calc(bound.str(LEFT).asString().plus(bound.str(RIGHT).asString()).expression())
+            .message(Dsl.en("status"))
+            .build()
+        val modelJson = TypedRules.inject(base, computation)
+        val scenario = PerfScenario(
+            name = "present-empty-string-compute",
+            kernelModel = modelJson,
+            interpModel = ModelLoader.load(modelJson),
+            op = PerfOp.COMPUTE,
+        ) { sink, _, _ ->
+            sink.group(ROOT, 1)
+            sink.field(STATUS, "", 1, 1)
+        }
+
+        val interpreter = InterpreterPerfEngine.build(scenario).instance(1).outcome().signatures
+        val groovy = KernelPerfEngine.build(scenario).instance(1).outcome().signatures
+        val java = KernelJavaPerfEngine.build(scenario).instance(1).outcome().signatures
+
+        assertEquals(emptyList<String>(), groovy, "dynamic Groovy reports no delta for an unfilled target")
+        assertEquals(groovy, java, "generated Java agrees with dynamic Groovy")
+        assertEquals(groovy, interpreter, "the prepared interpreter projection agrees with both kernel strategies")
+    }
+
     private companion object {
         const val ROOT = "/Case"
+        const val LEFT = "$ROOT/Left"
+        const val RIGHT = "$ROOT/Right"
         const val STATUS = "$ROOT/Status"
     }
 }
