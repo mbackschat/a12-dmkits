@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import io.github.mbackschat.a12.dm.adapter.KernelAdapter
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
@@ -11,7 +13,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 import org.junit.jupiter.api.io.TempDir
 
-/** Opt-in, real-JVM-process catastrophe canary for profile-shaped model comprehension reads. */
+/** Opt-in, real-JVM-process catastrophe canary for profile-shaped model comprehension and diff reads. */
 @EnabledIfSystemProperty(named = "perf.profile.cli", matches = "true")
 class ProfileCliPerfTest {
 
@@ -75,7 +77,6 @@ private object ProfileCliCanary {
     private fun synthesize(profilePath: Path, outputDirectory: Path, runner: CliRunner): ProfileArtifact {
         require(Files.isRegularFile(profilePath)) { "profile is missing: $profilePath" }
         val id = profilePath.fileName.toString().removeSuffix(".json")
-        val counts = ProfileCounts.read(profilePath)
         val model = outputDirectory.resolve("$id.dm.json")
         runner.run(
             "$id-synthesize",
@@ -87,7 +88,7 @@ private object ProfileCliCanary {
             ),
         ).requireSuccess()
         check(Files.isRegularFile(model)) { "profile synthesis did not create $model" }
-        return ProfileArtifact(id, model, counts)
+        return ProfileArtifact(id, model, ProfileCounts.readModel(model))
     }
 
     private fun preflight(verb: CliVerb, profile: ProfileArtifact, runner: CliRunner) {
@@ -129,7 +130,8 @@ private object ProfileCliCanary {
     private enum class CliVerb(val id: String) {
         DESCRIBE("describe"),
         REPORT("report"),
-        REPORT_TREE_TEXT("report-tree-text");
+        REPORT_TREE_TEXT("report-tree-text"),
+        DIFF("diff");
 
         fun command(model: Path): List<String> = when (this) {
             DESCRIBE -> listOf("-m", model.toString(), "model", "describe")
@@ -138,6 +140,7 @@ private object ProfileCliCanary {
                 "--text", "-m", model.toString(), "model", "report", "--tree",
                 "--include", "rules,computations",
             )
+            DIFF -> listOf("model", "diff", model.toString(), model.toString())
         }
 
         fun cardinality(data: JsonNode): OutputCardinality = when (this) {
@@ -152,6 +155,12 @@ private object ProfileCliCanary {
                 groups = data.path("structure").path("groups").size(),
                 rules = data.path("rules").size(),
                 computations = data.path("computations").size(),
+            )
+            DIFF -> OutputCardinality(
+                fields = data.path("changes").count { it.path("element").asText() == "FIELD" },
+                groups = data.path("changes").count { it.path("element").asText() == "GROUP" },
+                rules = data.path("changes").count { it.path("element").asText() == "RULE" },
+                computations = data.path("changes").count { it.path("element").asText() == "COMPUTATION" },
             )
         }
     }
@@ -173,31 +182,25 @@ private object ProfileCliCanary {
     ) {
         fun work(verb: CliVerb): Int = when (verb) {
             CliVerb.DESCRIBE -> fields + groups
-            CliVerb.REPORT, CliVerb.REPORT_TREE_TEXT -> fields + groups + rules + computations
+            CliVerb.REPORT, CliVerb.REPORT_TREE_TEXT, CliVerb.DIFF -> fields + groups + rules + computations
         }
 
         fun cardinality(verb: CliVerb): OutputCardinality = when (verb) {
             CliVerb.DESCRIBE -> OutputCardinality(fields, groups, 0, 0)
             CliVerb.REPORT, CliVerb.REPORT_TREE_TEXT -> OutputCardinality(fields, groups, rules, computations)
+            CliVerb.DIFF -> OutputCardinality(0, 0, 0, 0)
         }
 
         companion object {
-            fun read(path: Path): ProfileCounts {
-                val elements = json.readTree(path.toFile()).path("structure").path("elements")
+            fun readModel(path: Path): ProfileCounts {
+                val model = BoundModel.ofJson(Files.readString(path))
+                val adapter = KernelAdapter.of(model)
                 return ProfileCounts(
-                    fields = elements.requiredCount("FIELD", path),
-                    groups = elements.requiredCount("GROUP", path),
-                    rules = elements.requiredCount("RULE", path),
-                    computations = elements.requiredCount("COMPUTATION", path),
+                    fields = model.fields().count().toInt(),
+                    groups = model.groups().count().toInt(),
+                    rules = adapter.ruleFullNames().size,
+                    computations = adapter.computationFullNames().size,
                 )
-            }
-
-            private fun JsonNode.requiredCount(name: String, path: Path): Int {
-                val value = path(name)
-                require(value.canConvertToInt() && value.asInt() >= 0) {
-                    "$path has no non-negative structure.elements.$name count"
-                }
-                return value.asInt()
             }
         }
     }

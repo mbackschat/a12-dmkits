@@ -202,7 +202,7 @@ dmtool --text -m order.dm.json model report --tree --root /Order --include rules
 
 ### Review what changed — a semantic diff
 
-When an agent has edited a model on your behalf, raw JSON diffs are unreadable. `model diff` compares two model files **structurally** (it parses both into the model, so a pure reformat is never reported) and reports field, rule, and computation changes with per-aspect deltas and a **risk tier**. A computation operation such as `Price × Quantity` changing to `Price + Quantity` is `COMPUTATION_CHANGED` (MEDIUM). Risk follows *loosening > tightening*: a removed or loosened rule silently accepts bad data (HIGH), while a tightened or added one fails loudly (MEDIUM).
+When an agent has edited a model on your behalf, raw JSON diffs are unreadable. `model diff` compares two model files **structurally** (it parses both into the model, so a pure reformat is never reported) and reports field, group, rule, and computation changes with per-aspect deltas and a **risk tier**. Group changes cover repeatability, index/sort declarations, mounts, metadata, and mixed authored ordering; a group moving relative to a field is visible without duplicating child changes on the parent. A computation operation such as `Price × Quantity` changing to `Price + Quantity` is `COMPUTATION_CHANGED` (MEDIUM). Risk follows *loosening > tightening*: increasing a repetition cap or removing/loosening a rule is HIGH, while tightening it is MEDIUM.
 
 ```sh
 dmtool model diff before.dm.json after.dm.json        # two files: base then head

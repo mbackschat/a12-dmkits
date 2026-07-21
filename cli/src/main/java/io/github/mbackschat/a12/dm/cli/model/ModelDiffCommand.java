@@ -21,7 +21,7 @@ import picocli.CommandLine.Parameters;
 /**
  * {@code dmtool model diff <baseFile> <headFile>} — a <b>structural</b> diff of two model files
  * (MODEL-REVIEW-SPEC §5). Parses BOTH into the model and compares structure, so a pure reformat is never
- * reported; lists the fields, rules, and computations <b>added / removed / modified</b> between base and head,
+ * reported; lists the fields, groups, rules, and computations <b>added / removed / modified</b> between base and head,
  * each with the per-aspect {@code deltas} that changed.
  *
  * <p>Two input modes: the pure two-file core ({@code <baseFile> <headFile>}), or the {@code --since <ref>}
@@ -30,7 +30,7 @@ import picocli.CommandLine.Parameters;
  * only the CLI materializes the baseline). A read op: the payload rides {@code data} (shape: {@code model-diff.schema}).
  */
 @Command(name = "diff", mixinStandardHelpOptions = true,
-        description = "Structural diff of two models: the fields, rules, and computations added, removed, or "
+        description = "Structural diff of two models: the fields, groups, rules, and computations added, removed, or "
                 + "modified, with per-aspect deltas, in `data`. A pure reformat is never "
                 + "reported (it compares structure, not text). Pass two files (base then head), or "
                 + "`-m <model> --since <ref>` to diff against a git ref. Shape: `model-diff.schema`.")

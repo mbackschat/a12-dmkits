@@ -166,14 +166,14 @@ Every result is a uniform JSON envelope (`{ok, valid, outcome, changed, diagnost
 
 ### Review an edit semantically
 
-`model diff` is a structural semantic diff: it parses both models, ignores formatting noise, and reports typed field, rule, and computation changes with per-aspect deltas, risk tiers, and reason codes.
+`model diff` is a structural semantic diff: it parses both models, ignores formatting noise, and reports typed field, group, rule, and computation changes with per-aspect deltas, risk tiers, and reason codes.
 
 ```sh
 dmtool model diff before.dm.json after.dm.json
 dmtool -m order.dm.json model diff --since HEAD
 ```
 
-A computation operation changing from `Price × Quantity` to `Price + Quantity` is reported as a first-class `COMPUTATION` modification with the operation before/after and `COMPUTATION_CHANGED` (MEDIUM). Rule polarity inversions are `POLARITY_INVERTED` (HIGH), while message-only changes remain LOW. The JSON shape is self-described by `dmtool schema model diff`; `--text` gives the risk-sorted human view.
+A group diff covers repeatability, index/sort declarations, mount alias/options, metadata, and mixed authored ordering; increasing a repetition cap is `CONSTRAINT_LOOSENED` (HIGH), while lowering it is `CONSTRAINT_TIGHTENED` (MEDIUM). A computation operation changing from `Price × Quantity` to `Price + Quantity` is a first-class `COMPUTATION_CHANGED` modification. Rule polarity inversions are `POLARITY_INVERTED` (HIGH), while message-only changes remain LOW. The JSON shape is self-described by `dmtool schema model diff`; `--text` gives the risk-sorted human view.
 
 ### From a JSON Schema or OpenAPI document
 

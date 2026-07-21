@@ -131,7 +131,7 @@ fields 15 · groups 4 · rules 3 · computations 0 · repeatable 1
 
 ## model diff — review what changed
 
-When an agent edits a model on your behalf, raw JSON diffs are unreadable. `model diff <base> <head>` compares two model files **structurally** (it parses both into the model, so a pure reformat is never reported) and reports field, rule, and computation changes with a **risk** tier. Risk follows *loosening > tightening*: a removed or loosened rule silently accepts bad data (HIGH), while a tightened or added one fails loudly (MEDIUM). Projected here to the headline plus the high-risk changes.
+When an agent edits a model on your behalf, raw JSON diffs are unreadable. `model diff <base> <head>` compares two model files **structurally** (it parses both into the model, so a pure reformat is never reported) and reports field, group, rule, and computation changes with a **risk** tier. Risk follows *loosening > tightening*: a removed or loosened constraint silently accepts more data (HIGH), while a tightened or added one fails loudly (MEDIUM). Projected here to the headline plus the high-risk changes.
 
 ```bash
 dmtool model diff examples/models/order-ruled.dm.json examples/models/order.dm.json \
@@ -210,6 +210,37 @@ dmtool model diff examples/models/subscription-computed.dm.json /tmp/review-comp
 ```
 
 → The changed operation is explicit and `COMPUTATION_CHANGED` is MEDIUM. A message-only edit is LOW `MESSAGE_CHANGED`; it cannot hide a functional computation change.
+
+### Group constraints and authored order are semantic
+
+Groups carry behavior and review-relevant authoring state of their own: repeatability, index and ordered sort fields, include mount options, labels/descriptions/annotations, and position among every sibling kind. Child additions/removals remain their own element changes rather than producing a duplicate `children` delta on the parent. Here the `Items` repetition cap increases from 50 to 75, widening what the model accepts:
+
+```bash
+cp examples/models/order.dm.json /tmp/review-group.dm.json
+dmtool -m /tmp/review-group.dm.json group modify /Order/Items --repeatable 75 >/dev/null
+dmtool model diff examples/models/order.dm.json /tmp/review-group.dm.json \
+  | jq '.data.changes | map(select(.element=="GROUP")) | map({id, risk, riskReasons, repeatability: (.deltas[] | select(.aspect=="repeatability"))})'
+```
+
+```output
+[
+  {
+    "id": "/Order/Items",
+    "risk": "HIGH",
+    "riskReasons": [
+      "REPEATABILITY_CHANGED",
+      "CONSTRAINT_LOOSENED"
+    ],
+    "repeatability": {
+      "aspect": "repeatability",
+      "before": "50",
+      "after": "75"
+    }
+  }
+]
+```
+
+→ The exact cap change is visible and HIGH `CONSTRAINT_LOOSENED`; decreasing it is MEDIUM `CONSTRAINT_TIGHTENED`. Reordering is computed over one mixed authored sequence, so moving a group relative to a field is reported as `REORDERED`/`POSITION_CHANGED`, while inserting or removing a sibling never fabricates a reorder.
 
 ### A silent polarity flip — the most dangerous edit
 

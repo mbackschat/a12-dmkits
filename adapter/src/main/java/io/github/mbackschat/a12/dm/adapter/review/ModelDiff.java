@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.review;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -11,6 +12,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -28,12 +30,13 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
  *
  * <p>An element's state is an ordered <i>aspect map</i> of
  * format-independent values (kernel-canonical condition text + severity + code for a rule; kind + per-kind
- * config for a field), so a pure reformat is never a change. Risk follows the <b>loosening &gt; tightening</b>
+ * config for a field; authored properties for a group), so a pure reformat is never a change. Risk follows the <b>loosening &gt; tightening</b>
  * asymmetry (a removed/loosened rule silently accepts bad data) — a subset of the SPEC §5b taxonomy.
  * A changed rule condition is further refined from the two typed ASTs ({@link ConditionPolarity}): a
  * provable structural flip is {@code POLARITY_INVERTED} (HIGH), otherwise the honest {@code CONDITION_CHANGED}.
- * A pure element <b>reorder</b> within a parent is flagged {@code REORDERED} ({@code POSITION_CHANGED}, LOW —
- * display-order is semantic, §2b), minimal and conservative so an index shift never invents a move. A
+ * A pure element <b>reorder</b> within a parent's mixed authored family sequence is flagged {@code REORDERED}
+ * ({@code POSITION_CHANGED}, LOW — display-order is semantic, §2b), minimal and conservative so an index
+ * shift never invents a move. A
  * removed+added pair that is the same element relocated is re-labelled {@code RENAMED}/{@code MOVED} by a
  * two-layer matcher — an exact-fingerprint fast path, then a mutual-best similarity matcher that survives a
  * rename+edit (§5) — always conservative (unsure ⇒ remove+add). A reference-rewriting refactor is folded
@@ -44,7 +47,7 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         Map<String, ConditionEditScript> conditionEdits) {
 
     /** The element families currently projected into the structural diff. */
-    public enum ElementKind { FIELD, RULE, COMPUTATION }
+    public enum ElementKind { FIELD, GROUP, RULE, COMPUTATION }
 
     /** Whether a relocation kept its parent (a {@code RENAME}) or its leaf name (a {@code MOVE}). */
     public enum RefactorKind { RENAME, MOVE }
@@ -99,17 +102,19 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         Map<String, Map<String, String>> baseFields = fieldAspects(base);
         Map<String, Map<String, String>> headFields = fieldAspects(head);
         match(ElementKind.FIELD, baseFields, headFields, ModelDiff::fieldReasons, changes);
-        detectReorders(ElementKind.FIELD, baseFields.keySet(), headFields.keySet(), changes);
+        Map<String, Map<String, String>> baseGroups = GroupDiffProjector.project(baseState);
+        Map<String, Map<String, String>> headGroups = GroupDiffProjector.project(headState);
+        match(ElementKind.GROUP, baseGroups, headGroups,
+                (change, id, deltas) -> GroupDiffProjector.reasons(change, deltas), changes);
         Map<String, Map<String, String>> baseRuleAspects = ruleAspects(baseRules);
         Map<String, Map<String, String>> headRuleAspects = ruleAspects(headRules);
         match(ElementKind.RULE, baseRuleAspects, headRuleAspects,
                 (change, id, deltas) -> ruleReasons(change, id, deltas, baseRules, headRules), changes);
-        detectReorders(ElementKind.RULE, baseRuleAspects.keySet(), headRuleAspects.keySet(), changes);
         Map<String, Map<String, String>> baseComputations = ComputationDiffProjector.project(baseState);
         Map<String, Map<String, String>> headComputations = ComputationDiffProjector.project(headState);
         match(ElementKind.COMPUTATION, baseComputations, headComputations,
                 (change, id, deltas) -> ComputationDiffProjector.reasons(change, deltas), changes);
-        detectReorders(ElementKind.COMPUTATION, baseComputations.keySet(), headComputations.keySet(), changes);
+        detectReorders(authoredOrder(baseState.authored()), authoredOrder(headState.authored()), changes);
         pairRenames(changes, baseRules, headRules);
         pairSimilar(changes, baseRules, headRules);
         return new ModelDiff(List.copyOf(changes), groupRefactors(changes, baseRules, headRules),
@@ -176,31 +181,50 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
      * parent) is flagged, so an add/remove that merely shifts absolute indices never invents a reorder. An
      * element that also changed content folds the position into its existing change (never double-listed).
      */
-    private static void detectReorders(ElementKind kind, Set<String> baseKeys, Set<String> headKeys,
+    private static void detectReorders(List<ElementPosition> baseOrder, List<ElementPosition> headOrder,
             List<ElementChange> out) {
-        Map<String, List<String>> baseByParent = commonByParent(baseKeys, headKeys);
-        Map<String, List<String>> headByParent = commonByParent(headKeys, baseKeys);
-        for (Map.Entry<String, List<String>> e : baseByParent.entrySet()) {
-            List<String> baseSeq = e.getValue();
-            List<String> headSeq = headByParent.get(e.getKey());
+        Map<String, List<ElementPosition>> baseByParent = commonByParent(baseOrder, headOrder);
+        Map<String, List<ElementPosition>> headByParent = commonByParent(headOrder, baseOrder);
+        for (Map.Entry<String, List<ElementPosition>> e : baseByParent.entrySet()) {
+            List<ElementPosition> baseSeq = e.getValue();
+            List<ElementPosition> headSeq = headByParent.get(e.getKey());
             if (baseSeq.size() < 2 || baseSeq.equals(headSeq)) {
                 continue; // nothing common to reorder, or the order is unchanged
             }
-            Set<String> anchored = longestCommonSubsequence(baseSeq, headSeq);
-            for (String id : baseSeq) {
-                if (!anchored.contains(id)) {
-                    recordReorder(kind, id, ordinal(baseSeq, id), ordinal(headSeq, id), out);
+            Set<ElementPosition> anchored = longestCommonSubsequence(baseSeq, headSeq);
+            Map<ElementPosition, String> baseOrdinals = ordinals(baseSeq);
+            Map<ElementPosition, String> headOrdinals = ordinals(headSeq);
+            for (ElementPosition element : baseSeq) {
+                if (!anchored.contains(element)) {
+                    recordReorder(element.kind(), element.id(), baseOrdinals.get(element),
+                            headOrdinals.get(element), out);
                 }
             }
         }
     }
 
-    /** The ids present in BOTH sides, grouped by parent scope, in {@code primary}'s order (deterministic). */
-    private static Map<String, List<String>> commonByParent(Set<String> primary, Set<String> other) {
-        Map<String, List<String>> byParent = new LinkedHashMap<>();
-        for (String id : primary) {
-            if (other.contains(id)) {
-                byParent.computeIfAbsent(parentOf(id), k -> new ArrayList<>()).add(id);
+    private record ElementPosition(ElementKind kind, String id) {}
+
+    /** Every authored element family in one document-order sequence. */
+    private static List<ElementPosition> authoredOrder(ModelDocument.AuthoredState state) {
+        return state.elements().stream()
+                .map(element -> new ElementPosition(switch (element.type()) {
+                    case FIELD -> ElementKind.FIELD;
+                    case GROUP -> ElementKind.GROUP;
+                    case RULE -> ElementKind.RULE;
+                    case COMPUTATION -> ElementKind.COMPUTATION;
+                }, element.path()))
+                .toList();
+    }
+
+    /** The elements present in BOTH sides, grouped by parent scope, in the primary side's order. */
+    private static Map<String, List<ElementPosition>> commonByParent(
+            List<ElementPosition> primary, List<ElementPosition> other) {
+        Set<ElementPosition> otherElements = Set.copyOf(other);
+        Map<String, List<ElementPosition>> byParent = new LinkedHashMap<>();
+        for (ElementPosition element : primary) {
+            if (otherElements.contains(element)) {
+                byParent.computeIfAbsent(parentOf(element.id()), key -> new ArrayList<>()).add(element);
             }
         }
         return byParent;
@@ -212,42 +236,54 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         return slash <= 0 ? "" : path.substring(0, slash);
     }
 
-    /** The element's 1-based position among its common siblings, as a string (for the {@code position} delta). */
-    private static String ordinal(List<String> siblings, String id) {
-        return Integer.toString(siblings.indexOf(id) + 1);
+    /** Each common sibling's 1-based position, computed once for the parent. */
+    private static Map<ElementPosition, String> ordinals(List<ElementPosition> siblings) {
+        Map<ElementPosition, String> positions = new LinkedHashMap<>();
+        for (int i = 0; i < siblings.size(); i++) {
+            positions.put(siblings.get(i), Integer.toString(i + 1));
+        }
+        return positions;
     }
 
     /**
      * The set of ids kept in place by a longest common subsequence of the two sibling orders — the anchors.
      * Both sequences are permutations of the same set here, so the complement is the minimal move set.
-     * Deterministic backtrack (prefer advancing {@code a} on ties), so the flagged element is stable.
+     * Map the head order to integer positions, then find the longest increasing subsequence in the base order:
+     * equivalent for unique elements, but O(n log n) time and O(n) memory instead of a quadratic DP table.
+     * Replacing a same-length tail keeps the result deterministic and preserves the established swap choice.
      */
-    private static Set<String> longestCommonSubsequence(List<String> a, List<String> b) {
-        int n = a.size();
-        int m = b.size();
-        int[][] dp = new int[n + 1][m + 1];
-        for (int i = n - 1; i >= 0; i--) {
-            for (int j = m - 1; j >= 0; j--) {
-                dp[i][j] = a.get(i).equals(b.get(j))
-                        ? 1 + dp[i + 1][j + 1]
-                        : Math.max(dp[i + 1][j], dp[i][j + 1]);
-            }
+    private static <T> Set<T> longestCommonSubsequence(List<T> a, List<T> b) {
+        Map<T, Integer> headPositions = new LinkedHashMap<>();
+        for (int i = 0; i < b.size(); i++) {
+            headPositions.put(b.get(i), i);
         }
-        Set<String> lcs = new LinkedHashSet<>();
-        int i = 0;
-        int j = 0;
-        while (i < n && j < m) {
-            if (a.get(i).equals(b.get(j))) {
-                lcs.add(a.get(i));
-                i++;
-                j++;
-            } else if (dp[i + 1][j] >= dp[i][j + 1]) {
-                i++;
-            } else {
-                j++;
+
+        int[] tails = new int[a.size()];
+        int[] previous = new int[a.size()];
+        Arrays.fill(previous, -1);
+        int length = 0;
+        for (int i = 0; i < a.size(); i++) {
+            int headPosition = headPositions.get(a.get(i));
+            int low = 0;
+            int high = length;
+            while (low < high) {
+                int middle = (low + high) >>> 1;
+                if (headPositions.get(a.get(tails[middle])) < headPosition) {
+                    low = middle + 1;
+                } else {
+                    high = middle;
+                }
             }
+            previous[i] = low == 0 ? -1 : tails[low - 1];
+            tails[low] = i;
+            length = Math.max(length, low + 1);
         }
-        return lcs;
+
+        Set<T> anchors = new LinkedHashSet<>();
+        for (int i = tails[length - 1]; i >= 0; i = previous[i]) {
+            anchors.add(a.get(i));
+        }
+        return anchors;
     }
 
     /** Fold the position into an existing change for {@code id}, else add a standalone {@code REORDERED}. */
@@ -384,6 +420,9 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         }
         if (element == ElementKind.COMPUTATION) {
             return ComputationDiffProjector.modifiedReason(d);
+        }
+        if (element == ElementKind.GROUP) {
+            return GroupDiffProjector.modifiedReason(d);
         }
         return modifiedReason(d);
     }
@@ -617,7 +656,7 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         return switch (element) {
             case RULE -> refsOf(adapter, name);
             case COMPUTATION -> ComputationDiffProjector.references(adapter.readComputation(name));
-            case FIELD -> Set.of();
+            case FIELD, GROUP -> Set.of();
         };
     }
 
@@ -739,7 +778,7 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
             case "RULE_ADDED", "CONDITION_CHANGED", "CONDITION_RESTRUCTURED", "REFERENCE_CHANGED",
                     "OPERATOR_CHANGED", "THRESHOLD_CHANGED", "CONSTRAINT_TIGHTENED", "STRUCTURE_ADDED",
                     "STRUCTURE_REMOVED", "PATTERN_CHANGED", "SEVERITY_CHANGED", "SCALE_CHANGED",
-                    "ELEMENT_MOVED", "COMPUTATION_CHANGED" -> Risk.MEDIUM;
+                    "ELEMENT_MOVED", "COMPUTATION_CHANGED", "GROUP_CHANGED", "REPEATABILITY_CHANGED" -> Risk.MEDIUM;
             // POSITION_CHANGED (a reorder) / ELEMENT_RENAMED are content-preserving, not a loosening → LOW
             default -> Risk.LOW;
         };

@@ -5,6 +5,7 @@ import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -292,6 +293,42 @@ public final class ModelDocument {
     }
 
     // --- the element tree (name-path addressed) -------------------------------------------------
+
+    /**
+     * One immutable, authored-source snapshot for consumers that need both element order and group state.
+     * It is collected in a single tree walk: callers do not need to call the path-addressed group getters
+     * repeatedly (which would re-scan the tree for every property of every group).
+     */
+    public AuthoredState authoredState() {
+        return AuthoredStateReader.read(root);
+    }
+
+    /** The authored element sequence and group lookup, both in document order. */
+    public record AuthoredState(List<AuthoredElement> elements, Map<String, GroupState> groups) {
+        public AuthoredState {
+            elements = List.copyOf(elements);
+            groups = java.util.Collections.unmodifiableMap(new LinkedHashMap<>(groups));
+        }
+    }
+
+    /** An authored field/group/rule/computation at its name-path, used for mixed-family ordering. */
+    public record AuthoredElement(ElementType type, String path) {}
+
+    /** A group's own authored properties; child structure stays represented by the child elements themselves. */
+    public record GroupState(String path, GroupStructure structure, GroupMeta meta) {}
+
+    /** A group's structural properties, excluding its children. */
+    public record GroupStructure(int repeatability, Optional<String> indexField,
+            List<ElementDraft.SortField> sortFields, Optional<MountState> mount) {
+        public GroupStructure {
+            indexField = indexField == null ? Optional.empty() : indexField;
+            sortFields = sortFields == null ? List.of() : List.copyOf(sortFields);
+            mount = mount == null ? Optional.empty() : mount;
+        }
+    }
+
+    /** An include mount's alias and complete option set. */
+    public record MountState(String alias, MountOptions options) {}
 
     /** Every group's name-path (root groups + nested), in document order. */
     public List<String> groupPaths() {

@@ -1163,7 +1163,23 @@ for (ModelDiff.ElementChange change : diff.changes()) {
 }
 ```
 
-Fields, rules, and computations are currently first-class element families. Computation aspects include the computed target, common precondition, ordered alternative preconditions/operations/tolerances, suppressions, localized messages, and verbatim stored DSL for an opaque computation. A functional computation edit is `COMPUTATION_CHANGED` (MEDIUM); a message-only edit is `MESSAGE_CHANGED` (LOW). Reference-rewriting renames/moves are also returned as `refactors()`, with both rule and computation readers attributed. For includes-bearing models, pass the same kernel-free `ModelResolver` used to bind the workspace: `ModelDiff.between(beforeJson, afterJson, resolver)`. A web service can serialize these records into its own transport contract without invoking the CLI. *Test-backed: `adapter.review.ModelDiffComputationTest`, the existing `ModelDiff*Test` family, and `cli.DiffTextComputationTest`; executable example: [`examples/cli-review.md`](../examples/cli-review.md).*
+Fields, groups, rules, and computations are currently first-class element families. Group aspects include repeatability, index and ordered sort fields, mount alias/options, and metadata; child additions/removals are reported as their actual elements instead of a duplicate `children` summary. Reordering uses one authored mixed sequence, so a group moving relative to a field is visible. A higher repetition cap is `CONSTRAINT_LOOSENED` (HIGH), while a lower cap is `CONSTRAINT_TIGHTENED` (MEDIUM). Computation aspects include the computed target, common precondition, ordered alternative preconditions/operations/tolerances, suppressions, localized messages, and verbatim stored DSL for an opaque computation. A functional computation edit is `COMPUTATION_CHANGED` (MEDIUM); a message-only edit is `MESSAGE_CHANGED` (LOW). Reference-rewriting renames/moves are also returned as `refactors()`, with both rule and computation readers attributed. For includes-bearing models, pass the same kernel-free `ModelResolver` used to bind the workspace: `ModelDiff.between(beforeJson, afterJson, resolver)`. A web service can serialize these records into its own transport contract without invoking the CLI. *Test-backed: `adapter.review.ModelDiffComputationTest`, `adapter.review.ModelDiffGroupTest`, the existing `ModelDiff*Test` family, and the CLI diff tests; executable example: [`examples/cli-review.md`](../examples/cli-review.md).*
+
+### 5d.2 Read authored order and group state once (`ModelDocument`)
+
+Consumers building structural tools should not call every path-addressed group getter for every group: each lookup walks the authored tree. `authoredState()` exposes one immutable snapshot collected in a single pass, with the mixed field/group/rule/computation order plus a group lookup containing its own properties (not its children):
+
+<!-- snippet: authored-state -->
+```java
+ModelDocument.AuthoredState authored = ModelDocument.read(json).authoredState();
+authored.elements().forEach(element ->
+        System.out.println(element.type() + " " + element.path()));
+
+ModelDocument.GroupState group = authored.groups().get("/Order/Lines");
+System.out.println(group.structure().repeatability());
+```
+
+The snapshot is kernel-free and reads the authored source rather than an expanded include tree. A mount group carries a typed `MountState` with `MountOptions`; mounted children remain owned by the referenced model. *Test-backed: `ModelDocumentAuthoredStateTest`; consumed by `ModelDiffGroupTest` and the profile-shaped diff performance canary.*
 
 ## 5e. Run rules against data — does it actually fire? (runtime evaluation)
 

@@ -470,6 +470,7 @@ public final class io.github.mbackschat.a12.dm.modelkit.ModelDocument
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument addTypedefField(java.lang.String, java.lang.String, java.lang.String)
   public java.util.Map<java.lang.String, java.lang.String> annotations(java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument applyModification(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldModification)
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument.AuthoredState authoredState()
   public java.util.Optional<java.lang.Integer> baseYear()
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument clearIndexField(java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument clearModelComment()
@@ -580,6 +581,22 @@ public final class io.github.mbackschat.a12.dm.modelkit.ModelDocument
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument validate()
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument validate(io.github.mbackschat.a12.dm.core.ModelResolver)
 
+public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.AuthoredElement
+  public AuthoredElement(io.github.mbackschat.a12.dm.core.ElementType, java.lang.String)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String path()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.core.ElementType type()
+
+public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.AuthoredState
+  public AuthoredState(java.util.List<io.github.mbackschat.a12.dm.modelkit.ModelDocument.AuthoredElement>, java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.modelkit.ModelDocument.GroupState>)
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.ModelDocument.AuthoredElement> elements()
+  public final boolean equals(java.lang.Object)
+  public java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.modelkit.ModelDocument.GroupState> groups()
+  public final int hashCode()
+  public final java.lang.String toString()
+
 public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.DocConfig
   public DocConfig(java.lang.String, java.lang.String, java.lang.String, boolean, java.util.List<java.lang.String>)
   public java.lang.String conditionLanguage()
@@ -591,12 +608,39 @@ public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.DocConfi
   public java.lang.String timeZone()
   public final java.lang.String toString()
 
+public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.GroupState
+  public GroupState(java.lang.String, io.github.mbackschat.a12.dm.modelkit.ModelDocument.GroupStructure, io.github.mbackschat.a12.dm.modelkit.GroupMeta)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.modelkit.GroupMeta meta()
+  public java.lang.String path()
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument.GroupStructure structure()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.GroupStructure
+  public GroupStructure(int, java.util.Optional<java.lang.String>, java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.SortField>, java.util.Optional<io.github.mbackschat.a12.dm.modelkit.ModelDocument.MountState>)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.util.Optional<java.lang.String> indexField()
+  public java.util.Optional<io.github.mbackschat.a12.dm.modelkit.ModelDocument.MountState> mount()
+  public int repeatability()
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.SortField> sortFields()
+  public final java.lang.String toString()
+
 public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.Include
   public Include(java.lang.String, java.lang.String)
   public java.lang.String alias()
   public final boolean equals(java.lang.Object)
   public final int hashCode()
   public java.lang.String reference()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.MountState
+  public MountState(java.lang.String, io.github.mbackschat.a12.dm.modelkit.MountOptions)
+  public java.lang.String alias()
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public io.github.mbackschat.a12.dm.modelkit.MountOptions options()
   public final java.lang.String toString()
 
 public final class io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract

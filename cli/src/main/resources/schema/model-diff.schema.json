@@ -2,14 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/model-diff.schema.json",
   "title": "ModelDiff",
-  "description": "The `data` payload of `dmtool model diff <baseFile> <headFile>` (MODEL-REVIEW-SPEC §5) — a STRUCTURAL diff of two models: it parses both into the model and compares structure, so a pure reformat is never reported. `changes` lists every projected field, rule, and computation change with its per-aspect `deltas`. For an ADDED element a delta carries only `after`; for REMOVED, only `before`; for MODIFIED/REORDERED, both. Element ids are field paths or rule/computation full names.",
+  "description": "The `data` payload of `dmtool model diff <baseFile> <headFile>` (MODEL-REVIEW-SPEC §5) — a STRUCTURAL diff of two models: it parses both into the model and compares structure, so a pure reformat is never reported. `changes` lists every projected field, group, rule, and computation change with its per-aspect `deltas`. Group aspects cover repeatability, index/sort declarations, mount alias/options, and metadata; child structure is reported as the actual child element changes, never duplicated as a group `children` delta. For an ADDED element a delta carries only `after`; for REMOVED, only `before`; for MODIFIED/REORDERED, both. Element ids are paths/full names.",
   "type": "object",
   "additionalProperties": false,
   "required": ["changes", "refactors"],
   "properties": {
     "changes": {
       "type": "array",
-      "description": "the element-level changes (fields, rules, and computations added/removed/modified/reordered/renamed/moved) — base order, then head-only additions",
+      "description": "the element-level changes (fields, groups, rules, and computations added/removed/modified/reordered/renamed/moved) — base order, then head-only additions",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -17,12 +17,12 @@
         "properties": {
           "element": {
             "type": "string",
-            "enum": ["FIELD", "RULE", "COMPUTATION"],
-            "description": "the element family that changed (groups and model-level declarations are later MR9 slices)"
+            "enum": ["FIELD", "GROUP", "RULE", "COMPUTATION"],
+            "description": "the element family that changed (model-level declarations are later MR9 slices)"
           },
           "id": {
             "type": "string",
-            "description": "the element's path (field) or full name (rule/computation)"
+            "description": "the element's path/full name"
           },
           "change": {
             "type": "string",
@@ -32,11 +32,11 @@
           "risk": {
             "type": "string",
             "enum": ["HIGH", "MEDIUM", "LOW"],
-            "description": "the change's risk tier (the max over its reasons; loosening > tightening, since a loosened/removed rule silently accepts bad data)"
+            "description": "the change's review-impact tier under MODEL-REVIEW-SPEC §5b (the max over its reasons; loosening > tightening because a loosened/removed constraint can silently admit data that was previously rejected). This is consequence/triage severity, not probability or diff uncertainty."
           },
           "riskReasons": {
             "type": "array",
-            "description": "the risk reason codes — a subset of the SPEC §5b taxonomy. HIGH (silently accepts bad data): RULE_REMOVED, POLARITY_INVERTED, KIND_CHANGED, SEVERITY_DOWNGRADED, CONSTRAINT_LOOSENED. MEDIUM (fails loudly / undetermined direction): RULE_ADDED, COMPUTATION_CHANGED, CONSTRAINT_TIGHTENED, STRUCTURE_ADDED/REMOVED, PATTERN_CHANGED, SEVERITY_CHANGED, SCALE_CHANGED, CONDITION_RESTRUCTURED, REFERENCE_CHANGED, OPERATOR_CHANGED, THRESHOLD_CHANGED, CONDITION_CHANGED, ELEMENT_MOVED. LOW: MESSAGE_CHANGED, CODE_CHANGED, METADATA_CHANGED, POSITION_CHANGED, ELEMENT_RENAMED.",
+            "description": "the risk reason codes — a subset of the SPEC §5b taxonomy. HIGH (silently accepts bad data): RULE_REMOVED, POLARITY_INVERTED, KIND_CHANGED, SEVERITY_DOWNGRADED, CONSTRAINT_LOOSENED. MEDIUM (fails loudly / undetermined direction): RULE_ADDED, COMPUTATION_CHANGED, GROUP_CHANGED, REPEATABILITY_CHANGED, CONSTRAINT_TIGHTENED, STRUCTURE_ADDED/REMOVED, PATTERN_CHANGED, SEVERITY_CHANGED, SCALE_CHANGED, CONDITION_RESTRUCTURED, REFERENCE_CHANGED, OPERATOR_CHANGED, THRESHOLD_CHANGED, CONDITION_CHANGED, ELEMENT_MOVED. LOW: MESSAGE_CHANGED, CODE_CHANGED, METADATA_CHANGED, POSITION_CHANGED, ELEMENT_RENAMED.",
             "uniqueItems": true,
             "items": { "type": "string" }
           },

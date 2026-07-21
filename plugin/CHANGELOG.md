@@ -26,6 +26,7 @@ The built-in evaluation engine reaches full kernel parity on real-world corpora 
 
 ### Fixed
 
+- `model diff` now reports group additions/removals and changes to repeatability, index/sort declarations, mount alias/options, and metadata. Reordering is compared across the mixed authored field/group/rule/computation sequence, so a group moving relative to a field no longer produces a false “no change.”
 - `model diff` now reports computation additions, removals, and changes to targets, preconditions, ordered operations, tolerances, suppressions, messages, and opaque stored DSL; these edits previously produced a false “no change.” Computations also participate in reference-rewriting refactor grouping.
 - **The built-in evaluation engine (`rule eval` / `model eval`) now matches the A12 kernel bit-for-bit on two real-world corpora** — a 107-model industry workspace set and the kernel's 15 canonical metamodels — at **zero divergences in both benign and hostile value seeding**, closing a ~45-finding semantics campaign (computation cascades, semantic-index reads, Having-filtered quantifiers, date/number edge semantics, polarity of fired comparisons over invalid values, and more). A quadratic blow-up on indexed validation of large repetition lists was also removed.
 - Read/query verbs (`rule explain`/`format`, `computation explain`/`format`, `include read`, and `rule eval`/`model eval` on an unknown rule) now return a **structured, coded refusal** on a missing target instead of a bare error line.

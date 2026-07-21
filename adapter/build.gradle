@@ -405,7 +405,7 @@ tasks.register('profileSynthesisPerfTest', Test) {
 }
 
 tasks.register('profileCliPerfTest', Test) {
-    description = 'Run the opt-in profile-shaped model describe/report JVM-process catastrophe canary.'
+    description = 'Run the opt-in profile-shaped model describe/report/diff JVM-process catastrophe canary.'
     group = 'measurement'
     dependsOn ':cli:installDist', 'profileFixtureGuardTest'
     testClassesDirs = sourceSets.test.output.classesDirs
