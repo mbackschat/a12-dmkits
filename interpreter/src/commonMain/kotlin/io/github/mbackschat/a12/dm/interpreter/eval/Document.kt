@@ -105,7 +105,8 @@ class Document(internal val config: DocumentConfig) {
     /** Group `(path, reps)` already instantiated — O(1) dedup for [autoGroup] (avoids an O(P²) build scan). */
     private val instantiatedGroups = HashSet<Pair<String, List<Int>>>()
 
-    /** A field with a value at the given 1-based indices (one per path part, the field included). */
+    /** A field at the given 1-based indices (one per path part, the field included). An empty string
+     *  materializes the cell but carries no evaluation value, matching the kernel's `valueExists` boundary. */
     fun field(path: String, value: String, vararg reps: Int): Document = add(path, reps, value, false)
 
     /** A present-but-valueless (unfilled) field. */
@@ -120,7 +121,8 @@ class Document(internal val config: DocumentConfig) {
             if (instantiatedGroups.add(path to r)) placements += Placement(path, r, value, true)
         } else {
             ancestorGroups(path).forEachIndexed { i, g -> autoGroup(g, r.take(i + 1)) }
-            placements += Placement(path, r, value, false)
+            val evaluationValue = if (value.isNullOrEmpty()) null else value
+            placements += Placement(path, r, evaluationValue, false, raw = value)
         }
         invalidateDerivedCaches()   // every mutation clears ALL document-derived caches (IF142)
         return this
