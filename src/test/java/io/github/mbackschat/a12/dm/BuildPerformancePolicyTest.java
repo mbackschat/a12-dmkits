@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -48,6 +49,16 @@ class BuildPerformancePolicyTest {
                 "a linked worktree must resolve the primary checkout instead of using its own filesystem parent");
         assertTrue(script.contains("COMMON_CHECKOUT"),
                 "the isolated Gradle home must be anchored at the common checkout shared by every worktree");
+    }
+
+    @Test
+    void demoVerifierDelegatesItsBuildToTheWorktreeSafeWrapper() throws IOException {
+        String script = Files.readString(locate("scripts/verify-demos.sh"));
+
+        assertTrue(script.contains("./build.sh --no-daemon :cli:installDist"),
+                "build-driving scripts must reuse build.sh's common-directory-aware Gradle home");
+        assertFalse(script.contains("export GRADLE_USER_HOME"),
+                "the demo verifier must not derive a second Gradle home from a linked worktree's parent");
     }
 
     private static Properties buildProperties() throws IOException {

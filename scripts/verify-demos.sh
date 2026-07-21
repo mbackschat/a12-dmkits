@@ -36,13 +36,11 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 
-# JDK 21 + the isolated, public-repos-only Gradle home (same as ./build.sh) so the build can't be
-# contaminated by the machine's global init.d.
-export JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home -v 21)}"
-export GRADLE_USER_HOME="${GRADLE_USER_HOME:-$(cd .. && pwd)/.gradle-isolated}"
-
 echo "==> building the JVM CLI launcher (installDist — always current; native is never used here)"
-./gradlew --no-daemon :cli:installDist
+# Delegate the environment policy to the one worktree-safe source of truth. Re-deriving GRADLE_USER_HOME
+# from `cd ..` is wrong for a linked worktree under /private/tmp: it creates a second cache beside the
+# worktree instead of the common checkout's sibling cache, and concurrent worktrees can corrupt it.
+./build.sh --no-daemon :cli:installDist
 
 # the demos call the bare `dmtool`; the repo shim resolves it to the freshly-built installDist launcher
 # (RK_NATIVE is deliberately unset, so a stale native image can't shadow this build)
