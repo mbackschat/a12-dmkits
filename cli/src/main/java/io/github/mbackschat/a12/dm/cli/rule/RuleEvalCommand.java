@@ -40,7 +40,8 @@ import picocli.CommandLine.Parameters;
  */
 @Command(name = "eval", mixinStandardHelpOptions = true,
         description = "Evaluate ONE rule against a document INSTANCE: fired / passed / suppressed (runtime "
-                + "polarity; applies computations first by default, like model eval).")
+                + "polarity; applies computations first by default, like model eval). For the whole model's "
+                + "fired-set — or one rule within that report — use `model eval` (with --rule).")
 final class RuleEvalCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.RULE_PATH)

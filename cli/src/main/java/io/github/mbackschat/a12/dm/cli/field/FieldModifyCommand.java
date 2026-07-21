@@ -46,7 +46,8 @@ import picocli.CommandLine.Parameters;
  */
 @Command(name = "modify", mixinStandardHelpOptions = true,
         description = "Change a field in place via a <spec.json> — re-type (kind + config) and/or edit metadata "
-                + "(required/label/helperText/…); partial, no delete-and-recreate; -o redirects, --dry-run previews.")
+                + "(required/label/helperText/…); partial, no delete-and-recreate; -o redirects, --dry-run previews. "
+                + "A KIND change warns which rules/computations read the field.")
 final class FieldModifyCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

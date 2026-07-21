@@ -52,7 +52,8 @@ final class ModelEvalCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.RULE_PATH)
     @Option(names = "--rule", paramLabel = "<rulePathInModel>",
-            description = "narrow the report to an EXISTING rule (its full slash-path)")
+            description = "narrow the report to an EXISTING rule (its full slash-path); for a single rule's "
+                    + "fired/passed/suppressed verdict, `rule eval` is the focused verb")
     String ruleId;
 
     @Option(names = "--condition", paramLabel = "<DSL>",
