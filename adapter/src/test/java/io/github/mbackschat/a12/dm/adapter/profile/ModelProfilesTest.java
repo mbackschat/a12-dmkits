@@ -14,12 +14,15 @@ class ModelProfilesTest {
 
     @Test
     void extractsAnIdentifierFreeProfileThroughThePublicStringBoundary() {
-        String json = ModelProfiles.extract(model("survey", "Survey", "ParticipantName"));
-        var profile = ModelProfileJson.read(json);
+        String modelJson = model("survey", "Survey", "ParticipantName");
+        // tag::profile-extract[]
+        String profileJson = ModelProfiles.extract(modelJson);
+        // end::profile-extract[]
+        var profile = ModelProfileJson.read(profileJson);
 
         assertEquals(1, profile.structure().fieldCount());
-        assertFalse(json.contains("Survey"));
-        assertFalse(json.contains("ParticipantName"));
+        assertFalse(profileJson.contains("Survey"));
+        assertFalse(profileJson.contains("ParticipantName"));
     }
 
     @Test

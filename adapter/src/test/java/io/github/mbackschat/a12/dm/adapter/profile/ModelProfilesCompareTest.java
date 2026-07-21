@@ -18,11 +18,15 @@ class ModelProfilesCompareTest {
 
     @Test
     void reportsEveryAxisForEqualBareAndEnvelopeProfiles() throws Exception {
-        String profile = ModelProfiles.extract(simpleModel());
+        String targetProfileJson = ModelProfiles.extract(simpleModel());
         ObjectNode envelope = JSON.createObjectNode();
-        envelope.set("data", JSON.readTree(profile));
+        envelope.set("data", JSON.readTree(targetProfileJson));
+        String actualProfileJson = envelope.toString();
 
-        JsonNode result = JSON.readTree(ModelProfiles.compare(profile, envelope.toString()));
+        // tag::profile-compare[]
+        String comparisonJson = ModelProfiles.compare(targetProfileJson, actualProfileJson);
+        // end::profile-compare[]
+        JsonNode result = JSON.readTree(comparisonJson);
 
         assertTrue(result.path("matches").asBoolean());
         assertTrue(result.path("axes").size() > 1);
