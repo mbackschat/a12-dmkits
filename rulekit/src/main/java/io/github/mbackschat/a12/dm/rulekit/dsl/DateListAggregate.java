@@ -3,12 +3,14 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
- * A date-valued {@code MaxValue(…)} / {@code MinValue(…)} — the latest/earliest date over a flattened
- * repetition list of a date field. The kernel reuses the {@code MaxValue}/{@code MinValue} keywords for
- * the date variant (the numeric variant is {@link ListAggregate}); both ignore unspecified entries
- * (KERNEL-SEMANTICS §9). A {@link Calculation} of {@link ValueKind#DATE}, so wrapping it in a
- * {@link DateExpr} makes it a comparable {@link DateOperand}. Build via {@link Dsl#latestOf} /
- * {@link Dsl#earliestOf}.
+ * A <b>date-like</b> {@code MaxValue(…)} / {@code MinValue(…)} — the latest/earliest DATE, TIME, or DATETIME
+ * over a flattened repetition list of a date-like field. The kernel folds all three through one
+ * {@code DateCombiner} (KERNEL-FINDINGS §6), reusing the {@code MaxValue}/{@code MinValue} keywords (the numeric
+ * variant is {@link ListAggregate}); all ignore unspecified entries (KERNEL-SEMANTICS §9). A {@link Calculation}
+ * whose {@link #kind()} follows the {@code scope}'s kind, so wrapping it in the matching operand expression
+ * ({@link DateExpr} / {@link TimeExpr} / {@link DateTimeExpr}) makes it a comparable {@link TemporalOperand}.
+ * Build via {@link Dsl#latestOf}/{@link Dsl#earliestOf} (DATE), {@link Dsl#latestTimeOf}/{@link Dsl#earliestTimeOf}
+ * (TIME), or {@link Dsl#latestDateTimeOf}/{@link Dsl#earliestDateTimeOf} (DATETIME).
  */
 public record DateListAggregate(Mode mode, FieldListRef scope) implements Calculation {
 
@@ -29,15 +31,16 @@ public record DateListAggregate(Mode mode, FieldListRef scope) implements Calcul
     }
 
     public DateListAggregate {
-        if (scope.kind() != ValueKind.DATE) {
-            throw new IllegalArgumentException(mode.operatorId() + " over dates needs a date field list; "
-                    + scope.renderedPath() + " is " + scope.kind() + " (MVK_NOT_SORTABLE)");
+        ValueKind scopeKind = scope.kind();
+        if (scopeKind != ValueKind.DATE && scopeKind != ValueKind.TIME && scopeKind != ValueKind.DATE_TIME) {
+            throw new IllegalArgumentException(mode.operatorId() + " over date-like values needs a DATE, TIME, or"
+                    + " DATETIME field list; " + scope.renderedPath() + " is " + scopeKind + " (MVK_NOT_SORTABLE)");
         }
     }
 
     @Override
     public ValueKind kind() {
-        return ValueKind.DATE;
+        return scope.kind();
     }
 
     public String operatorId() {

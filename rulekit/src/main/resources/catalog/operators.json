@@ -1507,7 +1507,7 @@
   },
   {
     "id": "MaxValue",
-    "dslEntry": ["latestOf", "maxValue"],
+    "dslEntry": ["latestDateTimeOf", "latestOf", "latestTimeOf", "maxValue"],
     "kind": "function",
     "keywords": { "en": "MaxValue", "de": "MaxWert" },
     "operands": [ { "type": "number-field-list" } ],
@@ -1574,7 +1574,7 @@
   },
   {
     "id": "MinValue",
-    "dslEntry": ["earliestOf", "minValue"],
+    "dslEntry": ["earliestDateTimeOf", "earliestOf", "earliestTimeOf", "minValue"],
     "kind": "function",
     "keywords": { "en": "MinValue", "de": "MinWert" },
     "operands": [ { "type": "number-field-list" } ],

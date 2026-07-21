@@ -78,6 +78,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ValueListCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateFragmentRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateShift;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateLiteral;
@@ -693,6 +694,15 @@ final class ConditionConverter {
         ComparisonOperation op = comparison.getCmpOp();
         IOperation right = comparison.getOperation2();
         if (left instanceof IEntityListOperation aggregate) {
+            // a TIME/DATETIME extremum (MaxValue/MinValue over a temporal scope) compares as that kind — the
+            // kernel folds all three date-like kinds through one DateCombiner (SPEC-2026-07-21-07)
+            ValueKind extremumKind = temporalExtremumKind(aggregate);
+            if (extremumKind == ValueKind.TIME) {
+                return timeComparison(new TimeExpr(temporalListAggregate(aggregate)), op, right, comparison);
+            }
+            if (extremumKind == ValueKind.DATE_TIME) {
+                return dateTimeComparison(new DateTimeExpr(temporalListAggregate(aggregate)), op, right, comparison);
+            }
             // a date-valued aggregate (MaxValue/MinValue/FirstFilledValue over a DATE scope) compares as a date
             if (isDateValuedAggregate(aggregate)) {
                 return dateComparison(convertDateAggregate(aggregate), op, convertDateOperand(right, comparison),
@@ -1586,6 +1596,10 @@ final class ConditionConverter {
                 default -> throw unsupported("date-time point-in-time " + pit.getOperatorName(), origin);
             };
         }
+        // MaxValue/MinValue over a DATETIME repetition list → the latest/earliest instant
+        if (op instanceof IEntityListOperation aggregate && temporalExtremumKind(aggregate) == ValueKind.DATE_TIME) {
+            return new DateTimeExpr(temporalListAggregate(aggregate));
+        }
         throw unsupported("date-time operand " + op.getClass().getSimpleName(), origin);
     }
 
@@ -1759,6 +1773,10 @@ final class ConditionConverter {
                 && ext.getOperatorName() == DateExtractionOperationName.TimeFromDateTime) {
             return Dsl.timeFromDateTime(convertDateTimeOperand(ext.getDateSpec(), ext));
         }
+        // MaxValue/MinValue over a TIME repetition list → the latest/earliest time-of-day
+        if (op instanceof IEntityListOperation aggregate && temporalExtremumKind(aggregate) == ValueKind.TIME) {
+            return new TimeExpr(temporalListAggregate(aggregate));
+        }
         throw unsupported("time operand " + op.getClass().getSimpleName(), origin);
     }
 
@@ -1888,21 +1906,46 @@ final class ConditionConverter {
                 && model.fieldAt(entities.getFirst().getFullName()).map(i -> i.kind() == ValueKind.DATE).orElse(false);
     }
 
-    /** {@code MaxValue}/{@code MinValue} over a date repetition list, as a date operand (the date variant of the numeric aggregate). */
-    private DateOperand convertDateAggregate(IEntityListOperation aggregate) {
+    /**
+     * The value kind of a {@code MaxValue}/{@code MinValue} <em>extremum</em> over a single DATE/TIME/DATETIME
+     * field, or {@code null} when the aggregate is not a temporal extremum (a numeric aggregate, a
+     * {@code FirstFilledValue}, or a multi-field scope). The kernel folds all three date-like kinds through one
+     * {@code DateCombiner} (SPEC-2026-07-21-07), so the extremum lowers to the matching temporal operand.
+     */
+    private ValueKind temporalExtremumKind(IEntityListOperation aggregate) {
+        EntityListOperationName name = aggregate.getOperatorName();
+        if (name != EntityListOperationName.MaxValue && name != EntityListOperationName.MinValue) {
+            return null;
+        }
         List<IEntityId> entities = aggregate.getEntityList().getEntityIdList();
+        if (entities.size() != 1 || !entities.getFirst().isField()) {
+            return null;
+        }
+        return model.fieldAt(entities.getFirst().getFullName())
+                .map(i -> i.kind())
+                .filter(k -> k == ValueKind.DATE || k == ValueKind.TIME || k == ValueKind.DATE_TIME)
+                .orElse(null);
+    }
+
+    /** The kind-agnostic {@code MaxValue}/{@code MinValue} extremum node; the caller wraps it in the matching
+     *  temporal operand expression ({@link DateExpr}/{@link TimeExpr}/{@link DateTimeExpr}). */
+    private DateListAggregate temporalListAggregate(IEntityListOperation aggregate) {
+        FieldListRef scope = flattenScope(aggregate.getEntityList().getEntityIdList().getFirst());
+        return switch (aggregate.getOperatorName()) {
+            case MaxValue -> new DateListAggregate(DateListAggregate.Mode.LATEST, scope);
+            case MinValue -> new DateListAggregate(DateListAggregate.Mode.EARLIEST, scope);
+            default -> throw unsupported("temporal extremum operator " + aggregate.getOperatorName(), aggregate);
+        };
+    }
+
+    /** {@code MaxValue}/{@code MinValue}/{@code FirstFilledValue} over a DATE repetition list, as a date operand
+     *  (the date variant of the numeric aggregate; the TIME/DATETIME extremum siblings use
+     *  {@link #temporalListAggregate} wrapped in a {@link TimeExpr}/{@link DateTimeExpr}). */
+    private DateOperand convertDateAggregate(IEntityListOperation aggregate) {
         if (aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue) {
             return new DateExpr(convertFirstFilledValue(aggregate, ValueKind.DATE));
         }
-        if (entities.size() != 1 || !entities.get(0).isField()) {
-            throw unsupported("date aggregate over a non-single-field scope", aggregate);
-        }
-        FieldListRef scope = flattenScope(entities.get(0));
-        return switch (aggregate.getOperatorName()) {
-            case MaxValue -> Dsl.latestOf(scope);
-            case MinValue -> Dsl.earliestOf(scope);
-            default -> throw unsupported("date aggregate operator " + aggregate.getOperatorName(), aggregate);
-        };
+        return new DateExpr(temporalListAggregate(aggregate));
     }
 
     /**

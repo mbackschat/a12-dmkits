@@ -169,6 +169,26 @@ public final class Dsl {
         return new DateExpr(new DateListAggregate(DateListAggregate.Mode.EARLIEST, dateScope));
     }
 
+    /** {@code MaxValue(…)} over a TIME repetition list — the latest time-of-day (a time operand). catalog:MaxValue */
+    public static TimeExpr latestTimeOf(FieldListRef timeScope) {
+        return new TimeExpr(new DateListAggregate(DateListAggregate.Mode.LATEST, timeScope));
+    }
+
+    /** {@code MinValue(…)} over a TIME repetition list — the earliest time-of-day (a time operand). catalog:MinValue */
+    public static TimeExpr earliestTimeOf(FieldListRef timeScope) {
+        return new TimeExpr(new DateListAggregate(DateListAggregate.Mode.EARLIEST, timeScope));
+    }
+
+    /** {@code MaxValue(…)} over a DATETIME repetition list — the latest instant (a date-time operand). catalog:MaxValue */
+    public static DateTimeExpr latestDateTimeOf(FieldListRef dateTimeScope) {
+        return new DateTimeExpr(new DateListAggregate(DateListAggregate.Mode.LATEST, dateTimeScope));
+    }
+
+    /** {@code MinValue(…)} over a DATETIME repetition list — the earliest instant (a date-time operand). catalog:MinValue */
+    public static DateTimeExpr earliestDateTimeOf(FieldListRef dateTimeScope) {
+        return new DateTimeExpr(new DateListAggregate(DateListAggregate.Mode.EARLIEST, dateTimeScope));
+    }
+
     /** {@code FirstFilledValue(…)} over a number repetition list — the first specified value, as a number. catalog:FirstFilledValue */
     public static NumberExpr firstFilledNumber(FieldListRef numberScope) {
         requireKind(numberScope, io.github.mbackschat.a12.dm.core.ValueKind.NUMBER, "firstFilledNumber");
