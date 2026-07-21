@@ -308,7 +308,7 @@ Not ad-hoc `measureTime` calls sprinkled in tests — a **proper, reusable harne
 
 Patterned seeding prepares each distinct model-static pattern once per generator (IF189). Increasing the document row count therefore multiplies value placements, not regex compilation, keeping document construction from contaminating the evaluation timing it feeds.
 
-Profile-derived nested models use `SeedGenerator.populateExactLeafRows` for their `N`/`4N` axis. The method reaches the exact target cardinality by distributing quota over the selected group's repeatable ancestor chain within every per-parent declared cap; unrelated repeatables stay at a small explicit default. It refuses an impossible scale before mutating either engine's sink, so the benchmark cannot silently time an underfilled model or kernel-illegal excess rows merely because no individual group cap reaches `N`. The opt-in synthesized lane requires explicit complexity/generator identity, binds the selected file by content as a Gradle task input, fingerprints runtime bindings, and reports paired interpreter/Groovy/Java rows with complete scale identities (IF192).
+Profile-derived nested models use `SeedGenerator.populateExactLeafRows` for their `N`/`4N` axis. The method reaches the exact target cardinality by distributing quota over the selected group's repeatable ancestor chain within every per-parent declared cap; unrelated repeatables stay at a small explicit default. It refuses an impossible scale before mutating either engine's sink, so the benchmark cannot silently time an underfilled model or kernel-illegal excess rows merely because no individual group cap reaches `N`. The opt-in `:adapter:synthesizedModelPerfTest` lane has one closed registry for the committed compact, breadth-shaped, and depth-shaped synthesis-profile fixtures, treated here as diagnostic stress shapes rather than fidelity-certified calibration evidence; each entry binds its deterministic seed-42 synthesized leaf, expected complexity, and default N. It synthesizes the selected fixture into ignored test output before any evaluation clock, separately reports `ModelLoader` loading, interpreter construction, the exact-preflighted first answer, and warm evaluation, then runs the existing complete-result paired N/4N comparison against dynamic Groovy and generated Java. The external-model properties remain available for a focused JFR rerun. Runtime bindings and generated placements are fingerprinted, and every row carries complete scale identity (IF192). This workflow is diagnostic and opt-in; it promotes no NFR number or CI gate.
 
 COMPUTE comparison also normalizes result granularity before asserting or timing a result. The interpreter reports every computed instance while the kernel reports only input deltas, so the interpreter performance instance records the generated placements outside the clock and applies the shared `kernelComputeGranularity` projection while materializing each timed signature list (IF197). This prevents a computed STRING that equals its generated seed from becoming a phantom interpreter-only result without timing reduced semantic work.
 
@@ -375,6 +375,31 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 ## Results log
 
 *The current headline + the naive baseline it improved on. The intermediate optimization-journey entries were collapsed away (2026-06-27) — the *method* and the *lessons* live above (the optimization catalog, the kernel-technique map, the biases-to-re-check); this log keeps only the **current** measures and the **pre-optimization yardstick** they're read against. Dates are when each axis was last measured.*
+
+### Checkpoint 2026-07-21 — G52 compact/depth synthesized-model sweep (partial; IF199/IG101)
+
+The seed-42 compact and depth-shaped artifacts passed exact complete-result preflight at N=100 and N=400 against the interpreter, dynamic Groovy, and generated Java after IF198 corrected empty-string ingestion. Timings are same-run warm medians on Apple Silicon; growth is IF137's median of within-pair N/4N ratios, so it need not equal the quotient of the two displayed row medians. These artifacts predate the in-flight profile-fidelity regeneration and are diagnostic stress evidence, not a final calibration certificate or a promoted NFR bar.
+
+| profile / operation | engine | N=100 | N=400 | paired growth |
+|---|---|---:|---:|---:|
+| compact / validate | interpreter | **1.34 ms** | **2.02 ms** | **1.48×** |
+|  | dynamic Groovy | 6.59 ms | 11.70 ms | 1.59× |
+|  | generated Java | 2.83 ms | 6.55 ms | 2.22× |
+| compact / compute | interpreter | **0.03 ms** | **0.05 ms** | **0.99×** |
+|  | dynamic Groovy | 2.82 ms | 4.33 ms | 1.52× |
+|  | generated Java | 0.78 ms | 2.26 ms | 2.80× |
+| depth / validate | interpreter | **16.494 ms** | **31.836 ms** | 2.05× |
+|  | dynamic Groovy | 149.147 ms | 212.924 ms | **1.43×** |
+|  | generated Java | 96.114 ms | 143.707 ms | 1.51× |
+| depth / compute | interpreter | **19.943 ms** | **52.050 ms** | 2.58× |
+|  | dynamic Groovy | 67.732 ms | 120.408 ms | **1.78×** |
+|  | generated Java | 34.843 ms | 83.626 ms | 2.50× |
+
+Compact validation passes both the absolute and growth development rules. Compact computation does too after IF199 moved the immutable input-placement lookup out of repeated timing while retaining computation, complete result materialization, filtering, and sorting inside the clock. A larger N=1,000→4,000 confirmation measured interpreter 0.03→0.03 ms (1.37×), Groovy 6.29→18.99 ms (3.02×), and Java 4.46→17.32 ms (3.88×). The dedicated IF199 checkpoint records the before/after evidence and adapter sibling sweep.
+
+Depth keeps a substantial absolute lead—4.5–9× for validation and 1.6–3.4× for computation—but loses the paired growth criterion to both kernel strategies for validation and narrowly to generated Java as well as Groovy for computation. JFR attributes the shared residual to deep repetition-coordinate construction/hash/equality. The cached-hash wrapper and primitive-coordinate/key attempts did not improve the decisive curve, so IG101 records the open owner gate before any broader representation redesign; this checkpoint does not disguise the loss as a pass.
+
+The breadth artifact was **not eligible for timing**. Its stale pre-fidelity synthesized form concentrated enough generated rules for dynamic Groovy code generation to fail with `MethodTooLargeException` before the timed region. That is neither a kernel performance result nor permission to omit the strategy. Breadth must be regenerated after structure/rule fidelity lands, then pass exact tri-engine preflight before a curve is recorded.
 
 ### Checkpoint 2026-07-21 — IF196 profile-derived breadth validation path preparation
 

@@ -26,7 +26,7 @@ The WI-T sweep rows are drained: IG57 (bare cross-group short-name resolution) a
 
 **Core evaluator API coverage.** The former single-computation gap IG74 shipped as IF129 (`computeField(fieldPath, doc): List<Computed>`). The API shapes exist; exact semantics, preparation, cross-platform assurance, performance, and delivery exceptions are tracked individually below rather than summarized as “complete.”
 
-_None open._
+- **IG101 — deep repetition-coordinate representation loses the kernel growth curve despite absolute wins.** Exact depth-shaped N=100→400 runs agree semantically across the interpreter, dynamic Groovy, and generated Java. Validation measured 16.494→31.836 ms (2.05× paired growth) versus Groovy 149.147→212.924 ms (1.43×) and Java 96.114→143.707 ms (1.51×); computation measured 19.943→52.050 ms (2.58×) versus Groovy 67.732→120.408 ms (1.78×) and Java 34.843→83.626 ms (2.50×). The interpreter is still 4.5–9× faster for validation and 1.6–3.4× faster for computation, but violates the standing no-worse-growth rule. JFR attributes the shared residual to deep boxed repetition-coordinate construction, hashing, and equality. Two focused representation attempts have already failed: a cached-hash list wrapper regressed through delegation/allocation overhead, and a primitive-coordinate/key prototype did not improve the decisive curve. **Owner gate:** do not start a third speculative local patch. Before a broader representation redesign, agree on the representation boundary and acceptance matrix; any approved build must preserve exact JVM+Node semantics and beat both kernel curves at N and 4N for validation and computation.
 
 ---
 

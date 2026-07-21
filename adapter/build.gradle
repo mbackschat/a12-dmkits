@@ -426,6 +426,46 @@ tasks.register('profileCliPerfTest', Test) {
     outputs.cacheIf { false }
 }
 
+tasks.register('synthesizedModelPerfTest', Test) {
+    description = 'Run the opt-in interpreter/Groovy/Java curve over one committed synthesized stress shape.'
+    group = 'measurement'
+    dependsOn 'profileFixtureGuardTest'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    maxParallelForks = 1
+    failFast = true
+    systemProperty 'perf.synthesized', 'true'
+    systemProperty 'perf.synth.profileDir', profileFixtureDirectory.absolutePath
+    systemProperty 'perf.synth.outputDir',
+        layout.buildDirectory.dir('profile-interpreter-performance').get().asFile.absolutePath
+    ['perf.n', 'perf.synth.model', 'perf.synth.leaf', 'perf.synth.seed', 'perf.synth.op',
+     'perf.synth.profile', 'perf.synth.pairs', 'perf.synth.warmup', 'perf.synth.iters',
+     'perf.synth.complexity'].each { propertyName ->
+        if (System.getProperty(propertyName) != null) {
+            systemProperty propertyName, System.getProperty(propertyName)
+        }
+    }
+    def externalModel = System.getProperty('perf.synth.model')
+    if (externalModel != null) {
+        inputs.file(externalModel).withPropertyName('externalSynthesizedPerformanceModel')
+    }
+    def jfr = System.getProperty('perf.jfr')
+    if (jfr != null) {
+        jvmArgs "-XX:StartFlightRecording=settings=profile,filename=${jfr},dumponexit=true"
+    }
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.SynthesizedModelPerfTest'
+    }
+    rootProject.guardInputs(it, [
+        'compact profile': profileFixtureFiles[0],
+        'breadth-shaped profile': profileFixtureFiles[1],
+        'depth-shaped profile': profileFixtureFiles[2],
+    ])
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 def performanceCommitProperty = providers.gradleProperty('performanceCommit')
 def performanceRunnerProperty = providers.gradleProperty('performanceRunner')
 def fairJavaOutput = layout.buildDirectory.file('reports/interpreter-performance/fair-java-report.json')
