@@ -441,11 +441,18 @@ final class ModelProfileComparator {
                 ProfileComparison.Value actual,
                 boolean passes,
                 String rule) {
-            var verdict = policy == INFORMATIVE
+            var classification = ProfileFidelityRegistry.require(path);
+            if (classification.policy() != policy) {
+                throw new IllegalStateException(
+                        "profile-comparison axis " + path + " implements " + policy
+                                + " but the fidelity registry classifies it as "
+                                + classification.policy());
+            }
+            var verdict = classification.policy() == INFORMATIVE
                     ? ProfileComparison.Verdict.INFORMATIVE
                     : passes ? PASS : FAIL;
             axes.add(new ProfileComparison.AxisResult(
-                    new ProfileComparison.Axis(path, policy),
+                    new ProfileComparison.Axis(path, classification.policy()),
                     new ProfileComparison.Observation(target, actual),
                     new ProfileComparison.Outcome(verdict, rule)));
         }

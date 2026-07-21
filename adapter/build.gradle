@@ -244,6 +244,7 @@ tasks.named('test') {
     dependsOn 'footprintFixtureGuardTest'
     dependsOn 'performanceFixtureGuardTest'
     dependsOn 'profileFixtureGuardTest'
+    dependsOn 'profileFidelityGuardTest'
     dependsOn 'perfScriptGuardTest'
     // The corpus guards read corpus/cases/** at runtime; they live in corpusReplayTest (with those files declared
     // as its inputs) so a case edit re-runs ONLY them (not the whole kernel-heavy suite) and can't go up-to-date /
@@ -255,6 +256,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerformanceScenarioFixtureGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfScriptContractTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ProfileFixtureGuardTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ProfileFidelityRegistryGuardTest'
     }
 }
 
@@ -379,6 +381,25 @@ tasks.register('profileFixtureGuardTest', Test) {
         'compact profile': profileFixtureFiles[0],
         'breadth-shaped profile': profileFixtureFiles[1],
         'depth-shaped profile': profileFixtureFiles[2],
+    ])
+}
+
+tasks.register('profileFidelityGuardTest', Test) {
+    description = 'Keep the executable profile-fidelity registry aligned with the schema and specification.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    def profileSchema = rootProject.file('cli/src/main/resources/schema/profile.schema.json')
+    def fidelitySpec = rootProject.file('docs/MODEL-SYNTHESIS-FIDELITY-SPEC.md')
+    systemProperty 'profile.schema.file', profileSchema.absolutePath
+    systemProperty 'profile.fidelity.spec', fidelitySpec.absolutePath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ProfileFidelityRegistryGuardTest'
+    }
+    rootProject.guardInputs(it, [
+        'profile schema': profileSchema,
+        'profile fidelity specification': fidelitySpec,
     ])
 }
 
