@@ -14,13 +14,11 @@ import java.util.Set;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadResult;
-import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEdit;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionPolarity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences;
-import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
 
 /**
  * MODEL-REVIEW spike — the structural model-diff engine (a library primitive, MODEL-REVIEW-SPEC §1/§5).
@@ -76,7 +74,8 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
     /** Diff {@code headJson} against {@code baseJson} (both must be kernel-loadable and <b>self-contained</b> —
      *  an includes-bearing model needs a resolver overload below, else binding throws). */
     public static ModelDiff between(String baseJson, String headJson) {
-        return between(BoundModel.ofJson(baseJson), BoundModel.ofJson(headJson));
+        return between(ModelDiffState.of(baseJson, BoundModel.ofJson(baseJson)),
+                ModelDiffState.of(headJson, BoundModel.ofJson(headJson)));
     }
 
     /**
@@ -86,28 +85,29 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
      */
     public static ModelDiff between(String baseJson, String headJson,
             io.github.mbackschat.a12.dm.core.ModelResolver resolver) {
-        return between(
-                resolver == null ? BoundModel.ofJson(baseJson) : BoundModel.ofJson(baseJson, resolver),
-                resolver == null ? BoundModel.ofJson(headJson) : BoundModel.ofJson(headJson, resolver));
+        return between(ModelDiffState.of(baseJson,
+                        resolver == null ? BoundModel.ofJson(baseJson) : BoundModel.ofJson(baseJson, resolver)),
+                ModelDiffState.of(headJson,
+                        resolver == null ? BoundModel.ofJson(headJson) : BoundModel.ofJson(headJson, resolver)));
     }
 
     /** The shared structural diff over two already-bound models — the entry points differ only in how each
      *  {@link BoundModel} was resolved. */
-    private static ModelDiff between(BoundModel base, BoundModel head) {
-        ModelDiffState baseState = ModelDiffState.of(base);
-        ModelDiffState headState = ModelDiffState.of(head);
+    private static ModelDiff between(ModelDiffState baseState, ModelDiffState headState) {
         KernelAdapter baseRules = baseState.adapter();
         KernelAdapter headRules = headState.adapter();
         List<ElementChange> changes = new ArrayList<>();
-        Map<String, Map<String, String>> baseFields = fieldAspects(base);
-        Map<String, Map<String, String>> headFields = fieldAspects(head);
-        match(ElementKind.FIELD, baseFields, headFields, ModelDiff::fieldReasons, changes);
+        Map<String, Map<String, String>> baseFields = FieldDiffProjector.project(baseState);
+        Map<String, Map<String, String>> headFields = FieldDiffProjector.project(headState);
+        match(ElementKind.FIELD, baseFields, headFields,
+                (change, id, deltas) -> FieldDiffProjector.reasons(change, id, deltas,
+                        baseState.referrers(), headState.referrers()), changes);
         Map<String, Map<String, String>> baseGroups = GroupDiffProjector.project(baseState);
         Map<String, Map<String, String>> headGroups = GroupDiffProjector.project(headState);
         match(ElementKind.GROUP, baseGroups, headGroups,
                 (change, id, deltas) -> GroupDiffProjector.reasons(change, deltas), changes);
-        Map<String, Map<String, String>> baseRuleAspects = ruleAspects(baseRules);
-        Map<String, Map<String, String>> headRuleAspects = ruleAspects(headRules);
+        Map<String, Map<String, String>> baseRuleAspects = RuleDiffProjector.project(baseState);
+        Map<String, Map<String, String>> headRuleAspects = RuleDiffProjector.project(headState);
         match(ElementKind.RULE, baseRuleAspects, headRuleAspects,
                 (change, id, deltas) -> ruleReasons(change, id, deltas, baseRules, headRules), changes);
         Map<String, Map<String, String>> baseComputations = ComputationDiffProjector.project(baseState);
@@ -424,7 +424,7 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         if (element == ElementKind.GROUP) {
             return GroupDiffProjector.modifiedReason(d);
         }
-        return modifiedReason(d);
+        return element == ElementKind.FIELD ? FieldDiffProjector.modifiedReason(d) : modifiedReason(d);
     }
 
     /** The last path segment (leaf name). */
@@ -696,17 +696,6 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         return reasons.stream().map(ModelDiff::riskOf).max(Comparator.naturalOrder()).orElse(Risk.LOW);
     }
 
-    /** Field reasons: structure add/remove + the per-aspect config reasons. */
-    private static List<String> fieldReasons(ChangeKind change, String id, List<Delta> deltas) {
-        List<String> r = new ArrayList<>();
-        switch (change) {
-            case ADDED -> r.add("STRUCTURE_ADDED");
-            case REMOVED -> r.add("STRUCTURE_REMOVED");
-            case MODIFIED -> deltas.forEach(d -> r.add(modifiedReason(d)));
-        }
-        return r;
-    }
-
     /**
      * Rule reasons: add/remove + per-aspect, but a changed {@code condition} is refined from the two
      * ASTs — {@code POLARITY_INVERTED} (HIGH) on a provable structural flip, else {@code CONDITION_CHANGED}.
@@ -760,31 +749,32 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
 
     private static String modifiedReason(Delta d) {
         return switch (d.aspect()) {
-            case "kind" -> "KIND_CHANGED";
             case "severity" -> downgraded(d.before(), d.after()) ? "SEVERITY_DOWNGRADED" : "SEVERITY_CHANGED";
-            case "min", "minLength" -> loosened(true, d) ? "CONSTRAINT_LOOSENED" : "CONSTRAINT_TIGHTENED";
-            case "max", "maxLength" -> loosened(false, d) ? "CONSTRAINT_LOOSENED" : "CONSTRAINT_TIGHTENED";
-            case "pattern" -> patternReason(d);
-            case "scale" -> "SCALE_CHANGED";
             case "code" -> "CODE_CHANGED";
-            default -> "METADATA_CHANGED";
+            case "errorEntity" -> "REFERENCE_CHANGED";
+            default -> d.aspect().startsWith("message.") ? "MESSAGE_CHANGED" : "METADATA_CHANGED";
         };
     }
 
     private static Risk riskOf(String reason) {
         return switch (reason) {
             case "RULE_REMOVED", "KIND_CHANGED", "SEVERITY_DOWNGRADED", "CONSTRAINT_LOOSENED",
-                    "POLARITY_INVERTED" -> Risk.HIGH;
+                    "POLARITY_INVERTED", "REFERENCED_ELEMENT_REMOVED", "RETYPE_AFFECTS_READERS" -> Risk.HIGH;
             case "RULE_ADDED", "CONDITION_CHANGED", "CONDITION_RESTRUCTURED", "REFERENCE_CHANGED",
                     "OPERATOR_CHANGED", "THRESHOLD_CHANGED", "CONSTRAINT_TIGHTENED", "STRUCTURE_ADDED",
                     "STRUCTURE_REMOVED", "PATTERN_CHANGED", "SEVERITY_CHANGED", "SCALE_CHANGED",
-                    "ELEMENT_MOVED", "COMPUTATION_CHANGED", "GROUP_CHANGED", "REPEATABILITY_CHANGED" -> Risk.MEDIUM;
+                    "ELEMENT_MOVED", "COMPUTATION_CHANGED", "GROUP_CHANGED", "REPEATABILITY_CHANGED",
+                    "TYPE_CHANGED", "FIELD_CONFIG_CHANGED" -> Risk.MEDIUM;
             // POSITION_CHANGED (a reorder) / ELEMENT_RENAMED are content-preserving, not a loosening → LOW
             default -> Risk.LOW;
         };
     }
 
     /** A numeric bound is looser when it admits MORE values. {@code minSide}: lowering a min/minLength loosens. */
+    static String constraintReason(boolean minSide, Delta d) {
+        return loosened(minSide, d) ? "CONSTRAINT_LOOSENED" : "CONSTRAINT_TIGHTENED";
+    }
+
     private static boolean loosened(boolean minSide, Delta d) {
         if (d.after() == null) {
             return true; // the constraint was removed → the field accepts more
@@ -800,7 +790,7 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         }
     }
 
-    private static String patternReason(Delta d) {
+    static String patternChangeReason(Delta d) {
         if (d.after() == null) {
             return "CONSTRAINT_LOOSENED"; // pattern removed → accepts more
         }
@@ -851,47 +841,4 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         return deltas;
     }
 
-    private static Map<String, Map<String, String>> fieldAspects(BoundModel m) {
-        Map<String, Map<String, String>> out = new LinkedHashMap<>();
-        m.fields().forEach(f -> out.put(f.path(), fieldAspectMap(f)));
-        return out;
-    }
-
-    /** Kind + per-kind config — all format-independent, so a reformat is never seen as a change. */
-    private static Map<String, String> fieldAspectMap(FieldInfo f) {
-        Map<String, String> a = new LinkedHashMap<>();
-        a.put("kind", f.kind().name());
-        if (f.kind() == ValueKind.NUMBER) {
-            a.put("scale", Integer.toString(f.scale()));
-        }
-        f.numberMin().ifPresent(v -> a.put("min", v.toString()));
-        f.numberMax().ifPresent(v -> a.put("max", v.toString()));
-        f.minLength().ifPresent(v -> a.put("minLength", Integer.toString(v)));
-        f.maxLength().ifPresent(v -> a.put("maxLength", Integer.toString(v)));
-        f.pattern().ifPresent(v -> a.put("pattern", v));
-        return a;
-    }
-
-    private static Map<String, Map<String, String>> ruleAspects(KernelAdapter a) {
-        Map<String, Map<String, String>> out = new LinkedHashMap<>();
-        for (String name : a.ruleFullNames()) {
-            out.put(name, ruleAspectMap(a, name));
-        }
-        return out;
-    }
-
-    /** Kernel-canonical condition text (format-independent) + severity + error code. */
-    private static Map<String, String> ruleAspectMap(KernelAdapter a, String name) {
-        String condition;
-        try {
-            condition = a.canonicalConditionText(name);
-        } catch (RuntimeException e) {
-            condition = a.conditionText(name); // opaque/unparseable: fall back to the raw stored text
-        }
-        Map<String, String> aspects = new LinkedHashMap<>();
-        aspects.put("condition", condition);
-        aspects.put("severity", a.ruleSeverity(name));
-        aspects.put("code", a.ruleErrorCode(name));
-        return aspects;
-    }
 }

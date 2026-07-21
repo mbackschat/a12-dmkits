@@ -131,7 +131,7 @@ fields 15 · groups 4 · rules 3 · computations 0 · repeatable 1
 
 ## model diff — review what changed
 
-When an agent edits a model on your behalf, raw JSON diffs are unreadable. `model diff <base> <head>` compares two model files **structurally** (it parses both into the model, so a pure reformat is never reported) and reports field, group, rule, and computation changes with a **risk** tier. Risk follows *loosening > tightening*: a removed or loosened constraint silently accepts more data (HIGH), while a tightened or added one fails loudly (MEDIUM). Projected here to the headline plus the high-risk changes.
+When an agent edits a model on your behalf, raw JSON diffs are unreadable. `model diff <base> <head>` compares two model files **structurally** (it parses both into the model, so a pure reformat is never reported) and reports field, group, rule, and computation changes with a `risk` **review-impact tier**. Review impact follows *loosening > tightening*: a removed or loosened constraint silently accepts more data (HIGH), while a tightened or added one fails loudly (MEDIUM). Projected here to the headline plus the high-impact changes.
 
 ```bash
 dmtool model diff examples/models/order-ruled.dm.json examples/models/order.dm.json \
@@ -241,6 +241,32 @@ dmtool model diff examples/models/order.dm.json /tmp/review-group.dm.json \
 ```
 
 → The exact cap change is visible and HIGH `CONSTRAINT_LOOSENED`; decreasing it is MEDIUM `CONSTRAINT_TIGHTENED`. Reordering is computed over one mixed authored sequence, so moving a group relative to a field is reported as `REORDERED`/`POSITION_CHANGED`, while inserting or removing a sibling never fabricates a reorder.
+
+### Reader-sensitive removals stay high impact
+
+A cascading edit can remove a field and its reader together, leaving a valid head model. The diff still consults the base model's inverse rule/computation reference map: the field must not look like an ordinary unreferenced structure removal merely because its reader disappeared in the same edit.
+
+```bash
+cp examples/models/order-ruled.dm.json /tmp/review-reader.dm.json
+dmtool -m /tmp/review-reader.dm.json field remove /Order/OrderDate --cascade >/dev/null
+dmtool model diff examples/models/order-ruled.dm.json /tmp/review-reader.dm.json \
+  | jq '.data.changes | map(select(.id=="/Order/OrderDate")) | map({id, risk, riskReasons})'
+```
+
+```output
+[
+  {
+    "id": "/Order/OrderDate",
+    "risk": "HIGH",
+    "riskReasons": [
+      "STRUCTURE_REMOVED",
+      "REFERENCED_ELEMENT_REMOVED"
+    ]
+  }
+]
+```
+
+→ The head is consistent because `--cascade` also removed `DeliveryNotBeforeOrder`, but the field removal remains HIGH `REFERENCED_ELEMENT_REMOVED`: it changed a location active logic depended on. A kind/typedef retype with readers similarly adds `RETYPE_AFFECTS_READERS`.
 
 ### A silent polarity flip — the most dangerous edit
 
@@ -360,7 +386,7 @@ REFACTORS (1)
 
 ### The human view — `--text`
 
-JSON is the default and the machine contract, but a reviewer at the terminal wants to scan. The global `--text` flag renders the change-set **risk-sorted** — HIGH first, one line per change, LOW collapsed to a count — so the dangerous changes are read first:
+JSON is the default and the machine contract, but a reviewer at the terminal wants to scan. The global `--text` flag renders the change-set **impact-sorted** — HIGH first, one line per change, LOW collapsed to a count — so the dangerous changes are read first:
 
 ```bash
 dmtool model diff examples/models/order-ruled.dm.json examples/models/order.dm.json --text

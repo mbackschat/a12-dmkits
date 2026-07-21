@@ -303,16 +303,29 @@ public final class ModelDocument {
         return AuthoredStateReader.read(root);
     }
 
-    /** The authored element sequence and group lookup, both in document order. */
-    public record AuthoredState(List<AuthoredElement> elements, Map<String, GroupState> groups) {
+    /** The authored element sequence and typed field/group/rule lookups, all in document order. */
+    public record AuthoredState(List<AuthoredElement> elements, Map<String, FieldState> fields,
+            Map<String, GroupState> groups, Map<String, RuleState> rules) {
         public AuthoredState {
             elements = List.copyOf(elements);
+            fields = java.util.Collections.unmodifiableMap(new LinkedHashMap<>(fields));
             groups = java.util.Collections.unmodifiableMap(new LinkedHashMap<>(groups));
+            rules = java.util.Collections.unmodifiableMap(new LinkedHashMap<>(rules));
         }
     }
 
     /** An authored field/group/rule/computation at its name-path, used for mixed-family ordering. */
     public record AuthoredElement(ElementType type, String path) {}
+
+    /** A field's complete authored type, requirements, and metadata. */
+    public record FieldState(String path, FieldTypeSpec type, FieldRequirements requirements, FieldMeta meta) {}
+
+    /** Requiredness plus the optional per-locale custom required-field messages. */
+    public record FieldRequirements(Requiredness requiredness, Map<String, String> messages) {
+        public FieldRequirements {
+            messages = Map.copyOf(messages);
+        }
+    }
 
     /** A group's own authored properties; child structure stays represented by the child elements themselves. */
     public record GroupState(String path, GroupStructure structure, GroupMeta meta) {}
@@ -329,6 +342,19 @@ public final class ModelDocument {
 
     /** An include mount's alias and complete option set. */
     public record MountState(String alias, MountOptions options) {}
+
+    /** A rule's authored descriptive metadata; logic and messages come from the bound adapter. */
+    public record RuleState(String path, RuleMeta meta) {}
+
+    /** Rule descriptions and annotations, which live on the authored element envelope. */
+    public record RuleMeta(Map<String, String> internalDescription, Map<String, String> externalDescription,
+            List<ElementDraft.Annotation> annotations) {
+        public RuleMeta {
+            internalDescription = Map.copyOf(internalDescription);
+            externalDescription = Map.copyOf(externalDescription);
+            annotations = List.copyOf(annotations);
+        }
+    }
 
     /** Every group's name-path (root groups + nested), in document order. */
     public List<String> groupPaths() {

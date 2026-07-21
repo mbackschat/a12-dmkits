@@ -19,29 +19,55 @@ final class AuthoredStateReader {
 
     static ModelDocument.AuthoredState read(ObjectNode root) {
         List<ModelDocument.AuthoredElement> elements = new ArrayList<>();
+        Map<String, ModelDocument.FieldState> fields = new LinkedHashMap<>();
         Map<String, ModelDocument.GroupState> groups = new LinkedHashMap<>();
+        Map<String, ModelDocument.RuleState> rules = new LinkedHashMap<>();
         for (JsonNode rootGroup : root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS)) {
-            collect(rootGroup, "", elements, groups);
+            collect(rootGroup, "", elements, fields, groups, rules);
         }
-        return new ModelDocument.AuthoredState(elements, groups);
+        return new ModelDocument.AuthoredState(elements, fields, groups, rules);
     }
 
     private static void collect(JsonNode node, String parentPath, List<ModelDocument.AuthoredElement> elements,
-            Map<String, ModelDocument.GroupState> groups) {
+            Map<String, ModelDocument.FieldState> fields, Map<String, ModelDocument.GroupState> groups,
+            Map<String, ModelDocument.RuleState> rules) {
         ElementType type = ElementType.fromWire(node.path(DmKeys.TYPE).asText(null));
         if (type == null) {
             return;
         }
         String path = parentPath + "/" + node.path(DmKeys.NAME).asText();
         elements.add(new ModelDocument.AuthoredElement(type, path));
+        if (type == ElementType.FIELD) {
+            fields.put(path, field(path, node));
+            return;
+        }
+        if (type == ElementType.RULE) {
+            rules.put(path, new ModelDocument.RuleState(path, new ModelDocument.RuleMeta(
+                    localized(node, DmKeys.INTERNAL_DESCRIPTION), localized(node, DmKeys.EXTERNAL_DESCRIPTION),
+                    annotations(node))));
+            return;
+        }
         if (type != ElementType.GROUP) {
             return;
         }
         ObjectNode body = (ObjectNode) node.path(ElementType.GROUP.wireName());
         groups.put(path, new ModelDocument.GroupState(path, structure(body), metadata(node, body)));
         for (JsonNode child : body.path(DmKeys.ELEMENTS)) {
-            collect(child, path, elements, groups);
+            collect(child, path, elements, fields, groups, rules);
         }
+    }
+
+    private static ModelDocument.FieldState field(String path, JsonNode node) {
+        JsonNode body = node.path(ElementType.FIELD.wireName());
+        JsonNode required = body.path(DmKeys.REQUIREDNESS_CONFIG);
+        var requirements = new ModelDocument.FieldRequirements(
+                Requiredness.fromMode(required.path("mode").asText(null)), localized(required, DmKeys.ERROR_MESSAGE));
+        var meta = new FieldMeta(localized(body, DmKeys.LABEL), annotations(node),
+                body.path("global").asBoolean(false), body.path("transient").asBoolean(false),
+                localized(node, DmKeys.INTERNAL_DESCRIPTION), localized(node, DmKeys.EXTERNAL_DESCRIPTION),
+                localized(body, "helperText"));
+        return new ModelDocument.FieldState(path, FieldTypeSpecReader.read(body.path(DmKeys.FIELD_TYPE)),
+                requirements, meta);
     }
 
     private static ModelDocument.GroupStructure structure(ObjectNode body) {
@@ -64,13 +90,17 @@ final class AuthoredStateReader {
     }
 
     private static GroupMeta metadata(JsonNode node, ObjectNode body) {
+        return new GroupMeta(localized(body, DmKeys.LABEL), annotations(node),
+                localized(node, DmKeys.INTERNAL_DESCRIPTION), localized(node, DmKeys.EXTERNAL_DESCRIPTION));
+    }
+
+    private static List<ElementDraft.Annotation> annotations(JsonNode node) {
         List<ElementDraft.Annotation> annotations = new ArrayList<>();
         for (JsonNode annotation : node.path(DmKeys.ANNOTATIONS)) {
             annotations.add(new ElementDraft.Annotation(
                     annotation.path(DmKeys.NAME).asText(), annotation.path(DmKeys.VALUE).asText()));
         }
-        return new GroupMeta(localized(body, DmKeys.LABEL), annotations,
-                localized(node, DmKeys.INTERNAL_DESCRIPTION), localized(node, DmKeys.EXTERNAL_DESCRIPTION));
+        return annotations;
     }
 
     private static Map<String, String> localized(JsonNode node, String key) {

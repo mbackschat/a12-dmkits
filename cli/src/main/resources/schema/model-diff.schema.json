@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/model-diff.schema.json",
   "title": "ModelDiff",
-  "description": "The `data` payload of `dmtool model diff <baseFile> <headFile>` (MODEL-REVIEW-SPEC §5) — a STRUCTURAL diff of two models: it parses both into the model and compares structure, so a pure reformat is never reported. `changes` lists every projected field, group, rule, and computation change with its per-aspect `deltas`. Group aspects cover repeatability, index/sort declarations, mount alias/options, and metadata; child structure is reported as the actual child element changes, never duplicated as a group `children` delta. For an ADDED element a delta carries only `after`; for REMOVED, only `before`; for MODIFIED/REORDERED, both. Element ids are paths/full names.",
+  "description": "The `data` payload of `dmtool model diff <baseFile> <headFile>` (MODEL-REVIEW-SPEC §5) — a STRUCTURAL diff of two models: it parses both into the model and compares structure, so a pure reformat is never reported. `changes` lists every projected field, group, rule, and computation change with its per-aspect `deltas`. Field aspects cover declared/effective type, typed config, requiredness/messages, enum state, metadata, and flags; rule aspects cover condition, error entity, severity/code, localized messages, and metadata. Group aspects cover repeatability, index/sort declarations, mount alias/options, and metadata; child structure is reported as the actual child element changes, never duplicated as a group `children` delta. For an ADDED element a delta carries only `after`; for REMOVED, only `before`; for MODIFIED/REORDERED, both. Element ids are paths/full names.",
   "type": "object",
   "additionalProperties": false,
   "required": ["changes", "refactors"],
@@ -36,7 +36,7 @@
           },
           "riskReasons": {
             "type": "array",
-            "description": "the risk reason codes — a subset of the SPEC §5b taxonomy. HIGH (silently accepts bad data): RULE_REMOVED, POLARITY_INVERTED, KIND_CHANGED, SEVERITY_DOWNGRADED, CONSTRAINT_LOOSENED. MEDIUM (fails loudly / undetermined direction): RULE_ADDED, COMPUTATION_CHANGED, GROUP_CHANGED, REPEATABILITY_CHANGED, CONSTRAINT_TIGHTENED, STRUCTURE_ADDED/REMOVED, PATTERN_CHANGED, SEVERITY_CHANGED, SCALE_CHANGED, CONDITION_RESTRUCTURED, REFERENCE_CHANGED, OPERATOR_CHANGED, THRESHOLD_CHANGED, CONDITION_CHANGED, ELEMENT_MOVED. LOW: MESSAGE_CHANGED, CODE_CHANGED, METADATA_CHANGED, POSITION_CHANGED, ELEMENT_RENAMED.",
+            "description": "the review-impact reason codes — a subset of the SPEC §5b taxonomy. HIGH (silently accepts bad data or affects active readers): RULE_REMOVED, POLARITY_INVERTED, REFERENCED_ELEMENT_REMOVED, RETYPE_AFFECTS_READERS, KIND_CHANGED, SEVERITY_DOWNGRADED, CONSTRAINT_LOOSENED. MEDIUM (fails loudly / undetermined direction): RULE_ADDED, COMPUTATION_CHANGED, GROUP_CHANGED, REPEATABILITY_CHANGED, TYPE_CHANGED, FIELD_CONFIG_CHANGED, CONSTRAINT_TIGHTENED, STRUCTURE_ADDED/REMOVED, PATTERN_CHANGED, SEVERITY_CHANGED, SCALE_CHANGED, CONDITION_RESTRUCTURED, REFERENCE_CHANGED, OPERATOR_CHANGED, THRESHOLD_CHANGED, CONDITION_CHANGED, ELEMENT_MOVED. LOW: MESSAGE_CHANGED, CODE_CHANGED, METADATA_CHANGED, POSITION_CHANGED, ELEMENT_RENAMED.",
             "uniqueItems": true,
             "items": { "type": "string" }
           },
@@ -54,7 +54,7 @@
               "properties": {
                 "aspect": {
                   "type": "string",
-                  "description": "the aspect name (rule: condition/severity/code; field: kind/scale/min/max/minLength/maxLength/pattern; computation: target/commonPrecondition/ordered alternative operation+precondition+tolerance/errorCodesToSuppress/message.<locale>/opaque; a reorder: position; a rename/move: path)"
+                  "description": "the aspect name (rule: condition/errorEntity/severity/code/message.<locale>/descriptions/annotations; field: declaredType/kind/typed config/requiredness/enum state/metadata/flags; computation: target/commonPrecondition/ordered alternative operation+precondition+tolerance/errorCodesToSuppress/message.<locale>/opaque; group: repeatability/index/sort/mount/metadata; a reorder: position; a rename/move: path)"
                 },
                 "before": {
                   "type": "string",

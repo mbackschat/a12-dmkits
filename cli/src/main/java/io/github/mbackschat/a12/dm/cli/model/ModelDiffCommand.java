@@ -31,7 +31,7 @@ import picocli.CommandLine.Parameters;
  */
 @Command(name = "diff", mixinStandardHelpOptions = true,
         description = "Structural diff of two models: the fields, groups, rules, and computations added, removed, or "
-                + "modified, with per-aspect deltas, in `data`. A pure reformat is never "
+                + "modified, with complete typed aspects and review-impact reasons, in `data`. A pure reformat is never "
                 + "reported (it compares structure, not text). Pass two files (base then head), or "
                 + "`-m <model> --since <ref>` to diff against a git ref. Shape: `model-diff.schema`.")
 final class ModelDiffCommand extends BaseCommand {
