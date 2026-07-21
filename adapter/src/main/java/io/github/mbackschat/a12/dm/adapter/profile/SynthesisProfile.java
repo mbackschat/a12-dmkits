@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.profile;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 
 /**
@@ -73,7 +74,16 @@ record SynthesisProfile(
             Distribution fieldsPerGroup,
             Map<String, Integer> fieldKinds,
             Repeatability repeatability,
-            Constraints constraints) {}
+            Constraints constraints) {
+
+        Structure {
+            fieldKinds = immutableSortedMap(fieldKinds);
+        }
+
+        static SynthesisStructureBuilders.StructureBuilder builder() {
+            return SynthesisStructureBuilders.structure();
+        }
+    }
 
     record Repeatability(
             int repeatableGroupCount,
@@ -84,7 +94,17 @@ record SynthesisProfile(
             Distribution fieldChainProduct,
             Distribution siblingBranchFan,
             Map<String, Distribution> chainProductByDepth,
-            Map<String, Integer> nestingDepthExact) {}
+            Map<String, Integer> nestingDepthExact) {
+
+        Repeatability {
+            chainProductByDepth = immutableSortedMap(chainProductByDepth);
+            nestingDepthExact = immutableSortedMap(nestingDepthExact);
+        }
+
+        static SynthesisStructureBuilders.RepeatabilityBuilder builder() {
+            return SynthesisStructureBuilders.repeatability();
+        }
+    }
 
     record Iteration(
             Distribution starCapture,
@@ -92,14 +112,24 @@ record SynthesisProfile(
             int outerCorrelation,
             Distribution scopeProduct,
             Distribution reachProduct,
-            Distribution reachScopeProduct) {}
+            Distribution reachScopeProduct) {
+
+        static SynthesisStructureBuilders.IterationBuilder builder() {
+            return SynthesisStructureBuilders.iteration();
+        }
+    }
 
     record Constraints(
             int numbersWithBounds,
             int stringsWithLength,
             int stringsWithPattern,
             Distribution numberScale,
-            Distribution enumCardinality) {}
+            Distribution enumCardinality) {
+
+        static SynthesisStructureBuilders.ConstraintsBuilder builder() {
+            return SynthesisStructureBuilders.constraints();
+        }
+    }
 
     record Rules(
             int count,
@@ -116,7 +146,19 @@ record SynthesisProfile(
             Map<String, Integer> constructs,
             Map<String, Integer> constructCombos,
             Map<String, Map<String, Integer>> constructsByScope,
-            Iteration iteration) {}
+            Iteration iteration) {
+
+        Rules {
+            operators = immutableSortedMap(operators);
+            constructs = immutableSortedMap(constructs);
+            constructCombos = immutableSortedMap(constructCombos);
+            constructsByScope = immutableNestedSortedMap(constructsByScope);
+        }
+
+        static SynthesisProgramBuilders.RulesBuilder builder() {
+            return SynthesisProgramBuilders.rules();
+        }
+    }
 
     record Scope(int modelLevel, int perGroup, int perRepeatableRow) {}
 
@@ -139,36 +181,76 @@ record SynthesisProfile(
             Map<String, Map<String, Integer>> constructsByScope,
             ScaleMatch aggregateScaleMatch,
             Iteration iteration,
-            Distribution aggregateStars) {}
+            Distribution aggregateStars) {
+
+        Computations {
+            computedFieldKinds = immutableSortedMap(computedFieldKinds);
+            operators = immutableSortedMap(operators);
+            constructs = immutableSortedMap(constructs);
+            archetypes = immutableSortedMap(archetypes);
+            constructCombos = immutableSortedMap(constructCombos);
+            constructsByScope = immutableNestedSortedMap(constructsByScope);
+        }
+
+        static SynthesisProgramBuilders.ComputationsBuilder builder() {
+            return SynthesisProgramBuilders.computations();
+        }
+    }
 
     record ScaleMatch(int matched, int mismatched) {}
+
+    private static <V> Map<String, V> immutableSortedMap(Map<String, V> source) {
+        if (source == null || source.isEmpty()) {
+            return Map.of();
+        }
+        var copy = new TreeMap<String, V>();
+        source.forEach((key, value) -> copy.put(
+                Objects.requireNonNull(key, "map key"),
+                Objects.requireNonNull(value, "map value")));
+        return java.util.Collections.unmodifiableMap(copy);
+    }
+
+    private static <V> Map<String, Map<String, V>> immutableNestedSortedMap(
+            Map<String, Map<String, V>> source) {
+        if (source == null || source.isEmpty()) {
+            return Map.of();
+        }
+        var copy = new TreeMap<String, Map<String, V>>();
+        source.forEach((key, value) -> copy.put(
+                Objects.requireNonNull(key, "nested map key"),
+                immutableSortedMap(value)));
+        return java.util.Collections.unmodifiableMap(copy);
+    }
 
     private static Structure structure(ModelProfile.StructureProfile source) {
         var fields = source.fields();
         var repeatability = source.repeatability();
         var constrained = fields.constrainedFields().counts();
-        return new Structure(
-                exactInt(source.elementCount("FIELD")),
-                exactInt(source.elementCount("GROUP")),
-                source.topology().maxGroupDepth(),
-                distribution(source.topology().fieldsPerGroup()),
-                counts(fields.kinds()),
-                new Repeatability(
-                        exactInt(repeatability.outcomes().total()),
-                        repeatability.topology().maxDepth(),
-                        distribution(repeatability.capacities().maxRepetitions().bounded()),
-                        distribution(repeatability.topology().exactDepth()),
-                        distribution(repeatability.capacities().groupChains().bounded()),
-                        distribution(repeatability.capacities().fieldChains().bounded()),
-                        distribution(repeatability.topology().siblingFan()),
-                        Map.of(),
-                        counts(repeatability.topology().exactDepth())),
-                new Constraints(
-                        exactInt(constrained.getOrDefault("NUMBER_BOUNDS", 0L)),
-                        exactInt(constrained.getOrDefault("STRING_LENGTH", 0L)),
-                        exactInt(constrained.getOrDefault("STRING_PATTERN", 0L)),
-                        distribution(fields.numberScale()),
-                        distribution(fields.enumCardinality())));
+        return Structure.builder()
+                .fieldCount(exactInt(source.elementCount("FIELD")))
+                .groupCount(exactInt(source.elementCount("GROUP")))
+                .maxNestingDepth(source.topology().maxGroupDepth())
+                .fieldsPerGroup(distribution(source.topology().fieldsPerGroup()))
+                .fieldKinds(counts(fields.kinds()))
+                .repeatability(Repeatability.builder()
+                        .repeatableGroupCount(exactInt(repeatability.outcomes().total()))
+                        .maxRepeatableNestingDepth(repeatability.topology().maxDepth())
+                        .maxRepetitions(distribution(repeatability.capacities().maxRepetitions().bounded()))
+                        .nestingDepth(distribution(repeatability.topology().exactDepth()))
+                        .chainProduct(distribution(repeatability.capacities().groupChains().bounded()))
+                        .fieldChainProduct(distribution(repeatability.capacities().fieldChains().bounded()))
+                        .siblingBranchFan(distribution(repeatability.topology().siblingFan()))
+                        .chainProductByDepth(Map.of())
+                        .nestingDepthExact(counts(repeatability.topology().exactDepth()))
+                        .build())
+                .constraints(Constraints.builder()
+                        .numbersWithBounds(exactInt(constrained.getOrDefault("NUMBER_BOUNDS", 0L)))
+                        .stringsWithLength(exactInt(constrained.getOrDefault("STRING_LENGTH", 0L)))
+                        .stringsWithPattern(exactInt(constrained.getOrDefault("STRING_PATTERN", 0L)))
+                        .numberScale(distribution(fields.numberScale()))
+                        .enumCardinality(distribution(fields.enumCardinality()))
+                        .build())
+                .build();
     }
 
     private static Rules rules(
@@ -176,22 +258,25 @@ record SynthesisProfile(
             ModelProfile.WiringProfile wiring) {
         var syntax = source.syntax();
         var runtime = source.runtime();
-        return new Rules(
-                exactInt(source.conversion().total()),
-                exactInt(source.conversion().outcomes().counts().getOrDefault("OPAQUE", 0L)),
-                scope(runtime.scope()),
-                distribution(syntax.ast().nodeCount()),
-                distribution(syntax.ast().depth()),
-                distribution(syntax.ast().booleanArity()),
-                distribution(syntax.ast().distinctFanIn()),
-                distribution(wiring.fieldFanOut()),
-                distribution(runtime.resolution().walkUpDistance()),
-                distribution(runtime.evaluation().scans().starDepth()),
-                mergedCounts(syntax.dispatch().catalogOperators(), syntax.dispatch().intrinsicOperators()),
-                counts(syntax.dispatch().constructs()),
-                counts(syntax.dispatch().constructCombinations()),
-                scopeCounts(syntax.dispatch().constructsByScope()),
-                iteration(runtime));
+        return Rules.builder()
+                .count(exactInt(source.conversion().total()))
+                .opaqueCount(exactInt(source.conversion().outcomes().counts().getOrDefault("OPAQUE", 0L)))
+                .scope(scope(runtime.scope()))
+                .nodeCount(distribution(syntax.ast().nodeCount()))
+                .depth(distribution(syntax.ast().depth()))
+                .booleanArity(distribution(syntax.ast().booleanArity()))
+                .fanIn(distribution(syntax.ast().distinctFanIn()))
+                .rulesPerErrorField(distribution(wiring.fieldFanOut()))
+                .walkUpDistance(distribution(runtime.resolution().walkUpDistance()))
+                .repeatableLevelsCrossed(distribution(runtime.evaluation().scans().starDepth()))
+                .operators(mergedCounts(
+                        syntax.dispatch().catalogOperators(),
+                        syntax.dispatch().intrinsicOperators()))
+                .constructs(counts(syntax.dispatch().constructs()))
+                .constructCombos(counts(syntax.dispatch().constructCombinations()))
+                .constructsByScope(scopeCounts(syntax.dispatch().constructsByScope()))
+                .iteration(iteration(runtime))
+                .build();
     }
 
     private static Computations computations(ModelProfile.ComputationProfile source) {
@@ -200,28 +285,31 @@ record SynthesisProfile(
         var runtime = programs.runtime();
         var shape = source.shape();
         var scale = shape.aggregateScaleMatch().counts();
-        return new Computations(
-                exactInt(programs.conversion().total()),
-                exactInt(programs.conversion().outcomes().counts().getOrDefault("OPAQUE", 0L)),
-                distribution(syntax.ast().nodeCount()),
-                distribution(syntax.ast().depth()),
-                distribution(syntax.ast().distinctFanIn()),
-                source.dependencies().maxCascadeDepth(),
-                exactInt(source.dependencies().feedingComputations()),
-                counts(shape.computedFieldKinds()),
-                distribution(shape.tables().alternatives()),
-                scope(runtime.scope()),
-                nonZeroSamples(shape.tables().preconditions()),
-                mergedCounts(syntax.dispatch().catalogOperators(), syntax.dispatch().intrinsicOperators()),
-                counts(syntax.dispatch().constructs()),
-                counts(shape.archetypes()),
-                counts(syntax.dispatch().constructCombinations()),
-                scopeCounts(syntax.dispatch().constructsByScope()),
-                new ScaleMatch(
+        return Computations.builder()
+                .count(exactInt(programs.conversion().total()))
+                .opaqueCount(exactInt(programs.conversion().outcomes().counts().getOrDefault("OPAQUE", 0L)))
+                .nodeCount(distribution(syntax.ast().nodeCount()))
+                .depth(distribution(syntax.ast().depth()))
+                .fanIn(distribution(syntax.ast().distinctFanIn()))
+                .maxCascadeDepth(source.dependencies().maxCascadeDepth())
+                .feedingOthers(exactInt(source.dependencies().feedingComputations()))
+                .computedFieldKinds(counts(shape.computedFieldKinds()))
+                .alternatives(distribution(shape.tables().alternatives()))
+                .scope(scope(runtime.scope()))
+                .preconditionedCount(nonZeroSamples(shape.tables().preconditions()))
+                .operators(mergedCounts(
+                        syntax.dispatch().catalogOperators(),
+                        syntax.dispatch().intrinsicOperators()))
+                .constructs(counts(syntax.dispatch().constructs()))
+                .archetypes(counts(shape.archetypes()))
+                .constructCombos(counts(syntax.dispatch().constructCombinations()))
+                .constructsByScope(scopeCounts(syntax.dispatch().constructsByScope()))
+                .aggregateScaleMatch(new ScaleMatch(
                         exactInt(scale.getOrDefault("MATCHED", 0L)),
-                        exactInt(scale.getOrDefault("MISMATCHED", 0L))),
-                iteration(runtime),
-                distribution(runtime.evaluation().scans().starDepth()));
+                        exactInt(scale.getOrDefault("MISMATCHED", 0L))))
+                .iteration(iteration(runtime))
+                .aggregateStars(distribution(runtime.evaluation().scans().starDepth()))
+                .build();
     }
 
     private static Scope scope(ModelProfile.ScopeProfile source) {
@@ -234,13 +322,14 @@ record SynthesisProfile(
 
     private static Iteration iteration(ModelProfile.RuntimeProfile source) {
         var evaluation = source.evaluation();
-        return new Iteration(
-                distribution(evaluation.scans().capacity().bounded()),
-                mechanismCount(evaluation, "PARALLEL_REFERENCE"),
-                exactInt(evaluation.outerCorrelation().forms().total()),
-                distribution(source.scope().capacity().bounded()),
-                distribution(evaluation.combinedWork().capacity().bounded()),
-                distribution(source.scope().capacity().bounded()));
+        return Iteration.builder()
+                .starCapture(distribution(evaluation.scans().capacity().bounded()))
+                .parallelIteration(mechanismCount(evaluation, "PARALLEL_REFERENCE"))
+                .outerCorrelation(exactInt(evaluation.outerCorrelation().forms().total()))
+                .scopeProduct(distribution(source.scope().capacity().bounded()))
+                .reachProduct(distribution(evaluation.combinedWork().capacity().bounded()))
+                .reachScopeProduct(distribution(source.scope().capacity().bounded()))
+                .build();
     }
 
     private static int mechanismCount(ModelProfile.EvaluationProfile source, String name) {
