@@ -4,9 +4,9 @@
 
 ## 1. Open — tractable, to build
 
-_None open._ (The 2026-07-10 six-component review batch — MR6/MR7/MR8 — shipped in Set F.)
+- **MR9 — `model diff` covers only fields & rules; extend it to the rest of the §5a change-kind taxonomy.** `ModelDiff` diffs two element kinds — `FIELD` (aspects `kind`/`scale`/`min`/`max`/`minLength`/`maxLength`/`pattern`) and `RULE` (aspects `condition`/`severity`/`code`). So a changed **computation** (operation / precondition table / computed target), **group** (repeatability / index / sort / child structure), or **typedef·include·config** (mount point / imports / locale / decimal / roles / charset) produces **no diff at all** — a silent false "no change" — as do field **unit·format·metadata·requiredness·enum-value** edits and rule **message·locale** edits. [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md) §5a now marks the built subset vs this gap. **Build order:** computation-diff first (SPEC §5g already names it the next slice), then group, then typedef/include/config; each added aspect carries the loosening>tightening risk direction (§5b). **Lock:** a `model diff` test per newly-covered family/aspect asserting the change is surfaced (today it is not).
 
-The diff-completeness set itself (reorder-as-change, exact + similarity move/rename matching, relational refactor grouping, the located condition edit-script) shipped — the contract lives in [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md) §5. New gaps land here as found.
+The diff-completeness set that shipped (reorder-as-change, exact + similarity move/rename matching, relational refactor grouping, the located condition edit-script) is the *matching* machinery, not element-family coverage — its contract lives in [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md) §5. New gaps land here as found.
 
 ## 2. Deferred — with a re-open trigger
 

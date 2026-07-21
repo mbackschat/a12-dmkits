@@ -101,6 +101,8 @@ Parses **both** states into the model and compares **structure** (so JSON format
 | **typedef / include / config** | added/removed/renamed; mount point; imports; locale/decimal/roles/charset |
 | **element position** | a field/group/rule **reordered** within its parent — a display-order change, semantic per §2b |
 
+*(Status: only **field** and **rule** are diffed today — field aspects `kind`/`scale`/`min`/`max`/`minLength`/`maxLength`/`pattern`, rule aspects `condition`/`severity`/`code`. **Computation, group, and typedef/include/config are not yet diffed**, nor are field `unit`/`format`/`metadata`/requiredness/enum-value or rule `messages`/locale — a change to one of those currently produces no diff. The rows above are the target taxonomy; closing the gap is [`MODEL-REVIEW-GAPS.md`](MODEL-REVIEW-GAPS.md) MR9.)*
+
 ### 5b. Risk taxonomy — *loosening > tightening*
 
 A removed/loosened rule **silently accepts bad data** (invisible); a tightened/added rule **fails loudly** at validation (caught). So the taxonomy is asymmetric:
