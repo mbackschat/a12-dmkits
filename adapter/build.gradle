@@ -382,6 +382,24 @@ tasks.register('profileFixtureGuardTest', Test) {
     ])
 }
 
+tasks.register('profileSynthesisPerfTest', Test) {
+    description = 'Run the opt-in in-process N/4N profile-synthesis catastrophe guard.'
+    group = 'measurement'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    maxParallelForks = 1
+    failFast = true
+    systemProperty 'perf.profile.synthesis', 'true'
+    systemProperty 'perf.profile.synthesis.n', providers.gradleProperty('profileSynthesisN').getOrElse('32')
+    systemProperty 'perf.profile.synthesis.pairs', providers.gradleProperty('profileSynthesisPairs').getOrElse('5')
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.ProfileSynthesisPerfTest'
+    }
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 tasks.register('profileCliPerfTest', Test) {
     description = 'Run the opt-in profile-shaped model describe/report JVM-process catastrophe canary.'
     group = 'measurement'
