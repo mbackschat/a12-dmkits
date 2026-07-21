@@ -1,9 +1,12 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.function.Consumer;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -14,6 +17,23 @@ import com.fasterxml.jackson.databind.JsonNode;
  * the part a human actually reads: what each rule/computation *does*.
  */
 final class ReportText implements VerbText {
+
+    enum TreeLayoutStep {
+        SIBLING_CLASSIFICATION,
+        PREFIX_BUILD
+    }
+
+    private static final Consumer<TreeLayoutStep> NO_LAYOUT_PROBE = ignored -> {};
+
+    private final Consumer<TreeLayoutStep> layoutProbe;
+
+    ReportText() {
+        this(NO_LAYOUT_PROBE);
+    }
+
+    ReportText(Consumer<TreeLayoutStep> layoutProbe) {
+        this.layoutProbe = Objects.requireNonNull(layoutProbe, "layoutProbe");
+    }
 
     @Override
     public String render(JsonNode data) {
@@ -31,28 +51,40 @@ final class ReportText implements VerbText {
         return sb.isEmpty() ? "(empty model)\n" : sb.toString();
     }
 
-    private static String renderTree(JsonNode data) {
+    private String renderTree(JsonNode data) {
         List<JsonNode> nodes = new ArrayList<>();
         data.path("nodes").forEach(nodes::add);
         if (nodes.isEmpty()) {
             return "(empty model)\n";
         }
 
-        Map<String, Boolean> lastSibling = lastSiblingMap(nodes);
-        Map<String, JsonNode> byPath = new HashMap<>();
-        nodes.forEach(node -> byPath.put(node.path("path").asText(), node));
+        boolean[] lastSibling = lastSiblingFlags(nodes);
+        List<Integer> ancestors = new ArrayList<>();
 
         StringBuilder out = new StringBuilder();
-        JsonNode root = nodes.get(0);
-        out.append(root.path("path").asText()).append("  ").append(description(root)).append('\n');
-        appendLogic(out, root, byPath, lastSibling);
-        for (int i = 1; i < nodes.size(); i++) {
+        for (int i = 0; i < nodes.size(); i++) {
             JsonNode node = nodes.get(i);
+            int depth = node.path("depth").asInt();
+            while (ancestors.size() > depth) {
+                ancestors.removeLast();
+            }
+            if (ancestors.size() != depth) {
+                throw new IllegalArgumentException("tree node depth skips its parent at "
+                        + node.path("path").asText());
+            }
+
             String path = node.path("path").asText();
-            out.append(prefixFor(node, byPath, lastSibling))
-                    .append(lastSibling.getOrDefault(path, true) ? "└─ " : "├─ ")
-                    .append(shortName(path)).append("  ").append(description(node)).append('\n');
-            appendLogic(out, node, byPath, lastSibling);
+            String prefix = depth == 0 ? "" : prefixFor(ancestors, lastSibling);
+            if (depth == 0) {
+                out.append(path);
+            } else {
+                out.append(prefix)
+                        .append(lastSibling[i] ? "└─ " : "├─ ")
+                        .append(shortName(path));
+            }
+            out.append("  ").append(description(node)).append('\n');
+            appendLogic(out, node, prefix, lastSibling[i]);
+            ancestors.add(i);
         }
 
         JsonNode summary = data.path("summary");
@@ -65,41 +97,27 @@ final class ReportText implements VerbText {
         return out.toString();
     }
 
-    private static Map<String, Boolean> lastSiblingMap(List<JsonNode> nodes) {
-        Map<String, Boolean> out = new HashMap<>();
+    private boolean[] lastSiblingFlags(List<JsonNode> nodes) {
+        boolean[] out = new boolean[nodes.size()];
+        Arrays.fill(out, true);
+        Map<String, Integer> previousChildByParent = new HashMap<>();
         for (int i = 0; i < nodes.size(); i++) {
-            JsonNode current = nodes.get(i);
-            int depth = current.path("depth").asInt();
-            boolean last = true;
-            for (int j = i + 1; j < nodes.size(); j++) {
-                int nextDepth = nodes.get(j).path("depth").asInt();
-                if (nextDepth < depth) {
-                    break;
-                }
-                if (nextDepth == depth) {
-                    last = false;
-                    break;
-                }
+            layoutProbe.accept(TreeLayoutStep.SIBLING_CLASSIFICATION);
+            JsonNode parentNode = nodes.get(i).path("parent");
+            String parent = parentNode.isNull() ? null : parentNode.asText(null);
+            Integer previousChild = previousChildByParent.put(parent, i);
+            if (previousChild != null) {
+                out[previousChild] = false;
             }
-            out.put(current.path("path").asText(), last);
         }
         return out;
     }
 
-    private static String prefixFor(JsonNode node, Map<String, JsonNode> byPath,
-            Map<String, Boolean> lastSibling) {
-        List<JsonNode> ancestors = new ArrayList<>();
-        String parent = node.path("parent").isNull() ? null : node.path("parent").asText(null);
-        while (parent != null && byPath.containsKey(parent)) {
-            JsonNode ancestor = byPath.get(parent);
-            if (ancestor.path("depth").asInt() > 0) {
-                ancestors.add(0, ancestor);
-            }
-            parent = ancestor.path("parent").isNull() ? null : ancestor.path("parent").asText(null);
-        }
-        StringBuilder out = new StringBuilder();
-        for (JsonNode ancestor : ancestors) {
-            out.append(lastSibling.getOrDefault(ancestor.path("path").asText(), true) ? "   " : "│  ");
+    private String prefixFor(List<Integer> ancestors, boolean[] lastSibling) {
+        layoutProbe.accept(TreeLayoutStep.PREFIX_BUILD);
+        StringBuilder out = new StringBuilder(Math.max(0, ancestors.size() - 1) * 3);
+        for (int depth = 1; depth < ancestors.size(); depth++) {
+            out.append(lastSibling[ancestors.get(depth)] ? "   " : "│  ");
         }
         return out.toString();
     }
@@ -183,8 +201,7 @@ final class ReportText implements VerbText {
                 .append(value.getKey()).append("]=\"").append(value.getValue().asText()).append('"'));
     }
 
-    private static void appendLogic(StringBuilder out, JsonNode node, Map<String, JsonNode> byPath,
-            Map<String, Boolean> lastSibling) {
+    private static void appendLogic(StringBuilder out, JsonNode node, String prefix, boolean lastSibling) {
         List<String> lines = new ArrayList<>();
         for (JsonNode rule : node.path("rules")) {
             lines.add("rule " + shortName(rule.path("name").asText()) + " :  " + rule.path("dsl").asText());
@@ -199,8 +216,7 @@ final class ReportText implements VerbText {
         }
         String indent = node.path("depth").asInt() == 0
                 ? ""
-                : prefixFor(node, byPath, lastSibling)
-                        + (lastSibling.getOrDefault(node.path("path").asText(), true) ? "   " : "│  ");
+                : prefix + (lastSibling ? "   " : "│  ");
         for (int i = 0; i < lines.size(); i++) {
             out.append(indent).append(i == lines.size() - 1 ? "└─ " : "├─ ").append(lines.get(i)).append('\n');
         }
