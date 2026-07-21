@@ -102,7 +102,7 @@ The catalog maps to this boundary as follows:
 | `Today`, `Now`, `BaseYear` | available only through explicit time/base-year inputs; never host globals |
 | partial date fragments and format-driven completion | interpreter resolves the field’s format/base-year context and then exposes a complete `A12Date` |
 | field/group fill predicates, field coercions, enum categories, semantic indexes, repetition operators, `Having`, Custom Conditions, Custom Field Types | interpreter-only because their operands are model/document state |
-| pattern operations, named time zones, and affected decimal operations | direct in principle but absent until cross-platform parity is exact |
+| pattern operations, named time zones, and affected decimal operations | direct in principle; their kernel-exact semantics already ship in the interpreter (IF163/IF164/IF155) and are projection-gated here until the exported TS laws pass — §10.1 (named zones beyond `{UTC, GMT, Europe/Berlin}` also await IG83) |
 
 This classification is represented by a generated or CI-checked capability matrix against the live operator catalog, so every catalog entry has an explicit direct, interpreter, authoring, or parity-gated disposition and a new entry cannot disappear from the TypeScript surface unnoticed.
 
@@ -124,7 +124,7 @@ The public surface should have a small immutable value family:
 | `A12TimeZone` | an explicitly supported A12/model time-zone identity |
 | `A12DateTime` | an exact instant paired with explicit direct-API time-zone evaluation context; the zone is not claimed to be intrinsic kernel scalar identity |
 | `A12DateRange` | an inclusive pair of complete dates |
-| `A12Pattern` | a validated operator utility; gated and absent until the Java/JavaScript regex profile is exact, and deliberately not an `A12Value` |
+| `A12Pattern` | a validated operator utility; the ES2018 regex profile is already exact in the interpreter (IF164), so this is projection-gated (§10.1), not missing; deliberately not an `A12Value` |
 | `A12Value` | the closed discriminated union of storable scalar values: string, Boolean, Confirm, number, date, time, date-time, and date range |
 | `A12Truth` | a three-state condition result: true, false, or not evaluated |
 | `A12Evaluation<T>` | a value-producing operator result: value `T` or legitimate kernel non-evaluation |
@@ -885,7 +885,7 @@ declare const A12Codecs: A12CodecCompanion;
 | Guards | Every wrapper guard accepts `unknown`, never throws, and verifies an authentic library-issued wrapper; a literal `kind` switch narrows only after authentication or a trusted typed boundary |
 | Options | `A12Option.some<T>` preserves `T`; the immutable `none` object is assignable to every `A12Option<T>` |
 | Tolerance | `A12Tolerance` is a closed string-literal union with four correctly typed companion constants |
-| Patterns | `A12Pattern` and its companion are omitted from the package until the supported regex profile is exact |
+| Patterns | `A12Pattern` and its companion are omitted from the published package until the projected regex profile passes its TS laws; the underlying profile is already exact (IF164) |
 | Truth and evaluation | `A12Truth` is the exact three-state union; `A12Evaluation<T>` is the corresponding value-or-non-evaluation algebra |
 | Issues | Closed conversion/operator issue unions provide stable codes, paths, structured details, and an exact catalog or direct-utility operation identity |
 | Error safety | Developers never parse `message`; guards narrow `unknown` without cross-module `instanceof`; errors do not retain rejected raw input |
@@ -937,9 +937,9 @@ const value: A12DateTime = A12DateTime.parseLocal(
 );
 ```
 
-The value retains enough evaluation context to make later calls context-free. UTC is the initial guaranteed zone and therefore the only initially accepted `A12DateTimeWire.timeZone`.
+The value retains enough evaluation context to make later calls context-free. UTC is the initial guaranteed zone; the interpreter's supported set is `{UTC, GMT, Europe/Berlin}` (IF155), so `A12DateTimeWire.timeZone` accepts UTC first and adopts GMT/Europe/Berlin as the projection graduates the set.
 
-Named IANA zones such as `Europe/Berlin` join only after their supported history is kernel-exact. When they ship, a spring gap is a conversion error, a fall-back ambiguity follows the exact kernel resolution rule, and binary operations reject incompatible zones unless an explicit conversion exists.
+`Europe/Berlin`'s supported history is already kernel-exact (IF155); only the wider IANA-zone domain beyond the supported set awaits IG83. For every projected zone, a spring gap is a conversion error, a fall-back ambiguity follows the exact kernel resolution rule, and binary operations reject incompatible zones unless an explicit conversion exists.
 
 ## 5. Wrapping and unwrapping native values
 
@@ -1091,7 +1091,7 @@ Only exact bidirectional conversions are codecs:
 | ISO calendar-date string ↔ `A12Date` | yes | exact after canonicalization |
 | ISO local-time string ↔ `A12Time` | yes | exact after canonicalization |
 | `{start, end}` ↔ `A12DateRange` | yes | structured and unambiguous |
-| `{instant, timeZone}` ↔ `A12DateTime` | yes for the exactly supported context set; initially UTC | preserves the instant plus explicit direct-API evaluation context |
+| `{instant, timeZone}` ↔ `A12DateTime` | yes for the supported context set `{UTC, GMT, Europe/Berlin}` (IF155); UTC is the initial projected zone | preserves the instant plus explicit direct-API evaluation context |
 | JavaScript `number` ↔ `A12Number` | no | may lose decimal information |
 | every `A12Integer` ↔ safe JavaScript `number` | no | only a checked subset fits |
 | JavaScript `Date` ↔ `A12Date` | no | instant and calendar date are different concepts |
@@ -1539,7 +1539,7 @@ interface A12OperatorsWithExactArithmetic
 }
 ```
 
-`A12OperatorsWithPatterns` adds only the exact supported pattern profile. `A12OperatorsWithExactArithmetic` adds the operations that depend on the exact JavaScript 50-significant-digit arithmetic context. These extension types prevent examples or declarations from pretending gated methods already exist.
+`A12OperatorsWithPatterns` adds only the exact supported pattern profile. `A12OperatorsWithExactArithmetic` adds the operations that depend on the JavaScript 50-significant-digit arithmetic context. Both underlying semantics are already exact in the interpreter (IF164/IF163); the extension types stage the *projection* (§10.1) so examples or declarations cannot pretend the exported methods already exist before their TS laws pass.
 
 ### 6.2 Construction, constants, and logic
 
@@ -1806,10 +1806,10 @@ const roundedAccounting: A12Number =
 
 Each scale is an `A12Integer` in the catalog-supported range `0..14`.
 
-Multiplication, division, and power are expected but are gated by the existing JavaScript decimal-context gap:
+Multiplication, division, and power are semantically exact today (IF163) and projection-gated behind `A12OperatorsWithExactArithmetic` until the exported TS laws pass:
 
 ```ts
-// Exposed only after JavaScript matches the A12 50-significant-digit contract.
+// Graduates from A12OperatorsWithExactArithmetic once its projection laws pass (semantics exact — IF163).
 declare const operators:
   A12OperatorsWithExactArithmetic;
 declare const a: A12Number;
@@ -1825,7 +1825,7 @@ const power: A12Evaluation<A12Number> =
 
 `exponent` is an `A12Integer`, and multiplication returns `A12Number`. Division and power return `A12Evaluation<A12Number>` because division by zero produces `divisionByZero` and invalid power domains produce structured `powerDomain` non-evaluation.
 
-They never return `NaN` or infinity or relabel legitimate non-evaluation as `A12OperatorError`. Wrong wrappers and other API-precondition violations remain operator errors, while gated functions stay absent until their arithmetic semantics are exact.
+They never return `NaN` or infinity or relabel legitimate non-evaluation as `A12OperatorError`. Wrong wrappers and other API-precondition violations remain operator errors, while gated functions stay absent from the published surface until their projection laws pass — their arithmetic semantics are already exact (IF163).
 
 ### 6.7 Comparisons
 
@@ -2311,12 +2311,14 @@ Java support is useful, but it does not determine TypeScript naming or delay the
 
 Every public operator must reproduce the applicable kernel behavior exactly through the clean-room differential/conformance approach. Each parity-gated capability remains visible in the generated manifest and the project’s exact gap ledger until its cross-platform laws pass.
 
-| Gap | Release rule |
-|---|---|
-| JavaScript decimal rendering and mutable host-global decimal context | `A12Number` does not ship until construction, addition, subtraction, comparison, rounding, and canonical plain-decimal rendering are isolated and exact |
-| JavaScript 50-significant-digit arithmetic context | multiplication, division, and power remain absent until exact |
-| Java/JavaScript regex dialect | `A12Pattern` and pattern operators remain absent until the accepted pattern domain is exact and enforced before evaluation |
-| Time-zone identifiers and history | UTC ships first; named zones remain absent until their supported history is exact |
+**Status (2026-07-20).** The host-semantics parity these gates originally waited on is now proven *in the interpreter* — the same `commonMain`/`jsMain` semantics this API projects (§9). Decimal arithmetic including multiply/divide/power under `MathContext(50)` HALF_UP with plain rendering (`Dec.{kt,jvm.kt,js.kt}`, IF163), the ES2018 regex parser/translator and distinct-pattern registry (`regex/JavaPatternToJs`, IF164), and the `{UTC, GMT, Europe/Berlin}` zone set with Berlin's complete pinned history (`ModelTimeZone`, IF155/IF165) all ship exact today. So these gates no longer bound *missing semantics*; they bound the **public TypeScript projection** — extracting the shared value-level functions (§9) and passing the cross-platform wrapper/codec/declaration laws for the exported types. The one genuinely open *semantic* scope is the wider IANA timezone-id domain beyond the supported set, deferred as IG83.
+
+| Capability | Semantics | Release rule (projection gate) |
+|---|---|---|
+| `A12Number` construction, ±, comparison, rounding, plain-decimal rendering | exact (IF163) | ships once its TS wrapper/codec/rendering laws pass on JVM+Node |
+| `A12Number` multiply, divide, power (50-significant-digit context) | exact (IF163) | `A12OperatorsWithExactArithmetic` graduates once its projection laws pass |
+| `A12Pattern` and pattern operators (ES2018 regex profile) | exact (IF164) | `A12OperatorsWithPatterns` graduates once the projected pattern domain is enforced before evaluation |
+| Time-zone identifiers and history | `{UTC, GMT, Europe/Berlin}` exact, Berlin full history (IF155) | UTC ships first; GMT/Europe/Berlin follow as the projection adopts the supported set; the wider IANA domain awaits IG83 |
 
 Affected operations are fixed or excluded, never approximated with weaker host semantics.
 
@@ -2331,7 +2333,7 @@ Fallibility is uniform:
 - a total typed operator returns its value or `A12Truth` directly, while an actual API-precondition violation such as out-of-domain string bounds or scale, unequal dot-product lengths, incompatible evaluation zones, or a foreign wrapper supplied through unsafe JavaScript throws structured `A12OperatorError`;
 - division by zero and invalid power domains are legal kernel operands and return `A12Evaluation.notEvaluated`; they are neither conversion errors nor operator errors;
 - `A12Result.capture` converts an operator call to the result form without duplicating every method as `tryX`;
-- unsupported platform semantics have no exported function until exact, and incompatible operand kinds fail at compile time.
+- platform semantics still without a passing TS projection have no exported function, and incompatible operand kinds fail at compile time.
 
 Checked unwrapping never truncates silently. A visibly lossy conversion is a separate method. The indexed conversion forms preserve the same scalar errors and add each failing index.
 
