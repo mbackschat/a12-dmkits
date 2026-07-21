@@ -54,7 +54,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.18.2'
 
     // (Joins when live Tier-2 lands: implementation project(':interpreter') — the kernel-free evaluator for
-    //  the two-tier validation coupling. Deferred per the owner decision, SCHEMAKIT-SPEC §7.)
+    //  the two-tier validation coupling. Deferred on consumer-exists, SCHEMAKIT-GAPS §3.)
 
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'

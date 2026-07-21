@@ -85,9 +85,9 @@ Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes t
 | **Field config** | `minLength`/`maxLength`/`pattern`→string config; `minimum`/`maximum`→number bounds |
 | **Rules (direct)** | `required`→requiredness; `enum`→ENUMERATION; `uniqueItems`→`RepetitionNotUnique`/`FieldValuesNotUnique`; `pattern`→`PatternViolated` |
 | **Rules (composed), built** | constraints with no field-config home become a12 *rules* — `exclusiveMinimum`/`exclusiveMaximum`, `multipleOf`, `const`, `dependentRequired`, `oneOf`/`anyOf` discriminator, `uniqueItems`, `if {f=v [and …]} then/else {required}` (incl. **multi-property** `if`), **then/else value-constraints** (`g` must satisfy `const`/`enum`/`min`/`max`/`pattern` when the `if` holds, and on the `else` — single- or multi-property), `contains`/`minContains`/`maxContains` (a simple predicate — incl. clauses on a **nested-object** field, e.g. `payment.method` → a filtered-count rule), **`minItems`** (the group-cardinality lower bound → `NumberOfFilledGroups(G*) < N`), `not {const\|enum\|pattern\|minimum\|maximum\|minLength\|maxLength}`, object-level `not {required}`. **Each keyword's exact fire condition is tabulated in §4f.** |
-| **Rules — declined** (reported, not enforced) | the *feasible-but-not-built* gaps — **nested/compound** `not`, a `contains` clause that descends into a **nested array** (nested aggregation) or an **arbitrary combinator subschema** (`oneOf`/`anyOf`/`not`) — are tracked in [`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §3 (feasible, but off the build queue on ROI). *Not-feasible* constraints (`not {type}`, §4c) are permanently omitted — ledger §4. (`minItems` left that class 2026-07-09 and is now **synthesized** — §4f.) |
+| **Rules — declined** (reported, not enforced) | the *feasible-but-not-built* gaps — **nested/compound** `not`, nested-array `contains` (correlated nested aggregation), and a closed row-local subset of `contains` combinators — are tracked separately in [`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §3. “Arbitrary combinator subschema” is not promised because some branches have no row-condition form. *Not-feasible* constraints (`not {type}`, §4c) are permanently omitted — gaps §4. (`minItems` left that class 2026-07-09 and is now **synthesized** — §4f.) |
 | **Carriage (export, a12↔a12)** | the full rule rides `x-a12-rule`, a computation `x-a12-computation`; `readOnly:true` marks a computed field |
-| **Two-tier validation** *(proposal §12.1)* | exported Tier-A keywords = field-local tier (any validator); `:interpreter` = full-rule tier |
+| **Two-tier validation** *(proposal §12.1)* | exported Tier-A keywords feed any stock validator; rules outside that tier ride `x-a12-rule` for a full-rule consumer. Shape 5 proves the stock tier plus carriage; live in-process `:interpreter` execution is deferred in [`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §3. |
 
 ### 4a. Omit, never block (import)
 
@@ -163,7 +163,8 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | `unevaluatedProperties` / `unevaluatedItems` | structure imports; constraint reported — **not enforced** | omitted (§4c) |
 | `$dynamicRef` / `$dynamicAnchor` | reported | omitted (§4c) |
 | `contains`/`minContains`/`maxContains` (clauses: const/enum/range/pattern, single- or multi-property, incl. **nested-object** fields) | a `Having`-filtered count rule (`≥`/`≤ N` matching rows) | rule (Tier A+) |
-| nested/compound `not`; `contains` descending into a nested **array** / an arbitrary **combinator** subschema | structure imports; keyword reported — **feasible, but declined** ([`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §3) | omitted (declined gap) |
+| nested/compound `not`; `contains` descending into a nested **array** | structure imports; keyword reported — **feasible, but declined** ([`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §3) | omitted (declined gap) |
+| row-local `contains` combinator over otherwise representable clauses | structure imports; the whole `contains` is reported — a closed all-or-nothing translator is feasible, but arbitrary subschemas are not promised ([`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §3) | omitted (declined gap) |
 | `not {type}` | structure imports; reported — **not feasible** (a12 field kind is fixed; no type-check operator to negate) | omitted (ledger §4) |
 
 ### Export — Document Model → JSON Schema
@@ -317,9 +318,9 @@ The differential is **round-trip + kernel-accept** (the kernel-accept gate rides
 2. **Round-trip** — `import(schema) → DM → export → schema'` is structurally equal on `{type, properties, required, $defs}`; and `DM → export → import → DM'` preserves structure + (a12↔a12) rules/computations via `x-a12-*`.
 3. **Valid JSON Schema** — exports validate against the JSON-Schema meta-schema.
 4. **Report accuracy** — the transcoding report states every disposition; it is asserted against (it doubles as the suite's evidence, proposal §11).
-5. **Two-tier** *(shape 5)* — exported Tier-A keywords feed a stock validator while `interpreter.validateFull` enforces the full rule set on the same instance.
+5. **Two-tier boundary** *(shape 5)* — exported Tier-A keywords feed a stock validator; a cross-field rule that the stock tier cannot enforce remains present in `x-a12-rule`. Live `interpreter.validateFull` wiring is deferred in [`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md) §3.
 
-Tests live in `:schemakit:test`; the kernel-accept gate uses only the public facade (`ModelLoader`), so the structural shapes need no `:adapter` on the test classpath. Tier-A projection and the two-tier shape pull in `:adapter`/`:interpreter` as those increments land.
+Tests live in `:schemakit:test`; the kernel-accept gate uses only the public facade (`ModelLoader`), so the structural shapes need no `:adapter` on the test classpath. Tier-A projection uses the `ConditionReadBack` provider from `:adapter` at test runtime; the deferred live full-rule tier would add `:interpreter`.
 
 ---
 
@@ -331,6 +332,6 @@ Built test-first, smallest increment first. Progress is git, not a status table 
 2. **Nested + array-of-object** — groups + repeatable groups + `minItems`/`maxItems`.
 3. **`$defs`/`$ref` both kinds** — leaf `$def`→typedef; object `$def`→inlined group (single-import) or **mounted as an include** (the `--out-dir` bundle, §4e/§4g); recursive `$ref` expanded to `recursionDepth` (default 1), then omitted with a corrective to-do (the kernel forbids a self-include).
 4. **Rule carriage** — Tier-A `if/then`+`required`; Tier-B cross-field/aggregate as `x-a12-rule`; a computation as `x-a12-computation`; meta-schema-valid; re-import reconstructs all three.
-5. **Tier A+ import & interpreter coupling** — synthesize rules from `dependentRequired`/`exclusiveMinimum`/`multipleOf`/`const`/discriminators; two-tier validation holds (proposal §12).
+5. **Tier A+ import & two-tier boundary** — synthesize rules from `dependentRequired`/`exclusiveMinimum`/`multipleOf`/`const`/discriminators; prove stock Tier-A enforcement and full-rule carriage. Live interpreter coupling remains deferred (proposal §12).
 
 > **Open / deferred work** is not tracked here — the stable contract is this spec; the moving edge (import-synthesis gaps + the deferred contract/architecture decisions) lives in [`SCHEMAKIT-GAPS.md`](SCHEMAKIT-GAPS.md).

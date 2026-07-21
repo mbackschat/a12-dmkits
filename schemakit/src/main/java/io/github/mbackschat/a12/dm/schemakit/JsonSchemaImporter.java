@@ -43,6 +43,8 @@ public final class JsonSchemaImporter {
     private static final String LOCALE = "en_US";
     private static final String ROW_FIELD = "value";   // the single value field in a scalar-array / map row group
     private static final String MAP_KEY_FIELD = "key";   // the entry-key field in a map's {key, value} row group
+    private static final Set<String> ANNOTATION_KEYWORDS = Set.of(
+            "$comment", "title", "description", "default", "deprecated", "readOnly", "writeOnly", "examples");
 
     public record ImportResult(String dmJson, TranscodeReport report) {}
 
@@ -335,13 +337,13 @@ public final class JsonSchemaImporter {
             return;
         }
         JsonNode required = not.path("required");
-        if (required.isArray() && !required.isEmpty()) {
+        if (hasOnlyAssertion(not, "required") && required.isArray() && !required.isEmpty()) {
             List<String> fields = new ArrayList<>();
             required.forEach(r -> fields.add(r.asText()));
             ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenAllPresent(groupPath, fields));
         } else {
             ctx.report().diagnostic("object 'not' at '" + groupPath + "' isn't a simple 'not {required:[…]}' "
-                    + "(e.g. a nested or compound not) — not mapped; add it by hand");
+                    + "(e.g. a nested or compound 'not') — not mapped; add it by hand");
         }
     }
 
@@ -799,26 +801,39 @@ public final class JsonSchemaImporter {
         if (not.isMissingNode()) {
             return;
         }
-        if (not.has("const")) {
+        if (hasOnlyAssertion(not, "const")) {
             ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenConst(path, not.get("const").asText()));
-        } else if (not.path("enum").isArray() && !not.get("enum").isEmpty()) {
+        } else if (hasOnlyAssertion(not, "enum") && not.get("enum").isArray() && !not.get("enum").isEmpty()) {
             List<String> values = new ArrayList<>();
             not.get("enum").forEach(v -> values.add(v.asText()));
             ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenEnum(path, values));
-        } else if (not.hasNonNull("pattern")) {
+        } else if (hasOnlyAssertion(not, "pattern") && not.hasNonNull("pattern")) {
             ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenPattern(path, not.get("pattern").asText()));
-        } else if (not.path("minimum").isNumber()) {
+        } else if (hasOnlyAssertion(not, "minimum") && not.get("minimum").isNumber()) {
             ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenBound(path, true, not.get("minimum").asText()));
-        } else if (not.path("maximum").isNumber()) {
+        } else if (hasOnlyAssertion(not, "maximum") && not.get("maximum").isNumber()) {
             ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenBound(path, false, not.get("maximum").asText()));
-        } else if (not.path("minLength").isNumber()) {
+        } else if (hasOnlyAssertion(not, "minLength") && not.get("minLength").isNumber()) {
             ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenLength(path, true, not.get("minLength").asInt()));
-        } else if (not.path("maxLength").isNumber()) {
+        } else if (hasOnlyAssertion(not, "maxLength") && not.get("maxLength").isNumber()) {
             ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenLength(path, false, not.get("maxLength").asInt()));
         } else {
-            ctx.report().diagnostic("property '" + name + "' uses a 'not' that isn't a simple "
+            ctx.report().diagnostic("property '" + name + "' uses a nested or compound 'not', or one that isn't a simple "
                     + "const/enum/pattern/minimum/maximum/minLength/maxLength — not mapped; add the constraint by hand");
         }
+    }
+
+    private static boolean hasOnlyAssertion(JsonNode node, String keyword) {
+        if (!node.isObject() || !node.has(keyword)) {
+            return false;
+        }
+        for (Iterator<String> names = node.fieldNames(); names.hasNext(); ) {
+            String name = names.next();
+            if (!name.equals(keyword) && !ANNOTATION_KEYWORDS.contains(name)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** {@code minItems} → a synthesized {@code NumberOfFilledGroups(G*) < N} rule (SCHEMAKIT-SPEC §4f). The Need

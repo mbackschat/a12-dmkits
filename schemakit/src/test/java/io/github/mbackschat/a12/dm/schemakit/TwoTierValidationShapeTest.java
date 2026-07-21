@@ -28,9 +28,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * and is carried in {@code x-a12-rule} for the interpreter (the full-rule tier). This proves the
  * complementarity that makes export more than documentation.
  *
- * <p>Running the interpreter as the live Tier-2 here is deferred: its DM-JSON→ModelDef loader lives in
- * {@code :cli} (a backwards dep for schemakit), and reuse-first forbids reimplementing it — see the spec's
- * open items. This test demonstrates Tier-1 + that the uncrossable rule is preserved for Tier-2.
+ * <p>Running the interpreter as the live Tier-2 here is deferred on consumer-exists, not architecture: the
+ * kernel-free loader now lives in {@code :interpreter}. This test demonstrates Tier-1 plus preservation of the
+ * cross-field rule for a future full-rule consumer (SCHEMAKIT-GAPS §3).
  */
 class TwoTierValidationShapeTest {
 

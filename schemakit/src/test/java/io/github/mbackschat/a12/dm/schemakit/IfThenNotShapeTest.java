@@ -15,8 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *   <li>{@code not: {const}} → must not equal; {@code not: {enum}} → not one of; {@code not: {pattern}} → must not
  *       match; {@code not: {minimum/maximum}} → the inverted numeric bound.</li>
  * </ul>
- * A non-tractable shape (arbitrary {@code if}/{@code then}/{@code else} value-constraints, complex {@code not} such
- * as {@code minLength}/{@code type}/nested) is still <b>reported</b>, never silently dropped (SCHEMAKIT-GAPS).
+ * A non-tractable shape (an arbitrary conditional schema, {@code not {type}}, or nested/compound {@code not}) is
+ * still <b>reported</b>, never silently dropped (SCHEMAKIT-GAPS).
  */
 class IfThenNotShapeTest {
 
