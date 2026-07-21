@@ -14,7 +14,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 /**
  * {@link ModelSynthesizer} — the round-trip acceptance criterion (MODEL-PROFILE-SPEC "the profile-driven
  * synthesizer"): profile a real model → synthesize → profile the result → the structure/rule/computation axes
- * match within the per-axis tolerances (MODEL-SYNTHESIS-FIDELITY-LEDGER). The synthesized model must also be
+ * match within the per-axis tolerances (MODEL-PROFILE-SPEC). The synthesized model must also be
  * <b>kernel-valid</b> (it loads through the strict {@link BoundModel#ofJson} consistency gate, not the lenient
  * path).
  */
@@ -172,7 +172,7 @@ class ModelSynthesizerTest {
         // computations are REAL calculations, not bare copies: the aggregate machinery (Sum + Having) is present.
         // (Rounding is NO LONGER a richness proxy — the synth now reaches the field scale via same-scale aggregates
         // and copies WITHOUT a round, which is exactly what keeps the ARITHMETIC construct near the target instead
-        // of on every computation; see MODEL-SYNTHESIS-FIDELITY-LEDGER.)
+        // of on every computation.)
         assertTrue(synth.computations().operators().containsKey("Sum")
                         && synth.computations().operators().containsKey("Having"),
                 "computations carry a filtered aggregate (Sum + Having): " + synth.computations().operators());

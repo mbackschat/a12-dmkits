@@ -27,7 +27,7 @@ final class StructureModelSynthesizer {
         //       of their OWN non-repeatable HUB — creating many aggregate-capable positions (a computation/rule
         //       scoped at a hub can Sum over its repeatable child). A single nested chain reaches the repeatable
         //       nesting depth + overall nesting depth. (The old spine+fan-out left only ~5 aggregate-capable
-        //       groups, capping AGGREGATE — MODEL-SYNTHESIS-FIDELITY-SPEC "joint structure+computation plan".)
+        //       groups, capping AGGREGATE.)
         int groupCount = Math.max(1, s.groupCount());
         int depth = Math.max(1, s.maxNestingDepth());
         GroupPlan root = buildTree(groupCount, depth, s.repeatability(), rnd, naming);
@@ -193,12 +193,12 @@ final class StructureModelSynthesizer {
         List<GroupPlan> reps = new ArrayList<>();                   // every repeatable group, for per-row filler attach
 
         // A deliberate maxRepetitions multiset (largest-remainder, not i.i.d. per slot — kills the
-        // cross-seed variance of whether a big value happens to land next to another; see
-        // MODEL-SYNTHESIS-FIDELITY-SPEC). The FALLBACK pool for root sizing when chainProductByDepth is absent (an older
+        // cross-seed variance of whether a big value happens to land next to another). The FALLBACK pool for
+        // root sizing when chainProductByDepth is absent (an older
         // profile) — see rootSizePool below, which is now the primary source.
         List<Integer> repSizePool = new ArrayList<>(sampleMultiset(repsDist, repsLeft, rnd));
 
-        // Branching retune (MODEL-SYNTHESIS-FIDELITY-SPEC): replaces the "one linear stack per
+        // Branching retune: replaces the "one linear stack per
         // hub, depth 2..4 favouring 3" heuristic. Verified against the real target: nestingDepth is 24 reps at
         // depth 1 carrying 99 nested reps (a ~4-per-root fan) plus 2 reaching maxRepeatableNestingDepth — NOT
         // depth spread thinly across ~50 shallow linear stacks. A linear stack per hub structurally cannot
@@ -214,7 +214,7 @@ final class StructureModelSynthesizer {
         int rootTotal = depthSplit[0];
         int nestedCount = Math.max(0, repsLeft - rootTotal - deepChains);
 
-        // chainProductByDepth wiring (MODEL-SYNTHESIS-FIDELITY-SPEC): replaces three separate
+        // chainProductByDepth wiring: replaces three separate
         // guesses with the metric built exactly for this. ROOT sizing no longer treats a chain-product target
         // as inapplicable and falls back to a plain maxRepetitions draw (an earlier stopgap) — chainProductByDepth's
         // "1" class IS the measured target distribution for a root's own size (a depth-1 position's chainProduct
@@ -308,8 +308,8 @@ final class StructureModelSynthesizer {
         // so it naturally ends up hosting the tail of the nested distribution once assignment is feasibility-
         // driven. This generalizes to any profile's shape: a flat/uniform target (no giant roots) simply has
         // no infeasible pairings to resolve, and the greedy match degenerates to "whichever root is still
-        // open" — it does not bake in "giants get thin fans" as a rule (see MODEL-SYNTHESIS-FIDELITY-SPEC
-        // — an inverse-rank / size-threshold version of this was tried and rejected: it reproduced THIS
+        // open" — it does not bake in "giants get thin fans" as a rule (an inverse-rank / size-threshold
+        // version of this was tried and rejected: it reproduced THIS
         // target's numbers by encoding an unmeasured correlation, not by matching what the profile expresses).
         List<Integer> fans = branchFans(rep.siblingBranchFan(), rootCount, Math.max(0, repsLeft - rootCount), rnd);
         java.util.Collections.shuffle(fans, rnd);           // no order correlation with rootSizes below
@@ -359,8 +359,7 @@ final class StructureModelSynthesizer {
                 hub = root;                                         // maxDepth==2: reps hang directly off root
             } else if (prevHub != null && (left[0] < repsLeft + 1 || rnd.nextDouble() < multiWayFraction)) {
                 // share — either by choice, or because budget is too tight to AFFORD a fresh hub without
-                // risking a later rep in this same loop (a "small-N
-                // stochastic derivation" fix, see MODEL-SYNTHESIS-FIDELITY-SPEC compact-profile intake): a fresh
+                // risking a later rep in this same loop (a "small-N stochastic derivation" fix): a fresh
                 // hub costs 1 EXTRA slot beyond the rep itself, but every remaining rep (this one plus repsLeft-1
                 // more) needs AT LEAST 1 slot each regardless of sharing — so a fresh hub is only safe to
                 // afford when left[0] has at least 1 slot of slack beyond that hard floor (left[0] >=
@@ -542,8 +541,8 @@ final class StructureModelSynthesizer {
      * varies with the raw draw, so the REALIZED multi-way count (the twin-hub-reservation supply
      * {@code allocateNumberComputedFields}'s TWIN-HUB claim depends on) rode seed-to-seed jitter instead of
      * the measured {@code multiWayHubFraction} (empirically: a breadth-shaped profile's {@code comp}/{@code
-     * rule.parallelIteration} floors dropped BELOW their earlier worst-seed values purely from a re-seed, no
-     * lever/logic change at all — see MODEL-SYNTHESIS-FIDELITY-SPEC). Fix: the top {@code
+     * rule.parallelIteration} floors dropped BELOW their earlier worst-seed values purely from a re-seed, with no
+     * lever/logic change at all). Fix: the top {@code
      * wantMultiWay} raw-sorted roots (the measured fraction's implied COUNT, floor-clamped to what {@code
      * deeperCount} can afford) are rescaled within their OWN sub-budget with a floor of 2 each — guaranteeing
      * the multi-way count is a fixed, target-implied number, not a rescale side effect — while the REST
@@ -727,7 +726,7 @@ final class StructureModelSynthesizer {
      * distribution for exactly this position, since a root's chainProduct IS its own size — falling back to
      * the plain {@code repSizePool} (an earlier stopgap, for an older profile lacking the metric): handing a root
      * the (nested-scale-dominated) COMBINED chain-product target as if it applied to just that one position
-     * would balloon it (see MODEL-SYNTHESIS-FIDELITY-SPEC).
+     * would balloon it.
      */
     private static int rootRepSize(List<Integer> rootSizePool, List<Integer> repSizePool, Distribution repsDist,
             Random rnd) {
@@ -1011,12 +1010,11 @@ final class StructureModelSynthesizer {
 
         // Bias NUMBER-kind ASSIGNMENT (not volume — that's
         // already biased above) toward aggregate-capable (hub) groups — the fieldChainProduct signal's
-        // noted consumer (MODEL-SYNTHESIS-FIDELITY-SPEC "field-mass placement bias"). Kind assignment above is laid
+        // noted consumer. Kind assignment above is laid
         // UNIFORMLY across every group's allocation regardless of position, so a hub group gets NUMBER
         // only in exact proportion to NUMBER's OVERALL share — measured on a depth-shaped profile: the
         // reservation-eligible aggregate-capable pool can cap far below the demand of reach-carrying
-        // computations, a ceiling no downstream reservation-mix change can move (see
-        // MODEL-SYNTHESIS-FIDELITY-SPEC).
+        // computations, a ceiling no downstream reservation-mix change can move.
         //
         // DEFICIT-based, demand-sized — NOT an unconditional boost (measured: an unconditional
         // "hub groups get 2× NUMBER share" variant fixed the depth-shaped profile but OVERSHOT the

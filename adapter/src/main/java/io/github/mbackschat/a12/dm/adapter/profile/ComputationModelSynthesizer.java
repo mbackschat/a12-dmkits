@@ -403,7 +403,7 @@ final class ComputationModelSynthesizer {
         } else if (plannedOperand != null) {
             aggFlat = plannedOperand;
         } else {
-            // The "wide aggregate hub" pattern (MODEL-SYNTHESIS-FIDELITY-SPEC): the real target's
+            // The "wide aggregate hub" pattern: the real target's
             // dominant aggregateStars shape is a NESTED (>=2-star) aggregate (median 2), a scope OUTSIDE a
             // multi-level chain reaching down through every level, which the single-level aggregateOperand can't
             // produce. Roll for it in the SAME proportion the target actually has (not always — the target still
@@ -463,7 +463,7 @@ final class ComputationModelSynthesizer {
         Calculation mainOp = claim.mainOp();
         // the feeding/cascade edge becomes its OWN round-free COPY alternative rather than an arithmetic term folded
         // into the main op — a copy of a same-scale fed field carries the feedingOthers edge WITHOUT the Rounding
-        // that tags ARITHMETIC (the over-round root cause; see MODEL-SYNTHESIS-FIDELITY-SPEC). Needs a scope-local
+        // that tags ARITHMETIC (the over-round root cause). Needs a scope-local
         // key to host a second alternative; without one it must fold (the unavoidable arithmetic minority).
         boolean feedAsCopy = computedOperand != null && canSplit;
         if (!canSplit) {
@@ -1085,16 +1085,15 @@ final class ComputationModelSynthesizer {
                 // by then — the priority order already excludes it from PARALLEL, correctly). Claiming one
                 // here when a non-pair-capable reach-capable candidate would do just as well starves that
                 // later opportunistic supply for no fidelity gain (measured: it silently dropped
-                // comp.parallelIteration's floor even though twin-hub's OWN reservation was unaffected —
-                // see MODEL-SYNTHESIS-FIDELITY-SPEC). Only fall back to a pair-capable candidate when
+                // comp.parallelIteration's floor even though twin-hub's OWN reservation was unaffected). Only
+                // fall back to a pair-capable candidate when
                 // no other reach-capable one exists for this slot.
                 //
                 // NOT jointly matched against scannedScopeCapacity (tried and reverted): pairing a
                 // sampled scope target alongside the reach target competes with THIS match for the same
                 // candidate slots, degrading reach-fit quality enough to sharply regress comp.workCapacity
-                // and comp.parallelIteration without lifting scopeCapacity in return (see
-                // MODEL-SYNTHESIS-FIDELITY-SPEC — a new pairwise deference breaking a
-                // previously-working one). Reach-only, as it was.
+                // and comp.parallelIteration without lifting scopeCapacity in return (a new pairwise deference
+                // breaking a previously-working one). Reach-only, as it was.
                 int bestIdx = -1;
                 double bestDiff = Double.MAX_VALUE;
                 String bestOperand = null;
