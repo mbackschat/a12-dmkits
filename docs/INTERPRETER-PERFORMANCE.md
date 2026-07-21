@@ -310,6 +310,8 @@ Patterned seeding prepares each distinct model-static pattern once per generator
 
 Profile-derived nested models use `SeedGenerator.populateExactLeafRows` for their `N`/`4N` axis. The method reaches the exact target cardinality by distributing quota over the selected group's repeatable ancestor chain within every per-parent declared cap; unrelated repeatables stay at a small explicit default. It refuses an impossible scale before mutating either engine's sink, so the benchmark cannot silently time an underfilled model or kernel-illegal excess rows merely because no individual group cap reaches `N`. The opt-in synthesized lane requires explicit complexity/generator identity, binds the selected file by content as a Gradle task input, fingerprints runtime bindings, and reports paired interpreter/Groovy/Java rows with complete scale identities (IF192).
 
+COMPUTE comparison also normalizes result granularity before asserting or timing a result. The interpreter reports every computed instance while the kernel reports only input deltas, so the interpreter performance instance records the generated placements outside the clock and applies the shared `kernelComputeGranularity` projection while materializing each timed signature list (IF197). This prevents a computed STRING that equals its generated seed from becoming a phantom interpreter-only result without timing reduced semantic work.
+
 ## Architecture direction (owner hint, 2026-06-23 — keep in mind)
 
 A structural optimization to design toward (not yet committed work):

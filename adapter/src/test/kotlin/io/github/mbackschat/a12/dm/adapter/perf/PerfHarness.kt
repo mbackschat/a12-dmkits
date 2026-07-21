@@ -2,6 +2,9 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.conformance.Placement
+import io.github.mbackschat.a12.dm.interpreter.conformance.PlacementKind
+import io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
@@ -214,14 +217,19 @@ object InterpreterPerfEngine : PerfEngine {
             override val label = "interp"
             override fun instance(n: Int, variant: Int): RunInstance {
                 val doc = model.newDocument()
-                scenario.instance(doc.asSink(), n, variant)
+                val placements = ArrayList<Placement>()
+                scenario.instance(CapturingDocumentSink(doc.asSink(), placements), n, variant)
                 return object : RunInstance {
                     override fun outcome(): PerfOutcome = when (scenario.op) {
                         PerfOp.VALIDATE -> interp.validate(doc, scenario.locale).let { result ->
                             PerfOutcome(result.messages.map(::validationSignature).sorted(), result.unsupported)
                         }
                         PerfOp.COMPUTE -> PerfOutcome(
-                            interp.compute(doc, scenario.locale).map(::computationSignature).sorted(),
+                            kernelComputeGranularity(
+                                interp.compute(doc, scenario.locale).map(::computationSignature),
+                                placements,
+                                model,
+                            ).sorted(),
                         )
                     }
                 }
@@ -315,6 +323,27 @@ private class KernelDocSink(private val doc: RuntimeLaws.Doc) : PlacementSink {
     override fun group(path: String, vararg reps: Int) { doc.group(path, *reps) }
     override fun field(path: String, value: String, vararg reps: Int) { doc.field(path, value, *reps) }
     override fun emptyField(path: String, vararg reps: Int) { doc.emptyField(path, *reps) }
+}
+
+/** Captures the same source placements used to build [delegate], outside timing, for the kernel-delta projection. */
+private class CapturingDocumentSink(
+    private val delegate: PlacementSink,
+    private val placements: MutableList<Placement>,
+) : PlacementSink {
+    override fun group(path: String, vararg reps: Int) {
+        delegate.group(path, *reps)
+        placements += Placement(PlacementKind.GROUP, path, reps.toList())
+    }
+
+    override fun field(path: String, value: String, vararg reps: Int) {
+        delegate.field(path, value, *reps)
+        placements += Placement(PlacementKind.FIELD, path, reps.toList(), value)
+    }
+
+    override fun emptyField(path: String, vararg reps: Int) {
+        delegate.emptyField(path, *reps)
+        placements += Placement(PlacementKind.EMPTY, path, reps.toList())
+    }
 }
 
 /** Wall-clock distribution (ms) of a timed operation — robust stats, not a single cold number. */
@@ -713,9 +742,17 @@ object PerfHarness {
         val jGrowth = growth(jSmallMs, jLargeMs, small, large)
         requireInterpreterBeatsBoth(scenario, smallRow)
         requireInterpreterBeatsBoth(scenario, largeRow)
+        val smallGroovyMs = checkNotNull(smallRow.groovy).medianMs
+        val smallJavaMs = checkNotNull(smallRow.java).medianMs
+        val largeGroovyMs = checkNotNull(largeRow.groovy).medianMs
+        val largeJavaMs = checkNotNull(largeRow.java).medianMs
         check(iGrowth.ratio <= gGrowth.ratio && iGrowth.ratio <= jGrowth.ratio) {
             "${scenario.name}: interpreter growth ${"%.2f".format(iGrowth.ratio)}x must be no worse than " +
-                "Groovy ${"%.2f".format(gGrowth.ratio)}x and Java ${"%.2f".format(jGrowth.ratio)}x"
+                "Groovy ${"%.2f".format(gGrowth.ratio)}x and Java ${"%.2f".format(jGrowth.ratio)}x; " +
+                "N=$small interp=${"%.3f".format(smallRow.interp.medianMs)}ms " +
+                "groovy=${"%.3f".format(smallGroovyMs)}ms java=${"%.3f".format(smallJavaMs)}ms; " +
+                "N=$large interp=${"%.3f".format(largeRow.interp.medianMs)}ms " +
+                "groovy=${"%.3f".format(largeGroovyMs)}ms java=${"%.3f".format(largeJavaMs)}ms"
         }
         return PairedPerfCurve(smallRow, largeRow, iGrowth, gGrowth, jGrowth)
     }
