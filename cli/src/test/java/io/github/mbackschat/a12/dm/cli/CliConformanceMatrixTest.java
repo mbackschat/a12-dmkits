@@ -23,9 +23,9 @@ import org.junit.jupiter.api.Test;
  * <ul>
  *   <li><b>described</b> — every verb has a non-blank capability description.</li>
  *   <li><b>params-described</b> — every param has a non-blank description.</li>
- *   <li><b>schema-resolves</b> — every <em>envelope</em> verb advertises a {@code schema} pointer that
- *       resolves to real JSON. The non-envelope verbs ({@link SchemaCommand#CONTRACT_EXEMPT}) are the only
- *       exemption, and it is a <em>reasoned, honest</em> one — every exempt verb exists and carries a reason.</li>
+ *   <li><b>schema-resolves</b> — every directional-contract verb advertises a {@code schema} pointer that
+ *       resolves to real JSON. Verbs in {@link SchemaCommand#CONTRACT_EXEMPT} are the only exemption, and it
+ *       is a <em>reasoned, honest</em> one — every exempt verb exists and carries a reason.</li>
  * </ul>
  *   <li><b>demonstrated</b> — every verb carries a worked invocation the agent can see <em>in action</em>:
  *       a {@code verb-examples.json} entry surfaced in the manifest as {@code example}, OR a schema input
@@ -57,7 +57,7 @@ class CliConformanceMatrixTest {
     }
 
     @Test
-    void everyVerbIsFullyDescribedAndEnvelopeVerbsHaveAResolvableContract() throws Exception {
+    void everyVerbIsFullyDescribedAndContractVerbsResolveTheirSchema() throws Exception {
         JsonNode manifest = M.readTree(CliTestSupport.run("manifest").out());
         for (JsonNode v : manifest.path("verbs")) {
             String verb = v.path("verb").asText();
@@ -69,10 +69,10 @@ class CliConformanceMatrixTest {
             }
 
             if (SchemaCommand.CONTRACT_EXEMPT.containsKey(verb)) {
-                continue; // a non-envelope verb — discovered by running it; see theExemptionLedgerIsHonest()
+                continue; // no directional contract — discovered by running it; see theLedgersAreHonest()
             }
             assertTrue(v.hasNonNull("schema"),
-                    () -> verb + " returns the result envelope but advertises no `schema` pointer "
+                    () -> verb + " has a directional contract but advertises no `schema` pointer "
                             + "(add it in ManifestCommand, or classify the verb in SchemaCommand.CONTRACT_EXEMPT)");
             String[] schemaArgs = ("schema " + v.path("schema").asText()).split(" ");
             CliTestSupport.Result res = CliTestSupport.run(schemaArgs);
@@ -106,6 +106,12 @@ class CliConformanceMatrixTest {
         SchemaCommand.CONTRACT_EXEMPT.forEach((verb, reason) -> {
             assertTrue(verbs.contains(verb), () -> "CONTRACT_EXEMPT names '" + verb + "', absent from the manifest (stale)");
             assertFalse(reason.isBlank(), () -> "CONTRACT_EXEMPT '" + verb + "' needs a reason");
+        });
+        SchemaCommand.ARTIFACT_OPS.forEach((verb, kind) -> {
+            assertTrue(verbs.contains(verb), () -> "ARTIFACT_OPS names '" + verb + "', absent from the manifest (stale)");
+            assertFalse(kind.isBlank(), () -> "ARTIFACT_OPS '" + verb + "' needs an artifact kind");
+            assertFalse(SchemaCommand.CONTRACT_EXEMPT.containsKey(verb),
+                    () -> "ARTIFACT_OPS '" + verb + "' cannot also be contract-exempt");
         });
         DEMONSTRATION_PENDING.forEach((verb, reason) -> {
             assertTrue(verbs.contains(verb), () -> "DEMONSTRATION_PENDING names '" + verb + "', absent from the manifest (stale)");

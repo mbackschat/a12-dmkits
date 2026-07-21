@@ -57,7 +57,7 @@ class ProfileSynthesizeVerbTest {
     }
 
     @Test
-    void exposesOnlyTheCurrentInputAndArtifactContract() throws Exception {
+    void exposesTheCurrentInputAndArtifactContract() throws Exception {
         CliTestSupport.Result help = CliTestSupport.run("profile", "synthesize", "--help");
         assertEquals(0, help.code(), help::err);
         assertTrue(help.out().contains("--input"));
@@ -67,8 +67,18 @@ class ProfileSynthesizeVerbTest {
 
         JsonNode manifest = JSON.readTree(CliTestSupport.run("manifest").out());
         JsonNode verb = findVerb(manifest, "profile synthesize");
-        assertFalse(verb.has("schema"), "a model artifact producer has no result-envelope contract");
-        assertTrue(SchemaCommand.CONTRACT_EXEMPT.containsKey("profile synthesize"));
+        assertEquals("profile synthesize", verb.path("schema").asText());
+
+        CliTestSupport.Result schema = CliTestSupport.run("schema", "profile", "synthesize");
+        assertEquals(0, schema.code(), schema::err);
+        JsonNode contract = JSON.readTree(schema.out());
+        assertEquals("ModelPerformanceProfile", contract.path("input").path("title").asText());
+        assertEquals("artifact", contract.path("returns").asText());
+        assertEquals("dm-json-model", contract.path("artifact").path("kind").asText());
+        assertEquals("stdout", contract.path("artifact").path("defaultDestination").asText());
+        assertEquals("-o", contract.path("artifact").path("outputOption").asText());
+        assertEquals("result", contract.path("artifact").path("receiptSchema").asText());
+        assertFalse(SchemaCommand.CONTRACT_EXEMPT.containsKey("profile synthesize"));
 
         assertEquals(2, CliTestSupport.run("model", "synthesize", "--input", "unused").code());
         assertEquals(2, CliTestSupport.run(

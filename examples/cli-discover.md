@@ -93,7 +93,7 @@ diagnostics
 manifest
 ```
 
-→ The surface is **two axes**: a *target* (`model`, `profile`, `rule`, `computation`, `field`, `group`, `typedef`, `include`, `config`, `workspace`) crossed with an *op* (`add`/`read`/`modify`/`remove`, plus per-target verbs like `profile extract`/`synthesize`/`compare`, `rule check`, or `model check`). (`workspace` is the cross-model exception — it scans a *directory*, not the `-m` model.) The manifest carries each verb's `target`/`op`, its params (with the op-record `key`), and a schema pointer for envelope verbs; artifact producers are explicitly classified. The tool describes itself — the skill teaches *judgment* (polarity, the traps), not this catalog.
+→ The surface is **two axes**: a *target* (`model`, `profile`, `rule`, `computation`, `field`, `group`, `typedef`, `include`, `config`, `workspace`) crossed with an *op* (`add`/`read`/`modify`/`remove`, plus per-target verbs like `profile extract`/`synthesize`/`compare`, `rule check`, or `model check`). (`workspace` is the cross-model exception — it scans a *directory*, not the `-m` model.) The manifest carries each verb's `target`/`op`, its params (with the op-record `key`), and a schema pointer for every directional contract, including the explicitly described `profile synthesize` artifact operation. The tool describes itself — the skill teaches *judgment* (polarity, the traps), not this catalog.
 
 ## profile extract, synthesize, and compare
 
@@ -134,7 +134,7 @@ dmtool profile synthesize \
 }
 ```
 
-→ Add `-o calibration.dm.json` to write the synthesized model and receive an `applied` receipt on stdout. The input can also be a complete `profile extract` envelope; no compatibility or legacy-version path exists.
+→ Add `-o calibration.dm.json` to write the synthesized model and receive an `applied` receipt on stdout. The input can also be a complete `profile extract` envelope; `schema profile synthesize` describes the current profile input, the DM-JSON artifact, and that receipt branch. No compatibility or legacy-version path exists.
 
 `profile compare` classifies every fidelity axis after synthesis and re-extraction. A match is a normal successful read; a mismatch keeps every failed axis visible in `data`, sets `valid:false`, and exits 1.
 

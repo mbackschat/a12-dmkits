@@ -53,7 +53,8 @@ final class ManifestCommand extends BaseCommand {
         // the machine-readable version surface (CLI-SPEC §1b) — what this build is + what it was built/
         // verified against; the human peer is `--version`. A cold agent reads it from `manifest.version`.
         root.set("version", VersionInfo.current().toJson(MAPPER));
-        // every verb's output conforms to the result envelope — point the agent at its schema
+        // The universal result-envelope schema remains available even though explicitly described artifact
+        // operations can return an artifact on stdout and a result receipt only when -o is selected.
         root.put("resultSchema", "result");
         // the -m/--model context option is inherited by every verb — list it once, globally
         ArrayNode globals = root.putArray("globalOptions");
@@ -110,10 +111,8 @@ final class ManifestCommand extends BaseCommand {
         } else {
             v.put("op", name);
         }
-        // the schema pointer: every op that returns the result envelope is contract-discoverable via
-        // `schema <name>` (nested target ops + single-token envelope verbs like `meta`/`apply`/`batch`). The
-        // CONTRACT_EXEMPT verbs carry none — the self-describing verbs, and the artifact producers
-        // (`export`, `model new`) that emit a model/artifact rather than the envelope (even though nested).
+        // The schema pointer: every directional-contract op is discoverable via `schema <name>` (including an
+        // explicitly described artifact op). CONTRACT_EXEMPT verbs carry none.
         if (!SchemaCommand.CONTRACT_EXEMPT.containsKey(name)) {
             v.put("schema", name);
         }

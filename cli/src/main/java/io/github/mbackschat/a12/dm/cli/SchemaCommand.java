@@ -24,9 +24,9 @@ import picocli.CommandLine.Parameters;
  *   <li>{@code schema result} / {@code schema diagnostic} — the cross-cutting <b>structures</b> (raw JSON
  *       Schema): the universal output envelope and a single finding.</li>
  *   <li>{@code schema <target> <op>} — that op's <b>directional contract</b> {@code {input?, returns, data?}}:
- *       what it <em>consumes</em> (a rich JSON input like the rule-spec) and that it <em>returns</em> the
- *       result envelope. One call, unambiguous direction. Flag-only ops carry no {@code input} (their params
- *       are in the manifest); reads note that their payload rides the envelope's {@code data}.</li>
+ *       what it <em>consumes</em> (a rich JSON input like the rule-spec) and whether it <em>returns</em> the
+ *       result envelope or an artifact. One call, unambiguous direction. Flag-only ops carry no {@code input}
+ *       (their params are in the manifest); reads note that their payload rides the envelope's {@code data}.</li>
  * </ul>
  * Schemas are never attached to a verb's own response (that would bloat every call); they live here, fetched
  * when wanted. Structure schemas are classpath resources under {@code /schema/<name>.schema.json}; the
@@ -55,6 +55,10 @@ final class SchemaCommand extends BaseCommand {
             "typedef add", "typedef-add",
             "typedef modify", "typedef-add",
             "profile synthesize", "profile");
+
+    /** Ops whose primary stdout value is a schema-described artifact rather than the result envelope. */
+    static final Map<String, String> ARTIFACT_OPS = Map.of(
+            "profile synthesize", "dm-json-model");
 
     /** Ops that consume a {@code --instance} document INSTANCE → the schema describing that instance tree. */
     static final Map<String, String> DOC_INPUT = Map.of(
@@ -100,14 +104,13 @@ final class SchemaCommand extends BaseCommand {
     static final Set<String> VERDICT_OPS = Set.of("model check", "rule check");
 
     /**
-     * Verbs for which {@code schema <verb>} serves <b>no</b> directional contract — because they do not return
-     * the result envelope. Two reasons, mapped here as the single source of truth (read by {@link
+     * Verbs for which {@code schema <verb>} serves <b>no</b> directional contract. Two reasons, mapped here as
+     * the single source of truth (read by {@link
      * ManifestCommand} to decide the schema pointer, and by {@code CliConformanceMatrixTest} as the reasoned
      * exemption ledger): the five <b>self-describing</b> verbs ({@code manifest}/{@code schema}/{@code operators}/
-     * {@code patterns}/{@code diagnostics}) emit their own JSON (run them to see it), and {@code export} plus the
-     * {@code model} artifact verbs ({@code new}/{@code seed}/{@code import-jsonschema}/{@code export-jsonschema})
-     * emit a <b>rendered artifact</b> rather than the {@code {outcome,…}} envelope. Everything else is an
-     * envelope op with a discoverable contract.
+     * {@code patterns}/{@code diagnostics}) emit their own JSON (run them to see it), while the listed legacy
+     * artifact verbs have no directional contract. An artifact verb registered in {@link #ARTIFACT_OPS} is not
+     * exempt: its input, stdout artifact, and {@code -o} receipt branch are contract-discoverable.
      */
     static final Map<String, String> CONTRACT_EXEMPT = Map.ofEntries(
             Map.entry("manifest", "emits the verb/param map itself — run it"),
@@ -119,8 +122,6 @@ final class SchemaCommand extends BaseCommand {
             Map.entry("model new", "emits a brand-new model document (an artifact) to stdout; with -o stdout carries "
                     + "an additive write-confirmation envelope, but the primary form has no directional contract"),
             Map.entry("model seed", "emits a generated sample document instance (an artifact), not the result envelope"),
-            Map.entry("profile synthesize", "reads a current profile and emits a synthesized DM-JSON model artifact "
-                    + "to stdout; with -o the model goes to a file and stdout carries an applied receipt"),
             Map.entry("model import-jsonschema", "reads a JSON Schema file and emits the imported model as a DM-JSON "
                     + "artifact to stdout (report on stderr); with -o the model goes to file + a write envelope"),
             Map.entry("model export-jsonschema", "emits the model as a JSON Schema artifact to stdout (report on "
@@ -147,9 +148,8 @@ final class SchemaCommand extends BaseCommand {
             return serveStructure(tokens.get(0));
         }
         String verb = String.join(" ", tokens);
-        // a directional contract resolves for any runnable leaf op that returns the result envelope — the
-        // target-first ops (`<target> <op>`) and the single-token envelope verbs (e.g. `meta`). The
-        // CONTRACT_EXEMPT verbs (self-describing / non-envelope) are explored via their own output instead.
+        // A directional contract resolves for every non-exempt runnable leaf: result-envelope ops plus the
+        // explicitly schema-described artifact ops. CONTRACT_EXEMPT verbs are explored via their own output.
         if (!resolvesToLeaf(tokens) || CONTRACT_EXEMPT.containsKey(verb)) {
             return fail("unknown schema: " + verb + "   (structures: " + String.join(", ", STRUCTURES)
                     + "; or a verb contract like `rule add`, `field read`, `meta`)");
@@ -189,26 +189,39 @@ final class SchemaCommand extends BaseCommand {
                 c.set("docInput", schema);
             }
         }
-        c.put("returns", "result");
-        c.put("resultSchema", "result");
-        String note = CONTRACT_NOTES.get(verb);
-        if (note != null) {
-            c.put("notes", note);
-        }
-        if (VERDICT_OPS.contains(verb)) {
-            // a verdict verb carries its result in the envelope's valid + diagnostics, not a data payload
-            c.put("verdict", "the kernel verdict rides the envelope's `valid` (true iff no ERROR diagnostic)"
-                    + " and `diagnostics` — there is no `data` payload; see `schema result` and `schema diagnostic`");
+        String artifactKind = ARTIFACT_OPS.get(verb);
+        if (artifactKind != null) {
+            c.put("returns", "artifact");
+            ObjectNode artifact = c.putObject("artifact");
+            artifact.put("kind", artifactKind);
+            artifact.put("defaultDestination", "stdout");
+            artifact.put("outputOption", "-o");
+            artifact.put(
+                    "withOutput",
+                    "writes the artifact to the selected file and returns an applied result envelope");
+            artifact.put("receiptSchema", "result");
         } else {
-            if (READ_OPS.contains(tokens.get(tokens.size() - 1)) || DATA_SCHEMA.containsKey(verb)) {
-                c.put("data", "this read returns its payload in the result envelope's `data` field");
+            c.put("returns", "result");
+            c.put("resultSchema", "result");
+            String note = CONTRACT_NOTES.get(verb);
+            if (note != null) {
+                c.put("notes", note);
             }
-            // … and where that payload has its own published schema, surface it so the shape is discoverable
-            String dataSchema = DATA_SCHEMA.get(verb);
-            if (dataSchema != null) {
-                JsonNode schema = readSchema(dataSchema);
-                if (schema != null) {
-                    c.set("dataSchema", schema);
+            if (VERDICT_OPS.contains(verb)) {
+                // a verdict verb carries its result in the envelope's valid + diagnostics, not a data payload
+                c.put("verdict", "the kernel verdict rides the envelope's `valid` (true iff no ERROR diagnostic)"
+                        + " and `diagnostics` — there is no `data` payload; see `schema result` and `schema diagnostic`");
+            } else {
+                if (READ_OPS.contains(tokens.get(tokens.size() - 1)) || DATA_SCHEMA.containsKey(verb)) {
+                    c.put("data", "this read returns its payload in the result envelope's `data` field");
+                }
+                // … and where that payload has its own published schema, surface it so the shape is discoverable
+                String dataSchema = DATA_SCHEMA.get(verb);
+                if (dataSchema != null) {
+                    JsonNode schema = readSchema(dataSchema);
+                    if (schema != null) {
+                        c.set("dataSchema", schema);
+                    }
                 }
             }
         }

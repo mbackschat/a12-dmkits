@@ -64,15 +64,15 @@ The recurring failure mode is subtle: you add a verb, it *works*, it's *listed* 
 |---|---|---|
 | **described** | non-blank capability description | none — every verb |
 | **params-described** | every param has a non-blank description | none |
-| **schema-resolves** | advertises a `schema` pointer that resolves to real JSON | the non-envelope verbs (below) |
+| **schema-resolves** | advertises a `schema` pointer that resolves to real JSON | verbs without a directional contract (below) |
 | **demonstrated** | carries a CI-executed worked invocation an agent can see *in action* | the self-describing verbs |
 
 **One row per verb, one column per obligation.** A newly-learned anti-pattern becomes one more column, re-checked against every existing verb at once — the same growth loop that produced AP1–AP6. The matrix *folds and strengthens* the old `ManifestCompletenessTest`: that check **skipped** a verb that advertised no schema, which is exactly how `meta` slipped through; the matrix has no skip.
 
-**The contract exemption is a reasoned ledger, not a silent skip.** `schema <verb>` serves a contract only for verbs that return the **result envelope**. The exceptions live in `SchemaCommand.CONTRACT_EXEMPT` as a `verb → why` map — the single source the manifest reads to decide the pointer *and* the matrix reads as the ledger:
+**The contract exemption is a reasoned ledger, not a silent skip.** `schema <verb>` serves result-envelope contracts and explicitly registered artifact contracts. `profile synthesize` is the artifact case: its contract exposes the current profile input schema, the `dm-json-model` stdout artifact, and the `-o` branch that writes the artifact and returns an applied result receipt. Verbs with no directional contract live in `SchemaCommand.CONTRACT_EXEMPT` as a `verb → why` map — the single source the manifest reads to decide the pointer *and* the matrix reads as the ledger:
 
 - the four **self-describing** verbs (`manifest`/`schema`/`operators`/`diagnostics`) emit their own JSON — you run them to see it;
-- `export` **renders an artifact** (model card / dot / …) and `model new` **emits a brand-new model document** — neither is the `{outcome,…}` envelope. (`model new` with `-o` additionally prints a write-confirmation envelope — the model went to the file, so stdout carries a machine-confirmable success signal — but its primary stdout form is the artifact, so it stays exempt; the envelope is additive, not a contract.) (`where-used` *was* a custom payload but now rides the result envelope with a published `WhereUsed` dataSchema, like its model-wide sibling `model usage` — so the only output-contract exemptions left are the artifact verbs + the self-describing verbs that emit their own catalog.)
+- the remaining unregistered artifact verbs (`export`, `model new`, `model seed`, `model import-jsonschema`, and `model export-jsonschema`) emit their artifact directly and stay exempt. (`model new` with `-o` additionally prints a write-confirmation envelope — the model went to the file, so stdout carries a machine-confirmable success signal — but its primary stdout form has no directional contract.)
 
 The matrix proves the ledger is **honest**: every exempt verb exists in the manifest (no stale row) and carries a non-blank reason. Anything not exempt **must** be contract-discoverable — which is how `meta` (an envelope verb that was wrongly missing its pointer) is now locked in.
 
