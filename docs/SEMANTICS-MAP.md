@@ -56,7 +56,7 @@ Lock-tree classes whose subject is not one kernel-semantics section — the conc
 | Cross-cutting differentials & engine seams (whole-surface, no single section) | `ValidateFullDiffTest`, `InterpreterDiffTest`, `OperatorBatteryDiffTest`, `FullMessageFuzzDiffTest`, `FuzzDiagnosticsTest`, `KernelProbeTest`, `EvalDocSeamLawsTest`, `IncludeAssemblyStrategyDiffTest`, `InterpreterMultiplatformTest`, `DeterminismPropertyTest`, `UnsupportedDegradeTest`, `ValidateFullUnsupportedSafetyTest`, `ValidateFullUnsupportedSafetyDiffTest`, `DocumentMutationCacheInvalidationTest`, `PreparedPlanSupportTest` |
 | NFR measurement protocols and harnesses | `DocumentPointerFormatCacheTest`, `FootprintAggregationTest`, `FootprintProtocolTest`, `FootprintScenariosTest`, `FootprintWorkerTest`, `PerformanceProtocolTest`, `PerformanceScenarioIdentityTest`, `PreparationWorkCounterTest` |
 | Triage / sweep instruments (opt-in, tagged) | `ModelShrinkTest`, `RawAtomShrinkTest`, `RealCorpusSweepTest`, `MinimalReplayTest`, `ValidateUnitShrinkTest`, `CrashProbeTest` |
-| DM-JSON loader & instance seeding | `ModelLoaderTest`, `ModelLoaderPreparedGuardTest`, `SeedGeneratorTest`, `SeedGeneratorPatternPreparationTest`, `SeedGeneratorRowContractTest`, `SeedGeneratorExactLeafRowsTest`, `ValidValuesConstraintTest` |
+| DM-JSON loader & instance seeding | `ModelLoaderTest`, `ModelLoaderPreparedGuardTest`, `SeedGeneratorTest`, `SeedGeneratorPatternPreparationTest`, `SeedGeneratorRowContractTest`, `SeedGeneratorExactLeafRowsTest`, `ValidValuesConstraintTest`, `ValidValuesFractionDigitsTest` |
 
 ## Vocabulary — recurring shorthand
 

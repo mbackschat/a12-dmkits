@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.gen
 
+import io.github.mbackschat.a12.dm.interpreter.dec
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -332,8 +333,9 @@ fun interface ValueStrategy {
 
 /**
  * The default [ValueStrategy]: a **best-effort, constraint-aware** value for each [Kind] (a per-field local
- * heuristic, **not** a whole-document validity guarantee) — NUMBER respecting [FieldDef.scale],
- * [FieldDef.signed] and its declared `min/maxValue` range, STRING respecting its declared `min/maxLength`,
+ * heuristic, **not** a whole-document validity guarantee) — NUMBER respecting the declared
+ * `[minFractionalDigits, maxFractionalDigits]` interval, [FieldDef.signed], and `min/maxValue` range, STRING
+ * respecting its declared `min/maxLength`,
  * dates/times/ranges rendered in the field's [FieldDef.format]. **Constraint-aware** (S2 seeding): drawing a
  * value inside a field's declared constraints keeps the kernel's per-cell formal checks (`zahlZuKlein`,
  * `stringZuLang`, `stringFalschesMuster`, …) from firing and *suppressing the very rules a differential means
@@ -380,22 +382,35 @@ object ValidValues : ValueStrategy {
     }
 
     private fun number(field: FieldDef, rnd: Random): String {
+        val maxFractionalDigits = field.scale ?: 0
+        val minFractionalDigits = field.minFractionalDigits ?: 0
+        require(minFractionalDigits <= maxFractionalDigits) {
+            "minFractionalDigits $minFractionalDigits exceeds maxFractionalDigits $maxFractionalDigits for ${field.path}"
+        }
         // A declared min/maxValue bound is itself a valid in-range value (a consistent model has min <= max),
         // and drawing one at random exercises BOTH ends across seeds — an in-range value without decimal
         // arithmetic in commonMain (S2 NUMBER = SMALL). Unbounded fields keep the random-magnitude path below.
         val min = field.minValue
         val max = field.maxValue
         if (min != null || max != null) {
-            return when {
+            val bound = when {
                 min != null && max != null -> if (rnd.nextBoolean()) min else max
                 min != null -> min
                 else -> max!!
             }
+            return if (minFractionalDigits == 0) bound else dec(bound).display(minFractionalDigits)
         }
         val whole = rnd.nextInt(0, 1000)
-        val scale = field.scale ?: 0
-        val frac = if (scale > 0 && rnd.nextBoolean())
-            "." + (1..(1 + rnd.nextInt(scale))).joinToString("") { rnd.nextInt(0, 10).toString() } else ""
+        val frac = if (minFractionalDigits == 0) {
+            if (maxFractionalDigits > 0 && rnd.nextBoolean()) {
+                "." + (1..(1 + rnd.nextInt(maxFractionalDigits))).joinToString("") { rnd.nextInt(0, 10).toString() }
+            } else {
+                ""
+            }
+        } else {
+            val digits = minFractionalDigits + rnd.nextInt(maxFractionalDigits - minFractionalDigits + 1)
+            "." + (1..digits).joinToString("") { rnd.nextInt(0, 10).toString() }
+        }
         val magnitude = "$whole$frac"
         // Never sign a zero magnitude — the kernel forbids a signed zero (`zahlNullEnthaeltVorzeichen`), so
         // `-0`/`-0.00` would be a formal error; ValidValues avoids emitting the values it models as formal errors.
