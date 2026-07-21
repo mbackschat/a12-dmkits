@@ -53,9 +53,21 @@ internal const val UNKNOWN_REP = -5
  * field is configured correctly (the positional-drop class IG75/IF131 fixed).
  */
 fun ModelDef.newDocument(): Document = Document(DocumentConfig(
-    kinds, declaredReps, unsignedFields, rangeConfig, dateFormats, scales,
-    dateTimeFormats, datePrecisions, enumValues, enumCategories, timeFormats, baseYear,
-    fieldConstraints, timeZone,
+    kinds = kinds,
+    declaredReps = declaredReps,
+    unsignedFields = unsignedFields,
+    rangeConfig = rangeConfig,
+    dateFormats = dateFormats,
+    scales = scales,
+    dateTimeFormats = dateTimeFormats,
+    datePrecisions = datePrecisions,
+    enumValues = enumValues,
+    enumCategories = enumCategories,
+    timeFormats = timeFormats,
+    baseYear = baseYear,
+    fieldConstraints = fieldConstraints,
+    timeZone = timeZone,
+    repeatableGroups = repeatable,
 ))
 
 class Document(internal val config: DocumentConfig) {
@@ -80,10 +92,14 @@ class Document(internal val config: DocumentConfig) {
     private val baseYear = config.baseYear
     private val fieldConstraints = config.fieldConstraints
     private val timeZone = config.timeZone
+    private val repeatableGroups = config.repeatableGroups
     /** [raw] is the ORIGINAL stored text ([value] before the eval-side CRLF→LF normalization, IF124) —
      *  what [cellStateAt] reports; it defaults to [value] and is preserved by the normalizing `copy`. */
     private data class Placement(val path: String, val reps: List<Int>, val value: String?, val isGroup: Boolean,
         val raw: String? = value)
+
+    /** One declared-tail decision for a starred field in a bound row scope (IF194). */
+    private data class StarOmissionKey(val path: String, val bindDepth: Int, val scope: List<Int>)
 
     private val placements = mutableListOf<Placement>()
     /** Group `(path, reps)` already instantiated — O(1) dedup for [autoGroup] (avoids an O(P²) build scan). */
@@ -173,6 +189,10 @@ class Document(internal val config: DocumentConfig) {
         // per-read rebuild is O(rows) each and a per-row indexed rule turns validateFull O(rows²) (the perf
         // gate's semanticIndexStaysSubQuadratic hang).
         val indexColumnByScope: MutableMap<Pair<String, List<Int>>, IndexColumn> = HashMap()
+        // Declared-tail polarity for a starred field is invariant across every row context sharing its first-star
+        // scope. Cache the complete hierarchical decision, not just the leaf-row count: a deep multi-star path
+        // otherwise repeats the same O(rows × star-depth) proof for every firing in that scope (IF194).
+        val starOmissionByScope: MutableMap<StarOmissionKey, Boolean> = HashMap()
 
         /** group path → its declared field paths, recursive (the GROUP-star aggregate expansion, IF99). */
         val containedFieldsByGroup: MutableMap<String, List<String>> = HashMap()
@@ -203,6 +223,7 @@ class Document(internal val config: DocumentConfig) {
                 idx.nonRepFilledByGroup.size +
                 idx.indexRowByValue.size +
                 idx.indexColumnByScope.size +
+                idx.starOmissionByScope.size +
                 idx.containedFieldsByGroup.size +
                 idx.containedFieldsInDeclarationOrderByGroup.size +
                 idx.formattedPointersByPath.values.sumOf { it.size }
@@ -256,6 +277,9 @@ class Document(internal val config: DocumentConfig) {
      */
     fun valuedFields(): List<ValuedField> =
         index().valued.map { ValuedField(it.path, it.reps, it.value!!) }
+
+    /** Instantiated rows of one group, without constructing evaluation contexts or scanning document content. */
+    internal fun instantiatedRows(groupPath: String): List<List<Int>> = rowsOf(groupPath)
 
     /** Canonical pointer text retained with the immutable document index and discarded on mutation (IF191/IF142). */
     internal fun formattedPointer(path: String, reps: List<Int>): String =
@@ -601,16 +625,16 @@ class Document(internal val config: DocumentConfig) {
         override fun signed(path: String): Boolean = path !in unsignedFields
 
         /**
-         * Whether [groupPath] is filled in this row — matching the kernel's `GroupFillCache` exactly, which
-         * splits on repeatability:
+         * Whether [groupPath] has structural raw content in this row, split on repeatability:
          * - a **repeatable** group is filled once its row is **instantiated** (creating the row is itself
          *   content — the row index is meaningful); a created-but-empty repeat row counts. A filled descendant
          *   also instantiates the row (via `autoGroup`), so "the row exists" subsumes "a descendant is filled".
          * - a **non-repeatable** group is filled only when **at least one descendant field is filled** — its
          *   mere structural presence is not content.
          *
-         * (KERNEL-FINDINGS §4/§9; this is the resolution of the "GroupFilled on an empty created repeat row"
-         * edge. Requiredness rides on the same notion: `GroupFilled(relativeTo)`.)
+         * Full validation refines this raw answer through its call-local admitted-content/error index (IF193):
+         * malformed-only raw content is not filled, and makes negative presence UNKNOWN. Compute and low-level
+         * contexts retain this structural answer. (KERNEL-FINDINGS §4/§9.)
          */
         override fun groupFilled(groupPath: String): Boolean =
             if (groupPath in declaredReps)
@@ -661,11 +685,38 @@ class Document(internal val config: DocumentConfig) {
         }
 
         override fun starOmission(path: String, bindDepth: Int): Boolean {
-            val repGroup = parentGroup(path)
-            val rows = starRows(path, bindDepth)
-            val declared = declaredReps[repGroup] ?: Int.MAX_VALUE
-            return rows.size < declared || rows.any { reps -> valueAt(path, reps)?.value == null }
+            val scope = starScopePrefix(path, bindDepth)
+            return index().starOmissionByScope.getOrPut(StarOmissionKey(path, bindDepth, scope)) {
+                val groupParts = partsOf(parentGroup(path))
+                val firstStarLevel = if (bindDepth >= 0) minOf(bindDepth, groupParts.lastIndex) else groupParts.lastIndex
+                var expectedParents = listOf(scope.padWithOnes(firstStarLevel))
+
+                // A multi-star operand reopens every repeatable level from its FIRST star downward. Missing
+                // capacity at ANY of those levels makes the aggregate result fillable/omission-typed. Comparing
+                // only the flattened leaf-row count with the leaf cap (the old shortcut) loses an absent outer
+                // or middle branch. Count children per actual parent instead: exact even for an over-limit input,
+                // O(actual rows × star depth), and never enumerates the declared Cartesian domain (IF194).
+                for (level in firstStarLevel..groupParts.lastIndex) {
+                    val groupPath = "/" + groupParts.take(level + 1).joinToString("/")
+                    if (groupPath !in repeatableGroups) continue
+                    val declared = declaredReps[groupPath] ?: Int.MAX_VALUE
+                    val parentsAtLevel = expectedParents.map { it.padWithOnes(level) }
+                    val actualRows = rowsWithPrefix(groupPath, scope)
+                    val childCount = HashMap<List<Int>, Int>()
+                    for (row in actualRows) {
+                        val parent = row.take(level)
+                        childCount[parent] = (childCount[parent] ?: 0) + 1
+                    }
+                    if (parentsAtLevel.any { (childCount[it] ?: 0) < declared }) return@getOrPut true
+                    expectedParents = actualRows
+                }
+
+                starRows(path, bindDepth).any { reps -> valueAt(path, reps)?.value == null }
+            }
         }
+
+        private fun List<Int>.padWithOnes(size: Int): List<Int> =
+            if (this.size >= size) take(size) else this + List(size - this.size) { 1 }
 
         override fun displayValue(path: String): String? = placeOf(path)?.value
 

@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome
 import kotlin.test.Test
@@ -15,7 +16,8 @@ import kotlin.test.assertTrue
  * IF142 (graduated from IG81) — a [Document] mutation invalidates EVERY document-derived cache, not just the
  * lookup index. `Document.add` cleared `cachedIndex` but left the document-level `rowContextsCache` (a `Having`
  * filter's per-row contexts), `correlationBucketCache` (a `$` equality-correlation's hash buckets), and
- * `orderedCorrelationCache` (a `$` comparator-correlation's ordered tallies) warm, so on the PUBLIC API a
+ * `orderedCorrelationCache` (a `$` comparator-correlation's ordered tallies) warm. IF194's hierarchical
+ * multi-star omission memo lives inside the same mutation-invalidated index. On the PUBLIC API a
  * query → mutate → query could reuse stale row sets / `$`-correlation counts (the internal eval path never mutates
  * after querying, but a library consumer can). Every mutation therefore routes through one complete invalidation.
  * This locks the CLASS with one test per cache: warm the query, mutate so its output MUST change, and prove the
@@ -94,5 +96,40 @@ class DocumentMutationCacheInvalidationTest {
             seed = { line(it, 1, "10.00", "x") },
             mutate = { line(it, 2, "20.00", "y") },
         )
+    }
+
+    @Test
+    fun multiStarOmissionCacheIsInvalidatedOnMutation() {
+        val value = "/Order/Regions/Accounts/Lots/Value"
+        val groups = listOf("/Order/Regions", "/Order/Regions/Accounts", "/Order/Regions/Accounts/Lots")
+        val rule = RuleDef(
+            "/Order/TAIL",
+            "/Order",
+            "Sum(/Order/Regions*/Accounts*/Lots*/Value) > -1",
+            "TAIL",
+            "../Note",
+        )
+        val def = ModelDef(
+            fields = listOf(FieldDef(note, Kind.STRING), FieldDef(value, Kind.NUMBER, scale = 0)),
+            rules = listOf(rule),
+            repeatableGroups = groups.toSet(),
+            declaredReps = groups.associateWith { 2 },
+        )
+        fun fillRegion(document: Document, region: Int) {
+            for (account in 1..2) for (lot in 1..2) {
+                document.field(value, "1", 1, region, account, lot, 1)
+            }
+        }
+
+        val engine = DmInterpreter(def)
+        val document = def.newDocument().field(note, "n", 1, 1).also { fillRegion(it, 1) }
+        assertEquals(MsgType.OMISSION, engine.validateFull(document).single { it.code == "TAIL" }.type)
+        fillRegion(document, 2)
+        val afterMutation = engine.validateFull(document).single { it.code == "TAIL" }
+
+        val fresh = def.newDocument().field(note, "n", 1, 1).also { fillRegion(it, 1); fillRegion(it, 2) }
+        assertEquals(engine.validateFull(fresh), listOf(afterMutation),
+            "the cached hierarchical tail decision must be discarded when a missing outer branch is added")
+        assertEquals(MsgType.VALUE, afterMutation.type)
     }
 }

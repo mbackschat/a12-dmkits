@@ -62,13 +62,17 @@ private fun Interpreter.indexOperandNonEvaluable(c: EvalContext, path: String, b
  * `NumberOfFilledGroups(...)`'s count — the STARRED single-repeatable-group form `NumberOfFilledGroups(
  * /Group*)` (the `RootGroupCount` DSL node / `Dsl.numberOfFilledGroups(repeatableGroup)`) counts the group's
  * **instantiated repetitions** (a created-but-empty row counts too — kernel-probed, IF46); the plain
- * multi-group form counts each listed group that is [EvalContext.groupFilled]. Linear: O(rows) for the
- * starred form (one row-context list, already scoped + cached), O(args) for the plain form.
+ * multi-group form counts admitted groups only when every operand group is fully relevant and error-free; any
+ * unavailable group makes the count Unknown rather than a partial count. Linear: O(rows) for the starred form
+ * (one row-context list, already scoped + cached), O(args) for the plain form.
  */
-private fun Interpreter.filledGroupsCount(args: List<Expr>): Int {
+private fun Interpreter.filledGroupsValue(args: List<Expr>): Val {
     val star = args.singleOrNull() as? Expr.Star
-    if (star != null) return ctxOf(star).rowContexts(star.path, star.bindDepth).size
-    return args.count { ctxOf(it).groupFilled(pathOf(it)) }
+    if (star != null) return Val.Num(dec(ctxOf(star).rowContexts(star.path, star.bindDepth)
+        .count { groupPresence(it, star.path).definitelyFilled }))
+    val states = args.map { groupPresence(ctxOf(it), pathOf(it)) }
+    if (states.any { it.erroneous || it.relevance != GroupRelevance.FULL }) return Val.Unknown
+    return Val.Num(dec(states.count { it.definitelyFilled }))
 }
 
 /**
@@ -426,7 +430,7 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     }
     // Count-of-filled functions (used in a comparison, e.g. NumberOfFilledFields(a, b, c) < 2).
     FunctionOp.NUMBER_OF_FILLED_FIELDS -> filledFieldsValue(f.args)
-    FunctionOp.NUMBER_OF_FILLED_GROUPS -> Val.Num(dec(filledGroupsCount(f.args)))
+    FunctionOp.NUMBER_OF_FILLED_GROUPS -> filledGroupsValue(f.args)
     // Date-component extractors — a number from the date's parts; an empty/absent date is Unknown.
     FunctionOp.YEAR_FROM_DATE -> dateComponent(f.args[0]) { y, _, _ -> y }
     FunctionOp.MONTH_FROM_DATE -> dateComponent(f.args[0]) { _, m, _ -> m }

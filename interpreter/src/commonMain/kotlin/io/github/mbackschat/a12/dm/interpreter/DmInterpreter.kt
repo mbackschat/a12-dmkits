@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.FunctionOp
+import io.github.mbackschat.a12.dm.interpreter.eval.GroupRelevance
 import io.github.mbackschat.a12.dm.interpreter.eval.renderMessage
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.Computed
@@ -170,7 +171,14 @@ class DmInterpreter @JvmOverloads constructor(
      * `RepetitionNotUnique`) needs the duplicate partner relevant too (IF39). All locked by `…laws/PartialValidation*DiffTest`.
      */
     fun validatePart(doc: Document, relevant: Set<RelevantEntity>, locale: String = "en_US"): ValidationOutcome =
-        validateWith(doc, locale, relevanceOf(relevant), customRelevantOf(relevant), starRelevantOf(relevant))
+        validateWith(
+            doc,
+            locale,
+            relevanceOf(relevant),
+            customRelevantOf(relevant),
+            starRelevantOf(relevant),
+            groupRelevanceOf(relevant),
+        )
 
     /**
      * Whether a STARRED aggregate over `starPath` is relevant in PARTIAL mode (IF42). The kernel evaluates an
@@ -210,25 +218,36 @@ class DmInterpreter @JvmOverloads constructor(
      * field's relevance.
      */
     private fun validateWith(doc: Document, locale: String, isRelevant: Relevance,
-            customRelevant: Set<FieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null): ValidationOutcome =
+            customRelevant: Set<FieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null,
+            groupRelevance: (String, List<Int>) -> GroupRelevance = { _, _ -> GroupRelevance.FULL }): ValidationOutcome =
         observeCaches(doc) {
             val dup = checks.duplicateIndexCells(doc, isRelevant)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
-            val formalResults = FormalResultCache(checks, locale, dup)
+            lateinit var formalResults: FormalResultCache
+            val admittedGroupContent by lazy(LazyThreadSafetyMode.NONE) {
+                AdmittedGroupContentIndex.build(model, doc, isRelevant, groupRelevance, formalResults)
+            }
+            formalResults = FormalResultCache(checks, locale, dup) { ctx, path ->
+                admittedGroupContent.isFilled(ctx, path)
+            }
             // Custom-type unsupported is collected up front (cells whose type is in NEITHER registry); formalErrors
             // ADDS to it any REGISTERED code-based type whose validate() can't run (a JS worker down / errored), so
             // that degrades to unsupported per cell rather than crashing the whole validation.
             val unsupported = checks.customTypeUnsupported(doc, isRelevant).toMutableList()
             val messages = (checks.formalErrors(doc, locale, isRelevant, formalResults, unsupported) +
-                    checks.mandatoryErrors(doc, locale, isRelevant)
+                    checks.mandatoryErrors(doc, locale, isRelevant, formalResults)
                     + checks.uniquenessMessages(doc, dup, locale, isRelevant)
                     + checks.overRepetitionMessages(doc, locale, isRelevant)).toMutableList()
             // The per-call seam (IF117): the formal-status memo spans ALL rules of this validation (the doc is
             // immutable here), and the EvalConfig is built once for the whole call.
             val formallyIncorrect by lazy(LazyThreadSafetyMode.NONE) {
-                checks.formallyIncorrectPointers(doc, formalResults, isRelevant)
+                formalResults.invalidPointers()
+            }
+            val groupPresence by lazy(LazyThreadSafetyMode.NONE) {
+                GroupPresenceIndex(admittedGroupContent, formallyIncorrect, groupRelevance)
             }
             val pass = ValidationPass(doc, locale, isRelevant, dup,
-                validationConfig(isRelevant, customRelevant, starRelevant), formalResults, { formallyIncorrect })
+                validationConfig(isRelevant, customRelevant, starRelevant) { ctx, path -> groupPresence.state(ctx, path) },
+                formalResults, { formallyIncorrect })
             for (rule in model.rules) {
                 try {
                     // RepetitionNotUnique now flows through the ordinary rule path as a 3VL leaf (IF149) — no
@@ -331,16 +350,26 @@ class DmInterpreter @JvmOverloads constructor(
     private fun evalRule(rule: RuleDef, doc: Document, locale: String): RuleResult = observeCaches(doc) {
         // A single-rule pass (fresh formal-status memo, everything relevant) — the testRule/evalCandidate shape.
         val dup = checks.duplicateIndexCells(doc)
-        val formalResults = FormalResultCache(checks, locale, dup)
+        val groupRelevance = { _: String, _: List<Int> -> GroupRelevance.FULL }
+        lateinit var formalResults: FormalResultCache
+        val admittedGroupContent by lazy(LazyThreadSafetyMode.NONE) {
+            AdmittedGroupContentIndex.build(model, doc, ALL_RELEVANT, groupRelevance, formalResults)
+        }
+        formalResults = FormalResultCache(checks, locale, dup) { ctx, path ->
+            admittedGroupContent.isFilled(ctx, path)
+        }
         val formallyIncorrect by lazy(LazyThreadSafetyMode.NONE) {
-            checks.formallyIncorrectPointers(doc, formalResults, ALL_RELEVANT)
+            formalResults.invalidPointers()
+        }
+        val groupPresence by lazy(LazyThreadSafetyMode.NONE) {
+            GroupPresenceIndex(admittedGroupContent, formallyIncorrect, groupRelevance)
         }
         val pass = ValidationPass(
             doc,
             locale,
             ALL_RELEVANT,
             dup,
-            validationConfig(ALL_RELEVANT, null, null),
+            validationConfig(ALL_RELEVANT, null, null) { ctx, path -> groupPresence.state(ctx, path) },
             formalResults,
             { formallyIncorrect },
         )
@@ -378,12 +407,13 @@ class DmInterpreter @JvmOverloads constructor(
      * (null in full, the caller's set + globals in partial — IF38).
      */
     private fun validationConfig(isRelevant: Relevance, customRelevant: Set<FieldPointer>?,
-            starRelevant: ((String) -> Boolean)?): EvalConfig =
+            starRelevant: ((String) -> Boolean)?,
+            groupPresence: (EvalContext, String) -> io.github.mbackschat.a12.dm.interpreter.eval.GroupPresenceState): EvalConfig =
         EvalConfig(clock, model.baseYear, model.indexFields, timeZone = model.timeZone,
             predefinedTypes = predefinedTypes, customConditions = customConditions, customFieldTypes = customFieldTypes,
             patternMatches = patterns::matches,
             cellRelevant = if (isRelevant === ALL_RELEVANT) null else { path, reps -> isRelevant(path, reps) },
-            starRelevant = starRelevant, customRelevant = customRelevant)
+            starRelevant = starRelevant, customRelevant = customRelevant, groupPresence = groupPresence)
 
     /** The kernel's allowed-and-eliminated raw-type length shape (see [rowOutcomes]): the whole condition is
      *  `Length(nvv) > constant` or the mirrored `constant < Length(nvv)` — GT/LT only (`>=`-style variants are
@@ -509,6 +539,66 @@ class DmInterpreter @JvmOverloads constructor(
         // set before validating (LowKernelApiUtils.addGlobalFieldsToRelevantEntities), so a global field's
         // instances are relevant regardless of the caller's set — IG11→IF37, KERNEL-FINDINGS "Partial validation".
         { path, reps -> path in model.globalFields || relevant.any { matches(it, path, reps) } }
+
+    /**
+     * Partial validation's two group-relevance levels. Any selected descendant makes its ancestors PARTIAL,
+     * which is enough to prove positive presence. Absence is known only when an ancestor selection covers the
+     * whole group, or every declared descendant field is covered across every deeper repeatable level.
+     */
+    private fun groupRelevanceOf(relevant: Set<RelevantEntity>): (String, List<Int>) -> GroupRelevance {
+        val effective = relevant + model.globalFields.map(RelevantEntity::anyRep)
+        val fieldsByAncestor = HashMap<String, MutableList<String>>()
+        for (field in model.fields) {
+            val parts = pathParts(field.path)
+            for (depth in 1 until parts.size) {
+                fieldsByAncestor.getOrPut("/" + parts.take(depth).joinToString("/")) { ArrayList() } += field.path
+            }
+        }
+        val cache = HashMap<String, HashMap<List<Int>, GroupRelevance>>()
+
+        fun touchesGroup(entity: RelevantEntity, groupPath: String, groupReps: List<Int>): Boolean {
+            val entityParts = pathParts(entity.path)
+            val groupParts = pathParts(groupPath)
+            val common = minOf(entityParts.size, groupParts.size)
+            if (entityParts.take(common) != groupParts.take(common)) return false
+            return (0 until minOf(common, entity.indices.size, groupReps.size)).all { level ->
+                entity.indices[level] == RelevantEntity.ALL || entity.indices[level] == groupReps[level]
+            }
+        }
+
+        fun fullyCoversField(
+            entity: RelevantEntity,
+            fieldPath: String,
+            groupPath: String,
+            groupReps: List<Int>,
+        ): Boolean {
+            if (!touchesGroup(entity, groupPath, groupReps)) return false
+            val entityParts = pathParts(entity.path)
+            val fieldParts = pathParts(fieldPath)
+            if (entityParts.size > fieldParts.size || entityParts != fieldParts.take(entityParts.size)) return false
+            val groupDepth = pathParts(groupPath).size
+            for (level in groupDepth until entityParts.size) {
+                val prefix = "/" + entityParts.take(level + 1).joinToString("/")
+                if (prefix in model.repeatable && entity.indices[level] != RelevantEntity.ALL) return false
+            }
+            return true
+        }
+
+        return { groupPath, groupReps ->
+            cache.getOrPut(groupPath) { HashMap() }.getOrPut(groupReps) {
+                if (effective.none { touchesGroup(it, groupPath, groupReps) }) {
+                    GroupRelevance.NONE
+                } else if (effective.any { matches(it, groupPath, groupReps) } ||
+                    fieldsByAncestor[groupPath].orEmpty().all { field ->
+                        effective.any { fullyCoversField(it, field, groupPath, groupReps) }
+                    }) {
+                    GroupRelevance.FULL
+                } else {
+                    GroupRelevance.PARTIAL
+                }
+            }
+        }
+    }
 
     /** Whether relevant entity [r] covers the instance at [path]/[reps] — [r.path] a prefix of [path] (== or a
      *  group ancestor) with each of [r]'s indices either [RelevantEntity.ALL] or equal to the instance's. */

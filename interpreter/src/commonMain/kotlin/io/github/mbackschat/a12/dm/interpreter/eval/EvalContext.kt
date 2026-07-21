@@ -39,8 +39,8 @@ interface EvalContext {
     fun signed(path: String): Boolean = true
 
     /**
-     * Whether a GROUP is filled in this row — i.e. at least one field under [groupPath] carries a value
-     * (for GroupFilled / GroupNotFilled). The general [Document] resolves this against the row's instance;
+     * Whether a GROUP has structural content in this row. The general [Document] resolves this against the row's
+     * instance; full validation overlays formal admission/error state before evaluating group predicates (IF193);
      * the single-row / repetition spike contexts don't model group structure and don't support it (they
      * throw the same way [star] does on a flat doc — they are never used for group predicates).
      */

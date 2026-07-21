@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.FormalErrorCode
 import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection
+import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
 
 /** The complete result of formally checking one cell. */
 internal sealed interface FormalResult {
@@ -35,10 +36,12 @@ internal class FormalResultCache(
     private val checks: AutoChecks,
     private val locale: String,
     private val duplicates: Set<Pair<String, List<Int>>>,
+    private val groupFilled: (EvalContext, String) -> Boolean = { ctx, path -> ctx.groupFilled(path) },
 ) {
     private data class Key(val path: String, val reps: List<Int>, val raw: String?)
 
     private val results = HashMap<Key, FormalResult>()
+    private val invalidPointers = HashSet<FieldPointer>()
 
     fun resultAt(path: String, reps: List<Int>, ctx: EvalContext): FormalResult {
         val raw = ctx.displayValue(path)
@@ -51,10 +54,15 @@ internal class FormalResultCache(
 
     private fun resultAt(path: String, reps: List<Int>, raw: String?, ctx: EvalContext?): FormalResult {
         val key = Key(path, reps, raw)
-        return results.getOrPut(key) {
-            checks.computeFormalResultAt(path, reps, raw, ctx, duplicates, locale)
+        val result = results.getOrPut(key) {
+            checks.computeFormalResultAt(path, reps, raw, ctx, duplicates, locale, groupFilled)
         }
+        if (result is FormalResult.Invalid) invalidPointers += FieldPointer(path, reps)
+        return result
     }
+
+    /** Invalid addresses reached by the validation pre-pass; no declared-empty Cartesian expansion. */
+    fun invalidPointers(): Set<FieldPointer> = invalidPointers
 
     fun failureAt(path: String, reps: List<Int>, ctx: EvalContext): FormalFailure? =
         when (val result = resultAt(path, reps, ctx)) {

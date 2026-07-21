@@ -24,9 +24,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
  *       field is <b>always</b> required (and a field under a repeatable ancestor is required once that
  *       ancestor is filled).</li>
  *   <li>{@code relativeToParent} ("= yes"): required <b>only when the parent group is filled</b>, where
- *       — per {@code IRequirednessConfig} — "filled" means <b>at least one descendant field is filled</b>.
- *       A merely-created-but-empty parent row does <em>not</em> trigger it (this is the subtle part: it
- *       is <em>not</em> the §9 "row exists" {@code GroupFilled} notion).</li>
+ *       — for this non-repeatable parent — "filled" means admitted descendant content. A merely-created empty
+ *       non-repeatable parent does not trigger it; a repeatable parent is different because its row is content.</li>
  * </ul>
  */
 class RequiredPropertyLawsTest {

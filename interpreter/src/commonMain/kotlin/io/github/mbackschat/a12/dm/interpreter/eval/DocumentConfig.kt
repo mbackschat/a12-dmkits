@@ -59,4 +59,7 @@ data class DocumentConfig(
      *  gap (a wall time that does not exist, e.g. `2024-03-31T02:30:00`) is the kernel's `datumFormatFalsch`: its
      *  non-lenient zone-set parse rejects it (probe-verified, KERNEL-FINDINGS §6). */
     val timeZone: ModelTimeZone = ModelTimeZone.UTC,
+    /** Every repeatable group, including an unbounded one with no [declaredReps] entry. Starred-aggregate
+     *  polarity needs the distinction: an unbounded repetition always retains a fillable tail. */
+    val repeatableGroups: Set<String> = declaredReps.keys,
 )

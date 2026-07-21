@@ -11,7 +11,7 @@ import kotlin.test.assertEquals
 
 /**
  * The IG75/IF131 lock: a [Document] reconstruction ([Document.withComputed] via `emptyCopy`, the compute→apply
- * path) must preserve its [DocumentConfig] **wholesale** — every slot, not 13 of 14. The defect was a positional
+ * path) must preserve its [DocumentConfig] **wholesale** — every slot, not a hand-picked prefix. The defect was a positional
  * 14-argument copy that silently dropped the final `timeZone` (→ UTC). The fix collapses the config into one
  * immutable value copied as a whole, so partial reconstruction is impossible; this test is the standing guard
  * against a future positional regression, keyed on data-class equality so a NEW slot is covered automatically.
@@ -35,6 +35,7 @@ class DocumentConfigPreservationTest {
         baseYear = 2021,
         fieldConstraints = mapOf("/G/N" to FieldConstraints(minFractionalDigits = 2)),
         timeZone = ModelTimeZone.EUROPE_BERLIN,
+        repeatableGroups = setOf("/G", "/G/Unbounded"),
     )
 
     @Test

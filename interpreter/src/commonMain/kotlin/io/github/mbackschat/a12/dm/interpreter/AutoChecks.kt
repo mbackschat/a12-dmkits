@@ -17,7 +17,6 @@ import io.github.mbackschat.a12.dm.interpreter.eval.uniqueIndexText
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldValidationContext
 import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection
-import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import io.github.mbackschat.a12.dm.interpreter.model.Message
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -96,19 +95,20 @@ internal class AutoChecks(
      * - otherwise (absolute under a repeatable ancestor, or relative-to-parent): checked per instantiated row
      *   of the field's [emissionScope], gated by [requiredEmpty]'s `GroupFilled(relativeTo)`.
      */
-    fun mandatoryErrors(doc: Document, locale: String, isRelevant: Relevance): List<Message> {
+    fun mandatoryErrors(doc: Document, locale: String, isRelevant: Relevance, cache: FormalResultCache): List<Message> {
         val out = mutableListOf<Message>()
         for (path in model.requiredFieldPaths) {
             if (model.requirednessOf(path) == Requiredness.ABSOLUTE && lowestRepeatableAncestor(path) == null) {
                 val reps = List(pathParts(path).size) { 1 }
-                if (!doc.filledAt(path, reps) && isRelevant(path, reps)) {
+                val ctx = doc.onceContextFor(rootGroupOf(path)).single()
+                if (isRelevant(path, reps) && cache.failureAt(path, reps, ctx)?.code == MANDATORY_FIELD) {
                     out += mandatoryMessage(doc, path, reps, locale)
                 }
             } else {
                 for (ctx in doc.contextsFor(emissionScope(path))) {
                     val r = ctx.repsOf(path)
                     // An over-limit row's mandatory check is suppressed (it carries the over-repetition code instead).
-                    if (requiredEmpty(path, ctx) && isRelevant(path, r) && overLimitLevel(path, r) == null) {
+                    if (isRelevant(path, r) && cache.failureAt(path, r, ctx)?.code == MANDATORY_FIELD) {
                         out += mandatoryMessage(doc, path, r, locale)
                     }
                 }
@@ -152,35 +152,6 @@ internal class AutoChecks(
         return out
     }
 
-    /**
-     * The complete externally-addressed formal-invalid FIELD set supplied to a custom-condition callback.
-     * Materialized once per validation pass from the same [FormalResultCache] that classifies built-in reads,
-     * never reconstructed from valued cells, the current row, or rendered message strings. [isRelevant] selects
-     * the fields that this formal pass actually checked; it is not itself treated as formal invalidity.
-     *
-     * Every declared field contributes its real instantiated addresses: the deepest repeatable ancestor supplies
-     * its rows, while an all-non-repeatable field has one canonical all-1s address even when its group is absent.
-     * This includes format/custom-validator failures, required-empty cells, duplicate-index cells, and
-     * over-limit fields; valid/optional-empty cells and group-only over-repetition messages are absent.
-     */
-    fun formallyIncorrectPointers(
-        doc: Document,
-        cache: FormalResultCache,
-        isRelevant: Relevance,
-    ): Set<FieldPointer> =
-        buildSet {
-            for (path in model.kinds.keys) {
-                val contexts = lowestRepeatableAncestor(path)?.let(doc::contextsFor)
-                    ?: doc.onceContextFor(rootGroupOf(path))
-                for (ctx in contexts) {
-                    val reps = ctx.repsOf(path)
-                    if (isRelevant(path, reps) && cache.resultAt(path, reps, ctx) is FormalResult.Invalid) {
-                        add(FieldPointer(path, reps))
-                    }
-                }
-            }
-        }
-
     /** One `uniqueIndex` [Message] per duplicate-index cell (the kernel flags every participant). */
     fun uniquenessMessages(doc: Document, dup: Set<Pair<String, List<Int>>>, locale: String,
             isRelevant: Relevance): List<Message> =
@@ -203,12 +174,12 @@ internal class AutoChecks(
      * immediate parent being filled. Both gates ride [EvalContext.groupFilled] (repeatable = row exists,
      * non-repeatable = a descendant is filled).
      */
-    private fun requiredEmpty(path: String, ctx: EvalContext): Boolean {
+    private fun requiredEmpty(path: String, ctx: EvalContext, groupFilled: (EvalContext, String) -> Boolean): Boolean {
         if (ctx.filled(path)) return false
         return when (model.requirednessOf(path)) {
             Requiredness.NOT_REQUIRED -> false
-            Requiredness.RELATIVE_TO_PARENT -> ctx.groupFilled(parentGroup(path))
-            Requiredness.ABSOLUTE -> lowestRepeatableAncestor(path)?.let { ctx.groupFilled(it) } ?: true
+            Requiredness.RELATIVE_TO_PARENT -> groupFilled(ctx, parentGroup(path))
+            Requiredness.ABSOLUTE -> lowestRepeatableAncestor(path)?.let { groupFilled(ctx, it) } ?: true
         }
     }
 
@@ -220,6 +191,7 @@ internal class AutoChecks(
         ctx: EvalContext?,
         dup: Set<Pair<String, List<Int>>>,
         locale: String,
+        groupFilled: (EvalContext, String) -> Boolean = { context, group -> context.groupFilled(group) },
     ): FormalResult {
         // An over-limit cell (its row exceeds a declared `repeatability`) is "unknown" — it carries the
         // over-repetition code, suppressing any rule that references it AND its own format/required/unique checks,
@@ -242,7 +214,7 @@ internal class AutoChecks(
             return if (path to reps in dup) FormalResult.Invalid(FormalFailure.Generated(UNIQUE_INDEX))
             else FormalResult.Valid
         }
-        return if (ctx != null && requiredEmpty(path, ctx)) FormalResult.Invalid(FormalFailure.Generated(MANDATORY_FIELD))
+        return if (ctx != null && requiredEmpty(path, ctx, groupFilled)) FormalResult.Invalid(FormalFailure.Generated(MANDATORY_FIELD))
         else FormalResult.Valid
     }
 

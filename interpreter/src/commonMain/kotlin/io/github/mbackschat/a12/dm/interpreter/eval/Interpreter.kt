@@ -107,6 +107,10 @@ class Interpreter(
     private val computeScanState = config.computeScanState
     internal val computeMode = config.computeMode
 
+    /** Formal-aware group state for validation; low-level/compute consumers retain structural Boolean presence. */
+    internal fun groupPresence(c: EvalContext, path: String): GroupPresenceState =
+        config.groupPresence?.invoke(c, path) ?: GroupPresenceState(c.groupFilled(path), erroneous = false)
+
     /** The context a node resolves against: the complete enclosing environment for `$`, else [ctx].
      *  Path-specific resolution within that context selects the marked node's named coordinate. */
     internal fun ctxOf(node: Expr): EvalContext = when {
@@ -310,8 +314,17 @@ class Interpreter(
         return when (op) {
             PredicateOp.FIELD_FILLED -> presenceTri(p.args.single())
             PredicateOp.FIELD_NOT_FILLED -> Kleene.not(presenceTri(p.args.single()))
-            PredicateOp.GROUP_FILLED -> Tri.of(ctxOf(p.args.single()).groupFilled(pathOf(p.args.single())))
-            PredicateOp.GROUP_NOT_FILLED -> Tri.of(!ctxOf(p.args.single()).groupFilled(pathOf(p.args.single())))
+            PredicateOp.GROUP_FILLED -> groupPresence(ctxOf(p.args.single()), pathOf(p.args.single())).let {
+                if (it.relevance == GroupRelevance.NONE) Tri.UNKNOWN else Tri.of(it.filled)
+            }
+            PredicateOp.GROUP_NOT_FILLED -> groupPresence(ctxOf(p.args.single()), pathOf(p.args.single())).let {
+                when {
+                    it.erroneous || it.relevance == GroupRelevance.NONE -> Tri.UNKNOWN
+                    it.filled -> Tri.FALSE
+                    it.relevance == GroupRelevance.FULL -> Tri.TRUE
+                    else -> Tri.UNKNOWN
+                }
+            }
             PredicateOp.FIELD_VALUE_IN_LIST -> valueInList(p.args)
             PredicateOp.FIELD_VALUE_NOT_IN_LIST -> Kleene.not(valueInList(p.args))
             PredicateOp.DATE_RANGES_OVERLAP -> overlapAny(p.args).truth
@@ -539,13 +552,20 @@ class Interpreter(
      *  (check-relevant but empty); the rest are UNKNOWN (present but not check-relevant — a malformed value),
      *  counted in NEITHER, matching the kernel's `isWertAngegeben` (the shared [presenceTri], which also
      *  resolves a SEMANTIC-INDEX operand to its one matched cell — `SemanticIndexPresenceDiffTest`). GROUP
-     *  operands have no UNKNOWN state (a group can't be malformed), so `f = n - t`. The kernel counts only TRUE
+     *  GROUP operands can be UNKNOWN when they contain a formal error: positive presence still counts admitted
+     *  content, while only a clean contentless group is definitely empty. The kernel counts only TRUE
      *  for "filled" and only FALSE for "empty"; a malformed field is neither — so e.g. `AtLeastOneFieldFilled`
      *  does NOT fire on a lone malformed field. A `$`-marked operand tallies against the enclosing row (ctxOf). */
     private fun quantTally(op: PredicateOp, args: List<Expr>): Pair<Int, Int> {
         if (op.countsGroups) {
-            val t = args.count { ctxOf(it).groupFilled(pathOf(it)) }
-            return t to (args.size - t)
+            var t = 0
+            var f = 0
+            for (arg in args) {
+                val state = groupPresence(ctxOf(arg), pathOf(arg))
+                if (state.definitelyFilled) t++
+                if (state.definitelyEmpty) f++
+            }
+            return t to f
         }
         var t = 0
         var f = 0
@@ -583,6 +603,7 @@ class Interpreter(
      */
     private fun starGroupTally(star: Expr.Star): Triple<Int, Int, Int> {
         val rows = ctxOf(star).rowContexts(star.path, star.bindDepth)
+            .filter { groupPresence(it, star.path).definitelyFilled }
         val n = if (star.having == null) rows.size else rows.count { havingInterp(it).fires(star.having) }
         return Triple(n, 0, n)
     }

@@ -13,8 +13,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * Differential — `GroupFilled` / `GroupNotFilled` on a NON-repeatable group. A group is "filled" when ≥1 of
- * its fields carries a value; `GroupNotFilled` is the inverse. The interpreter must fire (or not) exactly
+ * Differential — `GroupFilled` / `GroupNotFilled` on a NON-repeatable group with formally clean fields. A group
+ * is "filled" when ≥1 field carries admitted content; `GroupNotFilled` is its inverse only in this clean matrix
+ * (formal errors make negative presence UNKNOWN; `GroupPresenceFormalInvalidDiffTest`). The interpreter fires
  * when the kernel does. The error field is a member of the referenced group (the kernel requires the error
  * field to be referenced — `MVK_ERROR_FIELD_NOT_REFERENCED` — and a `GroupFilled` reference covers its
  * members indirectly, BA "indirect referencing"). The REPEATABLE-group form requires the `*` aggregate
