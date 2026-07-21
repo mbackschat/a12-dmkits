@@ -347,14 +347,19 @@ private fun Interpreter.evalArith(a: Expr.Arith): Val {
 }
 
 /**
- * `base ^ exp` — the kernel evaluates it QUIETLY (→ Unknown, the rule does not fire) for the edge cases:
- * a non-whole exponent (model-rejected, so a defensive Unknown), an exponent outside `[-1000, 1000]`, or
- * `0` to a negative power. Otherwise `MathContext(50)` arithmetic via [Dec.pow]. (operators.json Arithmetic.)
+ * `base ^ exp` — the two runtime-invalid integral regions are numeric DOMAIN FAILURES (the kernel's shared
+ * `INVALID_NUMBER` sentinel, exactly like divide-by-zero — IF16/SPEC-2026-07-21-05): an integral exponent
+ * outside `[-1000, 1000]`, or `0` to a negative integral power. A rule comparison projects that failure to
+ * UNKNOWN (does not fire), while a numeric computation preserves it through the numeric wrappers and marks
+ * the Number target invalid (`berechnungsWertFehler`), poisoning a dependent read. A non-whole exponent is a
+ * STATIC authoring error (`MVK_INVALID_NUMBER_FOR_EXP`), never a legal runtime value, so it stays a defensive
+ * [Val.Unknown] here rather than a domain failure. Otherwise `MathContext(50)` arithmetic via [Dec.pow].
+ * (operators.json Arithmetic.)
  */
 private fun power(base: Dec, exp: Dec): Val {
     val e = exp.display().toIntOrNull() ?: return Val.Unknown
-    if (e !in -1000..1000) return Val.Unknown
-    if (base.compareTo(DEC_ZERO) == 0 && e < 0) return Val.Unknown
+    if (e !in -1000..1000) return Val.DomainFailure
+    if (base.compareTo(DEC_ZERO) == 0 && e < 0) return Val.DomainFailure
     return Val.Num(base.pow(e))
 }
 
