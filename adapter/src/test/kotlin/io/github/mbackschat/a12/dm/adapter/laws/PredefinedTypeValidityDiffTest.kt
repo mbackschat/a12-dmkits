@@ -1,6 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import com.mgmtp.a12.kernel.core.customfieldtype.CustomFieldTypeService
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeCheckError
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeFactory
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeValidationParam
@@ -17,9 +16,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.util.Optional
 
@@ -27,10 +24,11 @@ import java.util.Optional
  * Differential — `ValidType`/`InvalidType` (`Valid(field, "EMail")` / `Invalid(field, "EMail")`), the
  * predefined-custom-field-type validity predicates. The kernel makes these a runtime CLIENT SPI
  * (`IPredefinedType`; KERNEL-FINDINGS §8) — the bare kernel ships no validator and is a degenerate no-op, so
- * to get a REAL ground truth this test REGISTERS the SAME validator in BOTH engines: the kernel oracle via
- * `CustomFieldTypeService` (a factory delegating to the interpreter's own [PredefinedTypeRegistry] spec), and
- * the interpreter via its default registry (the built-in `EMail`). Identical validator on both sides → the
- * differential verifies the OPERATOR SEMANTICS (firing, polarity, empty/not-specified handling), not the regex.
+ * to get a REAL ground truth this test provides the SAME validator to BOTH engines: the kernel oracle through
+ * its per-call processing configuration (a factory delegating to the interpreter's own [PredefinedTypeRegistry]
+ * spec), and the interpreter through its default registry (the built-in `EMail`). Identical validator on both
+ * sides → the differential verifies the OPERATOR SEMANTICS (firing, polarity, empty/not-specified handling),
+ * not the regex.
  *
  * Probe-confirmed: `Valid` fires iff the present value is a valid instance (VALUE), `Invalid` its complement
  * (VALUE); an EMPTY field is "not specified" → neither fires (no `FieldFilled` guard needed).
@@ -61,9 +59,6 @@ class PredefinedTypeValidityDiffTest {
             })
     }
 
-    @BeforeEach fun register() = CustomFieldTypeService.getInstanceV2().registerV2(factory)
-    @AfterEach fun cleanup() = CustomFieldTypeService.getInstanceV2().cleanRegistry()
-
     /** [cond] with CustomerName = [name] (null = empty); compare kernel vs interpreter (firing + polarity). */
     private fun agree(cond: String, name: String?, msg: String) {
         val kModel = RuntimeLaws.withRule(order, "/Order", "R", "../CustomerName", "VT", cond)
@@ -71,7 +66,8 @@ class PredefinedTypeValidityDiffTest {
         val kDoc = RuntimeLaws.doc().group("/Order", 1)
         val iDoc = def.newDocument().group("/Order", 1)
         if (name != null) { kDoc.field(NAME, name, 1, 1); iDoc.field(NAME, name, 1, 1) }
-        val k = RuntimeLaws.typeOf(kModel, "VT", kDoc).map { it.name }.orElse(null)
+        val k = RuntimeLaws.messages(kModel, kDoc, factory)
+            .firstOrNull { it.code() == "VT" }?.type()?.name
         val i = DmInterpreter(def).validate(iDoc).messages.firstOrNull { it.code == "VT" }
             ?.type?.let { if (it == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR" }
         assertEquals(k, i, "$msg  (kernel=$k interp=$i)")
