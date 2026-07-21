@@ -131,7 +131,7 @@ fields 15 · groups 4 · rules 3 · computations 0 · repeatable 1
 
 ## model diff — review what changed
 
-When an agent edits a model on your behalf, raw JSON diffs are unreadable. `model diff <base> <head>` compares two model files **structurally** (it parses both into the model, so a pure reformat is never reported) and reports the fields and rules **added / removed / modified** — each with a **risk** tier. Risk follows *loosening > tightening*: a removed or loosened rule silently accepts bad data (HIGH), while a tightened or added one fails loudly (MEDIUM). Projected here to the headline plus the high-risk changes.
+When an agent edits a model on your behalf, raw JSON diffs are unreadable. `model diff <base> <head>` compares two model files **structurally** (it parses both into the model, so a pure reformat is never reported) and reports field, rule, and computation changes with a **risk** tier. Risk follows *loosening > tightening*: a removed or loosened rule silently accepts bad data (HIGH), while a tightened or added one fails loudly (MEDIUM). Projected here to the headline plus the high-risk changes.
 
 ```bash
 dmtool model diff examples/models/order-ruled.dm.json examples/models/order.dm.json \
@@ -168,6 +168,48 @@ dmtool model diff examples/models/order-ruled.dm.json examples/models/order.dm.j
 ```
 
 → The headline is `11 added, 3 removed, 0 modified (3 high-risk)`, and the three high-risk changes are exactly the **deleted validation rules** (`RULE_REMOVED`) — the dangerous, silent case a reviewer must see first. Unlike `where-used`/`model usage` (which read *one* model), this compares *two* and is the **review** surface: what did this edit change, and what should I look at first? It's a *structural* semantic diff — the full contract is in [MODEL-REVIEW-SPEC](../docs/MODEL-REVIEW-SPEC.md).
+
+### Computation behavior changes are first-class
+
+A computation is not “just another stored rule” in the review output. Its target, preconditions, ordered operations, tolerances, suppressions, messages, and opaque DSL are compared as computation aspects. Here the effective fee changes from a pass-through to base fee plus one:
+
+```bash
+cat > /tmp/review-computation.json <<'EOF'
+{
+  "computedField": "/Subscription/Billing/EffectiveFee",
+  "alternatives": [{ "operation": "[BaseFee] + 1" }],
+  "messages": [
+    { "locale": "en_US", "text": "Effective fee is base fee plus one." },
+    { "locale": "de_DE", "text": "Effektivgebuehr ist Basisgebuehr plus eins." }
+  ]
+}
+EOF
+cp examples/models/subscription-computed.dm.json /tmp/review-computation.dm.json
+dmtool -m /tmp/review-computation.dm.json computation modify \
+  /Subscription/Billing/EffectiveFeeComp --spec /tmp/review-computation.json >/dev/null
+dmtool model diff examples/models/subscription-computed.dm.json /tmp/review-computation.dm.json \
+  | jq '.data.changes | map(select(.element=="COMPUTATION")) | map({id, risk, riskReasons, operation: (.deltas[] | select(.aspect=="alternative[0].operation"))})'
+```
+
+```output
+[
+  {
+    "id": "/Subscription/Billing/EffectiveFeeComp",
+    "risk": "MEDIUM",
+    "riskReasons": [
+      "COMPUTATION_CHANGED",
+      "MESSAGE_CHANGED"
+    ],
+    "operation": {
+      "aspect": "alternative[0].operation",
+      "before": "[BaseFee]",
+      "after": "[BaseFee] + 1"
+    }
+  }
+]
+```
+
+→ The changed operation is explicit and `COMPUTATION_CHANGED` is MEDIUM. A message-only edit is LOW `MESSAGE_CHANGED`; it cannot hide a functional computation change.
 
 ### A silent polarity flip — the most dangerous edit
 

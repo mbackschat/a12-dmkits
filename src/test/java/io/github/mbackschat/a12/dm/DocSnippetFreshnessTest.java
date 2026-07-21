@@ -97,6 +97,8 @@ class DocSnippetFreshnessTest {
             new Lock("group-count-quantifiers", "docs/API-GUIDE.md",
                     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WildcardGroupFillQuantifierReadTest.java"),
             new Lock("computation-suppress", "docs/API-GUIDE.md", NEW_SHAPES),
+            new Lock("model-diff", "docs/API-GUIDE.md",
+                    "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/review/ModelDiffComputationTest.java"),
             new Lock("bulk-program-write", "docs/API-GUIDE.md", BULK_WRITE),
             new Lock("profile-extract", "docs/API-GUIDE.md", PROFILE_FACADE),
             new Lock("profile-compare", "docs/API-GUIDE.md", PROFILE_COMPARE));

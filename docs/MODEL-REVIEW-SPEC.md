@@ -96,12 +96,12 @@ Parses **both** states into the model and compares **structure** (so JSON format
 |---|---|
 | **field** | `retyped` (kind), config (min/max/pattern/scale/unit/format/length), requiredness, enum value add/remove, metadata |
 | **rule** | condition (→ RenderedDiff + polarity-before/after + gloss-before/after + reference-delta), severity, code, messages |
-| **computation** | operation/precondition table, computed target, messages |
+| **computation** | operation/precondition table, computed target, tolerances, suppressions, messages, opaque stored DSL |
 | **group** | repeatability, index field, sort fields, child structure |
 | **typedef / include / config** | added/removed/renamed; mount point; imports; locale/decimal/roles/charset |
 | **element position** | a field/group/rule **reordered** within its parent — a display-order change, semantic per §2b |
 
-*(Status: only **field** and **rule** are diffed today — field aspects `kind`/`scale`/`min`/`max`/`minLength`/`maxLength`/`pattern`, rule aspects `condition`/`severity`/`code`. **Computation, group, and typedef/include/config are not yet diffed**, nor are field `unit`/`format`/`metadata`/requiredness/enum-value or rule `messages`/locale — a change to one of those currently produces no diff. The rows above are the target taxonomy; closing the gap is [`MODEL-REVIEW-GAPS.md`](MODEL-REVIEW-GAPS.md) MR9.)*
+*(Status: **field**, **rule**, and **computation** are diffed today. Computation aspects are target, common precondition, ordered alternative preconditions/operations/tolerances, suppressions, messages, and verbatim opaque DSL. **Group and typedef/include/config are not yet diffed**, nor are field `unit`/`format`/metadata/requiredness/enum-value or rule messages/locale. The rows above are the target taxonomy; closing the remaining gap is [`MODEL-REVIEW-GAPS.md`](MODEL-REVIEW-GAPS.md) MR9.)*
 
 ### 5b. Risk taxonomy — *loosening > tightening*
 
@@ -115,7 +115,7 @@ A removed/loosened rule **silently accepts bad data** (invisible); a tightened/a
 
 Risk codes are documented via `schema model diff` (the `data.findings`-code pattern, like `workspace roles`), not in `diagnostics`.
 
-*(Status: a subset is built — `RULE_REMOVED`/`RULE_ADDED`/`POLARITY_INVERTED`/`KIND_CHANGED`/`SEVERITY_DOWNGRADED`/`CONSTRAINT_LOOSENED`/`CONSTRAINT_TIGHTENED`/`STRUCTURE_ADDED`/`STRUCTURE_REMOVED`/`POSITION_CHANGED`/`ELEMENT_RENAMED`/`ELEMENT_MOVED` and a few LOW codes, with the loosening>tightening direction for numeric bounds/lengths/pattern. `POLARITY_INVERTED` is detected structurally from the two rule ASTs (§5c level 1); a non-inverted condition change is further **classified** from the ASTs (`ConditionEdit`, §5e) into `CONDITION_RESTRUCTURED`/`REFERENCE_CHANGED`/`OPERATOR_CHANGED`/`THRESHOLD_CHANGED` (all MEDIUM), with `CONDITION_CHANGED` the fallback for an unparseable condition. The `risk` tier + `riskReasons` ride each change in `data`. `REFERENCED_ELEMENT_REMOVED` and `RETYPE_AFFECTS_READERS` are not yet computed — a removed/re-typed field is graded structurally without its reader set.)*
+*(Status: a subset is built — including `COMPUTATION_CHANGED` (MEDIUM) and message-only computation edits as `MESSAGE_CHANGED` (LOW), plus the field/rule/reorder/relocation codes above. `POLARITY_INVERTED` is detected structurally from the two rule ASTs (§5c level 1); a non-inverted condition change is further **classified** from the ASTs (`ConditionEdit`, §5e). The `risk` tier + `riskReasons` ride each change in `data`. `REFERENCED_ELEMENT_REMOVED` and `RETYPE_AFFECTS_READERS` are not yet computed — a removed/re-typed field is graded structurally without its reader set.)*
 
 ### 5c. Polarity-inversion detection (layered by confidence)
 
@@ -137,7 +137,7 @@ Three levels exist: **textual/line** (`git diff`), **structural/AST** (the commo
 
 ### 5g. Relational refactor grouping
 
-A reference-rewriting refactor (a rename/move that re-pointed N referrers) is folded into **one** semantic operation instead of N+1 scattered edits: `data.refactors[]`, each `{kind: RENAME|MOVE, from, to, referrers[]}`, whose referrers are the `MODIFIED` rules whose reference-delta is *exactly* that `from`→`to` repoint (dropped `from`, gained `to`). A coincidental reference change with no matching relocation is **never** fabricated into a refactor, and a relocation with no referrer yields no group (nothing relational to fold). The overlay is **non-destructive** — the raw `RENAMED`/`MOVED` and per-referrer `MODIFIED` changes stay in `changes`, each carrying `partOfRefactor` (the index into `refactors`) — so a consumer can verify the fold from the change-set itself (the trust principle applied to the tool's own output). *(Built. The referrer set is rules today; computations join when the computation-diff slice lands.)*
+A reference-rewriting refactor (a rename/move that re-pointed N referrers) is folded into **one** semantic operation instead of N+1 scattered edits: `data.refactors[]`, each `{kind: RENAME|MOVE, from, to, referrers[]}`, whose referrers are the `MODIFIED` rules or computations whose reference-delta is *exactly* that `from`→`to` repoint (dropped `from`, gained `to`). A coincidental reference change with no matching relocation is **never** fabricated into a refactor, and a relocation with no referrer yields no group (nothing relational to fold). The overlay is **non-destructive** — the raw `RENAMED`/`MOVED` and per-referrer `MODIFIED` changes stay in `changes`, each carrying `partOfRefactor` (the index into `refactors`) — so a consumer can verify the fold from the change-set itself.
 
 ## 6. Rendering & the mermaid policy
 

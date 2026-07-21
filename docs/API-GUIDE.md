@@ -1148,6 +1148,23 @@ s.validate();                                                        // the reso
 
 The included price list's **own** rule travels with it — mounted twice, it applies at both `/Catalog/Retail` and `/Catalog/Wholesale` — and the base's rules over the mounted fields validate against the real, expanded model. The written-back DM-JSON keeps the include as a `modelAlias` reference, never inlined; included content doesn't leak into the base. *Test-backed: `edit.MultiModelTest` (two-location include of a ruled model + rules over mounted fields + type-def) and `rulekit.dsl.IncludesTypedefsRuleTest` (single mount + type-def, EN/DE render).*
 
+### 5d.1 Compare two model states headlessly (`ModelDiff`)
+
+The structural semantic diff is a reusable `:adapter` library primitive; the CLI is only one renderer. `ModelDiff.between` binds both model states, ignores JSON formatting differences, and returns typed immutable changes with element kind, change kind, risk, reason codes, and deterministic string-valued aspect deltas:
+
+<!-- snippet: model-diff -->
+```java
+ModelDiff diff = ModelDiff.between(beforeJson, afterJson);
+
+for (ModelDiff.ElementChange change : diff.changes()) {
+    System.out.println(change.element() + " " + change.id() + " " + change.risk());
+    change.deltas().forEach(delta ->
+            System.out.println(delta.aspect() + ": " + delta.before() + " -> " + delta.after()));
+}
+```
+
+Fields, rules, and computations are currently first-class element families. Computation aspects include the computed target, common precondition, ordered alternative preconditions/operations/tolerances, suppressions, localized messages, and verbatim stored DSL for an opaque computation. A functional computation edit is `COMPUTATION_CHANGED` (MEDIUM); a message-only edit is `MESSAGE_CHANGED` (LOW). Reference-rewriting renames/moves are also returned as `refactors()`, with both rule and computation readers attributed. For includes-bearing models, pass the same kernel-free `ModelResolver` used to bind the workspace: `ModelDiff.between(beforeJson, afterJson, resolver)`. A web service can serialize these records into its own transport contract without invoking the CLI. *Test-backed: `adapter.review.ModelDiffComputationTest`, the existing `ModelDiff*Test` family, and `cli.DiffTextComputationTest`; executable example: [`examples/cli-review.md`](../examples/cli-review.md).*
+
 ## 5e. Run rules against data — does it actually fire? (runtime evaluation)
 
 Beyond "is this rule kernel-valid?" (the static gate) is "does it do the **right thing** on real data?" — the verify-by-execution angle that catches an *inverted-but-valid* rule. `KernelAdapter.evaluate` runs a model's rules over a **document instance** (a nested, name-keyed tree — repeatable groups as lists, field values as their kernel string form) and reports which rule **codes** fired; its peer `compute` reports what each field computes. (CLI: `model eval` / `model compute`.)

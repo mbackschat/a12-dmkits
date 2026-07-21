@@ -26,7 +26,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
  * reaches the reviewer), matching elements by id/path into added / removed / modified, each carrying the
  * per-aspect {@link Delta}s that changed and a {@link Risk} tier with its reason codes.
  *
- * <p>This slice covers <b>fields and rules</b>. An element's state is an ordered <i>aspect map</i> of
+ * <p>An element's state is an ordered <i>aspect map</i> of
  * format-independent values (kernel-canonical condition text + severity + code for a rule; kind + per-kind
  * config for a field), so a pure reformat is never a change. Risk follows the <b>loosening &gt; tightening</b>
  * asymmetry (a removed/loosened rule silently accepts bad data) — a subset of the SPEC §5b taxonomy.
@@ -38,13 +38,13 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
  * two-layer matcher — an exact-fingerprint fast path, then a mutual-best similarity matcher that survives a
  * rename+edit (§5) — always conservative (unsure ⇒ remove+add). A reference-rewriting refactor is folded
  * into one {@link Refactor} (§5g), and a changed condition carries a located {@link ConditionEditScript}
- * (which clause/operand moved, §5e). Computations and groups are a later element-family slice.
+ * (which clause/operand moved, §5e).
  */
 public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         Map<String, ConditionEditScript> conditionEdits) {
 
-    /** The element families this slice diffs (computation/group come later). */
-    public enum ElementKind { FIELD, RULE }
+    /** The element families currently projected into the structural diff. */
+    public enum ElementKind { FIELD, RULE, COMPUTATION }
 
     /** Whether a relocation kept its parent (a {@code RENAME}) or its leaf name (a {@code MOVE}). */
     public enum RefactorKind { RENAME, MOVE }
@@ -91,8 +91,10 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
     /** The shared structural diff over two already-bound models — the entry points differ only in how each
      *  {@link BoundModel} was resolved. */
     private static ModelDiff between(BoundModel base, BoundModel head) {
-        KernelAdapter baseRules = KernelAdapter.of(base);
-        KernelAdapter headRules = KernelAdapter.of(head);
+        ModelDiffState baseState = ModelDiffState.of(base);
+        ModelDiffState headState = ModelDiffState.of(head);
+        KernelAdapter baseRules = baseState.adapter();
+        KernelAdapter headRules = headState.adapter();
         List<ElementChange> changes = new ArrayList<>();
         Map<String, Map<String, String>> baseFields = fieldAspects(base);
         Map<String, Map<String, String>> headFields = fieldAspects(head);
@@ -103,6 +105,11 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         match(ElementKind.RULE, baseRuleAspects, headRuleAspects,
                 (change, id, deltas) -> ruleReasons(change, id, deltas, baseRules, headRules), changes);
         detectReorders(ElementKind.RULE, baseRuleAspects.keySet(), headRuleAspects.keySet(), changes);
+        Map<String, Map<String, String>> baseComputations = ComputationDiffProjector.project(baseState);
+        Map<String, Map<String, String>> headComputations = ComputationDiffProjector.project(headState);
+        match(ElementKind.COMPUTATION, baseComputations, headComputations,
+                (change, id, deltas) -> ComputationDiffProjector.reasons(change, deltas), changes);
+        detectReorders(ElementKind.COMPUTATION, baseComputations.keySet(), headComputations.keySet(), changes);
         pairRenames(changes, baseRules, headRules);
         pairSimilar(changes, baseRules, headRules);
         return new ModelDiff(List.copyOf(changes), groupRefactors(changes, baseRules, headRules),
@@ -364,8 +371,9 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         for (Delta d : contentDeltas) {
             reasons.add(relocationContentReason(removed.element(), removed.id(), added.id(), d, base, head));
         }
-        return new ElementChange(removed.element(), removed.id(), kind, riskFor(reasons),
-                List.copyOf(reasons), List.copyOf(deltas));
+        List<String> distinctReasons = distinctReasons(reasons);
+        return new ElementChange(removed.element(), removed.id(), kind, riskFor(distinctReasons),
+                distinctReasons, List.copyOf(deltas));
     }
 
     /** The reason for one aspect that changed across a relocation — a condition is classified across the two names. */
@@ -373,6 +381,9 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
             KernelAdapter base, KernelAdapter head) {
         if (element == ElementKind.RULE && d.aspect().equals("condition")) {
             return conditionReason(oldId, newId, base, head);
+        }
+        if (element == ElementKind.COMPUTATION) {
+            return ComputationDiffProjector.modifiedReason(d);
         }
         return modifiedReason(d);
     }
@@ -400,8 +411,10 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
      * BOTH the path move and the content deltas, so the edit is never hidden.
      */
     private static void pairSimilar(List<ElementChange> changes, KernelAdapter base, KernelAdapter head) {
-        List<ElementChange> removed = changes.stream().filter(c -> c.change() == ChangeKind.REMOVED).toList();
-        List<ElementChange> added = changes.stream().filter(c -> c.change() == ChangeKind.ADDED).toList();
+        List<ElementChange> removed = changes.stream()
+                .filter(c -> c.change() == ChangeKind.REMOVED && supportsSimilarityPairing(c.element())).toList();
+        List<ElementChange> added = changes.stream()
+                .filter(c -> c.change() == ChangeKind.ADDED && supportsSimilarityPairing(c.element())).toList();
         if (removed.isEmpty() || added.isEmpty()) {
             return;
         }
@@ -424,6 +437,11 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
             consumed.add(a);
         }
         applyPairing(changes, replaceWith, consumed);
+    }
+
+    /** Fuzzy relocation pairing is evidence-backed only for the original field/rule families. */
+    private static boolean supportsSimilarityPairing(ElementKind element) {
+        return element == ElementKind.FIELD || element == ElementKind.RULE;
     }
 
     /** {@code score[i][j]} = similarity of {@code removed[i]} to {@code added[j]} ({@code -1} across kinds). */
@@ -488,7 +506,7 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
     static double similarityScore(ElementKind kind, Map<String, String> fpRemoved, Map<String, String> fpAdded,
             Set<String> refsRemoved, Set<String> refsAdded, String leafRemoved, String leafAdded) {
         double nameSim = nameSimilarity(leafRemoved, leafAdded);
-        double fpSim = jaccard(entryKeys(fpRemoved), entryKeys(fpAdded));
+        double fpSim = jaccard(fingerprintEntries(fpRemoved), fingerprintEntries(fpAdded));
         if (kind == ElementKind.RULE) {
             double refSim = jaccard(refsRemoved, refsAdded);
             if (nameSim < NAME_FLOOR && refSim < REF_FLOOR) {
@@ -502,11 +520,9 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         return 0.8 * fpSim + 0.2 * nameSim;
     }
 
-    /** Aspect fingerprint as {@code key value} tokens (an aspect name carries no space, so the first space separates key from value). */
-    private static Set<String> entryKeys(Map<String, String> fingerprint) {
-        Set<String> tokens = new LinkedHashSet<>();
-        fingerprint.forEach((k, v) -> tokens.add(k + ' ' + v));
-        return tokens;
+    /** Structured aspect/value entries avoid separator escaping and remain deterministic. */
+    private static Set<Map.Entry<String, String>> fingerprintEntries(Map<String, String> fingerprint) {
+        return new LinkedHashSet<>(fingerprint.entrySet());
     }
 
     private static <T> double jaccard(Set<T> a, Set<T> b) {
@@ -547,7 +563,7 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
 
     /**
      * Folds each {@code RENAMED}/{@code MOVED} that rewrote referrers into ONE {@link Refactor}: its
-     * referrers are the {@code MODIFIED} rules whose reference-delta is <b>exactly</b> that {@code from}→{@code to}
+     * referrers are the {@code MODIFIED} rules/computations whose reference-delta is <b>exactly</b> that {@code from}→{@code to}
      * repoint (dropped {@code from}, gained {@code to}) — so a coincidental reference change (no matching
      * relocation) is never fabricated into a refactor. A relocation with no referrer yields no group (nothing
      * relational to fold). This is a read-only overlay: {@code changes} is left intact.
@@ -556,9 +572,10 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         Map<String, Set<String>> dropped = new LinkedHashMap<>();
         Map<String, Set<String>> gained = new LinkedHashMap<>();
         for (ElementChange c : changes) {
-            if (c.change() == ChangeKind.MODIFIED && c.element() == ElementKind.RULE) {
-                Set<String> b = refsOf(base, c.id());
-                Set<String> h = refsOf(head, c.id());
+            if (c.change() == ChangeKind.MODIFIED
+                    && (c.element() == ElementKind.RULE || c.element() == ElementKind.COMPUTATION)) {
+                Set<String> b = refsOf(base, c.element(), c.id());
+                Set<String> h = refsOf(head, c.element(), c.id());
                 dropped.put(c.id(), difference(b, h));
                 gained.put(c.id(), difference(h, b));
             }
@@ -595,6 +612,15 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
                 : Set.of();
     }
 
+    /** Referenced fields of either reader family; opaque readers stay unattributed. */
+    private static Set<String> refsOf(KernelAdapter adapter, ElementKind element, String name) {
+        return switch (element) {
+            case RULE -> refsOf(adapter, name);
+            case COMPUTATION -> ComputationDiffProjector.references(adapter.readComputation(name));
+            case FIELD -> Set.of();
+        };
+    }
+
     /** The head path carried by a relocation's {@code path} delta. */
     private static String pathAfter(ElementChange relocation) {
         return relocation.deltas().stream().filter(d -> d.aspect().equals("path"))
@@ -617,8 +643,13 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
 
     private static ElementChange classified(ElementKind kind, String id, ChangeKind change,
             List<Delta> deltas, ReasonClassifier classifier) {
-        List<String> reasons = classifier.reasons(change, id, deltas);
-        return new ElementChange(kind, id, change, riskFor(reasons), List.copyOf(reasons), deltas);
+        List<String> reasons = distinctReasons(classifier.reasons(change, id, deltas));
+        return new ElementChange(kind, id, change, riskFor(reasons), reasons, deltas);
+    }
+
+    /** Reason codes describe classifications; multiple changed aspects must not repeat the same code. */
+    private static List<String> distinctReasons(List<String> reasons) {
+        return List.copyOf(new LinkedHashSet<>(reasons));
     }
 
     /** The change's risk tier — the max over its reason codes (loosening &gt; tightening, §5b). */
@@ -708,7 +739,7 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
             case "RULE_ADDED", "CONDITION_CHANGED", "CONDITION_RESTRUCTURED", "REFERENCE_CHANGED",
                     "OPERATOR_CHANGED", "THRESHOLD_CHANGED", "CONSTRAINT_TIGHTENED", "STRUCTURE_ADDED",
                     "STRUCTURE_REMOVED", "PATTERN_CHANGED", "SEVERITY_CHANGED", "SCALE_CHANGED",
-                    "ELEMENT_MOVED" -> Risk.MEDIUM;
+                    "ELEMENT_MOVED", "COMPUTATION_CHANGED" -> Risk.MEDIUM;
             // POSITION_CHANGED (a reorder) / ELEMENT_RENAMED are content-preserving, not a loosening → LOW
             default -> Risk.LOW;
         };

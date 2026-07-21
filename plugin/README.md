@@ -164,6 +164,17 @@ dmtool -m order.dm.json rule add rule.json
 
 Every result is a uniform JSON envelope (`{ok, valid, outcome, changed, diagnostics[], …}`) with structured, fix-oriented diagnostics.
 
+### Review an edit semantically
+
+`model diff` is a structural semantic diff: it parses both models, ignores formatting noise, and reports typed field, rule, and computation changes with per-aspect deltas, risk tiers, and reason codes.
+
+```sh
+dmtool model diff before.dm.json after.dm.json
+dmtool -m order.dm.json model diff --since HEAD
+```
+
+A computation operation changing from `Price × Quantity` to `Price + Quantity` is reported as a first-class `COMPUTATION` modification with the operation before/after and `COMPUTATION_CHANGED` (MEDIUM). Rule polarity inversions are `POLARITY_INVERTED` (HIGH), while message-only changes remain LOW. The JSON shape is self-described by `dmtool schema model diff`; `--text` gives the risk-sorted human view.
+
 ### From a JSON Schema or OpenAPI document
 
 Originate a model from an existing **JSON Schema** or **OpenAPI** spec (3.0 / 3.1 / 3.2), and export one back out — the same two verbs handle both, because OpenAPI's Schema Object *is* a JSON-Schema dialect:
