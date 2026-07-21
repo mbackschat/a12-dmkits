@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test
  * The **kernel-ratio benchmark tier** (`scripts/perf.sh bench`) — the against-kernel scenario sweeps split out
  * of [PerfGateTest] (2026-07-10) so the routine gate stays fast: each scenario here pays kernel Groovy codegen +
  * baseline runs, which dominated the old single-tier gate's wall clock. Its sweep is **derived from
- * [PerfInventory]** (IG77 — the closed, versioned default B-scenario inventory), so a fair-Java-capable scenario
+ * [PerfInventory]** (IF158 — the closed, versioned default B-scenario inventory), so a fair-Java-capable scenario
  * is benchmarked against generated Java *iff* its exhaustive inventory disposition includes it. Run this tier at
  * perf-relevant checkpoints (a hot-path change, a release); the routine landing gate is [PerfGateTest]. Same
  * correctness-first discipline ([PerfHarness.runScenario] preflights + asserts interp == Groovy == generated Java

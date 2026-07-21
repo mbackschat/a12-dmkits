@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Collect the complete local IG77 evidence bundle from one clean commit and one named runner:
+# Collect the complete local IF172 evidence bundle from one clean commit and one named runner:
 # independent JVM/Node first-answer processes, absolute JVM/Node throughput, fair generated-Java ratios,
 # and native end-to-end first answer. The reports are informative until an owner promotes a number.
 #

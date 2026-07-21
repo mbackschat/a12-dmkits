@@ -872,7 +872,7 @@ if (!footprintForkCountProperty.isPresent()) {
     }
 }
 
-// --- Local NFR-S/P evidence: independent first-answer processes + absolute JVM/Node throughput (IG77) ----
+// --- Local NFR-S/P evidence: independent first-answer processes + absolute JVM/Node throughput (IF172) ----
 // Opt-in only. The lane records evidence and promotes no candidate number or CI schedule. A calibrating run may
 // use fewer processes; a per-number certification must supply the sample count ratified for that number.
 def performanceForkCountProperty = providers.gradleProperty('performanceForks')
