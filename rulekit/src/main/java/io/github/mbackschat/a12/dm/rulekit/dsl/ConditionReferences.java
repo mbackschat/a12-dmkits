@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -12,8 +14,15 @@ import java.util.Set;
 public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths) {
 
     public ConditionReferences {
-        fieldPaths = Set.copyOf(fieldPaths);
-        groupPaths = Set.copyOf(groupPaths);
+        fieldPaths = immutableEncounterOrder(fieldPaths);
+        groupPaths = immutableEncounterOrder(groupPaths);
+    }
+
+    private static Set<String> immutableEncounterOrder(Set<String> paths) {
+        Objects.requireNonNull(paths, "paths");
+        Set<String> copy = new LinkedHashSet<>(paths.size());
+        paths.forEach(path -> copy.add(Objects.requireNonNull(path, "path")));
+        return Collections.unmodifiableSet(copy);
     }
 
     public static ConditionReferences of(Condition condition) {
