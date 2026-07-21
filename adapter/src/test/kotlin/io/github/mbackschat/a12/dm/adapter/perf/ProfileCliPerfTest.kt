@@ -16,7 +16,7 @@ import org.junit.jupiter.api.io.TempDir
 class ProfileCliPerfTest {
 
     @Test
-    fun describeAndDefaultReportStayWithinTheNormalizedProfileCatastropheFloor(@TempDir output: Path) {
+    fun describeAndReportSurfacesStayWithinTheNormalizedProfileCatastropheFloor(@TempDir output: Path) {
         ProfileCliCanary.run(
             launcher = Path.of(requiredProperty("perf.profile.cli.launcher")),
             profileDirectory = Path.of(requiredProperty("perf.profile.cli.profileDir")),
@@ -32,6 +32,9 @@ class ProfileCliPerfTest {
 private object ProfileCliCanary {
     private val json = ObjectMapper()
     private val profileNames = listOf("compact.json", "depth-shaped.json", "breadth-shaped.json")
+    private val treeSummary = Regex(
+        """fields (\d+) · groups (\d+) · rules (\d+) · computations (\d+) · repeatable \d+""",
+    )
 
     fun run(launcher: Path, profileDirectory: Path, outputDirectory: Path, pairs: Int) {
         require(Files.isRegularFile(launcher) && Files.isExecutable(launcher)) {
@@ -90,11 +93,7 @@ private object ProfileCliCanary {
     private fun preflight(verb: CliVerb, profile: ProfileArtifact, runner: CliRunner) {
         val result = runner.run("${profile.id}-${verb.id}-preflight", verb.command(profile.model))
         result.requireSuccess()
-        val envelope = json.readTree(result.output())
-        check(envelope.path("ok").asBoolean(false)) {
-            "${verb.id} ${profile.id} preflight returned a non-ok envelope"
-        }
-        val actual = verb.cardinality(envelope.path("data"))
+        val actual = outputCardinality(verb, profile, result.output())
         val expected = profile.counts.cardinality(verb)
         check(actual == expected) {
             "${verb.id} ${profile.id} output cardinality $actual != profile cardinality $expected"
@@ -107,14 +106,39 @@ private object ProfileCliCanary {
         return result.elapsedMillis / profile.counts.work(verb)
     }
 
+    private fun outputCardinality(verb: CliVerb, profile: ProfileArtifact, output: String): OutputCardinality {
+        if (verb == CliVerb.REPORT_TREE_TEXT) {
+            val summaries = output.lineSequence().mapNotNull(treeSummary::matchEntire).toList()
+            check(summaries.size == 1) {
+                "${verb.id} ${profile.id} preflight has ${summaries.size} exact tree summary lines"
+            }
+            val values = summaries.single().groupValues.drop(1).map(String::toInt)
+            return OutputCardinality(values[0], values[1], values[2], values[3])
+        }
+
+        val envelope = json.readTree(output)
+        check(envelope.path("ok").asBoolean(false)) {
+            "${verb.id} ${profile.id} preflight returned a non-ok envelope"
+        }
+        return verb.cardinality(envelope.path("data"))
+    }
+
     private fun format(value: Double, decimals: Int): String =
         "%.${decimals}f".format(Locale.ROOT, value)
 
     private enum class CliVerb(val id: String) {
         DESCRIBE("describe"),
-        REPORT("report");
+        REPORT("report"),
+        REPORT_TREE_TEXT("report-tree-text");
 
-        fun command(model: Path): List<String> = listOf("-m", model.toString(), "model", id)
+        fun command(model: Path): List<String> = when (this) {
+            DESCRIBE -> listOf("-m", model.toString(), "model", "describe")
+            REPORT -> listOf("-m", model.toString(), "model", "report")
+            REPORT_TREE_TEXT -> listOf(
+                "--text", "-m", model.toString(), "model", "report", "--tree",
+                "--include", "rules,computations",
+            )
+        }
 
         fun cardinality(data: JsonNode): OutputCardinality = when (this) {
             DESCRIBE -> OutputCardinality(
@@ -123,7 +147,7 @@ private object ProfileCliCanary {
                 rules = 0,
                 computations = 0,
             )
-            REPORT -> OutputCardinality(
+            REPORT, REPORT_TREE_TEXT -> OutputCardinality(
                 fields = data.path("structure").path("fields").size(),
                 groups = data.path("structure").path("groups").size(),
                 rules = data.path("rules").size(),
@@ -149,12 +173,12 @@ private object ProfileCliCanary {
     ) {
         fun work(verb: CliVerb): Int = when (verb) {
             CliVerb.DESCRIBE -> fields + groups
-            CliVerb.REPORT -> fields + groups + rules + computations
+            CliVerb.REPORT, CliVerb.REPORT_TREE_TEXT -> fields + groups + rules + computations
         }
 
         fun cardinality(verb: CliVerb): OutputCardinality = when (verb) {
             CliVerb.DESCRIBE -> OutputCardinality(fields, groups, 0, 0)
-            CliVerb.REPORT -> OutputCardinality(fields, groups, rules, computations)
+            CliVerb.REPORT, CliVerb.REPORT_TREE_TEXT -> OutputCardinality(fields, groups, rules, computations)
         }
 
         companion object {
