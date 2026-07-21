@@ -1399,6 +1399,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumValueLiteral implement
   public java.lang.String value()
 
 public final class io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo
+  public java.util.List<java.lang.String> allowedValues()
   public java.util.Optional<io.github.mbackschat.a12.dm.rulekit.dsl.Annotation> annotation(java.lang.String)
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Annotation> annotations()
   public io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef asBool()

@@ -1341,6 +1341,7 @@ m.fields(m.group("/Subscription/Addons"))        // scoped to a group
         .forEach(f -> System.out.println(f.path() + " : " + f.kind()));
 
 Optional<FieldInfo> peek = m.fieldAt("/Subscription/Tier");   // non-throwing — exploring is lenient,
+List<String> tierValues = peek.orElseThrow().allowedValues(); // strict enum-only, values without categories
 NumberRef fee = money.getFirst().asNum();                      // narrowing is strict (authoring guarantees)
 
 // which makes rule templates (§3.4) one stream pipeline:

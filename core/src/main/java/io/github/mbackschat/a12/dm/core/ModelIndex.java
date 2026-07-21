@@ -3,10 +3,14 @@ package io.github.mbackschat.a12.dm.core;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -26,10 +30,22 @@ import com.fasterxml.jackson.databind.JsonNode;
  */
 public final class ModelIndex {
 
+    enum EnumProjectionStep {
+        CATEGORY_MATERIALIZATION
+    }
+
+    private static final Consumer<EnumProjectionStep> NO_ENUM_PROJECTION_PROBE = ignored -> {};
+
     private final ModelReader reader;
+    private final Consumer<EnumProjectionStep> enumProjectionProbe;
 
     private ModelIndex(ModelReader reader) {
+        this(reader, NO_ENUM_PROJECTION_PROBE);
+    }
+
+    ModelIndex(ModelReader reader, Consumer<EnumProjectionStep> enumProjectionProbe) {
         this.reader = reader;
+        this.enumProjectionProbe = Objects.requireNonNull(enumProjectionProbe, "enumProjectionProbe");
     }
 
     /** Index a model from DM-JSON, expanding includes / imported type-definitions against {@code resolver}. */
@@ -144,18 +160,22 @@ public final class ModelIndex {
      */
     public Map<String, List<String>> enumCategories(String fieldPath) {
         JsonNode enumeration = requireEnum(fieldPath);
+        enumProjectionProbe.accept(EnumProjectionStep.CATEGORY_MATERIALIZATION);
         Map<String, List<String>> categories = new LinkedHashMap<>();
         for (JsonNode category : enumeration.path("categories")) {
-            List<String> distinct = new ArrayList<>();
-            for (JsonNode v : category.path("values")) {
-                String value = v.asText();
-                if (!distinct.contains(value)) {
-                    distinct.add(value);
-                }
-            }
-            categories.put(category.path(DmKeys.NAME).asText(), distinct);
+            categories.put(category.path(DmKeys.NAME).asText(),
+                    distinctInEncounterOrder(category.path("values"), JsonNode::asText));
         }
         return categories;
+    }
+
+    static <S, T> List<T> distinctInEncounterOrder(
+            Iterable<? extends S> sources, Function<? super S, ? extends T> valueOf) {
+        var distinct = new LinkedHashSet<T>();
+        for (S source : sources) {
+            distinct.add(valueOf.apply(source));
+        }
+        return new ArrayList<>(distinct);
     }
 
     /** Whether the group at {@code groupPath} can repeat (repeatability other than exactly 1). */

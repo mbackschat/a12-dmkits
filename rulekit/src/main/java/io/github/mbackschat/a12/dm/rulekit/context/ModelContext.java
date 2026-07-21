@@ -222,7 +222,7 @@ public final class ModelContext {
         Optional<Integer> scale = field.kind() == ValueKind.NUMBER
                 ? Optional.of(field.scale()) : Optional.empty();
         List<String> enumValues = field.kind() == ValueKind.ENUMERATION
-                ? field.asEnum().allowedValues() : List.of();
+                ? field.allowedValues() : List.of();
         return new ModelCard.Field(field.path(), field.name(), field.kind().name(), scale,
                 field.numberMin(), field.numberMax(), field.minLength(), field.maxLength(), field.pattern(),
                 enumValues);

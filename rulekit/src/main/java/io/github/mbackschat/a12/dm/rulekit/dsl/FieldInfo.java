@@ -80,6 +80,16 @@ public final class FieldInfo {
         return model.index().stringPattern(path);
     }
 
+    /**
+     * The enumeration's allowed stored values in authored order. This is the values-only read surface:
+     * it does not materialize category projections.
+     *
+     * @throws IllegalArgumentException if this is not an enumeration field
+     */
+    public java.util.List<String> allowedValues() {
+        return model.index().enumValues(path);
+    }
+
     // --- annotations: the read peer of EditSession.setAnnotation (study finding 9, annotation reads) --
 
     /** This field's element-level annotations, in document order; empty (never {@code null}) when none. */
