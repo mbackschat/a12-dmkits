@@ -49,6 +49,8 @@ The compact, breadth-shaped, and depth-shaped JSON files imported from the PR ar
 
 The PR artifacts are adapted once to the final current schema before landing. The implementation does not retain removed PR fields or a compatibility reader. Their provenance remains `profile′` from synthesized own-domain models; adapting the schema must not turn that into a claim that they were extracted from the private targets.
 
+The identifier-free boundary is locked metamorphically: the paired typed models change every identifier class plus literals, regex, enum values, messages, and descriptions while retaining the same shape, and extraction must return the same profile. `ModelProfileExtractorCrossJvmDeterminismTest` additionally extracts the same model in four fresh JVM launches and requires byte-identical output, so per-launch collection ordering cannot hide behind an in-process equality check.
+
 ## Generation boundary
 
 Synthesis builds rules and computations through the typed API, then persists the complete program population with one `BoundModel.addAll(rules, computations)` operation. Per-program immutable snapshot writes are not an equivalent implementation: they repeatedly parse, validate, and serialize the growing model and make the committed breadth/depth calibration profiles needlessly superlinear to generate. The bulk boundary preserves the same terminal strict model check and byte-identical output.
