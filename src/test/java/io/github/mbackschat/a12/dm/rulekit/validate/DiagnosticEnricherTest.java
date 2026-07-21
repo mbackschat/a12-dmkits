@@ -79,12 +79,21 @@ class DiagnosticEnricherTest {
     }
 
     @Test
-    void anOperatorSpecificCodeStillGetsItsCatalogFix() {
-        // the catalog-join still works for codes a single operator owns — RepetitionNotUnique documents
-        // MVK_REPEATABLE_GROUP_MISSING in its invalidExample, so its curated fix must still attach.
+    void aRepetitionRuleNestedInsideTheRowsGetsTheParentScopeFix() {
+        // RepetitionNotUnique's one invalid example documents its duplicate-node restriction, so this distinct
+        // structural rejection has no catalog fix. The code-level hint must explain the parent-group scope.
         Diagnostic enriched = ENRICHER.enrich(raw("MVK_REPEATABLE_GROUP_MISSING"));
-        assertTrue(enriched.fix().filter(f -> !f.isBlank()).isPresent(),
-                () -> "an operator-owned code keeps its catalog fix, got: " + enriched);
+        String fix = enriched.fix().orElse("");
+        assertTrue(fix.contains("PARENT") && fix.contains("--group"),
+                () -> "the hint moves the rule to the repeated group's parent, got: " + fix);
+    }
+
+    @Test
+    void repetitionKeysOnParallelPathsGetTheSinglePathFix() {
+        Diagnostic enriched = ENRICHER.enrich(raw("MVK_NOT_IN_SAME_PATH"));
+        String fix = enriched.fix().orElse("");
+        assertTrue(fix.contains("one repetition path") && fix.contains("separate rules"),
+                () -> "the hint keeps keys on one repetition path, got: " + fix);
     }
 
     @Test

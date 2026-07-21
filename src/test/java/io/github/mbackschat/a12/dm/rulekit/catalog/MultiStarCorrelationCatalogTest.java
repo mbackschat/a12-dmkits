@@ -15,8 +15,6 @@ class MultiStarCorrelationCatalogTest {
 
         assertTrue(having.seeAlso().contains("CurrentRepetition"));
         assertTrue(current.seeAlso().contains("Having"));
-        assertTrue(having.validExample().dsl().contains("Aisles*/Bins*"));
-        assertTrue(having.validExample().dsl().contains("== [$"));
         assertTrue(current.validExample().dsl().contains("Aisles*/Bins*"));
         assertTrue(current.validExample().dsl().contains("CurrentRepetition($"));
         assertGuidance(having);

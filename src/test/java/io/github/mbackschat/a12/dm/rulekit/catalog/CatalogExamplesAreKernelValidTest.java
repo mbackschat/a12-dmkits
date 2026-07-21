@@ -78,7 +78,7 @@ class CatalogExamplesAreKernelValidTest {
     }
 
     private static ValidationResult checkValid(OperatorEntry entry) {
-        if (entry.id().equals("Having") || entry.id().equals("CurrentRepetition")) {
+        if (entry.validExample().dsl().contains("/Warehouse/")) {
             DraftRule rule = new DraftRule(
                     "/Warehouse", "CatalogExampleRule", "../Aisles/Bins/Quantity",
                     entry.validExample().dsl(), "CATALOG_EXAMPLE", "ERROR");

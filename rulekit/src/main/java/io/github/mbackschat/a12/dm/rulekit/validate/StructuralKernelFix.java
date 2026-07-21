@@ -12,7 +12,8 @@ import java.util.Optional;
  * <ol>
  *   <li><b>ORPHAN codes</b> — <em>no</em> operator's {@code invalidExample} documents them, so the join has
  *       nothing to attach: the placement / iteration-scope family ({@code MVK_ERROR_FIELD_NOT_IN_RULEGROUP},
- *       {@code MVK_ERROR_FIELD_NOT_REFERENCED}, {@code MVK_NEG_CONDITION_IN_ITERATION}), the bare <b>syntax</b> code the parser raises with no message
+ *       {@code MVK_ERROR_FIELD_NOT_REFERENCED}, {@code MVK_NEG_CONDITION_IN_ITERATION},
+ *       {@code MVK_REPEATABLE_GROUP_MISSING}, {@code MVK_NOT_IN_SAME_PATH}), the bare <b>syntax</b> code the parser raises with no message
  *       of its own ({@code MVK_UNEXPECTED_TOKEN} — the likely cause, a lowercase boolean / unquoted string /
  *       unbracketed field operand, must be inferred from the DSL's literal conventions), the
  *       <b>entity-resolution</b> code ({@code MVK_INVALID_ENTITY} — a bare/relative name that doesn't bind;
@@ -92,6 +93,20 @@ public final class StructuralKernelFix {
                             + "starred-group-then-field list (a bare group wildcard is not a value list), and a "
                             + "field-presence predicate (FieldFilled) must name a field, not a group. The required form "
                             + "depends on the operator, so this code is not specific to any single one.")),
+            Map.entry("MVK_REPEATABLE_GROUP_MISSING", new Hint(
+                    "Place the RepetitionNotUnique rule at the PARENT of the repeated group while keeping its error "
+                            + "field inside that group. Via the CLI, use `rule check --group <parentGroup> "
+                            + "--field <parentGroup>/<repeatedGroup>/<field>`; for example, `--group /Order "
+                            + "--field /Order/Items/Sku` with `RepetitionNotUnique(Items/Sku)`.",
+                    "Every RepetitionNotUnique key must cross a repeatable-group boundary relative to the rule group. "
+                            + "Declaring the rule inside the repeated row removes that boundary, so the kernel cannot "
+                            + "form the repetition set whose key should be unique.")),
+            Map.entry("MVK_NOT_IN_SAME_PATH", new Hint(
+                    "Keep every RepetitionNotUnique key on one repetition path. Do not mix fields from sibling or "
+                            + "parallel repeatable groups in one key; choose one path, or enforce the independent "
+                            + "uniqueness constraints with separate rules.",
+                    "A composite uniqueness key needs one shared repetition lineage so the kernel can form one row "
+                            + "tuple. Fields from parallel repeatable groups do not identify a single correlated row.")),
             Map.entry("MVK_ERROR_FIELD_NOT_IN_RULEGROUP", new Hint(
                     "Place the error field inside every repeatable group the rule iterates over. The condition "
                             + "references a per-row field, so the rule iterates and its error field must live in that "

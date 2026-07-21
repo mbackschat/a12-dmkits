@@ -1300,6 +1300,7 @@
     , { "text": "a listed field carrying a formal error makes the whole count non-evaluable — the rule is suppressed, the broken field is neither counted nor skipped", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And NumberOfFilledFields(Items*/Count) < 2", "note": "the flattened repetition-list form — fires when fewer than two line items carry a Count (a starred repeatable group then a field; the plain field-list form is also legal)" },
     "invalidExample": { "dsl": "NumberOfFilledFields(CustomerName) < 1", "error": "MVK_PARAMSIZE_INVALIDN", "fix": "list at least two fields (or one group) — for a single field use FieldFilled/FieldNotFilled" },
+    "seeAlso": ["Having"],
     "semantics": {
       "polarity": {
         "value": "GROW_ONLY",
@@ -2027,12 +2028,13 @@
       { "text": "a false or unknown filter result drops the candidate before the aggregate or quantifier reads its selected cell", "kind": "SURPRISE" },
       { "text": "correlation includes the current outer coordinate by default; exclude it explicitly with CurrentRepetition(G) != CurrentRepetition($G) at the named repetition level", "kind": "AUTHORING" },
       { "text": "inside the filter, $ captures the rule's complete named outer repetition environment; each marked path selects its own level's coordinate, so $Parent and $Parent/Child may differ in one rule row — it is not one scalar outer index", "kind": "AUTHORING" },
+      { "text": "to count rows matching a filter, filter a flattened FIELD list — NumberOfFilledFields(Items*/Sku Having [Items/Sku] == \"MAIN\"); a bare GROUP wildcard such as NumberOfFilledGroups(Items* Having …) is rejected with MVK_NO_GROUPS_ALLOWED", "kind": "AUTHORING" },
       { "text": "a multi-star path binds at its first starred segment: /Warehouse/Aisles*/Bins*/Quantity spans Bins across every Aisles row, not only the current leaf branch; leave an ancestor unstarred when it must remain outer-bound", "kind": "SURPRISE" },
       { "text": "in a multi-star filter, CurrentRepetition(Bins) != CurrentRepetition($Bins) compares the leaf index and therefore excludes every candidate with the outer row's leaf index across different ancestor rows — it is not SQL-style physical-row identity", "kind": "SURPRISE" }
     ],
-    "validExample": { "dsl": "FieldFilled(/Warehouse/Aisles/Bins/Quantity) And MoreThanOneFieldFilled(/Warehouse/Aisles*/Bins*/Quantity Having [/Warehouse/Aisles/Bins/Quantity] == [$/Warehouse/Aisles/Bins/Quantity])", "note": "the first star widens the candidate set across all aisles; $Quantity stays correlated to the current outer bin" },
-    "invalidExample": { "dsl": "FieldFilled(CustomerName) And Sum(Items*/Count Having RepetitionNotUnique(Items/Sku)) > 0", "error": "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION", "fix": "RepetitionNotUnique is not allowed inside a filter condition" },
-    "seeAlso": ["CurrentRepetition"],
+    "validExample": { "dsl": "FieldFilled(CustomerName) And NumberOfFilledFields(Items*/Sku Having [Items/Sku] == \"MAIN\") != 1", "note": "counts the filled Sku cells in rows selected by the filter; Having consumes the flattened field list, not the Items* group list" },
+    "invalidExample": { "dsl": "FieldFilled(CustomerName) And NumberOfFilledGroups(Items* Having [Items/Sku] == \"MAIN\") != 1", "error": "MVK_NO_GROUPS_ALLOWED", "fix": "Having filters a flattened field list — write NumberOfFilledFields(Items*/Sku Having [Items/Sku] == \"MAIN\")" },
+    "seeAlso": ["CurrentRepetition", "NumberOfFilledFields", "NumberOfFilledGroups"],
     "sinceKernel": "30.8.x"
   },
   {
