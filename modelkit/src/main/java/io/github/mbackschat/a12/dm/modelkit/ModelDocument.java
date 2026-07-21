@@ -198,6 +198,29 @@ public final class ModelDocument {
         return out;
     }
 
+    /** Direct authored includes and type-definition imports, grouped by purpose and keyed by alias. */
+    public Map<ReferencePurpose, Map<String, String>> authoredReferences() {
+        Map<ReferencePurpose, Map<String, String>> references = new java.util.EnumMap<>(ReferencePurpose.class);
+        for (ReferencePurpose purpose : ReferencePurpose.values()) {
+            references.put(purpose, new LinkedHashMap<>());
+        }
+        for (JsonNode reference : root.path(DmKeys.HEADER).path(DmKeys.MODEL_REFERENCES)) {
+            String wirePurpose = reference.path(DmKeys.PURPOSE).asText();
+            ReferencePurpose purpose = switch (wirePurpose) {
+                case "", INCLUDE_PURPOSE -> ReferencePurpose.INCLUDE;
+                case IMPORT_PURPOSE -> ReferencePurpose.TYPE_DEFINITION_IMPORT;
+                default -> null;
+            };
+            if (purpose != null) {
+                references.get(purpose).put(reference.path(DmKeys.ALIAS).asText(),
+                        reference.path(DmKeys.REFERENCE).asText());
+            }
+        }
+        references.replaceAll((purpose, entries) ->
+                java.util.Collections.unmodifiableMap(new LinkedHashMap<>(entries)));
+        return java.util.Collections.unmodifiableMap(references);
+    }
+
     // --- content / config -----------------------------------------------------------------------
 
     /** The model-level document configuration (content {@code modelConfig}). */
@@ -249,6 +272,18 @@ public final class ModelDocument {
             out.add(t.path(DmKeys.ID).asText());
         }
         return out;
+    }
+
+    /** Every reusable type definition as complete typed authored state, keyed by id in document order. */
+    public Map<String, TypeDefinitionState> typeDefinitions() {
+        Map<String, TypeDefinitionState> definitions = new LinkedHashMap<>();
+        for (JsonNode definition : root.path(DmKeys.CONTENT).path(DmKeys.TYPE_DEFINITIONS)) {
+            String id = definition.path(DmKeys.ID).asText();
+            definitions.put(id, new TypeDefinitionState(id,
+                    FieldTypeSpecReader.read(definition.path(DmKeys.FIELD_TYPE)),
+                    AuthoredStateReader.descriptive(definition)));
+        }
+        return java.util.Collections.unmodifiableMap(definitions);
     }
 
     /** The field-type discriminator of the type definition {@code id} (e.g. {@code NumberType}), if declared. */
@@ -344,17 +379,23 @@ public final class ModelDocument {
     public record MountState(String alias, MountOptions options) {}
 
     /** A rule's authored descriptive metadata; logic and messages come from the bound adapter. */
-    public record RuleState(String path, RuleMeta meta) {}
+    public record RuleState(String path, DescriptiveState meta) {}
 
-    /** Rule descriptions and annotations, which live on the authored element envelope. */
-    public record RuleMeta(Map<String, String> internalDescription, Map<String, String> externalDescription,
+    /** Descriptions and annotations shared by authored rules and type definitions. */
+    public record DescriptiveState(Map<String, String> internalDescription, Map<String, String> externalDescription,
             List<ElementDraft.Annotation> annotations) {
-        public RuleMeta {
+        public DescriptiveState {
             internalDescription = Map.copyOf(internalDescription);
             externalDescription = Map.copyOf(externalDescription);
             annotations = List.copyOf(annotations);
         }
     }
+
+    /** A reusable type definition's complete authored type and descriptive metadata. */
+    public record TypeDefinitionState(String id, FieldTypeSpec type, DescriptiveState meta) {}
+
+    /** The two authored model-reference purposes that participate in semantic diff. */
+    public enum ReferencePurpose { INCLUDE, TYPE_DEFINITION_IMPORT }
 
     /** Every group's name-path (root groups + nested), in document order. */
     public List<String> groupPaths() {

@@ -470,6 +470,7 @@ public final class io.github.mbackschat.a12.dm.modelkit.ModelDocument
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument addTypedefField(java.lang.String, java.lang.String, java.lang.String)
   public java.util.Map<java.lang.String, java.lang.String> annotations(java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument applyModification(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldModification)
+  public java.util.Map<io.github.mbackschat.a12.dm.modelkit.ModelDocument.ReferencePurpose, java.util.Map<java.lang.String, java.lang.String>> authoredReferences()
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument.AuthoredState authoredState()
   public java.util.Optional<java.lang.Integer> baseYear()
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument clearIndexField(java.lang.String)
@@ -578,6 +579,7 @@ public final class io.github.mbackschat.a12.dm.modelkit.ModelDocument
   public java.util.Optional<java.math.BigDecimal> typeDefinitionMinValue(java.lang.String)
   public java.util.Optional<java.lang.String> typeDefinitionPattern(java.lang.String)
   public java.util.Optional<java.lang.String> typeDefinitionType(java.lang.String)
+  public java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.modelkit.ModelDocument.TypeDefinitionState> typeDefinitions()
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument validate()
   public io.github.mbackschat.a12.dm.modelkit.ModelDocument validate(io.github.mbackschat.a12.dm.core.ModelResolver)
 
@@ -597,6 +599,15 @@ public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.Authored
   public java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.modelkit.ModelDocument.GroupState> groups()
   public final int hashCode()
   public java.util.Map<java.lang.String, io.github.mbackschat.a12.dm.modelkit.ModelDocument.RuleState> rules()
+  public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.DescriptiveState
+  public DescriptiveState(java.util.Map<java.lang.String, java.lang.String>, java.util.Map<java.lang.String, java.lang.String>, java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation>)
+  public java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation> annotations()
+  public final boolean equals(java.lang.Object)
+  public java.util.Map<java.lang.String, java.lang.String> externalDescription()
+  public final int hashCode()
+  public java.util.Map<java.lang.String, java.lang.String> internalDescription()
   public final java.lang.String toString()
 
 public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.DocConfig
@@ -663,22 +674,28 @@ public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.MountSta
   public io.github.mbackschat.a12.dm.modelkit.MountOptions options()
   public final java.lang.String toString()
 
-public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.RuleMeta
-  public RuleMeta(java.util.Map<java.lang.String, java.lang.String>, java.util.Map<java.lang.String, java.lang.String>, java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation>)
-  public java.util.List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.Annotation> annotations()
-  public final boolean equals(java.lang.Object)
-  public java.util.Map<java.lang.String, java.lang.String> externalDescription()
-  public final int hashCode()
-  public java.util.Map<java.lang.String, java.lang.String> internalDescription()
-  public final java.lang.String toString()
+public static enum io.github.mbackschat.a12.dm.modelkit.ModelDocument.ReferencePurpose
+  public static final io.github.mbackschat.a12.dm.modelkit.ModelDocument.ReferencePurpose INCLUDE
+  public static final io.github.mbackschat.a12.dm.modelkit.ModelDocument.ReferencePurpose TYPE_DEFINITION_IMPORT
+  public static io.github.mbackschat.a12.dm.modelkit.ModelDocument.ReferencePurpose valueOf(java.lang.String)
+  public static io.github.mbackschat.a12.dm.modelkit.ModelDocument.ReferencePurpose[] values()
 
 public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.RuleState
-  public RuleState(java.lang.String, io.github.mbackschat.a12.dm.modelkit.ModelDocument.RuleMeta)
+  public RuleState(java.lang.String, io.github.mbackschat.a12.dm.modelkit.ModelDocument.DescriptiveState)
   public final boolean equals(java.lang.Object)
   public final int hashCode()
-  public io.github.mbackschat.a12.dm.modelkit.ModelDocument.RuleMeta meta()
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument.DescriptiveState meta()
   public java.lang.String path()
   public final java.lang.String toString()
+
+public static record io.github.mbackschat.a12.dm.modelkit.ModelDocument.TypeDefinitionState
+  public TypeDefinitionState(java.lang.String, io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec, io.github.mbackschat.a12.dm.modelkit.ModelDocument.DescriptiveState)
+  public final boolean equals(java.lang.Object)
+  public final int hashCode()
+  public java.lang.String id()
+  public io.github.mbackschat.a12.dm.modelkit.ModelDocument.DescriptiveState meta()
+  public final java.lang.String toString()
+  public io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec type()
 
 public final class io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract
   public static io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract.Domain classify(boolean, java.lang.String)

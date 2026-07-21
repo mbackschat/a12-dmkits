@@ -101,6 +101,8 @@ class DocSnippetFreshnessTest {
                     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/review/ModelDiffComputationTest.java"),
             new Lock("authored-state", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/modelkit/ModelDocumentAuthoredFieldRuleStateTest.java"),
+            new Lock("authored-references", "docs/API-GUIDE.md",
+                    "src/test/java/io/github/mbackschat/a12/dm/modelkit/ModelDocumentAuthoredReferenceStateTest.java"),
             new Lock("bulk-program-write", "docs/API-GUIDE.md", BULK_WRITE),
             new Lock("profile-extract", "docs/API-GUIDE.md", PROFILE_FACADE),
             new Lock("profile-compare", "docs/API-GUIDE.md", PROFILE_COMPARE));

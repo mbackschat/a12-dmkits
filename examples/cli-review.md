@@ -242,6 +242,39 @@ dmtool model diff examples/models/order.dm.json /tmp/review-group.dm.json \
 
 → The exact cap change is visible and HIGH `CONSTRAINT_LOOSENED`; decreasing it is MEDIUM `CONSTRAINT_TIGHTENED`. Reordering is computed over one mixed authored sequence, so moving a group relative to a field is reported as `REORDERED`/`POSITION_CHANGED`, while inserting or removing a sibling never fabricates a reorder.
 
+### Reusable type definitions are first-class
+
+A typedef is a shared declaration, not merely a property copied onto each using field. The diff therefore reports its complete typed state under one `TYPEDEF` element; an exact content-preserving id change can be paired as a rename, while a rename plus edit stays the conservative remove+add.
+
+```bash
+cat > /tmp/review-tier.json <<'EOF'
+{ "kind": "ENUM", "enum": { "values": [ {"value":"STANDARD"}, {"value":"PREMIUM"} ] } }
+EOF
+cp examples/models/order-ruled.dm.json /tmp/review-typedef.dm.json
+dmtool -m /tmp/review-typedef.dm.json typedef add --id CustomerTier /tmp/review-tier.json >/dev/null
+dmtool model diff examples/models/order-ruled.dm.json /tmp/review-typedef.dm.json \
+  | jq '.data.changes | map(select(.element=="TYPEDEF")) | map({id, change, risk, riskReasons, values: [.deltas[] | select(.aspect | startswith("enum.value.")) | .aspect]})'
+```
+
+```output
+[
+  {
+    "id": "CustomerTier",
+    "change": "ADDED",
+    "risk": "MEDIUM",
+    "riskReasons": [
+      "TYPEDEF_ADDED"
+    ],
+    "values": [
+      "enum.value.STANDARD",
+      "enum.value.PREMIUM"
+    ]
+  }
+]
+```
+
+→ The reusable enum appears once with both values, rather than as duplicated field changes. Headless resolver-backed diffs also expose direct includes and type-definition imports by alias, purpose, and reference; mount rewires remain visible on the authored group, distinct from expanded provider content.
+
 ### Reader-sensitive removals stay high impact
 
 A cascading edit can remove a field and its reader together, leaving a valid head model. The diff still consults the base model's inverse rule/computation reference map: the field must not look like an ordinary unreferenced structure removal merely because its reader disappeared in the same edit.

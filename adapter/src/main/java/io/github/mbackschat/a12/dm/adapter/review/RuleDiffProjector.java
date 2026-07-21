@@ -4,7 +4,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 
 /** Projects canonical rule logic plus its complete authored envelope into deterministic diff aspects. */
@@ -43,14 +42,6 @@ final class RuleDiffProjector {
         if (authored == null) {
             return;
         }
-        putSorted(aspects, "internalDescription.", authored.meta().internalDescription());
-        putSorted(aspects, "externalDescription.", authored.meta().externalDescription());
-        authored.meta().annotations().stream().sorted(Comparator.comparing(ElementDraft.Annotation::name))
-                .forEach(annotation -> aspects.put("annotation." + annotation.name(), annotation.value()));
-    }
-
-    private static void putSorted(Map<String, String> aspects, String prefix, Map<String, String> values) {
-        values.entrySet().stream().sorted(Map.Entry.comparingByKey())
-                .forEach(entry -> aspects.put(prefix + entry.getKey(), entry.getValue()));
+        FieldDiffProjector.putDescriptive(aspects, authored.meta());
     }
 }

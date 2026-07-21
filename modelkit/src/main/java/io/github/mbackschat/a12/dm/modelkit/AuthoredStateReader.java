@@ -42,9 +42,7 @@ final class AuthoredStateReader {
             return;
         }
         if (type == ElementType.RULE) {
-            rules.put(path, new ModelDocument.RuleState(path, new ModelDocument.RuleMeta(
-                    localized(node, DmKeys.INTERNAL_DESCRIPTION), localized(node, DmKeys.EXTERNAL_DESCRIPTION),
-                    annotations(node))));
+            rules.put(path, new ModelDocument.RuleState(path, descriptive(node)));
             return;
         }
         if (type != ElementType.GROUP) {
@@ -90,8 +88,14 @@ final class AuthoredStateReader {
     }
 
     private static GroupMeta metadata(JsonNode node, ObjectNode body) {
-        return new GroupMeta(localized(body, DmKeys.LABEL), annotations(node),
-                localized(node, DmKeys.INTERNAL_DESCRIPTION), localized(node, DmKeys.EXTERNAL_DESCRIPTION));
+        ModelDocument.DescriptiveState descriptive = descriptive(node);
+        return new GroupMeta(localized(body, DmKeys.LABEL), descriptive.annotations(),
+                descriptive.internalDescription(), descriptive.externalDescription());
+    }
+
+    static ModelDocument.DescriptiveState descriptive(JsonNode node) {
+        return new ModelDocument.DescriptiveState(localized(node, DmKeys.INTERNAL_DESCRIPTION),
+                localized(node, DmKeys.EXTERNAL_DESCRIPTION), annotations(node));
     }
 
     private static List<ElementDraft.Annotation> annotations(JsonNode node) {

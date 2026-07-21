@@ -1163,7 +1163,7 @@ for (ModelDiff.ElementChange change : diff.changes()) {
 }
 ```
 
-Fields, groups, rules, and computations are currently first-class element families. Fields carry declared/effective type, complete typed configuration, requiredness/messages, enum state, metadata, and flags; rules carry canonical condition, error entity, severity/code, localized messages, and metadata. A referenced field removal or retype is HIGH even when its reader is removed or rewritten in the same change. Group aspects include repeatability, index and ordered sort fields, mount alias/options, and metadata; child additions/removals are reported as their actual elements instead of a duplicate `children` summary. Reordering uses one authored mixed sequence, so a group moving relative to a field is visible. Computation aspects include the computed target, common precondition, ordered alternative preconditions/operations/tolerances, suppressions, localized messages, and verbatim stored DSL for an opaque computation. Reference-rewriting renames/moves are also returned as `refactors()`, with both rule and computation readers attributed. `risk()` is a fixed review-impact tier, not a probability estimate. For includes-bearing models, pass the same kernel-free `ModelResolver` used to bind the workspace: `ModelDiff.between(beforeJson, afterJson, resolver)`. A web service can serialize these records into its own transport contract without invoking the CLI. *Test-backed: `adapter.review.ModelDiffFieldCompletenessTest`, `ModelDiffRuleEnvelopeTest`, `ModelDiffReaderRiskTest`, `ModelDiffComputationTest`, `ModelDiffGroupTest`, the existing `ModelDiff*Test` family, and the CLI diff tests; executable example: [`examples/cli-review.md`](../examples/cli-review.md).*
+Fields, groups, rules, computations, typedefs, and authored includes/imports are first-class element families. Fields carry declared/effective type, complete typed configuration, requiredness/messages, enum state, metadata, and flags; rules carry canonical condition, error entity, severity/code, localized messages, and metadata. A referenced field removal or retype is HIGH even when its reader is removed or rewritten in the same change. Group aspects include repeatability, index and ordered sort fields, mount alias/options, and metadata; child additions/removals are reported as their actual elements instead of a duplicate `children` summary. Reordering uses one authored mixed sequence, so a group moving relative to a field is visible. Computation aspects include the computed target, common precondition, ordered alternative preconditions/operations/tolerances, suppressions, localized messages, and verbatim stored DSL for an opaque computation. Typedef aspects include their complete sealed type/config and metadata; rename pairing is exact-only. Direct includes and type-definition imports expose purpose/alias/reference separately from provider content, while a mount-alias rewire is the corresponding group delta. Reference-rewriting field/group renames/moves are also returned as `refactors()`, with both rule and computation readers attributed. `risk()` is a fixed review-impact tier, not a probability estimate. For includes-bearing models, pass the same kernel-free `ModelResolver` used to bind the workspace: `ModelDiff.between(beforeJson, afterJson, resolver)`. A web service can serialize these records into its own transport contract without invoking the CLI. *Test-backed: `adapter.review.ModelDiffFieldCompletenessTest`, `ModelDiffRuleEnvelopeTest`, `ModelDiffReaderRiskTest`, `ModelDiffComputationTest`, `ModelDiffGroupTest`, `ModelDiffTypedefTest`, `ModelDiffIncludeTest`, the existing `ModelDiff*Test` family, and the CLI diff tests; executable example: [`examples/cli-review.md`](../examples/cli-review.md).*
 
 ### 5d.2 Read authored field/group/rule state once (`ModelDocument`)
 
@@ -1186,6 +1186,18 @@ System.out.println(rule.meta().annotations());
 ```
 
 The snapshot is kernel-free and reads the authored source rather than an expanded include tree. A field carries a sealed `FieldTypeSpec`, requiredness/custom messages, and `FieldMeta`; a rule carries its authored descriptions/annotations while canonical logic and localized runtime messages stay on `KernelAdapter`. A mount group carries a typed `MountState` with `MountOptions`; mounted children remain owned by the referenced model. *Test-backed: `ModelDocumentAuthoredStateTest` and `ModelDocumentAuthoredFieldRuleStateTest`; consumed by the focused `ModelDiff*Test` families and the profile-shaped diff performance canary.*
+
+Reusable declarations and model references stay typed as well:
+
+<!-- snippet: authored-references -->
+```java
+ModelDocument document = ModelDocument.read(json);
+ModelDocument.TypeDefinitionState sku = document.typeDefinitions().get("Sku");
+Map<ModelDocument.ReferencePurpose, Map<String, String>> references =
+        document.authoredReferences();
+```
+
+`typeDefinitions()` returns a document-ordered id map of `TypeDefinitionState` (`FieldTypeSpec` plus `DescriptiveState`), while `authoredReferences()` returns direct alias→reference maps grouped by `INCLUDE` versus `TYPE_DEFINITION_IMPORT`. Transitive references added by expansion are deliberately excluded. *Test-backed: `ModelDocumentAuthoredReferenceStateTest`.*
 
 ## 5e. Run rules against data — does it actually fire? (runtime evaluation)
 

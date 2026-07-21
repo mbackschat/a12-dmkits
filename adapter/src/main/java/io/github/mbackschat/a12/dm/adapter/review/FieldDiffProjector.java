@@ -131,7 +131,7 @@ final class FieldDiffProjector {
         return aspects;
     }
 
-    private static void putType(Map<String, String> aspects, FieldTypeSpec type) {
+    static void putType(Map<String, String> aspects, FieldTypeSpec type) {
         switch (type) {
             case FieldTypeSpec.StringSpec string -> putString(aspects, string);
             case FieldTypeSpec.NumberSpec number -> putNumber(aspects, number);
@@ -205,15 +205,24 @@ final class FieldDiffProjector {
     private static void putMeta(Map<String, String> aspects, FieldMeta meta) {
         putSorted(aspects, "label.", meta.labels());
         putSorted(aspects, "helperText.", meta.helperText());
-        putSorted(aspects, "internalDescription.", meta.internalDescription());
-        putSorted(aspects, "externalDescription.", meta.externalDescription());
-        meta.annotations().stream().sorted(Comparator.comparing(ElementDraft.Annotation::name))
-                .forEach(annotation -> aspects.put("annotation." + annotation.name(), annotation.value()));
+        putDescriptive(aspects, meta.internalDescription(), meta.externalDescription(), meta.annotations());
         aspects.put("global", Boolean.toString(meta.global()));
         aspects.put("transient", Boolean.toString(meta.notPersisted()));
     }
 
-    private static void putSorted(Map<String, String> aspects, String prefix, Map<String, String> values) {
+    static void putDescriptive(Map<String, String> aspects, ModelDocument.DescriptiveState meta) {
+        putDescriptive(aspects, meta.internalDescription(), meta.externalDescription(), meta.annotations());
+    }
+
+    private static void putDescriptive(Map<String, String> aspects, Map<String, String> internal,
+            Map<String, String> external, List<ElementDraft.Annotation> annotations) {
+        putSorted(aspects, "internalDescription.", internal);
+        putSorted(aspects, "externalDescription.", external);
+        annotations.stream().sorted(Comparator.comparing(ElementDraft.Annotation::name))
+                .forEach(annotation -> aspects.put("annotation." + annotation.name(), annotation.value()));
+    }
+
+    static void putSorted(Map<String, String> aspects, String prefix, Map<String, String> values) {
         values.entrySet().stream().sorted(Map.Entry.comparingByKey())
                 .forEach(entry -> aspects.put(prefix + entry.getKey(), entry.getValue()));
     }

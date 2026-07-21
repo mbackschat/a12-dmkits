@@ -24,11 +24,11 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences;
  * MODEL-REVIEW spike — the structural model-diff engine (a library primitive, MODEL-REVIEW-SPEC §1/§5).
  * Parses BOTH model states into the model and compares <b>structure</b> (so JSON formatting noise never
  * reaches the reviewer), matching elements by id/path into added / removed / modified, each carrying the
- * per-aspect {@link Delta}s that changed and a {@link Risk} tier with its reason codes.
+ * per-aspect {@link Delta}s that changed and a {@link Risk} review-impact tier with its reason codes.
  *
  * <p>An element's state is an ordered <i>aspect map</i> of
  * format-independent values (kernel-canonical condition text + severity + code for a rule; kind + per-kind
- * config for a field; authored properties for a group), so a pure reformat is never a change. Risk follows the <b>loosening &gt; tightening</b>
+ * config for a field; authored properties for a group), so a pure reformat is never a change. Review impact follows the <b>loosening &gt; tightening</b>
  * asymmetry (a removed/loosened rule silently accepts bad data) — a subset of the SPEC §5b taxonomy.
  * A changed rule condition is further refined from the two typed ASTs ({@link ConditionPolarity}): a
  * provable structural flip is {@code POLARITY_INVERTED} (HIGH), otherwise the honest {@code CONDITION_CHANGED}.
@@ -45,7 +45,7 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         Map<String, ConditionEditScript> conditionEdits) {
 
     /** The element families currently projected into the structural diff. */
-    public enum ElementKind { FIELD, GROUP, RULE, COMPUTATION }
+    public enum ElementKind { FIELD, GROUP, RULE, COMPUTATION, TYPEDEF, INCLUDE }
 
     /** Whether a relocation kept its parent (a {@code RENAME}) or its leaf name (a {@code MOVE}). */
     public enum RefactorKind { RENAME, MOVE }
@@ -61,13 +61,13 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
     /** How an element changed between the two states. */
     public enum ChangeKind { ADDED, REMOVED, MODIFIED, REORDERED, RENAMED, MOVED }
 
-    /** Risk tier — ordered so the highest reason wins ({@code HIGH} has the greatest ordinal). */
+    /** Review-impact tier — ordered so the highest reason wins ({@code HIGH} has the greatest ordinal). */
     public enum Risk { LOW, MEDIUM, HIGH }
 
     /** One aspect that changed: {@code before}/{@code after} are null on the side where the element is absent. */
     public record Delta(String aspect, String before, String after) {}
 
-    /** One element-level change: its risk tier + reason codes, and the aspects that differ. */
+    /** One element-level change: its review-impact tier + reason codes, and the aspects that differ. */
     public record ElementChange(ElementKind element, String id, ChangeKind change, Risk risk,
             List<String> reasons, List<Delta> deltas) {}
 
@@ -114,6 +114,14 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         Map<String, Map<String, String>> headComputations = ComputationDiffProjector.project(headState);
         match(ElementKind.COMPUTATION, baseComputations, headComputations,
                 (change, id, deltas) -> ComputationDiffProjector.reasons(change, deltas), changes);
+        Map<String, Map<String, String>> baseTypeDefinitions = TypeDefinitionDiffProjector.project(baseState);
+        Map<String, Map<String, String>> headTypeDefinitions = TypeDefinitionDiffProjector.project(headState);
+        match(ElementKind.TYPEDEF, baseTypeDefinitions, headTypeDefinitions,
+                (change, id, deltas) -> TypeDefinitionDiffProjector.reasons(change, deltas), changes);
+        Map<String, Map<String, String>> baseIncludes = IncludeDiffProjector.project(baseState);
+        Map<String, Map<String, String>> headIncludes = IncludeDiffProjector.project(headState);
+        match(ElementKind.INCLUDE, baseIncludes, headIncludes,
+                (change, id, deltas) -> IncludeDiffProjector.reasons(change), changes);
         detectReorders(authoredOrder(baseState.authored()), authoredOrder(headState.authored()), changes);
         pairRenames(changes, baseRules, headRules);
         pairSimilar(changes, baseRules, headRules);
@@ -415,16 +423,15 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
     /** The reason for one aspect that changed across a relocation — a condition is classified across the two names. */
     private static String relocationContentReason(ElementKind element, String oldId, String newId, Delta d,
             KernelAdapter base, KernelAdapter head) {
-        if (element == ElementKind.RULE && d.aspect().equals("condition")) {
-            return conditionReason(oldId, newId, base, head);
-        }
-        if (element == ElementKind.COMPUTATION) {
-            return ComputationDiffProjector.modifiedReason(d);
-        }
-        if (element == ElementKind.GROUP) {
-            return GroupDiffProjector.modifiedReason(d);
-        }
-        return element == ElementKind.FIELD ? FieldDiffProjector.modifiedReason(d) : modifiedReason(d);
+        return switch (element) {
+            case FIELD -> FieldDiffProjector.modifiedReason(d);
+            case GROUP -> GroupDiffProjector.modifiedReason(d);
+            case RULE -> d.aspect().equals("condition")
+                    ? conditionReason(oldId, newId, base, head) : modifiedReason(d);
+            case COMPUTATION -> ComputationDiffProjector.modifiedReason(d);
+            case TYPEDEF -> TypeDefinitionDiffProjector.modifiedReason(d);
+            case INCLUDE -> IncludeDiffProjector.modifiedReason(d);
+        };
     }
 
     /** The last path segment (leaf name). */
@@ -656,7 +663,7 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         return switch (element) {
             case RULE -> refsOf(adapter, name);
             case COMPUTATION -> ComputationDiffProjector.references(adapter.readComputation(name));
-            case FIELD, GROUP -> Set.of();
+            case FIELD, GROUP, TYPEDEF, INCLUDE -> Set.of();
         };
     }
 
@@ -691,7 +698,7 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         return List.copyOf(new LinkedHashSet<>(reasons));
     }
 
-    /** The change's risk tier — the max over its reason codes (loosening &gt; tightening, §5b). */
+    /** The change's review-impact tier — the max over its reason codes (loosening &gt; tightening, §5b). */
     private static Risk riskFor(List<String> reasons) {
         return reasons.stream().map(ModelDiff::riskOf).max(Comparator.naturalOrder()).orElse(Risk.LOW);
     }
@@ -764,7 +771,8 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
                     "OPERATOR_CHANGED", "THRESHOLD_CHANGED", "CONSTRAINT_TIGHTENED", "STRUCTURE_ADDED",
                     "STRUCTURE_REMOVED", "PATTERN_CHANGED", "SEVERITY_CHANGED", "SCALE_CHANGED",
                     "ELEMENT_MOVED", "COMPUTATION_CHANGED", "GROUP_CHANGED", "REPEATABILITY_CHANGED",
-                    "TYPE_CHANGED", "FIELD_CONFIG_CHANGED" -> Risk.MEDIUM;
+                    "TYPE_CHANGED", "FIELD_CONFIG_CHANGED", "TYPEDEF_ADDED", "TYPEDEF_REMOVED",
+                    "INCLUDE_CHANGED" -> Risk.MEDIUM;
             // POSITION_CHANGED (a reorder) / ELEMENT_RENAMED are content-preserving, not a loosening → LOW
             default -> Risk.LOW;
         };

@@ -202,7 +202,7 @@ dmtool --text -m order.dm.json model report --tree --root /Order --include rules
 
 ### Review what changed — a semantic diff
 
-When an agent has edited a model on your behalf, raw JSON diffs are unreadable. `model diff` compares two model files **structurally** (it parses both into the model, so a pure reformat is never reported) and reports field, group, rule, and computation changes with per-aspect deltas and a **review-impact tier**. Fields include complete typed config, requiredness, enum values, metadata, and flags; rules include their error entity, localized messages, and metadata. Removing or retyping a field still used by a rule/computation is HIGH and names `REFERENCED_ELEMENT_REMOVED`/`RETYPE_AFFECTS_READERS`. Group changes cover repeatability, mounts, metadata, and mixed authored ordering; computations cover targets, preconditions, operations, tolerances, suppressions, and messages. Review impact follows *loosening > tightening*: increasing a repetition cap, adding an enum value, or removing/loosening a rule is HIGH, while tightening is MEDIUM.
+When an agent has edited a model on your behalf, raw JSON diffs are unreadable. `model diff` compares two model files **structurally** (it parses both into the model, so a pure reformat is never reported) and reports field, group, rule, computation, typedef, and authored include/import changes with per-aspect deltas and a **review-impact tier**. Fields include complete typed config, requiredness, enum values, metadata, and flags; rules include their error entity, localized messages, and metadata. Removing or retyping a field still used by a rule/computation is HIGH and names `REFERENCED_ELEMENT_REMOVED`/`RETYPE_AFFECTS_READERS`. Groups cover repeatability, mounts, metadata, and mixed authored ordering; computations cover targets, preconditions, operations, tolerances, suppressions, and messages; typedefs carry full typed config and metadata; includes/imports carry their purpose and referenced model without conflating expanded content. Review impact follows *loosening > tightening*: increasing a repetition cap, adding an enum value, or removing/loosening a rule is HIGH, while tightening is MEDIUM.
 
 ```sh
 dmtool model diff before.dm.json after.dm.json        # two files: base then head
@@ -215,7 +215,7 @@ dmtool -m order.dm.json model diff --since HEAD        # or: vs the model's last
 
 The sharpest case is a **silent polarity flip** — a rule that stays but now fires on the complementary set, accepting what it used to reject. `model diff` reads both conditions as typed ASTs and proves the flip structurally, grading it HIGH `POLARITY_INVERTED` (not a generic `CONDITION_CHANGED`) — the one edit a line-based diff buries.
 
-It's a **structural** semantic diff; the contract (change model, the full risk taxonomy, the rendering policy) is in [docs/MODEL-REVIEW-SPEC.md](docs/MODEL-REVIEW-SPEC.md), open items in [docs/MODEL-REVIEW-GAPS.md](docs/MODEL-REVIEW-GAPS.md).
+It's a **structural** semantic diff; the contract (change model, the full review-impact taxonomy, the rendering policy) is in [docs/MODEL-REVIEW-SPEC.md](docs/MODEL-REVIEW-SPEC.md), open items in [docs/MODEL-REVIEW-GAPS.md](docs/MODEL-REVIEW-GAPS.md).
 
 `dmtool` writes models **deterministically** (element/key order preserved — never reordered), so an edit yields a clean, *localized* git diff. To bring a foreign-authored model (e.g. exported from the A12 editor) into that canonical form once — as an explicit, reviewable commit rather than churn buried in the first edit — run:
 
@@ -471,7 +471,7 @@ The [`examples/`](examples/) directory has **verifiable** walkthroughs of every 
 |---|---|
 | [`cli-tour`](examples/cli-tour.md) | read one model: `model check` / `model describe` / `model read` · `model usage` · `rule read` / `rule explain` / `rule format` / `rule check` · `field read` / `group read` / `config read` |
 | [`cli-discover`](examples/cli-discover.md) | the self-describing surface: `manifest` · `operators` · `patterns` · `diagnostics` · `schema` · `profile extract`/`synthesize`/`compare` |
-| [`cli-review`](examples/cli-review.md) | review & comprehend: `model report` (the glossed catalog) · `model diff` (the risk-ranked semantic diff, incl. `POLARITY_INVERTED`) |
+| [`cli-review`](examples/cli-review.md) | review & comprehend: `model report` (the glossed catalog) · `model diff` (the impact-ranked semantic diff, incl. typedefs and `POLARITY_INVERTED`) |
 | [`cli-workspace`](examples/cli-workspace.md) | multi-file models: `model info` · `workspace list` / `workspace graph` / `workspace roles` |
 | [`cli-edit-loop`](examples/cli-edit-loop.md) | author/modify rules & computations, `where-used`, `batch`, `;;` comments, the re-express loop |
 | [`cli-structure-edit`](examples/cli-structure-edit.md) | fields/groups/typedefs/includes/config + the safe-delete gate, the safety-gated refactors, group templates, `meta` |
