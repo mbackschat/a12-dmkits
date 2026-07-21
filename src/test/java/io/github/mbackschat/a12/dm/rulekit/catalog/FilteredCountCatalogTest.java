@@ -14,8 +14,8 @@ class FilteredCountCatalogTest {
         var having = catalog.byId("Having").orElseThrow();
         var filledFields = catalog.byId("NumberOfFilledFields").orElseThrow();
 
-        assertTrue(having.validExample().dsl().contains("NumberOfFilledFields(Items*/Sku Having"));
-        assertTrue(having.invalidExample().dsl().contains("NumberOfFilledGroups(Items* Having"));
+        assertTrue(having.validExample().dsl().contains("NumberOfFilledFields(/Warehouse/Aisles*/Code Having"));
+        assertTrue(having.invalidExample().dsl().contains("NumberOfFilledGroups(/Warehouse/Aisles* Having"));
         assertEquals("MVK_NO_GROUPS_ALLOWED", having.invalidExample().error());
         assertTrue(having.seeAlso().contains("NumberOfFilledFields"));
         assertTrue(filledFields.seeAlso().contains("Having"));

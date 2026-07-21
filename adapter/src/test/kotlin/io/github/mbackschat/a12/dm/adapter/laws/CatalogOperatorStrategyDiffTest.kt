@@ -28,9 +28,9 @@ class CatalogOperatorStrategyDiffTest {
     private val multiStarBase = DocumentModelDraft.named("warehouse").locale("en_US")
         .rootGroup("Warehouse") { warehouse ->
             warehouse.group("Aisles") { aisles ->
-                aisles.repeatable(20).group("Bins") { bins ->
-                    bins.repeatable(20).numberField("Quantity") { }
-                }
+                aisles.repeatable(20)
+                    .stringField("Code") { }
+                    .group("Bins") { bins -> bins.repeatable(20).numberField("Quantity") { } }
             }
         }
         .build().toJson()

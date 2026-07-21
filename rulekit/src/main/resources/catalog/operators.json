@@ -2032,8 +2032,8 @@
       { "text": "a multi-star path binds at its first starred segment: /Warehouse/Aisles*/Bins*/Quantity spans Bins across every Aisles row, not only the current leaf branch; leave an ancestor unstarred when it must remain outer-bound", "kind": "SURPRISE" },
       { "text": "in a multi-star filter, CurrentRepetition(Bins) != CurrentRepetition($Bins) compares the leaf index and therefore excludes every candidate with the outer row's leaf index across different ancestor rows — it is not SQL-style physical-row identity", "kind": "SURPRISE" }
     ],
-    "validExample": { "dsl": "FieldFilled(CustomerName) And NumberOfFilledFields(Items*/Sku Having [Items/Sku] == \"MAIN\") != 1", "note": "counts the filled Sku cells in rows selected by the filter; Having consumes the flattened field list, not the Items* group list" },
-    "invalidExample": { "dsl": "FieldFilled(CustomerName) And NumberOfFilledGroups(Items* Having [Items/Sku] == \"MAIN\") != 1", "error": "MVK_NO_GROUPS_ALLOWED", "fix": "Having filters a flattened field list — write NumberOfFilledFields(Items*/Sku Having [Items/Sku] == \"MAIN\")" },
+    "validExample": { "dsl": "FieldFilled(/Warehouse/Aisles/Code) And NumberOfFilledFields(/Warehouse/Aisles*/Code Having [/Warehouse/Aisles/Code] == \"MAIN\") != 1", "note": "counts the filled Code cells in rows selected by the filter; Having consumes the flattened field list, not the Aisles* group list" },
+    "invalidExample": { "dsl": "FieldFilled(/Warehouse/Aisles/Code) And NumberOfFilledGroups(/Warehouse/Aisles* Having [/Warehouse/Aisles/Code] == \"MAIN\") != 1", "error": "MVK_NO_GROUPS_ALLOWED", "fix": "Having filters a flattened field list — write NumberOfFilledFields(/Warehouse/Aisles*/Code Having [/Warehouse/Aisles/Code] == \"MAIN\")" },
     "seeAlso": ["CurrentRepetition", "NumberOfFilledFields", "NumberOfFilledGroups"],
     "sinceKernel": "30.8.x"
   },

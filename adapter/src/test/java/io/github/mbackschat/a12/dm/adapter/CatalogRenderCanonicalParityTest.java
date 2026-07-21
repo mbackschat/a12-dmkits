@@ -49,6 +49,7 @@ class CatalogRenderCanonicalParityTest {
     private static final String MULTI_STAR_MODEL = DocumentModelDraft.named("warehouse").locale("en_US")
             .rootGroup("Warehouse", warehouse -> warehouse
                     .group("Aisles", aisles -> aisles.repeatable(20)
+                            .stringField("Code", field -> { })
                             .group("Bins", bins -> bins.repeatable(20)
                                     .numberField("Quantity", field -> { }))))
             .build().toJson();
@@ -125,7 +126,8 @@ class CatalogRenderCanonicalParityTest {
 
     private static Fixture fixture(OperatorEntry entry, String dsl, String locale) {
         if (MULTI_STAR_IDS.contains(entry.id())) {
-            return new Fixture(localize(MULTI_STAR_MODEL, locale), "/Warehouse", "Aisles/Bins/Quantity", null);
+            String errorField = dsl.contains("Aisles/Code") ? "Aisles/Code" : "Aisles/Bins/Quantity";
+            return new Fixture(localize(MULTI_STAR_MODEL, locale), "/Warehouse", errorField, null);
         }
         return new Fixture(localize(MODEL, locale), "/Order", firstReferencedField(dsl), "/Order");
     }

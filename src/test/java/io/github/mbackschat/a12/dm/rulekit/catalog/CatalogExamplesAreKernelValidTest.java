@@ -61,6 +61,7 @@ class CatalogExamplesAreKernelValidTest {
         multiStarModelJson = DocumentModelDraft.named("warehouse").locale("en_US")
                 .rootGroup("Warehouse", warehouse -> warehouse
                         .group("Aisles", aisles -> aisles.repeatable(20)
+                                .stringField("Code", field -> { })
                                 .group("Bins", bins -> bins.repeatable(20)
                                         .numberField("Quantity", field -> { }))))
                 .build().toJson();
@@ -79,10 +80,7 @@ class CatalogExamplesAreKernelValidTest {
 
     private static ValidationResult checkValid(OperatorEntry entry) {
         if (entry.validExample().dsl().contains("/Warehouse/")) {
-            DraftRule rule = new DraftRule(
-                    "/Warehouse", "CatalogExampleRule", "../Aisles/Bins/Quantity",
-                    entry.validExample().dsl(), "CATALOG_EXAMPLE", "ERROR");
-            return VALIDATOR.check(multiStarModelJson, rule);
+            return checkWarehouse(entry.validExample().dsl(), "CatalogExampleRule", "CATALOG_EXAMPLE");
         }
         return check(entry.validExample().dsl());
     }
@@ -93,7 +91,9 @@ class CatalogExamplesAreKernelValidTest {
                 .filter(e -> e.invalidExample() != null)
                 .map(e -> dynamicTest(e.id() + " · invalid", () -> {
                     OperatorEntry.InvalidExample bad = e.invalidExample();
-                    ValidationResult result = check(bad.dsl());
+                    ValidationResult result = bad.dsl().contains("/Warehouse/")
+                            ? checkWarehouse(bad.dsl(), "CatalogInvalidExampleRule", "CATALOG_INVALID_EXAMPLE")
+                            : check(bad.dsl());
                     assertFalse(result.ok(),
                             () -> e.id() + " invalidExample '" + bad.dsl() + "' was unexpectedly accepted");
                     if (bad.error() != null && bad.error().startsWith("MVK_")) {
@@ -103,6 +103,16 @@ class CatalogExamplesAreKernelValidTest {
                                 () -> e.id() + " expected " + bad.error() + ", got: " + result.diagnostics());
                     }
                 }));
+    }
+
+    private static String warehouseErrorField(String dsl) {
+        return dsl.contains("Aisles/Code") ? "Aisles/Code" : "Aisles/Bins/Quantity";
+    }
+
+    private static ValidationResult checkWarehouse(String condition, String ruleName, String code) {
+        DraftRule rule = new DraftRule(
+                "/Warehouse", ruleName, "../" + warehouseErrorField(condition), condition, code, "ERROR");
+        return VALIDATOR.check(multiStarModelJson, rule);
     }
 
     /**
