@@ -1,283 +1,529 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/profile.schema.json",
-  "title": "ModelPerformanceProfile",
-  "description": "The current, identifier-free model-performance profile returned in `data` by `dmtool -m <model> profile extract`. It records structure, rule/computation work shapes, and wiring distributions for reproducible synthesis and performance calibration. It deliberately carries no source identifiers, literals, messages, regex patterns, or profile-version switch.",
+  "title": "ModelProfile",
+  "description": "The data payload of `dmtool -m <model> profile extract`: a domain-blind model complexity profile used by `profile synthesize` and `profile compare`. It contains structural and program-shape counts only, never domain identifiers or values.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["structure", "rules", "computations", "wiring"],
-  "properties": {
-    "structure": { "$ref": "#/$defs/structure" },
-    "rules": { "$ref": "#/$defs/program" },
-    "computations": { "$ref": "#/$defs/computations" },
-    "wiring": { "$ref": "#/$defs/wiring" }
-  },
+  "required": [
+    "structure",
+    "rules",
+    "computations",
+    "wiring"
+  ],
   "$defs": {
-    "histogram": {
-      "type": "object",
-      "description": "Named category counts; keys are the closed current vocabulary for this axis.",
-      "additionalProperties": { "type": "integer", "minimum": 0 }
-    },
-    "bucket": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["lower", "upper", "count"],
-      "properties": {
-        "lower": { "type": "integer" },
-        "upper": { "type": "integer" },
-        "count": { "type": "integer", "minimum": 0 }
-      }
-    },
     "distribution": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["count", "min", "median", "p90", "max", "buckets"],
+      "description": "A tail-preserving summary of integer measurements (percentiles by nearest-rank).",
+      "required": [
+        "n",
+        "min",
+        "max",
+        "mean",
+        "median",
+        "p90",
+        "buckets"
+      ],
       "properties": {
-        "count": { "type": "integer", "minimum": 0 },
-        "min": { "type": "integer" },
-        "median": { "type": "integer" },
-        "p90": { "type": "integer" },
-        "max": { "type": "integer" },
-        "buckets": { "type": "array", "items": { "$ref": "#/$defs/bucket" } }
+        "n": {
+          "type": "integer",
+          "description": "number of samples"
+        },
+        "min": {
+          "type": "integer"
+        },
+        "max": {
+          "type": "integer"
+        },
+        "mean": {
+          "type": "number"
+        },
+        "median": {
+          "type": "integer",
+          "description": "the 50th percentile (nearest-rank)"
+        },
+        "p90": {
+          "type": "integer",
+          "description": "the 90th percentile — the tail"
+        },
+        "buckets": {
+          "$ref": "#/$defs/histogram",
+          "description": "log-scaled buckets (1, 2-3, 4-7, 8-15, …) keeping the silhouette compact"
+        }
       }
     },
-    "capacity": {
+    "histogram": {
+      "type": "object",
+      "description": "a name→count map; keys are kernel operator ids / construct names / kind names (never domain identifiers)",
+      "additionalProperties": {
+        "type": "integer"
+      }
+    },
+    "distributionMap": {
+      "type": "object",
+      "description": "a class-key → distribution map — a distribution SPLIT by a class the single combined distribution would conflate (e.g. chainProductByDepth's nesting-depth classes, whose scales structurally differ)",
+      "additionalProperties": {
+        "$ref": "#/$defs/distribution"
+      }
+    },
+    "nestedHistogram": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["bounded", "unboundedCauses"],
+      "description": "a construct × scope-class JOINT: scope-class name → (construct → count). Recovers what the separate scope and construct marginals can't — e.g. an AGGREGATE evaluated per repeatable row (the O(N²) hotspot) vs at model level (cheap).",
+      "required": [
+        "modelLevel",
+        "perGroup",
+        "perRepeatableRow"
+      ],
       "properties": {
-        "bounded": { "$ref": "#/$defs/distribution" },
-        "unboundedCauses": { "$ref": "#/$defs/histogram" }
+        "modelLevel": {
+          "$ref": "#/$defs/histogram"
+        },
+        "perGroup": {
+          "$ref": "#/$defs/histogram"
+        },
+        "perRepeatableRow": {
+          "$ref": "#/$defs/histogram"
+        }
       }
     },
+    "scaleMatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "the scale JOINT for aggregating computations: whether the computed field's declared scale equals the summed cell's — the fact deciding an interpreter rescale (and, for synthesis, a scale-fix round).",
+      "required": [
+        "matched",
+        "mismatched"
+      ],
+      "properties": {
+        "matched": {
+          "type": "integer",
+          "description": "computed-field scale equals the summed cell's scale (no rescale/round)"
+        },
+        "mismatched": {
+          "type": "integer",
+          "description": "scales differ (a rescale/round is needed)"
+        }
+      }
+    },
+    "iteration": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "the ITERATION-COST signal — where the interpreter's real O(N)/O(N²) work lives (so a synthetic model reproduces the expensive shapes, not just their counts).",
+      "required": [
+        "listScanCapacity",
+        "parallelIteration",
+        "outerCorrelation",
+        "scopeCapacity",
+        "workCapacity",
+        "scannedScopeCapacity"
+      ],
+      "properties": {
+        "parallelIteration": {
+          "type": "integer",
+          "description": "count referencing fields in ≥2 sibling repeatable branches — a cross-list join (O(N×M))"
+        },
+        "outerCorrelation": {
+          "type": "integer",
+          "description": "count using the `$` outer-iteration correlation (`CurrentRepetition($G)` / `$Group*` in a filter) — the explicit self-join, the sharpest O(N²) signal"
+        },
+        "listScanCapacity": {
+          "$ref": "#/$defs/distribution",
+          "description": "Per rule or computation, the greatest bounded collection size explicitly scanned by an aggregate, quantifier, group-presence operation, or root-group count. Scalar references do not count."
+        },
+        "scopeCapacity": {
+          "$ref": "#/$defs/distribution",
+          "description": "Per rule or computation, the bounded repeatability product of its own scope; 1 outside repeatable scope."
+        },
+        "workCapacity": {
+          "$ref": "#/$defs/distribution",
+          "description": "Per rule or computation, the saturated product of scopeCapacity and listScanCapacity."
+        },
+        "scannedScopeCapacity": {
+          "$ref": "#/$defs/distribution",
+          "description": "scopeCapacity restricted to programs whose listScanCapacity is greater than 1; empty when no program scans a non-trivial collection."
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "how often an element evaluates: model-level / non-repeating group / per repeatable row",
+      "required": [
+        "modelLevel",
+        "perGroup",
+        "perRepeatableRow"
+      ],
+      "properties": {
+        "modelLevel": {
+          "type": "integer",
+          "description": "scoped at the root group — evaluated once"
+        },
+        "perGroup": {
+          "type": "integer",
+          "description": "scoped at a non-repeating subgroup"
+        },
+        "perRepeatableRow": {
+          "type": "integer",
+          "description": "scoped within/at a repeatable group — evaluated per row"
+        }
+      }
+    }
+  },
+  "properties": {
     "structure": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["elements", "topology", "fields", "repeatability"],
+      "description": "the static shape: size, nesting, field kinds, repeatability, and declared-constraint prevalence",
+      "required": [
+        "fieldCount",
+        "groupCount",
+        "maxNestingDepth",
+        "fieldsPerGroup",
+        "fieldKinds",
+        "repeatability",
+        "constraints"
+      ],
       "properties": {
-        "elements": { "$ref": "#/$defs/histogram" },
-        "topology": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["maxGroupDepth", "fieldsPerGroup"],
-          "properties": {
-            "maxGroupDepth": { "type": "integer", "minimum": 0 },
-            "fieldsPerGroup": { "$ref": "#/$defs/distribution" }
-          }
+        "fieldCount": {
+          "type": "integer"
         },
-        "fields": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kinds", "constrainedFields", "numberScale", "enumCardinality"],
-          "properties": {
-            "kinds": { "$ref": "#/$defs/histogram" },
-            "constrainedFields": { "$ref": "#/$defs/histogram" },
-            "numberScale": { "$ref": "#/$defs/distribution" },
-            "enumCardinality": { "$ref": "#/$defs/distribution" }
-          }
+        "groupCount": {
+          "type": "integer"
+        },
+        "maxNestingDepth": {
+          "type": "integer",
+          "description": "deepest group path (segment depth)"
+        },
+        "fieldsPerGroup": {
+          "$ref": "#/$defs/distribution"
+        },
+        "fieldKinds": {
+          "$ref": "#/$defs/histogram",
+          "description": "value-kind → count (NUMBER, STRING, ENUMERATION, …)"
         },
         "repeatability": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["outcomes", "topology", "capacities"],
+          "description": "the O(N²)-risk surface (interpreter benchmark B1/B2/B3)",
+          "required": [
+            "repeatableGroupCount",
+            "unboundedCount",
+            "maxRepeatableNestingDepth",
+            "maxRepetitions",
+            "nestingDepth",
+            "chainProduct",
+            "fieldChainProduct",
+            "siblingBranchFan",
+            "chainProductByDepth",
+            "nestingDepthExact"
+          ],
           "properties": {
-            "outcomes": { "$ref": "#/$defs/histogram" },
-            "topology": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["maxDepth", "exactDepth", "siblingFan"],
-              "properties": {
-                "maxDepth": { "type": "integer", "minimum": 0 },
-                "exactDepth": { "$ref": "#/$defs/histogram" },
-                "siblingFan": { "$ref": "#/$defs/distribution" }
-              }
+            "repeatableGroupCount": {
+              "type": "integer"
             },
-            "capacities": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["maxRepetitions", "groupChains", "fieldChains"],
-              "properties": {
-                "maxRepetitions": { "$ref": "#/$defs/capacity" },
-                "groupChains": { "$ref": "#/$defs/capacity" },
-                "fieldChains": { "$ref": "#/$defs/capacity" }
-              }
+            "unboundedCount": {
+              "type": "integer",
+              "description": "repeatable groups with no positive max (effectively unbounded rows)"
+            },
+            "maxRepeatableNestingDepth": {
+              "type": "integer",
+              "description": "deepest repeatable-within-repeatable nesting"
+            },
+            "maxRepetitions": {
+              "$ref": "#/$defs/distribution",
+              "description": "declared max rows over the bounded repeatable groups"
+            },
+            "nestingDepth": {
+              "$ref": "#/$defs/distribution",
+              "description": "per repeatable group, its repeatable-ancestor count — how deeply nested each is (a flat model has many at 1; a deeply-nested one skews the tail)"
+            },
+            "chainProduct": {
+              "$ref": "#/$defs/distribution",
+              "description": "per repeatable group (n = repeatable groups), the PRODUCT of maxRepetitions over its repeatable ancestors-or-self (root-to-group cumulative) — disambiguates whether a high listScanCapacity comes from one huge rep or a chain of moderate ones"
+            },
+            "fieldChainProduct": {
+              "$ref": "#/$defs/distribution",
+              "description": "per field (n = ALL fields), the same chain product for its containing chain — 1 when under no repeatable; the field-mass placement signal"
+            },
+            "siblingBranchFan": {
+              "$ref": "#/$defs/distribution",
+              "description": "per group with fan ≥1 (n = such groups), the number of DISTINCT repeatable branch roots reachable through non-repeatable descent only — how many twin/multi-way aggregate hubs the model has"
+            },
+            "chainProductByDepth": {
+              "$ref": "#/$defs/distributionMap",
+              "description": "chainProduct SPLIT by nestingDepth class (\"1\" / \"2-3\" / \"4+\") — depth-1 (root) positions carry just their own size while nested positions carry a multi-factor product, so the combined distribution's median/p90 conflate two structurally different scales; a synthesizer sizing a root specifically needs the depth-1 sub-distribution, not a value drawn from the whole (nested-dominated) mix"
+            },
+            "nestingDepthExact": {
+              "$ref": "#/$defs/histogram",
+              "description": "nestingDepth's EXACT per-depth-value histogram (\"1\" → count, \"2\" → count, …) — depth is a tiny-range small integer, so an exact count map is cheap and closes the bucket-ambiguity a log-scaled distribution's bucket (e.g. \"2-3\" blending two different true depths) would otherwise introduce"
+            }
+          }
+        },
+        "constraints": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "declared-constraint prevalence — presence + scale + enum cardinality only (values stripped)",
+          "required": [
+            "numbersWithBounds",
+            "stringsWithLength",
+            "stringsWithPattern",
+            "numberScale",
+            "enumCardinality"
+          ],
+          "properties": {
+            "numbersWithBounds": {
+              "type": "integer",
+              "description": "number fields with a min and/or max"
+            },
+            "stringsWithLength": {
+              "type": "integer",
+              "description": "string fields with a min/max length"
+            },
+            "stringsWithPattern": {
+              "type": "integer",
+              "description": "string fields with a regex pattern (the pattern itself is not emitted)"
+            },
+            "numberScale": {
+              "$ref": "#/$defs/distribution",
+              "description": "declared decimal scale over number fields"
+            },
+            "enumCardinality": {
+              "$ref": "#/$defs/distribution",
+              "description": "value count per enumeration field (the values themselves are not emitted)"
             }
           }
         }
       }
     },
-    "ast": {
+    "rules": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["nodeCount", "depth", "booleanArity", "variadicArity", "distinctFanIn"],
+      "description": "the rule population's complexity signal",
+      "required": [
+        "count",
+        "opaqueCount",
+        "scope",
+        "nodeCount",
+        "depth",
+        "booleanArity",
+        "fanIn",
+        "rulesPerErrorField",
+        "walkUpDistance",
+        "repeatableLevelsCrossed",
+        "operators",
+        "constructs",
+        "constructCombos",
+        "constructsByScope",
+        "iteration"
+      ],
       "properties": {
-        "nodeCount": { "$ref": "#/$defs/distribution" },
-        "depth": { "$ref": "#/$defs/distribution" },
-        "booleanArity": { "$ref": "#/$defs/distribution" },
-        "variadicArity": { "$ref": "#/$defs/distribution" },
-        "distinctFanIn": { "$ref": "#/$defs/distribution" }
-      }
-    },
-    "dispatch": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["catalogOperators", "intrinsicOperators", "constructs", "constructCombinations", "constructsByScope"],
-      "properties": {
-        "catalogOperators": { "$ref": "#/$defs/histogram" },
-        "intrinsicOperators": { "$ref": "#/$defs/histogram" },
-        "constructs": { "$ref": "#/$defs/histogram" },
-        "constructCombinations": { "$ref": "#/$defs/histogram" },
-        "constructsByScope": {
-          "type": "object",
-          "additionalProperties": { "$ref": "#/$defs/histogram" }
-        }
-      }
-    },
-    "scan": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["kinds", "starDepth", "capacity", "filterComplexity"],
-      "properties": {
-        "kinds": { "$ref": "#/$defs/histogram" },
-        "starDepth": { "$ref": "#/$defs/distribution" },
-        "capacity": { "$ref": "#/$defs/capacity" },
-        "filterComplexity": { "$ref": "#/$defs/distribution" }
-      }
-    },
-    "work": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["capacity", "scopeByScan"],
-      "properties": {
-        "capacity": { "$ref": "#/$defs/capacity" },
-        "scopeByScan": { "$ref": "#/$defs/histogram" }
-      }
-    },
-    "mechanism": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["shape", "capacity"],
-      "properties": {
-        "shape": { "$ref": "#/$defs/distribution" },
-        "capacity": { "$ref": "#/$defs/capacity" }
-      }
-    },
-    "runtime": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["scope", "evaluation", "resolution"],
-      "properties": {
+        "count": {
+          "type": "integer"
+        },
+        "opaqueCount": {
+          "type": "integer",
+          "description": "rules rulekit could not model (reported, never dropped) — a coverage signal"
+        },
         "scope": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["classes", "capacity"],
+          "description": "how often a rule evaluates",
+          "required": [
+            "modelLevel",
+            "perGroup",
+            "perRepeatableRow"
+          ],
           "properties": {
-            "classes": { "$ref": "#/$defs/histogram" },
-            "capacity": { "$ref": "#/$defs/capacity" }
-          }
-        },
-        "evaluation": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["scans", "combinedWork", "mechanisms", "outerCorrelation"],
-          "properties": {
-            "scans": { "$ref": "#/$defs/scan" },
-            "combinedWork": { "$ref": "#/$defs/work" },
-            "mechanisms": {
-              "type": "object",
-              "additionalProperties": { "$ref": "#/$defs/mechanism" }
+            "modelLevel": {
+              "type": "integer",
+              "description": "scoped at the root group — evaluated once"
             },
-            "outerCorrelation": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["forms", "capacity"],
-              "properties": {
-                "forms": { "$ref": "#/$defs/histogram" },
-                "capacity": { "$ref": "#/$defs/capacity" }
-              }
+            "perGroup": {
+              "type": "integer",
+              "description": "scoped at a non-repeating subgroup"
+            },
+            "perRepeatableRow": {
+              "type": "integer",
+              "description": "scoped within/at a repeatable group — evaluated per row"
             }
           }
         },
-        "resolution": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["walkUpDistance"],
-          "properties": {
-            "walkUpDistance": { "$ref": "#/$defs/distribution" }
-          }
+        "nodeCount": {
+          "$ref": "#/$defs/distribution",
+          "description": "AST node count per condition"
+        },
+        "depth": {
+          "$ref": "#/$defs/distribution",
+          "description": "AST nesting depth per condition"
+        },
+        "booleanArity": {
+          "$ref": "#/$defs/distribution",
+          "description": "widest And/Or fan-out per condition"
+        },
+        "fanIn": {
+          "$ref": "#/$defs/distribution",
+          "description": "distinct field+group references per condition"
+        },
+        "rulesPerErrorField": {
+          "$ref": "#/$defs/distribution",
+          "description": "concentration — how many rules share each error field"
+        },
+        "walkUpDistance": {
+          "$ref": "#/$defs/distribution",
+          "description": "cross-level: group levels a rule reaches above its scope (n = number of rules that walk up; B4)"
+        },
+        "repeatableLevelsCrossed": {
+          "$ref": "#/$defs/distribution",
+          "description": "most repeatable-group levels any referenced path crosses — the deep-star/iteration signal (B5)"
+        },
+        "operators": {
+          "$ref": "#/$defs/histogram",
+          "description": "kernel operator id → total occurrences across all conditions"
+        },
+        "constructs": {
+          "$ref": "#/$defs/histogram",
+          "description": "performance-sensitive construct → number of rules containing it (AGGREGATE, QUANTIFIER, GROUP_FILL, CURRENT_REPETITION, SEMANTIC_INDEX, FILTER, UNIQUENESS, PATTERN, VALUE_LIST, DATE_MATH, ARITHMETIC, CUSTOM)"
+        },
+        "constructCombos": {
+          "$ref": "#/$defs/histogram",
+          "description": "co-occurrence JOINT: sorted +-joined construct set per rule → count (`NONE` = a plain rule; e.g. `AGGREGATE+FILTER` vs `FILTER`). Reveals what the `constructs` marginal only lets you subtract."
+        },
+        "constructsByScope": {
+          "$ref": "#/$defs/nestedHistogram",
+          "description": "construct × scope-class joint — the O(N²) predictor (an aggregate per repeatable row vs at model level)"
+        },
+        "iteration": {
+          "$ref": "#/$defs/iteration",
+          "description": "iteration-cost: star-capture (elements walked) + parallel/`$` cross-list joins"
         }
-      }
-    },
-    "program": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["conversion", "syntax", "runtime"],
-      "properties": {
-        "conversion": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["outcomes", "opaqueReasons"],
-          "properties": {
-            "outcomes": { "$ref": "#/$defs/histogram" },
-            "opaqueReasons": { "$ref": "#/$defs/histogram" }
-          }
-        },
-        "syntax": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["ast", "dispatch"],
-          "properties": {
-            "ast": { "$ref": "#/$defs/ast" },
-            "dispatch": { "$ref": "#/$defs/dispatch" }
-          }
-        },
-        "runtime": { "$ref": "#/$defs/runtime" }
       }
     },
     "computations": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["programs", "shape", "dependencies"],
+      "description": "the computation population's complexity signal, plus the dependency-cascade depth (B7)",
+      "required": [
+        "count",
+        "opaqueCount",
+        "nodeCount",
+        "depth",
+        "fanIn",
+        "maxCascadeDepth",
+        "feedingOthers",
+        "computedFieldKinds",
+        "alternatives",
+        "scope",
+        "preconditionedCount",
+        "operators",
+        "constructs",
+        "archetypes",
+        "constructCombos",
+        "constructsByScope",
+        "aggregateScaleMatch",
+        "iteration",
+        "aggregateStars"
+      ],
       "properties": {
-        "programs": { "$ref": "#/$defs/program" },
-        "shape": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["computedFieldKinds", "tables", "archetypes", "aggregateScaleMatch"],
-          "properties": {
-            "computedFieldKinds": { "$ref": "#/$defs/histogram" },
-            "tables": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["alternatives", "preconditions", "toleranceBands"],
-              "properties": {
-                "alternatives": { "$ref": "#/$defs/distribution" },
-                "preconditions": { "$ref": "#/$defs/distribution" },
-                "toleranceBands": { "$ref": "#/$defs/histogram" }
-              }
-            },
-            "archetypes": { "$ref": "#/$defs/histogram" },
-            "aggregateScaleMatch": { "$ref": "#/$defs/histogram" }
-          }
+        "count": {
+          "type": "integer"
         },
-        "dependencies": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["maxCascadeDepth", "feedingComputations"],
-          "properties": {
-            "maxCascadeDepth": { "type": "integer", "minimum": 0 },
-            "feedingComputations": { "type": "integer", "minimum": 0 }
-          }
+        "opaqueCount": {
+          "type": "integer"
+        },
+        "nodeCount": {
+          "$ref": "#/$defs/distribution",
+          "description": "AST node count per computation (preconditions + operation)"
+        },
+        "depth": {
+          "$ref": "#/$defs/distribution"
+        },
+        "fanIn": {
+          "$ref": "#/$defs/distribution",
+          "description": "distinct fields each computation reads"
+        },
+        "maxCascadeDepth": {
+          "type": "integer",
+          "description": "longest computed-on-computed dependency chain (1 = no computation reads another)"
+        },
+        "feedingOthers": {
+          "type": "integer",
+          "description": "computed fields read by another computation's formula"
+        },
+        "computedFieldKinds": {
+          "$ref": "#/$defs/histogram",
+          "description": "value-kind → count of the COMPUTED fields (NUMBER, STRING, DATE, …) — independent of count; answers 'are all computed fields numbers?'"
+        },
+        "alternatives": {
+          "$ref": "#/$defs/distribution",
+          "description": "number of when/calc branches per computation (1 = a single formula; higher = a many-way conditional)"
+        },
+        "scope": {
+          "$ref": "#/$defs/scope",
+          "description": "how often a computation evaluates — a per-repeatable-row computation runs once per row (the N-row × computation cost)"
+        },
+        "preconditionedCount": {
+          "type": "integer",
+          "description": "computations that are conditional at all (a common precondition or ≥1 preconditioned alternative)"
+        },
+        "operators": {
+          "$ref": "#/$defs/histogram"
+        },
+        "constructs": {
+          "$ref": "#/$defs/histogram"
+        },
+        "archetypes": {
+          "$ref": "#/$defs/histogram",
+          "description": "operation-shape histogram → count of computations (COPY, AGGREGATE, ARITHMETIC, DATE, STRING, CONSTANT) — a direct synthesis target the operator+construct marginals blur"
+        },
+        "constructCombos": {
+          "$ref": "#/$defs/histogram",
+          "description": "co-occurrence JOINT: sorted +-joined construct set per computation → count (`NONE` = a bare copy/constant)"
+        },
+        "constructsByScope": {
+          "$ref": "#/$defs/nestedHistogram",
+          "description": "construct × scope-class joint — the O(N²) predictor for computations (an aggregate re-evaluated per repeatable row)"
+        },
+        "aggregateScaleMatch": {
+          "$ref": "#/$defs/scaleMatch",
+          "description": "scale JOINT over aggregating computations — matched vs mismatched computed/summed scale"
+        },
+        "iteration": {
+          "$ref": "#/$defs/iteration",
+          "description": "iteration-cost: star-capture (elements walked) + parallel/`$` cross-list joins"
+        },
+        "aggregateStars": {
+          "$ref": "#/$defs/distribution",
+          "description": "n = computations with ≥1 starred operand path: the MAX count of starred (`*`) segments in a single referenced path (1 = a plain flatten, ≥2 = a nested-star aggregate) — decides whether a multi-star nested-aggregate recipe is needed"
         }
       }
     },
     "wiring": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["referencedFields", "fieldFanOut"],
+      "description": "how densely fields feed rules/computations — a model where most fields are live is a different eval than one where most are inert",
+      "required": [
+        "fieldsReferenced",
+        "referencedByRules",
+        "referencedByComputations",
+        "fieldFanOut"
+      ],
       "properties": {
-        "referencedFields": { "$ref": "#/$defs/histogram" },
-        "fieldFanOut": { "$ref": "#/$defs/distribution" }
+        "fieldsReferenced": {
+          "type": "integer",
+          "description": "fields touched by any rule or computation (condition, operation, error/computed field)"
+        },
+        "referencedByRules": {
+          "type": "integer"
+        },
+        "referencedByComputations": {
+          "type": "integer"
+        },
+        "fieldFanOut": {
+          "$ref": "#/$defs/distribution",
+          "description": "per referenced field, how many distinct rules + computations touch it (the 'edit field X → re-evaluate N' surface)"
+        }
       }
     }
   }

@@ -83,6 +83,7 @@ final class SynthesisStructureBuilders {
 
     static final class RepeatabilityBuilder {
         private int repeatableGroupCount;
+        private int unboundedCount;
         private int maxRepeatableNestingDepth;
         private Distribution maxRepetitions = Distribution.empty();
         private Distribution nestingDepth = Distribution.empty();
@@ -94,6 +95,11 @@ final class SynthesisStructureBuilders {
 
         RepeatabilityBuilder repeatableGroupCount(int value) {
             repeatableGroupCount = value;
+            return this;
+        }
+
+        RepeatabilityBuilder unboundedCount(int value) {
+            unboundedCount = value;
             return this;
         }
 
@@ -140,6 +146,7 @@ final class SynthesisStructureBuilders {
         SynthesisProfile.Repeatability build() {
             return new SynthesisProfile.Repeatability(
                     repeatableGroupCount,
+                    unboundedCount,
                     maxRepeatableNestingDepth,
                     maxRepetitions,
                     nestingDepth,
@@ -152,15 +159,15 @@ final class SynthesisStructureBuilders {
     }
 
     static final class IterationBuilder {
-        private Distribution starCapture = Distribution.empty();
+        private Distribution listScanCapacity = Distribution.empty();
         private int parallelIteration;
         private int outerCorrelation;
-        private Distribution scopeProduct = Distribution.empty();
-        private Distribution reachProduct = Distribution.empty();
-        private Distribution reachScopeProduct = Distribution.empty();
+        private Distribution scopeCapacity = Distribution.empty();
+        private Distribution workCapacity = Distribution.empty();
+        private Distribution scannedScopeCapacity = Distribution.empty();
 
-        IterationBuilder starCapture(Distribution value) {
-            starCapture = presentOr(starCapture, value);
+        IterationBuilder listScanCapacity(Distribution value) {
+            listScanCapacity = presentOr(listScanCapacity, value);
             return this;
         }
 
@@ -174,29 +181,29 @@ final class SynthesisStructureBuilders {
             return this;
         }
 
-        IterationBuilder scopeProduct(Distribution value) {
-            scopeProduct = presentOr(scopeProduct, value);
+        IterationBuilder scopeCapacity(Distribution value) {
+            scopeCapacity = presentOr(scopeCapacity, value);
             return this;
         }
 
-        IterationBuilder reachProduct(Distribution value) {
-            reachProduct = presentOr(reachProduct, value);
+        IterationBuilder workCapacity(Distribution value) {
+            workCapacity = presentOr(workCapacity, value);
             return this;
         }
 
-        IterationBuilder reachScopeProduct(Distribution value) {
-            reachScopeProduct = presentOr(reachScopeProduct, value);
+        IterationBuilder scannedScopeCapacity(Distribution value) {
+            scannedScopeCapacity = presentOr(scannedScopeCapacity, value);
             return this;
         }
 
         SynthesisProfile.Iteration build() {
             return new SynthesisProfile.Iteration(
-                    starCapture,
+                    listScanCapacity,
                     parallelIteration,
                     outerCorrelation,
-                    scopeProduct,
-                    reachProduct,
-                    reachScopeProduct);
+                    scopeCapacity,
+                    workCapacity,
+                    scannedScopeCapacity);
         }
     }
 

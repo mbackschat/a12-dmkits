@@ -35,27 +35,27 @@ final class StructureModelSynthesizer {
 
         // 3. fields: distribute the field budget across groups (leaves guaranteed ≥1), typed by the kind mix.
         //    reachDemand — how many computations the target says carry a NON-TRIVIAL reach
-        //    (nonTrivialFraction(comp.reachProduct) × count) — sizes the NUMBER-kind hub steering inside
+        //    (nonTrivialFraction(comp.workCapacity) × count) — sizes the NUMBER-kind hub steering inside
         //    a DEFICIT-based lift, so a target whose natural hub-NUMBER supply already meets its own demand
         //    (a breadth-shaped or compact profile) is left untouched.
         SynthesisProfile.Iteration compIteration = profile.computations().iteration();
-        int reachDemand = compIteration == null || compIteration.reachProduct() == null ? 0
-                : (int) Math.ceil(nonTrivialFraction(compIteration.reachProduct(), 0.0)
+        int reachDemand = compIteration == null || compIteration.listScanCapacity() == null ? 0
+                : (int) Math.ceil(nonTrivialFraction(compIteration.listScanCapacity(), 0.0)
                         * profile.computations().count());
         // Supply-side scope planning: the measured
-        // comp.iteration.scopeProduct distribution sizes a SECOND, independent NUMBER-kind steering pass
-        // inside distributeFields (steerNumberKindByScopeProduct), right after the reach-deficit
+        // comp.iteration.scopeCapacity distribution sizes a SECOND, independent NUMBER-kind steering pass
+        // inside distributeFields (steerNumberKindByScopeCapacity), right after the reach-deficit
         // NUMBER-kind steering above.
         // Its OWN purpose-keyed stream ("structure.scopeSteer") — NEVER the shared "structure" stream —
         // is what makes a zero-swap profile (depth-shaped or compact) truly byte-identical: a first version
         // reused `rnd` and drew from it even on a no-op run (sampleMultiset draws unconditionally, before the
         // swap decision), shifting every LATER "structure"-stream draw (FieldGen's declared NUMBER scales)
         // and, through that, which field {@code aggregateOperandOfScale}'s scale-matching later picked —
-        // moving comp.reachProduct on a breadth-shaped profile with ZERO scopeProduct swaps to show for it.
+        // moving comp.workCapacity on a breadth-shaped profile with ZERO scopeCapacity swaps to show for it.
         // Measured, not assumed: reverting to the shared stream reproduced the exact same drift.
-        Distribution compScopeProductTarget = compIteration == null ? null : compIteration.scopeProduct();
+        Distribution compScopeCapacityTarget = compIteration == null ? null : compIteration.scopeCapacity();
         List<ValueKind> kinds = kindSequence(s.fieldKinds(), Math.max(0, s.fieldCount()));
-        distributeFields(groups, kinds, s.fieldsPerGroup(), reachDemand, compScopeProductTarget,
+        distributeFields(groups, kinds, s.fieldsPerGroup(), reachDemand, compScopeCapacityTarget,
                 profile.computations().count(), rnd, SynthesisRandom.forPurpose(seed, "structure.scopeSteer"));
         // every repeatable group needs a NUMBER (the aggregate target that makes its hub aggregate-capable) —
         // swap one in from a number-rich group (preserves both the per-group counts and the kind histogram)
@@ -659,7 +659,7 @@ final class StructureModelSynthesizer {
     /** The fraction of {@code d}'s mass OUTSIDE its {@code "1"} (trivial) bucket — the general form of the
      *  "how often does this axis exceed its default value" signal {@link #nestedAggregateFraction} and
      *  {@link #multiWayHubFraction} each compute for their own axis; used by {@link #matchByCaptureTarget}'s
-     *  reach budget to size against {@code reachProduct}'s own measured non-trivial (>1) share. Falls back
+     *  reach budget to size against {@code workCapacity}'s own measured non-trivial (>1) share. Falls back
      *  to {@code fallback} when the axis is absent (an older profile) or degenerate. */
     private static double nonTrivialFraction(Distribution d, double fallback) {
         if (d == null || d.n() == 0 || d.buckets().isEmpty()) {
@@ -853,7 +853,7 @@ final class StructureModelSynthesizer {
 
     /** Spread the kind list across groups; every LEAF group gets ≥1 field so no empty leaf is emitted. */
     private static void distributeFields(List<GroupPlan> groups, List<ValueKind> kinds, Distribution fpgDist,
-            int reachDemand, Distribution targetScopeProduct, int compCount, Random rnd, Random scopeSteerRnd) {
+            int reachDemand, Distribution targetScopeCapacity, int compCount, Random rnd, Random scopeSteerRnd) {
         int total = kinds.size();
         int n = groups.size();
         int[] alloc = new int[n];
@@ -1020,10 +1020,10 @@ final class StructureModelSynthesizer {
         //
         // DEFICIT-based, demand-sized — NOT an unconditional boost (measured: an unconditional
         // "hub groups get 2× NUMBER share" variant fixed the depth-shaped profile but OVERSHOT the
-        // breadth-shaped profile's much smaller reach demand — its realized reachProduct median blew past
+        // breadth-shaped profile's much smaller reach demand — its realized workCapacity median blew past
         // its target several-fold and its parallel-iteration exactness regressed, because flooding hubs
         // with NUMBER also multiplies the render-time opportunistic aggregate rolls). {@code reachDemand}
-        // is the measured demand (nonTrivialFraction(comp.reachProduct) × comp count); only the DEFICIT
+        // is the measured demand (nonTrivialFraction(comp.workCapacity) × comp count); only the DEFICIT
         // (demand − current hub-NUMBER supply) is stolen, so a target whose natural supply already meets
         // its own demand — or wants none at all — is left completely untouched: zero swaps, layout
         // byte-identical.
@@ -1095,21 +1095,21 @@ final class StructureModelSynthesizer {
                 }
             }
         }
-        steerNumberKindByScopeProduct(groups, targetScopeProduct, compCount, scopeSteerRnd);
+        steerNumberKindByScopeCapacity(groups, targetScopeCapacity, compCount, scopeSteerRnd);
     }
 
     /**
      * Supply-side scope planning (existing metrics
-     * only): {@code comp.scopeProduct.median} is decided when computed-field slots are PLACED, not when
+     * only): {@code comp.scopeCapacity.median} is decided when computed-field slots are PLACED, not when
      * operations are matched — several independently-designed matching-layer attempts
      * all failed with the same signature (regressing {@code comp.parallelIteration} without moving
-     * {@code scopeProduct}), because they all reordered candidates within the reservation-eligible pool at
+     * {@code scopeCapacity}), because they all reordered candidates within the reservation-eligible pool at
      * MATCH time. This steers the SUPPLY instead, at field-slot PLANNING time (right after the reach-deficit
      * NUMBER-kind steering above, same invariants): sample a scope-product multiset from the measured
-     * {@code comp.iteration.scopeProduct} distribution (largest-remainder, {@link #sampleMultiset} — the
-     * same technique {@link #quantileMatchByScopeProduct} already uses for MATCHING, reused here only for
+     * {@code comp.iteration.scopeCapacity} distribution (largest-remainder, {@link #sampleMultiset} — the
+     * same technique {@link #quantileMatchByScopeCapacity} already uses for MATCHING, reused here only for
      * its distribution-shaped SAMPLING), nearest-match each sampled value to the GROUP whose own scope-
-     * product (via {@link #computeGroupScopeProducts}, the plan-side mirror of {@link #chainProductOf})
+     * product (via {@link #computeGroupScopeCapacities}, the plan-side mirror of {@link #chainProductOf})
      * is closest, and ensure each matched group carries ≥1 NUMBER — stealing the deficit from a donor
      * group outside the matched set. Donors are NEVER hub-capable ({@link #canReachRepeatable}) AND NEVER
      * repeatable themselves — {@code canReachRepeatable} alone missed a LEAF repeatable (a twin-hub
@@ -1131,37 +1131,37 @@ final class StructureModelSynthesizer {
      * the {@code plan()} call site) — NEVER the shared {@code "structure"} stream {@code buildTree}/
      * {@code FieldGen} also draw from — so a genuinely zero-swap target degrades to truly byte-identical
      * output, not merely an unchanged kind layout with a shifted downstream RNG state (measured: reusing
-     * the shared stream left the kind layout untouched but still moved {@code comp.reachProduct} on a
+     * the shared stream left the kind layout untouched but still moved {@code comp.workCapacity} on a
      * breadth-shaped profile, via {@code FieldGen}'s shifted NUMBER-scale draws changing which field {@code
      * aggregateOperandOfScale}'s scale-matching later preferred).
      */
-    private static void steerNumberKindByScopeProduct(List<GroupPlan> groups, Distribution targetScopeProduct,
+    private static void steerNumberKindByScopeCapacity(List<GroupPlan> groups, Distribution targetScopeCapacity,
             int compCount, Random rnd) {
         // A target whose OWN median is trivial (1 — e.g. a depth-shaped or compact profile) "already
         // matches" by definition, so this returns BEFORE any RNG draw (not merely before any swap) — true
         // byte-identical degrade, not just an unchanged kind layout. A finer nonTrivialFraction-based
         // demand (matching the reach-deficit steering's OWN technique) still measurably moved the
-        // depth-shaped profile's scopeProduct RAW values (its median is 1, but its
+        // depth-shaped profile's scopeCapacity RAW values (its median is 1, but its
         // distribution's non-trivial TAIL is not itself negligible) without changing any EXACT axis or
         // scored bucket outcome — an acceptable "scorecard-held" result, but this median gate is
         // the strictly safer bar (a target that doesn't ask for depth here gets none, full stop).
-        if (targetScopeProduct == null || targetScopeProduct.n() == 0 || compCount <= 0
-                || targetScopeProduct.median() <= 1) {
+        if (targetScopeCapacity == null || targetScopeCapacity.n() == 0 || compCount <= 0
+                || targetScopeCapacity.median() <= 1) {
             return;
         }
         int n = groups.size();
-        Map<GroupPlan, Long> scopeProductOf = new java.util.IdentityHashMap<>();
-        computeGroupScopeProducts(groups.get(0), 1L, scopeProductOf);
+        Map<GroupPlan, Long> scopeCapacityOf = new java.util.IdentityHashMap<>();
+        computeGroupScopeCapacities(groups.get(0), 1L, scopeCapacityOf);
 
         // distinctEstimate: a target with MORE computations than groups (typical for a breadth-shaped
         // profile) would otherwise exhaust the ENTIRE pool as "receivers" (one sample per group), leaving ZERO
-        // donors — a first version measured exactly this: comp.scopeProduct never moved at all, no donor
+        // donors — a first version measured exactly this: comp.scopeCapacity never moved at all, no donor
         // ever available. Cap at HALF the groups (room for donors is non-negotiable) and size the demand by
         // nonTrivialFraction (the same technique the reach-deficit steering's reachDemand uses) — how many
         // computations need a genuinely non-trivial scope, not "one per computation."
         int distinctEstimate = Math.max(1, Math.min(n / 2,
-                (int) Math.ceil(nonTrivialFraction(targetScopeProduct, 0.0) * compCount)));
-        List<Integer> targets = sampleMultiset(targetScopeProduct, distinctEstimate, rnd);
+                (int) Math.ceil(nonTrivialFraction(targetScopeCapacity, 0.0) * compCount)));
+        List<Integer> targets = sampleMultiset(targetScopeCapacity, distinctEstimate, rnd);
         List<Integer> pool = new ArrayList<>();
         for (int gi = 0; gi < n; gi++) {
             pool.add(gi);
@@ -1171,7 +1171,7 @@ final class StructureModelSynthesizer {
             int bestIdx = -1;
             long bestDiff = Long.MAX_VALUE;
             for (int i = 0; i < pool.size(); i++) {
-                long diff = Math.abs(scopeProductOf.get(groups.get(pool.get(i))) - (long) target);
+                long diff = Math.abs(scopeCapacityOf.get(groups.get(pool.get(i))) - (long) target);
                 if (diff < bestDiff) {
                     bestDiff = diff;
                     bestIdx = i;
@@ -1198,7 +1198,7 @@ final class StructureModelSynthesizer {
         // {@code g.repeatable} too closes it — twin-hub's sibling pairing and cascade's largest-same-group
         // run both live outside this donor pool now. AND spend only SURPLUS numbers — a group with exactly
         // 1 is a single-source reach/aggregate operand elsewhere (measured: allowing single-number donors
-        // still measurably cost comp.reachProduct's same-or-adjacent fraction on a breadth-shaped profile,
+        // still measurably cost comp.workCapacity's same-or-adjacent fraction on a breadth-shaped profile,
         // even with every other exclusion in place). Among the >=2 remainder, spend the group with the
         // FEWEST numbers first — never the group holding the largest same-group run, which could otherwise
         // itself become a threatened cascade cluster.
@@ -1257,13 +1257,13 @@ final class StructureModelSynthesizer {
     /** {@code node}'s OWN scope-product (ancestors-or-self, {@code node} included) into {@code out}, recursively
      *  over its children — the plan-side (pre-render) mirror of {@link #chainProductOf}, needed because a
      *  {@link GroupPlan} carries no parent pointer to walk upward from. */
-    private static void computeGroupScopeProducts(GroupPlan node, long parentProduct, Map<GroupPlan, Long> out) {
+    private static void computeGroupScopeCapacities(GroupPlan node, long parentProduct, Map<GroupPlan, Long> out) {
         long own = node.repeatable
                 ? Math.min(parentProduct * Math.max(1, node.maxReps), Integer.MAX_VALUE)
                 : parentProduct;
         out.put(node, own);
         for (GroupPlan c : node.children) {
-            computeGroupScopeProducts(c, own, out);
+            computeGroupScopeCapacities(c, own, out);
         }
     }
 

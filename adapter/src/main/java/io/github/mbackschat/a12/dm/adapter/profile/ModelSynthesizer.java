@@ -20,12 +20,14 @@ public final class ModelSynthesizer {
 
     /** Synthesize from the one current bare profile artifact or a normal extraction envelope. */
     public static String synthesize(String profileJson, long seed) {
-        return synthesize(
-                SynthesisProfile.from(ModelProfileJson.read(profileJson)),
-                seed);
+        return synthesize(ModelProfileJson.read(profileJson), seed);
     }
 
     static String synthesize(SynthesisProfile profile, long seed) {
+        if (profile.structure().repeatability().unboundedCount() > 0) {
+            throw new IllegalArgumentException(
+                    "profile synthesis requires bounded repeatable groups");
+        }
         BoundModel model = BoundModel.ofJson(
                 StructureModelSynthesizer.plan(profile, seed).toJson());
         ComputationModelSynthesizer.Reservation reservation =

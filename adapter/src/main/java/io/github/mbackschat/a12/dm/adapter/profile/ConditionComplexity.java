@@ -1,1123 +1,394 @@
 package io.github.mbackschat.a12.dm.adapter.profile;
+import io.github.mbackschat.a12.dm.rulekit.dsl.*;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
 import java.util.EnumSet;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.OptionalInt;
 import java.util.Set;
-import java.util.SortedMap;
-import java.util.SortedSet;
-import java.util.TreeMap;
-import java.util.TreeSet;
-
-import io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic;
-import io.github.mbackschat.a12.dm.rulekit.dsl.BaseYear;
-import io.github.mbackschat.a12.dm.rulekit.dsl.BoolLiteral;
-import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
-import io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.Concatenation;
-import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.CountAggregate;
-import io.github.mbackschat.a12.dm.rulekit.dsl.CurrentRepetition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.CustomConditionRef;
-import io.github.mbackschat.a12.dm.rulekit.dsl.CustomTypeValidity;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DateLiteral;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeBound;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeConstruction;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DateShift;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeConstruction;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimePart;
-import io.github.mbackschat.a12.dm.rulekit.dsl.DateValidity;
-import io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess;
-import io.github.mbackschat.a12.dm.rulekit.dsl.EnumValueLiteral;
-import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListEntityListCondition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListPredicate;
-import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
-import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListValueListCondition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand;
-import io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
-import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding;
-import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue;
-import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsNumber;
-import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsString;
-import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledValue;
-import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListPredicate;
-import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
-import io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
-import io.github.mbackschat.a12.dm.rulekit.dsl.GroupScopedFieldFill;
-import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedFieldValueAsString;
-import io.github.mbackschat.a12.dm.rulekit.dsl.IndexedPresenceCondition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.LengthOf;
-import io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate;
-import io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.Now;
-import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
-import io.github.mbackschat.a12.dm.rulekit.dsl.NumberOfValueInFields;
-import io.github.mbackschat.a12.dm.rulekit.dsl.OpListMath;
-import io.github.mbackschat.a12.dm.rulekit.dsl.PatternCondition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsNumber;
-import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsString;
-import io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.RootGroupCount;
-import io.github.mbackschat.a12.dm.rulekit.dsl.Rounding;
-import io.github.mbackschat.a12.dm.rulekit.dsl.RuleGroupPresenceCondition;
-import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexFieldValue;
-import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexValue;
-import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral;
-import io.github.mbackschat.a12.dm.rulekit.dsl.SumOfProducts;
-import io.github.mbackschat.a12.dm.rulekit.dsl.TimeConstruction;
-import io.github.mbackschat.a12.dm.rulekit.dsl.TimeLiteral;
-import io.github.mbackschat.a12.dm.rulekit.dsl.Today;
-import io.github.mbackschat.a12.dm.rulekit.dsl.ValueAsDate;
-import io.github.mbackschat.a12.dm.rulekit.dsl.ValueListCondition;
 
 /**
- * A stack-safe, single-pass structural profile of one current rule or computation AST.
+ * The <b>shape and cost signal</b> of a {@link Condition} (or a computation's {@link Calculation}) —
+ * collected by exhaustive switch over the sealed AST, the third sibling of {@link OperatorUsage} (which
+ * operators) and {@link ConditionReferences} (which paths). Where those answer <em>what</em> a condition
+ * uses, this answers <em>how complex</em> it is: its node count, nesting depth, boolean fan-out, an
+ * operator histogram (with multiplicity, unlike {@code OperatorUsage}'s distinct set), and the
+ * performance-sensitive {@link Construct}s it contains.
  *
- * <p>The walker records syntax and dispatch work only. Model-dependent capacities are assembled by
- * the profile layer that owns the {@code ModelIndex}; a scalar field beneath a repeatable group is
- * therefore not mistaken for a collection scan here.
+ * <p>It is <b>domain-blind</b> by construction — it counts shapes and names kernel operators, never a
+ * field name, literal, enum value, or rule text — which is exactly what makes it safe to profile a
+ * licensed model and hand the numbers to a test-model author (see {@code dmtool model profile}).
+ *
+ * <p>The path/model-dependent complexity (how many <em>repeatable</em> group levels an aggregate crosses,
+ * a cross-level walk-up distance) needs a {@code ModelIndex} and lives in the profile assembler; this
+ * class stays a pure AST walk with no kernel dependency.
  */
-final class ConditionComplexity {
+record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
+        Map<String, Integer> operatorHistogram, Set<Construct> constructs, int outerCorrelations,
+        int maxStarSegments, Set<String> collectionPaths) {
 
-    enum Construct {
+    /** Back-compat overload (no outer-correlation/star-segment counts) — defaults both to 0. */
+    public ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
+            Map<String, Integer> operatorHistogram, Set<Construct> constructs) {
+        this(nodeCount, depth, maxBooleanArity, operatorHistogram, constructs, 0, 0, Set.of());
+    }
+
+    /** Back-compat overload (no star-segment count) — defaults {@code maxStarSegments} to 0. */
+    public ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
+            Map<String, Integer> operatorHistogram, Set<Construct> constructs, int outerCorrelations) {
+        this(nodeCount, depth, maxBooleanArity, operatorHistogram, constructs, outerCorrelations, 0, Set.of());
+    }
+
+    public ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
+            Map<String, Integer> operatorHistogram, Set<Construct> constructs, int outerCorrelations,
+            int maxStarSegments) {
+        this(nodeCount, depth, maxBooleanArity, operatorHistogram, constructs, outerCorrelations,
+                maxStarSegments, Set.of());
+    }
+
+    /** A performance- or correctness-sensitive construct family the interpreter/kernel treats specially. */
+    public enum Construct {
+        /** All-rows fold: {@code Sum}/{@code Count}/{@code MaxValue}/{@code FirstFilled}/… — the O(rows) case. */
         AGGREGATE,
+        /** A field- or group-list quantifier ({@code AtLeastOne}/{@code All}/{@code No}/…) — early-exit-sensitive. */
         QUANTIFIER,
+        /** {@code GroupFilled}/group-scoped fill — the O(rows²)-risk group-fill path. */
         GROUP_FILL,
+        /** {@code CurrentRepetition} / predecessor reference — parallel-iteration join. */
         CURRENT_REPETITION,
+        /** Semantic-index value lookup ({@code [path For "value"]}) — the value→row index scan. */
         SEMANTIC_INDEX,
+        /** A {@code Having} filter ({@code $}) on a list operand — per-cell filter dispatch. */
         FILTER,
+        /** Uniqueness across repetitions ({@code RepetitionNotUnique}) — the hashed/O(rows²) uniqueness check. */
         UNIQUENESS,
+        /** Regex pattern match. */
         PATTERN,
+        /** A value-list / entity-list membership test. */
         VALUE_LIST,
+        /** Date/time arithmetic or construction (the leap-year / day-rollover special cases live here). */
         DATE_MATH,
+        /** Numeric/string arithmetic (the decimal-fold allocation case). */
         ARITHMETIC,
+        /** A host-defined custom condition or custom field-type validity — the customization SPI. */
         CUSTOM
     }
 
-    enum OuterCorrelation {
-        FIELD_VALUE,
-        FIELD_OPERAND,
-        FIELD_LIST,
-        ENUM_CATEGORY,
-        CURRENT_REPETITION
+    public ConditionComplexity {
+        operatorHistogram = Map.copyOf(operatorHistogram);
+        constructs = constructs.isEmpty() ? EnumSet.noneOf(Construct.class) : EnumSet.copyOf(constructs);
+        collectionPaths = Set.copyOf(collectionPaths);
     }
 
-    enum CollectionKind {
-        FLATTENED_FIELD,
-        FLATTENED_GROUP,
-        FILLED_GROUP_REPETITIONS,
-        ROOT_GROUP_REPETITIONS
+    /** The complexity signal of a rule condition. */
+    public static ConditionComplexity of(Condition condition) {
+        Acc acc = new Acc();
+        acc.visit(condition);
+        return acc.result();
     }
 
-    enum GroupFillForm {
-        GROUP_PRESENCE,
-        RULE_GROUP_PRESENCE,
-        GROUP_LIST_PREDICATE,
-        GROUP_SCOPED_FIELD_FILL
+    /** The complexity signal of a computation's value expression. */
+    public static ConditionComplexity of(Calculation calculation) {
+        Acc acc = new Acc();
+        acc.visit(calculation);
+        return acc.result();
     }
 
-    enum AggregateForm {
-        COUNT,
-        LIST,
-        DATE_LIST,
-        FIRST_FILLED,
-        NUMBER_OF_VALUE_IN_FIELDS,
-        SUM_OF_PRODUCTS,
-        ROOT_GROUP_COUNT
-    }
-
-    record CorrelationOccurrence(OuterCorrelation form, String targetPath) {
-        CorrelationOccurrence {
-            Objects.requireNonNull(form, "form");
-            targetPath = requirePath(targetPath, "correlation target");
-        }
-    }
-
-    record CollectionOccurrence(
-            CollectionKind kind,
-            String targetPath,
-            List<String> repeatableGroupPaths,
-            OptionalInt filterNodeCount) {
-        CollectionOccurrence {
-            Objects.requireNonNull(kind, "kind");
-            targetPath = requirePath(targetPath, "collection target");
-            repeatableGroupPaths = List.copyOf(repeatableGroupPaths);
-            repeatableGroupPaths.forEach(path -> requirePath(path, "repeatable group"));
-            filterNodeCount = Objects.requireNonNull(filterNodeCount, "filterNodeCount");
-            if (filterNodeCount.isPresent() && filterNodeCount.getAsInt() < 1) {
-                throw new IllegalArgumentException(
-                        "a present filter must contain at least one AST node");
-            }
-        }
-    }
-
-    record GroupFillOccurrence(
-            GroupFillForm form,
-            Optional<String> targetGroupPath) {
-        GroupFillOccurrence {
-            Objects.requireNonNull(form, "form");
-            targetGroupPath = Objects.requireNonNull(targetGroupPath, "targetGroupPath")
-                    .map(path -> requirePath(path, "group-fill target"));
-            if (form != GroupFillForm.RULE_GROUP_PRESENCE && targetGroupPath.isEmpty()) {
-                throw new IllegalArgumentException(
-                        form + " must name its concrete target group");
-            }
-        }
-    }
-
-    record SemanticIndexOccurrence(String targetFieldPath) {
-        SemanticIndexOccurrence {
-            targetFieldPath = requirePath(targetFieldPath, "semantic-index target");
-        }
-    }
-
-    record UniquenessOccurrence(
-            List<String> keyFieldPaths,
-            Optional<String> fromGroupPath) {
-        UniquenessOccurrence {
-            keyFieldPaths = List.copyOf(keyFieldPaths);
-            if (keyFieldPaths.isEmpty()) {
-                throw new IllegalArgumentException(
-                        "a uniqueness occurrence needs at least one key field");
-            }
-            keyFieldPaths.forEach(path -> requirePath(path, "uniqueness key"));
-            fromGroupPath = Objects.requireNonNull(fromGroupPath, "fromGroupPath")
-                    .map(path -> requirePath(path, "uniqueness @From scope"));
-        }
-    }
-
-    record AggregateOccurrence(
-            AggregateForm form,
-            List<String> operandFieldPaths) {
-        AggregateOccurrence {
-            Objects.requireNonNull(form, "form");
-            operandFieldPaths = List.copyOf(operandFieldPaths);
-            operandFieldPaths.forEach(path -> requirePath(path, "aggregate operand"));
-        }
-    }
-
-    record TreeShape(int nodeCount, int depth, int maxBooleanArity, int maxVariadicArity) {
-        static Builder builder() {
-            return new Builder();
-        }
-
-        static final class Builder {
-            private int nodeCount;
-            private int depth;
-            private int maxBooleanArity;
-            private int maxVariadicArity;
-
-            Builder nodeCount(int value) {
-                nodeCount = value;
-                return this;
-            }
-
-            Builder depth(int value) {
-                depth = value;
-                return this;
-            }
-
-            Builder maxBooleanArity(int value) {
-                maxBooleanArity = value;
-                return this;
-            }
-
-            Builder maxVariadicArity(int value) {
-                maxVariadicArity = value;
-                return this;
-            }
-
-            TreeShape build() {
-                return new TreeShape(nodeCount, depth, maxBooleanArity, maxVariadicArity);
-            }
-        }
-    }
-
-    record CatalogOperators(SortedMap<String, Integer> counts) {
-        CatalogOperators {
-            counts = immutableSorted(counts);
-        }
-    }
-
-    record IntrinsicOperators(SortedMap<String, Integer> counts) {
-        IntrinsicOperators {
-            counts = immutableSorted(counts);
-        }
-    }
-
-    record OperatorMix(CatalogOperators catalog, IntrinsicOperators intrinsic) {
-        OperatorMix {
-            Objects.requireNonNull(catalog, "catalog");
-            Objects.requireNonNull(intrinsic, "intrinsic");
-        }
-    }
-
-    record Correlations(
-            Map<OuterCorrelation, Integer> counts,
-            List<CorrelationOccurrence> occurrences) {
-        Correlations {
-            counts = immutableEnumMap(OuterCorrelation.class, counts);
-            occurrences = List.copyOf(occurrences);
-        }
-
-        int total() {
-            return counts.values().stream().mapToInt(Integer::intValue).sum();
-        }
-    }
-
-    record CollectionAccesses(
-            Map<CollectionKind, Integer> counts,
-            List<CollectionOccurrence> occurrences,
-            int maxStarDepth) {
-        CollectionAccesses {
-            counts = immutableEnumMap(CollectionKind.class, counts);
-            occurrences = List.copyOf(occurrences);
-        }
-
-        int total() {
-            return counts.values().stream().mapToInt(Integer::intValue).sum();
-        }
-    }
-
-    record References(
-            SortedSet<String> fieldPaths,
-            SortedSet<String> groupPaths) {
-        References {
-            fieldPaths = immutableSortedSet(fieldPaths);
-            groupPaths = immutableSortedSet(groupPaths);
-            fieldPaths.forEach(path -> requirePath(path, "field reference"));
-            groupPaths.forEach(path -> requirePath(path, "group reference"));
-        }
-    }
-
-    record GroupFills(List<GroupFillOccurrence> occurrences) {
-        GroupFills {
-            occurrences = List.copyOf(occurrences);
-        }
-    }
-
-    record SemanticIndexes(List<SemanticIndexOccurrence> occurrences) {
-        SemanticIndexes {
-            occurrences = List.copyOf(occurrences);
-        }
-    }
-
-    record UniquenessChecks(List<UniquenessOccurrence> occurrences) {
-        UniquenessChecks {
-            occurrences = List.copyOf(occurrences);
-        }
-    }
-
-    record Aggregates(List<AggregateOccurrence> occurrences) {
-        Aggregates {
-            occurrences = List.copyOf(occurrences);
-        }
-    }
-
-    record Mechanisms(
-            GroupFills groupFills,
-            SemanticIndexes semanticIndexes,
-            UniquenessChecks uniquenessChecks,
-            Aggregates aggregates) {
-        Mechanisms {
-            Objects.requireNonNull(groupFills, "groupFills");
-            Objects.requireNonNull(semanticIndexes, "semanticIndexes");
-            Objects.requireNonNull(uniquenessChecks, "uniquenessChecks");
-            Objects.requireNonNull(aggregates, "aggregates");
-        }
-    }
-
-    record Syntax(
-            TreeShape tree,
-            OperatorMix operators,
-            Set<Construct> constructs,
-            References references) {
-        Syntax {
-            Objects.requireNonNull(tree, "tree");
-            Objects.requireNonNull(operators, "operators");
-            constructs = constructs.isEmpty()
-                    ? Collections.emptySet()
-                    : Collections.unmodifiableSet(EnumSet.copyOf(constructs));
-            Objects.requireNonNull(references, "references");
-        }
-    }
-
-    record Evaluation(
-            Correlations correlations,
-            CollectionAccesses collections,
-            Mechanisms mechanisms) {
-        Evaluation {
-            Objects.requireNonNull(correlations, "correlations");
-            Objects.requireNonNull(collections, "collections");
-            Objects.requireNonNull(mechanisms, "mechanisms");
-        }
-    }
-
-    record Result(Syntax syntax, Evaluation evaluation) {
-        Result {
-            Objects.requireNonNull(syntax, "syntax");
-            Objects.requireNonNull(evaluation, "evaluation");
-        }
-
-        TreeShape tree() {
-            return syntax.tree();
-        }
-
-        OperatorMix operators() {
-            return syntax.operators();
-        }
-
-        Set<Construct> constructs() {
-            return syntax.constructs();
-        }
-
-        References references() {
-            return syntax.references();
-        }
-
-        Correlations correlations() {
-            return evaluation.correlations();
-        }
-
-        CollectionAccesses collections() {
-            return evaluation.collections();
-        }
-
-        GroupFills groupFills() {
-            return evaluation.mechanisms().groupFills();
-        }
-
-        SemanticIndexes semanticIndexes() {
-            return evaluation.mechanisms().semanticIndexes();
-        }
-
-        UniquenessChecks uniquenessChecks() {
-            return evaluation.mechanisms().uniquenessChecks();
-        }
-
-        Aggregates aggregates() {
-            return evaluation.mechanisms().aggregates();
-        }
-    }
-
-    private ConditionComplexity() {}
-
-    static Result of(Condition condition) {
-        Objects.requireNonNull(condition, "condition");
-        return new Walker(new ConditionWork(condition, 1, null), Optional.empty()).walk();
-    }
-
-    static Result of(Condition condition, String ruleGroupPath) {
-        Objects.requireNonNull(condition, "condition");
-        return new Walker(
-                new ConditionWork(condition, 1, null),
-                Optional.of(requirePath(ruleGroupPath, "rule group"))).walk();
-    }
-
-    static Result of(Calculation calculation) {
-        Objects.requireNonNull(calculation, "calculation");
-        return new Walker(new CalculationWork(calculation, 1), Optional.empty()).walk();
-    }
-
-    private static SortedMap<String, Integer> immutableSorted(Map<String, Integer> source) {
-        return Collections.unmodifiableSortedMap(new TreeMap<>(source));
-    }
-
-    private static SortedSet<String> immutableSortedSet(Set<String> source) {
-        return Collections.unmodifiableSortedSet(new TreeSet<>(source));
-    }
-
-    private static <E extends Enum<E>> Map<E, Integer> immutableEnumMap(
-            Class<E> enumType, Map<E, Integer> source) {
-        var copy = new EnumMap<E, Integer>(enumType);
-        copy.putAll(source);
-        return Collections.unmodifiableMap(copy);
-    }
-
-    private static String requirePath(String path, String role) {
-        Objects.requireNonNull(path, role);
-        if (path.isBlank()) {
-            throw new IllegalArgumentException(role + " path must not be blank");
-        }
-        return path;
-    }
-
-    private sealed interface Work
-            permits ConditionWork, CalculationWork, FieldOperandWork, GroupScopeWork, GroupOperandWork,
-                    FilterBoundaryWork {}
-
-    private record ConditionWork(Condition condition, int depth, BooleanChain chain) implements Work {}
-
-    private record CalculationWork(Calculation calculation, int depth) implements Work {}
-
-    private record FieldOperandWork(FieldOperand operand, int depth) implements Work {}
-
-    private enum GroupScopeUse {
-        GROUP_PREDICATE,
-        FIELD_FILL
-    }
-
-    private record GroupScopeWork(
-            GroupListRef scope,
-            int depth,
-            GroupScopeUse use) implements Work {}
-
-    private record GroupOperandWork(GroupRef group, int depth) implements Work {}
-
-    private record PendingCollection(
-            CollectionKind kind, String targetPath, List<String> repeatableGroupPaths) {
-        private PendingCollection {
-            repeatableGroupPaths = List.copyOf(repeatableGroupPaths);
-        }
-    }
-
-    private record FilterBoundaryWork(PendingCollection collection, int nodesBeforeFilter)
-            implements Work {}
-
-    private static final class BooleanChain {
-        private final LogicCondition.Op operator;
-        private int arity;
-
-        private BooleanChain(LogicCondition.Op operator) {
-            this.operator = operator;
-        }
-    }
-
-    private static final class Walker {
-        private final ArrayDeque<Work> pending = new ArrayDeque<>();
-        private final Optional<String> ruleGroupPath;
+    /** Mutable single-pass accumulator; recursion returns each node's subtree depth. */
+    private static final class Acc {
         private int nodeCount;
-        private int maxDepth;
-        private int maxBooleanArity;
-        private int maxVariadicArity;
-        private final SortedMap<String, Integer> catalogOperators = new TreeMap<>();
-        private final SortedMap<String, Integer> intrinsicOperators = new TreeMap<>();
+        private int maxBooleanArity = 1;
+        private final Map<String, Integer> histogram = new LinkedHashMap<>();
         private final Set<Construct> constructs = EnumSet.noneOf(Construct.class);
-        private final Map<OuterCorrelation, Integer> correlations =
-                new EnumMap<>(OuterCorrelation.class);
-        private final List<CorrelationOccurrence> correlationOccurrences = new ArrayList<>();
-        private final Map<CollectionKind, Integer> collections =
-                new EnumMap<>(CollectionKind.class);
-        private final List<CollectionOccurrence> collectionOccurrences = new ArrayList<>();
-        private int maxStarDepth;
-        private final SortedSet<String> fieldReferences = new TreeSet<>();
-        private final SortedSet<String> groupReferences = new TreeSet<>();
-        private final List<GroupFillOccurrence> groupFillOccurrences = new ArrayList<>();
-        private final List<SemanticIndexOccurrence> semanticIndexOccurrences = new ArrayList<>();
-        private final List<UniquenessOccurrence> uniquenessOccurrences = new ArrayList<>();
-        private final List<AggregateOccurrence> aggregateOccurrences = new ArrayList<>();
+        private int rootDepth;
+        private int outerCorrelations;         // uses of the `$` outer-iteration correlation (parallel-join, O(N²))
+        private int maxStarSegments;            // MAX starred (`*`) segments in a single flattened list operand
+        private final Set<String> collectionPaths = new java.util.HashSet<>();
 
-        private Walker(Work root, Optional<String> ruleGroupPath) {
-            this.ruleGroupPath = Objects.requireNonNull(ruleGroupPath, "ruleGroupPath");
-            pending.push(root);
-            if (root instanceof ConditionWork) {
-                maxBooleanArity = 1;
-            }
+        ConditionComplexity result() {
+            return new ConditionComplexity(nodeCount, rootDepth, maxBooleanArity, histogram, constructs,
+                    outerCorrelations, maxStarSegments, collectionPaths);
         }
 
-        private Result walk() {
-            while (!pending.isEmpty()) {
-                switch (pending.pop()) {
-                    case ConditionWork condition -> visit(condition);
-                    case CalculationWork calculation -> visit(calculation);
-                    case FieldOperandWork operand -> visit(operand);
-                    case GroupScopeWork scope -> visit(scope);
-                    case GroupOperandWork group -> visit(group);
-                    case FilterBoundaryWork boundary -> visit(boundary);
-                }
-            }
-            var tree = TreeShape.builder()
-                    .nodeCount(nodeCount)
-                    .depth(maxDepth)
-                    .maxBooleanArity(maxBooleanArity)
-                    .maxVariadicArity(maxVariadicArity)
-                    .build();
-            var syntax = new Syntax(
-                    tree,
-                    new OperatorMix(
-                            new CatalogOperators(catalogOperators),
-                            new IntrinsicOperators(intrinsicOperators)),
-                    constructs,
-                    new References(fieldReferences, groupReferences));
-            var evaluation = new Evaluation(
-                    new Correlations(correlations, correlationOccurrences),
-                    new CollectionAccesses(collections, collectionOccurrences, maxStarDepth),
-                    new Mechanisms(
-                            new GroupFills(groupFillOccurrences),
-                            new SemanticIndexes(semanticIndexOccurrences),
-                            new UniquenessChecks(uniquenessOccurrences),
-                            new Aggregates(aggregateOccurrences)));
-            return new Result(syntax, evaluation);
+        private void op(String id) {
+            histogram.merge(id, 1, Integer::sum);
         }
 
-        private void visit(ConditionWork work) {
-            node(work.depth());
-            catalog(work.condition().operatorId());
-            switch (work.condition()) {
-                case FieldPresenceCondition presence -> {
-                    fieldReference(presence.field().path());
-                    if (presence.field().correlated()) {
-                        correlation(
-                                OuterCorrelation.FIELD_OPERAND, presence.field().path());
-                    }
-                }
-                case FieldListPredicate predicate -> {
+        void visit(Condition condition) {
+            rootDepth = depth(condition);
+        }
+
+        void visit(Calculation calculation) {
+            rootDepth = depth(calculation);
+        }
+
+        private int depth(Condition condition) {
+            nodeCount++;
+            op(condition.operatorId());
+            return switch (condition) {
+                case FieldPresenceCondition ignored -> 1;
+                case FieldListPredicate p -> {
                     constructs.add(Construct.QUANTIFIER);
-                    variadic(predicate.fields().size());
-                    pushFieldOperands(predicate.fields(), work.depth() + 1);
+                    yield 1 + maxOperandDepth(p.fields());
                 }
-                case ComparisonCondition comparison -> {
-                    calculation(comparison.right(), work.depth() + 1);
-                    calculation(comparison.left(), work.depth() + 1);
+                case ComparisonCondition c -> 1 + Math.max(depth(c.left()), depth(c.right()));
+                case LogicCondition l -> {
+                    maxBooleanArity = Math.max(maxBooleanArity, chainSize(l, l.op()));
+                    yield 1 + Math.max(depth(l.left()), depth(l.right()));
                 }
-                case LogicCondition logic -> visitLogic(logic, work);
-                case GroupPresenceCondition presence -> {
+                case GroupPresenceCondition ignored -> {
                     constructs.add(Construct.GROUP_FILL);
-                    groupReference(presence.group().path());
-                    groupFillOccurrences.add(new GroupFillOccurrence(
-                            GroupFillForm.GROUP_PRESENCE,
-                            Optional.of(presence.group().path())));
+                    yield 1;
                 }
                 case RuleGroupPresenceCondition ignored -> {
                     constructs.add(Construct.GROUP_FILL);
-                    ruleGroupPath.ifPresent(this::groupReference);
-                    groupFillOccurrences.add(new GroupFillOccurrence(
-                            GroupFillForm.RULE_GROUP_PRESENCE,
-                            ruleGroupPath));
+                    yield 1;
                 }
                 case IndexedPresenceCondition presence -> {
+                    op(presence.index().operatorId());
                     constructs.add(Construct.SEMANTIC_INDEX);
-                    calculation(presence.index(), work.depth() + 1);
+                    yield 2;
                 }
                 case GroupListPredicate predicate -> {
                     constructs.add(Construct.QUANTIFIER);
-                    constructs.add(Construct.GROUP_FILL);
-                    variadic(predicate.operands().size());
-                    pushGroupScopes(
-                            predicate.operands(),
-                            work.depth() + 1,
-                            GroupScopeUse.GROUP_PREDICATE);
+                    predicate.operands().stream()
+                            .filter(operand -> !operand.flattened().isEmpty() || operand.group().repeating())
+                            .map(operand -> operand.path() + "/")
+                            .forEach(collectionPaths::add);
+                    yield 1;
                 }
-                case PatternCondition pattern -> {
+                case PatternCondition ignored -> {
                     constructs.add(Construct.PATTERN);
-                    fieldReference(pattern.field().path());
+                    yield 1;
                 }
-                case ValueListCondition values -> {
+                case ValueListCondition v -> {
                     constructs.add(Construct.VALUE_LIST);
-                    variadic(values.values().size() + 1);
-                    fieldReference(values.field().path());
-                    pushCalculations(values.values(), work.depth() + 1);
+                    yield 1 + maxCalcDepth(v.values());
                 }
-                case FieldListValueListCondition values -> {
-                    constructs.add(Construct.QUANTIFIER);
+                case FieldListValueListCondition v -> {
                     constructs.add(Construct.VALUE_LIST);
-                    variadic(values.fields().size() + values.values().size());
-                    pushCalculations(values.values(), work.depth() + 1);
-                    pushFieldOperands(values.fields(), work.depth() + 1);
+                    yield 1 + Math.max(maxOperandDepth(v.fields()), maxCalcDepth(v.values()));
                 }
-                case FieldListEntityListCondition values -> {
-                    constructs.add(Construct.QUANTIFIER);
+                case FieldListEntityListCondition v -> {
                     constructs.add(Construct.VALUE_LIST);
-                    variadic(values.fields().size() + values.valueFields().size());
-                    pushFieldOperands(values.valueFields(), work.depth() + 1);
-                    pushFieldOperands(values.fields(), work.depth() + 1);
+                    yield 1 + Math.max(maxOperandDepth(v.fields()), maxOperandDepth(v.valueFields()));
                 }
-                case GroupScopedFieldFill fill -> {
-                    constructs.add(Construct.QUANTIFIER);
+                case GroupScopedFieldFill ignored -> {
                     constructs.add(Construct.GROUP_FILL);
-                    variadic(fill.scopes().size());
-                    for (int index = fill.scopes().size() - 1; index >= 0; index--) {
-                        pending.push(new GroupScopeWork(
-                                fill.scopes().get(index),
-                                work.depth() + 1,
-                                GroupScopeUse.FIELD_FILL));
-                    }
+                    yield 1;
                 }
-                case RepetitionNotUniqueCondition uniqueness -> {
+                case RepetitionNotUniqueCondition r -> {
                     constructs.add(Construct.UNIQUENESS);
-                    variadic(uniqueness.keys().size());
-                    var keyPaths = uniqueness.keys().stream()
-                            .map(FieldRef::path)
-                            .toList();
-                    keyPaths.forEach(this::fieldReference);
-                    uniquenessOccurrences.add(new UniquenessOccurrence(
-                            keyPaths,
-                            uniqueness.scope().map(GroupRef::path)));
-                    if (uniqueness.scope().isPresent()) {
-                        catalog("FromScope");
-                    }
+                    r.scope().ifPresent(s -> op("FromScope"));
+                    yield 1;
                 }
-                case CustomConditionRef ignored -> constructs.add(Construct.CUSTOM);
-                case DateValidity validity -> {
-                    constructs.add(Construct.DATE_MATH);
-                    calculation(validity.dateConstruct(), work.depth() + 1);
-                }
-                case CustomTypeValidity validity -> {
+                case CustomConditionRef ignored -> {
                     constructs.add(Construct.CUSTOM);
-                    fieldReference(validity.field().path());
+                    yield 1;
                 }
-            }
-        }
-
-        private void visitLogic(LogicCondition logic, ConditionWork work) {
-            BooleanChain chain = work.chain();
-            if (chain == null) {
-                chain = new BooleanChain(logic.op());
-            }
-            pushLogicChild(logic.right(), logic.op(), chain, work.depth() + 1);
-            pushLogicChild(logic.left(), logic.op(), chain, work.depth() + 1);
-        }
-
-        private void pushLogicChild(
-                Condition child, LogicCondition.Op parentOperator, BooleanChain chain, int depth) {
-            if (child instanceof LogicCondition nested && nested.op() == parentOperator) {
-                pending.push(new ConditionWork(child, depth, chain));
-                return;
-            }
-            chain.arity++;
-            maxBooleanArity = Math.max(maxBooleanArity, chain.arity);
-            pending.push(new ConditionWork(child, depth, null));
-        }
-
-        private void visit(CalculationWork work) {
-            node(work.depth());
-            switch (work.calculation()) {
-                case FieldValue value -> {
-                    fieldReference(value.field().path());
-                    if (value.outer()) {
-                        correlation(OuterCorrelation.FIELD_VALUE, value.field().path());
-                    }
-                }
-                case NumberLiteral ignored -> {}
-                case StringLiteral ignored -> {}
-                case DateLiteral ignored -> {}
-                case TimeLiteral ignored -> {}
-                case EnumValueLiteral ignored -> {}
-                case BoolLiteral literal -> catalog(literal.operatorId());
-                case LengthOf length -> {
-                    catalog(length.operatorId());
-                    fieldReference(length.field().path());
-                }
-                case EnumCategoryAccess category -> {
-                    catalog(category.operatorId());
-                    fieldReference(category.field().path());
-                    if (category.outer()) {
-                        correlation(OuterCorrelation.ENUM_CATEGORY, category.field().path());
-                    }
-                }
-                case CountAggregate aggregate -> visitCountAggregate(aggregate, work.depth());
-                case ListAggregate aggregate -> {
-                    catalog(aggregate.operatorId());
-                    constructs.add(Construct.AGGREGATE);
-                    variadic(aggregate.operands().size());
-                    aggregate(
-                            AggregateForm.LIST,
-                            aggregate.operands(),
-                            work.depth() + 1);
-                }
-                case CurrentRepetition repetition -> {
-                    catalog(repetition.operatorId());
-                    constructs.add(Construct.CURRENT_REPETITION);
-                    groupReference(repetition.group().path());
-                    if (repetition.outer()) {
-                        correlation(
-                                OuterCorrelation.CURRENT_REPETITION,
-                                repetition.group().path());
-                    }
-                }
-                case Today today -> {
-                    catalog(today.operatorId());
+                case DateValidity v -> {
                     constructs.add(Construct.DATE_MATH);
+                    yield 1 + depth(v.dateConstruct());
                 }
-                case Now now -> {
-                    catalog(now.operatorId());
-                    constructs.add(Construct.DATE_MATH);
+                case CustomTypeValidity ignored -> {
+                    constructs.add(Construct.CUSTOM);
+                    yield 1;
                 }
-                case BaseYear baseYear -> {
-                    catalog(baseYear.operatorId());
-                    constructs.add(Construct.DATE_MATH);
-                }
-                case DateDifference difference -> {
-                    catalog(difference.operatorId());
-                    constructs.add(Construct.DATE_MATH);
-                    calculation(difference.right(), work.depth() + 1);
-                    calculation(difference.left(), work.depth() + 1);
-                }
-                case DateShift shift -> {
-                    catalog(shift.operatorId());
-                    constructs.add(Construct.DATE_MATH);
-                    calculation(shift.amount(), work.depth() + 1);
-                    calculation(shift.date(), work.depth() + 1);
-                }
-                case SemanticIndexValue index -> semanticIndex(
-                        index.operatorId(),
-                        index.field().path(),
-                        Optional.empty());
-                case SemanticIndexFieldValue index -> semanticIndex(
-                        index.operatorId(),
-                        index.field().path(),
-                        Optional.of(index.indexField().path()));
-                case Arithmetic arithmetic -> {
-                    intrinsic(arithmetic.op().symbol());
-                    constructs.add(Construct.ARITHMETIC);
-                    calculation(arithmetic.right(), work.depth() + 1);
-                    calculation(arithmetic.left(), work.depth() + 1);
-                }
-                case Rounding rounding -> {
-                    catalog(rounding.operatorId());
-                    constructs.add(Construct.ARITHMETIC);
-                    calculation(rounding.operand(), work.depth() + 1);
-                }
-                case Concatenation concatenation -> {
-                    intrinsic("+");
-                    constructs.add(Construct.ARITHMETIC);
-                    variadic(concatenation.parts().size());
-                    pushCalculations(concatenation.parts(), work.depth() + 1);
-                }
-                case DateListAggregate aggregate -> {
-                    catalog(aggregate.operatorId());
-                    constructs.add(Construct.AGGREGATE);
-                    constructs.add(Construct.DATE_MATH);
-                    aggregate(
-                            AggregateForm.DATE_LIST,
-                            List.of(aggregate.scope()),
-                            work.depth() + 1);
-                }
-                case FirstFilledValue first -> {
-                    catalog(first.operatorId());
-                    constructs.add(Construct.AGGREGATE);
-                    variadic(first.operands().size());
-                    aggregate(
-                            AggregateForm.FIRST_FILLED,
-                            first.operands(),
-                            work.depth() + 1);
-                }
-                case FieldValueAsString conversion -> {
-                    catalog(conversion.operatorId());
-                    fieldReference(conversion.field().path());
-                }
-                case IndexedFieldValueAsString conversion -> {
-                    catalog(conversion.operatorId());
-                    calculation(conversion.index(), work.depth() + 1);
-                }
-                case RangeAsString conversion -> {
-                    catalog(conversion.operatorId());
-                    fieldReference(conversion.field().path());
-                }
-                case FieldValueAsNumber conversion -> {
-                    catalog(conversion.operatorId());
-                    fieldReference(conversion.field().path());
-                }
-                case RangeAsNumber conversion -> {
-                    catalog(conversion.operatorId());
-                    fieldReference(conversion.field().path());
-                }
-                case OpListMath operation -> {
-                    catalog(operation.operatorId());
-                    constructs.add(Construct.ARITHMETIC);
-                    variadic(operation.operands().size());
-                    pushCalculations(operation.operands(), work.depth() + 1);
-                }
-                case NumberOfValueInFields count -> {
-                    catalog(count.operatorId());
-                    constructs.add(Construct.AGGREGATE);
-                    variadic(count.fields().size() + 1);
-                    aggregate(
-                            AggregateForm.NUMBER_OF_VALUE_IN_FIELDS,
-                            count.fields(),
-                            work.depth() + 1);
-                    calculation(count.value(), work.depth() + 1);
-                }
-                case ValueAsDate value -> {
-                    catalog(value.operatorId());
-                    catalog(value.dayKeywordId());
-                    constructs.add(Construct.DATE_MATH);
-                    fieldReference(value.field().path());
-                }
-                case DateExtraction extraction -> {
-                    catalog(extraction.operatorId());
-                    constructs.add(Construct.DATE_MATH);
-                    calculation(extraction.source(), work.depth() + 1);
-                }
-                case DateTimePart part -> {
-                    catalog(part.operatorId());
-                    constructs.add(Construct.DATE_MATH);
-                    calculation(part.source(), work.depth() + 1);
-                }
-                case SumOfProducts sum -> {
-                    catalog(sum.operatorId());
-                    constructs.add(Construct.AGGREGATE);
-                    variadic(2);
-                    aggregate(
-                            AggregateForm.SUM_OF_PRODUCTS,
-                            List.of(sum.left(), sum.right()),
-                            work.depth() + 1);
-                }
-                case DateConstruction date -> {
-                    catalog(date.operatorId());
-                    constructs.add(Construct.DATE_MATH);
-                    variadic(date.year2().isPresent() ? 4 : 3);
-                    date.year2().ifPresent(value -> calculation(value, work.depth() + 1));
-                    calculation(date.year1(), work.depth() + 1);
-                    calculation(date.month(), work.depth() + 1);
-                    calculation(date.day(), work.depth() + 1);
-                }
-                case TimeConstruction time -> {
-                    catalog(time.operatorId());
-                    constructs.add(Construct.DATE_MATH);
-                    variadic(3);
-                    calculation(time.second(), work.depth() + 1);
-                    calculation(time.minute(), work.depth() + 1);
-                    calculation(time.hour(), work.depth() + 1);
-                }
-                case DateTimeConstruction dateTime -> {
-                    catalog(dateTime.operatorId());
-                    constructs.add(Construct.DATE_MATH);
-                    calculation(dateTime.time(), work.depth() + 1);
-                    calculation(dateTime.date(), work.depth() + 1);
-                }
-                case FieldRounding rounding -> {
-                    catalog(rounding.operatorId());
-                    constructs.add(Construct.ARITHMETIC);
-                    fieldReference(rounding.field().path());
-                }
-                case DateRangeBound bound -> {
-                    catalog(bound.operatorId());
-                    constructs.add(Construct.DATE_MATH);
-                    calculation(bound.source(), work.depth() + 1);
-                }
-                case RootGroupCount count -> {
-                    catalog(count.operatorId());
-                    constructs.add(Construct.AGGREGATE);
-                    collection(
-                            CollectionKind.ROOT_GROUP_REPETITIONS,
-                            count.rootGroup().path(),
-                            List.of(count.rootGroup().path()),
-                            OptionalInt.empty());
-                    aggregateOccurrences.add(new AggregateOccurrence(
-                            AggregateForm.ROOT_GROUP_COUNT,
-                            List.of()));
-                    pending.push(new GroupOperandWork(count.rootGroup(), work.depth() + 1));
-                }
-                case DateRangeConstruction range -> {
-                    catalog(range.operatorId());
-                    constructs.add(Construct.DATE_MATH);
-                    calculation(range.end(), work.depth() + 1);
-                    calculation(range.start(), work.depth() + 1);
-                }
-            }
-        }
-
-        private void visitCountAggregate(CountAggregate aggregate, int depth) {
-            catalog(aggregate.operatorId());
-            constructs.add(Construct.AGGREGATE);
-            variadic(aggregate.fields().size() + aggregate.groups().size());
-            if (aggregate.op() == CountAggregate.CountOp.FILLED_GROUPS
-                    && aggregate.fields().isEmpty()
-                    && aggregate.groups().size() == 1
-                    && aggregate.groups().getFirst().repeating()) {
-                var group = aggregate.groups().getFirst();
-                collection(
-                        CollectionKind.FILLED_GROUP_REPETITIONS,
-                        group.path(),
-                        List.of(group.path()),
-                        OptionalInt.empty());
-            }
-            pushGroups(aggregate.groups(), depth + 1);
-            aggregate(AggregateForm.COUNT, aggregate.fields(), depth + 1);
-        }
-
-        private void semanticIndex(
-                String operatorId,
-                String targetFieldPath,
-                Optional<String> keyFieldPath) {
-            catalog(operatorId);
-            constructs.add(Construct.SEMANTIC_INDEX);
-            fieldReference(targetFieldPath);
-            keyFieldPath.ifPresent(this::fieldReference);
-            semanticIndexOccurrences.add(new SemanticIndexOccurrence(targetFieldPath));
-        }
-
-        private void visit(FieldOperandWork work) {
-            node(work.depth());
-            fieldReference(work.operand().fieldPath());
-            switch (work.operand()) {
-                case FieldRef field -> {
-                    if (field.correlated()) {
-                        correlation(OuterCorrelation.FIELD_OPERAND, field.path());
-                    }
-                }
-                case FieldListRef list -> {
-                    if (list.correlated()) {
-                        correlation(OuterCorrelation.FIELD_LIST, list.field().path());
-                    }
-                    var collection = new PendingCollection(
-                            CollectionKind.FLATTENED_FIELD,
-                            list.field().path(),
-                            groupPaths(list.flattened()));
-                    collectionSummary(collection.kind(), collection.repeatableGroupPaths().size());
-                    if (list.filter().isPresent()) {
-                        catalog("Having");
-                        constructs.add(Construct.FILTER);
-                        pending.push(new FilterBoundaryWork(collection, nodeCount));
-                        pending.push(new ConditionWork(
-                                list.filter().orElseThrow(), work.depth() + 1, null));
-                    } else {
-                        collectionOccurrence(collection, OptionalInt.empty());
-                    }
-                }
-            }
-        }
-
-        private void visit(GroupScopeWork work) {
-            node(work.depth());
-            groupReference(work.scope().group().path());
-            var groupFillForm = switch (work.use()) {
-                case GROUP_PREDICATE -> GroupFillForm.GROUP_LIST_PREDICATE;
-                case FIELD_FILL -> GroupFillForm.GROUP_SCOPED_FIELD_FILL;
             };
-            groupFillOccurrences.add(new GroupFillOccurrence(
-                    groupFillForm,
-                    Optional.of(work.scope().group().path())));
-            if (!work.scope().flattened().isEmpty()) {
-                collection(
-                        CollectionKind.FLATTENED_GROUP,
-                        work.scope().group().path(),
-                        groupPaths(work.scope().flattened()),
-                        OptionalInt.empty());
-            }
         }
 
-        private void visit(GroupOperandWork work) {
-            node(work.depth());
-            groupReference(work.group().path());
-        }
-
-        private void visit(FilterBoundaryWork work) {
-            collectionOccurrence(
-                    work.collection(), OptionalInt.of(nodeCount - work.nodesBeforeFilter()));
-        }
-
-        private void node(int depth) {
+        private int depth(Calculation calculation) {
             nodeCount++;
-            maxDepth = Math.max(maxDepth, depth);
+            return switch (calculation) {
+                case FieldValue ignored -> 1;
+                case NumberLiteral ignored -> 1;
+                case StringLiteral ignored -> 1;
+                case DateLiteral ignored -> 1;
+                case TimeLiteral ignored -> 1;
+                case EnumValueLiteral ignored -> 1;
+                case BoolLiteral b -> { op(b.operatorId()); yield 1; }
+                case LengthOf l -> { op(l.operatorId()); yield 1; }
+                case EnumCategoryAccess c -> { op(c.operatorId()); yield 1; }
+                case CountAggregate a -> {
+                    op(a.operatorId());
+                    constructs.add(Construct.AGGREGATE);
+                    a.groups().stream()
+                            .filter(GroupRef::repeating)
+                            .map(group -> group.path() + "/")
+                            .forEach(collectionPaths::add);
+                    yield 1 + maxOperandDepth(a.fields());
+                }
+                case ListAggregate a -> {
+                    op(a.operatorId());
+                    constructs.add(Construct.AGGREGATE);
+                    yield 1 + maxOperandDepth(a.operands());
+                }
+                case CurrentRepetition r -> {
+                    op(r.operatorId());
+                    constructs.add(Construct.CURRENT_REPETITION);
+                    if (r.outer()) {
+                        outerCorrelations++;                     // CurrentRepetition($G) — the outer-iteration self-join
+                    }
+                    yield 1;
+                }
+                case Today t -> { op(t.operatorId()); constructs.add(Construct.DATE_MATH); yield 1; }
+                case Now n -> { op(n.operatorId()); constructs.add(Construct.DATE_MATH); yield 1; }
+                case BaseYear b -> { op(b.operatorId()); constructs.add(Construct.DATE_MATH); yield 1; }
+                case DateDifference d -> {
+                    op(d.operatorId());
+                    constructs.add(Construct.DATE_MATH);
+                    yield 1 + Math.max(depth(d.left()), depth(d.right()));
+                }
+                case DateShift s -> {
+                    op(s.operatorId());
+                    constructs.add(Construct.DATE_MATH);
+                    yield 1 + Math.max(depth(s.date()), depth(s.amount()));
+                }
+                case SemanticIndexValue v -> { op(v.operatorId()); constructs.add(Construct.SEMANTIC_INDEX); yield 1; }
+                case SemanticIndexFieldValue v -> { op(v.operatorId()); constructs.add(Construct.SEMANTIC_INDEX); yield 1; }
+                case Arithmetic a -> {
+                    constructs.add(Construct.ARITHMETIC);
+                    yield 1 + Math.max(depth(a.left()), depth(a.right()));
+                }
+                case Rounding r -> {
+                    op(r.operatorId());
+                    constructs.add(Construct.ARITHMETIC);
+                    yield 1 + depth(r.operand());
+                }
+                case Concatenation c -> {
+                    constructs.add(Construct.ARITHMETIC);
+                    yield 1 + maxCalcDepth(c.parts());
+                }
+                case DateListAggregate a -> {
+                    op(a.operatorId());
+                    constructs.add(Construct.AGGREGATE);
+                    constructs.add(Construct.DATE_MATH);
+                    yield 1 + operandDepth(a.scope());
+                }
+                case FirstFilledValue a -> {
+                    op(a.operatorId());
+                    constructs.add(Construct.AGGREGATE);
+                    yield 1 + operandDepth(a.scope());
+                }
+                case FieldValueAsString c -> { op(c.operatorId()); yield 1; }
+                case IndexedFieldValueAsString c -> {
+                    op(c.operatorId());
+                    op(c.index().operatorId());
+                    constructs.add(Construct.SEMANTIC_INDEX);
+                    yield 2;
+                }
+                case RangeAsString c -> { op(c.operatorId()); yield 1; }
+                case FieldValueAsNumber c -> { op(c.operatorId()); yield 1; }
+                case RangeAsNumber c -> { op(c.operatorId()); yield 1; }
+                case OpListMath m -> {
+                    op(m.operatorId());
+                    constructs.add(Construct.ARITHMETIC);
+                    yield 1 + maxCalcDepth(m.operands());
+                }
+                case NumberOfValueInFields n -> {
+                    op(n.operatorId());
+                    constructs.add(Construct.AGGREGATE);
+                    yield 1 + Math.max(depth(n.value()), maxOperandDepth(n.fields()));
+                }
+                case ValueAsDate v -> {
+                    op(v.operatorId());
+                    op(v.dayKeywordId());
+                    constructs.add(Construct.DATE_MATH);
+                    yield 1;
+                }
+                case DateExtraction e -> {
+                    op(e.operatorId());
+                    constructs.add(Construct.DATE_MATH);
+                    yield 1 + depth(e.source());
+                }
+                case DateTimePart e -> {
+                    op(e.operatorId());
+                    constructs.add(Construct.DATE_MATH);
+                    yield 1 + depth(e.source());
+                }
+                case SumOfProducts s -> {
+                    op(s.operatorId());
+                    constructs.add(Construct.AGGREGATE);
+                    yield 1 + Math.max(operandDepth(s.left()), operandDepth(s.right()));
+                }
+                case DateConstruction dc -> {
+                    op(dc.operatorId());
+                    constructs.add(Construct.DATE_MATH);
+                    int d = Math.max(depth(dc.day()), Math.max(depth(dc.month()), depth(dc.year1())));
+                    if (dc.year2().isPresent()) {
+                        d = Math.max(d, depth(dc.year2().get()));
+                    }
+                    yield 1 + d;
+                }
+                case TimeConstruction tc -> {
+                    op(tc.operatorId());
+                    constructs.add(Construct.DATE_MATH);
+                    yield 1 + Math.max(depth(tc.hour()), Math.max(depth(tc.minute()), depth(tc.second())));
+                }
+                case DateTimeConstruction dtc -> {
+                    op(dtc.operatorId());
+                    constructs.add(Construct.DATE_MATH);
+                    yield 1 + Math.max(depth(dtc.date()), depth(dtc.time()));
+                }
+                case FieldRounding r -> { op(r.operatorId()); constructs.add(Construct.ARITHMETIC); yield 1; }
+                case DateRangeBound b -> {
+                    op(b.operatorId());
+                    constructs.add(Construct.DATE_MATH);
+                    yield 1 + depth(b.source());
+                }
+                case RootGroupCount c -> {
+                    op(c.operatorId());
+                    constructs.add(Construct.AGGREGATE);
+                    collectionPaths.add(c.rootGroup().path() + "/");
+                    yield 1;
+                }
+                case DateRangeConstruction dr -> {
+                    op(dr.operatorId());
+                    constructs.add(Construct.DATE_MATH);
+                    yield 1 + Math.max(depth(dr.start()), depth(dr.end()));
+                }
+            };
         }
 
-        private void variadic(int arity) {
-            maxVariadicArity = Math.max(maxVariadicArity, arity);
-        }
-
-        private void catalog(String operatorId) {
-            catalogOperators.merge(operatorId, 1, Integer::sum);
-        }
-
-        private void intrinsic(String operatorId) {
-            intrinsicOperators.merge(operatorId, 1, Integer::sum);
-        }
-
-        private void correlation(OuterCorrelation correlation, String targetPath) {
-            correlations.merge(correlation, 1, Integer::sum);
-            correlationOccurrences.add(new CorrelationOccurrence(correlation, targetPath));
-        }
-
-        private void collection(
-                CollectionKind kind,
-                String targetPath,
-                List<String> repeatableGroupPaths,
-                OptionalInt filterNodeCount) {
-            var occurrence = new PendingCollection(kind, targetPath, repeatableGroupPaths);
-            collectionSummary(kind, repeatableGroupPaths.size());
-            collectionOccurrence(occurrence, filterNodeCount);
-        }
-
-        private void collectionSummary(CollectionKind kind, int starDepth) {
-            collections.merge(kind, 1, Integer::sum);
-            maxStarDepth = Math.max(maxStarDepth, starDepth);
-        }
-
-        private void collectionOccurrence(
-                PendingCollection collection, OptionalInt filterNodeCount) {
-            collectionOccurrences.add(new CollectionOccurrence(
-                    collection.kind(),
-                    collection.targetPath(),
-                    collection.repeatableGroupPaths(),
-                    filterNodeCount));
-        }
-
-        private void aggregate(
-                AggregateForm form,
-                List<? extends FieldOperand> operands,
-                int depth) {
-            var operandFieldPaths = new ArrayList<String>(operands.size());
-            for (int index = operands.size() - 1; index >= 0; index--) {
-                var operand = operands.get(index);
-                operandFieldPaths.add(operand.fieldPath());
-                fieldOperand(operand, depth);
+        /** A list operand is one node; a filtered ({@code $}) list also carries a Having condition subtree. */
+        private int operandDepth(FieldOperand operand) {
+            nodeCount++;
+            if (operand instanceof FieldListRef list) {
+                collectionPaths.add(list.field().path());
+                maxStarSegments = Math.max(maxStarSegments, list.flattened().size());
+                if (list.correlated()) {
+                    outerCorrelations++;                         // $Group*/field — the outer-iteration correlation
+                }
+                if (list.filter().isPresent()) {
+                    op("Having");
+                    constructs.add(Construct.FILTER);
+                    return 1 + depth(list.filter().get());
+                }
             }
-            Collections.reverse(operandFieldPaths);
-            aggregateOccurrences.add(new AggregateOccurrence(form, operandFieldPaths));
+            return 1;
         }
 
-        private void fieldReference(String path) {
-            fieldReferences.add(requirePath(path, "field reference"));
-        }
-
-        private void groupReference(String path) {
-            groupReferences.add(requirePath(path, "group reference"));
-        }
-
-        private static List<String> groupPaths(List<GroupRef> groups) {
-            return groups.stream().map(GroupRef::path).toList();
-        }
-
-        private void calculation(Calculation calculation, int depth) {
-            pending.push(new CalculationWork(calculation, depth));
-        }
-
-        private void fieldOperand(FieldOperand operand, int depth) {
-            pending.push(new FieldOperandWork(operand, depth));
-        }
-
-        private void pushCalculations(
-                List<? extends Calculation> calculations, int depth) {
-            for (int index = calculations.size() - 1; index >= 0; index--) {
-                calculation(calculations.get(index), depth);
+        private int maxOperandDepth(java.util.List<FieldOperand> operands) {
+            int max = 0;
+            for (FieldOperand o : operands) {
+                max = Math.max(max, operandDepth(o));
             }
+            return max;
         }
 
-        private void pushFieldOperands(
-                List<? extends FieldOperand> operands, int depth) {
-            for (int index = operands.size() - 1; index >= 0; index--) {
-                fieldOperand(operands.get(index), depth);
+        private int maxCalcDepth(java.util.List<? extends Calculation> calcs) {
+            int max = 0;
+            for (Calculation c : calcs) {
+                max = Math.max(max, depth(c));
             }
+            return max;
         }
 
-        private void pushGroups(List<GroupRef> groups, int depth) {
-            for (int index = groups.size() - 1; index >= 0; index--) {
-                pending.push(new GroupOperandWork(groups.get(index), depth));
+        /** The number of leaf operands in the maximal same-{@code op} And/Or chain rooted at {@code l}. */
+        private static int chainSize(Condition c, LogicCondition.Op op) {
+            if (c instanceof LogicCondition l && l.op() == op) {
+                return chainSize(l.left(), op) + chainSize(l.right(), op);
             }
-        }
-
-        private void pushGroupScopes(
-                List<GroupListRef> scopes,
-                int depth,
-                GroupScopeUse use) {
-            for (int index = scopes.size() - 1; index >= 0; index--) {
-                pending.push(new GroupScopeWork(scopes.get(index), depth, use));
-            }
+            return 1;
         }
     }
 }

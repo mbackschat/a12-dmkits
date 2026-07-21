@@ -72,7 +72,7 @@ class ProfileVerbTest {
 
         JsonNode contract = JSON.readTree(CliTestSupport.run("schema", "profile", "extract").out());
         assertEquals("result", contract.path("returns").asText());
-        assertEquals("ModelPerformanceProfile", contract.path("dataSchema").path("title").asText());
+        assertEquals("ModelProfile", contract.path("dataSchema").path("title").asText());
     }
 
     @Test

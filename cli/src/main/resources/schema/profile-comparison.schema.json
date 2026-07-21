@@ -48,11 +48,8 @@
       }
     },
     "value": {
-      "oneOf": [
-        { "type": "integer" },
-        { "$ref": "#/$defs/histogram" },
-        { "$ref": "#/$defs/distribution" }
-      ]
+      "description": "A scalar profile value, a histogram/distribution object, or null when the actual profile lacks the target axis.",
+      "type": ["number", "string", "object", "null"]
     },
     "axis": {
       "type": "object",

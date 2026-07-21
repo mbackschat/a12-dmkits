@@ -1,2244 +1,853 @@
 {
-  "structure" : {
-    "elements" : {
-      "COMPUTATION" : 851,
-      "FIELD" : 1726,
-      "GROUP" : 323,
-      "RULE" : 696
+  "computations" : {
+    "aggregateScaleMatch" : {
+      "matched" : 399,
+      "mismatched" : 67
     },
-    "topology" : {
-      "maxGroupDepth" : 6,
-      "fieldsPerGroup" : {
-        "count" : 323,
-        "min" : 0,
-        "median" : 2,
-        "p90" : 18,
-        "max" : 53,
-        "buckets" : [
-          {
-            "lower" : 0,
-            "upper" : 0,
-            "count" : 12
-          },
-          {
-            "lower" : 1,
-            "upper" : 1,
-            "count" : 106
-          },
-          {
-            "lower" : 2,
-            "upper" : 3,
-            "count" : 113
-          },
-          {
-            "lower" : 4,
-            "upper" : 7,
-            "count" : 37
-          },
-          {
-            "lower" : 8,
-            "upper" : 15,
-            "count" : 21
-          },
-          {
-            "lower" : 16,
-            "upper" : 31,
-            "count" : 25
-          },
-          {
-            "lower" : 32,
-            "upper" : 63,
-            "count" : 9
-          }
-        ]
+    "aggregateStars" : {
+      "buckets" : {
+        "1" : 265,
+        "2-3" : 168,
+        "4-7" : 33
+      },
+      "max" : 4,
+      "mean" : 1.6351931330472103,
+      "median" : 1,
+      "min" : 1,
+      "n" : 466,
+      "p90" : 3
+    },
+    "alternatives" : {
+      "buckets" : {
+        "1" : 621,
+        "16-31" : 1,
+        "2-3" : 224,
+        "4-7" : 5
+      },
+      "max" : 22,
+      "mean" : 1.3948296122209165,
+      "median" : 1,
+      "min" : 1,
+      "n" : 851,
+      "p90" : 2
+    },
+    "archetypes" : {
+      "AGGREGATE" : 370,
+      "ARITHMETIC" : 151,
+      "CONSTANT" : 42,
+      "COPY" : 218,
+      "DATE" : 5,
+      "STRING" : 65
+    },
+    "computedFieldKinds" : {
+      "BOOLEAN" : 11,
+      "DATE" : 5,
+      "ENUMERATION" : 9,
+      "NUMBER" : 761,
+      "STRING" : 65
+    },
+    "constructCombos" : {
+      "AGGREGATE+ARITHMETIC+FILTER" : 4,
+      "AGGREGATE+ARITHMETIC+FILTER+QUANTIFIER" : 44,
+      "AGGREGATE+ARITHMETIC+FILTER+QUANTIFIER+VALUE_LIST" : 48,
+      "AGGREGATE+CURRENT_REPETITION+FILTER+QUANTIFIER" : 3,
+      "AGGREGATE+FILTER" : 38,
+      "AGGREGATE+FILTER+GROUP_FILL" : 2,
+      "AGGREGATE+FILTER+QUANTIFIER" : 191,
+      "AGGREGATE+FILTER+QUANTIFIER+VALUE_LIST" : 136,
+      "ARITHMETIC" : 25,
+      "ARITHMETIC+QUANTIFIER" : 14,
+      "ARITHMETIC+QUANTIFIER+VALUE_LIST" : 11,
+      "ARITHMETIC+VALUE_LIST" : 5,
+      "DATE_MATH+QUANTIFIER" : 5,
+      "GROUP_FILL" : 1,
+      "NONE" : 105,
+      "QUANTIFIER" : 134,
+      "QUANTIFIER+VALUE_LIST" : 65,
+      "VALUE_LIST" : 20
+    },
+    "constructs" : {
+      "AGGREGATE" : 506,
+      "ARITHMETIC" : 190,
+      "CURRENT_REPETITION" : 3,
+      "DATE_MATH" : 6,
+      "FILTER" : 509,
+      "GROUP_FILL" : 5,
+      "QUANTIFIER" : 936,
+      "VALUE_LIST" : 328
+    },
+    "constructsByScope" : {
+      "modelLevel" : {
+        "DATE_MATH" : 1,
+        "QUANTIFIER" : 11
+      },
+      "perGroup" : {
+        "AGGREGATE" : 143,
+        "ARITHMETIC" : 41,
+        "FILTER" : 143,
+        "QUANTIFIER" : 240,
+        "VALUE_LIST" : 76
+      },
+      "perRepeatableRow" : {
+        "AGGREGATE" : 363,
+        "ARITHMETIC" : 149,
+        "CURRENT_REPETITION" : 3,
+        "DATE_MATH" : 5,
+        "FILTER" : 366,
+        "GROUP_FILL" : 5,
+        "QUANTIFIER" : 685,
+        "VALUE_LIST" : 252
       }
     },
-    "fields" : {
-      "kinds" : {
-        "BOOLEAN" : 60,
-        "CONFIRM" : 68,
-        "DATE" : 56,
-        "DATE_FRAGMENT" : 2,
-        "DATE_TIME" : 91,
-        "ENUMERATION" : 84,
-        "NUMBER" : 867,
-        "STRING" : 498
+    "count" : 851,
+    "depth" : {
+      "buckets" : {
+        "1" : 94,
+        "2-3" : 247,
+        "4-7" : 503,
+        "8-15" : 7
       },
-      "constrainedFields" : {
-        "STRING_LENGTH" : 14,
-        "STRING_PATTERN" : 12
+      "max" : 8,
+      "mean" : 3.9130434782608696,
+      "median" : 5,
+      "min" : 1,
+      "n" : 851,
+      "p90" : 6
+    },
+    "fanIn" : {
+      "buckets" : {
+        "0" : 5,
+        "1" : 124,
+        "2-3" : 485,
+        "4-7" : 236,
+        "8-15" : 1
       },
-      "numberScale" : {
-        "count" : 867,
-        "min" : 0,
-        "median" : 2,
-        "p90" : 2,
-        "max" : 4,
-        "buckets" : [
-          {
-            "lower" : 0,
-            "upper" : 0,
-            "count" : 53
-          },
-          {
-            "lower" : 2,
-            "upper" : 3,
-            "count" : 793
-          },
-          {
-            "lower" : 4,
-            "upper" : 7,
-            "count" : 21
-          }
-        ]
+      "max" : 9,
+      "mean" : 2.9400705052878964,
+      "median" : 3,
+      "min" : 0,
+      "n" : 851,
+      "p90" : 5
+    },
+    "feedingOthers" : 76,
+    "iteration" : {
+      "listScanCapacity" : {
+        "buckets" : {
+          "1" : 385,
+          "1024-2047" : 47,
+          "128-255" : 9,
+          "131072-262143" : 2,
+          "134217728-268435455" : 50,
+          "16384-32767" : 36,
+          "16777216-33554431" : 12,
+          "2048-4095" : 29,
+          "262144-524287" : 12,
+          "268435456-536870911" : 72,
+          "33554432-67108863" : 20,
+          "4096-8191" : 32,
+          "4194304-8388607" : 1,
+          "512-1023" : 5,
+          "8192-16383" : 101,
+          "8388608-16777215" : 38
+        },
+        "max" : 288000000,
+        "mean" : 3.564232349588719E7,
+        "median" : 1740,
+        "min" : 1,
+        "n" : 851,
+        "p90" : 154349160
       },
-      "enumCardinality" : {
-        "count" : 84,
-        "min" : 2,
-        "median" : 5,
-        "p90" : 29,
-        "max" : 65,
-        "buckets" : [
-          {
-            "lower" : 2,
-            "upper" : 3,
-            "count" : 32
-          },
-          {
-            "lower" : 4,
-            "upper" : 7,
-            "count" : 31
-          },
-          {
-            "lower" : 8,
-            "upper" : 15,
-            "count" : 7
-          },
-          {
-            "lower" : 16,
-            "upper" : 31,
-            "count" : 7
-          },
-          {
-            "lower" : 32,
-            "upper" : 63,
-            "count" : 2
-          },
-          {
-            "lower" : 64,
-            "upper" : 127,
-            "count" : 5
-          }
-        ]
+      "outerCorrelation" : 3,
+      "parallelIteration" : 40,
+      "scannedScopeCapacity" : {
+        "buckets" : {
+          "1" : 143,
+          "128-255" : 52,
+          "131072-262143" : 16,
+          "16-31" : 18,
+          "262144-524287" : 35,
+          "32768-65535" : 12,
+          "4194304-8388607" : 9,
+          "64-127" : 92,
+          "65536-131071" : 63,
+          "8-15" : 26
+        },
+        "max" : 4500000,
+        "mean" : 141219.9484978541,
+        "median" : 119,
+        "min" : 1,
+        "n" : 466,
+        "p90" : 142520
+      },
+      "scopeCapacity" : {
+        "buckets" : {
+          "1" : 246,
+          "1024-2047" : 15,
+          "128-255" : 82,
+          "131072-262143" : 28,
+          "134217728-268435455" : 4,
+          "16-31" : 20,
+          "16384-32767" : 8,
+          "16777216-33554431" : 2,
+          "2048-4095" : 17,
+          "262144-524287" : 47,
+          "32768-65535" : 27,
+          "33554432-67108863" : 1,
+          "4096-8191" : 49,
+          "4194304-8388607" : 10,
+          "512-1023" : 5,
+          "64-127" : 113,
+          "65536-131071" : 101,
+          "8-15" : 34,
+          "8192-16383" : 41,
+          "8388608-16777215" : 1
+        },
+        "max" : 154349160,
+        "mean" : 962348.8918918918,
+        "median" : 164,
+        "min" : 1,
+        "n" : 851,
+        "p90" : 142520
+      },
+      "workCapacity" : {
+        "buckets" : {
+          "1" : 103,
+          "1024-2047" : 41,
+          "1048576-2097151" : 60,
+          "1073741824-2147483647" : 163,
+          "128-255" : 39,
+          "131072-262143" : 12,
+          "134217728-268435455" : 10,
+          "16-31" : 2,
+          "16384-32767" : 32,
+          "16777216-33554431" : 2,
+          "2048-4095" : 28,
+          "2097152-4194303" : 13,
+          "262144-524287" : 35,
+          "268435456-536870911" : 27,
+          "32768-65535" : 27,
+          "33554432-67108863" : 2,
+          "4096-8191" : 58,
+          "4194304-8388607" : 12,
+          "512-1023" : 5,
+          "524288-1048575" : 9,
+          "64-127" : 21,
+          "65536-131071" : 44,
+          "8-15" : 8,
+          "8192-16383" : 87,
+          "8388608-16777215" : 11
+        },
+        "max" : 2147483647,
+        "mean" : 4.228653813443008E8,
+        "median" : 38868,
+        "min" : 1,
+        "n" : 851,
+        "p90" : 2147483647
       }
     },
-    "repeatability" : {
-      "outcomes" : {
-        "BOUNDED" : 104
+    "maxCascadeDepth" : 16,
+    "nodeCount" : {
+      "buckets" : {
+        "1" : 69,
+        "16-31" : 262,
+        "2-3" : 21,
+        "32-63" : 13,
+        "4-7" : 156,
+        "64-127" : 2,
+        "8-15" : 328
       },
-      "topology" : {
-        "maxDepth" : 4,
-        "exactDepth" : {
-          "1" : 20,
-          "2" : 80,
-          "3" : 2,
-          "4" : 2
-        },
-        "siblingFan" : {
-          "count" : 37,
-          "min" : 1,
-          "median" : 2,
-          "p90" : 8,
-          "max" : 31,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 16
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 16
-            },
-            {
-              "lower" : 4,
-              "upper" : 7,
-              "count" : 1
-            },
-            {
-              "lower" : 8,
-              "upper" : 15,
-              "count" : 2
-            },
-            {
-              "lower" : 16,
-              "upper" : 31,
-              "count" : 2
-            }
-          ]
-        }
-      },
-      "capacities" : {
-        "maxRepetitions" : {
-          "bounded" : {
-            "count" : 104,
-            "min" : 2,
-            "median" : 106,
-            "p90" : 266,
-            "max" : 100000,
-            "buckets" : [
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 2
-              },
-              {
-                "lower" : 4,
-                "upper" : 7,
-                "count" : 1
-              },
-              {
-                "lower" : 8,
-                "upper" : 15,
-                "count" : 7
-              },
-              {
-                "lower" : 16,
-                "upper" : 31,
-                "count" : 4
-              },
-              {
-                "lower" : 64,
-                "upper" : 127,
-                "count" : 65
-              },
-              {
-                "lower" : 128,
-                "upper" : 255,
-                "count" : 14
-              },
-              {
-                "lower" : 256,
-                "upper" : 511,
-                "count" : 3
-              },
-              {
-                "lower" : 512,
-                "upper" : 1023,
-                "count" : 1
-              },
-              {
-                "lower" : 32768,
-                "upper" : 65535,
-                "count" : 3
-              },
-              {
-                "lower" : 65536,
-                "upper" : 131071,
-                "count" : 4
-              }
-            ]
-          },
-          "unboundedCauses" : { }
-        },
-        "groupChains" : {
-          "bounded" : {
-            "count" : 104,
-            "min" : 9,
-            "median" : 6240,
-            "p90" : 500000,
-            "max" : 288000000,
-            "buckets" : [
-              {
-                "lower" : 8,
-                "upper" : 15,
-                "count" : 3
-              },
-              {
-                "lower" : 16,
-                "upper" : 31,
-                "count" : 2
-              },
-              {
-                "lower" : 64,
-                "upper" : 127,
-                "count" : 7
-              },
-              {
-                "lower" : 128,
-                "upper" : 255,
-                "count" : 4
-              },
-              {
-                "lower" : 512,
-                "upper" : 1023,
-                "count" : 2
-              },
-              {
-                "lower" : 1024,
-                "upper" : 2047,
-                "count" : 6
-              },
-              {
-                "lower" : 2048,
-                "upper" : 4095,
-                "count" : 7
-              },
-              {
-                "lower" : 4096,
-                "upper" : 8191,
-                "count" : 23
-              },
-              {
-                "lower" : 8192,
-                "upper" : 16383,
-                "count" : 22
-              },
-              {
-                "lower" : 16384,
-                "upper" : 32767,
-                "count" : 5
-              },
-              {
-                "lower" : 32768,
-                "upper" : 65535,
-                "count" : 7
-              },
-              {
-                "lower" : 65536,
-                "upper" : 131071,
-                "count" : 3
-              },
-              {
-                "lower" : 131072,
-                "upper" : 262143,
-                "count" : 1
-              },
-              {
-                "lower" : 262144,
-                "upper" : 524287,
-                "count" : 2
-              },
-              {
-                "lower" : 4194304,
-                "upper" : 8388607,
-                "count" : 1
-              },
-              {
-                "lower" : 8388608,
-                "upper" : 16777215,
-                "count" : 3
-              },
-              {
-                "lower" : 16777216,
-                "upper" : 33554431,
-                "count" : 3
-              },
-              {
-                "lower" : 33554432,
-                "upper" : 67108863,
-                "count" : 1
-              },
-              {
-                "lower" : 134217728,
-                "upper" : 268435455,
-                "count" : 1
-              },
-              {
-                "lower" : 268435456,
-                "upper" : 536870911,
-                "count" : 1
-              }
-            ]
-          },
-          "unboundedCauses" : { }
-        },
-        "fieldChains" : {
-          "bounded" : {
-            "count" : 1726,
-            "min" : 1,
-            "median" : 1248,
-            "p90" : 142520,
-            "max" : 288000000,
-            "buckets" : [
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 383
-              },
-              {
-                "lower" : 8,
-                "upper" : 15,
-                "count" : 63
-              },
-              {
-                "lower" : 16,
-                "upper" : 31,
-                "count" : 37
-              },
-              {
-                "lower" : 64,
-                "upper" : 127,
-                "count" : 210
-              },
-              {
-                "lower" : 128,
-                "upper" : 255,
-                "count" : 148
-              },
-              {
-                "lower" : 512,
-                "upper" : 1023,
-                "count" : 12
-              },
-              {
-                "lower" : 1024,
-                "upper" : 2047,
-                "count" : 44
-              },
-              {
-                "lower" : 2048,
-                "upper" : 4095,
-                "count" : 41
-              },
-              {
-                "lower" : 4096,
-                "upper" : 8191,
-                "count" : 153
-              },
-              {
-                "lower" : 8192,
-                "upper" : 16383,
-                "count" : 161
-              },
-              {
-                "lower" : 16384,
-                "upper" : 32767,
-                "count" : 21
-              },
-              {
-                "lower" : 32768,
-                "upper" : 65535,
-                "count" : 108
-              },
-              {
-                "lower" : 65536,
-                "upper" : 131071,
-                "count" : 156
-              },
-              {
-                "lower" : 131072,
-                "upper" : 262143,
-                "count" : 31
-              },
-              {
-                "lower" : 262144,
-                "upper" : 524287,
-                "count" : 67
-              },
-              {
-                "lower" : 4194304,
-                "upper" : 8388607,
-                "count" : 20
-              },
-              {
-                "lower" : 8388608,
-                "upper" : 16777215,
-                "count" : 19
-              },
-              {
-                "lower" : 16777216,
-                "upper" : 33554431,
-                "count" : 34
-              },
-              {
-                "lower" : 33554432,
-                "upper" : 67108863,
-                "count" : 11
-              },
-              {
-                "lower" : 134217728,
-                "upper" : 268435455,
-                "count" : 6
-              },
-              {
-                "lower" : 268435456,
-                "upper" : 536870911,
-                "count" : 1
-              }
-            ]
-          },
-          "unboundedCauses" : { }
-        }
-      }
+      "max" : 80,
+      "mean" : 11.987074030552291,
+      "median" : 12,
+      "min" : 1,
+      "n" : 851,
+      "p90" : 22
+    },
+    "opaqueCount" : 0,
+    "operators" : {
+      "AddYears" : 1,
+      "AllFieldsFilled" : 88,
+      "And" : 667,
+      "AtLeastOneFieldFilled" : 848,
+      "CurrentRepetition" : 6,
+      "Equal" : 30,
+      "FieldFilled" : 18,
+      "FieldNotFilled" : 33,
+      "FieldValueAsString" : 80,
+      "FieldValueIncludedInValueList" : 328,
+      "GreaterThan" : 506,
+      "GreaterThanOrEqual" : 506,
+      "GroupFilled" : 5,
+      "Having" : 509,
+      "NotEqual" : 8,
+      "Or" : 134,
+      "RoundAccounting" : 62,
+      "RoundDown" : 58,
+      "RoundUp" : 70,
+      "Sum" : 506,
+      "Today" : 5,
+      "True" : 13
+    },
+    "preconditionedCount" : 724,
+    "scope" : {
+      "modelLevel" : 11,
+      "perGroup" : 235,
+      "perRepeatableRow" : 605
     }
   },
   "rules" : {
-    "conversion" : {
-      "outcomes" : {
-        "CONVERTED" : 696
+    "booleanArity" : {
+      "buckets" : {
+        "1" : 3,
+        "2-3" : 637,
+        "4-7" : 56
       },
-      "opaqueReasons" : { }
+      "max" : 6,
+      "mean" : 2.44683908045977,
+      "median" : 2,
+      "min" : 1,
+      "n" : 696,
+      "p90" : 3
     },
-    "syntax" : {
-      "ast" : {
-        "nodeCount" : {
-          "count" : 696,
-          "min" : 1,
-          "median" : 7,
-          "p90" : 13,
-          "max" : 25,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 3
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 61
-            },
-            {
-              "lower" : 4,
-              "upper" : 7,
-              "count" : 390
-            },
-            {
-              "lower" : 8,
-              "upper" : 15,
-              "count" : 204
-            },
-            {
-              "lower" : 16,
-              "upper" : 31,
-              "count" : 38
-            }
-          ]
-        },
-        "depth" : {
-          "count" : 696,
-          "min" : 1,
-          "median" : 4,
-          "p90" : 6,
-          "max" : 10,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 3
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 286
-            },
-            {
-              "lower" : 4,
-              "upper" : 7,
-              "count" : 375
-            },
-            {
-              "lower" : 8,
-              "upper" : 15,
-              "count" : 32
-            }
-          ]
-        },
-        "booleanArity" : {
-          "count" : 696,
-          "min" : 1,
-          "median" : 2,
-          "p90" : 3,
-          "max" : 6,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 3
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 637
-            },
-            {
-              "lower" : 4,
-              "upper" : 7,
-              "count" : 56
-            }
-          ]
-        },
-        "variadicArity" : {
-          "count" : 696,
-          "min" : 0,
-          "median" : 1,
-          "p90" : 3,
-          "max" : 3,
-          "buckets" : [
-            {
-              "lower" : 0,
-              "upper" : 0,
-              "count" : 211
-            },
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 236
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 249
-            }
-          ]
-        },
-        "distinctFanIn" : {
-          "count" : 696,
-          "min" : 1,
-          "median" : 2,
-          "p90" : 4,
-          "max" : 8,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 115
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 498
-            },
-            {
-              "lower" : 4,
-              "upper" : 7,
-              "count" : 82
-            },
-            {
-              "lower" : 8,
-              "upper" : 15,
-              "count" : 1
-            }
-          ]
-        }
+    "constructCombos" : {
+      "AGGREGATE" : 47,
+      "AGGREGATE+DATE_MATH" : 1,
+      "AGGREGATE+FILTER+QUANTIFIER" : 1,
+      "AGGREGATE+GROUP_FILL" : 1,
+      "AGGREGATE+VALUE_LIST" : 1,
+      "ARITHMETIC" : 16,
+      "CURRENT_REPETITION" : 15,
+      "CURRENT_REPETITION+FILTER+QUANTIFIER" : 8,
+      "CUSTOM" : 14,
+      "DATE_MATH" : 17,
+      "FILTER+QUANTIFIER" : 49,
+      "FILTER+QUANTIFIER+VALUE_LIST" : 4,
+      "GROUP_FILL" : 142,
+      "GROUP_FILL+UNIQUENESS" : 5,
+      "GROUP_FILL+UNIQUENESS+VALUE_LIST" : 1,
+      "GROUP_FILL+VALUE_LIST" : 8,
+      "NONE" : 23,
+      "QUANTIFIER" : 213,
+      "QUANTIFIER+VALUE_LIST" : 19,
+      "VALUE_LIST" : 111
+    },
+    "constructs" : {
+      "AGGREGATE" : 51,
+      "ARITHMETIC" : 16,
+      "CURRENT_REPETITION" : 23,
+      "CUSTOM" : 14,
+      "DATE_MATH" : 18,
+      "FILTER" : 62,
+      "GROUP_FILL" : 157,
+      "QUANTIFIER" : 294,
+      "UNIQUENESS" : 6,
+      "VALUE_LIST" : 144
+    },
+    "constructsByScope" : {
+      "modelLevel" : {
+        "AGGREGATE" : 8,
+        "CUSTOM" : 2,
+        "DATE_MATH" : 2,
+        "FILTER" : 2,
+        "GROUP_FILL" : 1,
+        "QUANTIFIER" : 11
       },
-      "dispatch" : {
-        "catalogOperators" : {
-          "Abs" : 16,
-          "AllFieldsFilled" : 286,
-          "And" : 1028,
-          "AtLeastOneFieldFilled" : 8,
-          "CurrentRepetition" : 31,
-          "CustomCondition" : 14,
-          "Equal" : 58,
-          "FieldFilled" : 901,
-          "FieldNotFilled" : 186,
-          "FieldValueIncludedInValueList" : 157,
-          "GreaterThan" : 229,
-          "GreaterThanOrEqual" : 58,
-          "GroupFilled" : 157,
-          "Having" : 62,
-          "LessThan" : 63,
-          "NotEqual" : 20,
-          "Or" : 357,
-          "RepetitionNotUnique" : 6,
-          "Sum" : 58,
-          "YearFromDate" : 18
-        },
-        "intrinsicOperators" : { },
-        "constructs" : {
-          "AGGREGATE" : 51,
-          "ARITHMETIC" : 16,
-          "CURRENT_REPETITION" : 23,
-          "CUSTOM" : 14,
-          "DATE_MATH" : 18,
-          "FILTER" : 62,
-          "GROUP_FILL" : 157,
-          "QUANTIFIER" : 294,
-          "UNIQUENESS" : 6,
-          "VALUE_LIST" : 144
-        },
-        "constructCombinations" : {
-          "AGGREGATE" : 47,
-          "AGGREGATE+DATE_MATH" : 1,
-          "AGGREGATE+FILTER+QUANTIFIER" : 1,
-          "AGGREGATE+GROUP_FILL" : 1,
-          "AGGREGATE+VALUE_LIST" : 1,
-          "ARITHMETIC" : 16,
-          "CURRENT_REPETITION" : 15,
-          "CURRENT_REPETITION+FILTER+QUANTIFIER" : 8,
-          "CUSTOM" : 14,
-          "DATE_MATH" : 17,
-          "FILTER+QUANTIFIER" : 49,
-          "FILTER+QUANTIFIER+VALUE_LIST" : 4,
-          "GROUP_FILL" : 142,
-          "GROUP_FILL+UNIQUENESS" : 5,
-          "GROUP_FILL+UNIQUENESS+VALUE_LIST" : 1,
-          "GROUP_FILL+VALUE_LIST" : 8,
-          "NONE" : 23,
-          "QUANTIFIER" : 213,
-          "QUANTIFIER+VALUE_LIST" : 19,
-          "VALUE_LIST" : 111
-        },
-        "constructsByScope" : {
-          "MODEL_LEVEL" : {
-            "AGGREGATE" : 8,
-            "CUSTOM" : 2,
-            "DATE_MATH" : 2,
-            "FILTER" : 2,
-            "GROUP_FILL" : 1,
-            "QUANTIFIER" : 11
-          },
-          "PER_GROUP" : {
-            "AGGREGATE" : 8,
-            "DATE_MATH" : 9,
-            "FILTER" : 11,
-            "GROUP_FILL" : 23,
-            "QUANTIFIER" : 46,
-            "UNIQUENESS" : 5,
-            "VALUE_LIST" : 19
-          },
-          "PER_REPEATABLE_ROW" : {
-            "AGGREGATE" : 35,
-            "ARITHMETIC" : 16,
-            "CURRENT_REPETITION" : 23,
-            "CUSTOM" : 12,
-            "DATE_MATH" : 7,
-            "FILTER" : 49,
-            "GROUP_FILL" : 133,
-            "QUANTIFIER" : 237,
-            "UNIQUENESS" : 1,
-            "VALUE_LIST" : 125
-          }
-        }
+      "perGroup" : {
+        "AGGREGATE" : 8,
+        "DATE_MATH" : 9,
+        "FILTER" : 11,
+        "GROUP_FILL" : 23,
+        "QUANTIFIER" : 46,
+        "UNIQUENESS" : 5,
+        "VALUE_LIST" : 19
+      },
+      "perRepeatableRow" : {
+        "AGGREGATE" : 35,
+        "ARITHMETIC" : 16,
+        "CURRENT_REPETITION" : 23,
+        "CUSTOM" : 12,
+        "DATE_MATH" : 7,
+        "FILTER" : 49,
+        "GROUP_FILL" : 133,
+        "QUANTIFIER" : 237,
+        "UNIQUENESS" : 1,
+        "VALUE_LIST" : 125
       }
     },
-    "runtime" : {
-      "scope" : {
-        "classes" : {
-          "MODEL_LEVEL" : 21,
-          "PER_GROUP" : 120,
-          "PER_REPEATABLE_ROW" : 555
-        },
-        "capacity" : {
-          "bounded" : {
-            "count" : 696,
-            "min" : 1,
-            "median" : 100,
-            "p90" : 71260,
-            "max" : 154349160,
-            "buckets" : [
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 141
-              },
-              {
-                "lower" : 8,
-                "upper" : 15,
-                "count" : 68
-              },
-              {
-                "lower" : 16,
-                "upper" : 31,
-                "count" : 47
-              },
-              {
-                "lower" : 64,
-                "upper" : 127,
-                "count" : 164
-              },
-              {
-                "lower" : 128,
-                "upper" : 255,
-                "count" : 80
-              },
-              {
-                "lower" : 512,
-                "upper" : 1023,
-                "count" : 2
-              },
-              {
-                "lower" : 16384,
-                "upper" : 32767,
-                "count" : 31
-              },
-              {
-                "lower" : 32768,
-                "upper" : 65535,
-                "count" : 93
-              },
-              {
-                "lower" : 65536,
-                "upper" : 131071,
-                "count" : 37
-              },
-              {
-                "lower" : 131072,
-                "upper" : 262143,
-                "count" : 6
-              },
-              {
-                "lower" : 262144,
-                "upper" : 524287,
-                "count" : 8
-              },
-              {
-                "lower" : 8388608,
-                "upper" : 16777215,
-                "count" : 12
-              },
-              {
-                "lower" : 16777216,
-                "upper" : 33554431,
-                "count" : 3
-              },
-              {
-                "lower" : 134217728,
-                "upper" : 268435455,
-                "count" : 4
-              }
-            ]
-          },
-          "unboundedCauses" : { }
-        }
+    "count" : 696,
+    "depth" : {
+      "buckets" : {
+        "1" : 3,
+        "2-3" : 286,
+        "4-7" : 375,
+        "8-15" : 32
       },
-      "evaluation" : {
-        "scans" : {
-          "kinds" : {
-            "FLATTENED_FIELD" : 233
-          },
-          "starDepth" : {
-            "count" : 233,
-            "min" : 1,
-            "median" : 1,
-            "p90" : 1,
-            "max" : 1,
-            "buckets" : [
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 233
-              }
-            ]
-          },
-          "capacity" : {
-            "bounded" : {
-              "count" : 233,
-              "min" : 2,
-              "median" : 122,
-              "p90" : 71260,
-              "max" : 100000,
-              "buckets" : [
-                {
-                  "lower" : 2,
-                  "upper" : 3,
-                  "count" : 13
-                },
-                {
-                  "lower" : 8,
-                  "upper" : 15,
-                  "count" : 6
-                },
-                {
-                  "lower" : 64,
-                  "upper" : 127,
-                  "count" : 115
-                },
-                {
-                  "lower" : 128,
-                  "upper" : 255,
-                  "count" : 33
-                },
-                {
-                  "lower" : 256,
-                  "upper" : 511,
-                  "count" : 21
-                },
-                {
-                  "lower" : 512,
-                  "upper" : 1023,
-                  "count" : 2
-                },
-                {
-                  "lower" : 32768,
-                  "upper" : 65535,
-                  "count" : 5
-                },
-                {
-                  "lower" : 65536,
-                  "upper" : 131071,
-                  "count" : 38
-                }
-              ]
-            },
-            "unboundedCauses" : { }
-          },
-          "filterComplexity" : {
-            "count" : 62,
-            "min" : 3,
-            "median" : 3,
-            "p90" : 7,
-            "max" : 7,
-            "buckets" : [
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 54
-              },
-              {
-                "lower" : 4,
-                "upper" : 7,
-                "count" : 8
-              }
-            ]
-          }
-        },
-        "combinedWork" : {
-          "capacity" : {
-            "bounded" : {
-              "count" : 696,
-              "min" : 1,
-              "median" : 237,
-              "p90" : 100000,
-              "max" : 10000000000,
-              "buckets" : [
-                {
-                  "lower" : 1,
-                  "upper" : 1,
-                  "count" : 69
-                },
-                {
-                  "lower" : 8,
-                  "upper" : 15,
-                  "count" : 52
-                },
-                {
-                  "lower" : 16,
-                  "upper" : 31,
-                  "count" : 33
-                },
-                {
-                  "lower" : 64,
-                  "upper" : 127,
-                  "count" : 123
-                },
-                {
-                  "lower" : 128,
-                  "upper" : 255,
-                  "count" : 88
-                },
-                {
-                  "lower" : 512,
-                  "upper" : 1023,
-                  "count" : 3
-                },
-                {
-                  "lower" : 1024,
-                  "upper" : 2047,
-                  "count" : 10
-                },
-                {
-                  "lower" : 2048,
-                  "upper" : 4095,
-                  "count" : 14
-                },
-                {
-                  "lower" : 4096,
-                  "upper" : 8191,
-                  "count" : 16
-                },
-                {
-                  "lower" : 8192,
-                  "upper" : 16383,
-                  "count" : 44
-                },
-                {
-                  "lower" : 16384,
-                  "upper" : 32767,
-                  "count" : 49
-                },
-                {
-                  "lower" : 32768,
-                  "upper" : 65535,
-                  "count" : 79
-                },
-                {
-                  "lower" : 65536,
-                  "upper" : 131071,
-                  "count" : 52
-                },
-                {
-                  "lower" : 131072,
-                  "upper" : 262143,
-                  "count" : 7
-                },
-                {
-                  "lower" : 262144,
-                  "upper" : 524287,
-                  "count" : 6
-                },
-                {
-                  "lower" : 4194304,
-                  "upper" : 8388607,
-                  "count" : 1
-                },
-                {
-                  "lower" : 8388608,
-                  "upper" : 16777215,
-                  "count" : 17
-                },
-                {
-                  "lower" : 16777216,
-                  "upper" : 33554431,
-                  "count" : 17
-                },
-                {
-                  "lower" : 33554432,
-                  "upper" : 67108863,
-                  "count" : 2
-                },
-                {
-                  "lower" : 134217728,
-                  "upper" : 268435455,
-                  "count" : 11
-                },
-                {
-                  "lower" : 8589934592,
-                  "upper" : 17179869183,
-                  "count" : 3
-                }
-              ]
-            },
-            "unboundedCauses" : { }
-          },
-          "scopeByScan" : {
-            "MODEL_LEVEL|FLATTENED_FIELD" : 26,
-            "PER_GROUP|FLATTENED_FIELD" : 54,
-            "PER_REPEATABLE_ROW|FLATTENED_FIELD" : 153
-          }
-        },
-        "mechanisms" : {
-          "GROUP_FILL" : {
-            "shape" : {
-              "count" : 157,
-              "min" : 1,
-              "median" : 2,
-              "p90" : 15,
-              "max" : 159,
-              "buckets" : [
-                {
-                  "lower" : 1,
-                  "upper" : 1,
-                  "count" : 30
-                },
-                {
-                  "lower" : 2,
-                  "upper" : 3,
-                  "count" : 70
-                },
-                {
-                  "lower" : 4,
-                  "upper" : 7,
-                  "count" : 24
-                },
-                {
-                  "lower" : 8,
-                  "upper" : 15,
-                  "count" : 27
-                },
-                {
-                  "lower" : 32,
-                  "upper" : 63,
-                  "count" : 1
-                },
-                {
-                  "lower" : 64,
-                  "upper" : 127,
-                  "count" : 3
-                },
-                {
-                  "lower" : 128,
-                  "upper" : 255,
-                  "count" : 2
-                }
-              ]
-            },
-            "capacity" : {
-              "bounded" : {
-                "count" : 157,
-                "min" : 1,
-                "median" : 164,
-                "p90" : 1140,
-                "max" : 675400000,
-                "buckets" : [
-                  {
-                    "lower" : 1,
-                    "upper" : 1,
-                    "count" : 4
-                  },
-                  {
-                    "lower" : 2,
-                    "upper" : 3,
-                    "count" : 14
-                  },
-                  {
-                    "lower" : 32,
-                    "upper" : 63,
-                    "count" : 33
-                  },
-                  {
-                    "lower" : 64,
-                    "upper" : 127,
-                    "count" : 22
-                  },
-                  {
-                    "lower" : 128,
-                    "upper" : 255,
-                    "count" : 23
-                  },
-                  {
-                    "lower" : 256,
-                    "upper" : 511,
-                    "count" : 22
-                  },
-                  {
-                    "lower" : 512,
-                    "upper" : 1023,
-                    "count" : 16
-                  },
-                  {
-                    "lower" : 1024,
-                    "upper" : 2047,
-                    "count" : 11
-                  },
-                  {
-                    "lower" : 8192,
-                    "upper" : 16383,
-                    "count" : 1
-                  },
-                  {
-                    "lower" : 32768,
-                    "upper" : 65535,
-                    "count" : 1
-                  },
-                  {
-                    "lower" : 65536,
-                    "upper" : 131071,
-                    "count" : 6
-                  },
-                  {
-                    "lower" : 4194304,
-                    "upper" : 8388607,
-                    "count" : 3
-                  },
-                  {
-                    "lower" : 536870912,
-                    "upper" : 1073741823,
-                    "count" : 1
-                  }
-                ]
-              },
-              "unboundedCauses" : { }
-            }
-          },
-          "PARALLEL_REFERENCE" : {
-            "shape" : {
-              "count" : 5,
-              "min" : 2,
-              "median" : 2,
-              "p90" : 2,
-              "max" : 2,
-              "buckets" : [
-                {
-                  "lower" : 2,
-                  "upper" : 3,
-                  "count" : 5
-                }
-              ]
-            },
-            "capacity" : {
-              "bounded" : {
-                "count" : 5,
-                "min" : 100000,
-                "median" : 100000,
-                "p90" : 100000,
-                "max" : 100000,
-                "buckets" : [
-                  {
-                    "lower" : 65536,
-                    "upper" : 131071,
-                    "count" : 5
-                  }
-                ]
-              },
-              "unboundedCauses" : { }
-            }
-          },
-          "SEMANTIC_INDEX" : {
-            "shape" : {
-              "count" : 0,
-              "min" : 0,
-              "median" : 0,
-              "p90" : 0,
-              "max" : 0,
-              "buckets" : [ ]
-            },
-            "capacity" : {
-              "bounded" : {
-                "count" : 0,
-                "min" : 0,
-                "median" : 0,
-                "p90" : 0,
-                "max" : 0,
-                "buckets" : [ ]
-              },
-              "unboundedCauses" : { }
-            }
-          },
-          "UNIQUENESS" : {
-            "shape" : {
-              "count" : 6,
-              "min" : 1,
-              "median" : 1,
-              "p90" : 1,
-              "max" : 1,
-              "buckets" : [
-                {
-                  "lower" : 1,
-                  "upper" : 1,
-                  "count" : 6
-                }
-              ]
-            },
-            "capacity" : {
-              "bounded" : {
-                "count" : 6,
-                "min" : 237,
-                "median" : 100000,
-                "p90" : 61400000,
-                "max" : 61400000,
-                "buckets" : [
-                  {
-                    "lower" : 128,
-                    "upper" : 255,
-                    "count" : 2
-                  },
-                  {
-                    "lower" : 65536,
-                    "upper" : 131071,
-                    "count" : 3
-                  },
-                  {
-                    "lower" : 33554432,
-                    "upper" : 67108863,
-                    "count" : 1
-                  }
-                ]
-              },
-              "unboundedCauses" : { }
-            }
-          }
-        },
-        "outerCorrelation" : {
-          "forms" : {
-            "CURRENT_REPETITION" : 8,
-            "FIELD_VALUE" : 8
-          },
-          "capacity" : {
-            "bounded" : {
-              "count" : 16,
-              "min" : 9,
-              "median" : 12,
-              "p90" : 100000,
-              "max" : 100000,
-              "buckets" : [
-                {
-                  "lower" : 8,
-                  "upper" : 15,
-                  "count" : 10
-                },
-                {
-                  "lower" : 65536,
-                  "upper" : 131071,
-                  "count" : 6
-                }
-              ]
-            },
-            "unboundedCauses" : { }
-          }
-        }
+      "max" : 10,
+      "mean" : 4.093390804597701,
+      "median" : 4,
+      "min" : 1,
+      "n" : 696,
+      "p90" : 6
+    },
+    "fanIn" : {
+      "buckets" : {
+        "1" : 62,
+        "2-3" : 536,
+        "4-7" : 97,
+        "8-15" : 1
       },
-      "resolution" : {
-        "walkUpDistance" : {
-          "count" : 73,
-          "min" : 1,
-          "median" : 1,
-          "p90" : 1,
-          "max" : 1,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 73
-            }
-          ]
-        }
+      "max" : 9,
+      "mean" : 2.7658045977011496,
+      "median" : 3,
+      "min" : 1,
+      "n" : 696,
+      "p90" : 4
+    },
+    "iteration" : {
+      "listScanCapacity" : {
+        "buckets" : {
+          "1" : 471,
+          "1024-2047" : 10,
+          "128-255" : 27,
+          "131072-262143" : 7,
+          "134217728-268435455" : 7,
+          "16384-32767" : 18,
+          "16777216-33554431" : 14,
+          "2048-4095" : 14,
+          "262144-524287" : 6,
+          "33554432-67108863" : 2,
+          "4096-8191" : 16,
+          "4194304-8388607" : 1,
+          "512-1023" : 1,
+          "64-127" : 18,
+          "65536-131071" : 30,
+          "8-15" : 5,
+          "8192-16383" : 44,
+          "8388608-16777215" : 5
+        },
+        "max" : 154349160,
+        "mean" : 2213481.6020114943,
+        "median" : 1,
+        "min" : 1,
+        "n" : 696,
+        "p90" : 71260
+      },
+      "outerCorrelation" : 8,
+      "parallelIteration" : 5,
+      "scannedScopeCapacity" : {
+        "buckets" : {
+          "1" : 72,
+          "128-255" : 23,
+          "131072-262143" : 6,
+          "16-31" : 14,
+          "262144-524287" : 8,
+          "32768-65535" : 14,
+          "64-127" : 60,
+          "65536-131071" : 12,
+          "8-15" : 16
+        },
+        "max" : 500000,
+        "mean" : 27343.782222222224,
+        "median" : 76,
+        "min" : 1,
+        "n" : 225,
+        "p90" : 71260
+      },
+      "scopeCapacity" : {
+        "buckets" : {
+          "1" : 141,
+          "128-255" : 80,
+          "131072-262143" : 6,
+          "134217728-268435455" : 4,
+          "16-31" : 47,
+          "16384-32767" : 31,
+          "16777216-33554431" : 3,
+          "262144-524287" : 8,
+          "32768-65535" : 93,
+          "512-1023" : 2,
+          "64-127" : 164,
+          "65536-131071" : 37,
+          "8-15" : 68,
+          "8388608-16777215" : 12
+        },
+        "max" : 154349160,
+        "mean" : 1186812.139367816,
+        "median" : 100,
+        "min" : 1,
+        "n" : 696,
+        "p90" : 71260
+      },
+      "workCapacity" : {
+        "buckets" : {
+          "1" : 69,
+          "1048576-2097151" : 40,
+          "1073741824-2147483647" : 45,
+          "128-255" : 88,
+          "134217728-268435455" : 4,
+          "16-31" : 33,
+          "16384-32767" : 39,
+          "16777216-33554431" : 3,
+          "2097152-4194303" : 12,
+          "262144-524287" : 16,
+          "32768-65535" : 90,
+          "4194304-8388607" : 6,
+          "512-1023" : 2,
+          "524288-1048575" : 4,
+          "64-127" : 123,
+          "65536-131071" : 55,
+          "8-15" : 52,
+          "8192-16383" : 3,
+          "8388608-16777215" : 12
+        },
+        "max" : 2147483647,
+        "mean" : 1.4022335029454023E8,
+        "median" : 237,
+        "min" : 1,
+        "n" : 696,
+        "p90" : 4966355
       }
+    },
+    "nodeCount" : {
+      "buckets" : {
+        "1" : 3,
+        "16-31" : 38,
+        "2-3" : 61,
+        "4-7" : 390,
+        "8-15" : 204
+      },
+      "max" : 25,
+      "mean" : 7.475574712643678,
+      "median" : 7,
+      "min" : 1,
+      "n" : 696,
+      "p90" : 13
+    },
+    "opaqueCount" : 0,
+    "operators" : {
+      "Abs" : 16,
+      "AllFieldsFilled" : 286,
+      "And" : 1028,
+      "AtLeastOneFieldFilled" : 8,
+      "CurrentRepetition" : 31,
+      "CustomCondition" : 14,
+      "Equal" : 58,
+      "FieldFilled" : 901,
+      "FieldNotFilled" : 186,
+      "FieldValueIncludedInValueList" : 157,
+      "GreaterThan" : 229,
+      "GreaterThanOrEqual" : 58,
+      "GroupFilled" : 157,
+      "Having" : 62,
+      "LessThan" : 63,
+      "NotEqual" : 20,
+      "Or" : 357,
+      "RepetitionNotUnique" : 6,
+      "Sum" : 58,
+      "YearFromDate" : 18
+    },
+    "repeatableLevelsCrossed" : {
+      "buckets" : {
+        "0" : 64,
+        "1" : 358,
+        "2-3" : 263,
+        "4-7" : 11
+      },
+      "max" : 4,
+      "mean" : 1.3433908045977012,
+      "median" : 1,
+      "min" : 0,
+      "n" : 696,
+      "p90" : 2
+    },
+    "rulesPerErrorField" : {
+      "buckets" : {
+        "1" : 89,
+        "2-3" : 166,
+        "4-7" : 32
+      },
+      "max" : 7,
+      "mean" : 2.4250871080139373,
+      "median" : 2,
+      "min" : 1,
+      "n" : 287,
+      "p90" : 4
+    },
+    "scope" : {
+      "modelLevel" : 21,
+      "perGroup" : 120,
+      "perRepeatableRow" : 555
+    },
+    "walkUpDistance" : {
+      "buckets" : {
+        "1" : 73
+      },
+      "max" : 1,
+      "mean" : 1.0,
+      "median" : 1,
+      "min" : 1,
+      "n" : 73,
+      "p90" : 1
     }
   },
-  "computations" : {
-    "programs" : {
-      "conversion" : {
-        "outcomes" : {
-          "CONVERTED" : 851
+  "structure" : {
+    "constraints" : {
+      "enumCardinality" : {
+        "buckets" : {
+          "16-31" : 7,
+          "2-3" : 32,
+          "32-63" : 2,
+          "4-7" : 31,
+          "64-127" : 5,
+          "8-15" : 7
         },
-        "opaqueReasons" : { }
+        "max" : 65,
+        "mean" : 10.880952380952381,
+        "median" : 5,
+        "min" : 2,
+        "n" : 84,
+        "p90" : 29
       },
-      "syntax" : {
-        "ast" : {
-          "nodeCount" : {
-            "count" : 851,
-            "min" : 1,
-            "median" : 12,
-            "p90" : 22,
-            "max" : 80,
-            "buckets" : [
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 69
-              },
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 21
-              },
-              {
-                "lower" : 4,
-                "upper" : 7,
-                "count" : 156
-              },
-              {
-                "lower" : 8,
-                "upper" : 15,
-                "count" : 328
-              },
-              {
-                "lower" : 16,
-                "upper" : 31,
-                "count" : 262
-              },
-              {
-                "lower" : 32,
-                "upper" : 63,
-                "count" : 13
-              },
-              {
-                "lower" : 64,
-                "upper" : 127,
-                "count" : 2
-              }
-            ]
-          },
-          "depth" : {
-            "count" : 851,
-            "min" : 1,
-            "median" : 5,
-            "p90" : 6,
-            "max" : 8,
-            "buckets" : [
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 94
-              },
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 247
-              },
-              {
-                "lower" : 4,
-                "upper" : 7,
-                "count" : 503
-              },
-              {
-                "lower" : 8,
-                "upper" : 15,
-                "count" : 7
-              }
-            ]
-          },
-          "booleanArity" : {
-            "count" : 851,
-            "min" : 0,
-            "median" : 2,
-            "p90" : 2,
-            "max" : 2,
-            "buckets" : [
-              {
-                "lower" : 0,
-                "upper" : 0,
-                "count" : 85
-              },
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 224
-              },
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 542
-              }
-            ]
-          },
-          "variadicArity" : {
-            "count" : 851,
-            "min" : 0,
-            "median" : 2,
-            "p90" : 3,
-            "max" : 3,
-            "buckets" : [
-              {
-                "lower" : 0,
-                "upper" : 0,
-                "count" : 131
-              },
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 47
-              },
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 673
-              }
-            ]
-          },
-          "distinctFanIn" : {
-            "count" : 851,
-            "min" : 0,
-            "median" : 3,
-            "p90" : 5,
-            "max" : 9,
-            "buckets" : [
-              {
-                "lower" : 0,
-                "upper" : 0,
-                "count" : 5
-              },
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 124
-              },
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 485
-              },
-              {
-                "lower" : 4,
-                "upper" : 7,
-                "count" : 236
-              },
-              {
-                "lower" : 8,
-                "upper" : 15,
-                "count" : 1
-              }
-            ]
-          }
+      "numberScale" : {
+        "buckets" : {
+          "0" : 53,
+          "2-3" : 793,
+          "4-7" : 21
         },
-        "dispatch" : {
-          "catalogOperators" : {
-            "AddYears" : 1,
-            "AllFieldsFilled" : 88,
-            "And" : 667,
-            "AtLeastOneFieldFilled" : 848,
-            "CurrentRepetition" : 6,
-            "Equal" : 30,
-            "FieldFilled" : 18,
-            "FieldNotFilled" : 33,
-            "FieldValueAsString" : 80,
-            "FieldValueIncludedInValueList" : 328,
-            "GreaterThan" : 506,
-            "GreaterThanOrEqual" : 506,
-            "GroupFilled" : 5,
-            "Having" : 509,
-            "NotEqual" : 8,
-            "Or" : 134,
-            "RoundAccounting" : 62,
-            "RoundDown" : 58,
-            "RoundUp" : 70,
-            "Sum" : 506,
-            "Today" : 5,
-            "True" : 13
+        "max" : 4,
+        "mean" : 1.9527104959630912,
+        "median" : 2,
+        "min" : 0,
+        "n" : 867,
+        "p90" : 2
+      },
+      "numbersWithBounds" : 0,
+      "stringsWithLength" : 14,
+      "stringsWithPattern" : 12
+    },
+    "fieldCount" : 1726,
+    "fieldKinds" : {
+      "BOOLEAN" : 60,
+      "CONFIRM" : 68,
+      "DATE" : 56,
+      "DATE_FRAGMENT" : 2,
+      "DATE_TIME" : 91,
+      "ENUMERATION" : 84,
+      "NUMBER" : 867,
+      "STRING" : 498
+    },
+    "fieldsPerGroup" : {
+      "buckets" : {
+        "0" : 12,
+        "1" : 106,
+        "16-31" : 25,
+        "2-3" : 113,
+        "32-63" : 9,
+        "4-7" : 37,
+        "8-15" : 21
+      },
+      "max" : 53,
+      "mean" : 5.343653250773994,
+      "median" : 2,
+      "min" : 0,
+      "n" : 323,
+      "p90" : 18
+    },
+    "groupCount" : 323,
+    "maxNestingDepth" : 6,
+    "repeatability" : {
+      "chainProduct" : {
+        "buckets" : {
+          "1024-2047" : 6,
+          "128-255" : 4,
+          "131072-262143" : 1,
+          "134217728-268435455" : 1,
+          "16-31" : 2,
+          "16384-32767" : 5,
+          "16777216-33554431" : 3,
+          "2048-4095" : 7,
+          "262144-524287" : 2,
+          "268435456-536870911" : 1,
+          "32768-65535" : 7,
+          "33554432-67108863" : 1,
+          "4096-8191" : 23,
+          "4194304-8388607" : 1,
+          "512-1023" : 2,
+          "64-127" : 7,
+          "65536-131071" : 3,
+          "8-15" : 3,
+          "8192-16383" : 22,
+          "8388608-16777215" : 3
+        },
+        "max" : 288000000,
+        "mean" : 5875593.846153846,
+        "median" : 6240,
+        "min" : 9,
+        "n" : 104,
+        "p90" : 500000
+      },
+      "chainProductByDepth" : {
+        "1" : {
+          "buckets" : {
+            "128-255" : 4,
+            "16-31" : 2,
+            "32768-65535" : 1,
+            "64-127" : 7,
+            "65536-131071" : 3,
+            "8-15" : 3
           },
-          "intrinsicOperators" : {
-            "*" : 111,
-            "+" : 149
+          "max" : 100000,
+          "mean" : 16480.15,
+          "median" : 119,
+          "min" : 9,
+          "n" : 20,
+          "p90" : 71260
+        },
+        "2-3" : {
+          "buckets" : {
+            "1024-2047" : 6,
+            "131072-262143" : 1,
+            "16384-32767" : 5,
+            "16777216-33554431" : 3,
+            "2048-4095" : 7,
+            "262144-524287" : 2,
+            "32768-65535" : 6,
+            "33554432-67108863" : 1,
+            "4096-8191" : 23,
+            "4194304-8388607" : 1,
+            "512-1023" : 2,
+            "8192-16383" : 22,
+            "8388608-16777215" : 3
           },
-          "constructs" : {
-            "AGGREGATE" : 466,
-            "ARITHMETIC" : 151,
-            "CURRENT_REPETITION" : 3,
-            "DATE_MATH" : 5,
-            "FILTER" : 466,
-            "GROUP_FILL" : 3,
-            "QUANTIFIER" : 651,
-            "VALUE_LIST" : 285
+          "max" : 61400000,
+          "mean" : 2053451.1829268292,
+          "median" : 8960,
+          "min" : 936,
+          "n" : 82,
+          "p90" : 500000
+        },
+        "4+" : {
+          "buckets" : {
+            "134217728-268435455" : 1,
+            "268435456-536870911" : 1
           },
-          "constructCombinations" : {
-            "AGGREGATE+ARITHMETIC+FILTER" : 4,
-            "AGGREGATE+ARITHMETIC+FILTER+QUANTIFIER" : 44,
-            "AGGREGATE+ARITHMETIC+FILTER+QUANTIFIER+VALUE_LIST" : 48,
-            "AGGREGATE+CURRENT_REPETITION+FILTER+QUANTIFIER" : 3,
-            "AGGREGATE+FILTER" : 38,
-            "AGGREGATE+FILTER+GROUP_FILL" : 2,
-            "AGGREGATE+FILTER+QUANTIFIER" : 191,
-            "AGGREGATE+FILTER+QUANTIFIER+VALUE_LIST" : 136,
-            "ARITHMETIC" : 25,
-            "ARITHMETIC+QUANTIFIER" : 14,
-            "ARITHMETIC+QUANTIFIER+VALUE_LIST" : 11,
-            "ARITHMETIC+VALUE_LIST" : 5,
-            "DATE_MATH+QUANTIFIER" : 5,
-            "GROUP_FILL" : 1,
-            "NONE" : 105,
-            "QUANTIFIER" : 134,
-            "QUANTIFIER+VALUE_LIST" : 65,
-            "VALUE_LIST" : 20
-          },
-          "constructsByScope" : {
-            "MODEL_LEVEL" : {
-              "DATE_MATH" : 1,
-              "QUANTIFIER" : 8
-            },
-            "PER_GROUP" : {
-              "AGGREGATE" : 143,
-              "ARITHMETIC" : 38,
-              "FILTER" : 143,
-              "QUANTIFIER" : 183,
-              "VALUE_LIST" : 72
-            },
-            "PER_REPEATABLE_ROW" : {
-              "AGGREGATE" : 323,
-              "ARITHMETIC" : 113,
-              "CURRENT_REPETITION" : 3,
-              "DATE_MATH" : 4,
-              "FILTER" : 323,
-              "GROUP_FILL" : 3,
-              "QUANTIFIER" : 460,
-              "VALUE_LIST" : 213
-            }
-          }
+          "max" : 288000000,
+          "mean" : 2.2117458E8,
+          "median" : 154349160,
+          "min" : 154349160,
+          "n" : 2,
+          "p90" : 288000000
         }
       },
-      "runtime" : {
-        "scope" : {
-          "classes" : {
-            "MODEL_LEVEL" : 11,
-            "PER_GROUP" : 235,
-            "PER_REPEATABLE_ROW" : 605
-          },
-          "capacity" : {
-            "bounded" : {
-              "count" : 851,
-              "min" : 1,
-              "median" : 164,
-              "p90" : 142520,
-              "max" : 154349160,
-              "buckets" : [
-                {
-                  "lower" : 1,
-                  "upper" : 1,
-                  "count" : 246
-                },
-                {
-                  "lower" : 8,
-                  "upper" : 15,
-                  "count" : 34
-                },
-                {
-                  "lower" : 16,
-                  "upper" : 31,
-                  "count" : 20
-                },
-                {
-                  "lower" : 64,
-                  "upper" : 127,
-                  "count" : 113
-                },
-                {
-                  "lower" : 128,
-                  "upper" : 255,
-                  "count" : 82
-                },
-                {
-                  "lower" : 512,
-                  "upper" : 1023,
-                  "count" : 5
-                },
-                {
-                  "lower" : 1024,
-                  "upper" : 2047,
-                  "count" : 15
-                },
-                {
-                  "lower" : 2048,
-                  "upper" : 4095,
-                  "count" : 17
-                },
-                {
-                  "lower" : 4096,
-                  "upper" : 8191,
-                  "count" : 49
-                },
-                {
-                  "lower" : 8192,
-                  "upper" : 16383,
-                  "count" : 41
-                },
-                {
-                  "lower" : 16384,
-                  "upper" : 32767,
-                  "count" : 8
-                },
-                {
-                  "lower" : 32768,
-                  "upper" : 65535,
-                  "count" : 27
-                },
-                {
-                  "lower" : 65536,
-                  "upper" : 131071,
-                  "count" : 101
-                },
-                {
-                  "lower" : 131072,
-                  "upper" : 262143,
-                  "count" : 28
-                },
-                {
-                  "lower" : 262144,
-                  "upper" : 524287,
-                  "count" : 47
-                },
-                {
-                  "lower" : 4194304,
-                  "upper" : 8388607,
-                  "count" : 10
-                },
-                {
-                  "lower" : 8388608,
-                  "upper" : 16777215,
-                  "count" : 1
-                },
-                {
-                  "lower" : 16777216,
-                  "upper" : 33554431,
-                  "count" : 2
-                },
-                {
-                  "lower" : 33554432,
-                  "upper" : 67108863,
-                  "count" : 1
-                },
-                {
-                  "lower" : 134217728,
-                  "upper" : 268435455,
-                  "count" : 4
-                }
-              ]
-            },
-            "unboundedCauses" : { }
-          }
+      "fieldChainProduct" : {
+        "buckets" : {
+          "1" : 383,
+          "1024-2047" : 44,
+          "128-255" : 148,
+          "131072-262143" : 31,
+          "134217728-268435455" : 6,
+          "16-31" : 37,
+          "16384-32767" : 21,
+          "16777216-33554431" : 34,
+          "2048-4095" : 41,
+          "262144-524287" : 67,
+          "268435456-536870911" : 1,
+          "32768-65535" : 108,
+          "33554432-67108863" : 11,
+          "4096-8191" : 153,
+          "4194304-8388607" : 20,
+          "512-1023" : 12,
+          "64-127" : 210,
+          "65536-131071" : 156,
+          "8-15" : 63,
+          "8192-16383" : 161,
+          "8388608-16777215" : 19
         },
-        "evaluation" : {
-          "scans" : {
-            "kinds" : {
-              "FLATTENED_FIELD" : 509
-            },
-            "starDepth" : {
-              "count" : 509,
-              "min" : 1,
-              "median" : 1,
-              "p90" : 3,
-              "max" : 4,
-              "buckets" : [
-                {
-                  "lower" : 1,
-                  "upper" : 1,
-                  "count" : 308
-                },
-                {
-                  "lower" : 2,
-                  "upper" : 3,
-                  "count" : 168
-                },
-                {
-                  "lower" : 4,
-                  "upper" : 7,
-                  "count" : 33
-                }
-              ]
-            },
-            "capacity" : {
-              "bounded" : {
-                "count" : 509,
-                "min" : 2,
-                "median" : 576,
-                "p90" : 47225,
-                "max" : 288000000,
-                "buckets" : [
-                  {
-                    "lower" : 2,
-                    "upper" : 3,
-                    "count" : 2
-                  },
-                  {
-                    "lower" : 4,
-                    "upper" : 7,
-                    "count" : 12
-                  },
-                  {
-                    "lower" : 32,
-                    "upper" : 63,
-                    "count" : 1
-                  },
-                  {
-                    "lower" : 64,
-                    "upper" : 127,
-                    "count" : 158
-                  },
-                  {
-                    "lower" : 128,
-                    "upper" : 255,
-                    "count" : 38
-                  },
-                  {
-                    "lower" : 256,
-                    "upper" : 511,
-                    "count" : 37
-                  },
-                  {
-                    "lower" : 512,
-                    "upper" : 1023,
-                    "count" : 40
-                  },
-                  {
-                    "lower" : 1024,
-                    "upper" : 2047,
-                    "count" : 42
-                  },
-                  {
-                    "lower" : 2048,
-                    "upper" : 4095,
-                    "count" : 40
-                  },
-                  {
-                    "lower" : 4096,
-                    "upper" : 8191,
-                    "count" : 9
-                  },
-                  {
-                    "lower" : 8192,
-                    "upper" : 16383,
-                    "count" : 32
-                  },
-                  {
-                    "lower" : 16384,
-                    "upper" : 32767,
-                    "count" : 12
-                  },
-                  {
-                    "lower" : 32768,
-                    "upper" : 65535,
-                    "count" : 39
-                  },
-                  {
-                    "lower" : 65536,
-                    "upper" : 131071,
-                    "count" : 3
-                  },
-                  {
-                    "lower" : 8388608,
-                    "upper" : 16777215,
-                    "count" : 10
-                  },
-                  {
-                    "lower" : 33554432,
-                    "upper" : 67108863,
-                    "count" : 1
-                  },
-                  {
-                    "lower" : 134217728,
-                    "upper" : 268435455,
-                    "count" : 6
-                  },
-                  {
-                    "lower" : 268435456,
-                    "upper" : 536870911,
-                    "count" : 27
-                  }
-                ]
-              },
-              "unboundedCauses" : { }
-            },
-            "filterComplexity" : {
-              "count" : 509,
-              "min" : 7,
-              "median" : 7,
-              "p90" : 7,
-              "max" : 7,
-              "buckets" : [
-                {
-                  "lower" : 4,
-                  "upper" : 7,
-                  "count" : 509
-                }
-              ]
-            }
-          },
-          "combinedWork" : {
-            "capacity" : {
-              "bounded" : {
-                "count" : 851,
-                "min" : 1,
-                "median" : 11700,
-                "p90" : 154349160,
-                "max" : 5077987600,
-                "buckets" : [
-                  {
-                    "lower" : 1,
-                    "upper" : 1,
-                    "count" : 103
-                  },
-                  {
-                    "lower" : 8,
-                    "upper" : 15,
-                    "count" : 8
-                  },
-                  {
-                    "lower" : 16,
-                    "upper" : 31,
-                    "count" : 2
-                  },
-                  {
-                    "lower" : 64,
-                    "upper" : 127,
-                    "count" : 21
-                  },
-                  {
-                    "lower" : 128,
-                    "upper" : 255,
-                    "count" : 39
-                  },
-                  {
-                    "lower" : 512,
-                    "upper" : 1023,
-                    "count" : 10
-                  },
-                  {
-                    "lower" : 1024,
-                    "upper" : 2047,
-                    "count" : 62
-                  },
-                  {
-                    "lower" : 2048,
-                    "upper" : 4095,
-                    "count" : 46
-                  },
-                  {
-                    "lower" : 4096,
-                    "upper" : 8191,
-                    "count" : 81
-                  },
-                  {
-                    "lower" : 8192,
-                    "upper" : 16383,
-                    "count" : 142
-                  },
-                  {
-                    "lower" : 16384,
-                    "upper" : 32767,
-                    "count" : 44
-                  },
-                  {
-                    "lower" : 32768,
-                    "upper" : 65535,
-                    "count" : 15
-                  },
-                  {
-                    "lower" : 65536,
-                    "upper" : 131071,
-                    "count" : 38
-                  },
-                  {
-                    "lower" : 131072,
-                    "upper" : 262143,
-                    "count" : 14
-                  },
-                  {
-                    "lower" : 262144,
-                    "upper" : 524287,
-                    "count" : 24
-                  },
-                  {
-                    "lower" : 4194304,
-                    "upper" : 8388607,
-                    "count" : 2
-                  },
-                  {
-                    "lower" : 8388608,
-                    "upper" : 16777215,
-                    "count" : 39
-                  },
-                  {
-                    "lower" : 16777216,
-                    "upper" : 33554431,
-                    "count" : 14
-                  },
-                  {
-                    "lower" : 33554432,
-                    "upper" : 67108863,
-                    "count" : 21
-                  },
-                  {
-                    "lower" : 134217728,
-                    "upper" : 268435455,
-                    "count" : 51
-                  },
-                  {
-                    "lower" : 268435456,
-                    "upper" : 536870911,
-                    "count" : 72
-                  },
-                  {
-                    "lower" : 4294967296,
-                    "upper" : 8589934591,
-                    "count" : 3
-                  }
-                ]
-              },
-              "unboundedCauses" : { }
-            },
-            "scopeByScan" : {
-              "PER_GROUP|FLATTENED_FIELD" : 143,
-              "PER_REPEATABLE_ROW|FLATTENED_FIELD" : 366
-            }
-          },
-          "mechanisms" : {
-            "GROUP_FILL" : {
-              "shape" : {
-                "count" : 5,
-                "min" : 3,
-                "median" : 3,
-                "p90" : 3,
-                "max" : 3,
-                "buckets" : [
-                  {
-                    "lower" : 2,
-                    "upper" : 3,
-                    "count" : 5
-                  }
-                ]
-              },
-              "capacity" : {
-                "bounded" : {
-                  "count" : 5,
-                  "min" : 300000,
-                  "median" : 300000,
-                  "p90" : 300000,
-                  "max" : 300000,
-                  "buckets" : [
-                    {
-                      "lower" : 262144,
-                      "upper" : 524287,
-                      "count" : 5
-                    }
-                  ]
-                },
-                "unboundedCauses" : { }
-              }
-            },
-            "PARALLEL_REFERENCE" : {
-              "shape" : {
-                "count" : 40,
-                "min" : 2,
-                "median" : 2,
-                "p90" : 2,
-                "max" : 2,
-                "buckets" : [
-                  {
-                    "lower" : 2,
-                    "upper" : 3,
-                    "count" : 40
-                  }
-                ]
-              },
-              "capacity" : {
-                "bounded" : {
-                  "count" : 40,
-                  "min" : 11617350,
-                  "median" : 19633770,
-                  "p90" : 61400000,
-                  "max" : 61400000,
-                  "buckets" : [
-                    {
-                      "lower" : 8388608,
-                      "upper" : 16777215,
-                      "count" : 11
-                    },
-                    {
-                      "lower" : 16777216,
-                      "upper" : 33554431,
-                      "count" : 11
-                    },
-                    {
-                      "lower" : 33554432,
-                      "upper" : 67108863,
-                      "count" : 18
-                    }
-                  ]
-                },
-                "unboundedCauses" : { }
-              }
-            },
-            "SEMANTIC_INDEX" : {
-              "shape" : {
-                "count" : 0,
-                "min" : 0,
-                "median" : 0,
-                "p90" : 0,
-                "max" : 0,
-                "buckets" : [ ]
-              },
-              "capacity" : {
-                "bounded" : {
-                  "count" : 0,
-                  "min" : 0,
-                  "median" : 0,
-                  "p90" : 0,
-                  "max" : 0,
-                  "buckets" : [ ]
-                },
-                "unboundedCauses" : { }
-              }
-            },
-            "UNIQUENESS" : {
-              "shape" : {
-                "count" : 0,
-                "min" : 0,
-                "median" : 0,
-                "p90" : 0,
-                "max" : 0,
-                "buckets" : [ ]
-              },
-              "capacity" : {
-                "bounded" : {
-                  "count" : 0,
-                  "min" : 0,
-                  "median" : 0,
-                  "p90" : 0,
-                  "max" : 0,
-                  "buckets" : [ ]
-                },
-                "unboundedCauses" : { }
-              }
-            }
-          },
-          "outerCorrelation" : {
-            "forms" : {
-              "CURRENT_REPETITION" : 3,
-              "FIELD_VALUE" : 3
-            },
-            "capacity" : {
-              "bounded" : {
-                "count" : 6,
-                "min" : 71260,
-                "median" : 71260,
-                "p90" : 71260,
-                "max" : 71260,
-                "buckets" : [
-                  {
-                    "lower" : 65536,
-                    "upper" : 131071,
-                    "count" : 6
-                  }
-                ]
-              },
-              "unboundedCauses" : { }
-            }
-          }
-        },
-        "resolution" : {
-          "walkUpDistance" : {
-            "count" : 215,
-            "min" : 1,
-            "median" : 1,
-            "p90" : 1,
-            "max" : 2,
-            "buckets" : [
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 198
-              },
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 17
-              }
-            ]
-          }
-        }
-      }
-    },
-    "shape" : {
-      "computedFieldKinds" : {
-        "BOOLEAN" : 11,
-        "DATE" : 5,
-        "ENUMERATION" : 9,
-        "NUMBER" : 761,
-        "STRING" : 65
+        "max" : 288000000,
+        "mean" : 1728210.4756662804,
+        "median" : 1248,
+        "min" : 1,
+        "n" : 1726,
+        "p90" : 142520
       },
-      "tables" : {
-        "alternatives" : {
-          "count" : 851,
-          "min" : 1,
-          "median" : 1,
-          "p90" : 2,
-          "max" : 22,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 621
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 224
-            },
-            {
-              "lower" : 4,
-              "upper" : 7,
-              "count" : 5
-            },
-            {
-              "lower" : 16,
-              "upper" : 31,
-              "count" : 1
-            }
-          ]
+      "maxRepeatableNestingDepth" : 4,
+      "maxRepetitions" : {
+        "buckets" : {
+          "128-255" : 14,
+          "16-31" : 4,
+          "2-3" : 2,
+          "256-511" : 3,
+          "32768-65535" : 3,
+          "4-7" : 1,
+          "512-1023" : 1,
+          "64-127" : 65,
+          "65536-131071" : 4,
+          "8-15" : 7
         },
-        "preconditions" : {
-          "count" : 851,
-          "min" : 0,
-          "median" : 1,
-          "p90" : 2,
-          "max" : 22,
-          "buckets" : [
-            {
-              "lower" : 0,
-              "upper" : 0,
-              "count" : 127
-            },
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 494
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 224
-            },
-            {
-              "lower" : 4,
-              "upper" : 7,
-              "count" : 5
-            },
-            {
-              "lower" : 16,
-              "upper" : 31,
-              "count" : 1
-            }
-          ]
+        "max" : 100000,
+        "mean" : 4994.807692307692,
+        "median" : 106,
+        "min" : 2,
+        "n" : 104,
+        "p90" : 266
+      },
+      "nestingDepth" : {
+        "buckets" : {
+          "1" : 20,
+          "2-3" : 82,
+          "4-7" : 2
         },
-        "toleranceBands" : { }
+        "max" : 4,
+        "mean" : 1.8653846153846154,
+        "median" : 2,
+        "min" : 1,
+        "n" : 104,
+        "p90" : 2
       },
-      "archetypes" : {
-        "AGGREGATE" : 370,
-        "ARITHMETIC" : 151,
-        "CONSTANT" : 42,
-        "COPY" : 218,
-        "DATE" : 5,
-        "STRING" : 65
+      "nestingDepthExact" : {
+        "1" : 20,
+        "2" : 80,
+        "3" : 2,
+        "4" : 2
       },
-      "aggregateScaleMatch" : {
-        "MATCHED" : 422,
-        "MISMATCHED" : 84
-      }
-    },
-    "dependencies" : {
-      "maxCascadeDepth" : 16,
-      "feedingComputations" : 76
+      "repeatableGroupCount" : 104,
+      "siblingBranchFan" : {
+        "buckets" : {
+          "1" : 16,
+          "16-31" : 2,
+          "2-3" : 16,
+          "4-7" : 1,
+          "8-15" : 2
+        },
+        "max" : 31,
+        "mean" : 3.3513513513513513,
+        "median" : 2,
+        "min" : 1,
+        "n" : 37,
+        "p90" : 8
+      },
+      "unboundedCount" : 0
     }
   },
   "wiring" : {
-    "referencedFields" : {
-      "ANY" : 1403
-    },
     "fieldFanOut" : {
-      "count" : 1403,
-      "min" : 1,
-      "median" : 1,
-      "p90" : 8,
+      "buckets" : {
+        "1" : 965,
+        "16-31" : 57,
+        "2-3" : 205,
+        "32-63" : 26,
+        "4-7" : 91,
+        "64-127" : 4,
+        "8-15" : 55
+      },
       "max" : 102,
-      "buckets" : [
-        {
-          "lower" : 1,
-          "upper" : 1,
-          "count" : 965
-        },
-        {
-          "lower" : 2,
-          "upper" : 3,
-          "count" : 205
-        },
-        {
-          "lower" : 4,
-          "upper" : 7,
-          "count" : 91
-        },
-        {
-          "lower" : 8,
-          "upper" : 15,
-          "count" : 55
-        },
-        {
-          "lower" : 16,
-          "upper" : 31,
-          "count" : 57
-        },
-        {
-          "lower" : 32,
-          "upper" : 63,
-          "count" : 26
-        },
-        {
-          "lower" : 64,
-          "upper" : 127,
-          "count" : 4
-        }
-      ]
-    }
+      "mean" : 3.6336421952957947,
+      "median" : 1,
+      "min" : 1,
+      "n" : 1403,
+      "p90" : 8
+    },
+    "fieldsReferenced" : 1403,
+    "referencedByComputations" : 1269,
+    "referencedByRules" : 316
   }
 }

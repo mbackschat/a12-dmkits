@@ -80,7 +80,7 @@ final class RuleModelSynthesizer {
         int[] want = allocate(count, target.scope());
         Map<String, Integer> maxRepsByPath = model.groups().filter(GroupInfo::repeating)
                 .collect(java.util.stream.Collectors.toMap(GroupInfo::path, GroupInfo::maxRepetitions));
-        Distribution ruleScopeProduct = target.iteration() == null ? null : target.iteration().scopeProduct();
+        Distribution ruleScopeCapacity = target.iteration() == null ? null : target.iteration().scopeCapacity();
         int parallelTarget = target.iteration() == null ? 0 : target.iteration().parallelIteration();
 
         List<FieldInfo> twinReservedRules = new ArrayList<>();
@@ -126,9 +126,9 @@ final class RuleModelSynthesizer {
         List<FieldInfo> perGroupWithTwinHubFirst = new ArrayList<>(twinReservedFromGroup);
         perGroupWithTwinHubFirst.addAll(perGroupPool);
         List<FieldInfo> perRow = new ArrayList<>(twinReservedRules);
-        perRow.addAll(quantileMatchByScopeProduct(perRowPool,
+        perRow.addAll(quantileMatchByScopeCapacity(perRowPool,
                 Math.max(0, want[2] - twinReservedRules.size()), target.rulesPerErrorField().mean(),
-                ruleScopeProduct, repeatable, maxRepsByPath, byGroup, childrenOf, random));
+                ruleScopeCapacity, repeatable, maxRepsByPath, byGroup, childrenOf, random));
         List<List<FieldInfo>> matchedByClass = List.of(modelLevelWithTwinHubFirst, perGroupWithTwinHubFirst, perRow);
 
         int spill = 0;
@@ -728,22 +728,22 @@ final class RuleModelSynthesizer {
         return allocation;
     }
 
-    private static List<FieldInfo> quantileMatchByScopeProduct(
+    private static List<FieldInfo> quantileMatchByScopeCapacity(
             List<FieldInfo> candidates,
             int count,
             double meanClusterSize,
-            Distribution targetScopeProduct,
+            Distribution targetScopeCapacity,
             Set<String> repeatable,
             Map<String, Integer> maxRepetitionsByPath,
             Map<String, List<FieldInfo>> byGroup,
             Map<String, List<GroupInfo>> childrenOf,
             Random random) {
-        if (candidates.isEmpty() || targetScopeProduct == null || targetScopeProduct.n() == 0 || count <= 0) {
+        if (candidates.isEmpty() || targetScopeCapacity == null || targetScopeCapacity.n() == 0 || count <= 0) {
             return candidates;
         }
         int distinctEstimate = Math.max(1,
                 Math.min(candidates.size(), (int) Math.ceil(count / Math.max(1.0, meanClusterSize))));
-        List<Integer> targets = sampleMultiset(targetScopeProduct, distinctEstimate, random);
+        List<Integer> targets = sampleMultiset(targetScopeCapacity, distinctEstimate, random);
 
         List<FieldInfo> pool = new ArrayList<>(candidates);
         List<FieldInfo> matched = new ArrayList<>(distinctEstimate);

@@ -72,7 +72,7 @@ class ProfileSynthesizeVerbTest {
         CliTestSupport.Result schema = CliTestSupport.run("schema", "profile", "synthesize");
         assertEquals(0, schema.code(), schema::err);
         JsonNode contract = JSON.readTree(schema.out());
-        assertEquals("ModelPerformanceProfile", contract.path("input").path("title").asText());
+        assertEquals("ModelProfile", contract.path("input").path("title").asText());
         assertEquals("artifact", contract.path("returns").asText());
         assertEquals("dm-json-model", contract.path("artifact").path("kind").asText());
         assertEquals("stdout", contract.path("artifact").path("defaultDestination").asText());

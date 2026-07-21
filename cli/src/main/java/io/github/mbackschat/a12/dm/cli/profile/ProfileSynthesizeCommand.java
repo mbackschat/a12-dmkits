@@ -19,7 +19,7 @@ import picocli.CommandLine.Option;
 /** {@code dmtool profile synthesize} — materialize a current profile as an own-domain DM-JSON model. */
 @Command(name = "synthesize", mixinStandardHelpOptions = true,
         description = "Synthesize a deterministic own-domain DM-JSON model from one current performance "
-                + "profile. Every capacity must be bounded; synthesis refuses an unbounded profile instead "
+                + "profile. Repeatable groups must be bounded; synthesis refuses an unbounded profile instead "
                 + "of silently making a cheaper model. The model goes to stdout, or -o writes it and returns "
                 + "an applied receipt.")
 final class ProfileSynthesizeCommand extends BaseCommand {

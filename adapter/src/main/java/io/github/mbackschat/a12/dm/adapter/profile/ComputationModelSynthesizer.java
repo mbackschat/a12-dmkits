@@ -185,7 +185,7 @@ final class ComputationModelSynthesizer {
             Map<String, Integer> maxRepsByPath, Random rnd) {
         List<FieldInfo> numCandidates = new ArrayList<>(numCapable);
         numCandidates.addAll(numRest);
-        Distribution compScopeProduct = target.iteration() == null ? null : target.iteration().scopeProduct();
+        Distribution compScopeCapacity = target.iteration() == null ? null : target.iteration().scopeCapacity();
 
         int parallelTarget = target.iteration() == null ? 0 : target.iteration().parallelIteration();
         List<FieldInfo> twinReserved = new ArrayList<>();
@@ -220,40 +220,13 @@ final class ComputationModelSynthesizer {
 
         int remainingWant = Math.max(0, wantNumber - cascadeCluster.size() - twinReserved.size()
                 - groupFillReserved.size());
-        Distribution compStarCapture = target.iteration() == null ? null : target.iteration().starCapture();
-        Distribution compReachProduct = target.iteration() == null ? null : target.iteration().reachProduct();
-        // Subtract the TWIN-HUB reservation's
-        // OWN realized reach, bucket-aware, before sizing the capture-plan's reach budget. The measured
-        // reachProduct distribution already includes the target's parallel-iterating computations (a joint
-        // reference over two sibling branches carries THEIR chain product as its own reach — verified
-        // empirically: every synth-side TWIN-HUB pairing registers reach > 1), so sizing the reach budget
-        // from the FULL distribution double-counts that share, starving the OPPORTUNISTIC PARALLEL claim in
-        // {@code tryBudgetClaims} of eligible (plan-free) fields later (measured: comp.parallelIteration
-        // floor dropped 9→7 purely from this over-assignment, no allocator-priority conflict involved).
-        // twinReserved's pairing is ALREADY decided at this point, so its realized reach is measured
-        // directly (siblingAggregatePair is a pure function of groupPath/childrenOf/repeatable/numbersAll,
-        // safely re-callable), not estimated.
-        Distribution reachBudgetSource = compReachProduct;
-        if (compReachProduct != null && !twinReserved.isEmpty()) {
-            List<Long> realizedParallelReach = new ArrayList<>();
-            for (FieldInfo f : twinReserved) {
-                List<String> pair = siblingAggregatePair(f.groupPath(), childrenOf, repeatable, numbersAll);
-                if (pair == null) {
-                    continue;
-                }
-                long g0 = chainProductOf(parentOf(pair.get(0).replace("*", "")), repeatable, maxRepsByPath);
-                long g1 = chainProductOf(parentOf(pair.get(1).replace("*", "")), repeatable, maxRepsByPath);
-                long ownScope = chainProductOf(f.groupPath(), repeatable, maxRepsByPath);
-                realizedParallelReach.add(Math.max(1, Math.max(g0, g1) / Math.max(1, ownScope)));
-            }
-            reachBudgetSource = minusRealized(compReachProduct, realizedParallelReach);
-        }
-        CaptureMatch captureMatch = compStarCapture != null
-                ? matchByCaptureTarget(numCandidates, remainingWant, compStarCapture, reachBudgetSource, repeatable,
+        Distribution compListScanCapacity = target.iteration() == null ? null : target.iteration().listScanCapacity();
+        CaptureMatch captureMatch = compListScanCapacity != null
+                ? matchByCaptureTarget(numCandidates, remainingWant, compListScanCapacity, repeatable,
                         maxRepsByPath, numbersAll, childrenOf, rnd)
                 : null;
         List<FieldInfo> matched = captureMatch != null ? captureMatch.fields()
-                : quantileMatchByScopeProduct(numCandidates, remainingWant, 1.0, compScopeProduct,
+                : quantileMatchByScopeCapacity(numCandidates, remainingWant, 1.0, compScopeCapacity,
                         repeatable, maxRepsByPath, numbersAll, childrenOf, rnd);
         Map<String, String> operandPlan = captureMatch != null ? captureMatch.operandPlan() : Map.of();
 
@@ -419,7 +392,7 @@ final class ComputationModelSynthesizer {
         // pre-existing opportunistic fallback (aggregate whenever the scope geometrically allows it), so an
         // older profile's fidelity is unaffected. Overrides {@code plannedOperand} too — {@code
         // matchByCaptureTarget} (the reservation-time capture-plan matcher) sizes from the DIFFERENT
-        // iteration.starCapture/reachProduct axes (every field carries a measured value, even a trivial
+        // iteration.listScanCapacity/workCapacity axes (every field carries a measured value, even a trivial
         // one — n=1 for a compact profile, not n=0), so it can still hand back an aggregate operand for a
         // reservation whose OWN construct-level aggregateStars target is confirmed zero; a plan built on
         // the wrong axis is not authoritative over the construct budget that IS zero.
@@ -1038,16 +1011,16 @@ final class ComputationModelSynthesizer {
     }
 
 
-    private static List<FieldInfo> quantileMatchByScopeProduct(List<FieldInfo> candidates, int wantCount,
-            double meanClusterSize, Distribution targetScopeProduct, Set<String> repeatable,
+    private static List<FieldInfo> quantileMatchByScopeCapacity(List<FieldInfo> candidates, int wantCount,
+            double meanClusterSize, Distribution targetScopeCapacity, Set<String> repeatable,
             Map<String, Integer> maxRepsByPath, Map<String, List<FieldInfo>> byGroup,
             Map<String, List<GroupInfo>> childrenOf, Random rnd) {
-        if (candidates.isEmpty() || targetScopeProduct == null || targetScopeProduct.n() == 0 || wantCount <= 0) {
+        if (candidates.isEmpty() || targetScopeCapacity == null || targetScopeCapacity.n() == 0 || wantCount <= 0) {
             return candidates;
         }
         int distinctEstimate = Math.max(1,
                 Math.min(candidates.size(), (int) Math.ceil(wantCount / Math.max(1.0, meanClusterSize))));
-        List<Integer> targets = sampleMultiset(targetScopeProduct, distinctEstimate, rnd);
+        List<Integer> targets = sampleMultiset(targetScopeCapacity, distinctEstimate, rnd);
 
         List<FieldInfo> pool = new ArrayList<>(candidates);
         List<FieldInfo> matched = new ArrayList<>(distinctEstimate);
@@ -1077,7 +1050,7 @@ final class ComputationModelSynthesizer {
     private record CaptureMatch(List<FieldInfo> fields, Map<String, String> operandPlan) {}
 
     private static CaptureMatch matchByCaptureTarget(List<FieldInfo> candidates, int wantCount,
-            Distribution targetCapture, Distribution targetReach, Set<String> repeatable,
+            Distribution targetCapture, Set<String> repeatable,
             Map<String, Integer> maxRepsByPath, Map<String, List<FieldInfo>> byGroup,
             Map<String, List<GroupInfo>> childrenOf, Random rnd) {
         if (candidates.isEmpty() || targetCapture == null || targetCapture.n() == 0 || wantCount <= 0) {
@@ -1099,14 +1072,9 @@ final class ComputationModelSynthesizer {
                 .filter(f -> capturePotentialDetailed(f.groupPath(), childrenOf, repeatable, byGroup, maxRepsByPath)
                         .operand() != null)
                 .count();
-        int reachBudget = targetReach == null ? 0
-                : Math.min(reachCapableCount, Math.min(distinctEstimate,
-                        (int) Math.round(distinctEstimate * nonTrivialFraction(targetReach, 0.0))));
-        // sample the reach-budget MAGNITUDES from the non-trivial (>1) sub-distribution only — sampling from
-        // the FULL distribution (still ~half "1"s for a target like B's) would draw a target of "1" for a
-        // slot the budget-sizing above already counted as genuinely reach-carrying, undermining the sizing
-        // itself (measured: this exact bug held the realized median at 2 despite a correctly-sized budget).
-        Distribution reachMagnitudes = reachBudget > 0 ? excludingTrivialBucket(targetReach) : null;
+        int reachBudget = Math.min(reachCapableCount, Math.min(distinctEstimate,
+                (int) Math.round(distinctEstimate * nonTrivialFraction(targetCapture, 0.0))));
+        Distribution reachMagnitudes = reachBudget > 0 ? excludingTrivialBucket(targetCapture) : null;
 
         if (reachMagnitudes != null) {
             for (int target : sampleMultiset(reachMagnitudes, reachBudget, rnd)) {
@@ -1121,10 +1089,10 @@ final class ComputationModelSynthesizer {
                 // see MODEL-SYNTHESIS-FIDELITY-SPEC). Only fall back to a pair-capable candidate when
                 // no other reach-capable one exists for this slot.
                 //
-                // NOT jointly matched against reachScopeProduct (tried and reverted): pairing a
+                // NOT jointly matched against scannedScopeCapacity (tried and reverted): pairing a
                 // sampled scope target alongside the reach target competes with THIS match for the same
-                // candidate slots, degrading reach-fit quality enough to sharply regress comp.reachProduct
-                // and comp.parallelIteration without lifting scopeProduct in return (see
+                // candidate slots, degrading reach-fit quality enough to sharply regress comp.workCapacity
+                // and comp.parallelIteration without lifting scopeCapacity in return (see
                 // MODEL-SYNTHESIS-FIDELITY-SPEC — a new pairwise deference breaking a
                 // previously-working one). Reach-only, as it was.
                 int bestIdx = -1;
@@ -1142,9 +1110,7 @@ final class ComputationModelSynthesizer {
                                         != null) {
                             continue;                              // reserve this candidate for PARALLEL, first pass
                         }
-                        long ownScope = chainProductOf(pool.get(i).groupPath(), repeatable, maxRepsByPath);
-                        long reach = Math.max(1, cp.value() / Math.max(1, ownScope));
-                        double diff = Math.abs(Math.log(reach) - targetLog);
+                        double diff = Math.abs(Math.log(cp.value()) - targetLog);
                         if (bestIdx < 0 || diff < bestDiff) {
                             bestDiff = diff;
                             bestIdx = i;
@@ -1248,19 +1214,6 @@ final class ComputationModelSynthesizer {
         return n == 0 ? null : new Distribution(n, d.min(), d.max(), d.mean(), d.median(), d.p90(), filtered);
     }
 
-
-    private static Distribution minusRealized(Distribution d, List<Long> realized) {
-        if (d == null) {
-            return null;
-        }
-        Map<String, Integer> remaining = new LinkedHashMap<>(d.buckets());
-        for (long v : realized) {
-            String label = Distribution.bucketFor((int) Math.min(v, Integer.MAX_VALUE));
-            remaining.computeIfPresent(label, (k, count) -> Math.max(0, count - 1));
-        }
-        int n = remaining.values().stream().mapToInt(Integer::intValue).sum();
-        return n == 0 ? null : new Distribution(n, d.min(), d.max(), d.mean(), d.median(), d.p90(), remaining);
-    }
     private static ValueKind parseKind(String name) {
         try {
             return ValueKind.valueOf(name);

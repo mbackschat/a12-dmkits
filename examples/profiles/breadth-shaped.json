@@ -1,1715 +1,710 @@
 {
-  "structure" : {
-    "elements" : {
-      "COMPUTATION" : 307,
-      "FIELD" : 2827,
-      "GROUP" : 1267,
-      "RULE" : 2181
+  "computations" : {
+    "aggregateScaleMatch" : {
+      "matched" : 87,
+      "mismatched" : 127
     },
-    "topology" : {
-      "maxGroupDepth" : 6,
-      "fieldsPerGroup" : {
-        "count" : 1267,
-        "min" : 0,
+    "aggregateStars" : {
+      "buckets" : {
+        "1" : 78,
+        "2-3" : 136
+      },
+      "max" : 3,
+      "mean" : 2.0794392523364484,
+      "median" : 2,
+      "min" : 1,
+      "n" : 214,
+      "p90" : 3
+    },
+    "alternatives" : {
+      "buckets" : {
+        "1" : 203,
+        "2-3" : 104
+      },
+      "max" : 2,
+      "mean" : 1.3387622149837133,
+      "median" : 1,
+      "min" : 1,
+      "n" : 307,
+      "p90" : 2
+    },
+    "archetypes" : {
+      "AGGREGATE" : 65,
+      "ARITHMETIC" : 201,
+      "CONSTANT" : 1,
+      "COPY" : 40
+    },
+    "computedFieldKinds" : {
+      "NUMBER" : 307
+    },
+    "constructCombos" : {
+      "AGGREGATE" : 14,
+      "AGGREGATE+ARITHMETIC" : 29,
+      "AGGREGATE+ARITHMETIC+QUANTIFIER" : 60,
+      "AGGREGATE+ARITHMETIC+QUANTIFIER+VALUE_LIST" : 56,
+      "AGGREGATE+ARITHMETIC+VALUE_LIST" : 4,
+      "AGGREGATE+QUANTIFIER" : 32,
+      "AGGREGATE+QUANTIFIER+VALUE_LIST" : 19,
+      "ARITHMETIC" : 38,
+      "ARITHMETIC+QUANTIFIER" : 6,
+      "ARITHMETIC+QUANTIFIER+VALUE_LIST" : 1,
+      "ARITHMETIC+VALUE_LIST" : 7,
+      "NONE" : 34,
+      "QUANTIFIER" : 1,
+      "QUANTIFIER+VALUE_LIST" : 1,
+      "VALUE_LIST" : 5
+    },
+    "constructs" : {
+      "AGGREGATE" : 223,
+      "ARITHMETIC" : 247,
+      "QUANTIFIER" : 265,
+      "VALUE_LIST" : 106
+    },
+    "constructsByScope" : {
+      "modelLevel" : { },
+      "perGroup" : {
+        "AGGREGATE" : 155,
+        "ARITHMETIC" : 124,
+        "QUANTIFIER" : 170,
+        "VALUE_LIST" : 57
+      },
+      "perRepeatableRow" : {
+        "AGGREGATE" : 68,
+        "ARITHMETIC" : 123,
+        "QUANTIFIER" : 95,
+        "VALUE_LIST" : 49
+      }
+    },
+    "count" : 307,
+    "depth" : {
+      "buckets" : {
+        "1" : 31,
+        "2-3" : 243,
+        "4-7" : 32,
+        "8-15" : 1
+      },
+      "max" : 8,
+      "mean" : 2.785016286644951,
+      "median" : 3,
+      "min" : 1,
+      "n" : 307,
+      "p90" : 4
+    },
+    "fanIn" : {
+      "buckets" : {
+        "1" : 85,
+        "2-3" : 120,
+        "4-7" : 102
+      },
+      "max" : 7,
+      "mean" : 2.8762214983713354,
+      "median" : 3,
+      "min" : 1,
+      "n" : 307,
+      "p90" : 5
+    },
+    "feedingOthers" : 57,
+    "iteration" : {
+      "listScanCapacity" : {
+        "buckets" : {
+          "1" : 93,
+          "1024-2047" : 8,
+          "128-255" : 42,
+          "2-3" : 8,
+          "2048-4095" : 1,
+          "256-511" : 125,
+          "32768-65535" : 3,
+          "4-7" : 2,
+          "64-127" : 10,
+          "65536-131071" : 2,
+          "8-15" : 10,
+          "8192-16383" : 3
+        },
+        "max" : 107632,
+        "mean" : 1546.700325732899,
+        "median" : 186,
+        "min" : 1,
+        "n" : 307,
+        "p90" : 472
+      },
+      "outerCorrelation" : 0,
+      "parallelIteration" : 9,
+      "scannedScopeCapacity" : {
+        "buckets" : {
+          "1" : 151,
+          "128-255" : 14,
+          "2-3" : 15,
+          "64-127" : 27,
+          "8-15" : 7
+        },
+        "max" : 236,
+        "mean" : 26.130841121495326,
         "median" : 1,
-        "p90" : 4,
-        "max" : 25,
-        "buckets" : [
-          {
-            "lower" : 0,
-            "upper" : 0,
-            "count" : 112
-          },
-          {
-            "lower" : 1,
-            "upper" : 1,
-            "count" : 591
-          },
-          {
-            "lower" : 2,
-            "upper" : 3,
-            "count" : 395
-          },
-          {
-            "lower" : 4,
-            "upper" : 7,
-            "count" : 116
-          },
-          {
-            "lower" : 8,
-            "upper" : 15,
-            "count" : 36
-          },
-          {
-            "lower" : 16,
-            "upper" : 31,
-            "count" : 17
-          }
-        ]
+        "min" : 1,
+        "n" : 214,
+        "p90" : 112
+      },
+      "scopeCapacity" : {
+        "buckets" : {
+          "1" : 156,
+          "1024-2047" : 3,
+          "128-255" : 34,
+          "2-3" : 21,
+          "256-511" : 15,
+          "32768-65535" : 1,
+          "512-1023" : 2,
+          "64-127" : 57,
+          "65536-131071" : 2,
+          "8-15" : 14,
+          "8192-16383" : 2
+        },
+        "max" : 107632,
+        "mean" : 905.6091205211726,
+        "median" : 1,
+        "min" : 1,
+        "n" : 307,
+        "p90" : 228
+      },
+      "workCapacity" : {
+        "buckets" : {
+          "1" : 5,
+          "1024-2047" : 4,
+          "128-255" : 40,
+          "16384-32767" : 13,
+          "2-3" : 14,
+          "2048-4095" : 1,
+          "256-511" : 122,
+          "32768-65535" : 19,
+          "4-7" : 2,
+          "4194304-8388607" : 2,
+          "512-1023" : 6,
+          "524288-1048575" : 2,
+          "64-127" : 40,
+          "65536-131071" : 13,
+          "8-15" : 17,
+          "8192-16383" : 6,
+          "8388608-16777215" : 1
+        },
+        "max" : 12054784,
+        "mean" : 85849.21172638437,
+        "median" : 312,
+        "min" : 1,
+        "n" : 307,
+        "p90" : 39204
       }
     },
-    "fields" : {
-      "kinds" : {
-        "BOOLEAN" : 55,
-        "CONFIRM" : 137,
-        "DATE" : 103,
-        "DATE_FRAGMENT" : 25,
-        "DATE_RANGE" : 64,
-        "ENUMERATION" : 154,
-        "NUMBER" : 1631,
-        "STRING" : 658
+    "maxCascadeDepth" : 12,
+    "nodeCount" : {
+      "buckets" : {
+        "1" : 25,
+        "16-31" : 21,
+        "2-3" : 41,
+        "4-7" : 104,
+        "8-15" : 116
       },
-      "constrainedFields" : {
-        "STRING_LENGTH" : 564
-      },
-      "numberScale" : {
-        "count" : 1631,
-        "min" : 0,
-        "median" : 0,
-        "p90" : 2,
-        "max" : 4,
-        "buckets" : [
-          {
-            "lower" : 0,
-            "upper" : 0,
-            "count" : 1022
-          },
-          {
-            "lower" : 1,
-            "upper" : 1,
-            "count" : 213
-          },
-          {
-            "lower" : 2,
-            "upper" : 3,
-            "count" : 330
-          },
-          {
-            "lower" : 4,
-            "upper" : 7,
-            "count" : 66
-          }
-        ]
-      },
-      "enumCardinality" : {
-        "count" : 154,
-        "min" : 2,
-        "median" : 3,
-        "p90" : 20,
-        "max" : 567,
-        "buckets" : [
-          {
-            "lower" : 2,
-            "upper" : 3,
-            "count" : 127
-          },
-          {
-            "lower" : 4,
-            "upper" : 7,
-            "count" : 6
-          },
-          {
-            "lower" : 16,
-            "upper" : 31,
-            "count" : 20
-          },
-          {
-            "lower" : 512,
-            "upper" : 1023,
-            "count" : 1
-          }
-        ]
-      }
+      "max" : 28,
+      "mean" : 7.824104234527687,
+      "median" : 6,
+      "min" : 1,
+      "n" : 307,
+      "p90" : 15
     },
-    "repeatability" : {
-      "outcomes" : {
-        "BOUNDED" : 387
-      },
-      "topology" : {
-        "maxDepth" : 3,
-        "exactDepth" : {
-          "1" : 131,
-          "2" : 223,
-          "3" : 33
-        },
-        "siblingFan" : {
-          "count" : 311,
-          "min" : 1,
-          "median" : 1,
-          "p90" : 2,
-          "max" : 131,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 257
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 45
-            },
-            {
-              "lower" : 4,
-              "upper" : 7,
-              "count" : 6
-            },
-            {
-              "lower" : 8,
-              "upper" : 15,
-              "count" : 1
-            },
-            {
-              "lower" : 16,
-              "upper" : 31,
-              "count" : 1
-            },
-            {
-              "lower" : 128,
-              "upper" : 255,
-              "count" : 1
-            }
-          ]
-        }
-      },
-      "capacities" : {
-        "maxRepetitions" : {
-          "bounded" : {
-            "count" : 387,
-            "min" : 2,
-            "median" : 71,
-            "p90" : 119,
-            "max" : 961,
-            "buckets" : [
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 143
-              },
-              {
-                "lower" : 4,
-                "upper" : 7,
-                "count" : 2
-              },
-              {
-                "lower" : 8,
-                "upper" : 15,
-                "count" : 13
-              },
-              {
-                "lower" : 32,
-                "upper" : 63,
-                "count" : 6
-              },
-              {
-                "lower" : 64,
-                "upper" : 127,
-                "count" : 214
-              },
-              {
-                "lower" : 512,
-                "upper" : 1023,
-                "count" : 9
-              }
-            ]
-          },
-          "unboundedCauses" : { }
-        },
-        "groupChains" : {
-          "bounded" : {
-            "count" : 387,
-            "min" : 2,
-            "median" : 186,
-            "p90" : 472,
-            "max" : 120125,
-            "buckets" : [
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 78
-              },
-              {
-                "lower" : 4,
-                "upper" : 7,
-                "count" : 1
-              },
-              {
-                "lower" : 8,
-                "upper" : 15,
-                "count" : 13
-              },
-              {
-                "lower" : 64,
-                "upper" : 127,
-                "count" : 38
-              },
-              {
-                "lower" : 128,
-                "upper" : 255,
-                "count" : 146
-              },
-              {
-                "lower" : 256,
-                "upper" : 511,
-                "count" : 75
-              },
-              {
-                "lower" : 512,
-                "upper" : 1023,
-                "count" : 9
-              },
-              {
-                "lower" : 1024,
-                "upper" : 2047,
-                "count" : 16
-              },
-              {
-                "lower" : 2048,
-                "upper" : 4095,
-                "count" : 1
-              },
-              {
-                "lower" : 8192,
-                "upper" : 16383,
-                "count" : 3
-              },
-              {
-                "lower" : 32768,
-                "upper" : 65535,
-                "count" : 1
-              },
-              {
-                "lower" : 65536,
-                "upper" : 131071,
-                "count" : 6
-              }
-            ]
-          },
-          "unboundedCauses" : { }
-        },
-        "fieldChains" : {
-          "bounded" : {
-            "count" : 2827,
-            "min" : 1,
-            "median" : 2,
-            "p90" : 236,
-            "max" : 120125,
-            "buckets" : [
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 1217
-              },
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 518
-              },
-              {
-                "lower" : 4,
-                "upper" : 7,
-                "count" : 4
-              },
-              {
-                "lower" : 8,
-                "upper" : 15,
-                "count" : 80
-              },
-              {
-                "lower" : 64,
-                "upper" : 127,
-                "count" : 264
-              },
-              {
-                "lower" : 128,
-                "upper" : 255,
-                "count" : 496
-              },
-              {
-                "lower" : 256,
-                "upper" : 511,
-                "count" : 128
-              },
-              {
-                "lower" : 512,
-                "upper" : 1023,
-                "count" : 26
-              },
-              {
-                "lower" : 1024,
-                "upper" : 2047,
-                "count" : 66
-              },
-              {
-                "lower" : 2048,
-                "upper" : 4095,
-                "count" : 1
-              },
-              {
-                "lower" : 8192,
-                "upper" : 16383,
-                "count" : 9
-              },
-              {
-                "lower" : 32768,
-                "upper" : 65535,
-                "count" : 3
-              },
-              {
-                "lower" : 65536,
-                "upper" : 131071,
-                "count" : 15
-              }
-            ]
-          },
-          "unboundedCauses" : { }
-        }
-      }
+    "opaqueCount" : 0,
+    "operators" : {
+      "AllFieldsFilled" : 30,
+      "And" : 46,
+      "AtLeastOneFieldFilled" : 235,
+      "Equal" : 5,
+      "FieldFilled" : 13,
+      "FieldNotFilled" : 19,
+      "FieldValueIncludedInValueList" : 106,
+      "GreaterThan" : 1,
+      "GreaterThanOrEqual" : 3,
+      "LessThan" : 2,
+      "NotEqual" : 1,
+      "Or" : 41,
+      "RoundAccounting" : 81,
+      "RoundDown" : 93,
+      "RoundUp" : 73,
+      "Sum" : 224
+    },
+    "preconditionedCount" : 224,
+    "scope" : {
+      "modelLevel" : 0,
+      "perGroup" : 156,
+      "perRepeatableRow" : 151
     }
   },
   "rules" : {
-    "conversion" : {
-      "outcomes" : {
-        "CONVERTED" : 2181
+    "booleanArity" : {
+      "buckets" : {
+        "1" : 354,
+        "2-3" : 1743,
+        "4-7" : 84
       },
-      "opaqueReasons" : { }
+      "max" : 7,
+      "mean" : 2.0976616231086656,
+      "median" : 2,
+      "min" : 1,
+      "n" : 2181,
+      "p90" : 3
     },
-    "syntax" : {
-      "ast" : {
-        "nodeCount" : {
-          "count" : 2181,
-          "min" : 1,
-          "median" : 5,
-          "p90" : 10,
-          "max" : 23,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 354
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 76
-            },
-            {
-              "lower" : 4,
-              "upper" : 7,
-              "count" : 1183
-            },
-            {
-              "lower" : 8,
-              "upper" : 15,
-              "count" : 479
-            },
-            {
-              "lower" : 16,
-              "upper" : 31,
-              "count" : 89
-            }
-          ]
-        },
-        "depth" : {
-          "count" : 2181,
-          "min" : 1,
-          "median" : 3,
-          "p90" : 5,
-          "max" : 9,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 354
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 880
-            },
-            {
-              "lower" : 4,
-              "upper" : 7,
-              "count" : 939
-            },
-            {
-              "lower" : 8,
-              "upper" : 15,
-              "count" : 8
-            }
-          ]
-        },
-        "booleanArity" : {
-          "count" : 2181,
-          "min" : 1,
-          "median" : 2,
-          "p90" : 3,
-          "max" : 7,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 354
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 1743
-            },
-            {
-              "lower" : 4,
-              "upper" : 7,
-              "count" : 84
-            }
-          ]
-        },
-        "variadicArity" : {
-          "count" : 2181,
-          "min" : 0,
-          "median" : 1,
-          "p90" : 2,
-          "max" : 3,
-          "buckets" : [
-            {
-              "lower" : 0,
-              "upper" : 0,
-              "count" : 583
-            },
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 881
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 717
-            }
-          ]
-        },
-        "distinctFanIn" : {
-          "count" : 2181,
-          "min" : 1,
-          "median" : 2,
-          "p90" : 3,
-          "max" : 6,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 504
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 1597
-            },
-            {
-              "lower" : 4,
-              "upper" : 7,
-              "count" : 80
-            }
-          ]
-        }
+    "constructCombos" : {
+      "AGGREGATE" : 187,
+      "AGGREGATE+ARITHMETIC" : 4,
+      "AGGREGATE+CURRENT_REPETITION" : 1,
+      "AGGREGATE+DATE_MATH" : 4,
+      "AGGREGATE+GROUP_FILL" : 17,
+      "AGGREGATE+QUANTIFIER" : 31,
+      "AGGREGATE+VALUE_LIST" : 8,
+      "ARITHMETIC" : 41,
+      "DATE_MATH" : 83,
+      "DATE_MATH+VALUE_LIST" : 2,
+      "GROUP_FILL" : 143,
+      "GROUP_FILL+VALUE_LIST" : 11,
+      "NONE" : 357,
+      "QUANTIFIER" : 1163,
+      "QUANTIFIER+VALUE_LIST" : 44,
+      "VALUE_LIST" : 85
+    },
+    "constructs" : {
+      "AGGREGATE" : 252,
+      "ARITHMETIC" : 45,
+      "CURRENT_REPETITION" : 1,
+      "DATE_MATH" : 89,
+      "GROUP_FILL" : 171,
+      "QUANTIFIER" : 1238,
+      "VALUE_LIST" : 150
+    },
+    "constructsByScope" : {
+      "modelLevel" : {
+        "AGGREGATE" : 48,
+        "GROUP_FILL" : 5
       },
-      "dispatch" : {
-        "catalogOperators" : {
-          "Abs" : 45,
-          "AllFieldsFilled" : 1238,
-          "And" : 2465,
-          "CurrentRepetition" : 1,
-          "Equal" : 94,
-          "FieldFilled" : 2364,
-          "FieldNotFilled" : 248,
-          "FieldValueIncludedInValueList" : 153,
-          "GreaterThan" : 663,
-          "GreaterThanOrEqual" : 111,
-          "GroupFilled" : 171,
-          "LessThan" : 107,
-          "NotEqual" : 18,
-          "Or" : 521,
-          "Sum" : 421,
-          "YearFromDate" : 89
-        },
-        "intrinsicOperators" : { },
-        "constructs" : {
-          "AGGREGATE" : 252,
-          "ARITHMETIC" : 45,
-          "CURRENT_REPETITION" : 1,
-          "DATE_MATH" : 89,
-          "GROUP_FILL" : 171,
-          "QUANTIFIER" : 1238,
-          "VALUE_LIST" : 150
-        },
-        "constructCombinations" : {
-          "AGGREGATE" : 187,
-          "AGGREGATE+ARITHMETIC" : 4,
-          "AGGREGATE+CURRENT_REPETITION" : 1,
-          "AGGREGATE+DATE_MATH" : 4,
-          "AGGREGATE+GROUP_FILL" : 17,
-          "AGGREGATE+QUANTIFIER" : 31,
-          "AGGREGATE+VALUE_LIST" : 8,
-          "ARITHMETIC" : 41,
-          "DATE_MATH" : 83,
-          "DATE_MATH+VALUE_LIST" : 2,
-          "GROUP_FILL" : 143,
-          "GROUP_FILL+VALUE_LIST" : 11,
-          "NONE" : 357,
-          "QUANTIFIER" : 1163,
-          "QUANTIFIER+VALUE_LIST" : 44,
-          "VALUE_LIST" : 85
-        },
-        "constructsByScope" : {
-          "MODEL_LEVEL" : {
-            "AGGREGATE" : 48,
-            "GROUP_FILL" : 5
-          },
-          "PER_GROUP" : {
-            "AGGREGATE" : 56,
-            "ARITHMETIC" : 2,
-            "DATE_MATH" : 8,
-            "GROUP_FILL" : 19,
-            "QUANTIFIER" : 121,
-            "VALUE_LIST" : 14
-          },
-          "PER_REPEATABLE_ROW" : {
-            "AGGREGATE" : 148,
-            "ARITHMETIC" : 43,
-            "CURRENT_REPETITION" : 1,
-            "DATE_MATH" : 81,
-            "GROUP_FILL" : 147,
-            "QUANTIFIER" : 1117,
-            "VALUE_LIST" : 136
-          }
-        }
+      "perGroup" : {
+        "AGGREGATE" : 56,
+        "ARITHMETIC" : 2,
+        "DATE_MATH" : 8,
+        "GROUP_FILL" : 19,
+        "QUANTIFIER" : 121,
+        "VALUE_LIST" : 14
+      },
+      "perRepeatableRow" : {
+        "AGGREGATE" : 148,
+        "ARITHMETIC" : 43,
+        "CURRENT_REPETITION" : 1,
+        "DATE_MATH" : 81,
+        "GROUP_FILL" : 147,
+        "QUANTIFIER" : 1117,
+        "VALUE_LIST" : 136
       }
     },
-    "runtime" : {
-      "scope" : {
-        "classes" : {
-          "MODEL_LEVEL" : 48,
-          "PER_GROUP" : 183,
-          "PER_REPEATABLE_ROW" : 1950
-        },
-        "capacity" : {
-          "bounded" : {
-            "count" : 2181,
-            "min" : 1,
-            "median" : 9,
-            "p90" : 192,
-            "max" : 260,
-            "buckets" : [
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 231
-              },
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 849
-              },
-              {
-                "lower" : 4,
-                "upper" : 7,
-                "count" : 4
-              },
-              {
-                "lower" : 8,
-                "upper" : 15,
-                "count" : 112
-              },
-              {
-                "lower" : 64,
-                "upper" : 127,
-                "count" : 342
-              },
-              {
-                "lower" : 128,
-                "upper" : 255,
-                "count" : 635
-              },
-              {
-                "lower" : 256,
-                "upper" : 511,
-                "count" : 8
-              }
-            ]
-          },
-          "unboundedCauses" : { }
-        }
+    "count" : 2181,
+    "depth" : {
+      "buckets" : {
+        "1" : 354,
+        "2-3" : 880,
+        "4-7" : 939,
+        "8-15" : 8
       },
-      "evaluation" : {
-        "scans" : {
-          "kinds" : {
-            "FLATTENED_FIELD" : 1070
-          },
-          "starDepth" : {
-            "count" : 1070,
-            "min" : 1,
-            "median" : 1,
-            "p90" : 1,
-            "max" : 1,
-            "buckets" : [
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 1070
-              }
-            ]
-          },
-          "capacity" : {
-            "bounded" : {
-              "count" : 1070,
-              "min" : 2,
-              "median" : 3,
-              "p90" : 814,
-              "max" : 961,
-              "buckets" : [
-                {
-                  "lower" : 2,
-                  "upper" : 3,
-                  "count" : 546
-                },
-                {
-                  "lower" : 8,
-                  "upper" : 15,
-                  "count" : 15
-                },
-                {
-                  "lower" : 64,
-                  "upper" : 127,
-                  "count" : 350
-                },
-                {
-                  "lower" : 512,
-                  "upper" : 1023,
-                  "count" : 159
-                }
-              ]
-            },
-            "unboundedCauses" : { }
-          },
-          "filterComplexity" : {
-            "count" : 0,
-            "min" : 0,
-            "median" : 0,
-            "p90" : 0,
-            "max" : 0,
-            "buckets" : [ ]
-          }
-        },
-        "combinedWork" : {
-          "capacity" : {
-            "bounded" : {
-              "count" : 2181,
-              "min" : 1,
-              "median" : 146,
-              "p90" : 368,
-              "max" : 120125,
-              "buckets" : [
-                {
-                  "lower" : 1,
-                  "upper" : 1,
-                  "count" : 37
-                },
-                {
-                  "lower" : 2,
-                  "upper" : 3,
-                  "count" : 692
-                },
-                {
-                  "lower" : 4,
-                  "upper" : 7,
-                  "count" : 4
-                },
-                {
-                  "lower" : 8,
-                  "upper" : 15,
-                  "count" : 96
-                },
-                {
-                  "lower" : 64,
-                  "upper" : 127,
-                  "count" : 204
-                },
-                {
-                  "lower" : 128,
-                  "upper" : 255,
-                  "count" : 748
-                },
-                {
-                  "lower" : 256,
-                  "upper" : 511,
-                  "count" : 267
-                },
-                {
-                  "lower" : 512,
-                  "upper" : 1023,
-                  "count" : 94
-                },
-                {
-                  "lower" : 1024,
-                  "upper" : 2047,
-                  "count" : 29
-                },
-                {
-                  "lower" : 8192,
-                  "upper" : 16383,
-                  "count" : 4
-                },
-                {
-                  "lower" : 32768,
-                  "upper" : 65535,
-                  "count" : 2
-                },
-                {
-                  "lower" : 65536,
-                  "upper" : 131071,
-                  "count" : 4
-                }
-              ]
-            },
-            "unboundedCauses" : { }
-          },
-          "scopeByScan" : {
-            "MODEL_LEVEL|FLATTENED_FIELD" : 139,
-            "PER_GROUP|FLATTENED_FIELD" : 214,
-            "PER_REPEATABLE_ROW|FLATTENED_FIELD" : 717
-          }
-        },
-        "mechanisms" : {
-          "GROUP_FILL" : {
-            "shape" : {
-              "count" : 171,
-              "min" : 1,
-              "median" : 1,
-              "p90" : 24,
-              "max" : 27,
-              "buckets" : [
-                {
-                  "lower" : 1,
-                  "upper" : 1,
-                  "count" : 87
-                },
-                {
-                  "lower" : 2,
-                  "upper" : 3,
-                  "count" : 60
-                },
-                {
-                  "lower" : 16,
-                  "upper" : 31,
-                  "count" : 24
-                }
-              ]
-            },
-            "capacity" : {
-              "bounded" : {
-                "count" : 171,
-                "min" : 2,
-                "median" : 4,
-                "p90" : 24,
-                "max" : 27,
-                "buckets" : [
-                  {
-                    "lower" : 2,
-                    "upper" : 3,
-                    "count" : 85
-                  },
-                  {
-                    "lower" : 4,
-                    "upper" : 7,
-                    "count" : 53
-                  },
-                  {
-                    "lower" : 8,
-                    "upper" : 15,
-                    "count" : 2
-                  },
-                  {
-                    "lower" : 16,
-                    "upper" : 31,
-                    "count" : 31
-                  }
-                ]
-              },
-              "unboundedCauses" : { }
-            }
-          },
-          "PARALLEL_REFERENCE" : {
-            "shape" : {
-              "count" : 116,
-              "min" : 2,
-              "median" : 2,
-              "p90" : 2,
-              "max" : 2,
-              "buckets" : [
-                {
-                  "lower" : 2,
-                  "upper" : 3,
-                  "count" : 116
-                }
-              ]
-            },
-            "capacity" : {
-              "bounded" : {
-                "count" : 116,
-                "min" : 3,
-                "median" : 912,
-                "p90" : 1386,
-                "max" : 107632,
-                "buckets" : [
-                  {
-                    "lower" : 2,
-                    "upper" : 3,
-                    "count" : 37
-                  },
-                  {
-                    "lower" : 128,
-                    "upper" : 255,
-                    "count" : 3
-                  },
-                  {
-                    "lower" : 256,
-                    "upper" : 511,
-                    "count" : 7
-                  },
-                  {
-                    "lower" : 512,
-                    "upper" : 1023,
-                    "count" : 50
-                  },
-                  {
-                    "lower" : 1024,
-                    "upper" : 2047,
-                    "count" : 16
-                  },
-                  {
-                    "lower" : 32768,
-                    "upper" : 65535,
-                    "count" : 2
-                  },
-                  {
-                    "lower" : 65536,
-                    "upper" : 131071,
-                    "count" : 1
-                  }
-                ]
-              },
-              "unboundedCauses" : { }
-            }
-          },
-          "SEMANTIC_INDEX" : {
-            "shape" : {
-              "count" : 0,
-              "min" : 0,
-              "median" : 0,
-              "p90" : 0,
-              "max" : 0,
-              "buckets" : [ ]
-            },
-            "capacity" : {
-              "bounded" : {
-                "count" : 0,
-                "min" : 0,
-                "median" : 0,
-                "p90" : 0,
-                "max" : 0,
-                "buckets" : [ ]
-              },
-              "unboundedCauses" : { }
-            }
-          },
-          "UNIQUENESS" : {
-            "shape" : {
-              "count" : 0,
-              "min" : 0,
-              "median" : 0,
-              "p90" : 0,
-              "max" : 0,
-              "buckets" : [ ]
-            },
-            "capacity" : {
-              "bounded" : {
-                "count" : 0,
-                "min" : 0,
-                "median" : 0,
-                "p90" : 0,
-                "max" : 0,
-                "buckets" : [ ]
-              },
-              "unboundedCauses" : { }
-            }
-          }
-        },
-        "outerCorrelation" : {
-          "forms" : { },
-          "capacity" : {
-            "bounded" : {
-              "count" : 0,
-              "min" : 0,
-              "median" : 0,
-              "p90" : 0,
-              "max" : 0,
-              "buckets" : [ ]
-            },
-            "unboundedCauses" : { }
-          }
-        }
+      "max" : 9,
+      "mean" : 3.2989454378725354,
+      "median" : 3,
+      "min" : 1,
+      "n" : 2181,
+      "p90" : 5
+    },
+    "fanIn" : {
+      "buckets" : {
+        "1" : 430,
+        "2-3" : 1652,
+        "4-7" : 99
       },
-      "resolution" : {
-        "walkUpDistance" : {
-          "count" : 0,
-          "min" : 0,
-          "median" : 0,
-          "p90" : 0,
-          "max" : 0,
-          "buckets" : [ ]
-        }
+      "max" : 6,
+      "mean" : 2.2333791838606145,
+      "median" : 2,
+      "min" : 1,
+      "n" : 2181,
+      "p90" : 3
+    },
+    "iteration" : {
+      "listScanCapacity" : {
+        "buckets" : {
+          "1" : 1311,
+          "1024-2047" : 29,
+          "128-255" : 344,
+          "2-3" : 41,
+          "256-511" : 259,
+          "32768-65535" : 2,
+          "512-1023" : 94,
+          "64-127" : 78,
+          "65536-131071" : 4,
+          "8-15" : 15,
+          "8192-16383" : 4
+        },
+        "max" : 120125,
+        "mean" : 418.5433287482806,
+        "median" : 1,
+        "min" : 1,
+        "n" : 2181,
+        "p90" : 368
+      },
+      "outerCorrelation" : 0,
+      "parallelIteration" : 116,
+      "scannedScopeCapacity" : {
+        "buckets" : {
+          "1" : 194,
+          "128-255" : 231,
+          "2-3" : 198,
+          "64-127" : 216,
+          "8-15" : 31
+        },
+        "max" : 246,
+        "mean" : 73.23218390804598,
+        "median" : 68,
+        "min" : 1,
+        "n" : 870,
+        "p90" : 190
+      },
+      "scopeCapacity" : {
+        "buckets" : {
+          "1" : 231,
+          "128-255" : 635,
+          "2-3" : 849,
+          "256-511" : 8,
+          "4-7" : 4,
+          "64-127" : 342,
+          "8-15" : 112
+        },
+        "max" : 260,
+        "mean" : 70.36542870243008,
+        "median" : 9,
+        "min" : 1,
+        "n" : 2181,
+        "p90" : 192
+      },
+      "workCapacity" : {
+        "buckets" : {
+          "1" : 37,
+          "1024-2047" : 25,
+          "128-255" : 404,
+          "16384-32767" : 164,
+          "2-3" : 692,
+          "256-511" : 66,
+          "32768-65535" : 76,
+          "4-7" : 4,
+          "4194304-8388607" : 2,
+          "512-1023" : 175,
+          "524288-1048575" : 4,
+          "64-127" : 204,
+          "65536-131071" : 155,
+          "8-15" : 96,
+          "8192-16383" : 73,
+          "8388608-16777215" : 4
+        },
+        "max" : 15015625,
+        "mean" : 42365.202659330585,
+        "median" : 152,
+        "min" : 1,
+        "n" : 2181,
+        "p90" : 43808
       }
+    },
+    "nodeCount" : {
+      "buckets" : {
+        "1" : 354,
+        "16-31" : 89,
+        "2-3" : 76,
+        "4-7" : 1183,
+        "8-15" : 479
+      },
+      "max" : 23,
+      "mean" : 5.881247134342045,
+      "median" : 5,
+      "min" : 1,
+      "n" : 2181,
+      "p90" : 10
+    },
+    "opaqueCount" : 0,
+    "operators" : {
+      "Abs" : 45,
+      "AllFieldsFilled" : 1238,
+      "And" : 2465,
+      "CurrentRepetition" : 1,
+      "Equal" : 94,
+      "FieldFilled" : 2364,
+      "FieldNotFilled" : 248,
+      "FieldValueIncludedInValueList" : 153,
+      "GreaterThan" : 663,
+      "GreaterThanOrEqual" : 111,
+      "GroupFilled" : 171,
+      "LessThan" : 107,
+      "NotEqual" : 18,
+      "Or" : 521,
+      "Sum" : 421,
+      "YearFromDate" : 89
+    },
+    "repeatableLevelsCrossed" : {
+      "buckets" : {
+        "0" : 37,
+        "1" : 1054,
+        "2-3" : 1090
+      },
+      "max" : 3,
+      "mean" : 1.5923888124713435,
+      "median" : 1,
+      "min" : 0,
+      "n" : 2181,
+      "p90" : 3
+    },
+    "rulesPerErrorField" : {
+      "buckets" : {
+        "1" : 807,
+        "16-31" : 3,
+        "2-3" : 396,
+        "4-7" : 45,
+        "8-15" : 6
+      },
+      "max" : 23,
+      "mean" : 1.7350835322195703,
+      "median" : 1,
+      "min" : 1,
+      "n" : 1257,
+      "p90" : 3
+    },
+    "scope" : {
+      "modelLevel" : 48,
+      "perGroup" : 183,
+      "perRepeatableRow" : 1950
+    },
+    "walkUpDistance" : {
+      "buckets" : { },
+      "max" : 0,
+      "mean" : 0.0,
+      "median" : 0,
+      "min" : 0,
+      "n" : 0,
+      "p90" : 0
     }
   },
-  "computations" : {
-    "programs" : {
-      "conversion" : {
-        "outcomes" : {
-          "CONVERTED" : 307
+  "structure" : {
+    "constraints" : {
+      "enumCardinality" : {
+        "buckets" : {
+          "16-31" : 20,
+          "2-3" : 127,
+          "4-7" : 6,
+          "512-1023" : 1
         },
-        "opaqueReasons" : { }
+        "max" : 567,
+        "mean" : 8.818181818181818,
+        "median" : 3,
+        "min" : 2,
+        "n" : 154,
+        "p90" : 20
       },
-      "syntax" : {
-        "ast" : {
-          "nodeCount" : {
-            "count" : 307,
-            "min" : 1,
-            "median" : 6,
-            "p90" : 15,
-            "max" : 28,
-            "buckets" : [
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 25
-              },
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 41
-              },
-              {
-                "lower" : 4,
-                "upper" : 7,
-                "count" : 104
-              },
-              {
-                "lower" : 8,
-                "upper" : 15,
-                "count" : 116
-              },
-              {
-                "lower" : 16,
-                "upper" : 31,
-                "count" : 21
-              }
-            ]
-          },
-          "depth" : {
-            "count" : 307,
-            "min" : 1,
-            "median" : 3,
-            "p90" : 4,
-            "max" : 8,
-            "buckets" : [
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 31
-              },
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 243
-              },
-              {
-                "lower" : 4,
-                "upper" : 7,
-                "count" : 32
-              },
-              {
-                "lower" : 8,
-                "upper" : 15,
-                "count" : 1
-              }
-            ]
-          },
-          "booleanArity" : {
-            "count" : 307,
-            "min" : 0,
-            "median" : 1,
-            "p90" : 2,
-            "max" : 2,
-            "buckets" : [
-              {
-                "lower" : 0,
-                "upper" : 0,
-                "count" : 83
-              },
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 147
-              },
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 77
-              }
-            ]
-          },
-          "variadicArity" : {
-            "count" : 307,
-            "min" : 0,
-            "median" : 2,
-            "p90" : 3,
-            "max" : 3,
-            "buckets" : [
-              {
-                "lower" : 0,
-                "upper" : 0,
-                "count" : 72
-              },
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 43
-              },
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 192
-              }
-            ]
-          },
-          "distinctFanIn" : {
-            "count" : 307,
-            "min" : 1,
-            "median" : 3,
-            "p90" : 5,
-            "max" : 7,
-            "buckets" : [
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 85
-              },
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 120
-              },
-              {
-                "lower" : 4,
-                "upper" : 7,
-                "count" : 102
-              }
-            ]
-          }
+      "numberScale" : {
+        "buckets" : {
+          "0" : 1022,
+          "1" : 213,
+          "2-3" : 330,
+          "4-7" : 66
         },
-        "dispatch" : {
-          "catalogOperators" : {
-            "AllFieldsFilled" : 30,
-            "And" : 46,
-            "AtLeastOneFieldFilled" : 235,
-            "Equal" : 5,
-            "FieldFilled" : 13,
-            "FieldNotFilled" : 19,
-            "FieldValueIncludedInValueList" : 106,
-            "GreaterThan" : 1,
-            "GreaterThanOrEqual" : 3,
-            "LessThan" : 2,
-            "NotEqual" : 1,
-            "Or" : 41,
-            "RoundAccounting" : 81,
-            "RoundDown" : 93,
-            "RoundUp" : 73,
-            "Sum" : 224
+        "max" : 4,
+        "mean" : 0.7277743715511956,
+        "median" : 0,
+        "min" : 0,
+        "n" : 1631,
+        "p90" : 2
+      },
+      "numbersWithBounds" : 0,
+      "stringsWithLength" : 564,
+      "stringsWithPattern" : 0
+    },
+    "fieldCount" : 2827,
+    "fieldKinds" : {
+      "BOOLEAN" : 55,
+      "CONFIRM" : 137,
+      "DATE" : 103,
+      "DATE_FRAGMENT" : 25,
+      "DATE_RANGE" : 64,
+      "ENUMERATION" : 154,
+      "NUMBER" : 1631,
+      "STRING" : 658
+    },
+    "fieldsPerGroup" : {
+      "buckets" : {
+        "0" : 112,
+        "1" : 591,
+        "16-31" : 17,
+        "2-3" : 395,
+        "4-7" : 116,
+        "8-15" : 36
+      },
+      "max" : 25,
+      "mean" : 2.2312549329123916,
+      "median" : 1,
+      "min" : 0,
+      "n" : 1267,
+      "p90" : 4
+    },
+    "groupCount" : 1267,
+    "maxNestingDepth" : 6,
+    "repeatability" : {
+      "chainProduct" : {
+        "buckets" : {
+          "1024-2047" : 16,
+          "128-255" : 146,
+          "2-3" : 78,
+          "2048-4095" : 1,
+          "256-511" : 75,
+          "32768-65535" : 1,
+          "4-7" : 1,
+          "512-1023" : 9,
+          "64-127" : 38,
+          "65536-131071" : 6,
+          "8-15" : 13,
+          "8192-16383" : 3
+        },
+        "max" : 120125,
+        "mean" : 1915.3204134366924,
+        "median" : 186,
+        "min" : 2,
+        "n" : 387,
+        "p90" : 472
+      },
+      "chainProductByDepth" : {
+        "1" : {
+          "buckets" : {
+            "2-3" : 78,
+            "4-7" : 1,
+            "512-1023" : 2,
+            "64-127" : 37,
+            "8-15" : 13
           },
-          "intrinsicOperators" : {
-            "*" : 44,
-            "+" : 82
+          "max" : 912,
+          "mean" : 41.81679389312977,
+          "median" : 3,
+          "min" : 2,
+          "n" : 131,
+          "p90" : 99
+        },
+        "2-3" : {
+          "buckets" : {
+            "1024-2047" : 16,
+            "128-255" : 146,
+            "2048-4095" : 1,
+            "256-511" : 75,
+            "32768-65535" : 1,
+            "512-1023" : 7,
+            "64-127" : 1,
+            "65536-131071" : 6,
+            "8192-16383" : 3
           },
-          "constructs" : {
-            "AGGREGATE" : 214,
-            "ARITHMETIC" : 201,
-            "QUANTIFIER" : 176,
-            "VALUE_LIST" : 93
-          },
-          "constructCombinations" : {
-            "AGGREGATE" : 14,
-            "AGGREGATE+ARITHMETIC" : 29,
-            "AGGREGATE+ARITHMETIC+QUANTIFIER" : 60,
-            "AGGREGATE+ARITHMETIC+QUANTIFIER+VALUE_LIST" : 56,
-            "AGGREGATE+ARITHMETIC+VALUE_LIST" : 4,
-            "AGGREGATE+QUANTIFIER" : 32,
-            "AGGREGATE+QUANTIFIER+VALUE_LIST" : 19,
-            "ARITHMETIC" : 38,
-            "ARITHMETIC+QUANTIFIER" : 6,
-            "ARITHMETIC+QUANTIFIER+VALUE_LIST" : 1,
-            "ARITHMETIC+VALUE_LIST" : 7,
-            "NONE" : 34,
-            "QUANTIFIER" : 1,
-            "QUANTIFIER+VALUE_LIST" : 1,
-            "VALUE_LIST" : 5
-          },
-          "constructsByScope" : {
-            "MODEL_LEVEL" : { },
-            "PER_GROUP" : {
-              "AGGREGATE" : 151,
-              "ARITHMETIC" : 102,
-              "QUANTIFIER" : 116,
-              "VALUE_LIST" : 52
-            },
-            "PER_REPEATABLE_ROW" : {
-              "AGGREGATE" : 63,
-              "ARITHMETIC" : 99,
-              "QUANTIFIER" : 60,
-              "VALUE_LIST" : 41
-            }
-          }
+          "max" : 120125,
+          "mean" : 2874.02734375,
+          "median" : 225,
+          "min" : 122,
+          "n" : 256,
+          "p90" : 1199
         }
       },
-      "runtime" : {
-        "scope" : {
-          "classes" : {
-            "PER_GROUP" : 156,
-            "PER_REPEATABLE_ROW" : 151
-          },
-          "capacity" : {
-            "bounded" : {
-              "count" : 307,
-              "min" : 1,
-              "median" : 1,
-              "p90" : 228,
-              "max" : 107632,
-              "buckets" : [
-                {
-                  "lower" : 1,
-                  "upper" : 1,
-                  "count" : 156
-                },
-                {
-                  "lower" : 2,
-                  "upper" : 3,
-                  "count" : 21
-                },
-                {
-                  "lower" : 8,
-                  "upper" : 15,
-                  "count" : 14
-                },
-                {
-                  "lower" : 64,
-                  "upper" : 127,
-                  "count" : 57
-                },
-                {
-                  "lower" : 128,
-                  "upper" : 255,
-                  "count" : 34
-                },
-                {
-                  "lower" : 256,
-                  "upper" : 511,
-                  "count" : 15
-                },
-                {
-                  "lower" : 512,
-                  "upper" : 1023,
-                  "count" : 2
-                },
-                {
-                  "lower" : 1024,
-                  "upper" : 2047,
-                  "count" : 3
-                },
-                {
-                  "lower" : 8192,
-                  "upper" : 16383,
-                  "count" : 2
-                },
-                {
-                  "lower" : 32768,
-                  "upper" : 65535,
-                  "count" : 1
-                },
-                {
-                  "lower" : 65536,
-                  "upper" : 131071,
-                  "count" : 2
-                }
-              ]
-            },
-            "unboundedCauses" : { }
-          }
+      "fieldChainProduct" : {
+        "buckets" : {
+          "1" : 1217,
+          "1024-2047" : 66,
+          "128-255" : 496,
+          "2-3" : 518,
+          "2048-4095" : 1,
+          "256-511" : 128,
+          "32768-65535" : 3,
+          "4-7" : 4,
+          "512-1023" : 26,
+          "64-127" : 264,
+          "65536-131071" : 15,
+          "8-15" : 80,
+          "8192-16383" : 9
         },
-        "evaluation" : {
-          "scans" : {
-            "kinds" : {
-              "FLATTENED_FIELD" : 224
-            },
-            "starDepth" : {
-              "count" : 224,
-              "min" : 1,
-              "median" : 2,
-              "p90" : 3,
-              "max" : 3,
-              "buckets" : [
-                {
-                  "lower" : 1,
-                  "upper" : 1,
-                  "count" : 87
-                },
-                {
-                  "lower" : 2,
-                  "upper" : 3,
-                  "count" : 137
-                }
-              ]
-            },
-            "capacity" : {
-              "bounded" : {
-                "count" : 224,
-                "min" : 2,
-                "median" : 186,
-                "p90" : 472,
-                "max" : 82156,
-                "buckets" : [
-                  {
-                    "lower" : 2,
-                    "upper" : 3,
-                    "count" : 32
-                  },
-                  {
-                    "lower" : 4,
-                    "upper" : 7,
-                    "count" : 17
-                  },
-                  {
-                    "lower" : 8,
-                    "upper" : 15,
-                    "count" : 11
-                  },
-                  {
-                    "lower" : 64,
-                    "upper" : 127,
-                    "count" : 38
-                  },
-                  {
-                    "lower" : 128,
-                    "upper" : 255,
-                    "count" : 20
-                  },
-                  {
-                    "lower" : 256,
-                    "upper" : 511,
-                    "count" : 97
-                  },
-                  {
-                    "lower" : 512,
-                    "upper" : 1023,
-                    "count" : 4
-                  },
-                  {
-                    "lower" : 1024,
-                    "upper" : 2047,
-                    "count" : 1
-                  },
-                  {
-                    "lower" : 2048,
-                    "upper" : 4095,
-                    "count" : 1
-                  },
-                  {
-                    "lower" : 8192,
-                    "upper" : 16383,
-                    "count" : 1
-                  },
-                  {
-                    "lower" : 32768,
-                    "upper" : 65535,
-                    "count" : 1
-                  },
-                  {
-                    "lower" : 65536,
-                    "upper" : 131071,
-                    "count" : 1
-                  }
-                ]
-              },
-              "unboundedCauses" : { }
-            },
-            "filterComplexity" : {
-              "count" : 0,
-              "min" : 0,
-              "median" : 0,
-              "p90" : 0,
-              "max" : 0,
-              "buckets" : [ ]
-            }
-          },
-          "combinedWork" : {
-            "capacity" : {
-              "bounded" : {
-                "count" : 307,
-                "min" : 1,
-                "median" : 272,
-                "p90" : 492,
-                "max" : 107632,
-                "buckets" : [
-                  {
-                    "lower" : 1,
-                    "upper" : 1,
-                    "count" : 5
-                  },
-                  {
-                    "lower" : 2,
-                    "upper" : 3,
-                    "count" : 14
-                  },
-                  {
-                    "lower" : 4,
-                    "upper" : 7,
-                    "count" : 2
-                  },
-                  {
-                    "lower" : 8,
-                    "upper" : 15,
-                    "count" : 17
-                  },
-                  {
-                    "lower" : 64,
-                    "upper" : 127,
-                    "count" : 40
-                  },
-                  {
-                    "lower" : 128,
-                    "upper" : 255,
-                    "count" : 62
-                  },
-                  {
-                    "lower" : 256,
-                    "upper" : 511,
-                    "count" : 140
-                  },
-                  {
-                    "lower" : 512,
-                    "upper" : 1023,
-                    "count" : 2
-                  },
-                  {
-                    "lower" : 1024,
-                    "upper" : 2047,
-                    "count" : 11
-                  },
-                  {
-                    "lower" : 2048,
-                    "upper" : 4095,
-                    "count" : 1
-                  },
-                  {
-                    "lower" : 8192,
-                    "upper" : 16383,
-                    "count" : 5
-                  },
-                  {
-                    "lower" : 32768,
-                    "upper" : 65535,
-                    "count" : 4
-                  },
-                  {
-                    "lower" : 65536,
-                    "upper" : 131071,
-                    "count" : 4
-                  }
-                ]
-              },
-              "unboundedCauses" : { }
-            },
-            "scopeByScan" : {
-              "PER_GROUP|FLATTENED_FIELD" : 156,
-              "PER_REPEATABLE_ROW|FLATTENED_FIELD" : 68
-            }
-          },
-          "mechanisms" : {
-            "GROUP_FILL" : {
-              "shape" : {
-                "count" : 0,
-                "min" : 0,
-                "median" : 0,
-                "p90" : 0,
-                "max" : 0,
-                "buckets" : [ ]
-              },
-              "capacity" : {
-                "bounded" : {
-                  "count" : 0,
-                  "min" : 0,
-                  "median" : 0,
-                  "p90" : 0,
-                  "max" : 0,
-                  "buckets" : [ ]
-                },
-                "unboundedCauses" : { }
-              }
-            },
-            "PARALLEL_REFERENCE" : {
-              "shape" : {
-                "count" : 9,
-                "min" : 2,
-                "median" : 2,
-                "p90" : 2,
-                "max" : 2,
-                "buckets" : [
-                  {
-                    "lower" : 2,
-                    "upper" : 3,
-                    "count" : 9
-                  }
-                ]
-              },
-              "capacity" : {
-                "bounded" : {
-                  "count" : 9,
-                  "min" : 3,
-                  "median" : 1375,
-                  "p90" : 107632,
-                  "max" : 107632,
-                  "buckets" : [
-                    {
-                      "lower" : 2,
-                      "upper" : 3,
-                      "count" : 3
-                    },
-                    {
-                      "lower" : 8,
-                      "upper" : 15,
-                      "count" : 1
-                    },
-                    {
-                      "lower" : 1024,
-                      "upper" : 2047,
-                      "count" : 3
-                    },
-                    {
-                      "lower" : 32768,
-                      "upper" : 65535,
-                      "count" : 1
-                    },
-                    {
-                      "lower" : 65536,
-                      "upper" : 131071,
-                      "count" : 1
-                    }
-                  ]
-                },
-                "unboundedCauses" : { }
-              }
-            },
-            "SEMANTIC_INDEX" : {
-              "shape" : {
-                "count" : 0,
-                "min" : 0,
-                "median" : 0,
-                "p90" : 0,
-                "max" : 0,
-                "buckets" : [ ]
-              },
-              "capacity" : {
-                "bounded" : {
-                  "count" : 0,
-                  "min" : 0,
-                  "median" : 0,
-                  "p90" : 0,
-                  "max" : 0,
-                  "buckets" : [ ]
-                },
-                "unboundedCauses" : { }
-              }
-            },
-            "UNIQUENESS" : {
-              "shape" : {
-                "count" : 0,
-                "min" : 0,
-                "median" : 0,
-                "p90" : 0,
-                "max" : 0,
-                "buckets" : [ ]
-              },
-              "capacity" : {
-                "bounded" : {
-                  "count" : 0,
-                  "min" : 0,
-                  "median" : 0,
-                  "p90" : 0,
-                  "max" : 0,
-                  "buckets" : [ ]
-                },
-                "unboundedCauses" : { }
-              }
-            }
-          },
-          "outerCorrelation" : {
-            "forms" : { },
-            "capacity" : {
-              "bounded" : {
-                "count" : 0,
-                "min" : 0,
-                "median" : 0,
-                "p90" : 0,
-                "max" : 0,
-                "buckets" : [ ]
-              },
-              "unboundedCauses" : { }
-            }
-          }
-        },
-        "resolution" : {
-          "walkUpDistance" : {
-            "count" : 84,
-            "min" : 1,
-            "median" : 1,
-            "p90" : 2,
-            "max" : 4,
-            "buckets" : [
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 62
-              },
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 21
-              },
-              {
-                "lower" : 4,
-                "upper" : 7,
-                "count" : 1
-              }
-            ]
-          }
-        }
-      }
-    },
-    "shape" : {
-      "computedFieldKinds" : {
-        "NUMBER" : 307
+        "max" : 120125,
+        "mean" : 697.0038910505837,
+        "median" : 2,
+        "min" : 1,
+        "n" : 2827,
+        "p90" : 236
       },
-      "tables" : {
-        "alternatives" : {
-          "count" : 307,
-          "min" : 1,
-          "median" : 1,
-          "p90" : 2,
-          "max" : 2,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 203
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 104
-            }
-          ]
+      "maxRepeatableNestingDepth" : 3,
+      "maxRepetitions" : {
+        "buckets" : {
+          "2-3" : 143,
+          "32-63" : 6,
+          "4-7" : 2,
+          "512-1023" : 9,
+          "64-127" : 214,
+          "8-15" : 13
         },
-        "preconditions" : {
-          "count" : 307,
-          "min" : 0,
-          "median" : 1,
-          "p90" : 2,
-          "max" : 2,
-          "buckets" : [
-            {
-              "lower" : 0,
-              "upper" : 0,
-              "count" : 83
-            },
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 120
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 104
-            }
-          ]
+        "max" : 961,
+        "mean" : 72.97674418604652,
+        "median" : 71,
+        "min" : 2,
+        "n" : 387,
+        "p90" : 119
+      },
+      "nestingDepth" : {
+        "buckets" : {
+          "1" : 131,
+          "2-3" : 256
         },
-        "toleranceBands" : { }
+        "max" : 3,
+        "mean" : 1.7467700258397933,
+        "median" : 2,
+        "min" : 1,
+        "n" : 387,
+        "p90" : 2
       },
-      "archetypes" : {
-        "AGGREGATE" : 65,
-        "ARITHMETIC" : 201,
-        "CONSTANT" : 1,
-        "COPY" : 40
+      "nestingDepthExact" : {
+        "1" : 131,
+        "2" : 223,
+        "3" : 33
       },
-      "aggregateScaleMatch" : {
-        "MATCHED" : 84,
-        "MISMATCHED" : 140
-      }
-    },
-    "dependencies" : {
-      "maxCascadeDepth" : 12,
-      "feedingComputations" : 57
+      "repeatableGroupCount" : 387,
+      "siblingBranchFan" : {
+        "buckets" : {
+          "1" : 257,
+          "128-255" : 1,
+          "16-31" : 1,
+          "2-3" : 45,
+          "4-7" : 6,
+          "8-15" : 1
+        },
+        "max" : 131,
+        "mean" : 1.7717041800643087,
+        "median" : 1,
+        "min" : 1,
+        "n" : 311,
+        "p90" : 2
+      },
+      "unboundedCount" : 0
     }
   },
   "wiring" : {
-    "referencedFields" : {
-      "ANY" : 1811
-    },
     "fieldFanOut" : {
-      "count" : 1811,
-      "min" : 1,
-      "median" : 2,
-      "p90" : 7,
+      "buckets" : {
+        "1" : 792,
+        "16-31" : 33,
+        "2-3" : 596,
+        "32-63" : 12,
+        "4-7" : 265,
+        "8-15" : 113
+      },
       "max" : 60,
-      "buckets" : [
-        {
-          "lower" : 1,
-          "upper" : 1,
-          "count" : 792
-        },
-        {
-          "lower" : 2,
-          "upper" : 3,
-          "count" : 596
-        },
-        {
-          "lower" : 4,
-          "upper" : 7,
-          "count" : 265
-        },
-        {
-          "lower" : 8,
-          "upper" : 15,
-          "count" : 113
-        },
-        {
-          "lower" : 16,
-          "upper" : 31,
-          "count" : 33
-        },
-        {
-          "lower" : 32,
-          "upper" : 63,
-          "count" : 12
-        }
-      ]
-    }
+      "mean" : 3.251794588625069,
+      "median" : 2,
+      "min" : 1,
+      "n" : 1811,
+      "p90" : 7
+    },
+    "fieldsReferenced" : 1811,
+    "referencedByComputations" : 702,
+    "referencedByRules" : 1322
   }
 }

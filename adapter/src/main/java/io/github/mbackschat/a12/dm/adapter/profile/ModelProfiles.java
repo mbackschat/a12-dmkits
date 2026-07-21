@@ -16,7 +16,7 @@ public final class ModelProfiles {
 
     /** Extract a bare current profile from one self-contained DM-JSON model. */
     public static String extract(String modelJson) {
-        return ModelProfileJson.write(ModelProfileExtractor.extract(modelJson));
+        return ModelProfileJson.write(SynthesisProfile.of(modelJson));
     }
 
     /**
@@ -26,7 +26,7 @@ public final class ModelProfiles {
      * @param resolver the kernel-free model-id-to-DM-JSON resolver
      */
     public static String extract(String modelJson, ModelResolver resolver) {
-        return ModelProfileJson.write(ModelProfileExtractor.extract(modelJson, resolver));
+        return ModelProfileJson.write(SynthesisProfile.of(modelJson, resolver));
     }
 
     /**
@@ -43,6 +43,6 @@ public final class ModelProfiles {
     public static String compare(String targetJson, String actualJson) {
         var target = ModelProfileJson.read(targetJson);
         var actual = ModelProfileJson.read(actualJson);
-        return ProfileComparisonJson.write(ModelProfileComparator.compare(target, actual));
+        return ModelProfileComparator.compare(target, actual);
     }
 }

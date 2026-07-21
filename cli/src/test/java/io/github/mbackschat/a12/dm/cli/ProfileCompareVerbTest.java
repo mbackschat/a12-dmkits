@@ -45,8 +45,8 @@ class ProfileCompareVerbTest {
         Path actual = dir.resolve("actual-profile.json");
         Files.writeString(target, extraction.toPrettyString());
         ObjectNode actualProfile = extraction.path("data").deepCopy();
-        ObjectNode topology = (ObjectNode) actualProfile.path("structure").path("topology");
-        topology.put("maxGroupDepth", topology.path("maxGroupDepth").asLong() + 1);
+        ObjectNode structure = (ObjectNode) actualProfile.path("structure");
+        structure.put("maxNestingDepth", structure.path("maxNestingDepth").asLong() + 1);
         Files.writeString(actual, actualProfile.toPrettyString());
 
         CliTestSupport.Result result = CliTestSupport.run(
@@ -57,7 +57,7 @@ class ProfileCompareVerbTest {
         assertEquals("read", envelope.path("outcome").asText());
         assertFalse(envelope.path("valid").asBoolean());
         assertFalse(envelope.path("data").path("matches").asBoolean());
-        JsonNode failed = findAxis(envelope.path("data"), "structure.topology.maxGroupDepth");
+        JsonNode failed = findAxis(envelope.path("data"), "structure.maxNestingDepth");
         assertEquals("EXACT", failed.path("policy").asText());
         assertEquals("FAIL", failed.path("verdict").asText());
         assertEquals("actual must equal target", failed.path("rule").asText());

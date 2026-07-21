@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * A compact summary of a set of non-negative integer measurements — the shape a {@code model profile}
@@ -32,6 +33,15 @@ record Distribution(int n, int min, int max, double mean, int median, int p90, M
      * building the map via an unordered collection, not just today's known callers.
      */
     public Distribution {
+        Objects.requireNonNull(buckets, "buckets");
+        if (n < 0 || min < 0 || max < 0 || mean < 0 || median < 0 || p90 < 0) {
+            throw new IllegalArgumentException("distribution values must be non-negative");
+        }
+        int bucketCount = buckets.values().stream().mapToInt(Integer::intValue).sum();
+        if (bucketCount != n) {
+            throw new IllegalArgumentException(
+                    "distribution bucket total " + bucketCount + " does not match n " + n);
+        }
         buckets = java.util.Collections.unmodifiableMap(sortedByBucketValue(buckets));
     }
 

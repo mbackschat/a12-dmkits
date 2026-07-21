@@ -1,1161 +1,538 @@
 {
-  "structure" : {
-    "elements" : {
-      "COMPUTATION" : 1,
-      "FIELD" : 104,
-      "GROUP" : 37,
-      "RULE" : 117
+  "computations" : {
+    "aggregateScaleMatch" : {
+      "matched" : 0,
+      "mismatched" : 0
     },
-    "topology" : {
-      "maxGroupDepth" : 6,
-      "fieldsPerGroup" : {
-        "count" : 37,
-        "min" : 1,
+    "aggregateStars" : {
+      "buckets" : { },
+      "max" : 0,
+      "mean" : 0.0,
+      "median" : 0,
+      "min" : 0,
+      "n" : 0,
+      "p90" : 0
+    },
+    "alternatives" : {
+      "buckets" : {
+        "1" : 1
+      },
+      "max" : 1,
+      "mean" : 1.0,
+      "median" : 1,
+      "min" : 1,
+      "n" : 1,
+      "p90" : 1
+    },
+    "archetypes" : {
+      "ARITHMETIC" : 1
+    },
+    "computedFieldKinds" : {
+      "NUMBER" : 1
+    },
+    "constructCombos" : {
+      "ARITHMETIC" : 1
+    },
+    "constructs" : {
+      "ARITHMETIC" : 1
+    },
+    "constructsByScope" : {
+      "modelLevel" : { },
+      "perGroup" : {
+        "ARITHMETIC" : 1
+      },
+      "perRepeatableRow" : { }
+    },
+    "count" : 1,
+    "depth" : {
+      "buckets" : {
+        "2-3" : 1
+      },
+      "max" : 3,
+      "mean" : 3.0,
+      "median" : 3,
+      "min" : 3,
+      "n" : 1,
+      "p90" : 3
+    },
+    "fanIn" : {
+      "buckets" : {
+        "2-3" : 1
+      },
+      "max" : 2,
+      "mean" : 2.0,
+      "median" : 2,
+      "min" : 2,
+      "n" : 1,
+      "p90" : 2
+    },
+    "feedingOthers" : 0,
+    "iteration" : {
+      "listScanCapacity" : {
+        "buckets" : {
+          "1" : 1
+        },
+        "max" : 1,
+        "mean" : 1.0,
         "median" : 1,
-        "p90" : 10,
-        "max" : 13,
-        "buckets" : [
-          {
-            "lower" : 1,
-            "upper" : 1,
-            "count" : 19
-          },
-          {
-            "lower" : 2,
-            "upper" : 3,
-            "count" : 12
-          },
-          {
-            "lower" : 4,
-            "upper" : 7,
-            "count" : 2
-          },
-          {
-            "lower" : 8,
-            "upper" : 15,
-            "count" : 4
-          }
-        ]
-      }
-    },
-    "fields" : {
-      "kinds" : {
-        "BOOLEAN" : 5,
-        "CONFIRM" : 19,
-        "ENUMERATION" : 14,
-        "NUMBER" : 15,
-        "STRING" : 51
+        "min" : 1,
+        "n" : 1,
+        "p90" : 1
       },
-      "constrainedFields" : {
-        "STRING_LENGTH" : 28,
-        "STRING_PATTERN" : 5
-      },
-      "numberScale" : {
-        "count" : 15,
+      "outerCorrelation" : 0,
+      "parallelIteration" : 0,
+      "scannedScopeCapacity" : {
+        "buckets" : { },
+        "max" : 0,
+        "mean" : 0.0,
+        "median" : 0,
         "min" : 0,
-        "median" : 6,
-        "p90" : 14,
-        "max" : 14,
-        "buckets" : [
-          {
-            "lower" : 0,
-            "upper" : 0,
-            "count" : 1
-          },
-          {
-            "lower" : 4,
-            "upper" : 7,
-            "count" : 9
-          },
-          {
-            "lower" : 8,
-            "upper" : 15,
-            "count" : 5
-          }
-        ]
+        "n" : 0,
+        "p90" : 0
       },
-      "enumCardinality" : {
-        "count" : 14,
-        "min" : 2,
-        "median" : 3,
-        "p90" : 11,
-        "max" : 13,
-        "buckets" : [
-          {
-            "lower" : 2,
-            "upper" : 3,
-            "count" : 7
-          },
-          {
-            "lower" : 4,
-            "upper" : 7,
-            "count" : 2
-          },
-          {
-            "lower" : 8,
-            "upper" : 15,
-            "count" : 5
-          }
-        ]
+      "scopeCapacity" : {
+        "buckets" : {
+          "1" : 1
+        },
+        "max" : 1,
+        "mean" : 1.0,
+        "median" : 1,
+        "min" : 1,
+        "n" : 1,
+        "p90" : 1
+      },
+      "workCapacity" : {
+        "buckets" : {
+          "1" : 1
+        },
+        "max" : 1,
+        "mean" : 1.0,
+        "median" : 1,
+        "min" : 1,
+        "n" : 1,
+        "p90" : 1
       }
     },
-    "repeatability" : {
-      "outcomes" : {
-        "BOUNDED" : 19
+    "maxCascadeDepth" : 1,
+    "nodeCount" : {
+      "buckets" : {
+        "4-7" : 1
       },
-      "topology" : {
-        "maxDepth" : 2,
-        "exactDepth" : {
-          "1" : 15,
-          "2" : 4
-        },
-        "siblingFan" : {
-          "count" : 22,
-          "min" : 1,
-          "median" : 1,
-          "p90" : 3,
-          "max" : 15,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 19
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 1
-            },
-            {
-              "lower" : 4,
-              "upper" : 7,
-              "count" : 1
-            },
-            {
-              "lower" : 8,
-              "upper" : 15,
-              "count" : 1
-            }
-          ]
-        }
-      },
-      "capacities" : {
-        "maxRepetitions" : {
-          "bounded" : {
-            "count" : 19,
-            "min" : 65,
-            "median" : 77,
-            "p90" : 126,
-            "max" : 776657,
-            "buckets" : [
-              {
-                "lower" : 64,
-                "upper" : 127,
-                "count" : 18
-              },
-              {
-                "lower" : 524288,
-                "upper" : 1048575,
-                "count" : 1
-              }
-            ]
-          },
-          "unboundedCauses" : { }
-        },
-        "groupChains" : {
-          "bounded" : {
-            "count" : 19,
-            "min" : 65,
-            "median" : 101,
-            "p90" : 776657,
-            "max" : 52036019,
-            "buckets" : [
-              {
-                "lower" : 64,
-                "upper" : 127,
-                "count" : 14
-              },
-              {
-                "lower" : 4096,
-                "upper" : 8191,
-                "count" : 3
-              },
-              {
-                "lower" : 524288,
-                "upper" : 1048575,
-                "count" : 1
-              },
-              {
-                "lower" : 33554432,
-                "upper" : 67108863,
-                "count" : 1
-              }
-            ]
-          },
-          "unboundedCauses" : { }
-        },
-        "fieldChains" : {
-          "bounded" : {
-            "count" : 104,
-            "min" : 1,
-            "median" : 1,
-            "p90" : 111,
-            "max" : 52036019,
-            "buckets" : [
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 63
-              },
-              {
-                "lower" : 64,
-                "upper" : 127,
-                "count" : 33
-              },
-              {
-                "lower" : 4096,
-                "upper" : 8191,
-                "count" : 3
-              },
-              {
-                "lower" : 524288,
-                "upper" : 1048575,
-                "count" : 3
-              },
-              {
-                "lower" : 33554432,
-                "upper" : 67108863,
-                "count" : 2
-              }
-            ]
-          },
-          "unboundedCauses" : { }
-        }
-      }
+      "max" : 5,
+      "mean" : 5.0,
+      "median" : 5,
+      "min" : 5,
+      "n" : 1,
+      "p90" : 5
+    },
+    "opaqueCount" : 0,
+    "operators" : {
+      "FieldFilled" : 1,
+      "RoundAccounting" : 1
+    },
+    "preconditionedCount" : 1,
+    "scope" : {
+      "modelLevel" : 0,
+      "perGroup" : 1,
+      "perRepeatableRow" : 0
     }
   },
   "rules" : {
-    "conversion" : {
-      "outcomes" : {
-        "CONVERTED" : 117
+    "booleanArity" : {
+      "buckets" : {
+        "1" : 3,
+        "2-3" : 90,
+        "4-7" : 24
       },
-      "opaqueReasons" : { }
+      "max" : 6,
+      "mean" : 2.8547008547008548,
+      "median" : 3,
+      "min" : 1,
+      "n" : 117,
+      "p90" : 4
     },
-    "syntax" : {
-      "ast" : {
-        "nodeCount" : {
-          "count" : 117,
-          "min" : 1,
-          "median" : 6,
-          "p90" : 15,
-          "max" : 21,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 3
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 10
-            },
-            {
-              "lower" : 4,
-              "upper" : 7,
-              "count" : 68
-            },
-            {
-              "lower" : 8,
-              "upper" : 15,
-              "count" : 27
-            },
-            {
-              "lower" : 16,
-              "upper" : 31,
-              "count" : 9
-            }
-          ]
-        },
-        "depth" : {
-          "count" : 117,
-          "min" : 1,
-          "median" : 4,
-          "p90" : 7,
-          "max" : 9,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 3
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 47
-            },
-            {
-              "lower" : 4,
-              "upper" : 7,
-              "count" : 62
-            },
-            {
-              "lower" : 8,
-              "upper" : 15,
-              "count" : 5
-            }
-          ]
-        },
-        "booleanArity" : {
-          "count" : 117,
-          "min" : 1,
-          "median" : 3,
-          "p90" : 4,
-          "max" : 6,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 3
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 90
-            },
-            {
-              "lower" : 4,
-              "upper" : 7,
-              "count" : 24
-            }
-          ]
-        },
-        "variadicArity" : {
-          "count" : 117,
-          "min" : 0,
-          "median" : 1,
-          "p90" : 3,
-          "max" : 3,
-          "buckets" : [
-            {
-              "lower" : 0,
-              "upper" : 0,
-              "count" : 51
-            },
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 39
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 27
-            }
-          ]
-        },
-        "distinctFanIn" : {
-          "count" : 117,
-          "min" : 1,
-          "median" : 3,
-          "p90" : 4,
-          "max" : 7,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 10
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 83
-            },
-            {
-              "lower" : 4,
-              "upper" : 7,
-              "count" : 24
-            }
-          ]
-        }
+    "constructCombos" : {
+      "AGGREGATE" : 4,
+      "ARITHMETIC" : 1,
+      "CUSTOM" : 16,
+      "GROUP_FILL" : 16,
+      "GROUP_FILL+UNIQUENESS" : 16,
+      "GROUP_FILL+UNIQUENESS+VALUE_LIST" : 4,
+      "GROUP_FILL+VALUE_LIST" : 1,
+      "NONE" : 19,
+      "QUANTIFIER" : 20,
+      "QUANTIFIER+VALUE_LIST" : 1,
+      "VALUE_LIST" : 19
+    },
+    "constructs" : {
+      "AGGREGATE" : 4,
+      "ARITHMETIC" : 1,
+      "CUSTOM" : 16,
+      "GROUP_FILL" : 37,
+      "QUANTIFIER" : 21,
+      "UNIQUENESS" : 20,
+      "VALUE_LIST" : 25
+    },
+    "constructsByScope" : {
+      "modelLevel" : {
+        "AGGREGATE" : 3
       },
-      "dispatch" : {
-        "catalogOperators" : {
-          "Abs" : 1,
-          "AllFieldsFilled" : 21,
-          "And" : 222,
-          "CustomCondition" : 16,
-          "Equal" : 24,
-          "FieldFilled" : 210,
-          "FieldNotFilled" : 34,
-          "FieldValueIncludedInValueList" : 29,
-          "GreaterThan" : 12,
-          "GreaterThanOrEqual" : 1,
-          "GroupFilled" : 37,
-          "LessThan" : 1,
-          "NotEqual" : 4,
-          "Or" : 70,
-          "RepetitionNotUnique" : 20,
-          "Sum" : 10
-        },
-        "intrinsicOperators" : { },
-        "constructs" : {
-          "AGGREGATE" : 4,
-          "ARITHMETIC" : 1,
-          "CUSTOM" : 16,
-          "GROUP_FILL" : 37,
-          "QUANTIFIER" : 21,
-          "UNIQUENESS" : 20,
-          "VALUE_LIST" : 25
-        },
-        "constructCombinations" : {
-          "AGGREGATE" : 4,
-          "ARITHMETIC" : 1,
-          "CUSTOM" : 16,
-          "GROUP_FILL" : 16,
-          "GROUP_FILL+UNIQUENESS" : 16,
-          "GROUP_FILL+UNIQUENESS+VALUE_LIST" : 4,
-          "GROUP_FILL+VALUE_LIST" : 1,
-          "NONE" : 19,
-          "QUANTIFIER" : 20,
-          "QUANTIFIER+VALUE_LIST" : 1,
-          "VALUE_LIST" : 19
-        },
-        "constructsByScope" : {
-          "MODEL_LEVEL" : {
-            "AGGREGATE" : 3
-          },
-          "PER_GROUP" : {
-            "AGGREGATE" : 1,
-            "ARITHMETIC" : 1,
-            "CUSTOM" : 10,
-            "GROUP_FILL" : 31,
-            "QUANTIFIER" : 18,
-            "UNIQUENESS" : 14,
-            "VALUE_LIST" : 13
-          },
-          "PER_REPEATABLE_ROW" : {
-            "CUSTOM" : 6,
-            "GROUP_FILL" : 6,
-            "QUANTIFIER" : 3,
-            "UNIQUENESS" : 6,
-            "VALUE_LIST" : 12
-          }
-        }
+      "perGroup" : {
+        "AGGREGATE" : 1,
+        "ARITHMETIC" : 1,
+        "CUSTOM" : 10,
+        "GROUP_FILL" : 31,
+        "QUANTIFIER" : 18,
+        "UNIQUENESS" : 14,
+        "VALUE_LIST" : 13
+      },
+      "perRepeatableRow" : {
+        "CUSTOM" : 6,
+        "GROUP_FILL" : 6,
+        "QUANTIFIER" : 3,
+        "UNIQUENESS" : 6,
+        "VALUE_LIST" : 12
       }
     },
-    "runtime" : {
-      "scope" : {
-        "classes" : {
-          "MODEL_LEVEL" : 6,
-          "PER_GROUP" : 80,
-          "PER_REPEATABLE_ROW" : 31
-        },
-        "capacity" : {
-          "bounded" : {
-            "count" : 117,
-            "min" : 1,
-            "median" : 1,
-            "p90" : 68,
-            "max" : 125,
-            "buckets" : [
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 86
-              },
-              {
-                "lower" : 64,
-                "upper" : 127,
-                "count" : 31
-              }
-            ]
-          },
-          "unboundedCauses" : { }
-        }
+    "count" : 117,
+    "depth" : {
+      "buckets" : {
+        "1" : 3,
+        "2-3" : 47,
+        "4-7" : 62,
+        "8-15" : 5
       },
-      "evaluation" : {
-        "scans" : {
-          "kinds" : {
-            "FLATTENED_FIELD" : 28
-          },
-          "starDepth" : {
-            "count" : 28,
-            "min" : 1,
-            "median" : 1,
-            "p90" : 1,
-            "max" : 1,
-            "buckets" : [
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 28
-              }
-            ]
-          },
-          "capacity" : {
-            "bounded" : {
-              "count" : 28,
-              "min" : 68,
-              "median" : 104,
-              "p90" : 776657,
-              "max" : 776657,
-              "buckets" : [
-                {
-                  "lower" : 64,
-                  "upper" : 127,
-                  "count" : 19
-                },
-                {
-                  "lower" : 524288,
-                  "upper" : 1048575,
-                  "count" : 9
-                }
-              ]
-            },
-            "unboundedCauses" : { }
-          },
-          "filterComplexity" : {
-            "count" : 0,
-            "min" : 0,
-            "median" : 0,
-            "p90" : 0,
-            "max" : 0,
-            "buckets" : [ ]
-          }
-        },
-        "combinedWork" : {
-          "capacity" : {
-            "bounded" : {
-              "count" : 117,
-              "min" : 1,
-              "median" : 1,
-              "p90" : 104,
-              "max" : 776657,
-              "buckets" : [
-                {
-                  "lower" : 1,
-                  "upper" : 1,
-                  "count" : 64
-                },
-                {
-                  "lower" : 64,
-                  "upper" : 127,
-                  "count" : 47
-                },
-                {
-                  "lower" : 524288,
-                  "upper" : 1048575,
-                  "count" : 6
-                }
-              ]
-            },
-            "unboundedCauses" : { }
-          },
-          "scopeByScan" : {
-            "MODEL_LEVEL|FLATTENED_FIELD" : 9,
-            "PER_GROUP|FLATTENED_FIELD" : 19
-          }
-        },
-        "mechanisms" : {
-          "GROUP_FILL" : {
-            "shape" : {
-              "count" : 37,
-              "min" : 1,
-              "median" : 5,
-              "p90" : 9,
-              "max" : 9,
-              "buckets" : [
-                {
-                  "lower" : 1,
-                  "upper" : 1,
-                  "count" : 6
-                },
-                {
-                  "lower" : 2,
-                  "upper" : 3,
-                  "count" : 3
-                },
-                {
-                  "lower" : 4,
-                  "upper" : 7,
-                  "count" : 20
-                },
-                {
-                  "lower" : 8,
-                  "upper" : 15,
-                  "count" : 8
-                }
-              ]
-            },
-            "capacity" : {
-              "bounded" : {
-                "count" : 37,
-                "min" : 3,
-                "median" : 136,
-                "p90" : 3883285,
-                "max" : 3883285,
-                "buckets" : [
-                  {
-                    "lower" : 2,
-                    "upper" : 3,
-                    "count" : 1
-                  },
-                  {
-                    "lower" : 4,
-                    "upper" : 7,
-                    "count" : 8
-                  },
-                  {
-                    "lower" : 8,
-                    "upper" : 15,
-                    "count" : 8
-                  },
-                  {
-                    "lower" : 128,
-                    "upper" : 255,
-                    "count" : 2
-                  },
-                  {
-                    "lower" : 256,
-                    "upper" : 511,
-                    "count" : 4
-                  },
-                  {
-                    "lower" : 4096,
-                    "upper" : 8191,
-                    "count" : 6
-                  },
-                  {
-                    "lower" : 2097152,
-                    "upper" : 4194303,
-                    "count" : 8
-                  }
-                ]
-              },
-              "unboundedCauses" : { }
-            }
-          },
-          "PARALLEL_REFERENCE" : {
-            "shape" : {
-              "count" : 3,
-              "min" : 2,
-              "median" : 2,
-              "p90" : 2,
-              "max" : 2,
-              "buckets" : [
-                {
-                  "lower" : 2,
-                  "upper" : 3,
-                  "count" : 3
-                }
-              ]
-            },
-            "capacity" : {
-              "bounded" : {
-                "count" : 3,
-                "min" : 776657,
-                "median" : 776657,
-                "p90" : 776657,
-                "max" : 776657,
-                "buckets" : [
-                  {
-                    "lower" : 524288,
-                    "upper" : 1048575,
-                    "count" : 3
-                  }
-                ]
-              },
-              "unboundedCauses" : { }
-            }
-          },
-          "SEMANTIC_INDEX" : {
-            "shape" : {
-              "count" : 0,
-              "min" : 0,
-              "median" : 0,
-              "p90" : 0,
-              "max" : 0,
-              "buckets" : [ ]
-            },
-            "capacity" : {
-              "bounded" : {
-                "count" : 0,
-                "min" : 0,
-                "median" : 0,
-                "p90" : 0,
-                "max" : 0,
-                "buckets" : [ ]
-              },
-              "unboundedCauses" : { }
-            }
-          },
-          "UNIQUENESS" : {
-            "shape" : {
-              "count" : 20,
-              "min" : 1,
-              "median" : 1,
-              "p90" : 1,
-              "max" : 1,
-              "buckets" : [
-                {
-                  "lower" : 1,
-                  "upper" : 1,
-                  "count" : 20
-                }
-              ]
-            },
-            "capacity" : {
-              "bounded" : {
-                "count" : 20,
-                "min" : 68,
-                "median" : 5236,
-                "p90" : 776657,
-                "max" : 776657,
-                "buckets" : [
-                  {
-                    "lower" : 64,
-                    "upper" : 127,
-                    "count" : 6
-                  },
-                  {
-                    "lower" : 4096,
-                    "upper" : 8191,
-                    "count" : 6
-                  },
-                  {
-                    "lower" : 524288,
-                    "upper" : 1048575,
-                    "count" : 8
-                  }
-                ]
-              },
-              "unboundedCauses" : { }
-            }
-          }
-        },
-        "outerCorrelation" : {
-          "forms" : { },
-          "capacity" : {
-            "bounded" : {
-              "count" : 0,
-              "min" : 0,
-              "median" : 0,
-              "p90" : 0,
-              "max" : 0,
-              "buckets" : [ ]
-            },
-            "unboundedCauses" : { }
-          }
-        }
+      "max" : 9,
+      "mean" : 4.042735042735043,
+      "median" : 4,
+      "min" : 1,
+      "n" : 117,
+      "p90" : 7
+    },
+    "fanIn" : {
+      "buckets" : {
+        "1" : 10,
+        "2-3" : 75,
+        "4-7" : 30,
+        "8-15" : 2
       },
-      "resolution" : {
-        "walkUpDistance" : {
-          "count" : 62,
-          "min" : 1,
-          "median" : 1,
-          "p90" : 1,
-          "max" : 3,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 57
-            },
-            {
-              "lower" : 2,
-              "upper" : 3,
-              "count" : 5
-            }
-          ]
-        }
+      "max" : 8,
+      "mean" : 3.1538461538461537,
+      "median" : 3,
+      "min" : 1,
+      "n" : 117,
+      "p90" : 5
+    },
+    "iteration" : {
+      "listScanCapacity" : {
+        "buckets" : {
+          "1" : 95,
+          "524288-1048575" : 6,
+          "64-127" : 16
+        },
+        "max" : 776657,
+        "mean" : 39842.692307692305,
+        "median" : 1,
+        "min" : 1,
+        "n" : 117,
+        "p90" : 104
+      },
+      "outerCorrelation" : 0,
+      "parallelIteration" : 3,
+      "scannedScopeCapacity" : {
+        "buckets" : {
+          "1" : 22
+        },
+        "max" : 1,
+        "mean" : 1.0,
+        "median" : 1,
+        "min" : 1,
+        "n" : 22,
+        "p90" : 1
+      },
+      "scopeCapacity" : {
+        "buckets" : {
+          "1" : 86,
+          "64-127" : 31
+        },
+        "max" : 125,
+        "mean" : 20.128205128205128,
+        "median" : 1,
+        "min" : 1,
+        "n" : 117,
+        "p90" : 68
+      },
+      "workCapacity" : {
+        "buckets" : {
+          "1" : 64,
+          "524288-1048575" : 6,
+          "64-127" : 47
+        },
+        "max" : 776657,
+        "mean" : 39861.820512820515,
+        "median" : 1,
+        "min" : 1,
+        "n" : 117,
+        "p90" : 104
       }
+    },
+    "nodeCount" : {
+      "buckets" : {
+        "1" : 3,
+        "16-31" : 9,
+        "2-3" : 10,
+        "4-7" : 68,
+        "8-15" : 27
+      },
+      "max" : 21,
+      "mean" : 7.504273504273504,
+      "median" : 6,
+      "min" : 1,
+      "n" : 117,
+      "p90" : 15
+    },
+    "opaqueCount" : 0,
+    "operators" : {
+      "Abs" : 1,
+      "AllFieldsFilled" : 21,
+      "And" : 222,
+      "CustomCondition" : 16,
+      "Equal" : 24,
+      "FieldFilled" : 210,
+      "FieldNotFilled" : 34,
+      "FieldValueIncludedInValueList" : 29,
+      "GreaterThan" : 12,
+      "GreaterThanOrEqual" : 1,
+      "GroupFilled" : 37,
+      "LessThan" : 1,
+      "NotEqual" : 4,
+      "Or" : 70,
+      "RepetitionNotUnique" : 20,
+      "Sum" : 10
+    },
+    "repeatableLevelsCrossed" : {
+      "buckets" : {
+        "0" : 50,
+        "1" : 61,
+        "2-3" : 6
+      },
+      "max" : 2,
+      "mean" : 0.6239316239316239,
+      "median" : 1,
+      "min" : 0,
+      "n" : 117,
+      "p90" : 1
+    },
+    "rulesPerErrorField" : {
+      "buckets" : {
+        "1" : 40,
+        "2-3" : 15,
+        "4-7" : 7,
+        "8-15" : 1
+      },
+      "max" : 8,
+      "mean" : 1.8571428571428572,
+      "median" : 1,
+      "min" : 1,
+      "n" : 63,
+      "p90" : 4
+    },
+    "scope" : {
+      "modelLevel" : 6,
+      "perGroup" : 80,
+      "perRepeatableRow" : 31
+    },
+    "walkUpDistance" : {
+      "buckets" : {
+        "1" : 57,
+        "2-3" : 5
+      },
+      "max" : 3,
+      "mean" : 1.1129032258064515,
+      "median" : 1,
+      "min" : 1,
+      "n" : 62,
+      "p90" : 1
     }
   },
-  "computations" : {
-    "programs" : {
-      "conversion" : {
-        "outcomes" : {
-          "CONVERTED" : 1
+  "structure" : {
+    "constraints" : {
+      "enumCardinality" : {
+        "buckets" : {
+          "2-3" : 7,
+          "4-7" : 2,
+          "8-15" : 5
         },
-        "opaqueReasons" : { }
+        "max" : 13,
+        "mean" : 6.0,
+        "median" : 3,
+        "min" : 2,
+        "n" : 14,
+        "p90" : 11
       },
-      "syntax" : {
-        "ast" : {
-          "nodeCount" : {
-            "count" : 1,
-            "min" : 5,
-            "median" : 5,
-            "p90" : 5,
-            "max" : 5,
-            "buckets" : [
-              {
-                "lower" : 4,
-                "upper" : 7,
-                "count" : 1
-              }
-            ]
-          },
-          "depth" : {
-            "count" : 1,
-            "min" : 3,
-            "median" : 3,
-            "p90" : 3,
-            "max" : 3,
-            "buckets" : [
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 1
-              }
-            ]
-          },
-          "booleanArity" : {
-            "count" : 1,
-            "min" : 1,
-            "median" : 1,
-            "p90" : 1,
-            "max" : 1,
-            "buckets" : [
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 1
-              }
-            ]
-          },
-          "variadicArity" : {
-            "count" : 1,
-            "min" : 0,
-            "median" : 0,
-            "p90" : 0,
-            "max" : 0,
-            "buckets" : [
-              {
-                "lower" : 0,
-                "upper" : 0,
-                "count" : 1
-              }
-            ]
-          },
-          "distinctFanIn" : {
-            "count" : 1,
-            "min" : 2,
-            "median" : 2,
-            "p90" : 2,
-            "max" : 2,
-            "buckets" : [
-              {
-                "lower" : 2,
-                "upper" : 3,
-                "count" : 1
-              }
-            ]
-          }
+      "numberScale" : {
+        "buckets" : {
+          "0" : 1,
+          "4-7" : 9,
+          "8-15" : 5
         },
-        "dispatch" : {
-          "catalogOperators" : {
-            "FieldFilled" : 1,
-            "RoundAccounting" : 1
+        "max" : 14,
+        "mean" : 8.133333333333333,
+        "median" : 6,
+        "min" : 0,
+        "n" : 15,
+        "p90" : 14
+      },
+      "numbersWithBounds" : 0,
+      "stringsWithLength" : 28,
+      "stringsWithPattern" : 5
+    },
+    "fieldCount" : 104,
+    "fieldKinds" : {
+      "BOOLEAN" : 5,
+      "CONFIRM" : 19,
+      "ENUMERATION" : 14,
+      "NUMBER" : 15,
+      "STRING" : 51
+    },
+    "fieldsPerGroup" : {
+      "buckets" : {
+        "1" : 19,
+        "2-3" : 12,
+        "4-7" : 2,
+        "8-15" : 4
+      },
+      "max" : 13,
+      "mean" : 2.810810810810811,
+      "median" : 1,
+      "min" : 1,
+      "n" : 37,
+      "p90" : 10
+    },
+    "groupCount" : 37,
+    "maxNestingDepth" : 6,
+    "repeatability" : {
+      "chainProduct" : {
+        "buckets" : {
+          "33554432-67108863" : 1,
+          "4096-8191" : 3,
+          "524288-1048575" : 1,
+          "64-127" : 14
+        },
+        "max" : 52036019,
+        "mean" : 2780509.6315789474,
+        "median" : 101,
+        "min" : 65,
+        "n" : 19,
+        "p90" : 776657
+      },
+      "chainProductByDepth" : {
+        "1" : {
+          "buckets" : {
+            "524288-1048575" : 1,
+            "64-127" : 14
           },
-          "intrinsicOperators" : {
-            "+" : 1
+          "max" : 776657,
+          "mean" : 51860.53333333333,
+          "median" : 86,
+          "min" : 65,
+          "n" : 15,
+          "p90" : 126
+        },
+        "2-3" : {
+          "buckets" : {
+            "33554432-67108863" : 1,
+            "4096-8191" : 3
           },
-          "constructs" : {
-            "ARITHMETIC" : 1
-          },
-          "constructCombinations" : {
-            "ARITHMETIC" : 1
-          },
-          "constructsByScope" : {
-            "MODEL_LEVEL" : { },
-            "PER_GROUP" : {
-              "ARITHMETIC" : 1
-            },
-            "PER_REPEATABLE_ROW" : { }
-          }
+          "max" : 52036019,
+          "mean" : 1.301294375E7,
+          "median" : 5236,
+          "min" : 4896,
+          "n" : 4,
+          "p90" : 52036019
         }
       },
-      "runtime" : {
-        "scope" : {
-          "classes" : {
-            "PER_GROUP" : 1
-          },
-          "capacity" : {
-            "bounded" : {
-              "count" : 1,
-              "min" : 1,
-              "median" : 1,
-              "p90" : 1,
-              "max" : 1,
-              "buckets" : [
-                {
-                  "lower" : 1,
-                  "upper" : 1,
-                  "count" : 1
-                }
-              ]
-            },
-            "unboundedCauses" : { }
-          }
+      "fieldChainProduct" : {
+        "buckets" : {
+          "1" : 63,
+          "33554432-67108863" : 2,
+          "4096-8191" : 3,
+          "524288-1048575" : 3,
+          "64-127" : 33
         },
-        "evaluation" : {
-          "scans" : {
-            "kinds" : { },
-            "starDepth" : {
-              "count" : 0,
-              "min" : 0,
-              "median" : 0,
-              "p90" : 0,
-              "max" : 0,
-              "buckets" : [ ]
-            },
-            "capacity" : {
-              "bounded" : {
-                "count" : 0,
-                "min" : 0,
-                "median" : 0,
-                "p90" : 0,
-                "max" : 0,
-                "buckets" : [ ]
-              },
-              "unboundedCauses" : { }
-            },
-            "filterComplexity" : {
-              "count" : 0,
-              "min" : 0,
-              "median" : 0,
-              "p90" : 0,
-              "max" : 0,
-              "buckets" : [ ]
-            }
-          },
-          "combinedWork" : {
-            "capacity" : {
-              "bounded" : {
-                "count" : 1,
-                "min" : 1,
-                "median" : 1,
-                "p90" : 1,
-                "max" : 1,
-                "buckets" : [
-                  {
-                    "lower" : 1,
-                    "upper" : 1,
-                    "count" : 1
-                  }
-                ]
-              },
-              "unboundedCauses" : { }
-            },
-            "scopeByScan" : { }
-          },
-          "mechanisms" : {
-            "GROUP_FILL" : {
-              "shape" : {
-                "count" : 0,
-                "min" : 0,
-                "median" : 0,
-                "p90" : 0,
-                "max" : 0,
-                "buckets" : [ ]
-              },
-              "capacity" : {
-                "bounded" : {
-                  "count" : 0,
-                  "min" : 0,
-                  "median" : 0,
-                  "p90" : 0,
-                  "max" : 0,
-                  "buckets" : [ ]
-                },
-                "unboundedCauses" : { }
-              }
-            },
-            "PARALLEL_REFERENCE" : {
-              "shape" : {
-                "count" : 0,
-                "min" : 0,
-                "median" : 0,
-                "p90" : 0,
-                "max" : 0,
-                "buckets" : [ ]
-              },
-              "capacity" : {
-                "bounded" : {
-                  "count" : 0,
-                  "min" : 0,
-                  "median" : 0,
-                  "p90" : 0,
-                  "max" : 0,
-                  "buckets" : [ ]
-                },
-                "unboundedCauses" : { }
-              }
-            },
-            "SEMANTIC_INDEX" : {
-              "shape" : {
-                "count" : 0,
-                "min" : 0,
-                "median" : 0,
-                "p90" : 0,
-                "max" : 0,
-                "buckets" : [ ]
-              },
-              "capacity" : {
-                "bounded" : {
-                  "count" : 0,
-                  "min" : 0,
-                  "median" : 0,
-                  "p90" : 0,
-                  "max" : 0,
-                  "buckets" : [ ]
-                },
-                "unboundedCauses" : { }
-              }
-            },
-            "UNIQUENESS" : {
-              "shape" : {
-                "count" : 0,
-                "min" : 0,
-                "median" : 0,
-                "p90" : 0,
-                "max" : 0,
-                "buckets" : [ ]
-              },
-              "capacity" : {
-                "bounded" : {
-                  "count" : 0,
-                  "min" : 0,
-                  "median" : 0,
-                  "p90" : 0,
-                  "max" : 0,
-                  "buckets" : [ ]
-                },
-                "unboundedCauses" : { }
-              }
-            }
-          },
-          "outerCorrelation" : {
-            "forms" : { },
-            "capacity" : {
-              "bounded" : {
-                "count" : 0,
-                "min" : 0,
-                "median" : 0,
-                "p90" : 0,
-                "max" : 0,
-                "buckets" : [ ]
-              },
-              "unboundedCauses" : { }
-            }
-          }
-        },
-        "resolution" : {
-          "walkUpDistance" : {
-            "count" : 1,
-            "min" : 1,
-            "median" : 1,
-            "p90" : 1,
-            "max" : 1,
-            "buckets" : [
-              {
-                "lower" : 1,
-                "upper" : 1,
-                "count" : 1
-              }
-            ]
-          }
-        }
-      }
-    },
-    "shape" : {
-      "computedFieldKinds" : {
-        "NUMBER" : 1
+        "max" : 52036019,
+        "mean" : 1023273.8557692308,
+        "median" : 1,
+        "min" : 1,
+        "n" : 104,
+        "p90" : 111
       },
-      "tables" : {
-        "alternatives" : {
-          "count" : 1,
-          "min" : 1,
-          "median" : 1,
-          "p90" : 1,
-          "max" : 1,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 1
-            }
-          ]
+      "maxRepeatableNestingDepth" : 2,
+      "maxRepetitions" : {
+        "buckets" : {
+          "524288-1048575" : 1,
+          "64-127" : 18
         },
-        "preconditions" : {
-          "count" : 1,
-          "min" : 1,
-          "median" : 1,
-          "p90" : 1,
-          "max" : 1,
-          "buckets" : [
-            {
-              "lower" : 1,
-              "upper" : 1,
-              "count" : 1
-            }
-          ]
+        "max" : 776657,
+        "mean" : 40957.78947368421,
+        "median" : 77,
+        "min" : 65,
+        "n" : 19,
+        "p90" : 126
+      },
+      "nestingDepth" : {
+        "buckets" : {
+          "1" : 15,
+          "2-3" : 4
         },
-        "toleranceBands" : { }
+        "max" : 2,
+        "mean" : 1.2105263157894737,
+        "median" : 1,
+        "min" : 1,
+        "n" : 19,
+        "p90" : 2
       },
-      "archetypes" : {
-        "ARITHMETIC" : 1
+      "nestingDepthExact" : {
+        "1" : 15,
+        "2" : 4
       },
-      "aggregateScaleMatch" : { }
-    },
-    "dependencies" : {
-      "maxCascadeDepth" : 1,
-      "feedingComputations" : 0
+      "repeatableGroupCount" : 19,
+      "siblingBranchFan" : {
+        "buckets" : {
+          "1" : 19,
+          "2-3" : 1,
+          "4-7" : 1,
+          "8-15" : 1
+        },
+        "max" : 15,
+        "mean" : 1.9090909090909092,
+        "median" : 1,
+        "min" : 1,
+        "n" : 22,
+        "p90" : 3
+      },
+      "unboundedCount" : 0
     }
   },
   "wiring" : {
-    "referencedFields" : {
-      "ANY" : 78
-    },
     "fieldFanOut" : {
-      "count" : 78,
-      "min" : 1,
-      "median" : 2,
-      "p90" : 9,
+      "buckets" : {
+        "1" : 28,
+        "16-31" : 3,
+        "2-3" : 28,
+        "32-63" : 1,
+        "4-7" : 14,
+        "8-15" : 4
+      },
       "max" : 63,
-      "buckets" : [
-        {
-          "lower" : 1,
-          "upper" : 1,
-          "count" : 28
-        },
-        {
-          "lower" : 2,
-          "upper" : 3,
-          "count" : 28
-        },
-        {
-          "lower" : 4,
-          "upper" : 7,
-          "count" : 14
-        },
-        {
-          "lower" : 8,
-          "upper" : 15,
-          "count" : 4
-        },
-        {
-          "lower" : 16,
-          "upper" : 31,
-          "count" : 3
-        },
-        {
-          "lower" : 32,
-          "upper" : 63,
-          "count" : 1
-        }
-      ]
-    }
+      "mean" : 4.294871794871795,
+      "median" : 2,
+      "min" : 1,
+      "n" : 78,
+      "p90" : 9
+    },
+    "fieldsReferenced" : 78,
+    "referencedByComputations" : 3,
+    "referencedByRules" : 77
   }
 }

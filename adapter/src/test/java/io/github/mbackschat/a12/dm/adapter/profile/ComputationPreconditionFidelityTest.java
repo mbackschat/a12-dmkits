@@ -1,45 +1,34 @@
 package io.github.mbackschat.a12.dm.adapter.profile;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 
 class ComputationPreconditionFidelityTest {
 
-    private static final List<String> PRECONDITION_AXES = List.of(
-            "computations.programs.syntax.ast.variadicArity",
-            "computations.programs.syntax.dispatch.catalogOperators",
-            "computations.programs.syntax.dispatch.constructCombinations");
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     @Test
-    void compactProfileDoesNotGainAQuantifierPrecondition() throws IOException {
-        ModelProfile target = readProfile("compact.json");
-        ModelProfile actual = ModelProfileExtractor.extract(
-                ModelSynthesizer.synthesize(ModelProfileJson.write(target), 0L));
-        ProfileComparison comparison = ModelProfileComparator.compare(target, actual);
+    void aPlainPreconditionDoesNotInventAQuantifier() throws Exception {
+        Path fixture = Path.of(System.getProperty("profile.fixture.dir"), "compact.json");
+        ObjectNode target = (ObjectNode) JSON.readTree(Files.readString(fixture)).deepCopy();
+        ObjectNode computations = (ObjectNode) target.path("computations");
+        computations.put("preconditionedCount", 1);
+        computations.set("constructs", JSON.createObjectNode());
+        ObjectNode operators = JSON.createObjectNode();
+        operators.put("FieldFilled", 1);
+        computations.set("operators", operators);
 
-        for (String path : PRECONDITION_AXES) {
-            assertEquals(
-                    ProfileComparison.Verdict.PASS,
-                    comparison.requireAxis(path).outcome().verdict(),
-                    path);
-        }
-    }
+        String model = ModelSynthesizer.synthesize(target.toString(), 0L);
+        var actual = ModelProfileJson.read(ModelProfiles.extract(model));
 
-    private static ModelProfile readProfile(String fileName) throws IOException {
-        String directory = System.getProperty("profile.fixture.dir");
-        if (directory == null || directory.isBlank()) {
-            throw new IllegalStateException(
-                    "profile.fixture.dir must point at the committed profile fixture directory");
-        }
-        return ModelProfileJson.read(Files.readString(
-                Path.of(directory, fileName),
-                StandardCharsets.UTF_8));
+        assertTrue(actual.computations().preconditionedCount() >= 1);
+        assertEquals(0, actual.computations().constructs().getOrDefault("QUANTIFIER", 0));
     }
 }
