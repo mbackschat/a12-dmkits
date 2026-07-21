@@ -108,4 +108,27 @@ class ComputeGranularityTest {
             "the seed is matched at the exact row pointer — only row 2 was seeded with B-X",
         )
     }
+
+    @Test
+    fun preparedProjectionDoesNotRescanInputPlacementsPerResult() {
+        val counted = ReadCountingList(placements)
+        val projection = KernelComputeProjection.prepare(counted, model)
+        val preparationReads = counted.reads
+
+        repeat(3) {
+            assertEquals(emptyList(), projection.project(listOf("/Order[1]/Label|VALUE|AB-X")))
+        }
+
+        assertEquals(placements.size, preparationReads, "preparation indexes each placement once")
+        assertEquals(preparationReads, counted.reads, "result projection reuses the prepared input index")
+    }
+
+    private class ReadCountingList<T>(private val values: List<T>) : AbstractList<T>() {
+        var reads: Int = 0
+            private set
+
+        override val size: Int get() = values.size
+
+        override fun get(index: Int): T = values[index].also { reads++ }
+    }
 }

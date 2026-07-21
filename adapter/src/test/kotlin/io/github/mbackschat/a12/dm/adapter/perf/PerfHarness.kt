@@ -2,9 +2,9 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.conformance.KernelComputeProjection
 import io.github.mbackschat.a12.dm.interpreter.conformance.Placement
 import io.github.mbackschat.a12.dm.interpreter.conformance.PlacementKind
-import io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
@@ -219,17 +219,20 @@ object InterpreterPerfEngine : PerfEngine {
                 val doc = model.newDocument()
                 val placements = ArrayList<Placement>()
                 scenario.instance(CapturingDocumentSink(doc.asSink(), placements), n, variant)
+                val computeProjection = if (scenario.op == PerfOp.COMPUTE) {
+                    KernelComputeProjection.prepare(placements, model)
+                } else {
+                    null
+                }
                 return object : RunInstance {
                     override fun outcome(): PerfOutcome = when (scenario.op) {
                         PerfOp.VALIDATE -> interp.validate(doc, scenario.locale).let { result ->
                             PerfOutcome(result.messages.map(::validationSignature).sorted(), result.unsupported)
                         }
                         PerfOp.COMPUTE -> PerfOutcome(
-                            kernelComputeGranularity(
-                                interp.compute(doc, scenario.locale).map(::computationSignature),
-                                placements,
-                                model,
-                            ).sorted(),
+                            checkNotNull(computeProjection)
+                                .project(interp.compute(doc, scenario.locale).map(::computationSignature))
+                                .sorted(),
                         )
                     }
                 }
@@ -325,7 +328,8 @@ private class KernelDocSink(private val doc: RuntimeLaws.Doc) : PlacementSink {
     override fun emptyField(path: String, vararg reps: Int) { doc.emptyField(path, *reps) }
 }
 
-/** Captures the same source placements used to build [delegate], outside timing, for the kernel-delta projection. */
+/** Captures source placements while building [delegate], outside timing, so the immutable kernel-delta input
+ * lookup can be prepared once with the reusable instance (IF199). */
 private class CapturingDocumentSink(
     private val delegate: PlacementSink,
     private val placements: MutableList<Placement>,

@@ -4,9 +4,6 @@ import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 
-// Escaped closing bracket — Kotlin/JS compiles regexes with the `u` flag, where an unescaped `]` is a SyntaxError.
-private val ROW_INDEX = Regex("""\[\d+\]""")
-
 /**
  * Project the interpreter's report-ALL compute signatures onto the **kernel's compute reporting granularity**,
  * for comparison against a kernel-captured expectation (CONFORMANCE-CORPUS-SPEC §7).
@@ -31,19 +28,39 @@ private val ROW_INDEX = Regex("""\[\d+\]""")
  * - a `CLEARED` on a cell no placement filled (unseeded, or an [PlacementKind.EMPTY] placement) is dropped;
  * - an `ERRORED` is always kept.
  */
-fun kernelComputeGranularity(signatures: List<String>, placements: List<Placement>, model: ModelDef): List<String> {
-    val seeded = HashMap<String, String>()
-    for (p in placements) {
-        if (p.kind == PlacementKind.FIELD) seeded[formatPointer(p.path, p.reps)] = p.value ?: ""
-    }
-    return signatures.filterNot { sig ->
+class KernelComputeProjection private constructor(private val seeded: Map<String, SeededCell>) {
+
+    /** Project one freshly materialized report-all result; the prepared input lookup is reused unchanged. */
+    fun project(signatures: List<String>): List<String> = signatures.filterNot { sig ->
         val pointer = sig.substringBefore('|')
+        val input = seeded[pointer]
         when {
             "|VALUE|" in sig ->
-                seeded[pointer] == sig.substringAfter("|VALUE|") &&
-                    model.kinds[pointer.replace(ROW_INDEX, "")] == Kind.STRING
-            sig.endsWith("|CLEARED") -> pointer !in seeded
+                input?.value == sig.substringAfter("|VALUE|") && input.kind == Kind.STRING
+            sig.endsWith("|CLEARED") -> input == null
             else -> false
         }
     }
+
+    companion object {
+        /** Build the immutable input side once when a reusable document instance is materialized. */
+        fun prepare(placements: List<Placement>, model: ModelDef): KernelComputeProjection {
+            val seeded = HashMap<String, SeededCell>()
+            for (placement in placements) {
+                if (placement.kind == PlacementKind.FIELD) {
+                    seeded[formatPointer(placement.path, placement.reps)] = SeededCell(
+                        placement.value ?: "",
+                        model.kinds[placement.path],
+                    )
+                }
+            }
+            return KernelComputeProjection(seeded)
+        }
+    }
+
+    private data class SeededCell(val value: String, val kind: Kind?)
 }
+
+/** One-shot compatibility form; repeated callers should prepare [KernelComputeProjection] once. */
+fun kernelComputeGranularity(signatures: List<String>, placements: List<Placement>, model: ModelDef): List<String> =
+    KernelComputeProjection.prepare(placements, model).project(signatures)
