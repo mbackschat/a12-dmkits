@@ -5,7 +5,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import io.github.mbackschat.a12.dm.rulekit.catalog.GotchaKind;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
@@ -38,9 +40,18 @@ public final class ModelContext {
     private static final OperatorCatalog CATALOG = OperatorCatalog.load();
 
     private final BoundModel model;
+    private final Set<String> repeatableGroupPaths;
 
     public ModelContext(BoundModel model) {
+        this(model, model::groups);
+    }
+
+    ModelContext(BoundModel model, Supplier<Stream<GroupInfo>> groups) {
         this.model = model;
+        this.repeatableGroupPaths = groups.get()
+                .filter(GroupInfo::repeating)
+                .map(GroupInfo::path)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     /**
@@ -182,10 +193,9 @@ public final class ModelContext {
                 return ancestor;
             }
         }
-        Set<String> repeatable = model.groups().filter(GroupInfo::repeating)
-                .map(GroupInfo::path).collect(Collectors.toSet());
         return refs.groupPaths().stream()
-                .filter(g -> repeatable.contains(g) || repeatable.stream().anyMatch(r -> g.startsWith(r + "/")))
+                .filter(g -> repeatableGroupPaths.contains(g)
+                        || repeatableGroupPaths.stream().anyMatch(r -> g.startsWith(r + "/")))
                 .sorted().findFirst();
     }
 
