@@ -31,15 +31,16 @@ internal class AdmittedGroupContentIndex private constructor(
             isRelevant: Relevance,
             groupRelevance: (String, List<Int>) -> GroupRelevance,
             formalResults: FormalResultCache,
+            paths: ModelPathIndex,
         ): AdmittedGroupContentIndex {
             val filled = HashMap<String, HashSet<List<Int>>>()
 
             fun addAncestors(path: String, reps: List<Int>, includeSelf: Boolean) {
-                val parts = pathParts(path)
-                val lastGroupDepth = if (includeSelf) parts.size else parts.size - 1
-                for (depth in 1..lastGroupDepth) {
-                    val groupPath = "/" + parts.take(depth).joinToString("/")
-                    filled.getOrPut(groupPath) { HashSet() } += reps.take(depth)
+                val groups = if (includeSelf) paths.groupsThrough(path) else paths.ancestorsOf(path)
+                for ((level, groupPath) in groups.withIndex()) {
+                    val depth = level + 1
+                    val prefix = if (depth == reps.size) reps else reps.subList(0, depth)
+                    filled.getOrPut(groupPath) { HashSet() } += prefix
                 }
             }
 

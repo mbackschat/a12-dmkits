@@ -374,6 +374,20 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 *The current headline + the naive baseline it improved on. The intermediate optimization-journey entries were collapsed away (2026-06-27) — the *method* and the *lessons* live above (the optimization catalog, the kernel-technique map, the biases-to-re-check); this log keeps only the **current** measures and the **pre-optimization yardstick** they're read against. Dates are when each axis was last measured.*
 
+### Checkpoint 2026-07-21 — IF196 profile-derived breadth validation path preparation
+
+The exact breadth-shaped synthesized model (`a12-synth-breadth-bulk.dm.json`, selected leaf `/G1/G17/G18/G19`) first failed the standing curve rule at 100→400 leaf rows: repeat runs put interpreter growth at 1.73–1.82× versus dynamic Groovy at 1.59–1.69×. An interpreter-only JFR located repeated path split/join work in over-repetition checks and IF193 admitted-content ancestor propagation, plus an unnecessary construction of evaluated row contexts in structural over-repetition emission. IF196 prepares model path prefixes/bounds once and reads structural rows directly.
+
+Same-run corrected evidence on Apple Silicon used the fixed clock and custom callback, exact generated documents, complete interpreter/dynamic-Groovy/generated-Java signatures, three interleaved pairs, four warmups, and two timed iterations:
+
+| engine | 100 rows | 400 rows | growth |
+|---|---:|---:|---:|
+| interpreter | 23.04 ms | 35.90 ms | **1.43×** |
+| dynamic Groovy | 127.15 ms | 200.31 ms | 1.53× |
+| generated Java | 53.90 ms | 109.59 ms | 1.84× |
+
+The interpreter is 5.5× faster than dynamic Groovy and 2.3× faster than generated Java at 100 rows, 5.6× and 3.1× faster at 400 rows, and its curve is now better than both. This is diagnostic evidence under the standing development rule, not an IF137 numerical promotion.
+
 ### Checkpoint 2026-07-19 — IG98 multi-star `$`-correlation scaling discriminator (interp WORSE than the kernel → optimization owed)
 
 The IG98 decision measurement: is the interpreter's naive multi-star `$`-equality-correlation scan (`MoreThanOneFieldFilled(/Perf/Lines* then Subs* then Cost Having [Cost] == [$Cost])`, per-Sub, star spans all Lines) *worse* than the kernel's complexity class, or does the kernel also scan it? Apple Silicon, `validateFull`, min-of-4 after 3 warmups, N and 4N Lines (×2 Subs each):

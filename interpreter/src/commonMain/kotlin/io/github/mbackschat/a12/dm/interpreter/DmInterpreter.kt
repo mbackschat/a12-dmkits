@@ -75,8 +75,11 @@ class DmInterpreter @JvmOverloads constructor(
     private val effectiveLegalCharset: LegalCharset = model.legalCharset ?: legalCharset
     private val patterns = PatternRegistry()
 
+    /** Model-static path prefixes and repetition bounds, prepared once rather than rebuilt per validation cell. */
+    private val paths = ModelPathIndex(model)
+
     /** The auto-check emitter + formal-status oracle — the call-invariant I2 seam collaborator (IF117). */
-    private val checks = AutoChecks(model, effectiveLegalCharset, predefinedTypes, customFieldTypes, patterns)
+    private val checks = AutoChecks(model, effectiveLegalCharset, predefinedTypes, customFieldTypes, patterns, paths)
 
     /** The iteration-scope machinery + the RepetitionNotUnique evaluator — call-invariant I2 seam collaborators (IF117). */
     private val scopes = IterationScopes(model)
@@ -224,7 +227,7 @@ class DmInterpreter @JvmOverloads constructor(
             val dup = checks.duplicateIndexCells(doc, isRelevant)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
             lateinit var formalResults: FormalResultCache
             val admittedGroupContent by lazy(LazyThreadSafetyMode.NONE) {
-                AdmittedGroupContentIndex.build(model, doc, isRelevant, groupRelevance, formalResults)
+                AdmittedGroupContentIndex.build(model, doc, isRelevant, groupRelevance, formalResults, paths)
             }
             formalResults = FormalResultCache(checks, locale, dup) { ctx, path ->
                 admittedGroupContent.isFilled(ctx, path)
@@ -353,7 +356,7 @@ class DmInterpreter @JvmOverloads constructor(
         val groupRelevance = { _: String, _: List<Int> -> GroupRelevance.FULL }
         lateinit var formalResults: FormalResultCache
         val admittedGroupContent by lazy(LazyThreadSafetyMode.NONE) {
-            AdmittedGroupContentIndex.build(model, doc, ALL_RELEVANT, groupRelevance, formalResults)
+            AdmittedGroupContentIndex.build(model, doc, ALL_RELEVANT, groupRelevance, formalResults, paths)
         }
         formalResults = FormalResultCache(checks, locale, dup) { ctx, path ->
             admittedGroupContent.isFilled(ctx, path)

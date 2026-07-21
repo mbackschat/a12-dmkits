@@ -41,6 +41,7 @@ internal class AutoChecks(
     private val predefinedTypes: Map<String, PredefinedType>,
     private val customFieldTypes: Map<String, CustomFieldType>,
     private val patterns: PatternRegistry,
+    private val paths: ModelPathIndex,
 ) {
 
     /**
@@ -137,7 +138,7 @@ internal class AutoChecks(
         for (indexField in model.indexFields) {
             val rows = doc.contextsFor(parentGroup(indexField)).mapNotNull { ctx ->
                 val reps = ctx.repsOf(indexField)
-                if (overLimitLevel(indexField, reps) != null) return@mapNotNull null   // over-limit rows are suppressed
+                if (paths.overLimitLevel(indexField, reps) != null) return@mapNotNull null   // over-limit rows are suppressed
                 // Partial validation: only RELEVANT cells participate in duplicate detection — the kernel builds its
                 // index cache from the relevant fields only (`ValidationCommand.befuelleCacheMitRelevantenFeldern`),
                 // so a relevant row whose duplicate PARTNER is not relevant is NOT flagged (IF39). Full: all cells.
@@ -196,7 +197,7 @@ internal class AutoChecks(
         // An over-limit cell (its row exceeds a declared `repeatability`) is "unknown" — it carries the
         // over-repetition code, suppressing any rule that references it AND its own format/required/unique checks,
         // exactly as the kernel skips an over-limit instance's ordinary checks (KERNEL-FINDINGS "over-repetition").
-        if (overLimitLevel(path, reps) != null) {
+        if (paths.overLimitLevel(path, reps) != null) {
             return FormalResult.Invalid(FormalFailure.Generated(OVER_REPETITION_CONTEXT))
         }
         if (raw != null) {
@@ -261,19 +262,6 @@ internal class AutoChecks(
             )
         }
 
-    /** The path-part index of the OUTERMOST repeatable group whose row index in [reps] exceeds its declared
-     *  `repeatability` ([ModelDef.declaredReps]), or null when within all declared bounds — the over-repetition
-     *  test (KERNEL-FINDINGS "over-repetition errors", the kernel's `FormalChecker.checkIndicesLessOrEqualThanMax`). */
-    private fun overLimitLevel(path: String, reps: List<Int>): Int? {
-        if (model.declaredReps.isEmpty()) return null
-        val parts = pathParts(path)
-        for (k in parts.indices) {
-            val max = model.declaredReps["/" + parts.take(k + 1).joinToString("/")] ?: continue
-            if (k < reps.size && reps[k] > max) return k
-        }
-        return null
-    }
-
     /**
      * The STRUCTURAL over-repetition messages (KERNEL-FINDINGS "over-repetition errors"; the kernel's
      * `FormalChecker`): each entity instance whose repetition index exceeds the declared `repeatability` is
@@ -287,16 +275,15 @@ internal class AutoChecks(
         if (model.declaredReps.isEmpty()) return emptyList()
         val out = mutableListOf<Message>()
         for (vf in doc.valuedFields()) {
-            if (overLimitLevel(vf.path, vf.reps) != null && isRelevant(vf.path, vf.reps)) {
+            if (paths.overLimitLevel(vf.path, vf.reps) != null && isRelevant(vf.path, vf.reps)) {
                 out += Message(OVER_REPETITION_CONTEXT, FORMAL_RULE_PATH, doc.formattedPointer(vf.path, vf.reps),
                     Severity.ERROR, MsgType.VALUE, overRepetitionText(locale, row = false))
             }
         }
         for (group in model.declaredReps.keys) {
-            val ownLevel = pathParts(group).size - 1
-            for (ctx in doc.contextsFor(group)) {
-                val row = ctx.repsOf(group)
-                val lvl = overLimitLevel(group, row) ?: continue
+            val ownLevel = paths.levelOf(group)
+            for (row in doc.instantiatedRows(group)) {
+                val lvl = paths.overLimitLevel(group, row) ?: continue
                 if (!isRelevant(group, row)) continue
                 val isRow = lvl == ownLevel
                 out += Message(if (isRow) OVER_REPETITION_ROW else OVER_REPETITION_CONTEXT, FORMAL_RULE_PATH,
