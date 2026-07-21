@@ -8,6 +8,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 
 // The polarity-walk collaborator — the typed truth+polarity walks ([Interpreter.firedType]'s
@@ -117,9 +118,10 @@ private fun Interpreter.orType(a: Res, b: Res): MsgType {
 
 /** The directional fillability of a comparison operand — whether continuing to fill could grow / shrink
  *  its value. An empty NUMBER field can always grow but shrinks only if SIGNED (kernel's
- *  `kannGroesserWerden`/`kannKleinerWerden = hatVorzeichen`); a filled field or literal can't move. Every
- *  other operand (star aggregate, function, arithmetic) keeps the prior *symmetric* omission notion — so
- *  for those, `leafType` below reduces exactly to the old `leafOmission(left) || leafOmission(right)`. */
+ *  `kannGroesserWerden`/`kannKleinerWerden = hatVorzeichen`); a filled field or literal can't move. Numeric
+ *  functions and arithmetic propagate those directions. In particular, value aggregates summarize every
+ *  missing declaration (including fields expanded from a GROUP star): an all-empty aggregate's `0` identity
+ *  moves both ways, while a present-value `Sum` shrinks iff a specifically missing declaration is signed. */
 private fun Interpreter.fill(e: Expr): Fill {
     // FirstFilledValue is positionally short-circuiting: only a filter on a REACHED operand escalates
     // polarity. Its shared ordered scan handles that before the general value-combiner rule below (IF184).
@@ -228,18 +230,17 @@ private fun Val.numericOrNull(): Dec? = when (this) {
 }
 
 /**
- * Directional fillability of a value FUNCTION. The starred aggregates carry the kernel's `NumberCombiner`
- * directions while their tail can still grow (an empty operand or an un-instantiated tail): a `Sum` can
- * grow, and shrink only if the summed field is SIGNED; `MaxValue` can only grow; `MinValue` can only
- * shrink. For a SIGNED field a `Sum`'s fill is `(true, true)` — identical to the old symmetric notion, so
- * signed aggregates are unchanged; only unsigned ones gain the directional VALUE typing. Every other
- * function (the count aggregates — a fillable operand is unconditionally OMISSION; operand-list `Min`/`Max`;
- * date functions) keeps the symmetric notion.
+ * Directional fillability of a value FUNCTION. Numeric value aggregates carry the kernel's declaration-aware
+ * `NumberCombiner` directions. With at least one present value and at least one missing contributor, `Sum`
+ * grows and shrinks iff any missing declaration is signed, `MaxValue` only grows, and `MinValue` only shrinks.
+ * The all-empty `0` identity is the exception: its first value can move either way for every operator and
+ * signedness. Group stars expand to their contained declarations before this summary. Date aggregates retain
+ * the symmetric DateCombiner rule; the other function families use their rules below.
  */
 private fun Interpreter.funcFill(f: Expr.Func): Fill = when (FunctionOp.byName(f.name)) {
-    FunctionOp.SUM -> starFill(f) { signed -> Fill.of(canGrow = true, canShrink = signed) }
-    FunctionOp.MAX_VALUE -> starFill(f) { Fill.of(canGrow = true, canShrink = false) }
-    FunctionOp.MIN_VALUE -> starFill(f) { Fill.of(canGrow = false, canShrink = true) }
+    FunctionOp.SUM -> numericAggregateFill(f) { signed -> Fill.of(canGrow = true, canShrink = signed) }
+    FunctionOp.MAX_VALUE -> numericAggregateFill(f) { Fill.of(canGrow = true, canShrink = false) }
+    FunctionOp.MIN_VALUE -> numericAggregateFill(f) { Fill.of(canGrow = false, canShrink = true) }
     // CurrentRepetition is the structural ROW INDEX — no field-fill can change it, so a fired comparison
     // against it is always a VALUE error (kernel-probed). The generic fallback would wrongly read its group
     // argument as an "unfilled field" and type it OMISSION.
@@ -251,7 +252,6 @@ private fun Interpreter.funcFill(f: Expr.Func): Fill = when (FunctionOp.byName(f
     // can only ADD to the count, never remove one. So they grow like an UNSIGNED `Sum`: `canGrow` while a
     // fillable operand remains, `canShrink` NEVER. Directionally this makes a fired `count >= n` / `count > n`
     // a VALUE error (filling can't clear it) while `count < n` / `count == n` stays OMISSION (filling still
-    // can) — the old symmetric `leafOmission` wrongly typed the `>=`/`>` direction OMISSION (KERNEL-FINDINGS;
     // MultiFieldAggregateDiffTest.firedPolarityMatchesKernel, NumberOfFilledDiffTest). The ENTITY counts
     // additionally carry the kernel's own filter flags ([countFill], IF114).
     FunctionOp.NUMBER_OF_FILLED_FIELDS, FunctionOp.NUMBER_OF_FILLED_GROUPS -> countFill(f)
@@ -326,19 +326,81 @@ private fun Interpreter.minMaxFill(f: Expr.Func): Fill {
     }.first
 }
 
-/** A starred aggregate's fill: [build] (with the starred field's sign) while its tail can still grow,
- *  else fixed; falls back to the symmetric notion if the operand is not a single star. At the EMPTY identity
- *  (no filled value yet — the aggregate is `0`), filling the FIRST value can move it EITHER way (up always;
- *  down only if signed), so the fill is `(canGrow = true, canShrink = signed)` regardless of the per-op
- *  direction — the directional [build] (Min shrink-only, Max grow-only) applies only once ≥1 value is present.
- *  So a fired `MinValue(star) < n` over an all-empty star is OMISSION (fill to raise off 0), not VALUE
- *  (kernel-probed; the fuzz surfaced this after the empty→0 identity fix — IF51).
+/** The declaration-aware fill summary of a numeric value aggregate. A missing declaration contributes its
+ *  own signedness even when another declaration supplies the current value; a GROUP star expands to the same
+ *  field declarations the value walk consumes. At the all-empty `0` identity the first future value can move
+ *  the result either way regardless of field signedness or aggregate operator. Once a value is present,
+ *  [build] applies the operator direction and a `Sum` can shrink iff a specifically missing declaration is
+ *  signed. No missing declaration means the result is fixed.
  *
- *  A DATE-like star has NO directional fill at all: the kernel's `DateCombiner` carries only the symmetric
- *  `nichtAngegeben` (any empty cell, an un-instantiated tail, or a `Having` filter — the combiner's
- *  `getValue(containsFilter)` marks a filtered result unconditionally), and `vergleicheDATUM` types a fired
- *  comparison OMISSION on it regardless of the comparison direction (`DateAggregateDiffTest`). */
-private fun Interpreter.starFill(f: Expr.Func, build: (signed: Boolean) -> Fill): Fill {
+ *  Non-numeric/date/unsupported operand shapes retain [legacyStarFill], preserving the DateCombiner's
+ *  symmetric fill, the single-star exhausted behavior, and the former safe fallback. `Having` is handled
+ *  before this function by [fill], which preserves its unconditional both-direction escalation. */
+private fun Interpreter.numericAggregateFill(f: Expr.Func, build: (signedMissing: Boolean) -> Fill): Fill {
+    val state = f.args.fold(AggregateFillState.EMPTY) { acc, arg ->
+        val next = aggregateFillState(arg) ?: return legacyStarFill(f, build)
+        acc + next
+    }
+    return when {
+        !state.hasMissing -> Fill.of(false, false)
+        !state.hasPresent -> Fill.of(true, true)
+        else -> build(state.hasSignedMissing)
+    }
+}
+
+private data class AggregateFillState(
+    val hasPresent: Boolean,
+    val hasMissing: Boolean,
+    val hasSignedMissing: Boolean,
+) {
+    operator fun plus(other: AggregateFillState): AggregateFillState = AggregateFillState(
+        hasPresent || other.hasPresent,
+        hasMissing || other.hasMissing,
+        hasSignedMissing || other.hasSignedMissing,
+    )
+
+    companion object {
+        val EMPTY = AggregateFillState(hasPresent = false, hasMissing = false, hasSignedMissing = false)
+    }
+}
+
+/** Resolve one legal numeric aggregate operand to the presence/missingness of its declared contributors. */
+private fun Interpreter.aggregateFillState(arg: Expr): AggregateFillState? = when (arg) {
+    is Expr.Field -> {
+        val c = ctxOf(arg)
+        if (c.declaredKind(arg.path) != Kind.NUMBER) null
+        else if (c.filled(arg.path)) AggregateFillState(true, false, false)
+        else AggregateFillState(false, true, c.signed(arg.path))
+    }
+    is Expr.Star -> {
+        val c = ctxOf(arg)
+        when (c.declaredKind(arg.path)) {
+            Kind.NUMBER -> c.numericStarFillState(arg)
+            null -> {
+                val fields = c.containedFields(arg.path)
+                if (fields.isEmpty() || fields.any { c.declaredKind(it) != Kind.NUMBER }) null
+                else fields.fold(AggregateFillState.EMPTY) { acc, path ->
+                    acc + c.numericStarFillState(Expr.Star(path, arg.having, arg.outer, arg.bindDepth))
+                }
+            }
+            else -> null
+        }
+    }
+    else -> null
+}
+
+private fun EvalContext.numericStarFillState(star: Expr.Star): AggregateFillState {
+    val missing = starOmission(star.path, star.bindDepth)
+    return AggregateFillState(
+        hasPresent = star(star.path, star.bindDepth).isNotEmpty(),
+        hasMissing = missing,
+        hasSignedMissing = missing && signed(star.path),
+    )
+}
+
+/** The pre-declaration-summary behavior retained for non-numeric/date/unsupported aggregate shapes. A
+ *  DATE-like star has symmetric fill; a numeric single star keeps its former exhausted and directional cases. */
+private fun Interpreter.legacyStarFill(f: Expr.Func, build: (signed: Boolean) -> Fill): Fill {
     val star = f.args.singleOrNull() as? Expr.Star ?: return leafOmission(f).let { Fill.of(it, it) }
     if (dateLike(ctx.declaredKind(star.path))) {
         val om = ctx.starOmission(star.path, star.bindDepth) || star.having != null

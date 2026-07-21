@@ -15,7 +15,8 @@ import kotlin.test.assertTrue
  * indices (single-level `/Cart/Lines`, and the top level of nested `/M/G1`, carrying its subtree) and comparing:
  * the `code|type` multiset, and the full-signature multiset with the permuted level's index **blanked** (so a
  * pure relabel matches, but any added / dropped / re-targeted firing does not). The models' rules are all
- * order-insensitive (per-row comparisons, `Sum` aggregates, index uniqueness) — no `FirstFilledValue`. Sweeps
+ * invariant for this bounded sample (per-row comparisons, sums that never reach a precision boundary, index
+ * uniqueness) — no `FirstFilledValue`. Sweeps
  * both models × [PropertySupport.SEEDS] on JVM + JS.
  */
 class RowPermutationPropertyTest {

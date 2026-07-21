@@ -128,14 +128,14 @@ class MultiFieldAggregateDiffTest {
         agree(maxMF, Scene(qty = "60", bq = "30"))   // max 60 > 50 → fires
         agree(maxMF, Scene(qty = "40", bq = "30"))   // max 40 not
         agree(maxMF, Scene(qty = "60"))              // empty BQ ignored → max 60 fires
-        agree(maxMF, Scene())                        // both empty → non-evaluable, not fire
+        agree(maxMF, Scene())                        // both empty → 0, so 0 > 50 does not fire
     }
 
     @Test fun multiFieldMinValue() {     // IG29 — empty must be IGNORED, not treated as 0
         agree(minMF, Scene(qty = "5", bq = "30"))    // min 5 < 10 → fires
         agree(minMF, Scene(qty = "20", bq = "30"))   // min 20 not
         agree(minMF, Scene(qty = "20"))              // empty BQ ignored → min 20 not (0 would wrongly fire)
-        agree(minMF, Scene())                        // both empty → non-evaluable, not fire
+        agree(minMF, Scene())                        // both empty → 0, so 0 < 10 fires
     }
 
     @Test fun numberOfDifferentValuesNumber() {   // IG30 multi-field number

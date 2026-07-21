@@ -1026,6 +1026,14 @@ public final class RuntimeLaws {
             return rt.validateFull(instance, config(null, Locale.US)).getMessages().stream().map(RuntimeLaws::toMsg).toList();
         }
 
+        /** Fully rendered validation text from the generated-Java strategy, at an explicit locale. */
+        Optional<String> errorTextOf(DocumentV2 instance, String errorCode, Locale locale) {
+            return rt.validateFull(instance, config(null, locale)).getMessages().stream()
+                    .filter(message -> message.getErrorCode().equals(errorCode))
+                    .map(IMessage::getErrorText)
+                    .findFirst();
+        }
+
         /** Generated-Java validation with the same per-call custom-condition callbacks as the dynamic path. */
         List<Msg> messages(DocumentV2 instance, Map<String, ICustomCondition> customConditions) {
             DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US)

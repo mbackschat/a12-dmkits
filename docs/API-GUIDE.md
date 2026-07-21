@@ -1185,6 +1185,20 @@ val fired = DmInterpreter(model).validateFull(document, "en_US").map { it.code }
 
 Use `validate(document)` when a tolerant caller needs the full `ValidationOutcome` and will handle both `messages` and `unsupported`; projecting only `.messages` is an explicit decision to discard the unsupported report. dmtool's JVM `InterpreterModelLoader.load` is a thin delegate over this same loader — parity across every fixture model is CI-guarded (`ModelLoaderParityTest`), so the native runtime verbs and a JS library see identical `ModelDef`s. *Test-backed: `interpreter/…/load/ModelLoaderTest` (JVM + JS), `cli.interp.ModelLoaderParityTest`, `cli.interp.InterpreterRealModelDiffTest`.*
 
+Validation-message field names are customizable without changing evaluation. The default uses the localized model label when present and otherwise the field name; a provider's non-null result wins verbatim, including an empty string, while `null` continues to the model label and indexed debug identity:
+
+<!-- teaser -->
+```kotlin
+val interpreter = DmInterpreter(
+    model,
+    messageLabelProvider = MessageLabelProvider { field, locale ->
+        applicationLabels[field.path]?.get(locale) // null keeps the interpreter fallback cascade
+    },
+)
+```
+
+`$Field.value$` deliberately uses the original stored display text even when evaluation uses a normalized value (for example CRLF becomes LF for a length condition). A missing or explicitly empty exact Number renders its declared `minFractionalDigits` default (`0`, `0.00`, …); the current `DocumentV2` kernel path uses a dot for that default independently of the message locale. Substitution is one pass, so placeholder-looking bytes inside a field value remain data. *Test-backed on JVM + JS by `MessageDisplayPolicyTest`, and against both real-kernel strategies by `MessageValueDisplayPolicyDiffTest`.*
+
 The same façade computes, whole-document or one field at a time. `compute(document)` runs **every** computation (the twin of the kernel's `compute()`); `computeField(fieldPath, document)` runs **one** computed field "like a function" — only its transitive computed-dependency closure, in dependency order, so a cascade operand is never read stale (the single-computation twin of `testRule`; IF129). It returns one `Computed` per target-cell instance (a repeated computed field → one per row) and throws if no computation targets the field:
 
 <!-- teaser -->

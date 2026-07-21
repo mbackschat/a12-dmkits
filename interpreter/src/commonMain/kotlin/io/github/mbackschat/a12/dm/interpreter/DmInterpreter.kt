@@ -17,6 +17,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.Message
+import io.github.mbackschat.a12.dm.interpreter.model.MessageLabelProvider
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
@@ -68,6 +69,9 @@ class DmInterpreter @JvmOverloads constructor(
      *  this SPI applies only when the model declares none. The interpreter must expose every kernel customization to
      *  be 100% compatible. */
     private val legalCharset: LegalCharset = LegalCharset.BMP,
+    /** Consumer override for `$field$` message names. A non-null result wins exactly (including empty); null
+     *  falls through to the nonempty model label, then the field's indexed debug identity. */
+    private val messageLabelProvider: MessageLabelProvider? = MessageLabelProvider.MODEL_LABEL_OR_NAME,
 ) {
 
     /** The effective legal charset: the model-declared `supportedCharacters` ([ModelDef.legalCharset], IF120) when
@@ -490,7 +494,15 @@ class DmInterpreter @JvmOverloads constructor(
             val firedType = interp.firedType(ast)
             if (firedType != null) {
                 val type = firedType
-                val text = rule.messages[pass.locale]?.let { renderMessage(it, rule.group, ctx) { p -> model.labelOf(p, pass.locale) } } ?: ""
+                val text = rule.messages[pass.locale]?.let {
+                    renderMessage(
+                        it,
+                        rule.group,
+                        ctx,
+                        defaultValueOf = model::messageDefaultOf,
+                        labelOf = { path -> messageLabel(path, pass.locale, ctx) },
+                    )
+                } ?: ""
                 val matchingRnuOutcome = rnuCache?.rows?.get(ctx.repsOf(errorPath))?.takeIf { it.type == type }
                 // When the RNU leaf contributes this message's polarity, its cluster projection already contains
                 // every occurrence of an RNU key path. Drop a same-path ordinary occurrence, render the remaining
@@ -512,6 +524,14 @@ class DmInterpreter @JvmOverloads constructor(
                 pass.firstSuppressor(refs, ctx)?.let { RowOutcome.Suppressed(it) } ?: RowOutcome.Passed
             }
         }
+    }
+
+    private fun messageLabel(path: String, locale: String, ctx: EvalContext): String {
+        val supplied = model.fieldOf(path)?.let { field -> messageLabelProvider?.label(field, locale) }
+        if (supplied != null) return supplied
+        model.declaredLabelOf(path, locale)?.takeIf { it.isNotEmpty() }?.let { return it }
+        val repetitions = ctx.repsOf(path)
+        return if (repetitions.isEmpty()) path else "$path/${repetitions.joinToString(".")}"
     }
 
     /** Immutable concatenation without copying either input; both inputs are call-local immutable projections. */

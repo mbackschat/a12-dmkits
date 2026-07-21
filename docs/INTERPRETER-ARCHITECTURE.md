@@ -34,7 +34,7 @@ One engine, two compile targets, from a single `commonMain` source set:
 
 | package | holds | role |
 |---|---|---|
-| `.model` | `ModelDef`/`FieldDef`/`RuleDef`/`ComputationDef` · `Kind`/`MsgType`/`Severity`/`Requiredness` · `Message`/`RuleResult`/`ValidationOutcome`/`Computed` · `RelevantEntity` · the `CustomCondition` SPI · `CustomFieldType`/`CustomFieldTypeDeclaration`/`CustomFieldValidationContext`/`CustomTypeRejection` · `PredefinedType` registry | the data contract consumers build/read |
+| `.model` | `ModelDef`/`FieldDef`/`RuleDef`/`ComputationDef` · `Kind`/`MsgType`/`Severity`/`Requiredness` · `Message`/`RuleResult`/`ValidationOutcome`/`Computed` · `RelevantEntity` · the `CustomCondition` and `MessageLabelProvider` SPIs · `CustomFieldType`/`CustomFieldTypeDeclaration`/`CustomFieldValidationContext`/`CustomTypeRejection` · `PredefinedType` registry | the data contract consumers build/read |
 | `.load` | `ModelLoader` — prepared, self-contained, name-path-keyed DM-JSON → `ModelDef` (kotlinx tree API, WI-2); rejects unprepared residue loud (IF145) | build a `ModelDef` after upstream assembly; the standalone commonMain assembler is IG68 |
 | `.ast` | `Cond` / `Expr` (sealed) · `Val` / `Tri` · `typedValue`/`emptyValue` | the parsed rule, as data |
 | `.parse` | `parseCondition` / `parseExpression` — recursive descent (§3) | text → AST |
@@ -57,7 +57,7 @@ One engine, two compile targets, from a single `commonMain` source set:
 
 **The document data structures** (`eval/Document.kt`) — see §5 for the performance properties:
 - The **general `Document`** is the production instance: a flat list of *placements* (group rows + field values), each addressed by **one 1-based repetition index per path part** (`/Order/Items/Count` at `[1,2,1]`), behind a lazily-built `Index`.
-- **`EvalContext`** is the seam the `Interpreter` evaluates against (`field`/`filled`/`signed`/`star`/`groupFilled`/`displayValue`/`repsOf`/…). One `Document` yields many `EvalContext`s — one per row of an iteration scope — so the *same* operator logic serves a single row, a per-row iteration, and an outer aggregate context, with no duplicated code.
+- **`EvalContext`** is the seam the `Interpreter` evaluates against (`field`/`filled`/`signed`/`star`/`groupFilled`/`displayValue`/`messageDisplayValue`/`repsOf`/…). The separate message-display read preserves immutable caller text while ordinary evaluation reads the normalized cache (IF201). One `Document` yields many `EvalContext`s — one per row of an iteration scope — so the *same* operator logic serves a single row, a per-row iteration, and an outer aggregate context, with no duplicated code.
 - **`SingleRowDoc`/`RepDoc`** are lightweight `Map`-backed `EvalContext` doubles for *isolated Interpreter unit tests* (not production models, never benchmarked — see their KDocs and [INTERPRETER-FINDINGS.md](INTERPRETER-FINDINGS.md)).
 
 ## 4. The runtime-semantics layering (generator-ready)

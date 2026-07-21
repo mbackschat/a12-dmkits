@@ -76,8 +76,14 @@ interface EvalContext {
      *  un-instantiated tail below the declared repetition) → types a fired comparison OMISSION. */
     fun starOmission(path: String, bindDepth: Int = -1): Boolean
 
-    /** The raw display value of a field (for message interpolation), or null if empty. */
+    /** The normalized evaluation value of a field, or null if empty. */
     fun displayValue(path: String): String?
+
+    /**
+     * The original display value used only for validation-message interpolation. General document contexts
+     * override this to bypass the normalized evaluation cache; lightweight contexts store one representation.
+     */
+    fun messageDisplayValue(path: String): String? = displayValue(path)
 
     /** The declared [Kind] of a field path, or null when unknown (a flat spike context). Lets the evaluator
      *  type-infer an operand — e.g. to canonicalize a German-format date LITERAL only when compared to a date. */

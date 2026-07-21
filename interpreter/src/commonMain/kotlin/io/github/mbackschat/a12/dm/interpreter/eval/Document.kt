@@ -196,10 +196,8 @@ class Document(internal val config: DocumentConfig) {
         // otherwise repeats the same O(rows × star-depth) proof for every firing in that scope (IF194).
         val starOmissionByScope: MutableMap<StarOmissionKey, Boolean> = HashMap()
 
-        /** group path → its declared field paths, recursive (the GROUP-star aggregate expansion, IF99). */
+        /** group path → its declared field paths, recursive and in model declaration order. */
         val containedFieldsByGroup: MutableMap<String, List<String>> = HashMap()
-        /** group path → its declared field paths in model declaration order, cached once for compute scans. */
-        val containedFieldsInDeclarationOrderByGroup: MutableMap<String, List<String>> = HashMap()
         /** Canonical message-pointer strings, partitioned by path to avoid flat-key collision clusters. */
         val formattedPointersByPath: MutableMap<String, MutableMap<List<Int>, String>> = HashMap()
     }
@@ -227,7 +225,6 @@ class Document(internal val config: DocumentConfig) {
                 idx.indexColumnByScope.size +
                 idx.starOmissionByScope.size +
                 idx.containedFieldsByGroup.size +
-                idx.containedFieldsInDeclarationOrderByGroup.size +
                 idx.formattedPointersByPath.values.sumOf { it.size }
         } ?: 0
         observer.cacheEntries(
@@ -257,9 +254,9 @@ class Document(internal val config: DocumentConfig) {
                 // CRLF→LF at EVAL ingestion (IF124): the kernel's formal-check stage feeds its eval caches the
                 // NORMALIZED value (`CheckCommand` → `FormalChecker.checkAndConvertFieldValue.normalizedValue()`
                 // = `RuntimeUtils.normalizeLinebreaks` — the `\r\n` pair only, a lone CR stays), so EVERY
-                // downstream read — the format measure, rule operands, compute operands, `$field.value$`
-                // interpolation — sees `\n`. Only this eval-side index normalizes; the consumer's raw
-                // [placements] stay untouched ([copy] reproduces them verbatim).
+                // downstream EVALUATION read — the format measure, rule operands, compute operands — sees `\n`.
+                // Message interpolation deliberately reads [Placement.raw], outside this cache. Only this
+                // eval-side index normalizes; the consumer's raw [placements] stay untouched.
                 val q = if (p.value != null && p.value.contains("\r\n"))
                     p.copy(value = p.value.replace("\r\n", "\n")) else p
                 byKey.getOrPut(q.path) { HashMap() }.getOrPut(q.reps) { q }   // FIRST placement per (path,reps) wins
@@ -722,6 +719,8 @@ class Document(internal val config: DocumentConfig) {
 
         override fun displayValue(path: String): String? = placeOf(path)?.value
 
+        override fun messageDisplayValue(path: String): String? = placeOf(path)?.raw
+
         override fun declaredKind(path: String): Kind? = kinds[path]
 
         override fun dateFormatOf(path: String): String? = dateFormats[path]
@@ -763,11 +762,11 @@ class Document(internal val config: DocumentConfig) {
         override fun rowContexts(groupPath: String, bindDepth: Int): List<EvalContext> =
             rowContextsScoped(groupPath, groupScopePrefix(groupPath, bindDepth))
 
-        // The declared fields under a group path, recursively — sorted for determinism (the aggregates a GROUP
-        // operand expands to are order-insensitive). Memoized in the Index alongside the other per-group maps.
+        // The declared fields under a group path, recursively and in model declaration order. Numeric `Sum`
+        // observes this order because every addition rounds at precision 50; compute scans share this same plan.
         override fun containedFields(groupPath: String): List<String> =
             index().containedFieldsByGroup.getOrPut(groupPath) {
-                kinds.keys.filter { it.startsWith("$groupPath/") }.sorted()
+                kinds.keys.filter { it.startsWith("$groupPath/") }
             }
 
         // [bindDepth] widens the bucket scope for a MULTI-star operand (IF144): −1 keeps the single-star leaf-parent
@@ -817,10 +816,7 @@ class Document(internal val config: DocumentConfig) {
         // plan and every cell lookup are lazy: a quantifier witness prevents all later reads/allocation. The
         // declared-range form interleaves a field's uninstantiated repetitions BEFORE the next field (RV04-1).
         override fun containedFieldCells(groupPath: String, declaredRange: Boolean): Sequence<ScanCell> = sequence {
-            val fields = index().containedFieldsInDeclarationOrderByGroup.getOrPut(groupPath) {
-                val prefix = "$groupPath/"
-                kinds.keys.filter { it.startsWith(prefix) }
-            }
+            val fields = containedFields(groupPath)
             for (field in fields) {
                 val fieldParts = partsOf(field)
                 val common = commonPrefixLen(fieldParts, partsOf(group))
@@ -1001,6 +997,11 @@ class Document(internal val config: DocumentConfig) {
             return if (reps.any { it == UNKNOWN_REP }) null else valueAt(path, reps)?.value
         }
 
+        private fun resolvedDisplay(path: String): String? {
+            val reps = repsOf(path)
+            return if (reps.any { it == UNKNOWN_REP }) null else valueAt(path, reps)?.raw
+        }
+
         // An UNMATCHED reference into an INVALID-index group reads as 3VL UNKNOWN (not empty) — the kernel's
         // invalid-index behavior (KERNEL-FINDINGS §9), routed through [presenceUnknown] for presence predicates
         // and Val.Unknown here for value comparisons. A valid group's unmatched ref is the kind's empty value.
@@ -1014,6 +1015,8 @@ class Document(internal val config: DocumentConfig) {
         override fun presenceUnknown(path: String): Boolean = unmatched(path) && groupOf(path) in invalidIndexGroups
 
         override fun displayValue(path: String): String? = resolved(path)
+
+        override fun messageDisplayValue(path: String): String? = resolvedDisplay(path)
 
         override fun signed(path: String): Boolean = path !in unsignedFields
 

@@ -169,12 +169,10 @@ data class ValuedField(val path: String, val reps: List<Int>, val raw: String)
 
 /**
  * A field, its [Kind] (the metadata bridge that drives the empty-value asymmetry + formal errors), its
- * localized display [labels] (locale → label) — the source for the `$field$` display-name placeholder — and,
+ * localized display [labels] (locale → label) — one stage in the `$field$` display-name cascade — and,
  * for a NUMBER, its [scale] (max fractional digits, the kernel's `maxFractionalDigits`), which decides the
- * decimal-places formal errors. The kernel resolves `$field$` to the field's label for the locale, falling
- * back to the field NAME when no label is defined (a runtime `ILabelProvider` concern — see
- * [ModelDef.labelOf] / KERNEL-FINDINGS §3). Our corpus (and every shipped A12 model surveyed) carries no
- * field labels, so `$field$` resolves to the name.
+ * decimal-places formal errors. A consumer-selected [MessageLabelProvider] precedes the model label and
+ * indexed-debug fallbacks (KERNEL-FINDINGS §3/§13).
  */
 data class FieldDef(
     val path: String,
@@ -552,6 +550,7 @@ data class ModelDef(
         .filter { it.enumCategories.isNotEmpty() }
         .associate { it.path to it.enumCategories }
     private val labelsByPath: Map<String, Map<String, String>> = fields.associate { it.path to it.labels }
+    private val fieldsByPath: Map<String, FieldDef> = fields.associateBy { it.path }
     private val requiredByPath: Map<String, Requiredness> = fields.associate { it.path to it.required }
 
     /**
@@ -572,6 +571,20 @@ data class ModelDef(
 
     /** The NUMBER field's declared scale (max fractional digits), or null when unknown / not a number. */
     fun scaleOf(path: String): Int? = scales[path]
+
+    /** The exact format default used by `$field.value$` in the admitted canonical (dot-separator) display
+     *  profile when the caller value is absent or empty. No alternate presentation profile is inferred. */
+    internal fun messageDefaultOf(path: String): String {
+        if (kinds[path] != Kind.NUMBER) return ""
+        val scale = fieldsByPath[path]?.minFractionalDigits ?: 0
+        return if (scale == 0) "0" else "0.${"0".repeat(scale)}"
+    }
+
+    /** The field declaration for a message-label provider; null only for an invalid placeholder path. */
+    internal fun fieldOf(path: String): FieldDef? = fieldsByPath[path]
+
+    /** The model-authored locale label without applying a provider or field-name fallback. */
+    internal fun declaredLabelOf(path: String, locale: String): String? = labelsByPath[path]?.get(locale)
 
     /**
      * The display string for the `$field$` placeholder: the field's [FieldDef.labels] entry for [locale]

@@ -336,7 +336,7 @@
     "returns": "boolean",
     "meaning": "True iff the two operands are equal.",
     "constraints": [ "operands must be type-compatible; numeric == / != requires known compatible derived scales, unless the multiplicative-constant-capable operand is on the smaller-scale side or MVK_INVALID_COMPARE_DEC_PLACES is suppressed" ],
-    "gotchas": [ { "text": "the decimal-scale gate is required for == / != ONLY (ordering < <= > >= is exempt), and it is ASYMMETRIC rather than a field/literal syntax rule: a scale-2 field == literal 0 is legal because the capable literal is the smaller-scale side; a scale-0 field == literal 0.00 is rejected in either operand order because the smaller-scale field cannot be padded", "kind": "SURPRISE" }, { "text": "an arithmetic expression carries a derived signed scale plus independent constant capability: + / - use the maximum scale, * adds scales, / is unknown, and power is normally unknown except for a scale-0 base with a simple nonnegative constant exponent; wrap an incompatible expression in RoundAccounting(expr, n), or waive the check with @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)", "kind": "SURPRISE" }, { "text": "enums compare by stored value, never display text — and an enum whose values carry display texts is incomparable with a string or with a texts-less enum (MVK_INVALID_COMPARE_ENUM_TO_STRING); two texts-bearing enums compare only when their value-to-text maps agree", "kind": "SURPRISE" } ],
+    "gotchas": [ { "text": "the decimal-scale gate is required for == / != ONLY (ordering < <= > >= is exempt), and it is ASYMMETRIC rather than a field/literal syntax rule: a scale-2 field == literal 0 is legal because the capable literal is the smaller-scale side; a scale-0 field == literal 0.00 is rejected in either operand order because the smaller-scale field cannot be padded", "kind": "SURPRISE" }, { "text": "an arithmetic expression carries a derived signed scale plus independent constant capability: + / - use the maximum scale, * adds scales, / is unknown, and power is normally unknown except for a scale-0 base with a simple nonnegative constant exponent; wrap an incompatible expression in RoundAccounting(expr, n), or waive the check with @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)", "kind": "SURPRISE" }, { "text": "enums compare by stored value, never display text. Direct String/enum comparability uses effective remapping: no labels and identity-only labels are textless; two display-bearing enums need only a bidirectionally consistent partial map in each shared locale, so compatible disjoint/partial maps are legal", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "[CustomerName] == \"ACME\"", "note": "fires when CustomerName equals ACME" },
     "invalidExample": { "dsl": "[Quantity] == [UnitPrice]", "error": "MVK_INVALID_COMPARE_DEC_PLACES", "fix": "operands differ in decimal scale (0 vs 2); round one with RoundDown(..., n)" },
     "sinceKernel": "30.8.x"
@@ -1452,6 +1452,8 @@
     ],
     "gotchas": [
       { "text": "an UNSPECIFIED field counts as 0 — unlike MaxValue/MinValue, which ignore unspecified fields (KERNEL-SEMANTICS §9)", "kind": "SURPRISE" },
+      { "text": "Sum is a zero-seeded encounter-order left fold with precision-50 HALF_UP after every present value; model declaration order and repetition row order are semantic, so do not sort, reassociate, or accumulate exactly and round once", "kind": "SURPRISE" },
+      { "text": "when every contributor is missing, the zero identity is fillable in both directions regardless of signedness; after a present value, an incomplete Sum can shrink only when at least one missing contributing declaration is signed", "kind": "SURPRISE" },
       { "text": "DECIMAL-SCALE COUPLING in a computation: a sum of N-decimal operands is itself N decimals, so the COMPUTED FIELD's scale must match the operands' — a scale-0 computed field over 2-decimal amounts is rejected MVK_INVALID_COMPARE_DEC_PLACES ('fractional digits of lhs and rhs differ'). The same rejection reappears if you later RE-SCALE an operand without re-scaling the computed field. Align the computed field's minFractionalDigits/maxFractionalDigits to the operand scale.", "kind": "SURPRISE" }
     ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And Sum(Items*/Count) > 100", "note": "fires when the order's total item count exceeds 100" },
@@ -1515,7 +1517,7 @@
       "more than one field or a repetition list; no duplicates"
     ],
     "gotchas": [
-      { "text": "a Number list with no specified value yields 0 (KERNEL-SEMANTICS §9)", "kind": "SURPRISE" }
+      { "text": "a Number list with no specified value yields 0 and that identity is fillable in both directions, even though a nonempty incomplete MaxValue is grow-only (KERNEL-SEMANTICS §9/§12)", "kind": "SURPRISE" }
     ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And MaxValue(Items*/Count) > 50", "note": "fires when any single line orders more than 50" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And MaxValue(CustomerName, ProductCode) > 0", "error": "MVK_NOT_SORTABLE", "fix": "MaxValue needs numbers (or dates)" },
@@ -1580,7 +1582,9 @@
     "constraints": [
       "same slot rules as MaxValue (sortable types — numbers or dates)"
     ],
-    "gotchas": [  ],
+    "gotchas": [
+      { "text": "a Number list with no specified value yields 0 and that identity is fillable in both directions, even though a nonempty incomplete MinValue is shrink-only (KERNEL-SEMANTICS §9/§12)", "kind": "SURPRISE" }
+    ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And MinValue(Items*/Count) >= 1", "note": "fires only when every specified line count is at least 1" },
     "semantics": {
       "aggregateIdentity": {

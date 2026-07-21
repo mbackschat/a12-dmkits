@@ -1,35 +1,32 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
-import io.github.mbackschat.a12.dm.interpreter.model.Kind
-
 /**
  * Message rendering — substitutes a rule's localized errorMessage template's placeholders, resolving
  * relative field paths against the rule's group [base]. commonMain, so it renders on JVM and JS alike.
  *
- * Two placeholder tiers, matching the kernel (KERNEL-FINDINGS §3 supplement):
- *  - `$<relpath>.value$` → the field's display value (`getValueForDisplay`), via [EvalContext.displayValue].
- *  - `$<relpath>$` → the field's display NAME (`identifierToString`), via [labelOf] — the field's label for
- *    the locale, falling back to the field name. Resolved AFTER the value pass, so a `.value` token (whose
- *    `.` is not a name character) is never partially consumed by the name pass.
+ * Two placeholder tiers, matching the kernel (KERNEL-FINDINGS §3/§13 supplements):
+ *  - `$<relpath>.value$` → the original caller display value via [EvalContext.messageDisplayValue], with
+ *    a missing or empty display selecting [defaultValueOf].
+ *  - `$<relpath>$` → the already-resolved display name via [labelOf].
  *
- * An **unspecified** value interpolates the kind's empty display — **`0` for a NUMBER**, empty string for
- * every other kind (KERNEL-SEMANTICS §13; the kernel's `getValueForDisplay` of a not-given number is `0`).
- *
- * [labelOf] takes an ABSOLUTE field path and returns its display name; the default (last path segment) is
- * the no-model resolver used by direct unit callers. [DmInterpreter] passes `model.labelOf(path, locale)`.
+ * [defaultValueOf] and [labelOf] take absolute field paths. Their defaults preserve the scale-zero/no-model
+ * helper behavior; [DmInterpreter] supplies the model's exact admitted-profile default and label cascade.
  */
-private val VALUE_PLACEHOLDER = Regex("\\\$([\\w/]+)\\.value\\\$")
-private val NAME_PLACEHOLDER = Regex("\\\$([\\w/]+)\\\$")
+private val PLACEHOLDER = Regex("\\\$([\\w/]+)(\\.value)?\\\$")
 
 fun renderMessage(
     template: String,
     base: String,
     ctx: EvalContext,
+    defaultValueOf: (String) -> String = { path ->
+        if (ctx.declaredKind(path) == io.github.mbackschat.a12.dm.interpreter.model.Kind.NUMBER) "0" else ""
+    },
     labelOf: (String) -> String = { it.trimEnd('/').substringAfterLast('/') },
-): String {
-    val valued = VALUE_PLACEHOLDER.replace(template) { m ->
-        val path = "$base/${m.groupValues[1]}"
-        ctx.displayValue(path) ?: if (ctx.declaredKind(path) == Kind.NUMBER) "0" else ""
+): String = PLACEHOLDER.replace(template) { m ->
+    val path = "$base/${m.groupValues[1]}"
+    if (m.groupValues[2].isNotEmpty()) {
+        ctx.messageDisplayValue(path)?.takeIf { it.isNotEmpty() } ?: defaultValueOf(path)
+    } else {
+        labelOf(path)
     }
-    return NAME_PLACEHOLDER.replace(valued) { m -> labelOf("$base/${m.groupValues[1]}") }
 }

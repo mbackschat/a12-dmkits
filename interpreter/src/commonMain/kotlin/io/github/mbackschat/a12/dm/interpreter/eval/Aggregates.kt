@@ -19,7 +19,8 @@ import io.github.mbackschat.a12.dm.interpreter.dec
  */
 object Aggregates {
 
-    /** Σ of [values] (each a [Val.Num]); the empty list folds to 0 (the kernel's empty-Sum identity). */
+    /** Σ of [values] (each a [Val.Num]) as a zero-seeded, encounter-ordered left fold. Each [Dec.plus]
+     *  rounds immediately at precision 50 HALF_UP, so reordering can change the result; empty folds to 0. */
     fun sum(values: List<Val>): Val = Val.Num(values.fold(DEC_ZERO) { acc, v -> acc + numOf(v) })
 
     /** The maximum by the kernel's value order ([ValCompare.ORDER]) of the FILLED values; an empty list folds
