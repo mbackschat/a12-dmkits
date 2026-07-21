@@ -44,8 +44,15 @@ public final class OperatorCatalog {
         this.byId = Map.copyOf(index);
     }
 
-    /** Load the catalog bundled on the classpath. */
+    /**
+     * Return the immutable catalog bundled on the classpath. The resource is parsed once per process: renderers,
+     * diagnostics, and other short-lived consumers all share the same value.
+     */
     public static OperatorCatalog load() {
+        return LoadedCatalog.INSTANCE;
+    }
+
+    private static OperatorCatalog read() {
         try (InputStream in = OperatorCatalog.class.getClassLoader().getResourceAsStream(RESOURCE)) {
             if (in == null) {
                 throw new IllegalStateException("operator catalog resource not found: " + RESOURCE);
@@ -59,6 +66,13 @@ public final class OperatorCatalog {
                     defaults == null ? Map.of() : defaults);
         } catch (IOException e) {
             throw new UncheckedIOException("failed to read operator catalog " + RESOURCE, e);
+        }
+    }
+
+    private static final class LoadedCatalog {
+        private static final OperatorCatalog INSTANCE = read();
+
+        private LoadedCatalog() {
         }
     }
 
