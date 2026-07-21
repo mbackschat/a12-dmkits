@@ -201,7 +201,7 @@ Narrow, and each is measurable from the spike:
 
 - **Not** a replacement for structural validation — `checkConsistency` stays with the kernel (native-safe).
 - **Not** a code generator, and **not** a kernel replacement — it reproduces *runtime evaluation* behavior, verified against the kernel.
-- **In scope: both full *and* partial validation** (`validateFull` *and* `validatePart`) plus `compute()` — the standalone-consumer goal asks for partial, so its three-value-logic suppression contract is full-kernel-parity work we take on (verified against the kernel like everything else), not deferred.
+- **In scope: both full *and* partial validation** (`validateFull` *and* `validatePart`) plus `compute()` — the standalone-consumer goal asks for partial, so its rule-level gates and three-value-logic suppression contract are full-kernel-parity work we take on (verified against the kernel like everything else), not deferred. Under the pinned kernel 30.8.1 contract, a rule containing any `Having` filter is skipped at method entry during partial validation before relevance, iteration, or condition evaluation; full validation evaluates the same rule normally (IF202).
 
 ## 13. Licensing
 

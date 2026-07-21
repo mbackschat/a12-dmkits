@@ -35,6 +35,8 @@ internal class ValidationPass(
     /** Lazy, call-local complete external formal-invalid addresses for a reached CustomCondition. */
     private val formallyIncorrect: () -> Set<FieldPointer> = { emptySet() },
 ) {
+    val partial: Boolean = config.cellRelevant != null
+
     /**
      * The "unknown-operand" code of the field instance at [path] in [ctx], or null when the field is usable.
      * The single source for "is this operand unknown?" (fed to the [Interpreter] → `Val.Unknown`, and to

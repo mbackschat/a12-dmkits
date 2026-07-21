@@ -21,6 +21,8 @@ internal data class PreparedRulePlan(
     val ast: Cond,
     val iteration: IterationPlan,
     val repetitionNotUnique: RnuPlan?,
+    /** Kernel codegen skips every rule containing a `Having` filter during partial validation. */
+    val hasFilterConditions: Boolean,
 )
 
 /** Host/customization inputs the value-independent preparation walk must resolve. */
@@ -107,6 +109,7 @@ internal class PreparedModel(
             ast,
             scopes.prepare(rule, ast),
             repetitionNotUnique.prepare(rule, ast),
+            starRefs(ast).any { it.having != null },
         )
     }
 
