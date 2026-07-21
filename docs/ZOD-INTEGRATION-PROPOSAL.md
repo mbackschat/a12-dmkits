@@ -17,6 +17,8 @@ Preferred structure: motivation, scope, public API, typed examples, semantics an
 
 ## Status
 
+> **End-state vision capture.** This is the full destination assembled from interview Q&A and accumulated wishes, kept deliberately complete so no requirement is lost — not a scoped build order. The smallest buildable first increment (`@a12/operators-zod` scalar codecs + error bridge, §16 steps 1–2) is extracted to [TS-API-MVP-PROPOSAL](TS-API-MVP-PROPOSAL.md); publication is gated on IG85.
+
 This proposal defines optional Zod adapters for the TypeScript projections of the A12 Operator API and Interpreter API.
 
 The [Operator API proposal](OPERATOR-API-PROPOSAL.md) owns A12 scalar values, exact conversions, codecs, operator outcomes, structured scalar errors, and direct operator semantics. The [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md) owns models, documents, snapshots, reports, ownership, active interpreters, registries, pooling, concurrency, and lifecycle. This proposal does not redefine those contracts.

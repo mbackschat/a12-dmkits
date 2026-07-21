@@ -17,6 +17,8 @@ Preferred structure: motivation, scope, public API, typed examples, semantics an
 
 ## Status
 
+> **End-state vision capture.** This is the full destination assembled from interview Q&A and accumulated wishes, kept deliberately complete so no requirement is lost — not a scoped build order. The smallest buildable first increment is extracted to [TS-API-MVP-PROPOSAL](TS-API-MVP-PROPOSAL.md); publication is gated on IG85.
+
 This proposal defines how A12 value-level operators become directly callable from TypeScript without a model, document, interpreter session, expression string, parser, AST, or rule.
 
 The declarations use the proposed public TypeScript names consistently; catalog mappings identify the corresponding kernel operation where one exists. TypeScript is the primary design and acceptance surface. Kotlin Multiplatform is the implementation strategy, and a secondary JVM projection reuses the same Kotlin implementation.
