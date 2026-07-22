@@ -36,7 +36,11 @@ The live, unfinished work as a table. (Shipped gaps are **not** recorded here �
 
 The backlog drained again on 2026-07-20. The four WI-T typed shapes (date `Min`/`Max`, indexed-cell presence, starred value-list, `RuleGroup`) and a computation's `errorCodesToSuppress` shipped as findings 58–61; the Dsl consistency batch shipped as findings 63–65; and the cross-component interpreter review tail—typed indexed-construct read-back, bare-group fill catalog parity, multi-star correlation guidance, `RepetitionNotUnique` authoring semantics, and atomic combined-grapheme charset authoring—shipped as findings 74–78.
 
-**The open backlog is empty.** A row lands here only when a new developer-facing authoring friction is both surfaced and queued.
+| # | Gap | Why it's parked |
+|---|---|---|
+| DG15 | **Operand-list `Min`/`Max` over date-like fields has no adapter read/roundtrip.** The adapter's `ConditionConverter` lowers the star `MinValue`/`MaxValue` extremum for DATE/TIME/DATETIME (SPEC-2026-07-21-07), and the numeric operand-list `Min`/`Max` reads fine, but the **temporal operand-list** form (`Min([DateA], [DateB])`) has no `convert{Date,Time,DateTime}Operand` `IOpListOperation` branch — a read degrades to non-converted. Uniform across all three date-like kinds (not TIME/DATETIME-specific). The eval path handles it (locked by `TemporalExtremaDiffTest`/`DateAggregateDiffTest`); only F10 read/roundtrip is missing. | Surfaced while scoping SPEC-2026-07-21-07; pre-existing at the DATE level, low-impact (graceful degrade, eval unaffected). Queue when a read consumer needs temporal operand-list extrema. Characterized in [KERNEL-FINDINGS §6](KERNEL-FINDINGS.md). |
+
+A row lands here only when a new developer-facing authoring friction is both surfaced and queued.
 
 ---
 
