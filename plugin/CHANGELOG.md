@@ -4,37 +4,24 @@ All notable changes to the **publicly released `dmtool` artifacts** — the nati
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/) plus **A12 Kernel compatibility metadata** (the kernel each release targets is recorded per entry, never folded into the version string).
 
-## [Unreleased]
+## [0.9.0] — kernel 30.8.1
 
-The built-in evaluation engine reaches full kernel parity on real-world corpora and becomes the **sole** runtime engine (the JVM-only `--kernel` eval flag is retired), and the authoring surface gets a consistency pass — two breaking changes.
+The built-in interpreter becomes the **sole** runtime evaluation engine, verified bit-for-bit against the A12 kernel on real-world corpora; `model diff` becomes fully comprehensive; and the authoring surface gets a consistency pass. Two breaking changes.
 
 ### Changed
 
-- **BREAKING:** the JVM-only `--kernel` eval engine is removed from `model eval` / `rule eval` / `model compute`. Runtime evaluation now runs solely on the native-safe interpreter — verified rule-for-rule against the A12 kernel — on every target (JVM and native alike); the kernel stays bundled only for the consistency gate (`rule check` / `model check`).
-- **BREAKING:** `model import-jsonschema --format` is renamed **`--string-format`** — it selects the string-conversion strategy, while `--format` elsewhere selects output rendering; the two concepts now have distinct names.
-- `apply`-embedded `group`/`config`/`typedef read` ops now return the **full standalone-verb payload** (they previously returned a reduced subset), so a read inside a transaction is as informative as the standalone read.
-- `rule modify`/`group modify` gained metadata-removal flags and `meta` accepts the modify-family flag names — the two verb families now share one metadata vocabulary.
+- **BREAKING:** the JVM-only `--kernel` eval engine is removed — runtime evaluation (`model eval` / `rule eval` / `model compute`) now runs solely on the native-safe interpreter on every target; the kernel is retained only for the consistency gate (`rule check` / `model check`).
+- **BREAKING:** `model import-jsonschema --format` is renamed **`--string-format`** (it selects the string-conversion strategy; `--format` elsewhere selects output rendering).
 
 ### Added
 
-- **`dmtool operators <id>` now names its DSL entry points** (`dslEntry`) for every one of the 110 operators — the catalog→code bridge, machine-verified against the source so it cannot drift — alongside the machine tier shipped earlier in the wave (empty-operand facets, operand-matched correctives, defaults, and kind-classified gotchas).
-- **Include verbs:** `include set-reference` (re-point a mount) and `include rename`.
-- **Element metadata everywhere:** group-level metadata on `group modify` (+ read echo), rule-level annotations & descriptions on `rule add`/`rule modify`/`apply` (+ read echo).
-- **Config family completed:** `config modify --base-year`, model-level label echo, and the remaining config read/modify gaps, held closed by a mechanical coverage guard.
-- `field add --parent` alias (matching every sibling add-verb; `--group` remains accepted).
-- JSON-Schema import synthesizes **`minItems`** on repeatable groups as a `NumberOfFilledGroups` rule.
+- **Kernel-parity interpreter:** the built-in evaluation engine now matches the A12 kernel bit-for-bit on two real-world corpora at zero divergences, closing a large semantics campaign.
+- **Authoring consistency pass:** element metadata across the `rule` / `group` / `config` families, new `include set-reference` / `include rename` verbs, operator-catalog DSL entry points (`dslEntry`), and the `field add --parent` alias.
 
 ### Fixed
 
-- `model diff` now reports complete field configuration/metadata/requiredness/enum changes and complete rule error-entity/message/metadata changes. Removing or retyping a field with rule/computation readers is HIGH even when the reader changes in the same diff.
-- `model diff` now reports group additions/removals and changes to repeatability, index/sort declarations, mount alias/options, and metadata. Reordering is compared across the mixed authored field/group/rule/computation sequence, so a group moving relative to a field no longer produces a false “no change.”
-- `model diff` now reports computation additions, removals, and changes to targets, preconditions, ordered operations, tolerances, suppressions, messages, and opaque stored DSL; these edits previously produced a false “no change.” Computations also participate in reference-rewriting refactor grouping.
-- **The built-in evaluation engine (`rule eval` / `model eval`) now matches the A12 kernel bit-for-bit on two real-world corpora** — a 107-model industry workspace set and the kernel's 15 canonical metamodels — at **zero divergences in both benign and hostile value seeding**, closing a ~45-finding semantics campaign (computation cascades, semantic-index reads, Having-filtered quantifiers, date/number edge semantics, polarity of fired comparisons over invalid values, and more). A quadratic blow-up on indexed validation of large repetition lists was also removed.
-- Read/query verbs (`rule explain`/`format`, `computation explain`/`format`, `include read`, and `rule eval`/`model eval` on an unknown rule) now return a **structured, coded refusal** on a missing target instead of a bare error line.
-- JSON-Schema import: a `const` on a date/time/custom-typed field no longer aborts the import — it is skipped and reported, like every other unmappable constraint.
-- `field read`/`typedef read` report every written type-config slot (string no-value-validation, enum categories, enum invalid-value message), and `computation modify` no longer drops element metadata.
-- `model diff` now treats reusable type definitions and authored includes/type-definition imports as first-class elements, including complete typedef config/metadata, exact typedef renames, include retargets, and mount-alias rewires.
-- `model diff` now treats model identity and configuration as one first-class `CONFIG` element, covering compatible model-version skew, locales, scalar settings, supported characters, base year, labels, comment, annotations, and roles without set-order noise.
+- **`model diff` is now comprehensive** — fields, groups, computations, reusable type definitions, includes, and model identity/configuration are all first-class, eliminating the false “no change” results of earlier releases.
+- **Structured, coded refusals** on missing targets for read/query verbs, and hardened JSON-Schema import.
 
 ## [0.8.2] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
