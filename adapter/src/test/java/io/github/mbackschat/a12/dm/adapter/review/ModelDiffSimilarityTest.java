@@ -39,12 +39,12 @@ class ModelDiffSimilarityTest {
     @Test
     void aGenuineRenamePlusEditClearsBothBars() {
         // same referenced field, edited threshold, renamed → a clear, single winner
-        double score = ModelDiff.similarityScore(ElementKind.RULE,
+        double score = RelocationMatcher.similarityScore(ElementKind.RULE,
                 Map.of("condition", "[MonthlyFee] > 1000", "severity", "ERROR", "code", "CAP"),
                 Map.of("condition", "[MonthlyFee] > 2000", "severity", "ERROR", "code", "CAP"),
                 FEE_REF, FEE_REF, "FeeCapRule", "FeeLimitRule");
-        assertTrue(score >= ModelDiff.PAIR_MIN,
-                () -> "a genuine rename+edit must clear PAIR_MIN=" + ModelDiff.PAIR_MIN + ", got " + score);
+        assertTrue(score >= RelocationMatcher.PAIR_MIN,
+                () -> "a genuine rename+edit must clear PAIR_MIN=" + RelocationMatcher.PAIR_MIN + ", got " + score);
     }
 
     @Test
@@ -52,25 +52,25 @@ class ModelDiffSimilarityTest {
         // R against two near-identical candidates (differ only by name/code) — both clear MIN, but their
         // scores are within the margin, so the matcher must NOT pick either (the MARGIN is what refuses it)
         Map<String, String> base = Map.of("condition", "[MonthlyFee] > 1000", "severity", "ERROR", "code", "CAP");
-        double s1 = ModelDiff.similarityScore(ElementKind.RULE, base,
+        double s1 = RelocationMatcher.similarityScore(ElementKind.RULE, base,
                 Map.of("condition", "[MonthlyFee] > 1000", "severity", "ERROR", "code", "CAP1"),
                 FEE_REF, FEE_REF, "FeeCapRule", "FeeCapRuleOne");
-        double s2 = ModelDiff.similarityScore(ElementKind.RULE, base,
+        double s2 = RelocationMatcher.similarityScore(ElementKind.RULE, base,
                 Map.of("condition", "[MonthlyFee] > 1000", "severity", "ERROR", "code", "CAP2"),
                 FEE_REF, FEE_REF, "FeeCapRule", "FeeCapRuleTwo");
-        assertTrue(s1 >= ModelDiff.PAIR_MIN && s2 >= ModelDiff.PAIR_MIN,
+        assertTrue(s1 >= RelocationMatcher.PAIR_MIN && s2 >= RelocationMatcher.PAIR_MIN,
                 () -> "each candidate individually clears PAIR_MIN (so it is not MIN that refuses): " + s1 + ", " + s2);
-        assertTrue(Math.abs(s1 - s2) < ModelDiff.PAIR_MARGIN,
-                () -> "near-duplicates are within PAIR_MARGIN=" + ModelDiff.PAIR_MARGIN + " → no clear winner: " + s1 + " vs " + s2);
+        assertTrue(Math.abs(s1 - s2) < RelocationMatcher.PAIR_MARGIN,
+                () -> "near-duplicates are within PAIR_MARGIN=" + RelocationMatcher.PAIR_MARGIN + " → no clear winner: " + s1 + " vs " + s2);
     }
 
     @Test
     void aGenericSameTypeMatchWithNoDistinctiveLinkIsGatedOut() {
         // two plain NUMBER fields with dissimilar names — identical fingerprint, but no distinctive link
-        double score = ModelDiff.similarityScore(ElementKind.FIELD,
+        double score = RelocationMatcher.similarityScore(ElementKind.FIELD,
                 Map.of("kind", "NUMBER", "scale", "0"), Map.of("kind", "NUMBER", "scale", "0"),
                 Set.of(), Set.of(), "Surcharge", "Discount");
-        assertTrue(score < ModelDiff.PAIR_MIN,
+        assertTrue(score < RelocationMatcher.PAIR_MIN,
                 () -> "a generic type match with a dissimilar name must not qualify: " + score);
     }
 
