@@ -307,7 +307,7 @@ class OperatorCatalogTest {
         }
     }
 
-    /** The ZERO-vs-NO_VALUE split (CATALOG-SPEC §3c): number aggregates fold to 0, a date fold yields no
+    /** The ZERO-vs-NO_VALUE split (CATALOG-SPEC §3c): number aggregates fold to 0, a date-like fold yields no
      *  value; the per-kind operators (Min/Max/FirstFilledValue) carry both. */
     @Test
     void aggregateIdentitySplitsZeroVsNoValueByKind() {
@@ -317,6 +317,10 @@ class OperatorCatalogTest {
                 CATALOG.byId("Min").orElseThrow().aggregateIdentityClaim().identityFor("number"));
         assertEquals(java.util.Optional.of(AggregateIdentity.NO_VALUE),
                 CATALOG.byId("Min").orElseThrow().aggregateIdentityClaim().identityFor("date"));
+        assertEquals(java.util.Optional.of(AggregateIdentity.NO_VALUE),
+                CATALOG.byId("Min").orElseThrow().aggregateIdentityClaim().identityFor("time"));
+        assertEquals(java.util.Optional.of(AggregateIdentity.NO_VALUE),
+                CATALOG.byId("Min").orElseThrow().aggregateIdentityClaim().identityFor("date-time"));
     }
 
     /**
@@ -391,11 +395,15 @@ class OperatorCatalogTest {
                 CATALOG.emptyOperandBehavior("LessThan", 0, io.github.mbackschat.a12.dm.core.ValueKind.NUMBER));
         assertEquals(java.util.Optional.of(EmptyBehavior.NOT_EVALUATED),
                 CATALOG.emptyOperandBehavior("LessThan", 0, io.github.mbackschat.a12.dm.core.ValueKind.STRING));
-        // a per-kind split: the operand-list Min substitutes an empty number but skips an empty date
+        // a per-kind split: the operand-list Min substitutes an empty number but skips every date-like kind
         assertEquals(java.util.Optional.of(EmptyBehavior.AS_ZERO),
                 CATALOG.emptyOperandBehavior("Min", 0, io.github.mbackschat.a12.dm.core.ValueKind.NUMBER));
         assertEquals(java.util.Optional.of(EmptyBehavior.SKIPPED),
                 CATALOG.emptyOperandBehavior("Min", 1, io.github.mbackschat.a12.dm.core.ValueKind.DATE));
+        assertEquals(java.util.Optional.of(EmptyBehavior.SKIPPED),
+                CATALOG.emptyOperandBehavior("Min", 1, io.github.mbackschat.a12.dm.core.ValueKind.TIME));
+        assertEquals(java.util.Optional.of(EmptyBehavior.SKIPPED),
+                CATALOG.emptyOperandBehavior("Min", 1, io.github.mbackschat.a12.dm.core.ValueKind.DATE_TIME));
         // the membership subject deviates from the number default (3VL — not substituted 0)
         assertEquals(java.util.Optional.of(EmptyBehavior.NOT_EVALUATED),
                 CATALOG.emptyOperandBehavior("FieldValueIncludedInValueList", 0,

@@ -15,7 +15,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * or a 0-based index into the entry's {@code operands} array (the value-list membership predicates
  * split subject vs entries this way). Exactly one of {@code behavior} (kind-uniform) or
  * {@code perKind} (the behavior varies with the operand's value kind — the operand-list
- * {@code Min}/{@code Max}, where an empty number is substituted 0 but an empty date is skipped) is
+ * {@code Min}/{@code Max}, where an empty number is substituted 0 but an empty date-like value is skipped) is
  * set. {@code basis} names the differential lock / finding the value derives from (reuse, never
  * re-derive blind); {@code probes} make the claim self-verifying (every claim needs at least one —
  * enforced structurally by {@code OperatorCatalogTest} and executed against the real kernel by the

@@ -9,7 +9,8 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * {@code Max(v1, v2, …)} (the kernel's {@code IOpListOperation} members other than the rounding family,
  * which is {@link Rounding}). A {@link Calculation} over value <em>expressions</em>: {@code Abs} is
  * number-valued, while {@code Min}/{@code Max} carry their operands' kind — NUMBER over number expressions,
- * DATE over date operands (the kernel's {@code DateCombiner}, KERNEL-FINDINGS §6); see {@link #kind()}.
+ * or DATE/TIME/DATETIME over homogeneous temporal operands (the kernel's {@code DateCombiner},
+ * KERNEL-FINDINGS §6); see {@link #kind()}.
  * Distinct from the field-list {@link ListAggregate} {@code MaxValue}/{@code MinValue}, which aggregate a
  * repetition list. Operands render as values ({@code Min([A], [B])}), not bare entity refs.
  *
@@ -42,14 +43,32 @@ public record OpListMath(Op op, List<Calculation> operands) implements Calculati
         if (op == Op.ABS && operands.size() != 1) {
             throw new IllegalArgumentException("Abs takes exactly one operand, got " + operands.size());
         }
+        ValueKind kind = resultKind(operands.getFirst());
+        if (op == Op.ABS && kind != ValueKind.NUMBER) {
+            throw new IllegalArgumentException("Abs needs a NUMBER operand, got " + kind);
+        }
+        if (op != Op.ABS && kind != ValueKind.NUMBER && kind != ValueKind.DATE
+                && kind != ValueKind.TIME && kind != ValueKind.DATE_TIME) {
+            throw new IllegalArgumentException(op + " needs NUMBER or date-like operands, got " + kind);
+        }
+        for (Calculation operand : operands) {
+            ValueKind operandKind = resultKind(operand);
+            if (operandKind != kind) {
+                throw new IllegalArgumentException(op + " needs operands of one kind, got " + kind
+                        + " and " + operandKind);
+            }
+        }
     }
 
     @Override
     public ValueKind kind() {
         // Abs is number-only; Min/Max carry their operands' kind (NUMBER over number expressions,
-        // DATE over date operands — the kernel's DateCombiner, KERNEL-FINDINGS §6). Operands are
-        // type-homogeneous by construction (the Dsl entry points take one operand family).
-        return op == Op.ABS ? ValueKind.NUMBER : operands.get(0).kind();
+        // DATE/TIME/DATETIME over temporal operands — the kernel's DateCombiner, KERNEL-FINDINGS §6).
+        return op == Op.ABS ? ValueKind.NUMBER : resultKind(operands.getFirst());
+    }
+
+    private static ValueKind resultKind(Calculation operand) {
+        return operand.kind() == ValueKind.DATE_FRAGMENT ? ValueKind.DATE : operand.kind();
     }
 
     public String operatorId() {

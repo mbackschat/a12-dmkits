@@ -11,9 +11,12 @@ import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
+import io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 
 /**
@@ -29,14 +32,19 @@ class NewShapesSnippetsTest {
     @Test
     void dateMinMaxSnippet() {
         // tag::date-minmax[]
-        // Min/Max over DATE operands yield a DateExpr — comparable to any date operand (KERNEL-FINDINGS §6).
-        // The type system forbids number/date mixing: min(dates) accepts only date operands.
-        Condition earliestBeforeCutoff =
-                Dsl.min(m.date("/Order/OrderDate"), m.date("/Order/DeliveryDate"))
-                        .before(Dsl.dateValue("20.03.2026"));   // Min([A], [B]) < "20.03.2026"
+        // Min/Max preserve a homogeneous temporal family: DATE → DateExpr, TIME → TimeExpr,
+        // DATETIME → DateTimeExpr. Mixing families does not compile.
+        DateExpr earliestDate = Dsl.min(m.date("/Order/OrderDate"), m.date("/Order/DeliveryDate"));
+        TimeExpr earliestTime = Dsl.min(m.time("/Order/PickupTime"), Dsl.time("09", "00", "00"));
+        DateTimeExpr latestInstant = Dsl.max(m.dateTime("/Order/ScheduledAt"),
+                m.dateTime("/Order/CompletedAt"));
         // end::date-minmax[]
-        assertEquals("Min([/Order/OrderDate], [/Order/DeliveryDate]) < \"20.03.2026\"",
-                new DslRenderer().render(earliestBeforeCutoff));
+        assertEquals("Min([/Order/OrderDate], [/Order/DeliveryDate])",
+                new DslRenderer().render(earliestDate.expression()));
+        assertEquals("Min([/Order/PickupTime], Time(\"09\", \"00\", \"00\"))",
+                new DslRenderer().render(earliestTime.expression()));
+        assertEquals("Max([/Order/ScheduledAt], [/Order/CompletedAt])",
+                new DslRenderer().render(latestInstant.expression()));
     }
 
     @Test

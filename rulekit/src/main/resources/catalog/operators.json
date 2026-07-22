@@ -1731,20 +1731,22 @@
     "dslEntry": ["min"],
     "kind": "function",
     "keywords": { "en": "Min", "de": "Min" },
-    "operands": [ { "type": "number" }, { "type": "number" } ],
-    "returns": "number",
-    "meaning": "The minimum of two or more numeric value expressions — the operand-list form, distinct from the field-list MinValue (which aggregates a repetition list).",
+    "operands": [ { "type": "number-or-date-like" }, { "type": "number-or-date-like" } ],
+    "returns": "the operands' common NUMBER, DATE, TIME, or DATETIME kind",
+    "meaning": "The minimum of one or more homogeneous numeric or date-like value expressions — the operand-list form, distinct from the field-list MinValue (which aggregates a repetition list).",
     "gotchas": [ { "text": "an empty number operand is substituted as 0 and can WIN the Min — unlike the starred MinValue, which skips empties; guard operands with AllFieldsFilled", "kind": "SURPRISE" } ],
-    "constraints": [ "one or more numeric value expressions (fields, arithmetic, …); DATE operands are accepted too (the min/max of dates — empty date operands are skipped, see the emptyOperand facet)" ],
+    "constraints": [ "one or more homogeneous NUMBER, DATE, TIME, or DATETIME value expressions; kinds cannot be mixed", "date-like operands use temporal ordering and skip empty operands (see the emptyOperand facet)" ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And Min([Quantity], [UnitPrice]) > 0", "note": "fires when both are positive (the smaller is above 0)" },
     "semantics": {
       "aggregateIdentity": {
         "perKind": {
           "number": "ZERO",
-          "date": "NO_VALUE"
+          "date": "NO_VALUE",
+          "time": "NO_VALUE",
+          "date-time": "NO_VALUE"
         },
-        "basis": "number: IF51 (empty→0 substitution folds to 0); date: IF58 / adapter.laws.DateAggregateDiffTest (DateCombiner all-empty → NULL date → the comparison does not fire)",
-        "note": "the per-kind split: an all-empty NUMBER Min folds to 0 (fires == 0); an all-empty DATE Min yields NO value (a comparison cannot fire)",
+        "basis": "number: IF51 (empty→0 substitution folds to 0); date-like: IF58/IF204, adapter.laws.DateAggregateDiffTest + TemporalExtremaDiffTest (DateCombiner all-empty → NULL date → the comparison does not fire)",
+        "note": "the per-kind split: an all-empty NUMBER Min folds to 0 (fires == 0); an all-empty DATE, TIME, or DATETIME Min yields NO value (a comparison cannot fire)",
         "probes": [
           {
             "dsl": "FieldFilled(CustomerName) And Min([Quantity], [BackorderQuantity]) == 0",
@@ -1773,10 +1775,12 @@
           "operand": "all",
           "perKind": {
             "number": "AS_ZERO",
-            "date": "SKIPPED"
+            "date": "SKIPPED",
+            "time": "SKIPPED",
+            "date-time": "SKIPPED"
           },
-          "basis": "number: adapter.laws.EmptyValueLawsTest.operandListMinSeesAnEmptyNumberAsZero; date: IF58 / adapter.laws.DateAggregateDiffTest (VkDate.combine skips empty operands)",
-          "note": "the per-kind split: an empty NUMBER operand is substituted 0 and can WIN the Min; an empty DATE operand is SKIPPED (the date-bearing side wins)",
+          "basis": "number: adapter.laws.EmptyValueLawsTest.operandListMinSeesAnEmptyNumberAsZero; date-like: IF58/IF204, adapter.laws.DateAggregateDiffTest + TemporalExtremaDiffTest (DateCombiner skips empty operands)",
+          "note": "the per-kind split: an empty NUMBER operand is substituted 0 and can WIN the Min; an empty DATE, TIME, or DATETIME operand is SKIPPED (the value-bearing side wins)",
           "probes": [
             {
               "dsl": "Min([Quantity], [BackorderQuantity]) == 0",
@@ -1813,20 +1817,22 @@
     "dslEntry": ["max"],
     "kind": "function",
     "keywords": { "en": "Max", "de": "Max" },
-    "operands": [ { "type": "number" }, { "type": "number" } ],
-    "returns": "number",
-    "meaning": "The maximum of two or more numeric value expressions — the operand-list form, distinct from the field-list MaxValue (which aggregates a repetition list).",
+    "operands": [ { "type": "number-or-date-like" }, { "type": "number-or-date-like" } ],
+    "returns": "the operands' common NUMBER, DATE, TIME, or DATETIME kind",
+    "meaning": "The maximum of one or more homogeneous numeric or date-like value expressions — the operand-list form, distinct from the field-list MaxValue (which aggregates a repetition list).",
     "gotchas": [ { "text": "an empty number operand is substituted as 0 (it can win a Max over negatives) — unlike the starred MaxValue, which skips empties", "kind": "SURPRISE" } ],
-    "constraints": [ "one or more numeric value expressions (fields, arithmetic, …); DATE operands are accepted too (the min/max of dates — empty date operands are skipped, see the emptyOperand facet)" ],
+    "constraints": [ "one or more homogeneous NUMBER, DATE, TIME, or DATETIME value expressions; kinds cannot be mixed", "date-like operands use temporal ordering and skip empty operands (see the emptyOperand facet)" ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And Max([Quantity], [UnitPrice]) > 100", "note": "fires when either exceeds 100" },
     "semantics": {
       "aggregateIdentity": {
         "perKind": {
           "number": "ZERO",
-          "date": "NO_VALUE"
+          "date": "NO_VALUE",
+          "time": "NO_VALUE",
+          "date-time": "NO_VALUE"
         },
-        "basis": "number: IF51 (empty→0 substitution folds to 0); date: IF58 / adapter.laws.DateAggregateDiffTest (DateCombiner all-empty → NULL date → the comparison does not fire)",
-        "note": "the per-kind split: an all-empty NUMBER Max folds to 0 (fires == 0); an all-empty DATE Max yields NO value (a comparison cannot fire)",
+        "basis": "number: IF51 (empty→0 substitution folds to 0); date-like: IF58/IF204, adapter.laws.DateAggregateDiffTest + TemporalExtremaDiffTest (DateCombiner all-empty → NULL date → the comparison does not fire)",
+        "note": "the per-kind split: an all-empty NUMBER Max folds to 0 (fires == 0); an all-empty DATE, TIME, or DATETIME Max yields NO value (a comparison cannot fire)",
         "probes": [
           {
             "dsl": "FieldFilled(CustomerName) And Max([Quantity], [BackorderQuantity]) == 0",
@@ -1855,9 +1861,11 @@
           "operand": "all",
           "perKind": {
             "number": "AS_ZERO",
-            "date": "SKIPPED"
+            "date": "SKIPPED",
+            "time": "SKIPPED",
+            "date-time": "SKIPPED"
           },
-          "basis": "number: adapter.laws.EmptyValueLawsTest (the operand-list substitution, Min's sibling); date: IF58 / adapter.laws.DateAggregateDiffTest",
+          "basis": "number: adapter.laws.EmptyValueLawsTest (the operand-list substitution, Min's sibling); date-like: IF58/IF204, adapter.laws.DateAggregateDiffTest + TemporalExtremaDiffTest",
           "probes": [
             {
               "dsl": "Max([Quantity], [BackorderQuantity]) == 0",

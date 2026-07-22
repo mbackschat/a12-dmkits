@@ -73,7 +73,7 @@ This is a **deviation dimension** (like `emptyOperand`, but the default is not p
 | `ZERO` | the empty fold is the fillable **0** — a comparison against 0 fires | `Sum`/`MaxValue`/`MinValue`/`SumOfProducts` (IF51, KERNEL-FINDINGS §1); a NUMBER `Min`/`Max`/`FirstFilledValue` (IF80) |
 | `NO_VALUE` | the empty fold yields **no value** (a NULL date / NOT-GIVEN) — a comparison cannot fire; a computation CLEARS | a DATE `Min`/`Max` (IF58 / `DateAggregateDiffTest`, the kernel's `DateCombiner`); a DATE/STRING `FirstFilledValue` (IF83 / `FirstFilledValueKindDiffTest`) |
 
-The per-kind operators (`Min`, `Max`, `FirstFilledValue`) carry a `perKind` split (`{number: ZERO, date: NO_VALUE}`) — the very fact this dimension exists to record (`Sum(∅) = 0` **vs** a date aggregate's no-value). The consumer (judge): `Sum(∅) >= 0` always holds, but `Min(dates…) >= X` is vacuous when empty — not equivalent. Each probe pins an all-empty selection over a **non-index** field (an index field's empty cell is not-check-relevant — the invalid class, IF86, not emptiness). Populated over the seven value-folding aggregates; the counts (`NumberOf…`) carry no claim — a count of nothing is trivially 0 (obvious, and their empty-*operand* behavior is the `emptyOperand` dimension).
+The per-kind operators (`Min`, `Max`, `FirstFilledValue`) carry a `perKind` split (`{number: ZERO, date/time/date-time: NO_VALUE}` for `Min`/`Max`) — the very fact this dimension exists to record (`Sum(∅) = 0` **vs** a date-like aggregate's no-value). The consumer (judge): `Sum(∅) >= 0` always holds, but `Min(temporal values…) >= X` is vacuous when empty — not equivalent. Each probe pins an all-empty selection over a **non-index** field (an index field's empty cell is not-check-relevant — the invalid class, IF86, not emptiness). Populated over the seven value-folding aggregates; the counts (`NumberOf…`) carry no claim — a count of nothing is trivially 0 (obvious, and their empty-*operand* behavior is the `emptyOperand` dimension).
 
 ### 3d. The `polarity` dimension
 
@@ -138,7 +138,7 @@ The defaults hold **within a content-bearing row** — an entirely empty repeata
 }
 ```
 
-`operand` selects the claim's scope — the value-list membership predicates split subject (`"0"`) vs entries (`"1"`); the variadic families use `"all"`. `perKind` exists because one operator can differ by operand kind: the operand-list `Min`/`Max` substitute an empty *number* as 0 (it can win the Min) but *skip* an empty date operand (IF58).
+`operand` selects the claim's scope — the value-list membership predicates split subject (`"0"`) vs entries (`"1"`); the variadic families use `"all"`. `perKind` exists because one operator can differ by operand kind: the operand-list `Min`/`Max` substitute an empty *number* as 0 (it can win the Min) but *skip* an empty DATE/TIME/DATETIME operand (IF58/IF204).
 
 ## 5. The verification lanes — how the catalog cannot rot
 
@@ -227,7 +227,7 @@ The catalog answers "what does operator X mean?"; `dslEntry` closes the reverse 
 **WI-5b dimensions** slot in additively as single operator-level claims (§3a/§3b). Shipped so far:
 - **`boundary`** — the ten threshold/interval operators; STRICT for `<`/`>`/tolerance, INCLUSIVE for `<=`/`>=`/date-range-overlap (CLOSED).
 - **`iterationRange`** — the field-fill quantifier deviations from the INSTANTIATED default: `AllFieldsFilled`/`NotAllFieldsFilled` = DECLARED, `FieldsNotCollectivelyFilled` = MIXED (IF49).
-- **`aggregateIdentity`** — the seven value-folding aggregates' all-empty fold: `Sum`/`MaxValue`/`MinValue`/`SumOfProducts` = ZERO; `Min`/`Max`/`FirstFilledValue` = per-kind {number: ZERO, date: NO_VALUE} (IF51/IF58/IF80/IF83).
+- **`aggregateIdentity`** — the seven value-folding aggregates' all-empty fold: `Sum`/`MaxValue`/`MinValue`/`SumOfProducts` = ZERO; operand-list `Min`/`Max` = per-kind {number: ZERO, date/time/date-time: NO_VALUE}, while `FirstFilledValue` carries its own supported-kind split (IF51/IF58/IF80/IF83/IF204).
 - **`polarity`** — the fill-propagation class of the value functions with a clean per-operator scalar: 13 SYMMETRIC (the date diffs + date/time extractors, IF73), 5 GROW_ONLY (`Length`, the fill counts, `RangeAsNumber` — IF73/IF51/IF71). Each probe pins the outcome TYPE. The compositional-fill operators (arithmetic, `Round*`/`Abs`/operand-list `Min`/`Max`, the sign-dependent starred aggregates, the date-range overlaps) are scoped out — their fill is a truth-table/per-eval, not a scalar (§3d).
 
 **All four WI-5b dimensions shipped.** The four remaining `emptyOperand` gaps from §9a (the `Date`/`Time`/`DateTime` constructions with an empty part; `RangeAsString`/`FieldValueAsNumber`/`ValueAsDate`/`AddDays`-family empties) stay open — no differential lock yet; characterize before claiming.

@@ -20,9 +20,9 @@ import org.junit.jupiter.api.Test
  *
  * Aggregates are the raw stored form and compared against **fields** (not literals) so no literal-format gate is
  * exercised here (that gate is SPEC-2026-07-22-01). The comparison's LHS field is reused as the rule's error
- * field (the kernel requires it referenced, `MVK_ERROR_FIELD_NOT_REFERENCED`). The typed DSL types
- * `minValue`/`maxValue` as NumberExpr and has no Time/DateTime list aggregate yet; the adapter read/roundtrip
- * path is extended separately.
+ * field (the kernel requires it referenced, `MVK_ERROR_FIELD_NOT_REFERENCED`). Typed TIME/DATETIME star and
+ * operand-list authoring/read-back are locked separately by `TimeDateTimeAggregateReadTest`,
+ * `TemporalOperandMinMaxConditionTest`, and `TemporalOperandMinMaxReadTest`.
  */
 class TemporalExtremaDiffTest {
 

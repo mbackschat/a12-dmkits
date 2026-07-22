@@ -550,15 +550,16 @@ Applied to `/Application`, `scheduleConsistency(...)` reproduces the flagship ru
 
 The same handle discipline extends to operands that used to force a drop to a hand-written string. Each renders to the exact kernel-accepted stored form (locked to a kernel-run test) and stays type-safe.
 
-**Date-valued `Min`/`Max`.** `Dsl.min`/`Dsl.max` are overloaded for date operands — the result is a `DateExpr`, comparable to any date operand — so number/date mixing can't be written (the operands are dates by type). The kernel evaluates it through its `DateCombiner` (findings 58, KERNEL-FINDINGS §6):
+**Date-like `Min`/`Max`.** `Dsl.min`/`Dsl.max` are overloaded for DATE, TIME, and DATETIME operands. The result preserves that exact family (`DateExpr`, `TimeExpr`, or `DateTimeExpr`), so number/temporal and cross-temporal mixing cannot be written. The kernel evaluates every temporal form through its `DateCombiner` (findings 58 and 92, KERNEL-FINDINGS §6):
 
 <!-- snippet: date-minmax -->
 ```java
-// Min/Max over DATE operands yield a DateExpr — comparable to any date operand (KERNEL-FINDINGS §6).
-// The type system forbids number/date mixing: min(dates) accepts only date operands.
-Condition earliestBeforeCutoff =
-        Dsl.min(m.date("/Order/OrderDate"), m.date("/Order/DeliveryDate"))
-                .before(Dsl.dateValue("20.03.2026"));   // Min([A], [B]) < "20.03.2026"
+// Min/Max preserve a homogeneous temporal family: DATE → DateExpr, TIME → TimeExpr,
+// DATETIME → DateTimeExpr. Mixing families does not compile.
+DateExpr earliestDate = Dsl.min(m.date("/Order/OrderDate"), m.date("/Order/DeliveryDate"));
+TimeExpr earliestTime = Dsl.min(m.time("/Order/PickupTime"), Dsl.time("09", "00", "00"));
+DateTimeExpr latestInstant = Dsl.max(m.dateTime("/Order/ScheduledAt"),
+        m.dateTime("/Order/CompletedAt"));
 ```
 
 **Rounding with an optional scale.** Both the expression `roundDown`/`roundUp`/`roundAccounting` family and its bare-field `…Value` siblings retain the kernel's optional decimal-places argument on the typed AST. The domain is `0..14`; every one-argument form means zero places. `RoundDown` is floor, `RoundUp` is ceiling, and accounting is `HALF_UP`, each after the kernel's scale-19 pre-round:

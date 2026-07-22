@@ -27,8 +27,9 @@ import org.junit.jupiter.api.Test
  *     direction (unlike the number star's directional fill).
  *
  * Both kernel strategies share this runtime (codegen emits `controller.minWertDatum(...)`), locked tri-way on a
- * representative subset. Rule/computation conditions are the raw stored form (the typed DSL types `minValue`/
- * `maxValue` as NumberExpr — date aggregates are not typed-authorable yet; DEV-API-GAPS).
+ * representative subset. Conditions stay in raw stored form here because this suite probes runtime semantics;
+ * typed DATE operand-list authoring and read-back are locked by `DateMinMaxConditionTest` and
+ * `TemporalOperandMinMaxReadTest`.
  */
 class DateAggregateDiffTest {
 

@@ -112,6 +112,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberOfValueInFields;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.OpListMath;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoolLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex;
@@ -728,6 +729,17 @@ final class ConditionConverter {
         IOperation left = comparison.getOperation1();
         ComparisonOperation op = comparison.getCmpOp();
         IOperation right = comparison.getOperation2();
+        if (left instanceof IOpListOperation operandList && operandList.getType() == OperationType.DATE) {
+            TemporalKind kind = temporalOperandListKind(operandList, right);
+            return switch (kind) {
+                case DATE -> dateComparison(new DateExpr(convertTemporalOperandList(operandList, kind)), op,
+                        convertDateOperand(right, comparison), comparison);
+                case TIME -> timeComparison(new TimeExpr(convertTemporalOperandList(operandList, kind)), op, right,
+                        comparison);
+                case DATE_TIME -> dateTimeComparison(new DateTimeExpr(convertTemporalOperandList(operandList, kind)),
+                        op, right, comparison);
+            };
+        }
         if (left instanceof IEntityListOperation aggregate) {
             // a TIME/DATETIME extremum (MaxValue/MinValue over a temporal scope) compares as that kind — the
             // kernel folds all three date-like kinds through one DateCombiner (SPEC-2026-07-21-07)
@@ -1623,6 +1635,9 @@ final class ConditionConverter {
         if (op instanceof IDateAddOperation add) {
             return convertDateTimeAdd(add);
         }
+        if (op instanceof IOpListOperation operandList && operandList.getType() == OperationType.DATE) {
+            return new DateTimeExpr(convertTemporalOperandList(operandList, TemporalKind.DATE_TIME));
+        }
         // Now / BaseYear as a date-time operand (both compare to a date-time field)
         if (op instanceof IPointInTimeOperation pit) {
             return switch (pit.getOperatorName()) {
@@ -1736,6 +1751,9 @@ final class ConditionConverter {
                 default -> throw unsupported("point-in-time " + pit.getOperatorName(), origin);
             };
         }
+        if (op instanceof IOpListOperation operandList && operandList.getType() == OperationType.DATE) {
+            return new DateExpr(convertTemporalOperandList(operandList, TemporalKind.DATE));
+        }
         // MaxValue/MinValue over a date repetition list → a date-valued operand (latest/earliest)
         if (op instanceof IEntityListOperation aggregate) {
             return convertDateAggregate(aggregate);
@@ -1803,6 +1821,9 @@ final class ConditionConverter {
             return new TimeExpr(new TimeConstruction(convertDateComponent(tc.getHour(), tc),
                     convertDateComponent(tc.getMinute(), tc), convertDateComponent(tc.getSecond(), tc)));
         }
+        if (op instanceof IOpListOperation operandList && operandList.getType() == OperationType.DATE) {
+            return new TimeExpr(convertTemporalOperandList(operandList, TemporalKind.TIME));
+        }
         // TimeFromDateTime(dt) → the time part of a date-time, as a time operand
         if (op instanceof IDateExtractionOperation ext
                 && ext.getOperatorName() == DateExtractionOperationName.TimeFromDateTime) {
@@ -1813,6 +1834,117 @@ final class ConditionConverter {
             return new TimeExpr(temporalListAggregate(aggregate));
         }
         throw unsupported("time operand " + op.getClass().getSimpleName(), origin);
+    }
+
+    /**
+     * The date-like kind carried by an operand-list {@code Min}/{@code Max}. The kernel transport flattens
+     * DATE, TIME, and DATETIME to {@link OperationType#DATE}, so recover the exact kind from the typed operands;
+     * a lone context-typed literal falls back to the comparison peer.
+     */
+    private TemporalKind temporalOperandListKind(IOpListOperation operandList, IOperation comparisonPeer) {
+        TemporalKind found = inferredTemporalOperandListKind(operandList);
+        if (found == null) {
+            found = temporalOperandKind(comparisonPeer);
+        }
+        if (found == null) {
+            throw unsupported("date-like operand-list whose exact kind cannot be recovered", operandList);
+        }
+        return found;
+    }
+
+    /** Infer from the members alone; {@code null} lets an enclosing list or comparison supply the context. */
+    private TemporalKind inferredTemporalOperandListKind(IOpListOperation operandList) {
+        TemporalKind found = null;
+        for (IOperation operand : operandList.getOperations()) {
+            TemporalKind current = temporalOperandKind(operand);
+            if (current == null) {
+                continue;
+            }
+            if (found != null && found != current) {
+                throw unsupported("mixed date-like operand-list kinds " + found + " and " + current, operandList);
+            }
+            found = current;
+        }
+        return found;
+    }
+
+    /** Exact DATE/TIME/DATETIME family of one kernel operation, or {@code null} when it carries no such clue. */
+    private TemporalKind temporalOperandKind(IOperation op) {
+        if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
+            return model.fieldAt(field.getField().getFullName())
+                    .map(FieldInfo::kind)
+                    .map(ConditionConverter::temporalKind)
+                    .orElse(null);
+        }
+        if (op instanceof IDateTimeConstructionOperation) {
+            return TemporalKind.DATE_TIME;
+        }
+        if (op instanceof ITimeConstructionOperation) {
+            return TemporalKind.TIME;
+        }
+        if (op instanceof IDateConstructionOperation || op instanceof IDateRangeExtractionOperation) {
+            return TemporalKind.DATE;
+        }
+        if (op instanceof IDateExtractionOperation extraction) {
+            return switch (extraction.getOperatorName()) {
+                case DateFromDateTime -> TemporalKind.DATE;
+                case TimeFromDateTime -> TemporalKind.TIME;
+                case DayFromDate, MonthFromDate, YearFromDate, QuarterFromDate,
+                        HoursFromTime, MinutesFromTime, SecondsFromTime -> null;
+            };
+        }
+        if (op instanceof IDateAddOperation add) {
+            return isDateTimeValue(add) ? TemporalKind.DATE_TIME : TemporalKind.DATE;
+        }
+        if (op instanceof IPointInTimeOperation point) {
+            return point.getOperatorName() == PointInTimeOperationName.Now ? TemporalKind.DATE_TIME : TemporalKind.DATE;
+        }
+        if (op instanceof IFieldIdOperationWithParameters field
+                && field.getOperatorName() == FieldIdOperationName.ValueAsDate) {
+            return TemporalKind.DATE;
+        }
+        if (op instanceof IEntityListOperation aggregate) {
+            return temporalKind(temporalExtremumKind(aggregate));
+        }
+        if (op instanceof IOpListOperation nested && nested.getType() == OperationType.DATE) {
+            return inferredTemporalOperandListKind(nested);
+        }
+        return null;
+    }
+
+    /** Narrow the broad model vocabulary to the exact three kinds this converter branch can carry. */
+    private static TemporalKind temporalKind(ValueKind kind) {
+        if (kind == null) {
+            return null;
+        }
+        return switch (kind) {
+            case DATE, DATE_FRAGMENT -> TemporalKind.DATE;
+            case TIME -> TemporalKind.TIME;
+            case DATE_TIME -> TemporalKind.DATE_TIME;
+            case NUMBER, STRING, ENUMERATION, BOOLEAN, CONFIRM, DATE_RANGE, CUSTOM, UNKNOWN -> null;
+        };
+    }
+
+    /** Convert a homogeneous date-like operand-list once, preserving its exact result kind in the typed wrapper. */
+    private OpListMath convertTemporalOperandList(IOpListOperation operandList, TemporalKind kind) {
+        OpListMath.Op operator = switch (operandList.getOperatorName()) {
+            case Min -> OpListMath.Op.MIN;
+            case Max -> OpListMath.Op.MAX;
+            default -> throw unsupported("date-like operand-list operator " + operandList.getOperatorName(),
+                    operandList);
+        };
+        List<Calculation> operands = operandList.getOperations().stream().map(operand -> switch (kind) {
+            case DATE -> convertDateOperand(operand, operandList).expression();
+            case TIME -> convertTimeOperand(operand, operandList).expression();
+            case DATE_TIME -> convertDateTimeOperand(operand, operandList).expression();
+        }).toList();
+        return new OpListMath(operator, operands);
+    }
+
+    private enum TemporalKind {
+        DATE,
+        TIME,
+        DATE_TIME
     }
 
     /**

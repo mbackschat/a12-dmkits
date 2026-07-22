@@ -21,7 +21,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * <ol>
  *   <li>presence &amp; pattern — {@code fieldFilled}, {@code matches}, {@code length}</li>
  *   <li>filled-count aggregates — {@code numberOfFilledFields}, {@code sum}, {@code maxValue}, rounding-of-field</li>
- *   <li>operand-list math &amp; rounding — {@code abs}, {@code min}/{@code max}, {@code roundDown}/{@code roundUp}</li>
+ *   <li>operand-list extrema/math &amp; rounding — {@code abs}, {@code min}/{@code max}, {@code roundDown}/{@code roundUp}</li>
  *   <li>date/time family — {@code today}, {@code dateValue}, differences, extractions, constructions, shifts</li>
  *   <li>string/number coercions — {@code text}, {@code fieldValueAsString}, {@code rangeAsNumber}, {@code customCondition}</li>
  *   <li>repetition &amp; value-in-field counts — {@code currentRepetition}, {@code numberOfValueInFields}</li>
@@ -268,7 +268,7 @@ public final class Dsl {
         return new NumberExpr(new ListAggregate(op, operands));
     }
 
-    // --- operand-list math (over numeric value expressions) ------------------------------------
+    // --- operand-list extrema / numeric math ----------------------------------------------------
 
     /** {@code Abs(value)} — the absolute value of a numeric expression (e.g. {@code Abs([A] - [B])}). catalog:Abs */
     public static NumberExpr abs(NumberExpr value) {
@@ -292,12 +292,32 @@ public final class Dsl {
      * impossible: the operands are {@link DateOperand}s, so the result compares only to date operands.
      */
     public static DateExpr min(DateOperand first, DateOperand... rest) {
-        return new DateExpr(new OpListMath(OpListMath.Op.MIN, dateOperandList(first, rest)));
+        return new DateExpr(new OpListMath(OpListMath.Op.MIN, temporalOperandList(first, rest)));
     }
 
     /** {@code Max(d1, d2, …)} over date operands — the latest of one or more dates ({@code maxDatum}). */
     public static DateExpr max(DateOperand first, DateOperand... rest) {
-        return new DateExpr(new OpListMath(OpListMath.Op.MAX, dateOperandList(first, rest)));
+        return new DateExpr(new OpListMath(OpListMath.Op.MAX, temporalOperandList(first, rest)));
+    }
+
+    /** {@code Min(t1, t2, …)} over time operands — the earliest time-of-day ({@code minDatum}). */
+    public static TimeExpr min(TimeOperand first, TimeOperand... rest) {
+        return new TimeExpr(new OpListMath(OpListMath.Op.MIN, temporalOperandList(first, rest)));
+    }
+
+    /** {@code Max(t1, t2, …)} over time operands — the latest time-of-day ({@code maxDatum}). */
+    public static TimeExpr max(TimeOperand first, TimeOperand... rest) {
+        return new TimeExpr(new OpListMath(OpListMath.Op.MAX, temporalOperandList(first, rest)));
+    }
+
+    /** {@code Min(dt1, dt2, …)} over date-time operands — the earliest instant ({@code minDatum}). */
+    public static DateTimeExpr min(DateTimeOperand first, DateTimeOperand... rest) {
+        return new DateTimeExpr(new OpListMath(OpListMath.Op.MIN, temporalOperandList(first, rest)));
+    }
+
+    /** {@code Max(dt1, dt2, …)} over date-time operands — the latest instant ({@code maxDatum}). */
+    public static DateTimeExpr max(DateTimeOperand first, DateTimeOperand... rest) {
+        return new DateTimeExpr(new OpListMath(OpListMath.Op.MAX, temporalOperandList(first, rest)));
     }
 
     private static List<Calculation> operandList(NumberExpr first, NumberExpr... rest) {
@@ -309,10 +329,10 @@ public final class Dsl {
         return ops;
     }
 
-    private static List<Calculation> dateOperandList(DateOperand first, DateOperand... rest) {
+    private static List<Calculation> temporalOperandList(TemporalOperand first, TemporalOperand... rest) {
         var ops = new ArrayList<Calculation>();
         ops.add(first.expression());
-        for (DateOperand e : rest) {
+        for (TemporalOperand e : rest) {
             ops.add(e.expression());
         }
         return ops;
