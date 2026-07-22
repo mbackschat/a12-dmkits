@@ -1,0 +1,109 @@
+{
+  "header": {
+    "id": "first-filled-tail",
+    "modelType": "document",
+    "modelVersion": "28.4.0",
+    "locales": [
+      {
+        "code": "en_US"
+      }
+    ],
+    "labels": [],
+    "annotations": [],
+    "modelReferences": []
+  },
+  "content": {
+    "modelInfo": {
+      "name": "first-filled-tail",
+      "variant": "cockpit",
+      "revision": "Arbeitsversion",
+      "immutable": false
+    },
+    "modelConfig": {
+      "decimalSeparator": ".",
+      "timeZone": "Europe/Berlin",
+      "conditionLanguage": {
+        "code": "en_US"
+      },
+      "fieldRefByShortNameAllowed": true
+    },
+    "modelRoot": {
+      "rootGroups": [
+        {
+          "type": "Group",
+          "id": "/Shipment",
+          "name": "Shipment",
+          "Group": {
+            "repeatability": 1,
+            "elements": [
+              {
+                "type": "Group",
+                "id": "/Shipment/Parcels",
+                "name": "Parcels",
+                "Group": {
+                  "repeatability": 1000,
+                  "indexFieldName": "Tag",
+                  "elements": [
+                    {
+                      "type": "Field",
+                      "id": "/Shipment/Parcels/Tag",
+                      "name": "Tag",
+                      "Field": { "fieldType": { "type": "StringType", "StringType": {} } }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Shipment/Parcels/Weight",
+                      "name": "Weight",
+                      "Field": { "fieldType": { "type": "NumberType", "NumberType": { "maxFractionalDigits": 0 } } }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Shipment/Parcels/Note",
+                      "name": "Note",
+                      "Field": { "fieldType": { "type": "StringType", "StringType": {} } }
+                    },
+                    {
+                      "type": "Group",
+                      "id": "/Shipment/Parcels/Segments",
+                      "name": "Segments",
+                      "Group": {
+                        "repeatability": 100,
+                        "indexFieldName": "SegId",
+                        "elements": [
+                          {
+                            "type": "Field",
+                            "id": "/Shipment/Parcels/Segments/SegId",
+                            "name": "SegId",
+                            "Field": { "fieldType": { "type": "StringType", "StringType": {} } }
+                          },
+                          {
+                            "type": "Field",
+                            "id": "/Shipment/Parcels/Segments/Load",
+                            "name": "Load",
+                            "Field": { "fieldType": { "type": "NumberType", "NumberType": { "maxFractionalDigits": 0 } } }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Shipment/DefaultWeight",
+                "name": "DefaultWeight",
+                "Field": { "fieldType": { "type": "NumberType", "NumberType": { "maxFractionalDigits": 0 } } }
+              },
+              {
+                "type": "Field",
+                "id": "/Shipment/DefaultNote",
+                "name": "DefaultNote",
+                "Field": { "fieldType": { "type": "StringType", "StringType": {} } }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
