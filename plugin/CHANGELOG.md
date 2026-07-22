@@ -34,6 +34,7 @@ The built-in evaluation engine reaches full kernel parity on real-world corpora 
 - JSON-Schema import: a `const` on a date/time/custom-typed field no longer aborts the import — it is skipped and reported, like every other unmappable constraint.
 - `field read`/`typedef read` report every written type-config slot (string no-value-validation, enum categories, enum invalid-value message), and `computation modify` no longer drops element metadata.
 - `model diff` now treats reusable type definitions and authored includes/type-definition imports as first-class elements, including complete typedef config/metadata, exact typedef renames, include retargets, and mount-alias rewires.
+- `model diff` now treats model identity and configuration as one first-class `CONFIG` element, covering compatible model-version skew, locales, scalar settings, supported characters, base year, labels, comment, annotations, and roles without set-order noise.
 
 ## [0.8.2] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 

@@ -14,7 +14,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.modelkit.NumberTrait;
 
-/** MR9 Set 3 — every authored field envelope is visible to semantic diff. */
+/** Every authored field envelope is visible to semantic diff. */
 class ModelDiffFieldCompletenessTest {
 
     private static final String AMOUNT = "/Invoice/Amount";

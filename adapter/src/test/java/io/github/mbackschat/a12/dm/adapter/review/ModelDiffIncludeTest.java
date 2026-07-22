@@ -13,7 +13,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 
-/** MR9 Set 4 — authored includes/imports stay distinct from their expanded model content. */
+/** Authored includes/imports stay distinct from their expanded model content. */
 class ModelDiffIncludeTest {
 
     private static final ModelResolver RESOLVER = reference -> switch (reference) {

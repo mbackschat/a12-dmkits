@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.Test;
 
-/** MR9 Set 1 — computation changes remain visible in the compact human renderer. */
+/** Computation changes remain visible in the compact human renderer. */
 class DiffTextComputationTest {
 
     @Test

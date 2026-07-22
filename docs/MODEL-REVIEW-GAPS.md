@@ -4,9 +4,9 @@
 
 ## 1. Open — tractable, to build
 
-- **MR9 — complete `model diff` across the rest of the §5a change-kind taxonomy.** Fields, groups, rules, computations, typedefs, and authored includes/imports are now projected completely, and reorder detection uses the authored mixed element sequence; the remaining silent false “no change” cases are **model configuration**. [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md) §5a marks the built subset. **Build order remaining:** config; each added aspect carries the loosening>tightening review-impact direction (§5b). **Lock:** one focused `model diff` test family per added projection.
+_None open._
 
-The diff-completeness set that shipped (reorder-as-change, exact + similarity move/rename matching, relational refactor grouping, the located condition edit-script) is the *matching* machinery, not element-family coverage — its contract lives in [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md) §5. New gaps land here as found.
+The implemented change model and completeness contract live in [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md) §5. New gaps land here only when they are open and actionable.
 
 ## 2. Deferred — with a re-open trigger
 

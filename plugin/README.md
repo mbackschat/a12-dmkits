@@ -166,14 +166,14 @@ Every result is a uniform JSON envelope (`{ok, valid, outcome, changed, diagnost
 
 ### Review an edit semantically
 
-`model diff` is a structural semantic diff: it parses both models, ignores formatting noise, and reports typed field, group, rule, computation, typedef, and authored include/import changes with per-aspect deltas, review-impact tiers, and reason codes.
+`model diff` is a structural semantic diff: it parses both models, ignores formatting noise, and reports typed field, group, rule, computation, typedef, authored include/import, and model-configuration changes with per-aspect deltas, review-impact tiers, and reason codes.
 
 ```sh
 dmtool model diff before.dm.json after.dm.json
 dmtool -m order.dm.json model diff --since HEAD
 ```
 
-A field diff covers complete typed config, requiredness, enum values, metadata, and flags; removing or retyping a field with rule/computation readers is HIGH. A rule diff includes its error entity, localized messages, and metadata. A group diff covers repeatability, index/sort declarations, mount alias/options, metadata, and mixed authored ordering. A computation operation changing from `Price × Quantity` to `Price + Quantity` is a first-class `COMPUTATION_CHANGED` modification. Typedefs carry complete config/metadata; authored includes and type-definition imports carry purpose/reference separately from expanded content. Rule polarity inversions are `POLARITY_INVERTED` (HIGH), while message-only changes remain LOW. The JSON shape is self-described by `dmtool schema model diff`; `--text` gives the impact-sorted human view.
+A field diff covers complete typed config, requiredness, enum values, metadata, and flags; removing or retyping a field with rule/computation readers is HIGH. A rule diff includes its error entity, localized messages, and metadata. A group diff covers repeatability, index/sort declarations, mount alias/options, metadata, and mixed authored ordering. A computation operation changing from `Price × Quantity` to `Price + Quantity` is a first-class `COMPUTATION_CHANGED` modification. Typedefs carry complete config/metadata; authored includes and type-definition imports carry purpose/reference separately from expanded content. The stable `CONFIG model` element covers identity/version, locales, scalar settings, supported characters, base year, labels, comment, annotations, and roles without set-order noise. Rule polarity inversions are `POLARITY_INVERTED` (HIGH), while message-only changes remain LOW. The JSON shape is self-described by `dmtool schema model diff`; `--text` gives the impact-sorted human view.
 
 ### From a JSON Schema or OpenAPI document
 

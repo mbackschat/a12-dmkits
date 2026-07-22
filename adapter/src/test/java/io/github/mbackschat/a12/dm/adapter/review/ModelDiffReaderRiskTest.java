@@ -12,7 +12,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
-/** MR9 Set 3 — removals and retypes account for existing rule/computation readers in one inverse map. */
+/** Removals and retypes account for existing rule/computation readers in one inverse map. */
 class ModelDiffReaderRiskTest {
 
     private static final String OBSERVED = "/Policy/Observed";

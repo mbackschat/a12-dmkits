@@ -28,7 +28,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences;
  *
  * <p>An element's state is an ordered <i>aspect map</i> of
  * format-independent values (kernel-canonical condition text + severity + code for a rule; kind + per-kind
- * config for a field; authored properties for a group), so a pure reformat is never a change. Review impact follows the <b>loosening &gt; tightening</b>
+ * config for a field; authored properties for a group; the model configuration), so a pure reformat is never a change. Review impact follows the <b>loosening &gt; tightening</b>
  * asymmetry (a removed/loosened rule silently accepts bad data) — a subset of the SPEC §5b taxonomy.
  * A changed rule condition is further refined from the two typed ASTs ({@link ConditionPolarity}): a
  * provable structural flip is {@code POLARITY_INVERTED} (HIGH), otherwise the honest {@code CONDITION_CHANGED}.
@@ -45,7 +45,7 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         Map<String, ConditionEditScript> conditionEdits) {
 
     /** The element families currently projected into the structural diff. */
-    public enum ElementKind { FIELD, GROUP, RULE, COMPUTATION, TYPEDEF, INCLUDE }
+    public enum ElementKind { FIELD, GROUP, RULE, COMPUTATION, TYPEDEF, INCLUDE, CONFIG }
 
     /** Whether a relocation kept its parent (a {@code RENAME}) or its leaf name (a {@code MOVE}). */
     public enum RefactorKind { RENAME, MOVE }
@@ -122,6 +122,10 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         Map<String, Map<String, String>> headIncludes = IncludeDiffProjector.project(headState);
         match(ElementKind.INCLUDE, baseIncludes, headIncludes,
                 (change, id, deltas) -> IncludeDiffProjector.reasons(change), changes);
+        Map<String, Map<String, String>> baseConfiguration = ConfigurationDiffProjector.project(baseState);
+        Map<String, Map<String, String>> headConfiguration = ConfigurationDiffProjector.project(headState);
+        match(ElementKind.CONFIG, baseConfiguration, headConfiguration,
+                (change, id, deltas) -> ConfigurationDiffProjector.reasons(change, deltas), changes);
         detectReorders(authoredOrder(baseState.authored()), authoredOrder(headState.authored()), changes);
         pairRenames(changes, baseRules, headRules);
         pairSimilar(changes, baseRules, headRules);
@@ -431,6 +435,7 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
             case COMPUTATION -> ComputationDiffProjector.modifiedReason(d);
             case TYPEDEF -> TypeDefinitionDiffProjector.modifiedReason(d);
             case INCLUDE -> IncludeDiffProjector.modifiedReason(d);
+            case CONFIG -> ConfigurationDiffProjector.modifiedReason(d);
         };
     }
 
@@ -663,7 +668,7 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
         return switch (element) {
             case RULE -> refsOf(adapter, name);
             case COMPUTATION -> ComputationDiffProjector.references(adapter.readComputation(name));
-            case FIELD, GROUP, TYPEDEF, INCLUDE -> Set.of();
+            case FIELD, GROUP, TYPEDEF, INCLUDE, CONFIG -> Set.of();
         };
     }
 
@@ -772,7 +777,7 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
                     "STRUCTURE_REMOVED", "PATTERN_CHANGED", "SEVERITY_CHANGED", "SCALE_CHANGED",
                     "ELEMENT_MOVED", "COMPUTATION_CHANGED", "GROUP_CHANGED", "REPEATABILITY_CHANGED",
                     "TYPE_CHANGED", "FIELD_CONFIG_CHANGED", "TYPEDEF_ADDED", "TYPEDEF_REMOVED",
-                    "INCLUDE_CHANGED" -> Risk.MEDIUM;
+                    "INCLUDE_CHANGED", "CONFIG_CHANGED", "LOCALE_REMOVED" -> Risk.MEDIUM;
             // POSITION_CHANGED (a reorder) / ELEMENT_RENAMED are content-preserving, not a loosening → LOW
             default -> Risk.LOW;
         };

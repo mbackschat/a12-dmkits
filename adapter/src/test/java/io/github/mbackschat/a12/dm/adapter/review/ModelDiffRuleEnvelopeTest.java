@@ -14,7 +14,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
-/** MR9 Set 3 — rule targets, localized messages, and authored metadata are diff-visible. */
+/** Rule targets, localized messages, and authored metadata are diff-visible. */
 class ModelDiffRuleEnvelopeTest {
 
     private static final String RULE = "/Invoice/PositiveAmount";

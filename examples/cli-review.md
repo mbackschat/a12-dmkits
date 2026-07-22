@@ -1,7 +1,5 @@
 # dmtool CLI — review & comprehend a model
 
-**
-
 The **review** surface of `dmtool`: comprehend a whole model in one read (`model report`), and review what an edit changed (`model diff`). Both are JSON-in / JSON-out and **tool-computed** — every fact is read from the model, never the agent's narration. Commands run through `dmtool` from the repo root; some steps use `jq`. Re-check with `uvx showboat@0.6.1 verify examples/cli-review.md` (exit 0 = output still matches the live CLI).
 
 ## model report — understand the whole model
@@ -131,7 +129,7 @@ fields 15 · groups 4 · rules 3 · computations 0 · repeatable 1
 
 ## model diff — review what changed
 
-When an agent edits a model on your behalf, raw JSON diffs are unreadable. `model diff <base> <head>` compares two model files **structurally** (it parses both into the model, so a pure reformat is never reported) and reports field, group, rule, and computation changes with a `risk` **review-impact tier**. Review impact follows *loosening > tightening*: a removed or loosened constraint silently accepts more data (HIGH), while a tightened or added one fails loudly (MEDIUM). Projected here to the headline plus the high-impact changes.
+When an agent edits a model on your behalf, raw JSON diffs are unreadable. `model diff <base> <head>` compares two model files **structurally** (it parses both into the model, so a pure reformat is never reported) and reports field, group, rule, computation, typedef, include/import, and model-configuration changes with a `risk` **review-impact tier**. Review impact follows *loosening > tightening*: a removed or loosened constraint silently accepts more data (HIGH), while a tightened or added one fails loudly (MEDIUM). Projected here to the headline plus the high-impact changes.
 
 ```bash
 dmtool model diff examples/models/order-ruled.dm.json examples/models/order.dm.json \
@@ -140,7 +138,7 @@ dmtool model diff examples/models/order-ruled.dm.json examples/models/order.dm.j
 
 ```output
 {
-  "summary": "11 added, 3 removed, 0 modified (3 high-risk)",
+  "summary": "11 added, 3 removed, 1 modified (3 high-risk)",
   "highRisk": [
     {
       "id": "/Order/BillingAddress/PostalCodeFormat",
@@ -167,7 +165,7 @@ dmtool model diff examples/models/order-ruled.dm.json examples/models/order.dm.j
 }
 ```
 
-→ The headline is `11 added, 3 removed, 0 modified (3 high-risk)`, and the three high-risk changes are exactly the **deleted validation rules** (`RULE_REMOVED`) — the dangerous, silent case a reviewer must see first. Unlike `where-used`/`model usage` (which read *one* model), this compares *two* and is the **review** surface: what did this edit change, and what should I look at first? It's a *structural* semantic diff — the full contract is in [MODEL-REVIEW-SPEC](../docs/MODEL-REVIEW-SPEC.md).
+→ The headline is `11 added, 3 removed, 1 modified (3 high-risk)`: the one model-level modification is the head model's added base year, while the three high-impact changes are exactly the **deleted validation rules** (`RULE_REMOVED`) — the dangerous, silent case a reviewer must see first. Unlike `where-used`/`model usage` (which read *one* model), this compares *two* and is the **review** surface: what did this edit change, and what should I look at first? It's a *structural* semantic diff — the full contract is in [MODEL-REVIEW-SPEC](../docs/MODEL-REVIEW-SPEC.md).
 
 ### Computation behavior changes are first-class
 
@@ -274,6 +272,42 @@ dmtool model diff examples/models/order-ruled.dm.json /tmp/review-typedef.dm.jso
 ```
 
 → The reusable enum appears once with both values, rather than as duplicated field changes. Headless resolver-backed diffs also expose direct includes and type-definition imports by alias, purpose, and reference; mount rewires remain visible on the authored group, distinct from expanded provider content.
+
+### Model configuration is one stable element
+
+Configuration changes should not disappear merely because no field or rule changed. Identity/version, locales, scalar model settings, supported characters, base year, labels, comment, annotations, and roles are compared under the stable `CONFIG model` element. Set-like values are sorted before comparison, so harmless source ordering does not create review noise.
+
+```bash
+cp examples/models/order-ruled.dm.json /tmp/review-config.dm.json
+dmtool -m /tmp/review-config.dm.json config modify --base-year 1995 --label en_US=Purchasing >/dev/null
+dmtool model diff examples/models/order-ruled.dm.json /tmp/review-config.dm.json \
+  | jq '.data.changes | map(select(.element=="CONFIG")) | map({id, risk, riskReasons, deltas})'
+```
+
+```output
+[
+  {
+    "id": "model",
+    "risk": "MEDIUM",
+    "riskReasons": [
+      "CONFIG_CHANGED",
+      "METADATA_CHANGED"
+    ],
+    "deltas": [
+      {
+        "aspect": "baseYear",
+        "after": "1995"
+      },
+      {
+        "aspect": "label.en_US",
+        "after": "Purchasing"
+      }
+    ]
+  }
+]
+```
+
+→ One model-level edit produces one review item with exact per-aspect deltas. Adding a locale is LOW `LOCALE_ADDED`; removing one is MEDIUM `LOCALE_REMOVED`; expanding the allowed character set is HIGH `CONSTRAINT_LOOSENED`.
 
 ### Reader-sensitive removals stay high impact
 
@@ -427,14 +461,14 @@ dmtool model diff examples/models/order-ruled.dm.json examples/models/order.dm.j
 ```
 
 ```output
-11 added, 3 removed, 0 modified (3 high-risk)
+11 added, 3 removed, 1 modified (3 high-risk)
   (read · valid)
 
 HIGH (3)
   REMOVED  rule  /Order/BillingAddress/PostalCodeFormat  RULE_REMOVED
   REMOVED  rule  /Order/DeliveryNotBeforeOrder  RULE_REMOVED
   REMOVED  rule  /Order/EligibilityCheck  RULE_REMOVED
-MEDIUM (11)
+MEDIUM (12)
   ADDED    field /Order/Items/UnitWeight  STRUCTURE_ADDED
   ADDED    field /Order/Items/ItemCoverage  STRUCTURE_ADDED
   ADDED    field /Order/PickupTime  STRUCTURE_ADDED
@@ -446,6 +480,7 @@ MEDIUM (11)
   ADDED    field /Order/BirthMonth  STRUCTURE_ADDED
   ADDED    field /Order/BirthYear  STRUCTURE_ADDED
   ADDED    field /Order/CoverageWindow  STRUCTURE_ADDED
+  MODIFIED config model  CONFIG_CHANGED
 ```
 
 → The three deleted rules surface at the top under **HIGH**, the eleven added fields group under **MEDIUM** — the same change-set as the JSON, shaped for a human to triage top-down. `model report --text` likewise renders the glossed rule/computation catalog and the dead-field set as a scannable list. (`--text` is a boundary view; the JSON remains the contract every guard and agent reads.)

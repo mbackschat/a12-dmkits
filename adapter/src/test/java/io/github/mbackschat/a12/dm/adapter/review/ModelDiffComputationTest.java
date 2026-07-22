@@ -20,7 +20,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ToleranceBand;
 import io.github.mbackschat.a12.dm.rulekit.read.ReadComputation;
 
-/** MR9 Set 1 — computations are first-class structural-diff elements. */
+/** Computations are first-class structural-diff elements. */
 class ModelDiffComputationTest {
 
     private static final String PRICE = "/Quote/Price";

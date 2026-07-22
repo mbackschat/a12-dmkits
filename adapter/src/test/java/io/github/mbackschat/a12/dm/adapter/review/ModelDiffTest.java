@@ -23,7 +23,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
-/** MODEL-REVIEW spike — TDD for the structural diff engine (task #3): load + element matching. */
+/** Structural-diff engine: typed load, element matching, condition classification, and review impact. */
 class ModelDiffTest {
 
     private static final String FEE_CAP = "/Subscription/Addons/FeeCapRule";

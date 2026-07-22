@@ -255,7 +255,6 @@ public final class EditSession {
         return editStructure(d -> d.setDecimalSeparator(separator));
     }
 
-    /** Upsert one model-level header label locale (FEATURE-GAPS). */
     /** Rename the model itself (its {@code content.modelRoot} id / header id). */
     public EditSession setModelId(String newId) {
         return editStructure(d -> d.setModelId(newId));

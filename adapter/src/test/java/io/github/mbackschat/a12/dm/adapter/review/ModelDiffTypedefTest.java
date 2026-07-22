@@ -15,7 +15,7 @@ import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 
-/** MR9 Set 4 — reusable type definitions are complete first-class diff elements. */
+/** Reusable type definitions are complete first-class diff elements. */
 class ModelDiffTypedefTest {
 
     @Test

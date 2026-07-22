@@ -19,7 +19,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.MountOptions;
 import io.github.mbackschat.a12.dm.modelkit.SortOrder;
 
-/** MR9 Set 2 — authored groups and mixed element order are first-class semantic-diff state. */
+/** Authored groups and mixed element order are first-class semantic-diff state. */
 class ModelDiffGroupTest {
 
     private static final String LINES = "/Order/Lines";
