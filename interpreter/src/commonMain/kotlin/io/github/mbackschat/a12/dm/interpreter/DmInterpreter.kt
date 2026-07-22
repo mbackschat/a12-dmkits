@@ -304,12 +304,13 @@ class DmInterpreter @JvmOverloads constructor(
      * / CLEARED (the expression computed nothing) / ERRORED (the computed value is formally invalid for
      * the target).
      *
-     * **Reporting granularity — report-ALL, deliberately wider than the kernel's.** This returns an outcome
-     * for **every** computed instance; the kernel's `IDocumentComputationResult` reports only the **delta
-     * vs the input document** (changed values / clears of input-filled cells; KERNEL-FINDINGS "compute
-     * reporting granularity"). Report-all is the more useful library contract ("what does this field
-     * compute to?"), and result-envelope granularity is not behavior-parity territory — a comparison
-     * against a kernel-granularity expectation projects via
+     * **Reporting granularity — report-ALL, deliberately wider than the kernel's change projection.** This
+     * returns an outcome for **every** computed instance. The kernel's `IDocumentComputationResult` is a
+     * five-channel result (successful-incl-unchanged / its changed subset / errored / cleared / operand
+     * formal errors; KERNEL-FINDINGS §11 five-channel supplement); our corpus/differential compares against
+     * its **change projection** (changed values / clears of input-filled cells). Report-all is the more useful
+     * library contract ("what does this field compute to?"), and result-envelope granularity is not
+     * behavior-parity territory — a comparison against a kernel-granularity expectation projects via
      * [io.github.mbackschat.a12.dm.interpreter.conformance.kernelComputeGranularity].
      */
     fun compute(doc: Document, locale: String = "en_US"): List<Computed> =

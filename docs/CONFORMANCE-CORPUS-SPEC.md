@@ -143,7 +143,7 @@ Each `computeExpected` entry is one computed-field outcome:
 - `value` is the **exact stored-form string** the engine writes into the document. **No numeric normalization**: the stored form is itself kernel semantics — the computed string lands in the document and feeds downstream rules — so `"100.5"` vs `"100.50"` is a real divergence, not noise.
 - Sorting and multiset equality as in [§6](#6-validation-expectations--signatures).
 
-**Reporting granularity (what `computeExpected` contains).** The expectation records what the kernel's `IDocumentComputationResult` *reports*, which is **delta-vs-input**, not report-all:
+**Reporting granularity (what `computeExpected` contains).** The kernel's `IDocumentComputationResult` is a **five-channel result** ([KERNEL-FINDINGS](KERNEL-FINDINGS.md) §11 five-channel supplement); the expectation records the **three-channel change projection** we select from it — not report-all:
 
 | outcome | reported when |
 |---|---|

@@ -222,8 +222,9 @@ object FuzzDiagnostics {
         return if (report.isEmpty()) null else "seed=$seed$report"
     }
 
-    // Projected to the KERNEL's reporting granularity (change-only / input-filled clears) so the report-all
-    // interpreter compares one-to-one with the kernel legs — see kernelComputeGranularity (SPEC §7).
+    // Projected to the kernel result's three-channel change projection (change-only / input-filled clears;
+    // the full result has five channels — KERNEL-FINDINGS §11) so the report-all interpreter compares
+    // one-to-one with the kernel legs — see kernelComputeGranularity (SPEC §7).
     private fun interpComputeSignatures(model: ModelDef, places: List<Place>): List<String> =
         kernelComputeGranularity(
             DmInterpreter(model).compute(interpDoc(model, places)).map {

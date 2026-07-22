@@ -9,6 +9,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -56,6 +57,7 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
 import com.mgmtp.a12.kernel.md.model.api.services.IValidationCodeGeneratorConfig;
 import com.mgmtp.a12.kernel.md.rt.api.DocumentProcessingConfig;
+import com.mgmtp.a12.kernel.md.rt.api.IComputedFieldInstance;
 import com.mgmtp.a12.kernel.md.rt.api.ICustomCondition;
 import com.mgmtp.a12.kernel.md.rt.api.ICustomConditionFactory;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentComputationResult;
@@ -594,7 +596,10 @@ public final class RuntimeLaws {
                 result.getFormalErrorsInOperands().stream().map(RuntimeLaws::toMsg).toList());
     }
 
-    /** Map a {@link IDocumentComputationResult} to its value/cleared/errored detail — shared by the legacy
+    /** Select the <b>three-channel change projection</b> from the fuller five-channel {@link IDocumentComputationResult}
+     *  (WithChanges → value, WithErrors → errored, Cleared → cleared; the full result also carries
+     *  {@code getComputedFieldInstancesWithoutErrors}/{@code getFormalErrorsInOperands} — KERNEL-FINDINGS §11
+     *  five-channel supplement, locked by {@link ComputeResultChannelsLawsTest}). Shared by the legacy
      *  {@link #computeDetail} and the modern clock-pinnable {@link #computeModern} path. */
     private static List<Computed> computeDetailOf(IDocumentComputationResult result) {
         List<Computed> out = new ArrayList<>();
@@ -605,6 +610,35 @@ public final class RuntimeLaws {
         result.getClearedFieldInstances().forEach(c ->
                 out.add(new Computed(c.getPath(), fmtPointer(c.pointer()), Optional.empty(), true, false)));
         return out;
+    }
+
+    /** All five {@link IDocumentComputationResult} channels plus the {@code noErrorOccurred} predicate, over a
+     *  dynamic-Groovy {@code compute()} — the five-channel result oracle for {@link ComputeResultChannelsLawsTest}
+     *  (KERNEL-FINDINGS §11 five-channel supplement). The instance channels are rendered as {@code fmtPointer}
+     *  strings; {@code withChanges} is a subset of {@code withoutErrors}. */
+    record ResultChannels(List<String> withoutErrors, List<String> withChanges, List<String> withErrors,
+            List<String> cleared, List<Msg> formalErrorsInOperands, boolean noErrorOccurred) {
+    }
+
+    static ResultChannels resultChannels(String modelJson, Doc doc) {
+        IDocumentModel model = expandedModel(modelJson);
+        IDocumentModelResolver resolver = id -> model;
+        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
+        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
+        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(
+                buildInstance(modelJson, dsf.createDocumentFactory(), doc));
+        IDocumentComputationResult result = rt.compute(v2, config(null, Locale.US));
+        return new ResultChannels(
+                pointers(result.getComputedFieldInstancesWithoutErrors()),
+                pointers(result.getComputedFieldInstancesWithChanges()),
+                pointers(result.getComputedFieldInstancesWithErrors()),
+                pointers(result.getClearedFieldInstances()),
+                result.getFormalErrorsInOperands().stream().map(RuntimeLaws::toMsg).toList(),
+                result.noErrorOccurred());
+    }
+
+    private static List<String> pointers(Collection<IComputedFieldInstance> instances) {
+        return instances.stream().map(c -> fmtPointer(c.pointer())).toList();
     }
 
     // ---- modern path with an optional pinned clock (the corpus capture/replay path, §9/§13) ------

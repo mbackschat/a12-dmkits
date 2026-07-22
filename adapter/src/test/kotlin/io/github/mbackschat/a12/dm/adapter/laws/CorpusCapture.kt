@@ -41,8 +41,9 @@ object CorpusCapture {
      */
     fun capture(meta: CaseMeta, modelName: String, modelJson: String, placements: List<Placement>, op: Op, clock: String? = null): ConformanceCase {
         val anchor = CorpusEngines.groovyDynamic(modelJson, placements, op, clock)
-        // The interpreter reports EVERY computed instance; the kernel anchor is change-only — project the
-        // interpreter's compute outcome to the kernel's reporting granularity before comparing (SPEC §7).
+        // The interpreter reports EVERY computed instance; the kernel corpus anchor captures only its
+        // three-channel change projection (the full result has five channels — KERNEL-FINDINGS §11) — so
+        // project the interpreter's compute outcome to that granularity before comparing (SPEC §7).
         val interpAll = CorpusEngines.interpret(modelJson, placements, op, clock)
         val interp =
             if (op is Op.Compute) kernelComputeGranularity(interpAll, placements, ModelLoader.load(modelJson))

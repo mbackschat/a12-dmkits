@@ -5,10 +5,13 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 
 /**
- * Project the interpreter's report-ALL compute signatures onto the **kernel's compute reporting granularity**,
+ * Project the interpreter's report-ALL compute signatures onto the **kernel's three-channel change projection**,
  * for comparison against a kernel-captured expectation (CONFORMANCE-CORPUS-SPEC §7).
  *
- * The kernel's `IDocumentComputationResult` reports:
+ * The kernel's `IDocumentComputationResult` is a **five-channel result** (successful-incl-unchanged, its changed
+ * subset, errored, cleared, and operand formal errors; `noErrorOccurred` == errored ∅ && formal-operand ∅ —
+ * KERNEL-FINDINGS §11 five-channel supplement). The corpus/differential capture selects its **three-channel
+ * change projection**, which is what this function targets:
  * - a **VALUE** only when it *changed* vs the input document — a TYPED-value equality
  *   (`getComputedFieldInstancesWithChanges`, `fieldValuesEqual(original, computed)`);
  * - a **CLEARED** instance only when the input document had the cell *filled* (`getClearedFieldInstances`);

@@ -828,7 +828,8 @@ public final class KernelAdapter {
      * the same nested {@code fields} representation). Read-only: {@code compute} returns a <em>result</em>
      * (the kernel never mutates the input; applying it back is a separate, opt-in step), so this reports
      * what each computed field <em>becomes</em> — a value, cleared (computed nothing — e.g. an empty
-     * operand, see {@code DateRangeComputationLawsTest}), or an error. Powers the {@code compute-doc} verb
+     * operand, see {@code DateRangeComputationLawsTest}), or an error. These are the three <b>change-projection</b>
+     * channels of the fuller five-channel result (KERNEL-FINDINGS §11 five-channel supplement). Powers the {@code compute-doc} verb
      * and lets a computation judge verify computation-equivalence by EXECUTION.
      */
     public ComputeResult compute(Map<String, Object> fields, Locale locale) {
