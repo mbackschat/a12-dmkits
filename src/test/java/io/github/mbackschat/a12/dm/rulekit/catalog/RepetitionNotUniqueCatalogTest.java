@@ -21,5 +21,13 @@ class RepetitionNotUniqueCatalogTest {
         assertTrue(gotchas.contains("required-empty") && gotchas.contains("optional-empty"));
         assertTrue(gotchas.contains("scale-insensitive") && gotchas.contains("every duplicate row"));
         assertTrue(gotchas.contains("MVK_NEG_CONDITION_IN_ITERATION"));
+        // SPEC-2026-07-22-10: any value-validating direct kind is admitted, and every non-Number key
+        // compares by exact stored text (Enumeration token, not category/display; temporal text, not instant).
+        assertTrue(constraints.contains("ANY kind") && constraints.contains("MVK_INVALID_RAW_TYPE"),
+                "the admission constraint states no kind restriction plus the no-value-validation rejection");
+        assertTrue(gotchas.contains("stored TOKEN") && gotchas.contains("not the display label or category"),
+                "an Enumeration key compares the stored token, not the category/display projection");
+        assertTrue(gotchas.contains("never a parsed instant"),
+                "a temporal key compares stored text, not a parsed instant");
     }
 }
