@@ -1055,6 +1055,8 @@ Comparison **typing** stays static and nominal: a quoted literal beside a date-v
 
 ## §6 supplement — direct temporal comparison (coarse) vs temporal-extremum admission (exact) are TWO gates (source + kernel-route laws, 2026-07-22 / SPEC-2026-07-22-01)
 
+> Fold: folded → §6.
+
 The admission format check for a temporal comparison and for a temporal **extremum operand** are deliberately different strengths — conflating them either rejects legal direct comparisons or admits incomparable extremum operands.
 
 - **Direct comparison — coarse** (`CheckVergleichsBedingungImpl.checkDateType` → `DateFormat.formatsConsistentRegardingFormat(fmt1, fmt2, hasBaseYear())`). After optional Base-Year supplementation it requires only **matching YEAR presence** and **matching date/no-date class**; `==`/`!=` additionally require **matching time/no-time class**. It does **not** require identical component sets. Consequences (all kernel-locked): a `yyyy-MM` fragment `==` a `yyyy-MM-dd` date is **accepted**; a plain date `<` a date-time is **accepted** but `==` a date-time is **rejected** (`MVK_INVALID_COMPARE_TO_DATE` — time-presence differs); a date `==` a time is **rejected** (date/no-date class differs); a year-less `MM` fragment vs a year-bearing date is **rejected without** a Base Year but **accepted with** one (the model year supplements the fragment).
