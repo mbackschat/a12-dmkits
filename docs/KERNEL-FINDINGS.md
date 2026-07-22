@@ -635,6 +635,14 @@ How the kernel validates a field declared with a **`CustomFieldType{name, minLen
 
 This is the kernel truth behind the interpreter's treatment (auto-validate each filled custom cell against the consumer-registered predefined type; unregistered → report unsupported + degrade leniently, since the native runtime cannot host the validator) — INTERPRETER-FINDINGS IF26. JS/TS identical, so a Kotlin/JS consumer mirrors it.
 
+## §12 supplement — a starred VALUE-LIST quantifier's complete extent needs wildcard coverage (source + differential, 2026-07-22, SPEC-2026-07-22-09)
+
+> Fold: folded → §12.
+
+In partial validation a starred value-list quantifier entry carries a **complete-extent** fact SEPARATE from its per-cell relevance: the extent is established only when the relevant set **wildcards** the starred level (`ALL_SEMANTIC`, or a relevant ancestor whose descent covers it) — enumerating every currently-instantiated row CONCRETELY does not. An extent-unknown entry is gated **side-specifically**, exactly the IF42 all-rows-aggregate rule applied to the value-list operators: `No` is suppressed to UNKNOWN on **either** side (`RuntimeController.keinFeldWertInWerteListeIntern` and `fuegeFeldWerteZuWerteListe` reject an extent-unknown starred fields/values entry before scanning), `NotAll` on the **values** side, while `AtLeastOne` (either side) and `NotAll` on the fields side scan the relevant cells and ignore extent (`mindestensEinFeldWertInWerteListeIntern` / fields-side `nichtAlleFeldWerteInWerteListeIntern`). Full validation is unaffected.
+
+**Interpreter:** the fix reuses the existing `starRelevant` wildcard-extent seam (IF42) — `ValueListQuantEval` sets a `VlqSide.extentUnknown` bit from `starRelevant(starPath)` (null in full validation → never set → the full path is byte-identical) and routes it through the same side-specific arms; per-cell relevance and formal-cell classification are unchanged. *(Locked: `adapter.laws.PartialValidationValueListDiffTest` — dynamic-Groovy vs static-Java vs interpreter, the three extent-sensitive cases plus fields-side-`NotAll`/`AtLeastOne`/non-repeatable controls — + multiplatform `interpreter … PartialValidationValueListExtentTest`; INTERPRETER-FINDINGS IF42.)*
+
 ## §12 supplement — Partial validation (`validatePart`) — rule-gating + 3VL relevance (source + probe-confirmed 2026-06-24)
 
 > Fold: folded → §12.

@@ -195,6 +195,8 @@ class DmInterpreter @JvmOverloads constructor(
      * NOT enough (kernel-probed: the `*` reference is "fully known" only via a wildcard). A relevant entity covers
      * the star iff it is an ancestor-or-equal prefix AND wildcards every repeatable level it itself specifies
      * (levels deeper than it are covered by group descent). `FirstFilled` does NOT use this — it is order-aware.
+     * The same fact also gates a starred VALUE-LIST quantifier's complete extent (`No` either side / `NotAll`
+     * values side — [io.github.mbackschat.a12.dm.interpreter.eval.evalValueListQuant], SPEC-2026-07-22-09).
      */
     private fun starRelevantOf(relevant: Set<RelevantEntity>): (String) -> Boolean = { starPath ->
         val sParts = pathParts(starPath)

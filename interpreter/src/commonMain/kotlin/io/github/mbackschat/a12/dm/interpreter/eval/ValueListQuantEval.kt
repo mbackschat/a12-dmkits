@@ -20,12 +20,18 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
  * ([anyUnknown]), and whether any operand carried a `Having` filter ([hasHaving] — the kernel escalates a
  * fired result to TRUE_AF/OMISSION on a filtered operand, IG48). A star expands to one cell per
  * instantiated row.
+ *
+ * [extentUnknown] is a SEPARATE partial-validation fact from the per-cell classes above: a starred entry's
+ * COMPLETE extent is established only by wildcard coverage of its repeatable level(s) — concretely enumerating
+ * every current row does NOT (SPEC-2026-07-22-09). It drives the side-specific UNKNOWN table below and is never
+ * set in full validation.
  */
 private class VlqSide {
     val present = mutableListOf<Val>()
     var anyEmpty = false
     var anyUnknown = false
     var hasHaving = false
+    var extentUnknown = false
 }
 
 private fun Interpreter.vlqSide(entries: List<Expr>): VlqSide {
@@ -33,6 +39,11 @@ private fun Interpreter.vlqSide(entries: List<Expr>): VlqSide {
     for (e in entries) when (e) {
         is Expr.Star -> {
             val c = ctxOf(e)
+            // Partial validation: this starred entry's COMPLETE extent is established only by WILDCARD coverage
+            // of its repeatable level(s) (or a relevant ancestor) — the [starRelevant] seam shared with all-rows
+            // aggregates (IF42); enumerating concrete rows, even all of them, does NOT (SPEC-2026-07-22-09).
+            // Null in full validation → never set → the full path stays byte-identical.
+            if (starRelevant?.invoke(e.path) == false) out.extentUnknown = true
             // A starred INDEX field's formal errors are field-LOCAL and make the CELL not check-relevant
             // → UNKNOWN: an empty cell is mandatory-empty (the kernel auto-requires an index field per
             // row), and EVERY cell of a duplicated value carries the uniqueIndex error (over ALL rows, not
@@ -107,6 +118,11 @@ private fun classifyVlqCell(out: VlqSide, v: Val?, dupIndexValues: Set<Val>?) {
  *    cell ∈ values — including when nothing is filled at all.
  *  - `NotAll`: no filled FIELDS cell → no fire (`noEntityFilled`); a malformed VALUES member poisons, a
  *    malformed FIELDS cell is skipped; fires iff some present cell ∉ values.
+ *
+ * Partial validation adds a side-specific EXTENT gate ([VlqSide.extentUnknown], SPEC-2026-07-22-09): a starred
+ * entry known only by concrete-row enumeration (not wildcard coverage) suppresses `No` on EITHER side and
+ * `NotAll` on the VALUES side to UNKNOWN, while `AtLeastOne` (either side) and `NotAll` on the fields side
+ * ignore it.
  */
 internal fun Interpreter.evalValueListQuant(c: Cond.ValueListQuant): Tri = when (c.op) {
     ValueListQuantOp.AT_LEAST_ONE -> {
@@ -116,10 +132,11 @@ internal fun Interpreter.evalValueListQuant(c: Cond.ValueListQuant): Tri = when 
     }
     ValueListQuantOp.NO -> {
         val values = vlqSide(c.values)
-        if (values.anyUnknown) Tri.UNKNOWN
+        // No is suppressed to UNKNOWN by an extent-unknown star on EITHER side (SPEC-2026-07-22-09).
+        if (values.anyUnknown || values.extentUnknown) Tri.UNKNOWN
         else {
             val fields = vlqSide(c.fields)
-            if (fields.anyUnknown) Tri.UNKNOWN
+            if (fields.anyUnknown || fields.extentUnknown) Tri.UNKNOWN
             else Tri.of(fields.present.none { p -> values.present.any { ValCompare.equal(p, it) } })
         }
     }
@@ -128,7 +145,9 @@ internal fun Interpreter.evalValueListQuant(c: Cond.ValueListQuant): Tri = when 
         if (fields.present.isEmpty()) Tri.FALSE
         else {
             val values = vlqSide(c.values)
-            if (values.anyUnknown) Tri.UNKNOWN
+            // NotAll is suppressed by an extent-unknown star on the VALUES side only; it IGNORES the fields
+            // side's extent (SPEC-2026-07-22-09) — a concretely-enumerated fields star still fires here.
+            if (values.anyUnknown || values.extentUnknown) Tri.UNKNOWN
             else Tri.of(fields.present.any { p -> values.present.none { ValCompare.equal(p, it) } })
         }
     }

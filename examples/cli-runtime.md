@@ -134,7 +134,7 @@ dmtool -m examples/models/order-ruled.dm.json \
 
 ## model eval — partial validation for one page
 
-`--relevant` exposes the form engine's partial/wizard-page validation. The JSON array names the field or group instances currently relevant; an omitted index or `[*]` means every repetition, while `[n]` selects one row. A rule runs only when its error field is relevant, and an omitted operand is UNKNOWN. Selecting only `DeliveryDate` therefore suppresses the date comparison because `OrderDate` is not on this page:
+`--relevant` exposes the form engine's partial/wizard-page validation. The JSON array names the field or group instances currently relevant; an omitted index or `[*]` means every repetition, while `[n]` selects one row. A rule runs only when its error field is relevant, and an omitted operand is UNKNOWN. (A rule over a *whole-repetition* aggregate or value-list is fully known only when that repeatable level is wildcarded — `[*]` or a covering group — not when its rows are listed individually.) Selecting only `DeliveryDate` therefore suppresses the date comparison because `OrderDate` is not on this page:
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json \
