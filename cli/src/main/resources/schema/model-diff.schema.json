@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/model-diff.schema.json",
   "title": "ModelDiff",
-  "description": "The `data` payload of `dmtool model diff <baseFile> <headFile>` (MODEL-REVIEW-SPEC §5) — a STRUCTURAL diff of two models: it parses both into the model and compares structure, so a pure reformat is never reported. `changes` lists every projected field, group, rule, computation, typedef, authored include/import, and model-configuration change with its per-aspect `deltas`. Field aspects cover declared/effective type, typed config, requiredness/messages, enum state, metadata, and flags; rule aspects cover condition, error entity, severity/code, localized messages, and metadata. Group aspects cover repeatability, index/sort declarations, mount alias/options, and metadata; child structure is reported as the actual child element changes, never duplicated as a group `children` delta. Typedefs carry their complete type/config/metadata; include/import entries carry purpose and reference and remain distinct from expanded content. CONFIG uses the stable id `model` and covers model identity/version, locales, decimal separator, time zone, condition language, short-name mode, supported characters, base year, labels, comment, annotations, and roles. Set-like values use sorted JSON-array strings. For an ADDED element a delta carries only `after`; for REMOVED, only `before`; for MODIFIED/REORDERED, both. Element ids are paths/full names, typedef ids, include/import aliases, or `model` for CONFIG.",
+  "description": "The `data` payload of `dmtool model diff <baseFile> <headFile>` (MODEL-REVIEW-SPEC §5) — a STRUCTURAL diff of two models: it parses both into the model and compares structure, so a pure reformat is never reported. `changes` lists every projected field, group, rule, computation, typedef, authored include/import, and model-configuration change with its per-aspect `deltas`. Field aspects cover declared/effective type, typed config, requiredness/messages, enum state, metadata, and flags; rule aspects cover condition, error entity, severity/code, localized messages, and metadata. Group aspects cover repeatability, index/sort declarations, mount alias/options, and metadata; child structure is reported as the actual child element changes, never duplicated as a group `children` delta. Typedefs carry their complete type/config/metadata; include/import entries carry purpose and reference and remain distinct from expanded content. CONFIG uses the stable id `model` and covers model identity/version, locales, decimal separator, time zone, condition language, short-name mode, supported characters, base year, labels, comment, annotations, and roles. The stable `before`/`after` strings preserve the original portable contract; additive `beforeValue`/`afterValue` objects expose natural scalar or string-list values without consumer parsing. For an ADDED element a delta carries only `after`/`afterValue`; for REMOVED, only `before`/`beforeValue`; for MODIFIED/REORDERED, both. Element ids are paths/full names, typedef ids, include/import aliases, or `model` for CONFIG.",
   "type": "object",
   "additionalProperties": false,
   "required": ["changes", "refactors"],
@@ -58,11 +58,19 @@
                 },
                 "before": {
                   "type": "string",
-                  "description": "the base-side value (absent when the element is ADDED)"
+                  "description": "the stable deterministic base-side rendering (absent when the element is ADDED); retained for compatibility and display"
                 },
                 "after": {
                   "type": "string",
-                  "description": "the head-side value (absent when the element is REMOVED)"
+                  "description": "the stable deterministic head-side rendering (absent when the element is REMOVED); retained for compatibility and display"
+                },
+                "beforeValue": {
+                  "$ref": "#/$defs/deltaValue",
+                  "description": "the typed base-side value (absent when `before` is absent)"
+                },
+                "afterValue": {
+                  "$ref": "#/$defs/deltaValue",
+                  "description": "the typed head-side value (absent when `after` is absent)"
                 },
                 "conditionEdits": {
                   "type": "array",
@@ -109,6 +117,58 @@
           }
         }
       }
+    }
+  },
+  "$defs": {
+    "deltaValue": {
+      "description": "A delta value with a closed type tag. Unsupported or deliberately textual aspects use TEXT, so every rendered value has a typed envelope.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "const": "TEXT" },
+            "value": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "const": "BOOLEAN" },
+            "value": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "const": "INTEGER" },
+            "value": { "type": "integer" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "const": "DECIMAL" },
+            "value": { "type": "number" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "const": "STRING_LIST" },
+            "value": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      ]
     }
   }
 }

@@ -166,7 +166,7 @@ Every result is a uniform JSON envelope (`{ok, valid, outcome, changed, diagnost
 
 ### Review an edit semantically
 
-`model diff` is a structural semantic diff: it parses both models, ignores formatting noise, and reports typed field, group, rule, computation, typedef, authored include/import, and model-configuration changes with per-aspect deltas, review-impact tiers, and reason codes.
+`model diff` is a structural semantic diff: it parses both models, ignores formatting noise, and reports typed field, group, rule, computation, typedef, authored include/import, and model-configuration changes with per-aspect deltas, review-impact tiers, and reason codes. Delta JSON preserves deterministic `before`/`after` strings and adds tagged `beforeValue`/`afterValue` scalars or string lists for typed consumers.
 
 ```sh
 dmtool model diff before.dm.json after.dm.json

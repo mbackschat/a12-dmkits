@@ -231,8 +231,16 @@ class ModelDiffComputationTest {
 
         for (ModelDiff.ElementChange change : diff.changes()) {
             System.out.println(change.element() + " " + change.id() + " " + change.risk());
-            change.deltas().forEach(delta ->
-                    System.out.println(delta.aspect() + ": " + delta.before() + " -> " + delta.after()));
+            for (ModelDiff.Delta delta : change.deltas()) {
+                String typedAfter = delta.afterValue().map(value -> switch (value) {
+                    case ModelDiff.TextValue text -> text.value();
+                    case ModelDiff.BooleanValue bool -> Boolean.toString(bool.value());
+                    case ModelDiff.IntegerValue integer -> Integer.toString(integer.value());
+                    case ModelDiff.DecimalValue decimal -> decimal.value().toPlainString();
+                    case ModelDiff.StringListValue strings -> String.join(", ", strings.value());
+                }).orElse("<removed>");
+                System.out.println(delta.aspect() + ": " + delta.before() + " -> " + typedAfter);
+            }
         }
         // end::model-diff[]
 

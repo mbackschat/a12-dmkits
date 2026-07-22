@@ -114,9 +114,11 @@ final class ModelDiffCommand extends BaseCommand {
                     d.put("aspect", delta.aspect());
                     if (delta.before() != null) {
                         d.put("before", delta.before());
+                        writeDeltaValue(d, "beforeValue", delta.beforeValue().orElseThrow());
                     }
                     if (delta.after() != null) {
                         d.put("after", delta.after());
+                        writeDeltaValue(d, "afterValue", delta.afterValue().orElseThrow());
                     }
                     if (delta.aspect().equals("condition")) {
                         writeConditionEdits(d, diff.conditionEdits().get(change.id()));
@@ -151,6 +153,34 @@ final class ModelDiffCommand extends BaseCommand {
             return env.exitCode();
         } catch (RuntimeException e) {
             return failOrRethrowDomainRejection("diff failed: ", e);
+        }
+    }
+
+    /** Writes the additive typed view beside the stable string rendering. */
+    private static void writeDeltaValue(ObjectNode delta, String name, ModelDiff.DeltaValue value) {
+        ObjectNode typed = delta.putObject(name);
+        switch (value) {
+            case ModelDiff.TextValue text -> {
+                typed.put("type", "TEXT");
+                typed.put("value", text.value());
+            }
+            case ModelDiff.BooleanValue bool -> {
+                typed.put("type", "BOOLEAN");
+                typed.put("value", bool.value());
+            }
+            case ModelDiff.IntegerValue integer -> {
+                typed.put("type", "INTEGER");
+                typed.put("value", integer.value());
+            }
+            case ModelDiff.DecimalValue decimal -> {
+                typed.put("type", "DECIMAL");
+                typed.put("value", decimal.value());
+            }
+            case ModelDiff.StringListValue strings -> {
+                typed.put("type", "STRING_LIST");
+                ArrayNode items = typed.putArray("value");
+                strings.value().forEach(items::add);
+            }
         }
     }
 

@@ -105,6 +105,8 @@ Parses **both** states into the model and compares **structure** (so JSON format
 
 All listed families are implemented. Field aspects cover declared/effective type, every typed config slot, requiredness and custom required messages, enum membership/order/labels/categories, and metadata/flags. Rule aspects cover canonical condition, error entity, severity/code, localized messages, and metadata. A removed or retyped field consults the shared inverse rule/computation reader map, so `REFERENCED_ELEMENT_REMOVED`/`RETYPE_AFFECTS_READERS` cannot be hidden by the reader changing in the same diff. Group aspects are repeatability, index field, ordered sort fields, mount alias/options, and labels/descriptions/annotations; its children remain independent elements. Computation aspects are target, common precondition, ordered alternative preconditions/operations/tolerances, suppressions, messages, and verbatim opaque DSL. Typedefs carry their complete sealed `FieldTypeSpec` and descriptive metadata; only an unambiguous exact fingerprint is paired as a typedef rename. Direct includes and type-definition imports carry purpose/alias/reference as authored declarations, distinct from expanded provider content; mount rewiring remains a group delta. Configuration uses one stable element id and deterministic strings; locales, supported characters, and roles are sorted JSON arrays so set order does not fabricate a change.
 
+Each `Delta` retains its deterministic `before`/`after` strings as the stable portable and display contract. The additive `beforeValue()`/`afterValue()` headless API exposes a sealed `DeltaValue` (`TextValue`, `BooleanValue`, `IntegerValue`, `DecimalValue`, or `StringListValue`), so services can switch exhaustively without reparsing numbers, booleans, or canonical lists. CLI JSON mirrors that view as tagged `beforeValue`/`afterValue` objects beside the strings; an absent side has neither representation. A value that cannot be interpreted under its known aspect degrades to `TextValue` rather than making a diff unreadable.
+
 #### Completeness locks
 
 | Family / mutation slots | Focused executable lock |
@@ -116,6 +118,7 @@ All listed families are implemented. Field aspects cover declared/effective type
 | typedef add/remove/config/enum/metadata and exact-only rename | `adapter.review.ModelDiffTypedefTest` |
 | direct include and type-definition import add/remove/retarget/alias, resolver-backed separation from expanded content | `adapter.review.ModelDiffIncludeTest` |
 | configuration identity/version projection, locales, every scalar setting, supported characters, base year, labels/comment/annotations/roles, canonical set order | `adapter.review.ModelDiffConfigTest` |
+| stable rendered deltas plus sealed scalar/list values and their CLI/schema shape | `adapter.review.ModelDiffTypedDeltaTest`, `cli.ModelDiffTypedDeltaCliTest`, `cli.DataSchemaConformanceTest` |
 
 ### 5b. Review-impact taxonomy (`risk`) — *loosening > tightening*
 

@@ -9,6 +9,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
@@ -63,8 +64,36 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
     /** Review-impact tier — ordered so the highest reason wins ({@code HIGH} has the greatest ordinal). */
     public enum Risk { LOW, MEDIUM, HIGH }
 
-    /** One aspect that changed: {@code before}/{@code after} are null on the side where the element is absent. */
-    public record Delta(String aspect, String before, String after) {}
+    /** A typed delta value; the sealed variants let a headless consumer switch exhaustively without parsing text. */
+    public sealed interface DeltaValue permits TextValue, BooleanValue, IntegerValue, DecimalValue, StringListValue {}
+
+    public record TextValue(String value) implements DeltaValue {}
+
+    public record BooleanValue(boolean value) implements DeltaValue {}
+
+    public record IntegerValue(int value) implements DeltaValue {}
+
+    public record DecimalValue(BigDecimal value) implements DeltaValue {}
+
+    public record StringListValue(List<String> value) implements DeltaValue {
+        public StringListValue {
+            value = List.copyOf(value);
+        }
+    }
+
+    /**
+     * One aspect that changed. The stable {@code before}/{@code after} strings remain the portable rendering;
+     * {@link #beforeValue()}/{@link #afterValue()} add a typed, sealed view for headless consumers.
+     */
+    public record Delta(String aspect, String before, String after) {
+        public Optional<DeltaValue> beforeValue() {
+            return DeltaValueParser.parse(aspect, before);
+        }
+
+        public Optional<DeltaValue> afterValue() {
+            return DeltaValueParser.parse(aspect, after);
+        }
+    }
 
     /** One element-level change: its review-impact tier + reason codes, and the aspects that differ. */
     public record ElementChange(ElementKind element, String id, ChangeKind change, Risk risk,

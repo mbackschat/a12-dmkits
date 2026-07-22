@@ -129,7 +129,7 @@ fields 15 · groups 4 · rules 3 · computations 0 · repeatable 1
 
 ## model diff — review what changed
 
-When an agent edits a model on your behalf, raw JSON diffs are unreadable. `model diff <base> <head>` compares two model files **structurally** (it parses both into the model, so a pure reformat is never reported) and reports field, group, rule, computation, typedef, include/import, and model-configuration changes with a `risk` **review-impact tier**. Review impact follows *loosening > tightening*: a removed or loosened constraint silently accepts more data (HIGH), while a tightened or added one fails loudly (MEDIUM). Projected here to the headline plus the high-impact changes.
+When an agent edits a model on your behalf, raw JSON diffs are unreadable. `model diff <base> <head>` compares two model files **structurally** (it parses both into the model, so a pure reformat is never reported) and reports field, group, rule, computation, typedef, include/import, and model-configuration changes with a `risk` **review-impact tier**. Every delta preserves deterministic `before`/`after` strings and adds tagged `beforeValue`/`afterValue` data for services that need booleans, numbers, or string lists without reparsing. Review impact follows *loosening > tightening*: a removed or loosened constraint silently accepts more data (HIGH), while a tightened or added one fails loudly (MEDIUM). Projected here to the headline plus the high-impact changes.
 
 ```bash
 dmtool model diff examples/models/order-ruled.dm.json examples/models/order.dm.json \
@@ -201,7 +201,15 @@ dmtool model diff examples/models/subscription-computed.dm.json /tmp/review-comp
     "operation": {
       "aspect": "alternative[0].operation",
       "before": "[BaseFee]",
-      "after": "[BaseFee] + 1"
+      "beforeValue": {
+        "type": "TEXT",
+        "value": "[BaseFee]"
+      },
+      "after": "[BaseFee] + 1",
+      "afterValue": {
+        "type": "TEXT",
+        "value": "[BaseFee] + 1"
+      }
     }
   }
 ]
@@ -232,7 +240,15 @@ dmtool model diff examples/models/order.dm.json /tmp/review-group.dm.json \
     "repeatability": {
       "aspect": "repeatability",
       "before": "50",
-      "after": "75"
+      "beforeValue": {
+        "type": "INTEGER",
+        "value": 50
+      },
+      "after": "75",
+      "afterValue": {
+        "type": "INTEGER",
+        "value": 75
+      }
     }
   }
 ]
@@ -296,11 +312,19 @@ dmtool model diff examples/models/order-ruled.dm.json /tmp/review-config.dm.json
     "deltas": [
       {
         "aspect": "baseYear",
-        "after": "1995"
+        "after": "1995",
+        "afterValue": {
+          "type": "INTEGER",
+          "value": 1995
+        }
       },
       {
         "aspect": "label.en_US",
-        "after": "Purchasing"
+        "after": "Purchasing",
+        "afterValue": {
+          "type": "TEXT",
+          "value": "Purchasing"
+        }
       }
     ]
   }
