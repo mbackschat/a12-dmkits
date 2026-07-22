@@ -236,6 +236,20 @@ The kernel's `IDocumentComputationResult` is a **full result with five channels*
 
 **Consequence for us:** `DmInterpreter.compute` deliberately reports **every** computed instance (report-all — the more useful library contract; result-envelope granularity is not behavior-parity territory, the IG47 BEST-gate ruling), so **every comparison surface** that diffs the interpreter against a kernel compute report projects the interpreter side first — `interpreter.conformance.kernelComputeGranularity`, used by the corpus capture/replay (JVM + JS), the real-corpus sweep, the model shrinker, and the compute fuzz oracle. *(Locked: `adapter.laws.ComputeResultChannelsLawsTest` (the five channels, the `WithChanges ⊆ WithoutErrors` subset, and the `noErrorOccurred` predicate) + `interpreter … conformance.ComputeGranularityTest` (JVM+JS) + `adapter.laws.CorpusCaptureTest` (string vs number seed-equal capture) + the committed corpus guard case `compute/order-name-seed-equal` (empty `computeExpected` must PASS). Contract: CONFORMANCE-CORPUS-SPEC §7.)*
 
+## §11 supplement — compute eagerly formal-validates operands, WITHOUT a global abort (source + differential, 2026-07-22, SPEC-2026-07-22-12)
+
+> Fold: folded → §11.
+
+Before scheduling, `IDocumentRtService.compute` runs an **eager prepass** over every non-computed field that is an OPERAND of a computation (source: the `compute` javadoc + `DocumentComputationResultImpl.init`):
+
+- an operand holding an **invalid value** → reported in `getFormalErrorsInOperands`;
+- a **required-EMPTY** operand → **NOT reported** (silent — mandatoriness is validation's concern, not compute's, and an empty numeric operand still reads empty-as-0 for its consumer);
+- an **empty or non-unique INDEX** field in the operand set → reported (kernel javadoc contract; the interpreter's non-evaluable-aggregate-over-a-bad-index behavior is separately locked, IF86).
+
+Then, **regardless of the collected errors, computations still run** — there is no global abort; only a computation depending directly or transitively on an invalid field is skipped, while unrelated computations compute normally. This eager `getFormalErrorsInOperands` inventory is **separate** from dependency-sensitive skipping and the reached-read poison track (above). Finally, a represented **erroneous computed instance is ERRORED only**: `init` removes its pointer from the source-filled residual *before* the cleared branch, so it lands in `getComputedFieldInstancesWithErrors` and **never also** in `getClearedFieldInstances`; only remaining source-filled instances clear. `noErrorOccurred` is true exactly when the errored and formal-operand channels are both empty (the §11 five-channel supplement above).
+
+**Consequence for us:** the interpreter's public `compute` is report-all outcomes and does **not** surface the eager operand-error inventory (a kernel result-envelope channel), but it matches the downstream behavior — a dependent of an invalid operand is CLEARED, unrelated computations still produce a VALUE, and each instance carries a single outcome (ERRORED, never also CLEARED). No interpreter change was needed. *(Locked: `adapter.laws.ComputationEagerPrepassLawsTest` — invalid-operand-reported + continued-processing + interpreter parity, required-empty-silence, and errored-not-cleared; the five channels themselves by `adapter.laws.ComputeResultChannelsLawsTest`.)*
+
 ## §9/§11 supplement — computations PARALLEL-ITERATE over sibling indexed groups; an invalid index anywhere marks every instance incorrectly calculated (source + differential, both strategies, 2026-07-09)
 
 > Fold: folded → §11.
