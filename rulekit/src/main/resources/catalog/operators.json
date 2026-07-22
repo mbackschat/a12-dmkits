@@ -1457,7 +1457,7 @@
     "meaning": "The sum of the listed number fields' values, typically over a repetition list.",
     "constraints": [
       "number fields only (MVK_NO_NUMBER)",
-      "more than one field or a repetition list (MVK_PARAMSIZE_INVALIDN); no duplicates (MVK_DUPLICATE_PARAM1)"
+      "more than one field or a repetition list (MVK_PARAMSIZE_INVALIDN); no repeated DIRECT field (MVK_DUPLICATE_PARAM1), but a wildcarded (starred) operand may repeat and is consumed again at each slot"
     ],
     "gotchas": [
       { "text": "an UNSPECIFIED field counts as 0 — unlike MaxValue/MinValue, which ignore unspecified fields (KERNEL-SEMANTICS §9)", "kind": "SURPRISE" },
@@ -1523,7 +1523,7 @@
     "meaning": "The largest of the listed values; unspecified fields are ignored. Over number fields it returns a number; over a date repetition list it returns the latest date.",
     "constraints": [
       "sortable types only — numbers or dates (MVK_NOT_SORTABLE)",
-      "more than one field or a repetition list; no duplicates"
+      "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1)"
     ],
     "gotchas": [
       { "text": "a Number list with no specified value yields 0 and that identity is fillable in both directions, even though a nonempty incomplete MaxValue is grow-only (KERNEL-SEMANTICS §9/§12)", "kind": "SURPRISE" }
@@ -1937,7 +1937,7 @@
     "constraints": [
       "operands must be type-homogeneous: string/enum together, or all numbers (MVK_STRING_ENUM_AND_NON_STRING_ENUM / MVK_NUMBER_AND_NON_NUMBER)",
       "no booleans/confirms (MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED)",
-      "more than one field or a repetition list; no duplicates"
+      "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1)"
     ],
     "gotchas": [  ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(Items*/Sku) < 2", "note": "fires when all line items are variants of one Sku" },
