@@ -4,6 +4,10 @@ All notable changes to the **publicly released `dmtool` artifacts** — the nati
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/) plus **A12 Kernel compatibility metadata** (the kernel each release targets is recorded per entry, never folded into the version string).
 
+## [0.9.1] — kernel 30.8.1
+
+Maintenance release — **no functional change to the `dmtool` CLI** (binaries are identical to v0.9.0). Hardens the release build's reproducibility by pinning the kernel bootstrap to exact upstream release sources.
+
 ## [0.9.0] — kernel 30.8.1
 
 The built-in interpreter becomes the **sole** runtime evaluation engine, verified bit-for-bit against the A12 kernel on real-world corpora; `model diff` becomes fully comprehensive; and the authoring surface gets a consistency pass. Two breaking changes.
