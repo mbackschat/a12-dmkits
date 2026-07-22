@@ -614,6 +614,19 @@ Condition anyForbidden = Dsl.atLeastOneFieldValueIncludedInValueList(
         List.of("A", "B"), m.flatten("/Order/Items*/Sku"));   // …(/Order/Items*/Sku In "A", "B")
 ```
 
+**Enum value-list quantifiers — union admission + category projections.** An enum member may be a direct reference (`m.enumOf(path)`) or a category projection (`m.enumOf(path).category(name)`), and a single list may mix them. Each literal is admitted against the **union** of the selected members' domains (a direct reference's stored values plus a category's values), so a value in only one listed enumeration is legal — and a direct reference and a `[field -> Cat]` reference on the same field are distinct members:
+
+<!-- snippet: enum-value-list-union -->
+```java
+// An enum value-list quantifier member may be a direct reference OR a category projection
+// [field -> Cat]; each literal rides the UNION of the selected members' domains — "STANDARD" from
+// Priority's stored values, "FAST" from the SpeedClass category (KERNEL-FINDINGS §8).
+Condition standardOrFast = Dsl.atLeastOneFieldValueIncludedInValueList(
+        List.of("STANDARD", "FAST"),
+        m.enumOf("/Order/Priority"),
+        m.enumOf("/Order/Priority").category("SpeedClass"));
+```
+
 ## 4. Authoring a rule end-to-end
 
 ### 4.1 The rule object — slots from typed handles

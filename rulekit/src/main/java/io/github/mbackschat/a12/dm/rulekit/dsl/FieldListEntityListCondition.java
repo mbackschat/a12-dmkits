@@ -7,12 +7,14 @@ import java.util.List;
  * holds <b>field references</b>, not constants — a field list's membership in <em>another</em> field
  * list (e.g. a field {@code In} a starred repetition list). The sibling of {@link
  * FieldListValueListCondition} (literal value lists); the difference is purely the value side, which
- * here renders as bare entity paths (a {@link FieldOperand} each — a plain field or a flattened
- * repetition list) rather than quoted constants. Type compatibility between the two sides is the
- * kernel's call (F4/N7), as the value entities carry no static kind here.
+ * here renders as bare entity paths (a {@link ValueListOperand} each — a plain field, a flattened
+ * repetition list, or an enum category projection {@code [field -> Cat]}) rather than quoted
+ * constants. Same-base-kind and combined-reference uniqueness are enforced by the {@link Dsl} entry
+ * point (the smallest model-aware owner); the value entities carry their static {@link
+ * ValueListOperand#kind() kind} here.
  */
 public record FieldListEntityListCondition(
-        ValueListQuantifier quantifier, List<FieldOperand> fields, List<FieldOperand> valueFields)
+        ValueListQuantifier quantifier, List<ValueListOperand> fields, List<ValueListOperand> valueFields)
         implements Condition {
 
     public FieldListEntityListCondition {

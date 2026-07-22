@@ -306,7 +306,13 @@ public final class DslRenderer {
         };
     }
 
-    private String operand(FieldOperand op) {
+    private String operand(ValueListOperand op) {
+        // an enum category projection as a value-list quantifier member renders BARE: `path -> Cat` (no
+        // brackets — the bracketed [field -> Cat] form is the comparison-operand rendering, not the
+        // entity-list member form the kernel grammar uses here).
+        if (op instanceof EnumCategoryAccess c) {
+            return (c.outer() ? "$" : "") + path(c.field().path()) + " " + keyword(c.operatorId()) + " " + c.category();
+        }
         // a $ outer-iteration correlation on a bare reference (D13): NoFieldFilled($a, $b), or the value
         // side of an entity-valued value-list ($Group*/field). Applies to both FieldRef and FieldListRef.
         String dollar = (op instanceof FieldRef fr && fr.correlated()) || (op instanceof FieldListRef fl && fl.correlated())

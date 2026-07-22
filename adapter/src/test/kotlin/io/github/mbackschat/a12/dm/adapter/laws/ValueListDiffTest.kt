@@ -15,9 +15,11 @@ import org.junit.jupiter.api.Test
 /**
  * Differential — `FieldValueIncludedInValueList` / `FieldValueNotIncludedInValueList` (single field + a
  * string-literal value list). The interpreter must fire (or not) exactly when the kernel does, across a
- * string field, a number field (numeric membership — `"5"` matches a stored `5`), and an EMPTY field (no
- * value → not in the list, so the `Not` form is true). The multi-field `In`-syntax quantifiers and the
- * `->`-category form are separate constructs, deferred. Drives the interpreter from PARSED condition text.
+ * string field, a number field (numeric membership — `"5"` matches a stored `5`), and an EMPTY field. The
+ * scalar pair is a one-subject specialization: an empty subject is NOT evaluated, so BOTH forms are
+ * non-firing on it — `NotIncluded` is NOT the empty-firing multi-field `No` (SPEC-2026-07-22-05). The
+ * multi-field `In`-syntax quantifiers and the `->`-category form are separate constructs. Drives the
+ * interpreter from PARSED condition text.
  */
 class ValueListDiffTest {
 
@@ -58,14 +60,15 @@ class ValueListDiffTest {
     }
 
     @Test
-    fun emptyFieldIsNotInList() {
-        // CustomerName filled so the row is evaluated; ProductCode empty → not in list.
+    fun emptyFieldIsNotEvaluatedByEitherForm() {
+        // CustomerName filled so the row is evaluated; ProductCode empty → the subject is not evaluated, so
+        // NEITHER form fires (NotIncluded is a one-subject specialization, not the empty-firing multi-field No).
         val incl = render(m.str(PC).`in`("LEGACY-1"))
         both(incl, "../ProductCode", RuntimeLaws.doc().group("/Order", 1).field(CN, "Acme", 1, 1).emptyField(PC, 1, 1),
             Document(kinds).field(CN, "Acme", 1, 1).emptyField(PC, 1, 1), "empty → Included does not fire")
         val notIncl = render(m.str(PC).notIn("LEGACY-1"))
         both(notIncl, "../ProductCode", RuntimeLaws.doc().group("/Order", 1).field(CN, "Acme", 1, 1).emptyField(PC, 1, 1),
-            Document(kinds).field(CN, "Acme", 1, 1).emptyField(PC, 1, 1), "empty → NotIncluded fires")
+            Document(kinds).field(CN, "Acme", 1, 1).emptyField(PC, 1, 1), "empty → NotIncluded does NOT fire")
     }
 
     @Test

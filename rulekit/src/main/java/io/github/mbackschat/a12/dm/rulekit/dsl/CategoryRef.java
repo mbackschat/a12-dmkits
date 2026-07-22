@@ -9,7 +9,8 @@ import java.util.List;
  * domain — comparing to a plain enum value is the kernel-rejected mistake
  * ({@code MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON}, verified) this handle erases.
  */
-public record CategoryRef(FieldRef field, String name, List<String> values, boolean correlated) {
+public record CategoryRef(FieldRef field, String name, List<String> values, boolean correlated)
+        implements EnumListRef {
 
     public CategoryRef {
         values = List.copyOf(values);
@@ -29,6 +30,19 @@ public record CategoryRef(FieldRef field, String name, List<String> values, bool
 
     private EnumCategoryAccess access() {
         return new EnumCategoryAccess(field, name, correlated);
+    }
+
+    // --- EnumListRef: a category projection contributes its category values, and is a distinct member ---
+
+    /** This category access as a value-list quantifier operand ({@code [field -> name]}). */
+    @Override
+    public ValueListOperand listOperand() {
+        return access();
+    }
+
+    @Override
+    public List<String> admissibleValues() {
+        return values;
     }
 
     /** {@code [field -> name] == value}. */

@@ -872,19 +872,41 @@ public final class Dsl {
         return stringListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, first, rest);
     }
 
+    // Enum field-list value-list quantifiers. Each literal is admitted against the UNION of the selected
+    // members' domains (a direct EnumRef contributes its stored values, a CategoryRef its category
+    // values) — a literal need not be in every listed domain; a direct ref and a category ref on the
+    // same field are distinct members; an exact repeated reference is rejected (KERNEL-FINDINGS §8,
+    // SPEC-2026-07-22-05). The EnumRef-only overloads stay as binary-compatible bridges; the EnumListRef
+    // overloads add the mixed direct/category authoring surface.
+
     public static Condition atLeastOneFieldValueIncludedInValueList(
             java.util.List<String> values, EnumRef first, EnumRef... rest) {
-        return enumListQuantifier(ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED, values, first, rest);
+        return enumListQuantifier(ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED, values, enumListRefs(first, rest));
     }
 
     public static Condition noFieldValueIncludedInValueList(
             java.util.List<String> values, EnumRef first, EnumRef... rest) {
-        return enumListQuantifier(ValueListQuantifier.NO_FIELD_VALUE_INCLUDED, values, first, rest);
+        return enumListQuantifier(ValueListQuantifier.NO_FIELD_VALUE_INCLUDED, values, enumListRefs(first, rest));
     }
 
     public static Condition notAllFieldValuesIncludedInValueList(
             java.util.List<String> values, EnumRef first, EnumRef... rest) {
-        return enumListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, first, rest);
+        return enumListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, enumListRefs(first, rest));
+    }
+
+    public static Condition atLeastOneFieldValueIncludedInValueList(
+            java.util.List<String> values, EnumListRef first, EnumListRef... rest) {
+        return enumListQuantifier(ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED, values, enumListRefs(first, rest));
+    }
+
+    public static Condition noFieldValueIncludedInValueList(
+            java.util.List<String> values, EnumListRef first, EnumListRef... rest) {
+        return enumListQuantifier(ValueListQuantifier.NO_FIELD_VALUE_INCLUDED, values, enumListRefs(first, rest));
+    }
+
+    public static Condition notAllFieldValuesIncludedInValueList(
+            java.util.List<String> values, EnumListRef first, EnumListRef... rest) {
+        return enumListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, enumListRefs(first, rest));
     }
 
     /** {@code DateRangesOverlap(r1, r2, …)} — true iff the date ranges of the listed fields overlap. catalog:DateRangesOverlap */
@@ -897,38 +919,51 @@ public final class Dsl {
 
     /** {@code AtLeastOneDateRangeOverlaps(range IN r1, r2, …)} — {@code range} overlaps at least one listed range. catalog:AtLeastOneDateRangeOverlaps */
     public static Condition atLeastOneDateRangeOverlaps(FieldOperand range, FieldOperand first, FieldOperand... rest) {
-        var values = new java.util.ArrayList<FieldOperand>();
+        var values = new java.util.ArrayList<ValueListOperand>();
         values.add(first);
         values.addAll(java.util.List.of(rest));
         return new FieldListEntityListCondition(ValueListQuantifier.AT_LEAST_ONE_DATE_RANGE_OVERLAPS,
-                java.util.List.of(range), values);
+                java.util.List.<ValueListOperand>of(range), values);
     }
 
     private static Condition stringListQuantifier(
             ValueListQuantifier q, java.util.List<String> values, StringRef first, StringRef... rest) {
-        var fields = new java.util.ArrayList<FieldOperand>();
+        var fields = new java.util.ArrayList<ValueListOperand>();
         fields.add(first.field());
         for (StringRef r : rest) {
             fields.add(r.field());
         }
+        rejectDuplicateReferences(q.operatorId(), fields);
         var literals = values.stream().<Calculation>map(StringLiteral::new).toList();
         return new FieldListValueListCondition(q, fields, literals);
     }
 
-    private static Condition enumListQuantifier(
-            ValueListQuantifier q, java.util.List<String> values, EnumRef first, EnumRef... rest) {
-        var refs = new java.util.ArrayList<EnumRef>();
+    private static java.util.List<EnumListRef> enumListRefs(EnumListRef first, EnumListRef... rest) {
+        var refs = new java.util.ArrayList<EnumListRef>();
         refs.add(first);
         refs.addAll(java.util.List.of(rest));
-        // every value must be valid for every listed enum field
+        return refs;
+    }
+
+    private static Condition enumListQuantifier(
+            ValueListQuantifier q, java.util.List<String> values, java.util.List<EnumListRef> refs) {
+        var operands = new java.util.ArrayList<ValueListOperand>();
+        var union = new java.util.LinkedHashSet<String>();
+        for (EnumListRef ref : refs) {
+            operands.add(ref.listOperand());
+            union.addAll(ref.admissibleValues());   // direct → stored values; category → category values
+        }
+        rejectDuplicateReferences(q.operatorId(), operands);
         var literals = new java.util.ArrayList<Calculation>();
         for (String v : values) {
-            for (EnumRef r : refs) {
-                r.checkedLiteral(v);
+            if (!union.contains(v)) {
+                throw new IllegalArgumentException("'" + v + "' is not in the union of the selected"
+                        + " enumeration/category domains " + union
+                        + " (MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY)");
             }
             literals.add(new EnumValueLiteral(v));
         }
-        return new FieldListValueListCondition(q, refs.stream().<FieldOperand>map(EnumRef::field).toList(), literals);
+        return new FieldListValueListCondition(q, operands, literals);
     }
 
     // shape B over flattened repetition lists (string-kind fields; the corpus's dominant shape) —
@@ -951,7 +986,9 @@ public final class Dsl {
 
     private static Condition flattenedListQuantifier(
             ValueListQuantifier q, java.util.List<String> values, FieldListRef first, FieldListRef... rest) {
-        var fields = new java.util.ArrayList<FieldOperand>();
+        // Starred (flattened) lists are wildcard scopes — the kernel skips duplicate-reference checking
+        // for wildcarded refs (CheckEntityListenUtils.checkDuplicatesInDirectRefs), so no dedup here.
+        var fields = new java.util.ArrayList<ValueListOperand>();
         fields.add(checkedStringList(first));
         for (FieldListRef r : rest) {
             fields.add(checkedStringList(r));
@@ -970,7 +1007,11 @@ public final class Dsl {
     }
 
     // shape C — the value list is itself a field list (entity-valued, not constants), e.g.
-    // `Name(f1, f2 In g1, g2)` where g* are fields/repetition lists. Type compatibility is the kernel's.
+    // `Name(f1, f2 In g1, g2)` where g* are fields/repetition lists/category projections. Both sides must
+    // share one base kind (String/Enumeration/Number) and carry no exact-duplicate reference across the
+    // combined lists — enum-domain containment is NOT required (KERNEL-FINDINGS §8, SPEC-2026-07-22-05).
+    // The FieldOperand overloads stay as binary-compatible bridges; the ValueListOperand overloads add
+    // the category-projection surface.
 
     public static Condition atLeastOneFieldValueIncludedInValueList(
             java.util.List<FieldOperand> valueFields, FieldOperand first, FieldOperand... rest) {
@@ -987,12 +1028,100 @@ public final class Dsl {
         return entityListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, valueFields, first, rest);
     }
 
+    public static Condition atLeastOneFieldValueIncludedInValueList(
+            java.util.List<? extends ValueListOperand> valueFields, ValueListOperand first, ValueListOperand... rest) {
+        return entityListQuantifier(ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED, valueFields, first, rest);
+    }
+
+    public static Condition noFieldValueIncludedInValueList(
+            java.util.List<? extends ValueListOperand> valueFields, ValueListOperand first, ValueListOperand... rest) {
+        return entityListQuantifier(ValueListQuantifier.NO_FIELD_VALUE_INCLUDED, valueFields, first, rest);
+    }
+
+    public static Condition notAllFieldValuesIncludedInValueList(
+            java.util.List<? extends ValueListOperand> valueFields, ValueListOperand first, ValueListOperand... rest) {
+        return entityListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, valueFields, first, rest);
+    }
+
     private static Condition entityListQuantifier(ValueListQuantifier q,
-            java.util.List<FieldOperand> valueFields, FieldOperand first, FieldOperand... rest) {
-        var fields = new java.util.ArrayList<FieldOperand>();
+            java.util.List<? extends ValueListOperand> valueFields, ValueListOperand first, ValueListOperand... rest) {
+        var fields = new java.util.ArrayList<ValueListOperand>();
         fields.add(first);
         fields.addAll(java.util.List.of(rest));
-        return new FieldListEntityListCondition(q, fields, valueFields);
+        var values = java.util.List.<ValueListOperand>copyOf(valueFields);
+        checkEntityValuedKindsAndDuplicates(q.operatorId(), fields, values);
+        return new FieldListEntityListCondition(q, fields, values);
+    }
+
+    /** The three base kinds the value-list quantifier family accepts (the kernel's String/Enumeration/Number). */
+    private enum ValueListBaseKind { STRING, ENUMERATION, NUMBER }
+
+    /** Map a {@link io.github.mbackschat.a12.dm.core.ValueKind} to its value-list base kind, or {@code null} if disallowed. */
+    private static ValueListBaseKind baseKind(io.github.mbackschat.a12.dm.core.ValueKind kind) {
+        return switch (kind) {
+            // the kernel treats predefined/custom types as strings for base-type matching
+            case STRING, CUSTOM -> ValueListBaseKind.STRING;
+            case ENUMERATION -> ValueListBaseKind.ENUMERATION;
+            case NUMBER -> ValueListBaseKind.NUMBER;
+            default -> null;
+        };
+    }
+
+    /**
+     * The entity-valued (shape-C) gate the kernel applies: every operand across BOTH sides shares one base
+     * kind (String/Enumeration/Number, {@code MVK_VARYING_TYPES_NOT_ALLOWED} / {@code MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED}),
+     * and no exact reference occurs twice across the combined lists ({@code MVK_DUPLICATE_PARAM}).
+     */
+    private static void checkEntityValuedKindsAndDuplicates(String opName,
+            java.util.List<ValueListOperand> fields, java.util.List<ValueListOperand> values) {
+        var combined = new java.util.ArrayList<ValueListOperand>(fields);
+        combined.addAll(values);
+        ValueListBaseKind base = null;
+        for (ValueListOperand op : combined) {
+            ValueListBaseKind k = baseKind(op.kind());
+            if (k == null) {
+                throw new IllegalArgumentException(opName + " accepts only String, Enumeration, or Number"
+                        + " operands; '" + op.renderedPath() + "' is " + op.kind()
+                        + " (MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED)");
+            }
+            if (base == null) {
+                base = k;
+            } else if (base != k) {
+                throw new IllegalArgumentException(opName + " requires all operands (both sides) to share one"
+                        + " base kind; found " + base + " and " + k + " (MVK_VARYING_TYPES_NOT_ALLOWED)");
+            }
+        }
+        rejectDuplicateReferences(opName, combined);
+    }
+
+    /**
+     * Reject an exact repeated reference in a value-list operand list — the kernel's
+     * {@code CheckEntityListenUtils.checkParamsReferencedOnlyOnce}. Identity is the reference itself
+     * (field path, plus {@code -> category} for a projection, plus {@code $} for a correlation); a
+     * <b>wildcard</b> (flattened {@link FieldListRef}) scope is skipped, exactly as the kernel skips
+     * wildcarded refs in {@code checkDuplicatesInDirectRefs}.
+     */
+    private static void rejectDuplicateReferences(String opName, java.util.List<ValueListOperand> operands) {
+        var seen = new java.util.HashSet<String>();
+        for (ValueListOperand op : operands) {
+            String identity = referenceIdentity(op);
+            if (identity == null) {
+                continue;   // a wildcard scope — not deduped (matches the kernel)
+            }
+            if (!seen.add(identity)) {
+                throw new IllegalArgumentException("'" + identity + "' occurs more than once in " + opName
+                        + " — the kernel rejects an exact duplicate reference (MVK_DUPLICATE_PARAM)");
+            }
+        }
+    }
+
+    /** The exact-reference identity for duplicate detection, or {@code null} for a wildcard scope (skipped). */
+    private static String referenceIdentity(ValueListOperand op) {
+        return switch (op) {
+            case FieldListRef ignored -> null;   // wildcard/flattened list — kernel skips dedup here
+            case FieldRef f -> (f.correlated() ? "$" : "") + f.path();
+            case EnumCategoryAccess c -> (c.outer() ? "$" : "") + c.field().path() + " -> " + c.category();
+        };
     }
 
     // --- field-list quantifiers — at least one field by signature ------------------------------

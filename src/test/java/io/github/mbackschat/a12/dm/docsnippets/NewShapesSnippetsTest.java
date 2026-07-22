@@ -99,6 +99,22 @@ class NewShapesSnippetsTest {
     }
 
     @Test
+    void enumValueListUnionSnippet() {
+        // tag::enum-value-list-union[]
+        // An enum value-list quantifier member may be a direct reference OR a category projection
+        // [field -> Cat]; each literal rides the UNION of the selected members' domains — "STANDARD" from
+        // Priority's stored values, "FAST" from the SpeedClass category (KERNEL-FINDINGS §8).
+        Condition standardOrFast = Dsl.atLeastOneFieldValueIncludedInValueList(
+                List.of("STANDARD", "FAST"),
+                m.enumOf("/Order/Priority"),
+                m.enumOf("/Order/Priority").category("SpeedClass"));
+        // end::enum-value-list-union[]
+        assertEquals("AtLeastOneFieldValueIncludedInValueList(/Order/Priority,"
+                + " /Order/Priority -> SpeedClass In \"STANDARD\", \"FAST\")",
+                new DslRenderer().render(standardOrFast));
+    }
+
+    @Test
     void computationSuppressionSnippet() {
         // tag::computation-suppress[]
         // errorCodesToSuppress — the kernel's model-level escape hatch (domain-checked): it lets a

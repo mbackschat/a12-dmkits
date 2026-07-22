@@ -184,9 +184,12 @@ public final class OperatorUsage {
         }
     }
 
-    /** A list operand may carry a {@code Having} filter — a sub-construct with its own catalog entry. */
-    private static void collectOperand(FieldOperand operand, Set<String> ops) {
-        if (operand instanceof FieldListRef list) {
+    /** A list operand may be a category projection (its own catalog operator) or carry a {@code Having}
+     *  filter — either is a sub-construct with a catalog entry. Accepts the wider {@link ValueListOperand}. */
+    private static void collectOperand(ValueListOperand operand, Set<String> ops) {
+        if (operand instanceof EnumCategoryAccess c) {
+            ops.add(c.operatorId());   // the `->` category projection is its own catalog operator
+        } else if (operand instanceof FieldListRef list) {
             list.filter().ifPresent(filter -> {
                 ops.add("Having");
                 collect(filter, ops);

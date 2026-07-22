@@ -45,7 +45,7 @@ Caveats that hold across all four paths:
 | `MVK_DIFFERENT_ROOT_GROUPS` | erased | H-model row conditions requiring one root group — legacy-only |
 | `MVK_DIFFERENT_YES_VALUE` | kernel-delegated | law: with `True`, all listed yes/no fields must share the same declared yes-representation — model data, F4 arbitrates |
 | `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` | pre-checked | `FieldListRef.having` rejects RepetitionNotUnique + nested Having + CustomCondition (the representable forbidden constructs; rest kernel-delegated; locked: `dsl.operators.IterationConditionTest`/`CustomConditionTest`) |
-| `MVK_DUPLICATE_PARAM1` | pre-checked | `ListAggregate`/`CountAggregate` reject duplicate operands with the code named (locked: `dsl.operators.AggregateConditionTest`) |
+| `MVK_DUPLICATE_PARAM1` | pre-checked | `ListAggregate`/`CountAggregate` and the field-list value-list quantifiers (literal string/enum lists AND the entity-valued form, across the combined field+value lists) reject an exact duplicate reference; a direct ref and a `[field -> Cat]` projection on the same field are distinct, and wildcard (starred) refs are skipped as the kernel does (locked: `dsl.operators.AggregateConditionTest`, `dsl.operators.EnumValueListUnionTest`, `validate.laws.EnumValueListUnionLawsTest`) |
 | `MVK_DUPLICATE_PARAM2` | kernel-delegated | law: operands must not contain one another (indirect duplicates) — exact duplicates are pre-checked (`MVK_DUPLICATE_PARAM1`), the containment law stays F4’s |
 | `MVK_ENTITY_MOVE_IN_A12_MODEL_CONDITION` | erased | entity moves are a tooling operation rulekit never performs |
 | `MVK_ENTITY_MOVE_IN_A12_MODEL_ERRORTEXT` | erased | entity moves are a tooling operation rulekit never performs |
@@ -102,7 +102,7 @@ Caveats that hold across all four paths:
 | `MVK_INVALID_ROOT_GROUP_CONSTR` | erased | H-model form constructs are rejected in A12 models and have no rulekit surface — legacy-only |
 | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` | pre-checked | `EnumRef.in/notIn` check every value against the enum domain (locked: `dsl.operators.ValueListConditionTest`) |
 | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_CATEGORY` | kernel-delegated | law: a constant compared under category access must be a valid value of that category — model data, F4 arbitrates |
-| `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY` | pre-checked | the `Dsl` enum value-list quantifiers check every value against every listed field's domain |
+| `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY` | pre-checked | the `Dsl` enum value-list quantifiers admit each literal against the **union** of the selected members' domains — a direct reference's stored values plus a category projection's category values, not their intersection (locked: `dsl.operators.EnumValueListUnionTest`, `validate.laws.EnumValueListUnionLawsTest`) |
 | `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` | pre-checked | `EnumRef.is`/`CategoryRef.is` validate against the model domain |
 | `MVK_INVALID_SUPPRESSED_WARNING` | kernel-delegated | `@SuppressWarning(NAME)` supports exactly one warning — `MVK_INVALID_COMPARE_DEC_PLACES` (the equality scale gate's escape hatch); any other name is rejected. Quirk: the rejection surfaces the *attempted* name as the diagnostic code, this code's text arrives as the message. rulekit never authors the directive (probe-verified 2026-06-10; locked: `validate.laws.DirectiveLawsTest`) |
 | `MVK_INVALID_TABLE_ENUM` | erased | table-backed (dynamic) enums are not DM-JSON-serializable (KERNEL-FINDINGS §8) — no loadable model can carry one |
@@ -159,7 +159,7 @@ Caveats that hold across all four paths:
 | `MVK_NUMBER_AND_NON_NUMBER` | pre-checked | `CountAggregate` NumberOfDifferentValues homogeneity check |
 | `MVK_ONLY_CONSTANTS_USED` | kernel-delegated | law: date-validity conditions must reference at least one field — all-constant shapes are pointless and rejected by F4 |
 | `MVK_ONLY_ENUMS_ALLOWED` | erased | same §8 fact — un-buildable construct |
-| `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` | erased | `BoolRef`/`ConfirmRef` offer no `in`/`notIn` (locked: `validate.laws.ValueListLawsTest` + N7 `FieldValueIncludedInValueList` invalidExample) |
+| `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` | erased / pre-checked | `BoolRef`/`ConfirmRef` offer no `in`/`notIn`; the entity-valued value-list quantifier rejects an operand outside String/Enumeration/Number (locked: `validate.laws.ValueListLawsTest`, `dsl.operators.EnumValueListUnionTest` + N7 `FieldValueIncludedInValueList` invalidExample) |
 | `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED` | pre-checked | `CountAggregate` NumberOfDifferentValues rejects boolean/confirm operands |
 | `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED_NO_FIELD` | kernel-delegated | dormant — no firing site found in kernel 30.8.1; nothing to pre-check |
 | `MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED` | kernel-delegated | law: `NumberOfDifferentValues` operands restricted to string/enum/number/date kinds — F4 arbitrates |
@@ -199,7 +199,7 @@ Caveats that hold across all four paths:
 | `MVK_TOO_MANY_DIV_FOR_CALC` | renderer-preserved + kernel-delegated | exact plain-region law: grouping/add/sub/power reset and expose zero; multiplication/division combine open child contributions and division adds one. The typed renderer inserts braces to preserve the AST's fresh regions; operation-valued wrappers remain unclosed and F4-arbitrated |
 | `MVK_TOO_MANY_PARENT_GROUPS` | erased | the kernel-relative `../` form is computed from real handle paths — over-walking the hierarchy is unrepresentable |
 | `MVK_TOO_MANY_POW_FOR_CALC` | renderer-preserved + kernel-delegated | exact law: reject a power whose direct left operand is an ungrouped power (`a ^ b ^ c` in the left-associative grammar); the typed renderer groups either nested side to preserve the authored AST, while raw authoring remains F4-arbitrated |
-| `MVK_VARYING_TYPES_NOT_ALLOWED` | erased | the `Dsl` value-list quantifiers take all-`StringRef` or all-`EnumRef` lists (locked: `validate.laws.ValueListLawsTest` + N7 `AtLeastOneFieldValueIncludedInValueList` invalidExample) |
+| `MVK_VARYING_TYPES_NOT_ALLOWED` | erased / pre-checked | the literal value-list quantifiers take a homogeneous typed list (all-`StringRef`, or `EnumListRef` members — direct or category — sharing the enum base); the entity-valued form checks both sides share one base kind (locked: `validate.laws.ValueListLawsTest`, `dsl.operators.EnumValueListUnionTest`, `validate.laws.EnumValueListUnionLawsTest` + N7 invalidExample) |
 | `MVK_WILDCARDS_REQUIRED` | erased | `having` is offered only by `FieldListRef` (a starred list), never by plain `FieldRef` |
 | `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` | kernel-delegated | law: the unrestricted star must sit at the lowest repeatable level — path shapes from refs normally satisfy it, F4 arbitrates |
 | `MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED` | kernel-delegated | law: only the lowest repeatable level may carry the star — F4 arbitrates |

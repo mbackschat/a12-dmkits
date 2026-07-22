@@ -97,7 +97,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr;
+import io.github.mbackschat.a12.dm.rulekit.dsl.EnumListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand;
@@ -511,8 +513,11 @@ final class ConditionConverter {
                     };
                 }
                 case ENUMERATION -> {
-                    EnumRef[] r = paths.stream().map(model::enumOf).toArray(EnumRef[]::new);
-                    EnumRef[] rest = Arrays.copyOfRange(r, 1, r.length);
+                    // preserve each member's exact projection: a direct enum reference vs a category
+                    // access ([field -> Cat]) are distinct members, and literals ride the union of their
+                    // domains (SPEC-2026-07-22-05) — so build EnumListRefs off the ENTITIES, not the paths.
+                    EnumListRef[] r = entities.stream().map(this::enumListRef).toArray(EnumListRef[]::new);
+                    EnumListRef[] rest = Arrays.copyOfRange(r, 1, r.length);
                     yield switch (name) {
                         case AtLeastOneFieldValueIncludedInValueList ->
                                 Dsl.atLeastOneFieldValueIncludedInValueList(values, r[0], rest);
@@ -554,9 +559,16 @@ final class ConditionConverter {
         if (valueEntities.isEmpty()) {
             throw unsupported("entity+value-list with neither constant nor entity values", node);
         }
-        FieldOperand[] f = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
-        FieldOperand[] rest = Arrays.copyOfRange(f, 1, f.length);
-        List<FieldOperand> valueFields = valueEntities.stream().map(this::toFieldOperand).toList();
+        // date-range overlap carries no category and needs plain FieldOperands (its Dsl factory's shape)
+        if (name == EntityListAndValueListConditionName.AtLeastOneDateRangeOverlaps) {
+            FieldOperand[] f = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
+            FieldOperand[] vf = valueEntities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
+            return Dsl.atLeastOneDateRangeOverlaps(f[0], vf[0], Arrays.copyOfRange(vf, 1, vf.length));
+        }
+        // value-list membership: both sides may carry enum category projections — retain them exactly.
+        ValueListOperand[] f = entities.stream().map(this::toValueListOperand).toArray(ValueListOperand[]::new);
+        ValueListOperand[] rest = Arrays.copyOfRange(f, 1, f.length);
+        List<ValueListOperand> valueFields = valueEntities.stream().map(this::toValueListOperand).toList();
         return switch (name) {
             case AtLeastOneFieldValueIncludedInValueList ->
                     Dsl.atLeastOneFieldValueIncludedInValueList(valueFields, f[0], rest);
@@ -564,10 +576,6 @@ final class ConditionConverter {
                     Dsl.noFieldValueIncludedInValueList(valueFields, f[0], rest);
             case NotAllFieldValuesIncludedInValueList ->
                     Dsl.notAllFieldValuesIncludedInValueList(valueFields, f[0], rest);
-            case AtLeastOneDateRangeOverlaps -> {
-                FieldOperand[] vf = valueFields.toArray(FieldOperand[]::new);
-                yield Dsl.atLeastOneDateRangeOverlaps(f[0], vf[0], Arrays.copyOfRange(vf, 1, vf.length));
-            }
             default -> throw unsupported("entity+value-list condition " + name, node);
         };
     }
@@ -595,6 +603,33 @@ final class ConditionConverter {
             op = (op instanceof FieldListRef list) ? list.outer() : ((FieldRef) op).outer();
         }
         return op;
+    }
+
+    /**
+     * A value-list quantifier member — like {@link #toFieldOperand}, but preserving an enum category
+     * projection ({@code [field -> Cat]}) as an {@link EnumCategoryAccess} rather than erasing it to the
+     * bare field (SPEC-2026-07-22-05). Category projections ride on {@code getCategoryName()}.
+     */
+    private ValueListOperand toValueListOperand(IEntityId entity) {
+        String category = entity.getCategoryName();
+        if (category != null && !category.isEmpty()) {
+            CategoryRef cat = model.enumOf(entity.getFullName()).category(category);
+            return (entity.isOuter() ? cat.outer() : cat).listOperand();
+        }
+        return toFieldOperand(entity);
+    }
+
+    /** An enum-list quantifier member (literal value-list side) — a direct {@link EnumRef} or, when the
+     *  entity carries {@code getCategoryName()}, a {@link CategoryRef} projection; the union of their
+     *  domains admits the literals. */
+    private EnumListRef enumListRef(IEntityId entity) {
+        EnumRef enumRef = model.enumOf(entity.getFullName());
+        String category = entity.getCategoryName();
+        if (category == null || category.isEmpty()) {
+            return entity.isOuter() ? enumRef.outer() : enumRef;
+        }
+        CategoryRef cat = enumRef.category(category);
+        return entity.isOuter() ? cat.outer() : cat;
     }
 
     /** The single value kind shared by every field at {@code paths}, or fail if they disagree / are unknown. */

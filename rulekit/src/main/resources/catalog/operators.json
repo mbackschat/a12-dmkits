@@ -1082,15 +1082,19 @@
     "opposite": ["NoFieldValueIncludedInValueList"],
     "kind": "predicate",
     "keywords": { "en": "AtLeastOneFieldValueIncludedInValueList", "de": "MindestensEinFeldWertInWerteListe" },
-    "operands": [ { "type": "homogeneous-field-list" }, { "type": "literal-list" } ],
+    "operands": [ { "type": "homogeneous-field-list", "note": "for enums a member may be a direct reference OR a category projection [field -> Cat]" }, { "type": "literal-list" } ],
     "returns": "boolean",
     "meaning": "True iff at least one of the listed fields holds one of the listed values.",
     "constraints": [
       "syntax: Name(f1, f2 In v1, v2) — the In separator is language-independent",
-      "all listed fields must share one type (MVK_VARYING_TYPES_NOT_ALLOWED)",
-      "values are string literals (or field references); for enums each value must be in the domain"
+      "all listed fields must share one base type (MVK_VARYING_TYPES_NOT_ALLOWED); no exact reference may repeat (MVK_DUPLICATE_PARAM)",
+      "for enums each literal must be in the UNION of the selected members' domains (a direct reference's stored values plus a category projection's category values), NOT in every one (MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY)",
+      "a value-side field list makes it entity-valued: both sides share one base type, no reference repeats across the combined lists, and enum-domain containment is NOT required",
+      "values may also be string literals or field references"
     ],
-    "gotchas": [  ],
+    "gotchas": [
+      { "text": "literals ride the UNION of the selected enum/category domains — a value present in only ONE listed enumeration is legal (it is NOT an intersection); a direct reference and a [field -> Cat] category projection on the SAME field are distinct members", "kind": "SURPRISE", "seeAlso": ["EnumCategory", "NoFieldValueIncludedInValueList"] }
+    ],
     "validExample": { "dsl": "AtLeastOneFieldValueIncludedInValueList(ShippingAddress/Street, BillingAddress/PostalCode In \"unknown\", \"n/a\")", "note": "true when any address field carries a placeholder value" },
     "invalidExample": { "dsl": "AtLeastOneFieldValueIncludedInValueList(CustomerName, Quantity In \"x\")", "error": "MVK_VARYING_TYPES_NOT_ALLOWED", "fix": "list only same-type fields — here a string and a number field are mixed" },
     "semantics": {
@@ -1147,13 +1151,15 @@
     "opposite": ["AtLeastOneFieldValueIncludedInValueList"],
     "kind": "predicate",
     "keywords": { "en": "NoFieldValueIncludedInValueList", "de": "KeinFeldWertInWerteListe" },
-    "operands": [ { "type": "homogeneous-field-list" }, { "type": "literal-list" } ],
+    "operands": [ { "type": "homogeneous-field-list", "note": "for enums a member may be a direct reference OR a category projection [field -> Cat]" }, { "type": "literal-list" } ],
     "returns": "boolean",
     "meaning": "True iff none of the listed fields holds any of the listed values.",
     "constraints": [
-      "syntax and slot rules as AtLeastOneFieldValueIncludedInValueList"
+      "syntax and slot rules as AtLeastOneFieldValueIncludedInValueList (union enum admission, category projections, exact-duplicate rejection, entity-valued base-kind gate)"
     ],
-    "gotchas": [  ],
+    "gotchas": [
+      { "text": "unlike the scalar FieldValueNotIncludedInValueList (a one-subject specialization that does NOT fire on an empty subject), the multi-field No FIRES when nothing is filled; an UNKNOWN fields cell OR values member poisons it", "kind": "SURPRISE", "seeAlso": ["FieldValueNotIncludedInValueList", "NotAllFieldValuesIncludedInValueList", "EnumCategory"] }
+    ],
     "validExample": { "dsl": "NoFieldValueIncludedInValueList(CustomerName, ProductCode In \"test\", \"demo\")", "note": "true when no test placeholders are present" },
     "semantics": {
       "emptyOperand": [
@@ -1209,13 +1215,15 @@
     "dslEntry": ["notAllFieldValuesIncludedInValueList"],
     "kind": "predicate",
     "keywords": { "en": "NotAllFieldValuesIncludedInValueList", "de": "NichtAlleFeldWerteInWerteListe" },
-    "operands": [ { "type": "homogeneous-field-list" }, { "type": "literal-list" } ],
+    "operands": [ { "type": "homogeneous-field-list", "note": "for enums a member may be a direct reference OR a category projection [field -> Cat]" }, { "type": "literal-list" } ],
     "returns": "boolean",
     "meaning": "True iff at least one of the listed fields holds a value outside the listed values.",
     "constraints": [
-      "syntax and slot rules as AtLeastOneFieldValueIncludedInValueList"
+      "syntax and slot rules as AtLeastOneFieldValueIncludedInValueList (union enum admission, category projections, exact-duplicate rejection, entity-valued base-kind gate)"
     ],
-    "gotchas": [  ],
+    "gotchas": [
+      { "text": "needs a FILLED fields cell to fire; an UNKNOWN VALUES member poisons it, but an UNKNOWN FIELDS cell is merely skipped — the No-vs-NotAll asymmetry", "kind": "SURPRISE", "seeAlso": ["NoFieldValueIncludedInValueList", "EnumCategory"] }
+    ],
     "validExample": { "dsl": "NotAllFieldValuesIncludedInValueList(CustomerName, ProductCode In \"a\", \"b\")", "note": "true unless every listed field's value is in the list" },
     "semantics": {
       "emptyOperand": [

@@ -60,6 +60,22 @@ private fun Interpreter.vlqSide(entries: List<Expr>): VlqSide {
             Tri.FALSE -> out.anyEmpty = true
             Tri.UNKNOWN -> out.anyUnknown = true
         }
+        // An enum CATEGORY projection ([field -> Cat]) is a per-cell operand, NOT a literal: an empty enum
+        // is an EMPTY cell (drives OMISSION for `No`, not a present Unknown — both kernel strategies), an
+        // out-of-domain/malformed enum is UNKNOWN, and a filled enum contributes its (many-to-one) category
+        // value. Presence is the UNDERLYING enum field's three-way presence ([filledTri] on [Expr.EnumCategory.path]
+        // — [pathOf] rejects a category node). (SPEC-2026-07-22-05; the kernel's `keinFeldWertInWerteListe` empty-cell auslassung.)
+        is Expr.EnumCategory -> when {
+            outerUnknown(e) -> out.anyUnknown = true
+            else -> when (filledTri(ctxOf(e), e.path)) {
+                Tri.TRUE -> when (val v = evalExpr(e)) {
+                    is Val.Unknown -> out.anyUnknown = true
+                    else -> out.present += v
+                }
+                Tri.FALSE -> out.anyEmpty = true
+                Tri.UNKNOWN -> out.anyUnknown = true
+            }
+        }
         else -> out.present += evalExpr(e)   // a literal member (never empty/unknown)
     }
     return out

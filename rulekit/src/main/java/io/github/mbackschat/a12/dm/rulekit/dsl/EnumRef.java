@@ -11,11 +11,23 @@ import java.util.Map;
  * ({@code [field -> Category]}). Obtain from {@link BoundModel#enumOf(String)}.
  */
 public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, List<String>> categories,
-        boolean correlated) {
+        boolean correlated) implements EnumListRef {
 
     public EnumRef {
         allowedValues = List.copyOf(allowedValues);
         categories = Map.copyOf(categories);
+    }
+
+    // --- EnumListRef: a direct enum reference contributes its stored values to a quantifier's union ---
+
+    @Override
+    public ValueListOperand listOperand() {
+        return correlated ? field.outer() : field;
+    }
+
+    @Override
+    public List<String> admissibleValues() {
+        return allowedValues;
     }
 
     public EnumRef(FieldRef field, List<String> allowedValues, Map<String, List<String>> categories) {

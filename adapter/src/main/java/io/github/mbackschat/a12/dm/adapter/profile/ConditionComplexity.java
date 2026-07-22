@@ -349,9 +349,14 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
             };
         }
 
-        /** A list operand is one node; a filtered ({@code $}) list also carries a Having condition subtree. */
-        private int operandDepth(FieldOperand operand) {
+        /** A list operand is one node; a category projection contributes its operator; a filtered ({@code $})
+         *  list also carries a Having condition subtree. Accepts the wider {@link ValueListOperand}. */
+        private int operandDepth(ValueListOperand operand) {
             nodeCount++;
+            if (operand instanceof EnumCategoryAccess c) {
+                op(c.operatorId());                              // [field -> Cat] as a value-list member
+                return 1;
+            }
             if (operand instanceof FieldListRef list) {
                 collectionPaths.add(list.field().path());
                 maxStarSegments = Math.max(maxStarSegments, list.flattened().size());
@@ -367,9 +372,9 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
             return 1;
         }
 
-        private int maxOperandDepth(java.util.List<FieldOperand> operands) {
+        private int maxOperandDepth(java.util.List<? extends ValueListOperand> operands) {
             int max = 0;
-            for (FieldOperand o : operands) {
+            for (ValueListOperand o : operands) {
                 max = Math.max(max, operandDepth(o));
             }
             return max;

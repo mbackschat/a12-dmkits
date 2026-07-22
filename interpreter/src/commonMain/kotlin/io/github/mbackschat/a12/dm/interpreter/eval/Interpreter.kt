@@ -538,7 +538,7 @@ class Interpreter(
      * `FieldFilled(malformedQty) And …` does NOT fire (the And goes UNKNOWN), matching the kernel — a presence
      * check on a malformed field is not-check-relevant even though it reads no value. (KERNEL-FINDINGS §3.)
      */
-    private fun filledTri(c: EvalContext, path: String): Tri = when {
+    internal fun filledTri(c: EvalContext, path: String): Tri = when {
         c.presenceUnknown(path) -> Tri.UNKNOWN   // presence itself is 3VL (invalid parallel index) — before filled
         // COMPUTE mode: a presence check READS the cell — an invalid one poisons (IF85), row-correct via the
         // context's own cellState (a `Having` filter row judges ITS row's cell, not the computation's).

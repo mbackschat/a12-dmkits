@@ -197,8 +197,10 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
         }
     }
 
-    /** A list operand contributes its field path plus — for a filtered list — its Having filter's refs. */
-    private static void collectOperand(FieldOperand op, Set<String> fields, Set<String> groups) {
+    /** A list operand contributes its field path (a category projection → its underlying enum field) plus —
+     *  for a filtered list — its Having filter's refs. Accepts the wider {@link ValueListOperand} so an enum
+     *  category projection in a value-list quantifier is collected too. */
+    private static void collectOperand(ValueListOperand op, Set<String> fields, Set<String> groups) {
         fields.add(op.fieldPath());
         if (op instanceof FieldListRef list) {
             list.filter().ifPresent(f -> collect(f, fields, groups));

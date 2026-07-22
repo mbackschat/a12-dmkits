@@ -620,9 +620,10 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
   public abstract io.github.mbackschat.a12.dm.core.ValueKind kind()
 
-public record io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef
+public record io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef implements io.github.mbackschat.a12.dm.rulekit.dsl.EnumListRef
   public CategoryRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.lang.String, java.util.List<java.lang.String>)
   public CategoryRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.lang.String, java.util.List<java.lang.String>, boolean)
+  public java.util.List<java.lang.String> admissibleValues()
   public boolean correlated()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition eq(java.lang.String)
@@ -633,6 +634,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition is(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isNot(io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isNot(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand listOperand()
   public java.lang.String name()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(java.lang.String)
@@ -1148,7 +1150,9 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldValueIncludedInValueList(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand>, io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldValueIncludedInValueList(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.EnumListRef, io.github.mbackschat.a12.dm.rulekit.dsl.EnumListRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef, io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.StringRef, io.github.mbackschat.a12.dm.rulekit.dsl.StringRef[])
@@ -1235,14 +1239,18 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldValueIncludedInValueList(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand>, io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldValueIncludedInValueList(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.EnumListRef, io.github.mbackschat.a12.dm.rulekit.dsl.EnumListRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef, io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.StringRef, io.github.mbackschat.a12.dm.rulekit.dsl.StringRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noGroupFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noGroupFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noGroupFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllFieldValuesIncludedInValueList(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand>, io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllFieldValuesIncludedInValueList(java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllFieldValuesIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.EnumListRef, io.github.mbackschat.a12.dm.rulekit.dsl.EnumListRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllFieldValuesIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef, io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllFieldValuesIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllFieldValuesIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.StringRef, io.github.mbackschat.a12.dm.rulekit.dsl.StringRef[])
@@ -1329,16 +1337,18 @@ public static record io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer.Rendere
   public java.lang.String text()
   public final java.lang.String toString()
 
-public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation, io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand
   public EnumCategoryAccess(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.lang.String)
   public EnumCategoryAccess(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.lang.String, boolean)
   public java.lang.String category()
   public final boolean equals(java.lang.Object)
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
+  public java.lang.String fieldPath()
   public final int hashCode()
   public io.github.mbackschat.a12.dm.core.ValueKind kind()
   public java.lang.String operatorId()
   public boolean outer()
+  public java.lang.String renderedPath()
   public final java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr
@@ -1360,9 +1370,14 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(java.lang.String)
   public final java.lang.String toString()
 
-public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.EnumListRef
+  public abstract java.util.List<java.lang.String> admissibleValues()
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand listOperand()
+
+public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef implements io.github.mbackschat.a12.dm.rulekit.dsl.EnumListRef
   public EnumRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.List<java.lang.String>, java.util.Map<java.lang.String, java.util.List<java.lang.String>>)
   public EnumRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.List<java.lang.String>, java.util.Map<java.lang.String, java.util.List<java.lang.String>>, boolean)
+  public java.util.List<java.lang.String> admissibleValues()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition agreesWith(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
   public java.util.List<java.lang.String> allowedValues()
   public java.util.Map<java.lang.String, java.util.List<java.lang.String>> categories()
@@ -1384,6 +1399,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isNot(io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isNot(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition isNot(java.lang.String)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand listOperand()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition ne(java.lang.String)
@@ -1426,14 +1442,14 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo
   public java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListEntityListCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-  public FieldListEntityListCondition(io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
+  public FieldListEntityListCondition(io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand>)
   public final boolean equals(java.lang.Object)
-  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand> fields()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand> fields()
   public final int hashCode()
   public java.lang.String operatorId()
   public io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier quantifier()
   public final java.lang.String toString()
-  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand> valueFields()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand> valueFields()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListPredicate implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
   public FieldListPredicate(io.github.mbackschat.a12.dm.rulekit.dsl.Quantifier, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
@@ -1462,19 +1478,16 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef implements io
   public final java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldListValueListCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
-  public FieldListValueListCondition(io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation>)
+  public FieldListValueListCondition(io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand>, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation>)
   public final boolean equals(java.lang.Object)
-  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand> fields()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand> fields()
   public final int hashCode()
   public java.lang.String operatorId()
   public io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier quantifier()
   public final java.lang.String toString()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation> values()
 
-public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
-  public abstract java.lang.String fieldPath()
-  public abstract io.github.mbackschat.a12.dm.core.ValueKind kind()
-  public abstract java.lang.String renderedPath()
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand extends io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
   public FieldPresenceCondition(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, boolean)
@@ -2236,6 +2249,11 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.ValueListCondition impleme
   public java.lang.String operatorId()
   public final java.lang.String toString()
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation> values()
+
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand
+  public abstract java.lang.String fieldPath()
+  public abstract io.github.mbackschat.a12.dm.core.ValueKind kind()
+  public abstract java.lang.String renderedPath()
 
 public enum io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier
   public static final io.github.mbackschat.a12.dm.rulekit.dsl.ValueListQuantifier AT_LEAST_ONE_DATE_RANGE_OVERLAPS

@@ -469,12 +469,15 @@ The direct numeric date-component family is `DayFromDate`, `MonthFromDate`, `Qua
 
 `AtLeastOne` / `No` / `NotAll` `…FieldValue(s)IncludedInValueList(f1, f2 In v1, …)` expand **both** sides per cell (a starred entry contributes one cell per instantiated row) and classify each by the three-way state — filled / empty / not-check-relevant (UNKNOWN, [§3](#3-formal-errors-and-the-unknown-state)):
 
+**Admission (authoring).** For a literal value list over Enumerations, each literal must be in the **union** of the selected members' projected domains — a *direct* reference contributes its stored values, a *category* access `[field -> Cat]` contributes that category's values — and need **not** be in every member. A member may itself be a category projection, and a direct reference and a `[field -> Cat]` reference on the **same** field are **distinct** members; no exact reference may repeat. When the value list is itself a **field list** (entity-valued), both sides share one base type (String/Enumeration/Number) and carry no duplicate reference across the combined lists, but enum-domain **containment is not required**.
+
 - **`AtLeastOne`** fires iff some filled cell's value is in the set; empty and UNKNOWN cells and members are skipped outright; an empty value *set* → no fire. Fired polarity VALUE.
 - **`No`** fires iff no filled cell's value is in the set — including when nothing is filled at all (the sole member that can fire empty); an UNKNOWN fields-cell **or** values member **poisons** it (no fire). Fired polarity OMISSION on any empty fields-cell, un-instantiated declared tail, or empty values member — else VALUE.
 - **`NotAll`** needs a filled fields-cell and fires iff some filled cell's value is *not* in the set; an UNKNOWN values member poisons, an UNKNOWN fields-cell is merely skipped — the `No`-vs-`NotAll` asymmetry; OMISSION only on the values side's account.
 - An empty values **member** contributes nothing to the set (never a substituted `0`) but flags a fired `No`/`NotAll` OMISSION. A `Having` filter is accepted on either side, drops rows **before** the per-cell classification, and escalates a fired result to OMISSION unconditionally ([§12](#12-the-validation-model)).
+- A **category projection** cell takes the underlying enum field's three-way presence: an **empty** enum via a category hop is an EMPTY cell (a fired `No` is OMISSION, and it does not poison), an out-of-domain enum is UNKNOWN, and a filled enum contributes its many-to-one category value.
 
-*(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §8 / IF60 + IF74, locked by `ValueListQuantifierDiffTest` + `ValueListQuantifierStarDiffTest` + `EntityValueListDiffTest` + `ValueListQuantifierHavingDiffTest`)*
+*(verified: [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §8 / IF60 + IF74 + SPEC-2026-07-22-05, locked by `ValueListQuantifierDiffTest` + `ValueListQuantifierStarDiffTest` + `EntityValueListDiffTest` + `ValueListQuantifierHavingDiffTest` + `EnumValueListUnionDiffTest` + `EnumValueListUnionLawsTest` + `EnumCategoryValueListReadTest` + `EnumCategoryValueListEvalTest`)*
 
 *Reference: Operators and language constructs → Comparison operations → Comparing strings and enumerations; The Field value operator.*
 

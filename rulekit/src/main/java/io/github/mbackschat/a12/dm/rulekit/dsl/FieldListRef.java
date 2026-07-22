@@ -76,7 +76,7 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
         }
     }
 
-    private static void rejectNestedHaving(FieldOperand op) {
+    private static void rejectNestedHaving(ValueListOperand op) {
         if (op instanceof FieldListRef list && list.filter().isPresent()) {
             forbidden("a nested Having");
         }
