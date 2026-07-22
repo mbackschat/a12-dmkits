@@ -495,6 +495,7 @@ private fun Interpreter.predType(p: Cond.Pred): MsgType {
 
 private fun Interpreter.leafOmission(e: Expr): Boolean = when (e) {
     is Expr.Field -> !ctx.filled(e.path)
+    is Expr.EnumCategory -> !ctxOf(e).filled(e.path)
     // A reached `Having`-FILTERED star escalates a fired consumer to TRUE_AF unconditionally — the kernel's
     // filtered-iterator escalation (IF101/IF104). FirstFilledValue delegates to its ordered scan so a filter
     // on an unvisited later slot is excluded (IF184). An ordinary unfiltered star keeps [EvalContext.starOmission].

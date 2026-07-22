@@ -80,6 +80,32 @@ class ComputeResultChannelsLawsTest {
     }
 
     @Test
+    fun applicationUsesSourceRelativeClassificationsAgainstACompatibleDestination() {
+        val source = RuntimeLaws.doc().group("/LineItem", 1)
+            .field("/LineItem/Sku", "ACME-1", 1, 1)
+            .field("/LineItem/DisplaySku", "ACME-1", 1, 1) // successful but unchanged against SOURCE
+            .field("/LineItem/Label", "OLD", 1, 1)         // successful and changed against SOURCE
+            .field("/LineItem/GrossAmount", "10", 1, 1)
+            .field("/LineItem/Units", "4", 1, 1)
+        val destination = RuntimeLaws.doc().group("/LineItem", 1)
+            .field("/LineItem/DisplaySku", "DESTINATION", 1, 1)
+            .field("/LineItem/Label", "DESTINATION", 1, 1)
+        val probes = listOf(
+            RuntimeLaws.CellProbe("/LineItem/DisplaySku", listOf(1, 1)),
+            RuntimeLaws.CellProbe("/LineItem/Label", listOf(1, 1)),
+        )
+
+        assertEquals(
+            listOf(
+                "/LineItem/DisplaySku|presentValue|DESTINATION",
+                "/LineItem/Label|presentValue|ACME-1",
+            ),
+            RuntimeLaws.appliedStatesToDestination(model, source, destination, probes),
+            "applyTo consumes classifications fixed against the source: unchanged successes are not writes, changed ones are",
+        )
+    }
+
+    @Test
     fun anOperandDomainFailurePopulatesTheFormalOperandChannelAndFlipsNoErrorOccurred() {
         // Units 0 → RoundAccounting([GrossAmount] / 0, 2) is a domain failure: the UnitPrice target is invalid,
         // exposed as berechnungsWertFehler in getFormalErrorsInOperands, and its stale value is CLEARED — three

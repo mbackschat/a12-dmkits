@@ -620,7 +620,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
   public abstract io.github.mbackschat.a12.dm.core.ValueKind kind()
 
-public record io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef implements io.github.mbackschat.a12.dm.rulekit.dsl.EnumListRef
+public record io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef implements io.github.mbackschat.a12.dm.rulekit.dsl.EnumListRef, io.github.mbackschat.a12.dm.rulekit.dsl.NumericTextSource
   public CategoryRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.lang.String, java.util.List<java.lang.String>)
   public CategoryRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.lang.String, java.util.List<java.lang.String>, boolean)
   public java.util.List<java.lang.String> admissibleValues()
@@ -1194,6 +1194,8 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static java.lang.String fieldLabel(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition fieldNotFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public static java.lang.String fieldValue(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr fieldValueAsNumber(io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr fieldValueAsNumber(io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr fieldValueAsNumber(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr fieldValueAsString(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr fieldValueAsString(io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex)
@@ -1378,7 +1380,7 @@ public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.EnumListRef
   public abstract java.util.List<java.lang.String> admissibleValues()
   public abstract io.github.mbackschat.a12.dm.rulekit.dsl.ValueListOperand listOperand()
 
-public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef implements io.github.mbackschat.a12.dm.rulekit.dsl.EnumListRef
+public record io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef implements io.github.mbackschat.a12.dm.rulekit.dsl.EnumListRef, io.github.mbackschat.a12.dm.rulekit.dsl.NumericTextSource
   public EnumRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.List<java.lang.String>, java.util.Map<java.lang.String, java.util.List<java.lang.String>>)
   public EnumRef(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef, java.util.List<java.lang.String>, java.util.Map<java.lang.String, java.util.List<java.lang.String>>, boolean)
   public java.util.List<java.lang.String> admissibleValues()
@@ -1502,12 +1504,13 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition imp
   public java.lang.String operatorId()
   public final java.lang.String toString()
 
-public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef implements io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand
+public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef implements io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.NumericTextSource
   public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind)
   public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle)
   public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle, boolean)
   public boolean correlated()
   public final boolean equals(java.lang.Object)
+  public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
   public java.lang.String fieldPath()
   public io.github.mbackschat.a12.dm.rulekit.dsl.Condition filled()
   public final int hashCode()
@@ -1556,11 +1559,13 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue implements io.g
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsNumber implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
   public FieldValueAsNumber(io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef)
+  public FieldValueAsNumber(io.github.mbackschat.a12.dm.rulekit.dsl.NumericTextSource)
   public final boolean equals(java.lang.Object)
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
   public final int hashCode()
   public io.github.mbackschat.a12.dm.core.ValueKind kind()
   public java.lang.String operatorId()
+  public io.github.mbackschat.a12.dm.rulekit.dsl.NumericTextSource source()
   public final java.lang.String toString()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsString implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
@@ -1865,6 +1870,10 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef
   public io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndex semanticIndex(java.lang.String)
   public final java.lang.String toString()
   public io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue value()
+
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.NumericTextSource
+  public abstract boolean correlated()
+  public abstract io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef field()
 
 public record io.github.mbackschat.a12.dm.rulekit.dsl.OpListMath implements io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
   public OpListMath(io.github.mbackschat.a12.dm.rulekit.dsl.OpListMath.Op, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.Calculation>)

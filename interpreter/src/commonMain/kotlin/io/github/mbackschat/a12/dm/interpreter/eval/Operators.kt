@@ -154,8 +154,8 @@ enum class FunctionOp(val kernelName: String) {
     RANGE_AS_STRING("RangeAsString"),
     RANGE_AS_NUMBER("RangeAsNumber"),
     // `FieldValueAsString(numberField)` — a NUMBER field's RAW stored value as a string (no re-canonicalization);
-    // empty → `""`. `FieldValueAsNumber(stringOrNumericEnumField)` — the field's value parsed to a number; empty
-    // → `0` (kernel `feldWertAlsZahl`). KERNEL-FINDINGS family 4.
+    // empty → `""`. `FieldValueAsNumber(field | enum -> category)` parses the exact selected token through the
+    // kernel decimal grammar; empty → `0` (kernel `feldWertAlsZahl`). KERNEL-FINDINGS §5 family 4 / IF209.
     FIELD_VALUE_AS_STRING("FieldValueAsString"),
     FIELD_VALUE_AS_NUMBER("FieldValueAsNumber"),
     // `SumOfProducts(a*, b*)` — Σ aᵢ·bᵢ over two parallel field lists of the SAME repeatable group, paired

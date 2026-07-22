@@ -11,7 +11,7 @@ import java.util.Map;
  * ({@code [field -> Category]}). Obtain from {@link BoundModel#enumOf(String)}.
  */
 public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, List<String>> categories,
-        boolean correlated) implements EnumListRef {
+        boolean correlated) implements EnumListRef, NumericTextSource {
 
     public EnumRef {
         allowedValues = List.copyOf(allowedValues);

@@ -393,7 +393,7 @@ public final class DslRenderer {
             case IndexedFieldValueAsString c -> keyword(c.operatorId()) + "(" + indexBody(c.index()) + ")";
             case RangeAsString c -> keyword(c.operatorId()) + "(" + path(c.field().path())
                     + ", " + c.start() + ", " + c.end() + ")";
-            case FieldValueAsNumber c -> keyword(c.operatorId()) + "(" + path(c.field().path()) + ")";
+            case FieldValueAsNumber c -> keyword(c.operatorId()) + "(" + numericTextSource(c.source()) + ")";
             case RangeAsNumber c -> keyword(c.operatorId()) + "(" + path(c.field().path())
                     + ", " + c.start() + ", " + c.end() + ")";
             case OpListMath m -> keyword(m.operatorId()) + "("
@@ -418,6 +418,15 @@ public final class DslRenderer {
                     + r.decimalPlaces().map(places -> ", " + places).orElse("") + ")";
             case DateRangeBound b -> keyword(b.operatorId()) + "(" + renderArg(b.source()) + ")";
             case RootGroupCount c -> keyword(c.operatorId()) + "(" + path(c.rootGroup().path()) + "*)";
+        };
+    }
+
+    private String numericTextSource(NumericTextSource source) {
+        return switch (source) {
+            case FieldRef field -> (field.correlated() ? "$" : "") + path(field.path());
+            case EnumRef field -> (field.correlated() ? "$" : "") + path(field.field().path());
+            case CategoryRef category -> (category.correlated() ? "$" : "") + path(category.field().path())
+                    + " " + keyword("EnumCategory") + " " + category.name();
         };
     }
 

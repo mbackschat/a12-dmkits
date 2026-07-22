@@ -14,13 +14,14 @@ import org.junit.jupiter.api.Test
  * SPEC-2026-07-22-12 — before scheduling, `compute()` eagerly formally-validates every non-computed OPERAND
  * field, WITHOUT globally aborting (kernel `IDocumentRtService.compute` javadoc: an invalid value is reported, a
  * required-empty is silent, a bad index is reported; then "regardless of the formal errors, computations will be
- * performed", with dependents of invalid fields skipped). This reuses the entry-08 five-channel oracle
+ * performed"). This reuses the entry-08 five-channel oracle
  * (`RuntimeLaws.resultChannels`) — no new harness.
  *
  * The eager operand-error INVENTORY is the kernel result-envelope channel `getFormalErrorsInOperands`; the
- * report-all interpreter does not surface that list, but it matches the downstream outcomes — a dependent of an
- * invalid operand is skipped, unrelated computations still run, and an erroneous computed instance is ERRORED
- * (never also CLEARED). The distinct five channels themselves are locked by `ComputeResultChannelsLawsTest`.
+ * report-all interpreter does not surface that list. The focused direct-dependency witness below observes a
+ * CLEARED consumer while an unrelated computation still runs; it does not turn the eager inventory into a general
+ * scheduling claim. An erroneous computed instance is ERRORED (never also CLEARED). The distinct five channels
+ * themselves are locked by `ComputeResultChannelsLawsTest`.
  */
 class ComputationEagerPrepassLawsTest {
 
@@ -37,7 +38,8 @@ class ComputationEagerPrepassLawsTest {
             "/Cart", "FeeDoubledComp", "../FeeDoubled", null,
             listOf(RuntimeLaws.CompAlt(null, "[Fee] * 2")))
         val doc = RuntimeLaws.doc().group("/Cart", 1)
-            .field("/Cart/Units", "abc", 1, 1).field("/Cart/PriceEach", "5", 1, 1).field("/Cart/Fee", "3", 1, 1)
+            .field("/Cart/Units", "abc", 1, 1).field("/Cart/PriceEach", "5", 1, 1)
+            .field("/Cart/LineTotal", "99", 1, 1).field("/Cart/Fee", "3", 1, 1)
 
         val channels = RuntimeLaws.resultChannels(model, doc)
         assertTrue(channels.formalErrorsInOperands().any { it.field().contains("Units") },
@@ -45,17 +47,45 @@ class ComputationEagerPrepassLawsTest {
         assertTrue(channels.withoutErrors().any { it.contains("FeeDoubled") },
             "an unrelated computation still runs — no global abort: ${channels.withoutErrors()}")
         assertFalse(channels.withoutErrors().any { it.contains("LineTotal") },
-            "the computation depending on the invalid operand is skipped: ${channels.withoutErrors()}")
+            "the direct consumer is absent from successful instances: ${channels.withoutErrors()}")
+        assertTrue(channels.cleared().any { it.contains("LineTotal") },
+            "this source-filled direct consumer is classified as CLEARED: ${channels.cleared()}")
         assertFalse(channels.noErrorOccurred(), "a formal operand error flips noErrorOccurred")
 
         // Interpreter parity: report-all, but continued processing + a single outcome per instance must match.
         val loaded = ModelLoader.load(model)
         val outcomes = DmInterpreter(loaded).compute(
             loaded.newDocument().group("/Cart", 1)
-                .field("/Cart/Units", "abc", 1, 1).field("/Cart/PriceEach", "5", 1, 1).field("/Cart/Fee", "3", 1, 1))
+                .field("/Cart/Units", "abc", 1, 1).field("/Cart/PriceEach", "5", 1, 1)
+                .field("/Cart/LineTotal", "99", 1, 1).field("/Cart/Fee", "3", 1, 1))
             .associate { it.path to it.outcome }
         assertEquals(ComputeOutcome.VALUE, outcomes["/Cart/FeeDoubled"], "interpreter still computes the unrelated field")
         assertEquals(ComputeOutcome.CLEARED, outcomes["/Cart/LineTotal"], "interpreter skips the dependent of the invalid operand")
+    }
+
+    @Test
+    fun emptyAndNonUniqueIndexOperandsAreReportedInThePrepass() {
+        val base = DocumentModelDraft.named("inventory-index").locale("en_US")
+            .rootGroup("Inventory") { root ->
+                root.group("Items") { items ->
+                    items.repeatable(20).stringField("Sku") { }.numberField("SkuLength") { it.fractionDigits(0, 0) }
+                        .indexField("Sku")
+                }
+            }.build().toJson()
+        val model = RuntimeLaws.withTieredComputation(base, "/Inventory/Items", "SkuLengthComp", "../SkuLength",
+            null, listOf(RuntimeLaws.CompAlt(null, "Length(Sku)")))
+
+        val empty = RuntimeLaws.resultChannels(model,
+            RuntimeLaws.doc().group("/Inventory", 1).group("/Inventory/Items", 1, 1))
+        assertTrue(empty.formalErrorsInOperands().any { it.code() == "mandatoryField" && it.field().contains("Sku") },
+            "an empty index operand is reported by the eager prepass: ${empty.formalErrorsInOperands()}")
+
+        val duplicate = RuntimeLaws.resultChannels(model,
+            RuntimeLaws.doc().group("/Inventory", 1)
+                .group("/Inventory/Items", 1, 1).field("/Inventory/Items/Sku", "A", 1, 1, 1)
+                .group("/Inventory/Items", 1, 2).field("/Inventory/Items/Sku", "A", 1, 2, 1))
+        assertTrue(duplicate.formalErrorsInOperands().any { it.code() == "uniqueIndex" && it.field().contains("Sku") },
+            "a non-unique index operand is reported by the eager prepass: ${duplicate.formalErrorsInOperands()}")
     }
 
     @Test

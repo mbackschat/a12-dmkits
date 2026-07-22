@@ -785,6 +785,16 @@ public final class Dsl {
         return new NumberExpr(new FieldValueAsNumber(field));
     }
 
+    /** {@code FieldValueAsNumber(enumRef)} — the enumeration's stored token coerced to a number. catalog:FieldValueAsNumber */
+    public static NumberExpr fieldValueAsNumber(EnumRef field) {
+        return new NumberExpr(new FieldValueAsNumber(field));
+    }
+
+    /** {@code FieldValueAsNumber(field -> category)} — the selected category token coerced to a number. catalog:FieldValueAsNumber */
+    public static NumberExpr fieldValueAsNumber(CategoryRef category) {
+        return new NumberExpr(new FieldValueAsNumber(category));
+    }
+
     /** {@code RangeAsNumber(field, start, end)} — a substring of a string field read as a number (non-numeric → 0). catalog:RangeAsNumber */
     public static NumberExpr rangeAsNumber(FieldRef field, int start, int end) {
         return new NumberExpr(new RangeAsNumber(field, start, end));

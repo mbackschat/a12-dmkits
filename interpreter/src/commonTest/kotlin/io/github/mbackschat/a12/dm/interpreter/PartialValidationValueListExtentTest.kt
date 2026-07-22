@@ -25,9 +25,9 @@ class PartialValidationValueListExtentTest {
         declaredReps = mapOf("/Order/Items" to 50),
     )
 
-    private fun fired(rawCond: String, rel: Set<RelevantEntity>): Int {
+    private fun fired(rawCond: String, rel: Set<RelevantEntity>, ack: String = "X"): Int {
         val m = model(rawCond)
-        val doc = m.newDocument().group("/Order", 1).field(ACK, "X", 1, 1)
+        val doc = m.newDocument().group("/Order", 1).field(ACK, ack, 1, 1)
             .group("/Order/Items", 1, 1).field(TAG, "C", 1, 1, 1)
             .group("/Order/Items", 1, 2).field(TAG, "D", 1, 2, 1)
         return DmInterpreter(m).validatePart(doc, rel).messages.count { it.code == "VLQ" }
@@ -35,6 +35,7 @@ class PartialValidationValueListExtentTest {
 
     private val wild = setOf(RelevantEntity.anyRep(ACK), RelevantEntity.anyRep(ITEMS))
     private val concrete = setOf(RelevantEntity.anyRep(ACK), RelevantEntity(ITEMS, listOf(0, 1)), RelevantEntity(ITEMS, listOf(0, 2)))
+    private val ancestor = setOf(RelevantEntity.anyRep("/Order"))
 
     @Test
     fun noFieldsSideStarFiresOnlyWithWildcardExtent() {
@@ -62,7 +63,16 @@ class PartialValidationValueListExtentTest {
         val notAll = "NotAllFieldValuesIncludedInValueList(/Order/Items*/Tag In \"C\")"   // C in, D out → holds, fields-side extent ignored
         assertEquals(fired(notAll, wild), fired(notAll, concrete), "NotAll ignores extent on the fields side")
         val atLeastOne = "AtLeastOneFieldValueIncludedInValueList(/Order/Items*/Tag In \"C\")"   // C ∈ {C} → holds
-        assertEquals(fired(atLeastOne, wild), fired(atLeastOne, concrete), "AtLeastOne ignores extent on either side")
+        assertEquals(fired(atLeastOne, wild), fired(atLeastOne, concrete), "AtLeastOne ignores fields-side extent")
+        val atLeastOneValues = "AtLeastOneFieldValueIncludedInValueList(/Order/Ack In /Order/Items*/Tag)"
+        assertEquals(fired(atLeastOneValues, wild, "C"), fired(atLeastOneValues, concrete, "C"),
+            "AtLeastOne ignores values-side extent")
+    }
+
+    @Test
+    fun relevantAncestorEstablishesWildcardExtent() {
+        val cond = "NoFieldValueIncludedInValueList(/Order/Items*/Tag In \"A\")"
+        assertEquals(1, fired(cond, ancestor), "a relevant ancestor supplies complete extent to its descendant star")
     }
 
     private companion object {

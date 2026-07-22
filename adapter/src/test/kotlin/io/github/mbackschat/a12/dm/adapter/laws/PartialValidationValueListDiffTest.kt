@@ -36,6 +36,9 @@ class PartialValidationValueListDiffTest {
     private val wildI = setOf(ackI, RelevantEntity.anyRep(ITEMS))
     private val concreteK = setOf(ackK, Relevant.of(ITEMS, 0, 1), Relevant.of(ITEMS, 0, 2))
     private val concreteI = setOf(ackI, RelevantEntity(ITEMS, listOf(0, 1)), RelevantEntity(ITEMS, listOf(0, 2)))
+    private val ancestorK = setOf(Relevant.of("/Order", 0))
+    private val ancestorI = setOf(RelevantEntity.anyRep("/Order"))
+    private val staticEngines = mutableMapOf<String, RuntimeLaws.JavaKernelEngine>()
 
     /** Fire set of the VLQ rule, asserted equal kernel-vs-interpreter; returns that set. The error field
      *  `Ack` is guarded in so it is referenced (MVK_ERROR_FIELD_NOT_REFERENCED otherwise); the `FieldFilled`
@@ -51,10 +54,13 @@ class PartialValidationValueListDiffTest {
             kDoc.group(ITEMS, 1, r).field(TAG, t, 1, r, 1)
             iDoc.group(ITEMS, 1, r).field(TAG, t, 1, r, 1)
         }
-        val k = RuntimeLaws.messagesPart(model, kDoc, kRel).map { it.code() }.filter { it == "VLQ" }.toSortedSet()
+        val dynamic = RuntimeLaws.messagesPart(model, kDoc, kRel).map { it.code() }.filter { it == "VLQ" }.toSortedSet()
+        val static = staticEngines.getOrPut(model) { RuntimeLaws.kernelJavaEngine(model) }
+            .messagesPart(kDoc, kRel).map { it.code() }.filter { it == "VLQ" }.toSortedSet()
         val i = DmInterpreter(def).validatePart(iDoc, iRel).messages.map { it.code }.filter { it == "VLQ" }.toSortedSet()
-        assertEquals(k, i, "$label — kernel=$k interp=$i")
-        return k
+        assertEquals(dynamic, static, "$label — dynamic-Groovy=$dynamic static-Java=$static")
+        assertEquals(dynamic, i, "$label — dynamic-Groovy=$dynamic interp=$i")
+        return dynamic
     }
 
     // ── No / NotAll(values) / No(values): extent-sensitive → suppressed under concrete-only relevance ─────
@@ -103,7 +109,21 @@ class PartialValidationValueListDiffTest {
         val wild = agree(cond, "x", listOf("C", "D"), wildK, wildI, "AtLeastOne, wildcard")
         val concrete = agree(cond, "x", listOf("C", "D"), concreteK, concreteI, "AtLeastOne, concrete")
         assertEquals(setOf("VLQ"), wild, "AtLeastOne fires")
-        assertEquals(wild, concrete, "AtLeastOne ignores extent on either side — concrete matches wildcard")
+        assertEquals(wild, concrete, "AtLeastOne ignores fields-side extent — concrete matches wildcard")
+
+        val valuesCond = "AtLeastOneFieldValueIncludedInValueList(/Order/Ack In /Order/Items*/Tag)"
+        val valuesWild = agree(valuesCond, "C", listOf("C", "D"), wildK, wildI, "AtLeastOne values-side, wildcard")
+        val valuesConcrete = agree(valuesCond, "C", listOf("C", "D"), concreteK, concreteI,
+            "AtLeastOne values-side, concrete")
+        assertEquals(setOf("VLQ"), valuesWild, "AtLeastOne(values) fires")
+        assertEquals(valuesWild, valuesConcrete, "AtLeastOne ignores values-side extent — concrete matches wildcard")
+    }
+
+    @Test
+    fun relevantAncestorEstablishesWildcardExtent() {
+        val cond = "NoFieldValueIncludedInValueList(/Order/Items*/Tag In \"A\")"
+        val ancestor = agree(cond, "x", listOf("C", "D"), ancestorK, ancestorI, "No fields-side, relevant ancestor")
+        assertEquals(setOf("VLQ"), ancestor, "a relevant ancestor supplies complete extent to its descendant star")
     }
 
     @Test

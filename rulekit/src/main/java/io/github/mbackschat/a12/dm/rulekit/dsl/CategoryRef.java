@@ -10,7 +10,7 @@ import java.util.List;
  * ({@code MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON}, verified) this handle erases.
  */
 public record CategoryRef(FieldRef field, String name, List<String> values, boolean correlated)
-        implements EnumListRef {
+        implements EnumListRef, NumericTextSource {
 
     public CategoryRef {
         values = List.copyOf(values);

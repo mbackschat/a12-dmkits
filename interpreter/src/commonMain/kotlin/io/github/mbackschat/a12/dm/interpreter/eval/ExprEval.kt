@@ -526,8 +526,9 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     // FieldValueAsString(ref): the RAW stored value as a string (empty → ""). Coercion to string; the ref
     // may also be a semantic index (the kernel resolves the one matched cell, then feldWertAlsString).
     FunctionOp.FIELD_VALUE_AS_STRING -> fieldValueAsString(f.args[0])
-    // FieldValueAsNumber(string/numeric-enum field): the value parsed to a number; empty → 0 (kernel feldWertAlsZahl).
-    FunctionOp.FIELD_VALUE_AS_NUMBER -> fieldValueAsNumber(pathOf(f.args[0]))
+    // FieldValueAsNumber(string/numeric-enum field or selected enum category): exact selected token → number;
+    // empty → 0 (kernel feldWertAlsZahl).
+    FunctionOp.FIELD_VALUE_AS_NUMBER -> fieldValueAsNumber(f.args[0])
     // SumOfProducts(a*, b*): Σ aᵢ·bᵢ paired row-by-row (empty → 0); any malformed element → suppressed.
     FunctionOp.SUM_OF_PRODUCTS -> sumOfProducts(f.args)
     // CurrentRepetition(group): the current row's 1-based index at that group's level (the last reps part).
@@ -643,13 +644,56 @@ private fun Interpreter.fieldValueAsString(arg: Expr): Val = when (arg) {
     }
 }
 
-/** `FieldValueAsNumber(field)` — the field's value parsed to a number; an EMPTY field reads as `0` (kernel
- *  `feldWertAlsZahl`), a formally-invalid one → Unknown. The field's values are compile-guaranteed numeric
- *  (a numeric-valued enum or a numeric string), so a filled value always parses. */
-private fun Interpreter.fieldValueAsNumber(path: String): Val {
+/** `FieldValueAsNumber(field | field -> category)` — the exact selected stored/category token parsed as a
+ *  decimal; an EMPTY field reads as `0` (kernel `feldWertAlsZahl`), and a formally-invalid read is unavailable
+ *  (or poisons a computation). Admission guarantees the selected domain obeys [fieldValueDecimalOrNull]. */
+private fun Interpreter.fieldValueAsNumber(source: Expr): Val {
+    val path = when (source) {
+        is Expr.Field -> source.path
+        is Expr.EnumCategory -> source.path
+        else -> throw UnsupportedConstructException(
+            "unsupported operand ${source::class.simpleName} in FieldValueAsNumber",
+        )
+    }
+    if (computeMode && ctxOf(source).cellState(path) == CellState.INVALID) throw PoisonedReadException(path)
     if (invalid(path)) return Val.Unknown
-    if (!ctx.filled(path)) return Val.Num(DEC_ZERO)
-    return ctx.displayValue(path)?.let { decOrNull(it) }?.let { Val.Num(it) } ?: Val.Unknown
+    if (!ctxOf(source).filled(path)) return Val.Num(DEC_ZERO)
+    val selected = when (source) {
+        is Expr.Field -> ctxOf(source).displayValue(path)
+        is Expr.EnumCategory -> (evalExpr(source) as? Val.Txt)?.v
+        else -> null
+    }
+    return selected?.let(::fieldValueDecimalOrNull)?.let { Val.Num(it) } ?: Val.Unknown
+}
+
+/** Kernel FieldValueAsNumber decimal grammar, normalized for cross-host parsing. Decimal digits are Unicode
+ *  decimal digits (the host Character.isDigit domain), while sign and point stay ASCII and positional. */
+private fun fieldValueDecimalOrNull(raw: String): Dec? {
+    if (raw.isEmpty()) return null
+    val normalized = StringBuilder(raw.length)
+    var at = 0
+    if (raw[0] == '-') {
+        normalized.append('-')
+        at++
+        if (at == raw.length) return null
+    }
+    var pointSeen = false
+    var digitCount = 0
+    while (at < raw.length) {
+        val ch = raw[at]
+        if (ch == '.') {
+            if (pointSeen || at == raw.lastIndex) return null
+            pointSeen = true
+            normalized.append(ch)
+        } else {
+            val digit = ch.digitToIntOrNull() ?: return null
+            normalized.append(('0'.code + digit).toChar())
+            digitCount++
+        }
+        at++
+    }
+    if (digitCount == 0) return null
+    return decOrNull(normalized.toString())
 }
 
 /**

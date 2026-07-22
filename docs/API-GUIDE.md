@@ -574,6 +574,16 @@ Condition unitPriceNeedsRounding = m.num("/Order/UnitPrice").ne(roundedUnitPrice
 
 Persisted explicit zero is semantically identical to omission and the kernel parse tree does not retain that lexical distinction, so typed read-back canonicalizes `RoundDown(expr, 0)` to `RoundDown(expr)` and `RoundDownValue(F, 0)` to `RoundDownValue(F)`. Positive arguments such as `2` remain explicit.
 
+**Category-based numeric coercion.** `FieldValueAsNumber` accepts either a direct field/enum or a typed enum category. The category form converts the category's selected token, not the stored enum token; the live kernel still validates the entire selected domain and derives its numeric scale:
+
+<!-- snippet: category-number-coercion -->
+```java
+// A category projection converts the selected category token, not the enum's stored token.
+NumberExpr multiplier = Dsl.fieldValueAsNumber(
+        m.enumOf("/Tariff/Band").category("Multiplier"));
+Condition premiumMultiplier = multiplier.ge("1.5");
+```
+
 **Presence over a semantic index.** `ref.semanticIndex(key)` is a dedicated handle for a semantic index (`[Field For key]`); `.filled()`/`.notFilled()` author its presence — rendered bare (no value brackets). Presence lives only on this handle, never on the `forIndex(...)` value expression, so the non-index misuse `sum(...).filled()` is a compile error rather than a runtime throw (finding 63, superseding finding 59):
 
 <!-- snippet: indexed-presence -->

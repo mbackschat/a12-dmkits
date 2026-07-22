@@ -134,7 +134,7 @@ Caveats that hold across all four paths:
 | `MVK_NO_BASE_YEAR` | kernel-delegated | law: the `BaseYear` constant requires a declared model base year — model data, F4 arbitrates |
 | `MVK_NO_BOOLY_ALLOWED` | kernel-delegated | law: `FirstFilledValue` forbids boolean/confirm operands (string/enum/number/date only) — F4 arbitrates |
 | `MVK_NO_CONST` | kernel-delegated | law: rounding/date-extraction sources must be fields, not constants — a literal `Calculation` operand is representable, F4 arbitrates |
-| `MVK_NO_CONVERT_IN_NUMBER` | kernel-delegated | law: `FieldValueAsNumber` requires every possible value (incl. enum/category values) to parse as a number within the digit budget — model data, F4 arbitrates |
+| `MVK_NO_CONVERT_IN_NUMBER` | kernel-delegated | law: `FieldValueAsNumber` requires String's exact value-validating `[0-9]+`/max-15 profile, or every token in the selected enum/category domain to satisfy the decimal grammar and 15-digit budget; F4 arbitrates (`FieldValueAsNumberDomainLawsTest`) |
 | `MVK_NO_DATE` | erased | date operations take `DateRef`/date expressions (`DateOperand`) — a non-date source is unrepresentable |
 | `MVK_NO_DATE_CONSTANT` | kernel-delegated | law: date extraction takes fields/expressions, not string literals — F4 arbitrates |
 | `MVK_NO_DATE_RANGE` | kernel-delegated | law: range-specific ops take date-range operands only — F4 arbitrates |

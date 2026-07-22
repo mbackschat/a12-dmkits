@@ -9,7 +9,8 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * read references remember their authored notation. Obtain handles from {@link BoundModel}
  * (always {@link PathStyle#CANONICAL}); the read converter constructs the hinted form.
  */
-public record FieldRef(String path, ValueKind kind, PathStyle styleHint, boolean correlated) implements FieldOperand {
+public record FieldRef(String path, ValueKind kind, PathStyle styleHint, boolean correlated)
+        implements FieldOperand, NumericTextSource {
 
     /** A builder-made reference — no authored style; the renderer decides the path form. */
     public FieldRef(String path, ValueKind kind) {
@@ -27,6 +28,11 @@ public record FieldRef(String path, ValueKind kind, PathStyle styleHint, boolean
      */
     public FieldRef outer() {
         return new FieldRef(path, kind, styleHint, true);
+    }
+
+    @Override
+    public FieldRef field() {
+        return this;
     }
 
     @Override

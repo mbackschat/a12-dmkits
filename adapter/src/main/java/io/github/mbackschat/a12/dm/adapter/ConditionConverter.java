@@ -1090,10 +1090,17 @@ final class ConditionConverter {
             return new NumberExpr(new RangeAsNumber(model.field(params.getField().getFullName()),
                     params.getRangeStart() + 1, params.getRangeEnd()));
         }
-        // FieldValueAsNumber(field) — a string/enum field's value coerced to a number
+        // FieldValueAsNumber(field | field -> category) — the selected stored/category token coerced to a number
         if (operand instanceof IFieldIdOperation fvn
                 && fvn.getOperatorName() == FieldIdOperationName.FieldValueAsNumber) {
-            return new NumberExpr(new FieldValueAsNumber(model.field(fvn.getField().getFullName())));
+            var entity = fvn.getField();
+            String category = entity.getCategoryName();
+            if (category != null && !category.isEmpty()) {
+                CategoryRef ref = model.enumOf(entity.getFullName()).category(category);
+                return Dsl.fieldValueAsNumber(entity.isOuter() ? ref.outer() : ref);
+            }
+            FieldRef ref = model.field(entity.getFullName());
+            return Dsl.fieldValueAsNumber(entity.isOuter() ? ref.outer() : ref);
         }
         // field-level rounding/abs: RoundDownValue(f)/RoundUpValue(f)/RoundAccountingValue(f)/AbsValue(f)
         if (operand instanceof IFieldIdOperation fieldOp) {

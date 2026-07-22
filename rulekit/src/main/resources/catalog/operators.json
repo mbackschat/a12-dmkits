@@ -3147,7 +3147,24 @@
             ]
           }
         ]
-      }
+      },
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "AS_ZERO",
+          "basis": "adapter.laws.RangeCoercionDiffTest + adapter.laws.FunctionFillPolarityDiffTest",
+          "probes": [
+            {
+              "dsl": "RangeAsNumber(ProductCode, 1, 2) == 0",
+              "errorField": "ProductCode",
+              "empty": ["/Order/ProductCode"],
+              "fires": true,
+              "outcome": "OMISSION",
+              "note": "an empty substring converts to 0; filling the string can change the result"
+            }
+          ]
+        }
+      ]
     },
     "sinceKernel": "30.8.x"
   },
@@ -3156,11 +3173,62 @@
     "dslEntry": ["fieldValueAsNumber"],
     "kind": "function",
     "keywords": { "en": "FieldValueAsNumber", "de": "FeldWertAlsZahl" },
-    "operands": [ { "type": "string-enum-or-number-field" } ],
+    "operands": [ { "type": "value-validating-string, enumeration, or enum-category source" } ],
     "returns": "number",
-    "meaning": "A string or enum field's value coerced to a number — for numeric comparison/arithmetic.",
-    "constraints": [ "the field's values (or category values) must always convert to a number, else MVK_NO_CONVERT_IN_NUMBER (e.g. an enum whose values are all numeric)" ],
+    "meaning": "A string, enumeration stored token, or selected enum-category token coerced to a number — for numeric comparison/arithmetic.",
+    "constraints": [
+      "a String source must use value validation, exact pattern [0-9]+, and finite maxLength <= 15; its result scale is 0",
+      "an Enumeration source may select stored values or one named category; every token in that selected domain must obey the decimal grammar and 15-digit budget, else MVK_NO_CONVERT_IN_NUMBER",
+      "the decimal grammar admits an optional leading minus, at most one point, a leading point, and host decimal digits; it rejects a trailing point, plus, exponent, whitespace, and comma",
+      "the Enumeration/category result scale is the selected domain's maximum fractional length"
+    ],
+    "gotchas": [
+      { "text": "category selection happens before conversion: FieldValueAsNumber(Field -> Category) converts the category token, not the stored enum token", "kind": "SURPRISE" },
+      { "text": "an empty source is evaluated as symmetric-fillable numeric 0; guard with FieldFilled when absence should stay silent", "kind": "AUTHORING" }
+    ],
     "validExample": { "dsl": "FieldFilled(RushLevel) And FieldValueAsNumber(RushLevel) >= 2", "note": "fires for the higher rush levels (the enum's values are numeric)" },
+    "invalidExample": { "dsl": "FieldValueAsNumber(CustomerName) >= 0", "error": "MVK_NO_CONVERT_IN_NUMBER", "fix": "use an exact [0-9]+ String with maxLength <= 15, or select an enum/category whose complete domain is numeric" },
+    "semantics": {
+      "polarity": {
+        "value": "SYMMETRIC",
+        "basis": "SPEC-2026-07-22-13 / adapter.laws.FieldValueAsNumberDomainDiffTest",
+        "note": "an empty selected source reads 0 and may move in either direction when filled; a present source is fixed",
+        "probes": [
+          {
+            "dsl": "FieldValueAsNumber(RushLevel) >= 0",
+            "errorField": "RushLevel",
+            "empty": ["/Order/RushLevel"],
+            "fires": true,
+            "outcome": "OMISSION",
+            "note": "empty -> 0; filling may move the value below or above the comparison boundary"
+          },
+          {
+            "dsl": "FieldValueAsNumber(RushLevel) <= 0",
+            "errorField": "RushLevel",
+            "empty": ["/Order/RushLevel"],
+            "fires": true,
+            "outcome": "OMISSION",
+            "note": "the opposite direction is also fillable, distinguishing SYMMETRIC from grow-only"
+          }
+        ]
+      },
+      "emptyOperand": [
+        {
+          "operand": "0",
+          "behavior": "AS_ZERO",
+          "basis": "SPEC-2026-07-22-13 / adapter.laws.FieldValueAsNumberDomainDiffTest",
+          "probes": [
+            {
+              "dsl": "FieldValueAsNumber(RushLevel) == 0",
+              "errorField": "RushLevel",
+              "empty": ["/Order/RushLevel"],
+              "fires": true,
+              "outcome": "OMISSION"
+            }
+          ]
+        }
+      ]
+    },
     "sinceKernel": "30.8.x"
   },
   {

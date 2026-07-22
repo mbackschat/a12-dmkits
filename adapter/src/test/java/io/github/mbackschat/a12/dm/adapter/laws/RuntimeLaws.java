@@ -785,6 +785,23 @@ public final class RuntimeLaws {
         return probes.stream().map(p -> p.path() + "|" + appliedStateAt(applied, p)).toList();
     }
 
+    /** Compute against {@code source}, apply that already-classified result to a separate model-compatible
+     *  {@code destination}, and inspect the destination. This distinguishes source-relative result classification
+     *  from recomputing change equality at application time (SPEC-2026-07-22-08). */
+    static List<String> appliedStatesToDestination(
+            String modelJson, Doc source, Doc destination, List<CellProbe> probes) {
+        IDocumentModel model = expandedModel(modelJson);
+        IDocumentModelResolver resolver = id -> model;
+        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
+        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
+        DocumentV2 sourceV2 = dsf.createDocumentV1V2Converter().ofDocumentV1(
+                buildInstance(modelJson, dsf.createDocumentFactory(), source));
+        DocumentV2 destinationV2 = dsf.createDocumentV1V2Converter().ofDocumentV1(
+                buildInstance(modelJson, dsf.createDocumentFactory(), destination));
+        DocumentV2 applied = rt.compute(sourceV2, config(null, Locale.US)).applyTo(destinationV2);
+        return probes.stream().map(p -> p.path() + "|" + appliedStateAt(applied, p)).toList();
+    }
+
     /** Walk the applied document to {@code probe} — absent / presentEmpty / presentValue|text kept distinct. */
     private static String appliedStateAt(DocumentV2 applied, CellProbe probe) {
         String[] segments = probe.path().substring(1).split("/");
