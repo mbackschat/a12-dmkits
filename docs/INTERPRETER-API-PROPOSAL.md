@@ -18,6 +18,8 @@ Preferred structure: motivation, scope, public API, typed examples, semantics an
 ## Status
 
 > **End-state vision capture.** This is the full destination assembled from interview Q&A and accumulated wishes, kept deliberately complete so no requirement is lost — not a scoped build order. The smallest buildable first increment (§12.1's minimum transport + ownership foundation, then the validate/compute + SPI increment) is extracted to [TS-API-MVP-PROPOSAL](TS-API-MVP-PROPOSAL.md); publication is gated on IG85.
+>
+> **Why this layer, and how much:** [TS-API-STUDY](TS-API-STUDY.md) §5 reads this proposal as a cheap, grounded *core* (load → document → validate/compute → SPIs) wrapped in a speculative service/editor/candidate *product bet* — build the core, design-but-defer the rest until a consumer justifies its shape.
 
 This proposal defines a TypeScript-first public API for the Kotlin Multiplatform A12 interpreter. It covers model preparation, lossless documents, direct storage access, validation, computations, customization, prepared programs, repeated-model services, and platform ownership.
 

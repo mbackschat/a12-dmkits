@@ -6,6 +6,8 @@ Extracted from the three end-state vision proposals — [OPERATOR-API-PROPOSAL](
 
 The increment is gated on **IG85**'s re-open trigger (the developer-library publishing wave starts, or a non-repo consumer needs a released artifact). Until then it is the agreed starting shape, not active work.
 
+The decision-support behind *why this family and how much of it* — the motivation, worked before/after, and per-layer scope reading that this slice sequences — is [TS-API-STUDY](TS-API-STUDY.md).
+
 ## 1. Why a slice, not the whole vision
 
 The three proposals are deliberate wish-captures of the end state. Building all of it at once is neither necessary nor safe: there is **no external consumer yet** (publication is deferred — IG85), and a small foundation already unblocks real integration while the service/pooling/editor/browser layers wait for a consumer that justifies them. This increment is the base every later layer sits on, so it is the right first build.
