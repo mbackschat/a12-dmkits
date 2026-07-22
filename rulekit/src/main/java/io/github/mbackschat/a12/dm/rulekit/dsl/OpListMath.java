@@ -44,7 +44,9 @@ public record OpListMath(Op op, List<Calculation> operands) implements Calculati
             throw new IllegalArgumentException("Abs takes exactly one operand, got " + operands.size());
         }
         ValueKind kind = resultKind(operands.getFirst());
-        if (op == Op.ABS && kind != ValueKind.NUMBER) {
+        // BaseYear's public node reports its primary DATE role, but Dsl.baseYearNumber() selects the
+        // kernel's numeric role before reaching Abs (the same polymorphic exception Computation owns).
+        if (op == Op.ABS && kind != ValueKind.NUMBER && !(operands.getFirst() instanceof BaseYear)) {
             throw new IllegalArgumentException("Abs needs a NUMBER operand, got " + kind);
         }
         if (op != Op.ABS && kind != ValueKind.NUMBER && kind != ValueKind.DATE

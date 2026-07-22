@@ -394,7 +394,7 @@ public final class Dsl {
         return new DateExpr(new BaseYear());
     }
 
-    /** {@code BaseYear} as the year <em>number</em> — for a numeric comparison against a number field. catalog:BaseYear */
+    /** {@code BaseYear} as the year <em>number</em> — for comparisons, arithmetic, computations, and numeric wrappers. catalog:BaseYear */
     public static NumberExpr baseYearNumber() {
         return new NumberExpr(new BaseYear());
     }

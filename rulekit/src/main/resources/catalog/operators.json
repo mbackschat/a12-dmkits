@@ -1659,7 +1659,8 @@
     ],
     "gotchas": [
       { "text": "distinct from the field-only RoundDownValue family — this operand-list form rounds the result of an expression", "kind": "AUTHORING" }
-    , { "text": "rounds toward minus infinity (floor), not toward zero: RoundDown(-1.4, 0) = -2", "kind": "SURPRISE" } ],
+    , { "text": "rounds toward minus infinity (floor), not toward zero: RoundDown(-1.4, 0) = -2", "kind": "SURPRISE" }
+    , { "text": "direct numeric BaseYear is legal here: it is a separate grammar branch, not an immediate numeric literal", "kind": "AUTHORING" } ],
     "validExample": { "dsl": "FieldFilled(UnitPrice) And RoundDown([UnitPrice], 0) < 1", "note": "fires when the unit price rounds down to less than one whole currency unit" },
     "sinceKernel": "30.8.x"
   },
@@ -1723,7 +1724,10 @@
     "returns": "number",
     "meaning": "The absolute value of a numeric expression — the operand-list form (Abs([A] - [B])), distinct from the field-only AbsValue.",
     "constraints": [ "exactly one numeric value expression (a field, arithmetic, or other numeric function)" ],
-    "gotchas": [ { "text": "Abs([Field]) and AbsValue(Field) are equivalent; Abs also accepts an arbitrary expression", "kind": "SURPRISE" } ],
+    "gotchas": [
+      { "text": "Abs([Field]) and AbsValue(Field) are equivalent; Abs also accepts an arbitrary expression", "kind": "SURPRISE" },
+      { "text": "direct numeric BaseYear is legal here: it is a separate grammar branch, not an immediate numeric literal", "kind": "AUTHORING" }
+    ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And Abs([Quantity] - [UnitPrice]) < 1", "note": "fires when quantity and unit price are within 1 of each other" },
     "sinceKernel": "30.8.x"
   },
@@ -1908,7 +1912,10 @@
     "constraints": [
       "the first operand is a numeric expression; the optional second operand is the integer count of decimal places (0–14 inclusive, else MVK_INVALID_DIGIT_FOR_ROUNDING); omission means 0"
     ],
-    "gotchas": [ { "text": "rounds toward plus infinity (ceiling): RoundUp(-1.4, 0) = -1", "kind": "SURPRISE" } ],
+    "gotchas": [
+      { "text": "rounds toward plus infinity (ceiling): RoundUp(-1.4, 0) = -1", "kind": "SURPRISE" },
+      { "text": "direct numeric BaseYear is legal here: it is a separate grammar branch, not an immediate numeric literal", "kind": "AUTHORING" }
+    ],
     "validExample": { "dsl": "FieldFilled(UnitPrice) And RoundUp([UnitPrice], 1) > 1000", "note": "fires when the unit price rounded up to one decimal exceeds 1000" },
     "sinceKernel": "30.8.x"
   },
@@ -1923,7 +1930,10 @@
     "constraints": [
       "the first operand is a numeric expression; the optional second operand is the integer count of decimal places (0–14 inclusive, else MVK_INVALID_DIGIT_FOR_ROUNDING); omission means 0"
     ],
-    "gotchas": [ { "text": "half-up, away from zero on the .5 boundary in both signs: RoundAccounting(-2.5, 0) = -3", "kind": "SURPRISE" } ],
+    "gotchas": [
+      { "text": "half-up, away from zero on the .5 boundary in both signs: RoundAccounting(-2.5, 0) = -3", "kind": "SURPRISE" },
+      { "text": "direct numeric BaseYear is legal here: it is a separate grammar branch, not an immediate numeric literal", "kind": "AUTHORING" }
+    ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And RoundAccounting([UnitPrice] * [Quantity], 2) > 10000", "note": "fires when the commercially-rounded line total exceeds 10000" },
     "sinceKernel": "30.8.x"
   },

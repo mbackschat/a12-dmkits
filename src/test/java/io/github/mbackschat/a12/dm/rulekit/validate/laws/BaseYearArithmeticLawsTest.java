@@ -31,4 +31,26 @@ class BaseYearArithmeticLawsTest {
         assertTrue(result.diagnostics().stream()
                 .anyMatch(diagnostic -> diagnostic.code().filter("MVK_NO_BASE_YEAR"::equals).isPresent()));
     }
+
+    @Test
+    void numericWrapperAcceptsImmediateBaseYearAndItsDerivedYearComponent() {
+        String json = DocumentModelDraft.named("configured-forecast").locale("en_US").baseYear(2020)
+                .rootGroup("Forecast", group -> group.numberField("Projected", field -> field.fractionDigits(0)))
+                .build().toJson();
+        BoundModel model = BoundModel.ofJson(json);
+        var direct = model.computation(model.num("/Forecast/Projected"))
+                .name("RoundedBaseYear")
+                .calc(Dsl.roundDown(Dsl.baseYearNumber()).expression())
+                .message(Dsl.en("Rounded base year."))
+                .build();
+        var derived = model.computation(model.num("/Forecast/Projected"))
+                .name("RoundedDerivedYear")
+                .calc(Dsl.roundDown(Dsl.yearFromDate(Dsl.baseYear())).expression())
+                .message(Dsl.en("Rounded derived year."))
+                .build();
+        var validator = new RuleValidator();
+
+        assertTrue(validator.check(json, direct.draft()).ok());
+        assertTrue(validator.check(json, derived.draft()).ok());
+    }
 }
