@@ -195,9 +195,9 @@ def kernelRuntimeClosureReport = tasks.register('kernelRuntimeClosureReport') {
 tasks.named('check') { dependsOn kernelRuntimeClosureReport }
 
 tasks.named('test') {
-    // Gate tiering (docs/TESTING-SPEC "Test tiers"): the 8-min perf benchmark (@Tag 'perf') + the differential
-    // fuzzers (@Tag 'fuzz') are EXCLUDED from the default local run, so it stays ~2-3 min instead of ~12. Opt in
-    // with -PrunPerf / -PrunFuzz (or -PallTests for both). CI runs fuzz on every push (-PrunFuzz) and perf nightly.
+    // Gate tiering (docs/TESTING-SPEC "Test tiers"): the heavyweight perf tests (@Tag 'perf') + the differential
+    // fuzzers (@Tag 'fuzz') are EXCLUDED from the default local run. Opt in with -PrunPerf / -PrunFuzz (or
+    // -PallTests for both). CI runs fuzz on every push and the isolated PerfGateTest nightly.
     useJUnitPlatform {
         def all = project.hasProperty('allTests')
         if (!all && !project.hasProperty('runPerf')) excludeTags 'perf'
@@ -211,10 +211,10 @@ tasks.named('test') {
         if (!project.hasProperty('runCorpusSweep')) excludeTags 'corpus-sweep'
     }
     // Fork the kernel-heavy suite across JVMs — distributes test CLASSES over N forks so the differential
-    // + fuzz classes run in parallel (:adapter:test is the ~8-min CI hog: the kernel oracle does Groovy
-    // codegen per rule). Fork-based = each fork is an isolated JVM+kernel, so there's no shared state to
-    // race. Cores-capped (each fork loads its own kernel ⇒ memory-bound); heap left at the default (forks
-    // run SUBSETS, so a fixed cap would only risk OOM). Override with -PtestForks=N. No maxParallelForks=1
+    // + fuzz classes run in parallel (the kernel oracle does Groovy codegen per rule). Each fork is an isolated
+    // JVM+kernel, so there's no shared state to race. Cores are capped because every fork loads the memory-heavy
+    // kernel; heap stays at the default because forks run subsets, so a fixed cap would only risk OOM. Override
+    // with -PtestForks=N. No maxParallelForks=1
     // guard is needed here — the native-agent reflection capture runs :cli:test, not :adapter.
     maxParallelForks = (project.findProperty('testForks') ?: Math.max(2, Math.min(4, Runtime.runtime.availableProcessors()))) as int
     // Forward opt-in harness locations (read-only corpora) AND the opt-in perf knobs from the Gradle CLI to the

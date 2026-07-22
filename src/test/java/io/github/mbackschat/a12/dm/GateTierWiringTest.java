@@ -11,19 +11,24 @@ import org.junit.jupiter.api.Test;
 /**
  * Anti-rot guard for the test tiers (docs/TESTING-SPEC "Test tiers"). The heavy perf benchmark
  * (@Tag {@code perf}) and the differential fuzzers (@Tag {@code fuzz}) are EXCLUDED from the default run
- * (adapter/build.gradle), so this asserts CI still RUNS them on a defined trigger — fuzz on every push
- * (-PrunFuzz) and perf nightly (-PrunPerf) — so the tier can never be silently dropped. If someone removes
- * a lane from the CI workflow, the build fails loudly here (the F11 "loud detection at build" discipline).
+ * (adapter/build.gradle), so this asserts CI still RUNS them on a defined trigger — fuzz on every push and the
+ * isolated routine perf gate nightly. If someone removes or broadens a lane in the CI workflow, the build fails
+ * loudly here (the F11 "loud detection at build" discipline).
  */
 class GateTierWiringTest {
 
     @Test
     void ciRunsBothTieredLanesSoNeitherIsSilentlyDropped() throws IOException {
         String yaml = Files.readString(locate(".github/workflows/ci.yml"));
+        String perfScript = Files.readString(locate("scripts/perf.sh"));
         assertTrue(yaml.contains("-PrunFuzz"),
                 "CI must run the fuzz lane (-PrunFuzz) on every push — else the differential fuzzers are dropped");
-        assertTrue(yaml.contains("-PrunPerf"),
-                "CI must run the perf lane (-PrunPerf, nightly) — else the perf regression gate is dropped");
+        assertTrue(yaml.contains("run: ./scripts/perf.sh gate"),
+                "nightly CI must run the isolated routine perf gate, not the whole adapter suite with perf enabled");
+        assertTrue(perfScript.contains(":adapter:test -PrunPerf"),
+                "the perf launcher must opt into the tagged perf tests");
+        assertTrue(perfScript.contains("--tests \"*PerfGateTest"),
+                "the gate mode must isolate PerfGateTest from heavyweight benchmark classes");
     }
 
     /** Walk up from the working dir to find {@code rel} (the test runs from a module dir; ci.yml is at the repo root). */

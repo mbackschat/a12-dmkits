@@ -95,6 +95,7 @@ tasks.named('test') {
     filter {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.BuildPerformancePolicyTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.GateTierWiringTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.api.PublicApiGuardTest'
     }
@@ -128,14 +129,14 @@ ext.guardInputs = { Test task, Map<String, ?> named ->
     }
 }
 
-// Three root-project guards read REPO FILES at RUNTIME that Gradle can't infer as test inputs:
+// Four root-project guards read REPO FILES at RUNTIME that Gradle can't infer as test inputs:
 // DocSnippetFreshnessTest reads docs/API-GUIDE.md (its test-source side is covered — a region edit changes
 // bytecode), and DslCatalogBridgeTest reads the dsl package's `catalog:<Id>` Javadoc markers — which compile
 // to IDENTICAL bytecode, so a marker-only edit would leave the plain `test` task up-to-date and skip the very
 // guard the edit needs (the false-green trap). BuildPerformancePolicyTest locks the repo-level Gradle cache
-// and compiler-memory policies.
+// and compiler-memory policies; GateTierWiringTest locks the CI workflow → isolated perf launcher chain.
 // They run HERE with those files declared as THIS task's inputs; `test` dependsOn this, so CI and a plain
-// `:test` always drive all three.
+// `:test` always drive all four.
 tasks.register('docGuardTest', Test) {
     description = 'Freshness/bridge guards that read repo docs + dsl sources at runtime (split out so such an edit re-runs only these).'
     group = 'verification'
@@ -145,6 +146,7 @@ tasks.register('docGuardTest', Test) {
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.BuildPerformancePolicyTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.GateTierWiringTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
     }
     guardInputs(it, [
@@ -152,6 +154,8 @@ tasks.register('docGuardTest', Test) {
             'gradle.properties': file('gradle.properties'),
             'cache smoke'      : file('scripts/verify-build-cache.sh'),
             'demo verifier'    : file('scripts/verify-demos.sh'),
+            'CI workflow'      : file('.github/workflows/ci.yml'),
+            'perf launcher'    : file('scripts/perf.sh'),
             'native capture'   : file('scripts/capture-native-config.sh'),
             // dsl sources + the operator catalog moved to :rulekit in the Stage-4 module cut.
             'dsl sources'      : fileTree('rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl') { include '**/*.java' },

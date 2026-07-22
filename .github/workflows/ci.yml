@@ -12,7 +12,7 @@ on:
   pull_request:
   workflow_dispatch:
   schedule:
-    - cron: '0 3 * * *'   # nightly — runs the 8-min perf gate (the perf step below); see docs/TESTING-SPEC "Test tiers"
+    - cron: '0 3 * * *'   # nightly — runs the isolated perf gate below; see docs/TESTING-SPEC "Test tiers"
 
 permissions:
   contents: read
@@ -63,7 +63,7 @@ jobs:
         run: ./bootstrap.sh
 
       # The default suite + the differential FUZZERS (-PrunFuzz) run on every push/PR — fuzzers are
-      # correctness nets (interpreter == kernel), ~2 min. The 8-min perf BENCHMARK is excluded here and
+      # correctness nets (interpreter == kernel). The isolated routine perf gate is excluded here and
       # runs in the nightly perf step below (docs/TESTING-SPEC "Test tiers"). Stage-4 module cut: root `test`
       # still exists (root is the cross-kit integration-test host, PROPOSAL §3a Option 1) so it runs the same
       # suite; we ALSO run the kernel-decoupling regression nets `:verifyKitPurity` (no kit main names a
@@ -78,15 +78,16 @@ jobs:
           GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
         run: ./gradlew --no-daemon test :adapter:test :cli:test :verifyKitPurity :noBackendTest -PrunFuzz
 
-      # The perf gate (@Tag 'perf', ~8 min) — nightly + on-demand, not on every push (it's a ratio
-      # regression-gate, not a per-commit correctness check). Guaranteed to run, just not on the PR path.
+      # The isolated routine perf gate — nightly + on-demand, not on every push. Use the same launcher as
+      # maintainers: it selects PerfGateTest only, so timing pairs never compete with the heavyweight benchmark
+      # classes under :adapter:test's parallel forks. PerfBenchTest remains a perf-relevant checkpoint tier.
       - name: Perf gate (nightly + on-demand)
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         working-directory: a12-dmkits
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
           GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
-        run: ./gradlew --no-daemon :adapter:test -PrunPerf
+        run: ./scripts/perf.sh gate
 
       # Both agent plugins (Claude Code, Codex) bundle COPIES of the single-source assets — the skills,
       # installer, and release-asset manifest — synced by scripts/sync-plugin-assets.sh. Fail loudly if any
