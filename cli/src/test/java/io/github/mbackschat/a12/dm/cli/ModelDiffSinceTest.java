@@ -7,8 +7,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -25,14 +23,16 @@ class ModelDiffSinceTest {
     void diffsTheCurrentFileAgainstAGitRef(@TempDir Path dir) throws Exception {
         Path model = dir.resolve("subscription.dm.json");
         Files.writeString(model, resource("models/subscription.dm.json"));
-        git(dir, "init", "-q");
-        git(dir, "add", "subscription.dm.json");
-        git(dir, "-c", "user.email=t@example.com", "-c", "user.name=Test", "commit", "-qm", "base");
+        GitTestSupport.run(dir, "init", "-q");
+        GitTestSupport.run(dir, "add", "subscription.dm.json");
+        GitTestSupport.run(dir, "-c", "user.email=t@example.com", "-c", "user.name=Test",
+                "commit", "-qm", "base");
 
         // the agent's edit, in place: the same model + one added rule
         Files.writeString(model, CliTestSupport.modelWithRuleJson());
 
-        CliTestSupport.Result res = CliTestSupport.run("-m", model.toString(), "model", "diff", "--since", "HEAD");
+        CliTestSupport.Result res = CliTestSupport.run("-m", model.toString(), "-w", dir.resolve("unused").toString(),
+                "model", "diff", "--since", "HEAD");
         assertEquals(0, res.code(), res::err);
         assertTrue(res.out().contains("RULE_ADDED"),
                 () -> "the rule added since HEAD must show as RULE_ADDED: " + res.out());
@@ -63,13 +63,12 @@ class ModelDiffSinceTest {
         assertTrue(res.err().toLowerCase().contains("since"), () -> "explains the mutual exclusion: " + res.err());
     }
 
-    private static void git(Path dir, String... args) throws Exception {
-        List<String> cmd = new ArrayList<>(List.of("git", "-C", dir.toString()));
-        cmd.addAll(List.of(args));
-        Process p = new ProcessBuilder(cmd).redirectErrorStream(true).start();
-        String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        int code = p.waitFor();
-        assertEquals(0, code, () -> "git " + String.join(" ", args) + " failed: " + out);
+    @Test
+    void sinceRejectsSideSpecificWorkspaceRoots() {
+        CliTestSupport.Result res = CliTestSupport.run("-m", "x.dm.json", "model", "diff", "--since", "HEAD",
+                "--base-workspace", "old");
+        assertEquals(2, res.code());
+        assertTrue(res.err().contains("two-file mode"), () -> "explains which mode owns the option: " + res.err());
     }
 
     private static String resource(String path) throws Exception {

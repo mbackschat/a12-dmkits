@@ -108,11 +108,22 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
     /**
      * Diff two models whose {@code include}s/imports resolve through a <b>kernel-free</b>
      * {@link io.github.mbackschat.a12.dm.core.ModelResolver} (the mirror of {@link ModelReport}'s resolver
-     * overload — a consumer diffs a multi-model model without importing {@code com.mgmtp.*}). {@code null} = none.
+     * overload — a consumer diffs a multi-model model without importing {@code com.mgmtp.*}). Use the
+     * four-argument overload when the two states come from different dependency snapshots. {@code null} = none.
      */
     public static ModelDiff between(String baseJson, String headJson,
             io.github.mbackschat.a12.dm.core.ModelResolver resolver) {
-        return between(ModelDiffState.load(baseJson, resolver), ModelDiffState.load(headJson, resolver));
+        return between(baseJson, headJson, resolver, resolver);
+    }
+
+    /**
+     * Diff two model states against their own dependency snapshots. This is the review-time form for separate
+     * worktrees, revisions, or service snapshots where the same referenced id can resolve differently per side.
+     */
+    public static ModelDiff between(String baseJson, String headJson,
+            io.github.mbackschat.a12.dm.core.ModelResolver baseResolver,
+            io.github.mbackschat.a12.dm.core.ModelResolver headResolver) {
+        return between(ModelDiffState.load(baseJson, baseResolver), ModelDiffState.load(headJson, headResolver));
     }
 
     /** The shared structural diff over two already-bound models — the entry points differ only in how each

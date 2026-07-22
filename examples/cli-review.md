@@ -167,6 +167,26 @@ dmtool model diff examples/models/order-ruled.dm.json examples/models/order.dm.j
 
 → The headline is `11 added, 3 removed, 1 modified (3 high-risk)`: the one model-level modification is the head model's added base year, while the three high-impact changes are exactly the **deleted validation rules** (`RULE_REMOVED`) — the dangerous, silent case a reviewer must see first. Unlike `where-used`/`model usage` (which read *one* model), this compares *two* and is the **review** surface: what did this edit change, and what should I look at first? It's a *structural* semantic diff — the full contract is in [MODEL-REVIEW-SPEC](../docs/MODEL-REVIEW-SPEC.md).
 
+### Multi-model states bind independently
+
+An includes-bearing diff must bind each side against the dependency snapshot that belongs to it. `--base-workspace` and `--head-workspace` are repeatable and remain distinct even when both workspaces contain different revisions under the same model id; shared `-w` is the shorter form when dependencies are common. This no-change check uses the published multi-file fixture and proves that the referenced `catalog` model is resolved rather than treating `storefront` as self-contained:
+
+```bash
+dmtool model diff \
+  --base-workspace examples/models/multifile --head-workspace examples/models/multifile \
+  examples/models/multifile/app/storefront.dm.json examples/models/multifile/app/storefront.dm.json \
+  | jq '{summary, changes: (.data.changes | length)}'
+```
+
+```output
+{
+  "summary": "0 added, 0 removed, 0 modified",
+  "changes": 0
+}
+```
+
+→ In an actual old-vs-new review, point the two options at the corresponding workspace roots. If each model and all of its dependencies live in its own folder, omit them; folder fallback remains per side.
+
 ### Computation behavior changes are first-class
 
 A computation is not “just another stored rule” in the review output. Its target, preconditions, ordered operations, tolerances, suppressions, messages, and opaque DSL are compared as computation aspects. Here the effective fee changes from a pass-through to base fee plus one:
@@ -511,4 +531,4 @@ MEDIUM (12)
 
 ### The review entrypoint — `--since <ref>`
 
-The two-file form is the testable core, but the everyday review question is "what did the agent change since the last commit?" In a git repo that's one command — `dmtool -m order.dm.json model diff --since HEAD` — which materializes the BASE from `git show HEAD:order.dm.json` and diffs it against the working file, so you never hand-roll a `git show` into a temp file. (It's the one deliberate git touch; the diff engine itself stays git-free.)
+The two-file form is the testable core, but the everyday review question is "what did the agent change since the last commit?" In a git repo that's one command — `dmtool -m order.dm.json model diff --since HEAD` — which materializes the BASE model and its referenced workspace models from `HEAD`, then diffs them against the working model and dependencies. A dependency edit therefore cannot make the historical base bind against the wrong revision, and you never hand-roll `git show` into temp files. (It's the one deliberate git touch; the diff engine itself stays git-free.)

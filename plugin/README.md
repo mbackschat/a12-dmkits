@@ -166,10 +166,13 @@ Every result is a uniform JSON envelope (`{ok, valid, outcome, changed, diagnost
 
 ### Review an edit semantically
 
-`model diff` is a structural semantic diff: it parses both models, ignores formatting noise, and reports typed field, group, rule, computation, typedef, authored include/import, and model-configuration changes with per-aspect deltas, review-impact tiers, and reason codes. Delta JSON preserves deterministic `before`/`after` strings and adds tagged `beforeValue`/`afterValue` scalars or string lists for typed consumers.
+`model diff` is a structural semantic diff: it independently binds both models, ignores formatting noise, and reports typed field, group, rule, computation, typedef, authored include/import, and model-configuration changes with per-aspect deltas, review-impact tiers, and reason codes. Multi-model two-file diffs resolve each side from `-w` or its own folder; `--since` resolves the base model and dependencies at the Git ref. Delta JSON preserves deterministic `before`/`after` strings and adds tagged `beforeValue`/`afterValue` scalars or string lists for typed consumers.
+
+When base and head contain different revisions of the same referenced model id, pass repeatable `--base-workspace` and `--head-workspace` roots; shared `-w` is for a common dependency snapshot.
 
 ```sh
 dmtool model diff before.dm.json after.dm.json
+dmtool model diff --base-workspace old --head-workspace new old/app.dm.json new/app.dm.json
 dmtool -m order.dm.json model diff --since HEAD
 ```
 

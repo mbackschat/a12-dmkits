@@ -1,8 +1,8 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,8 +13,10 @@ import io.github.mbackschat.a12.dm.adapter.review.ModelDiff;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEditScript;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
+import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import io.github.mbackschat.a12.dm.cli.model.GitBaseline.GitBaselineException;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
@@ -27,50 +29,72 @@ import picocli.CommandLine.Parameters;
  * <p>Two input modes: the pure two-file core ({@code <baseFile> <headFile>}), or the {@code --since <ref>}
  * git convenience ({@code -m <model> model diff --since HEAD}) that diffs the model's current file against its
  * content at a git ref — the review entrypoint "what changed since HEAD?" (§9c; the engine stays git-free,
- * only the CLI materializes the baseline). A read op: the payload rides {@code data} (shape: {@code model-diff.schema}).
+ * only the CLI materializes the baseline). Multi-model states resolve independently: each two-file side uses
+ * its side-specific workspace roots, shared {@code -w}, or its own folder, while {@code --since} reads base
+ * dependencies from the same Git ref and head dependencies from the working tree. A read op: the payload rides {@code data} (shape:
+ * {@code model-diff.schema}).
  */
 @Command(name = "diff", mixinStandardHelpOptions = true,
         description = "Structural diff of two models: fields, groups, rules, computations, typedefs, includes/imports, and model configuration "
                 + "added, removed, or "
                 + "modified, with complete typed aspects and review-impact reasons, in `data`. A pure reformat is never "
                 + "reported (it compares structure, not text). Pass two files (base then head), or "
-                + "`-m <model> --since <ref>` to diff against a git ref. Shape: `model-diff.schema`.")
+                + "`-m <model> --since <ref>` to diff against a git ref. Includes/imports resolve per side from "
+                + "`--base-workspace`/`--head-workspace`, shared `-w`, or that side's model folder; --since "
+                + "resolves BASE dependencies at the ref. Shape: "
+                + "`model-diff.schema`.")
 final class ModelDiffCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Parameters(index = "0", arity = "0..1", paramLabel = "<baseFile>",
-            description = "the BASE model file — the before-state (e.g. the committed version); omit with --since")
+            description = "the BASE model file — the before-state (e.g. the committed version); its references "
+                    + "resolve from -w or its own folder; omit with --since")
     String baseFile;
 
     @Parameters(index = "1", arity = "0..1", paramLabel = "<headFile>",
-            description = "the HEAD model file — the after-state (e.g. the agent's edited version); omit with --since")
+            description = "the HEAD model file — the after-state (e.g. the agent's edited version); its references "
+                    + "resolve from -w or its own folder; omit with --since")
     String headFile;
 
     @Option(names = "--since", paramLabel = "<ref>",
             description = "diff the -m model's current file (HEAD) against its content at this git <ref> "
-                    + "(e.g. HEAD) — BASE is `git show <ref>:<model>`. Requires -m; omit the two file positionals.")
+                    + "(e.g. HEAD) — BASE and its workspace dependencies come from <ref>; HEAD dependencies "
+                    + "come from the working tree. Requires -m; omit the two file positionals.")
     String since;
+
+    @Option(names = "--base-workspace", paramLabel = "<dir>",
+            description = "workspace root(s) for <baseFile>, repeatable; use when BASE and HEAD contain "
+                    + "different revisions of the same referenced model id (two-file mode only)")
+    List<Path> baseWorkspace = new ArrayList<>();
+
+    @Option(names = "--head-workspace", paramLabel = "<dir>",
+            description = "workspace root(s) for <headFile>, repeatable; use when BASE and HEAD contain "
+                    + "different revisions of the same referenced model id (two-file mode only)")
+    List<Path> headWorkspace = new ArrayList<>();
+
+    @Mixin
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
-        String baseJson;
-        String headJson;
+        ModelDiffInputs inputs;
         if (since != null) {
             if (baseFile != null || headFile != null) {
                 return fail("--since diffs the -m model against a git ref; do not also pass <baseFile> <headFile>");
+            }
+            if (!baseWorkspace.isEmpty() || !headWorkspace.isEmpty()) {
+                return fail("--base-workspace/--head-workspace are for two-file mode; --since resolves BASE "
+                        + "at the git ref and HEAD from -w or the working model's folder");
             }
             String modelPath = model();
             if (modelPath == null) {
                 return fail("--since needs -m <model> (the file to diff against its content at the git <ref>)");
             }
             try {
-                headJson = Files.readString(Path.of(modelPath));
+                inputs = ModelDiffInputs.since(modelPath, since, workspace);
             } catch (IOException e) {
                 return fail("cannot read model: " + e.getMessage());
-            }
-            try {
-                baseJson = GitBaseline.contentAt(Path.of(modelPath), since);
             } catch (GitBaselineException e) {
                 return fail(e.getMessage());
             }
@@ -79,14 +103,14 @@ final class ModelDiffCommand extends BaseCommand {
                 return fail("pass two model files (<baseFile> <headFile>), or -m <model> --since <ref>");
             }
             try {
-                baseJson = Files.readString(Path.of(baseFile));
-                headJson = Files.readString(Path.of(headFile));
+                inputs = ModelDiffInputs.twoFiles(baseFile, headFile, workspace, baseWorkspace, headWorkspace);
             } catch (IOException e) {
                 return fail("cannot read model files: " + e.getMessage());
             }
         }
         try {
-            ModelDiff diff = ModelDiff.between(baseJson, headJson);
+            ModelDiff diff = ModelDiff.between(inputs.baseJson(), inputs.headJson(),
+                    inputs.baseResolver(), inputs.headResolver());
             ObjectNode data = MAPPER.createObjectNode();
             ArrayNode changes = data.putArray("changes");
             java.util.Map<String, Integer> refactorOf = refactorIndexByChangeId(diff.refactors());
