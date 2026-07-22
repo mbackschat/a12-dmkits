@@ -13,7 +13,6 @@ import io.github.mbackschat.a12.dm.adapter.review.ModelDiff.ElementKind;
 import io.github.mbackschat.a12.dm.core.ModelFormat;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
-import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 
 /** The complete authored model configuration is one stable semantic-diff element. */
 class ModelDiffConfigTest {
@@ -21,7 +20,7 @@ class ModelDiffConfigTest {
     @Test
     void projectsModelIdentityAndVersionAndDiffsIdentityUnderAStableId() {
         String base = model("orders");
-        var state = ModelDiffState.of(base, BoundModel.ofJson(base));
+        var state = ModelDiffState.load(base, null);
         assertEquals(ModelFormat.VERSION,
                 ConfigurationDiffProjector.project(state).get("model").get("modelVersion"));
 

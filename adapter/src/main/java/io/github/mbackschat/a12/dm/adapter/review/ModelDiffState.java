@@ -4,6 +4,8 @@ import java.util.Map;
 import java.util.Set;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 
@@ -11,9 +13,11 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 record ModelDiffState(ModelDocument document, ModelDocument.AuthoredState authored,
         BoundModel model, KernelAdapter adapter, Map<String, Set<String>> referrers) {
 
-    static ModelDiffState of(String json, BoundModel model) {
+    static ModelDiffState load(String json, ModelResolver resolver) {
+        ModelResolver effective = resolver == null ? ReferenceResolvers.selfContained() : resolver;
+        var model = BoundModel.ofJsonLenient(json, effective);
         var document = ModelDocument.read(json);
-        var adapter = KernelAdapter.of(model);
+        var adapter = KernelAdapter.checkAndOpen(model);
         return new ModelDiffState(document, document.authoredState(), model, adapter, adapter.referrersByEntity());
     }
 }

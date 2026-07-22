@@ -73,8 +73,7 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
     /** Diff {@code headJson} against {@code baseJson} (both must be kernel-loadable and <b>self-contained</b> —
      *  an includes-bearing model needs a resolver overload below, else binding throws). */
     public static ModelDiff between(String baseJson, String headJson) {
-        return between(ModelDiffState.of(baseJson, BoundModel.ofJson(baseJson)),
-                ModelDiffState.of(headJson, BoundModel.ofJson(headJson)));
+        return between(ModelDiffState.load(baseJson, null), ModelDiffState.load(headJson, null));
     }
 
     /**
@@ -84,10 +83,7 @@ public record ModelDiff(List<ElementChange> changes, List<Refactor> refactors,
      */
     public static ModelDiff between(String baseJson, String headJson,
             io.github.mbackschat.a12.dm.core.ModelResolver resolver) {
-        return between(ModelDiffState.of(baseJson,
-                        resolver == null ? BoundModel.ofJson(baseJson) : BoundModel.ofJson(baseJson, resolver)),
-                ModelDiffState.of(headJson,
-                        resolver == null ? BoundModel.ofJson(headJson) : BoundModel.ofJson(headJson, resolver)));
+        return between(ModelDiffState.load(baseJson, resolver), ModelDiffState.load(headJson, resolver));
     }
 
     /** The shared structural diff over two already-bound models — the entry points differ only in how each
