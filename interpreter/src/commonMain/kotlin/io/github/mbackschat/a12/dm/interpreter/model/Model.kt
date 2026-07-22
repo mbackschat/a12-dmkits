@@ -42,8 +42,10 @@ enum class DatePrecision { FULL, DAY_OPTIONAL, FRAGMENT }
  * (or `Now` with no [now]) cannot be evaluated — the rule is reported as unsupported, not crashed.
  *
  * @property today the current date as an ISO `yyyy-MM-dd` string (the value of `Today`).
- * @property now the current date-time as an ISO `yyyy-MM-dd'T'HH:mm:ss` string (the value of `Now`), or null
- *   when the consumer supplies only a date — then a `Now`-using rule is reported unsupported.
+ * @property now the current date-time as an ISO `yyyy-MM-dd'T'HH:mm:ss` string, optionally followed by an
+ *   exact three-digit millisecond fraction (`.SSS`). Evaluation retains that fraction as `Now`'s instant
+ *   identity while all authored/stored temporal rendering remains whole-second. Null means the consumer
+ *   supplies only a date — then a `Now`-using rule is reported unsupported.
  */
 data class EvalClock(val today: String, val now: String? = null)
 

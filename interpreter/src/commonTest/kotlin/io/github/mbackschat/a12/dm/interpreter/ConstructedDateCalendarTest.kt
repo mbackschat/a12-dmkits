@@ -84,6 +84,7 @@ class ConstructedDateCalendarTest {
         val date = "Date($DAY, $MONTH, $YEAR)"
         val time = "Time($HOUR, $MINUTE, $SECOND)"
         assertTrue(fires("YearFromDate($date) == 0", "10"))
+        assertTrue(fires("QuarterFromDate($date) == 0", "10"))
         assertTrue(fires("""HoursFromTime(DateTime($date, Time("12", "00", "00"))) == 0""", "10"))
         assertTrue(fires("DifferenceInDays($date, $date) == 0", "10"))
         assertTrue(fires(
@@ -92,6 +93,7 @@ class ConstructedDateCalendarTest {
             "10",
         ))
         assertFalse(fires("YearFromDate($date) == 0", "bad"))
+        assertFalse(fires("QuarterFromDate($date) == 0", "bad"))
         assertFalse(fires("DifferenceInDays($date, $date) == 0", "bad"))
 
         assertTrue(fires("YearFromDate(AddDays($date, 1)) == 0", "10"),

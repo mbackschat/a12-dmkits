@@ -76,7 +76,7 @@ class ConstructedDateCalendarDiffTest {
     fun unrealConstructedDateExtractorsYieldZeroWhileMalformedPartsStayUnknown() {
         val fixture = fixture("UTC")
         val expected = setOf(
-            ZERO_EXTRACT, ZERO_DATE_TIME_EXTRACT, ZERO_DATE_TIME_HOUR,
+            ZERO_EXTRACT, ZERO_QUARTER_EXTRACT, ZERO_DATE_TIME_EXTRACT, ZERO_DATE_TIME_HOUR,
             ZERO_DATE_DIFF, ZERO_DATE_TIME_DIFF, ZERO_MIN_SKIP, ZERO_MAX_SKIP,
         )
         assertConsumerCodes(fixture, "10", "10", "1582", expected, "cutover-hole Date")
@@ -214,6 +214,7 @@ class ConstructedDateCalendarDiffTest {
             rule(model, "ConstructedDateMinKeepsCalendar", MIN_LEGACY,
                 Dsl.min(date, marchFirst1500).eq(date)),
             rule(model, "UnrealConstructedDateExtracted", ZERO_EXTRACT, Dsl.yearFromDate(date).eq(0)),
+            rule(model, "UnrealConstructedDateQuarter", ZERO_QUARTER_EXTRACT, Dsl.quarterFromDate(date).eq(0)),
             rule(model, "UnrealConstructedDateTimeExtracted", ZERO_DATE_TIME_EXTRACT,
                 Dsl.yearFromDate(constructedDateTime).eq(0)),
             rule(model, "UnrealConstructedDateTimeHour", ZERO_DATE_TIME_HOUR,
@@ -299,7 +300,7 @@ class ConstructedDateCalendarDiffTest {
         clue: String,
     ) {
         val relevant = setOf(
-            ZERO_EXTRACT, ZERO_DATE_TIME_EXTRACT, ZERO_DATE_TIME_HOUR,
+            ZERO_EXTRACT, ZERO_QUARTER_EXTRACT, ZERO_DATE_TIME_EXTRACT, ZERO_DATE_TIME_HOUR,
             ZERO_DATE_DIFF, ZERO_DATE_TIME_DIFF, ZERO_MIN_SKIP, ZERO_MAX_SKIP,
         )
         val document = document(day, month, year)
@@ -473,6 +474,7 @@ class ConstructedDateCalendarDiffTest {
         const val INVALID = "CONSTRUCTED_DATE_INVALID"
         const val EXTRACTED = "CONSTRUCTED_DATE_EXTRACTED"
         const val ZERO_EXTRACT = "CONSTRUCTED_DATE_ZERO_EXTRACT"
+        const val ZERO_QUARTER_EXTRACT = "CONSTRUCTED_DATE_ZERO_QUARTER"
         const val ZERO_DATE_TIME_EXTRACT = "CONSTRUCTED_DATE_TIME_ZERO_EXTRACT"
         const val ZERO_DATE_TIME_HOUR = "CONSTRUCTED_DATE_TIME_ZERO_HOUR"
         const val ZERO_DATE_DIFF = "CONSTRUCTED_DATE_ZERO_DIFF"

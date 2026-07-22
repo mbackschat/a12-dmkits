@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
@@ -20,7 +21,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
  * {@code when(...).calc(...)} — mixing is rejected by the kernel ({@code MVK_ERROR_EMPTY_PRECONDITION});
  * the computed field must not be referenced in preconditions or operations
  * ({@code MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD}); each operation's value kind must match the
- * computed field's kind (e.g. a string operation into a number field —
+ * computed field's kind, except the kernel-defined numeric role of polymorphic {@code BaseYear}
+ * (e.g. a string operation into a number field —
  * {@code MVK_INVALID_COMPARE_TO_ENUM_OR_STRING}); error text is required
  * ({@code MVK_ERROR_MESSAGE_MISSING}). Scale beyond the kind check is the kernel's call (D13).
  * Mutual exclusivity of preconditions is semantic — only the kernel/runtime can judge it.
@@ -212,7 +214,7 @@ public record Computation(
 
             String computedPath = computedField.path();
             for (Alternative a : alternatives) {
-                require(a.operation().kind() == computedField.kind(),
+                require(operationMatchesComputedKind(a.operation()),
                         "the operation '" + new DslRenderer().render(a.operation()) + "' yields "
                                 + a.operation().kind() + " but the computed field " + computedPath
                                 + " is " + computedField.kind() + " — kinds must match");
@@ -240,6 +242,11 @@ public record Computation(
             return new Computation(groupPath, name, computedField,
                     Optional.ofNullable(commonPrecondition), alternatives, messages, finalComments,
                     errorCodesToSuppress);
+        }
+
+        private boolean operationMatchesComputedKind(Calculation operation) {
+            return operation.kind() == computedField.kind()
+                    || operation instanceof BaseYear && computedField.kind() == ValueKind.NUMBER;
         }
 
         /** Lifts an {@code MVK_*}/{@code RK_*} code out of a precheck message when it names one. */

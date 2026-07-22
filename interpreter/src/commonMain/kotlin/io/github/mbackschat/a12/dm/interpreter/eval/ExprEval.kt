@@ -22,6 +22,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 /** A TIME value `HH:mm:ss` — captures hours, minutes, seconds for the time-of-day extractors. */
 private val TIME = Regex("""(\d{2}):(\d{2}):(\d{2})""")
 
+/** The injected `Now` value. Authored/stored date-times remain whole-second; only the clock may carry the
+ * kernel runtime's exact millisecond remainder. */
+private val CLOCK_DATE_TIME = Regex("""(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{3}))?""")
+
 /** The OMITTED-YEAR date literal shape `dd.MM.` (day.month., trailing dot, no year) — the reference-year
  *  form that gets `baseYear` injected (IF52); the full `dd.MM.yyyy` never matches (it has a trailing year). */
 private val OMITTED_YEAR = Regex("""\d{1,2}\.\d{1,2}\.""")
@@ -255,12 +259,10 @@ private fun Interpreter.indexFieldOf(fieldPath: String): String? {
 private fun Interpreter.evalConst(name: String): Val = when (ConstantOp.byName(name)) {
     ConstantOp.TODAY -> Val.Txt(clock?.today
         ?: throw UnsupportedConstructException("Today needs an evaluation clock — construct DmInterpreter with an EvalClock"))
-    ConstantOp.NOW -> Val.Txt(clock?.now
-        ?: throw UnsupportedConstructException("Now needs an evaluation clock with a current date-time — construct DmInterpreter with an EvalClock(today, now)"))
-    // BaseYear is polymorphic by the comparison's OTHER operand (resolved in evalCmp): the year NUMBER vs a
-    // number field, or the base-year-START DATE (Jan 1) vs a date field — kernel-probed. This context-free
-    // path (a non-comparison use) defaults to the date form, the common case.
-    ConstantOp.BASE_YEAR -> baseYearDate()
+    ConstantOp.NOW -> Val.Txt(nowTemporalValue().text)
+    // The kernel parse tree defaults BaseYear to NUMBER; date-only positions convert it explicitly. Comparisons
+    // resolve it from the other operand in [evalCmpOperand], while [evalTemporal] supplies the date form.
+    ConstantOp.BASE_YEAR -> baseYearNumber()
     null -> throw UnsupportedConstructException("unsupported constant $name")
 }
 
@@ -431,7 +433,7 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     // wall-seconds / 86 400. A DATE operand reads as midnight; mixed DATE/DATE_TIME pairs are legal.
     // An EMPTY operand reads as the fillable 0 (either empty → 0, kernel getDatumsDiff); MALFORMED → Unknown.
     FunctionOp.DIFFERENCE_IN_DAYS -> temporalDifference(f.args) { a, b ->
-        Val.Num(dec(differenceInCalendarDays(a.instant(timeZone), b.instant(timeZone), timeZone)))
+        Val.Num(dec(differenceInCalendarDays(a.instantSeconds(timeZone), b.instantSeconds(timeZone), timeZone)))
     }
     // Count-of-filled functions (used in a comparison, e.g. NumberOfFilledFields(a, b, c) < 2).
     FunctionOp.NUMBER_OF_FILLED_FIELDS -> filledFieldsValue(f.args)
@@ -472,18 +474,18 @@ private fun Interpreter.evalFunc(f: Expr.Func): Val {
     // concrete date — FirstDay → day 01, LastDay → the month's last day; a full value → itself. Reads the
     // raw value + the field's format (the canonicalized Val is Unknown for a `00`-day value).
     FunctionOp.VALUE_AS_DATE -> valueAsDate(f.args)
-    // Date-time arithmetic — reduces to integer seconds, so a day boundary carries automatically.
+    // Date-time arithmetic — uses epoch milliseconds, so a day boundary and Now's remainder carry automatically.
     FunctionOp.ADD_HOURS, FunctionOp.ADD_MINUTES, FunctionOp.ADD_SECONDS -> evalTemporal(f).asTemporalVal()
-    // DifferenceInUnit(a, b) = (epochSecond(b) − epochSecond(a)) / unit, TRUNCATED toward zero (kernel-probed:
+    // DifferenceInUnit(a, b) = (epochMillis(b) − epochMillis(a)) / unitMillis, TRUNCATED toward zero (kernel-probed:
     // a reverse difference of −5.5 units yields −5, not −6 — so plain integer division, not floor).
     FunctionOp.DIFFERENCE_IN_HOURS -> temporalDifference(f.args) { a, b ->
-        Val.Num(dec(((b.instant(timeZone) - a.instant(timeZone)) / 3_600L).toString()))
+        Val.Num(dec(((b.instantMillis(timeZone) - a.instantMillis(timeZone)) / 3_600_000L).toString()))
     }
     FunctionOp.DIFFERENCE_IN_MINUTES -> temporalDifference(f.args) { a, b ->
-        Val.Num(dec(((b.instant(timeZone) - a.instant(timeZone)) / 60L).toString()))
+        Val.Num(dec(((b.instantMillis(timeZone) - a.instantMillis(timeZone)) / 60_000L).toString()))
     }
     FunctionOp.DIFFERENCE_IN_SECONDS -> temporalDifference(f.args) { a, b ->
-        Val.Num(dec((b.instant(timeZone) - a.instant(timeZone)).toString()))
+        Val.Num(dec(((b.instantMillis(timeZone) - a.instantMillis(timeZone)) / 1_000L).toString()))
     }
     // Date arithmetic — date + n days / months / years → a date (ISO text). Empty/absent date → Unknown.
     // AddDays ALSO accepts a DATE_TIME operand (kernel-probed; AddMonths/AddYears reject one at MVK).
@@ -774,7 +776,7 @@ private enum class NoValueReason {
 private data class TemporalValue(
     val text: String,
     val basis: DateCalendarBasis,
-    val exactInstant: Long? = null,
+    val exactInstantMillis: Long? = null,
 ) {
     val date: String get() = dateOnly(text)
     val isDateTime: Boolean get() = 'T' in text
@@ -783,10 +785,13 @@ private data class TemporalValue(
      *  time coordinate, not a resolved instant (SPEC-2026-07-21-07). */
     val isTimeOnly: Boolean get() = TIME.matchEntire(text) != null
 
-    fun instant(timeZone: io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone): Long =
-        exactInstant ?: checkNotNull(calendarOperandInstant(text, timeZone, basis)) {
+    fun instantMillis(timeZone: io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone): Long =
+        exactInstantMillis ?: checkNotNull(calendarOperandInstant(text, timeZone, basis)) {
             "real temporal value has no model-zone instant: $text ($basis, $timeZone)"
-        }
+        } * 1_000L
+
+    fun instantSeconds(timeZone: io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone): Long =
+        instantMillis(timeZone).floorDiv(1_000L)
 }
 
 /** The decoded seconds-of-day of a `HH:mm:ss` time-of-day (its zone-independent fold coordinate). */
@@ -830,7 +835,7 @@ private fun Interpreter.evalTemporal(e: Expr): Evaluated<TemporalValue> {
             FunctionOp.DATE -> evaluateDateConstruction(e.args)
             FunctionOp.DATE_TIME -> composeDateTime(e.args)
             FunctionOp.DATE_FROM_DATE_TIME -> mapTemporal(e.args.single()) { value ->
-                value.copy(text = value.date, exactInstant = null)
+                value.copy(text = value.date, exactInstantMillis = null)
             }
             FunctionOp.ADD_DAYS, FunctionOp.ADD_MONTHS, FunctionOp.ADD_YEARS,
             FunctionOp.ADD_HOURS, FunctionOp.ADD_MINUTES, FunctionOp.ADD_SECONDS -> shiftTemporal(e)
@@ -853,6 +858,16 @@ private fun Interpreter.evaluateDateConstruction(args: List<Expr>): Evaluated<Te
 }
 
 private fun Interpreter.temporalLeaf(e: Expr): Evaluated<TemporalValue> {
+    if (e is Expr.Const) {
+        when (ConstantOp.byName(e.name)) {
+            ConstantOp.NOW -> return Evaluated.Present(nowTemporalValue())
+            ConstantOp.BASE_YEAR -> {
+                val text = (baseYearDate() as Val.Txt).v
+                return temporalText(text, DateCalendarBasis.PROLEPTIC_GREGORIAN)
+            }
+            else -> Unit
+        }
+    }
     val evaluated = coerceDate(evalExpr(e))
     if (evaluated is Val.Txt) {
         val basis = DateCalendarBasis.PROLEPTIC_GREGORIAN
@@ -861,13 +876,36 @@ private fun Interpreter.temporalLeaf(e: Expr): Evaluated<TemporalValue> {
         if (TIME.matchEntire(evaluated.v) != null) return Evaluated.Present(TemporalValue(evaluated.v, basis))
         val instant = calendarOperandInstant(evaluated.v, timeZone, basis)
             ?: return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
-        return Evaluated.Present(TemporalValue(evaluated.v, basis, instant))
+        return Evaluated.Present(TemporalValue(evaluated.v, basis, instant * 1_000L))
     }
     return when {
         malformedField(e) -> Evaluated.NoValue(NoValueReason.NON_RELEVANT)
         emptyCheckRelevant(e) -> Evaluated.NoValue(NoValueReason.NOT_GIVEN)
         else -> Evaluated.NoValue(NoValueReason.NON_RELEVANT)
     }
+}
+
+private fun Interpreter.nowTemporalValue(): TemporalValue {
+    val raw = clock?.now
+        ?: throw UnsupportedConstructException(
+            "Now needs an evaluation clock with a current date-time — construct DmInterpreter with an EvalClock(today, now)",
+        )
+    val match = CLOCK_DATE_TIME.matchEntire(raw)
+        ?: throw UnsupportedConstructException("EvalClock.now must be yyyy-MM-dd'T'HH:mm:ss or yyyy-MM-dd'T'HH:mm:ss.SSS")
+    val text = match.groupValues[1]
+    val epochSecond = calendarOperandInstant(text, timeZone, DateCalendarBasis.PROLEPTIC_GREGORIAN)
+        ?: throw UnsupportedConstructException("EvalClock.now is not a real date-time in the model time zone: $raw")
+    val millis = match.groupValues[2].ifEmpty { "0" }.toLong()
+    return TemporalValue(text, DateCalendarBasis.PROLEPTIC_GREGORIAN, epochSecond * 1_000L + millis)
+}
+
+private fun Interpreter.temporalText(
+    text: String,
+    basis: DateCalendarBasis,
+): Evaluated<TemporalValue> {
+    val epochSecond = calendarOperandInstant(text, timeZone, basis)
+        ?: return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
+    return Evaluated.Present(TemporalValue(text, basis, epochSecond * 1_000L))
 }
 
 private fun Interpreter.composeDateTime(args: List<Expr>): Evaluated<TemporalValue> {
@@ -880,7 +918,7 @@ private fun Interpreter.composeDateTime(args: List<Expr>): Evaluated<TemporalVal
     val text = "${dateValue.date}T$timeValue"
     val instant = calendarOperandInstant(text, timeZone, dateValue.basis)
         ?: return Evaluated.NoValue(NoValueReason.NON_RELEVANT)
-    return Evaluated.Present(TemporalValue(text, dateValue.basis, instant))
+    return Evaluated.Present(TemporalValue(text, dateValue.basis, instant * 1_000L))
 }
 
 private fun Interpreter.evalTime(e: Expr): Evaluated<String> {
@@ -970,11 +1008,12 @@ private fun Interpreter.shiftTemporal(e: Expr.Func): Evaluated<TemporalValue> {
     val n = (amountState as Evaluated.Present).value
     val shifted = when (FunctionOp.byName(e.name)) {
         FunctionOp.ADD_DAYS -> if (value.isDateTime) {
-            val landing = wallDayLandingInstant(instantToLocal(value.instant(timeZone), timeZone), n.toInt(), timeZone)
+            val landing = wallDayLandingInstant(instantToLocal(value.instantSeconds(timeZone), timeZone), n.toInt(), timeZone)
+            val landingMillis = landing * 1_000L + value.instantMillis(timeZone).mod(1_000L)
             TemporalValue(
                 isoFromCalendarInstant(landing, timeZone, value.basis),
                 value.basis,
-                landing,
+                landingMillis,
             )
         } else {
             val date = if (value.basis == DateCalendarBasis.LEGACY_HYBRID)
@@ -993,12 +1032,16 @@ private fun Interpreter.shiftTemporal(e: Expr.Func): Evaluated<TemporalValue> {
         }
         FunctionOp.ADD_HOURS, FunctionOp.ADD_MINUTES, FunctionOp.ADD_SECONDS -> {
             val unit = when (FunctionOp.byName(e.name)) {
-                FunctionOp.ADD_HOURS -> 3_600L
-                FunctionOp.ADD_MINUTES -> 60L
-                else -> 1L
+                FunctionOp.ADD_HOURS -> 3_600_000L
+                FunctionOp.ADD_MINUTES -> 60_000L
+                else -> 1_000L
             }
-            val instant = value.instant(timeZone) + n * unit
-            TemporalValue(isoFromCalendarInstant(instant, timeZone, value.basis), value.basis, instant)
+            val instantMillis = value.instantMillis(timeZone) + n * unit
+            TemporalValue(
+                isoFromCalendarInstant(instantMillis.floorDiv(1_000L), timeZone, value.basis),
+                value.basis,
+                instantMillis,
+            )
         }
         else -> error("not a temporal shift: ${e.name}")
     }
@@ -1015,7 +1058,7 @@ private fun Interpreter.aggregateTemporal(e: Expr.Func): Evaluated<TemporalValue
     if (present.isEmpty()) return Evaluated.NoValue(NoValueReason.NOT_GIVEN)
     // Fold coordinate: a pure time-of-day by its decoded seconds, any dated value by its resolved instant
     // (SPEC-2026-07-21-07). Authored operands are homogeneous, so one key kind decides the whole fold.
-    fun key(v: TemporalValue): Long = if (v.isTimeOnly) timeOfDaySeconds(v.text) else v.instant(timeZone)
+    fun key(v: TemporalValue): Long = if (v.isTimeOnly) timeOfDaySeconds(v.text) * 1_000L else v.instantMillis(timeZone)
     val selected = when (FunctionOp.byName(e.name)) {
         FunctionOp.MIN -> present.minBy(::key)
         FunctionOp.MAX -> present.maxBy(::key)
@@ -1056,7 +1099,7 @@ private fun pad2(n: Int): String = n.toString().padStart(2, '0')
 
 /** Exact instant identity of a legal date-time expression, carried by [evalTemporal] through composition. */
 internal fun Interpreter.dateTimeInstant(e: Expr): Long? =
-    (evalTemporal(e) as? Evaluated.Present)?.value?.takeIf { it.isDateTime }?.instant(timeZone)
+    (evalTemporal(e) as? Evaluated.Present)?.value?.takeIf { it.isDateTime }?.instantMillis(timeZone)
 
 /** `ValueAsDate(field, FirstDay|LastDay)` — resolve a (DAY_OPTIONAL) date field's raw value to a concrete
  *  date: a specified day → itself, an omitted `00` day → the month's first (`FirstDay`) or last (`LastDay`)

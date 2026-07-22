@@ -894,8 +894,9 @@ class Interpreter(
         // `vergleicheDATUM` on `VkDate` epoch millis), derived STRUCTURALLY so a chained `Add{Hours,…}` keeps
         // its exact instant — an ambiguous fall-back wall time re-parses as STANDARD, so the equal-looking
         // rendering of a daylight-side chain result is a DIFFERENT instant (KERNEL-FINDINGS §6). Under UTC the
-        // canonical local ISO order IS the instant order, so the plain text compare below stays the fast path.
-        if (timeZone != ModelTimeZone.UTC && l is Val.Txt && r is Val.Txt && isIsoDateTime(l.v) && isIsoDateTime(r.v)) {
+        // canonical local ISO order IS the instant order; only a rendered tie can hide Now's millisecond remainder.
+        if (l is Val.Txt && r is Val.Txt && isIsoDateTime(l.v) && isIsoDateTime(r.v) &&
+            (timeZone != ModelTimeZone.UTC || l.v == r.v)) {
             val li = dateTimeInstant(c.left) ?: return Tri.UNKNOWN
             val ri = dateTimeInstant(c.right) ?: return Tri.UNKNOWN
             return when (c.op) {
