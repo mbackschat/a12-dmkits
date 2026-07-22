@@ -48,6 +48,10 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: mbackschat/a12-kernel-bootstrap
+          # Pin the bootstrap kit to the release-line branch (mirrors mgm-tp's release/2025.06 naming),
+          # so a later change to the kit's main can't retroactively alter how this kernel line rebuilds.
+          # Source determinism inside the kit is guaranteed by the SHA pins in its bootstrap.sh.
+          ref: release/2025.06
           path: a12-kernel-bootstrap
 
       - name: Set up JDK 21 + 25 (for the bootstrap)
