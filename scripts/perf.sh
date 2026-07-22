@@ -37,33 +37,35 @@ out="build/perf-${mode}.log"
 # Result-line markers the perf tests emit (so the extractor stays accurate as tests are added).
 markers='\[edge\]|\[perf\]|\[jsperf\]|^\s*rules=|^\s*distributed|^\s*B[0-9] |^\s*groups=|µs/row|us/row|interp=|MethodTooLarge|KERNEL CODEGEN FAILED|unknown benchmark scenario|cold=|warm-best='
 
-run_gradle() {  # $1.. = extra gradle args; writes RAW to $out (no pipe!)
+run_gradle() {  # $1 = task, the rest = extra Gradle args; writes RAW to $out (no pipe!)
+    local task="$1"
+    shift
     # The perf tests are @Tag("perf"), excluded from :adapter:test unless opted in (adapter/build.gradle) — so
-    # every mode below must pass -PrunPerf, else the run reports "No tests found for [*…]" and exits non-zero.
-    echo "running: ./build.sh --console=plain -i :adapter:test -PrunPerf $* (raw → $out)"
-    ./build.sh --console=plain -i :adapter:test -PrunPerf "$@" > "$out" 2>&1
+    # broad test-task modes pass -PrunPerf. The routine gate instead owns a dedicated, always-run task.
+    echo "running: ./build.sh --console=plain -i $task $* (raw → $out)"
+    ./build.sh --console=plain -i "$task" "$@" > "$out" 2>&1
 }
 
 case "$mode" in
     gate)
         # counts doubles as an optional METHOD pattern: 'semanticIndex*' → --tests "*PerfGateTest.semanticIndex*"
-        run_gradle --tests "*PerfGateTest${counts:+.$counts}" ;;
+        run_gradle :adapter:perfGateTest --tests "*PerfGateTest${counts:+.$counts}" ;;
     bench)
         if [ -n "$counts" ]; then
-            run_gradle --tests "*PerfBenchTest.gatesEveryInventoryScenario" -Dperf.scenario="$counts"
+            run_gradle :adapter:test -PrunPerf --tests "*PerfBenchTest.gatesEveryInventoryScenario" -Dperf.scenario="$counts"
         else
-            run_gradle --tests "*PerfBenchTest"
+            run_gradle :adapter:test -PrunPerf --tests "*PerfBenchTest"
         fi ;;
     crossover)
-        run_gradle --tests "*KernelEdgeTest.ruleCountCrossover" --tests "*KernelEdgeTest.ruleCountCrossoverLowFiring" \
+        run_gradle :adapter:test -PrunPerf --tests "*KernelEdgeTest.ruleCountCrossover" --tests "*KernelEdgeTest.ruleCountCrossoverLowFiring" \
             -Dperf.edge=true -Dperf.edge.counts="${counts:-6,12,24,48,96,192,384}" ;;
     distributed)
-        run_gradle --tests "*KernelEdgeTest.distributedRuleScaling" \
+        run_gradle :adapter:test -PrunPerf --tests "*KernelEdgeTest.distributedRuleScaling" \
             -Dperf.edge=true -Dperf.edge.counts="${counts:-192,512,1000,2000}" ;;
     scaling)
-        run_gradle --tests "*PerfScalingTest" -Dperf.scaling=true ;;
+        run_gradle :adapter:test -PrunPerf --tests "*PerfScalingTest" -Dperf.scaling=true ;;
     huge)
-        run_gradle --tests "*KernelEdgeTest.hugeDocScaling" -Dperf.edge=true ;;
+        run_gradle :adapter:test -PrunPerf --tests "*KernelEdgeTest.hugeDocScaling" -Dperf.edge=true ;;
     js)
         # The interpreter on Node: build the JS test bundle, then run it DIRECTLY under Node with the default
         # mocha reporter (the kotlin-mocha reporter swallows console.log; the default one prints it). The

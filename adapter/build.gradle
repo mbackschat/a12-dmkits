@@ -261,7 +261,7 @@ tasks.named('test') {
 }
 
 tasks.register('perfScriptGuardTest', Test) {
-    description = 'Verify the performance launcher propagates Node failures.'
+    description = 'Verify the performance launcher routes the routine gate and propagates Node failures.'
     group = 'verification'
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
@@ -272,6 +272,23 @@ tasks.register('perfScriptGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfScriptContractTest'
     }
     inputs.file(script)
+}
+
+tasks.register('perfGateTest', Test) {
+    description = 'Run the isolated routine interpreter performance gate.'
+    group = 'verification'
+    dependsOn 'perfScriptGuardTest'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    maxParallelForks = 1
+    failFast = true
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.adapter.perf.PerfGateTest'
+    }
+    // Measurements are observations, never reusable task outputs. Persist compilation/dependencies, not results.
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
 }
 
 def footprintFixtureDirectory = rootProject.file('interpreter/src/commonTest/resources/footprint')

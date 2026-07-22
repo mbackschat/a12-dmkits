@@ -30,7 +30,7 @@ This is exactly the scenario [KERNEL-UPGRADE.md](KERNEL-UPGRADE.md) was written 
 | a12-base (kernel pin) | 29.3.0 | **30.0.0** | transitive; the public base source release is 30.0.1 |
 | runtime artifact id | `…runtime-30-8` | `…runtime-31-1` | transitive only — safe |
 | Jackson (kernel-internal) | 2.x `com.fasterxml` | **3.1.2 `tools.jackson`** | not pinned directly |
-| CI bootstrap cache | `kernel-30.8.1-base-29.3.0` | **kernel/base 31/30 key** | `.github/workflows/ci.yml`, mirror native workflow |
+| CI bootstrap cache | `kernel-30.8.1-base-29.3.0` | **kernel/base 31/30 key** | `.github/workflows/ci.yml`, `.github/workflows/nightly-performance.yml`, mirror native workflow |
 
 ### Module rename / delete / stable map (the backbone of the build-file change)
 

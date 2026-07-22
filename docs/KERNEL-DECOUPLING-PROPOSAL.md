@@ -159,7 +159,7 @@ The known trap: every guard task's `fileTree` input is `.optional()` — a moved
 | 9 | `-Xlint:removal -Werror` ratchet | today on `:`,`:adapter`,`:cli`; after stage 3 only `:adapter`+`:cli` compile kernel code — move the config accordingly |
 | 10 | `adapter/build.gradle` | `api project(':')` → the kit projects; FQCN test filters unchanged (packages stable) |
 | 11 | `cli/build.gradle`, `schemakit/build.gradle` | `project(':')` → the kit list |
-| 12 | `.github/workflows/ci.yml` (~:75, :85) | root `test` no longer exists on an aggregator — enumerate kit test tasks or use `check`; keep the nightly isolated `scripts/perf.sh gate` invocation |
+| 12 | `.github/workflows/ci.yml` + `.github/workflows/nightly-performance.yml` | root `test` no longer exists on an aggregator — enumerate kit test tasks or use `check`; keep the separate nightly isolated `scripts/perf.sh gate` invocation |
 | 13 | `probe/prep-probe.sh` (~:44) | the staleness `find` sweeps `cli/src` + `src` — must cover the kit folders (pre-existing gap: it already misses `adapter/src`/`interpreter/src`; fix the class, not the symptom) |
 | 14 | `eval/prep-sandbox.sh`, `scripts/{perf,verify-demos,capture-native-config,native-gate}.sh` | verified path-stable (cli/adapter paths only) — re-verify at reorg time |
 | 15 | native-image reachability metadata | test-suite-captured ⇒ any source move stales it — **re-capture before any native build** (routine trigger-table item) |

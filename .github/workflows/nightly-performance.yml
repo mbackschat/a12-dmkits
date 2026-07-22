@@ -1,0 +1,63 @@
+name: Nightly performance
+
+# Performance-only by design. Every main SHA already runs the deterministic correctness, fuzz, plugin, and
+# Showboat gates in ci.yml; repeating them here adds no coverage and dominates scheduled wall time.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  performance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
+    steps:
+      - name: Checkout rulekit
+        uses: actions/checkout@v4
+        with:
+          path: a12-dmkits
+
+      - name: Checkout the kernel bootstrap kit
+        uses: actions/checkout@v4
+        with:
+          repository: mbackschat/a12-kernel-bootstrap
+          path: a12-kernel-bootstrap
+
+      - name: Set up JDK 21 + 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            21
+            25
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Cache bootstrapped kernel (mavenLocal)
+        id: kernel-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/com/mgmtp
+          key: a12-kernel-30.8.1-base-29.3.0-${{ hashFiles('a12-kernel-bootstrap/bootstrap.sh', 'a12-kernel-bootstrap/patches/**') }}
+
+      - name: Bootstrap the A12 kernel from public sources (cache miss only)
+        if: steps.kernel-cache.outputs.cache-hit != 'true'
+        working-directory: a12-kernel-bootstrap
+        env:
+          JAVA21_HOME: ${{ env.JAVA_HOME_21_X64 }}
+          JAVA25_HOME: ${{ env.JAVA_HOME_25_X64 }}
+        run: ./bootstrap.sh
+
+      # This launcher targets the dedicated non-cacheable, single-fork perfGateTest task. Compilation and
+      # dependencies may restore from cache; the timed measurements themselves always execute fresh.
+      - name: Run the isolated routine performance gate
+        working-directory: a12-dmkits
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
+        run: ./scripts/perf.sh gate

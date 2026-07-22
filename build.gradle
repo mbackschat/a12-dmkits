@@ -134,7 +134,8 @@ ext.guardInputs = { Test task, Map<String, ?> named ->
 // bytecode), and DslCatalogBridgeTest reads the dsl package's `catalog:<Id>` Javadoc markers — which compile
 // to IDENTICAL bytecode, so a marker-only edit would leave the plain `test` task up-to-date and skip the very
 // guard the edit needs (the false-green trap). BuildPerformancePolicyTest locks the repo-level Gradle cache
-// and compiler-memory policies; GateTierWiringTest locks the CI workflow → isolated perf launcher chain.
+// and compiler-memory policies; GateTierWiringTest locks the push/nightly workflow split, persistent Gradle
+// cache, and non-cacheable isolated perf launcher chain.
 // They run HERE with those files declared as THIS task's inputs; `test` dependsOn this, so CI and a plain
 // `:test` always drive all four.
 tasks.register('docGuardTest', Test) {
@@ -155,7 +156,9 @@ tasks.register('docGuardTest', Test) {
             'cache smoke'      : file('scripts/verify-build-cache.sh'),
             'demo verifier'    : file('scripts/verify-demos.sh'),
             'CI workflow'      : file('.github/workflows/ci.yml'),
+            'nightly workflow' : file('.github/workflows/nightly-performance.yml'),
             'perf launcher'    : file('scripts/perf.sh'),
+            'adapter build'    : file('adapter/build.gradle'),
             'native capture'   : file('scripts/capture-native-config.sh'),
             // dsl sources + the operator catalog moved to :rulekit in the Stage-4 module cut.
             'dsl sources'      : fileTree('rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl') { include '**/*.java' },

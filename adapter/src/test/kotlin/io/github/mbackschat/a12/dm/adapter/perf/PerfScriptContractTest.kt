@@ -10,8 +10,19 @@ import java.nio.file.Path
 class PerfScriptContractTest {
 
     @Test
+    fun gateUsesItsDedicatedTask() {
+        val script = script()
+        val gateInvocation = script.substringAfter("gate)").substringBefore(";;")
+
+        assertTrue(gateInvocation.contains(":adapter:perfGateTest"),
+            "scripts/perf.sh gate must execute the non-cacheable dedicated task")
+        assertFalse(gateInvocation.contains(":adapter:test"),
+            "the routine gate must not enable performance tests on the broad adapter suite")
+    }
+
+    @Test
     fun nodeFailureIsNotSwallowed() {
-        val script = Files.readString(Path.of(System.getProperty("perf.script")))
+        val script = script()
         val nodeInvocation = script.substringAfter("\"${'$'}node\" --require")
             .substringBefore(";;")
 
@@ -19,4 +30,6 @@ class PerfScriptContractTest {
         assertFalse(nodeInvocation.contains("|| true"),
             "scripts/perf.sh js must propagate a failing Node/Mocha exit")
     }
+
+    private fun script(): String = Files.readString(Path.of(System.getProperty("perf.script")))
 }

@@ -11,8 +11,6 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
-  schedule:
-    - cron: '0 3 * * *'   # nightly — runs the isolated perf gate below; see docs/TESTING-SPEC "Test tiers"
 
 permissions:
   contents: read
@@ -21,6 +19,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      # Hosted runners have no private init scripts, but retain the repo's explicit isolated-home contract.
+      # setup-gradle below persists its dependencies, transformed jars, and local build cache across runs.
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
     steps:
       - name: Checkout rulekit
         uses: actions/checkout@v4
@@ -45,6 +47,9 @@ jobs:
             21
             25
 
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v6
+
       # Cache the bootstrapped kernel artifacts. Key on the kernel/base versions + the bootstrap
       # script & patches, so a kernel bump or a bootstrap change re-runs it; otherwise it's restored.
       - name: Cache bootstrapped kernel (mavenLocal)
@@ -63,8 +68,8 @@ jobs:
         run: ./bootstrap.sh
 
       # The default suite + the differential FUZZERS (-PrunFuzz) run on every push/PR — fuzzers are
-      # correctness nets (interpreter == kernel). The isolated routine perf gate is excluded here and
-      # runs in the nightly perf step below (docs/TESTING-SPEC "Test tiers"). Stage-4 module cut: root `test`
+      # correctness nets (interpreter == kernel). The isolated routine perf gate lives in the dedicated
+      # nightly-performance workflow (docs/TESTING-SPEC "Test tiers"). Stage-4 module cut: root `test`
       # still exists (root is the cross-kit integration-test host, PROPOSAL §3a Option 1) so it runs the same
       # suite; we ALSO run the kernel-decoupling regression nets `:verifyKitPurity` (no kit main names a
       # kernel type) + `:noBackendTest` (the §2c degraded lane) here, since they were previously only on the
@@ -73,21 +78,7 @@ jobs:
         working-directory: a12-dmkits
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
-          # Public-repos-only Gradle home, as the README's build does (here it also gives a clean,
-          # cacheable home on the runner).
-          GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
         run: ./gradlew --no-daemon test :adapter:test :cli:test :verifyKitPurity :noBackendTest -PrunFuzz
-
-      # The isolated routine perf gate — nightly + on-demand, not on every push. Use the same launcher as
-      # maintainers: it selects PerfGateTest only, so timing pairs never compete with the heavyweight benchmark
-      # classes under :adapter:test's parallel forks. PerfBenchTest remains a perf-relevant checkpoint tier.
-      - name: Perf gate (nightly + on-demand)
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-        working-directory: a12-dmkits
-        env:
-          JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
-          GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
-        run: ./scripts/perf.sh gate
 
       # Both agent plugins (Claude Code, Codex) bundle COPIES of the single-source assets — the skills,
       # installer, and release-asset manifest — synced by scripts/sync-plugin-assets.sh. Fail loudly if any
@@ -126,5 +117,4 @@ jobs:
         working-directory: a12-dmkits
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
-          GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
         run: ./scripts/verify-demos.sh
