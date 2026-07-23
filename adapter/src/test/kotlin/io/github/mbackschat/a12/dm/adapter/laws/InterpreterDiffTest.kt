@@ -85,6 +85,18 @@ class InterpreterDiffTest {
         Case("operand-list Min(3, 5) == 0 → no fire", render(Dsl.min(m.num(Q).asNumber(), m.num(BQ).asNumber()).eq(0)),
             eq(Expr.Func("Min", listOf(f(Q), f(BQ))), n(0)), "../Quantity",
             values = mapOf(CN to "Acme", Q to "3", BQ to "5")),
+        // SPEC-2026-07-23-06 — a literal inside a NESTED call does not consume the outer budget, and the
+        // interpreter composes the nested call recursively (it must not flatten it): Min(Min(5,1),2) = 1.
+        Case("nested same-selector Min(Min([Q],1),2) == 1 → fire",
+            render(Dsl.min(Dsl.min(m.num(Q).asNumber(), Dsl.number(1)), Dsl.number(2)).eq(1)),
+            eq(Expr.Func("Min", listOf(Expr.Func("Min", listOf(f(Q), n(1))), n(2))), n(1)), "../Quantity",
+            values = mapOf(Q to "5")),
+        // Different-selector nesting composes the two extrema: Min(Max(5,1),2) = 2 (a flatten-away of the
+        // inner Max would wrongly give Min(5,1,2) = 1), so == 2 firing discriminates correct composition.
+        Case("nested different-selector Min(Max([Q],1),2) == 2 → fire",
+            render(Dsl.min(Dsl.max(m.num(Q).asNumber(), Dsl.number(1)), Dsl.number(2)).eq(2)),
+            eq(Expr.Func("Min", listOf(Expr.Func("Max", listOf(f(Q), n(1))), n(2))), n(2)), "../Quantity",
+            values = mapOf(Q to "5")),
     )
 
     @Test
