@@ -41,6 +41,7 @@
           "items": { "type": "object", "required": ["name", "values"], "additionalProperties": false,
             "properties": { "name": { "type": "string" }, "description": { "type": "string", "description": "optional editor-level note for the category (the kernel core ignores it; preserved for the editor's Category table)" }, "values": { "type": "array", "items": { "type": "string" }, "description": "values aligned 1:1 with the enum values" } } } },
         "alphabeticalSorting": { "type": "boolean" },
+        "sValue": { "type": "string", "description": "the stored-token S-value — the model-owned INDEX default: when this enum is a repeatable group's index field, full validation transiently supplies this token for a nonmandatory index that is absent/present-empty on the parent's only row (partial validation instead silently suppresses that cell). Must name one of the declared values (checked at authoring — the kernel stages it into evaluation unvalidated)" },
         "invalidValueMessage": { "type": "string", "description": "error text for an out-of-domain value — one text expanded across ALL declared locales (the shorthand)" },
         "errorMessages": { "type": "object", "description": "per-locale invalid-value error text, { \"<locale>\": \"<text>\" } — wins over invalidValueMessage; must cover every declared locale (omit both to use the kernel default)" }
       }
@@ -82,7 +83,7 @@
   "examples": [
     {
       "kind": "ENUM",
-      "enum": { "values": [ { "value": "GOLD" }, { "value": "SILVER" } ] }
+      "enum": { "values": [ { "value": "GOLD" }, { "value": "SILVER" } ], "sValue": "SILVER" }
     },
     {
       "kind": "STRING",

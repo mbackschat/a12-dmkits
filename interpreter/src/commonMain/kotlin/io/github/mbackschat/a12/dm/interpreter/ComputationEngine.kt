@@ -102,7 +102,15 @@ internal class ComputationEngine(
      * `CalculationFieldException` → "fehlerhaft berechnet"): no value, reported CLEARED (report-all), and its
      * own dependents' reads poison transitively. Read-driven, so evaluation order/short-circuits decide.
      */
-    private fun computeOver(doc: Document, comps: List<ComputationDef>, locale: String): List<Computed> {
+    private fun computeOver(rawDoc: Document, comps: List<ComputationDef>, locale: String): List<Computed> {
+        // Computation applies the SAME full-call index-default staging as full validation, after formal
+        // ingestion and before its preliminary rules (SPEC-2026-07-23-15; the kernel's inherited
+        // `formalePruefung` tail): an eligible clean-empty enum index reads its declaration-owned S-value,
+        // so a consuming computation computes a VALUE instead of clearing on the missing operand. The
+        // staging is call-local — the caller's document is never mutated, and the staged index cell is not
+        // a computed target, so it never reaches an outcome or an applied document.
+        val indexDefaults = checks.eligibleIndexDefaults(rawDoc)
+        val doc = if (indexDefaults.isEmpty()) rawDoc else rawDoc.withComputed(indexDefaults)
         // A field may be targeted by MULTIPLE computations (a composed base + subtype override — IF87): they run in
         // document order and the FIRST NON-EMPTY outcome (a VALUE or a POISON) wins per cell; an empty/clearing one is
         // a no-op and control falls through to the next (the kernel's `CalculationController.handleBerechnetenWert` —
@@ -125,7 +133,14 @@ internal class ComputationEngine(
         // poisons a downstream computation the kernel computes fine (IF90).
         val minFracOf: (String) -> Int = { p -> model.constraintsOf(p).minFractionalDigits ?: 0 }
         val poisoned = HashSet<Pair<String, List<Int>>>()
-        val formalResults = FormalResultCache(checks, locale, emptySet())
+        // The kernel's PRELIMINARY index invalidation reaches the compute path (SPEC-2026-07-23-15): a
+        // DUPLICATED index cell is formally invalid for a reading computation (the `uniqueIndex` prepass),
+        // and an EMPTY index cell — unlike an ordinary required-empty field — poisons its reader (the
+        // preliminary mandatory rule marks it invalid-for-validation before the calculations run). Both are
+        // computed on the STAGED document, so a defaulted cell participates as its S-value instead.
+        val dup = checks.duplicateIndexCells(doc)
+        val emptyIndexCells = checks.preliminaryEmptyIndexCells(doc)
+        val formalResults = FormalResultCache(checks, locale, dup)
         // The compute-invariant config, built once for every instance's Interpreter (computeMode; no
         // CustomCondition / relevance seams on the compute path). Only the per-instance `invalid` poison gate
         // varies (it closes over the instance context), so it stays an Interpreter constructor arg.
@@ -139,7 +154,8 @@ internal class ComputationEngine(
             patternMatches = patterns::matches,
             computeScanState = { cell ->
                 when {
-                    cell.baseState != CellState.FILLED -> cell.baseState
+                    cell.baseState != CellState.FILLED ->
+                        if (cell.path to cell.reps in emptyIndexCells) CellState.INVALID else cell.baseState
                     cell.raw == null -> CellState.EMPTY
                     formalResults.failureAt(cell.path, cell.reps, cell.raw) != null -> CellState.INVALID
                     else -> CellState.FILLED
@@ -179,7 +195,7 @@ internal class ComputationEngine(
                         // The compute gate THROWS (IF85): consulting it on a filled formally-invalid operand IS the
                         // kernel's poisoning read (validation's gate stays Boolean → the 3VL exclusion).
                         invalid = { path ->
-                            if (operandNotCheckRelevant(path, ectx, formalResults)) throw PoisonedReadException(path)
+                            if (operandNotCheckRelevant(path, ectx, formalResults, emptyIndexCells)) throw PoisonedReadException(path)
                             else false
                         })
                     // A read of a formally-invalid cell — an input field, or a POISONED computed dependency — aborts
@@ -269,15 +285,19 @@ internal class ComputationEngine(
         return values.any { it.isNullOrEmpty() } || values.size != values.distinct().size
     }
 
-    /** Whether a FILLED operand is "not check-relevant" for a computation — the SAME test full validation uses
+    /** Whether an operand is "not check-relevant" for a computation — the SAME test full validation uses
      *  ([FormalResultCache]): the kernel clears a computation over ANY formally-invalid filled operand — every
      *  number formal code (range, fraction-digit, integer-cap, zero-not-allowed, length, leading-zeros, …), a
-     *  string length/pattern/enum-domain, a rejected custom type, an over-limit cell — matching both strategies
-     *  (differentially confirmed: every formal-error class clears, IF78). An EMPTY operand → false (empty-as-0
-     *  applies, even when required — the kernel's `nichtAngegeben`, IF76); duplicate-index is not tracked in
-     *  compute (empty [dup]). */
-    private fun operandNotCheckRelevant(path: String, ctx: EvalContext, formalResults: FormalResultCache): Boolean {
-        if (ctx.displayValue(path) == null) return false   // empty → empty-as-0, not cleared
+     *  string length/pattern/enum-domain, a rejected custom type, an over-limit cell, a DUPLICATED index cell —
+     *  matching both strategies (differentially confirmed: every formal-error class clears, IF78). An EMPTY
+     *  operand → false (empty-as-0 applies, even when required — the kernel's `nichtAngegeben`, IF76) — with
+     *  ONE exception: an empty INDEX cell, which the preliminary index mandatory rule invalidates before the
+     *  calculations run ([AutoChecks.preliminaryEmptyIndexCells], SPEC-2026-07-23-15). */
+    private fun operandNotCheckRelevant(path: String, ctx: EvalContext, formalResults: FormalResultCache,
+            emptyIndexCells: Set<Pair<String, List<Int>>>): Boolean {
+        if (ctx.displayValue(path) == null) {
+            return path to ctx.repsOf(path) in emptyIndexCells   // empty → empty-as-0, unless a preliminary-invalid index
+        }
         return formalResults.failureAt(path, ctx.repsOf(path), ctx) != null
     }
 

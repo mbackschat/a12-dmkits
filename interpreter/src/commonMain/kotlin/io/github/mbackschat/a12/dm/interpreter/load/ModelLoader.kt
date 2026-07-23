@@ -212,6 +212,7 @@ object ModelLoader {
         datePrecision = datePrecisionOf(node),
         enumValues = enumValuesOf(node),
         enumCategories = enumCategoriesOf(node),
+        enumSValue = enumSValueOf(node),
         customType = customFieldTypeOf(node),
         minLength = typedInt(node, "StringType", "minLength"),
         maxLength = typedInt(node, "StringType", "maxLength"),
@@ -267,6 +268,12 @@ object ModelLoader {
     private fun enumValuesOf(fieldNode: JsonElement?): List<String> =
         fieldNode.path("Field").path("fieldType").path("EnumerationType").path("values").elements()
             .map { it.path("value").asText() }
+
+    /** An ENUMERATION field's declared stored-token S-value (DM-JSON `sValue`) — the model-owned index
+     *  default (SPEC-2026-07-23-14); null when absent. */
+    private fun enumSValueOf(fieldNode: JsonElement?): String? =
+        fieldNode.path("Field").path("fieldType").path("EnumerationType").path("sValue").asTextOrNull()
+            ?.ifEmpty { null }
 
     /** An ENUMERATION field's categories (name → positional value list) — the `EnumCategory` mapping. */
     private fun enumCategoriesOf(fieldNode: JsonElement?): Map<String, List<String>> {

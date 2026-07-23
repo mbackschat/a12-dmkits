@@ -192,10 +192,14 @@ public sealed interface FieldTypeSpec {
      * An enumeration: at least one stored value; comparisons use the stored value, not the label (§8).
      * Optional {@code categories} group the values — each category maps positionally onto the values
      * ({@code categories[c].values[i]} classifies {@code values[i]}), so every category must classify
-     * every value (length checked here).
+     * every value (length checked here). The optional {@code sValue} is the kernel's stored-token
+     * <b>S-value</b> (DM-JSON {@code sValue}) — the model-owned default an eligible empty INDEX field
+     * receives during full validation (SPEC-2026-07-23-14); it must name one of the declared values,
+     * because the kernel stages it into evaluation without re-validating it. {@code null} for none.
      */
     record EnumSpec(List<EnumValue> values, List<EnumCategory> categories, boolean alphabeticalSorting,
-            String invalidValueMessage, Map<String, String> invalidValueMessages) implements FieldTypeSpec {
+            String invalidValueMessage, Map<String, String> invalidValueMessages,
+            String sValue) implements FieldTypeSpec {
         public EnumSpec {
             values = List.copyOf(values);
             categories = List.copyOf(categories);
@@ -207,6 +211,23 @@ public sealed interface FieldTypeSpec {
                             + " (a category must classify every value)");
                 }
             }
+            if (sValue != null) {
+                if (sValue.isBlank()) {
+                    throw new IllegalArgumentException("an S-value must be a non-blank stored token");
+                }
+                if (values.stream().noneMatch(v -> v.value().equals(sValue))) {
+                    throw new IllegalArgumentException("the S-value '" + sValue
+                            + "' is not one of the declared enum values "
+                            + values.stream().map(EnumValue::value).toList()
+                            + " — the kernel stages it into evaluation unvalidated");
+                }
+            }
+        }
+
+        /** The no-S-value form (the enum shape before SPEC-2026-07-23-14 added the index default). */
+        public EnumSpec(List<EnumValue> values, List<EnumCategory> categories, boolean alphabeticalSorting,
+                String invalidValueMessage, Map<String, String> invalidValueMessages) {
+            this(values, categories, alphabeticalSorting, invalidValueMessage, invalidValueMessages, null);
         }
 
         /**
@@ -215,12 +236,12 @@ public sealed interface FieldTypeSpec {
          */
         public EnumSpec(List<EnumValue> values, List<EnumCategory> categories, boolean alphabeticalSorting,
                 String invalidValueMessage) {
-            this(values, categories, alphabeticalSorting, invalidValueMessage, Map.of());
+            this(values, categories, alphabeticalSorting, invalidValueMessage, Map.of(), null);
         }
 
         /** The earlier form: values + categories, no alphabetical-sort or invalid-value-message slot. */
         public EnumSpec(List<EnumValue> values, List<EnumCategory> categories) {
-            this(values, categories, false, null, Map.of());
+            this(values, categories, false, null, Map.of(), null);
         }
 
         @Override

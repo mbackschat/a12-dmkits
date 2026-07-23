@@ -202,6 +202,11 @@ data class FieldDef(
     /** For an ENUMERATION field: each category's positional value list (the kernel's `getCategoryValues`),
      *  keyed by category name — index `i` pairs with [enumValues]`[i]`. Drives `[Field -> Category]`. */
     val enumCategories: Map<String, List<String>> = emptyMap(),
+    /** For an ENUMERATION field: the declared stored-token **S-value** (DM-JSON `sValue`, the kernel's
+     *  `IEnumerationType.getsValue`) — the model-owned INDEX default an eligible clean-empty index cell
+     *  receives during full validation and computation, and that partial validation silently suppresses
+     *  (SPEC-2026-07-23-14/-15; [ModelDef.indexDefaults]). Null for none (and for non-enum fields). */
+    val enumSValue: String? = null,
     /** For a CUSTOM-typed field: its validator name and optional bounds. The bounds are passed to
      *  [CustomFieldType.check] through [CustomFieldValidationContext]; they are not generic [Kind.STRING]
      *  constraints and therefore do not fire independently of the registered validator. [ModelDef] resolves the
@@ -554,6 +559,18 @@ data class ModelDef(
     private val labelsByPath: Map<String, Map<String, String>> = fields.associate { it.path to it.labels }
     private val fieldsByPath: Map<String, FieldDef> = fields.associateBy { it.path }
     private val requiredByPath: Map<String, Requiredness> = fields.associate { it.path to it.required }
+
+    /**
+     * Index fields carrying a declared, DEFAULT-ELIGIBLE enum S-value — the model half of the kernel's
+     * `IndexFieldDefaultValueUtils` eligibility (SPEC-2026-07-23-14): the field is an [indexFields] member,
+     * declares [FieldDef.enumSValue], and is **not explicitly mandatory** (the auto index requiredness does
+     * not count — the kernel's `isExplicitlyMandatory` is the author's check box). The per-DOCUMENT half
+     * (exactly one instantiated row per parent, clean-empty cell) is
+     * [io.github.mbackschat.a12.dm.interpreter.AutoChecks.eligibleIndexDefaults].
+     */
+    val indexDefaults: Map<String, String> = fields
+        .filter { it.path in indexFields && it.enumSValue != null && it.required == Requiredness.NOT_REQUIRED }
+        .associate { it.path to it.enumSValue!! }
 
     /**
      * The **effective** requiredness of the field at [path] — its explicit [FieldDef.required] if set, else

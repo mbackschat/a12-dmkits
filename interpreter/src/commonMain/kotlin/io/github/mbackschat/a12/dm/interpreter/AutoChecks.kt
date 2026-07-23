@@ -153,6 +153,55 @@ internal class AutoChecks(
         return out
     }
 
+    /**
+     * The DEFAULT-ELIGIBLE index cells of [doc] with their declared S-values — the per-document half of the
+     * kernel's `IndexFieldDefaultValueUtils.getIndexFieldIdsEligibleForDefaultValueHandling`
+     * (SPEC-2026-07-23-14). A cell is eligible when its field is in [ModelDef.indexDefaults] (enum S-value
+     * declared, not explicitly mandatory — the model half), its index group has EXACTLY ONE instantiated row
+     * under the current parent, and that row's index cell is clean-empty — physically absent or
+     * present-empty. A formally invalid EXPLICIT value is a filled cell, so it is never eligible (the
+     * S-value must not paper over it). What the caller does with the cells is phase-specific: full
+     * validation and computation STAGE the S-value transiently ([Document.withComputed] — the kernel's
+     * `setIndexFieldToDefaultValue`); partial validation marks them silently UNAVAILABLE
+     * ([FormalResultCache]'s `unavailable` — the kernel's `markFieldAsInvalidForValidation`).
+     */
+    fun eligibleIndexDefaults(doc: Document): Map<Pair<String, List<Int>>, String> {
+        if (model.indexDefaults.isEmpty()) return emptyMap()
+        val out = LinkedHashMap<Pair<String, List<Int>>, String>()
+        for ((indexField, sValue) in model.indexDefaults) {
+            doc.instantiatedRows(parentGroup(indexField))
+                .groupBy { it.dropLast(1) }
+                .forEach { (_, rows) ->
+                    val row = rows.singleOrNull() ?: return@forEach
+                    val cell = row + 1
+                    if (!doc.filledAt(indexField, cell)) out[indexField to cell] = sValue
+                }
+        }
+        return out
+    }
+
+    /**
+     * The EMPTY index cells the kernel's preliminary index mandatory rule invalidates on the COMPUTE path
+     * (SPEC-2026-07-23-15; `CalculationCommand.preliminaryValidationOfIndexFields` →
+     * `MainValidatorController.preliminaryError` → `markFieldAsInvalidForValidation`): one entry per
+     * instantiated index-group row (post-staging, so a defaulted cell is filled and absent here) whose index
+     * cell carries no value. A read of such a cell POISONS the reading computation — unlike an ordinary
+     * required-empty field, which stays empty-as-0 (IF76). Over-limit rows keep their over-repetition
+     * precedence and are skipped, like every other generated check.
+     */
+    fun preliminaryEmptyIndexCells(doc: Document): Set<Pair<String, List<Int>>> {
+        if (model.indexFields.isEmpty()) return emptySet()
+        val out = LinkedHashSet<Pair<String, List<Int>>>()
+        for (indexField in model.indexFields) {
+            for (row in doc.instantiatedRows(parentGroup(indexField))) {
+                val cell = row + 1
+                if (paths.overLimitLevel(indexField, cell) != null) continue
+                if (!doc.filledAt(indexField, cell)) out += indexField to cell
+            }
+        }
+        return out
+    }
+
     /** One `uniqueIndex` [Message] per duplicate-index cell (the kernel flags every participant). */
     fun uniquenessMessages(doc: Document, dup: Set<Pair<String, List<Int>>>, locale: String,
             isRelevant: Relevance): List<Message> =

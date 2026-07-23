@@ -495,6 +495,9 @@ public final class DocumentModelDraft {
                 if (e.alphabeticalSorting()) {
                     enumeration.put("alphabeticalSorting", true);
                 }
+                if (e.sValue() != null) {
+                    enumeration.put("sValue", e.sValue());   // the index-default stored token (SPEC-2026-07-23-14)
+                }
                 if (!e.invalidValueMessages().isEmpty()) {
                     // G23: per-locale invalid-value text — written verbatim (the kernel requires every declared
                     // locale to be covered, like the enum value labels)
@@ -575,6 +578,7 @@ public final class DocumentModelDraft {
                     }
                 }
                 if (c.path("alphabeticalSorting").asBoolean(false)) b.put("alphabeticalSorting", true);
+                copyText(c, "sValue", b, "sValue");   // the index-default stored token — must survive a read→modify round-trip
                 localizedMap(c.path(DmKeys.ERROR_MESSAGE)).ifPresent(m -> b.set("errorMessages", m));
                 out.set("enum", b);
             }

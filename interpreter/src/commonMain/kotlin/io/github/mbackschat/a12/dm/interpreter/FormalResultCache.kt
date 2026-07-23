@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.FormalErrorCode
+import io.github.mbackschat.a12.dm.interpreter.eval.INDEX_DEFAULT_SUPPRESSED
 import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection
 import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
 
@@ -36,12 +37,18 @@ internal class FormalResultCache(
     private val checks: AutoChecks,
     private val locale: String,
     private val duplicates: Set<Pair<String, List<Int>>>,
+    /** PARTIAL validation's silently suppressed eligible index-default cells (SPEC-2026-07-23-14): each
+     *  reads as formally invalid with the message-less [INDEX_DEFAULT_SUPPRESSED] marker — no generated
+     *  check, dependent rules see UNKNOWN — and is an invalid pointer from the start (the kernel marks the
+     *  containing groups erroneous EAGERLY, before any rule runs). Empty outside partial validation. */
+    private val unavailable: Set<Pair<String, List<Int>>> = emptySet(),
     private val groupFilled: (EvalContext, String) -> Boolean = { ctx, path -> ctx.groupFilled(path) },
 ) {
     private data class Key(val path: String, val reps: List<Int>, val raw: String?)
 
     private val results = HashMap<Key, FormalResult>()
-    private val invalidPointers = HashSet<FieldPointer>()
+    private val invalidPointers =
+        unavailable.mapTo(HashSet()) { (path, reps) -> FieldPointer(path, reps) }
 
     fun resultAt(path: String, reps: List<Int>, ctx: EvalContext): FormalResult {
         val raw = ctx.displayValue(path)
@@ -53,6 +60,9 @@ internal class FormalResultCache(
         resultAt(path, reps, raw, null)
 
     private fun resultAt(path: String, reps: List<Int>, raw: String?, ctx: EvalContext?): FormalResult {
+        if (path to reps in unavailable) {
+            return FormalResult.Invalid(FormalFailure.Generated(INDEX_DEFAULT_SUPPRESSED))
+        }
         val key = Key(path, reps, raw)
         val result = results.getOrPut(key) {
             checks.computeFormalResultAt(path, reps, raw, ctx, duplicates, locale, groupFilled)

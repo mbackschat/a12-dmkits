@@ -230,22 +230,31 @@ class DmInterpreter @JvmOverloads constructor(
             customRelevant: Set<FieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null,
             groupRelevance: (String, List<Int>) -> GroupRelevance = { _, _ -> GroupRelevance.FULL }): ValidationOutcome =
         observeCaches(doc) {
-            val dup = checks.duplicateIndexCells(doc, isRelevant)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
+            // The index-default staging split (SPEC-2026-07-23-14): a FULL call stages each eligible
+            // clean-empty index cell's S-value into a call-local view — before the generated checks and
+            // authored rules, never mutating the caller's document (the kernel's transient evaluation
+            // cache); a PARTIAL call does NOT stage and instead silently marks those cells unavailable
+            // (the `unavailable` seam of the formal-status cache below).
+            val indexDefaults = checks.eligibleIndexDefaults(doc)
+            val full = isRelevant === ALL_RELEVANT
+            val call = if (full && indexDefaults.isNotEmpty()) doc.withComputed(indexDefaults) else doc
+            val unavailable = if (full) emptySet() else indexDefaults.keys
+            val dup = checks.duplicateIndexCells(call, isRelevant)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
             lateinit var formalResults: FormalResultCache
             val admittedGroupContent by lazy(LazyThreadSafetyMode.NONE) {
-                AdmittedGroupContentIndex.build(model, doc, isRelevant, groupRelevance, formalResults, paths)
+                AdmittedGroupContentIndex.build(model, call, isRelevant, groupRelevance, formalResults, paths)
             }
-            formalResults = FormalResultCache(checks, locale, dup) { ctx, path ->
+            formalResults = FormalResultCache(checks, locale, dup, unavailable) { ctx, path ->
                 admittedGroupContent.isFilled(ctx, path)
             }
             // Custom-type unsupported is collected up front (cells whose type is in NEITHER registry); formalErrors
             // ADDS to it any REGISTERED code-based type whose validate() can't run (a JS worker down / errored), so
             // that degrades to unsupported per cell rather than crashing the whole validation.
-            val unsupported = checks.customTypeUnsupported(doc, isRelevant).toMutableList()
-            val messages = (checks.formalErrors(doc, locale, isRelevant, formalResults, unsupported) +
-                    checks.mandatoryErrors(doc, locale, isRelevant, formalResults)
-                    + checks.uniquenessMessages(doc, dup, locale, isRelevant)
-                    + checks.overRepetitionMessages(doc, locale, isRelevant)).toMutableList()
+            val unsupported = checks.customTypeUnsupported(call, isRelevant).toMutableList()
+            val messages = (checks.formalErrors(call, locale, isRelevant, formalResults, unsupported) +
+                    checks.mandatoryErrors(call, locale, isRelevant, formalResults)
+                    + checks.uniquenessMessages(call, dup, locale, isRelevant)
+                    + checks.overRepetitionMessages(call, locale, isRelevant)).toMutableList()
             // The per-call seam (IF117): the formal-status memo spans ALL rules of this validation (the doc is
             // immutable here), and the EvalConfig is built once for the whole call.
             val formallyIncorrect by lazy(LazyThreadSafetyMode.NONE) {
@@ -254,7 +263,7 @@ class DmInterpreter @JvmOverloads constructor(
             val groupPresence by lazy(LazyThreadSafetyMode.NONE) {
                 GroupPresenceIndex(admittedGroupContent, formallyIncorrect, groupRelevance)
             }
-            val pass = ValidationPass(doc, locale, isRelevant, dup,
+            val pass = ValidationPass(call, locale, isRelevant, dup,
                 validationConfig(isRelevant, customRelevant, starRelevant) { ctx, path -> groupPresence.state(ctx, path) },
                 formalResults, { formallyIncorrect })
             for (rule in model.rules) {
@@ -359,11 +368,14 @@ class DmInterpreter @JvmOverloads constructor(
 
     private fun evalRule(rule: RuleDef, doc: Document, locale: String): RuleResult = observeCaches(doc) {
         // A single-rule pass (fresh formal-status memo, everything relevant) — the testRule/evalCandidate shape.
-        val dup = checks.duplicateIndexCells(doc)
+        // Full-call semantics, so the eligible index defaults are staged exactly as in [validate] (SPEC-2026-07-23-14).
+        val indexDefaults = checks.eligibleIndexDefaults(doc)
+        val call = if (indexDefaults.isEmpty()) doc else doc.withComputed(indexDefaults)
+        val dup = checks.duplicateIndexCells(call)
         val groupRelevance = { _: String, _: List<Int> -> GroupRelevance.FULL }
         lateinit var formalResults: FormalResultCache
         val admittedGroupContent by lazy(LazyThreadSafetyMode.NONE) {
-            AdmittedGroupContentIndex.build(model, doc, ALL_RELEVANT, groupRelevance, formalResults, paths)
+            AdmittedGroupContentIndex.build(model, call, ALL_RELEVANT, groupRelevance, formalResults, paths)
         }
         formalResults = FormalResultCache(checks, locale, dup) { ctx, path ->
             admittedGroupContent.isFilled(ctx, path)
@@ -375,7 +387,7 @@ class DmInterpreter @JvmOverloads constructor(
             GroupPresenceIndex(admittedGroupContent, formallyIncorrect, groupRelevance)
         }
         val pass = ValidationPass(
-            doc,
+            call,
             locale,
             ALL_RELEVANT,
             dup,

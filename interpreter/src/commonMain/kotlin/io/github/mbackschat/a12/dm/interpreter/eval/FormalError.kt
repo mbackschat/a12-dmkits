@@ -50,6 +50,17 @@ fun uniqueIndexText(locale: String): String =
     if (locale.startsWith("de")) "Der Indexwert ist nicht eindeutig." else "The index value is not unique."
 
 /**
+ * The interpreter's INTERNAL marker for an eligible-but-UNSTAGED index-default cell in PARTIAL validation
+ * (SPEC-2026-07-23-14): the kernel marks the cell invalid-for-validation WITHOUT any message
+ * (`ValidationCache.addDefaultValuesForIndexFieldIfNecessary` → `markFieldAsInvalidForValidation`), so the
+ * generated mandatory/uniqueness checks stay silent, dependent authored conditions read UNKNOWN, and the
+ * containing group retains error state. This code never reaches an emitted [io.github.mbackschat.a12.dm.interpreter.model.Message]
+ * — it only rides the formal-status channel (a `FormalFailure.Generated` that is neither [MANDATORY_FIELD]
+ * nor [UNIQUE_INDEX]).
+ */
+const val INDEX_DEFAULT_SUPPRESSED = "indexDefaultSuppressed"
+
+/**
  * The interpreter's code for a value REJECTED by its field's declared **custom field type** (`CustomFieldType` —
  * a client-SPI check, KERNEL-FINDINGS "Custom-extensibility surface"). Like a format error it makes the cell
  * **"unknown"** (a referencing rule is suppressed) and emits a per-cell message. The id is the interpreter's OWN

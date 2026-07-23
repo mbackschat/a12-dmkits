@@ -265,7 +265,8 @@ public final class FieldSpec {
         }
         return new FieldTypeSpec.EnumSpec(values, categories,
                 e.path("alphabeticalSorting").asBoolean(false), text(e, "invalidValueMessage"),
-                textMap(e.get("errorMessages")));   // G23: per-locale invalid-value text (wins over the single shorthand)
+                textMap(e.get("errorMessages")),   // G23: per-locale invalid-value text (wins over the single shorthand)
+                text(e, "sValue"));                // the index-default stored token (SPEC-2026-07-23-14)
     }
 
     private static FieldTypeSpec custom(JsonNode c) {

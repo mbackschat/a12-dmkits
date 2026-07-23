@@ -14,6 +14,7 @@ public final class EnumFieldBuilder extends FieldAttrs<EnumFieldBuilder> {
     private final List<FieldTypeSpec.EnumCategory> categories = new ArrayList<>();
     private boolean alphabeticalSorting;
     private String invalidValueMessage;
+    private String sValue;
 
     public EnumFieldBuilder value(String value) {
         values.add(new FieldTypeSpec.EnumValue(value, Map.of()));
@@ -48,10 +49,21 @@ public final class EnumFieldBuilder extends FieldAttrs<EnumFieldBuilder> {
         return this;
     }
 
+    /**
+     * The stored-token <b>S-value</b> (DM-JSON {@code sValue}) — the model-owned default an eligible empty
+     * INDEX field receives during full validation (SPEC-2026-07-23-14). Must name one of the declared
+     * {@link #value(String) values} (checked at build — the kernel stages it into evaluation unvalidated).
+     */
+    public EnumFieldBuilder sValue(String storedToken) {
+        this.sValue = storedToken;
+        return this;
+    }
+
     protected FieldTypeSpec spec() {
         if (values.isEmpty()) {
             throw new IllegalStateException("an enumeration field needs at least one value");
         }
-        return new FieldTypeSpec.EnumSpec(values, categories, alphabeticalSorting, invalidValueMessage);
+        return new FieldTypeSpec.EnumSpec(values, categories, alphabeticalSorting, invalidValueMessage,
+                Map.of(), sValue);
     }
 }

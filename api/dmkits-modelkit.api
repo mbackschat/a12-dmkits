@@ -197,6 +197,7 @@ public final class io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder extends
   public io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder alphabeticalSorting()
   public io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder category(java.lang.String, java.lang.String[])
   public io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder invalidValueMessage(java.lang.String)
+  public io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder sValue(java.lang.String)
   protected io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec spec()
   public io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder value(java.lang.String)
   public io.github.mbackschat.a12.dm.modelkit.EnumFieldBuilder value(java.lang.String, java.util.function.Consumer<io.github.mbackschat.a12.dm.modelkit.LabelBuilder>)
@@ -356,6 +357,7 @@ public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumSpec
   public EnumSpec(java.util.List<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumValue>, java.util.List<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumCategory>)
   public EnumSpec(java.util.List<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumValue>, java.util.List<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumCategory>, boolean, java.lang.String)
   public EnumSpec(java.util.List<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumValue>, java.util.List<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumCategory>, boolean, java.lang.String, java.util.Map<java.lang.String, java.lang.String>)
+  public EnumSpec(java.util.List<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumValue>, java.util.List<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumCategory>, boolean, java.lang.String, java.util.Map<java.lang.String, java.lang.String>, java.lang.String)
   public boolean alphabeticalSorting()
   public java.util.List<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumCategory> categories()
   public final boolean equals(java.lang.Object)
@@ -363,6 +365,7 @@ public static record io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumSpec
   public java.lang.String invalidValueMessage()
   public java.util.Map<java.lang.String, java.lang.String> invalidValueMessages()
   public java.lang.String jsonType()
+  public java.lang.String sValue()
   public final java.lang.String toString()
   public java.util.List<io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec.EnumValue> values()
 

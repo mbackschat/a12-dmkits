@@ -70,7 +70,8 @@ final class FieldTypeSpecReader {
         Map<String, String> messages = localized(config.path(DmKeys.ERROR_MESSAGE));
         String fallbackMessage = messages.isEmpty() ? null : messages.values().iterator().next();
         return new FieldTypeSpec.EnumSpec(values, categories,
-                config.path("alphabeticalSorting").asBoolean(false), fallbackMessage, messages);
+                config.path("alphabeticalSorting").asBoolean(false), fallbackMessage, messages,
+                text(config, "sValue"));
     }
 
     private static Map<String, String> localized(JsonNode entries) {

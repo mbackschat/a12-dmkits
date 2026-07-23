@@ -936,6 +936,18 @@ Add-ops reuse the build-from-scratch node emitter, so an *added* field is byte-s
 
 A repeatable group can also declare a **display row sort** on the from-scratch builder — `GroupBuilder.sortField("Amount", SortOrder.DESC).sortField("Sku", SortOrder.ASC)` (multi-key, in declaration order). Like `indexField` it fails fast on a non-repeatable group or a non-child field. It is display/USB-only — the kernel doesn't reorder rows for validate/compute (so the interpreter ignores it) — making it an authoring + read-fidelity slot (finding 51). *Locked by `modelkit.GroupSortFieldTest` (kernel read-back).*
 
+An enumeration index field can declare its **S-value** — the model-owned stored-token default an eligible clean-empty index cell receives during FULL validation and computation, and that partial validation silently suppresses (SPEC-2026-07-23-14/-15):
+
+<!-- teaser -->
+```java
+.group("Lines", lines -> lines
+        .repeatable(50).indexField("ServiceLevel")
+        .enumField("ServiceLevel", e -> e.value("STD").value("EXPRESS").sValue("STD"))
+        .field("OrderedQty", FieldKind.NUMBER))
+```
+
+The builder rejects a blank token and a token outside the declared values fail-fast (the kernel stages the S-value into evaluation *unvalidated*, so a typo would silently leak an out-of-domain token into rules). The key round-trips through the authored state (`EnumSpec.sValue()`) and the CLI field-spec (`enum.sValue`, `schema field add`). *Locked by `modelkit.EnumSValueTest` (kernel read-back + fail-fast); runtime semantics by `adapter.laws.IndexDefaultStagingDiffTest` + the KERNEL-FINDINGS §1/§12 supplement.*
+
 ### The coverage tail — doc config, type definitions, includes
 
 <!-- teaser -->

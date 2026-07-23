@@ -86,7 +86,7 @@ object PerfInventory {
                 .operation(VALIDATE).resultRegime(VALIDATION_MIXED).complexity(LINEAR)
                 .generator(GeneratorIdentity("PerfCatalog.b1", parameters = mapOf("rows" to "flat", "values" to "perf-v1")))
                 .scaleAxis("line-rows").expectedResultCardinality(listOf(1_470))
-                .reviewedFingerprint("988d9acaed29cd5a057fe1f1a7ff2172363e40726e1efdce0fa9e12f1e1ad8e8").build(),
+                .reviewedFingerprint("86816909342c88f2657089b9433b0bcd51f927db7c544e2cfa6bed63b0a1adeb").build(),
             3_000,
             PerfCatalog::b1,
         )
@@ -96,7 +96,7 @@ object PerfInventory {
                 .operation(VALIDATE).resultRegime(VALIDATION_FIRING).complexity(LINEAR)
                 .generator(GeneratorIdentity("PerfCatalog.b2", parameters = mapOf("rows" to "flat", "values" to "perf-v1")))
                 .scaleAxis("line-rows").expectedResultCardinality(listOf(1))
-                .reviewedFingerprint("a1a16b388757b4facd1034c564e6512ab161c95f38860686ba81f50d72a82ef1").build(),
+                .reviewedFingerprint("9b4529b1c1f01fd60784f99480020aba60c11b5eec3349264f641972c658f416").build(),
             3_000,
             PerfCatalog::b2,
         )
@@ -106,7 +106,7 @@ object PerfInventory {
                 .operation(VALIDATE).resultRegime(VALIDATION_MIXED).complexity(LINEAR)
                 .generator(GeneratorIdentity("PerfCatalog.b3", parameters = mapOf("subs-per-line" to "5", "values" to "perf-v1")))
                 .scaleAxis("line-rows").expectedResultCardinality(listOf(1_434))
-                .reviewedFingerprint("dd60c53f7878feb274e204800dafda1afaaa08e9d2075d19d918dcf4e6250f81").build(),
+                .reviewedFingerprint("3a23a1ed7425e587a824920c26c01ad5689d48b9c26872e5ea71ea2fd563b936").build(),
             600,
             PerfCatalog::b3,
         )
@@ -116,7 +116,7 @@ object PerfInventory {
                 .operation(VALIDATE).resultRegime(VALIDATION_MIXED).complexity(LINEAR)
                 .generator(GeneratorIdentity("PerfCatalog.b4", parameters = mapOf("subs-per-line" to "5", "values" to "perf-v1")))
                 .scaleAxis("line-rows").expectedResultCardinality(listOf(1_152))
-                .reviewedFingerprint("f5051372ffbc710946378d5b65fd29b4e780237e6314fffd3e0f96f3e2fb8c47").build(),
+                .reviewedFingerprint("5aedf10295163fc6934e229647bfc60b33e05c939eb8e77ed0f7787126a10417").build(),
             600,
             PerfCatalog::b4,
         )
@@ -126,7 +126,7 @@ object PerfInventory {
                 .operation(VALIDATE).resultRegime(VALIDATION_FIRING).complexity(LINEAR)
                 .generator(GeneratorIdentity("PerfCatalog.b5", parameters = mapOf("subs-per-line" to "5", "values" to "perf-v1")))
                 .scaleAxis("line-rows").expectedResultCardinality(listOf(1))
-                .reviewedFingerprint("0fcea35fdfc68994b3436f892db75ae82209d4ca52894171d5e8ba862dfe7553").build(),
+                .reviewedFingerprint("b99e38355ccf76ac79fcbd9702b297eef505f44eb5d98872c0b9bce0be2f961a").build(),
             600,
             PerfCatalog::b5,
         )
@@ -136,7 +136,7 @@ object PerfInventory {
                 .operation(VALIDATE).resultRegime(VALIDATION_MIXED).complexity(LINEAR)
                 .generator(GeneratorIdentity("PerfCatalog.b6", parameters = mapOf("subs-per-line" to "5", "rules" to "12", "values" to "perf-v1")))
                 .scaleAxis("line-rows").expectedResultCardinality(listOf(3_548))
-                .reviewedFingerprint("65bd844d487a1c9b9fb0c5c459545d71885da1a01d40036323f58adf73924531").build(),
+                .reviewedFingerprint("57c5fec191d4e7c978e757cbfad68322b17ce4b4ac8c606d63bd792962e79a79").build(),
             600,
             PerfCatalog::b6,
         )
@@ -150,7 +150,7 @@ object PerfInventory {
                     "values" to "low-firing-v1",
                 )))
                 .scaleAxis("line-rows").expectedResultCardinality(listOf(0))
-                .reviewedFingerprint("1d233951abf0e9c25255cfcf9780cb8da8b9d55379acc2302cfadbce740d6f6e").build(),
+                .reviewedFingerprint("a613040b12d2a710f7fd69bc555b6b2436d93f7aa68196fc4e37676f0fb0ff43").build(),
             600,
             { PerfCatalog.manyRules(12, firing = false) },
         )
@@ -160,7 +160,7 @@ object PerfInventory {
                 .operation(COMPUTE).resultRegime(COMPUTE_VALUE).complexity(LINEAR)
                 .generator(GeneratorIdentity("PerfCatalog.b7", parameters = mapOf("subs-per-line" to "5", "values" to "compute-v1")))
                 .scaleAxis("line-rows").expectedResultCardinality(listOf(600))
-                .reviewedFingerprint("e859c7ebc01f150a7ebf2638ebd060c7c37c69e38fcab88d290d43868142b20c").build(),
+                .reviewedFingerprint("fe6b9c71d4a8ee0bfc4fedfb30bb47d7e34bafd9dd392c7c61ae9637334f2084").build(),
             600,
             PerfCatalog::b7,
         )
@@ -170,7 +170,7 @@ object PerfInventory {
                 .operation(COMPUTE).resultRegime(COMPUTE_CLEARED).complexity(LINEAR)
                 .generator(GeneratorIdentity("PerfCatalog.computeCleared", parameters = mapOf("values" to "cleared-v1")))
                 .scaleAxis("line-rows").expectedResultCardinality(listOf(1_000))
-                .reviewedFingerprint("41aa9f6e7a53bac09cc94dbc4483ed01402cf2de93a51946c66dfa81be3ae8b1").build(),
+                .reviewedFingerprint("658efd3d3df582acd5ff546b62b6e994dbd2c2f4dee28c261580818ed1b041c3").build(),
             1_000,
             PerfCatalog::computeCleared,
         )
@@ -180,7 +180,7 @@ object PerfInventory {
                 .operation(COMPUTE).resultRegime(COMPUTE_ERRORED).complexity(LINEAR)
                 .generator(GeneratorIdentity("PerfCatalog.computeErrored", parameters = mapOf("values" to "errored-v1")))
                 .scaleAxis("line-rows").expectedResultCardinality(listOf(1_000))
-                .reviewedFingerprint("a2f88b6932abaa900254cd6c5c71abdd668ad069ae0fccfd525e83ebf86ea5de").build(),
+                .reviewedFingerprint("e5bf2515ded579b483e25cd4d6035d7cd0973cceb10ddbc471932561ca1d2dbb").build(),
             1_000,
             PerfCatalog::computeErrored,
         )
@@ -199,7 +199,7 @@ object PerfInventory {
                     ),
                 ))
                 .scaleAxis("claim-rows").expectedResultCardinality(listOf(0))
-                .reviewedFingerprint("62dadf1b8234126d4aac67d80f7e62ba18be72de0e2836fc5e05da9c5e731f60").build(),
+                .reviewedFingerprint("fc44da61086a5c374b797c18f30a5b889fefe9320a728849eb1ad02a2dc5fc3e").build(),
             500,
             { PerfCatalog.complexRealWorldFull(firing = false) },
         )
@@ -209,7 +209,7 @@ object PerfInventory {
                 .operation(VALIDATE).resultRegime(VALIDATION_FIRING).complexity(LINEAR)
                 .generator(GeneratorIdentity("PerfCatalog.berlinDateTime", parameters = mapOf("values" to "datetime-v1")))
                 .scaleAxis("run-rows").expectedResultCardinality(listOf(3_000))
-                .reviewedFingerprint("887b25d8400f3d8bf7f463e5960bc4b618890f4cadbefe3c475fb352db9cb905")
+                .reviewedFingerprint("dc4ae869febefde7d23a959ebbae9a0a3449aaaa3ed286c8dbf78923591e2719")
                 .zone(ModelTimeZone.EUROPE_BERLIN).build(),
             3_000,
             PerfCatalog::berlinDateTime,
@@ -220,7 +220,7 @@ object PerfInventory {
                 .operation(VALIDATE).resultRegime(VALIDATION_FIRING).complexity(LINEAR)
                 .generator(GeneratorIdentity("PerfCatalog.utcDateTimeControl", parameters = mapOf("values" to "datetime-v1")))
                 .scaleAxis("run-rows").expectedResultCardinality(listOf(3_000))
-                .reviewedFingerprint("2afd9ac52577c133a8e6efb4f774c3105530525d96b8946d1964b9bde98dddf7").build(),
+                .reviewedFingerprint("f713db16e529f9f57f927627f19c773342dfdc63e5c337aaa71773461ec46f4a").build(),
             3_000,
             PerfCatalog::utcDateTimeControl,
         )
@@ -230,7 +230,7 @@ object PerfInventory {
                 .operation(COMPUTE).resultRegime(COMPUTE_VALUE).complexity(LINEAR)
                 .generator(GeneratorIdentity("PerfCatalog.tieredComputation", parameters = mapOf("tiers" to "2", "values" to "tiered-v1")))
                 .scaleAxis("line-rows").expectedResultCardinality(listOf(3_000))
-                .reviewedFingerprint("26e0297ed9b783b96a6e8d1e242d491a00b3ff40b2f2bf5382fe77c90561147b").build(),
+                .reviewedFingerprint("7294c0f990a5a4579836c7a9fb7e1da1794730fc59cb24d39592ddfbfc9aaea8").build(),
             3_000,
             PerfCatalog::tieredComputation,
         )
@@ -240,7 +240,7 @@ object PerfInventory {
                 .operation(VALIDATE).resultRegime(VALIDATION_MIXED).complexity(LINEAR)
                 .generator(GeneratorIdentity("PerfCatalog.parallel", parameters = mapOf("groups" to "A+B", "values" to "parallel-v1")))
                 .scaleAxis("rows-per-group").expectedResultCardinality(listOf(1_000))
-                .reviewedFingerprint("04ad5b24df312dc0bf70a93d924502cd5485e2cf91914ae5463e06eb600087a7").build(),
+                .reviewedFingerprint("b440223d4daf1e252a2f8edee44301bdf030ac59763b306b18d7eefc930b6c3d").build(),
             2_000,
             PerfCatalog::parallel,
         )
