@@ -36,6 +36,14 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 
+# Pin JAVA_HOME exactly like build.sh (the same footgun, second site): the BUILD runs through build.sh's
+# pin, but the installDist LAUNCHER the demos invoke reads the caller's JAVA_HOME — a stale one (e.g. a
+# Homebrew JDK path emptied by an upgrade) makes every demo's `actual` an error banner and reads as a
+# mass false DRIFT (it did, 2026-07-23). One JDK policy for build and launcher alike.
+if [[ -x /usr/libexec/java_home ]]; then
+  export JAVA_HOME="$(/usr/libexec/java_home -v 21)"
+fi
+
 echo "==> building the JVM CLI launcher (installDist — always current; native is never used here)"
 # Delegate the environment policy to the one worktree-safe source of truth. Re-deriving GRADLE_USER_HOME
 # from `cd ..` is wrong for a linked worktree under /private/tmp: it creates a second cache beside the
