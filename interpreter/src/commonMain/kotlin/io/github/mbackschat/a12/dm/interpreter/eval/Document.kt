@@ -197,6 +197,12 @@ class Document(internal val config: DocumentConfig) {
         // otherwise repeats the same O(rows × star-depth) proof for every firing in that scope (IF194).
         val starOmissionByScope: MutableMap<StarOmissionKey, Boolean> = HashMap()
 
+        // Per group, the rows whose coordinate is OVER-LIMIT (a repeatable ancestor's index exceeds its declared
+        // repeatability) — computed once from [declaredReps] and reused to EXCLUDE such rows from every star
+        // aggregate / quantifier / filter domain (SPEC-2026-07-23-13). Empty for a well-formed document, so the
+        // exclusion is a no-op on the hot path.
+        val overLimitRowsByGroup: MutableMap<String, Set<List<Int>>> = HashMap()
+
         /** group path → its declared field paths, recursive and in model declaration order. */
         val containedFieldsByGroup: MutableMap<String, List<String>> = HashMap()
         /** Canonical message-pointer strings, partitioned by path to avoid flat-key collision clusters. */
@@ -225,6 +231,7 @@ class Document(internal val config: DocumentConfig) {
                 idx.indexRowByValue.size +
                 idx.indexColumnByScope.size +
                 idx.starOmissionByScope.size +
+                idx.overLimitRowsByGroup.values.sumOf { it.size } +
                 idx.containedFieldsByGroup.size +
                 idx.formattedPointersByPath.values.sumOf { it.size }
         } ?: 0
@@ -519,7 +526,9 @@ class Document(internal val config: DocumentConfig) {
     private fun rowContextsScoped(groupPath: String, scopeReps: List<Int>): List<EvalContext> =
         rowContextsCache.getOrPut(groupPath to scopeReps) {
             val attach = attachByDepth(groupPath)   // memoized per group — no O(valued) rescan per nested row
+            val overLimit = overLimitRows(groupPath)   // over-limit rows are outside the star/quantifier domain (SPEC-2026-07-23-13)
             rowsWithPrefix(groupPath, scopeReps)
+                .filter { it !in overLimit }
                 .map { reps -> RowContext(groupPath, reps, attach.any { (d, pfx) -> reps.take(d) in pfx }) }
         }
 
@@ -958,9 +967,13 @@ class Document(internal val config: DocumentConfig) {
             return rowReps.take(minOf(commonPrefixLen(parts, partsOf(group)), cap))
         }
 
-        private fun starRows(starPath: String, bindDepth: Int = -1): List<List<Int>> =
-            rowsWithPrefix(parentGroup(starPath), starScopePrefix(starPath, bindDepth))
+        private fun starRows(starPath: String, bindDepth: Int = -1): List<List<Int>> {
+            val group = parentGroup(starPath)
+            val overLimit = overLimitRows(group)   // over-limit rows are outside the star domain (SPEC-2026-07-23-13)
+            return rowsWithPrefix(group, starScopePrefix(starPath, bindDepth))
+                .filter { it !in overLimit }
                 .map { it + 1 }   // append the field's own index (1) to address the leaf
+        }
     }
 
     /**
@@ -1075,6 +1088,31 @@ class Document(internal val config: DocumentConfig) {
             m
         }
         return byPrefix[prefix] ?: emptyList()
+    }
+
+    /**
+     * The rows of [groupPath] that are OVER-LIMIT — some repeatable ancestor level's 1-based index exceeds its
+     * model-declared [declaredReps] maximum (the kernel's `checkIndicesLessOrEqualThanMax` walk, SPEC-2026-07-23-13).
+     * The kernel does NOT insert an over-limit cell/group into its evaluation cache, so such a row is OUTSIDE every
+     * star aggregate / quantifier / filter domain — a `Sum`/`NumberOfFilledFields`/`NumberOfFilledGroups(G*)` ranges
+     * over the in-cap (declared-range) rows only. It stays instantiated for per-row rule suppression and structural
+     * over-repetition emission, which read [rowsOf] directly (unfiltered). Decided from the SAME [declaredReps] the
+     * emission gate ([io.github.mbackschat.a12.dm.interpreter.ModelPathIndex.overLimitLevel]) uses — one repeatability
+     * fact, two readers — so the star-domain bound and the emitted over-repetition codes can never disagree.
+     * Computed once per group (empty for a well-formed document → the exclusion is a no-op) and memoized with the [Index].
+     */
+    private fun overLimitRows(groupPath: String): Set<List<Int>> {
+        if (declaredReps.isEmpty()) return emptySet()
+        return index().overLimitRowsByGroup.getOrPut(groupPath) {
+            val parts = partsOf(groupPath)
+            val bounds = parts.indices.mapNotNull { level ->
+                declaredReps["/" + parts.take(level + 1).joinToString("/")]?.let { level to it }
+            }
+            if (bounds.isEmpty()) emptySet()
+            else rowsOf(groupPath).filterTo(HashSet()) { reps ->
+                bounds.any { (level, max) -> level < reps.size && reps[level] > max }
+            }
+        }
     }
 
     private fun kindOf(path: String): Kind = kinds[path] ?: error("no kind declared for $path")
