@@ -63,7 +63,7 @@ Status legend: **GREEN** = differentially proven identical to the kernel · **DO
 | formal: leading/trailing blank (baseline, every kind) | GREEN | `BaselineValueFormalDiffTest` (IF43) | — |
 | `mandatoryField` (requiredness) | GREEN | `RequirednessDiffTest`, `RequiredPropertyLawsTest` | — |
 | `uniqueIndex` / `RepetitionNotUnique` | GREEN | `UniquenessDiffTest`, `RepetitionNotUniqueExactnessDiffTest` (typed keys, peer metadata, composite-key partial relevance, both strategies), the remaining `RepetitionNotUnique*DiffTest` family, `RepetitionNotUniqueLawsTest` | — |
-| over-repetition (`zuGrosseZeile` / `zuGrosseKontextnummer`) | GREEN | `OverRepetitionDiffTest` | — |
+| over-repetition (`zuGrosseZeile` / `zuGrosseKontextnummer`) | GREEN — the address-formal gate order, ancestry walk, callback suppression, and the in-cap star-aggregate domain | `OverRepetitionDiffTest`, `OverRepetitionFormalGateDiffTest`, `OverRepetitionFormalGateMultiplatformTest` (JVM+Node) | parallel-iteration domain uncharacterized ([IG103](INTERPRETER-GAPS.md)) |
 
 ### 1c. Operators, functions, quantifiers, aggregates (the catalog — 110/110 handled)
 
