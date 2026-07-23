@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.dec
 import io.github.mbackschat.a12.dm.interpreter.decOrNull
 import io.github.mbackschat.a12.dm.interpreter.ast.ArithOp
+import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
@@ -1160,17 +1161,45 @@ private fun Interpreter.valueAsDate(args: List<Expr>): Val {
  * The one ordered `FirstFilledValue` result consumed by both value evaluation and polarity. Operands are
  * encountered in authored order. A star's `Having` marker is observed immediately before that slot is
  * scanned; a filled or formally-unavailable value terminates the whole walk, so no later slot, filter, or
- * cell is read (IF184). An empty encountered before termination makes the result displaceable by filling;
- * an encountered filter makes it symmetrically fillable regardless of whether it keeps a row.
+ * cell is read (IF184) — with one filtered-star refinement (SPEC-2026-07-23-10): the traversal prefetches
+ * ONE kept successor before the current kept target is consumed ([keptRowsWithSuccessorLookahead]), so a
+ * filter poison met during that successor search precedes a filled pending target, while filters beyond the
+ * prefetched successor stay unread. An empty encountered before termination makes the result displaceable by
+ * filling; an encountered filter makes it symmetrically fillable regardless of whether it keeps a row.
  */
 internal data class FirstFilledScan(val value: Val, val fill: Fill, val encounteredFilter: Boolean)
+
+/**
+ * The filtered entity traversal shared by every filtered field-list consumer — the kernel's
+ * `EbenenIterator.InnerIterator` ONE-KEPT-SUCCESSOR LOOKAHEAD (SPEC-2026-07-23-10/-11): after the current
+ * candidate is kept, the successor search evaluates later filters (skipping false candidates) until another
+ * candidate is kept or the stream ends, BEFORE the consumer reads the current candidate's target. So a filter
+ * poison met during that search precedes the pending current target, while filters beyond one prefetched
+ * successor stay unread when the current target terminates the consumer's pull ([firstFilledScan]'s prefix
+ * stop). Filtering never becomes globally eager; a draining consumer ([starOperandVals]) still visits every
+ * kept row. In validation mode filter reads cannot poison (3VL row-drop), so the kept-row stream is
+ * indistinguishable from the eager order — one traversal serves both modes.
+ */
+private fun Interpreter.keptRowsWithSuccessorLookahead(
+    rows: List<EvalContext>,
+    having: Cond,
+): Sequence<EvalContext> = sequence {
+    var pending: EvalContext? = null
+    for (row in rows) {
+        if (!havingInterp(row).fires(having)) continue
+        pending?.let { yield(it) }
+        pending = row
+    }
+    pending?.let { yield(it) }
+}
 
 internal fun Interpreter.firstFilledScan(f: Expr.Func): FirstFilledScan {
     var fillable = false
     var encounteredFilter = false
     for (operand in f.args) when (operand) {
         is Expr.Star -> {
-            if (operand.having != null) {
+            val having = operand.having
+            if (having != null) {
                 encounteredFilter = true
                 fillable = true
             }
@@ -1178,7 +1207,7 @@ internal fun Interpreter.firstFilledScan(f: Expr.Func): FirstFilledScan {
             // An index column's empty/duplicate status is column-wide in the kernel cache. Keep the existing
             // conservative gate, but reach it only when this operand itself is reached.
             val operandContext = ctxOf(operand)
-            if (operand.having == null &&
+            if (having == null &&
                 indexOperandNonEvaluable(operandContext, operand.path, operand.bindDepth)
             ) {
                 return FirstFilledScan(Val.Unknown, Fill.of(fillable, fillable), encounteredFilter)
@@ -1186,9 +1215,10 @@ internal fun Interpreter.firstFilledScan(f: Expr.Func): FirstFilledScan {
 
             val group = operand.path.substringBeforeLast('/')
             val rows = operandContext.rowContexts(group, operand.bindDepth)
+            val kept = if (having == null) rows.asSequence()
+                else keptRowsWithSuccessorLookahead(rows, having)
             var visitedRow = false
-            for (row in rows) {
-                if (operand.having != null && !havingInterp(row).fires(operand.having)) continue
+            for (row in kept) {
                 visitedRow = true
                 val reps = row.repsOf(operand.path)
                 if (cellRelevant != null && !cellRelevant.invoke(operand.path, reps)) {
@@ -1291,9 +1321,12 @@ private fun Interpreter.aggOperandVals(arg: Expr): List<Val> = when (arg) {
 }
 
 /** A starred aggregate operand's filled values — its group's row cells (empties dropped, like [EvalContext.star]);
- *  an optional `Having` evaluates the per-row filter in each row context and keeps only the matching rows.
- *  COMPUTE mode: a value aggregate reads ALL its selected cells (the kernel feeds every row to the combiner),
- *  so any formally-INVALID selected cell poisons (IF85) — the filter's own reads poison inside [havingInterp]. */
+ *  an optional `Having` keeps only the matching rows through the shared one-kept-successor lookahead
+ *  ([keptRowsWithSuccessorLookahead], SPEC-2026-07-23-11) — the aggregate still consumes EVERY clean kept
+ *  target (no first-value stop). COMPUTE mode: a value aggregate reads ALL its selected cells (the kernel
+ *  feeds every row to the combiner), so any formally-INVALID selected cell poisons (IF85) — the filter's own
+ *  reads poison inside [havingInterp], and a filter poison met while locating the next kept candidate
+ *  precedes the pending current target. */
 private fun Interpreter.starOperandVals(star: Expr.Star): List<Val> {
     // A GROUP star (`Sum(Lines*)` — no field segment) expands to the group's contained FIELDS, recursively
     // (the kernel ExpandService → getAllContainedFields, exactly like the fill quantifiers — IF49/IF51),
@@ -1304,7 +1337,8 @@ private fun Interpreter.starOperandVals(star: Expr.Star): List<Val> {
             return contained.flatMap { starOperandVals(Expr.Star(it, star.having, star.outer, star.bindDepth)) }
         }
     }
-    if (star.having == null) {
+    val having = star.having
+    if (having == null) {
         if (computeMode && ctx.starScanStates(star.path, star.bindDepth).any { it == CellState.INVALID }) {
             throw PoisonedReadException(star.path)
         }
@@ -1315,12 +1349,12 @@ private fun Interpreter.starOperandVals(star: Expr.Star): List<Val> {
         return ctx.star(star.path, star.bindDepth)
     }
     val group = star.path.substringBeforeLast('/')
-    return ctx.rowContexts(group, star.bindDepth)
-        .filter { rc -> havingInterp(rc).fires(star.having) }
-        .mapNotNull { rc ->
-            if (computeMode && rc.cellState(star.path) == CellState.INVALID) throw PoisonedReadException(star.path)
-            if (rc.filled(star.path)) rc.field(star.path) else null
-        }
+    val vals = mutableListOf<Val>()
+    for (rc in keptRowsWithSuccessorLookahead(ctx.rowContexts(group, star.bindDepth), having)) {
+        if (computeMode && rc.cellState(star.path) == CellState.INVALID) throw PoisonedReadException(star.path)
+        if (rc.filled(star.path)) vals += rc.field(star.path)
+    }
+    return vals
 }
 
 /**

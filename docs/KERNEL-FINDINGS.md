@@ -1208,6 +1208,19 @@ Correlation does not exclude the current row implicitly: a same-group filter inc
 
 *(Interpreter: `Expr.Star` gained an optional `having: Cond?` (parsed from a `Having` clause on the starred operand in `readArgs`); `Interpreter.starVals` evaluates the filter in each per-row context (`EvalContext.rowContexts` → the Document's scoped `RowContext`s) and keeps the matching rows' filled values. Locked: `adapter.laws.HavingDiffTest`.)*
 
+## §9/§11 supplement — the computation-phase filtered iterator PREFETCHES ONE KEPT SUCCESSOR before the current target is consumed (source + differential, both strategies, 2026-07-23; SPEC-2026-07-23-10/-11)
+
+> Fold: folded → §9 + §11.
+
+Filter and target reads of a filtered field list are **interleaved by one kept-candidate lookahead**, not phased. `EbenenIterator.InnerIterator` initializes by searching forward for the first kept candidate (evaluating each complete candidate's `FilterPredicate.isRelevant`, skipping FALSE ones), and each `next()` advances to the NEXT kept candidate *before* returning the current one; `RuntimeController.combineFeldListe`'s consumer loop applies the value provider only to the returned identifier. During computation, `CalculationCache.convertInvalidFieldsForCalculation` makes any read of a formally-invalid cell throw, so the read ORDER decides which cell aborts the computation:
+
+- a filter poison met while searching for a kept candidate's successor **precedes the pending current target** — a filled current `FirstFilledValue` target still CLEARS when the immediate-successor filter, or a filter reached through FALSE candidates, is invalid;
+- once one successor is kept, the current target is consumed next — `FirstFilledValue`'s prefix stop (`FirstValueCombiner.canChange`) then leaves every filter **beyond that successor** unread, so a filled first target still WINS over an invalid third filter;
+- an earlier terminal authored operand still hides a later filtered operand completely (the later slot's iterator is never constructed);
+- the consume-every-row value aggregates (`Sum`/`MinValue`/`MaxValue`/`NumberOfDifferentValues`) ride the **same** iterator but drain it, so for them the lookahead changes only *which* poison aborts first — and that cause is **not observable**: the kernel's generated catch discards `CalculationFieldException.getInternalId()` and marks the target "fehlerhaft berechnet" silently (the interpreter's `PoisonedReadException` is equally cause-blind at its `ComputationEngine` catch). Eager whole-selection filtering and the kernel's lookahead are therefore outcome-EQUIVALENT for the draining aggregates; the read-order boundary is outcome-observable exactly through the prefix consumer `FirstFilledValue`. Validation is untouched — its filter reads are 3VL row-drops (never aborts), so the kept-row stream is order-insensitive there.
+
+*(Interpreter: one shared lazy `keptRowsWithSuccessorLookahead` sequence in `ExprEval` now serves both consumers — `firstFilledScan` keeps the prefix stop, `starOperandVals` keeps the full fold; locked `adapter.laws.FirstFilledValueKeptSuccessorDiffTest` (red→green on the successor-filter poison) + `adapter.laws.AggregateKeptSuccessorDiffTest` (the aggregate agreement locks) + multiplatform `FirstFilledValueKeptSuccessorTest`/`AggregateKeptSuccessorTest`; INTERPRETER-FINDINGS IF214.)*
+
 ## §9 supplement — the star-binding anchor: the `*`-marked level ALWAYS iterates fully; only levels STRICTLY ABOVE the star bind to the enclosing row (differential, both strategies, 2026-07-09)
 
 > Fold: folded → §9.
