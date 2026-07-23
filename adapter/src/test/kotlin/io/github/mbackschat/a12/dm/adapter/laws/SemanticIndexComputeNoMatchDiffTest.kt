@@ -6,6 +6,9 @@ import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -98,4 +101,73 @@ class SemanticIndexComputeNoMatchDiffTest {
 
     @Test fun matchedRowWithAnEmptyTargetCellIsEmptyAsZero() =
         assertEquals("VALUE|0.00", triOutcome("12", listOf<Pair<String?, String?>>("12" to null, "7" to "0.01")))
+
+    // --- SPEC-2026-07-23-08: a Number index field compares keys by normalized numeric value ----------
+    // Index-key identity is owned by the declared index-field kind (kernel IndexFieldCache.normalizeValue):
+    // a Number index field normalizes BOTH the admitted stored key AND the requested (literal or field-valued)
+    // key, so legal decimal spellings such as "5.00" (stored) and "5" (requested) select the same row. ItemNo
+    // here admits 2 fractional digits so "5.00" is a VALID stored key — the scale-0 model above would reject it.
+    private val decimalBase = DocumentModelDraft.named("pricelookup-decimal").locale("en_US")
+        .rootGroup("Shop") { s ->
+            s.numberField("LookupKey") { it.fractionDigits(0, 2) }
+            s.numberField("Result") { it.fractionDigits(2, 2) }
+            s.group("Items") { i ->
+                i.repeatable(10).numberField("ItemNo") { it.fractionDigits(0, 2) }
+                    .numberField("Price") { it.fractionDigits(2, 2) }.indexField("ItemNo")
+            }
+        }.build().toJson()
+    private val dm = BoundModel.ofJson(decimalBase)
+    private val rel = DslRenderer(ConditionLanguage.EN, "/Shop")
+
+    /** [computationValue] is the rendered semantic-index expression computed into Result; [lookupKey] fills the
+     *  LookupKey field for a field-valued key (null for a literal key). Returns the tri-checked Result outcome. */
+    private fun triDecimal(computationValue: String, lookupKey: String?, rows: List<Pair<String?, String?>>): String {
+        val model = RuntimeLaws.withComputation(decimalBase, "/Shop", "LookupComp", "../Result", computationValue)
+        val def = ModelLoader.load(model)
+        fun build(k: RuntimeLaws.Doc, i: Document) {
+            k.group("/Shop", 1).field(RESULT, "999.99", 1, 1); i.group("/Shop", 1).field(RESULT, "999.99", 1, 1)
+            lookupKey?.let { k.field(KEY, it, 1, 1); i.field(KEY, it, 1, 1) }
+            rows.forEachIndexed { idx, (no, price) ->
+                val r = idx + 1
+                k.group(ITEMS, 1, r); i.group(ITEMS, 1, r)
+                no?.let { k.field(ITEM_NO, it, 1, r, 1); i.field(ITEM_NO, it, 1, r, 1) }
+                price?.let { k.field(PRICE, it, 1, r, 1); i.field(PRICE, it, 1, r, 1) }
+            }
+        }
+        val kDoc = RuntimeLaws.doc(); val iDoc = def.newDocument(); build(kDoc, iDoc)
+        val groovy = RuntimeLaws.compute(model, kDoc).firstOrNull { it.pointer() == "/Shop[1]/Result" }
+            .let { c -> if (c == null) "NONE" else if (c.cleared()) "CLEARED" else if (c.errored()) "ERRORED" else "VALUE|${c.value().orElse("")}" }
+        val engine = RuntimeLaws.kernelJavaEngine(model)
+        val kDoc2 = RuntimeLaws.doc(); val iDoc2 = def.newDocument(); build(kDoc2, iDoc2)
+        val javaStatic = engine.computeOutcomesSorted(engine.instance(kDoc2)).firstOrNull { it.startsWith("$RESULT|") }
+            ?.substringAfter("$RESULT|")?.let { if (it == "ERR") "ERRORED" else if (it == "CLEARED") "CLEARED" else "VALUE|$it" } ?: "NONE"
+        val interp = DmInterpreter(def).compute(iDoc).firstOrNull { it.path == RESULT }
+            .let { c -> when (c?.outcome) {
+                null -> "NONE"
+                ComputeOutcome.CLEARED -> "CLEARED"
+                ComputeOutcome.ERRORED -> "ERRORED"
+                ComputeOutcome.VALUE -> "VALUE|${c.value}"
+            } }
+        assertEquals(groovy, javaStatic, "value=$computationValue key=$lookupKey rows=$rows — groovy vs java-static")
+        assertEquals(groovy, interp, "value=$computationValue key=$lookupKey rows=$rows — kernel vs interpreter")
+        return groovy
+    }
+
+    @Test fun literalNumberKeyMatchesADifferentlySpelledStoredKey() =
+        assertEquals("VALUE|5.25",
+            triDecimal(rel.render(dm.num(PRICE).forIndex("5").expression()), null,
+                listOf("5.00" to "5.25", "7" to "0.01")),
+            "requested literal 5 selects the row stored as 5.00 on a Number index field")
+
+    @Test fun fieldValuedNumberKeyMatchesADifferentlySpelledStoredKey() =
+        assertEquals("VALUE|5.25",
+            triDecimal(rel.render(dm.num(PRICE).forIndex(dm.field(KEY)).expression()), "5",
+                listOf("5.00" to "5.25", "7" to "0.01")),
+            "field-valued key 5 selects the row stored as 5.00")
+
+    @Test fun buildSideAndQuerySideNormalizeSymmetrically() =
+        assertEquals("VALUE|5.25",
+            triDecimal(rel.render(dm.num(PRICE).forIndex("5.00").expression()), null,
+                listOf("5" to "5.25", "7" to "0.01")),
+            "requested 5.00 selects the row stored as 5 — the reverse spelling asymmetry (second instance)")
 }

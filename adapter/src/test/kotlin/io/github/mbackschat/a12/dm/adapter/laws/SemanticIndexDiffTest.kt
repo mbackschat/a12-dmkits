@@ -63,6 +63,18 @@ class SemanticIndexDiffTest {
     @Test fun missingKeyEqualsZeroIsOmission() = agree(render(m.str(CN).filled().and(m.num(COUNT).forIndex("SKU-1").eq(0))), noKey, "no SKU-1 row → 0 → OMISSION")
     @Test fun missingKeyEqualsValueNoFire() = agree(render(m.str(CN).filled().and(m.num(COUNT).forIndex("SKU-1").eq(5))), noKey, "no SKU-1 row → 0 != 5")
 
+    // SPEC-2026-07-23-08 — the kind split: a STRING index field keeps EXACT stored-text identity, so the same
+    // "5" / "5.00" pair that a Number index field normalizes together stays DISTINCT here. The stored key is
+    // "5.00"; the exact spelling matches (count 5 → VALUE), the numerically-equal spelling "5" does NOT match
+    // (no row → empty-as-0 → OMISSION). A fix that normalized every kind would wrongly match "5" and fail this.
+    private val stringNumericKey = listOf("5.00" to "5", "SKU-2" to "3")
+    @Test fun stringKeyExactSpellingMatchesTheStoredRow() =
+        agree(render(m.str(CN).filled().and(m.num(COUNT).forIndex("5.00").eq(5))), stringNumericKey,
+            "String index: requested \"5.00\" exactly matches stored \"5.00\" → count 5 → VALUE")
+    @Test fun stringKeyDifferentNumericSpellingStaysDistinct() =
+        agree(render(m.str(CN).filled().and(m.num(COUNT).forIndex("5").eq(0))), stringNumericKey,
+            "String index: requested \"5\" does NOT match stored \"5.00\" → no row → empty-as-0 → OMISSION")
+
     private companion object {
         const val CN = "/Order/CustomerName"
         const val SKU = "/Order/Items/Sku"

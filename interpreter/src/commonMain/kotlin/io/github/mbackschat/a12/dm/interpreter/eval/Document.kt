@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 import io.github.mbackschat.a12.dm.interpreter.CacheObserver
 import io.github.mbackschat.a12.dm.interpreter.CacheOwnerKind
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
+import io.github.mbackschat.a12.dm.interpreter.decOrNull
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
 import io.github.mbackschat.a12.dm.interpreter.ast.typedValue
@@ -735,15 +736,30 @@ class Document(internal val config: DocumentConfig) {
          * reps address the leaf for any sibling, so the map is shared across sibling targets too.
          */
         override fun indexedCell(targetPath: String, indexField: String, indexValue: String): Val? {
+            val numericKey = declaredKind(indexField) == Kind.NUMBER
             val byValue = index().indexRowByValue.getOrPut(indexField to starScopePrefix(targetPath)) {
                 val m = HashMap<String, List<Int>>()
-                for (reps in starRows(targetPath)) valueAt(indexField, reps)?.value?.let { if (it !in m) m[it] = reps }
+                for (reps in starRows(targetPath)) {
+                    val key = valueAt(indexField, reps)?.value?.let { indexKey(it, numericKey) } ?: continue
+                    if (key !in m) m[key] = reps                          // FIRST placement per key wins (matches a scan)
+                }
                 m
             }
-            val reps = byValue[indexValue] ?: return null
+            val reps = byValue[indexKey(indexValue, numericKey)] ?: return null
             val raw = valueAt(targetPath, reps)?.value
             return if (!raw.isNullOrEmpty()) resolveValue(targetPath, raw) else null
         }
+
+        /**
+         * The canonical semantic-index key — the kernel's `IndexFieldCache.normalizeValue`. A **Number** index
+         * field (`FormatDefinitionZahl`) compares by NUMERIC value: both the stored key and the requested key are
+         * normalized to the peer's canonical numeric form ([Dec.display], trailing zeros stripped), so legal
+         * spellings such as `5.00` and `5` collide (SPEC-2026-07-23-08). A value that does not parse as a number
+         * falls back to its raw text (the kernel's raw fallback). Every non-Number kind keeps EXACT stored text.
+         * Applied identically on construction AND query, so the two sides can never diverge.
+         */
+        private fun indexKey(value: String, numeric: Boolean): String =
+            if (numeric) decOrNull(value)?.display() ?: value else value
 
         /** The memoized [IndexColumn] — built ONCE per (column, star-scope prefix) at the DOCUMENT level and
          *  shared across every row context of the scope (the [Index.indexColumnByScope] twin of
