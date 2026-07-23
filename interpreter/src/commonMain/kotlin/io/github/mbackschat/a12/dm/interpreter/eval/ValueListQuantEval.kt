@@ -8,42 +8,49 @@ import io.github.mbackschat.a12.dm.interpreter.ast.ValueListQuantOp
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 
 // The value-list-quantifier collaborator (shape B, `<fields> AtLeastOne/No/NotAll In <values>`) — truth AND
-// polarity, sliced vertically because both halves share the per-cell [vlqSide] expansion and nothing else
-// consumes it. An extension family on the shared eval-state seam ([Interpreter], IF117): entry points are
-// internal (the truth walk and the typed walks dispatch here), the expansion machinery is file-private.
+// polarity, sliced vertically because both halves share the per-operand [vlqOperands] expansion and nothing
+// else consumes it. An extension family on the shared eval-state seam ([Interpreter], IF117): entry points
+// are internal (the truth walk and the typed walks dispatch here), the expansion machinery is file-private.
+//
+// ONE evaluator, THREE pass structures (SPEC-2026-07-23-16 — the kernel's `RuntimeController` gives each
+// operator its own traversal over the same two operand lists, so a side is NEVER flattened into one global
+// UNKNOWN/filter summary): `AtLeastOne` consumes the complete values side then scans fields to the deciding
+// match; `No` materializes values poison-sensitively then runs an ORDERED fields scan a match terminates;
+// `NotAll` runs a fields-PRESENCE prepass, consumes values only when a present field exists, then restarts
+// the fields scan to the outside witness. Filter (`Having`) polarity is witness-specific per those passes,
+// not one side-wide flag.
 
 /**
- * One side of a field-list × value-list quantifier, expanded to per-cell classes: the [present] cells'
- * typed values, whether an empty cell was seen ([anyEmpty] — an empty plain field / an empty star cell /
- * a starred entry's un-instantiated declared tail; the kernel's `einWertDerWerteListeNichtAngegeben` /
- * `isAuslassungsFehler` flag sources), whether a malformed, not-check-relevant cell was seen
- * ([anyUnknown]), and whether any operand carried a `Having` filter ([hasHaving] — the kernel escalates a
- * fired result to TRUE_AF/OMISSION on a filtered operand, IG48). A star expands to one cell per
- * instantiated row.
+ * One authored operand of a field-list × value-list quantifier side, expanded to its per-cell classes in
+ * encounter order — [cells] holds `null` for an EMPTY cell (an empty plain field / an empty star cell; the
+ * kernel's `einWertDerWerteListeNichtAngegeben` / `isAuslassungsFehler` flag sources), [Val.Unknown] for a
+ * malformed, not-check-relevant cell, and the typed value for a present cell. A star expands to one cell per
+ * instantiated (or filter-kept, IG48/IF74) row; a literal member is a single present cell (never
+ * empty/unknown).
  *
- * [extentUnknown] is a SEPARATE partial-validation fact from the per-cell classes above: a starred entry's
- * COMPLETE extent is established only by wildcard coverage of its repeatable level(s) — concretely enumerating
- * every current row does NOT (SPEC-2026-07-22-09). It drives the side-specific UNKNOWN table below and is never
- * set in full validation.
+ * [filtered] marks a `Having`-bearing operand — its polarity effect is decided by the consuming pass
+ * (witness-specific / reached-specific), never side-wide. [omittedTail] is an unfiltered star's
+ * un-instantiated declared tail. [extentUnknown] is the SEPARATE partial-validation fact: a starred entry's
+ * COMPLETE extent is established only by wildcard coverage of its repeatable level(s) — concretely
+ * enumerating every current row does NOT (SPEC-2026-07-22-09); never set in full validation.
  */
-private class VlqSide {
-    val present = mutableListOf<Val>()
-    var anyEmpty = false
-    var anyUnknown = false
-    var hasHaving = false
+private class VlqOperand(val filtered: Boolean) {
+    val cells = mutableListOf<Val?>()
+    var omittedTail = false
     var extentUnknown = false
+    fun anyPresent(): Boolean = cells.any { it != null && it !is Val.Unknown }
 }
 
-private fun Interpreter.vlqSide(entries: List<Expr>): VlqSide {
-    val out = VlqSide()
-    for (e in entries) when (e) {
+private fun Interpreter.vlqOperands(entries: List<Expr>): List<VlqOperand> = entries.map { e ->
+    when (e) {
         is Expr.Star -> {
+            val op = VlqOperand(filtered = e.having != null)
             val c = ctxOf(e)
             // Partial validation: this starred entry's COMPLETE extent is established only by WILDCARD coverage
             // of its repeatable level(s) (or a relevant ancestor) — the [starRelevant] seam shared with all-rows
             // aggregates (IF42); enumerating concrete rows, even all of them, does NOT (SPEC-2026-07-22-09).
             // Null in full validation → never set → the full path stays byte-identical.
-            if (starRelevant?.invoke(e.path) == false) out.extentUnknown = true
+            if (starRelevant?.invoke(e.path) == false) op.extentUnknown = true
             // A starred INDEX field's formal errors are field-LOCAL and make the CELL not check-relevant
             // → UNKNOWN: an empty cell is mandatory-empty (the kernel auto-requires an index field per
             // row), and EVERY cell of a duplicated value carries the uniqueIndex error (over ALL rows, not
@@ -51,121 +58,178 @@ private fun Interpreter.vlqSide(entries: List<Expr>): VlqSide {
             // collectively compromised. `ValueListQuantifierStarDiffTest.compromisedIndexRows`.
             val dupIndexValues = if (e.path in indexFields) c.indexColumn(e.path, e.bindDepth).duplicated else null
             if (e.having == null) {
-                for ((_, v) in c.starCells(e.path, e.bindDepth)) classifyVlqCell(out, v, dupIndexValues)
-                if (c.starOmission(e.path, e.bindDepth)) out.anyEmpty = true   // un-instantiated declared tail counts as empty
+                for ((_, v) in c.starCells(e.path, e.bindDepth)) op.classify(v, dupIndexValues)
+                if (c.starOmission(e.path, e.bindDepth)) op.omittedTail = true   // un-instantiated declared tail
             } else {
                 // A `Having` filter (IG48): classify ONLY rows the filter keeps (keep iff it fires TRUE — the
                 // IF72 keep-law; a malformed filter operand → UNKNOWN → drop), the same per-cell classes over
                 // the kept subset. A dropped row contributes nothing; the un-instantiated tail is unreachable
-                // (no data to filter), and a Having-bearing operand forces OMISSION on fire ([VlqSide.hasHaving]).
-                out.hasHaving = true
+                // (no data to filter). The operand's polarity effect is the consuming pass's call ([filtered]).
                 val group = e.path.substringBeforeLast('/')
                 for (rc in c.rowContexts(group, e.bindDepth)) {
                     if (!havingInterp(rc).fires(e.having)) continue
-                    classifyVlqCell(out, if (rc.filled(e.path)) rc.field(e.path) else null, dupIndexValues)
+                    op.classify(if (rc.filled(e.path)) rc.field(e.path) else null, dupIndexValues)
                 }
             }
+            op
         }
-        is Expr.Field, is Expr.SemanticIndex -> when (presenceTri(e)) {
-            Tri.TRUE -> out.present += evalExpr(e)
-            Tri.FALSE -> out.anyEmpty = true
-            Tri.UNKNOWN -> out.anyUnknown = true
+        is Expr.Field, is Expr.SemanticIndex -> VlqOperand(filtered = false).also { op ->
+            op.cells += when (presenceTri(e)) {
+                Tri.TRUE -> evalExpr(e)
+                Tri.FALSE -> null
+                Tri.UNKNOWN -> Val.Unknown
+            }
         }
         // An enum CATEGORY projection ([field -> Cat]) is a per-cell operand, NOT a literal: an empty enum
         // is an EMPTY cell (drives OMISSION for `No`, not a present Unknown — both kernel strategies), an
         // out-of-domain/malformed enum is UNKNOWN, and a filled enum contributes its (many-to-one) category
         // value. Presence is the UNDERLYING enum field's three-way presence ([filledTri] on [Expr.EnumCategory.path]
         // — [pathOf] rejects a category node). (SPEC-2026-07-22-05; the kernel's `keinFeldWertInWerteListe` empty-cell auslassung.)
-        is Expr.EnumCategory -> when {
-            outerUnknown(e) -> out.anyUnknown = true
-            else -> when (filledTri(ctxOf(e), e.path)) {
-                Tri.TRUE -> when (val v = evalExpr(e)) {
-                    is Val.Unknown -> out.anyUnknown = true
-                    else -> out.present += v
+        is Expr.EnumCategory -> VlqOperand(filtered = false).also { op ->
+            op.cells += when {
+                outerUnknown(e) -> Val.Unknown
+                else -> when (filledTri(ctxOf(e), e.path)) {
+                    Tri.TRUE -> evalExpr(e)
+                    Tri.FALSE -> null
+                    Tri.UNKNOWN -> Val.Unknown
                 }
-                Tri.FALSE -> out.anyEmpty = true
-                Tri.UNKNOWN -> out.anyUnknown = true
             }
         }
-        else -> out.present += evalExpr(e)   // a literal member (never empty/unknown)
+        else -> VlqOperand(filtered = false).also { it.cells += evalExpr(e) }   // a literal member (never empty/unknown)
     }
-    return out
 }
 
-/** Classify one star cell of a VLQ side by its resolved value (null = empty, [Val.Unknown] = malformed, an
- *  index-field duplicated value = field-local UNKNOWN) into [out] — shared by the unfiltered + filtered paths. */
-private fun classifyVlqCell(out: VlqSide, v: Val?, dupIndexValues: Set<Val>?) {
-    when {
-        v == null -> if (dupIndexValues != null) out.anyUnknown = true else out.anyEmpty = true
-        v is Val.Unknown -> out.anyUnknown = true
-        dupIndexValues != null && v in dupIndexValues -> out.anyUnknown = true
-        else -> out.present += v
+/** Classify one star cell by its resolved value (null = empty, [Val.Unknown] = malformed, an index-field
+ *  duplicated value = field-local UNKNOWN, an empty INDEX cell = mandatory-empty UNKNOWN) into the operand's
+ *  encounter-ordered [VlqOperand.cells] — shared by the unfiltered + filtered paths. */
+private fun VlqOperand.classify(v: Val?, dupIndexValues: Set<Val>?) {
+    cells += when {
+        v == null -> if (dupIndexValues != null) Val.Unknown else null
+        v is Val.Unknown -> Val.Unknown
+        dupIndexValues != null && v in dupIndexValues -> Val.Unknown
+        else -> v
     }
+}
+
+/** The eagerly-materialized values side of `No`/`NotAll` (the kernel's `fuegeFeldWerteZuWerteListe`):
+ *  the present [members] plus the sticky [omission] potential — an empty member, an omitted declared tail,
+ *  or a REACHED values-side filter (regardless of what it kept, the S5 asymmetry to `AtLeastOne`'s
+ *  present-selection rule). Null = poisoned: an UNKNOWN member or an extent-unknown star suppresses. */
+private class VlqValues(val members: List<Val>, val omission: Boolean)
+
+private fun vlqValuesOf(operands: List<VlqOperand>): VlqValues? {
+    var omission = false
+    val members = mutableListOf<Val>()
+    for (op in operands) {
+        if (op.filtered) omission = true
+        if (op.extentUnknown) return null
+        if (op.omittedTail) omission = true
+        for (cell in op.cells) when {
+            cell == null -> omission = true
+            cell is Val.Unknown -> return null
+            else -> members += cell
+        }
+    }
+    return VlqValues(members, omission)
 }
 
 /**
  * The field-list value-list quantifiers (shape B) — kernel-exact per the 30.8.1 runtime
  * (`mindestensEinFeldWertInWerteListe` / `keinFeldWertInWerteListe` / `nichtAlleFeldWerteInWerteListe`,
- * shared by both strategies; `ValueListQuantifierStarDiffTest`). Both sides expand per-cell ([vlqSide]) —
- * this includes the ENTITY value list (`f In` the flatten of `/Group*` then `x`, IF50) and STARRED fields
- * entries; equality is the
- * typed [ValCompare.equal] (numbers scale-19-insensitively — the kernel's `VkBigDecimal.equals` rescales too). The
- * malformed (UNKNOWN) handling is OP-ASYMMETRIC, never a blanket suppression:
+ * shared by both strategies; `ValueListQuantifierStarDiffTest`, `ValueListQuantifierOrderDiffTest`). Both
+ * sides expand per OPERAND, per cell, in encounter order ([vlqOperands]) — including the ENTITY value list
+ * (`f In` the flatten of `/Group*` then `x`, IF50) and STARRED fields entries; equality is the typed
+ * [ValCompare.equal] (numbers scale-19-insensitively — the kernel's `VkBigDecimal.equals` rescales too).
+ * The malformed (UNKNOWN) handling is OP-ASYMMETRIC, never a blanket suppression, and each operator owns
+ * its pass structure (SPEC-2026-07-23-16):
  *
- *  - `AtLeastOne`: empty/malformed cells and members are SKIPPED outright; an empty value SET → no fire;
- *    fires iff some present cell ∈ values.
- *  - `No`: a malformed FIELDS cell or VALUES member POISONS (→ Unknown, no fire); fires iff no present
- *    cell ∈ values — including when nothing is filled at all.
- *  - `NotAll`: no filled FIELDS cell → no fire (`noEntityFilled`); a malformed VALUES member poisons, a
- *    malformed FIELDS cell is skipped; fires iff some present cell ∉ values.
+ *  - `AtLeastOne`: the COMPLETE values side first (empty/malformed member cells SKIPPED outright; an empty
+ *    value SET → no fire), then fields in authored order to the first present match. A fire is OMISSION iff
+ *    the DECIDING fields operand is filtered or a filtered values operand selected a PRESENT member —
+ *    an earlier filtered nonwitness or a filtered empty selection never escalates.
+ *  - `No`: values materialized poison-sensitively (an UNKNOWN member → Unknown, no fire; empty member /
+ *    omitted tail / reached filter → sticky omission), then an ORDERED fields scan: a MATCH terminates
+ *    non-firing before every later cell (a later UNKNOWN/filter/tail is never reached), a reached UNKNOWN
+ *    before the match suppresses. Fires — including when nothing is filled at all — as OMISSION iff any
+ *    reached empty field / omitted tail / filter or the values side's omission potential occurred.
+ *  - `NotAll`: a fields-PRESENCE prepass first (no present cell → no fire WITHOUT consuming the values
+ *    side — an UNKNOWN values member cannot poison it), then values (No-style), then a RESTARTED fields
+ *    scan to the first present cell outside the set (malformed fields cells skipped). The fire is OMISSION
+ *    iff the outside-WITNESS operand is filtered or the values side carries omission potential — it has NO
+ *    fields-side empty/tail account (the `No`-vs-`NotAll` asymmetry).
  *
- * Partial validation adds a side-specific EXTENT gate ([VlqSide.extentUnknown], SPEC-2026-07-22-09): a starred
- * entry known only by concrete-row enumeration (not wildcard coverage) suppresses `No` on EITHER side and
- * `NotAll` on the VALUES side to UNKNOWN, while `AtLeastOne` (either side) and `NotAll` on the fields side
- * ignore it.
+ * Partial validation adds a side-specific EXTENT gate ([VlqOperand.extentUnknown], SPEC-2026-07-22-09): a
+ * starred entry known only by concrete-row enumeration (not wildcard coverage) suppresses `No` (either
+ * side, at its position in the scan) and `NotAll` on the VALUES side to UNKNOWN, while `AtLeastOne` (either
+ * side) and `NotAll` on the fields side ignore it.
+ *
+ * The EXPANSION stays eager per side (the read set — and so the compute-mode poison surface, IG102's
+ * territory — is unchanged); only the VERDICT is the operator's ordered pass over the expanded cells. The
+ * side-consumption laziness is the kernel's: `AtLeastOne`/`No` never touch fields when the values side
+ * already decided, `NotAll` never touches values when its presence prepass decided.
  */
-internal fun Interpreter.evalValueListQuant(c: Cond.ValueListQuant): Tri = when (c.op) {
-    ValueListQuantOp.AT_LEAST_ONE -> {
-        val values = vlqSide(c.values)
-        if (values.present.isEmpty()) Tri.FALSE
-        else Tri.of(vlqSide(c.fields).present.any { p -> values.present.any { ValCompare.equal(p, it) } })
-    }
-    ValueListQuantOp.NO -> {
-        val values = vlqSide(c.values)
-        // No is suppressed to UNKNOWN by an extent-unknown star on EITHER side (SPEC-2026-07-22-09).
-        if (values.anyUnknown || values.extentUnknown) Tri.UNKNOWN
-        else {
-            val fields = vlqSide(c.fields)
-            if (fields.anyUnknown || fields.extentUnknown) Tri.UNKNOWN
-            else Tri.of(fields.present.none { p -> values.present.any { ValCompare.equal(p, it) } })
-        }
-    }
-    ValueListQuantOp.NOT_ALL -> {
-        val fields = vlqSide(c.fields)
-        if (fields.present.isEmpty()) Tri.FALSE
-        else {
-            val values = vlqSide(c.values)
-            // NotAll is suppressed by an extent-unknown star on the VALUES side only; it IGNORES the fields
-            // side's extent (SPEC-2026-07-22-09) — a concretely-enumerated fields star still fires here.
-            if (values.anyUnknown || values.extentUnknown) Tri.UNKNOWN
-            else Tri.of(fields.present.any { p -> values.present.none { ValCompare.equal(p, it) } })
-        }
-    }
+internal fun Interpreter.evalValueListQuant(c: Cond.ValueListQuant): Tri = vlqRes(c).truth
+
+/** Truth + fired polarity in ONE pass — [Res.type] is meaningful only when [Res.truth] is TRUE (the typed
+ *  walks read it only then; a non-firing result carries the VALUE placeholder). */
+internal fun Interpreter.vlqRes(c: Cond.ValueListQuant): Res = when (c.op) {
+    ValueListQuantOp.AT_LEAST_ONE -> atLeastOneRes(c)
+    ValueListQuantOp.NO -> noRes(c)
+    ValueListQuantOp.NOT_ALL -> notAllRes(c)
 }
 
-/** Fired value-list-quantifier polarity (kernel TRUE_AF vs TRUE_WF): a `Having` filter on ANY operand
- *  escalates a fired result to OMISSION (TRUE_AF), unconditionally (IG48) — else `AtLeastOne` fires on a
- *  PRESENT matching value → VALUE (empties are irrelevant to it); a fired `No` is OMISSION on any empty
- *  FIELDS cell / un-instantiated tail OR an empty VALUES member; a fired `NotAll` is OMISSION only on the
- *  VALUES side's account — it has no fields-tail flag (the No-vs-NotAll asymmetry,
- *  `ValueListQuantifierStarDiffTest` / `ValueListQuantifierHavingDiffTest`). */
-internal fun Interpreter.valueListQuantType(c: Cond.ValueListQuant): MsgType {
-    val fields = vlqSide(c.fields)
-    val values = vlqSide(c.values)
-    if (fields.hasHaving || values.hasHaving) return MsgType.OMISSION
-    return when (c.op) {
-        ValueListQuantOp.AT_LEAST_ONE -> MsgType.VALUE
-        ValueListQuantOp.NO -> if (fields.anyEmpty || values.anyEmpty) MsgType.OMISSION else MsgType.VALUE
-        ValueListQuantOp.NOT_ALL -> if (values.anyEmpty) MsgType.OMISSION else MsgType.VALUE
+private fun Interpreter.atLeastOneRes(c: Cond.ValueListQuant): Res {
+    val values = vlqOperands(c.values)
+    val members = values.flatMap { op -> op.cells.mapNotNull { cell -> cell.takeUnless { it is Val.Unknown } } }
+    if (members.isEmpty()) return Res.of(Tri.FALSE, MsgType.VALUE)
+    // A values-side filter keeps its polarity only when that operand SELECTED a present member
+    // (the kernel's `fuegePruefungsrelevanteFeldWerteZuWerteListe` filter flag rides the present add).
+    val filteredSelection = values.any { it.filtered && it.anyPresent() }
+    for (op in vlqOperands(c.fields)) {
+        for (cell in op.cells) {
+            if (cell == null || cell is Val.Unknown) continue   // empty/malformed fields cells are skipped
+            if (members.any { ValCompare.equal(cell, it) }) {
+                // The DECIDING operand's filter — not an earlier filtered nonwitness — sets the polarity.
+                return Res.of(Tri.TRUE, if (op.filtered || filteredSelection) MsgType.OMISSION else MsgType.VALUE)
+            }
+        }
     }
+    return Res.of(Tri.FALSE, MsgType.VALUE)
+}
+
+private fun Interpreter.noRes(c: Cond.ValueListQuant): Res {
+    val values = vlqValuesOf(vlqOperands(c.values)) ?: return Res.of(Tri.UNKNOWN, MsgType.VALUE)
+    var omission = values.omission
+    for (op in vlqOperands(c.fields)) {
+        // The fields-side extent gate sits AT the operand's scan position: an earlier match already
+        // decided non-firing before an extent-unknown (or malformed) later operand is reached.
+        if (op.extentUnknown) return Res.of(Tri.UNKNOWN, MsgType.VALUE)
+        if (op.omittedTail || op.filtered) omission = true   // reached tail/filter → sticky omission
+        for (cell in op.cells) when {
+            cell == null -> omission = true                  // reached empty cell → sticky omission
+            cell is Val.Unknown -> return Res.of(Tri.UNKNOWN, MsgType.VALUE)
+            values.members.any { ValCompare.equal(cell, it) } ->
+                return Res.of(Tri.FALSE, MsgType.VALUE)      // a match decides non-firing, the scan ends
+        }
+    }
+    return Res.of(Tri.TRUE, if (omission) MsgType.OMISSION else MsgType.VALUE)
+}
+
+private fun Interpreter.notAllRes(c: Cond.ValueListQuant): Res {
+    val fields = vlqOperands(c.fields)
+    // The presence prepass (`noEntityFilled`): nothing present → no fire, values NEVER consumed.
+    if (fields.none { it.anyPresent() }) return Res.of(Tri.FALSE, MsgType.VALUE)
+    val values = vlqValuesOf(vlqOperands(c.values)) ?: return Res.of(Tri.UNKNOWN, MsgType.VALUE)
+    // The RESTARTED fields scan — no extent gate, no empty/tail account on this side
+    // (SPEC-2026-07-22-09 / the No-vs-NotAll asymmetry): the first present cell outside the set wins.
+    for (op in fields) {
+        for (cell in op.cells) {
+            if (cell == null || cell is Val.Unknown) continue
+            if (values.members.none { ValCompare.equal(cell, it) }) {
+                // The outside-WITNESS operand's filter — or the values side — sets the polarity.
+                return Res.of(Tri.TRUE, if (op.filtered || values.omission) MsgType.OMISSION else MsgType.VALUE)
+            }
+        }
+    }
+    return Res.of(Tri.FALSE, MsgType.VALUE)
 }

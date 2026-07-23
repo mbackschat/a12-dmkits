@@ -21,9 +21,10 @@ import org.junit.jupiter.api.Test
  *    operand → runtime-UNKNOWN → not-TRUE → DROP;
  *  - the per-cell classification of KEPT rows is unchanged (IF60): present / empty / malformed (an index-field
  *    empty/dup cell → UNKNOWN, field-local);
- *  - POLARITY is filter-derived: a Having-bearing operand escalates a fired result to OMISSION (kernel
- *    TRUE_AF) — unconditionally (even a filter that drops nothing), so a fired filtered `AtLeastOne` (VALUE
- *    when unfiltered) is OMISSION.
+ *  - POLARITY is witness-/reached-specific (SPEC-2026-07-23-16, IF218): every filtered operand here is the
+ *    single fields/values operand, so it IS the deciding match / outside witness / reached values filter —
+ *    hence each fired case below is OMISSION (kernel TRUE_AF). A filtered NONwitness beside an unfiltered
+ *    decider does NOT escalate — that multi-operand separator estate is `ValueListQuantifierOrderDiffTest`.
  *
  * `ValueListQuantifierStarDiffTest` locks the unfiltered starred/per-cell classification; this adds the filter.
  */
@@ -126,9 +127,10 @@ class ValueListQuantifierHavingDiffTest {
             listOf("A" to "10", "C" to "3"), PC to "A")
     }
 
-    // ── POLARITY: a Having-bearing operand escalates a fired result to OMISSION, unconditionally ──────
+    // ── POLARITY: the single filtered operand is the decider/witness/reached filter → OMISSION on fire ─
     @Test fun filterDerivedOmissionPolarity() {
-        // AtLeastOne is VALUE unfiltered; WITH a filter (even one that drops nothing) a fire is OMISSION.
+        // AtLeastOne is VALUE unfiltered; with the DECIDING operand filtered (even by a filter that drops
+        // nothing) a fire is OMISSION.
         agreeType("AtLeastOneFieldValueIncludedInValueList(Items*/Sku Having ([Items/Count] > 0) In \"A\", \"B\")",
             listOf("A" to "10", "C" to "10"))
         agreeType("AtLeastOneFieldValueIncludedInValueList(Items*/Sku $H In \"A\", \"B\")",

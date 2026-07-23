@@ -1094,7 +1094,8 @@
       "values may also be string literals or field references"
     ],
     "gotchas": [
-      { "text": "literals ride the UNION of the selected enum/category domains — a value present in only ONE listed enumeration is legal (it is NOT an intersection); a direct reference and a [field -> Cat] category projection on the SAME field are distinct members", "kind": "SURPRISE", "seeAlso": ["EnumCategory", "NoFieldValueIncludedInValueList"] }
+      { "text": "literals ride the UNION of the selected enum/category domains — a value present in only ONE listed enumeration is legal (it is NOT an intersection); a direct reference and a [field -> Cat] category projection on the SAME field are distinct members", "kind": "SURPRISE", "seeAlso": ["EnumCategory", "NoFieldValueIncludedInValueList"] },
+      { "text": "a fired AtLeastOne is OMISSION only when the DECIDING (matching) fields operand carries the Having filter, or a filtered VALUES operand selected a PRESENT member — an earlier filtered nonwitness operand, a filter that kept only empty cells, or one that dropped everything leaves the fire VALUE (witness-specific, never one side-wide flag)", "kind": "SURPRISE", "seeAlso": ["NoFieldValueIncludedInValueList", "NotAllFieldValuesIncludedInValueList"] }
     ],
     "validExample": { "dsl": "AtLeastOneFieldValueIncludedInValueList(ShippingAddress/Street, BillingAddress/PostalCode In \"unknown\", \"n/a\")", "note": "true when any address field carries a placeholder value" },
     "invalidExample": { "dsl": "AtLeastOneFieldValueIncludedInValueList(CustomerName, Quantity In \"x\")", "error": "MVK_VARYING_TYPES_NOT_ALLOWED", "fix": "list only same-type fields — here a string and a number field are mixed" },
@@ -1159,7 +1160,8 @@
       "syntax and slot rules as AtLeastOneFieldValueIncludedInValueList (union enum admission, category projections, exact-duplicate rejection, entity-valued base-kind gate)"
     ],
     "gotchas": [
-      { "text": "unlike the scalar FieldValueNotIncludedInValueList (a one-subject specialization that does NOT fire on an empty subject), the multi-field No FIRES when nothing is filled; an UNKNOWN fields cell OR values member poisons it", "kind": "SURPRISE", "seeAlso": ["FieldValueNotIncludedInValueList", "NotAllFieldValuesIncludedInValueList", "EnumCategory"] }
+      { "text": "unlike the scalar FieldValueNotIncludedInValueList (a one-subject specialization that does NOT fire on an empty subject), the multi-field No FIRES when nothing is filled; an UNKNOWN fields cell OR values member poisons it", "kind": "SURPRISE", "seeAlso": ["FieldValueNotIncludedInValueList", "NotAllFieldValuesIncludedInValueList", "EnumCategory"] },
+      { "text": "the fields side is scanned in authored order — a match decides non-firing before a later malformed cell is reached; when No fires, a REACHED values-side Having keeps omission potential even when it selected nothing (fired No is OMISSION), asymmetric to AtLeastOne's present-selection rule", "kind": "SURPRISE", "seeAlso": ["AtLeastOneFieldValueIncludedInValueList", "NotAllFieldValuesIncludedInValueList"] }
     ],
     "validExample": { "dsl": "NoFieldValueIncludedInValueList(CustomerName, ProductCode In \"test\", \"demo\")", "note": "true when no test placeholders are present" },
     "semantics": {
@@ -1223,7 +1225,8 @@
       "syntax and slot rules as AtLeastOneFieldValueIncludedInValueList (union enum admission, category projections, exact-duplicate rejection, entity-valued base-kind gate)"
     ],
     "gotchas": [
-      { "text": "needs a FILLED fields cell to fire; an UNKNOWN VALUES member poisons it, but an UNKNOWN FIELDS cell is merely skipped — the No-vs-NotAll asymmetry", "kind": "SURPRISE", "seeAlso": ["NoFieldValueIncludedInValueList", "EnumCategory"] }
+      { "text": "needs a FILLED fields cell to fire; an UNKNOWN VALUES member poisons it, but an UNKNOWN FIELDS cell is merely skipped — the No-vs-NotAll asymmetry", "kind": "SURPRISE", "seeAlso": ["NoFieldValueIncludedInValueList", "EnumCategory"] },
+      { "text": "polarity follows the outside WITNESS: OMISSION only when the witness operand is filtered or the values side carries omission potential (empty member / omitted tail / filter) — a filtered nonwitness fields operand never escalates; the fields-PRESENCE prepass also decides no-fire before an UNKNOWN values member can poison", "kind": "SURPRISE", "seeAlso": ["AtLeastOneFieldValueIncludedInValueList", "NoFieldValueIncludedInValueList"] }
     ],
     "validExample": { "dsl": "NotAllFieldValuesIncludedInValueList(CustomerName, ProductCode In \"a\", \"b\")", "note": "true unless every listed field's value is in the list" },
     "semantics": {

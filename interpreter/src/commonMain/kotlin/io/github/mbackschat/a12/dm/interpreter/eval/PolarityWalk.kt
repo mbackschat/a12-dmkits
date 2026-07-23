@@ -41,7 +41,7 @@ internal data class Res(val truth: Tri, val type: MsgType) {
 internal fun Interpreter.evalTyped(c: Cond): Res = when (c) {
     is Cond.Cmp -> Res.of(evalCmp(c), leafType(c.op, c.left, c.right))
     is Cond.Tolerance -> Res.of(evalTolerance(c), toleranceType(c))
-    is Cond.ValueListQuant -> Res.of(evalValueListQuant(c), valueListQuantType(c))
+    is Cond.ValueListQuant -> vlqRes(c)   // truth + witness-specific polarity in ONE pass (SPEC-2026-07-23-16)
     is Cond.Pred -> Res.of(evalPred(c), predType(c))
     // A pattern fires only on a PRESENT value (empty → not evaluated), so a fired pattern is always a
     // present-value error → VALUE (there is no "fill more to fix it" omission — the field is filled).
@@ -82,7 +82,7 @@ internal fun Interpreter.evalTyped(c: Cond): Res = when (c) {
 internal fun Interpreter.evalTypedLazy(c: Cond): Res = when (c) {
     is Cond.Cmp -> evalCmp(c).let { Res.of(it, if (it == Tri.TRUE) leafType(c.op, c.left, c.right) else MsgType.VALUE) }
     is Cond.Tolerance -> evalTolerance(c).let { Res.of(it, if (it == Tri.TRUE) toleranceType(c) else MsgType.VALUE) }
-    is Cond.ValueListQuant -> evalValueListQuant(c).let { Res.of(it, if (it == Tri.TRUE) valueListQuantType(c) else MsgType.VALUE) }
+    is Cond.ValueListQuant -> vlqRes(c)   // single pass; a non-firing result already carries the VALUE placeholder
     is Cond.Pred -> evalPred(c).let { Res.of(it, if (it == Tri.TRUE) predType(c) else MsgType.VALUE) }
     is Cond.Pattern -> Res.of(evalPattern(c), MsgType.VALUE)
     is Cond.Custom -> Res.of(evalCustom(c), MsgType.VALUE)
