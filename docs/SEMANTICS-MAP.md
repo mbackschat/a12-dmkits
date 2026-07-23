@@ -88,6 +88,6 @@ The cross-doc shorthand the findings, ledgers, and session reports use. This tab
 | **kernel-only / interp-only / both-differ** | the validateFull sweep classes: fired-code units only one engine produced, or both produced differently | the `SweepReport` instrumentation (adapter test source); used across INTERPRETER-GAPS/FINDINGS |
 | **tri-check / quad-check** | one lock asserting groovy-dynamic == java-static == interpreter (a quad adds a fourth arm, e.g. a rejection control) | [CONFORMANCE-CORPUS-SPEC](CONFORMANCE-CORPUS-SPEC.md) §13 (the replay matrix) + the [archived program](archived/SEMANTICS-FORMALIZATION-PROPOSAL.md) §6.1 |
 | **anchor (groovy-dynamic)** | the production-normative kernel strategy the corpus `expected` records; a java-static divergence is recorded, never adopted | [CONFORMANCE-CORPUS-SPEC](CONFORMANCE-CORPUS-SPEC.md) §1 |
-| **dry / until-dry** | a discovery loop's stop rule: N consecutive hunts yielding nothing new | the [`run-work-program` skill](../.claude/skills/run-work-program/SKILL.md) |
+| **dry / until-dry** | a discovery loop's stop rule: N consecutive hunts yielding nothing new | the [`run-master-session` skill](../.claude/skills/run-master-session/SKILL.md) |
 | **hostile seeding** | the sweep's opt-in constraint-VIOLATING value mode (`-Dcorpus.hostile=true`), exposing operand-invalidity classes the nice seeder can't reach | [INTERPRETER-GAPS](INTERPRETER-GAPS.md) §1 (IG56) |
 | **RNU** | `RepetitionNotUnique` — the per-row duplicate-key predicate family | [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §9 supplements |

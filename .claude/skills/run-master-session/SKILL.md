@@ -1,5 +1,5 @@
 ---
-name: run-work-program
+name: run-master-session
 description: Run a multi-session work program with the hybrid model policy and review gate — use when orchestrating work that spans multiple sessions (master session duties, worker-prompt minting, per-set tier choice, gating a worker session's landing). Tool-agnostic; graduated 2026-07-09 from the semantics-formalization program.
 ---
 

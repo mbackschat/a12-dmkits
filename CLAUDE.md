@@ -86,7 +86,7 @@ The drill: **reproduce → root-cause → generalize (enumerate every site of th
 
 ## Multi-session work programs
 
-Running a work program that spans multiple sessions (a master session minting worker prompts, per-set hybrid tier choice, review gates on every landing)? **Load the `run-work-program` skill** (`.claude/skills/`) — don't run the protocol from memory; its gate checklist and drill criteria are easy to violate silently. One rule holds even without the skill: **one active session per worktree, always.**
+Running a work program that spans multiple sessions (a master session minting worker prompts, per-set hybrid tier choice, review gates on every landing)? **Load the `run-master-session` skill** (`.claude/skills/`) — don't run the protocol from memory; its gate checklist and drill criteria are easy to violate silently. One rule holds even without the skill: **one active session per worktree, always.**
 
 ## Interpreter — the two #1 rules (never scoped down)
 
