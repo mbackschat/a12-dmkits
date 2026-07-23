@@ -12,7 +12,9 @@
 
 ## 1. Open (to fix)
 
-**None.** New semantic or performance defects belong here only while they have actionable work and a defined completion gate.
+- **IG102 — compute-phase fixed group-list quantifiers are kernel-uncharacterized (evidence gap, surfaced at the SPEC-2026-07-23-09 gate, 2026-07-23).** The fixed `AllGroupsFilled`/`NoGroupFilled`/`AtLeastOneGroupFilled`/`NotAllGroupsFilled`/`GroupsNotCollectivelyFilled` forms are locked against both kernel strategies in VALIDATION, full + partial (IF216) — but no differential exercises them inside a COMPUTATION: the group-only lists were never compute-locked either, and IF216's field operands are newly representable there. The interpreter reads a field operand via the shared `presenceTri`, whose compute mode poisons on an invalid read — plausible per the kernel's expand-lowering, but not kernel-locked. Also unlocked (pre-existing, representable via `overScopes`): a multi-operand list mixing a starred group scope with other operands. Completion gate: dual-kernel-route + JVM/Node compute-phase controls for clean/invalid/absent field and group operands (poison vs clear vs value) plus one mixed starred-scope case, extending the existing `GroupListEntityOperandDiffTest` family — no new harness.
+
+New semantic or performance defects belong here only while they have actionable work and a defined completion gate.
 
 ---
 
