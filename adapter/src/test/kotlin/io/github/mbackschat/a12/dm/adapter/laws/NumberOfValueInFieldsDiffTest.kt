@@ -49,11 +49,16 @@ class NumberOfValueInFieldsDiffTest {
 
     private val zeroGt0 = render(m.field(QTY).filled().and(Dsl.numberOfValueInFields(0L, m.field(QTY), m.field(PRICE)).gt(0)))
     private val zeroGe2 = render(m.field(QTY).filled().and(Dsl.numberOfValueInFields(0L, m.field(QTY), m.field(PRICE)).ge(2)))
+    // Scale-normalized (scale-19) Number equality: `5` matches BOTH a scale-0 Qty=5 and a scale-2 Price=5.00 —
+    // the kernel's `VkBigDecimal.equals` compares by numeric value, not by scale. `Dsl.numberOfValueInFields(5L,…)`.
+    private val fiveGe2 = render(m.field(QTY).filled().and(Dsl.numberOfValueInFields(5L, m.field(QTY), m.field(PRICE)).ge(2)))
 
     @Test fun countsOneMatchingFilledField() = agree(zeroGt0, "0", "5.00", "Qty==0 → count 1 > 0")
     @Test fun emptyFieldIsNotCountedAsZero() = agree(zeroGe2, "0", null, "Qty==0, Price empty → count 1 (empty not 0), not >= 2")
     @Test fun bothFieldsMatchTheConstant() = agree(zeroGe2, "0", "0.00", "both == 0 → count 2 >= 2")
     @Test fun noFieldMatches() = agree(zeroGt0, "5", "5.00", "neither == 0 → count 0, not > 0")
+    @Test fun scaleNormalizedEqualityCountsBoth() = agree(fiveGe2, "5", "5.00", "5 and 5.00 both == 5 (scale-19) → count 2 >= 2")
+    @Test fun scaleNormalizedEqualityRejectsUnequal() = agree(fiveGe2, "5", "5.01", "5.01 != 5 → count 1, not >= 2")
 
     private companion object {
         const val ITEM = "/Cart/Lines/ItemId"

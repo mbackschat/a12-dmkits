@@ -19,9 +19,11 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 // (the overlap predicates in the strategy, VLQ in its own file). An extension family on the shared
 // eval-state seam ([Interpreter], IF117); the pure per-operator polarity RULES live in [Polarity] (IF10).
 
-/** The entity-count ops whose filtered fill follows the kernel count rule (IF114), not the
- *  value-combiner blanket. */
-private val ENTITY_COUNTS = setOf(FunctionOp.NUMBER_OF_FILLED_FIELDS, FunctionOp.NUMBER_OF_FILLED_GROUPS)
+/** The count ops whose filtered fill follows the kernel's `containsFilteredValue` count rule ([countFill],
+ *  IF114 + SPEC-2026-07-23-12), not the value-combiner blanket: `NumberOfFilledFields`/`NumberOfFilledGroups`
+ *  (`anzahlAngegebenerEntities`) and `NumberOfValueInFields` (`anzahlWertInFeldlisteIntern`). */
+private val FILTER_SENSITIVE_COUNTS = setOf(
+    FunctionOp.NUMBER_OF_FILLED_FIELDS, FunctionOp.NUMBER_OF_FILLED_GROUPS, FunctionOp.NUMBER_OF_VALUE_IN_FIELDS)
 
 /** A node's (truth, polarity). **Interned** (3 × 2 = 6 instances) — the kernel returns an interned
  *  `ValidierungsErgebnis` enum (0 alloc); a node result is allocated per-node-per-row in the hot walk, so
@@ -132,17 +134,17 @@ private fun Interpreter.fill(e: Expr): Fill {
     // a fired comparison consuming a filtered star is TRUE_AF → OMISSION in both directions — even when
     // the filter KEPT a filled row (kernel-pinned, IF104; the comparison twin of IF101's quantifier
     // escalation). The ENTITY COUNTS do NOT ride that combiner rule — `anzahlAngegebenerEntities` has its
-    // own filter flags ([countFill], IF114) — so they compute their own fill.
-    if (hasHavingStar(e) && !isEntityCount(e)) return Fill.of(true, true)
+    // own filter flags ([countFill], IF114/SPEC-2026-07-23-12) — so they compute their own fill.
+    if (hasHavingStar(e) && !isFilterSensitiveCount(e)) return Fill.of(true, true)
     return fillOf(e)
 }
 
-/** Whether [e] is directly an entity-count call (`NumberOfFilledFields`/`NumberOfFilledGroups`) — the two
- *  ops whose filtered fill follows the kernel count rule ([countFill], IF114), not the value-combiner
- *  blanket. (A count NESTED in arithmetic with a filtered star stays blanketed — unpinned, no corpus
- *  instance.) */
-private fun Interpreter.isEntityCount(e: Expr): Boolean = e is Expr.Func &&
-    FunctionOp.byName(e.name) in ENTITY_COUNTS
+/** Whether [e] is directly a filter-sensitive count call ([FILTER_SENSITIVE_COUNTS] — the filled-entity counts
+ *  and `NumberOfValueInFields`) whose filtered fill follows the kernel's `containsFilteredValue` count rule
+ *  ([countFill]), not the value-combiner blanket. (A count NESTED in arithmetic with a filtered star stays
+ *  blanketed — unpinned, no corpus instance.) */
+private fun Interpreter.isFilterSensitiveCount(e: Expr): Boolean = e is Expr.Func &&
+    FunctionOp.byName(e.name) in FILTER_SENSITIVE_COUNTS
 
 /** Whether [e]'s tree consumes a `Having`-FILTERED star (the combiner escalation trigger, IF104). */
 private fun Interpreter.hasHavingStar(e: Expr): Boolean = when (e) {
@@ -252,11 +254,18 @@ private fun Interpreter.funcFill(f: Expr.Func): Fill = when (FunctionOp.byName(f
     // can only ADD to the count, never remove one. So they grow like an UNSIGNED `Sum`: `canGrow` while a
     // fillable operand remains, `canShrink` NEVER. Directionally this makes a fired `count >= n` / `count > n`
     // a VALUE error (filling can't clear it) while `count < n` / `count == n` stays OMISSION (filling still
-    // MultiFieldAggregateDiffTest.firedPolarityMatchesKernel, NumberOfFilledDiffTest). The ENTITY counts
-    // additionally carry the kernel's own filter flags ([countFill], IF114).
+    // MultiFieldAggregateDiffTest.firedPolarityMatchesKernel, NumberOfFilledDiffTest). The filter-sensitive
+    // counts additionally carry the kernel's own filter flags ([countFill], IF114/SPEC-2026-07-23-12).
     FunctionOp.NUMBER_OF_FILLED_FIELDS, FunctionOp.NUMBER_OF_FILLED_GROUPS -> countFill(f)
-    FunctionOp.NUMBER_OF_DIFFERENT_VALUES, FunctionOp.NUMBER_OF_VALUE_IN_FIELDS ->
-        Fill.of(canGrow = leafOmission(f), canShrink = false)
+    // NumberOfValueInFields rides the same count rule, but a filtered cell only makes the count SHRINKABLE
+    // when its value MATCHED the counted constant (the `containsFilteredValue` value gate) — so a filtered
+    // selected non-match is a grow-only zero, not both-directional (SPEC-2026-07-23-12).
+    FunctionOp.NUMBER_OF_VALUE_IN_FIELDS -> evalExpr(f.args[0]).let { target ->
+        countFill(f) { rc, path -> ValCompare.equal(rc.field(path), target) }
+    }
+    // NumberOfDifferentValues follows the value-combiner rule for a filter (blanketed both-directional by the
+    // [fill] escalation above); unfiltered it is grow-only like the other counts.
+    FunctionOp.NUMBER_OF_DIFFERENT_VALUES -> Fill.of(canGrow = leafOmission(f), canShrink = false)
     // Value FUNCTIONS carry their arg's directional fill through the kernel's `VkBigDecimal` (IF69's sibling).
     // Rounding is `setScale`, which PRESERVES `kannGroesser/Kleiner` exactly — so a `Round*([expr], n)` /
     // `Round*Value(field)` propagates its rounded operand's [fill] unchanged (the places literal is fixed).
@@ -284,16 +293,21 @@ private fun Interpreter.funcFill(f: Expr.Func): Fill = when (FunctionOp.byName(f
 }
 
 /**
- * The kernel's ENTITY-COUNT fill flags (`RuntimeController.anzahlAngegebenerEntities`, IF114). A
- * `Having`-FILTERED operand that actually COUNTED a value escalates BOTH directions
- * (`containsFilteredValue` — "in presence of a filter the count can become bigger or smaller"); otherwise
- * the count is GROW-ONLY: it can grow while any operand cell remains uncounted — an empty cell or the
- * un-instantiated declared tail ([leafOmission]), or a FILTERED-OUT row's cell (the kernel's
- * `anzAllerFelder > anzAngFelder` — filled cells the filter dropped still make the count growable). It
- * never shrinks. So a fired mismatch over a kept-nothing filtered count is DIRECTIONAL (stored below →
- * VALUE, stored above → OMISSION) where the value-combiner blanket said OMISSION for both.
+ * The kernel's filter-sensitive COUNT fill flags (`RuntimeController.anzahlAngegebenerEntities`, IF114;
+ * `anzahlWertInFeldlisteIntern`, SPEC-2026-07-23-12). A `Having`-FILTERED operand that actually COUNTED a
+ * qualifying cell escalates BOTH directions (`containsFilteredValue` — "in presence of a filter the count can
+ * become bigger or smaller"); otherwise the count is GROW-ONLY: it can grow while any operand cell remains
+ * uncounted — an empty cell or the un-instantiated declared tail ([leafOmission]), or a FILTERED-OUT row's
+ * cell (the kernel's `anzAllerFelder > anzAngFelder` — filled cells the filter dropped still make the count
+ * growable). It never shrinks. So a fired mismatch over a kept-nothing filtered count is DIRECTIONAL (stored
+ * below → VALUE, stored above → OMISSION) where the value-combiner blanket said OMISSION for both.
+ *
+ * [qualifies] is the per-cell "this filled cell is COUNTED" gate: always for the filled-entity counts, and
+ * "the value equals the constant" for `NumberOfValueInFields` — so a filtered selected NON-match leaves a
+ * grow-only zero (the filter is present ⇒ growable, but no match came through it ⇒ not shrinkable), while a
+ * filtered current MATCH is both-directional.
  */
-private fun Interpreter.countFill(f: Expr.Func): Fill {
+private fun Interpreter.countFill(f: Expr.Func, qualifies: (EvalContext, String) -> Boolean = { _, _ -> true }): Fill {
     var counted = 0
     var total = 0
     var anyFilteredCounted = false
@@ -303,7 +317,9 @@ private fun Interpreter.countFill(f: Expr.Func): Fill {
         val group = st.path.substringBeforeLast('/')
         for (rc in ctxOf(st).rowContexts(group, st.bindDepth)) {
             total++
-            if (havingInterp(rc).fires(having) && rc.filled(st.path)) { counted++; anyFilteredCounted = true }
+            if (havingInterp(rc).fires(having) && rc.filled(st.path) && qualifies(rc, st.path)) {
+                counted++; anyFilteredCounted = true
+            }
         }
     }
     if (anyFilteredCounted) return Fill.of(true, true)

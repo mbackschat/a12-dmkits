@@ -559,20 +559,43 @@ private fun Interpreter.roundExpr(args: List<Expr>, mode: RoundMode): Val {
 }
 
 /**
- * `NumberOfValueInFields(value In f1, f2, …)` — `args[0]` is the constant, `args[1..]` the bare field refs.
- * The kernel (`RuntimeController.anzahlWertInFeldlisteIntern`) counts only **filled** fields whose value
- * equals the constant: an EMPTY field is skipped (not counted), and a formally-invalid (Unknown) field
- * makes the whole count non-evaluable → the rule is suppressed. Equality uses the same typed `==` semantics.
+ * `NumberOfValueInFields(value In f1, f2, …)` — `args[0]` is the constant, `args[1..]` the field-list operands
+ * (a plain field ref, or a `Group* / Field` repetition list, optionally `Having`-filtered). The kernel
+ * (`RuntimeController.anzahlWertInFeldlisteIntern`) counts only **filled** fields whose value equals the
+ * constant: an EMPTY cell is skipped (not counted — kernel `b == FALSE`, so an empty Number never matches `0`),
+ * and a formally-invalid (Unknown) cell makes the whole count non-evaluable → the rule is suppressed. Equality
+ * uses the same typed `==` semantics (`ValCompare` — scale-19 Number, exact textual projection). A STARRED
+ * operand rides the SAME filtered iterator as [filledFieldsValue] (SPEC-2026-07-23-12): a `Having` filter drops
+ * a row FIRST (a dropped row's malformed cell never suppresses), then a kept row is counted iff it is filled and
+ * matches; on the compute path a kept malformed cell POISONs. The filter-sensitive result POLARITY rides
+ * [countFill] with the value-match gate (containsFilteredValue), NOT the value-combiner blanket.
  */
 private fun Interpreter.numberOfValueInFields(args: List<Expr>): Val {
     val target = evalExpr(args[0])
     var count = 0
     for (i in 1 until args.size) {
-        val path = pathOf(args[i])
-        if (!ctx.filled(path)) continue          // empty → not counted (kernel: b == FALSE)
-        val v = evalExpr(args[i])
-        if (v is Val.Unknown) return Val.Unknown // a filled-but-malformed operand → non-evaluable
-        if (ValCompare.equal(v, target)) count++
+        when (val arg = args[i]) {
+            is Expr.Star -> {                    // a `Group* / Field` list (kernel: a group/wildcard expansion)
+                val group = arg.path.substringBeforeLast('/')
+                for (rc in ctxOf(arg).rowContexts(group, arg.bindDepth)) {
+                    if (arg.having != null && !havingInterp(rc).fires(arg.having)) continue  // filter drops the row first
+                    if (!rc.filled(arg.path)) continue                                        // empty → not counted
+                    val v = rc.field(arg.path)
+                    if (v is Val.Unknown) {                                                    // kept malformed → suppress
+                        if (computeMode) throw PoisonedReadException(arg.path)
+                        return Val.Unknown
+                    }
+                    if (ValCompare.equal(v, target)) count++
+                }
+            }
+            else -> {
+                val path = pathOf(arg)
+                if (!ctx.filled(path)) continue  // empty → not counted (kernel: b == FALSE)
+                val v = evalExpr(arg)
+                if (v is Val.Unknown) return Val.Unknown // a filled-but-malformed operand → non-evaluable
+                if (ValCompare.equal(v, target)) count++
+            }
+        }
     }
     return Val.Num(dec(count))
 }
