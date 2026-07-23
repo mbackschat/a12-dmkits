@@ -1739,9 +1739,10 @@
     "operands": [ { "type": "number-or-date-like" }, { "type": "number-or-date-like" } ],
     "returns": "the operands' common NUMBER, DATE, TIME, or DATETIME kind",
     "meaning": "The minimum of one or more homogeneous numeric or date-like value expressions — the operand-list form, distinct from the field-list MinValue (which aggregates a repetition list).",
-    "gotchas": [ { "text": "an empty number operand is substituted as 0 and can WIN the Min — unlike the starred MinValue, which skips empties; guard operands with AllFieldsFilled", "kind": "SURPRISE" } ],
+    "gotchas": [ { "text": "an empty number operand is substituted as 0 and can WIN the Min — unlike the starred MinValue, which skips empties; guard operands with AllFieldsFilled", "kind": "SURPRISE" }, { "text": "each call independently admits at most ONE immediate-or-bracketed numeric literal (a second is MVK_TOO_MANY_CONST_FOR_CALC_OP; curly braces do not hide it — {1} still counts) — but a literal inside arithmetic or inside a nested Min/Max call does not consume the outer call's budget: Min(Min([Quantity], 1), 2) is legal while the flattened Min([Quantity], 1, 2) is not; nested calls are authored structure, never flatten them", "kind": "AUTHORING", "seeAlso": ["Max"] } ],
     "constraints": [ "one or more homogeneous NUMBER, DATE, TIME, or DATETIME value expressions; kinds cannot be mixed", "date-like operands use temporal ordering and skip empty operands (see the emptyOperand facet)" ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And Min([Quantity], [UnitPrice]) > 0", "note": "fires when both are positive (the smaller is above 0)" },
+    "invalidExample": { "dsl": "Min([Quantity], 1, 2) > 0", "error": "MVK_TOO_MANY_CONST_FOR_CALC_OP", "fix": "each Min/Max call admits ONE literal — nest the calls instead: Min(Min([Quantity], 1), 2) > 0" },
     "semantics": {
       "aggregateIdentity": {
         "perKind": {
@@ -1825,9 +1826,10 @@
     "operands": [ { "type": "number-or-date-like" }, { "type": "number-or-date-like" } ],
     "returns": "the operands' common NUMBER, DATE, TIME, or DATETIME kind",
     "meaning": "The maximum of one or more homogeneous numeric or date-like value expressions — the operand-list form, distinct from the field-list MaxValue (which aggregates a repetition list).",
-    "gotchas": [ { "text": "an empty number operand is substituted as 0 (it can win a Max over negatives) — unlike the starred MaxValue, which skips empties", "kind": "SURPRISE" } ],
+    "gotchas": [ { "text": "an empty number operand is substituted as 0 (it can win a Max over negatives) — unlike the starred MaxValue, which skips empties", "kind": "SURPRISE" }, { "text": "each call independently admits at most ONE immediate-or-bracketed numeric literal (a second is MVK_TOO_MANY_CONST_FOR_CALC_OP; curly braces do not hide it — {1} still counts) — but a literal inside arithmetic or inside a nested Min/Max call does not consume the outer call's budget: Max(Max([Quantity], 1), 2) is legal while the flattened Max([Quantity], 1, 2) is not; nested calls are authored structure, never flatten them", "kind": "AUTHORING", "seeAlso": ["Min"] } ],
     "constraints": [ "one or more homogeneous NUMBER, DATE, TIME, or DATETIME value expressions; kinds cannot be mixed", "date-like operands use temporal ordering and skip empty operands (see the emptyOperand facet)" ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And Max([Quantity], [UnitPrice]) > 100", "note": "fires when either exceeds 100" },
+    "invalidExample": { "dsl": "Max([Quantity], 1, 2) > 100", "error": "MVK_TOO_MANY_CONST_FOR_CALC_OP", "fix": "each Min/Max call admits ONE literal — nest the calls instead: Max(Max([Quantity], 1), 2) > 100" },
     "semantics": {
       "aggregateIdentity": {
         "perKind": {
@@ -2010,7 +2012,8 @@
       "a field may not be listed more than once (MVK_DUPLICATE_PARAM1; MVK_DUPLICATE_PARAM2 via a group)"
     ],
     "gotchas": [
-      { "text": "the operand shape is <value> In <fields>, where <fields> is EITHER a plain field list of two or more fields — NumberOfValueInFields(0 In Quantity, BackorderQuantity) — OR one flattened repetition list over a repeatable group (a starred group then a field) — NumberOfValueInFields(0 In Items*/Count); the constant may be a boolean, number, string, or date", "kind": "AUTHORING" }
+      { "text": "the operand shape is <value> In <fields>, where <fields> is EITHER a plain field list of two or more fields — NumberOfValueInFields(0 In Quantity, BackorderQuantity) — OR one flattened repetition list over a repeatable group (a starred group then a field) — NumberOfValueInFields(0 In Items*/Count); the constant may be a boolean, number, string, or date", "kind": "AUTHORING" },
+      { "text": "over a Having-filtered list the fired polarity is asymmetric: ANY reached filter lets the count grow, but the count can SHRINK only when a currently counted cell — one that matched the constant — came through the filter; a filtered non-match leaves a grow-only zero, so a fired lower-bound comparison over it is a VALUE error, not OMISSION", "kind": "SURPRISE", "seeAlso": ["NumberOfFilledFields"] }
     ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And NumberOfValueInFields(0 In Items*/Count) > 0", "note": "the flattened repetition-list form — fires when at least one line item has a Count of 0 (the field list may be a starred repeatable group then a field; a plain field list is also legal)" },
     "semantics": {
@@ -3449,7 +3452,8 @@
     "meaning": "The first specified value across the operands in authored order; a repetition-list operand is scanned in row order and unspecified cells are skipped (a feldListenOp sibling of Sum).",
     "gotchas": [
       { "text": "each operand's Having filter is encountered immediately before that operand is scanned: an encountered filter makes a fired comparison OMISSION, but a filter on a later operand is invisible once an earlier operand supplied the first value", "kind": "SURPRISE" },
-      { "text": "operands after the first filled or formally unavailable value are never read (a formal error there is invisible) — but a formal error BEFORE the first filled operand suppresses the rule", "kind": "SURPRISE" }
+      { "text": "operands after the first filled or formally unavailable value are never read (a formal error there is invisible) — but a formal error BEFORE the first filled operand suppresses the rule", "kind": "SURPRISE" },
+      { "text": "in a COMPUTATION a filtered starred operand's scan prefetches ONE kept successor before consuming the current target: a filled current value can still be poisoned by the next kept candidate's invalid filter (met directly or through false candidates) and the computation CLEARS, while filters beyond that one successor stay unread; in validation an invalid filter just drops its row (known-true keep)", "kind": "SURPRISE" }
     ],
     "constraints": [
       "one or more type-homogeneous field/list operands; the typed multi-operand factories start with a repetition list"
