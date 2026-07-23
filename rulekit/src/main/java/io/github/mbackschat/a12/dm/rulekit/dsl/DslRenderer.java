@@ -192,7 +192,7 @@ public final class DslRenderer {
             case RuleGroupPresenceCondition r -> keyword(r.operatorId()) + "(" + ruleGroupKeyword() + ")";
             case IndexedPresenceCondition p -> keyword(p.operatorId()) + "(" + indexBody(p.index()) + ")";
             case GroupListPredicate p -> keyword(p.operatorId()) + "("
-                    + p.operands().stream().map(g -> path(g.renderedPath()))
+                    + p.operands().stream().map(this::entityOperand)
                             .collect(java.util.stream.Collectors.joining(", "))
                     + ")";
             case PatternCondition p ->
@@ -303,6 +303,14 @@ public final class DslRenderer {
             case ADD, SUBTRACT -> 1;
             case MULTIPLY, DIVIDE -> 2;
             case POWER -> 3;
+        };
+    }
+
+    /** A fixed group-list entity: a checked field renders its plain path, a group scope its starred path. */
+    private String entityOperand(GroupListOperand op) {
+        return switch (op) {
+            case FieldRef field -> path(field.path());
+            case GroupListRef scope -> path(scope.renderedPath());
         };
     }
 

@@ -1463,6 +1463,40 @@ public final class Dsl {
         return groupList(GroupQuantifier.NOT_ALL_GROUPS_FILLED, first, rest);
     }
 
+    // --- the common entity list: the five fixed forms admit field AND group operands ------------
+
+    /**
+     * {@code AllGroupsFilled(entity1, entity2, …)} over the common field-or-group entity list —
+     * despite the name, a checked field is a legal operand beside a group scope
+     * (SPEC-2026-07-23-09). Duplicate/overlap/arity gates stay kernel-arbitrated.
+     * catalog:AllGroupsFilled
+     */
+    public static Condition allGroupsFilled(GroupListOperand first, GroupListOperand... rest) {
+        return GroupListPredicate.overEntities(GroupQuantifier.ALL_GROUPS_FILLED, first, rest);
+    }
+
+    /** {@code NoGroupFilled(entity1, …)} over the common field-or-group entity list; a fixed singleton
+     *  has the scalar presence semantics. catalog:NoGroupFilled */
+    public static Condition noGroupFilled(GroupListOperand first, GroupListOperand... rest) {
+        return GroupListPredicate.overEntities(GroupQuantifier.NO_GROUP_FILLED, first, rest);
+    }
+
+    /** {@code AtLeastOneGroupFilled(entity1, …)} over the common field-or-group entity list; a fixed
+     *  singleton has the scalar presence semantics. catalog:AtLeastOneGroupFilled */
+    public static Condition atLeastOneGroupFilled(GroupListOperand first, GroupListOperand... rest) {
+        return GroupListPredicate.overEntities(GroupQuantifier.AT_LEAST_ONE_GROUP_FILLED, first, rest);
+    }
+
+    /** {@code NotAllGroupsFilled(entity1, …)} over the common field-or-group entity list. catalog:NotAllGroupsFilled */
+    public static Condition notAllGroupsFilled(GroupListOperand first, GroupListOperand... rest) {
+        return GroupListPredicate.overEntities(GroupQuantifier.NOT_ALL_GROUPS_FILLED, first, rest);
+    }
+
+    /** {@code GroupsNotCollectivelyFilled(entity1, …)} over the common field-or-group entity list. catalog:GroupsNotCollectivelyFilled */
+    public static Condition groupsNotCollectivelyFilled(GroupListOperand first, GroupListOperand... rest) {
+        return GroupListPredicate.overEntities(GroupQuantifier.GROUPS_NOT_COLLECTIVELY_FILLED, first, rest);
+    }
+
     /** {@code GroupsNotCollectivelyFilled(g1, g2, …)} — the listed groups are partially present (some but not all). catalog:GroupsNotCollectivelyFilled */
     public static Condition groupsNotCollectivelyFilled(GroupRef first, GroupRef... rest) {
         return groupList(GroupQuantifier.GROUPS_NOT_COLLECTIVELY_FILLED, first, rest);

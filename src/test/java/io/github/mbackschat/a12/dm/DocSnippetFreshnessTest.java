@@ -99,6 +99,8 @@ class DocSnippetFreshnessTest {
             new Lock("enum-value-list-union", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("group-count-quantifiers", "docs/API-GUIDE.md",
                     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WildcardGroupFillQuantifierReadTest.java"),
+            new Lock("group-list-entity-operands", "docs/API-GUIDE.md",
+                    "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/GroupListEntityOperandReadTest.java"),
             new Lock("computation-suppress", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("model-diff", "docs/API-GUIDE.md",
                     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/review/ModelDiffComputationTest.java"),

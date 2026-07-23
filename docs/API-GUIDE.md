@@ -395,6 +395,18 @@ Condition someRows = Dsl.atLeastOneGroupFilled(samples);
 
 Typed read-back retains the star and the collection-scan meaning; `WildcardGroupFillQuantifierReadTest` locks the render → parse → typed-read → render identity for both polarity siblings.
 
+Despite their names, the five fixed group-list predicates consume one common **field-or-group entity list** (`GroupListOperand`): a checked field enters as the `FieldRef` from `m.field(...)`, a group scope as the `GroupListRef` from `m.flattenGroup(...)` (an unstarred path yields the bare scope). A field operand contributes filled / empty / unavailable directly — a malformed or (in partial validation) non-relevant field joins neither bucket, exactly like an erroneous group — and a decisive witness fires beside an unavailable sibling. Mixing kinds is kernel-legal:
+
+<!-- snippet: group-list-entity-operands -->
+```java
+Condition authored = model.field("/Claim/PolicyNumber").filled()
+        .and(Dsl.atLeastOneGroupFilled(
+                model.field("/Claim/IncidentNote"),
+                model.flattenGroup("/Claim/Vehicle")));
+```
+
+Duplicate, group/descendant-overlap, arity, root, and wildcard gates stay kernel-arbitrated — the typed surface represents the list and `rule check` refuses the illegal shapes (`MVK_DUPLICATE_PARAM1`/`2`, `MVK_PARAMSIZE_INVALID2`, `MVK_NO_WILDCARDS_G_ALLOWED`). A fixed singleton has the scalar presence semantics: `NoGroupFilled(F)` ≡ `FieldNotFilled(F)` (and reads back as it), `AtLeastOneGroupFilled(F)` ≡ `FieldFilled(F)`. Round-trip and runtime locks: `GroupListEntityOperandReadTest`, tri-engine `GroupListEntityOperandDiffTest`, JVM+Node `GroupListFieldOperandTest`.
+
 `NumberOfFilledGroups` has two different contracts. The plain form takes two or more groups and counts their definitely-filled states, but the result is unavailable when any operand group is formally erroneous; it never silently returns the count of only the admitted subset. The single-star form (`NumberOfFilledGroups(Items*)`) is a structural row count: every instantiated repetition counts, including an empty row or a row whose field value is formally invalid.
 
 ### 3.6 Study — a real, highly-repetitive rule, rebuilt (before → after)

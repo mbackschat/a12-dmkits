@@ -1140,6 +1140,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition allFieldsFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition allFieldsFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition allFieldsFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition allGroupsFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition allGroupsFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition allGroupsFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition allOf(io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.dsl.Condition, io.github.mbackschat.a12.dm.rulekit.dsl.Condition[])
@@ -1156,6 +1157,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef, io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.StringRef, io.github.mbackschat.a12.dm.rulekit.dsl.StringRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneGroupFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneGroupFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneGroupFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition atLeastOneGroupFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
@@ -1214,6 +1216,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr firstFilledString(io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupNotFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupsNotCollectivelyFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupsNotCollectivelyFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition groupsNotCollectivelyFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr hoursFromTime(io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand)
@@ -1251,6 +1254,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef, io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef, io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noFieldValueIncludedInValueList(java.util.List<java.lang.String>, io.github.mbackschat.a12.dm.rulekit.dsl.StringRef, io.github.mbackschat.a12.dm.rulekit.dsl.StringRef[])
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noGroupFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noGroupFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noGroupFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition noGroupFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
@@ -1263,6 +1267,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllFieldsFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllFieldsFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllFieldsFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand>)
+  public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllGroupsFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllGroupsFilled(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef[])
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notAllGroupsFilled(java.util.List<? extends io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
   public static io.github.mbackschat.a12.dm.rulekit.dsl.Condition notExactlyOneFieldFilled(io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand[])
@@ -1504,7 +1509,7 @@ public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition imp
   public java.lang.String operatorId()
   public final java.lang.String toString()
 
-public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef implements io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.NumericTextSource
+public record io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef implements io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand, io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand, io.github.mbackschat.a12.dm.rulekit.dsl.NumericTextSource
   public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind)
   public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle)
   public FieldRef(java.lang.String, io.github.mbackschat.a12.dm.core.ValueKind, io.github.mbackschat.a12.dm.rulekit.dsl.PathStyle, boolean)
@@ -1613,17 +1618,19 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.GroupInfo
   public io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef time(java.lang.String)
   public java.lang.String toString()
 
+public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand
+
 public final class io.github.mbackschat.a12.dm.rulekit.dsl.GroupListPredicate implements io.github.mbackschat.a12.dm.rulekit.dsl.Condition
   public GroupListPredicate(io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
   public boolean equals(java.lang.Object)
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef> groups()
   public int hashCode()
-  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef> operands()
+  public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand> operands()
   public java.lang.String operatorId()
   public io.github.mbackschat.a12.dm.rulekit.dsl.GroupQuantifier quantifier()
   public java.lang.String toString()
 
-public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef
+public record io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef implements io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand
   public GroupListRef(io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef, java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef>)
   public final boolean equals(java.lang.Object)
   public java.util.List<io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef> flattened()

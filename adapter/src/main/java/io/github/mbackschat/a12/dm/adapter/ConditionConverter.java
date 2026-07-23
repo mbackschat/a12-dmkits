@@ -107,6 +107,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsNumber;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsNumber;
+import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
@@ -302,6 +303,40 @@ final class ConditionConverter {
             }
             return fieldFillQuantifier(name, fieldPaths.toArray(String[]::new), entityList);
         }
+        // A FIXED group-list quantifier whose entity list carries a FIELD (mixed or field-only —
+        // SPEC-2026-07-23-09): despite the names, the five admit the common field-or-group entity
+        // list. Build the typed GroupListOperand sum. Precedes the field-first and group branches,
+        // both of which would mis-route these lists (the field branch has no group-list cases; the
+        // group branch resolves every path as a group).
+        if (isGroupListQuantifier(name) && entities.stream().anyMatch(IEntityId::isField)) {
+            GroupListOperand[] operands = entities.stream().map(e -> {
+                if (e.isField()) {
+                    if (isWildcard(e) || e.getFilterCondition() != null || hasSemanticIndex(e)) {
+                        // a starred/filtered/indexed FIELD entity is repeatable addressing, outside the
+                        // fixed entity-list contract — preserved verbatim as Opaque, never guessed
+                        throw unsupported("group-list quantifier with a starred/filtered field operand", entityList);
+                    }
+                    return (GroupListOperand) model.field(e.getFullName());
+                }
+                return (GroupListOperand) model.flattenGroup(
+                        isWildcard(e) ? reconstructStarPath(e) : e.getFullName());
+            }).toArray(GroupListOperand[]::new);
+            // the fixed singleton NoGroupFilled(F) has the scalar presence semantics — canonicalize
+            // exactly like the single-group NoGroupFilled(G) → GroupNotFilled(G) case below
+            if (operands.length == 1 && name == EntityListConditionName.NoGroupFilled
+                    && operands[0] instanceof FieldRef fieldRef) {
+                return fieldRef.notFilled();
+            }
+            GroupListOperand[] rest = Arrays.copyOfRange(operands, 1, operands.length);
+            return switch (name) {
+                case AllGroupsFilled -> Dsl.allGroupsFilled(operands[0], rest);
+                case NoGroupFilled -> Dsl.noGroupFilled(operands[0], rest);
+                case AtLeastOneGroupFilled -> Dsl.atLeastOneGroupFilled(operands[0], rest);
+                case NotAllGroupsFilled -> Dsl.notAllGroupsFilled(operands[0], rest);
+                case GroupsNotCollectivelyFilled -> Dsl.groupsNotCollectivelyFilled(operands[0], rest);
+                default -> throw unsupported("group-list quantifier " + name, entityList);
+            };
+        }
         if (entities.get(0).isField()) {
             // FieldFilled([Field For key]) / FieldNotFilled(...): the semantic index is part of the
             // entity id, not a separate condition node. Preserve it before the ordinary field-list
@@ -406,6 +441,15 @@ final class ConditionConverter {
             case NoGroupFilled -> Dsl.noGroupFilled(scopes[0], rest);
             case AtLeastOneGroupFilled -> Dsl.atLeastOneGroupFilled(scopes[0], rest);
             default -> throw unsupported("starred group-list condition " + name, origin);
+        };
+    }
+
+    /** The five fixed group-list quantifier names — the common field-or-group entity list. */
+    private static boolean isGroupListQuantifier(EntityListConditionName name) {
+        return switch (name) {
+            case AllGroupsFilled, NoGroupFilled, AtLeastOneGroupFilled, NotAllGroupsFilled,
+                    GroupsNotCollectivelyFilled -> true;
+            default -> false;
         };
     }
 

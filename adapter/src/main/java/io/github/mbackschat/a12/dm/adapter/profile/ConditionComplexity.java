@@ -150,10 +150,13 @@ record ConditionComplexity(int nodeCount, int depth, int maxBooleanArity,
                 }
                 case GroupListPredicate predicate -> {
                     constructs.add(Construct.QUANTIFIER);
-                    predicate.operands().stream()
-                            .filter(operand -> !operand.flattened().isEmpty() || operand.group().repeating())
-                            .map(operand -> operand.path() + "/")
-                            .forEach(collectionPaths::add);
+                    predicate.operands().forEach(operand -> {
+                        // a checked-field entity is a scalar read; only repeatable group scopes scan a collection
+                        if (operand instanceof GroupListRef scope
+                                && (!scope.flattened().isEmpty() || scope.group().repeating())) {
+                            collectionPaths.add(scope.path() + "/");
+                        }
+                    });
                     yield 1;
                 }
                 case PatternCondition ignored -> {

@@ -543,6 +543,11 @@ class Interpreter(
         // COMPUTE mode: a presence check READS the cell — an invalid one poisons (IF85), row-correct via the
         // context's own cellState (a `Having` filter row judges ITS row's cell, not the computation's).
         computeMode && c.cellState(path) == CellState.INVALID -> throw PoisonedReadException(path)
+        // PARTIAL validation: a non-relevant cell is unavailable in BOTH directions — the kernel's
+        // `isWertAngegeben` decides relevance before the value read, so an EMPTY non-relevant operand
+        // is not an empty witness (`NoFieldFilled`/`NotAllGroupsFilled`/… stay silent over it). Checked
+        // BEFORE the fill read; row-correct via the context's own reps. Null outside partial.
+        cellRelevant?.invoke(path, c.repsOf(path)) == false -> Tri.UNKNOWN
         !c.filled(path) -> Tri.FALSE
         invalid(path) -> Tri.UNKNOWN
         else -> Tri.TRUE
@@ -551,16 +556,29 @@ class Interpreter(
     /** A list quantifier's operand tally as `(t, f)` — `t` = TRUE (present + check-relevant), `f` = FALSE
      *  (check-relevant but empty); the rest are UNKNOWN (present but not check-relevant — a malformed value),
      *  counted in NEITHER, matching the kernel's `isWertAngegeben` (the shared [presenceTri], which also
-     *  resolves a SEMANTIC-INDEX operand to its one matched cell — `SemanticIndexPresenceDiffTest`). GROUP
+     *  resolves a SEMANTIC-INDEX operand to its one matched cell — `SemanticIndexPresenceDiffTest`).
      *  GROUP operands can be UNKNOWN when they contain a formal error: positive presence still counts admitted
      *  content, while only a clean contentless group is definitely empty. The kernel counts only TRUE
      *  for "filled" and only FALSE for "empty"; a malformed field is neither — so e.g. `AtLeastOneFieldFilled`
      *  does NOT fire on a lone malformed field. A `$`-marked operand tallies against the enclosing row (ctxOf). */
     private fun quantTally(op: PredicateOp, args: List<Expr>): Pair<Int, Int> {
         if (op.countsGroups) {
+            // The FIXED group-list forms consume ONE common entity list (SPEC-2026-07-23-09): a checked
+            // FIELD operand contributes the kernel's three-way `isWertAngegeben` state directly (the
+            // shared [presenceTri] — filled / empty / unavailable), a GROUP operand the IF193 product
+            // state. Field-ness is a model fact (a declared kind), exactly as [hasFillScopeOperand]
+            // discriminates the inverse direction for the field-fill family.
             var t = 0
             var f = 0
             for (arg in args) {
+                if (ctxOf(arg).declaredKind(pathOf(arg)) != null) {
+                    when (presenceTri(arg)) {
+                        Tri.TRUE -> t++
+                        Tri.FALSE -> f++
+                        Tri.UNKNOWN -> {}
+                    }
+                    continue
+                }
                 val state = groupPresence(ctxOf(arg), pathOf(arg))
                 if (state.definitelyFilled) t++
                 if (state.definitelyEmpty) f++

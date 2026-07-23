@@ -90,7 +90,12 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             // field via referencesRuleGroup(...) below (the field is always under the rule's group).
             case RuleGroupPresenceCondition ignored -> { }
             case IndexedPresenceCondition p -> collect(p.index(), fields, groups);
-            case GroupListPredicate p -> p.groups().forEach(g -> groups.add(g.path()));
+            case GroupListPredicate p -> p.operands().forEach(operand -> {
+                switch (operand) {
+                    case FieldRef field -> fields.add(field.path());
+                    case GroupListRef scope -> groups.add(scope.path());
+                }
+            });
             case PatternCondition p -> fields.add(p.field().path());
             case ValueListCondition v -> {
                 fields.add(v.field().path());
