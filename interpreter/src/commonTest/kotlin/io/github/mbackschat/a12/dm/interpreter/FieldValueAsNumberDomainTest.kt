@@ -12,9 +12,11 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * JVM+Node lock for SPEC-2026-07-22-13. The adapter tri-differential anchors these cases to dynamic
- * Groovy and generated Java; this suite pins category projection, Unicode decimal digits, symmetric
- * empty fill, and formal-read poison on both interpreter hosts.
+ * JVM+Node lock for SPEC-2026-07-22-13 and SPEC-2026-07-23-07. The adapter tri-differential anchors
+ * these cases to dynamic Groovy and generated Java; this suite pins category projection, the UTF-16
+ * `char`-unit decimal-digit class (non-ASCII BMP admitted, a supplementary-plane decimal code point
+ * rejected because its surrogate units are tested separately), symmetric empty fill, and formal-read
+ * poison on both interpreter hosts.
  */
 class FieldValueAsNumberDomainTest {
 
@@ -23,8 +25,11 @@ class FieldValueAsNumberDomainTest {
             FieldDef(
                 SOURCE,
                 Kind.STRING,
-                enumValues = listOf("LEADING", "NEGATIVE", "LIMIT", "UNICODE"),
-                enumCategories = mapOf("Numeric" to listOf(".5", "-1.25", "123456789012345", "١٢.٥")),
+                enumValues = listOf("LEADING", "NEGATIVE", "LIMIT", "UNICODE", "ASTRAL"),
+                // "𝟑" is U+1D7D1 MATHEMATICAL BOLD DIGIT THREE — a supplementary-plane decimal
+                // code point. A code-point parser would read it as 3; the kernel and interpreter iterate
+                // UTF-16 char units, so each surrogate half fails the digit test and the token is rejected.
+                enumCategories = mapOf("Numeric" to listOf(".5", "-1.25", "123456789012345", "١٢.٥", "𝟑")),
             ),
             FieldDef(EXPECTED, Kind.NUMBER, scale = 2),
             FieldDef(PROJECTED, Kind.NUMBER, scale = 2),
@@ -60,6 +65,9 @@ class FieldValueAsNumberDomainTest {
             signals(null, "0"),
         )
         assertEquals(emptyList(), signals("BOGUS", "0"))
+        // SPEC-2026-07-23-07 — a supplementary-plane decimal code point is non-convertible (its two
+        // surrogate char units each fail the digit test), so the read is unavailable — no rule fires.
+        assertEquals(emptyList(), signals("ASTRAL", "3"))
     }
 
     @Test
@@ -77,6 +85,8 @@ class FieldValueAsNumberDomainTest {
         }
         assertEquals("VALUE|12.5", outcome("UNICODE"))
         assertEquals("CLEARED", outcome("BOGUS"))
+        // A supplementary-plane decimal code point does not convert, so the computation clears its target.
+        assertEquals("CLEARED", outcome("ASTRAL"))
     }
 
     private companion object {
