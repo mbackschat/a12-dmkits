@@ -1,6 +1,6 @@
 ---
 name: run-work-program
-description: Run a multi-session work program with the hybrid model policy and review gate — use when orchestrating work that spans multiple sessions (master session duties, worker-prompt minting, per-item model choice, gating a worker session's landing). Tool-agnostic; graduated 2026-07-09 from the semantics-formalization program.
+description: Run a multi-session work program with the hybrid model policy and review gate — use when orchestrating work that spans multiple sessions (master session duties, worker-prompt minting, per-set tier choice, gating a worker session's landing). Tool-agnostic; graduated 2026-07-09 from the semantics-formalization program.
 ---
 
 # Running a multi-session work program
@@ -16,11 +16,14 @@ Owns the program end-to-end:
 - **Makes rulings** (contract/anchor/scope questions a worker escalates) — and treats its own rulings as hypotheses: a gate ruling was once mechanically wrong and a worker's source-read corrected it. Record rulings in the state doc.
 - **Runs the review gate on every landing** (below). Graduation is provisional until the gate clears it.
 
-## The worker model is chosen per item
+## The worker tier is recommended per set (per-item → per-set, 2026-07-15)
 
-- A **pre-characterized** item — a named construct class + a re-runnable reproducer — runs on the cheaper **REGULAR model** under the hardened drill. The safety net is mechanical: the sweep/differential histogram makes a wrong-locus symptom-patch visible (fixed instances leave siblings standing).
-- **Raw/uncharacterized divergences and semantics forks** the sources cannot settle stay **BEST**.
-- Switch models only at work-item boundaries, never mid-item.
+A **set** is the batch of work items minted into one worker prompt/session — the program's unit of work. The master recommends a tier per set:
+
+- A **mechanical, well-specified** set — pre-characterized items (a named construct class + a re-runnable reproducer, a fully-specced ledger row) — runs on the cheaper **REGULAR model** under the hardened drill. The safety net is mechanical: the sweep/differential histogram makes a wrong-locus symptom-patch visible (fixed instances leave siblings standing).
+- A **truth-critical or design-heavy** set — raw/uncharacterized divergences, semantics forks the sources cannot settle, anything where a plausible-but-wrong answer would survive review — stays **BEST**.
+- **Hard design calls are not decided in a worker session** — they return to the owner as options with a recommendation.
+- Switch tiers only at set boundaries, never mid-set.
 
 ## The hardened drill (what a worker does per item)
 
@@ -28,9 +31,11 @@ reproduce → mechanism from BOTH kernel strategies' sources → predict + repro
 
 A worker that finds a new divergence mid-item does **not** triage it in-session: record a minimized repro + a ledger row, finish the item's mechanical scope, and hand it back (the repro is the context handoff).
 
+A **discovery/hunt set** (sweeping for instances of a class rather than fixing a named one) runs **until dry**: the stop rule is N consecutive hunts yielding nothing new — a fixed count target misses the tail.
+
 ## The review gate (master, per landing)
 
-Audit checklist — all seven, every time:
+Audit checklist — all nine, every time:
 
 1. **Mechanism vs symptom** — does the fix explain the class, or patch the reported case?
 2. **Locus** — is the change at the shared root (the fix covers siblings)?
