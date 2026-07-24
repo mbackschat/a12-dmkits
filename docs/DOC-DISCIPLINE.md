@@ -16,7 +16,7 @@
     |---|---|
     | the **complete denominator** — every construct/class in scope | the class inventory + the kernel-mined [`RT-SEMANTICS-LEDGER`](RT-SEMANTICS-LEDGER.md) / [`MVK-LEDGER`](MVK-LEDGER.md) |
     | the **general lowering** for *any* rule of a shape | the **codegen template** — *but see the pass-through warning below; usually it only routes you on* |
-    | the **emission shape** the template interpolates | the **codegen backing bean** (`…/backingbeans/**`, 228 of them) — follow the interpolated attribute to the property that computes it |
+    | the **emission shape** the template interpolates | the **codegen backing bean** (`…/backingbeans/**`, 233 files across the six codegen modules) — follow the interpolated attribute to the property that computes it |
     | the **actual order** for *one concrete* rule shape | the **generated program** |
     | an **operation's local meaning** | the **runtime class** |
     | whether a locally correct reading **actually manifests** | a **probe** (differential / laws lock) |
