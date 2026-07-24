@@ -240,10 +240,17 @@ tasks.named('test') {
     // and dumps on exit — feed a tight validateFull loop (a perf.profile test) and `jfr print` the hot methods.
     def jfr = System.getProperty('perf.jfr')
     if (jfr != null) jvmArgs "-XX:StartFlightRecording=settings=profile,filename=${jfr},dumponexit=true"
-    dependsOn 'corpusReplayTest'
-    dependsOn 'footprintFixtureGuardTest'
-    dependsOn 'performanceFixtureGuardTest'
-    dependsOn 'profileFixtureGuardTest'
+    // `-Pfast` drops the heavyweight guard prerequisites for the dev inner loop: a targeted differential run is
+    // ~8 s instead of ~1m40s (measured 2026-07-24). These guards re-execute on every :interpreter change
+    // (corpusReplayTest replays the whole committed corpus THROUGH the interpreter; the fixture guards fork
+    // kernel-heavy JVMs) and `--tests` filters only the test task, NOT its dependencies. A full run (no -Pfast)
+    // still drives them — the checkpoint gate and CI are unchanged.
+    if (!project.hasProperty('fast')) {
+        dependsOn 'corpusReplayTest'
+        dependsOn 'footprintFixtureGuardTest'
+        dependsOn 'performanceFixtureGuardTest'
+        dependsOn 'profileFixtureGuardTest'
+    }
     dependsOn 'perfScriptGuardTest'
     // The corpus guards read corpus/cases/** at runtime; they live in corpusReplayTest (with those files declared
     // as its inputs) so a case edit re-runs ONLY them (not the whole kernel-heavy suite) and can't go up-to-date /
