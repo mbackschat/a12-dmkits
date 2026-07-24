@@ -1297,7 +1297,8 @@ A starred operand read from an ITERATING row (a per-row rule, or a per-row compu
 
 ## §9 supplement — a STAR-ONLY condition scopes at the star's BINDING levels; with no repeatable reference level the rule fires ONCE, root-content-gated, at the pinned first-row anchor (source + differential, both strategies, 2026-07-18)
 
-> Fold: pending — the star-only scope law awaits the deliberate §9 upstream fold.
+> Fold: folded → §9.
+> (2026-07-24, with the reference-driven rewrite: the headline scope law — star binding levels iterate, the starred level collapses — and the once-evaluation anchor are canonical; the 16-arm evidence, root-content gate, and phantom-anchor pinning stay here.)
 
 The star-only completion of the reference-driven iteration law above: when a rule's condition carries **no per-row (non-starred) repeatable reference at all**, its iteration scope comes from the starred refs' **BINDING levels** — the unindexed repeatable levels **strictly above the first `*`-marked group** carry the per-row ITERATION marker exactly as a non-starred ref's ancestors do, while the starred level and everything below are a WILDCARD collapse and never iterate. Source mechanism (codegen): `RuleIterationLimitCreator.getIterationsEndeFuerKontexte` pins every error-entity context level to 1 unless `AnalyseService.isIteration` finds a reference carrying ITERATION at that level (refs inside a `Having` filter excluded unless `$`-outer); the rule's **declared group appears nowhere**. Kernel-pinned consequences (groovy-dynamic == java-static, 16 arms):
 

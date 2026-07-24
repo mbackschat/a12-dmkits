@@ -51,6 +51,16 @@ Audit checklist — all nine, every time:
 
 Plus ledger hygiene: fixed rows deleted (rationale graduates to a finding), code comments repointed, the state doc's program log updated.
 
+## The retro (after each gate; full at program end)
+
+Reflection is part of the protocol, not an extra — but it is BOUNDED, and it codifies only what will recur.
+
+- **Per-set light retro** (after each gate clears, ≤3 bullets — one line saying "nothing surfaced" is a valid retro): What did the gate catch or nearly miss? Was any cost avoidable (rework, waiting, reconstruction)? Was evidence discipline held (unique red logs preserved, XMLs fresh)?
+- **Per-milestone full retro** (program completion): the light questions, plus — which frictions recurred ACROSS sets? (A recurrence = a rule/tool gap; a one-off = ignore.) For each recurrence, what is the SMALLEST codification — a rule line, a script, a lint, a skill edit — that prevents it? Route each finding to its proper home (the placement discipline: CLAUDE.md rule / committed script / build lint / this skill) in a same-session commit. And the inverse question, always: can an existing rule be RETIRED or merged because a guard or script now enforces it mechanically? Rules have a reading cost every session — codification must not only accrete.
+- **The two guardrails:** codify only findings with a concrete recurrence trigger (an overwritten log, a wasted run, a paid warm-up — name it in the commit), and cap the output — a retro that produces nothing is fine; a retro that produces ceremony is a defect.
+
+Worked precedent (2026-07-24): one program's retros produced the direct-execution short-circuit, unique red-log evidence, change-scoped checkpoint tiers, and the semantics-map inner-loop lint — each traced to a named, paid cost.
+
 ## Three gate-proven drill criteria (each caught a real defect)
 
 1. **A source-grounded-but-untested claim in a fix's DECISION LOGIC gets its differential before graduation** — a source read establishes a mechanism; only the differential establishes its interaction (the IF64 catch; again the IF88 DAY_OPTIONAL pin).
