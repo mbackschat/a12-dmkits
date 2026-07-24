@@ -163,7 +163,7 @@ private fun vlqValuesOf(operands: List<VlqOperand>): VlqValues? {
  * side, at its position in the scan) and `NotAll` on the VALUES side to UNKNOWN, while `AtLeastOne` (either
  * side) and `NotAll` on the fields side ignore it.
  *
- * The EXPANSION stays eager per side (the read set — and so the compute-mode poison surface, IG102's
+ * The EXPANSION stays eager per side (the read set — and so the compute-mode poison surface, IF219's
  * territory — is unchanged); only the VERDICT is the operator's ordered pass over the expanded cells. The
  * side-consumption laziness is the kernel's: `AtLeastOne`/`No` never touch fields when the values side
  * already decided, `NotAll` never touches values when its presence prepass decided.

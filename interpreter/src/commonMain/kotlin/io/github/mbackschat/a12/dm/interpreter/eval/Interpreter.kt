@@ -353,16 +353,18 @@ class Interpreter(
                     DateStatus.MALFORMED -> Tri.UNKNOWN
                 }
             // List quantifiers over the (TRUE, FALSE) operand tally (row-evaluated gate is upstream in eval).
-            // COMPUTE mode replaces the tally with the kernel's ordered SCAN for the FIELD-fill family (IF85):
-            // each visited cell is a read (an invalid one poisons), and the per-operator stop ends the scan —
-            // a later invalid cell is never read. Group-fill quantifiers keep the tally (group presence reads
-            // the fill caches, not cell values).
+            // COMPUTE mode replaces the tally with the kernel's ordered SCAN so a read is order-observable and a
+            // later invalid operand after the deciding one is never read (IF85): the FIELD-fill family scans cells
+            // ([computeFillQuantifier]); the GROUP-fill family scans its common entity list ([computeGroupFillQuantifier],
+            // IF219) — a FIELD operand READS its cell (an invalid one poisons), a GROUP operand is structural
+            // presence (never poison), each yielded lazily so the per-operator stop ends the scan.
             PredicateOp.ALL_FIELDS_FILLED, PredicateOp.NO_FIELD_FILLED, PredicateOp.AT_LEAST_ONE_FIELD_FILLED,
             PredicateOp.MORE_THAN_ONE_FIELD_FILLED, PredicateOp.NOT_ALL_FIELDS_FILLED,
             PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED, PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED,
             PredicateOp.ALL_GROUPS_FILLED, PredicateOp.NO_GROUP_FILLED, PredicateOp.AT_LEAST_ONE_GROUP_FILLED,
             PredicateOp.NOT_ALL_GROUPS_FILLED, PredicateOp.GROUPS_NOT_COLLECTIVELY_FILLED -> when {
                 computeMode && !op.countsGroups -> computeFillQuantifier(op, p.args)
+                computeMode && op.countsGroups -> computeGroupFillQuantifier(op, p.args)
                 !op.countsGroups && hasFillScopeOperand(p.args) -> Tri.of(fillScopeFires(op, fillScopeInfo(p.args)))
                 else -> {
                     val (t, f, n) = quantCounts(op, p.args)
@@ -553,38 +555,14 @@ class Interpreter(
         else -> Tri.TRUE
     }
 
-    /** A list quantifier's operand tally as `(t, f)` — `t` = TRUE (present + check-relevant), `f` = FALSE
-     *  (check-relevant but empty); the rest are UNKNOWN (present but not check-relevant — a malformed value),
-     *  counted in NEITHER, matching the kernel's `isWertAngegeben` (the shared [presenceTri], which also
-     *  resolves a SEMANTIC-INDEX operand to its one matched cell — `SemanticIndexPresenceDiffTest`).
-     *  GROUP operands can be UNKNOWN when they contain a formal error: positive presence still counts admitted
-     *  content, while only a clean contentless group is definitely empty. The kernel counts only TRUE
-     *  for "filled" and only FALSE for "empty"; a malformed field is neither — so e.g. `AtLeastOneFieldFilled`
-     *  does NOT fire on a lone malformed field. A `$`-marked operand tallies against the enclosing row (ctxOf). */
-    private fun quantTally(op: PredicateOp, args: List<Expr>): Pair<Int, Int> {
-        if (op.countsGroups) {
-            // The FIXED group-list forms consume ONE common entity list (SPEC-2026-07-23-09): a checked
-            // FIELD operand contributes the kernel's three-way `isWertAngegeben` state directly (the
-            // shared [presenceTri] — filled / empty / unavailable), a GROUP operand the IF193 product
-            // state. Field-ness is a model fact (a declared kind), exactly as [hasFillScopeOperand]
-            // discriminates the inverse direction for the field-fill family.
-            var t = 0
-            var f = 0
-            for (arg in args) {
-                if (ctxOf(arg).declaredKind(pathOf(arg)) != null) {
-                    when (presenceTri(arg)) {
-                        Tri.TRUE -> t++
-                        Tri.FALSE -> f++
-                        Tri.UNKNOWN -> {}
-                    }
-                    continue
-                }
-                val state = groupPresence(ctxOf(arg), pathOf(arg))
-                if (state.definitelyFilled) t++
-                if (state.definitelyEmpty) f++
-            }
-            return t to f
-        }
+    /** A FIELD-fill list quantifier's operand tally as `(t, f)` — `t` = TRUE (present + check-relevant), `f` =
+     *  FALSE (check-relevant but empty); the rest are UNKNOWN (present but not check-relevant — a malformed
+     *  value), counted in NEITHER, matching the kernel's `isWertAngegeben` (the shared [presenceTri], which also
+     *  resolves a SEMANTIC-INDEX operand to its one matched cell — `SemanticIndexPresenceDiffTest`). The kernel
+     *  counts only TRUE for "filled" and only FALSE for "empty"; a malformed field is neither — so e.g.
+     *  `AtLeastOneFieldFilled` does NOT fire on a lone malformed field. A `$`-marked operand tallies against the
+     *  enclosing row (ctxOf). The GROUP-fill family routes through [groupFillStates] instead ([quantCounts]). */
+    private fun quantTally(args: List<Expr>): Pair<Int, Int> {
         var t = 0
         var f = 0
         for (a in args) {
@@ -597,33 +575,84 @@ class Interpreter(
         return t to f
     }
 
-    /** The quantifier's `(TRUE, FALSE, N)` tally — a STARRED operand expands to its filtered rows: a
-     *  countsGroups predicate's star is a starred repeatable GROUP ([starGroupTally]); a field quantifier's star
-     *  is a field-list (`AtLeastOneFieldFilled(Group* / Field Having …)`, [starQuantTally]); else a plain
-     *  field/group operand list. */
+    /**
+     * The GROUP-fill quantifier's common entity list as a LAZY per-operand state stream in the kernel's read
+     * order — the single source consumed as a `(t, f, n)` tally in validation ([quantCounts]) and as a
+     * short-circuiting boolean fold in compute ([computeGroupFillQuantifier], IF219). Per operand:
+     *  - a checked FIELD (a declared kind) contributes its three-way presence [presenceTri] — in COMPUTE mode a
+     *    malformed read POISONS ([PoisonedReadException]); the mode-dependence lives entirely in [filledTri];
+     *  - a bare GROUP contributes the IF193 product state (`definitelyFilled` → TRUE, `definitelyEmpty` → FALSE,
+     *    else UNKNOWN) — structural in compute (`erroneous`=false, so a malformed-only group is FILLED, never
+     *    poison);
+     *  - a STARRED repeatable GROUP scope (`NoGroupFilled(G*)`/`AtLeastOneGroupFilled(G*)`, the only forms the
+     *    kernel lets carry a `*`) yields one FILLED per instantiated (Having-kept) row — a created row is content
+     *    (IF46/IF68); an un-instantiated star contributes nothing, so `n` is not fixed at `args.size`.
+     * Yielded lazily so a compute-mode consumer that decides early never reads (and never poisons on) a later
+     * operand — the kernel's ordered `…EntityAngegeben` read.
+     */
+    private fun groupFillStates(args: List<Expr>): Sequence<Tri> = sequence {
+        for (arg in args) when {
+            arg is Expr.Star -> {
+                for (rc in ctxOf(arg).rowContexts(arg.path, arg.bindDepth)) {
+                    if (!groupPresence(rc, arg.path).definitelyFilled) continue
+                    if (arg.having != null && !havingInterp(rc).fires(arg.having)) continue
+                    yield(Tri.TRUE)
+                }
+            }
+            ctxOf(arg).declaredKind(pathOf(arg)) != null -> yield(presenceTri(arg))
+            else -> {
+                val state = groupPresence(ctxOf(arg), pathOf(arg))
+                yield(when {
+                    state.definitelyFilled -> Tri.TRUE
+                    state.definitelyEmpty -> Tri.FALSE
+                    else -> Tri.UNKNOWN
+                })
+            }
+        }
+    }
+
+    /** The quantifier's `(TRUE, FALSE, N)` tally. The GROUP-fill family folds [groupFillStates] (a checked field,
+     *  a group's product state, and one FILLED per instantiated starred-group row — so a STARRED group scope may
+     *  be MIXED with other operands, and `n` is the yielded count, not `args.size`). A single-star FIELD-fill
+     *  operand expands to its filtered rows ([starQuantTally]); else a plain field list ([quantTally]). */
     internal fun quantCounts(op: PredicateOp, args: List<Expr>): Triple<Int, Int, Int> {
+        if (op.countsGroups) {
+            var t = 0
+            var f = 0
+            var n = 0
+            for (state in groupFillStates(args)) {
+                when (state) {
+                    Tri.TRUE -> t++
+                    Tri.FALSE -> f++
+                    Tri.UNKNOWN -> {}
+                }
+                n++
+            }
+            return Triple(t, f, n)
+        }
         val single = args.singleOrNull()
-        if (single is Expr.Star) return if (op.countsGroups) starGroupTally(single) else starQuantTally(single)
-        val (t, f) = quantTally(op, args)
+        if (single is Expr.Star) return starQuantTally(single)
+        val (t, f) = quantTally(args)
         return Triple(t, f, args.size)
     }
 
     /**
-     * Tally a STARRED single repeatable-GROUP quantifier operand — `NoGroupFilled(G*)` / `AtLeastOneGroupFilled(G*)`.
-     * Unlike a field-list star ([starQuantTally], whose path ends at a FIELD), the operand IS the group, and EVERY
-     * instantiated row counts as a "filled" group (a created row is content — IF46, matching `NumberOfFilledGroups`),
-     * so `t = n = instantiated (Having-matching) rows` and `f = 0` (probe-verified: the kernel does NOT fire
-     * `NoGroupFilled(G*)` on one instantiated-but-empty row, and DOES fire `AtLeastOneGroupFilled(G*)`). The kernel
-     * forbids `*` on a group for the AllGroupsFilled / NotAllGroupsFilled / collectively family
-     * (`MVK_NO_WILDCARDS_G_ALLOWED`), so only the count-zero / count-≥1 predicates reach here on a valid model.
-     * (The earlier code mis-routed this to [starQuantTally], which resolved the group's PARENT and counted zero —
-     * an over-fire of `NoGroupFilled` and an under-fire of `AtLeastOneGroupFilled`; IF68.)
+     * COMPUTE-mode group-list quantifiers — the kernel's ordered read of the common entity list, not validation's
+     * tally: [groupFillStates] is consumed lazily and each operator STOPS at its deciding operand, so a malformed
+     * FIELD operand AFTER the decision is never read and cannot poison (a filled/empty operand before it decided
+     * first) — the read-order divergence IF219 fixed. A FIELD operand read is poison-capable; a GROUP operand
+     * (bare or starred) is structural (never poison). Mirrors [computeFillQuantifier] for the field-fill family
+     * (IF85); the composite `GroupsNotCollectivelyFilled` composes two passes like `FieldsNotCollectivelyFilled`.
      */
-    private fun starGroupTally(star: Expr.Star): Triple<Int, Int, Int> {
-        val rows = ctxOf(star).rowContexts(star.path, star.bindDepth)
-            .filter { groupPresence(it, star.path).definitelyFilled }
-        val n = if (star.having == null) rows.size else rows.count { havingInterp(it).fires(star.having) }
-        return Triple(n, 0, n)
+    private fun computeGroupFillQuantifier(op: PredicateOp, args: List<Expr>): Tri = when (op) {
+        PredicateOp.AT_LEAST_ONE_GROUP_FILLED -> Tri.of(groupFillStates(args).any { it == Tri.TRUE })
+        PredicateOp.NO_GROUP_FILLED -> Tri.of(groupFillStates(args).none { it == Tri.TRUE })
+        PredicateOp.ALL_GROUPS_FILLED -> Tri.of(groupFillStates(args).all { it == Tri.TRUE })
+        PredicateOp.NOT_ALL_GROUPS_FILLED -> Tri.of(groupFillStates(args).any { it == Tri.FALSE })
+        PredicateOp.GROUPS_NOT_COLLECTIVELY_FILLED ->
+            if (groupFillStates(args).none { it == Tri.TRUE }) Tri.FALSE
+            else Tri.of(groupFillStates(args).any { it == Tri.FALSE })
+        else -> throw UnsupportedConstructException("not a group-fill quantifier: $op")
     }
 
     /**

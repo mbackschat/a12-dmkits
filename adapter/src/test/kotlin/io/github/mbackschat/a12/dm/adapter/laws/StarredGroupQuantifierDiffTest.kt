@@ -30,18 +30,22 @@ class StarredGroupQuantifierDiffTest {
     private val base = DocumentModelDraft.named("enroll").locale("en_US")
         .rootGroup("Enrollment") { e ->
             e.stringField("Choice") { }
+            e.stringField("Note") { }
             e.group("Active") { a -> a.repeatable(10).stringField("Item") { } }
             e.group("Waived") { w -> w.repeatable(10).stringField("Item") { } }
         }.build().toJson()
 
     private class Scenario(val kModel: String, val kDoc: RuntimeLaws.Doc, val interp: DmInterpreter, val iDoc: Document)
 
-    /** [activeSpec]/[waivedSpec]: >0 = that many FILLED rows; <0 = |n| instantiated-but-EMPTY rows; 0 = none. */
-    private fun scenario(cond: String, activeSpec: Int, waivedSpec: Int, choice: String = "Waived"): Scenario {
+    /** [activeSpec]/[waivedSpec]: >0 = that many FILLED rows; <0 = |n| instantiated-but-EMPTY rows; 0 = none.
+     *  [choice] fills `Choice` (unless blank); [note] optionally fills the guard field `Note`. */
+    private fun scenario(cond: String, activeSpec: Int, waivedSpec: Int, choice: String = "Waived", note: String? = null): Scenario {
         val kModel = RuntimeLaws.withRule(base, "/Enrollment", "R", "../Choice", CODE, cond)
         val def = ModelLoader.load(kModel)
-        val kDoc = RuntimeLaws.doc().group("/Enrollment", 1).field("/Enrollment/Choice", choice, 1, 1)
-        val iDoc = def.newDocument().apply { field("/Enrollment/Choice", choice, 1, 1) }
+        val kDoc = RuntimeLaws.doc().group("/Enrollment", 1)
+        val iDoc = def.newDocument().apply { group("/Enrollment", 1) }
+        if (choice.isNotEmpty()) { kDoc.field("/Enrollment/Choice", choice, 1, 1); iDoc.field("/Enrollment/Choice", choice, 1, 1) }
+        if (note != null) { kDoc.field("/Enrollment/Note", note, 1, 1); iDoc.field("/Enrollment/Note", note, 1, 1) }
         fun place(group: String, spec: Int) {
             for (r in 1..kotlin.math.abs(spec)) {
                 kDoc.group(group, 1, r); iDoc.group(group, 1, r)
@@ -75,6 +79,26 @@ class StarredGroupQuantifierDiffTest {
         scenario("[Choice] == \"Waived\" And NoGroupFilled(Active*) And AtLeastOneGroupFilled(Waived*)", a, w)
     @Test fun defaultShapeFiresWhenNoActiveButSomeWaived() = agree(defaultShape(0, 1), "no Active rows AND ≥1 Waived → fires (OMISSION)")
     @Test fun defaultShapeSilentWhenActivePresent() = agree(defaultShape(1, 1), "some Active rows → the NoGroupFilled conjunct is false → no fire")
+
+    // ── a STARRED group scope MIXED with a FIELD operand in one entity list (IF219; the star contributes
+    //    one "filled" per instantiated row to the same (t,f,n) tally the field operand feeds) ──────────────────
+    private fun atLeastMixed(choice: String, w: Int) =
+        scenario("AtLeastOneGroupFilled(Choice, Waived*)", 0, w, choice)
+    @Test fun mixedAtLeastOneFieldFilledFires() =
+        agree(atLeastMixed("Waived", 0), "mixed: filled field + 0 star rows → the field is the ≥1 witness (VALUE)")
+    @Test fun mixedAtLeastOneStarRowFires() =
+        agree(atLeastMixed("", 1), "mixed: empty field + 1 star row → the star row is the ≥1 witness (VALUE)")
+    @Test fun mixedAtLeastOneAllEmptyNoFire() =
+        agree(atLeastMixed("", 0), "mixed: empty field + 0 star rows → nothing filled → no fire")
+
+    private fun noMixed(choice: String, w: Int) =
+        scenario("[Note] == \"g\" And NoGroupFilled(Choice, Waived*)", 0, w, choice, note = "g")
+    @Test fun mixedNoGroupFilledAllEmptyFires() =
+        agree(noMixed("", 0), "mixed: empty field + 0 star rows → all definitely empty → fires (OMISSION)")
+    @Test fun mixedNoGroupFilledStarRowBlocks() =
+        agree(noMixed("", 1), "mixed: empty field + 1 star row → the star row is filled → no fire")
+    @Test fun mixedNoGroupFilledFieldBlocks() =
+        agree(noMixed("Waived", 0), "mixed: filled field + 0 star rows → the field is filled → no fire")
 
     // ── both strategies: the group-count tally is runtime-shared; static-JAVA codegen must agree ──────────────
     @Test fun codegenTalliesStarredGroupIdentically() {
