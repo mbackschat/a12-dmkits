@@ -25,6 +25,8 @@ A **set** is the batch of work items minted into one worker prompt/session — t
 - **Hard design calls are not decided in a worker session** — they return to the owner as options with a recommendation.
 - Switch tiers only at set boundaries, never mid-set.
 
+**Direct execution short-circuit (owner-ratified 2026-07-24):** before minting, the master checks two conditions — the **warm-context case** (this session already holds the mechanism, the loci, and the verification context a fresh worker would have to rebuild at real cost) and **boundedness** (a well-scoped set with a defined completion gate, no open design fork). When BOTH hold, the master executes the set directly in-session instead of minting. The review-gate obligations do not relax: the master runs the same locks-fresh/kernel-oracle verification on its own landing that it would demand of a worker, and reports the landing like a handback. One-session-per-worktree still governs — direct execution only when no worker session is live on the tree.
+
 ## The hardened drill (what a worker does per item)
 
 reproduce → mechanism from BOTH kernel strategies' sources → predict + reproduce a **second instance** → fix at the root → differential-lock → re-run the sweep and record the histogram delta.
