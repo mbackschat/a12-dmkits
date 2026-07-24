@@ -107,6 +107,22 @@ class NewShapesSnippetsTest {
     }
 
     @Test
+    void numberOfValueSingleListSnippet() {
+        // tag::number-of-value-single-list[]
+        // NumberOfValueInFields over ONE flattened repetition list — the single-list overload. The kernel's
+        // arity gate is "≥2 fields OR ≥1 group", so one starred list (a "group" operand) is legal on its own;
+        // the constant may be a number, string, or boolean, and the list may be Having-filtered.
+        Condition anyZeroCount = Dsl.numberOfValueInFields(0L, m.flatten("/Order/Items*/Count")).gt(0);
+        Condition anyZeroCounted = Dsl.numberOfValueInFields(
+                0L, m.flatten("/Order/Items*/Count").having(m.num("/Order/Items/Count").ge(0))).gt(0);
+        // end::number-of-value-single-list[]
+        assertEquals("NumberOfValueInFields(0 In /Order/Items*/Count) > 0",
+                new DslRenderer().render(anyZeroCount));
+        assertEquals("NumberOfValueInFields(0 In /Order/Items*/Count Having [/Order/Items/Count] >= 0) > 0",
+                new DslRenderer().render(anyZeroCounted));
+    }
+
+    @Test
     void enumValueListUnionSnippet() {
         // tag::enum-value-list-union[]
         // An enum value-list quantifier member may be a direct reference OR a category projection

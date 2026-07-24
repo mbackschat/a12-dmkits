@@ -841,6 +841,29 @@ public final class Dsl {
         return new NumberExpr(new NumberOfValueInFields(NumberLiteral.of(value), valueInFields(first, second, rest)));
     }
 
+    // --- single-list forms: NumberOfValueInFields(value In Group*/field) --------------------------
+    // The kernel's arity gate is "at least two fields OR at least one group" (MVK_PARAMSIZE_INVALIDN), so ONE
+    // flattened repetition list (a "group" operand, optionally Having-filtered) is legal on its own — the
+    // multi-field overloads above require two operands and cannot express it. F4/N7-arbitrated like those.
+
+    /** {@code NumberOfValueInFields(True In Group*}{@code /field)} — count over a single flattened repetition
+     *  list equal to a boolean constant. catalog:NumberOfValueInFields */
+    public static NumberExpr numberOfValueInFields(boolean value, FieldListRef list) {
+        return new NumberExpr(new NumberOfValueInFields(new BoolLiteral(value), List.<FieldOperand>of(list)));
+    }
+
+    /** {@code NumberOfValueInFields(constant In Group*}{@code /field)} — count over a single flattened
+     *  repetition list equal to a string constant. catalog:NumberOfValueInFields */
+    public static NumberExpr numberOfValueInFields(String value, FieldListRef list) {
+        return new NumberExpr(new NumberOfValueInFields(new StringLiteral(value), List.<FieldOperand>of(list)));
+    }
+
+    /** {@code NumberOfValueInFields(n In Group*}{@code /field)} — count over a single flattened repetition
+     *  list equal to an integer constant. catalog:NumberOfValueInFields */
+    public static NumberExpr numberOfValueInFields(long value, FieldListRef list) {
+        return new NumberExpr(new NumberOfValueInFields(NumberLiteral.of(value), List.<FieldOperand>of(list)));
+    }
+
     private static List<FieldOperand> valueInFields(FieldOperand first, FieldOperand second, FieldOperand... rest) {
         var fields = new ArrayList<FieldOperand>();
         fields.add(first);

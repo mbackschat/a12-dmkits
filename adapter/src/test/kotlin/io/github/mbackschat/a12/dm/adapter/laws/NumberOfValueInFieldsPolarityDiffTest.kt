@@ -5,6 +5,11 @@ import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -67,9 +72,21 @@ class NumberOfValueInFieldsPolarityDiffTest {
         return groovy
     }
 
-    private val nv = "NumberOfValueInFields(1 In Items*/Qty Having [Items/Flag] == \"Y\")"
-    private val nvBare = "NumberOfValueInFields(1 In Items*/Qty)"          // unfiltered star (the sibling site)
-    private val nvStr = "NumberOfValueInFields(\"A\" In Items*/Flag)"      // String-family exact identity
+    // The NV operands are authored through the typed single-list overload (DG21 → API-FINDINGS 97) and
+    // rendered GROUP-RELATIVE — the dogfood that retired the raw condition strings this differential once
+    // needed. `typedRenderMatchesTheKernelForm` locks each render to its exact previous kernel string.
+    private val m = BoundModel.ofJson(model)
+    private fun rel(nv: NumberExpr) = DslRenderer(ConditionLanguage.EN, "/Order").render(nv.expression())
+    private val nv = rel(Dsl.numberOfValueInFields(1L,
+        m.flatten("/Order/Items*/Qty").having(m.str(FLAG).eq("Y"))))
+    private val nvBare = rel(Dsl.numberOfValueInFields(1L, m.flatten("/Order/Items*/Qty")))  // unfiltered sibling
+    private val nvStr = rel(Dsl.numberOfValueInFields("A", m.flatten("/Order/Items*/Flag")))  // String-family identity
+
+    @Test fun typedRenderMatchesTheKernelForm() {
+        assertEquals("NumberOfValueInFields(1 In Items*/Qty Having [Items/Flag] == \"Y\")", nv)
+        assertEquals("NumberOfValueInFields(1 In Items*/Qty)", nvBare)
+        assertEquals("NumberOfValueInFields(\"A\" In Items*/Flag)", nvStr)
+    }
 
     // ── separator 1: a filtered current MATCH is shrinkable — stored BELOW the count → OMISSION ─────────────
     @Test fun filteredMatchStoredBelowIsOmission() =

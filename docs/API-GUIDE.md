@@ -637,6 +637,18 @@ Condition anyForbidden = Dsl.atLeastOneFieldValueIncludedInValueList(
         List.of("A", "B"), m.flatten("/Order/Items*/Sku"));   // …(/Order/Items*/Sku In "A", "B")
 ```
 
+**`numberOfValueInFields` — the single-list form.** The multi-field overloads take two-or-more `FieldOperand`s, but the kernel's arity gate is "at least two fields **OR** at least one group", so a **single flattened repetition list** is legal on its own (a starred list is a "group" operand). The `value × FieldListRef` overloads author exactly that — one per constant family (number/string/boolean) — and the list may carry a `Having` filter:
+
+<!-- snippet: number-of-value-single-list -->
+```java
+// NumberOfValueInFields over ONE flattened repetition list — the single-list overload. The kernel's
+// arity gate is "≥2 fields OR ≥1 group", so one starred list (a "group" operand) is legal on its own;
+// the constant may be a number, string, or boolean, and the list may be Having-filtered.
+Condition anyZeroCount = Dsl.numberOfValueInFields(0L, m.flatten("/Order/Items*/Count")).gt(0);
+Condition anyZeroCounted = Dsl.numberOfValueInFields(
+        0L, m.flatten("/Order/Items*/Count").having(m.num("/Order/Items/Count").ge(0))).gt(0);
+```
+
 **Enum value-list quantifiers — union admission + category projections.** An enum member may be a direct reference (`m.enumOf(path)`) or a category projection (`m.enumOf(path).category(name)`), and a single list may mix them. Each literal is admitted against the **union** of the selected members' domains (a direct reference's stored values plus a category's values), so a value in only one listed enumeration is legal — and a direct reference and a `[field -> Cat]` reference on the same field are distinct members:
 
 <!-- snippet: enum-value-list-union -->

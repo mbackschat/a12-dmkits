@@ -96,6 +96,7 @@ class DocSnippetFreshnessTest {
             new Lock("indexed-coercion", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("rule-group", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("starred-value-list", "docs/API-GUIDE.md", NEW_SHAPES),
+            new Lock("number-of-value-single-list", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("enum-value-list-union", "docs/API-GUIDE.md", NEW_SHAPES),
             new Lock("group-count-quantifiers", "docs/API-GUIDE.md",
                     "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WildcardGroupFillQuantifierReadTest.java"),
