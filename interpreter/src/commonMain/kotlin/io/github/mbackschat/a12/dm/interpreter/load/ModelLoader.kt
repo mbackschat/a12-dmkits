@@ -200,7 +200,9 @@ object ModelLoader {
         }
     }
 
-    private fun fieldDef(node: JsonElement, id: String): FieldDef = FieldDef(
+    private fun fieldDef(node: JsonElement, id: String): FieldDef {
+        requireConsistentEnumSValue(node, id)
+        return FieldDef(
         path = id,
         kind = kindOf(node),
         labels = localizedTexts(node.path("Field").path("label")),
@@ -229,7 +231,26 @@ object ModelLoader {
         numberMinLength = typedInt(node, "NumberType", "minLength"),
         numberMaxLength = typedInt(node, "NumberType", "maxLength"),
         global = node.path("Field").path("global").asBoolean(false),
-    )
+        )
+    }
+
+    /**
+     * Reject a foreign / hand-authored enum whose S-value is OUTSIDE its declared value domain — the kernel's
+     * `MVK_S_VALUE_INVALID` model-consistency error (IF221). Such a model is not kernel-consistent: BOTH kernel
+     * strategies REFUSE to even generate validation code for it (there is no runtime "staged-formal-check" path),
+     * so a valid model can never carry it. The typed builders fail-fast on it too (`FieldTypeSpec.EnumSpec`), but
+     * a raw DM-JSON foreign model could — and the loader must reject it LOUD rather than silently stage the
+     * out-of-domain token and fabricate a runtime formal error (the sibling of IF145's prepared-boundary gate).
+     */
+    private fun requireConsistentEnumSValue(node: JsonElement, id: String) {
+        val sValue = enumSValueOf(node) ?: return
+        val values = enumValuesOf(node)
+        require(sValue in values) {
+            "Field '$id': the enum S-value '$sValue' is not among the declared enumeration values $values " +
+                "(kernel MVK_S_VALUE_INVALID). An out-of-domain s-value makes the model kernel-inconsistent and " +
+                "ungeneratable; repair the model upstream before loading."
+        }
+    }
 
     // ── Field-type readers (ported 1:1 from InterpreterModelLoader). ────────────────────────────────
 

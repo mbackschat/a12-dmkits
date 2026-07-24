@@ -1294,6 +1294,29 @@ public final class RuntimeLaws {
         };
     }
 
+    /**
+     * The kernel's model-CONSISTENCY notifications (the MVK gate: `checkConsistency` after deserialize +
+     * expand), each as {@code "SEVERITY: message"} in the kernel's order. The model-check stance oracle for a
+     * foreign / hand-authored model the typed builders would refuse (e.g. an out-of-domain enum {@code sValue}).
+     */
+    static List<String> consistencyMessages(String modelJson) {
+        var factory = new DocumentModelServiceFactory();
+        IDocumentModelSerializer serializer = factory.createDocumentModelSerializer();
+        IDocumentModelService modelService = factory.createDocumentModelService();
+        IDocumentModel model;
+        try {
+            model = serializer.deserialize(new StringReader(modelJson));
+        } catch (Exception e) {
+            throw new RuntimeException("failed to deserialize model", e);
+        }
+        modelService.expand(model, (IDocumentModelReferenceResolver) ref -> {
+            throw new IllegalStateException("self-contained, unexpected reference: " + ref);
+        });
+        List<String> out = new ArrayList<>();
+        modelService.checkConsistency(model, n -> out.add(n.getSeverity() + ": " + n.getMessage()));
+        return out;
+    }
+
     /** Deserialize + expand (self-contained) the model JSON. */
     private static IDocumentModel expandedModel(String modelJson) {
         var factory = new DocumentModelServiceFactory();

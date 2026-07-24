@@ -12,7 +12,7 @@
 
 ## 1. Open (to fix)
 
-- **IG104 — two evidence corners of the enum index S-value staging (surfaced at the SPEC-2026-07-23-14/-15 gate, 2026-07-24).** The staging split shipped kernel-locked on `code@pointer` sets (IF217), leaving two bounded corners unprobed: (a) **message-TEXT interpolation over a staged cell** — whether a fired message's `$field.value$` renders the staged S-value identically on both kernel routes and the interpreter (the §13 interpolation estate never sees a staged cell); (b) **a raw hand-authored DM-JSON `sValue` outside the enum domain** — unrepresentable through modelkit (build-time fail-fast), but a foreign model could carry it, and the kernel's MVK-vs-staged-formal-check stance is unprobed. Completion gate: one dual-route interpolation control over a staged cell in the message-display family, and one foreign-model probe pinning the kernel's out-of-domain stance (then mirror or reject in `ModelLoader` accordingly). The third residual the landing noted — partial eligibility when an explicit index value sits outside the relevant set — rides the existing `PartialValidationFuzzDiffTest` estate, not this row.
+(none)
 
 New semantic or performance defects belong here only while they have actionable work and a defined completion gate.
 

@@ -584,6 +584,15 @@ class Document(internal val config: DocumentConfig) {
     fun filledAt(path: String, reps: List<Int>): Boolean = valueAt(path, reps)?.value != null
 
     /**
+     * The message-interpolation display value ([Placement.raw]) of the field instance at [path]/[reps], or null
+     * when the cell is absent or empty — read at EXPLICIT reps so a rule's `$field.value$` can resolve against
+     * the ORIGINAL caller document rather than a transient evaluation view. The kernel's `$field.value$`
+     * substitution reads `validationCache.getDaten().getValueForDisplay` — the caller `IData`, which never sees
+     * the index-default staging cache (`datenCache`); so a STAGED index cell interpolates as if empty (IF221).
+     */
+    internal fun messageDisplayValueAt(path: String, reps: List<Int>): String? = valueAt(path, reps)?.raw
+
+    /**
      * The stored state of the field cell at [path]/[reps] — [StoredCellState.Absent] (no placement),
      * [StoredCellState.PresentEmpty] (a placement with no value, a `""` value included), or
      * [StoredCellState.PresentValue] carrying the raw stored text. The public read-back for the

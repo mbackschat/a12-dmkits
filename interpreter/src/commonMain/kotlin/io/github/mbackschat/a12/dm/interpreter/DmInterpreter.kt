@@ -263,7 +263,7 @@ class DmInterpreter @JvmOverloads constructor(
             val groupPresence by lazy(LazyThreadSafetyMode.NONE) {
                 GroupPresenceIndex(admittedGroupContent, formallyIncorrect, groupRelevance)
             }
-            val pass = ValidationPass(call, locale, isRelevant, dup,
+            val pass = ValidationPass(call, doc, locale, isRelevant, dup,
                 validationConfig(isRelevant, customRelevant, starRelevant) { ctx, path -> groupPresence.state(ctx, path) },
                 formalResults, { formallyIncorrect })
             for (rule in model.rules) {
@@ -388,6 +388,7 @@ class DmInterpreter @JvmOverloads constructor(
         }
         val pass = ValidationPass(
             call,
+            doc,
             locale,
             ALL_RELEVANT,
             dup,
@@ -519,6 +520,9 @@ class DmInterpreter @JvmOverloads constructor(
                         ctx,
                         defaultValueOf = model::messageDefaultOf,
                         labelOf = { path -> messageLabel(path, pass.locale, ctx) },
+                        // `$field.value$` reads the ORIGINAL caller document, not the staged eval view: a staged
+                        // enum index cell interpolates as if empty (kernel `getDaten().getValueForDisplay`; IF221).
+                        messageValueOf = { path -> pass.callerDoc.messageDisplayValueAt(path, ctx.repsOf(path)) },
                     )
                 } ?: ""
                 val matchingRnuOutcome = rnuCache?.rows?.get(ctx.repsOf(errorPath))?.takeIf { it.type == type }

@@ -25,6 +25,11 @@ internal val ALL_RELEVANT: Relevance = { _, _ -> true }
  */
 internal class ValidationPass(
     val doc: Document,
+    /** The ORIGINAL caller document — [doc] BEFORE any index-default staging (`doc.withComputed`). Equal to
+     *  [doc] when nothing was staged. Rule EVALUATION reads the staged [doc]; a `$field.value$` message
+     *  interpolation reads THIS one, so a staged index cell renders as if empty — the kernel's split between
+     *  the transient staging cache and `getDaten().getValueForDisplay` (IF221). */
+    val callerDoc: Document,
     val locale: String,
     val isRelevant: Relevance,
     val dup: Set<Pair<String, List<Int>>>,
