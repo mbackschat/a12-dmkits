@@ -1203,9 +1203,23 @@ public final class RuntimeLaws {
      * structural law locks whose runtime result cannot expose generated evaluation order.
      */
     static String generatedJavaSource(String modelJson) {
+        return generatedSource(modelJson, IValidationCodeGeneratorConfig.ProgrammingLanguage.JAVA);
+    }
+
+    /**
+     * The GROOVY twin of {@link #generatedJavaSource}. Needed because some lowering decisions exist in ONE
+     * strategy only — Groovy splits a rule's condition lines into closures once the rule reaches
+     * {@code NUM_CONDITIONLINES_PER_METHOD_GROOVY}, which no runtime result can reveal — so a law lock over
+     * that mode must read the emitted Groovy to prove it actually engaged.
+     */
+    static String generatedGroovySource(String modelJson) {
+        return generatedSource(modelJson, IValidationCodeGeneratorConfig.ProgrammingLanguage.GROOVY);
+    }
+
+    private static String generatedSource(String modelJson,
+            IValidationCodeGeneratorConfig.ProgrammingLanguage lang) {
         Properties idToPackage = new Properties();
-        return generateSources(expandedModel(modelJson),
-                IValidationCodeGeneratorConfig.ProgrammingLanguage.JAVA, idToPackage).entrySet().stream()
+        return generateSources(expandedModel(modelJson), lang, idToPackage).entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .map(entry -> "// " + entry.getKey() + "\n" + entry.getValue())
                 .collect(Collectors.joining("\n"));
@@ -1213,8 +1227,9 @@ public final class RuntimeLaws {
 
     /**
      * Generate the kernel's validation source for {@code expanded} in {@code lang}; returns {@code zipPath ->
-     * source} for the {@code .java} entries and fills {@code idToPackageOut} with the {@code modelId ->
-     * generated-package} mapping the static-model path needs. Language-parameterized: Java today, JS later.
+     * source} for that language's source entries and fills {@code idToPackageOut} with the {@code modelId ->
+     * generated-package} mapping the static-model path needs. Language-parameterized: Java and Groovy today,
+     * JS when its runtime becomes buildable here.
      */
     private static Map<String, String> generateSources(IDocumentModel expanded,
             IValidationCodeGeneratorConfig.ProgrammingLanguage lang, Properties idToPackageOut) {
@@ -1226,11 +1241,16 @@ public final class RuntimeLaws {
         if (zip == null) {
             throw new IllegalStateException("generateValidationCode(" + lang + ") returned null; notifications=" + notes);
         }
+        String suffix = switch (lang) {
+            case JAVA -> ".java";
+            case GROOVY -> ".groovy";
+            case JAVASCRIPT -> ".js";
+        };
         Map<String, String> sources = new HashMap<>();
         try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zip))) {
             ZipEntry e;
             while ((e = zis.getNextEntry()) != null) {
-                if (e.getName().endsWith(".java")) {
+                if (e.getName().endsWith(suffix)) {
                     sources.put(e.getName(), new String(zis.readAllBytes(), StandardCharsets.UTF_8));
                 }
             }
