@@ -69,7 +69,7 @@ So to enforce a requirement, write its **violation**:
 
 ## Field-path references
 
-A condition is evaluated relative to the rule's **group** (its iteration scope — defaults to the error field's parent group).
+A condition's field paths resolve relative to the rule's **group** (defaults to the error field's parent group). The group is only the path-resolution base — **which rows the rule iterates over derives from the condition's repeatable references** (see *Per-row iteration*), never from where the rule sits.
 
 - **Bare name** = a field in the rule's **own scope**, else — when the name is **unique across the whole model** — that one field, wherever it sits (a model-config fallback, on in dmtool-created models). There is **no** upward search: from a rule scoped to `/Subscription/Addons`, `[Tier]` resolves to `/Subscription/Tier` because `Tier` is unique model-wide, not because it's an ancestor's field. A bare name that exists in **several** groups is rejected (`MVK_FIELDNAME_NOT_UNIQUE`) — write the parent navigation (`../Tier`) or the absolute path instead.
 - **Absolute path** for a field in a *different branch* (or just to be explicit): `[/Customer/Status]`.
@@ -87,7 +87,7 @@ One corner draws **no** warning: there are no empty-string *values* (an empty st
 
 ## Per-row iteration & the negative guard
 
-- Putting the **error field inside a repeatable group** makes the rule fire **once per row** ("each …"). That happens automatically — you don't ask for it; you choose the error field.
+- Putting the **error field inside a repeatable group** makes the rule fire **once per row** ("each …"). That happens automatically — you don't ask for it: iteration derives from the condition's **references**, and since every rule must reference its error field, an in-row error field gives the condition a per-row reference (the error field itself selects no iteration — it just must share the scope the references set).
 - **"Each X must …" is a per-row rule — don't recast it as one document-level count/aggregate.** The error field's location *is* the decision: a field inside the repeatable group → the rule fires per offending row and points at *that* row. Rewriting (e.g.) "each line item needs a ShippedDate" as a single whole-document check over `Lines*/ShippedDate` (a count, or `NotAllFieldsFilled(Lines*/ShippedDate)` on a top-level field) is a **different rule** — it fires once for the whole document and flags the wrong locus. When the requirement says "each", keep the error field in the row.
 - A **negative** condition (`FieldNotFilled`, `NoFieldFilled`, …) inside an iterating rule is **rejected** (`MVK_NEG_CONDITION_IN_ITERATION`) unless guarded by a positive existence check on the row: `GroupFilled(<the repeatable group>) And <your negative condition>`.
 - **Guard row existence with `GroupFilled(<the repeatable group>)`, not `FieldFilled(<some sibling field>)`.** A sibling field can be empty while the row exists, so an arbitrary-field guard quietly changes *which* rows the rule covers — `GroupFilled` is the row-presence check.
@@ -131,7 +131,7 @@ dmtool -m invoice.json rule check --field /Invoice/FeeCap \
 Requirement: *"When an order's Channel is EXPRESS, each line item's DeliveryDate must be provided."*
 Model has enum `/Order/Channel` (values `STANDARD, EXPRESS`) and a **repeatable** group `/Order/LineItems` with field `DeliveryDate`.
 
-- Error field (drives per-row iteration): `/Order/LineItems/DeliveryDate`.
+- Error field `/Order/LineItems/DeliveryDate` — in the repeatable row, so referencing it makes the rule fire per row.
 - Violation = the row exists **and** channel is EXPRESS **and** the date is missing — guarded because it iterates and uses a negative:
   ```
   GroupFilled(/Order/LineItems) And [/Order/Channel] == "EXPRESS" And FieldNotFilled(DeliveryDate)

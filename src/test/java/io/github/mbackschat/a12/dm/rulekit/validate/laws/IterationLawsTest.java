@@ -73,18 +73,20 @@ class IterationLawsTest {
 
     @Test
     void errorFieldMustShareTheIterationScopeOfTheReferencedRepeatableFields() {
-        // KERNEL-FINDINGS §9 — a rule's iteration scope is determined by the repeatable fields it
-        // REFERENCES (incl. its error field), NOT by where the rule node physically sits. The error
-        // field must share that scope. This is the law behind the field-move behavior (and why a
-        // mechanical "co-move" is a non-goal — it can't reconcile a genuine cross-cardinality split):
+        // KERNEL-FINDINGS §9 — a rule's iteration scope is determined by the repeatable fields its
+        // CONDITION references, NOT by where the rule node physically sits. The error field is
+        // separately VALIDATED — it must share that scope — but it never selects an iteration level.
+        // This is the law behind the field-move behavior (and why a mechanical "co-move" is a
+        // non-goal — it can't reconcile a genuine cross-cardinality split):
         //
         // (a) error field in a SHALLOWER scope than a per-row operand → rejected. The rule references
         //     Addons/MonthlyFee (per-row, so it iterates over Addons), but its error field is the
         //     non-repeatable sibling Billing/BaseFee — a different scope.
         KernelLaws.rejects("/Subscription/Addons", "../../Billing/BaseFee",
                 "FieldFilled(MonthlyFee) And [MonthlyFee] > 100", "MVK_ERROR_FIELD_NOT_IN_RULEGROUP");
-        // (b) a rule may reach DOWN into a repeatable for its error field — the error field then drives
-        //     the iteration, and per-row operands resolve consistently → accepted.
+        // (b) a rule may reach DOWN into a repeatable for its error field — the CONDITION's per-row
+        //     reference to Addons/MonthlyFee drives the iteration; the error field (the same field)
+        //     shares that scope and per-row operands resolve consistently → accepted.
         KernelLaws.accepts("/Subscription", "../Addons/MonthlyFee",
                 "FieldFilled(Addons/MonthlyFee) And [Addons/MonthlyFee] > 100");
         // (c) the canonical sibling case — error field and per-row operand in the SAME repeatable scope.
