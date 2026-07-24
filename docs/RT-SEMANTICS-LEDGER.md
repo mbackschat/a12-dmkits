@@ -44,8 +44,8 @@ Classifications:
 | `IndexFieldCache` | infrastructure | Memoization for index-field (`For`) resolution. |
 | `USBIndexCache` | infrastructure | Memoization for the multi-form (USB) tier — the Vordruck conditions are parity-excluded anyway. |
 | `RepetitionNotUniqueErrorCache` | infrastructure | Memoization; the RNU semantics themselves are locked (`RepetitionNotUniqueLawsTest`). |
-| `DynamicEnumerationCommand` | out-of-scope | Table-backed (dynamic) enums are not DM-JSON-serializable (KERNEL-FINDINGS §8) — unreachable from rulekit-authored models. |
-| `DynamicEnumerationController` | out-of-scope | Same reason. |
+| `DynamicEnumerationCommand` | out-of-scope | **This is an a12-dmkits FRONT-END-REACH claim, not a claim about the kernel's language.** Table-backed (dynamic) enums are not expressible in a document model's DM-JSON (KERNEL-FINDINGS §8: the `EnumerationType` DTO has no `tableName`, and the deserializer is strict), so they are unreachable from **any** md-document-model input — rulekit-authored or not — and `ValueNotConsistent`'s checker precondition can never be met on our front-end. They **are** reachable via the kernel's other front-end (the tool-internal ADO tier, populated from the extmp/legacy-XML path + a runtime table catalog), so a project scoping the kernel's *complete observable* language must treat dynamic enums as an open gap, not as excluded. Two facts bound that region for anyone: only **static-Java** (and CPLUS) lowers it — `NoMetaModelChecks.checkEnumTables` rejects table enums for GROOVY and JAVA_SCRIPT_VK with `MVK_TABLE_ENUMS_NOT_ALLOWED_FOR_PROGRAMMING_LANGUAGE` — so the **dynamic-Groovy normative oracle (IF136) structurally cannot observe it** (KERNEL-FINDINGS §8 supplement). |
+| `DynamicEnumerationController` | out-of-scope | Same reason and same scope qualification as the row above. |
 | `ICalculatorIntern` | infrastructure | Internal SPI interface. |
 | `IDynEnumsIntern` | infrastructure | Internal SPI interface (dynamic enums, out-of-scope above). |
 | `IMetaDataValidierung` | infrastructure | Internal SPI interface. |
