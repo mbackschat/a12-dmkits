@@ -426,7 +426,11 @@ class Document(internal val config: DocumentConfig) {
             // frame row → O(frames × M)). Only the framed group's map depends on the current frame row.
             val cleanInvalid = HashSet<String>()
             val cleanMaps = groups.filter { it != frameGroup }.associateWith { indexMap(it, indexFieldName, cReps, cleanInvalid) }
-            val frameRows = if (deepestFrame != null) rowsWithPrefix(deepestFrame, cReps) else listOf(cReps)
+            // An over-limit FRAME row is outside the kernel's cache, so the join never runs inside it (the same
+            // exclusion as the joined groups below and the star domain, SPEC-2026-07-23-13 / IF220).
+            val frameRows = if (deepestFrame != null)
+                rowsWithPrefix(deepestFrame, cReps).filter { it !in overLimitRows(deepestFrame) }
+            else listOf(cReps)
             for (fr in frameRows) {
                 // each group's parent context: the framed group is scoped to the current frame row, others to cReps
                 val parentReps = groups.associateWith { g -> if (g == frameGroup) fr else cReps }
@@ -444,18 +448,24 @@ class Document(internal val config: DocumentConfig) {
     }
 
     /** Common-parent context rows for a parallel iteration: the parent group's instantiated rows, or the all-1s
-     *  prefix when a non-repeatable parent is not separately instantiated. */
+     *  prefix when a non-repeatable parent is not separately instantiated. An over-limit parent row is outside the
+     *  cache (SPEC-2026-07-23-13 / IF220), so it is no common-parent frame (a no-op for a non-repeatable parent). */
     private fun parentRowsOf(commonParent: String): List<List<Int>> =
-        rowsOf(commonParent).ifEmpty {
+        rowsOf(commonParent).filter { it !in overLimitRows(commonParent) }.ifEmpty {
             if (commonParent in declaredReps) emptyList() else listOf(List(parts(commonParent).size) { 1 })
         }
 
     /** [group]'s `indexValue → matching-row reps` map under parent context [ctxReps] (last write wins on a
-     *  duplicate); adds [group] to [invalidOut] if its index has a duplicate value or an empty cell here. */
+     *  duplicate); adds [group] to [invalidOut] if its index has a duplicate value or an empty cell here. An
+     *  OVER-LIMIT row is EXCLUDED from the join: the kernel never inserts it into the `IndexFieldCache`, so its
+     *  index value is not a join key and a reference to it reads UNMATCHED (empty-as-0), never its poisoned cell —
+     *  the same [overLimitRows] exclusion the star/quantifier domain uses (SPEC-2026-07-23-13 / IF220). */
     private fun indexMap(group: String, indexFieldName: String, ctxReps: List<Int>, invalidOut: MutableSet<String>): Map<String, List<Int>> {
         val idxPath = "$group/$indexFieldName"
+        val overLimit = overLimitRows(group)
         val byValue = LinkedHashMap<String, List<Int>>()
         for (row in rowsWithPrefix(group, ctxReps)) {
+            if (row in overLimit) continue                                  // over-limit row: outside the join
             val v = valueAt(idxPath, row + 1)?.value
             if (v.isNullOrEmpty()) invalidOut.add(group)                    // empty index cell → group invalid here
             else if (byValue.put(v, row) != null) invalidOut.add(group)     // duplicate value → group invalid here
