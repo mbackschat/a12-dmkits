@@ -202,6 +202,21 @@ def verifyInterpreterPurity = tasks.register('verifyInterpreterPurity') {
                 }
             }
         }
+        // The filtered field-list traversal has ONE owner (SPEC-2026-07-23-12 follow-up, client-required):
+        // keptRowsWithSuccessorLookahead in eval/ExprEval.kt. Every filtered field-list consumer
+        // (FirstFilledValue, the value aggregates, the starred value/fill counts) must route through it —
+        // a second `havingInterp(` call site in ExprEval.kt is a duplicate traversal mechanism that can
+        // drift from the kernel's one-kept-successor account, so it fails the build.
+        def exprEval = new File(srcRoot, 'commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/eval/ExprEval.kt')
+        if (exprEval.exists()) {
+            def havingSites = 0
+            exprEval.eachLine { line -> havingSites += (line =~ /havingInterp\(/).count }
+            if (havingSites != 1) {
+                violations << ("eval/ExprEval.kt: ${havingSites} havingInterp( call sites — the filtered " +
+                    "field-list traversal has ONE owner (keptRowsWithSuccessorLookahead); route the new " +
+                    "consumer through it instead of a direct filter loop").toString()
+            }
+        }
         if (violations) {
             throw new GradleException(
                 "interpreter purity violated — separation by linting (proposal §8):\n  " + violations.join('\n  '))

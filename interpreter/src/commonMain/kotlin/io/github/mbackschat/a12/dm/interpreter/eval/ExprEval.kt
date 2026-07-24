@@ -101,8 +101,10 @@ private fun Interpreter.filledFieldsValue(args: List<Expr>): Val {
                 // pinned) — then a KEPT row's malformed cell makes the count non-evaluable (poison in
                 // compute). Left index-unaware like the other Having paths (IF86's no-untested-logic call).
                 val group = arg.path.substringBeforeLast('/')
-                for (rc in ctx.rowContexts(group, arg.bindDepth)) {
-                    if (!havingInterp(rc).fires(arg.having)) continue
+                // Kept rows come through the SHARED one-kept-successor traversal — the sole filtered
+                // field-list owner (SPEC-2026-07-23-12 follow-up); the kernel's count constructs the same
+                // EntityIterator (`anzahlAngegebenerFelder`, IF94).
+                for (rc in keptRowsWithSuccessorLookahead(ctx.rowContexts(group, arg.bindDepth), arg.having)) {
                     if (!rc.filled(arg.path)) continue
                     if (rc.field(arg.path) is Val.Unknown) {
                         if (computeMode) throw PoisonedReadException(arg.path)
@@ -577,8 +579,12 @@ private fun Interpreter.numberOfValueInFields(args: List<Expr>): Val {
         when (val arg = args[i]) {
             is Expr.Star -> {                    // a `Group* / Field` list (kernel: a group/wildcard expansion)
                 val group = arg.path.substringBeforeLast('/')
-                for (rc in ctxOf(arg).rowContexts(group, arg.bindDepth)) {
-                    if (arg.having != null && !havingInterp(rc).fires(arg.having)) continue  // filter drops the row first
+                val rows = ctxOf(arg).rowContexts(group, arg.bindDepth)
+                val having = arg.having
+                // A filtered list rides the SHARED one-kept-successor traversal — the sole filtered
+                // field-list owner (SPEC-2026-07-23-12 follow-up); the filter still drops the row first.
+                val kept = if (having == null) rows.asSequence() else keptRowsWithSuccessorLookahead(rows, having)
+                for (rc in kept) {
                     if (!rc.filled(arg.path)) continue                                        // empty → not counted
                     val v = rc.field(arg.path)
                     if (v is Val.Unknown) {                                                    // kept malformed → suppress
