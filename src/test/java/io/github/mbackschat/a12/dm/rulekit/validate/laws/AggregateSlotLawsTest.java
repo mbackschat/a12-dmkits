@@ -46,6 +46,49 @@ class AggregateSlotLawsTest {
         return cond(Dsl.fieldFilled(ORDER.field("/Order/Quantity")).and(aggregate.gt(0)));
     }
 
+    // ── the Having filter's forbidden-construct set, kernel-verified ─────────────────────────────────────
+    //
+    // Audited 2026-07-25: rulekit pre-checks CustomCondition in a filter, but FieldListRef's javadoc listed it
+    // among the KERNEL-DELEGATED constructs — an internal contradiction that left the refusal's basis unclear.
+    // The kernel really does reject it, so the pre-check stands; the javadoc was the stale half.
+    //
+    // Getting here needed two other filter laws out of the way, both worth having locked: a filter operand must
+    // be UNSTARRED (a starred one is MVK_NO_WILDCARDS_ALLOWED), and a filter must reference the iterated level at
+    // all — a filter consisting only of a CustomCondition fails MVK_NO_ITERATION_FOR_WILDCARD first, which is why
+    // the sibling conjunct below is load-bearing rather than decoration.
+
+    /** {@code CustomCondition} inside a filter: "not supported for filter conditions". */
+    @Test
+    void aCustomConditionIsForbiddenInsideAHavingFilter() {
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And Sum(Items*/Count Having ([Items/Sku] == \"X\""
+                        + " And CustomCondition SomeCheck)) > 0",
+                "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION");
+    }
+
+    /** The control: the same filter without the custom condition is accepted, so the refusal isolates it. */
+    @Test
+    void theSameFilterWithoutTheCustomConditionIsAccepted() {
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And Sum(Items*/Count Having [Items/Sku] == \"X\") > 0");
+    }
+
+    /** A filter must reference the iterated level; one that references nothing is rejected before anything else. */
+    @Test
+    void aFilterThatReferencesNoIteratedLevelIsRejected() {
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And Sum(Items*/Count Having CustomCondition SomeCheck) > 0",
+                "MVK_NO_ITERATION_FOR_WILDCARD");
+    }
+
+    /** A STARRED operand inside the filter is rejected — the filter reads the current row, not the list. */
+    @Test
+    void aStarredOperandInsideAFilterIsRejected() {
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And Sum(Items*/Count Having [Items*/Sku] == \"X\") > 0",
+                "MVK_NO_WILDCARDS_ALLOWED");
+    }
+
     // ── a number TYPEDEF reaches the numeric aggregates on BOTH sides ────────────────────────────────────
     //
     // Audited as an over-rejection candidate (2026-07-25) because ValueKind deliberately does not map
