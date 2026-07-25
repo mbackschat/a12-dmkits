@@ -792,6 +792,23 @@ Three distinct concepts, easy to conflate:
 
 (The model/editor metamodel `MM_Common` carries an "ExtensibleEnumerationType" config — maxLength/displayValues — and form-model/UI notions like `fieldConfigurationEntry`/`externalEnumeration` exist, but those are **tooling/FM layers outside rulekit's DM-JSON scope**, not runtime DM field types.) *(Corrects an earlier draft that wrongly called extensible enums "un-buildable" and cited `IEnumerationType.isExtensible` — it conflated the extensible `IStringType` quality with the dynamic/table-backed enum.)*
 
+## §11 supplement — the parallel-iteration computation route replaces the read-time index gate with post-loop marking, whose blast radius depends on WHICH index group is malformed (differential, 2026-07-25; answers a12-kernel-lean EXP-2026-07-25-03)
+
+> Fold: pending — the route split needs a deliberate edit to the §11 computation prose.
+
+**A computation reached through a parallel-iteration operand has no read-time semantic-index gate. Instead the iteration-values lookup returns empty (so the loop body never runs) and `CalculationCache.markFieldsUsingInvalidIndexGroupsAsIncorrectlyCalculated` marks affected instances afterwards — and it marks by TRUNCATED coordinates, so an off-path malformed key clears clean sibling rows while an on-path one does not.** `CodeGenCalculatedField.getParallelIterationGroupsCode()` passes **both** the index group on the computed field's own path and the off-path groups the operands iterate; marking then keys on each existing field instance's indices **truncated to `numSharedLevels` = `commonAncestorLevel(computedField, indexGroupParent) + 1`**. So the blast radius is the shared prefix, not the malformed row:
+
+| malformed index key lives in | shared prefix reaches | sibling parent row's computed target |
+|---|---|---|
+| the **off-path** iterated index group (`/Order/Refs`) | only `/Order` — above the sibling level | **CLEARED** — a clean sibling does *not* survive |
+| the computed field's **own on-path** index group (`/Order/Lines/Slots`) | `/Order/Lines` — below the sibling level | **survives** with its value |
+
+Observed on a two-sibling-row document: with all keys distinct both targets compute (100 / 200); duplicating a key in the off-path group clears **both**, including the sibling whose own slot key still matches a clean row; duplicating a key inside one line's own `Slots` clears only that line's instances and leaves the sibling at 200. **Both kernel strategies agree on all three, so this is kernel truth, not a strategy split.** The kernel's own comment concedes the off-path case marks "more field instances as invalid than strictly necessary … we don't think we need to get too clever."
+
+**Authoring preconditions (and why no corpus reaches this route):** the iterated group's index field must have the **same name** as the index field on the computed field's path, else the model is rejected with `MVK_ERROR_FIELD_INVALID_INDEX` ("iteration is specified, but the index field on the error field path has another name; therefore wildcard has to be specified or another error field must be defined"). The operand must also be a bracketed **non-starred** reference (`[../../Refs/Amount]`) — a starred `Refs*` is a *wildcard*, not an iteration, and takes the ordinary route; `Sum(...)` over a single such reference is rejected `MVK_PARAMSIZE_INVALIDN`.
+
+*(Locked: `adapter.laws.ParallelIterationIndexMarkingDiffTest` — all three cases assert dynamic-Groovy and static-Java. **Our interpreter diverges on the on-path case**, clearing the sibling the kernel keeps; tracked as the open [IG88](INTERPRETER-GAPS.md) with that class as its reproducer, so the third case asserts the kernel legs only until the fix lands.)*
+
 ## §5 supplement — the value-list quantifiers have TWO emission routes, and the fields-presence prepass belongs to only one (source, 2026-07-25; a12-kernel-lean SPEC-2026-07-25-01)
 
 > Fold: folded → §5.
