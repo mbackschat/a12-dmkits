@@ -191,6 +191,8 @@ tasks.register('semanticsMapGuardTest', Test) {
         // The fold-status contract between the two kernel docs (DOC-DISCIPLINE §1) reads exactly two of
         // this task's declared inputs (KERNEL-FINDINGS + KERNEL-SEMANTICS), so it rides the same lane.
         includeTestsMatching 'io.github.mbackschat.a12.dm.cli.KernelDocsFoldContractTest'
+        // The basis contract reads the same two docs — a mechanism claim must name its oracle.
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.KernelDocsBasisContractTest'
     }
     // guardInputs (root ext, kernel-decoupling §3b #17): declare the map's derivation surfaces as inputs AND
     // fail loudly if any lock tree / catalog / corpus goes empty (a moved folder must not silence this guard).
