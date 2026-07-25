@@ -3,6 +3,8 @@ package io.github.mbackschat.a12.dm.rulekit.dsl.operators;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
@@ -68,6 +70,44 @@ class IterationConditionTest {
                 + " @From /Subscription/Addons)", new DslRenderer().render(scoped));
         assertEquals("WiederholungNichtEindeutig(/Subscription/Addons/Name, /Subscription/Addons/MonthlyFee"
                 + " @Von /Subscription/Addons)", new DslRenderer(ConditionLanguage.DE).render(scoped));
+    }
+
+    /**
+     * The {@code @From} scope <b>counts as a reference</b> for the error-field rule, so a rule may report on any
+     * field under it — not only on a key. Verified against the kernel (2026-07-25,
+     * {@code validate.laws.RepetitionNotUniqueKeyKindLawsTest}): with {@code @From} the kernel accepts an error
+     * field that only the scope contains, and WITHOUT {@code @From} it rejects the same shape
+     * {@code MVK_ERROR_FIELD_NOT_REFERENCED} — the key's own group is not an implicit reference.
+     *
+     * <p>{@code ConditionReferences} dropped the scope, so this kernel-legal rule drew a spurious advisory
+     * telling the author "the kernel typically rejects this". It never blocked authoring — the check is
+     * deliberately deferred and advisory-only ({@code Rule#deferredChecks()}) — but a false warning on a legal
+     * rule is exactly the kind of misinformation the self-explaining surface must not emit.
+     */
+    @Test
+    void theFromScopeCountsAsAReferenceForTheErrorFieldRule() {
+        Condition scoped = Dsl.repetitionNotUnique(m.field("/Subscription/Addons/Name"))
+                .from(m.group("/Subscription/Addons"));
+        Rule scopedRule = m.rule(m.group("/Subscription"))
+                .name("ScopedDuplicateRule")
+                .errorField(m.field("/Subscription/Addons/MonthlyFee"))
+                .when(scoped)
+                .code("DUP").severity(Severity.ERROR)
+                .message(Dsl.en("duplicate addon")).message(Dsl.de("doppeltes Addon"))
+                .build();
+        assertEquals(List.of(), scopedRule.deferredChecks(),
+                "an error field under the @From scope is kernel-legal — no advisory is warranted");
+
+        // control: WITHOUT @From the kernel really does reject it, so the advisory must still fire
+        Rule unscopedRule = m.rule(m.group("/Subscription"))
+                .name("UnscopedDuplicateRule")
+                .errorField(m.field("/Subscription/Addons/MonthlyFee"))
+                .when(Dsl.repetitionNotUnique(m.field("/Subscription/Addons/Name")))
+                .code("DUP").severity(Severity.ERROR)
+                .message(Dsl.en("duplicate addon")).message(Dsl.de("doppeltes Addon"))
+                .build();
+        assertEquals(1, unscopedRule.deferredChecks().size(),
+                "without @From the key's group is not an implicit reference — the advisory is correct");
     }
 
     @Test

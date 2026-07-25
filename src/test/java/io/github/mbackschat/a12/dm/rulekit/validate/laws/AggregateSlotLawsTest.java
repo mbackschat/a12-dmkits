@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
@@ -42,6 +44,33 @@ class AggregateSlotLawsTest {
      *  field ({@code MVK_ERROR_FIELD_NOT_REFERENCED} would otherwise mask the duplicate-admission being tested). */
     private static String guarded(NumberExpr aggregate) {
         return cond(Dsl.fieldFilled(ORDER.field("/Order/Quantity")).and(aggregate.gt(0)));
+    }
+
+    // ── a number TYPEDEF reaches the numeric aggregates on BOTH sides ────────────────────────────────────
+    //
+    // Audited as an over-rejection candidate (2026-07-25) because ValueKind deliberately does not map
+    // "TypeDefType" — a typedef must be resolved to its base discriminator by the caller, and an unresolved
+    // one would surface as UNKNOWN and be refused by the NUMBER gate. Both sides pass; locked so they stay that way.
+    private static String typedefJson() {
+        return io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("td").locale("en_US")
+                .typeDef("Money", t -> t.number(n -> n.fractionDigits(2)))
+                .rootGroup("M", m -> m
+                        .field("Q", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER)
+                        .group("Items", i -> i.repeatable(10).typedefField("Amount", "Money")))
+                .build().toJson();
+    }
+
+    @Test
+    void theKernelAcceptsSumOverANumberTypedef() {
+        KernelLaws.acceptsModel(typedefJson(), "/M", "../Q",
+                "FieldFilled(Q) And Sum(Items*/Amount) > 0");
+    }
+
+    @Test
+    void rulekitAuthorsSumOverANumberTypedef() {
+        BoundModel m = BoundModel.ofJson(typedefJson());
+        assertNotNull(Dsl.sum(m.flatten("/M/Items*/Amount")),
+                "a number typedef must be usable in a numeric aggregate");
     }
 
     // ── NumberOfDifferentValues' operand DOMAIN — the over-rejection audit, 2026-07-25 ───────────────────

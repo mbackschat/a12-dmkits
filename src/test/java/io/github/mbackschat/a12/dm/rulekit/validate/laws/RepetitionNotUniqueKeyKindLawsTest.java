@@ -38,6 +38,27 @@ class RepetitionNotUniqueKeyKindLawsTest {
                 .build().toJson();
     }
 
+    // ── the @From scope IS a reference for the error-field rule; the keys' own group is NOT ──────────
+    //
+    // Measured 2026-07-25 (MVK-LEDGER pre-checked audit). `ConditionReferences` had dropped the scope with the
+    // note "unverified whether the kernel's error-field rule honors it" — it does, and the omission produced a
+    // false advisory on a kernel-legal rule. These two cases are the exact pair that settles it, and the second
+    // is what stops the fix from being over-applied to the implicit scope.
+
+    /** {@code Note} is neither a key nor otherwise named — only the {@code @From} scope contains it. */
+    @Test
+    void anErrorFieldUnderTheFromScopeIsReferencedEnough() {
+        KernelLaws.acceptsModel(priceList(), "/PriceList", "../Tiers/Note",
+                "RepetitionNotUnique(Tiers/Band @From Tiers)");
+    }
+
+    /** The same shape WITHOUT {@code @From}: the keys' own group does not count as an implicit reference. */
+    @Test
+    void anErrorFieldUnderTheKeysGroupAloneIsNotReferenced() {
+        KernelLaws.rejectsModel(priceList(), "/PriceList", "../Tiers/Note",
+                "RepetitionNotUnique(Tiers/Band)", "MVK_ERROR_FIELD_NOT_REFERENCED");
+    }
+
     // ── admitted: every value-validating kind, no Number/String restriction ──────────────────────────
 
     @Test

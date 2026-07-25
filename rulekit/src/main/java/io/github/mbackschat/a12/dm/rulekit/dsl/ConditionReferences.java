@@ -110,9 +110,15 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 v.valueFields().forEach(f -> collectOperand(f, fields, groups));
             }
             case GroupScopedFieldFill v -> v.scopes().forEach(s -> groups.add(s.group().path()));
-            // the @From scope deliberately does NOT count as a reference (unverified whether the
-            // kernel's error-field rule honors it; keys are what the condition reads)
-            case RepetitionNotUniqueCondition r -> r.keys().forEach(k -> fields.add(k.path()));
+            // The @From scope DOES count as a reference — measured 2026-07-25: with @From the kernel accepts an
+            // error field that only the scope contains, and without it the same shape draws
+            // MVK_ERROR_FIELD_NOT_REFERENCED, so the keys' own group is NOT an implicit reference
+            // (validate.laws.RepetitionNotUniqueKeyKindLawsTest). Omitting the scope produced a false advisory
+            // on a kernel-legal rule; this comment previously recorded the honoring as unverified.
+            case RepetitionNotUniqueCondition r -> {
+                r.keys().forEach(k -> fields.add(k.path()));
+                r.scope().ifPresent(s -> groups.add(s.path()));
+            }
             case CustomConditionRef ignored -> { /* references nothing — host-defined */ }
             case DateValidity v -> collect(v.dateConstruct(), fields, groups);
             case CustomTypeValidity v -> fields.add(v.field().path());
