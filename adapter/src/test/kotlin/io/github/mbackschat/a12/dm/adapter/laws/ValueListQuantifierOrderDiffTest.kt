@@ -13,7 +13,18 @@ import org.junit.jupiter.api.Test
  * Differential + **tri-check** (groovy-dynamic runtime == java-static codegen == interpreter) for the
  * OPERATOR-SPECIFIC pass structures of the multi-operand value-list quantifiers (SPEC-2026-07-23-16) —
  * encounter order and WITNESS-specific filter polarity, which one global per-side UNKNOWN/filter summary
- * cannot express. The kernel (30.8.1, both strategies share `RuntimeController`):
+ * cannot express.
+ *
+ * **Citation scope — what this file does NOT separate (2026-07-25, a12-kernel-lean SPEC-2026-07-25-01).** Every
+ * case here rides the ORDINARY (`FL`) emission route. `NotAll`'s fields-presence prepass exists only on that
+ * route; the optimized (`OL`) route has no prepass and hoists the values side ahead of the condition. Both
+ * accounts predict identical fired-code sets for these inputs (the membership test counts only given cells, so
+ * the un-prepassed route collapses the same way), so **do not cite this file as evidence that the prepass is
+ * the observable contract** — it locks tri-engine agreement on quantifier ordering, not the presence of a
+ * prepass. The route predicate and the equivalence argument: KERNEL-FINDINGS §5 supplement "the value-list
+ * quantifiers have TWO emission routes". No corpus fixture reaches the OL thresholds on either side.
+ *
+ * The kernel (30.8.1, both strategies share `RuntimeController`):
  *
  *  - **`AtLeastOne`** consumes the COMPLETE values side first (`fuegePruefungsrelevanteFeldWerteZuWerteListe`
  *    — present cells only; a values-side filter marks the fire OMISSION only when that filtered operand
