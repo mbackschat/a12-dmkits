@@ -8,6 +8,29 @@ Instrument 2 of the constraint-mining discipline (`CLAUDE.md`): every `MVK_*` co
 
 Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — caught at `build()`/handle creation with the fix named · **kernel-delegated** — deliberately left to F4 (with reason) · **n/a-structural** — constrains model parts outside rulekit's authoring surface (header, groups, fields, types, type-level texts); read–edit–write-back preserves those parts, so the law is unreachable from rulekit-authored changes, while `checkConsistency` still enforces it on every F4/F6 run · **pending** — its operator family is not built yet (corpus backlog) · **unclassified** — not yet analyzed (queue).
 
+## What the buckets mean for CONFORMANCE — the over-rejection model (audit 2026-07-25)
+
+The buckets above answer "who enforces this law". A different question — **where can we actually diverge from the kernel?** — cuts across them, and the answer is narrower than the bucket sizes suggest. The asymmetry that matters:
+
+**Delegation can only ever UNDER-report; a client-side refusal can be WRONG.** We cannot diverge from an oracle we ask, so `kernel-delegated` is a *terminal* classification, not a debt — and since the CLI always bundles `:adapter`, every `rule check`/`model check` is `KERNEL_CONFIRMED`, native included (`STRUCTURAL_ONLY` is the library-consumer posture and is stamped honestly with an `RK_NO_KERNEL_BACKEND` advisory). So the conformance risk lives entirely in what *we* decide:
+
+| where we decide | how it can be wrong | audited |
+|---|---|---|
+| **pre-checked, HARD refusal** | refuses a model the kernel accepts — a real divergence, invisible to the kernel because it never gets asked | the judgment-bearing ones, 2026-07-25 |
+| **erased at the type level** | the same defect one layer earlier and *harder to see*: no runtime error, just a missing factory or a compile error, so the shape reads as "not a thing" rather than "refused" (API-FINDINGS 97 and 98 are both this) | partially |
+| **pre-checked, ADVISORY** | cannot over-reject by construction (`Rule.deferredChecks()` emits a PRECHECK *warning* and defers to the live kernel) — but a false warning still misinforms an author | `MVK_ERROR_FIELD_NOT_REFERENCED` corrected |
+| **MVK-less client-side refusal** | **invisible to this ledger**, which tracks only the 300 MVK codes — so the `pre-checked` count understates the risk surface | `FieldTypeSpec` family, 2026-07-25 |
+| **deliberate over-strictness** | not a defect *if documented with its reason* — the enum S-value domain check (API-FINDINGS 96) and the error-entity-must-be-a-field scope limit (`Rule`) are intentional | classified, kept |
+
+**What the audit found.** Most of the `pre-checked` bucket is structural **completeness** (a rule needs an error field, a code, a message, a severity) which cannot over-reject — absence is absence. The risk concentrated in ~10 judgment-bearing codes. Two defects surfaced, and **both had the same root: a refusal broader than its measured basis**, with the give-away sitting in our own source —
+
+- `NumberOfDifferentValues` refused DATE/TIME/DATETIME on reasoning imported from `MaxValue`/`MinValue` (which have a separate date family; a distinct-value count has none), so the form was unauthorable **and unreadable** — `ConditionConverter` builds the same record inbound. The kernel's own gate name had said DATE was allowed all along. (API-FINDINGS 98.)
+- `ConditionReferences` dropped `RepetitionNotUnique`'s `@From` scope, carrying the note *"unverified whether the kernel's error-field rule honors it"* — it does, so a legal rule drew a false advisory.
+
+Cleared as NOT over-rejecting, each by measurement rather than reading: the reserved `vk_vk` prefix really is case-insensitive; `MVK_INVALID_INTERVAL`'s tightened lower bound is N7-kernel-executed; a number **typedef** resolves to its base kind and reaches the numeric aggregates; `CustomCondition` really is forbidden in a `Having` filter (the `FieldListRef` javadoc contradicted itself and was the stale half); and the kernel enforces both inverted-bound refusals modelkit makes (string length, number range).
+
+**Still unaudited, and named so this is not read as complete:** `MVK_INVALID_PATTERN` (`KernelPatternPolicy` replicates kernel pattern admission — the largest remaining judgment surface), `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING`, `MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD`, `MVK_DUPLICATE_PARAM1`'s duplicate notion, the four enum/category domain-membership checks, and a systematic pass over the `erased` bucket for shapes the type split makes unauthorable.
+
 ## How the queue resolves — per-source resolution paths (2026-06-10)
 
 The four sources are not equally hard to drain. The decisive split: **does the code have a rule body, or only Java check code behind it?**

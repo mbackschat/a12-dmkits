@@ -78,6 +78,16 @@ The **no-rot** lever is that **every schema `examples` block is CI-executed thro
 
 An ungated, undocumented, or untested-on-refusal refactor is not shippable. Full principle + per-refactor preconditions: [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md) §6.
 
+## A client-side refusal needs a measured kernel basis (standing requirement, 2026-07-25)
+
+**Before adding or widening any check that REFUSES input — a builder `throw`, a type-level erasure, a CLI pre-flight — measure that the real kernel refuses the same input, and lock that measurement.** Delegation can only under-report and is safe; a refusal we invent can be *wrong*, and it is invisible precisely because the kernel never gets asked. Three rules:
+
+- **Never broader than its measured basis.** A refusal justified by analogy ("dates ride the date family"), by an error message's wording, or by a comment that says *unverified* is a defect waiting to be found. Both over-rejections the 2026-07-25 audit turned up were exactly this, and in both cases our own source carried the give-away.
+- **Check the READ path too.** A refusal in a record's constructor also fires when the adapter converts a kernel model *inbound*, so an over-strict check makes a legal model **unreadable**, not merely unauthorable. That is the sharper half and the reason a read test belongs beside the authoring test.
+- **Deliberate over-strictness is allowed — but only with its reason written down.** Being stricter than the kernel is sometimes right (the enum S-value domain check, API-FINDINGS 96). Undocumented, it is indistinguishable from a bug.
+
+A type-level erasure is the same defect one layer earlier and harder to see: no runtime error, just a missing factory, so the shape reads as "not a thing" rather than "refused". The conformance model + the audit's disposition: [`docs/MVK-LEDGER.md`](docs/MVK-LEDGER.md) "What the buckets mean for CONFORMANCE".
+
 ## Root-cause generalization (standing requirement, 2026-06-19)
 
 **When you find a defect — from a bug report or a probe — fix the *class*, not the symptom.** Once you know the root cause, **always sweep for every sibling site where the same class can occur** *before* declaring it fixed, and fix them together at the shared root. A symptom-only patch (the one verb/path that was reported) leaves the rest of the class live — that is how whack-a-mole starts.
