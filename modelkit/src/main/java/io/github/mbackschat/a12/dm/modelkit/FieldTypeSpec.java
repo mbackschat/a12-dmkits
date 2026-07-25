@@ -117,12 +117,27 @@ public sealed interface FieldTypeSpec {
     record NumberSpec(Integer minFractionalDigits, Integer maxFractionalDigits, BigDecimal minValue,
             BigDecimal maxValue, boolean zeroNotAllowed, boolean leadingZerosAllowed, NumberTrait trait)
             implements FieldTypeSpec {
+
+        /** The kernel's cap on a number field's declared scale (measured: 15 is refused at model check). */
+        static final int MAX_SCALE = 14;
+
         public NumberSpec {
             if (minFractionalDigits != null && minFractionalDigits < 0) {
                 throw new IllegalArgumentException("minFractionalDigits must be ≥ 0: " + minFractionalDigits);
             }
             if (maxFractionalDigits != null && maxFractionalDigits < 0) {
                 throw new IllegalArgumentException("maxFractionalDigits must be ≥ 0: " + maxFractionalDigits);
+            }
+            // The kernel caps the scale at 14 and reports an overrun as a plain, MVK-less model-check message
+            // that names neither the property nor the cap — so refuse it here, correctively. min is bounded by
+            // the same wall (min ≤ max ≤ 14, and an absent max defaults to 0 — IF78).
+            if (maxFractionalDigits != null && maxFractionalDigits > MAX_SCALE) {
+                throw new IllegalArgumentException("maxFractionalDigits must be ≤ " + MAX_SCALE
+                        + " (the kernel's cap): " + maxFractionalDigits);
+            }
+            if (minFractionalDigits != null && minFractionalDigits > MAX_SCALE) {
+                throw new IllegalArgumentException("minFractionalDigits must be ≤ " + MAX_SCALE
+                        + " (the kernel's scale cap): " + minFractionalDigits);
             }
             if (minFractionalDigits != null && maxFractionalDigits != null && minFractionalDigits > maxFractionalDigits) {
                 throw new IllegalArgumentException("minFractionalDigits " + minFractionalDigits

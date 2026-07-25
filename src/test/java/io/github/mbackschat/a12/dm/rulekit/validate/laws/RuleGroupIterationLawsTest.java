@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+
 import org.junit.jupiter.api.Test;
 
 /**
@@ -153,14 +155,19 @@ class RuleGroupIterationLawsTest {
     }
 
     /**
-     * A Number field's {@code maxFractionalDigits} caps at <b>14</b> — the kernel rejects 15 at model check
-     * ("Only values smaller than or equal to 14 are allowed"), with no MVK code. Both sides here compare against
-     * a literal of matching scale, so the pair isolates the FIELD cap from the comparison gate below.
+     * A Number field's {@code maxFractionalDigits} caps at <b>14</b> in the KERNEL — 15 is refused at model check
+     * ("Only values smaller than or equal to 14 are allowed"), with no MVK code. modelkit now refuses 15
+     * fail-fast so the typed builder cannot author it at all ({@code modelkit.FieldConfigTest}); this test reaches
+     * the kernel's own check by patching the emitted scale, which is what keeps that client-side cap honest if the
+     * kernel's ever moves.
      */
     @Test
-    void aNumberFieldScaleCapsAtFourteen() {
-        KernelLaws.acceptsModel(scaledItems(14), SCALED_ITEMS, "../W", "[W] > 0.00000000000000");
-        KernelLaws.rejectsModel(scaledItems(15), SCALED_ITEMS, "../W", "[W] > 0.000000000000000");
+    void aNumberFieldScaleCapsAtFourteenInTheKernel() {
+        String legal = scaledItems(14);
+        KernelLaws.acceptsModel(legal, SCALED_ITEMS, "../W", "[W] > 0.00000000000000");
+        String illegal = legal.replaceFirst("(\"maxFractionalDigits\"\\s*:\\s*)14", "$115");
+        assertNotEquals(legal, illegal, "the emitted JSON must carry the scale for this patch to mean anything");
+        KernelLaws.rejectsModel(illegal, SCALED_ITEMS, "../W", "[W] > 0.000000000000000");
     }
 
     /** Control: the negative-admission classifier still runs at the maximum legal scale, so the wall below is

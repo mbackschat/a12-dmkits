@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.modelkit;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -119,6 +120,30 @@ class FieldConfigTest {
         assertThrows(IllegalArgumentException.class, () -> DocumentModelDraft.named("m").locale("en_US")
                 .typeDef("T", t -> t.string(s -> s.pattern("\\P{L}+", "invalid")))
                 .rootGroup("G", g -> g.typedefField("F", "T"))
+                .build());
+    }
+
+    /**
+     * The kernel caps a number field's {@code maxFractionalDigits} at <b>14</b> — declaring 15 draws a plain,
+     * MVK-less model-check message ("Only values smaller than or equal to 14 are allowed") that names neither the
+     * builder call nor the property. Caught fail-fast at spec construction instead, so every path (builder, CLI,
+     * schema import, editor) reports a corrective error naming the property and the cap.
+     * See KERNEL-FINDINGS §9 supplement "the host conversion's PARSE step".
+     */
+    @Test
+    void aNumberScaleAboveTheKernelCapIsRejectedFailFast() {
+        assertDoesNotThrow(() -> DocumentModelDraft.named("m").locale("en_US")
+                .rootGroup("G", g -> g.numberField("F", n -> n.fractionDigits(14)))
+                .build(), "the cap itself is legal");
+        var tooMany = assertThrows(IllegalArgumentException.class, () -> DocumentModelDraft.named("m")
+                .locale("en_US")
+                .rootGroup("G", g -> g.numberField("F", n -> n.fractionDigits(15)))
+                .build());
+        assertTrue(tooMany.getMessage().contains("maxFractionalDigits") && tooMany.getMessage().contains("14"),
+                () -> "the message must name the property and the cap: " + tooMany.getMessage());
+        // min is capped by the same wall: min ≤ max ≤ 14 must hold, and an absent max defaults to 0 (IF78)
+        assertThrows(IllegalArgumentException.class, () -> DocumentModelDraft.named("m").locale("en_US")
+                .rootGroup("G", g -> g.numberField("F", n -> n.fractionDigits(15, 15)))
                 .build());
     }
 
