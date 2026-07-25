@@ -792,6 +792,28 @@ Three distinct concepts, easy to conflate:
 
 (The model/editor metamodel `MM_Common` carries an "ExtensibleEnumerationType" config — maxLength/displayValues — and form-model/UI notions like `fieldConfigurationEntry`/`externalEnumeration` exist, but those are **tooling/FM layers outside rulekit's DM-JSON scope**, not runtime DM field types.) *(Corrects an earlier draft that wrongly called extensible enums "un-buildable" and cited `IEnumerationType.isExtensible` — it conflated the extensible `IStringType` quality with the dynamic/table-backed enum.)*
 
+## §9 supplement — ordinary-iteration negative admission is level- and OPERAND-sensitive, and the host conversion is the separator (probed 2026-07-25; a12-kernel-lean SPEC-2026-07-24-02)
+
+> Fold: folded → §9.
+
+**`MVK_NEG_CONDITION_IN_ITERATION` is not a fixed list of "negative" operators — admission is decided per ordinary iteration level, and for a direct Number field against an immediate literal it turns on the literal's HOST-CONVERTED integer form.** The kernel's `IterationNotValidVisitor` enumerates the relevant levels and applies connective rules (`And` needs one child that both references and is admitted at that level; `Or` needs every child to), then dispatches a per-operator/per-operand leaf test. `FeldOperationUtil` supplies the literal conversion: `Double.parseDouble` → `Math.round` → `(int)`. Measured against the real kernel (`rule check`, the accept/reject oracle) on a repeatable `Items` group:
+
+| condition (rule group `/Order/Items`) | admission | why |
+|---|---|---|
+| `[Count] == 0`, `>= 0`, `<= 0` — and `0 == [Count]`, `0 >= …`, `0 <= …` | **REJECTED** | converted literal is zero; symmetric in operand order |
+| `[Count] > 0`, `< 0`, `!= 0` | admitted | strict comparison / ordinary `!=` |
+| `[Count] == 5`, `>= 5`, `<= 5`, `5 == [Count]` | admitted | converted-nonzero literal |
+| `[UnitWeight] == 0.40`, `== 0.49`, `0.40 == [UnitWeight]` | **REJECTED** | `Math.round` → 0 |
+| `[UnitWeight] == 0.50`, `0.50 == …`, `== 0.60`, `== 1.00` | admitted | `Math.round(0.5)` → **1** |
+| `[UnitWeight] == -0.50`, `== -0.40` | **REJECTED** | `Math.round(-0.5)` → **0** — half-up toward +∞ |
+| `Abs([Count]) == 0` · `MinValue(Count, UnitWeight) == 0` · `MaxValue(…) == 0` · `Length(Sku) == 0` | **REJECTED** | direct field *operations* keep the zero-sensitive partition |
+| `Length(Sku) > 0`, `== 3` | admitted | strict / nonzero, same partition |
+| **`[Count] + 0 == 0`** | **admitted** | top-level arithmetic is an `ICompositeOperation` — no direct-operand branch |
+
+**The ±0.5 pair is the sharpest control**: `0.50` admitted and `-0.50` rejected pins `Math.round`'s half-up-toward-+∞ semantics, ruling out HALF_EVEN (0 for both) and away-from-zero (1 for both). **The composite separator is the second**: wrapping a field in arithmetic flips static admission while leaving runtime arithmetic identical — so "flatten arithmetic to its field references" is a wrong model of this classifier.
+
+**Scope of what is locked here (deliberately partial).** `RuleGroupIterationLawsTest` covers the direct-Number partition, both operand orders, the conversion boundary including the negative-half asymmetry, direct `Abs`/`MinValue`/`MaxValue`/`Length`, and the composite separator. **Not yet locked** from SPEC-2026-07-24-02's full matrix: `RangeAsNumber`/`FieldValueAsNumber` scope+runtime controls, temporal component extraction, the ordered two-operand `DifferenceIn{Months,Years,Days,Hours,Minutes,Seconds}` family, entity-list/aggregate partitions (`FirstFilledValue`, distinct/value count, `NumberOfValueInFields`, `SumOfProducts`), mixed-level any-literal rejection, and the filter-reference exclusion. Two raw-literal separators are **unrepresentable** through the public DSL on these fixtures: long saturation and the signed-32-bit `2^32` wrap need a literal the scale gate (`MVK_INVALID_COMPARE_DEC_PLACES`) or the grammar rejects first. rulekit **delegates** the visitor to the kernel (no reimplementation), so these are boundary locks, not a ported classifier.
+
 ## §11 supplement — the parallel-iteration computation route replaces the read-time index gate with post-loop marking, whose blast radius depends on WHICH index group is malformed (differential, 2026-07-25; answers a12-kernel-lean EXP-2026-07-25-03)
 
 > Fold: pending — the route split needs a deliberate edit to the §11 computation prose.
