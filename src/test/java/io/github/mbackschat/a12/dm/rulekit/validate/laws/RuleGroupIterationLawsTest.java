@@ -216,12 +216,14 @@ class RuleGroupIterationLawsTest {
     }
 
     /**
-     * <b>The long boundary is ASYMMETRIC, and not because of saturation</b> (a12-kernel-lean SPEC-2026-07-25-03,
-     * their prediction, measured here). Doubles are <b>2048 apart</b> at 2^63, so neither ±(2^63−1) is
-     * representable: the positive one parses UP to 2^63 and then saturates to {@code Long.MAX_VALUE} (low 32 bits
-     * all set → −1, admitted), while the negative lands exactly on {@code Long.MIN_VALUE} (low 32 bits clear →
-     * <b>0</b>, rejected). The third row is the required control — one representable step in leaves residue 2048 —
-     * without which the pair would read as "the negative boundary always rejects", which is false.
+     * <b>The long boundary is ASYMMETRIC because the TWO'S-COMPLEMENT RANGE is</b> (a12-kernel-lean
+     * SPEC-2026-07-25-03, their prediction, measured here). Neither ±(2^63−1) is representable as a double — both
+     * parse onto ∓2^63 — so the parse step is symmetric and decides nothing. The split is the <b>saturation</b>,
+     * on one side only: {@code Long.MAX_VALUE} is 2^63−1, so +2^63 overflows and saturates DOWN to it (low 32
+     * bits all set → −1, admitted); {@code Long.MIN_VALUE} is −2^63 exactly, so −2^63 passes through unsaturated
+     * (low 32 bits clear → <b>0</b>, rejected). Binary64 granularity only explains how both literals reach
+     * ±2^63, and why the third row's nearest representable neighbour is 2048 away. That third row is a required
+     * control — without it the pair reads as "the negative boundary always rejects", which is false.
      *
      * <p>This is the sharpest separator against <b>exact 64-bit integer arithmetic</b>, which is what a
      * reimplementation in Rust/Python/BigInteger writes by default: exact arithmetic gives
@@ -229,7 +231,7 @@ class RuleGroupIterationLawsTest {
      * account agrees at +(2^63−1).
      */
     @Test
-    void theLongBoundaryIsAsymmetricBecauseOfBinary64Spacing() {
+    void theLongBoundaryIsAsymmetricBecauseTheTwosComplementRangeIs() {
         KernelLaws.acceptsOrder(ITEMS, "../Count", "[Count] == 9223372036854775807");
         KernelLaws.rejectsOrder(ITEMS, "../Count", "[Count] == -9223372036854775807",
                 "MVK_NEG_CONDITION_IN_ITERATION");

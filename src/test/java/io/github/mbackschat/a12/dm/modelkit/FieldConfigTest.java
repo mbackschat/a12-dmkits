@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.modelkit;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -145,6 +146,35 @@ class FieldConfigTest {
         assertThrows(IllegalArgumentException.class, () -> DocumentModelDraft.named("m").locale("en_US")
                 .rootGroup("G", g -> g.numberField("F", n -> n.fractionDigits(15, 15)))
                 .build());
+    }
+
+    // ── the inverted-bound refusals MIRROR kernel laws, so they cannot over-reject ───────────────────────
+    //
+    // Part of the 2026-07-25 pre-check audit: the MVK ledger tracks only the 300 MVK codes, so an MVK-less
+    // client-side refusal like these is invisible to it. modelkit refuses both inverted bounds at spec
+    // construction; these two cases prove the kernel refuses the same models, so the refusals are earlier and
+    // better-worded, not stricter. (The one KNOWN deliberate over-strictness in this file's family is the enum
+    // S-value domain check — see API-FINDINGS 96, where being stricter than the kernel is the documented intent.)
+    @Test
+    void theKernelAlsoRejectsAnInvertedStringLength() {
+        String legal = DocumentModelDraft.named("m").locale("en_US")
+                .rootGroup("G", g -> g.stringField("F", s -> s.minLength(2).maxLength(5)))
+                .build().toJson();
+        String inverted = legal.replaceFirst("(\"minLength\"\\s*:\\s*)2", "$19");
+        assertNotEquals(legal, inverted, "the patch must land");
+        assertThrows(RuntimeException.class,
+                () -> io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(inverted));
+    }
+
+    @Test
+    void theKernelAlsoRejectsAnInvertedNumberRange() {
+        String legal = DocumentModelDraft.named("m").locale("en_US")
+                .rootGroup("G", g -> g.numberField("F", n -> n.min("1").max("10")))
+                .build().toJson();
+        String inverted = legal.replaceFirst("(\"minValue\"\\s*:\\s*)1\\b", "$199");
+        assertNotEquals(legal, inverted, "the patch must land");
+        assertThrows(RuntimeException.class,
+                () -> io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(inverted));
     }
 
     @Test
