@@ -51,6 +51,18 @@ class RuleSlotLawsTest {
         assertCode(rejected("vk_vk_probe", List.of(en("x"), de("x"))), "MVK_RULE_NAME_INVALID");
     }
 
+    /**
+     * The reserved namespace is case-INSENSITIVE in the kernel, so {@code Rule.build()}'s
+     * {@code regionMatches(true, …)} pre-check cannot over-reject. Locked because the builder asserted "any
+     * letter case" while only the lowercase form was ever kernel-verified — a client-side refusal broader than
+     * its measured basis (MVK-LEDGER pre-checked audit, 2026-07-25).
+     */
+    @Test
+    void theReservedPrefixIsRejectedInAnyLetterCase() {
+        assertCode(rejected("VK_VK_probe", List.of(en("x"), de("x"))), "MVK_RULE_NAME_INVALID");
+        assertCode(rejected("Vk_Vk_probe", List.of(en("x"), de("x"))), "MVK_RULE_NAME_INVALID");
+    }
+
     @Test
     void aBlankMessageTextCountsAsNoMessageAtAll() {
         // §13: blank text serializes as an absent message — MVK_ERROR_MESSAGE_MISSING, not an empty one

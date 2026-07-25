@@ -37,8 +37,8 @@ Caveats that hold across all four paths:
 | `MVK_CONDITION` | erased + kernel-delegated | the typed renderer emits grammar-valid text structurally; for raw-DSL inputs (`check`, `modify --condition`) the kernel’s parse error is the intended contract |
 | `MVK_CONDITION_WITHOUT_REPEATABLE_ROOTGROUP` | erased | H-model form conditions — legacy-only, no authoring surface |
 | `MVK_CONDITION_WITH_WILDCARD` | erased | H-model form conditions — legacy-only |
-| `MVK_DATEFORMATS_NOT_COMPATIBLE` | kernel-delegated | law: date operands mixed in one aggregate must share compatible formats/precision — model data, F4 arbitrates |
-| `MVK_DATE_AND_NONDATE` | kernel-delegated | law: if an aggregate’s first operand is a date, all operands must be dates — F4 arbitrates |
+| `MVK_DATEFORMATS_NOT_COMPATIBLE` | kernel-delegated | law: date operands mixed in one aggregate must share compatible formats/precision — model data, F4 arbitrates (deliberately NOT pre-checked: a format-compatibility rule is exactly where a pre-check would over-reject). **Only reachable since 2026-07-25** — `NumberOfDifferentValues` refused every temporal operand before then, so this row claimed delegation for a law nobody could hit (locked: `validate.laws.AggregateSlotLawsTest.countDifferentValuesRejectsIncompatibleDateFormats`) |
+| `MVK_DATE_AND_NONDATE` | pre-checked | law: if an aggregate’s first operand is a date, all operands must be dates. **Re-bucketed 2026-07-25** from kernel-delegated: `CountAggregate`'s three-class homogeneity partition now reports this code itself (locked: `dsl.operators.AggregateConditionTest`, `validate.laws.AggregateSlotLawsTest.countDifferentValuesRejectsADateMixedWithANonDate`) |
 | `MVK_DATE_OR_TIME_EXTRACT_OP_NOT_ALLOWED` | kernel-delegated | law: extraction ops are barred from certain date/time-construction parameter positions — F4 arbitrates |
 | `MVK_DATE_WITH_AND_WITHOUT_YEAR` | kernel-delegated | law: date operands must uniformly carry or omit the year component — model data, F4 arbitrates |
 | `MVK_DEPENDENT_COLUMN_SIZE_MISMATCH` | erased | table-backed enum condition (`ValueNotConsistent`) is un-buildable — KERNEL-FINDINGS §8 |
@@ -158,11 +158,11 @@ Caveats that hold across all four paths:
 | `MVK_NO_WILDCARD` | kernel-delegated | repeatable group without `*`; pre-check would need full iteration-model analysis — **confirmed 7f**: under parallel iteration a plain cross-group ref is legal, so a naive check false-positives (locked: `validate.laws.IterationLawsTest`) |
 | `MVK_NO_WILDCARDS_ALLOWED` | erased | scalar slots take `FieldRef` only; starred lists are `FieldListRef`, accepted only by list slots (locked: `validate.laws.IterationLawsTest`) |
 | `MVK_NO_WILDCARDS_G_ALLOWED` | kernel-delegated | law: `AllGroupsFilled`-style group ops forbid starred group operands in some positions — F4 arbitrates |
-| `MVK_NUMBER_AND_NON_NUMBER` | pre-checked | `CountAggregate` NumberOfDifferentValues homogeneity check |
+| `MVK_NUMBER_AND_NON_NUMBER` | pre-checked | `CountAggregate` NumberOfDifferentValues homogeneity check — a **three-class** partition since 2026-07-25 (numeric · textual string/enum · temporal DATE/TIME/DATETIME), each mismatch reported with its own code |
 | `MVK_ONLY_CONSTANTS_USED` | kernel-delegated | law: date-validity conditions must reference at least one field — all-constant shapes are pointless and rejected by F4 |
 | `MVK_ONLY_ENUMS_ALLOWED` | erased | same §8 fact — un-buildable construct |
 | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` | erased / pre-checked | `BoolRef`/`ConfirmRef` offer no `in`/`notIn`; the entity-valued value-list quantifier rejects an operand outside String/Enumeration/Number (locked: `validate.laws.ValueListLawsTest`, `dsl.operators.EnumValueListUnionTest` + N7 `FieldValueIncludedInValueList` invalidExample) |
-| `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED` | pre-checked | `CountAggregate` NumberOfDifferentValues rejects boolean/confirm operands |
+| `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED` | pre-checked | `CountAggregate` NumberOfDifferentValues rejects boolean/confirm operands. **Corrected 2026-07-25 (over-rejection audit):** the pre-check also refused DATE/TIME/DATETIME — which the kernel ADMITS, as its own code name says — and unlike Max/Min there is no date-family alternative, so the form was unauthorable. Widened to the measured domain (locked: `validate.laws.AggregateSlotLawsTest.countDifferentValuesAcceptsDateLikeOperandPairs`) |
 | `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED_NO_FIELD` | kernel-delegated | dormant — no firing site found in kernel 30.8.1; nothing to pre-check |
 | `MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED` | kernel-delegated | law: `NumberOfDifferentValues` operands restricted to string/enum/number/date kinds — F4 arbitrates |
 | `MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED` | kernel-delegated | law: a `Having` filter must not touch parallel-iterated entities — F4 arbitrates (same stance as the `$`/iteration rows, `adapter.laws.CorrelationLawsTest` area) |
@@ -194,7 +194,7 @@ Caveats that hold across all four paths:
 | `MVK_SEMANTIC_INDEX_WITH_CATEGORY` | kernel-delegated | law: no category access inside a semantic-index field reference — F4 arbitrates |
 | `MVK_SEMANTIC_INDEX_WITH_SEMANTIC_INDEX` | kernel-delegated | law: semantic indices must not nest — F4 arbitrates |
 | `MVK_SEMANTIC_INDEX_WITH_WILDCARD` | kernel-delegated | law: a semantic-index field reference must carry no wildcards — F4 arbitrates |
-| `MVK_STRING_ENUM_AND_NON_STRING_ENUM` | pre-checked | `CountAggregate` NumberOfDifferentValues homogeneity check (locked: N7 invalidExample) |
+| `MVK_STRING_ENUM_AND_NON_STRING_ENUM` | pre-checked | `CountAggregate` NumberOfDifferentValues homogeneity check, the textual class of the three-way partition (locked: N7 invalidExample) |
 | `MVK_STRING_VALUE_NOT_IN_COLUMN` | erased | same §8 fact — un-buildable construct |
 | `MVK_TABLE_ENUM_EXPECTED` | erased | same §8 fact — table-enum-requiring ops are unreachable without a table-backed enum in the model |
 | `MVK_TOO_MANY_CONST_FOR_CALC_OP` | kernel-delegated | law: each numeric operand-list `Min`/`Max` call independently admits at most ONE immediate-or-bracketed literal (curly `{1}` counts; a literal nested inside arithmetic or another value-function call does not consume the outer call's budget) — so `Min(Min([A],1),2)` is admitted while the flattened `Min([A],1,2)` is rejected, and nested calls must not be flattened. dmkits carries list-preserving `OpListMath` and delegates the gate; F4 arbitrates (`OpListMathConstantLawsTest`) |

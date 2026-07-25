@@ -73,25 +73,57 @@ public record CountAggregate(CountOp op, List<FieldOperand> fields, List<GroupRe
 
     /**
      * NumberOfDifferentValues compares values, so its operands must be type-homogeneous (verified
-     * 2026-06-04): string/enum together, or all numbers; booleans/confirms never (dates ride the
-     * date family).
+     * 2026-06-04; temporal operands added 2026-07-25): string/enum together, all numbers, or all
+     * <b>date-like</b> (DATE/TIME/DATETIME — the kernel's own code name says so and it accepts each pair,
+     * {@code validate.laws.AggregateSlotLawsTest}). Booleans/confirms never.
+     *
+     * <p>Two temporal laws are deliberately NOT pre-checked and stay F4-arbitrated, as the MVK ledger
+     * classifies them: mixing a date with a non-date is {@code MVK_DATE_AND_NONDATE} (caught by the
+     * homogeneity partition below, which reports that code), and two date-like operands whose FORMATS are
+     * incompatible is {@code MVK_DATEFORMATS_NOT_COMPATIBLE} — format compatibility is model data the kernel
+     * arbitrates, so pre-checking it here would risk refusing a legal pair.
      */
     private static void checkValueComparable(List<FieldOperand> fields) {
         for (FieldOperand f : fields) {
             switch (f.kind()) {
-                case STRING, ENUMERATION, NUMBER -> { }
+                case STRING, ENUMERATION, NUMBER, DATE, TIME, DATE_TIME -> { }
                 default -> throw new IllegalArgumentException("NumberOfDifferentValues cannot compare "
                         + f.renderedPath() + " (" + f.kind()
                         + ") — MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED");
             }
         }
-        boolean firstIsNumber = fields.getFirst().kind() == ValueKind.NUMBER;
+        ValueClass first = ValueClass.of(fields.getFirst().kind());
         for (FieldOperand f : fields) {
-            if ((f.kind() == ValueKind.NUMBER) != firstIsNumber) {
-                String code = firstIsNumber ? "MVK_NUMBER_AND_NON_NUMBER" : "MVK_STRING_ENUM_AND_NON_STRING_ENUM";
+            ValueClass actual = ValueClass.of(f.kind());
+            if (actual != first) {
                 throw new IllegalArgumentException("NumberOfDifferentValues operands must be"
-                        + " type-homogeneous; " + f.renderedPath() + " breaks it (" + code + ")");
+                        + " type-homogeneous; " + f.renderedPath() + " breaks it (" + first.mismatchCode() + ")");
             }
+        }
+    }
+
+    /** The three comparable value classes the kernel partitions {@code NumberOfDifferentValues} operands into. */
+    private enum ValueClass {
+        NUMERIC("MVK_NUMBER_AND_NON_NUMBER"),
+        TEXTUAL("MVK_STRING_ENUM_AND_NON_STRING_ENUM"),
+        TEMPORAL("MVK_DATE_AND_NONDATE");
+
+        private final String mismatchCode;
+
+        ValueClass(String mismatchCode) {
+            this.mismatchCode = mismatchCode;
+        }
+
+        String mismatchCode() {
+            return mismatchCode;
+        }
+
+        static ValueClass of(ValueKind kind) {
+            return switch (kind) {
+                case NUMBER -> NUMERIC;
+                case DATE, TIME, DATE_TIME -> TEMPORAL;
+                default -> TEXTUAL;
+            };
         }
     }
 

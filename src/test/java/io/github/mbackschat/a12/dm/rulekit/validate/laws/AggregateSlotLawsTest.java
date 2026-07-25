@@ -44,6 +44,58 @@ class AggregateSlotLawsTest {
         return cond(Dsl.fieldFilled(ORDER.field("/Order/Quantity")).and(aggregate.gt(0)));
     }
 
+    // ── NumberOfDifferentValues' operand DOMAIN — the over-rejection audit, 2026-07-25 ───────────────────
+    //
+    // rulekit refused every temporal operand here ("dates ride the date family"), which was wrong twice over:
+    // the kernel's own code name lists DATE as allowed, and unlike Max/Min there is no date-family alternative
+    // for a count of distinct values — so the form was unauthorable, not merely routed elsewhere. These locks
+    // pin the real domain so the pre-check can never again be broader than its measured basis.
+
+    /** DATE, TIME and DATETIME pairs are all admitted. */
+    @Test
+    void countDifferentValuesAcceptsDateLikeOperandPairs() {
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And NumberOfDifferentValues(OrderDate, DeliveryDate) > 0");
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And NumberOfDifferentValues(ScheduledAt, CompletedAt) > 0");
+        String times = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("t").locale("en_US")
+                .rootGroup("M", m -> m
+                        .field("Q", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER)
+                        .timeField("T1", t -> t.format("HH:mm:ss"))
+                        .timeField("T2", t -> t.format("HH:mm:ss")))
+                .build().toJson();
+        KernelLaws.acceptsModel(times, "/M", "../Q",
+                "FieldFilled(Q) And NumberOfDifferentValues(T1, T2) > 0");
+    }
+
+    /** Booleans/confirms stay out — the one part of the original pre-check that matched the kernel. */
+    @Test
+    void countDifferentValuesRejectsBooleanOperands() {
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And NumberOfDifferentValues(ExpressShipping, TermsConfirmed) > 0",
+                "MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED");
+    }
+
+    /** A date beside a non-date — the homogeneity law rulekit now reports by its real code. */
+    @Test
+    void countDifferentValuesRejectsADateMixedWithANonDate() {
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And NumberOfDifferentValues(OrderDate, Quantity) > 0",
+                "MVK_DATE_AND_NONDATE");
+    }
+
+    /**
+     * Two date-like operands are NOT enough — their FORMATS must be compatible, so a DATE beside a DATETIME is
+     * refused. Deliberately left F4-arbitrated (the MVK ledger classifies it kernel-delegated): format
+     * compatibility is model data, and pre-checking it would risk refusing a legal pair.
+     */
+    @Test
+    void countDifferentValuesRejectsIncompatibleDateFormats() {
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And NumberOfDifferentValues(OrderDate, ScheduledAt) > 0",
+                "MVK_DATEFORMATS_NOT_COMPATIBLE");
+    }
+
     @Test
     void numberOfValueInFieldsRejectsDuplicateFields() {
         KernelLaws.rejectsOrder("/Order", "../Quantity",

@@ -1952,11 +1952,12 @@
     "returns": "number",
     "meaning": "Counts the distinct values among the listed fields (the count/number of different values), typically over a repetition list.",
     "constraints": [
-      "operands must be type-homogeneous: string/enum together, or all numbers (MVK_STRING_ENUM_AND_NON_STRING_ENUM / MVK_NUMBER_AND_NON_NUMBER)",
+      "operands must be type-homogeneous, in one of three classes: string/enum together, all numbers, or all date-like — DATE/TIME/DATETIME (MVK_STRING_ENUM_AND_NON_STRING_ENUM / MVK_NUMBER_AND_NON_NUMBER / MVK_DATE_AND_NONDATE)",
+      "date-like operands must additionally share COMPATIBLE FORMATS — two date-like fields are not enough (MVK_DATEFORMATS_NOT_COMPATIBLE)",
       "no booleans/confirms (MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED)",
       "more than one field or a repetition list; no repeated direct field, but a wildcarded (starred) operand may repeat (MVK_DUPLICATE_PARAM1)"
     ],
-    "gotchas": [  ],
+    "gotchas": [ { "text": "date-like operands ARE allowed here — unlike MaxValue/MinValue, whose date form is a separate operator family, a count of distinct values takes DATE/TIME/DATETIME directly. But sharing a kind is not sufficient: the FORMATS must be compatible, so a 'yyyy-MM-dd' DATE beside a 'yyyy-MM-dd''T''HH:mm:ss' DATETIME is rejected MVK_DATEFORMATS_NOT_COMPATIBLE even though both are date-like", "kind": "AUTHORING", "seeAlso": [ "MaxValue", "MinValue" ], "validExample": { "dsl": "FieldFilled(Quantity) And NumberOfDifferentValues(OrderDate, DeliveryDate) > 0" }, "invalidExample": { "dsl": "FieldFilled(Quantity) And NumberOfDifferentValues(OrderDate, ScheduledAt) > 0", "error": "MVK_DATEFORMATS_NOT_COMPATIBLE", "fix": "compare date-like fields declaring the same format" } } ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(Items*/Sku) < 2", "note": "fires when all line items are variants of one Sku" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(CustomerName, Quantity) < 2", "error": "MVK_STRING_ENUM_AND_NON_STRING_ENUM", "fix": "list only same-type fields" },
     "semantics": {
