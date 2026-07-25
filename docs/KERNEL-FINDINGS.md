@@ -821,6 +821,11 @@ Three distinct concepts, easy to conflate:
 | `[Count] == 4294967296` (2^32) | **REJECTED** | `(int)` narrows to **0** — a literal of 4,294,967,296 classified as zero |
 | `[Count] == 4294967297` (2^32+1) | admitted | narrows to 1 |
 | `[Count] == 9223372036854775808` (2^63) | admitted | `Math.round` saturates at `Long.MAX_VALUE`, narrowing to −1 |
+| `[Count] == 9223372036854775807` (2^63−1) | admitted | **not representable** — parses UP to 2^63, then saturates as above → −1 |
+| `[Count] == -9223372036854775807` (−(2^63−1)) | **REJECTED** | **not representable** — parses onto `Long.MIN_VALUE` exactly, whose low 32 bits are CLEAR → **0** |
+| `[Count] == -9223372036854773760` (−(2^63−2048)) | admitted | one representable step in — residue **2048** |
+
+**The long boundary is asymmetric, and saturation is not the reason.** Doubles are **2048 apart** at 2^63, so *neither* ±(2^63−1) is representable: the positive one parses up to 2^63 and saturates to `Long.MAX_VALUE` (low 32 bits all set → −1, admitted), while the negative lands exactly on `Long.MIN_VALUE` (low 32 bits clear → 0, rejected). **This is the sharpest separator against exact 64-bit integer arithmetic** — the default in a Rust/Python/BigInteger reimplementation, where −(2^63−1) mod 2^32 = 1 would ADMIT what the kernel rejects. The positive row cannot catch it (every account agrees at +(2^63−1)), and the third row is a required control: without it the pair reads as "the negative boundary always rejects", which is false. *(a12-kernel-lean SPEC-2026-07-25-03 predicted all three from the representability argument; measured against the real kernel here — locked `RuleGroupIterationLawsTest.theLongBoundaryIsAsymmetricBecauseOfBinary64Spacing`.)*
 
 **The ±1 pair straddling 2^32 is the sharpest control of the three separators**, and better than the ±0.5 pair: two literals differing by one, both astronomically far from zero, land on opposite sides of the whole partition. A widening or saturating conversion admits both, so the pair pins 32-bit truncation specifically *(locked: `RuleGroupIterationLawsTest.theThirtyTwoBitNarrowingIsObservable`)*.
 
