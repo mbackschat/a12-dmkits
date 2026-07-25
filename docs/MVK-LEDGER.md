@@ -268,7 +268,7 @@ Caveats that hold across all four paths:
 | `MVK_ERROR_MESSAGE_MISSING` | pre-checked | builders require ≥1 message (locked: `RuleAuthoringTest`); a blank-text message serializes as missing and draws this code at F4 instead (KERNEL-FINDINGS §13; locked: `validate.laws.RuleSlotLawsTest`) |
 | `MVK_FORMAT_DATE_RANGE_MISSING` | n/a-structural | date-type law: a date-range type needs a range format |
 | `MVK_FORMAT_MISSING` | n/a-structural | date-type law: a date type needs a format |
-| `MVK_FRACT_DIGITS_INVALID` | n/a-structural | number-type law: the fixed/max fractional-digits pair must be consistent |
+| `MVK_FRACT_DIGITS_INVALID` | n/a-structural | number-type law: the fixed/max fractional-digits pair must be consistent — `min ≤ max` (measured 2026-07-25: min 9 against max 5 is refused). Outside *rulekit*'s surface, but **modelkit pre-checks it** at `build()`, and it is the link that licenses modelkit's refusal of a scale above the kernel's cap of 14 *(kernel-locked: `validate.laws.RuleGroupIterationLawsTest.theKernelRequiresMinScaleAtMostMaxScale`)* |
 | `MVK_FRACT_DIGITS_MISSING` | n/a-structural | number-type law: numeric/amount types must declare fractional digits |
 | `MVK_INDEX_FIELD_DUPLICATE` | n/a-structural | index law: a group’s index fields must be distinct |
 | `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` | n/a-structural | enum-type law: per-language rows fill internal and display value together |

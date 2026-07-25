@@ -129,8 +129,10 @@ public sealed interface FieldTypeSpec {
                 throw new IllegalArgumentException("maxFractionalDigits must be ≥ 0: " + maxFractionalDigits);
             }
             // The kernel caps the scale at 14 and reports an overrun as a plain, MVK-less model-check message
-            // that names neither the property nor the cap — so refuse it here, correctively. min is bounded by
-            // the same wall (min ≤ max ≤ 14, and an absent max defaults to 0 — IF78).
+            // that names neither the property nor the cap — so refuse it here, correctively. Refusing min > 14 too
+            // cannot over-reject: the kernel independently requires min ≤ max (MVK_FRACT_DIGITS_INVALID), so a
+            // min above 14 would force an illegal max. Both links are kernel-locked in
+            // rulekit.validate.laws.RuleGroupIterationLawsTest.
             if (maxFractionalDigits != null && maxFractionalDigits > MAX_SCALE) {
                 throw new IllegalArgumentException("maxFractionalDigits must be ≤ " + MAX_SCALE
                         + " (the kernel's cap): " + maxFractionalDigits);

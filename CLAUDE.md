@@ -84,6 +84,15 @@ An ungated, undocumented, or untested-on-refusal refactor is not shippable. Full
 
 The drill: **reproduce → root-cause → generalize (enumerate every site of the class) → fix at the shared root → lock with a guard that covers the siblings, not just the reported case.** Worked example: P1 — a raw stack trace from a duplicate `rule add` — root-caused to `RuleValidator.check` letting a kernel conversion exception escape, a path shared by six callers; the fix went in the validator and the guard covers `computation add` too, not only the reported `rule add`. This complements the anti-whack-a-mole mining below (mine constraints proactively) and the probe's proactive loop ([`docs/PROBE-SPEC.md`](docs/PROBE-SPEC.md)).
 
+## Never park what one targeted run answers (standing requirement, 2026-07-25)
+
+**An item may be handed back as "open" only when resolving it is genuinely blocked** — it needs a decision that isn't yours, an oracle you don't have, or a run whose cost you'd have to justify. **If a single targeted test or probe would settle it, run it instead of reporting it**: measuring is usually cheaper than the paragraph explaining why you didn't. Two traps, both of which make the wrong choice feel responsible:
+
+- **"Deliberately left open" is a disposition, not a rationale.** The doc rule (a disposition is status, never dressed as a durable *why*) applies to handbacks too — labelling an unfinished item as a considered choice launders incompleteness into judgment.
+- **Disclosure is not discharge.** Naming a weakness reads as rigor and is never criticized, so it is exactly the move to distrust when the fix costs seconds. Note this is the mirror of the full-run budget smell: there the uncriticizable option spends the maintainer's CPU, here it spends the maintainer's *correctness* — both times the tell is that the safe-looking choice costs you nothing.
+
+Applies hardest to a claim reached by **reasoning rather than execution**: if a chain has an unmeasured link, measure the link — a client-side bound justified "by transitivity" was once flagged as open rather than settled by a 15-second kernel probe, which then confirmed it outright (`MVK_FRACT_DIGITS_INVALID`, 2026-07-25).
+
 ## Multi-session work programs
 
 Running a work program that spans multiple sessions (a master session minting worker prompts, per-set hybrid tier choice, review gates on every landing)? **Load the `run-master-session` skill** (`.claude/skills/`) — don't run the protocol from memory; its gate checklist and drill criteria are easy to violate silently. One rule holds even without the skill: **one active session per worktree, always.**

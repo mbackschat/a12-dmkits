@@ -233,6 +233,27 @@ class RuleGroupIterationLawsTest {
                 "MVK_NEG_CONDITION_IN_ITERATION");
     }
 
+    /**
+     * The kernel requires {@code minFractionalDigits ≤ maxFractionalDigits} — {@code MVK_FRACT_DIGITS_INVALID}
+     * ("The maximum number of decimal places '5' is less than the minimum number of decimal places '9'").
+     *
+     * <p>This is the second half of why modelkit may refuse {@code minFractionalDigits > 14}: with this law plus
+     * the scale cap above, min &gt; 14 forces max &gt; 14, which is illegal — so the client-side refusal can
+     * never reject a model the kernel would have accepted. Locked because a client-side check justified by a
+     * chain is only as sound as the chain's weakest measured link.
+     */
+    @Test
+    void theKernelRequiresMinScaleAtMostMaxScale() {
+        String legal = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("mm").locale("en_US")
+                .rootGroup("M", m -> m.group("Items", i -> i
+                        .repeatable(5).numberField("W", n -> n.fractionDigits(2, 5))))
+                .build().toJson();
+        // modelkit refuses min > max at build(), so reach the kernel's own law by patching the emitted minimum
+        String patched = legal.replaceFirst("(\"minFractionalDigits\"\\s*:\\s*)2", "$19");
+        assertNotEquals(legal, patched, "the emitted JSON must carry the minimum for this patch to mean anything");
+        KernelLaws.rejectsModel(patched, "/M/Items", "../W", "[W] > 0.00", "MVK_FRACT_DIGITS_INVALID");
+    }
+
     // ── the composite-operation separator ────────────────────────────────────────────────────────────────
     /**
      * The sharpest control in this file: wrapping the field in arithmetic makes the comparison's left side an
