@@ -831,6 +831,24 @@ Three distinct concepts, easy to conflate:
 
 **The ±1 pair straddling 2^32 is the sharpest control of the three separators**, and better than the ±0.5 pair: two literals differing by one, both astronomically far from zero, land on opposite sides of the whole partition. A widening or saturating conversion admits both, so the pair pins 32-bit truncation specifically *(locked: `RuleGroupIterationLawsTest.theThirtyTwoBitNarrowingIsObservable`)*.
 
+## §9 supplement — the seven digit gates, named once (glossary, 2026-07-25)
+
+> Fold: not-foldable — a naming aid for the surrounding entries, not a kernel law of its own.
+
+**The word "digits" covers seven distinct quantities on four axes.** They were conflated across a whole cross-project exchange, costing rounds in which each side "corrected" the other about a *different* number. Cite the name, never the bare word:
+
+| name | value | axis | oracle |
+|---|---|---|---|
+| `fieldScaleCap` | **14** | field config — max declarable `maxFractionalDigits` | model check (MVK-less message) |
+| `fieldScaleOrdering` | `min ≤ max` | field config | `MVK_FRACT_DIGITS_INVALID` |
+| `enteredValueTotalDigits` | **15** | runtime formal check on an entered VALUE, integer+fractional, **generic on every number field** | `stelligkeitZuLang` |
+| `amountIntegerCap` | **15 − scale** | runtime, **amount-trait only** | `zahlZuvieleVorkommastellen` |
+| `literalFracDigits` | **≤ the field's scale** | static gate on an authored comparison literal — **suppressible** | `MVK_INVALID_COMPARE_DEC_PLACES` |
+| `literalTotalDigits` | **ungated** (19 observed) | static — a 19-digit literal passes model check | measured, `== 9223372036854775808` |
+| `shortestLiftingDecimal` | **17** frac digits | IEEE-754 property, not a kernel gate — the shortest decimal in `[½−2⁻⁵⁵, ½)` | conversion chain |
+
+Two traps the naming prevents: `enteredValueTotalDigits` (15) is **not** a literal-length gate — it bounds *entered values*, so it never explains a literal being accepted or refused; and the 55/57-character exact decimal of `½−2⁻⁵⁵` is a **notation artifact**, not a required digit count — any decimal in the interval works, and the shortest needs 17.
+
 ## §9 supplement — the host conversion's PARSE step lifts a below-half decimal onto one half, and the witness IS authorable via the suppressible dec-places gate (measured 2026-07-25; answers a12-kernel-lean SPEC-2026-07-25-02)
 
 > Fold: folded → §9.

@@ -94,6 +94,35 @@ A type-level erasure is the same defect one layer earlier and harder to see: no 
 
 The drill: **reproduce → root-cause → generalize (enumerate every site of the class) → fix at the shared root → lock with a guard that covers the siblings, not just the reported case.** Worked example: P1 — a raw stack trace from a duplicate `rule add` — root-caused to `RuleValidator.check` letting a kernel conversion exception escape, a path shared by six callers; the fix went in the validator and the guard covers `computation add` too, not only the reported `rule add`. This complements the anti-whack-a-mole mining below (mine constraints proactively) and the probe's proactive loop ([`docs/PROBE-SPEC.md`](docs/PROBE-SPEC.md)).
 
+## Before you STATE a finding: match the oracle to the CLAIM KIND, or surface the doubt (standing requirement, 2026-07-25)
+
+**A finding is done when the right oracle has been run — not when it is plausible.** The retro that produced this rule is unambiguous: across a long kernel exchange the *measurements* were right nearly every time and the *mechanisms* were wrong four times, because a mechanism was shipped carrying the confidence of the observation it explained. So pick the oracle by the **kind** of claim, and never let one kind borrow another's authority.
+
+| claim kind | the oracle that settles it | stays a HYPOTHESIS until |
+|---|---|---|
+| accept / reject | `rule check` / `checkConsistency` — the kernel itself | — (terminal) |
+| runtime behavior (what fires, how often, where it attaches) | an adapter differential / `RuntimeLaws` — never `model eval` alone, it can carry a known-or-unknown `IG` divergence | a differential has run |
+| value conversion / arithmetic | execute the real chain on the pinned JDK | executed, output read |
+| **mechanism / causation ("because X")** | a **discriminating case that the rival mechanism gets wrong** | you can name that case and it behaves as predicted. **The observation it explains is not evidence for it** |
+| **completeness / absence ("no other caller", "sole implementor", "dead code")** | an enumeration you can show, with **anchored** exclusions (`grep -v '/build/'`) | the search is stated *and* its recall limits are |
+| **reachability ("unauthorable", "cannot happen", "unrepresentable")** | an attempt to author it, **plus an attempt to DEFEAT every link** of the argument | each link has been *attacked*, not merely measured — measuring each link does not establish the chain |
+
+**Then dispose of what is left, explicitly. Three outcomes, no fourth:**
+
+1. **Verified** → state it plainly, with the basis named inline (which oracle, which layer).
+2. **Doubt that one targeted run would settle** → run it; see "Never park what one targeted run answers" below.
+3. **Doubt a run cannot settle** → **SURFACE IT**, and classify it:
+   - **gap** → a row in the owning `-GAPS`/ledger doc naming what would settle it and what it blocks. Never a silent hedge buried in prose, and never a confident sentence with the doubt omitted.
+   - **blocker** → **ASK, and wait.** A blocker is anything you cannot resolve or decide alone: a cross-cutting design call, an external/licensing constraint, a contract you can't change unilaterally, or a choice whose wrong answer is expensive or hard to reverse. Do not pick a branch and proceed.
+
+**Never dress a mechanism as an observation — in docs or in a handback.** Measurements travel; mechanisms carry their basis with them. When handing findings to another party the payload is the table of *(input → observed output → oracle used)*; the explanation belongs in a separate section marked as hypothesis and explicitly not actionable. Two full round-trips of the 2026-07-25 kernel exchange existed *only* because that separation was missing — and one of them was a correction of my own previous handback.
+
+**Name the quantity before you compare numbers.** That same exchange burned rounds because one word ("digits") stood for seven different measurements on four axes; each side then "corrected" the other about a different number. When a topic has several same-typed quantities, fix a glossary first and cite it — see KERNEL-FINDINGS "the seven digit gates".
+
+**AMEND IN PLACE; never mint a new round to correct yourself.** A correction to something you already handed over belongs in that document, marked, not in a fresh one that supersedes it — a supersession chain is pure cost to the reader and multiplies the churn it was meant to fix. The 2026-07-25 exchange produced five handover docs where two would have done, one of which existed *solely* to retract the previous one. Same for a ledger row or a finding: edit the row, mark the correction inline (the "Corrected <date>:" form already used throughout `MVK-LEDGER`), and keep exactly one live statement of the fact.
+
+**Batch by topic, not by finding.** Closing one fact at a time reopens the next adjacent one and guarantees another round; sweep the *class* ("enumerate every gate that counts digits, measure each") so a topic closes once. This is the root-cause-generalization rule applied to the reporting channel rather than to code, and not applying it there is what turned a two-round exchange into six.
+
 ## Never park what one targeted run answers (standing requirement, 2026-07-25)
 
 **An item may be handed back as "open" only when resolving it is genuinely blocked** — it needs a decision that isn't yours, an oracle you don't have, or a run whose cost you'd have to justify. **If a single targeted test or probe would settle it, run it instead of reporting it**: measuring is usually cheaper than the paragraph explaining why you didn't. Two traps, both of which make the wrong choice feel responsible:
