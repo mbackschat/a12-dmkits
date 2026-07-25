@@ -208,6 +208,24 @@ class RuleGroupIterationLawsTest {
         KernelLaws.acceptsOrder(ITEMS, "../Count", "[Count] == 9223372036854775808");
     }
 
+    /**
+     * <b>The parse-step lift IS authorable — the dec-places gate is the kernel's one suppressible warning.</b>
+     * With {@code @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)} (the CLI's {@code allowDifferingDecimals})
+     * a 17-digit literal reaches the classifier against a scale-14 field, and the two literals below differ only
+     * in their final digit: {@code …98} falls inside {@code [1/2 - 2^-55, 1/2)} so {@code parseDouble} lifts it
+     * onto {@code 0.5} and it converts to 1 (admitted), while {@code …90} sits just below the interval and
+     * converts to 0 (rejected). Both are strictly below one half, so this pair is the end-to-end witness that the
+     * classifier is <b>not</b> exact-decimal — the separator is a real language property, not a host-only detail.
+     */
+    @Test
+    void theParseStepLiftIsAuthorableWithTheGateSuppressed() {
+        KernelLaws.acceptsModel(scaledItems(14), SCALED_ITEMS, "../W",
+                "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) [W] == 0.49999999999999998");
+        KernelLaws.rejectsModel(scaledItems(14), SCALED_ITEMS, "../W",
+                "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) [W] == 0.49999999999999990",
+                "MVK_NEG_CONDITION_IN_ITERATION");
+    }
+
     // ── the composite-operation separator ────────────────────────────────────────────────────────────────
     /**
      * The sharpest control in this file: wrapping the field in arithmetic makes the comparison's left side an

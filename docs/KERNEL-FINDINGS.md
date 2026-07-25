@@ -824,9 +824,9 @@ Three distinct concepts, easy to conflate:
 
 **The ±1 pair straddling 2^32 is the sharpest control of the three separators**, and better than the ±0.5 pair: two literals differing by one, both astronomically far from zero, land on opposite sides of the whole partition. A widening or saturating conversion admits both, so the pair pins 32-bit truncation specifically *(locked: `RuleGroupIterationLawsTest.theThirtyTwoBitNarrowingIsObservable`)*.
 
-## §9 supplement — the host conversion's PARSE step can lift a below-half decimal onto one half, but no kernel-legal model can express the witness (measured 2026-07-25; answers a12-kernel-lean SPEC-2026-07-25-02)
+## §9 supplement — the host conversion's PARSE step lifts a below-half decimal onto one half, and the witness IS authorable via the suppressible dec-places gate (measured 2026-07-25; answers a12-kernel-lean SPEC-2026-07-25-02)
 
-> Fold: not-foldable — the witness is unauthorable on every kernel-legal model, so canonical §9 stays exact for all authorable input; this is a reimplementer's note about the conversion chain, not a language rule.
+> Fold: folded → §9.
 
 **The conversion `Double.parseDouble` → `Math.round` → `(int)` has TWO rounding steps, and the first one is the surprising one.** `Math.round` does not lift a double strictly below one half (that was Java ≤ 6's `floor(x + 0.5)`, fixed by JDK-6430675 in Java 7 — on our JDK 21 pin `0.49999999999999994` converts to **0**). But **`Double.parseDouble` can lift a below-half *decimal* onto `0.5` before `Math.round` ever sees it**: binary64 round-to-nearest-**even** maps every decimal in `[½ − 2⁻⁵⁵, ½)` onto exactly `0.5`, because that interval's values are ties between `0.5` (even significand) and `0.5 − 2⁻⁵⁴` (odd). Measured through the exact chain:
 
@@ -840,7 +840,18 @@ Three distinct concepts, easy to conflate:
 
 **The lift creates a separator only on the positive side**, because `+0.5` is where `Math.round`'s boundary is inclusive; on the negative side a lifted `-0.5` still converts to 0, same as any smaller magnitude — so the ±0.5 asymmetry survives the parse step rather than being softened by it.
 
-**It is nonetheless unauthorable, by exactly three decimal places — a three-link proof, all three links locked:** (1) the shortest lifting decimal needs **17** fractional digits (at ≤16 the interval holds no decimal strictly below ½ — the ceiling lands on `0.5` itself); (2) a Number field's `maxFractionalDigits` **caps at 14** — the kernel rejects 15 at model check with a plain, MVK-less message ("Only values smaller than or equal to 14 are allowed"); (3) the comparison gate allows the literal **at most** the field's scale, rejecting 17-against-14 as `MVK_INVALID_COMPARE_DEC_PLACES`. Since 14 < 17, **no kernel-legal model can carry the witness**, so the classifier is exact-decimal for every authorable input *(locked: `RuleGroupIterationLawsTest.aNumberFieldScaleCapsAtFourteen`, `.aComparisonLiteralMayCarryAtMostTheFieldsScale`, `.theZeroSensitivePartitionStillHoldsAtTheMaximumScale` as the control that the partition still runs at scale 14)*.
+**Reaching it needs 17 fractional digits, which ordinarily exceeds what a field can be compared against — but that gate is SUPPRESSIBLE, so the witness is authorable.** Three links, all locked: (1) the shortest lifting decimal needs **17** fractional digits (at ≤16 the interval holds no decimal strictly below ½ — the ceiling lands on `0.5` itself); (2) a Number field's `maxFractionalDigits` **caps at 14** — the kernel rejects 15 at model check with a plain, MVK-less message ("Only values smaller than or equal to 14 are allowed") *(`aNumberFieldScaleCapsAtFourteen`)*; (3) the comparison gate allows the literal **at most** the field's scale, rejecting 17-against-14 as `MVK_INVALID_COMPARE_DEC_PLACES` *(`aComparisonLiteralMayCarryAtMostTheFieldsScale`)* — **but `MVK_INVALID_COMPARE_DEC_PLACES` is the kernel's ONE suppressible warning** (`@SuppressWarning(...)`, the CLI's `allowDifferingDecimals`; GRAMMAR-LEDGER `preamble` row, `DirectiveLawsTest`), so link (3) is defeatable by a first-class directive.
+
+With the gate suppressed against a scale-14 field, two 17-digit literals differing only in their final digit straddle the entire partition — both strictly below one half:
+
+| condition (scale-14 field, gate suppressed) | admission | why |
+|---|---|---|
+| `[W] == 0.49999999999999998` | admitted | inside `[½ − 2⁻⁵⁵, ½)` → parses onto `0.5` → converts to **1** |
+| `[W] == 0.49999999999999990` | **REJECTED** | just below the interval → converts to **0** |
+
+**So the separator is a real language property, not a host-only detail** *(locked: `RuleGroupIterationLawsTest.theParseStepLiftIsAuthorableWithTheGateSuppressed`; `.theZeroSensitivePartitionStillHoldsAtTheMaximumScale` is the control that the partition runs at scale 14 at all)*. A reimplementer that models the classifier with exact decimals diverges on a legal model.
+
+**Correction of this entry's own first version (same day).** It originally claimed the witness was "unauthorable on every kernel-legal model, by exactly three decimal places", and was filed `> Fold: not-foldable` on that basis. The three links were each measured, but the proof was never tested for a *defeater* — and the defeater was a documented directive already exposed in our own CLI and schema. Measuring every link of a chain does not establish the chain; it has to be attacked.
 
 **Two traps this closed, both from reading a message instead of measuring.** The `MVK_INVALID_COMPARE_DEC_PLACES` text says the two digit counts "are different", which reads as an equality requirement — it is **at most**: a *shorter* literal is admitted and reaches the partition normally (`[W] == 0.5` on a scale-14 field is accepted; `== 0.4` is rejected as converted-zero). And `FeldOperationUtil.getZahlKonstanteWert` returns **−1 as its "not a number constant" sentinel**, which collides with the value a saturating 2^63 literal converts to; for *this* classifier the collision is unobservable (both are nonzero ⇒ admitted), and whether any other caller distinguishes them is untested — **hypothesis, not a finding**.
 
