@@ -32,6 +32,13 @@ import org.junit.jupiter.api.Test
  * another name"). The route also needs a bracketed, NON-starred operand — `[../../Refs/Amount]`; a starred
  * `Refs*` is a wildcard, not an iteration, and takes the ordinary route.
  *
+ * **Why this is ONE model carrying BOTH index groups, exercised three times — not three models.** The two loci
+ * are not separately reachable: the marker's second stamping pass, the only producer of ON-PATH markers, runs
+ * only if the first pass stamped an OFF-PATH one, so an on-path index group can never be parallel-iterated
+ * alone. Both loci are present together or neither is. Comparing two structurally different documents would
+ * therefore compare shapes, not loci — the malformed key must MOVE within one shape, which is what the three
+ * cases below do. Derivation: KERNEL-FINDINGS §11 supplement "the parallel-iteration computation route".
+ *
  * **Interpreter parity is asserted for the first two cases only — it diverges on the third (open, IG88).** The
  * interpreter clears the clean sibling that both kernel strategies preserve. This class is that gap's
  * reproducer; when IG88 lands, drop `interpAgrees` and assert unconditionally.
