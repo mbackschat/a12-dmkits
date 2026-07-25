@@ -39,9 +39,8 @@ import org.junit.jupiter.api.Test
  * therefore compare shapes, not loci — the malformed key must MOVE within one shape, which is what the three
  * cases below do. Derivation: KERNEL-FINDINGS §11 supplement "the parallel-iteration computation route".
  *
- * **Interpreter parity is asserted for the first two cases only — it diverges on the third (open, IG88).** The
- * interpreter clears the clean sibling that both kernel strategies preserve. This class is that gap's
- * reproducer; when IG88 lands, drop `interpAgrees` and assert unconditionally.
+ * **All four cases assert all three engines.** The interpreter formerly over-cleared here — it pooled index rows
+ * across parents and then marked every instance uniformly — which this class caught and IF222 fixed.
  */
 class ParallelIterationIndexMarkingDiffTest {
 
@@ -84,7 +83,7 @@ class ParallelIterationIndexMarkingDiffTest {
     fun `distinct keys everywhere compute both sibling rows`() =
         agree(
             refs = listOf("1" to "100", "2" to "200"),
-            line1 = "VALUE|100", line2 = "VALUE|200", interpAgrees = true,
+            line1 = "VALUE|100", line2 = "VALUE|200",
             label = "control: no malformed index key",
         )
 
@@ -92,7 +91,7 @@ class ParallelIterationIndexMarkingDiffTest {
     fun `a malformed key in the OFF-PATH index group clears the CLEAN sibling too`() =
         agree(
             refs = listOf("1" to "100", "1" to "150", "2" to "200"),
-            line1 = "CLEARED", line2 = "CLEARED", interpAgrees = true,
+            line1 = "CLEARED", line2 = "CLEARED",
             label = "duplicate Refs key: Lines[2]'s slot key 2 still matches a clean Refs row, yet it clears",
         )
 
@@ -100,20 +99,33 @@ class ParallelIterationIndexMarkingDiffTest {
     fun `a malformed key in the ON-PATH index group spares the sibling row`() =
         agree(
             refs = listOf("1" to "100", "2" to "200"), line1Slot2Key = "1",
-            line1 = "CLEARED", line2 = "VALUE|200", interpAgrees = false,
+            line1 = "CLEARED", line2 = "VALUE|200",
             label = "duplicate within Lines[1]'s own Slots: Lines[2] is a different parent coordinate",
+        )
+
+    /**
+     * Predicted from the same root as the case above and reproduced: index uniqueness is scoped to the index
+     * group's own PARENT coordinate, so the same key value under two different parent rows is not a duplicate.
+     * A pooled, coordinate-blind uniqueness check would see one.
+     */
+    @Test
+    fun `the same key value under two different parent rows is not a duplicate`() =
+        agree(
+            refs = listOf("1" to "100", "2" to "200"), line2SlotKey = "1",
+            line1 = "VALUE|100", line2 = "VALUE|100",
+            label = "Lines[1]/Slots and Lines[2]/Slots both key on 1 — distinct parents, so both are valid",
         )
 
     private fun agree(
         refs: List<Pair<String, String>>,
         line1: String,
         line2: String,
-        interpAgrees: Boolean,
         label: String,
         line1Slot2Key: String? = null,
+        line2SlotKey: String = "2",
     ) {
         val kDoc = RuntimeLaws.doc().group(ORDER, 1)
-        seedKernel(kDoc, refs, line1Slot2Key)
+        seedKernel(kDoc, refs, line1Slot2Key, line2SlotKey)
         val groovy = RuntimeLaws.compute(model, kDoc).filter { it.path() == TOTAL }
             .associate { it.pointer() to state(it.cleared(), it.errored(), it.value().orElse("")) }
         assertEquals(line1, groovy["/Order[1]/Lines[1]/Slots[1]/Total"], "$label — groovy, Lines[1]")
@@ -121,7 +133,7 @@ class ParallelIterationIndexMarkingDiffTest {
 
         // The static-Java projection carries no instance pointer, so compare the outcome MULTISET.
         val kDoc2 = RuntimeLaws.doc().group(ORDER, 1)
-        seedKernel(kDoc2, refs, line1Slot2Key)
+        seedKernel(kDoc2, refs, line1Slot2Key, line2SlotKey)
         val engine = RuntimeLaws.kernelJavaEngine(model)
         val javaStatic = engine.computeOutcomesSorted(engine.instance(kDoc2))
             .filter { it.startsWith("$TOTAL|") }
@@ -135,19 +147,17 @@ class ParallelIterationIndexMarkingDiffTest {
         val def = ModelLoader.load(model)
         val iDoc = def.newDocument()
         iDoc.group(ORDER, 1)
-        seedInterp(iDoc, refs, line1Slot2Key)
+        seedInterp(iDoc, refs, line1Slot2Key, line2SlotKey)
         val interp = DmInterpreter(def).compute(iDoc).filter { it.path == TOTAL }
             .associate { c -> c.indices to state(c.outcome.name == "CLEARED", c.outcome.name == "ERRORED", c.value ?: "") }
-        if (interpAgrees) {
-            assertEquals(line1, interp[listOf(1, 1, 1, 1)], "$label — interpreter, Lines[1]")
-            assertEquals(line2, interp[listOf(1, 2, 1, 1)], "$label — interpreter, Lines[2]")
-        }
+        assertEquals(line1, interp[listOf(1, 1, 1, 1)], "$label — interpreter, Lines[1]")
+        assertEquals(line2, interp[listOf(1, 2, 1, 1)], "$label — interpreter, Lines[2]")
     }
 
     private fun state(cleared: Boolean, errored: Boolean, value: String) =
         if (cleared) "CLEARED" else if (errored) "ERRORED" else "VALUE|$value"
 
-    private fun seedKernel(d: RuntimeLaws.Doc, refs: List<Pair<String, String>>, line1Slot2Key: String?) {
+    private fun seedKernel(d: RuntimeLaws.Doc, refs: List<Pair<String, String>>, line1Slot2Key: String?, line2SlotKey: String) {
         d.group(LINES, 1, 1).group(SLOTS, 1, 1, 1)
         d.field(KEY, "1", 1, 1, 1, 1); d.field(TOTAL, "999", 1, 1, 1, 1)
         line1Slot2Key?.let {
@@ -155,14 +165,14 @@ class ParallelIterationIndexMarkingDiffTest {
             d.field(KEY, it, 1, 1, 2, 1); d.field(TOTAL, "999", 1, 1, 2, 1)
         }
         d.group(LINES, 1, 2).group(SLOTS, 1, 2, 1)
-        d.field(KEY, "2", 1, 2, 1, 1); d.field(TOTAL, "999", 1, 2, 1, 1)
+        d.field(KEY, line2SlotKey, 1, 2, 1, 1); d.field(TOTAL, "999", 1, 2, 1, 1)
         refs.forEachIndexed { i, (k, a) ->
             val r = i + 1
             d.group(REFS, 1, r); d.field(REF_KEY, k, 1, r, 1); d.field(REF_AMOUNT, a, 1, r, 1)
         }
     }
 
-    private fun seedInterp(i: Document, refs: List<Pair<String, String>>, line1Slot2Key: String?) {
+    private fun seedInterp(i: Document, refs: List<Pair<String, String>>, line1Slot2Key: String?, line2SlotKey: String) {
         i.group(LINES, 1, 1).group(SLOTS, 1, 1, 1)
         i.field(KEY, "1", 1, 1, 1, 1); i.field(TOTAL, "999", 1, 1, 1, 1)
         line1Slot2Key?.let {
@@ -170,7 +180,7 @@ class ParallelIterationIndexMarkingDiffTest {
             i.field(KEY, it, 1, 1, 2, 1); i.field(TOTAL, "999", 1, 1, 2, 1)
         }
         i.group(LINES, 1, 2).group(SLOTS, 1, 2, 1)
-        i.field(KEY, "2", 1, 2, 1, 1); i.field(TOTAL, "999", 1, 2, 1, 1)
+        i.field(KEY, line2SlotKey, 1, 2, 1, 1); i.field(TOTAL, "999", 1, 2, 1, 1)
         refs.forEachIndexed { idx, (k, a) ->
             val r = idx + 1
             i.group(REFS, 1, r); i.field(REF_KEY, k, 1, r, 1); i.field(REF_AMOUNT, a, 1, r, 1)

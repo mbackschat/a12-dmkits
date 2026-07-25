@@ -252,14 +252,27 @@ internal class ComputationEngine(
                     .distinct().filter { it != targetScope && !targetScope.startsWith("$it/") }
                 if (parallelGroups.isNotEmpty()) {
                     val joined = (listOf(targetScope) + parallelGroups).distinct()
-                    if (joined.any { g -> invalidIndexGroup(doc, g) }) {
+                    val invalidCoords = joined.associateWith { g -> invalidIndexParentCoords(doc, g) }
+                        .filterValues { it.isNotEmpty() }
+                    if (invalidCoords.isNotEmpty()) {
+                        var markedAny = false
                         for (ctx in doc.computeContexts(targetScope)) {
                             val targetKey = comp.targetPath to ctx.repsOf(comp.targetPath)
                             if (targetKey in decided) continue
+                            if (!invalidCoords.any { (g, coords) ->
+                                    markingKey(comp.targetPath, g, targetKey.second) in coords
+                                }
+                            ) continue
+                            markedAny = true
                             poisoned += targetKey; cleared -= targetKey; decided += targetKey
                             outcomeByCell[targetKey] = Computed(comp.targetPath, ComputeOutcome.CLEARED, indices = targetKey.second)
                         }
-                        continue
+                        // A malformed key OUTSIDE every target instance's shared prefix marks nothing, and the
+                        // surviving instances must still compute — so only short-circuit when all were marked.
+                        if (markedAny && doc.computeContexts(targetScope).all {
+                                (comp.targetPath to it.repsOf(comp.targetPath)) in decided
+                            }
+                        ) continue
                     }
                     for (pctx in scopes.parallelIterationContexts(targetScope, parallelGroups, doc)) {
                         val reps = pctx.repsOf(comp.targetPath)
@@ -276,13 +289,41 @@ internal class ComputationEngine(
         return outcomeByCell.values.toList()
     }
 
-    /** Whether [group]'s index is COMPROMISED for the compute parallel join (IF96) — an instantiated row with
-     *  an EMPTY index cell, or a DUPLICATED index value. Either marks every instance of a computation joining
-     *  over [group] incorrectly calculated (`markFieldsUsingInvalidIndexGroupsAsIncorrectlyCalculated`). */
-    private fun invalidIndexGroup(doc: Document, group: String): Boolean {
-        val indexField = model.indexFields.firstOrNull { parentGroup(it) == group } ?: return false
-        val values = doc.contextsFor(group).map { it.displayValue(indexField) }
-        return values.any { it.isNullOrEmpty() } || values.size != values.distinct().size
+    /**
+     * The PARENT coordinates under which [group]'s index is COMPROMISED for the compute parallel join (IF96) —
+     * an instantiated row with an EMPTY index cell, or a DUPLICATED index value.
+     *
+     * Both the detection and the marking are **scoped to the index group's own parent coordinate**: index
+     * uniqueness holds within one parent's row set, so the same key value under two different parent rows is
+     * not a duplicate, and an invalidity under one parent must not reach instances under another. Pooling every
+     * row of [group] across all parents produced both halves of the IF222 defect.
+     */
+    private fun invalidIndexParentCoords(doc: Document, group: String): Set<List<Int>> {
+        val indexField = model.indexFields.firstOrNull { parentGroup(it) == group } ?: return emptySet()
+        val parentDepth = pathParts(group).size - 1
+        return doc.contextsFor(group)
+            .groupBy { it.repsOf(group).take(parentDepth) }
+            .filterValues { rows ->
+                val values = rows.map { it.displayValue(indexField) }
+                values.any { it.isNullOrEmpty() } || values.size != values.distinct().size
+            }
+            .keys
+    }
+
+    /**
+     * The coordinate at which a target instance is tested against [group]'s invalid parent coordinates — the
+     * target's own indices truncated to the path prefix it SHARES with [group]'s parent, then padded to that
+     * parent's depth (the kernel's `numSharedLevels` + non-repeatable padding).
+     *
+     * This is what makes the blast radius locus-dependent: for the index group on the target's own path the
+     * shared prefix reaches below the sibling level, so sibling rows are distinguished; for an off-path
+     * iterated group it stops at the common ancestor, so every instance beneath it is marked — deliberate
+     * over-marking the kernel's own comment concedes.
+     */
+    private fun markingKey(targetPath: String, group: String, targetReps: List<Int>): List<Int> {
+        val parentParts = pathParts(group).dropLast(1)
+        val sharedLen = pathParts(targetPath).zip(parentParts).takeWhile { (a, b) -> a == b }.size
+        return targetReps.take(sharedLen) + List((parentParts.size - sharedLen).coerceAtLeast(0)) { 1 }
     }
 
     /** Whether an operand is "not check-relevant" for a computation — the SAME test full validation uses
