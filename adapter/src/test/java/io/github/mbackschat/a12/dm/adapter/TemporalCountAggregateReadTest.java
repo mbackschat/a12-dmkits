@@ -36,18 +36,20 @@ class TemporalCountAggregateReadTest {
 
     private static final DslRenderer RENDER = new DslRenderer(ConditionLanguage.EN);
 
-    private static String clinicJson() {
-        return DocumentModelDraft.named("clinic").locale("en_US")
-                .rootGroup("Visit", v -> v
-                        .field("SlotCount", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER)
-                        .dateField("BookedOn", d -> d.format("yyyy-MM-dd"))
-                        .dateField("ConfirmedOn", d -> d.format("yyyy-MM-dd")))
-                .build().toJson();
-    }
+    // Model JSON + bind are built ONCE for the class, not per case: this file shares :adapter:test with
+    // timing-sensitive growth floors (CharsetPerfTest), and per-case kernel work inflates their medians —
+    // it failed that floor at 10.74x against 9.0x before this was hoisted. See CLAUDE.md, "A new test must not
+    // perturb timing-sensitive floors that share its task".
+    private static final String CLINIC_JSON = DocumentModelDraft.named("clinic").locale("en_US")
+            .rootGroup("Visit", v -> v
+                    .field("SlotCount", io.github.mbackschat.a12.dm.modelkit.FieldKind.NUMBER)
+                    .dateField("BookedOn", d -> d.format("yyyy-MM-dd"))
+                    .dateField("ConfirmedOn", d -> d.format("yyyy-MM-dd")))
+            .build().toJson();
 
     @Test
     void roundTripsACountOfDistinctDates() {
-        BoundModel m = BoundModel.ofJson(clinicJson());
+        BoundModel m = BoundModel.ofJson(CLINIC_JSON);
         Condition cond = Dsl.fieldFilled(m.field("/Visit/SlotCount"))
                 .and(Dsl.numberOfDifferentValues(m.field("/Visit/BookedOn"), m.field("/Visit/ConfirmedOn")).gt(1));
 
@@ -57,7 +59,7 @@ class TemporalCountAggregateReadTest {
 
     @Test
     void aCountOfDistinctDatesIsKernelValid() {
-        ValidationResult r = new RuleValidator().check(clinicJson(),
+        ValidationResult r = new RuleValidator().check(CLINIC_JSON,
                 new DraftRule("/Visit", "DistinctDayRule", "../SlotCount",
                         "FieldFilled(SlotCount) And NumberOfDifferentValues(BookedOn, ConfirmedOn) > 1",
                         "C", "ERROR"));
