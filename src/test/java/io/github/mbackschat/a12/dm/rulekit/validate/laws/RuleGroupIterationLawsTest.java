@@ -23,6 +23,13 @@ import org.junit.jupiter.api.Test;
  * {@code [Count] == 0} is rejected. Wrapping a field in arithmetic changes static admission without changing
  * runtime arithmetic.
  *
+ * <p><b>The {@code (int)} narrowing is observable, and the parse step is not.</b> On a scale-0 field a bare
+ * integer literal matches the field's scale, so it reaches the partition and is judged on its narrowed value —
+ * {@code == 4294967296} is REJECTED (2^32 narrows to zero) while {@code == 4294967297} is admitted. The other
+ * direction is walled off: {@code Double.parseDouble} can lift a decimal in {@code [1/2 - 2^-55, 1/2)} onto
+ * {@code 0.5}, but the shortest such decimal needs 17 fractional digits, a field's scale caps at 14, and the
+ * comparison gate allows the literal at most the field's scale — so that witness is unauthorable.
+ *
  * <p>Kernel truth + the wider partition (per-level connectives, entity lists, temporal differences):
  * KERNEL-SEMANTICS §9 and KERNEL-FINDINGS §9 supplement "ordinary-iteration negative admission is level- and
  * operand-sensitive" (a12-kernel-lean SPEC-2026-07-24-02). The kernel owns the full visitor — rulekit
@@ -122,6 +129,83 @@ class RuleGroupIterationLawsTest {
         KernelLaws.rejectsOrder(ITEMS, "../Sku", "Length(Sku) == 0", "MVK_NEG_CONDITION_IN_ITERATION");
         KernelLaws.acceptsOrder(ITEMS, "../Sku", "Length(Sku) > 0");
         KernelLaws.acceptsOrder(ITEMS, "../Sku", "Length(Sku) == 3");
+    }
+
+    // ── the AUTHORABILITY WALL that keeps the conversion exact-decimal for every legal model ─────────────
+    //
+    // The conversion's parse step can lift a decimal STRICTLY BELOW one half onto 0.5 — binary64
+    // round-to-nearest-even maps everything in [1/2 - 2^-55, 1/2) to 0.5, and Math.round(0.5) is 1. So the
+    // classifier is NOT exact-decimal in principle. These three locks prove no kernel-legal model can express
+    // that witness: it needs 17 fractional digits, a field's scale caps at 14, and the comparison gate demands
+    // the literal carry EXACTLY the field's scale. See KERNEL-FINDINGS §9 supplement "the host conversion's
+    // parse step".
+
+    private static final String SCALED_ITEMS = "/M/Items";
+
+    /** A repeatable group whose only Number field declares {@code fractionDigits} decimal places. */
+    private static String scaledItems(int fractionDigits) {
+        return io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("scaled").locale("en_US")
+                .rootGroup("M", m -> m
+                        .group("Items", i -> i
+                                .repeatable(5)
+                                .numberField("W", n -> n.fractionDigits(fractionDigits))))
+                .build().toJson();
+    }
+
+    /**
+     * A Number field's {@code maxFractionalDigits} caps at <b>14</b> — the kernel rejects 15 at model check
+     * ("Only values smaller than or equal to 14 are allowed"), with no MVK code. Both sides here compare against
+     * a literal of matching scale, so the pair isolates the FIELD cap from the comparison gate below.
+     */
+    @Test
+    void aNumberFieldScaleCapsAtFourteen() {
+        KernelLaws.acceptsModel(scaledItems(14), SCALED_ITEMS, "../W", "[W] > 0.00000000000000");
+        KernelLaws.rejectsModel(scaledItems(15), SCALED_ITEMS, "../W", "[W] > 0.000000000000000");
+    }
+
+    /** Control: the negative-admission classifier still runs at the maximum legal scale, so the wall below is
+     *  about the DIGIT COUNT, not about scale-14 fields being exempt from the partition. */
+    @Test
+    void theZeroSensitivePartitionStillHoldsAtTheMaximumScale() {
+        KernelLaws.rejectsModel(scaledItems(14), SCALED_ITEMS, "../W",
+                "[W] == 0.49999999999999", "MVK_NEG_CONDITION_IN_ITERATION");
+    }
+
+    /**
+     * The comparison gate caps the literal's fractional digits at the field's scale — <b>at most</b>, not
+     * exactly. A 17-digit literal against a scale-14 field is rejected {@code MVK_INVALID_COMPARE_DEC_PLACES}
+     * (whose message says the two counts "are different", which understates it: a SHORTER literal is fine and
+     * reaches the classifier normally). Since 14 &lt; 17, no kernel-legal model can carry the lifting witness.
+     */
+    @Test
+    void aComparisonLiteralMayCarryAtMostTheFieldsScale() {
+        KernelLaws.rejectsModel(scaledItems(14), SCALED_ITEMS, "../W",
+                "[W] == 0.49999999999999998", "MVK_INVALID_COMPARE_DEC_PLACES");
+        // shorter is admitted by the gate, so it reaches the partition and is judged on its converted value
+        KernelLaws.acceptsModel(scaledItems(14), SCALED_ITEMS, "../W", "[W] == 0.5");
+        KernelLaws.rejectsModel(scaledItems(14), SCALED_ITEMS, "../W",
+                "[W] == 0.4", "MVK_NEG_CONDITION_IN_ITERATION");
+    }
+
+    // ── the (int) NARROWING is observable through the public DSL ─────────────────────────────────────────
+    /**
+     * The {@code (int)} step of the conversion is not academic: on a scale-0 field an integer literal matches the
+     * field's scale, so it sails through {@code MVK_INVALID_COMPARE_DEC_PLACES} into the partition and is judged
+     * on its <b>narrowed</b> value. {@code 2^32} narrows to <b>0</b> and is therefore rejected as unguarded —
+     * a literal of 4,294,967,296 classified as zero — while {@code 2^32 + 1} narrows to 1 and is admitted.
+     * The pair differs by one and straddles the whole partition, which pins 32-bit truncation specifically
+     * (a widening or saturating conversion would admit both).
+     */
+    @Test
+    void theThirtyTwoBitNarrowingIsObservable() {
+        KernelLaws.rejectsOrder(ITEMS, "../Count", "[Count] == 4294967296", "MVK_NEG_CONDITION_IN_ITERATION");
+        KernelLaws.acceptsOrder(ITEMS, "../Count", "[Count] == 4294967297");
+    }
+
+    /** {@code Math.round} saturates at {@code Long.MAX_VALUE}, which narrows to −1 — nonzero, so admitted. */
+    @Test
+    void longSaturationNarrowsToMinusOneAndIsAdmitted() {
+        KernelLaws.acceptsOrder(ITEMS, "../Count", "[Count] == 9223372036854775808");
     }
 
     // ── the composite-operation separator ────────────────────────────────────────────────────────────────

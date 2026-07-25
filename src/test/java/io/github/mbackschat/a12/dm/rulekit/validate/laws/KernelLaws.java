@@ -74,6 +74,12 @@ final class KernelLaws {
         assertAccepts(json, group, errorField, condition);
     }
 
+    /** Rejection on a caller-supplied model without pinning a code — for kernel checks that carry no MVK code. */
+    static void rejectsModel(String json, String group, String errorField, String condition) {
+        ValidationResult r = check(json, group, errorField, condition);
+        assertFalse(r.ok(), () -> "expected rejection of '" + condition + "'");
+    }
+
     static void rejectsModel(String json, String group, String errorField, String condition, String expectedCode) {
         assertRejects(json, group, errorField, condition, expectedCode);
     }

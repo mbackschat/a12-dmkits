@@ -812,7 +812,37 @@ Three distinct concepts, easy to conflate:
 
 **The ±0.5 pair is the sharpest control**: `0.50` admitted and `-0.50` rejected pins `Math.round`'s half-up-toward-+∞ semantics, ruling out HALF_EVEN (0 for both) and away-from-zero (1 for both). **The composite separator is the second**: wrapping a field in arithmetic flips static admission while leaving runtime arithmetic identical — so "flatten arithmetic to its field references" is a wrong model of this classifier.
 
-**Scope of what is locked here (deliberately partial).** `RuleGroupIterationLawsTest` covers the direct-Number partition, both operand orders, the conversion boundary including the negative-half asymmetry, direct `Abs`/`MinValue`/`MaxValue`/`Length`, and the composite separator. **Not yet locked** from SPEC-2026-07-24-02's full matrix: `RangeAsNumber`/`FieldValueAsNumber` scope+runtime controls, temporal component extraction, the ordered two-operand `DifferenceIn{Months,Years,Days,Hours,Minutes,Seconds}` family, entity-list/aggregate partitions (`FirstFilledValue`, distinct/value count, `NumberOfValueInFields`, `SumOfProducts`), mixed-level any-literal rejection, and the filter-reference exclusion. Two raw-literal separators are **unrepresentable** through the public DSL on these fixtures: long saturation and the signed-32-bit `2^32` wrap need a literal the scale gate (`MVK_INVALID_COMPARE_DEC_PLACES`) or the grammar rejects first. rulekit **delegates** the visitor to the kernel (no reimplementation), so these are boundary locks, not a ported classifier.
+**Scope of what is locked here (deliberately partial).** `RuleGroupIterationLawsTest` covers the direct-Number partition, both operand orders, the conversion boundary including the negative-half asymmetry, direct `Abs`/`MinValue`/`MaxValue`/`Length`, and the composite separator. **Not yet locked** from SPEC-2026-07-24-02's full matrix: `RangeAsNumber`/`FieldValueAsNumber` scope+runtime controls, temporal component extraction, the ordered two-operand `DifferenceIn{Months,Years,Days,Hours,Minutes,Seconds}` family, entity-list/aggregate partitions (`FirstFilledValue`, distinct/value count, `NumberOfValueInFields`, `SumOfProducts`), mixed-level any-literal rejection, and the filter-reference exclusion. rulekit **delegates** the visitor to the kernel (no reimplementation), so these are boundary locks, not a ported classifier.
+
+**Correction (2026-07-25): the `(int)` narrowing is NOT unrepresentable — it is authorable on any scale-0 field, and is now locked.** This entry previously claimed the `2^32` wrap and long saturation "need a literal the scale gate (`MVK_INVALID_COMPARE_DEC_PLACES`) or the grammar rejects first". That was inference, and it is wrong: the dec-places gate compares the literal's *fractional* digits against the field's scale, so on a **scale-0** field a bare integer literal matches trivially and reaches the partition, where it is judged on its **narrowed** value.
+
+| condition (`Count` is scale-0) | admission | why |
+|---|---|---|
+| `[Count] == 4294967296` (2^32) | **REJECTED** | `(int)` narrows to **0** — a literal of 4,294,967,296 classified as zero |
+| `[Count] == 4294967297` (2^32+1) | admitted | narrows to 1 |
+| `[Count] == 9223372036854775808` (2^63) | admitted | `Math.round` saturates at `Long.MAX_VALUE`, narrowing to −1 |
+
+**The ±1 pair straddling 2^32 is the sharpest control of the three separators**, and better than the ±0.5 pair: two literals differing by one, both astronomically far from zero, land on opposite sides of the whole partition. A widening or saturating conversion admits both, so the pair pins 32-bit truncation specifically *(locked: `RuleGroupIterationLawsTest.theThirtyTwoBitNarrowingIsObservable`)*.
+
+## §9 supplement — the host conversion's PARSE step can lift a below-half decimal onto one half, but no kernel-legal model can express the witness (measured 2026-07-25; answers a12-kernel-lean SPEC-2026-07-25-02)
+
+> Fold: not-foldable — the witness is unauthorable on every kernel-legal model, so canonical §9 stays exact for all authorable input; this is a reimplementer's note about the conversion chain, not a language rule.
+
+**The conversion `Double.parseDouble` → `Math.round` → `(int)` has TWO rounding steps, and the first one is the surprising one.** `Math.round` does not lift a double strictly below one half (that was Java ≤ 6's `floor(x + 0.5)`, fixed by JDK-6430675 in Java 7 — on our JDK 21 pin `0.49999999999999994` converts to **0**). But **`Double.parseDouble` can lift a below-half *decimal* onto `0.5` before `Math.round` ever sees it**: binary64 round-to-nearest-**even** maps every decimal in `[½ − 2⁻⁵⁵, ½)` onto exactly `0.5`, because that interval's values are ties between `0.5` (even significand) and `0.5 − 2⁻⁵⁴` (odd). Measured through the exact chain:
+
+| decimal literal | `parseDouble` | `→ int` |
+|---|---|---|
+| `0.49999999999999994` = ½ − 2⁻⁵⁴ | `0.49999999999999994` | 0 |
+| `0.49999999999999998` (**17 fractional digits — the shortest lifting decimal**) | **`0.5`** | **1** |
+| ½ − 2⁻⁵⁵ exactly (55 fractional digits) | **`0.5`** | **1** |
+| one ulp below the interval | `0.4999999999999999` | 0 |
+| −(½ − 2⁻⁵⁵) | `-0.5` | **0** |
+
+**The lift creates a separator only on the positive side**, because `+0.5` is where `Math.round`'s boundary is inclusive; on the negative side a lifted `-0.5` still converts to 0, same as any smaller magnitude — so the ±0.5 asymmetry survives the parse step rather than being softened by it.
+
+**It is nonetheless unauthorable, by exactly three decimal places — a three-link proof, all three links locked:** (1) the shortest lifting decimal needs **17** fractional digits (at ≤16 the interval holds no decimal strictly below ½ — the ceiling lands on `0.5` itself); (2) a Number field's `maxFractionalDigits` **caps at 14** — the kernel rejects 15 at model check with a plain, MVK-less message ("Only values smaller than or equal to 14 are allowed"); (3) the comparison gate allows the literal **at most** the field's scale, rejecting 17-against-14 as `MVK_INVALID_COMPARE_DEC_PLACES`. Since 14 < 17, **no kernel-legal model can carry the witness**, so the classifier is exact-decimal for every authorable input *(locked: `RuleGroupIterationLawsTest.aNumberFieldScaleCapsAtFourteen`, `.aComparisonLiteralMayCarryAtMostTheFieldsScale`, `.theZeroSensitivePartitionStillHoldsAtTheMaximumScale` as the control that the partition still runs at scale 14)*.
+
+**Two traps this closed, both from reading a message instead of measuring.** The `MVK_INVALID_COMPARE_DEC_PLACES` text says the two digit counts "are different", which reads as an equality requirement — it is **at most**: a *shorter* literal is admitted and reaches the partition normally (`[W] == 0.5` on a scale-14 field is accepted; `== 0.4` is rejected as converted-zero). And `FeldOperationUtil.getZahlKonstanteWert` returns **−1 as its "not a number constant" sentinel**, which collides with the value a saturating 2^63 literal converts to; for *this* classifier the collision is unobservable (both are nonzero ⇒ admitted), and whether any other caller distinguishes them is untested — **hypothesis, not a finding**.
 
 ## §11 supplement — the parallel-iteration computation route replaces the read-time index gate with post-loop marking, whose blast radius depends on WHICH index group is malformed (differential, 2026-07-25; answers a12-kernel-lean EXP-2026-07-25-03)
 
