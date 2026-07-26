@@ -37,7 +37,7 @@ class SchemaResourceSurfaceTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     /**
-     * Removed flat verbs (bf9737e) in their <b>unambiguous compound</b> form — the simple names
+     * Removed flat verbs (be0ce3b) in their <b>unambiguous compound</b> form — the simple names
      * ({@code read}, {@code add}, {@code check}, …) are still valid target-first OPS, so they are not
      * removed-verb tokens on their own.
      */

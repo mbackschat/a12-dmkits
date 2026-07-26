@@ -50,7 +50,7 @@ Everything below was measured or verified during the design session (2026-06-16/
 | **F8 — runtime-eval upside** | The JVM bundle contains Groovy + the kernel runtime, so it **can run `model eval`/`rule test`/`model compute`** — exactly what the native CLI structurally cannot do. Potentially `dmcode`'s strongest differentiator (see OQ2). |
 | **F9 — safety norm** | Anthropic ([*How We Contain Claude*](https://www.anthropic.com/engineering/how-we-contain-claude), Claude Code Seatbelt/bubblewrap, the [`sandbox-runtime`](https://github.com/anthropic-experimental/sandbox-runtime) library) and the industry (Firecracker/gVisor microVMs; OpenAI Codex gVisor) **converge on OS/VM-boundary isolation, never custom in-process** — *"the software you build yourself is often the weakest component."* `SecurityManager` is removed in JDK 24, so in-JVM self-sandboxing isn't available anyway. |
 | **F10 — catalog size** | `operators.json` = **109 operators / ~90 KB** → too large to pre-load; serve it **raw, on-demand** (the agent queries it), plus a small **derived gotchas trap-sheet** for the always-relevant-but-unprompted traps. |
-| **F11 — landed support** | Two recent commits move toward this design: `ca85a78` (native reflection metadata now captured from the **JUnit suite**, not a curated script) and `13d96cd` (a **self-correction eval family** wired into the Layer-2 runner — a natural harness for OQ1). |
+| **F11 — landed support** | Two recent commits move toward this design: `2edbf87` (native reflection metadata now captured from the **JUnit suite**, not a curated script) and `b55087a` (a **self-correction eval family** wired into the Layer-2 runner — a natural harness for OQ1). |
 
 ## 3. Design decisions
 

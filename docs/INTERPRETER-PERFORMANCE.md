@@ -333,7 +333,7 @@ A structural optimization to design toward (not yet committed work):
 - **Beyond prepare-once — Excel-style *incremental* recalc (deferred, trigger-gated):** recompute only a changed cell's dependent closure instead of re-running the whole document. Feasibility + the DEFER decision + the two-part re-open trigger are recorded in the archived [INCREMENTAL-EVAL-PROPOSAL](archived/INCREMENTAL-EVAL-PROPOSAL.md). The prepared model above is its prerequisite substrate; the incumbent kernel does recompute-all-per-run + per-run caches, *not* cross-edit dirty propagation.
 - **Study the kernel's data representation + caches for INSPIRATION (not a copy — the license boundary holds: read for comprehension, write original).** The kernel devs spent *years* optimizing; its instance representation and its caches — `IndexFieldCache`, `ValidationCache`, `CalculationCache`, `GroupFillCache`, `RepetitionNotUniqueErrorCache` — encode hard-won structure (index-by-field, memoized group-fill, cached calculation results within a run). **Do not assume a naive fresh impl will be anywhere near kernel performance.** Get informed by what they cache and how they index, reproduce the *idea* in original Kotlin, and let the against-kernel benchmark (#29) tell the truth. Humility + measurement, not confidence.
 
-## Prerequisite — make the real `Document` non-quadratic (task #28 — DONE 2026-06-23, `434cdcdc`)
+## Prerequisite — make the real `Document` non-quadratic (task #28 — DONE 2026-06-23, `d2e85493`)
 
 A naive O(N²) `Document` cannot even run 100k rows, so the first step was structural. **Done:**
 
@@ -376,7 +376,7 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ## Staging
 
-1. ✅ Index the `Document` (task #28) + re-green the diff tests — DONE (`434cdcdc`).
+1. ✅ Index the `Document` (task #28) + re-green the diff tests — DONE (`d2e85493`).
 2. ✅ **The reusable harness is built** (`adapter.perf` — `PerfHarness`/`PerfCatalog`/`PerfGateTest`/`PerfProfileTest`): the `PerfScenario` + three engine adapters (interpreter, kernel-Groovy, kernel-Java) behind `PerfEngine`/`ReusableEngine` + the three run modes (gate / repeated-eval / profile), with codegen primed out of every timed region. **B1** (per-row), **B2** (star aggregate), **B3** (nested per-sub), **B4** (cross-level ref) land against the kernel; the **repeated-eval** (form-input/batch) and **sub-quadratic scaling** guards land too. The ad-hoc `AgainstKernelPerfTest` was superseded and removed.
 3. ✅ **B5** (deep nested-star `Sum(Lines* / Subs* / Cost)`), **B6** (many rules) and **100k+ rows** (interp-only, `PerfScalingTest`) — DONE (2026-06-24). B6 surfaced the rule-count crossover; the row-scaling confirms linearity to 300k.
 4. ✅ **B7** (`compute` at scale) — DONE; both kernel engines got a build-once `computeOutcomesSorted`. **Java baseline** (`JavaKernelEngine`, Groovy-tax-free), **rule-count crossover** (`KernelEdgeTest`), and **startup + row-scaling** (`PerfScalingTest`) all landed.

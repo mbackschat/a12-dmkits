@@ -114,7 +114,7 @@ A hand-written `*DiffTest` proves one operator behaves on one input. The fuzz ne
 | 1 | NUMBER sign formals: **signed-zero `-0`** / **leading-plus `+5`** treated as valid | `FormalError` + check-ordering (`NumberSignFormalDiffTest`) |
 | 2 | **plain-date locale**: a `dd.MM.yyyy` value parsed as ISO | format-aware `DateMath.parseDateToIso` (`PlainDateDiffTest`) |
 | 3 | a malformed value in a numeric combiner **crashed** the interpreter | total parsing (`decOrNull`) + combiner Unknown-propagation (`AggMalformedDiffTest`) |
-| 4 | **`-0` parses but is a formal error** → an aggregate folded it as 0 and fired where the kernel suppresses | `Document.resolveValue` gates on `formalError`, not parseability (`UniquenessDiffTest`/`74052407`) |
+| 4 | **`-0` parses but is a formal error** → an aggregate folded it as 0 and fired where the kernel suppresses | `Document.resolveValue` gates on `formalError`, not parseability (`UniquenessDiffTest`/`e316b640`) |
 | 5 | a **presence check** (`FieldFilled`) on a present-but-malformed field returned TRUE and fired, but the kernel's `isWertAngegeben` is UNKNOWN for a not-check-relevant field | the 3-valued `Interpreter.filledTri` + the quantifier `(t,f)` tally (`CurrentRepetitionDiffTest`/`QuantifierMalformedDiffTest`) |
 
 (The colliding-key pool additionally drove index-field `uniqueIndex` + its suppression to parity.)
