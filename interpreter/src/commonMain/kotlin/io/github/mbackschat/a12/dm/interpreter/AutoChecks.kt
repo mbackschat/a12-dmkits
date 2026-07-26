@@ -6,9 +6,11 @@ import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.FORMAL_RULE_PATH
 import io.github.mbackschat.a12.dm.interpreter.eval.MANDATORY_FIELD
 import io.github.mbackschat.a12.dm.interpreter.eval.OVER_REPETITION_CONTEXT
+import io.github.mbackschat.a12.dm.interpreter.eval.OVER_REPETITION_FIXED
 import io.github.mbackschat.a12.dm.interpreter.eval.OVER_REPETITION_ROW
 import io.github.mbackschat.a12.dm.interpreter.eval.UNIQUE_INDEX
 import io.github.mbackschat.a12.dm.interpreter.eval.customTypeInvalidText
+import io.github.mbackschat.a12.dm.interpreter.eval.fixedRepetitionText
 import io.github.mbackschat.a12.dm.interpreter.eval.formalErrorCached
 import io.github.mbackschat.a12.dm.interpreter.eval.formalErrorText
 import io.github.mbackschat.a12.dm.interpreter.eval.mandatoryFieldText
@@ -243,11 +245,11 @@ internal class AutoChecks(
         locale: String,
         groupFilled: (EvalContext, String) -> Boolean = { context, group -> context.groupFilled(group) },
     ): FormalResult {
-        // An over-limit cell (its row exceeds a declared `repeatability`) is "unknown" — it carries the
+        // An over-limit cell (a group coordinate exceeds its effective maximum) is "unknown" — it carries the
         // over-repetition code, suppressing any rule that references it AND its own format/required/unique checks,
         // exactly as the kernel skips an over-limit instance's ordinary checks (KERNEL-FINDINGS "over-repetition").
-        if (paths.overLimitLevel(path, reps) != null) {
-            return FormalResult.Invalid(FormalFailure.Generated(OVER_REPETITION_CONTEXT))
+        paths.exceededBound(path, reps)?.let { exceeded ->
+            return FormalResult.Invalid(FormalFailure.Generated(overRepetitionType(exceeded).code))
         }
         if (raw != null) {
             val kind = model.kinds[path] ?: return FormalResult.Valid
@@ -313,33 +315,57 @@ internal class AutoChecks(
 
     /**
      * The STRUCTURAL over-repetition messages (KERNEL-FINDINGS "over-repetition errors"; the kernel's
-     * `FormalChecker`): each entity instance whose repetition index exceeds the declared `repeatability` is
+     * `FormalChecker`): each entity instance whose group coordinate exceeds its effective maximum is
      * flagged — a **field** inside an over-limit repeatable ancestor (the over-limit level is *intermediate*) →
      * `zuGrosseKontextnummer` (full field pointer); a **repeatable group row** whose OWN index is over the cap →
-     * `zuGrosseZeile` (group pointer — [formatPointer] omits the group's own trailing index). One VALUE message
-     * per over-limit instance. An over-limit instance is "unknown": [computeFormalResultAt] suppresses rules over
-     * it and [formalErrors] skips its format check (it carries the over-repetition code instead).
+     * `zuGrosseZeile`; a non-repeatable group coordinate above 1 uses `zuGrosseLfdNummer` for that group and its
+     * descendants. Group pointers omit their own trailing index. One VALUE message per over-limit instance. An
+     * over-limit instance is "unknown": [computeFormalResultAt] suppresses rules over it and [formalErrors] skips
+     * its format check (it carries the over-repetition code instead).
      */
     fun overRepetitionMessages(doc: Document, locale: String, isRelevant: Relevance): List<Message> {
-        if (model.declaredReps.isEmpty()) return emptyList()
+        if (model.effectiveGroupRepetitionMaximums.isEmpty()) return emptyList()
         val out = mutableListOf<Message>()
         for (vf in doc.valuedFields()) {
-            if (paths.overLimitLevel(vf.path, vf.reps) != null && isRelevant(vf.path, vf.reps)) {
-                out += Message(OVER_REPETITION_CONTEXT, FORMAL_RULE_PATH, doc.formattedPointer(vf.path, vf.reps),
-                    Severity.ERROR, MsgType.VALUE, overRepetitionText(locale, row = false))
-            }
+            val exceeded = paths.exceededBound(vf.path, vf.reps) ?: continue
+            if (!isRelevant(vf.path, vf.reps)) continue
+            val type = overRepetitionType(exceeded)
+            out += Message(type.code, FORMAL_RULE_PATH, doc.formattedPointer(vf.path, vf.reps),
+                Severity.ERROR, MsgType.VALUE, type.messageText(locale))
         }
-        for (group in model.declaredReps.keys) {
+        for (group in model.effectiveGroupRepetitionMaximums.keys) {
             val ownLevel = paths.levelOf(group)
             for (row in doc.instantiatedRows(group)) {
-                val lvl = paths.overLimitLevel(group, row) ?: continue
+                val exceeded = paths.exceededBound(group, row) ?: continue
                 if (!isRelevant(group, row)) continue
-                val isRow = lvl == ownLevel
-                out += Message(if (isRow) OVER_REPETITION_ROW else OVER_REPETITION_CONTEXT, FORMAL_RULE_PATH,
-                    doc.formattedPointer(group, row), Severity.ERROR, MsgType.VALUE, overRepetitionText(locale, isRow))
+                val type = overRepetitionType(exceeded, ownLevel)
+                out += Message(type.code, FORMAL_RULE_PATH, doc.formattedPointer(group, row),
+                    Severity.ERROR, MsgType.VALUE, type.messageText(locale))
             }
         }
         return out
+    }
+
+    private enum class OverRepetitionType(val code: String) {
+        REPEATABLE_ROW(OVER_REPETITION_ROW),
+        REPEATABLE_CONTEXT(OVER_REPETITION_CONTEXT),
+        NON_REPEATABLE(OVER_REPETITION_FIXED),
+    }
+
+    private fun overRepetitionType(
+        exceeded: ModelPathIndex.ExceededBound,
+        ownLevel: Int? = null,
+    ): OverRepetitionType = when (exceeded.kind) {
+        ModelPathIndex.BoundKind.NON_REPEATABLE -> OverRepetitionType.NON_REPEATABLE
+        ModelPathIndex.BoundKind.REPEATABLE ->
+            if (exceeded.level == ownLevel) OverRepetitionType.REPEATABLE_ROW
+            else OverRepetitionType.REPEATABLE_CONTEXT
+    }
+
+    private fun OverRepetitionType.messageText(locale: String): String = when (this) {
+        OverRepetitionType.NON_REPEATABLE -> fixedRepetitionText(locale)
+        OverRepetitionType.REPEATABLE_ROW -> overRepetitionText(locale, row = true)
+        OverRepetitionType.REPEATABLE_CONTEXT -> overRepetitionText(locale, row = false)
     }
 
     /** The deepest repeatable ancestor group of [path] (the kernel's `lowestRepeatableGroupPath`), or null. */

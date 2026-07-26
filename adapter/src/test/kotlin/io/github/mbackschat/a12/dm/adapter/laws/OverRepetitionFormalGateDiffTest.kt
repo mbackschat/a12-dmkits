@@ -125,6 +125,96 @@ class OverRepetitionFormalGateDiffTest {
         }
     }
 
+    /**
+     * A non-repeatable group has effective maximum 1, but coordinate 2 remains representable for formal
+     * validation. Both the group and its field expose the dedicated fixed-repetition code.
+     */
+    @Test
+    fun nonRepeatableGroupCoordinateAboveOneEmitsFixedRepetitionErrors() {
+        val model = ModelLoader.load(fieldCoordinateBase)
+        val kernelDocument = RuntimeLaws.doc()
+            .group(APPLICATION, 2)
+            .field(REFERENCE, "APP-2", 2, 1)
+        val interpreterDocument = model.newDocument()
+            .group(APPLICATION, 2)
+            .field(REFERENCE, "APP-2", 2, 1)
+
+        val dynamic = sigs(RuntimeLaws.messages(fieldCoordinateBase, kernelDocument).map { it.code() to it.field() })
+        val staticEngine = RuntimeLaws.kernelJavaEngine(fieldCoordinateBase)
+        val java = sigs(staticEngine.messages(staticEngine.instance(kernelDocument)).map { it.code() to it.field() })
+        val interp = sigs(DmInterpreter(model).validate(interpreterDocument).messages.map { it.code to it.errorPath })
+        val expected = listOf(
+            "zuGrosseLfdNummer@/Application",
+            "zuGrosseLfdNummer@/Application[2]/Reference",
+        )
+
+        assertEquals(expected, dynamic, "dynamic-Groovy non-repeatable address gate")
+        assertEquals(dynamic, java, "static-Java non-repeatable address gate")
+        assertEquals(dynamic, interp, "interpreter non-repeatable address gate")
+    }
+
+    private val crossRootBase = DocumentModelDraft.named("portfolio").locale("en_US")
+        .rootGroup("Dashboard", Consumer { d -> d.stringField("Flag", Consumer { }) })
+        .rootGroup("Application", Consumer { a ->
+            a.group("Lines", Consumer<GroupBuilder> { l ->
+                l.repeatable(2).numberField("Amount", Consumer { })
+            })
+        })
+        .build().toJson()
+
+    /**
+     * An over-limit non-repeatable parent is outside a cross-root star domain. The over-limit `90` must not join
+     * the in-cap `10`: the sum remains 10 and the typed rule fires.
+     */
+    @Test
+    fun crossRootAggregateExcludesRowsBeneathAnOverLimitNonRepeatableGroup() {
+        val bound = BoundModel.ofJson(crossRootBase)
+        val flag = bound.str(DASHBOARD_FLAG)
+        val rule = bound.rule(bound.group(DASHBOARD)).name("SumTen").code("SUM_TEN").errorField(flag)
+            .`when`(
+                flag.filled().and(
+                    Dsl.sum(bound.flatten("/Application/Lines*/Amount")).eq(10),
+                ),
+            )
+            .severity(Severity.ERROR).message(Dsl.en("in-cap amount total is ten")).build()
+        val modelJson = TypedRules.inject(crossRootBase, rule)
+        val model = ModelLoader.load(modelJson)
+        val kernelDocument = RuntimeLaws.doc()
+            .group(DASHBOARD, 1)
+            .field(DASHBOARD_FLAG, "ready", 1, 1)
+            .group(APPLICATION, 1)
+            .group(APPLICATION_LINES, 1, 1)
+            .field(AMOUNT, "10", 1, 1, 1)
+            .group(APPLICATION, 2)
+            .group(APPLICATION_LINES, 2, 1)
+            .field(AMOUNT, "90", 2, 1, 1)
+        val interpreterDocument = model.newDocument()
+            .group(DASHBOARD, 1)
+            .field(DASHBOARD_FLAG, "ready", 1, 1)
+            .group(APPLICATION, 1)
+            .group(APPLICATION_LINES, 1, 1)
+            .field(AMOUNT, "10", 1, 1, 1)
+            .group(APPLICATION, 2)
+            .group(APPLICATION_LINES, 2, 1)
+            .field(AMOUNT, "90", 2, 1, 1)
+
+        fun sumRuleSignatures(messages: List<Pair<String, String>>) =
+            sigs(messages.filter { it.first == "SUM_TEN" })
+
+        val dynamic = sumRuleSignatures(RuntimeLaws.messages(modelJson, kernelDocument).map { it.code() to it.field() })
+        val staticEngine = RuntimeLaws.kernelJavaEngine(modelJson)
+        val java = sumRuleSignatures(
+            staticEngine.messages(staticEngine.instance(kernelDocument)).map { it.code() to it.field() },
+        )
+        val interp = sumRuleSignatures(
+            DmInterpreter(model).validate(interpreterDocument).messages.map { it.code to it.errorPath },
+        )
+
+        assertEquals(listOf("SUM_TEN@/Dashboard[1]/Flag"), dynamic, "dynamic-Groovy excludes Application[2]")
+        assertEquals(dynamic, java, "static-Java excludes Application[2]")
+        assertEquals(dynamic, interp, "interpreter excludes Application[2]")
+    }
+
     /** A VALID over-limit descendant exposes over-repetition, and the in-cap sibling stays fully ordinary (clean). */
     @Test fun validOverLimitDescendantExposesOverRepetitionAndInCapSiblingStaysOrdinary() =
         agree("valid over-limit Premium + clean in-cap sibling", base) {
@@ -336,5 +426,7 @@ class OverRepetitionFormalGateDiffTest {
         const val REFERENCE = "/Application/Reference"
         const val APPLICATION_LINES = "/Application/Lines"
         const val AMOUNT = "/Application/Lines/Amount"
+        const val DASHBOARD = "/Dashboard"
+        const val DASHBOARD_FLAG = "/Dashboard/Flag"
     }
 }

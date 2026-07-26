@@ -78,13 +78,15 @@ fun customTypeInvalidText(locale: String): String =
  * The kernel's STRUCTURAL over-repetition codes (`FormalChecker.checkIndicesLessOrEqualThanMax`): a repeatable
  * group instance whose **own** row index exceeds its declared `repeatability` is **`zuGrosseZeile`** (on the
  * group entity); an entity (e.g. a field) sitting **inside** an over-limit repeatable ancestor — where the
- * over-limit index is an *intermediate* level, not the entity's own — is **`zuGrosseKontextnummer`**. Both are
- * VALUE errors on the `formalePruefung` path, and an over-limit instance is "unknown" (its ordinary checks are
- * suppressed). KERNEL-FINDINGS "over-repetition errors". (The third sibling `FEHLER_LAUFENDE_NR_ZU_GROSS` rides
- * the USB/multi-form form counter — out of the single-document interpreter's scope.)
+ * over-limit index is an *intermediate* level, not the entity's own — is **`zuGrosseKontextnummer`**. A
+ * non-repeatable group has effective maximum 1 and uses **`zuGrosseLfdNummer`** for itself and its descendants.
+ * All are VALUE errors on the `formalePruefung` path, and an over-limit instance is "unknown" (its ordinary
+ * checks are suppressed). KERNEL-FINDINGS §9. (The `FEHLER_LAUFENDE_NR_ZU_GROSS` sibling rides the
+ * USB/multi-form form counter — out of the single-document interpreter's scope.)
  */
 const val OVER_REPETITION_ROW = "zuGrosseZeile"
 const val OVER_REPETITION_CONTEXT = "zuGrosseKontextnummer"
+const val OVER_REPETITION_FIXED = "zuGrosseLfdNummer"
 
 /** Our OWN end-user text for an over-repetition error (Option-A). */
 fun overRepetitionText(locale: String, row: Boolean): String = when {
@@ -93,6 +95,11 @@ fun overRepetitionText(locale: String, row: Boolean): String = when {
     locale.startsWith("de") -> "Der Wiederholungsindex einer übergeordneten Gruppe ist zu groß."
     else -> "A containing group's repetition index is too large."
 }
+
+/** Our OWN end-user text for a non-repeatable group coordinate above its effective maximum 1. */
+fun fixedRepetitionText(locale: String): String =
+    if (locale.startsWith("de")) "Der Wiederholungsindex einer nicht wiederholbaren Gruppe ist größer als 1."
+    else "A non-repeatable group's repetition index is greater than 1."
 
 /** The formal-error checks the interpreter performs, each with the kernel's verbatim [id]. */
 enum class FormalErrorCode(val id: String) {

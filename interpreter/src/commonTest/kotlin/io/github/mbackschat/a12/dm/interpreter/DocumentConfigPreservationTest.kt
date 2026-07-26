@@ -12,7 +12,7 @@ import kotlin.test.assertEquals
 /**
  * The IG75/IF131 lock: a [Document] reconstruction ([Document.withComputed] via `emptyCopy`, the compute→apply
  * path) must preserve its [DocumentConfig] **wholesale** — every slot, not a hand-picked prefix. The defect was a positional
- * 14-argument copy that silently dropped the final `timeZone` (→ UTC). The fix collapses the config into one
+ * copy that silently dropped the final `timeZone` (→ UTC). The fix collapses the config into one
  * immutable value copied as a whole, so partial reconstruction is impossible; this test is the standing guard
  * against a future positional regression, keyed on data-class equality so a NEW slot is covered automatically.
  */
@@ -36,6 +36,7 @@ class DocumentConfigPreservationTest {
         fieldConstraints = mapOf("/G/N" to FieldConstraints(minFractionalDigits = 2)),
         timeZone = ModelTimeZone.EUROPE_BERLIN,
         repeatableGroups = setOf("/G", "/G/Unbounded"),
+        effectiveGroupRepetitionMaximums = mapOf("/G" to 5, "/Fixed" to 1),
     )
 
     @Test
@@ -47,7 +48,7 @@ class DocumentConfigPreservationTest {
 
     @Test
     fun theHistoricallyDroppedTimeZoneSlotSurvives() {
-        // The exact IG75 regression: the positional copy dropped the 14th arg, so a Europe/Berlin document
+        // The exact IG75 regression: the positional copy dropped the time-zone slot, so a Europe/Berlin document
         // became UTC after compute→apply. Pin that one slot explicitly.
         val copied = Document(config).withComputed(emptyMap())
         assertEquals(ModelTimeZone.EUROPE_BERLIN, copied.config.timeZone,

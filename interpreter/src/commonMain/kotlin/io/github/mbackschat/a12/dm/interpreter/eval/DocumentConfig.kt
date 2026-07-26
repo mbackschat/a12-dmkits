@@ -10,7 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
  * base-year / constraint / time-zone map the evaluator needs, derived ONCE from a [io.github.mbackschat.a12.dm.interpreter.model.ModelDef]
  * (via `ModelDef.newDocument()`). It is a single immutable value so every reconstruction preserves ALL of it
  * **wholesale**: [Document.withComputed] (through `emptyCopy`) and every harness/loader consumer pass this one
- * object, never a positional argument list. That is the point — the 14-argument positional threading this replaced
+ * object, never a positional argument list. That is the point — the positional threading this replaced
  * silently dropped trailing slots (the `emptyCopy` `timeZone` loss, IG75 → IF131). Only [kinds] is required; every
  * other slot defaults to the kernel default, so a kinds-only document is `DocumentConfig(kinds)` and any partial
  * configuration is **conspicuous** (named arguments), never a silent positional drop.
@@ -62,4 +62,10 @@ data class DocumentConfig(
     /** Every repeatable group, including an unbounded one with no [declaredReps] entry. Starred-aggregate
      *  polarity needs the distinction: an unbounded repetition always retains a fillable tail. */
     val repeatableGroups: Set<String> = declaredReps.keys,
+    /**
+     * Every bounded GROUP address level: [declaredReps] plus the implicit maximum 1 of non-repeatable groups.
+     * This is separate from [declaredReps] because declared-range iteration and aggregate polarity must not treat
+     * a non-repeatable group as an authored repetition. Field terminal coordinates are excluded at transport.
+     */
+    val effectiveGroupRepetitionMaximums: Map<String, Int> = declaredReps,
 )

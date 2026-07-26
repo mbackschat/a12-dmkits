@@ -69,6 +69,7 @@ fun ModelDef.newDocument(): Document = Document(DocumentConfig(
     fieldConstraints = fieldConstraints,
     timeZone = timeZone,
     repeatableGroups = repeatable,
+    effectiveGroupRepetitionMaximums = effectiveGroupRepetitionMaximums,
 ))
 
 class Document(internal val config: DocumentConfig) {
@@ -94,6 +95,7 @@ class Document(internal val config: DocumentConfig) {
     private val fieldConstraints = config.fieldConstraints
     private val timeZone = config.timeZone
     private val repeatableGroups = config.repeatableGroups
+    private val effectiveGroupRepetitionMaximums = config.effectiveGroupRepetitionMaximums
     /** [raw] is the ORIGINAL stored text ([value] before the eval-side CRLF→LF normalization, IF124) —
      *  what [cellStateAt] reports; it defaults to [value] and is preserved by the normalizing `copy`. */
     private data class Placement(val path: String, val reps: List<Int>, val value: String?, val isGroup: Boolean,
@@ -202,10 +204,10 @@ class Document(internal val config: DocumentConfig) {
         // otherwise repeats the same O(rows × star-depth) proof for every firing in that scope (IF194).
         val starOmissionByScope: MutableMap<StarOmissionKey, Boolean> = HashMap()
 
-        // Per group, the rows whose coordinate is OVER-LIMIT (a repeatable ancestor's index exceeds its declared
-        // repeatability) — computed once from [declaredReps] and reused to EXCLUDE such rows from every star
-        // aggregate / quantifier / filter domain (SPEC-2026-07-23-13). Empty for a well-formed document, so the
-        // exclusion is a no-op on the hot path.
+        // Per group, the rows whose coordinate is OVER-LIMIT (a group ancestor's index exceeds its effective
+        // maximum) — computed once from [effectiveGroupRepetitionMaximums] and reused to EXCLUDE such rows from
+        // every star aggregate / quantifier / filter domain (SPEC-2026-07-23-13). Empty for a well-formed
+        // document, so the exclusion is a no-op on the hot path.
         val overLimitRowsByGroup: MutableMap<String, Set<List<Int>>> = HashMap()
 
         /** group path → its declared field paths, recursive and in model declaration order. */
@@ -337,9 +339,9 @@ class Document(internal val config: DocumentConfig) {
     }
 
     /** An empty document carrying this one's [config] but no placements. Passing the single immutable
-     *  [DocumentConfig] wholesale is the fix for IG75/IF131: the former positional reconstruction threaded only
-     *  13 of the 14 slots and silently dropped `timeZone`, so a copy could not stay in lockstep. Now it cannot
-     *  drop a slot — there is no per-slot list. */
+     *  [DocumentConfig] wholesale is the fix for IG75/IF131: the former positional reconstruction silently
+     *  dropped `timeZone`, so a copy could not stay in lockstep. Now it cannot drop a slot — there is no
+     *  per-slot list. */
     private fun emptyCopy(): Document = Document(config)
 
     /**
@@ -1115,22 +1117,24 @@ class Document(internal val config: DocumentConfig) {
     }
 
     /**
-     * The rows of [groupPath] that are OVER-LIMIT — some repeatable ancestor level's 1-based index exceeds its
-     * model-declared [declaredReps] maximum (the kernel's `checkIndicesLessOrEqualThanMax` walk, SPEC-2026-07-23-13).
+     * The rows of [groupPath] that are OVER-LIMIT — some group ancestor level's 1-based index exceeds its
+     * effective maximum (the kernel's `checkIndicesLessOrEqualThanMax` walk, SPEC-2026-07-23-13).
      * The kernel does NOT insert an over-limit cell/group into its evaluation cache, so such a row is OUTSIDE every
      * star aggregate / quantifier / filter domain — a `Sum`/`NumberOfFilledFields`/`NumberOfFilledGroups(G*)` ranges
      * over the in-cap (declared-range) rows only. It stays instantiated for per-row rule suppression and structural
-     * over-repetition emission, which read [rowsOf] directly (unfiltered). Decided from the SAME [declaredReps] the
-     * emission gate ([io.github.mbackschat.a12.dm.interpreter.ModelPathIndex.overLimitLevel]) uses — one repeatability
-     * fact, two readers — so the star-domain bound and the emitted over-repetition codes can never disagree.
+     * over-repetition emission, which read [rowsOf] directly (unfiltered). Decided from the SAME
+     * [effectiveGroupRepetitionMaximums] the emission gate
+     * ([io.github.mbackschat.a12.dm.interpreter.ModelPathIndex.exceededBound]) uses — one address-bound fact, two
+     * readers — so the star-domain bound and the emitted over-repetition codes can never disagree.
      * Computed once per group (empty for a well-formed document → the exclusion is a no-op) and memoized with the [Index].
      */
     private fun overLimitRows(groupPath: String): Set<List<Int>> {
-        if (declaredReps.isEmpty()) return emptySet()
+        if (effectiveGroupRepetitionMaximums.isEmpty()) return emptySet()
         return index().overLimitRowsByGroup.getOrPut(groupPath) {
             val parts = partsOf(groupPath)
             val bounds = parts.indices.mapNotNull { level ->
-                declaredReps["/" + parts.take(level + 1).joinToString("/")]?.let { level to it }
+                effectiveGroupRepetitionMaximums["/" + parts.take(level + 1).joinToString("/")]
+                    ?.let { level to it }
             }
             if (bounds.isEmpty()) emptySet()
             else rowsOf(groupPath).filterTo(HashSet()) { reps ->

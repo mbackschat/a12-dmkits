@@ -435,6 +435,21 @@ data class ModelDef(
     val kinds: Map<String, Kind> = fields.associate { it.path to it.kind }
     val repeatable: Set<String> = repeatableGroups + declaredReps.keys
 
+    /**
+     * The effective address maximum of every BOUNDED GROUP level: a declared repeatable maximum when present,
+     * otherwise 1 for a non-repeatable group. An unbounded repeatable group has no entry. Field paths are
+     * deliberately absent — a field's terminal coordinate is not a runtime repetition axis, and the Kernel
+     * document conversion refuses any terminal value other than 1 before validation (R2.8 placement lock).
+     */
+    internal val effectiveGroupRepetitionMaximums: Map<String, Int> = buildMap {
+        for (group in groupPaths + declaredReps.keys) {
+            when {
+                group in declaredReps -> put(group, declaredReps.getValue(group))
+                group !in repeatable -> put(group, 1)
+            }
+        }
+    }
+
     /** Field SHORT NAME (last path segment) → the field paths carrying it — the kernel's `shortName2FullName`,
      *  **fields only** (`flattenToStream().filter(isField)`). A bare ref not found in its declaring group
      *  resolves here iff EXACTLY ONE match; >1 is a kernel `MVK_FIELDNAME_NOT_UNIQUE` reject (so no valid

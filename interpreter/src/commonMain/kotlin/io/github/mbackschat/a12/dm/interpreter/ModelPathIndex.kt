@@ -8,7 +8,14 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
  * indexed lookups while a document is validated (IF196).
  */
 internal class ModelPathIndex(model: ModelDef) {
-    private data class Bound(val level: Int, val maximum: Int)
+    enum class BoundKind {
+        REPEATABLE,
+        NON_REPEATABLE,
+    }
+
+    data class ExceededBound(val level: Int, val kind: BoundKind)
+
+    private data class Bound(val level: Int, val maximum: Int, val kind: BoundKind)
 
     private data class PathInfo(
         val ancestors: List<String>,
@@ -23,7 +30,10 @@ internal class ModelPathIndex(model: ModelDef) {
             ancestors = through.dropLast(1),
             through = through,
             bounds = through.mapIndexedNotNull { level, prefix ->
-                model.declaredReps[prefix]?.let { Bound(level, it) }
+                model.effectiveGroupRepetitionMaximums[prefix]?.let { maximum ->
+                    val kind = if (prefix in model.repeatable) BoundKind.REPEATABLE else BoundKind.NON_REPEATABLE
+                    Bound(level, maximum, kind)
+                }
             },
         )
     }
@@ -34,12 +44,19 @@ internal class ModelPathIndex(model: ModelDef) {
 
     fun levelOf(path: String): Int = info(path).through.lastIndex
 
-    /** The outermost repeatable level whose instance exceeds its model-declared maximum. */
-    fun overLimitLevel(path: String, reps: List<Int>): Int? {
+    /** The outermost GROUP level whose instance exceeds its effective maximum. */
+    fun exceededBound(path: String, reps: List<Int>): ExceededBound? {
         for (bound in info(path).bounds) {
-            if (bound.level < reps.size && reps[bound.level] > bound.maximum) return bound.level
+            if (bound.level < reps.size && reps[bound.level] > bound.maximum) {
+                return ExceededBound(bound.level, bound.kind)
+            }
         }
         return null
+    }
+
+    /** The level of [exceededBound], retained for consumers that need only suppression, not code selection. */
+    fun overLimitLevel(path: String, reps: List<Int>): Int? {
+        return exceededBound(path, reps)?.level
     }
 
     private fun info(path: String): PathInfo =

@@ -94,6 +94,63 @@ class OverRepetitionFormalGateMultiplatformTest {
         assertTrue("CNT2" in codes, "NumberOfFilledGroups(Items*) is 2, not 3 — the over-limit row is excluded")
     }
 
+    @Test
+    fun nonRepeatableGroupCoordinateAboveOneEmitsFixedRepetitionErrors() {
+        val def = ModelDef(
+            fields = listOf(FieldDef(REFERENCE, Kind.STRING)),
+            rules = emptyList(),
+            groupPaths = setOf(APPLICATION),
+        )
+        val doc = def.newDocument()
+            .group(APPLICATION, 2)
+            .field(REFERENCE, "APP-2", 2, 1)
+
+        val messages = DmInterpreter(def).validate(doc).messages
+
+        assertEquals(
+            listOf(
+                "zuGrosseLfdNummer@/Application",
+                "zuGrosseLfdNummer@/Application[2]/Reference",
+            ),
+            messages.map { "${it.code}@${it.errorPath}" }.sorted(),
+        )
+    }
+
+    @Test
+    fun crossRootAggregateExcludesRowsBeneathAnOverLimitNonRepeatableGroup() {
+        val def = ModelDef(
+            fields = listOf(
+                FieldDef(DASHBOARD_FLAG, Kind.STRING),
+                FieldDef(AMOUNT, Kind.NUMBER),
+            ),
+            rules = listOf(
+                RuleDef(
+                    "/Dashboard/SumTen",
+                    DASHBOARD,
+                    "FieldFilled(/Dashboard/Flag) And Sum(/Application/Lines*/Amount) == 10",
+                    "SUM_TEN",
+                    "../Flag",
+                ),
+            ),
+            repeatableGroups = setOf(APPLICATION_LINES),
+            declaredReps = mapOf(APPLICATION_LINES to 2),
+            groupPaths = setOf(DASHBOARD, APPLICATION, APPLICATION_LINES),
+        )
+        val doc = def.newDocument()
+            .group(DASHBOARD, 1)
+            .field(DASHBOARD_FLAG, "ready", 1, 1)
+            .group(APPLICATION, 1)
+            .group(APPLICATION_LINES, 1, 1)
+            .field(AMOUNT, "10", 1, 1, 1)
+            .group(APPLICATION, 2)
+            .group(APPLICATION_LINES, 2, 1)
+            .field(AMOUNT, "90", 2, 1, 1)
+
+        val codes = DmInterpreter(def).validate(doc).messages.map { it.code }
+
+        assertTrue("SUM_TEN" in codes, "the over-limit Application[2] amount is outside the cross-root Sum")
+    }
+
     private companion object {
         const val REG = "/Registry"
         const val PLANS = "/Registry/Plans"
@@ -101,5 +158,11 @@ class OverRepetitionFormalGateMultiplatformTest {
         const val ORD = "/Ord"
         const val ITEMS = "/Ord/Items"
         const val QTY = "/Ord/Items/Qty"
+        const val APPLICATION = "/Application"
+        const val REFERENCE = "/Application/Reference"
+        const val APPLICATION_LINES = "/Application/Lines"
+        const val AMOUNT = "/Application/Lines/Amount"
+        const val DASHBOARD = "/Dashboard"
+        const val DASHBOARD_FLAG = "/Dashboard/Flag"
     }
 }
