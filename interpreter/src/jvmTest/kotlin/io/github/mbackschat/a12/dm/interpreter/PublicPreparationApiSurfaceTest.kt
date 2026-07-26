@@ -44,6 +44,18 @@ class PublicPreparationApiSurfaceTest {
             DocumentInputError::class.java,
             ModelOwnerMismatchError::class.java,
             DocumentSnapshot::class.java,
+            UnknownModelPathError::class.java,
+            DocumentCoordinateError::class.java,
+            GroupPointer::class.java,
+            FieldPointer::class.java,
+            RelevantSelectionPointer::class.java,
+            ModelMetadata::class.java,
+            InterpreterSupportReport::class.java,
+            ValidationReport::class.java,
+            ComputationReport::class.java,
+            CustomConditionDocumentView::class.java,
+            CustomConditionInvocation::class.java,
+            Interpreter::class.java,
         )) {
             assertTrue(
                 outputType.declaredConstructors.none { it.isCallablePublic() },
@@ -53,13 +65,20 @@ class PublicPreparationApiSurfaceTest {
     }
 
     @Test
-    fun suspendingCollectorStaysOutsideTheJavaSurfaceUntilTheCompletionStageProjection() {
+    fun suspendingCollectorStaysOutsideTheJavaSurface() {
         assertTrue(
             ModelWorkspace::class.java.methods.none { method ->
                 method.name == "collect" && method.isCallablePublic()
             },
-            "R2.10 owns the Java CompletionStage collection projection",
+            "Java callers use ModelWorkspaceJava.collect rather than a Continuation-shaped common method",
         )
+    }
+
+    @Test
+    fun javaCompletionStageConsumerFixtureCompilesAndExecutes() {
+        Class.forName("io.github.mbackschat.a12.dm.interpreter.ModelWorkspaceJavaConsumerFixture")
+            .getMethod("verify")
+            .invoke(null)
     }
 
     @Test
@@ -216,6 +235,57 @@ class PublicPreparationApiSurfaceTest {
             DocumentSnapshot::class.java,
             DocumentSnapshot.Companion::class.java,
             PreparedDocumentApi::class.java,
+            ModelEntityKind::class.java,
+            DocumentCoordinateReason::class.java,
+            UnknownModelPathError::class.java,
+            DocumentCoordinateError::class.java,
+            RelevantCoordinate::class.java,
+            RelevantCoordinate.Companion::class.java,
+            RelevantCoordinate.Exact::class.java,
+            RelevantCoordinate.All::class.java,
+            RelevantEntityPointer::class.java,
+            DocumentPointer::class.java,
+            GroupPointer::class.java,
+            FieldPointer::class.java,
+            RelevantSelectionPointer::class.java,
+            ModelMetadata::class.java,
+            ValidationSeverity::class.java,
+            ValidationFindingType::class.java,
+            ValidationFinding::class.java,
+            UnsupportedProgram::class.java,
+            InterpreterSupportReport::class.java,
+            ValidationReport::class.java,
+            ComputationOutcome::class.java,
+            ComputationResult::class.java,
+            ComputationReport::class.java,
+            CustomFieldValidationParameters::class.java,
+            CustomFieldValidationResult::class.java,
+            CustomFieldValidationResult.Accepted::class.java,
+            CustomFieldValidationResult.Rejected::class.java,
+            CustomFieldValidator::class.java,
+            CustomFieldTypeFactory::class.java,
+            CustomCondition::class.java,
+            CustomConditionFactory::class.java,
+            CustomConditionDocumentView::class.java,
+            CustomConditionInvocation::class.java,
+            CustomizationKind::class.java,
+            CustomizationRegistrationReason::class.java,
+            CustomizationRegistrationError::class.java,
+            CustomFieldTypeRegistry::class.java,
+            CustomFieldTypeRegistry.Companion::class.java,
+            CustomFieldTypeRegistry.Builder::class.java,
+            CustomConditionRegistry::class.java,
+            CustomConditionRegistry.Companion::class.java,
+            CustomConditionRegistry.Builder::class.java,
+            InterpreterConfiguration::class.java,
+            InterpreterConfiguration.Companion::class.java,
+            InterpreterConfiguration.Builder::class.java,
+            InterpreterIntegrationPhase::class.java,
+            InterpreterIntegrationReason::class.java,
+            InterpreterIntegrationError::class.java,
+            Interpreter::class.java,
+            JavaModelSourceProvider::class.java,
+            ModelWorkspaceJava::class.java,
         )
 
         val PUBLIC_PREPARATION_TYPE_SET = PUBLIC_PREPARATION_TYPES.toSet()

@@ -4,7 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.FormalErrorCode
 import io.github.mbackschat.a12.dm.interpreter.eval.INDEX_DEFAULT_SUPPRESSED
 import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection
-import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
+import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 
 /** The complete result of formally checking one cell. */
 internal sealed interface FormalResult {
@@ -48,7 +48,7 @@ internal class FormalResultCache(
 
     private val results = HashMap<Key, FormalResult>()
     private val invalidPointers =
-        unavailable.mapTo(HashSet()) { (path, reps) -> FieldPointer(path, reps) }
+        unavailable.mapTo(HashSet()) { (path, reps) -> CustomConditionFieldPointer(path, reps) }
 
     fun resultAt(path: String, reps: List<Int>, ctx: EvalContext): FormalResult {
         val raw = ctx.displayValue(path)
@@ -67,12 +67,12 @@ internal class FormalResultCache(
         val result = results.getOrPut(key) {
             checks.computeFormalResultAt(path, reps, raw, ctx, duplicates, locale, groupFilled)
         }
-        if (result is FormalResult.Invalid) invalidPointers += FieldPointer(path, reps)
+        if (result is FormalResult.Invalid) invalidPointers += CustomConditionFieldPointer(path, reps)
         return result
     }
 
     /** Invalid addresses reached by the validation pre-pass; no declared-empty Cartesian expansion. */
-    fun invalidPointers(): Set<FieldPointer> = invalidPointers
+    fun invalidPointers(): Set<CustomConditionFieldPointer> = invalidPointers
 
     fun failureAt(path: String, reps: List<Int>, ctx: EvalContext): FormalFailure? =
         when (val result = resultAt(path, reps, ctx)) {

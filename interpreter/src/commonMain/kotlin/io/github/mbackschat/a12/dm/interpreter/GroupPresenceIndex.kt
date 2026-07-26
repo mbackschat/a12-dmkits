@@ -5,7 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.GroupRelevance
 import io.github.mbackschat.a12.dm.interpreter.eval.GroupPresenceState
 import io.github.mbackschat.a12.dm.interpreter.eval.UNIQUE_INDEX
-import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
+import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 
 /**
@@ -75,7 +75,7 @@ internal class AdmittedGroupContentIndex private constructor(
  */
 internal class GroupPresenceIndex(
     private val content: AdmittedGroupContentIndex,
-    formallyIncorrect: Set<FieldPointer>,
+    formallyIncorrect: Set<CustomConditionFieldPointer>,
     private val groupRelevance: (String, List<Int>) -> GroupRelevance,
 ) {
     private val erroneousByPath = HashMap<String, HashSet<List<Int>>>()

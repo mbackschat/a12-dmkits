@@ -116,6 +116,15 @@ class PreparedModel private constructor(
     /** The placement-transport verbs bound to this prepared owner domain. */
     val documents: PreparedDocumentApi = PreparedDocumentApi(this)
 
+    /** Minimal owner-bound model lookup and pointer factory. */
+    val model: ModelMetadata = ModelMetadata.create(this)
+
+    @JvmOverloads
+    fun createInterpreter(
+        configuration: InterpreterConfiguration = InterpreterConfiguration.defaults(),
+    ): Interpreter =
+        Interpreter.create(this, configuration)
+
     @JvmSynthetic
     internal fun definition(): ModelDef = definition
 

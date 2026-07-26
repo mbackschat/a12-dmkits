@@ -10,7 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldValidationContext
-import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
+import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
@@ -44,7 +44,7 @@ class Interpreter(
     /** The current rule's error-field pointer (its `errorEntityRelPath` resolved to the row's reps) — the
      *  `errorField` a custom condition's `check` receives. Null outside a rule eval (a computation / `Having`
      *  sub-eval), where `CustomCondition` cannot appear. */
-    private val customErrorField: FieldPointer? = null,
+    private val customErrorField: CustomConditionFieldPointer? = null,
     /**
      * Whether a referenced field is **formally invalid** in this context — a present malformed value (a
      * format error) OR a required-but-empty field (a `mandatoryField` error). Such a field resolves to
@@ -81,15 +81,15 @@ class Interpreter(
     internal constructor(
         ctx: EvalContext,
         config: EvalConfig,
-        customErrorField: FieldPointer,
+        customErrorField: CustomConditionFieldPointer,
         invalid: (String) -> Boolean,
         rnuOutcome: ((EvalContext) -> MsgType?)?,
-        customFormallyIncorrect: () -> Set<FieldPointer>,
+        customFormallyIncorrect: () -> Set<CustomConditionFieldPointer>,
     ) : this(ctx, config, customErrorField, invalid, rnuOutcome = rnuOutcome) {
         this.customFormallyIncorrect = customFormallyIncorrect
     }
 
-    private var customFormallyIncorrect: (() -> Set<FieldPointer>)? = null
+    private var customFormallyIncorrect: (() -> Set<CustomConditionFieldPointer>)? = null
 
     // The config bundle destructured into the fields the walk reads — keeps every internal reference and its
     // direct-field read speed unchanged while the constructor stays small ([EvalConfig]); the config object

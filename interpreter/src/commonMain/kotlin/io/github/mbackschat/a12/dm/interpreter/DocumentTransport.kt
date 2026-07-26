@@ -379,7 +379,7 @@ private object PlacementReader {
             kind = kind,
             index = index,
         )
-        val parts = pathPartCount(path)
+        val parts = ModelAddressValidation.pathPartCount(path)
         requireWithin(
             actual = parts.toLong(),
             maximum = limits.maxModelNestingDepth.toLong(),
@@ -395,38 +395,39 @@ private object PlacementReader {
             index = index,
         )
 
-        val known = when (kind) {
-            DocumentPlacementKind.GROUP -> path in model.groupPaths
-            DocumentPlacementKind.FIELD -> path in model.kinds
-        }
-        if (!known) {
+        if (ModelAddressValidation.entityKind(model, path) != kind) {
             diagnostics += UnknownModelPathDiagnostic(kind, index, path)
         }
-        if (coordinates.size != parts) {
-            diagnostics += CoordinateCountMismatchDiagnostic(
-                placementKind = kind,
-                placementIndex = index,
-                modelPath = path,
-                expectedCoordinateCount = parts,
-                actualCoordinateCount = coordinates.size,
-            )
-        }
-        coordinates.forEachIndexed { coordinateIndex, coordinate ->
-            if (coordinate < 1) {
-                diagnostics += InvalidCoordinateDiagnostic(kind, index, coordinateIndex, path, coordinate)
+        for (violation in ModelAddressValidation.violations(kind, path, coordinates)) {
+            when (violation.reason) {
+                ModelAddressViolationReason.COORDINATE_COUNT_MISMATCH ->
+                    diagnostics += CoordinateCountMismatchDiagnostic(
+                        placementKind = kind,
+                        placementIndex = index,
+                        modelPath = path,
+                        expectedCoordinateCount = checkNotNull(violation.expectedCoordinateCount),
+                        actualCoordinateCount = checkNotNull(violation.actualCoordinateCount),
+                    )
+                ModelAddressViolationReason.INVALID_COORDINATE -> {
+                    val coordinateIndex = checkNotNull(violation.coordinateIndex)
+                    diagnostics += InvalidCoordinateDiagnostic(
+                        placementKind = kind,
+                        placementIndex = index,
+                        coordinateIndex = coordinateIndex,
+                        modelPath = path,
+                        coordinate = coordinates[coordinateIndex],
+                    )
+                }
+                ModelAddressViolationReason.INVALID_FIELD_REPETITION -> {
+                    val coordinateIndex = checkNotNull(violation.coordinateIndex)
+                    diagnostics += InvalidFieldRepetitionDiagnostic(
+                        placementIndex = index,
+                        coordinateIndex = coordinateIndex,
+                        modelPath = path,
+                        coordinate = coordinates[coordinateIndex],
+                    )
+                }
             }
-        }
-        if (
-            kind == DocumentPlacementKind.FIELD &&
-            coordinates.size == parts &&
-            coordinates.last() > 1
-        ) {
-            diagnostics += InvalidFieldRepetitionDiagnostic(
-                placementIndex = index,
-                coordinateIndex = coordinates.lastIndex,
-                modelPath = path,
-                coordinate = coordinates.last(),
-            )
         }
 
         val identity = PlacementIdentity(kind, path, coordinates.toList())
@@ -469,8 +470,6 @@ private object PlacementReader {
             )
         }
     }
-
-    private fun pathPartCount(path: String): Int = path.trim('/').split('/').size
 
     private data class PlacementIdentity(
         val kind: DocumentPlacementKind,

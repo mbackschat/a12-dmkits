@@ -26,24 +26,24 @@ fun interface CustomCondition {
      */
     fun check(
         data: CustomConditionData,
-        relevant: Set<FieldPointer>?,
-        formallyIncorrect: Set<FieldPointer>,
-        errorField: FieldPointer,
+        relevant: Set<CustomConditionFieldPointer>?,
+        formallyIncorrect: Set<CustomConditionFieldPointer>,
+        errorField: CustomConditionFieldPointer,
     ): Boolean
 }
 
 /**
  * The read-only document-wide data view a [CustomCondition] sees — the kernel's `IData` surface
- * (cross-platform). A consumer reads field values by exact [FieldPointer]; the current rule row is carried
+ * (cross-platform). A consumer reads field values by exact [CustomConditionFieldPointer]; the current rule row is carried
  * separately by the callback's `errorField`.
  */
 interface CustomConditionData {
     /** The value at [field] (path + 1-based repetition indices), or null if empty/absent — the kernel's
      *  `IData.getValue(IIdentifier)`. */
-    fun getValue(field: FieldPointer): String?
+    fun getValue(field: CustomConditionFieldPointer): String?
 
     /** Every present (valued) field instance in the row's scope — the kernel's `IData.iterator()`. */
-    fun fields(): List<FieldPointer>
+    fun fields(): List<CustomConditionFieldPointer>
 }
 
 /**
@@ -51,4 +51,4 @@ interface CustomConditionData {
  * repetition [indices], one per path part (a group and field both carry indices). Equality is structural so it
  * works as a set element (the kernel's relevant / formally-incorrect sets).
  */
-data class FieldPointer(val path: String, val indices: List<Int>)
+data class CustomConditionFieldPointer(val path: String, val indices: List<Int>)

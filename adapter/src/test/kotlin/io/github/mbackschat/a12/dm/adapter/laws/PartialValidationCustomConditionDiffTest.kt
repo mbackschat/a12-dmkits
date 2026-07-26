@@ -56,7 +56,7 @@ class PartialValidationCustomConditionDiffTest {
         ): Boolean = relevant == null || relevant.any { it.path == REGION }
     }
 
-    /** Interpreter side — the SAME logic over the cross-platform SPI's `relevant: Set<FieldPointer>?`. */
+    /** Interpreter side — the SAME logic over the cross-platform SPI's `relevant: Set<CustomConditionFieldPointer>?`. */
     private val interpRegionInScope = CustomCondition { _, relevant, _, _ ->
         relevant == null || relevant.any { it.path == REGION }
     }

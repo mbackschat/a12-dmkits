@@ -6,7 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
-import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
+import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.Requiredness
@@ -41,10 +41,10 @@ class CustomConditionInvocationTest {
             declaredReps = mapOf(CHECKS to 3),
         )
         val expectedFormal = setOf(
-            FieldPointer(REQUIRED, listOf(1, 1)),
-            FieldPointer(SCORE, listOf(1, 2, 1)),
+            CustomConditionFieldPointer(REQUIRED, listOf(1, 1)),
+            CustomConditionFieldPointer(SCORE, listOf(1, 2, 1)),
         )
-        val expectedError = FieldPointer(CHECK_ERROR, listOf(1, 2, 1))
+        val expectedError = CustomConditionFieldPointer(CHECK_ERROR, listOf(1, 2, 1))
         val callback = CustomCondition { _, relevant, formallyIncorrect, errorField ->
             relevant == null && formallyIncorrect == expectedFormal && errorField == expectedError
         }
@@ -100,7 +100,7 @@ class CustomConditionInvocationTest {
             rules = emptyList(),
         )
         val document = model.newDocument().field(ROOT_ERROR, "bad", 1, 1)
-        val error = FieldPointer(ROOT_ERROR, listOf(1, 1))
+        val error = CustomConditionFieldPointer(ROOT_ERROR, listOf(1, 1))
         val callback = CustomCondition { _, _, formallyIncorrect, _ ->
             formallyIncorrect == setOf(error)
         }

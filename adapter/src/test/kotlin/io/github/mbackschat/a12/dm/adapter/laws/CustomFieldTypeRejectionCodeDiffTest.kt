@@ -4,7 +4,18 @@ import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeCheckError
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeFactory
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeValidationParam
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldValidator
+import io.github.mbackschat.a12.dm.interpreter.CustomFieldTypeRegistry
+import io.github.mbackschat.a12.dm.interpreter.CustomFieldTypeFactory
+import io.github.mbackschat.a12.dm.interpreter.CustomFieldValidationResult
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.FieldPlacementInput
+import io.github.mbackschat.a12.dm.interpreter.GroupPlacementInput
+import io.github.mbackschat.a12.dm.interpreter.InterpreterConfiguration
+import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationError
+import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationPhase
+import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationReason
+import io.github.mbackschat.a12.dm.interpreter.PlacementDocumentInputV1
+import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldTypeDeclaration
@@ -15,6 +26,8 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import java.util.Optional
 import java.util.function.Consumer
@@ -53,6 +66,21 @@ class CustomFieldTypeRejectionCodeDiffTest {
     private val codeTypes = mapOf("Code" to CustomFieldType { value, _ ->
         rejectionKey(value)?.let { CustomTypeRejection(it) }
     })
+    private val publicPrepared by lazy { PreparedModel.loadExpandedJson(json) }
+    private val publicInterpreter by lazy {
+        val fieldTypes = CustomFieldTypeRegistry.builder()
+            .register("Code") { value, _ ->
+                rejectionKey(value)?.let {
+                    CustomFieldValidationResult.Rejected(it, "bad code")
+                } ?: CustomFieldValidationResult.Accepted
+            }
+            .build()
+        publicPrepared.createInterpreter(
+            InterpreterConfiguration.builder()
+                .customFieldTypes(fieldTypes)
+                .build(),
+        )
+    }
 
     private val factory = object : ICustomFieldTypeFactory {
         override fun createCustomFieldValidator(name: String): Optional<ICustomFieldValidator> =
@@ -76,15 +104,71 @@ class CustomFieldTypeRejectionCodeDiffTest {
         val javaStatic = engine.messages(engine.instance(kDoc), factory).filter { it.field().contains("Code") }.map { it.code() }
         val interp = DmInterpreter(def, customFieldTypes = codeTypes).validate(iDoc).messages
             .filter { it.errorPath.contains("Code") }.map { it.code }
+        val publicSnapshot = publicPrepared.documents.readPlacements(
+            PlacementDocumentInputV1(
+                groups = listOf(GroupPlacementInput("/Order", listOf(1))),
+                fields = listOf(FieldPlacementInput(CODE, listOf(1, 1), value)),
+            ),
+        )
+        val public = publicInterpreter.validateFull(publicSnapshot).findings
+            .filter { it.errorPath.contains("Code") }.map { it.code }
         val exp = listOfNotNull(expected)
+        assertEquals(false, publicPrepared.createInterpreter().supportReport().fullySupported)
+        assertEquals(true, publicInterpreter.supportReport().fullySupported)
         assertEquals(exp, groovy, "kernel groovy-dynamic code for \"$value\"")
         assertEquals(exp, javaStatic, "kernel static-Java code for \"$value\"")
         assertEquals(exp, interp, "interpreter code for \"$value\"")
+        assertEquals(exp, public, "public interpreter code for \"$value\"")
     }
 
     @Test fun acceptedValueHasNoFormalError() = codeAgrees("abcd", null)
     @Test fun tooShortCarriesItsProjectKey() = codeAgrees("ab", "CODE_TOO_SHORT")
     @Test fun tooLongCarriesItsProjectKey() = codeAgrees("abcdef", "CODE_TOO_LONG")
+
+    @Test
+    fun publicValidatorFailureIsNormalizedAtTheEvaluationBoundary() {
+        val failure = IllegalStateException("validator failed")
+        val fieldTypes = CustomFieldTypeRegistry.builder()
+            .register("Code") { _, _ -> throw failure }
+            .build()
+        val interpreter = publicPrepared.createInterpreter(
+            InterpreterConfiguration.builder().customFieldTypes(fieldTypes).build(),
+        )
+
+        val error = assertThrows(InterpreterIntegrationError::class.java) {
+            interpreter.validateFull(publicSnapshot("abcd"))
+        }
+
+        assertEquals(InterpreterIntegrationPhase.EVALUATE, error.phase)
+        assertEquals(InterpreterIntegrationReason.CALLBACK_THREW, error.reason)
+        assertSame(failure, error.cause)
+    }
+
+    @Test
+    fun publicFactoryFailureIsNormalizedWhileTheInterpreterBinds() {
+        val failure = IllegalStateException("factory failed")
+        val fieldTypes = CustomFieldTypeRegistry.fromFactory(
+            CustomFieldTypeFactory { throw failure },
+        )
+
+        val error = assertThrows(InterpreterIntegrationError::class.java) {
+            publicPrepared.createInterpreter(
+                InterpreterConfiguration.builder().customFieldTypes(fieldTypes).build(),
+            )
+        }
+
+        assertEquals(InterpreterIntegrationPhase.BIND, error.phase)
+        assertEquals(InterpreterIntegrationReason.FACTORY_THREW, error.reason)
+        assertSame(failure, error.cause)
+    }
+
+    private fun publicSnapshot(value: String) =
+        publicPrepared.documents.readPlacements(
+            PlacementDocumentInputV1(
+                groups = listOf(GroupPlacementInput("/Order", listOf(1))),
+                fields = listOf(FieldPlacementInput(CODE, listOf(1, 1), value)),
+            ),
+        )
 
     private companion object {
         const val CODE = "/Order/Code"

@@ -4,7 +4,7 @@ import com.mgmtp.a12.kernel.core.rt.a12internal.validation.ICustomCondition
 import com.mgmtp.a12.kernel.core.rt.a12internal.validation.IData
 import com.mgmtp.a12.kernel.core.rt.a12internal.validation.IIdentifier
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionData
-import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
+import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -21,16 +21,16 @@ import org.junit.jupiter.api.Test
  */
 class KernelCustomConditionsTest {
 
-    private val name = FieldPointer("/Order/CustomerName", listOf(1, 1))
-    private val total = FieldPointer("/Order/Items/Total", listOf(1, 2, 1))
+    private val name = CustomConditionFieldPointer("/Order/CustomerName", listOf(1, 1))
+    private val total = CustomConditionFieldPointer("/Order/Items/Total", listOf(1, 2, 1))
 
     /** A row view backed by a plain map (the interpreter's resolved-row data, stubbed). */
-    private fun data(values: Map<FieldPointer, String>) = object : CustomConditionData {
-        override fun getValue(field: FieldPointer): String? = values[field]
-        override fun fields(): List<FieldPointer> = values.keys.toList()
+    private fun data(values: Map<CustomConditionFieldPointer, String>) = object : CustomConditionData {
+        override fun getValue(field: CustomConditionFieldPointer): String? = values[field]
+        override fun fields(): List<CustomConditionFieldPointer> = values.keys.toList()
     }
 
-    private fun check(cond: ICustomCondition, data: CustomConditionData, errorField: FieldPointer = name) =
+    private fun check(cond: ICustomCondition, data: CustomConditionData, errorField: CustomConditionFieldPointer = name) =
         KernelCustomConditions.fromCore(cond).check(data, null, emptySet(), errorField)
 
     @Test fun readsErrorFieldValue() {

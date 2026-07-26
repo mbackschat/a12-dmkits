@@ -5,7 +5,19 @@ import com.mgmtp.a12.kernel.md.document.api.IDocument
 import com.mgmtp.a12.kernel.md.document.api.IEntityInstance
 import com.mgmtp.a12.kernel.md.document.api.IFieldInstance
 import io.github.mbackschat.a12.dm.adapter.KernelCustomConditions
+import io.github.mbackschat.a12.dm.interpreter.CustomCondition as PublicCustomCondition
+import io.github.mbackschat.a12.dm.interpreter.CustomConditionRegistry
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.FieldPlacementInput
+import io.github.mbackschat.a12.dm.interpreter.GroupPlacementInput
+import io.github.mbackschat.a12.dm.interpreter.InterpreterConfiguration
+import io.github.mbackschat.a12.dm.interpreter.Interpreter
+import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationError
+import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationPhase
+import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationReason
+import io.github.mbackschat.a12.dm.interpreter.PlacementDocumentInputV1
+import io.github.mbackschat.a12.dm.interpreter.PreparedModel
+import io.github.mbackschat.a12.dm.interpreter.ValidationFindingType
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -16,6 +28,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 
 /**
@@ -66,6 +80,20 @@ class CustomConditionDiffTest {
     /** Interpreter side — a REAL kernel CORE condition (the kind projects ship), run via the bridge. */
     private val coreNameIsAcme = ICustomCondition { data, _, _, errorField -> data.getValue(errorField) == "ACME" }
 
+    private val publicPrepared by lazy { PreparedModel.loadExpandedJson(kModel) }
+    private val publicInterpreter by lazy {
+        val conditions = CustomConditionRegistry.builder()
+            .register("NameIsAcme", PublicCustomCondition { invocation ->
+                invocation.document.value(invocation.errorPointer) == "ACME"
+            })
+            .build()
+        publicPrepared.createInterpreter(
+            InterpreterConfiguration.builder()
+                .customConditions(conditions)
+                .build(),
+        )
+    }
+
     /** Run the SAME logic on both engines for CustomerName = [name] (null = empty); compare firing + polarity. */
     private fun agree(name: String?, msg: String) {
         val kDoc = RuntimeLaws.doc().group("/Order", 1)
@@ -80,13 +108,80 @@ class CustomConditionDiffTest {
         val i = DmInterpreter(def, customConditions = KernelCustomConditions.fromCore(mapOf("NameIsAcme" to coreNameIsAcme)))
             .validate(iDoc).messages.firstOrNull { it.code == "CC" }
             ?.type?.let { if (it == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR" }
+        val fields = name?.let { listOf(FieldPlacementInput(NAME, listOf(1, 1), it)) }.orEmpty()
+        val publicSnapshot = publicPrepared.documents.readPlacements(
+            PlacementDocumentInputV1(
+                groups = listOf(GroupPlacementInput("/Order", listOf(1))),
+                fields = fields,
+            ),
+        )
+        val public = publicInterpreter.validateFull(publicSnapshot).findings
+            .firstOrNull { it.code == "CC" }
+            ?.type
+            ?.let { if (it == ValidationFindingType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR" }
+        assertEquals(false, publicPrepared.createInterpreter().supportReport().fullySupported)
+        assertEquals(true, publicInterpreter.supportReport().fullySupported)
         assertEquals(k, j, "$msg  (Groovy-dynamic=$k generated-Java=$j)")
         assertEquals(k, i, "$msg  (Groovy-dynamic=$k interpreter=$i)")
+        assertEquals(k, public, "$msg  (Groovy-dynamic=$k public-interpreter=$public)")
     }
 
     @Test fun acmeFires() = agree("ACME", "value ACME → condition true → fires VALUE")
     @Test fun otherNoFire() = agree("Other", "value Other → condition false → no fire")
     @Test fun guardedAndIsSilentWhenEmpty() = agree(null, "empty guard blocks the complete And → no fire")
+
+    @Test
+    fun publicConditionFailureIsNormalizedAtTheEvaluationBoundary() {
+        val failure = IllegalStateException("condition failed")
+        val interpreter = publicPrepared.createInterpreter(
+            InterpreterConfiguration.builder()
+                .customConditions(
+                    CustomConditionRegistry.builder()
+                        .register("NameIsAcme", PublicCustomCondition { throw failure })
+                        .build(),
+                )
+                .build(),
+        )
+
+        val error = assertThrows(InterpreterIntegrationError::class.java) {
+            interpreter.validateFull(publicSnapshot("ACME"))
+        }
+
+        assertEquals(InterpreterIntegrationPhase.EVALUATE, error.phase)
+        assertEquals(InterpreterIntegrationReason.CALLBACK_THREW, error.reason)
+        assertSame(failure, error.cause)
+    }
+
+    @Test
+    fun publicConditionCannotReenterItsActiveInterpreter() {
+        lateinit var interpreter: Interpreter
+        lateinit var snapshot: io.github.mbackschat.a12.dm.interpreter.DocumentSnapshot
+        val conditions = CustomConditionRegistry.builder()
+            .register("NameIsAcme", PublicCustomCondition {
+                interpreter.validateFull(snapshot)
+                false
+            })
+            .build()
+        interpreter = publicPrepared.createInterpreter(
+            InterpreterConfiguration.builder().customConditions(conditions).build(),
+        )
+        snapshot = publicSnapshot("ACME")
+
+        val error = assertThrows(InterpreterIntegrationError::class.java) {
+            interpreter.validateFull(snapshot)
+        }
+
+        assertEquals(InterpreterIntegrationPhase.EVALUATE, error.phase)
+        assertEquals(InterpreterIntegrationReason.REENTRANT_EVALUATION, error.reason)
+    }
+
+    private fun publicSnapshot(name: String) =
+        publicPrepared.documents.readPlacements(
+            PlacementDocumentInputV1(
+                groups = listOf(GroupPlacementInput("/Order", listOf(1))),
+                fields = listOf(FieldPlacementInput(NAME, listOf(1, 1), name)),
+            ),
+        )
 
     private companion object {
         const val NAME = "/Order/CustomerName"

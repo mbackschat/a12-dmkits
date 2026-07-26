@@ -15,7 +15,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
-import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
+import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.Message
 import io.github.mbackschat.a12.dm.interpreter.model.MessageLabelProvider
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -213,10 +213,10 @@ class DmInterpreter @JvmOverloads constructor(
      *  the kernel feeds it the caller's relevant entities (wildcards preserved, groups NOT expanded) **plus the
      *  auto-added global fields** (IF37/IF38, `MainValidatorController` → `getAllPruefungsrelevanteEntitiesExtern`).
      *  Full validation passes `null` ("all relevant"); here the caller's [RelevantEntity]s map straight to
-     *  [FieldPointer]s and each global field rides as an all-reps-wildcard pointer. */
-    private fun customRelevantOf(relevant: Set<RelevantEntity>): Set<FieldPointer> =
-        relevant.mapTo(HashSet()) { FieldPointer(it.path, it.indices) } +
-            model.globalFields.map { FieldPointer(it, List(pathParts(it).size) { RelevantEntity.ALL }) }
+     *  [CustomConditionFieldPointer]s and each global field rides as an all-reps-wildcard pointer. */
+    private fun customRelevantOf(relevant: Set<RelevantEntity>): Set<CustomConditionFieldPointer> =
+        relevant.mapTo(HashSet()) { CustomConditionFieldPointer(it.path, it.indices) } +
+            model.globalFields.map { CustomConditionFieldPointer(it, List(pathParts(it).size) { RelevantEntity.ALL }) }
 
     /**
      * The shared validation pipeline, parameterized by [isRelevant] (`(path, reps) → Boolean`). Full
@@ -227,7 +227,7 @@ class DmInterpreter @JvmOverloads constructor(
      * field's relevance.
      */
     private fun validateWith(doc: Document, locale: String, isRelevant: Relevance,
-            customRelevant: Set<FieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null,
+            customRelevant: Set<CustomConditionFieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null,
             groupRelevance: (String, List<Int>) -> GroupRelevance = { _, _ -> GroupRelevance.FULL }): ValidationOutcome =
         observeCaches(doc) {
             // The index-default staging split (SPEC-2026-07-23-14): a FULL call stages each eligible
@@ -429,7 +429,7 @@ class DmInterpreter @JvmOverloads constructor(
      * aggregate's star is wildcard-relevant (IF42), [EvalConfig.customRelevant] the set a `CustomCondition` sees
      * (null in full, the caller's set + globals in partial — IF38).
      */
-    private fun validationConfig(isRelevant: Relevance, customRelevant: Set<FieldPointer>?,
+    private fun validationConfig(isRelevant: Relevance, customRelevant: Set<CustomConditionFieldPointer>?,
             starRelevant: ((String) -> Boolean)?,
             groupPresence: (EvalContext, String) -> io.github.mbackschat.a12.dm.interpreter.eval.GroupPresenceState): EvalConfig =
         EvalConfig(clock, model.baseYear, model.indexFields, timeZone = model.timeZone,

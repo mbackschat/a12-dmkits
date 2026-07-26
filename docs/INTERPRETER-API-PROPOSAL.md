@@ -4649,6 +4649,17 @@ The next customization-bearing increment contains:
 - exact callback laws;
 - pre-bound lane dispatch.
 
+The minimum common Kotlin façade for that increment is deliberately narrower than the complete product boundary in §12.2:
+
+- `PreparedModel.model` exposes owner-bound `ModelMetadata.pointer` and `relevantPointer` factories, producing unforgeable exact `FieldPointer`/`GroupPointer` values or an explicit `RelevantSelectionPointer` with `ALL` coordinates;
+- `PreparedModel.createInterpreter` binds immutable explicit or factory-backed Custom Field Type and Custom Condition registries once, then returns one non-reentrant owner-bound `Interpreter`;
+- `supportReport`, `validateFull`, `validatePart`, and `compute` return detached immutable records with an independent support axis; unsupported work never fabricates a clean finding set or computed value;
+- custom-field callbacks receive locale, effective bounds, and display/internal context through `CustomFieldValidationParameters`, and return the closed accepted/rejected result; custom conditions receive the exact model-owned snapshot, field reads, partial relevance, formal-error fields, and current error pointer;
+- factory failure, callback failure, and same-interpreter reentry remain distinct typed `InterpreterIntegrationError` reasons, and a foreign or stale snapshot remains a `ModelOwnerMismatchError`;
+- the Java projection is `ModelWorkspaceJava.collect(...): CompletionStage<ModelWorkspace>` over `JavaModelSourceProvider`; canceling the returned future marks the common collection signal and cancels the in-flight provider stage before later loads can begin.
+
+This first façade retains the evaluator's verified formatted pointer strings on validation findings while computation outcomes already carry an exact `FieldPointer`. Rich declaration metadata, typed report-selection pointers, storage inspection, custom-field display/internal conversion, clocks, additional registries, and the complete TypeScript naming/export layer remain the later contract described above; R3.2 owns `@JsExport`, generated declarations, and the actual TypeScript compile fixture rather than freezing accidental Kotlin/JS names in R2.10.
+
 Zod scalar integration may proceed independently after the Operator API. Zod transport work needs only the minimum transport/ownership foundation.
 
 ### 12.2 Complete product boundary

@@ -26,7 +26,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionData;
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType;
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldValidationContext;
 import io.github.mbackschat.a12.dm.interpreter.model.CustomTypeRejection;
-import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer;
+import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer;
 
 /**
  * The "escape to JS" bridge (FEATURE-GAPS G31): a native, kernel-free {@code dmtool} can't run a project's
@@ -143,13 +143,13 @@ public final class CustomJsWorker implements AutoCloseable {
         return new CustomTypeRejection(code, message);
     }
 
-    private synchronized boolean checkCondition(String name, CustomConditionData data, Set<FieldPointer> relevant,
-            Set<FieldPointer> formallyIncorrect, FieldPointer errorField) {
+    private synchronized boolean checkCondition(String name, CustomConditionData data, Set<CustomConditionFieldPointer> relevant,
+            Set<CustomConditionFieldPointer> formallyIncorrect, CustomConditionFieldPointer errorField) {
         ObjectNode req = MAPPER.createObjectNode();
         req.put("kind", "condition");
         req.put("name", name);
         ArrayNode cells = req.putArray("data");
-        for (FieldPointer fp : data.fields()) {
+        for (CustomConditionFieldPointer fp : data.fields()) {
             ObjectNode cell = putPointer(cells.addObject(), fp);
             String value = data.getValue(fp);
             if (value != null) {
@@ -225,7 +225,7 @@ public final class CustomJsWorker implements AutoCloseable {
         }
     }
 
-    private static ObjectNode putPointer(ObjectNode node, FieldPointer fp) {
+    private static ObjectNode putPointer(ObjectNode node, CustomConditionFieldPointer fp) {
         node.put("path", fp.getPath());
         ArrayNode indices = node.putArray("indices");
         for (Integer i : fp.getIndices()) {
@@ -234,8 +234,8 @@ public final class CustomJsWorker implements AutoCloseable {
         return node;
     }
 
-    private static void putPointers(ArrayNode arr, Set<FieldPointer> pointers) {
-        for (FieldPointer fp : pointers) {
+    private static void putPointers(ArrayNode arr, Set<CustomConditionFieldPointer> pointers) {
+        for (CustomConditionFieldPointer fp : pointers) {
             putPointer(arr.addObject(), fp);
         }
     }

@@ -3,7 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
-import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
+import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.ModelTimeZone
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
 
@@ -63,7 +63,7 @@ class EvalConfig(
      *  in full validation** (the kernel passes `null` there, "all relevant"); a partial validation supplies the
      *  caller's relevant entities + the auto-added global fields, wildcards preserved. So a relevance-aware
      *  custom condition can return false when its fields are not relevant (IF38). */
-    val customRelevant: Set<FieldPointer>? = null,
+    val customRelevant: Set<CustomConditionFieldPointer>? = null,
     /** Call-local formal-aware group presence. Null for low-level/compute consumers, which retain the document's
      *  structural Boolean. Full validation supplies the admitted-content + erroneous-group index. */
     val groupPresence: ((EvalContext, String) -> GroupPresenceState)? = null,

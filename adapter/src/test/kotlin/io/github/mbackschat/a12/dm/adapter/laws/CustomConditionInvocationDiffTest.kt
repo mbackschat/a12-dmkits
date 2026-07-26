@@ -8,7 +8,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
-import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
+import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
@@ -50,7 +50,7 @@ class CustomConditionInvocationDiffTest {
     private fun kPointer(entity: IEntityInstance): String =
         "${entity.path}@${entity.repetitions.joinToString(",")}"
 
-    private fun iPointer(pointer: FieldPointer): String =
+    private fun iPointer(pointer: CustomConditionFieldPointer): String =
         "${pointer.path}@${pointer.indices.joinToString(",")}"
 
     private fun kernelCodes(messages: List<RuntimeLaws.Msg>, vararg codes: String): List<String> =

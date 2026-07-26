@@ -9,7 +9,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
 import io.github.mbackschat.a12.dm.interpreter.ast.typedValue
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionData
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
-import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
+import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.FieldConstraints
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -960,8 +960,8 @@ class Document(internal val config: DocumentConfig) {
         // (path, indices) and the set of present field instances — a custom condition's IData spans the whole
         // document, the current row is carried by the error-field pointer (not row-scoped here).
         override fun customConditionData(): CustomConditionData = object : CustomConditionData {
-            override fun getValue(field: FieldPointer): String? = valueAt(field.path, field.indices)?.value
-            override fun fields(): List<FieldPointer> = index().valued.map { FieldPointer(it.path, it.reps) }
+            override fun getValue(field: CustomConditionFieldPointer): String? = valueAt(field.path, field.indices)?.value
+            override fun fields(): List<CustomConditionFieldPointer> = index().valued.map { CustomConditionFieldPointer(it.path, it.reps) }
         }
 
         override fun enumCategory(path: String, category: String): Val =

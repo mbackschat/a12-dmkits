@@ -18,7 +18,7 @@ import com.mgmtp.a12.kernel.core.rt.a12internal.validation.IIdentifier;
 
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition;
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionData;
-import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer;
+import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer;
 
 /**
  * Bridges a project's EXISTING kernel <em>core</em> {@link ICustomCondition} (the {@code IData}-based
@@ -82,18 +82,18 @@ public final class KernelCustomConditions {
         };
     }
 
-    private static Set<IIdentifier> toIds(Set<FieldPointer> pointers) {
+    private static Set<IIdentifier> toIds(Set<CustomConditionFieldPointer> pointers) {
         return pointers == null ? null
                 : pointers.stream().map(KernelCustomConditions::toId).collect(Collectors.toSet());
     }
 
-    private static IIdentifier toId(FieldPointer p) {
+    private static IIdentifier toId(CustomConditionFieldPointer p) {
         return new PointerIdentifier(p.getPath(), p.getIndices().stream().mapToLong(Integer::longValue).toArray());
     }
 
-    private static FieldPointer toPointer(IIdentifier id) {
+    private static CustomConditionFieldPointer toPointer(IIdentifier id) {
         List<Integer> indices = Arrays.stream(id.getIndices()).mapToObj(l -> (int) l).toList();
-        return new FieldPointer(id.getName(), indices);
+        return new CustomConditionFieldPointer(id.getName(), indices);
     }
 
     /**

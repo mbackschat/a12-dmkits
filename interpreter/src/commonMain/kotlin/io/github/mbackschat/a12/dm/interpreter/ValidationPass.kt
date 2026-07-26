@@ -4,7 +4,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalConfig
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
-import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
+import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionFieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.Suppression
 
@@ -38,7 +38,7 @@ internal class ValidationPass(
     val config: EvalConfig,
     private val formalResults: FormalResultCache,
     /** Lazy, call-local complete external formal-invalid addresses for a reached CustomCondition. */
-    private val formallyIncorrect: () -> Set<FieldPointer> = { emptySet() },
+    private val formallyIncorrect: () -> Set<CustomConditionFieldPointer> = { emptySet() },
 ) {
     val partial: Boolean = config.cellRelevant != null
 
@@ -71,7 +71,7 @@ internal class ValidationPass(
      */
     fun interpreterFor(ctx: EvalContext, errorPath: String,
             rnuOutcome: ((EvalContext) -> MsgType?)? = null): Interpreter =
-        Interpreter(ctx, config, FieldPointer(errorPath, ctx.repsOf(errorPath)),
+        Interpreter(ctx, config, CustomConditionFieldPointer(errorPath, ctx.repsOf(errorPath)),
             invalid = { path ->
                 val reps = ctx.repsOf(path)   // computed once, reused for the formal check AND relevance
                 !isRelevant(path, reps) || formalErrorAt(path, reps, ctx) != null
