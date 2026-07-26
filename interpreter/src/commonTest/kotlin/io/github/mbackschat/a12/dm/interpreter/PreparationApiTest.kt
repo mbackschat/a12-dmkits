@@ -212,6 +212,90 @@ class PreparationApiTest {
     }
 
     @Test
+    fun expansionStopsBeforeInterpreterEvaluabilityChecks() {
+        val unsupportedSources = buildList {
+            add(
+                preparedModel(
+                    id = "unsupported-zone",
+                    modelConfig = """"timeZone":"Europe/Paris"""",
+                    fieldType = """{"type":"StringType"}""",
+                ),
+            )
+            for (precision in listOf("MONTH_OPTIONAL", "YEAR_OPTIONAL")) {
+                add(
+                    preparedModel(
+                        id = precision.lowercase(),
+                        modelConfig = "",
+                        fieldType = """
+                            {"type":"DateType","DateType":{"format":"dd.MM.yyyy","datePrecision":"$precision"}}
+                        """.trimIndent(),
+                    ),
+                )
+            }
+        }
+
+        for (json in unsupportedSources) {
+            val modelId = source(json, "unsupported").modelIdHint()
+            val workspace = ModelWorkspace.fromSources(listOf(source(json, "unsupported")))
+            val expanded = workspace.expand(modelId)
+            val attempted = assertIs<ModelExpansionResult.Success>(workspace.tryExpand(modelId))
+
+            assertEquals(expanded, attempted.json)
+            assertTrue(expanded.contains(""""id":"$modelId""""))
+            assertIs<ModelPreparationResult.Failure>(workspace.tryPrepare(modelId))
+        }
+    }
+
+    @Test
+    fun expandedArtifactRetainsConcreteDeclarationsAndNoPreparationResidue() {
+        val typedefCase = "local-typedef"
+        val typedefOutput = ModelWorkspace.fromSources(sources(typedefCase))
+            .expand(entryModelId(typedefCase))
+        val includeCase = "reference-family-single"
+        val includeOutput = ModelWorkspace.fromSources(sources(includeCase))
+            .expand(entryModelId(includeCase))
+
+        assertTrue(typedefOutput.contains(""""typeDefinitions":["""))
+        assertFalse(typedefOutput.contains(""""type":"TypeDefType""""))
+        assertFalse(includeOutput.contains(""""modelReferences""""))
+        assertFalse(includeOutput.contains(""""modelAlias""""))
+        assertFalse(includeOutput.contains(""""includeLevel""""))
+        assertEquals(expanded(includeCase), includeOutput)
+    }
+
+    @Test
+    fun throwingAndNonThrowingExpansionExposeTheSameBoundedFailure() {
+        val json = preparedModel(
+            id = "bounded-expansion",
+            modelConfig = "",
+            fieldType = """{"type":"StringType"}""",
+        )
+        val workspace = ModelWorkspace.fromSources(
+            sources = listOf(source(json, "bounded-expansion")),
+            limits = ModelPreparationLimits.builder()
+                .maxPreparedBytes(1)
+                .build(),
+        )
+
+        val thrown = assertFailsWith<ModelPreparationError> {
+            workspace.expand("bounded-expansion")
+        }
+        val attempted = assertIs<ModelExpansionResult.Failure>(
+            workspace.tryExpand("bounded-expansion"),
+        )
+
+        assertEquals(thrown.diagnostics, attempted.error.diagnostics)
+        assertEquals(
+            ModelPreparationDiagnosticCode.RESOURCE_LIMIT_EXCEEDED,
+            attempted.error.diagnostics.single().code,
+        )
+        assertEquals(
+            ModelPreparationResource.PREPARED_BYTES,
+            attempted.error.diagnostics.single().resource,
+        )
+    }
+
+    @Test
     fun acquisitionSecretsNeverEnterPreparationDiagnosticsOrDependencyMetadata() {
         val caseId = "reference-family-single"
         val entry = entryModelId(caseId)

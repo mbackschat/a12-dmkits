@@ -58,7 +58,7 @@ class PublicPreparationApiSurfaceTest {
             ModelWorkspace::class.java.methods.none { method ->
                 method.name == "collect" && method.isCallablePublic()
             },
-            "R2.9 owns the Java CompletionStage collection projection",
+            "R2.10 owns the Java CompletionStage collection projection",
         )
     }
 
@@ -186,6 +186,9 @@ class PublicPreparationApiSurfaceTest {
             ModelPreparationResult::class.java,
             ModelPreparationResult.Success::class.java,
             ModelPreparationResult.Failure::class.java,
+            ModelExpansionResult::class.java,
+            ModelExpansionResult.Success::class.java,
+            ModelExpansionResult.Failure::class.java,
             ModelOwnerIdentity::class.java,
             ModelOwnerIdentity.Companion::class.java,
             ModelVersionIdentity::class.java,

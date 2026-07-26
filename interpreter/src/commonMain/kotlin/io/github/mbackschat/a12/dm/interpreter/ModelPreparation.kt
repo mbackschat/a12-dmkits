@@ -311,6 +311,12 @@ sealed interface ModelPreparationResult {
     data class Failure(val error: ModelPreparationError) : ModelPreparationResult
 }
 
+/** Non-throwing result of assembler-only expanded DM-JSON generation. */
+sealed interface ModelExpansionResult {
+    data class Success(val json: String) : ModelExpansionResult
+    data class Failure(val error: ModelPreparationError) : ModelExpansionResult
+}
+
 /** Opaque process- or Worker-local identity for one independently prepared model version. */
 class ModelVersionIdentity private constructor() {
     companion object {

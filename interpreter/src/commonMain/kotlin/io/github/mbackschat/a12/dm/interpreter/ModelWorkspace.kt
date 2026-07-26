@@ -31,11 +31,24 @@ class ModelWorkspace private constructor(
     val modelIds: List<String> = immutableListSnapshot(admitted.modelIds)
 
     /**
+     * Expand one transitive closure into compact self-contained DM-JSON without invoking [ModelLoader].
+     * Interpreter-specific evaluability checks therefore belong to [prepare], not this conversion boundary.
+     */
+    fun expand(entryModelId: String): String = assemble(entryModelId).json
+
+    fun tryExpand(entryModelId: String): ModelExpansionResult =
+        try {
+            ModelExpansionResult.Success(expand(entryModelId))
+        } catch (error: ModelPreparationError) {
+            ModelExpansionResult.Failure(error)
+        }
+
+    /**
      * Prepare one transitive closure. Each call performs a fresh deterministic assembly and creates a new owner
      * domain; this finite workspace deliberately holds no hidden preparation cache.
      */
     fun prepare(entryModelId: String): PreparedModel {
-        val assembly = WorkspaceReferenceAssembler.assemble(admitted, entryModelId, limits)
+        val assembly = assemble(entryModelId)
         return PreparedModel.fromWorkspace(admitted, assembly)
     }
 
@@ -45,6 +58,9 @@ class ModelWorkspace private constructor(
         } catch (error: ModelPreparationError) {
             ModelPreparationResult.Failure(error)
         }
+
+    private fun assemble(entryModelId: String): ReferenceAssembly =
+        WorkspaceReferenceAssembler.assemble(admitted, entryModelId, limits)
 
     companion object {
         @JvmStatic
