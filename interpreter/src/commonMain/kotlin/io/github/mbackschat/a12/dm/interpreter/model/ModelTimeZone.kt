@@ -27,11 +27,13 @@ enum class ModelTimeZone {
          *  refusal. A genuinely absent slot is defaulted by the loader before this method is called. */
         fun of(id: String?): ModelTimeZone = when {
             id.isNullOrBlank() -> throw InvalidModelTimeZoneException(
+                id,
                 "invalid modelConfig.timeZone '${id ?: "null"}' — an explicitly present value must be a nonblank " +
                     "Java time-zone id; omit the slot to use the UTC default")
             id == "UTC" || id == "GMT" -> UTC
             id == "Europe/Berlin" -> EUROPE_BERLIN
             else -> throw UnsupportedModelTimeZoneException(
+                id,
                 "unsupported model timeZone '$id' — the interpreter-backed evaluator supports only UTC, GMT, and " +
                     "Europe/Berlin. This common boundary does not classify the host Java time-zone id domain; " +
                     "evaluate this model under a supported zone or validate the id at the JVM authoring boundary.")

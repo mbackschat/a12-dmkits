@@ -1,5 +1,11 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnostic
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnosticCode
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationResource
+import io.github.mbackschat.a12.dm.interpreter.WorkspaceModelSource
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals

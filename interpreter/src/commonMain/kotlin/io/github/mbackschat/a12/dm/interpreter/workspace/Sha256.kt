@@ -1,9 +1,8 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
 /**
- * Small commonMain SHA-256 implementation for source integrity. The algorithm consumes the exact UTF-8 bytes
- * supplied to workspace admission, so JVM and JavaScript compute one portable source identity without a host
- * crypto API or a new runtime dependency.
+ * Small commonMain SHA-256 implementation for exact source identity and prepared-model fingerprint framing.
+ * JVM and JavaScript therefore compute the same values without a host crypto API or a new runtime dependency.
  */
 internal object Sha256 {
     private val roundConstants = intArrayOf(

@@ -134,6 +134,18 @@ class ModelLoaderTest {
     }
 
     @Test
+    fun rejectsKnownDatePrecisionsThatTheInterpreterCannotEvaluate() {
+        for (precision in listOf("MONTH_OPTIONAL", "YEAR_OPTIONAL")) {
+            val error = assertFailsWith<UnsupportedDatePrecisionException> {
+                ModelLoader.load(model.replace("DAY_OPTIONAL", precision))
+            }
+
+            assertEquals("/Order/When", error.path)
+            assertEquals(precision, error.precision)
+        }
+    }
+
+    @Test
     fun mapsRequirednessModesAndIndexFieldAutoRequire() {
         val def = load()
         assertEquals(Requiredness.ABSOLUTE, def.fields.first { it.path == "/Order/When" }.required)

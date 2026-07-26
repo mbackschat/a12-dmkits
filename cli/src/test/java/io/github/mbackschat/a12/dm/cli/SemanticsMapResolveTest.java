@@ -37,10 +37,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  *   <li><b>Corpus families</b> — each row's family list equals the grouping derived from the committed cases'
  *       {@code meta.sections} (the corpus contract's navigation join key), and every case's tags are
  *       well-formed {@code §1..§14}.</li>
- *   <li><b>Locking tests</b> — every backticked {@code *Test} token resolves to a file in one of the three
- *       lock trees (validate/laws, adapter/laws, interpreter commonTest), and every {@code *Test} class in
- *       those trees appears somewhere in the map (a new law test must be placed — in a § row or the
- *       outside-the-taxonomy table — before the build goes green).</li>
+ *   <li><b>Locking tests</b> — every backticked {@code *Test} token resolves to a file in a designated lock
+ *       source (validate/laws, adapter/laws, the Kernel-backed adapter preparation locks, or interpreter
+ *       commonTest), and every {@code *Test} class in those sources appears somewhere in the map (a new law test
+ *       must be placed — in a § row or the outside-the-taxonomy table — before the build goes green).</li>
  *   <li><b>Links</b> — every relative markdown link resolves to an existing file.</li>
  * </ul>
  *
@@ -62,6 +62,11 @@ class SemanticsMapResolveTest {
             Path.of("../src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws"),
             Path.of("../adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws"),
             Path.of("../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws"),
+            Path.of("../adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WorkspaceIncludeStructureKernelTest.java"),
+            Path.of("../adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WorkspacePreparationFixtureGuardTest.java"),
+            Path.of("../adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WorkspacePreparationParityTest.java"),
+            Path.of("../adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WorkspaceSourceUnicodeKernelTest.java"),
+            Path.of("../adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WorkspaceTypeDefinitionCollisionKernelTest.java"),
             Path.of("../interpreter/src/commonTest"));
 
     private static final int SECTIONS = 14;

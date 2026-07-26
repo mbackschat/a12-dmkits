@@ -40,7 +40,7 @@ internal data class PreparationSupport(
  * incomplete semantics walk. Consumer-provided requirements (custom conditions/types and the clock) are checked
  * while each plan is built; iteration and RNU structure are delegated to their actual runtime planners.
  */
-internal class PreparedModel(
+internal class PreparedEvaluationPlan(
     private val model: ModelDef,
     private val parsed: ParsedModel,
     private val scopes: IterationScopes,

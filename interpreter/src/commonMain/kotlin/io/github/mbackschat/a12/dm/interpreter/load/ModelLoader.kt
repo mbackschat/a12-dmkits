@@ -22,6 +22,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.Requiredness
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.Severity
+import io.github.mbackschat.a12.dm.interpreter.workspace.PreparedElementType
 
 /**
  * The interpreter's own DM-JSON → [ModelDef] loader — kernel-free and **multiplatform** (JVM + JS), so a
@@ -44,12 +45,11 @@ import io.github.mbackschat.a12.dm.interpreter.model.Severity
  * The loader handles a **single, fully-expanded** model: no `modelReferences`/`imports` resolution and no
  * `TypeDefType` de-referencing. Includes, type-definition libraries, and opaque element ids are resolved
  * **upstream** by the kernel-free `dm.core.ModelReader.expand` preparation path before the DM-JSON reaches here.
- * This boundary is **enforced, not assumed** ([requirePrepared], IF145): a model that still carries an
- * unexpanded include (`modelAlias`), an
- * unresolved `TypeDefType`, or a non-name-path (opaque) id is **rejected loud** with a corrective message —
- * never loaded as a structurally plausible but wrong model (a dropped mount, a typedef silently flattened to
- * STRING, an opaque id trusted as a path). Every CLI consumer prepares upstream via `ModelReader.expand`; this
- * is the guard that makes a future bypass fail loud instead of silent.
+ * This boundary is **enforced, not assumed** ([requirePrepared], IF145): a model that still carries model
+ * references, an include directive, an unresolved `TypeDefType`, or a non-name-path (opaque) id is **rejected
+ * loud** with a corrective message — never loaded as a structurally plausible but wrong model. Every CLI
+ * consumer prepares upstream via `ModelReader.expand`; this is the guard that makes a future bypass fail loud
+ * instead of silent.
  */
 object ModelLoader {
 
@@ -109,50 +109,168 @@ object ModelLoader {
     }
 
     /**
-     * Enforce the loader's prepared-model contract (IF145): every recorded element (Field/Group/Rule/Computation)
-     * must be name-path-keyed, and the model must carry no unexpanded include (`Group.modelAlias`) nor unresolved
-     * `TypeDefType`. These are the three residue classes that would otherwise load a **wrong** model silently — a
-     * mount whose fields never appear, a typedef flattened to STRING, an opaque id trusted as a path. The header
-     * (a node with an `id` but no element `type`) is not path-addressed, so it is not checked. Throws
-     * [IllegalArgumentException] with a corrective message naming the offending element.
+     * Enforce the loader's prepared-model contract (IF145): the header has no unresolved model references, every
+     * recorded element is name-path-keyed, and no include or type-definition directive remains. The header itself
+     * is not path-addressed, so only its reference list participates in this guard. Throws
+     * [UnpreparedModelResidueException] with the residue class and offending path.
      */
-    private fun requirePrepared(node: JsonElement) {
+    private fun requirePrepared(
+        node: JsonElement,
+        containingPath: String? = null,
+        root: Boolean = true,
+    ) {
+        if (root) {
+            val model = node as? JsonObject
+                ?: throw InvalidPreparedModelSourceException("$", "prepared model source must be a JSON object")
+            requirePreparedElementTree(model)
+        }
         when (node) {
             is JsonObject -> {
+                if (root) {
+                    when (val references = (node.path("header") as? JsonObject)?.get("modelReferences")) {
+                        null, is JsonNull -> Unit
+                        is JsonArray -> if (references.isNotEmpty()) {
+                            throw UnpreparedModelResidueException(
+                                path = "header.modelReferences",
+                                residue = "model-reference",
+                                message = "unresolved header.modelReferences remain in the model; workspace " +
+                                    "references must be prepared before loading",
+                            )
+                        }
+                        else -> throw InvalidPreparedModelSourceException(
+                            path = "header.modelReferences",
+                            message = "header.modelReferences must be an array or null",
+                        )
+                    }
+                }
                 val type = node.path("type").asTextOrNull()
                 val id = node.path("id").asTextOrNull()
+                val path = id ?: containingPath
+                if (type == "TypeDefType") {
+                    throw UnpreparedModelResidueException(
+                        path = path ?: "fieldType",
+                        residue = "type-definition",
+                        message = "unresolved TypeDefType at '${path ?: "fieldType"}'; type definitions must be " +
+                            "inlined before loading",
+                    )
+                }
                 if (type != null && id != null) {
                     when (type) {
                         "Field" -> {
                             requireNamePath(id)
-                            require(node.path("Field").path("fieldType").path("type").asText() != "TypeDefType") {
-                                "unresolved TypeDefType at '$id' — imported type-definitions must be inlined " +
-                                    "(ModelReader.expand) before loading; the interpreter loader consumes only expanded models"
-                            }
                         }
                         "Group" -> {
                             requireNamePath(id)
-                            require(!node.path("Group").hasNonNull("modelAlias")) {
-                                "unexpanded include at '$id' (modelAlias='${node.path("Group").path("modelAlias").asText()}') — " +
-                                    "includes must be mounted (ModelReader.expand) before loading"
+                            val group = node.path("Group") as? JsonObject
+                            val includeMember = group?.keys?.firstOrNull {
+                                it in INCLUDE_RESIDUE_MEMBERS
+                            }
+                            if (includeMember != null) {
+                                throw UnpreparedModelResidueException(
+                                    path = id,
+                                    residue = "include",
+                                    message = "unexpanded include directive '$includeMember' remains at '$id'; " +
+                                        "includes must be mounted before loading",
+                                )
                             }
                         }
                         "Rule", "Computation" -> requireNamePath(id)
                         else -> { /* header / other nodes are not path-addressed */ }
                     }
                 }
-                node.values.forEach { requirePrepared(it) }
+                node.values.forEach { requirePrepared(it, path, root = false) }
             }
-            is JsonArray -> node.forEach { requirePrepared(it) }
+            is JsonArray -> node.forEach { requirePrepared(it, containingPath, root = false) }
             else -> { /* scalar leaf */ }
         }
     }
 
+    /**
+     * Validate the actual document-element tree before the flat semantic scan. Without this presence-aware pass,
+     * a malformed element can look like an unrelated object and disappear, or an absent Field body can be
+     * fabricated as a default string field. The Kernel refuses every shape below except absent/null Field bodies
+     * and present non-string names/ids; this boundary is deliberately stricter for those cases because an expanded
+     * model must carry an object body, string name, and normalized name-path id to be interpreted without invention.
+     */
+    private fun requirePreparedElementTree(root: JsonObject) {
+        val content = root.requiredObject("content")
+        val modelRoot = content.optionalObject("modelRoot") ?: return
+        val rootGroups = modelRoot.optionalArray("rootGroups") ?: return
+        rootGroups.forEach { requirePreparedElement(it, parentPath = "", rootElement = true) }
+    }
+
+    private fun requirePreparedElement(
+        element: JsonElement,
+        parentPath: String,
+        rootElement: Boolean,
+    ) {
+        val node = element as? JsonObject
+            ?: throw invalidElement(parentPath.ifEmpty { "/" }, "element must be a JSON object")
+        val name = node.stringMember("name")
+        val id = node.stringMember("id")
+        val path = id ?: name?.let { "$parentPath/$it" } ?: parentPath.ifEmpty { "/" }
+        val type = PreparedElementType.fromWireName(node.stringMember("type"))
+            ?: throw invalidElement(path, "type must identify a supported document-model element")
+        if (name == null) {
+            throw invalidElement(path, "a document-model element requires a string name")
+        }
+        if (id == null) {
+            throw invalidElement(path, "an expanded element requires a string name-path id")
+        }
+        requireNamePath(id)
+        if (rootElement && type != PreparedElementType.GROUP) {
+            throw invalidElement(path, "a model root element must be a Group")
+        }
+        val body = node[type.wireName] as? JsonObject
+            ?: throw invalidElement(path, "a ${type.wireName} element requires an object ${type.wireName} body")
+        if (type != PreparedElementType.GROUP) {
+            return
+        }
+        val includeMember = body.keys.firstOrNull { it in INCLUDE_RESIDUE_MEMBERS }
+        if (includeMember != null) {
+            throw UnpreparedModelResidueException(
+                path = id,
+                residue = "include",
+                message = "unexpanded include directive '$includeMember' remains at '$id'; " +
+                    "includes must be mounted before loading",
+            )
+        }
+        val children = body.optionalArray("elements") ?: return
+        children.forEach { requirePreparedElement(it, parentPath = id, rootElement = false) }
+    }
+
+    private fun JsonObject.optionalObject(member: String): JsonObject? {
+        val value = this[member] ?: return null
+        return value as? JsonObject
+            ?: throw invalidElement(member, "$member must be a JSON object")
+    }
+
+    private fun JsonObject.requiredObject(member: String): JsonObject =
+        this[member] as? JsonObject
+            ?: throw invalidElement(member, "$member must be a JSON object")
+
+    private fun JsonObject.optionalArray(member: String): JsonArray? {
+        val value = this[member] ?: return null
+        return value as? JsonArray
+            ?: throw invalidElement(member, "$member must be a JSON array")
+    }
+
+    private fun JsonObject.stringMember(member: String): String? =
+        (this[member] as? JsonPrimitive)
+            ?.takeIf { it.isString }
+            ?.content
+
+    private fun invalidElement(path: String, message: String): InvalidPreparedModelSourceException =
+        InvalidPreparedModelSourceException(path, message)
+
     /** A recorded element's `id` must be a name-path (`/Group/Field`), never an opaque (un-normalized) kernel id. */
     private fun requireNamePath(id: String) {
-        require(id.startsWith("/")) {
-            "non-name-path id '$id' — opaque model ids must be normalized to name-paths (/Group/Field) before " +
-                "loading; the interpreter loader addresses every element by name-path"
+        if (!id.startsWith("/")) {
+            throw UnpreparedModelResidueException(
+                path = id,
+                residue = "opaque-id",
+                message = "non-name-path id '$id'; opaque model ids must be normalized to name paths before loading",
+            )
         }
     }
 
@@ -219,14 +337,14 @@ object ModelLoader {
         requireConsistentEnumSValue(node, id)
         return FieldDef(
         path = id,
-        kind = kindOf(node),
+        kind = kindOf(node, id),
         labels = localizedTexts(node.path("Field").path("label")),
         scale = scaleOf(node),
         signed = signed(node),
         required = requirednessOf(node),
         format = formatOf(node),
         rangeSeparator = rangeSeparatorOf(node),
-        datePrecision = datePrecisionOf(node),
+        datePrecision = datePrecisionOf(node, id),
         enumValues = enumValuesOf(node),
         enumCategories = enumCategoriesOf(node),
         enumSValue = enumSValueOf(node),
@@ -269,8 +387,8 @@ object ModelLoader {
 
     // ── Field-type readers ─────────────────────────────────────────────────────────────────────────
 
-    private fun kindOf(fieldNode: JsonElement?): Kind =
-        when (fieldNode.path("Field").path("fieldType").path("type").asText()) {
+    private fun kindOf(fieldNode: JsonElement?, path: String): Kind =
+        when (val fieldType = fieldNode.path("Field").path("fieldType").path("type").asText()) {
             "NumberType" -> Kind.NUMBER
             "DateType" -> Kind.DATE
             // The kernel collapses a DateFragmentType to a plain Date (KERNEL-FINDINGS §6 "a date fragment IS a
@@ -282,7 +400,11 @@ object ModelLoader {
             "DateRangeType" -> Kind.DATE_RANGE
             "BooleanType" -> Kind.BOOLEAN
             "ConfirmType" -> Kind.CONFIRM
-            else -> Kind.STRING   // String / Enumeration — STRING-shaped for the operators modeled so far
+            "StringType", "EnumerationType", "CustomFieldType" -> Kind.STRING
+            else -> throw InvalidPreparedModelSourceException(
+                path,
+                "unknown field type '$fieldType' at '$path'",
+            )
         }
 
     /** A date-ish field's rendering format, read for DATE / DATE_TIME / DATE_RANGE / TIME as `<Type>.format`,
@@ -329,15 +451,34 @@ object ModelLoader {
     }
 
     /** A DATE field's precision: a `DateFragmentType` is [DatePrecision.FRAGMENT] (its format carries only some
-     *  components — the eval completes the rest); a `DateType` with `datePrecision: DAY_OPTIONAL` permits
-     *  `00.MM.yyyy`; else [DatePrecision.FULL]. */
-    private fun datePrecisionOf(fieldNode: JsonElement?): DatePrecision {
+     *  components — the eval completes the rest); a `DateType` accepts an absent/`FULL` precision or
+     *  `DAY_OPTIONAL`. The Kernel refuses null, malformed, and unknown values, so they must never silently default. */
+    private fun datePrecisionOf(fieldNode: JsonElement?, path: String): DatePrecision {
         val type = fieldNode.path("Field").path("fieldType")
-        return when {
-            type.path("type").asText() == "DateFragmentType" -> DatePrecision.FRAGMENT
-            type.path("type").asText() == "DateType" &&
-                type.path("DateType").path("datePrecision").asText() == "DAY_OPTIONAL" -> DatePrecision.DAY_OPTIONAL
-            else -> DatePrecision.FULL
+        val typeName = type.path("type").asText()
+        if (typeName == "DateFragmentType") {
+            return DatePrecision.FRAGMENT
+        }
+        if (typeName != "DateType") {
+            return DatePrecision.FULL
+        }
+        val dateType = type.path("DateType") as? JsonObject
+        val precisionNode = dateType?.get("datePrecision") ?: return DatePrecision.FULL
+        val precision = (precisionNode as? JsonPrimitive)
+            ?.takeIf { it.isString }
+            ?.content
+            ?: throw InvalidPreparedModelSourceException(
+                path,
+                "datePrecision at '$path' must be a known string value",
+            )
+        return when (precision) {
+            "FULL" -> DatePrecision.FULL
+            "DAY_OPTIONAL" -> DatePrecision.DAY_OPTIONAL
+            in UNSUPPORTED_DATE_PRECISIONS -> throw UnsupportedDatePrecisionException(path, precision)
+            else -> throw InvalidPreparedModelSourceException(
+                path,
+                "unknown datePrecision '$precision' at '$path'",
+            )
         }
     }
 
@@ -359,6 +500,12 @@ object ModelLoader {
         val max = type.path("NumberType").path("maxFractionalDigits")
         return if (max.isIntNode()) max.asInt(0) else 0
     }
+
+    private val INCLUDE_RESIDUE_MEMBERS =
+        setOf("modelAlias", "includeLevel", "excludeRules", "excludeComputations")
+
+    private val UNSUPPORTED_DATE_PRECISIONS =
+        setOf("MONTH_OPTIONAL", "YEAR_OPTIONAL")
 
     /** Whether a NUMBER field is signed (unsigned iff `NumberType.positivesOnly`); non-number defaults to signed. */
     private fun signed(fieldNode: JsonElement?): Boolean =
@@ -444,7 +591,14 @@ object ModelLoader {
         var base = nodeId
         var r = rel
         while (r.startsWith("../")) {
-            base = base.substring(0, base.lastIndexOf('/'))
+            val boundary = base.lastIndexOf('/')
+            if (boundary < 0) {
+                throw InvalidPreparedModelSourceException(
+                    nodeId,
+                    "computedFieldRelPath '$rel' at '$nodeId' walks above the model root",
+                )
+            }
+            base = base.substring(0, boundary)
             r = r.substring(3)
         }
         return if (r.isEmpty()) base else "$base/$r"

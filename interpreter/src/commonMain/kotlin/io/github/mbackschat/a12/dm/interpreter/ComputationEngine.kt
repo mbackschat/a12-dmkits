@@ -38,7 +38,7 @@ internal class ComputationEngine(
     private val clock: EvalClock?,
     private val predefinedTypes: Map<String, PredefinedType>,
     private val customFieldTypes: Map<String, CustomFieldType>,
-    private val preparedModel: PreparedModel,
+    private val preparedModel: PreparedEvaluationPlan,
     private val scopes: IterationScopes,
     private val checks: AutoChecks,
     private val patterns: PatternRegistry,

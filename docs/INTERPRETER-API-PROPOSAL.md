@@ -277,6 +277,7 @@ type ModelPreparationDiagnosticCode =
   | "INVALID_INCLUDE_MOUNT"
   | "AMBIGUOUS_TYPE_DEFINITION"
   | "UNMAPPED_INCLUDED_REFERENCE"
+  | "INCOMPATIBLE_CONDITION_LANGUAGE"
   | "UNPREPARED_MODEL_RESIDUE"
   | "RESOURCE_LIMIT_EXCEEDED"
   | "UNSUPPORTED_DATE_PRECISION"
@@ -319,6 +320,12 @@ interface ModelPreparationDiagnostic {
   readonly reference?: string;
   readonly referenceChain?: readonly ModelReferenceStep[];
   readonly conflictingDiagnosticLabels?: readonly string[];
+  readonly firstSourceModelId?: ModelId;
+  readonly conflictingSourceModelId?: ModelId;
+  readonly sourceLanguage?: string;
+  readonly entryLanguage?: string;
+  readonly reason?: string;
+  readonly cyclic?: boolean;
   readonly resource?: ModelPreparationResource;
   readonly maximum?: number;
   readonly actual?: number;
@@ -566,9 +573,9 @@ const interpreter: Interpreter =
 | On-demand collection | `collect` calls `provider.load` at most once per exact discovered id, freezes each successful result, and returns an immutable workspace containing only one snapshot-consistent entry closure |
 | Provider failures | `undefined` becomes an unresolved-reference diagnostic; a typed rejection preserves reason/retryability; an untyped rejection becomes `"provider-failed"`; a returned `header.id` different from the requested id becomes `MODEL_SOURCE_ID_MISMATCH`; the collector never retries implicitly |
 | Acquisition limits | each load receives the effective hard-capped byte ceiling and cancellation signal; the provider stops oversized I/O before materializing a string, and the collector independently rechecks source and aggregate limits |
-| Source integrity | the collector verifies `expectedSha256`, retains the computed digest in dependency metadata, and computes the prepared fingerprint from the exact resolved bytes |
+| Source integrity | admission/collection verifies `expectedSha256`, retains the digest computed from each exact resolved source, and computes the prepared fingerprint from those computed digests |
 | Workspace preparation | `prepare(entryModelId)` resolves and prepares only the selected model's transitive include/typedef closure; `tryPrepare` returns the same diagnostics through `ModelPreparationResult` |
-| Expanded loading | `loadExpandedJson` is an explicit fast path returning `PreparedModel` or throwing `ModelPreparationError`; `tryLoadExpandedJson` returns the same diagnostics through `ModelPreparationResult` |
+| Expanded loading | `loadExpandedJson` is an explicit fast path returning `PreparedModel` or throwing `ModelPreparationError`; `tryLoadExpandedJson` returns the same diagnostics through `ModelPreparationResult`, including malformed element structure, date precision, and computation-target paths |
 | Owner mismatch | `ModelOwnerMismatchError` covers foreign snapshots, pointers, and prepared-program handles; `expected` and `actual` are opaque correlation identities, not model content |
 | Model lookup | `UnknownModelPathError` reports the requested `ModelEntityKind` and path |
 | Document input | `DocumentInputError` aggregates portable placement diagnostics; every item has an envelope `inputPath` and may separately carry the attempted A12 `modelPath` |
@@ -580,6 +587,8 @@ const interpreter: Interpreter =
 | Candidate preparation | `ProgramPreparationError` reports invalid candidate-rule or expression source without classifying the whole model as invalid |
 
 Omitting `ModelPreparationLimits` or `ModelCollectionOptions.limits` selects documented library defaults; it never disables bounds. A caller may tighten those defaults, while any widening is capped by hard implementation maxima so a browser cannot accidentally opt into unbounded acquisition, parsing, or expansion.
+
+The expanded-input guard traverses the actual `content.modelRoot.rootGroups` tree before semantic loading. Every retained element must be an object with one of the closed `Group`/`Field`/`Rule`/`Computation` types, a string name, a string name-path `id`, and a matching object body; root elements must be groups, `Group.elements` must be an array when present, field-type discriminators and date precision must be admitted enum strings, and a relative computation target must not walk above the model root. This prevents malformed records from disappearing in the loader's flat scan or being interpreted through fabricated defaults. Real-Kernel 30.8.1 characterization refuses the same malformed family except that it admits an absent/null `Field` body and coerces present non-string Field names/ids; the portable boundary deliberately refuses those shapes because interpreting them would invent a field definition or lose the string identity required by this API. `tryLoadExpandedJson` maps every such refusal to `INVALID_MODEL_SOURCE` rather than leaking a host exception.
 
 | Limit | Default | Hard maximum |
 |---|---:|---:|
@@ -1770,7 +1779,7 @@ It does not coerce them, collapse them to fragments, or defer them as unsupporte
 
 ### 4.2 Model identity
 
-`PreparedModel.fingerprint` is computed by the library, never trusted from a caller. For workspace preparation, the conservative identity digests the entry model id, the exact UTF-8 bytes of every source in the resolved closure ordered by model id, and the preparation-format/ABI version. For `loadExpandedJson`, it digests the exact UTF-8 source bytes and the same preparation identity; a later byte-oriented overload may accept `Uint8Array`.
+`PreparedModel.fingerprint` is computed by the library, never trusted from a caller. Admission already computes one SHA-256 digest over the exact strict UTF-8 bytes of every source. Workspace preparation hashes a domain-, preparation-version-, and mode-separated byte-length-framed record containing the entry model id and each resolved `(modelId, sourceDigest)` pair ordered by unsigned UTF-8 model-id bytes. `loadExpandedJson` uses the same framing with its source digest and a distinct mode. Reusing the admitted source digests preserves exact-byte identity without retaining or copying the complete closure into a second aggregate byte buffer; it is a small identity mechanism, not a content-addressed store, cache, hash-algorithm abstraction, or virtual filesystem. A later byte-oriented overload may accept `Uint8Array`.
 
 Semantically equivalent JSON may therefore occupy two cache entries; that is a harmless miss. Changing an unused workspace source does not change the fingerprint, while changing any resolved dependency does. Returning one prepared model for different resolved source content is not harmless; canonical semantic hashing should not be claimed until a canonicalization contract exists.
 
@@ -2893,6 +2902,8 @@ const report: ValidationReport =
 ```
 
 `supportReport()` checks the prepared model against bound types, conditions, charset, time zones, operators, and program forms without reading a document or invoking validation callbacks. Services can therefore fail readiness before accepting traffic.
+
+Support is configuration-aware: the same prepared model can be fully supported by one bound custom-type/condition registry and incomplete under another. The report therefore belongs to `Interpreter` and lands with the configured façade in R2.9; the model-static R2.6 `PreparedModel` does not expose a misleading configuration-free report.
 
 `fullySupported` means no known capability is unsupported. `fullyResolved` additionally means none remains deferred to a source factory whose invocation cardinality prevents eager probing.
 

@@ -1,5 +1,8 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
+import io.github.mbackschat.a12.dm.interpreter.ModelReferenceStep
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -730,7 +733,7 @@ private fun invalidIncludeMount(
     path: String,
     reason: String,
 ): ModelPreparationError =
-    ModelPreparationError(
+    ModelPreparationError.from(
         listOf(
             InvalidIncludeMountDiagnostic(
                 modelId = modelId,
@@ -745,7 +748,7 @@ private fun invalidModelElement(
     path: String,
     reason: String,
 ): ModelPreparationError =
-    ModelPreparationError(
+    ModelPreparationError.from(
         listOf(
             InvalidModelElementDiagnostic(
                 modelId = source.source.modelId,

@@ -1,5 +1,11 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnostic
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnosticCode
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationResource
+import io.github.mbackschat.a12.dm.interpreter.WorkspaceModelSource
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -40,162 +46,6 @@ internal fun strictUtf8ByteCount(text: String): Long? {
         index++
     }
     return count
-}
-
-/** One immutable caller-supplied raw DM-JSON source before admission freezes its exact UTF-8 bytes. */
-internal class WorkspaceModelSource private constructor(
-    val json: String,
-    val diagnosticLabel: String?,
-    val expectedSha256: String?,
-) {
-    companion object {
-        fun builder(): Builder = Builder()
-    }
-
-    class Builder internal constructor() {
-        private var json = ""
-        private var diagnosticLabel: String? = null
-        private var expectedSha256: String? = null
-
-        fun json(value: String?) = apply {
-            if (!value.isNullOrEmpty()) {
-                json = value
-            }
-        }
-
-        fun diagnosticLabel(value: String?) = apply {
-            if (!value.isNullOrEmpty()) {
-                diagnosticLabel = value
-            }
-        }
-
-        fun expectedSha256(value: String?) = apply {
-            if (!value.isNullOrEmpty()) {
-                expectedSha256 = value
-            }
-        }
-
-        fun build(): WorkspaceModelSource = WorkspaceModelSource(json, diagnosticLabel, expectedSha256)
-    }
-}
-
-/**
- * Resource bounds for source admission and preparation. Defaults suit browser use; callers may tighten or widen
- * them only up to the hard maxima. Graph and model assembly consume the reference, structure, element, and
- * prepared-output bounds.
- */
-internal class ModelPreparationLimits private constructor(
-    val maxModelCount: Int,
-    val maxModelBytes: Int,
-    val maxTotalBytes: Int,
-    val maxPreparedBytes: Int,
-    val maxReferenceDepth: Int,
-    val maxReferenceEdges: Int,
-    val maxStructureDepth: Int,
-    val maxPreparedElements: Int,
-) {
-    companion object {
-        const val DEFAULT_MAX_MODEL_COUNT = 256
-        const val DEFAULT_MAX_MODEL_BYTES = 4 * 1024 * 1024
-        const val DEFAULT_MAX_TOTAL_BYTES = 32 * 1024 * 1024
-        const val DEFAULT_MAX_PREPARED_BYTES = 64 * 1024 * 1024
-        const val DEFAULT_MAX_REFERENCE_DEPTH = 32
-        const val DEFAULT_MAX_REFERENCE_EDGES = 4_096
-        const val DEFAULT_MAX_STRUCTURE_DEPTH = 64
-        const val DEFAULT_MAX_PREPARED_ELEMENTS = 250_000
-
-        const val HARD_MAX_MODEL_COUNT = 1_024
-        const val HARD_MAX_MODEL_BYTES = 16 * 1024 * 1024
-        const val HARD_MAX_TOTAL_BYTES = 128 * 1024 * 1024
-        const val HARD_MAX_PREPARED_BYTES = 256 * 1024 * 1024
-        const val HARD_MAX_REFERENCE_DEPTH = 128
-        const val HARD_MAX_REFERENCE_EDGES = 65_536
-        const val HARD_MAX_STRUCTURE_DEPTH = 128
-        const val HARD_MAX_PREPARED_ELEMENTS = 1_000_000
-
-        fun defaults(): ModelPreparationLimits = Builder().build()
-
-        fun builder(): Builder = Builder()
-    }
-
-    class Builder internal constructor() {
-        private var maxModelCount = DEFAULT_MAX_MODEL_COUNT
-        private var maxModelBytes = DEFAULT_MAX_MODEL_BYTES
-        private var maxTotalBytes = DEFAULT_MAX_TOTAL_BYTES
-        private var maxPreparedBytes = DEFAULT_MAX_PREPARED_BYTES
-        private var maxReferenceDepth = DEFAULT_MAX_REFERENCE_DEPTH
-        private var maxReferenceEdges = DEFAULT_MAX_REFERENCE_EDGES
-        private var maxStructureDepth = DEFAULT_MAX_STRUCTURE_DEPTH
-        private var maxPreparedElements = DEFAULT_MAX_PREPARED_ELEMENTS
-
-        fun maxModelCount(value: Int) = apply { maxModelCount = positive("maxModelCount", value) }
-        fun maxModelBytes(value: Int) = apply { maxModelBytes = positive("maxModelBytes", value) }
-        fun maxTotalBytes(value: Int) = apply { maxTotalBytes = positive("maxTotalBytes", value) }
-        fun maxPreparedBytes(value: Int) = apply { maxPreparedBytes = positive("maxPreparedBytes", value) }
-        fun maxReferenceDepth(value: Int) = apply { maxReferenceDepth = positive("maxReferenceDepth", value) }
-        fun maxReferenceEdges(value: Int) = apply { maxReferenceEdges = positive("maxReferenceEdges", value) }
-        fun maxStructureDepth(value: Int) = apply { maxStructureDepth = positive("maxStructureDepth", value) }
-        fun maxPreparedElements(value: Int) = apply { maxPreparedElements = positive("maxPreparedElements", value) }
-
-        fun build(): ModelPreparationLimits = ModelPreparationLimits(
-            maxModelCount = minOf(maxModelCount, HARD_MAX_MODEL_COUNT),
-            maxModelBytes = minOf(maxModelBytes, HARD_MAX_MODEL_BYTES),
-            maxTotalBytes = minOf(maxTotalBytes, HARD_MAX_TOTAL_BYTES),
-            maxPreparedBytes = minOf(maxPreparedBytes, HARD_MAX_PREPARED_BYTES),
-            maxReferenceDepth = minOf(maxReferenceDepth, HARD_MAX_REFERENCE_DEPTH),
-            maxReferenceEdges = minOf(maxReferenceEdges, HARD_MAX_REFERENCE_EDGES),
-            maxStructureDepth = minOf(maxStructureDepth, HARD_MAX_STRUCTURE_DEPTH),
-            maxPreparedElements = minOf(maxPreparedElements, HARD_MAX_PREPARED_ELEMENTS),
-        )
-
-        private fun positive(name: String, value: Int): Int {
-            require(value > 0) { "$name must be positive" }
-            return value
-        }
-    }
-}
-
-internal enum class ModelPreparationDiagnosticCode {
-    INVALID_MODEL_SOURCE,
-    DUPLICATE_MODEL_ID,
-    ENTRY_MODEL_NOT_FOUND,
-    UNRESOLVED_MODEL_REFERENCE,
-    MODEL_SOURCE_INTEGRITY_MISMATCH,
-    MODEL_REFERENCE_CYCLE,
-    INVALID_INCLUDE_MOUNT,
-    AMBIGUOUS_TYPE_DEFINITION,
-    UNMAPPED_INCLUDED_REFERENCE,
-    INCOMPATIBLE_CONDITION_LANGUAGE,
-    UNPREPARED_MODEL_RESIDUE,
-    RESOURCE_LIMIT_EXCEEDED,
-}
-
-internal enum class ModelPreparationResource {
-    MODEL_COUNT,
-    MODEL_BYTES,
-    TOTAL_BYTES,
-    PREPARED_BYTES,
-    REFERENCE_DEPTH,
-    REFERENCE_EDGES,
-    STRUCTURE_DEPTH,
-    PREPARED_ELEMENTS,
-}
-
-/** Closed workspace-preparation diagnostic family; each subtype carries only fields valid for that failure kind. */
-internal sealed interface ModelPreparationDiagnostic {
-    val code: ModelPreparationDiagnosticCode
-    val diagnosticLabel: String? get() = null
-    val expectedSha256: String? get() = null
-    val actualSha256: String? get() = null
-    val modelId: String? get() = null
-    val path: String? get() = null
-    val reference: String? get() = null
-    val referenceChain: List<ModelReferenceStep> get() = emptyList()
-    val conflictingDiagnosticLabels: List<String> get() = emptyList()
-    val resource: ModelPreparationResource? get() = null
-    val maximum: Long? get() = null
-    val actual: Long? get() = null
-    val message: String
 }
 
 private data class InvalidModelSourceDiagnostic(
@@ -239,12 +89,6 @@ internal data class ResourceLimitDiagnostic(
     }
 }
 
-/** Typed aggregate failure; messages contain only model identities and already-sanitized labels. */
-internal class ModelPreparationError(diagnostics: List<ModelPreparationDiagnostic>) :
-    IllegalArgumentException(diagnostics.joinToString("; ") { it.message }) {
-    val diagnostics: List<ModelPreparationDiagnostic> = immutableListSnapshot(diagnostics)
-}
-
 /** One admitted source whose bytes, digest, identity, and presentation label cannot be mutated by the caller. */
 internal class AdmittedWorkspaceModelSource internal constructor(
     val modelId: String,
@@ -286,7 +130,7 @@ internal object WorkspaceSourceAdmission {
     ): AdmittedWorkspace {
         val snapshot = sources.toList()
         if (snapshot.size > limits.maxModelCount) {
-            throw ModelPreparationError(
+            throw ModelPreparationError.from(
                 listOf(
                     ResourceLimitDiagnostic(
                         resource = ModelPreparationResource.MODEL_COUNT,
@@ -303,7 +147,7 @@ internal object WorkspaceSourceAdmission {
             val diagnosticLabel = sanitizeLabel(source.diagnosticLabel)
             val byteCount = strictUtf8ByteCount(source.json)
             if (byteCount == null) {
-                throw ModelPreparationError(
+                throw ModelPreparationError.from(
                     listOf(
                         InvalidModelSourceDiagnostic(
                             diagnosticLabel = diagnosticLabel,
@@ -313,7 +157,7 @@ internal object WorkspaceSourceAdmission {
                 )
             }
             if (byteCount > limits.maxModelBytes) {
-                throw ModelPreparationError(
+                throw ModelPreparationError.from(
                     listOf(
                         ResourceLimitDiagnostic(
                             resource = ModelPreparationResource.MODEL_BYTES,
@@ -326,7 +170,7 @@ internal object WorkspaceSourceAdmission {
             }
             totalBytes += byteCount
             if (totalBytes > limits.maxTotalBytes) {
-                throw ModelPreparationError(
+                throw ModelPreparationError.from(
                     listOf(
                         ResourceLimitDiagnostic(
                             resource = ModelPreparationResource.TOTAL_BYTES,
@@ -385,7 +229,7 @@ internal object WorkspaceSourceAdmission {
             }
 
         if (diagnostics.isNotEmpty()) {
-            throw ModelPreparationError(diagnostics)
+            throw ModelPreparationError.from(diagnostics)
         }
         return AdmittedWorkspace(candidates)
     }

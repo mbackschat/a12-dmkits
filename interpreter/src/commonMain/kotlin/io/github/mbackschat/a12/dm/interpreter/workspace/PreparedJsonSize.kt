@@ -1,5 +1,8 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationResource
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -182,7 +185,7 @@ internal class PreparedJsonByteBudget(
     }
 
     private fun fail(): Nothing =
-        throw ModelPreparationError(
+        throw ModelPreparationError.from(
             listOf(
                 ResourceLimitDiagnostic(
                     resource = ModelPreparationResource.PREPARED_BYTES,

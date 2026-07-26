@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 
@@ -32,6 +33,35 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 class WorkspaceIncludeStructureKernelTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @Test
+    void kernelAcceptsNullButRejectsOtherNonArrayModelReferenceContainers() {
+        var acceptedNull = tree(DocumentModelDraft.named("permit").locale("en_US")
+                .rootGroup("Permit", permit -> permit.field("Reference", FieldKind.STRING))
+                .build()
+                .toJson());
+        ((ObjectNode) acceptedNull.path("header"))
+                .set("modelReferences", MAPPER.getNodeFactory().nullNode());
+        KernelModelOracle.of(acceptedNull.toString(), reference -> null);
+
+        var invalidValues = List.of(
+                MAPPER.getNodeFactory().booleanNode(true),
+                MAPPER.getNodeFactory().numberNode(7),
+                MAPPER.getNodeFactory().textNode("not-references"),
+                MAPPER.createObjectNode());
+        for (var value : invalidValues) {
+            var model = tree(DocumentModelDraft.named("permit").locale("en_US")
+                    .rootGroup("Permit", permit -> permit.field("Reference", FieldKind.STRING))
+                    .build()
+                    .toJson());
+            ((ObjectNode) model.path("header")).set("modelReferences", value);
+
+            assertThrows(
+                    RuntimeException.class,
+                    () -> KernelModelOracle.of(model.toString(), reference -> null),
+                    value.toString());
+        }
+    }
 
     @Test
     void kernelRejectsAnUnknownIncludeLevel() {
@@ -217,6 +247,156 @@ class WorkspaceIncludeStructureKernelTest {
         ((ObjectNode) missingBody.path("content").path("modelRoot").path("rootGroups").get(0))
                 .remove("Group");
         assertThrows(RuntimeException.class, () -> loadEntryWith(missingBody));
+    }
+
+    @Test
+    void kernelElementBodyAcceptanceIsCharacterizedAcrossTheClosedElementFamily() {
+        var accepted = new ArrayList<String>();
+        for (var type : List.of("Field", "Rule", "Computation")) {
+            var missing = tree(executableOneRootComponent());
+            elementOfType(missing, type).remove(type);
+            recordAccepted(accepted, type + "=missing", missing);
+
+            for (var value : List.of(
+                    MAPPER.getNodeFactory().nullNode(),
+                    MAPPER.getNodeFactory().booleanNode(true),
+                    MAPPER.getNodeFactory().numberNode(7),
+                    MAPPER.getNodeFactory().textNode("not-an-element-body"),
+                    MAPPER.createArrayNode())) {
+                var malformed = tree(executableOneRootComponent());
+                elementOfType(malformed, type).set(type, value);
+
+                recordAccepted(accepted, type + "=" + value, malformed);
+            }
+        }
+        assertEquals(
+                List.of("Field=missing", "Field=null"),
+                accepted,
+                "the Kernel alone admits an absent/null Field body; portable preparation deliberately refuses " +
+                        "that shape rather than fabricating a default string field");
+    }
+
+    @Test
+    void kernelElementIdentityAcceptanceIsCharacterized() {
+        var accepted = new ArrayList<String>();
+        for (var member : List.of("type", "name", "id")) {
+            var missing = tree(oneRootComponent());
+            elementOfType(missing, "Field").remove(member);
+            recordAccepted(accepted, member + "=missing", missing);
+
+            for (var value : List.of(
+                    MAPPER.getNodeFactory().nullNode(),
+                    MAPPER.getNodeFactory().booleanNode(true),
+                    MAPPER.getNodeFactory().numberNode(7),
+                    MAPPER.createObjectNode(),
+                    MAPPER.createArrayNode())) {
+                var malformed = tree(oneRootComponent());
+                elementOfType(malformed, "Field").set(member, value);
+
+                recordAccepted(accepted, member + "=" + value, malformed);
+            }
+        }
+        assertEquals(
+                List.of(
+                        "name=null", "name=true", "name=7", "name={}", "name=[]",
+                        "id=null", "id=true", "id=7", "id={}", "id=[]"),
+                accepted,
+                "missing identity members and malformed type are refused; the Kernel coerces present non-string " +
+                "name/id values, while portable preparation requires a normalized string id");
+    }
+
+    @Test
+    void kernelRejectsNonObjectModelContainersAndNonArrayRootGroups() {
+        var accepted = new ArrayList<String>();
+        var missingContent = tree(oneRootComponent());
+        missingContent.remove("content");
+        recordAccepted(accepted, "content=missing", missingContent);
+
+        var missingModelRoot = tree(oneRootComponent());
+        ((ObjectNode) missingModelRoot.path("content")).remove("modelRoot");
+        recordAccepted(accepted, "modelRoot=missing", missingModelRoot);
+
+        var missingRootGroups = tree(oneRootComponent());
+        ((ObjectNode) missingRootGroups.path("content").path("modelRoot")).remove("rootGroups");
+        recordAccepted(accepted, "rootGroups=missing", missingRootGroups);
+
+        var nonObjects = List.of(
+                MAPPER.getNodeFactory().nullNode(),
+                MAPPER.getNodeFactory().booleanNode(true),
+                MAPPER.getNodeFactory().numberNode(7),
+                MAPPER.getNodeFactory().textNode("not-an-object"),
+                MAPPER.createArrayNode());
+        for (var value : nonObjects) {
+            var malformedContent = tree(oneRootComponent());
+            malformedContent.set("content", value);
+            recordAccepted(accepted, "content=" + value, malformedContent);
+
+            var malformedModelRoot = tree(oneRootComponent());
+            ((ObjectNode) malformedModelRoot.path("content")).set("modelRoot", value);
+            recordAccepted(accepted, "modelRoot=" + value, malformedModelRoot);
+        }
+        for (var value : List.of(
+                MAPPER.getNodeFactory().nullNode(),
+                MAPPER.getNodeFactory().booleanNode(true),
+                MAPPER.getNodeFactory().numberNode(7),
+                MAPPER.getNodeFactory().textNode("not-an-array"),
+                MAPPER.createObjectNode())) {
+            var malformedRootGroups = tree(oneRootComponent());
+            ((ObjectNode) malformedRootGroups.path("content").path("modelRoot")).set("rootGroups", value);
+            recordAccepted(accepted, "rootGroups=" + value, malformedRootGroups);
+        }
+
+        assertEquals(
+                List.of("modelRoot=missing", "rootGroups=missing"),
+                accepted,
+                "the Kernel treats an absent modelRoot/rootGroups as an empty model but requires a content object");
+    }
+
+    @Test
+    void kernelDatePrecisionAcceptanceIsCharacterized() {
+        var absent = tree(dateModel());
+        dateTypeOfFirstField(absent).remove("datePrecision");
+        KernelModelOracle.ofSelfContained(absent.toString()).field("/Permit/ObservedOn");
+
+        for (var accepted : List.of("FULL", "DAY_OPTIONAL")) {
+            var model = tree(dateModel());
+            dateTypeOfFirstField(model).put("datePrecision", accepted);
+            KernelModelOracle.ofSelfContained(model.toString()).field("/Permit/ObservedOn");
+        }
+
+        for (var value : List.of(
+                MAPPER.getNodeFactory().nullNode(),
+                MAPPER.getNodeFactory().textNode("UNKNOWN"),
+                MAPPER.getNodeFactory().booleanNode(true),
+                MAPPER.getNodeFactory().numberNode(7),
+                MAPPER.createObjectNode(),
+                MAPPER.createArrayNode())) {
+            var model = tree(dateModel());
+            dateTypeOfFirstField(model).set("datePrecision", value);
+
+            assertThrows(
+                    RuntimeException.class,
+                    () -> KernelModelOracle.ofSelfContained(model.toString()),
+                    value.toString());
+        }
+    }
+
+    @Test
+    void kernelRejectsAnUnknownFieldTypeDiscriminator() {
+        var model = tree(oneRootComponent());
+        ((ObjectNode) elementOfType(model, "Field").path("Field").path("fieldType"))
+                .put("type", "UnknownFieldType");
+
+        assertThrows(RuntimeException.class, () -> KernelModelOracle.ofSelfContained(model.toString()));
+    }
+
+    @Test
+    void kernelRejectsAComputationTargetThatWalksAboveTheModelRoot() {
+        var model = tree(executableOneRootComponent());
+        ((ObjectNode) elementOfType(model, "Computation").path("Computation"))
+                .put("computedFieldRelPath", "../../../../Result");
+
+        assertThrows(RuntimeException.class, () -> KernelModelOracle.ofSelfContained(model.toString()));
     }
 
     @Test
@@ -421,6 +601,13 @@ class WorkspaceIncludeStructureKernelTest {
                 .toJson();
     }
 
+    private static String dateModel() {
+        return DocumentModelDraft.named("permit").locale("en_US")
+                .rootGroup("Permit", permit -> permit.dateField("ObservedOn", date -> date.format("dd.MM.yyyy")))
+                .build()
+                .toJson();
+    }
+
     private static String ruledOneRootComponent() {
         var session = EditSession.read(oneRootComponent());
         var component = session.group("/Component");
@@ -551,6 +738,28 @@ class WorkspaceIncludeStructureKernelTest {
     private static ObjectNode bodyOfRoot(ObjectNode model) {
         return (ObjectNode) model.path("content").path("modelRoot").path("rootGroups")
                 .get(0).path("Group");
+    }
+
+    private static ObjectNode elementOfType(ObjectNode model, String type) {
+        for (var element : elementsOfRoot(model)) {
+            if (type.equals(element.path("type").asText())) {
+                return (ObjectNode) element;
+            }
+        }
+        throw new IllegalArgumentException("no element of type " + type);
+    }
+
+    private static ObjectNode dateTypeOfFirstField(ObjectNode model) {
+        return (ObjectNode) elementsOfRoot(model).get(0).path("Field").path("fieldType").path("DateType");
+    }
+
+    private static void recordAccepted(List<String> accepted, String description, ObjectNode model) {
+        try {
+            KernelModelOracle.ofSelfContained(model.toString());
+            accepted.add(description);
+        } catch (RuntimeException expected) {
+            // Rejection is the measured outcome; only accepted shapes are reported by the characterization.
+        }
     }
 
     private static ObjectNode mountBody(ObjectNode model) {

@@ -1,5 +1,9 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
+import io.github.mbackschat.a12.dm.interpreter.ModelReferencePurpose
+import io.github.mbackschat.a12.dm.interpreter.ModelReferenceStep
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -122,7 +126,7 @@ internal class TypeDefinitionRegistry(
     fun requireNoResidue() {
         for ((definitionId, definition) in definitions) {
             val residue = resolve(definitionId) as? TypeDefinitionResolution.Residue ?: continue
-            throw ModelPreparationError(
+            throw ModelPreparationError.from(
                 listOf(
                     UnpreparedTypeDefinitionDiagnostic(
                         modelId = definition.origin.modelId,
@@ -201,7 +205,7 @@ internal class TypeDefinitionRegistry(
         when {
             existing == null -> definitions[definitionId] = candidate
             existing.origin == candidate.origin -> Unit
-            else -> throw ModelPreparationError(
+            else -> throw ModelPreparationError.from(
                 listOf(
                     AmbiguousTypeDefinitionDiagnostic(
                         modelId = entryModelId,
@@ -331,7 +335,7 @@ internal class TypeDefinitionRegistry(
         path: String,
         reason: String,
     ): ModelPreparationError =
-        ModelPreparationError(
+        ModelPreparationError.from(
             listOf(
                 InvalidTypeDefinitionDiagnostic(
                     modelId = modelId,
@@ -477,7 +481,7 @@ internal class EffectiveTypeInliner(
         reference: String,
         cyclic: Boolean,
     ): ModelPreparationError =
-        ModelPreparationError(
+        ModelPreparationError.from(
             listOf(
                 UnpreparedTypeDefinitionDiagnostic(
                     modelId = entryModelId,

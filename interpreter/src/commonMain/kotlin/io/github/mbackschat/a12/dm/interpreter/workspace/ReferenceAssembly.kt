@@ -1,5 +1,8 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnostic
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
 import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import io.github.mbackschat.a12.dm.interpreter.parse.parseExpression
@@ -85,7 +88,7 @@ private class ReferenceNormalizer(
             "mounted executable provenance does not match the mounted output tree"
         }
         if (diagnostics.isNotEmpty()) {
-            throw ModelPreparationError(diagnostics)
+            throw ModelPreparationError.from(diagnostics)
         }
         return normalized
     }

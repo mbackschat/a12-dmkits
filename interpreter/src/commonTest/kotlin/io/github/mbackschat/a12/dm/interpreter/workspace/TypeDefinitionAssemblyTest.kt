@@ -1,5 +1,13 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnostic
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnosticCode
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationResource
+import io.github.mbackschat.a12.dm.interpreter.ModelReferencePurpose
+import io.github.mbackschat.a12.dm.interpreter.ModelReferenceStep
+import io.github.mbackschat.a12.dm.interpreter.WorkspaceModelSource
 import io.github.mbackschat.a12.dm.interpreter.dec
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray

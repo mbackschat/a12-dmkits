@@ -17,7 +17,12 @@ class UnsupportedConstructException(message: String) : RuntimeException(message)
  * limit, IG83), so a valid model can carry a zone we deliberately do not evaluate. It is a LOUD refusal
  * (never a silent degrade); a CLI consumer maps it to a corrective refusal rather than an internal error.
  */
-class UnsupportedModelTimeZoneException(message: String) : RuntimeException(message)
+class UnsupportedModelTimeZoneException(
+    val timeZoneId: String?,
+    message: String,
+) : RuntimeException(message) {
+    constructor(message: String) : this(null, message)
+}
 
 /**
  * Signals that an explicitly present `modelConfig.timeZone` is not a valid configuration value. This is
@@ -26,4 +31,9 @@ class UnsupportedModelTimeZoneException(message: String) : RuntimeException(mess
  * supported set. The common loader can identify null/blank values; its JVM consumer classifies the wider
  * Java id domain before calling it.
  */
-class InvalidModelTimeZoneException(message: String) : IllegalArgumentException(message)
+class InvalidModelTimeZoneException(
+    val timeZoneId: String?,
+    message: String,
+) : IllegalArgumentException(message) {
+    constructor(message: String) : this(null, message)
+}

@@ -93,7 +93,7 @@ class DmInterpreter @JvmOverloads constructor(
     private val parsedModel = ParsedModel(model) { preparationObserver }
     /** Nullable, instance-local structural seam used only by the cache-lifetime guard. */
     internal var cacheObserver: CacheObserver? = null
-    private val preparedModel = PreparedModel(
+    private val preparedModel = PreparedEvaluationPlan(
         model,
         parsedModel,
         scopes,

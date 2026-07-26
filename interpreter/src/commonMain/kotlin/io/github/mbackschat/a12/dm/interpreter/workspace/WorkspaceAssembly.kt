@@ -1,55 +1,14 @@
 package io.github.mbackschat.a12.dm.interpreter.workspace
 
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnostic
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnosticCode
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationResource
+import io.github.mbackschat.a12.dm.interpreter.ModelReferenceStep
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-
-/** Logical reference purposes in the host-neutral preparation graph. */
-internal enum class ModelReferencePurpose(val wireName: String) {
-    INCLUDE("include"),
-    TYPE_DEFINITIONS("typeDefinitions");
-
-    companion object {
-        fun fromWireName(value: String): ModelReferencePurpose? = when (value) {
-            INCLUDE.wireName -> INCLUDE
-            TYPE_DEFINITIONS.wireName -> TYPE_DEFINITIONS
-            else -> null
-        }
-    }
-}
-
-/** One exact directed edge in a workspace preparation closure. */
-@ConsistentCopyVisibility
-internal data class ModelReferenceStep private constructor(
-    val fromModelId: String,
-    val purpose: ModelReferencePurpose,
-    val toModelId: String,
-    val alias: String?,
-) {
-    companion object {
-        fun typeDefinitions(
-            fromModelId: String,
-            toModelId: String,
-            alias: String?,
-        ): ModelReferenceStep = ModelReferenceStep(
-            fromModelId = fromModelId,
-            purpose = ModelReferencePurpose.TYPE_DEFINITIONS,
-            toModelId = toModelId,
-            alias = alias,
-        )
-
-        fun include(
-            fromModelId: String,
-            toModelId: String,
-            alias: String?,
-        ): ModelReferenceStep = ModelReferenceStep(
-            fromModelId = fromModelId,
-            purpose = ModelReferencePurpose.INCLUDE,
-            toModelId = toModelId,
-            alias = alias,
-        )
-    }
-}
 
 /** One resolved graph edge plus the immutable admitted source that satisfied it. */
 internal class ResolvedModelReference internal constructor(
@@ -86,7 +45,7 @@ internal class WorkspaceAssemblyContext(
 
     fun entry(modelId: String): ParsedWorkspaceSource {
         val source = workspace.source(modelId)
-            ?: throw ModelPreparationError(listOf(EntryModelNotFoundDiagnostic(modelId)))
+            ?: throw ModelPreparationError.from(listOf(EntryModelNotFoundDiagnostic(modelId)))
         return parsed(source)
     }
 
@@ -123,7 +82,7 @@ internal class WorkspaceAssemblyContext(
             }
         }
         if (step.toModelId in modelsOnPath) {
-            throw ModelPreparationError(
+            throw ModelPreparationError.from(
                 listOf(
                     ModelReferenceCycleDiagnostic(
                         modelId = step.fromModelId,
@@ -135,7 +94,7 @@ internal class WorkspaceAssemblyContext(
         }
 
         val source = workspace.source(step.toModelId)
-            ?: throw ModelPreparationError(
+            ?: throw ModelPreparationError.from(
                 listOf(
                     UnresolvedModelReferenceDiagnostic(
                         modelId = step.fromModelId,
@@ -204,7 +163,7 @@ internal class WorkspaceAssemblyContext(
         maximum: Long,
         actual: Long,
     ): ModelPreparationError =
-        ModelPreparationError(
+        ModelPreparationError.from(
             listOf(
                 ResourceLimitDiagnostic(
                     resource = resource,
@@ -222,7 +181,7 @@ internal fun requirePreparedBytesWithin(
     val maximum = limits.maxPreparedBytes.toLong()
     val actual = compactJsonUtf8Size(root, stopAfter = maximum)
     if (actual > maximum) {
-        throw ModelPreparationError(
+        throw ModelPreparationError.from(
             listOf(
                 ResourceLimitDiagnostic(
                     resource = ModelPreparationResource.PREPARED_BYTES,
@@ -263,8 +222,8 @@ private data class ModelReferenceCycleDiagnostic(
 internal data class AmbiguousTypeDefinitionDiagnostic(
     override val modelId: String,
     override val reference: String,
-    val firstSourceModelId: String,
-    val conflictingSourceModelId: String,
+    override val firstSourceModelId: String,
+    override val conflictingSourceModelId: String,
 ) : ModelPreparationDiagnostic {
     override val code = ModelPreparationDiagnosticCode.AMBIGUOUS_TYPE_DEFINITION
     override val message =
@@ -275,7 +234,7 @@ internal data class UnpreparedTypeDefinitionDiagnostic(
     override val modelId: String,
     override val path: String,
     override val reference: String,
-    val cyclic: Boolean,
+    override val cyclic: Boolean,
 ) : ModelPreparationDiagnostic {
     override val code = ModelPreparationDiagnosticCode.UNPREPARED_MODEL_RESIDUE
     override val message = if (cyclic) {
@@ -301,8 +260,8 @@ internal data class IncompatibleConditionLanguageDiagnostic(
     override val diagnosticLabel: String?,
     override val path: String,
     override val referenceChain: List<ModelReferenceStep>,
-    val sourceLanguage: String,
-    val entryLanguage: String,
+    override val sourceLanguage: String,
+    override val entryLanguage: String,
 ) : ModelPreparationDiagnostic {
     override val code = ModelPreparationDiagnosticCode.INCOMPATIBLE_CONDITION_LANGUAGE
     override val message =
@@ -312,7 +271,7 @@ internal data class IncompatibleConditionLanguageDiagnostic(
 internal data class InvalidTypeDefinitionDiagnostic(
     override val modelId: String,
     override val path: String,
-    val reason: String,
+    override val reason: String,
 ) : ModelPreparationDiagnostic {
     override val code = ModelPreparationDiagnosticCode.INVALID_MODEL_SOURCE
     override val message = "invalid type definition at '$path': $reason"
@@ -322,7 +281,7 @@ internal data class InvalidModelElementDiagnostic(
     override val modelId: String,
     override val diagnosticLabel: String?,
     override val path: String,
-    val reason: String,
+    override val reason: String,
 ) : ModelPreparationDiagnostic {
     override val code = ModelPreparationDiagnosticCode.INVALID_MODEL_SOURCE
     override val message = "invalid model element at '$path': $reason"
@@ -331,7 +290,7 @@ internal data class InvalidModelElementDiagnostic(
 internal data class InvalidIncludeMountDiagnostic(
     override val modelId: String,
     override val path: String,
-    val reason: String,
+    override val reason: String,
 ) : ModelPreparationDiagnostic {
     override val code = ModelPreparationDiagnosticCode.INVALID_INCLUDE_MOUNT
     override val message = "invalid include mount at '$path': $reason"
