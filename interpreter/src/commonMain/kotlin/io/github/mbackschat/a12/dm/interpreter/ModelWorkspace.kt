@@ -97,6 +97,9 @@ class PreparedModel private constructor(
 ) : ModelOwned {
     val dependencies: List<ModelDependency> = immutableListSnapshot(dependencies)
 
+    /** The placement-transport verbs bound to this prepared owner domain. */
+    val documents: PreparedDocumentApi = PreparedDocumentApi(this)
+
     @JvmSynthetic
     internal fun definition(): ModelDef = definition
 

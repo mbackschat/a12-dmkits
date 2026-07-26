@@ -41,6 +41,9 @@ class PublicPreparationApiSurfaceTest {
             ModelDependency::class.java,
             ModelPreparationError::class.java,
             ModelSourceLoadContext::class.java,
+            DocumentInputError::class.java,
+            ModelOwnerMismatchError::class.java,
+            DocumentSnapshot::class.java,
         )) {
             assertTrue(
                 outputType.declaredConstructors.none { it.isCallablePublic() },
@@ -192,6 +195,24 @@ class PublicPreparationApiSurfaceTest {
             ModelWorkspace.Companion::class.java,
             PreparedModel::class.java,
             PreparedModel.Companion::class.java,
+            PlacementDocumentInputV1::class.java,
+            PlacementDocumentInputV1.Companion::class.java,
+            GroupPlacementInput::class.java,
+            FieldPlacementInput::class.java,
+            DocumentDecodeLimits::class.java,
+            DocumentDecodeLimits.Companion::class.java,
+            DocumentDecodeLimits.Builder::class.java,
+            DocumentPlacementKind::class.java,
+            DocumentInputReasonCode::class.java,
+            DocumentInputResource::class.java,
+            DocumentInputDiagnostic::class.java,
+            DocumentInputError::class.java,
+            DocumentInputError.Companion::class.java,
+            ModelOwnerMismatchError::class.java,
+            ModelOwnerMismatchError.Companion::class.java,
+            DocumentSnapshot::class.java,
+            DocumentSnapshot.Companion::class.java,
+            PreparedDocumentApi::class.java,
         )
 
         val PUBLIC_PREPARATION_TYPE_SET = PUBLIC_PREPARATION_TYPES.toSet()

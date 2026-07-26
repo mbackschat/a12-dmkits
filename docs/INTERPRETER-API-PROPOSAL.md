@@ -1947,7 +1947,7 @@ interface DocumentDecodeOptions {
 
 `path` is an absolute model path validated during decoding. `coordinates` contains one positive, 1-based repetition index per path part, including the field part, and `raw` preserves exact lexical text.
 
-Omission means absent, `raw: ""` means present-empty, and malformed text remains present for formal validation. Explicit group placements preserve empty and sparse rows.
+Omission means absent, `raw: ""` means present-empty, and malformed text remains present for formal validation. Explicit group placements preserve empty and sparse rows. Positive coordinates above a declared repetition maximum — coordinate 2 on a non-repeatable group included — stay representable and are reported by formal validation, matching the measured Kernel document boundary (`zuGrosseLfdNummer`); decoding refuses only non-positive coordinates and wrong arity.
 
 ```ts
 declare const prepared: PreparedModel;
@@ -1979,6 +1979,8 @@ const canonicalDocument:
 `decodePlacements` is authoritative public ingress: validate runtime shape, reject unknown canonical-v1 keys, enforce resource limits, then perform model-aware path/coordinate checks and aggregate failures in `DocumentInputError`.
 
 `tryDecodePlacements` performs the same work through `A12Result<DocumentSnapshot, DocumentInputError>`. `readPlacements` is the fast path for data already validated by a trusted decoder; a TypeScript annotation alone is not evidence of validation.
+
+The implementation sequencing is deliberate: R2.8 ships `readPlacements` and `encodePlacements` over the typed placement DTOs with one shared validation engine — version, resource ceilings (fail-fast), model paths, coordinate arity and positivity, duplicates, and conflicts all run for the typed path too, so the fast path bypasses only unknown/native-shape decoding. `decodePlacements`/`tryDecodePlacements` land with the R3.2 exported TypeScript adapter that makes runtime-`unknown` ingress reachable; the shape-level reason codes (`invalid-native-type`, `unknown-property`, `missing-property`) join the published reason-code set there, while `unsupported-version` is already reachable through the typed envelope. The Kotlin diagnostics carry structured members (`placementKind`, `placementIndex`, `coordinateIndex`, `firstPlacementIndex`, resource/maximum/actual) from which the R3.2 adapter derives the TS `inputPath` segments.
 
 `encodePlacements` writes a round-trippable `PlacementDocumentInputV1` after an owner check. A malformed number or date remains valid document input; it is not a valid direct `A12Number` or `A12Date`. Every diagnostic always carries its transport `inputPath`, such as `["fields", 2, "coordinates", 1]`, and separately carries the attempted `modelPath`, such as `"/Order/Lines/Amount"`, when known.
 
