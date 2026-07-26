@@ -106,6 +106,11 @@ class Document(internal val config: DocumentConfig) {
     /** Group `(path, reps)` already instantiated — O(1) dedup for [autoGroup] (avoids an O(P²) build scan). */
     private val instantiatedGroups = HashSet<Pair<String, List<Int>>>()
 
+    /** Every stored placement — explicit and auto-instantiated groups, present-empty cells, raw lexical text —
+     *  in insertion order. The placement transport's encoder reads this; the mutable list itself never leaks. */
+    internal fun placementsSnapshot(): List<DocumentPlacementRecord> =
+        placements.map { DocumentPlacementRecord(it.path, it.reps, it.isGroup, if (it.isGroup) null else it.raw) }
+
     /** A field at the given 1-based indices (one per path part, the field included). An empty string
      *  materializes the cell but carries no evaluation value, matching the kernel's `valueExists` boundary. */
     fun field(path: String, value: String, vararg reps: Int): Document = add(path, reps, value, false)
@@ -1240,6 +1245,15 @@ class Document(internal val config: DocumentConfig) {
         }
     }
 }
+
+/** One stored placement as the transport encoder sees it: [raw] is the exact lexical text for a field
+ *  (empty string = present-empty as authored, null = present-but-valueless), and always null for a group row. */
+internal data class DocumentPlacementRecord(
+    val path: String,
+    val reps: List<Int>,
+    val isGroup: Boolean,
+    val raw: String?,
+)
 
 /**
  * Build the `$`-correlation hash-join buckets — per join-key: `[t, f, n]` over [rows] (`t`/`f` = the star cell

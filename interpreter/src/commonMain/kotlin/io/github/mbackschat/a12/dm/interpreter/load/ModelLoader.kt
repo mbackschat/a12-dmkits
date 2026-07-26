@@ -95,6 +95,7 @@ object ModelLoader {
             repeatableGroups = sink.repeatable,
             declaredReps = sink.declaredReps,
             indexFields = sink.indexFields,
+            groupPaths = sink.groupPaths,
             baseYear = baseYear,
             fieldRefByShortNameAllowed = shortNameRefs,
             legalCharset = legalCharset,
@@ -111,6 +112,7 @@ object ModelLoader {
         val repeatable = linkedSetOf<String>()
         val declaredReps = linkedMapOf<String, Int>()
         val indexFields = linkedSetOf<String>()
+        val groupPaths = linkedSetOf<String>()
     }
 
     /**
@@ -271,6 +273,7 @@ object ModelLoader {
                 }
             }
             PreparedElementType.GROUP -> {
+                sink.groupPaths.add(id)
                 val includeMember = structure.body.keys.firstOrNull {
                     it in PREPARED_INCLUDE_DIRECTIVE_MEMBERS
                 }
