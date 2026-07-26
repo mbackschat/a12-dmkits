@@ -34,6 +34,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 # shellcheck source=release-assets.sh
 . "$ROOT/scripts/release-assets.sh"
+# shellcheck source=release-git-identity.sh
+. "$ROOT/scripts/release-git-identity.sh"
 
 MIRROR="mbackschat/a12-dmtool-releases"
 NATIVE="$ROOT/cli/build/native/nativeCompile/dmtool"   # mac arm64 (per-OS, no cross-compile — §3a)
@@ -149,6 +151,7 @@ say "2. Assemble the public mirror tree"
 say "3. Push the mirror CONTENT (rsync --delete into a fresh clone)"
 rm -rf "$CLONE"
 gh repo clone "$MIRROR" "$CLONE" -- --depth 1
+configure_release_git_identity "$CLONE"
 rsync -a --delete --exclude='.git' "$DEST"/ "$CLONE"/
 if [[ -n "$(git -C "$CLONE" status --porcelain)" ]]; then
   git -C "$CLONE" add -A

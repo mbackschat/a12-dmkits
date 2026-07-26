@@ -73,6 +73,7 @@ build mac native (§3a) + native-gate.sh (§5)
 ```
 - **Ordering that bites (why the script enforces it):** the CI `publish` job re-sums *every* `dmtool-*` already attached to the release, so the **mac binary must be uploaded before the dispatch** — upload it late and `SHA256SUMS` silently won't cover it. (The earlier "CI creates the draft" diagram was wrong: the workflow only *uploads to* an existing release; the script creates the draft.)
 - **Mirror CONTENT vs. Release ASSETS are two pushes:** the plugin/skill/examples/README/CHANGELOG go into the mirror *repo tree* (rsync `--delete`, so the tree must equal the assembled output exactly); the per-OS binaries + `SHA256SUMS` go to the mirror *GitHub Release*. The CI workflow ships to the mirror from `.github/mirror-workflows/build-native.yml` (assembled into the tree — §4 below).
+- **Mirror commit identity is publisher-owned:** the fresh clone is configured through [`scripts/release-git-identity.sh`](../scripts/release-git-identity.sh) before every commit, so public history uses `Martin Backschat <mbackschat@mail.de>` independently of the release machine's global Git configuration. The interpreter mirror publisher reuses the same boundary.
 
 **Step 3 — review the draft, then go live** (`./scripts/publish-release.sh vX.Y.Z --go-live`): verifies all four binaries + `SHA256SUMS` are present and that the checksums match, then `gh release edit --draft=false --latest`. A failed CI build never leaves a half-published release (it stays a draft).
 

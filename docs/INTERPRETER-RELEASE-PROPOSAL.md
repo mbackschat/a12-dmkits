@@ -328,7 +328,7 @@ When R10 later publishes `dm-interpreter-kernel-dropin`, the same public release
 Adopt dmtool’s good mechanics while changing the artifact-specific parts:
 
 1. Bump the independent interpreter version, update `interpreter/CHANGELOG.md`, verify the public API/ABI diff, commit, and push `interpreter-vX.Y.Z`.
-2. Run `scripts/publish-interpreter-release.sh interpreter-vX.Y.Z`; it assembles the public mirror workflow/content, pushes it, creates a **draft** `vX.Y.Z` release, and dispatches the public mirror build.
+2. Run `scripts/publish-interpreter-release.sh interpreter-vX.Y.Z`; it assembles the public mirror workflow/content, configures the fresh mirror clone through [`scripts/release-git-identity.sh`](../scripts/release-git-identity.sh), pushes it, creates a **draft** `vX.Y.Z` release, and dispatches the public mirror build. Public mirror commits therefore use `Martin Backschat <mbackschat@mail.de>` independently of the release machine's global Git configuration.
 3. The public workflow checks out the private source tag using a read-only `SOURCE_REPO_TOKEN`, builds all artifacts, runs JVM/Node/browser/package/consumer gates, uploads release assets, and writes `SHA256SUMS`.
 4. Review the draft and run `scripts/publish-interpreter-release.sh interpreter-vX.Y.Z --go-live`.
 5. The go-live path verifies the asset manifest and checksums, adds the immutable Maven/API version directories to the public tree, deploys Pages, runs anonymous production-URL consumer smokes, and only then publishes the GitHub Release and updates `latest`.
