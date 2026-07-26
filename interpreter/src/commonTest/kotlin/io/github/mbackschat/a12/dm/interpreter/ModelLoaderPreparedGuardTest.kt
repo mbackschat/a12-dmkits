@@ -180,6 +180,63 @@ class ModelLoaderPreparedGuardTest {
     }
 
     @Test
+    fun elementRecordsOutsideTheModelTreeAreRejectedInsteadOfBecomingModelContent() {
+        val raw = model(
+            """{"type":"Field","id":"/Policy/Ref","name":"Ref","Field":{"fieldType":{"type":"StringType"}}}""",
+        ).replace(
+            """"header": { "id": "policy" }""",
+            """
+                "header": {
+                  "id": "policy",
+                  "unrecognizedElement": {
+                    "type":"Field",
+                    "id":"/Phantom",
+                    "name":"Phantom",
+                    "Field":{"fieldType":{"type":"StringType"}}
+                  }
+                }
+            """.trimIndent(),
+        )
+
+        val error = assertFailsWith<InvalidPreparedModelSourceException> {
+            ModelLoader.load(raw)
+        }
+
+        assertEquals("header.unrecognizedElement", error.path)
+    }
+
+    @Test
+    fun elementRecordsHiddenInsideARealElementBodyAreAlsoRejected() {
+        val raw = model(
+            """
+                {
+                  "type":"Field",
+                  "id":"/Policy/Ref",
+                  "name":"Ref",
+                  "Field":{
+                    "fieldType":{"type":"StringType"},
+                    "unrecognizedElement":{
+                      "type":"Field",
+                      "id":"/Phantom",
+                      "name":"Phantom",
+                      "Field":{"fieldType":{"type":"StringType"}}
+                    }
+                  }
+                }
+            """.trimIndent(),
+        )
+
+        val error = assertFailsWith<InvalidPreparedModelSourceException> {
+            ModelLoader.load(raw)
+        }
+
+        assertEquals(
+            "/Policy/Ref.Field.unrecognizedElement",
+            error.path,
+        )
+    }
+
+    @Test
     fun malformedDatePrecisionIsRejectedInsteadOfDefaultingToFull() {
         for (precision in listOf("null", "\"UNKNOWN\"", "true", "7", "{}", "[]")) {
             val raw = model(

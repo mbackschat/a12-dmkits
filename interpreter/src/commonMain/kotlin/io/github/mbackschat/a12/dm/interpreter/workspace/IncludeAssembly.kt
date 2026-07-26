@@ -181,11 +181,7 @@ internal object WorkspaceIncludeAssembler {
         val mounter = IncludeMounter(preparation.context)
         val mountedRoot = mounter.mount(preparation.entry)
         mounter.requireNoIncludeResidue(mountedRoot)
-        val withEffectiveTypes = preparation.complete(
-            root = mountedRoot,
-            elementsAlreadyCounted = true,
-            finishRoot = JsonObject::withoutModelReferences,
-        )
+        val withEffectiveTypes = preparation.completeMounted(mountedRoot)
         return IncludeAssembly(
             entryModelId = entryModelId,
             dependencies = withEffectiveTypes.dependencies,
@@ -220,7 +216,7 @@ private class IncludeMounter(
             when (val element = pending.removeAt(pending.lastIndex)) {
                 is JsonObject -> {
                     val body = element.objectMember(PreparedElementType.GROUP.wireName)
-                    check(body == null || INCLUDE_DIRECTIVE_KEYS.none(body::containsKey)) {
+                    check(body == null || PREPARED_INCLUDE_DIRECTIVE_MEMBERS.none(body::containsKey)) {
                         "successful workspace mounting retained an include directive"
                     }
                     pending.addAll(element.values)
@@ -264,27 +260,21 @@ private class IncludeMounter(
         moveContext: IncludeMoveContext?,
         referenceChain: List<ModelReferenceStep>,
     ): JsonObject {
-        val node = element as? JsonObject
-            ?: throw invalidModelElement(
-                owningSource,
-                sourceParentPath.ifEmpty { "/" },
-                "element must be a JSON object",
-            )
-        val name = node.strictString("name").orEmpty()
-        val sourcePath = "$sourceParentPath/$name"
-        val elementType = PreparedElementType.fromWireName(node.strictString("type"))
-            ?: throw invalidModelElement(
-                owningSource,
-                sourcePath,
-                "type must identify a supported document-model element",
-            )
-        if (sourceParentPath.isEmpty() && elementType != PreparedElementType.GROUP) {
-            throw invalidModelElement(
-                owningSource,
-                sourcePath,
-                "a model root element must be a Group",
-            )
+        val structure = requirePreparedElementStructure(
+            element = element,
+            parentPath = sourceParentPath,
+            position = if (sourceParentPath.isEmpty()) {
+                PreparedElementPosition.MODEL_ROOT
+            } else {
+                PreparedElementPosition.NESTED
+            },
+        ) { path, reason ->
+            throw invalidModelElement(owningSource, path, reason)
         }
+        val node = structure.node
+        val name = structure.name
+        val sourcePath = "$sourceParentPath/$name"
+        val elementType = structure.type
         context.requireStructureDepth(depth)
         context.consumePreparedElement()
         val currentOutputOrdinal = outputOrdinal++
@@ -305,13 +295,14 @@ private class IncludeMounter(
             return node
         }
 
-        val body = node.objectMember(PreparedElementType.GROUP.wireName)
-            ?: throw invalidModelElement(
-                owningSource,
-                sourcePath,
-                "a Group element requires an object Group body",
-            )
-        return when (val assembly = classifyGroup(body, owningSource, path)) {
+        val body = structure.body
+        val children = requirePreparedGroupChildren(body, sourcePath) { invalidPath, reason ->
+            if ("modelAlias" in body) {
+                throw invalidIncludeMount(owningSource.source.modelId, invalidPath, reason)
+            }
+            throw invalidModelElement(owningSource, invalidPath, reason)
+        }
+        return when (val assembly = classifyGroup(body, children, owningSource, path)) {
             is GroupAssembly.Include -> mountIncludeGroup(
                 node = node,
                 body = body,
@@ -452,27 +443,23 @@ private class IncludeMounter(
                 "SINGLE_RG requires exactly one non-repeatable root group",
             )
         }
-        val includedRoot = includedRootGroups.single() as? JsonObject
-            ?: throw invalidModelElement(
-                includedSource,
-                "/",
-                "element must be a JSON object",
-            )
-        val rootName = includedRoot.strictString("name").orEmpty()
-        if (includedRoot.strictString("type") != PreparedElementType.GROUP.wireName) {
-            throw invalidModelElement(
-                includedSource,
-                "/$rootName",
-                "type must identify a supported document-model element",
-            )
+        val rootStructure = requirePreparedElementStructure(
+            element = includedRootGroups.single(),
+            parentPath = "",
+            position = PreparedElementPosition.MODEL_ROOT,
+        ) { path, reason ->
+            throw invalidModelElement(includedSource, path, reason)
         }
-        val rootBody = includedRoot.objectMember(PreparedElementType.GROUP.wireName)
-            ?: throw invalidModelElement(
-                includedSource,
-                "/$rootName",
-                "a Group element requires an object Group body",
-            )
-        val repeatability = rootBody.strictOptionalInt("repeatability")
+        val includedRoot = rootStructure.node
+        val rootName = rootStructure.name
+        val rootBody = rootStructure.body
+        val rootChildren = requirePreparedGroupChildren(rootBody, "/$rootName") { invalidPath, reason ->
+            if ("modelAlias" in rootBody) {
+                throw invalidIncludeMount(includedSource.source.modelId, invalidPath, reason)
+            }
+            throw invalidModelElement(includedSource, invalidPath, reason)
+        }
+        val repeatability = rootBody.singleRootRepeatabilityOrNull()
             ?: throw invalidIncludeMount(
                 mountModelId,
                 mountPath,
@@ -485,7 +472,9 @@ private class IncludeMounter(
                 "SINGLE_RG requires exactly one non-repeatable root group",
             )
         }
-        val mountedBody = when (val assembly = classifyGroup(rootBody, includedSource, "/$rootName")) {
+        val mountedBody = when (
+            val assembly = classifyGroup(rootBody, rootChildren, includedSource, "/$rootName")
+        ) {
             is GroupAssembly.Include -> mountIncludeGroup(
                 node = includedRoot,
                 body = rootBody,
@@ -606,9 +595,6 @@ private class IncludeMounter(
     }
 }
 
-private val INCLUDE_DIRECTIVE_KEYS =
-    setOf("modelAlias", "includeLevel", "excludeRules", "excludeComputations")
-
 private val INCLUDE_ONLY_DIRECTIVE_KEYS =
     setOf("includeLevel", "excludeRules", "excludeComputations")
 
@@ -625,6 +611,7 @@ internal data class IncludeDirective(
 
 internal fun classifyGroup(
     body: JsonObject,
+    elements: JsonArray?,
     source: ParsedWorkspaceSource,
     path: String,
 ): GroupAssembly {
@@ -638,7 +625,7 @@ internal fun classifyGroup(
                 "$misplaced is valid only on an include mount",
             )
         }
-        return GroupAssembly.Ordinary(optionalElements(body, source, path))
+        return GroupAssembly.Ordinary(elements)
     }
 
     val alias = (aliasNode as? JsonPrimitive)
@@ -650,14 +637,6 @@ internal fun classifyGroup(
             path,
             "modelAlias must be a non-empty string",
         )
-    val elements = body["elements"]?.let {
-        it as? JsonArray
-            ?: throw invalidIncludeMount(
-                source.source.modelId,
-                path,
-                "include-mount elements must be an array",
-            )
-    }
     // The Kernel accepts this ambiguous shape by silently keeping the local elements and ignoring the include.
     // Portable preparation refuses instead of discarding either authored source; the oracle behavior is locked by
     // WorkspaceIncludeStructureKernelTest.
@@ -674,16 +653,6 @@ internal fun classifyGroup(
         excludeComputations = includeExclusionFlag(body, "excludeComputations", source, path),
     )
     return GroupAssembly.Include(IncludeDirective(alias, level, exclusions))
-}
-
-private fun optionalElements(
-    body: JsonObject,
-    source: ParsedWorkspaceSource,
-    path: String,
-): JsonArray? {
-    val value = body["elements"] ?: return null
-    return value as? JsonArray
-        ?: throw invalidModelElement(source, path, "Group.elements must be an array")
 }
 
 private fun includeLevel(
@@ -728,7 +697,7 @@ private fun includeExclusionFlag(
     )
 }
 
-private fun invalidIncludeMount(
+internal fun invalidIncludeMount(
     modelId: String,
     path: String,
     reason: String,
@@ -743,7 +712,7 @@ private fun invalidIncludeMount(
         ),
     )
 
-private fun invalidModelElement(
+internal fun invalidModelElement(
     source: ParsedWorkspaceSource,
     path: String,
     reason: String,
@@ -851,8 +820,8 @@ private enum class IncludeExclusion {
     COMPUTATIONS,
 }
 
-private fun JsonObject.strictOptionalInt(key: String): Int? {
-    val value = get(key) ?: return 1
+private fun JsonObject.singleRootRepeatabilityOrNull(): Int? {
+    val value = get("repeatability") ?: return 1
     return (value as? JsonPrimitive)?.takeIf { !it.isString }?.content?.toIntOrNull()
 }
 
@@ -877,7 +846,7 @@ private fun JsonObject.withTransferredUsageType(transfer: UsageTypeTransfer): Js
     }
 }
 
-private fun JsonObject.withoutModelReferences(): JsonObject {
+internal fun JsonObject.withoutModelReferences(): JsonObject {
     val header = objectMember("header") ?: return this
     return replacing(
         "header",

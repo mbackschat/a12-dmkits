@@ -51,9 +51,14 @@ class ModelTimeZoneTest {
         assertEquals(ModelTimeZone.UTC, ModelLoader.load(claimModel("GMT")).timeZone)
 
     @Test fun explicitNullEmptyAndWhitespaceAreInvalidConfiguration() {
-        for ((label, json) in listOf("null" to "null", "empty" to "\"\"", "whitespace" to "\"   \\t\"")) {
+        for ((label, json, expectedId) in listOf(
+            Triple("null", "null", null),
+            Triple("empty", "\"\"", ""),
+            Triple("whitespace", "\"   \\t\"", "   \t"),
+        )) {
             val e = assertFailsWith<InvalidModelTimeZoneException> { ModelLoader.load(claimModelValue(json)) }
             val msg = e.message ?: ""
+            assertEquals(expectedId, e.timeZoneId)
             assertTrue("timeZone" in msg && "invalid" in msg, "$label is an explicit invalid config value: $msg")
         }
     }
@@ -62,6 +67,7 @@ class ModelTimeZoneTest {
         for (id in listOf("America/New_York", "Europe/Berln")) {
             val e = assertFailsWith<UnsupportedModelTimeZoneException> { ModelLoader.load(claimModel(id)) }
             val msg = e.message ?: ""
+            assertEquals(id, e.timeZoneId)
             assertTrue(id in msg, "the refusal names the zone: $msg")
             assertTrue("UTC" in msg && "Europe/Berlin" in msg, "the refusal names the supported set: $msg")
             assertTrue("kernel-legal" !in msg && "kernel accepts" !in msg,

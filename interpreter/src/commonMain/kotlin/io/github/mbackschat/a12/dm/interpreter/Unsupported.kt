@@ -20,9 +20,7 @@ class UnsupportedConstructException(message: String) : RuntimeException(message)
 class UnsupportedModelTimeZoneException(
     val timeZoneId: String?,
     message: String,
-) : RuntimeException(message) {
-    constructor(message: String) : this(null, message)
-}
+) : RuntimeException(message)
 
 /**
  * Signals that an explicitly present `modelConfig.timeZone` is not a valid configuration value. This is
@@ -34,6 +32,4 @@ class UnsupportedModelTimeZoneException(
 class InvalidModelTimeZoneException(
     val timeZoneId: String?,
     message: String,
-) : IllegalArgumentException(message) {
-    constructor(message: String) : this(null, message)
-}
+) : IllegalArgumentException(message)

@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.DocumentModelExpansionException;
@@ -303,6 +305,36 @@ class WorkspaceIncludeStructureKernelTest {
                 accepted,
                 "missing identity members and malformed type are refused; the Kernel coerces present non-string " +
                 "name/id values, while portable preparation requires a normalized string id");
+    }
+
+    @Test
+    void kernelRejectsElementShapedRecordsOutsideTheModelTree() {
+        var headerModel = tree(oneRootComponent());
+        var phantom = elementOfType(headerModel, "Field").deepCopy();
+        phantom.put("name", "Phantom");
+        phantom.put("id", "/Phantom");
+        ((ObjectNode) headerModel.path("header")).set("unrecognizedElement", phantom);
+        assertUnknownPropertyRejected(
+                headerModel,
+                "the Kernel rejects the unknown header member before it can become model content");
+
+        var fieldModel = tree(oneRootComponent());
+        var nestedPhantom = elementOfType(fieldModel, "Field").deepCopy();
+        nestedPhantom.put("name", "NestedPhantom");
+        nestedPhantom.put("id", "/NestedPhantom");
+        ((ObjectNode) elementOfType(fieldModel, "Field").path("Field"))
+                .set("unrecognizedElement", nestedPhantom);
+        assertUnknownPropertyRejected(
+                fieldModel,
+                "the Kernel also rejects element records hidden inside a real element body");
+    }
+
+    private static void assertUnknownPropertyRejected(ObjectNode model, String message) {
+        var rejection = assertThrows(
+                UncheckedIOException.class,
+                () -> KernelModelOracle.ofSelfContained(model.toString()),
+                message);
+        assertInstanceOf(UnrecognizedPropertyException.class, rejection.getCause());
     }
 
     @Test

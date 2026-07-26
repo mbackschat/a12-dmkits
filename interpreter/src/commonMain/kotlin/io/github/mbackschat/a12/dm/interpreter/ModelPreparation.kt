@@ -178,7 +178,7 @@ data class ModelReferenceStep private constructor(
     }
 }
 
-/** One resolved preparation edge and the digest of the exact source bytes that satisfied it. */
+/** One distinct resolved preparation edge and the digest of the exact source bytes that satisfied it. */
 @ConsistentCopyVisibility
 data class ModelDependency private constructor(
     val fromModelId: String,
@@ -206,30 +206,52 @@ data class ModelDependency private constructor(
 }
 
 enum class ModelPreparationDiagnosticCode {
+    /** A source or prepared element does not satisfy the portable DM-JSON boundary. */
     INVALID_MODEL_SOURCE,
+    /** More than one admitted source declares the same exact `header.id`. */
     DUPLICATE_MODEL_ID,
+    /** The requested entry id is absent from the finite workspace. */
     ENTRY_MODEL_NOT_FOUND,
+    /** A required include or type-definition model id is absent from the workspace. */
     UNRESOLVED_MODEL_REFERENCE,
+    /** A supplied expected SHA-256 does not match the exact admitted source bytes. */
     MODEL_SOURCE_INTEGRITY_MISMATCH,
+    /** The transitive include/type-definition graph returns to a model already on the active path. */
     MODEL_REFERENCE_CYCLE,
+    /** An include directive cannot be mounted without discarding or inventing authored structure. */
     INVALID_INCLUDE_MOUNT,
+    /** Distinct source models declare the same type-definition id. */
     AMBIGUOUS_TYPE_DEFINITION,
+    /** A mounted executable reference cannot be mapped to one final model path. */
     UNMAPPED_INCLUDED_REFERENCE,
+    /** Mounted executable DSL uses a condition language incompatible with the entry model. */
     INCOMPATIBLE_CONDITION_LANGUAGE,
+    /** Expanded input still contains an include, type-definition reference, model reference, or opaque id. */
     UNPREPARED_MODEL_RESIDUE,
+    /** Admission or preparation exceeded one configured portable resource ceiling. */
     RESOURCE_LIMIT_EXCEEDED,
+    /** A date precision is Kernel-recognized but outside the interpreter's supported set. */
     UNSUPPORTED_DATE_PRECISION,
+    /** A Kernel-legal model time-zone id is outside the interpreter's supported set. */
     UNSUPPORTED_TIME_ZONE,
 }
 
 enum class ModelPreparationResource {
+    /** Number of admitted source models. */
     MODEL_COUNT,
+    /** Strict UTF-8 bytes in one admitted source. */
     MODEL_BYTES,
+    /** Strict UTF-8 bytes across all admitted sources. */
     TOTAL_BYTES,
+    /** Compact strict UTF-8 bytes in the assembled expanded model. */
     PREPARED_BYTES,
+    /** Active model-reference chain depth. */
     REFERENCE_DEPTH,
+    /** Traversed include/type-definition edge occurrences. */
     REFERENCE_EDGES,
+    /** Nested document-element depth. */
     STRUCTURE_DEPTH,
+    /** Expanded document-element occurrences materialized during preparation. */
     PREPARED_ELEMENTS,
 }
 
@@ -262,7 +284,7 @@ interface ModelPreparationDiagnostic {
 /** Aggregate failure for source admission or model preparation. */
 class ModelPreparationError private constructor(
     diagnostics: List<ModelPreparationDiagnostic>,
-) : IllegalArgumentException(diagnostics.joinToString("; ") { it.message }) {
+) : RuntimeException(diagnostics.joinToString("; ") { it.message }) {
     val code: String = "A12_MODEL_PREPARATION_FAILED"
     val diagnostics: List<ModelPreparationDiagnostic> = immutableListSnapshot(diagnostics)
 

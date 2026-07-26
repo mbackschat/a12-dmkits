@@ -205,12 +205,10 @@ tasks.register('semanticsMapGuardTest', Test) {
             'validate/laws lock tree' : rootProject.fileTree('src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws'),
             'adapter/laws (java)'     : rootProject.fileTree('adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws'),
             'adapter/laws (kotlin)'   : rootProject.fileTree('adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws'),
-            'adapter preparation locks': rootProject.files(
-                    'adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WorkspaceIncludeStructureKernelTest.java',
-                    'adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WorkspacePreparationFixtureGuardTest.java',
-                    'adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WorkspacePreparationParityTest.java',
-                    'adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WorkspaceSourceUnicodeKernelTest.java',
-                    'adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WorkspaceTypeDefinitionCollisionKernelTest.java'),
+            'adapter preparation locks': rootProject.fileTree(
+                    'adapter/src/test/java/io/github/mbackschat/a12/dm/adapter') {
+                include '**/Workspace*Test.java'
+            },
             'interpreter commonTest'  : rootProject.fileTree('interpreter/src/commonTest')])
 }
 

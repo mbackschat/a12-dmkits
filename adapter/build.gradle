@@ -275,26 +275,35 @@ tasks.named('test') {
 // docs/SEMANTICS-MAP.md, but that thorough resolver runs only at the checkpoint (:cli:semanticsMapGuardTest) —
 // this millisecond filename lint fails the `-Pfast` loop too, so an unplaced class can't ride to the session
 // end (the 2026-07-24 G2 cost: 5 unplaced classes surfaced only at the full run and forced a commit re-split).
-// Same four lock trees as the resolver; containment of the backticked class name is its citation format.
+// Same lock sources as the resolver; containment of the backticked class name is its citation format.
 tasks.register('verifySemanticsMapRegistration') {
-    def lockTrees = [
-            rootProject.file('src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws'),
-            project.file('src/test/java/io/github/mbackschat/a12/dm/adapter/laws'),
-            project.file('src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws'),
-            rootProject.file('interpreter/src/commonTest'),
+    def lockSources = [
+            rootProject.fileTree('src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws') {
+                include '**/*Test.java', '**/*Test.kt'
+            },
+            project.fileTree('src/test/java/io/github/mbackschat/a12/dm/adapter/laws') {
+                include '**/*Test.java', '**/*Test.kt'
+            },
+            project.fileTree('src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws') {
+                include '**/*Test.java', '**/*Test.kt'
+            },
+            project.fileTree('src/test/java/io/github/mbackschat/a12/dm/adapter') {
+                include '**/Workspace*Test.java'
+            },
+            rootProject.fileTree('interpreter/src/commonTest') {
+                include '**/*Test.java', '**/*Test.kt'
+            },
     ]
     def map = rootProject.file('docs/SEMANTICS-MAP.md')
-    lockTrees.each { tree -> inputs.files(fileTree(tree) { include '**/*Test.java', '**/*Test.kt' }) }
+    lockSources.each { inputs.files(it) }
     inputs.file(map)
     doLast {
         def mapText = map.text
         def unplaced = []
-        lockTrees.findAll { it.exists() }.each { tree ->
-            tree.eachFileRecurse { f ->
-                if (f.name.endsWith('Test.java') || f.name.endsWith('Test.kt')) {
-                    def cls = f.name.substring(0, f.name.lastIndexOf('.'))
-                    if (!mapText.contains('`' + cls + '`')) unplaced << cls
-                }
+        lockSources.each { source ->
+            source.files.each { f ->
+                def cls = f.name.substring(0, f.name.lastIndexOf('.'))
+                if (!mapText.contains('`' + cls + '`')) unplaced << cls
             }
         }
         if (!unplaced.isEmpty()) {

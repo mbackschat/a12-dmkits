@@ -7,7 +7,6 @@ import io.github.mbackschat.a12.dm.interpreter.ModelPreparationLimits
 import io.github.mbackschat.a12.dm.interpreter.ModelPreparationResource
 import io.github.mbackschat.a12.dm.interpreter.WorkspaceModelSource
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
 import kotlin.test.assertFailsWith
@@ -18,7 +17,7 @@ import kotlin.test.assertTrue
 class WorkspaceSourceAdmissionTest {
 
     @Test
-    fun indexesExactHeaderIdsAndFreezesTheStrictUtf8Bytes() {
+    fun indexesExactHeaderIdsAndSnapshotsTheSuppliedSourceList() {
         val upper = source("Policy", label = "showcase:policy")
         val lower = source("policy", label = "policy-secondary")
         val mutableInput = mutableListOf(upper, lower)
@@ -29,12 +28,6 @@ class WorkspaceSourceAdmissionTest {
         assertEquals(listOf("Policy", "policy"), workspace.modelIds)
         assertEquals("showcase:policy", workspace.source("Policy")?.diagnosticLabel)
         assertEquals(Sha256.hex(upper.json), workspace.source("Policy")?.sha256)
-
-        val firstCopy = workspace.source("Policy")!!.bytesCopy()
-        val expected = firstCopy.copyOf()
-        firstCopy[0] = (firstCopy[0].toInt() xor 0xff).toByte()
-
-        assertContentEquals(expected, workspace.source("Policy")!!.bytesCopy())
         assertEquals(upper.json, workspace.source("Policy")!!.json)
     }
 

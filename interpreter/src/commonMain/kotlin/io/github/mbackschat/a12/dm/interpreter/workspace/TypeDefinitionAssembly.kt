@@ -33,7 +33,7 @@ internal object WorkspaceTypeDefinitionAssembler {
         limits: ModelPreparationLimits = ModelPreparationLimits.defaults(),
     ): TypeDefinitionAssembly {
         val preparation = prepare(workspace, entryModelId, limits)
-        return preparation.complete(preparation.entry.root, elementsAlreadyCounted = false)
+        return preparation.completeUnmounted(preparation.entry.root)
     }
 
     fun prepare(
@@ -61,23 +61,33 @@ internal class WorkspaceTypeDefinitionPreparation internal constructor(
     private val registry: TypeDefinitionRegistry,
 ) {
 
-    fun complete(
+    fun completeUnmounted(root: JsonObject): TypeDefinitionAssembly =
+        finish(inlineEffectiveTypes(root, countPreparedElements = true).withoutTypeDefinitionReferences())
+
+    fun completeMounted(root: JsonObject): TypeDefinitionAssembly =
+        finish(
+            inlineEffectiveTypes(root, countPreparedElements = false)
+                .withoutTypeDefinitionReferences()
+                .withoutModelReferences(),
+        )
+
+    private fun inlineEffectiveTypes(
         root: JsonObject,
-        elementsAlreadyCounted: Boolean,
-        finishRoot: (JsonObject) -> JsonObject = { it },
-    ): TypeDefinitionAssembly {
-        val withEffectiveTypes = EffectiveTypeInliner(
+        countPreparedElements: Boolean,
+    ): JsonObject =
+        EffectiveTypeInliner(
             context = context,
             definitions = registry,
             entryModelId = entryModelId,
-            countPreparedElements = !elementsAlreadyCounted,
+            countPreparedElements = countPreparedElements,
         ).inline(root)
-        val finishedRoot = finishRoot(withEffectiveTypes.withoutTypeDefinitionReferences())
-        context.requirePreparedBytes(finishedRoot)
+
+    private fun finish(root: JsonObject): TypeDefinitionAssembly {
+        context.requirePreparedBytes(root)
         return TypeDefinitionAssembly(
             entryModelId = entryModelId,
             dependencies = context.dependenciesSnapshot(),
-            root = finishedRoot,
+            root = root,
         )
     }
 }
@@ -280,29 +290,43 @@ internal class TypeDefinitionRegistry(
             ?.arrayMember("rootGroups")
             ?: return emptyList()
         val aliases = mutableListOf<String>()
-        val pending = mutableListOf<PendingGroup>()
+        val pending = mutableListOf<PendingElement>()
         rootGroups.asReversed().forEach {
-            pending += PendingGroup(it, parentPath = "", depth = 1)
+            pending += PendingElement(it, parentPath = "", depth = 1)
         }
         while (pending.isNotEmpty()) {
-            val pendingGroup = pending.removeAt(pending.lastIndex)
-            val group = pendingGroup.element as? JsonObject ?: continue
-            if (group.strictString("type") != PreparedElementType.GROUP.wireName) {
+            val candidate = pending.removeAt(pending.lastIndex)
+            val structure = requirePreparedElementStructure(
+                element = candidate.element,
+                parentPath = candidate.parentPath,
+                position = if (candidate.parentPath.isEmpty()) {
+                    PreparedElementPosition.MODEL_ROOT
+                } else {
+                    PreparedElementPosition.NESTED
+                },
+            ) { path, reason ->
+                throw invalidModelElement(model, path, reason)
+            }
+            context.requireStructureDepth(candidate.depth)
+            if (structure.type != PreparedElementType.GROUP) {
                 continue
             }
-            context.requireStructureDepth(pendingGroup.depth)
-            val body = group.objectMember("Group") ?: continue
-            val name = group.strictString("name").orEmpty()
-            val path = "${pendingGroup.parentPath}/$name"
-            when (val assembly = classifyGroup(body, model, path)) {
+            val path = "${candidate.parentPath}/${structure.name}"
+            val children = requirePreparedGroupChildren(structure.body, path) { invalidPath, reason ->
+                if ("modelAlias" in structure.body) {
+                    throw invalidIncludeMount(model.source.modelId, invalidPath, reason)
+                }
+                throw invalidModelElement(model, invalidPath, reason)
+            }
+            when (val assembly = classifyGroup(structure.body, children, model, path)) {
                 is GroupAssembly.Include -> aliases += assembly.directive.alias
                 is GroupAssembly.Ordinary -> assembly.elements
                     ?.asReversed()
                     ?.forEach {
-                        pending += PendingGroup(
+                        pending += PendingElement(
                             element = it,
                             parentPath = path,
-                            depth = pendingGroup.depth + 1,
+                            depth = candidate.depth + 1,
                         )
                     }
             }
@@ -350,7 +374,7 @@ internal class TypeDefinitionRegistry(
     }
 }
 
-private data class PendingGroup(
+private data class PendingElement(
     val element: JsonElement,
     val parentPath: String,
     val depth: Int,
@@ -494,23 +518,6 @@ internal class EffectiveTypeInliner(
 
     private companion object {
         const val TYPE_DEF_TYPE = "TypeDefType"
-    }
-}
-
-internal enum class PreparedElementType(val wireName: String) {
-    FIELD("Field"),
-    GROUP("Group"),
-    RULE("Rule"),
-    COMPUTATION("Computation");
-
-    companion object {
-        fun fromWireName(value: String?): PreparedElementType? = when (value) {
-            FIELD.wireName -> FIELD
-            GROUP.wireName -> GROUP
-            RULE.wireName -> RULE
-            COMPUTATION.wireName -> COMPUTATION
-            else -> null
-        }
     }
 }
 

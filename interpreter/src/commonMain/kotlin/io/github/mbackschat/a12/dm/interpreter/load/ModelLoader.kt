@@ -22,7 +22,12 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.Requiredness
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.Severity
+import io.github.mbackschat.a12.dm.interpreter.workspace.PREPARED_INCLUDE_DIRECTIVE_MEMBERS
+import io.github.mbackschat.a12.dm.interpreter.workspace.PreparedElementPosition
+import io.github.mbackschat.a12.dm.interpreter.workspace.PreparedElementStructure
 import io.github.mbackschat.a12.dm.interpreter.workspace.PreparedElementType
+import io.github.mbackschat.a12.dm.interpreter.workspace.requirePreparedElementStructure
+import io.github.mbackschat.a12.dm.interpreter.workspace.requirePreparedGroupChildren
 
 /**
  * The interpreter's own DM-JSON → [ModelDef] loader — kernel-free and **multiplatform** (JVM + JS), so a
@@ -37,14 +42,14 @@ import io.github.mbackschat.a12.dm.interpreter.workspace.PreparedElementType
  * never round-tripped through a `Double`/JS number, so a declared `minValue`/`maxValue` keeps its exact scale.
  *
  * ## The walk
- * A flat scan-by-type — every model node carries a `type` + full-path `id`, so the walk doesn't depend on the exact
- * element nesting: it records a node iff it has BOTH keys, then recurses into every child. Fields/rules/computations
- * are collected in **document order** (kotlinx [JsonObject] iteration is insertion order, matching the DM-JSON).
+ * Only `content.modelRoot.rootGroups` and nested `Group.elements` form the document-element tree. The same
+ * presence-aware classifier used by raw workspace assembly validates that tree while the loader records it in
+ * document order. Element-shaped records outside that tree are rejected rather than interpreted as model content.
  *
  * ## Scope — EXPANDED, SELF-CONTAINED models only, ENFORCED
  * The loader handles a **single, fully-expanded** model: no `modelReferences`/`imports` resolution and no
  * `TypeDefType` de-referencing. Includes, type-definition libraries, and opaque element ids are resolved
- * **upstream** by the kernel-free `dm.core.ModelReader.expand` preparation path before the DM-JSON reaches here.
+ * **upstream** by the kernel-free workspace preparation path before the DM-JSON reaches here.
  * This boundary is **enforced, not assumed** ([requirePrepared], IF145): a model that still carries model
  * references, an include directive, an unresolved `TypeDefType`, or a non-name-path (opaque) id is **rejected
  * loud** with a corrective message — never loaded as a structurally plausible but wrong model. Every CLI
@@ -61,9 +66,9 @@ object ModelLoader {
         } catch (e: SerializationException) {
             throw IllegalArgumentException("not valid DM-JSON", e)
         }
-        requirePrepared(root)
+        val rootGroups = requirePrepared(root)
         val sink = Sink()
-        walk(root, sink)
+        rootGroups.forEach { walk(it, sink, parentPath = "", rootElement = true) }
         // The model's base year (content.modelInfo.baseYear, a string) — the value of the BaseYear constant.
         val by = root.path("content").path("modelInfo").path("baseYear").asText()
         val baseYear = if (by.isEmpty()) null else by.trim().toIntOrNull()
@@ -114,39 +119,47 @@ object ModelLoader {
      * is not path-addressed, so only its reference list participates in this guard. Throws
      * [UnpreparedModelResidueException] with the residue class and offending path.
      */
-    private fun requirePrepared(
+    private fun requirePrepared(node: JsonElement): JsonArray {
+        val root = node as? JsonObject
+            ?: throw InvalidPreparedModelSourceException("$", "prepared model source must be a JSON object")
+        requirePreparedModelReferences(root)
+        requireNoTypeDefinitionResidue(root)
+        requireNoElementRecordsOutsideTree(root)
+        return preparedElementRoots(root)
+    }
+
+    private fun preparedElementRoots(root: JsonObject): JsonArray {
+        val content = root.requiredObject("content")
+        val modelRoot = content.optionalObject("modelRoot") ?: return JsonArray(emptyList())
+        return modelRoot.optionalArray("rootGroups") ?: JsonArray(emptyList())
+    }
+
+    private fun requirePreparedModelReferences(root: JsonObject) {
+        when (val references = (root.path("header") as? JsonObject)?.get("modelReferences")) {
+            null, is JsonNull -> Unit
+            is JsonArray -> if (references.isNotEmpty()) {
+                throw UnpreparedModelResidueException(
+                    path = "header.modelReferences",
+                    residue = "model-reference",
+                    message = "unresolved header.modelReferences remain in the model; workspace references must " +
+                        "be prepared before loading",
+                )
+            }
+            else -> throw InvalidPreparedModelSourceException(
+                path = "header.modelReferences",
+                message = "header.modelReferences must be an array or null",
+            )
+        }
+    }
+
+    private fun requireNoTypeDefinitionResidue(
         node: JsonElement,
         containingPath: String? = null,
-        root: Boolean = true,
     ) {
-        if (root) {
-            val model = node as? JsonObject
-                ?: throw InvalidPreparedModelSourceException("$", "prepared model source must be a JSON object")
-            requirePreparedElementTree(model)
-        }
         when (node) {
             is JsonObject -> {
-                if (root) {
-                    when (val references = (node.path("header") as? JsonObject)?.get("modelReferences")) {
-                        null, is JsonNull -> Unit
-                        is JsonArray -> if (references.isNotEmpty()) {
-                            throw UnpreparedModelResidueException(
-                                path = "header.modelReferences",
-                                residue = "model-reference",
-                                message = "unresolved header.modelReferences remain in the model; workspace " +
-                                    "references must be prepared before loading",
-                            )
-                        }
-                        else -> throw InvalidPreparedModelSourceException(
-                            path = "header.modelReferences",
-                            message = "header.modelReferences must be an array or null",
-                        )
-                    }
-                }
-                val type = node.path("type").asTextOrNull()
-                val id = node.path("id").asTextOrNull()
-                val path = id ?: containingPath
-                if (type == "TypeDefType") {
+                val path = node.stringMember("id") ?: containingPath
+                if (node.stringMember("type") == "TypeDefType") {
                     throw UnpreparedModelResidueException(
                         path = path ?: "fieldType",
                         residue = "type-definition",
@@ -154,89 +167,50 @@ object ModelLoader {
                             "inlined before loading",
                     )
                 }
-                if (type != null && id != null) {
-                    when (type) {
-                        "Field" -> {
-                            requireNamePath(id)
-                        }
-                        "Group" -> {
-                            requireNamePath(id)
-                            val group = node.path("Group") as? JsonObject
-                            val includeMember = group?.keys?.firstOrNull {
-                                it in INCLUDE_RESIDUE_MEMBERS
-                            }
-                            if (includeMember != null) {
-                                throw UnpreparedModelResidueException(
-                                    path = id,
-                                    residue = "include",
-                                    message = "unexpanded include directive '$includeMember' remains at '$id'; " +
-                                        "includes must be mounted before loading",
-                                )
+                node.values.forEach { requireNoTypeDefinitionResidue(it, path) }
+            }
+            is JsonArray -> node.forEach { requireNoTypeDefinitionResidue(it, containingPath) }
+            else -> Unit
+        }
+    }
+
+    private fun requireNoElementRecordsOutsideTree(root: JsonObject) {
+        root.forEach { (member, value) ->
+            if (member == "content" && value is JsonObject) {
+                value.forEach { (contentMember, contentValue) ->
+                    if (contentMember == "modelRoot" && contentValue is JsonObject) {
+                        contentValue.forEach { (rootMember, rootValue) ->
+                            if (rootMember != "rootGroups") {
+                                requireNoElementRecord(rootValue, "content.modelRoot.$rootMember")
                             }
                         }
-                        "Rule", "Computation" -> requireNamePath(id)
-                        else -> { /* header / other nodes are not path-addressed */ }
+                    } else {
+                        requireNoElementRecord(contentValue, "content.$contentMember")
                     }
                 }
-                node.values.forEach { requirePrepared(it, path, root = false) }
+            } else {
+                requireNoElementRecord(value, member)
             }
-            is JsonArray -> node.forEach { requirePrepared(it, containingPath, root = false) }
-            else -> { /* scalar leaf */ }
         }
     }
 
-    /**
-     * Validate the actual document-element tree before the flat semantic scan. Without this presence-aware pass,
-     * a malformed element can look like an unrelated object and disappear, or an absent Field body can be
-     * fabricated as a default string field. The Kernel refuses every shape below except absent/null Field bodies
-     * and present non-string names/ids; this boundary is deliberately stricter for those cases because an expanded
-     * model must carry an object body, string name, and normalized name-path id to be interpreted without invention.
-     */
-    private fun requirePreparedElementTree(root: JsonObject) {
-        val content = root.requiredObject("content")
-        val modelRoot = content.optionalObject("modelRoot") ?: return
-        val rootGroups = modelRoot.optionalArray("rootGroups") ?: return
-        rootGroups.forEach { requirePreparedElement(it, parentPath = "", rootElement = true) }
-    }
-
-    private fun requirePreparedElement(
-        element: JsonElement,
-        parentPath: String,
-        rootElement: Boolean,
-    ) {
-        val node = element as? JsonObject
-            ?: throw invalidElement(parentPath.ifEmpty { "/" }, "element must be a JSON object")
-        val name = node.stringMember("name")
-        val id = node.stringMember("id")
-        val path = id ?: name?.let { "$parentPath/$it" } ?: parentPath.ifEmpty { "/" }
-        val type = PreparedElementType.fromWireName(node.stringMember("type"))
-            ?: throw invalidElement(path, "type must identify a supported document-model element")
-        if (name == null) {
-            throw invalidElement(path, "a document-model element requires a string name")
+    private fun requireNoElementRecord(node: JsonElement, path: String) {
+        when (node) {
+            is JsonObject -> {
+                val elementType = PreparedElementType.fromWireName(node.stringMember("type"))
+                val elementBody = node.keys.any { PreparedElementType.fromWireName(it) != null }
+                if (elementType != null || elementBody && ("id" in node || "name" in node)) {
+                    throw invalidElement(path, "document-model elements are valid only inside the model element tree")
+                }
+                node.forEach { (member, value) ->
+                    requireNoElementRecord(value, "$path.$member")
+                }
+            }
+            is JsonArray -> node.forEachIndexed { index, value ->
+                requireNoElementRecord(value, "$path[$index]")
+            }
+            else -> Unit
         }
-        if (id == null) {
-            throw invalidElement(path, "an expanded element requires a string name-path id")
-        }
-        requireNamePath(id)
-        if (rootElement && type != PreparedElementType.GROUP) {
-            throw invalidElement(path, "a model root element must be a Group")
-        }
-        val body = node[type.wireName] as? JsonObject
-            ?: throw invalidElement(path, "a ${type.wireName} element requires an object ${type.wireName} body")
-        if (type != PreparedElementType.GROUP) {
-            return
-        }
-        val includeMember = body.keys.firstOrNull { it in INCLUDE_RESIDUE_MEMBERS }
-        if (includeMember != null) {
-            throw UnpreparedModelResidueException(
-                path = id,
-                residue = "include",
-                message = "unexpanded include directive '$includeMember' remains at '$id'; " +
-                    "includes must be mounted before loading",
-            )
-        }
-        val children = body.optionalArray("elements") ?: return
-        children.forEach { requirePreparedElement(it, parentPath = id, rootElement = false) }
     }
 
     private fun JsonObject.optionalObject(member: String): JsonObject? {
@@ -274,62 +248,112 @@ object ModelLoader {
         }
     }
 
-    private fun walk(node: JsonElement, sink: Sink) {
-        when (node) {
-            is JsonObject -> {
-                val type = node.path("type").asTextOrNull()
-                val id = node.path("id").asTextOrNull()
-                if (type != null && id != null) {
-                    when (type) {
-                        "Field" -> if (acceptedByVariantFilter(node.path("Field"))) sink.fields.add(fieldDef(node, id))
-                        "Group" -> {
-                            val g = node.path("Group")
-                            if (g.path("repeatability").asInt(0) > 1) {
-                                sink.repeatable.add(id)
-                                sink.declaredReps[id] = g.path("repeatability").asInt(0)
-                            }
-                            // The group's index field (the kernel auto-requires it) — resolve its full path.
-                            val indexField = g.path("indexFieldName").asTextOrNull()
-                            if (!indexField.isNullOrEmpty()) sink.indexFields.add("$id/$indexField")
-                        }
-                        "Rule" -> {
-                            val r = node.path("Rule")
-                            if (acceptedByVariantFilter(r)) sink.rules.add(
-                                RuleDef(
-                                    path = id,
-                                    group = parent(id),
-                                    conditionText = r.path("errorCondition").asText(),
-                                    errorCode = r.path("errorCode").asText(),
-                                    errorEntityRelPath = r.path("errorEntityRelPath").asText(),
-                                    severity = Severity.valueOf(r.path("severity").asText("ERROR")),
-                                    messages = localizedTexts(r.path("errorMessage")),
-                                ),
-                            )
-                        }
-                        "Computation" -> {
-                            val c = node.path("Computation")
-                            val target = resolveRel(id, c.path("computedFieldRelPath").asText())
-                            // A tiered computation: every alternative's (precondition?, operation), under an optional
-                            // commonPrecondition — the kernel selects the first alternative whose precondition holds
-                            // (IF21 / KERNEL-FINDINGS §2). The DSL text stays raw (relative to the group); the
-                            // interpreter parses it with the computation's group.
-                            val common = if (c.hasNonNull("commonPrecondition")) c.path("commonPrecondition").asText() else null
-                            val alts = c.path("computationAlternatives").elements().map { alt ->
-                                val precond = if (alt.hasNonNull("precondition")) alt.path("precondition").asText() else null
-                                val tolerance = toleranceBandOf(alt)
-                                ComputationAlternative(precond, alt.path("operation").asText(), tolerance)
-                            }
-                            // The computation's element name is the error code of its implicit validation rule (IF32).
-                            val compName = if (node.hasNonNull("name")) node.path("name").asText() else null
-                            if (acceptedByVariantFilter(c)) sink.comps.add(ComputationDef(target, parent(id), alts, common, compName))
-                        }
-                        else -> { /* header / other nodes carry no rule surface */ }
+    private fun walk(
+        element: JsonElement,
+        sink: Sink,
+        parentPath: String,
+        rootElement: Boolean,
+    ) {
+        val structure = requirePreparedElementStructure(
+            element = element,
+            parentPath = parentPath,
+            position = if (rootElement) PreparedElementPosition.MODEL_ROOT else PreparedElementPosition.NESTED,
+            invalid = { path, reason -> throw invalidElement(path, reason) },
+        )
+        val node = structure.node
+        val id = structure.id
+        requireNoNestedElementRecordsOutsideGroupChildren(structure)
+        requireNamePath(id)
+        when (structure.type) {
+            PreparedElementType.FIELD -> {
+                if (acceptedByVariantFilter(structure.body)) {
+                    sink.fields.add(fieldDef(node, id))
+                }
+            }
+            PreparedElementType.GROUP -> {
+                val includeMember = structure.body.keys.firstOrNull {
+                    it in PREPARED_INCLUDE_DIRECTIVE_MEMBERS
+                }
+                if (includeMember != null) {
+                    throw UnpreparedModelResidueException(
+                        path = id,
+                        residue = "include",
+                        message = "unexpanded include directive '$includeMember' remains at '$id'; includes must " +
+                            "be mounted before loading",
+                    )
+                }
+                if (structure.body.path("repeatability").asInt(0) > 1) {
+                    sink.repeatable.add(id)
+                    sink.declaredReps[id] = structure.body.path("repeatability").asInt(0)
+                }
+                val indexField = structure.body.path("indexFieldName").asTextOrNull()
+                if (!indexField.isNullOrEmpty()) {
+                    sink.indexFields.add("$id/$indexField")
+                }
+                requirePreparedGroupChildren(
+                    body = structure.body,
+                    path = id,
+                    invalid = { path, reason -> throw invalidElement(path, reason) },
+                )?.forEach { walk(it, sink, parentPath = id, rootElement = false) }
+            }
+            PreparedElementType.RULE -> {
+                val body = structure.body
+                if (acceptedByVariantFilter(body)) {
+                    sink.rules.add(
+                        RuleDef(
+                            path = id,
+                            group = parent(id),
+                            conditionText = body.path("errorCondition").asText(),
+                            errorCode = body.path("errorCode").asText(),
+                            errorEntityRelPath = body.path("errorEntityRelPath").asText(),
+                            severity = Severity.valueOf(body.path("severity").asText("ERROR")),
+                            messages = localizedTexts(body.path("errorMessage")),
+                        ),
+                    )
+                }
+            }
+            PreparedElementType.COMPUTATION -> {
+                val body = structure.body
+                val target = resolveRel(id, body.path("computedFieldRelPath").asText())
+                val common = if (body.hasNonNull("commonPrecondition")) {
+                    body.path("commonPrecondition").asText()
+                } else {
+                    null
+                }
+                val alternatives = body.path("computationAlternatives").elements().map { alternative ->
+                    val precondition = if (alternative.hasNonNull("precondition")) {
+                        alternative.path("precondition").asText()
+                    } else {
+                        null
+                    }
+                    ComputationAlternative(
+                        precondition,
+                        alternative.path("operation").asText(),
+                        toleranceBandOf(alternative),
+                    )
+                }
+                if (acceptedByVariantFilter(body)) {
+                    sink.comps.add(
+                        ComputationDef(target, parent(id), alternatives, common, structure.name),
+                    )
+                }
+            }
+        }
+    }
+
+    private fun requireNoNestedElementRecordsOutsideGroupChildren(
+        structure: PreparedElementStructure,
+    ) {
+        structure.node.forEach { (member, value) ->
+            if (member == structure.type.wireName && value is JsonObject) {
+                value.forEach { (bodyMember, bodyValue) ->
+                    if (structure.type != PreparedElementType.GROUP || bodyMember != "elements") {
+                        requireNoElementRecord(bodyValue, "${structure.id}.$member.$bodyMember")
                     }
                 }
-                node.values.forEach { walk(it, sink) }
+            } else {
+                requireNoElementRecord(value, "${structure.id}.$member")
             }
-            is JsonArray -> node.forEach { walk(it, sink) }
-            else -> { /* scalar leaf — nothing to collect */ }
         }
     }
 
@@ -500,9 +524,6 @@ object ModelLoader {
         val max = type.path("NumberType").path("maxFractionalDigits")
         return if (max.isIntNode()) max.asInt(0) else 0
     }
-
-    private val INCLUDE_RESIDUE_MEMBERS =
-        setOf("modelAlias", "includeLevel", "excludeRules", "excludeComputations")
 
     private val UNSUPPORTED_DATE_PRECISIONS =
         setOf("MONTH_OPTIONAL", "YEAR_OPTIONAL")

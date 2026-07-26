@@ -60,6 +60,19 @@ class PreparationApiTest {
     }
 
     @Test
+    fun repeatedWorkspacePreparationKeepsContentIdentityButCreatesIndependentOwnerDomains() {
+        val caseId = "reference-family-single"
+        val workspace = ModelWorkspace.fromSources(sources(caseId))
+        val first = workspace.prepare(entryModelId(caseId))
+        val second = workspace.prepare(entryModelId(caseId))
+
+        assertEquals(first.fingerprint, second.fingerprint)
+        assertEquals(first.dependencies, second.dependencies)
+        assertNotSame(first.owner, second.owner)
+        assertNotSame(first.modelVersion, second.modelVersion)
+    }
+
+    @Test
     fun fingerprintUsesOnlyTheResolvedClosureAndIsIndependentOfSourceListOrder() {
         val caseId = "imported-typedef-nested-single"
         val sources = sources(caseId)
@@ -140,6 +153,27 @@ class PreparationApiTest {
             assertTrue(Regex("[0-9a-f]{64}").matches(dependency.sha256))
             assertFalse(dependency.toString().contains("\"header\""))
         }
+    }
+
+    @Test
+    fun repeatedMountsRetainEachDistinctResolvedEdgeOnce() {
+        val prepared = ModelWorkspace.fromSources(sources("same-alias-mounted-twice"))
+            .prepare(entryModelId("same-alias-mounted-twice"))
+
+        assertEquals(
+            prepared.dependencies.distinctBy {
+                listOf(it.fromModelId, it.purpose, it.toModelId, it.alias)
+            },
+            prepared.dependencies,
+        )
+        assertEquals(
+            1,
+            prepared.dependencies.count {
+                it.fromModelId == "permit-repeated-mount" &&
+                    it.toModelId == "inspection-checks" &&
+                    it.purpose == ModelReferencePurpose.INCLUDE
+            },
+        )
     }
 
     @Test
@@ -314,6 +348,41 @@ class PreparationApiTest {
         )
         assertEquals(
             "header.modelReferences",
+            failure.error.diagnostics.single().path,
+        )
+    }
+
+    @Test
+    fun expandedFastPathRejectsElementRecordsOutsideTheModelTree() {
+        val source = preparedModel(
+            id = "out-of-tree",
+            modelConfig = "",
+            fieldType = """{"type":"StringType"}""",
+        ).replace(
+            """"header":{"id":"out-of-tree"}""",
+            """
+                "header":{
+                  "id":"out-of-tree",
+                  "unrecognizedElement":{
+                    "type":"Field",
+                    "id":"/Phantom",
+                    "name":"Phantom",
+                    "Field":{"fieldType":{"type":"StringType"}}
+                  }
+                }
+            """.trimIndent(),
+        )
+
+        val failure = assertIs<ModelPreparationResult.Failure>(
+            PreparedModel.tryLoadExpandedJson(source),
+        )
+
+        assertEquals(
+            ModelPreparationDiagnosticCode.INVALID_MODEL_SOURCE,
+            failure.error.diagnostics.single().code,
+        )
+        assertEquals(
+            "header.unrecognizedElement",
             failure.error.diagnostics.single().path,
         )
     }

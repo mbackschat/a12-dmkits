@@ -58,16 +58,15 @@ class SemanticsMapResolveTest {
     private static final Path CATALOG = Path.of("../rulekit/src/main/resources/catalog/operators.json");
     private static final Path CORPUS_CASES = Path.of("../corpus/cases");
     private static final Path KERNEL_SEMANTICS = Path.of("../docs/KERNEL-SEMANTICS.md");
+    private static final Path ADAPTER_TESTS =
+            Path.of("../adapter/src/test/java/io/github/mbackschat/a12/dm/adapter");
     private static final List<Path> LOCK_TREES = List.of(
             Path.of("../src/test/java/io/github/mbackschat/a12/dm/rulekit/validate/laws"),
             Path.of("../adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/laws"),
             Path.of("../adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws"),
-            Path.of("../adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WorkspaceIncludeStructureKernelTest.java"),
-            Path.of("../adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WorkspacePreparationFixtureGuardTest.java"),
-            Path.of("../adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WorkspacePreparationParityTest.java"),
-            Path.of("../adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WorkspaceSourceUnicodeKernelTest.java"),
-            Path.of("../adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/WorkspaceTypeDefinitionCollisionKernelTest.java"),
             Path.of("../interpreter/src/commonTest"));
+    private static final Pattern WORKSPACE_PREPARATION_LOCK =
+            Pattern.compile("^Workspace.*Test\\.java$");
 
     private static final int SECTIONS = 14;
     /** A KERNEL-FINDINGS heading's section tag(s): {@code ## §9 supplement}, {@code ### §6 supplement}, {@code ## §11/§12 supplement}. */
@@ -143,7 +142,7 @@ class SemanticsMapResolveTest {
             }
         }
 
-        // The three lock trees' *Test class names (file stems — one top-level class per file by convention).
+        // Every lock source's *Test class names (file stems — one top-level class per file by convention).
         Set<String> treeClasses = new TreeSet<>();
         for (Path tree : LOCK_TREES) {
             try (Stream<Path> files = Files.walk(tree)) {
@@ -152,6 +151,12 @@ class SemanticsMapResolveTest {
                         .map(n -> n.substring(0, n.lastIndexOf('.')))
                         .forEach(treeClasses::add);
             }
+        }
+        try (Stream<Path> files = Files.walk(ADAPTER_TESTS)) {
+            files.map(p -> p.getFileName().toString())
+                    .filter(n -> WORKSPACE_PREPARATION_LOCK.matcher(n).matches())
+                    .map(n -> n.substring(0, n.lastIndexOf('.')))
+                    .forEach(treeClasses::add);
         }
         return new Inputs(kfTags, dims, corpus, treeClasses, MAP.getParent());
     }
@@ -225,7 +230,7 @@ class SemanticsMapResolveTest {
         }
         for (String cited : citedClasses) {
             if (!in.treeClasses().contains(cited)) {
-                violations.add("`" + cited + "` is cited but no such class exists in the three lock trees");
+                violations.add("`" + cited + "` is cited but no such class exists in the configured lock sources");
             }
         }
         for (String cls : in.treeClasses()) {

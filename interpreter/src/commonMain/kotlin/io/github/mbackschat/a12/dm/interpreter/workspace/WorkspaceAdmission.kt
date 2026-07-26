@@ -98,8 +98,6 @@ internal class AdmittedWorkspaceModelSource internal constructor(
 ) {
     private val bytes = bytes.copyOf()
     val json: String = this.bytes.decodeToString(throwOnInvalidSequence = true)
-
-    fun bytesCopy(): ByteArray = bytes.copyOf()
 }
 
 /** Immutable exact-id index produced before include/type-definition assembly begins. */

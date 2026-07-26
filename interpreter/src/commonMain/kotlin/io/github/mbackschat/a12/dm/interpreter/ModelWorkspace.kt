@@ -26,6 +26,10 @@ class ModelWorkspace private constructor(
 ) {
     val modelIds: List<String> = immutableListSnapshot(admitted.modelIds)
 
+    /**
+     * Prepare one transitive closure. Each call performs a fresh deterministic assembly and creates a new owner
+     * domain; this finite workspace deliberately holds no hidden preparation cache.
+     */
     fun prepare(entryModelId: String): PreparedModel {
         val assembly = WorkspaceReferenceAssembler.assemble(admitted, entryModelId, limits)
         return PreparedModel.fromWorkspace(admitted, assembly)

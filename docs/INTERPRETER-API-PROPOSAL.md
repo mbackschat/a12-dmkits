@@ -108,7 +108,7 @@ The primary direct verbs remain deliberately familiar: `validateFull`, `validate
 | `ModelWorkspace` | an immutable, resource-bounded set of sources indexed by `header.id`; it prepares one requested transitive closure |
 | `ModelWorkspaceConstructor.collect` | asynchronous acquisition façade that follows discovered references through a provider and freezes the resulting closure before preparation |
 | `ModelPreparationLimits` | explicit bounds on source count, source/total/prepared bytes, reference depth, reference edges, model-structure depth, and prepared element count |
-| `ModelDependency` | one resolved include or type-definition edge retained as preparation metadata |
+| `ModelDependency` | one distinct resolved include or type-definition edge retained in first-discovery order as preparation metadata |
 | `ModelFingerprint` | a library-computed digest over the selected entry, every source in its resolved closure, and preparation-format/ABI identity |
 | `ModelPreparationDiagnostic` | one stable preparation code, optional source/model/path/reference-chain location, structured details, and corrective message |
 | `ModelPreparationError` | typed JS-safe exception containing every preparation diagnostic |
@@ -219,7 +219,6 @@ type ModelSourceProviderFailureReason =
 interface ModelSourceProviderFailure {
   readonly reason: ModelSourceProviderFailureReason;
   readonly modelId: ModelId;
-  readonly retryable: boolean;
   readonly message: string;
   readonly cause?: unknown;
 }
@@ -229,12 +228,10 @@ declare class ModelSourceProviderError extends Error {
   readonly code: "A12_MODEL_SOURCE_PROVIDER_FAILED";
   readonly reason: ModelSourceProviderFailureReason;
   readonly modelId: ModelId;
-  readonly retryable: boolean;
   readonly cause?: unknown;
 }
 
 interface ModelSourceProvider {
-  readonly name?: string;
   readonly snapshotRevision?: string;
   load(
     modelId: ModelId,
@@ -306,13 +303,11 @@ type ModelOwnerIdentity = {
 
 interface ModelPreparationDiagnostic {
   readonly code: ModelPreparationDiagnosticCode;
-  readonly providerName?: string;
   readonly diagnosticLabel?: string;
   readonly requestedModelId?: ModelId;
   readonly actualModelId?: ModelId;
   readonly providerFailureReason?:
     ModelSourceProviderFailureReason;
-  readonly retryable?: boolean;
   readonly expectedSha256?: ModelSourceSha256;
   readonly actualSha256?: ModelSourceSha256;
   readonly modelId?: ModelId;
@@ -571,7 +566,7 @@ const interpreter: Interpreter =
 |---|---|
 | Workspace construction | `fromSources` parses headers, enforces resource limits, verifies supplied SHA-256 values, indexes exact `header.id` values, and rejects ambiguous duplicates with `ModelPreparationError`; `diagnosticLabel` is sanitized presentation metadata, never lookup identity |
 | On-demand collection | `collect` calls `provider.load` at most once per exact discovered id, freezes each successful result, and returns an immutable workspace containing only one snapshot-consistent entry closure |
-| Provider failures | `undefined` becomes an unresolved-reference diagnostic; a typed rejection preserves reason/retryability; an untyped rejection becomes `"provider-failed"`; a returned `header.id` different from the requested id becomes `MODEL_SOURCE_ID_MISMATCH`; the collector never retries implicitly |
+| Provider failures | `undefined` becomes an unresolved-reference diagnostic; a typed rejection preserves its reason and cause; an untyped rejection becomes `"provider-failed"`; a returned `header.id` different from the requested id becomes `MODEL_SOURCE_ID_MISMATCH`; the collector never retries implicitly |
 | Acquisition limits | each load receives the effective hard-capped byte ceiling and cancellation signal; the provider stops oversized I/O before materializing a string, and the collector independently rechecks source and aggregate limits |
 | Source integrity | admission/collection verifies `expectedSha256`, retains the digest computed from each exact resolved source, and computes the prepared fingerprint from those computed digests |
 | Workspace preparation | `prepare(entryModelId)` resolves and prepares only the selected model's transitive include/typedef closure; `tryPrepare` returns the same diagnostics through `ModelPreparationResult` |
@@ -588,7 +583,7 @@ const interpreter: Interpreter =
 
 Omitting `ModelPreparationLimits` or `ModelCollectionOptions.limits` selects documented library defaults; it never disables bounds. A caller may tighten those defaults, while any widening is capped by hard implementation maxima so a browser cannot accidentally opt into unbounded acquisition, parsing, or expansion.
 
-The expanded-input guard traverses the actual `content.modelRoot.rootGroups` tree before semantic loading. Every retained element must be an object with one of the closed `Group`/`Field`/`Rule`/`Computation` types, a string name, a string name-path `id`, and a matching object body; root elements must be groups, `Group.elements` must be an array when present, field-type discriminators and date precision must be admitted enum strings, and a relative computation target must not walk above the model root. This prevents malformed records from disappearing in the loader's flat scan or being interpreted through fabricated defaults. Real-Kernel 30.8.1 characterization refuses the same malformed family except that it admits an absent/null `Field` body and coerces present non-string Field names/ids; the portable boundary deliberately refuses those shapes because interpreting them would invent a field definition or lose the string identity required by this API. `tryLoadExpandedJson` maps every such refusal to `INVALID_MODEL_SOURCE` rather than leaking a host exception.
+The expanded-input guard treats only `content.modelRoot.rootGroups` and nested `Group.elements` as the document-element tree. One shared presence-aware classifier validates both raw workspace assembly and expanded loading while the loader collects from that tree only. Every retained element must be an object with one of the closed `Group`/`Field`/`Rule`/`Computation` types, a string name, a string name-path `id`, and a matching object body; root elements must be groups, `Group.elements` must be an array when present, field-type discriminators and date precision must be admitted enum strings, and a relative computation target must not walk above the model root. Element records outside the tree fail with `INVALID_MODEL_SOURCE`, matching measured Kernel rejections for a well-formed Field placed in either an unknown header member or an unknown member of a real Field body. Real-Kernel 30.8.1 characterization refuses the same malformed family except that it admits an absent/null `Field` body and coerces present non-string Field names/ids; the portable boundary deliberately refuses those shapes because interpreting them would invent a field definition or lose the string identity required by this API. `tryLoadExpandedJson` maps every such refusal to `INVALID_MODEL_SOURCE` rather than leaking a host exception.
 
 | Limit | Default | Hard maximum |
 |---|---:|---:|
@@ -1626,7 +1621,7 @@ Preparing an entry performs the complete common pipeline:
 
 Reference remapping covers rule conditions plus computation common preconditions, alternative preconditions, and operations. Each executable is scanned in its source model's configured condition language, including while it moves through nested providers; a keyword in the other language remains available as an ordinary field/group path segment, but cannot acquire evaluator meaning as a foreign function head or grammar separator. The localized reference-group token is exact: `@From` in English and `@Von` in German. Because the prepared model has one entry-level condition language, preparation compares a differently configured provider fragment's canonical source-language and entry-language ASTs: language-neutral syntax may survive the mount, while localized syntax that the entry grammar would reinterpret or reject fails with `INCOMPATIBLE_CONDITION_LANGUAGE`. This is the real Kernel boundary, not a blanket configuration mismatch. Relative and short references retain their binding semantics; a reference that cannot be mapped is a structured preparation failure, never a best-effort leftover.
 
-The prepared model retains its resolved `ModelDependency` edges, computed source digests, and diagnostic labels for diagnostics and tooling. Each retained mounted executable occurrence points to one shared provider namespace: occurrence-specific reference chain, source-local short-name policy and condition language, and bidirectional segment-aware source/output prefix mappings. Executable provenance carries that namespace plus a structural output ordinal, so repeated and wide `MODEL_ROOT` mounts stay linear in output size and later remapping can bind against the provider's expanded namespace without path guessing. Empty or fully excluded includes retain no executable provenance. Unused `fromSources` entries are neither parsed beyond workspace admission nor included in the prepared closure; `collect` does not request them at all.
+The prepared model retains each distinct resolved `ModelDependency` edge once in first-discovery order, with computed source digests and diagnostic labels for diagnostics and tooling; repeated physical mounts of the same exact edge do not duplicate public dependency metadata. Each retained mounted executable occurrence points to one shared provider namespace: occurrence-specific reference chain, source-local short-name policy and condition language, and bidirectional segment-aware source/output prefix mappings. Executable provenance carries that namespace plus a structural output ordinal, so repeated and wide `MODEL_ROOT` mounts stay linear in output size and later remapping can bind against the provider's expanded namespace without path guessing. Empty or fully excluded includes retain no executable provenance. Unused `fromSources` entries are neither parsed beyond workspace admission nor included in the prepared closure; `collect` does not request them at all.
 
 `PreparedModel.loadExpandedJson` remains the explicit fast path for callers that already own expanded, self-contained, name-path-keyed DM-JSON. Its residual guard rejects unresolved includes, unresolved type definitions, opaque identifiers, and other preparation residue with the same diagnostic model.
 
@@ -1645,7 +1640,7 @@ One provider instance represents one logical read snapshot for the duration of `
 
 Acquisition limits apply before and after materialization. A streaming HTTP/file/blob provider must stop reading at `maximumBytes` rather than first allocate an oversized string; the collector independently checks the returned UTF-8 byte count, total bytes, graph limits, and hard implementation maxima.
 
-`undefined` means model not found. A provider throws `ModelSourceProviderError` for an expected access, availability, cancellation, size, or integrity failure and supplies whether a host-level retry could be meaningful; an arbitrary rejection is normalized to `"provider-failed"` without losing the original cause. Retry/backoff, authentication refresh, provider-wide caching, writes, and watches are host policy and remain outside collection. V1 deliberately has no `loadMany`/batch hook; add one only if measured real-workspace latency justifies the larger contract.
+`undefined` means model not found. A provider throws `ModelSourceProviderError` for an expected access, availability, cancellation, size, or integrity failure; an arbitrary rejection is normalized to `"provider-failed"` without losing the original cause. The collector never retries. Retry/backoff, authentication refresh, provider-wide caching, writes, and watches are host policy and remain outside collection, so V1 exposes no speculative retry hint. `diagnosticLabel` on each returned source is the presentation boundary; the provider itself has no presentation-only name. V1 deliberately has no `loadMany`/batch hook; add one only if measured real-workspace latency justifies the larger contract.
 
 The asynchronous façade is platform-shaped rather than leaked into `commonMain`:
 
@@ -1653,10 +1648,10 @@ The asynchronous façade is platform-shaped rather than leaked into `commonMain`
 |---|---|
 | TypeScript/JavaScript | `Promise<ModelWorkspace>` plus `AbortSignal` |
 | Kotlin | suspending collection façade |
-| Java | `CompletionStage<ModelWorkspace>` with cancellation propagation |
+| Java | `CompletionStage<ModelWorkspace>` with cancellation propagation, added with the R2.9 Java consumer fixture |
 | every platform | synchronous `fromSources` and deterministic synchronous preparation/evaluation |
 
-The collection algorithm is single-sourced behind those façades. With the project's Kotlin 2.2 pin, `jsMain` explicitly bridges the asynchronous collector to a Promise; the initial ABI does not depend on Kotlin 2.3's [experimental direct export of suspend functions](https://kotlinlang.org/docs/whatsnew23.html).
+The collection algorithm is single-sourced behind those façades. R2.7 lands the suspending Kotlin and TypeScript Promise projections; the Java `CompletionStage` projection follows in R2.9 so it is introduced with its first external compile fixture rather than as an unconsumed compatibility surface. With the project's Kotlin 2.2 pin, `jsMain` explicitly bridges the asynchronous collector to a Promise; the initial ABI does not depend on Kotlin 2.3's [experimental direct export of suspend functions](https://kotlinlang.org/docs/whatsnew23.html).
 
 The R2 contract locks are explicit:
 
@@ -1664,12 +1659,12 @@ The R2 contract locks are explicit:
 |---|---|---|
 | one logical read snapshot | provider-session contract plus immutable manifest/transaction/commit adapters | mutate a dependency between loads and require rejection or the originally pinned bytes |
 | expected integrity | common collector SHA-256 verification | corrupt one fetched source and require `MODEL_SOURCE_INTEGRITY_MISMATCH` with expected/actual digests |
-| one load per exact id and no implicit retry | collector request memo | diamond dependency plus retryable failure; assert one provider call for each id |
-| cancellation on every platform | TypeScript/Kotlin/Java collection façades and provider context | cancel during a streaming load; assert no later dependency is requested and the typed cancellation survives |
+| one load per exact id and no implicit retry | collector request memo | diamond dependency plus typed failure; assert one provider call for each id |
+| cancellation on the R2.7 platforms | TypeScript/Kotlin collection façades and provider context | cancel during a streaming load; assert no later dependency is requested and the typed cancellation survives |
 | acquisition-time and aggregate limits | bounded host reader plus common collector limits | exceed the per-source limit before full materialization, then separately exceed total bytes across legal small sources |
-| typed failures | provider-error normalization in the collector | exercise every failure reason plus an arbitrary rejection and assert stable code/reason/retryability/cause |
+| typed failures | provider-error normalization in the collector | exercise every failure reason plus an arbitrary rejection and assert stable code/reason/cause |
 | no acquisition-secret leakage | source admission and diagnostic projection | supply a credential-bearing URL/path label and assert it is rejected or sanitized from diagnostics, dependency metadata, and fingerprint inputs |
-| platform surface parity | generated TypeScript declarations plus Kotlin/Java consumer fixtures | compile and execute Promise/`AbortSignal`, suspending, and `CompletionStage` consumers against the packed artifacts |
+| platform surface parity | generated TypeScript declarations plus Kotlin consumer fixtures in R2.7; Java consumer fixture in R2.9 | compile and execute Promise/`AbortSignal` and suspending consumers in R2.7, then the `CompletionStage` consumer when the Java façade lands |
 
 Concrete providers remain host adapters:
 
@@ -1720,7 +1715,6 @@ declare function readUtf8Bounded(
 ): Promise<string>;
 
 const provider: ModelSourceProvider = {
-  name: "showcase-http",
   snapshotRevision: manifest.revision,
   async load(
     modelId: ModelId,
@@ -1743,7 +1737,6 @@ const provider: ModelSourceProvider = {
             ? "access-denied"
             : "unavailable",
         modelId,
-        retryable: response.status >= 500,
         message:
           `model fetch failed: ${response.status}`,
       });

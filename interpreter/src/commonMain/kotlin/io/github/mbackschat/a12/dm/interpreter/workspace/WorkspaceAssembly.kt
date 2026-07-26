@@ -36,8 +36,8 @@ internal class WorkspaceAssemblyContext(
 ) {
     /** Exact-id parse memo: each admitted immutable source is decoded into a tree at most once per preparation. */
     private val parsedSources = linkedMapOf<String, ParsedWorkspaceSource>()
-    /** Resolved edges stay in discovery order for deterministic dependency metadata and fingerprints. */
-    private val dependencies = mutableListOf<ResolvedModelReference>()
+    /** Distinct resolved edges stay in first-discovery order for deterministic public dependency metadata. */
+    private val dependencies = linkedMapOf<ModelReferenceStep, ResolvedModelReference>()
     /** A validated graph edge resolves to one immutable parsed source; later stages reuse it without re-admission. */
     private val resolvedSources = linkedMapOf<ModelReferenceStep, ParsedWorkspaceSource>()
     private var referenceEdges = 0
@@ -105,7 +105,9 @@ internal class WorkspaceAssemblyContext(
                 ),
             )
         val parsedSource = parsed(source)
-        dependencies += ResolvedModelReference(step, source)
+        if (step !in dependencies) {
+            dependencies[step] = ResolvedModelReference(step, source)
+        }
         if (step !in resolvedSources) {
             resolvedSources[step] = parsedSource
         }
@@ -137,7 +139,7 @@ internal class WorkspaceAssemblyContext(
         requirePreparedBytesWithin(root, limits)
     }
 
-    fun dependenciesSnapshot(): List<ResolvedModelReference> = immutableListSnapshot(dependencies)
+    fun dependenciesSnapshot(): List<ResolvedModelReference> = immutableListSnapshot(dependencies.values)
 
     fun resolvedSource(step: ModelReferenceStep): ParsedWorkspaceSource =
         checkNotNull(resolvedSources[step]) {

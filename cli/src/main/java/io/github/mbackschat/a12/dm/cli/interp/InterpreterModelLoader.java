@@ -61,9 +61,11 @@ public final class InterpreterModelLoader {
                 return;
             }
             case KERNEL_INVALID -> throw new InvalidModelTimeZoneException(
+                    id,
                     "invalid modelConfig.timeZone '" + (id == null ? "null" : id)
                             + "' — pass a valid Java time-zone id, or omit the slot to use UTC");
             case KERNEL_LEGAL_INTERPRETER_UNSUPPORTED -> throw new UnsupportedModelTimeZoneException(
+                    id,
                     "unsupported model timeZone '" + id + "' — this Java time-zone id is kernel-valid, but "
                             + "the interpreter-backed evaluator supports only UTC, GMT, and Europe/Berlin");
         }
