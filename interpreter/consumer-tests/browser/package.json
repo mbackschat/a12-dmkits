@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit && vite build --base=/a12-interpreter-releases/showcase/",
+    "measure:first-answer": "node scripts/performance.mjs",
     "verify": "pnpm run build && node scripts/smoke.mjs"
   },
   "devDependencies": {

@@ -3,6 +3,12 @@ import {
   type PlacementDocumentInputV1,
   type ValidationFinding,
 } from "@mbackschat/a12-interpreter";
+import {qualifyBrowser} from "./qualification.js";
+import {measureBrowserFirstAnswer} from "./performance.js";
+
+declare global {
+  var __a12FirstAnswerStartedAt: number | undefined;
+}
 
 const status = document.querySelector<HTMLOutputElement>("#status");
 if (!status) {
@@ -16,7 +22,7 @@ const fail = (error: unknown): never => {
   throw error;
 };
 
-const run = async (): Promise<void> => {
+const firstAnswer = async (): Promise<number> => {
   const modelResponse = await fetch(
     `${import.meta.env.BASE_URL}models/permit-basic.dm.json`,
   );
@@ -47,9 +53,39 @@ const run = async (): Promise<void> => {
       computation[0]?.value !== "120") {
     throw new Error("browser computation did not return the reviewed area");
   }
+  return performance.now() - (
+    globalThis.__a12FirstAnswerStartedAt ?? performance.now()
+  );
+};
 
+const run = async (): Promise<void> => {
+  if (new URLSearchParams(location.search).get("mode") === "performance") {
+    const elapsedMillis = await measureBrowserFirstAnswer();
+    status.dataset.firstAnswerMillis = elapsedMillis.toFixed(3);
+    status.dataset.performance = "passed";
+    status.dataset.state = "passed";
+    status.textContent = `B1 browser first answer: ${
+      elapsedMillis.toFixed(3)
+    } ms`;
+    return;
+  }
+  const firstAnswerMillis = await firstAnswer();
+  status.dataset.firstAnswerMillis = firstAnswerMillis.toFixed(3);
+  if (new URLSearchParams(location.search).get("mode") === "first-answer") {
+    status.dataset.state = "passed";
+    status.textContent = `Packed interpreter first answer: ${
+      firstAnswerMillis.toFixed(3)
+    } ms`;
+    return;
+  }
+  const qualification = await qualifyBrowser();
+  status.dataset.corpusCases = qualification.corpusCases.toString();
+  status.dataset.workspace = qualification.workspace;
+  status.dataset.host = qualification.host;
   status.dataset.state = "passed";
-  status.textContent = "Packed interpreter browser consumer passed";
+  status.textContent =
+    `Packed interpreter browser qualification passed: ` +
+    `${qualification.corpusCases} corpus cases`;
 };
 
 void run().catch(fail);

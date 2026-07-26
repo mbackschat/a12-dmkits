@@ -10,8 +10,27 @@
         "/Permit/ApplicationNo" : {
           "type" : "StringType"
         },
+        "/Permit/GraphemeProbe" : {
+          "type" : "StringType"
+        },
         "/Permit/Note" : {
           "type" : "StringType"
+        },
+        "/Permit/PatternProbe" : {
+          "type" : "StringType"
+        },
+        "/Permit/Rate" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 14,
+            "minFractionalDigits" : 0
+          }
+        },
+        "/Permit/ReportedAt" : {
+          "type" : "DateTimeType",
+          "DateTimeType" : {
+            "format" : "yyyy-MM-dd'T'HH:mm:ss"
+          }
         },
         "/Permit/RequestedArea" : {
           "type" : "NumberType",
@@ -23,6 +42,12 @@
           "type" : "NumberType",
           "NumberType" : {
             "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/SettledAt" : {
+          "type" : "DateTimeType",
+          "DateTimeType" : {
+            "format" : "yyyy-MM-dd'T'HH:mm:ss"
           }
         }
       },
@@ -66,14 +91,101 @@
         "/Permit/AreaNeedsNote" : {
           "elementType" : "Rule"
         },
+        "/Permit/BerlinSpringHour" : {
+          "elementType" : "Rule"
+        },
         "/Permit/CopyRequestedArea" : {
           "elementType" : "Computation"
+        },
+        "/Permit/DecimalPrecisionControl" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/DecimalPrecisionSplit" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/GraphemeDialect" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/GraphemeProbe" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
         },
         "/Permit/Note" : {
           "elementType" : "Field",
           "facts" : {
             "group" : false,
             "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/PatternDialect" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/PatternProbe" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Rate" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 14,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/ReportedAt" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "DATE_TIME",
             "scale" : null,
             "min" : null,
             "max" : null,
@@ -122,6 +234,24 @@
             "usageType" : null,
             "annotations" : [ ]
           }
+        },
+        "/Permit/SettledAt" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "DATE_TIME",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
         }
       },
       "preparedElements" : {
@@ -138,6 +268,11 @@
           "elementType" : "Rule",
           "errorCondition" : "FieldFilled(RequestedArea) And [RequestedArea] > 100 And FieldNotFilled(Note)"
         },
+        "/Permit/BerlinSpringHour" : {
+          "id" : "/Permit/BerlinSpringHour",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(ReportedAt) And DifferenceInHours(ReportedAt, SettledAt) == 1"
+        },
         "/Permit/CopyRequestedArea" : {
           "id" : "/Permit/CopyRequestedArea",
           "elementType" : "Computation",
@@ -147,8 +282,44 @@
             "operation" : "[RequestedArea]"
           } ]
         },
+        "/Permit/DecimalPrecisionControl" : {
+          "id" : "/Permit/DecimalPrecisionControl",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Rate) And [Rate] ^ -64 > 1000000"
+        },
+        "/Permit/DecimalPrecisionSplit" : {
+          "id" : "/Permit/DecimalPrecisionSplit",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Rate) And [Rate] ^ -64 > 2912324058756262786433368781182555.3552912554484015"
+        },
+        "/Permit/GraphemeDialect" : {
+          "id" : "/Permit/GraphemeDialect",
+          "elementType" : "Rule",
+          "errorCondition" : "[GraphemeProbe] PatternMatched \"\\X\""
+        },
+        "/Permit/GraphemeProbe" : {
+          "id" : "/Permit/GraphemeProbe",
+          "elementType" : "Field"
+        },
         "/Permit/Note" : {
           "id" : "/Permit/Note",
+          "elementType" : "Field"
+        },
+        "/Permit/PatternDialect" : {
+          "id" : "/Permit/PatternDialect",
+          "elementType" : "Rule",
+          "errorCondition" : "[PatternProbe] PatternMatched \"\\d+\\h\\d+\""
+        },
+        "/Permit/PatternProbe" : {
+          "id" : "/Permit/PatternProbe",
+          "elementType" : "Field"
+        },
+        "/Permit/Rate" : {
+          "id" : "/Permit/Rate",
+          "elementType" : "Field"
+        },
+        "/Permit/ReportedAt" : {
+          "id" : "/Permit/ReportedAt",
           "elementType" : "Field"
         },
         "/Permit/RequestedArea" : {
@@ -157,6 +328,10 @@
         },
         "/Permit/ReviewedArea" : {
           "id" : "/Permit/ReviewedArea",
+          "elementType" : "Field"
+        },
+        "/Permit/SettledAt" : {
+          "id" : "/Permit/SettledAt",
           "elementType" : "Field"
         }
       }

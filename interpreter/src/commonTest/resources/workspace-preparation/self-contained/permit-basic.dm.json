@@ -75,6 +75,61 @@
               }
             }
           }, {
+            "type" : "Field",
+            "id" : "/Permit/Rate",
+            "name" : "Rate",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 14,
+                  "minFractionalDigits" : 0
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Permit/PatternProbe",
+            "name" : "PatternProbe",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Permit/GraphemeProbe",
+            "name" : "GraphemeProbe",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Permit/ReportedAt",
+            "name" : "ReportedAt",
+            "Field" : {
+              "fieldType" : {
+                "type" : "DateTimeType",
+                "DateTimeType" : {
+                  "format" : "yyyy-MM-dd'T'HH:mm:ss"
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Permit/SettledAt",
+            "name" : "SettledAt",
+            "Field" : {
+              "fieldType" : {
+                "type" : "DateTimeType",
+                "DateTimeType" : {
+                  "format" : "yyyy-MM-dd'T'HH:mm:ss"
+                }
+              }
+            }
+          }, {
             "type" : "Rule",
             "id" : "/Permit/AreaNeedsNote",
             "name" : "AreaNeedsNote",
@@ -101,6 +156,76 @@
               "errorMessage" : [ {
                 "locale" : "en_US",
                 "text" : "The reviewed area follows the request."
+              } ]
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Permit/DecimalPrecisionControl",
+            "name" : "DecimalPrecisionControl",
+            "Rule" : {
+              "errorEntityRelPath" : "../Rate",
+              "errorCode" : "DECIMAL_CONTROL",
+              "errorCondition" : "FieldFilled(Rate) And [Rate] ^ -64 > 1000000",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "The decimal control discriminator fires."
+              } ]
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Permit/DecimalPrecisionSplit",
+            "name" : "DecimalPrecisionSplit",
+            "Rule" : {
+              "errorEntityRelPath" : "../Rate",
+              "errorCode" : "DECIMAL_SPLIT",
+              "errorCondition" : "FieldFilled(Rate) And [Rate] ^ -64 > 2912324058756262786433368781182555.3552912554484015",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "The decimal precision discriminator must stay silent."
+              } ]
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Permit/PatternDialect",
+            "name" : "PatternDialect",
+            "Rule" : {
+              "errorEntityRelPath" : "../PatternProbe",
+              "errorCode" : "PATTERN_DIALECT",
+              "errorCondition" : "[PatternProbe] PatternMatched \"\\d+\\h\\d+\"",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "Java horizontal whitespace matched."
+              } ]
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Permit/GraphemeDialect",
+            "name" : "GraphemeDialect",
+            "Rule" : {
+              "errorEntityRelPath" : "../GraphemeProbe",
+              "errorCode" : "GRAPHEME_DIALECT",
+              "errorCondition" : "[GraphemeProbe] PatternMatched \"\\X\"",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "The extended grapheme matched."
+              } ]
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Permit/BerlinSpringHour",
+            "name" : "BerlinSpringHour",
+            "Rule" : {
+              "errorEntityRelPath" : "../ReportedAt",
+              "errorCode" : "BERLIN_SPRING_HOUR",
+              "errorCondition" : "FieldFilled(ReportedAt) And DifferenceInHours(ReportedAt, SettledAt) == 1",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "The Berlin spring-forward pair is one real hour apart."
               } ]
             }
           } ]

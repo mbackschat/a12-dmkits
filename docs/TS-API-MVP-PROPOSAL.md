@@ -4,7 +4,7 @@
 
 Extracted from the three end-state vision proposals — [OPERATOR-API-PROPOSAL](OPERATOR-API-PROPOSAL.md), [INTERPRETER-API-PROPOSAL](INTERPRETER-API-PROPOSAL.md), [ZOD-INTEGRATION-PROPOSAL](ZOD-INTEGRATION-PROPOSAL.md). Those describe the full destination and drop nothing; this doc names the **smallest complete, publishable slice to build first**. It *sequences* the vision, it does not shrink it — every capability parked here still lives in the owning proposal.
 
-The developer-library wave has started. [INTERPRETER-RELEASE-PROPOSAL](INTERPRETER-RELEASE-PROPOSAL.md) activates IG68, IG85, and IG86; its first delivery is Track B plus browser/package qualification. Owner decision 2026-07-26: Track A is a separate artifact that comes much later, and Track C follows its owning core only if selected.
+The developer-library wave has started. [INTERPRETER-RELEASE-PROPOSAL](INTERPRETER-RELEASE-PROPOSAL.md) activated IG68, IG85, and IG86; portable workspace preparation has since completed as IF224, while public delivery and browser first-answer qualification remain under IG85/IG86. Its first delivery is Track B plus browser/package qualification. Owner decision 2026-07-26: Track A is a separate artifact that comes much later, and Track C follows its owning core only if selected.
 
 The decision-support behind *why this family and how much of it* — the motivation, worked before/after, and per-layer scope reading that this slice sequences — is [TS-API-STUDY](TS-API-STUDY.md).
 
@@ -25,7 +25,7 @@ The MVP is mostly **extraction + projection of proven semantics**, not new engin
 | full/partial validation, computations | `DmInterpreter.validateFull` / `validatePart` / `compute` | thin public façade over kernel-free types |
 | customization | `CustomCondition`, `CustomFieldType`, `LegalCharset` SPIs | kernel-free public registries + factories |
 | expanded model load | `load/ModelLoader.load` | stricter prepared-input fast path |
-| raw workspace preparation | JVM-side `dm.core.ModelReader` | original commonMain assembler with include/typedef/id/remap parity (IG68) |
+| raw workspace preparation | JVM-side `dm.core.ModelReader` | original commonMain assembler with include/typedef/id/remap parity across JVM, Node, Chrome, and dmtool (IF224) |
 
 ## 3. In scope — the selected interpreter increment
 
@@ -57,4 +57,4 @@ Everything in §4 then follows, consumer-driven.
 
 ## 6. Exit
 
-When this increment ships, its pieces are marked done in the interpreter vision proposal (its contract is the durable record), and the corresponding rows here drain. Then archive this sequencing doc; the later Operator and Zod products remain in their own proposals. The interpreter release resolves IG68, IG85, and IG86 together.
+When this increment ships, its pieces are marked done in the interpreter vision proposal (its contract is the durable record), and the corresponding rows here drain. Then archive this sequencing doc; the later Operator and Zod products remain in their own proposals. The interpreter release carries completed IF224 and resolves IG85/IG86.

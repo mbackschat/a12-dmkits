@@ -170,8 +170,19 @@ public final class WorkspacePreparationFixtures {
                                 "/Permit/ApplicationNo",
                                 "/Permit/RequestedArea",
                                 "/Permit/ReviewedArea",
-                                "/Permit/Note"))
-                        .expectedRules(Set.of("/Permit/AreaNeedsNote"))
+                                "/Permit/Note",
+                                "/Permit/Rate",
+                                "/Permit/PatternProbe",
+                                "/Permit/GraphemeProbe",
+                                "/Permit/ReportedAt",
+                                "/Permit/SettledAt"))
+                        .expectedRules(Set.of(
+                                "/Permit/AreaNeedsNote",
+                                "/Permit/DecimalPrecisionControl",
+                                "/Permit/DecimalPrecisionSplit",
+                                "/Permit/PatternDialect",
+                                "/Permit/GraphemeDialect",
+                                "/Permit/BerlinSpringHour"))
                         .expectedComputations(Map.of("/Permit/CopyRequestedArea", "/Permit/ReviewedArea"))
                         .build(),
                 FixtureCase.builder()
@@ -459,15 +470,26 @@ public final class WorkspacePreparationFixtures {
                         .field("ApplicationNo", FieldKind.STRING)
                         .numberField("RequestedArea", number -> number.fractionDigits(0))
                         .numberField("ReviewedArea", number -> number.fractionDigits(0))
-                        .field("Note", FieldKind.STRING))
+                        .field("Note", FieldKind.STRING)
+                        .numberField("Rate", number -> number.fractionDigits(0, 14))
+                        .field("PatternProbe", FieldKind.STRING)
+                        .field("GraphemeProbe", FieldKind.STRING)
+                        .dateTimeField("ReportedAt", dateTime -> dateTime.format("yyyy-MM-dd'T'HH:mm:ss"))
+                        .dateTimeField("SettledAt", dateTime -> dateTime.format("yyyy-MM-dd'T'HH:mm:ss")))
                 .build()
                 .toJson();
         var session = EditSession.read(structure);
+        session.config().timeZone("Europe/Berlin");
         var permit = session.group("/Permit");
         var applicationNo = permit.str("ApplicationNo");
         var requestedArea = permit.num("RequestedArea");
         var reviewedArea = permit.num("ReviewedArea");
         var note = permit.str("Note");
+        var rate = permit.num("Rate");
+        var patternProbe = permit.str("PatternProbe");
+        var graphemeProbe = permit.str("GraphemeProbe");
+        var reportedAt = permit.dateTime("ReportedAt");
+        var settledAt = permit.dateTime("SettledAt");
 
         permit.addRule(rule -> rule.name("AreaNeedsNote")
                 .errorField(note)
@@ -480,6 +502,44 @@ public final class WorkspacePreparationFixtures {
                 .when(applicationNo.filled())
                 .calc(requestedArea.value())
                 .message(en("The reviewed area follows the request."))
+                .build());
+        var reciprocalPower = rate.asNumber().toThePowerOf(Dsl.number("-64"));
+        permit.addRule(rule -> rule.name("DecimalPrecisionControl")
+                .errorField(rate)
+                .when(rate.filled().and(reciprocalPower.gt("1000000")))
+                .code("DECIMAL_CONTROL")
+                .severity(Severity.ERROR)
+                .message(en("The decimal control discriminator fires."))
+                .build());
+        permit.addRule(rule -> rule.name("DecimalPrecisionSplit")
+                .errorField(rate)
+                .when(rate.filled().and(reciprocalPower.gt(
+                        "2912324058756262786433368781182555.3552912554484015")))
+                .code("DECIMAL_SPLIT")
+                .severity(Severity.ERROR)
+                .message(en("The decimal precision discriminator must stay silent."))
+                .build());
+        permit.addRule(rule -> rule.name("PatternDialect")
+                .errorField(patternProbe)
+                .when(patternProbe.matches("\\d+\\h\\d+"))
+                .code("PATTERN_DIALECT")
+                .severity(Severity.ERROR)
+                .message(en("Java horizontal whitespace matched."))
+                .build());
+        permit.addRule(rule -> rule.name("GraphemeDialect")
+                .errorField(graphemeProbe)
+                .when(graphemeProbe.matches("\\X"))
+                .code("GRAPHEME_DIALECT")
+                .severity(Severity.ERROR)
+                .message(en("The extended grapheme matched."))
+                .build());
+        permit.addRule(rule -> rule.name("BerlinSpringHour")
+                .errorField(reportedAt)
+                .when(reportedAt.filled()
+                        .and(Dsl.differenceInHours(reportedAt, settledAt).eq(1)))
+                .code("BERLIN_SPRING_HOUR")
+                .severity(Severity.ERROR)
+                .message(en("The Berlin spring-forward pair is one real hour apart."))
                 .build());
         return session.validate().toJson();
     }

@@ -10,6 +10,9 @@
       <h1>A12 interpreter browser smoke</h1>
       <output id="status" data-state="running" aria-live="polite">Running…</output>
     </main>
+    <script>
+      globalThis.__a12FirstAnswerStartedAt = performance.now();
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

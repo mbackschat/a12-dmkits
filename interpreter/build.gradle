@@ -1,7 +1,7 @@
 // The dm-interpreter (docs/INTERPRETER-SPEC.md; impl in docs/INTERPRETER-ARCHITECTURE.md) — a Kotlin Multiplatform, native-safe runtime
-// evaluator for conditions + computations. ONE common engine, two targets (JVM + JS/Node), so it runs
-// in a GraalVM native image (no Groovy) and as a Node-hosted JS library — Node is the SUPPORTED JS runtime;
-// browser qualification is active release work (IG86) but remains unclaimed until its real-browser gates pass.
+// evaluator for conditions + computations. ONE common engine, two targets (JVM + JS), so it runs
+// in a GraalVM native image (no Groovy) and as a Node/browser JS library. Portable semantics and workspace
+// preparation are qualified in real Chrome (IF224); browser support remains unclaimed until IG86's p95 gate.
 // This is a publication-eligible standalone module:
 // it carries NO kernel/dmtool dependency — the kernel DIFFERENTIAL tests live in :adapter, not here, so
 // this module stays kernel-free even in test scope. That separation is enforced by `verifyInterpreterPurity`
@@ -2041,6 +2041,23 @@ def externalBrowserConsumerStoreDir = rootProject.layout.buildDirectory.dir(
 def externalBrowserConsumerModel = file(
     'src/commonTest/resources/workspace-preparation/self-contained/permit-basic.dm.json',
 )
+def externalBrowserConsumerWorkspaceDir = file(
+    'src/commonTest/resources/workspace-preparation',
+)
+def externalBrowserConsumerWorkspaceFiles = fileTree(externalBrowserConsumerWorkspaceDir) {
+    include 'entries/permit-single.dm.json'
+    include 'shared/permit-section.dm.json'
+    include 'shared/inspection-checks.dm.json'
+    include 'shared/permit-types.dm.json'
+}
+def externalBrowserConsumerCorpusDir = rootProject.file('corpus')
+def externalBrowserConsumerCorpusFiles = rootProject.fileTree(externalBrowserConsumerCorpusDir) {
+    include 'cases/**/*.json'
+    include 'models/*.json'
+}
+def externalBrowserConsumerPerformanceModel = file(
+    'src/commonTest/resources/performance/b1.dm.json',
+)
 def prepareExternalInterpreterBrowserConsumer = tasks.register(
     'prepareExternalInterpreterBrowserConsumer',
     Sync,
@@ -2051,13 +2068,47 @@ def prepareExternalInterpreterBrowserConsumer = tasks.register(
     from(externalBrowserConsumerModel) {
         into('public/models')
     }
+    from(externalBrowserConsumerWorkspaceDir) {
+        include externalBrowserConsumerWorkspaceFiles.collect {
+            externalBrowserConsumerWorkspaceDir.toPath().relativize(it.toPath()).toString()
+        }
+        into('public/workspace')
+    }
+    from(externalBrowserConsumerCorpusDir) {
+        include 'cases/**/*.json'
+        include 'models/*.json'
+        into('public/corpus')
+    }
+    from(externalBrowserConsumerPerformanceModel) {
+        into('public/performance')
+    }
     into(externalBrowserConsumerBuildDir)
     inputs.file(externalBrowserConsumerModel)
         .withPropertyName('typedAuthoredBrowserConsumerModel')
         .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    inputs.files(externalBrowserConsumerWorkspaceFiles)
+        .withPropertyName('rawWorkspaceBrowserQualificationModels')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    inputs.files(externalBrowserConsumerCorpusFiles)
+        .withPropertyName('portableBrowserCorpus')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    inputs.file(externalBrowserConsumerPerformanceModel)
+        .withPropertyName('typedAuthoredBrowserPerformanceModel')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
     outputs.upToDateWhen { false }
     doFirst {
         project.delete(externalBrowserConsumerBuildDir)
+    }
+    doLast {
+        def casesDir = new File(externalBrowserConsumerCorpusDir, 'cases')
+        def casePaths = rootProject.fileTree(casesDir) {
+            include '**/*.json'
+        }.files.collect {
+            casesDir.toPath().relativize(it.toPath()).toString().replace(File.separatorChar, '/' as char)
+        }.sort()
+        def manifest = new File(destinationDir, 'public/corpus/cases.json')
+        manifest.parentFile.mkdirs()
+        manifest.setText(groovy.json.JsonOutput.toJson(casePaths) + '\n', 'UTF-8')
     }
 }
 def installExternalInterpreterBrowserConsumerDependencies = tasks.register(
@@ -2111,6 +2162,28 @@ def verifyExternalInterpreterBrowserConsumer = tasks.register(
     workingDir externalBrowserConsumerBuildDir
     commandLine('pnpm', 'run', 'verify')
     environment 'CI', 'true'
+    outputs.upToDateWhen { false }
+}
+def browserPerformanceReport = rootProject.layout.buildDirectory.file(
+    'reports/interpreter-browser-performance/r4.2.json',
+)
+def interpreterCommit = providers.exec {
+    workingDir rootProject.rootDir
+    commandLine('git', 'rev-parse', 'HEAD')
+}.standardOutput.asText.map { it.trim() }
+def measureExternalInterpreterBrowserFirstAnswer = tasks.register(
+    'measureExternalInterpreterBrowserFirstAnswer',
+    Exec,
+) {
+    group = 'verification'
+    description = 'Measure 50 independent packed-interpreter B1 first answers in fresh Chrome processes.'
+    dependsOn verifyExternalInterpreterBrowserConsumer
+    workingDir externalBrowserConsumerBuildDir
+    commandLine('pnpm', 'run', 'measure:first-answer')
+    environment 'CI', 'true'
+    environment 'INTERPRETER_COMMIT', interpreterCommit.get()
+    environment 'BROWSER_PERFORMANCE_REPORT', browserPerformanceReport.get().asFile.absolutePath
+    outputs.file(browserPerformanceReport)
     outputs.upToDateWhen { false }
 }
 tasks.named('check') {

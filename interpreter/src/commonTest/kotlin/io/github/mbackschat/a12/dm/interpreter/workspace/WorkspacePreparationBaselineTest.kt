@@ -26,10 +26,25 @@ class WorkspacePreparationBaselineTest {
                 "/Permit/RequestedArea",
                 "/Permit/ReviewedArea",
                 "/Permit/Note",
+                "/Permit/Rate",
+                "/Permit/PatternProbe",
+                "/Permit/GraphemeProbe",
+                "/Permit/ReportedAt",
+                "/Permit/SettledAt",
             ),
             model.fields.map { it.path }.toSet(),
         )
-        assertEquals(setOf("/Permit/AreaNeedsNote"), model.rules.map { it.path }.toSet())
+        assertEquals(
+            setOf(
+                "/Permit/AreaNeedsNote",
+                "/Permit/DecimalPrecisionControl",
+                "/Permit/DecimalPrecisionSplit",
+                "/Permit/PatternDialect",
+                "/Permit/GraphemeDialect",
+                "/Permit/BerlinSpringHour",
+            ),
+            model.rules.map { it.path }.toSet(),
+        )
         assertEquals(
             mapOf("/Permit/CopyRequestedArea" to "/Permit/ReviewedArea"),
             model.computations.associate {
@@ -47,5 +62,21 @@ class WorkspacePreparationBaselineTest {
         assertEquals("/Permit/ReviewedArea", computed.path)
         assertEquals(ComputeOutcome.VALUE, computed.outcome)
         assertEquals("150", computed.value)
+
+        val hostBoundary = model.newDocument()
+            .field("/Permit/Rate", "0.30", 1, 1)
+            .field("/Permit/PatternProbe", "12 34", 1, 1)
+            .field("/Permit/GraphemeProbe", "e\u0301", 1, 1)
+            .field("/Permit/ReportedAt", "2024-03-31T01:30:00", 1, 1)
+            .field("/Permit/SettledAt", "2024-03-31T03:30:00", 1, 1)
+        assertEquals(
+            listOf(
+                "BERLIN_SPRING_HOUR",
+                "DECIMAL_CONTROL",
+                "GRAPHEME_DIALECT",
+                "PATTERN_DIALECT",
+            ),
+            interpreter.validateFull(hostBoundary).map { it.code }.sorted(),
+        )
     }
 }

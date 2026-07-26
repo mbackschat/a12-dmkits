@@ -2,7 +2,7 @@
 
 **Status: BUILT (2026-06-24), with live exceptions tracked.** The in-repo `:interpreter` is dmtool's kernel-free runtime evaluator: the native image runs [`examples/cli-runtime.md`](../examples/cli-runtime.md), and the local Kotlin/JVM + Kotlin/JS API implements full/partial validation, computations, and single-rule/single-computation evaluation. It is operator-inventory-complete—all 110 catalog constructs are handled—and the differential estate is at zero divergences on the surfaces and corpora it exercises. That is strong evidence, not proof over every legal composition, configuration value, platform dialect, assembly form, or API lifecycle. [INTERPRETER-GAPS.md](INTERPRETER-GAPS.md) is the exhaustive live-status ledger; this document owns the durable design, contract, and boundaries, [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md) owns the implementation, [INTERPRETER-FINDINGS.md](INTERPRETER-FINDINGS.md) the verified rationale, and [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md) the non-functional method and evidence.
 
-**One line:** an isolated runtime evaluator for conditions + computations that **interprets** the rule AST directly—instead of generating and executing code on the fly—so one common implementation runs in the JVM/GraalVM-native path and compiles to JavaScript. Node remains the fully qualified JS runtime; the packed tarball now bundles and executes in Chrome, while browser conformance/first-answer qualification and the browser raw-workspace gate remain open release requirements (IG86/IG68), not yet support claims.
+**One line:** an isolated runtime evaluator for conditions + computations that **interprets** the rule AST directly—instead of generating and executing code on the fly—so one common implementation runs in the JVM/GraalVM-native path and compiles to JavaScript. The packed tarball now replays the portable conformance subset, raw include/typedef workspace, and host-sensitive locks in Chrome (IF224); only IG86's separately scoped browser first-answer bar remains before the browser support claim.
 
 **The committed goal — a full-blown interpreter serving two consumers:**
 
@@ -47,7 +47,7 @@ That single step—compiling generated source to JVM bytecode at runtime—is wh
 | `model compute` | `compute(…) → rt().compute` | run a model's computations |
 | `rule eval` | `testRule(…)` (wraps `evaluate`) | fire one rule, report FIRED/PASSED/SUPPRESSED |
 
-Everything else dmtool did—structural `checkConsistency`, the bulk of the verbs—was already native-safe. The interpreter closed that native runtime gap; its JS output is proven on Node, while a real browser consumer is now active IG86 release work and remains unclaimed until qualified.
+Everything else dmtool did—structural `checkConsistency`, the bulk of the verbs—was already native-safe. The interpreter closed that native runtime gap; its JS output is proven on Node and semantically qualified in real Chrome, while the browser support claim remains gated by IG86's first-answer bar.
 
 ## 2. Decision — interpret, don't generate-and-eval
 
@@ -57,7 +57,7 @@ dmtool benefits from none of these. It loads a model at runtime, validates a doc
 
 The line that matters for native-image and for "no on-the-fly codegen": **the interpreter may generate an internal *data structure* (its own AST/IR); it must never generate host-language *source* that gets compiled or `eval`'d.**
 
-> Footnote — when codegen *would* win: a server with a **fixed** model catalog and a real throughput need should AOT-generate Java validators at *build* time (the kernel's `JAVA` target), which is throughput-optimal and also native-safe. That's a different product than dmtool; this proposal is for arbitrary-model-at-runtime consumers such as dmtool and standalone JS/JVM libraries. A browser consumer remains unverified while IG86 is open.
+> Footnote — when codegen *would* win: a server with a **fixed** model catalog and a real throughput need should AOT-generate Java validators at *build* time (the kernel's `JAVA` target), which is throughput-optimal and also native-safe. That's a different product than dmtool; this proposal is for arbitrary-model-at-runtime consumers such as dmtool and standalone JS/JVM libraries. The browser consumer is semantically qualified; its support claim remains withheld until IG86's performance gate passes.
 
 ## 3. The honest tradeoffs
 
@@ -87,7 +87,7 @@ Once it's an interpreter, **Kotlin Multiplatform (KMP)** is the strongest fit: o
                                    empty/null logic, iteration, caching)
                 ├── Kotlin/JVM  → static bytecode → native-image-clean, NO GraalJS,
                 │                  native kernel-Java interop for the test oracle
-                └── Kotlin/JS   → plain JS → Node-tested; browser qualification active (IG86), NO Wasm boundary
+                └── Kotlin/JS   → plain JS → Node-tested + Chrome-qualified semantics; browser performance gate open (IG86), NO Wasm boundary
 
    platform-specific (expect/actual) — exactly the line the kernel already draws:
         decimals :  java.math.BigDecimal      ⟷   big.js
@@ -123,7 +123,7 @@ The interpreter has its **own multiplatform AST** and does **not** import `dm.co
 
 1. **No dependency on `cli`/dmtool** — they consume it, never the reverse.
 2. **No *runtime* dependency on the kernel** — the whole point. The kernel appears only as a **test-only** conformance oracle.
-3. **A clean data contract, not a shared object model** (§6) — owns its AST and a kernel-free prepared-DM-JSON → `ModelDef` loader (`load.ModelLoader`, JVM + JS — WI-2; it rejects unprepared residue loud, IF145); the commonMain raw-workspace assembler is active IG68 release work.
+3. **A clean data contract, not a shared object model** (§6) — owns its AST and a kernel-free prepared-DM-JSON → `ModelDef` loader (`load.ModelLoader`, JVM + JS — WI-2; it rejects unprepared residue loud, IF145); the bounded commonMain raw-workspace assembler is complete across JVM, Node, Chrome, and dmtool (IF224).
 4. **Eligible for independent publication** — the dependency boundary permits Maven (JVM) + npm-compatible (JS) artifacts under their own coordinates; GitHub-only publication/ABI work is active IG85 work.
 
 Hold these from day one and extraction (§8) stays cheap.
