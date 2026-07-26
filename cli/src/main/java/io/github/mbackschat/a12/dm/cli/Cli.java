@@ -8,6 +8,7 @@ import java.util.function.BooleanSupplier;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError;
 import picocli.CommandLine;
 
 /**
@@ -110,13 +111,16 @@ public final class Cli {
                 .setExecutionExceptionHandler((ex, commandLine, parseResult) -> {
                     String[] to = targetOp(parseResult);
                     boolean internal = !(ex instanceof ModelConsistencyException)
-                            && !(ex instanceof UnresolvedReferenceException);
+                            && !(ex instanceof UnresolvedReferenceException)
+                            && !(ex instanceof ModelPreparationError);
                     ResultEnvelope env;
                     if (ex instanceof ModelConsistencyException mce) {
                         env = BaseCommand.kernelRejectionEnvelope(to[0], to[1],
                                 "the model is rejected by the kernel — it is invalid as stored", mce);
                     } else if (ex instanceof UnresolvedReferenceException ure) {
                         env = BaseCommand.unresolvedReferenceEnvelope(to[0], to[1], ure);
+                    } else if (ex instanceof ModelPreparationError preparation) {
+                        env = BaseCommand.modelPreparationEnvelope(to[0], to[1], preparation);
                     } else {
                         env = BaseCommand.internalErrorEnvelope(to[0], to[1], ex);
                     }

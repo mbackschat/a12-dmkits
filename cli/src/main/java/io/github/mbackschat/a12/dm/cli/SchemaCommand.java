@@ -121,6 +121,8 @@ final class SchemaCommand extends BaseCommand {
             Map.entry("export", "renders an artifact (model card / dot / …), not the result envelope"),
             Map.entry("model new", "emits a brand-new model document (an artifact) to stdout; with -o stdout carries "
                     + "an additive write-confirmation envelope, but the primary form has no directional contract"),
+            Map.entry("model expand", "emits one self-contained expanded DM-JSON model artifact to stdout; with -o "
+                    + "the model goes to the selected file and stdout carries an additive write-confirmation envelope"),
             Map.entry("model seed", "emits a generated sample document instance (an artifact), not the result envelope"),
             Map.entry("model import-jsonschema", "reads a JSON Schema file and emits the imported model as a DM-JSON "
                     + "artifact to stdout (report on stderr); with -o the model goes to file + a write envelope"),

@@ -27,7 +27,7 @@ export PATH="$ROOT/bin:$PATH"
 # As of 2026-06-24 the map is EMPTY — ALL demos are native-applicable. The two former skips are obsolete:
 #   • cli-runtime.md — the runtime verbs (`model eval`/`rule eval`/`model compute`) used to run the kernel's
 #     Groovy codegen (JVM-only); they now DEFAULT to the native-safe `dm.interpreter`, so they run on the
-#     native binary. (`model eval`/`rule eval`/`model compute`/`model seed` are all interpreter-backed; the
+#     native binary. (`model expand`/`model eval`/`rule eval`/`model compute`/`model seed` are all interpreter-backed; the
 #     JVM-only `--kernel` eval engine was retired — Set V — guarded by `NativeImageRuntimeVerbsTest`.) The demo
 #     captures `schema <verb>` for orientation, NOT `<verb> --help` — `schema` is byte-identical on both builds
 #     while `--help` can differ by picocli synopsis wrapping (CLI-TOUR-SPEC). Passes native.

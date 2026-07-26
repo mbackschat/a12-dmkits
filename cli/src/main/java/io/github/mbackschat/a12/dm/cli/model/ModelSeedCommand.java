@@ -12,15 +12,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
-import io.github.mbackschat.a12.dm.cli.interp.IncludeRelativizationException;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterModelLoader;
 import io.github.mbackschat.a12.dm.cli.interp.JsonInstanceSink;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
-import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 import io.github.mbackschat.a12.dm.interpreter.gen.SeedGenerator;
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef;
-import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
@@ -34,7 +31,7 @@ import picocli.CommandLine.Option;
  * for a fixed {@code --seed}. Emits the document JSON directly (an artifact, not the result envelope).
  *
  * <p>The model is prepared through the SAME kernel-free boundary the runtime verbs use
- * ({@link InterpreterEngine#expandForEval}) — includes mounted, imported typedefs inlined, opaque ids
+ * ({@link InterpreterEngine#prepareForEval}) — includes mounted, imported typedefs inlined, opaque ids
  * normalized to name-paths — so a multi-file model is seeded from its real, self-contained structure (IF145).
  * A refusal (a surviving unmapped included reference or an unresolved model reference) is the structured
  * {@code refused} envelope;
@@ -83,18 +80,8 @@ final class ModelSeedCommand extends BaseCommand {
         // silently under-read (a dropped mount, a typedef flattened to STRING). A surviving unmapped included
         // reference refuses loudly here — seed never consumes rule conditions, but one boundary prevents drift.
         ModelResolver resolver = workspace.resolverFor(model);
-        String interpJson;
-        try {
-            interpJson = InterpreterEngine.expandForEval(modelJson, resolver);
-        } catch (IncludeRelativizationException e) {
-            return refusePrecheck("model", "seed", RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED,
-                    e.getMessage(), model, RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED.fix());
-        } catch (UnresolvedReferenceException e) {
-            return refusePrecheck("model", "seed", RkCode.UNRESOLVED_REFERENCE, e.getMessage(), model,
-                    RkCode.UNRESOLVED_REFERENCE.fix());
-        } catch (RuntimeException e) {
-            return fail("cannot expand model: " + e.getMessage());
-        }
+        String interpJson =
+                InterpreterEngine.prepareForEval(modelJson, Path.of(model).getFileName().toString(), resolver);
 
         ModelDef def;
         try {

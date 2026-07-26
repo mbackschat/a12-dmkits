@@ -26,7 +26,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.Severity;
 import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule;
 import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome;
 import io.github.mbackschat.a12.dm.interpreter.model.Verdict;
-import io.github.mbackschat.a12.dm.core.ModelReader;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 
 /**
@@ -47,24 +46,17 @@ public final class InterpreterEngine {
     }
 
     /**
-     * Pre-expand a model for the kernel-free interpreter path (decoupling Stage 2 / A4): mount includes and
-     * resolve imported type-definitions <em>kernel-free</em> via {@link ModelReader}, so an includes-bearing
-     * model is evaluated with its mounted content present — closing the silent-includes-drop defect (the raw
-     * model handed straight to {@link InterpreterModelLoader} lost the mount). The returned DM-JSON is
-     * self-contained + name-path-keyed, which the interpreter's loader already evaluates correctly.
+     * Prepare a model for the kernel-free interpreter path through the public portable workspace. The returned
+     * DM-JSON is self-contained + name-path-keyed and has already passed the strict expanded-input evaluator
+     * gate, so every runtime verb shares the same refusal contract.
      *
-     * <p>A mount is remapped as a MOVE: a reference-aware pass binds every included rule/computation fragment
+     * <p>A mount is remapped as a MOVE: the portable assembler binds every included rule/computation fragment
      * in its pre-mount context, rewrites moved absolute and flag-enabled unique short-name targets, and leaves
-     * literals/comments untouched (IF146). A surviving genuine unmapped reference throws
-     * {@link IncludeRelativizationException} so the verb refuses loudly rather than mis-evaluate.
+     * literals/comments untouched (IF146). A surviving genuine unmapped reference becomes a typed preparation
+     * refusal, so the verb fails loudly rather than mis-evaluating it.
      */
-    public static String expandForEval(String modelJson, ModelResolver resolver) {
-        ModelReader reader = ModelReader.expand(modelJson, resolver);
-        List<String> needsRewrite = reader.includedElementsWithUnmappedReferences();
-        if (!needsRewrite.isEmpty()) {
-            throw new IncludeRelativizationException(needsRewrite);
-        }
-        return reader.toJson();
+    public static String prepareForEval(String modelJson, String diagnosticLabel, ModelResolver resolver) {
+        return PortableModelPreparation.prepareForRuntime(modelJson, diagnosticLabel, resolver);
     }
 
     /** The full names of the rules the interpreter can see in {@code modelJson} — kernel-free, so the runtime

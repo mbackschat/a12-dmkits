@@ -13,11 +13,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Guards the native-image contract for the runtime-eval verbs (docs/NATIVE-IMAGE-GRAALVM.md §4). They used
- * to be HIDDEN in native (they ran the kernel's Groovy codegen) — but they now run on the native-safe
- * {@code dm.interpreter}, the SOLE runtime eval engine on every target, so they STAY in the native command
- * tree and run there. The user-facing {@code --kernel} eval flag was retired (INTERPRETER-DROPIN-CERTIFICATE):
- * it is gone from every profile, so no self-describing surface offers it.
+ * Guards the native-image contract for the interpreter-backed verbs (docs/NATIVE-IMAGE-GRAALVM.md §4).
+ * Runtime evaluation used to be HIDDEN in native because it ran the kernel's Groovy codegen; evaluation,
+ * sample generation, and portable model expansion now use the native-safe {@code dm.interpreter}, so they
+ * stay in the native command tree. The user-facing {@code --kernel} eval flag was retired
+ * (INTERPRETER-DROPIN-CERTIFICATE): it is gone from every profile.
  *
  * <p>Native isn't built in CI, so this runs the command tree in <b>forced-native profile</b> on the JVM
  * (the {@link CliTestSupport#runNative} seam) and asserts: the verbs are present on every self-describing
@@ -27,6 +27,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 class NativeImageRuntimeVerbsTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final List<String> INTERPRETER_VERBS =
+            List.of("model expand", "model eval", "model compute", "model seed", "rule eval");
     private static final List<String> RUNTIME_VERBS = List.of("model eval", "model compute", "rule eval");
 
     private static Set<String> manifestVerbs(String json) throws Exception {
@@ -55,7 +57,7 @@ class NativeImageRuntimeVerbsTest {
         CliTestSupport.Result res = CliTestSupport.runNative("manifest");
         assertEquals(0, res.code(), res::err);
         Set<String> verbs = manifestVerbs(res.out());
-        for (String verb : RUNTIME_VERBS) {
+        for (String verb : INTERPRETER_VERBS) {
             assertTrue(verbs.contains(verb), () -> "native manifest must list '" + verb + "' (interpreter-backed): " + verbs);
         }
     }
@@ -63,8 +65,10 @@ class NativeImageRuntimeVerbsTest {
     @Test
     void nativeHelpShowsTheRuntimeOps() {
         String modelHelp = CliTestSupport.runNative("model", "--help").out();
+        assertTrue(modelHelp.contains("expand"), () -> "model --help should show 'expand' on native:\n" + modelHelp);
         assertTrue(modelHelp.contains("eval"), () -> "model --help should show 'eval' on native:\n" + modelHelp);
         assertTrue(modelHelp.contains("compute"), () -> "model --help should show 'compute' on native:\n" + modelHelp);
+        assertTrue(modelHelp.contains("seed"), () -> "model --help should show 'seed' on native:\n" + modelHelp);
         String ruleHelp = CliTestSupport.runNative("rule", "--help").out();
         assertTrue(ruleHelp.contains("eval"), () -> "rule --help should show 'eval' on native:\n" + ruleHelp);
     }

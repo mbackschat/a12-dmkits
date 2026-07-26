@@ -23,7 +23,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 
 /**
  * IF145 — {@code model seed} must prepare its input through the SAME kernel-free expander every other runtime
- * verb uses ({@code InterpreterEngine.expandForEval}), not read raw DM-JSON and load it directly. Two
+ * verb uses ({@code InterpreterEngine.prepareForEval}), not read raw DM-JSON and load it directly. Two
  * consequences of that boundary are locked here over own-domain (insurance / e-commerce) fixtures: an included
  * sub-model's fields are instantiated (the mount is not silently dropped), and an imported typedef field is
  * seeded from its RESOLVED kind (not flattened to STRING), and opaque element ids are normalized without losing
@@ -140,7 +140,7 @@ class ModelSeedPreparationTest {
         assertEquals(0, namePathSeed.code(), () -> "name-path seed succeeds: " + namePathSeed.out() + namePathSeed.err());
         assertEquals(0, opaqueSeed.code(), () -> "opaque-id seed succeeds: " + opaqueSeed.out() + opaqueSeed.err());
         assertEquals(M.readTree(namePathSeed.out()).path("fields"), M.readTree(opaqueSeed.out()).path("fields"),
-                "opaque ids cross ModelReader.expand and preserve the prepared model's structure and constraints");
+                "opaque ids cross portable workspace preparation and preserve the model's structure and constraints");
     }
 
     private static String withOpaqueElementIds(String json) throws IOException {

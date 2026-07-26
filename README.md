@@ -226,6 +226,15 @@ It's a **structural** semantic diff; the contract (change model, the full review
 dmtool -m order.dm.json model normalize        # formatting only — order preserved, no semantic change
 ```
 
+To turn a raw multi-model workspace into one portable DM-JSON artifact, use the public interpreter assembler through dmtool:
+
+```sh
+dmtool -m app.dm.json -w ./models model expand > app-expanded.dm.json
+dmtool -m app.dm.json -w ./models model expand -o app-expanded.dm.json
+```
+
+`model expand` resolves only the entry model's discovered include/type-definition closure, mounts includes, inlines every typedef use, normalizes ids/references, and refuses ambiguity or residue without writing a partial file. It is a conversion operation, so it stops before interpreter-only evaluator checks: a Kernel-legal model that dmtool cannot evaluate can still be expanded.
+
 ### Explore a whole folder of models
 
 When you're dropped into a *directory* of models — not one file — `workspace list` is the agent-friendly "ls" that goes *into* them: a per-model index with the sub/supertype graph and every `include` / type-def import **resolved to its file**, so you know what to wire (which `-w/--workspace`, which file provides a needed type-def) without reading raw JSON.
@@ -783,7 +792,7 @@ More library idioms and the design rationale live in the [API guide](docs/API-GU
 
 ## The interpreter — kernel-free runtime evaluation
 
-Runtime evaluation — *which rules fire on this document, what does each computed field evaluate to* — runs on a **clean-room, kernel-free interpreter** (Kotlin Multiplatform). It is the sole runtime eval engine, the one behind `model eval` / `rule eval` / `model compute` / `model seed` — and the reason those verbs work in the native binary: the interpreter needs **no codegen step at all**, where the kernel's Groovy codegen can't go native.
+Runtime evaluation — *which rules fire on this document, what does each computed field evaluate to* — runs on a **clean-room, kernel-free interpreter** (Kotlin Multiplatform). It is the sole runtime eval engine, the one behind `model eval` / `rule eval` / `model compute` / `model seed` — and the reason those verbs work in the native binary: the interpreter needs **no codegen step at all**, where the kernel's Groovy codegen can't go native. Those verbs and `model expand` now share the interpreter's portable workspace boundary for includes and imported typedefs; the JVM/Jackson model reader remains a metadata/index implementation, not a second runtime resolver.
 
 - **Kernel-exact, by verification.** Its results are checked rule-for-rule against the real A12 kernel by a **differential test suite** plus a model-driven fuzzer, and it replays a **conformance corpus** of kernel-verified expected outcomes — captured tri-verified against the kernel's two evaluation strategies — on both JVM and JS.
 - **A standalone library, not just the CLI's engine.** One common engine, two targets — **JVM and JS** — so the same evaluator runs in your JVM service, the GraalVM native image, and Node. Browser support is deferred and unverified (IF138).

@@ -21,6 +21,7 @@ model usage
 model report
 model rename
 model normalize
+model expand
 model eval
 model compute
 model seed
@@ -251,7 +252,7 @@ dmtool diagnostics | jq '{count, severities: (.diagnostics|map(.severity)|unique
 
 ```output
 {
-  "count": 43,
+  "count": 44,
   "severities": [
     "ERROR",
     "INFO",

@@ -6,11 +6,11 @@ import io.github.mbackschat.a12.dm.cli.DocInstance;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
-import io.github.mbackschat.a12.dm.cli.interp.IncludeRelativizationException;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
-import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -86,18 +86,9 @@ final class RuleEvalCommand extends BaseCommand {
             return fail("cannot read document: " + e.getMessage());
         }
         try {
-            // Pre-expand kernel-free so an includes-bearing model evaluates with its mounted content present
-            // (decoupling Stage 2 / A4); refuse loudly if a surviving included element retains an unmapped ref.
-            String interpJson;
-            try {
-                interpJson = InterpreterEngine.expandForEval(json, workspace.resolverFor(modelPath));
-            } catch (IncludeRelativizationException e) {
-                return refusePrecheck("rule", "eval", RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED,
-                        e.getMessage(), modelPath, RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED.fix());
-            } catch (UnresolvedReferenceException e) {
-                return refusePrecheck("rule", "eval", RkCode.UNRESOLVED_REFERENCE, e.getMessage(), modelPath,
-                        RkCode.UNRESOLVED_REFERENCE.fix());
-            }
+            // Use the public portable workspace so included content is mounted before rule evaluation.
+            String interpJson = InterpreterEngine.prepareForEval(
+                    json, Path.of(modelPath).getFileName().toString(), workspace.resolverFor(modelPath));
             // a structured refusal — the interpreter otherwise throws "no such rule", a bare error.
             if (!InterpreterEngine.ruleFullNames(interpJson).contains(rule)) {
                 return refuseNotFound("rule", "eval", RkCode.NO_SUCH_RULE,
@@ -122,6 +113,8 @@ final class RuleEvalCommand extends BaseCommand {
                     modelPath, RkCode.INVALID_CONFIG_VALUE.fix());
         } catch (IllegalArgumentException badDoc) {
             return fail(badDoc.getMessage());
+        } catch (ModelPreparationError e) {
+            throw e;
         } catch (RuntimeException e) {
             return fail("rule eval failed: " + e.getMessage());
         }

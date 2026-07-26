@@ -19,6 +19,9 @@ import io.github.mbackschat.a12.dm.core.Notification;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationDiagnostic;
+import io.github.mbackschat.a12.dm.interpreter.ModelPreparationError;
+import io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
@@ -253,6 +256,62 @@ public abstract class BaseCommand implements Callable<Integer> {
                 Optional.empty());
         return ResultEnvelope.rejected(target, op,
                 "a model reference could not be resolved: " + e.reference(), List.of(d));
+    }
+
+    /** Convert every portable workspace diagnostic into the CLI's corrective, self-describing refusal shape. */
+    static ResultEnvelope modelPreparationEnvelope(String target, String op, ModelPreparationError error) {
+        List<Diagnostic> diagnostics = error.getDiagnostics().stream()
+                .map(BaseCommand::modelPreparationDiagnostic)
+                .toList();
+        return ResultEnvelope.refused(
+                target,
+                op,
+                "the model workspace could not be prepared",
+                diagnostics);
+    }
+
+    private static Diagnostic modelPreparationDiagnostic(ModelPreparationDiagnostic preparation) {
+        RkCode code = switch (preparation.getCode()) {
+            case UNRESOLVED_MODEL_REFERENCE -> RkCode.UNRESOLVED_REFERENCE;
+            case UNMAPPED_INCLUDED_REFERENCE -> RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED;
+            case UNSUPPORTED_TIME_ZONE -> timeZoneCode(preparation.getReference());
+            case INVALID_MODEL_SOURCE -> preparation.getReference() != null
+                    ? RkCode.INVALID_CONFIG_VALUE
+                    : RkCode.MODEL_PREPARATION_FAILED;
+            default -> RkCode.MODEL_PREPARATION_FAILED;
+        };
+        String arg = firstNonBlank(
+                preparation.getReference(),
+                preparation.getRequestedModelId(),
+                preparation.getModelId(),
+                preparation.getDiagnosticLabel(),
+                preparation.getCode().name());
+        return Diagnostic.precheck(
+                Optional.of(code.code()),
+                preparation.getCode().name() + ": " + preparation.getMessage(),
+                Diagnostic.Where.arg(preparation.getPath(), arg),
+                Optional.of(code.fix()),
+                Optional.of(code.meaning()));
+    }
+
+    /**
+     * Common code cannot classify the host Java time-zone registry. Preserve the CLI contract by separating a
+     * valid-but-unsupported zone from an unknown id at this JVM projection boundary.
+     */
+    private static RkCode timeZoneCode(String timeZoneId) {
+        return switch (ModelTimeZoneContract.classify(true, timeZoneId)) {
+            case KERNEL_LEGAL_INTERPRETER_UNSUPPORTED -> RkCode.INTERPRETER_TIMEZONE_UNSUPPORTED;
+            case ABSENT_DEFAULT, INTERPRETER_SUPPORTED, KERNEL_INVALID -> RkCode.INVALID_CONFIG_VALUE;
+        };
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        throw new IllegalArgumentException("at least one diagnostic locator is required");
     }
 
     /**

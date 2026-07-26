@@ -6,9 +6,7 @@ import io.github.mbackschat.a12.dm.cli.DocInstance;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
-import io.github.mbackschat.a12.dm.cli.interp.IncludeRelativizationException;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
-import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -150,20 +148,9 @@ final class ModelEvalCommand extends BaseCommand {
             errorEntityRelPath = "../" + field.substring(effectiveGroup.length() + 1);
         }
 
-        // Pre-expand the model kernel-free so an includes-bearing model is evaluated with its mounted content
-        // present (decoupling Stage 2 / A4 — was silently dropped).
-        String interpJson;
-        try {
-            interpJson = InterpreterEngine.expandForEval(modelJson, resolver);
-        } catch (IncludeRelativizationException e) {
-            return refusePrecheck("model", "eval", RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED,
-                    e.getMessage(), model, RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED.fix());
-        } catch (UnresolvedReferenceException e) {
-            return refusePrecheck("model", "eval", RkCode.UNRESOLVED_REFERENCE, e.getMessage(), model,
-                    RkCode.UNRESOLVED_REFERENCE.fix());
-        } catch (RuntimeException e) {
-            return fail("cannot expand model: " + e.getMessage());
-        }
+        // Use the public portable workspace so an includes-bearing model evaluates over its mounted content.
+        String interpJson =
+                InterpreterEngine.prepareForEval(modelJson, Path.of(model).getFileName().toString(), resolver);
 
         ObjectNode data;
         try {

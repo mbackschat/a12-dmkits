@@ -98,6 +98,12 @@ public enum RkCode {
                     + "the remaining element is refused so evaluation never silently mis-reports.",
             "check every reference in the named included element resolves inside the included model; or "
                     + "author the rule on the INCLUDING model referencing the mounted fields, or use a relative form."),
+    MODEL_PREPARATION_FAILED(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "the portable workspace could not turn the selected model-reference closure into one unambiguous, "
+                    + "self-contained model. The diagnostic summary names the exact preparation reason; no partial "
+                    + "expanded or evaluated result is usable.",
+            "fix the named model source, include/type-definition edge, ambiguity, cycle, language mismatch, or "
+                    + "resource-limit failure, then expand or evaluate the complete closure again."),
     INTERPRETER_TIMEZONE_UNSUPPORTED(Severity.ERROR, DiagnosticSource.PRECHECK,
             "the model's modelConfig.timeZone is outside the interpreter-backed evaluator's supported set "
                     + "{UTC, GMT, Europe/Berlin}. At the JVM boundary this code is emitted only after the id is "

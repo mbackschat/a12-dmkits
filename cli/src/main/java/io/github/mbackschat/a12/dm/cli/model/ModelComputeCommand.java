@@ -4,9 +4,7 @@ import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.DocInstance;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
-import io.github.mbackschat.a12.dm.cli.interp.IncludeRelativizationException;
 import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
-import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedModelTimeZoneException;
 import io.github.mbackschat.a12.dm.interpreter.InvalidModelTimeZoneException;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
@@ -69,20 +67,9 @@ final class ModelComputeCommand extends BaseCommand {
         }
         ModelResolver resolver = workspace.resolverFor(model);
 
-        // Pre-expand kernel-free so an includes-bearing model computes with its mounted content present
-        // (decoupling Stage 2 / A4).
-        String interpJson;
-        try {
-            interpJson = InterpreterEngine.expandForEval(modelJson, resolver);
-        } catch (IncludeRelativizationException e) {
-            return refusePrecheck("model", "compute", RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED,
-                    e.getMessage(), model, RkCode.INTERPRETER_INCLUDE_RULES_UNSUPPORTED.fix());
-        } catch (UnresolvedReferenceException e) {
-            return refusePrecheck("model", "compute", RkCode.UNRESOLVED_REFERENCE, e.getMessage(), model,
-                    RkCode.UNRESOLVED_REFERENCE.fix());
-        } catch (RuntimeException e) {
-            return fail("cannot expand model: " + e.getMessage());
-        }
+        // Use the public portable workspace so an includes-bearing model computes over its mounted content.
+        String interpJson =
+                InterpreterEngine.prepareForEval(modelJson, Path.of(model).getFileName().toString(), resolver);
 
         ObjectNode data;
         try {

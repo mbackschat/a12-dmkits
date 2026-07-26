@@ -24,8 +24,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
  * A4 (decoupling Stage 2) — the silent-includes-drop defect is closed on the DEFAULT (kernel-free interpreter)
  * eval path. Before this, {@code model eval}/{@code rule eval}/{@code model compute} handed the RAW model to the
  * interpreter, which does not expand includes, so an includes-bearing model lost its mounted content and a rule
- * over a mounted field silently mis-reported. Now the CLI pre-expands kernel-free (via {@code ModelReader}), so
- * the default path agrees with the kernel. An INCLUDED model's own rules/computations are reference-aware:
+ * over a mounted field silently mis-reported. Now the CLI assembles through the portable commonMain
+ * {@code ModelWorkspace}, so the default path agrees with the kernel. An INCLUDED model's own
+ * rules/computations are reference-aware:
  * same-group relative references stay unchanged while moved absolute/short-name targets are rebound before
  * mounting (IF146). A genuine unmapped reference refuses loudly. The kernel leg here is the {@code KernelEval}
  * harness (adapter API). Own domain (an insurance policy including a benefits sub-model).
