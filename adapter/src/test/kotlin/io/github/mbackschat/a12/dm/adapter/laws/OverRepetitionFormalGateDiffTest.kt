@@ -4,6 +4,7 @@ import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeCheckError
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeFactory
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeValidationParam
 import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldValidator
+import com.mgmtp.a12.kernel.md.document.apiV2.DocumentPointer
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.load.ModelLoader
@@ -42,6 +43,33 @@ import org.junit.jupiter.api.Test
  * index; a sparse builder would compare structurally-different documents). Insurance domain (own fixtures).
  */
 class OverRepetitionFormalGateDiffTest {
+
+    /**
+     * The pinned Kernel pointer contract exposes repetition coordinates only as primitive/boxed 32-bit integers.
+     * This is the measured portability basis for refusing a larger JavaScript safe integer before Kotlin/JS can
+     * narrow it. Enumerating every public pointer factory defeats an overlooked long-coordinate overload.
+     */
+    @Test
+    fun kernelDocumentPointerCoordinateDomainIsSigned32Bit() {
+        val pointer = DocumentPointer.of("/Application", listOf(Int.MAX_VALUE))
+        assertEquals(listOf(Int.MAX_VALUE), pointer.repetitionIndexes())
+
+        val factories = DocumentPointer::class.java.methods
+            .filter { it.name == "of" }
+        assertTrue(
+            factories.none { method ->
+                method.parameterTypes.any { it == Long::class.javaPrimitiveType || it == java.lang.Long::class.java } ||
+                    method.genericParameterTypes.any { it.typeName.contains("java.lang.Long") }
+            },
+            "the pinned Kernel must not expose an unmeasured wider coordinate factory",
+        )
+        assertTrue(
+            factories.any { method ->
+                method.genericParameterTypes.any { it.typeName.contains("java.lang.Integer") }
+            },
+            "at least one exact-pointer factory must expose its coordinate element type",
+        )
+    }
 
     // /Policy { Insured; Coverages[2] { Premium(2,2 decimals); Riders[2] { Fee } } } — cap 2, so index 3 is
     // over-limit at either axis. Premium requires exactly two decimals, so "10.00" is valid and "10" malformed.

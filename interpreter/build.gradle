@@ -35,7 +35,23 @@ kotlin {
 
     jvm()
     js {
-        nodejs()
+        outputModuleName = 'a12-interpreter-core'
+        nodejs {
+            testTask {
+                useMocha {
+                    // Hostile workspace-boundary cases intentionally build large inputs; Mocha's 2s default
+                    // is below their verified Node runtime and turns a semantic guard into a host-speed probe.
+                    timeout = '10s'
+                }
+            }
+        }
+        useEsModules()
+        binaries.library()
+        generateTypeScriptDefinitions()
+        compilerOptions {
+            target.set('es2015')
+            sourceMap.set(true)
+        }
     }
 
     sourceSets {
@@ -1124,6 +1140,396 @@ def verifyInterpreterMavenPublication = tasks.register('verifyInterpreterMavenPu
 }
 tasks.named('check') {
     dependsOn verifyInterpreterMavenPublication
+}
+
+// --- R3.2 TypeScript package -----------------------------------------------------------------------
+// Kotlin owns the evaluator and an intentionally private handle bridge; an authored TypeScript façade owns the
+// public JS contract. This keeps Kotlin collections, enums, suspension machinery, and accidental mangled names
+// out of the package ABI while retaining compiler-generated declarations for the bridge itself.
+def interpreterNpmStagingDir = rootProject.layout.buildDirectory.dir('interpreter-release/npm')
+def interpreterNpmTarball = interpreterNpmStagingDir.map {
+    it.file("a12-interpreter-${project.version}.tgz")
+}
+def interpreterKotlinJsDistribution = layout.buildDirectory.dir('dist/js/productionLibrary')
+def interpreterNpmPackageBuildDir = layout.buildDirectory.dir('npm-package')
+def interpreterTypeScriptSourceDir = file('typescript')
+def interpreterTypeScriptCompiler = rootProject.layout.projectDirectory.file(
+    'build/js/node_modules/typescript/bin/tsc',
+)
+def stageInterpreterNpmPackage = tasks.register('stageInterpreterNpmPackage', Sync) {
+    group = 'build'
+    description = 'Stage the private Kotlin bridge and public TypeScript façade for npm packaging.'
+    dependsOn tasks.named('jsNodeProductionLibraryDistribution')
+    from(new File(interpreterTypeScriptSourceDir, 'src')) {
+        into('src')
+    }
+    from(new File(interpreterTypeScriptSourceDir, 'tsconfig.json'))
+    from(new File(interpreterTypeScriptSourceDir, 'README.md')) {
+        rename { 'README.md' }
+    }
+    from(rootProject.file('LICENSE')) {
+        rename { 'LICENSE' }
+    }
+    from(interpreterKotlinJsDistribution) {
+        include '*.mjs'
+        include '*.mjs.map'
+        include 'a12-interpreter-core.d.ts'
+        exclude 'a12-dmkits-interpreter.*'
+        into('internal')
+    }
+    from(interpreterKotlinJsDistribution) {
+        include 'a12-interpreter-core.d.ts'
+        rename { 'a12-interpreter-core.d.mts' }
+        into('internal')
+    }
+    into(interpreterNpmPackageBuildDir)
+    inputs.property('interpreterNpmIdentity', provider {
+        "@mbackschat/a12-interpreter@${project.version}"
+    })
+    doLast {
+        def packageJson = [
+            name       : '@mbackschat/a12-interpreter',
+            version    : project.version.toString(),
+            description: 'Kernel-free Kotlin Multiplatform interpreter for A12 document models.',
+            type       : 'module',
+            main       : './dist/index.js',
+            types      : './dist/index.d.ts',
+            exports    : [
+                '.': [
+                    types  : './dist/index.d.ts',
+                    import : './dist/index.js',
+                    default: './dist/index.js',
+                ],
+            ],
+            files      : ['dist', 'internal', 'README.md', 'LICENSE'],
+            license    : 'MIT',
+            author     : 'Martin Backschat',
+            repository : [
+                type: 'git',
+                url : 'git+https://github.com/mbackschat/a12-interpreter-releases.git',
+            ],
+            homepage   : "https://github.com/mbackschat/a12-interpreter-releases/releases/tag/v${project.version}",
+            bugs       : [
+                url: 'https://github.com/mbackschat/a12-interpreter-releases/issues',
+            ],
+            dependencies: [
+                'big.js': '6.2.2',
+            ],
+        ]
+        def target = interpreterNpmPackageBuildDir.get().file('package.json').asFile
+        target.text = groovy.json.JsonOutput.prettyPrint(
+            groovy.json.JsonOutput.toJson(packageJson),
+        ) + '\n'
+
+        // Kotlin's production-library linker retains build-relative and dependency-build source names while
+        // leaving sourcesContent empty. Rewrite the staged copy only: own sources are embedded, dependency
+        // sources get stable package-local labels, and no checkout or CI-worker path reaches the tarball.
+        fileTree(interpreterNpmPackageBuildDir.get().dir('internal').asFile) {
+            include '*.mjs.map'
+        }.files.each { sourceMapFile ->
+            def sourceMap = new groovy.json.JsonSlurper().parse(sourceMapFile)
+            def sanitizedSources = []
+            def embeddedSources = []
+            (sourceMap.sources ?: []).eachWithIndex { source, index ->
+                def ownSource = source =~ /.*\/src\/(commonMain|jsMain)\/(.*)/
+                if (ownSource.matches()) {
+                    def sourceSet = ownSource.group(1)
+                    def relative = ownSource.group(2)
+                    def sourceFile = file("src/${sourceSet}/${relative}")
+                    if (!sourceFile.isFile()) {
+                        throw new GradleException(
+                            "source map ${sourceMapFile.name} names missing own source ${sourceFile}",
+                        )
+                    }
+                    sanitizedSources += "a12-interpreter/${sourceSet}/${relative}"
+                    embeddedSources += sourceFile.getText('UTF-8')
+                } else {
+                    def leaf = new File(source as String).name
+                    sanitizedSources += "dependencies/${index}/${leaf}"
+                    embeddedSources += ''
+                }
+            }
+            sourceMap.sources = sanitizedSources
+            sourceMap.sourcesContent = embeddedSources
+            sourceMapFile.text = groovy.json.JsonOutput.toJson(sourceMap)
+        }
+    }
+}
+def compileInterpreterTypeScriptFacade = tasks.register(
+    'compileInterpreterTypeScriptFacade',
+    Exec,
+) {
+    group = 'build'
+    description = 'Compile the authored public TypeScript façade and generate its declarations and maps.'
+    dependsOn stageInterpreterNpmPackage
+    workingDir interpreterNpmPackageBuildDir
+    commandLine(
+        'node',
+        interpreterTypeScriptCompiler.asFile.absolutePath,
+        '--project',
+        interpreterNpmPackageBuildDir.get().file('tsconfig.json').asFile.absolutePath,
+    )
+    inputs.dir(interpreterTypeScriptSourceDir)
+        .withPropertyName('typescriptFacadeSources')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    outputs.dir(interpreterNpmPackageBuildDir.map { it.dir('dist') })
+    doLast {
+        def packageRoot = interpreterNpmPackageBuildDir.get().asFile
+        def sourceRoot = new File(packageRoot, 'src').canonicalFile
+        fileTree(new File(packageRoot, 'dist')) {
+            include '**/*.d.ts.map'
+        }.files.each { sourceMapFile ->
+            def sourceMap = new groovy.json.JsonSlurper().parse(sourceMapFile)
+            def embedded = []
+            sourceMap.sources = (sourceMap.sources ?: []).collect { source ->
+                def sourceFile = new File(sourceMapFile.parentFile, source as String).canonicalFile
+                if (!sourceFile.toPath().startsWith(sourceRoot.toPath()) || !sourceFile.isFile()) {
+                    throw new GradleException(
+                        "declaration map ${sourceMapFile.name} escapes TypeScript sources: ${source}",
+                    )
+                }
+                embedded += sourceFile.getText('UTF-8')
+                "a12-interpreter/typescript/${sourceRoot.toPath().relativize(sourceFile.toPath())}"
+            }
+            sourceMap.sourcesContent = embedded
+            sourceMapFile.text = groovy.json.JsonOutput.toJson(sourceMap)
+        }
+    }
+}
+def packInterpreterNpmPackage = tasks.register('packInterpreterNpmPackage', Exec) {
+    group = 'build'
+    description = 'Pack the real @mbackschat/a12-interpreter npm-compatible tarball.'
+    dependsOn compileInterpreterTypeScriptFacade
+    workingDir interpreterNpmPackageBuildDir
+    commandLine(
+        'pnpm',
+        'pack',
+        '--pack-destination',
+        interpreterNpmStagingDir.get().asFile.absolutePath,
+    )
+    environment 'CI', 'true'
+    inputs.dir(interpreterNpmPackageBuildDir)
+        .withPropertyName('stagedNpmPackage')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    outputs.file(interpreterNpmTarball)
+    doFirst {
+        interpreterNpmStagingDir.get().asFile.mkdirs()
+        project.delete(fileTree(interpreterNpmStagingDir) { include '*.tgz' })
+    }
+    doLast {
+        def packed = fileTree(interpreterNpmStagingDir) { include '*.tgz' }.files
+        if (packed.size() != 1) {
+            throw new GradleException("pnpm pack produced ${packed.size()} tarballs, expected one")
+        }
+        def expected = interpreterNpmTarball.get().asFile
+        def actual = packed.iterator().next()
+        if (actual != expected) {
+            project.copy {
+                from(actual)
+                into(expected.parentFile)
+                rename { expected.name }
+            }
+            project.delete(actual)
+        }
+    }
+}
+def verifyInterpreterNpmPackage = tasks.register('verifyInterpreterNpmPackage') {
+    group = 'verification'
+    description = 'Verify npm metadata, required artifacts, browser-safe maps, and import purity.'
+    dependsOn packInterpreterNpmPackage
+    inputs.file(interpreterNpmTarball)
+    outputs.upToDateWhen { false }
+    doLast {
+        def archive = tarTree(interpreterNpmTarball.get().asFile)
+        def entries = [] as Set
+        archive.visit { details ->
+            if (!details.directory) {
+                entries += details.relativePath.pathString
+            }
+        }
+        def required = [
+            'package/package.json',
+            'package/LICENSE',
+            'package/README.md',
+            'package/dist/index.js',
+            'package/dist/index.js.map',
+            'package/dist/index.d.ts',
+            'package/dist/index.d.ts.map',
+            'package/internal/a12-interpreter-core.mjs',
+            'package/internal/a12-interpreter-core.mjs.map',
+            'package/internal/a12-interpreter-core.d.ts',
+            'package/internal/a12-interpreter-core.d.mts',
+        ]
+        def missing = required.findAll { !(it in entries) }
+        if (missing) {
+            throw new GradleException("interpreter npm tarball misses ${missing}")
+        }
+        def packageJson = new groovy.json.JsonSlurper().parse(
+            archive.matching { include 'package/package.json' }.singleFile,
+        )
+        if (packageJson.name != '@mbackschat/a12-interpreter' ||
+            packageJson.version != project.version.toString() ||
+            packageJson.license != 'MIT') {
+            throw new GradleException(
+                "unexpected interpreter npm identity ${packageJson.name}@${packageJson.version} " +
+                    "license=${packageJson.license}",
+            )
+        }
+        if (packageJson.dependencies != ['big.js': '6.2.2'] ||
+            packageJson.containsKey('devDependencies')) {
+            throw new GradleException(
+                "unexpected interpreter npm dependency contract ${packageJson.dependencies}",
+            )
+        }
+        archive.matching { include 'package/**/*.map' }.files.each { sourceMapFile ->
+            def sourceMap = new groovy.json.JsonSlurper().parse(sourceMapFile)
+            def sources = sourceMap.sources ?: []
+            def contents = sourceMap.sourcesContent ?: []
+            sources.eachWithIndex { source, index ->
+                def embedded = index < contents.size() && contents[index] != null
+                def unsafe = source.startsWith('/') ||
+                    source.startsWith('file:') ||
+                    source ==~ /^[A-Za-z]:.*/ ||
+                    source.contains('/Users/')
+                if (unsafe || (!embedded && source.contains('..'))) {
+                    throw new GradleException(
+                        "source map ${sourceMapFile.name} exposes non-portable source '${source}'",
+                    )
+                }
+            }
+        }
+        archive.matching {
+            include 'package/**/*.js'
+            include 'package/**/*.mjs'
+        }.files.each { javascript ->
+            def source = javascript.getText('UTF-8')
+            if (source.contains("from 'node:") ||
+                source.contains('from "node:') ||
+                source ==~ /(?s).*require\\(['\"](?:fs|path|process|buffer)['\"]\\).*/) {
+                throw new GradleException(
+                    "browser package contains a Node-only import in ${javascript.name}",
+                )
+            }
+        }
+    }
+}
+
+// The consumer is deliberately staged outside the source tree and installs the packed tarball. It resolves
+// TypeScript only as a public dev dependency and has no project substitution or internal source import.
+def externalTypeScriptConsumerSourceDir = file('consumer-tests/typescript')
+def externalTypeScriptConsumerBuildDir = rootProject.layout.buildDirectory.dir(
+    'interpreter-release/consumer/typescript',
+)
+def externalTypeScriptConsumerStoreDir = rootProject.layout.buildDirectory.dir(
+    'interpreter-release/consumer-pnpm-store',
+)
+def externalTypeScriptConsumerModels = [
+    file('src/commonTest/resources/workspace-preparation/entries/permit-single.dm.json'),
+    file('src/commonTest/resources/workspace-preparation/shared/permit-section.dm.json'),
+    file('src/commonTest/resources/workspace-preparation/shared/inspection-checks.dm.json'),
+    file('src/commonTest/resources/workspace-preparation/shared/permit-types.dm.json'),
+    file('src/commonTest/resources/workspace-preparation/self-contained/permit-basic.dm.json'),
+    rootProject.file('examples/models/order-ruled.dm.json'),
+]
+def prepareExternalInterpreterTypeScriptConsumer = tasks.register(
+    'prepareExternalInterpreterTypeScriptConsumer',
+    Sync,
+) {
+    group = 'verification'
+    description = 'Create a fresh standalone TypeScript consumer for the packed interpreter tarball.'
+    from(externalTypeScriptConsumerSourceDir)
+    from(externalTypeScriptConsumerModels) {
+        into('models')
+    }
+    into(externalTypeScriptConsumerBuildDir)
+    inputs.files(externalTypeScriptConsumerModels)
+        .withPropertyName('typedAuthoredTypeScriptConsumerModels')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    outputs.upToDateWhen { false }
+    doFirst {
+        // The preceding pnpm smoke leaves a symlinked node_modules tree. Recreate this disposable consumer
+        // root before Sync walks it, otherwise Gradle follows stale package-manager links while staging.
+        project.delete(externalTypeScriptConsumerBuildDir)
+    }
+}
+def requirePackedInterpreterNpmPackage = tasks.register('requirePackedInterpreterNpmPackage') {
+    group = 'verification'
+    description = 'Require the real interpreter npm tarball before resolving the external consumer.'
+    dependsOn verifyInterpreterNpmPackage
+    dependsOn prepareExternalInterpreterTypeScriptConsumer
+    inputs.file(interpreterVersionFile)
+    outputs.upToDateWhen { false }
+    doLast {
+        def tarball = interpreterNpmTarball.get().asFile
+        if (!tarball.isFile() || tarball.length() == 0L) {
+            throw new GradleException("missing packed interpreter npm tarball ${tarball}")
+        }
+    }
+}
+def installExternalInterpreterTypeScriptConsumerDependencies = tasks.register(
+    'installExternalInterpreterTypeScriptConsumerDependencies',
+    Exec,
+) {
+    group = 'verification'
+    description = 'Resolve only the fresh TypeScript consumer dev dependencies from public npm.'
+    dependsOn requirePackedInterpreterNpmPackage
+    workingDir externalTypeScriptConsumerBuildDir
+    commandLine(
+        'pnpm',
+        'install',
+        '--config.confirmModulesPurge=false',
+        '--frozen-lockfile=false',
+        '--lockfile=false',
+        '--store-dir',
+        externalTypeScriptConsumerStoreDir.get().asFile.absolutePath,
+    )
+    environment 'CI', 'true'
+    outputs.upToDateWhen { false }
+}
+def installPackedInterpreterInTypeScriptConsumer = tasks.register(
+    'installPackedInterpreterInTypeScriptConsumer',
+    Exec,
+) {
+    group = 'verification'
+    description = 'Install the real interpreter tarball into the fresh TypeScript consumer.'
+    dependsOn installExternalInterpreterTypeScriptConsumerDependencies
+    workingDir externalTypeScriptConsumerBuildDir
+    commandLine(
+        'pnpm',
+        'add',
+        '--save-exact',
+        '--lockfile=false',
+        '--store-dir',
+        externalTypeScriptConsumerStoreDir.get().asFile.absolutePath,
+        interpreterNpmTarball.get().asFile.absolutePath,
+    )
+    environment 'CI', 'true'
+    outputs.upToDateWhen { false }
+}
+def verifyExternalInterpreterTypeScriptConsumer = tasks.register(
+    'verifyExternalInterpreterTypeScriptConsumer',
+    Exec,
+) {
+    group = 'verification'
+    description = 'Type-check and execute dm-interpreter from a fresh standalone pnpm project.'
+    dependsOn installPackedInterpreterInTypeScriptConsumer
+    workingDir externalTypeScriptConsumerBuildDir
+    commandLine(
+        'pnpm',
+        'run',
+        'check',
+    )
+    environment 'CI', 'true'
+    outputs.upToDateWhen { false }
+}
+def verifyInterpreterNpmPublication = tasks.register('verifyInterpreterNpmPublication') {
+    group = 'verification'
+    description = 'Verify the packed interpreter package and a fresh external TypeScript consumer.'
+    dependsOn verifyInterpreterNpmPackage
+    dependsOn verifyExternalInterpreterTypeScriptConsumer
+}
+tasks.named('check') {
+    dependsOn verifyInterpreterNpmPublication
 }
 
 // --- Conformance corpus replay ---------------------------------------------------------------------

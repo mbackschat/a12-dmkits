@@ -118,7 +118,7 @@ The primary direct verbs remain deliberately familiar: `validateFull`, `validate
 | `ModelExpansionResult` | non-throwing success/failure union for assembler-only expanded DM-JSON output |
 | `UnknownModelPathError` | typed lookup exception containing the requested model-entity kind and path |
 | `DocumentInputError` | typed decoding exception containing every invalid transport/model placement diagnostic, with separate input and model paths |
-| `DocumentCoordinateError` | typed pointer-construction exception for the wrong coordinate count, a coordinate that is not a positive safe integer, or a field terminal coordinate other than 1 |
+| `DocumentCoordinateError` | typed pointer-construction exception for the wrong coordinate count, a coordinate outside the positive signed-32-bit portable range, or a field terminal coordinate other than 1 |
 | `DocumentRowScopeError` | typed row-enumeration exception when the supplied ancestor row cannot contain the requested group |
 | `DateFragmentComponents` | closed component input union for explicit year-month, year, month, or month-day fragment construction |
 | `DocumentCellValue` | the closed union accepted by typed document writes: an ordinary `A12Value`, a model-owned day-optional date, or a model-owned date fragment |
@@ -182,7 +182,7 @@ The primary direct verbs remain deliberately familiar: `validateFull`, `validate
 | `InterpreterSupportReport` | configuration-aware, document-independent report of supported, unsupported, and source-factory-runtime-resolved model constructs |
 | `ValidationReport` | detached findings, unsupported-program data, and independent error/support axes; it contains no live interpreter state |
 
-Host-language values never substitute for document values: native `number` is limited to safe-integer API metadata and coordinates, document decimals use `A12Number`, document Booleans use `A12Boolean`, and `undefined` does not mean absent or present-empty storage. TypeScript brands prevent accidental assignment only; Kotlin-owned runtime tokens enforce authenticity.
+Host-language values never substitute for document values: native `number` is limited to safe-integer API metadata and positive signed-32-bit coordinates, document decimals use `A12Number`, document Booleans use `A12Boolean`, and `undefined` does not mean absent or present-empty storage. Coordinates stop at `2_147_483_647` because both the portable Kotlin storage and the pinned Kernel 30.8.1 pointer API represent every repetition index as `Int`/`int`; the TypeScript façade refuses a larger safe integer before Kotlin/JS conversion can truncate it. TypeScript brands prevent accidental assignment only; Kotlin-owned runtime tokens enforce authenticity.
 
 #### Preparation and core errors
 
@@ -431,7 +431,8 @@ type DocumentInputDiagnostic =
         readonly reason:
           | "not-number"
           | "not-safe-integer"
-          | "not-positive";
+          | "not-positive"
+          | "outside-portable-range";
       };
     }
   | DocumentInputDiagnosticBase & {
@@ -492,7 +493,8 @@ interface DocumentInputError extends Error {
 
 type DocumentCoordinateReasonCode =
   | "coordinate-count-mismatch"
-  | "coordinate-not-positive-safe-integer"
+  | "coordinate-not-positive"
+  | "coordinate-outside-portable-range"
   | "field-terminal-not-one";
 
 interface DocumentCoordinateError extends Error {
@@ -603,7 +605,7 @@ The common Kotlin projection uses `suspend fun ModelSourceProvider.load(modelId:
 | Document input | `DocumentInputError` aggregates portable placement diagnostics; every item has an envelope `inputPath` and may separately carry the attempted A12 `modelPath` |
 | Diagnostic details | The discriminated `details` member carries expected/received type, version, count, limit, property, duplicate, or conflict data; consumers never parse presentation-only `message` |
 | Placement location | `placementIndex`, when present, is zero-based into the corresponding input array |
-| Coordinates | `DocumentCoordinateError` reports the exact model path, expected coordinate count, supplied coordinates, and whether arity, positive-safe-integer, or field-terminal validation failed |
+| Coordinates | `DocumentCoordinateError` reports the exact model path and whether arity, positive signed-32-bit portability, or field-terminal validation failed; placement decoding reports the equivalent coordinate failure at its exact `inputPath` |
 | Row scope | `DocumentRowScopeError` carries the requested group path and supplied ancestor `GroupPointer` |
 | Typed write | `DocumentValueWriteError` reports kind mismatch or lossy representation without changing the value |
 | Candidate preparation | `ProgramPreparationError` reports invalid candidate-rule or expression source without classifying the whole model as invalid |

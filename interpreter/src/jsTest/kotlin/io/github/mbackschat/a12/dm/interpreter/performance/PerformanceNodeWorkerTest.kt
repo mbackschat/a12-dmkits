@@ -2,6 +2,11 @@
 
 package io.github.mbackschat.a12.dm.interpreter.performance
 
+import io.github.mbackschat.a12.dm.interpreter.NodeCrypto
+import io.github.mbackschat.a12.dm.interpreter.NodeFileSystem
+import io.github.mbackschat.a12.dm.interpreter.NodePath
+import io.github.mbackschat.a12.dm.interpreter.NodePerformanceHooks
+import io.github.mbackschat.a12.dm.interpreter.NodeV8
 import kotlin.test.Test
 
 class PerformanceNodeWorkerTest {
@@ -18,11 +23,6 @@ class PerformanceNodeWorkerTest {
 
 private class NodePerformancePlatform : PerformancePlatform {
     private val process: dynamic = js("process")
-    private val performance: dynamic = js("require('node:perf_hooks').performance")
-    private val fileSystem: dynamic = js("require('node:fs')")
-    private val nodePath: dynamic = js("require('node:path')")
-    private val crypto: dynamic = js("require('node:crypto')")
-    private val v8: dynamic = js("require('node:v8')")
 
     override val host = PerformanceHost.NODE
 
@@ -34,24 +34,24 @@ private class NodePerformancePlatform : PerformancePlatform {
         os = process.platform as String,
         arch = process.arch as String,
         pid = (process.pid as Number).toLong(),
-        maxHeapBytes = (v8.getHeapStatistics().heap_size_limit as Number).toLong(),
+        maxHeapBytes = (NodeV8.getHeapStatistics().heap_size_limit as Number).toLong(),
     )
 
     override fun nanoTime(): Long =
-        ((performance.now() as Number).toDouble() * 1_000_000.0).toLong()
+        ((NodePerformanceHooks.performance.now() as Number).toDouble() * 1_000_000.0).toLong()
 
     override fun sha256(content: String): String =
-        crypto.createHash("sha256").update(content, "utf8").digest("hex") as String
+        NodeCrypto.createHash("sha256").update(content, "utf8").digest("hex") as String
 
     override fun write(path: String, content: String) {
-        fileSystem.mkdirSync(nodePath.dirname(path), js("({ recursive: true })"))
+        NodeFileSystem.mkdirSync(NodePath.dirname(path), js("({ recursive: true })"))
         val temporary = "$path.tmp-${process.pid}"
         try {
-            fileSystem.writeFileSync(temporary, content, "utf8")
-            fileSystem.renameSync(temporary, path)
+            NodeFileSystem.writeFileSync(temporary, content, "utf8")
+            NodeFileSystem.renameSync(temporary, path)
         } finally {
-            if (fileSystem.existsSync(temporary) as Boolean) {
-                fileSystem.unlinkSync(temporary)
+            if (NodeFileSystem.existsSync(temporary)) {
+                NodeFileSystem.unlinkSync(temporary)
             }
         }
     }

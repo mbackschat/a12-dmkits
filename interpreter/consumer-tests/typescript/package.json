@@ -1,0 +1,12 @@
+{
+  "name": "a12-interpreter-typescript-consumer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --project tsconfig.json && node dist/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.0",
+    "typescript": "5.9.3"
+  }
+}

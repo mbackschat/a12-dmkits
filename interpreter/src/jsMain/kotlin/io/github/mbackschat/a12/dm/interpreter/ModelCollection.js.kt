@@ -31,7 +31,7 @@ internal fun collectWorkspacePromise(
     provider: PromiseModelSourceProvider,
     limits: ModelPreparationLimits,
 ): Promise<ModelWorkspace> =
-    promise {
+    promiseFromSuspend {
         ModelWorkspace.collect(
             entryModelId = entryModelId,
             provider = provider,
@@ -58,10 +58,10 @@ internal class PromiseModelSourceProvider(
         modelId: String,
         context: ModelSourceLoadContext,
     ): WorkspaceModelSource? =
-        loader.load(modelId, context.maximumBytes, signal).await()
+        loader.load(modelId, context.maximumBytes, signal).awaitValue()
 }
 
-private fun <T> promise(block: suspend () -> T): Promise<T> =
+internal fun <T> promiseFromSuspend(block: suspend () -> T): Promise<T> =
     Promise { resolve, reject ->
         block.startCoroutine(object : Continuation<T> {
             override val context = EmptyCoroutineContext
@@ -71,7 +71,7 @@ private fun <T> promise(block: suspend () -> T): Promise<T> =
         })
     }
 
-private suspend fun <T> Promise<T>.await(): T =
+internal suspend fun <T> Promise<T>.awaitValue(): T =
     suspendCoroutine { continuation ->
         then(
             onFulfilled = { value -> continuation.resume(value) },

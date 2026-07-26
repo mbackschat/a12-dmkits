@@ -2,6 +2,11 @@
 
 package io.github.mbackschat.a12.dm.interpreter.footprint
 
+import io.github.mbackschat.a12.dm.interpreter.NodeCrypto
+import io.github.mbackschat.a12.dm.interpreter.NodeFileSystem
+import io.github.mbackschat.a12.dm.interpreter.NodeInspectorSession
+import io.github.mbackschat.a12.dm.interpreter.NodePath
+import io.github.mbackschat.a12.dm.interpreter.NodeV8
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.resume
@@ -39,10 +44,6 @@ class FootprintNodeWorkerTest {
 private class NodeFootprintPlatform : FootprintPlatform {
     private val process: dynamic = js("process")
     private val global: dynamic = js("globalThis")
-    private val fileSystem: dynamic = js("require('node:fs')")
-    private val nodePath: dynamic = js("require('node:path')")
-    private val crypto: dynamic = js("require('node:crypto')")
-    private val v8: dynamic = js("require('node:v8')")
 
     override val host = FootprintHost.NODE
     override val allocationMethod = "v8-inspector-sampling-${ALLOCATION_SAMPLING_INTERVAL}"
@@ -51,7 +52,7 @@ private class NodeFootprintPlatform : FootprintPlatform {
         process.env[name] as? String
 
     override fun runtime(): FootprintRuntime {
-        val heapStatistics = v8.getHeapStatistics()
+        val heapStatistics = NodeV8.getHeapStatistics()
         return FootprintRuntime(
             name = "Node.js",
             version = process.version as String,
@@ -87,8 +88,7 @@ private class NodeFootprintPlatform : FootprintPlatform {
         }.min()
 
     override suspend fun <T> measureAllocated(block: () -> T): FootprintAllocation<T> {
-        val inspector: dynamic = js("require('node:inspector')")
-        val session: dynamic = js("new inspector.Session()")
+        val session = NodeInspectorSession()
         session.connect()
         try {
             val parameters: dynamic = js("({})")
@@ -118,21 +118,25 @@ private class NodeFootprintPlatform : FootprintPlatform {
     }
 
     override fun sha256(content: String): String =
-        crypto.createHash("sha256").update(content, "utf8").digest("hex") as String
+        NodeCrypto.createHash("sha256").update(content, "utf8").digest("hex") as String
 
     override fun write(path: String, content: String) {
-        val directory = nodePath.dirname(path)
-        fileSystem.mkdirSync(directory, js("({ recursive: true })"))
+        val directory = NodePath.dirname(path)
+        NodeFileSystem.mkdirSync(directory, js("({ recursive: true })"))
         val temporary = "$path.tmp-${process.pid}"
         try {
-            fileSystem.writeFileSync(temporary, content, "utf8")
-            fileSystem.renameSync(temporary, path)
+            NodeFileSystem.writeFileSync(temporary, content, "utf8")
+            NodeFileSystem.renameSync(temporary, path)
         } finally {
-            if (fileSystem.existsSync(temporary) as Boolean) fileSystem.unlinkSync(temporary)
+            if (NodeFileSystem.existsSync(temporary)) NodeFileSystem.unlinkSync(temporary)
         }
     }
 
-    private suspend fun post(session: dynamic, method: String, parameters: dynamic = undefined): dynamic =
+    private suspend fun post(
+        session: NodeInspectorSession,
+        method: String,
+        parameters: dynamic = undefined,
+    ): dynamic =
         kotlin.coroutines.suspendCoroutine { continuation ->
             val callback: (dynamic, dynamic) -> Unit = { error, result ->
                 if (error == null) {
