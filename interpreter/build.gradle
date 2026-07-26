@@ -8,6 +8,22 @@
 // below (proposal §8 — "separation by convention + linting, not a repo wall").
 plugins {
     id 'org.jetbrains.kotlin.multiplatform' version '2.2.0'
+    id 'maven-publish'
+    id 'org.jetbrains.dokka' version '2.2.0'
+}
+
+def interpreterVersionFile = file('VERSION')
+def interpreterReleaseVersion = interpreterVersionFile.getText('UTF-8').trim()
+if (!(interpreterReleaseVersion ==~ /\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/)) {
+    throw new GradleException(
+        "interpreter/VERSION must contain one SemVer value, found '${interpreterReleaseVersion}'",
+    )
+}
+group = 'io.github.mbackschat.a12.dm'
+version = interpreterReleaseVersion
+
+base {
+    archivesName = 'dm-interpreter'
 }
 
 repositories {
@@ -896,6 +912,218 @@ def interpreterJsRuntimeClosure = tasks.register('interpreterJsRuntimeClosure') 
 tasks.named('check') {
     dependsOn interpreterRuntimeClosure
     dependsOn interpreterJsRuntimeClosure
+}
+
+// --- R3.1 Maven publication ------------------------------------------------------------------------
+// The staged repository has the exact conventional layout later copied under the public Pages `/maven`
+// path. A separate Gradle build consumes that tree by coordinates, so project substitution cannot make this
+// gate pass when the publication is incomplete.
+def interpreterStagingMavenDir = rootProject.layout.buildDirectory.dir('interpreter-release/maven')
+def interpreterPublicRepository = 'https://github.com/mbackschat/a12-interpreter-releases'
+
+dokka {
+    dokkaPublications {
+        html {
+            moduleName.set('dm-interpreter')
+            moduleVersion.set(project.version.toString())
+        }
+    }
+    dokkaSourceSets.configureEach {
+        perPackageOption {
+            // The supported library contract lives in the root package. Implementation subpackages remain
+            // in the source JAR for auditability but are not presented as consumer API.
+            matchingRegex.set('io\\.github\\.mbackschat\\.a12\\.dm\\.interpreter\\..*')
+            suppress.set(true)
+        }
+    }
+}
+
+def dokkaHtmlJar = tasks.register('dokkaHtmlJar', Jar) {
+    group = 'documentation'
+    description = 'Package the Kotlin Multiplatform Dokka HTML reference for Maven consumers.'
+    from(tasks.named('dokkaGeneratePublicationHtml').flatMap { it.outputDirectory })
+    archiveClassifier.set('javadoc')
+}
+
+publishing {
+    publications.withType(MavenPublication).configureEach { publication ->
+        if (publication.name == 'kotlinMultiplatform') {
+            artifactId = 'dm-interpreter'
+        } else {
+            artifactId = "dm-interpreter-${publication.name}"
+        }
+        artifact(dokkaHtmlJar)
+        pom {
+            name = publication.name == 'kotlinMultiplatform'
+                ? 'dm-interpreter'
+                : "dm-interpreter ${publication.name}"
+            description = 'Kernel-free Kotlin Multiplatform interpreter for A12 document models.'
+            url = "${interpreterPublicRepository}/releases/tag/v${project.version}"
+            licenses {
+                license {
+                    name = 'MIT License'
+                    url = 'https://opensource.org/licenses/MIT'
+                    distribution = 'repo'
+                }
+            }
+            developers {
+                developer {
+                    id = 'mbackschat'
+                    name = 'Martin Backschat'
+                }
+            }
+            scm {
+                url = "${interpreterPublicRepository}/tree/v${project.version}"
+                connection = "scm:git:${interpreterPublicRepository}.git"
+                tag = "v${project.version}"
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'interpreterStaging'
+            url = interpreterStagingMavenDir
+        }
+    }
+}
+
+def externalConsumerSourceDir = file('consumer-tests/kotlin-jvm')
+def externalConsumerBuildDir = rootProject.layout.buildDirectory.dir(
+    'interpreter-release/consumer/kotlin-jvm',
+)
+def externalConsumerGradleHome = rootProject.layout.buildDirectory.dir(
+    'interpreter-release/consumer-gradle-home',
+)
+def externalConsumerFixture = file(
+    'src/commonTest/resources/workspace-preparation/self-contained/permit-basic.dm.json',
+)
+def prepareExternalInterpreterConsumer = tasks.register(
+    'prepareExternalInterpreterConsumer',
+    Sync,
+) {
+    group = 'verification'
+    description = 'Create a fresh standalone Gradle consumer for the staged interpreter publication.'
+    from(externalConsumerSourceDir)
+    from(externalConsumerFixture) {
+        into('src/main/resources')
+    }
+    into(externalConsumerBuildDir)
+    inputs.file(externalConsumerFixture)
+        .withPropertyName('typedAuthoredConsumerModel')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    outputs.upToDateWhen { false }
+}
+
+def publishInterpreterToStaging = tasks.named(
+    'publishAllPublicationsToInterpreterStagingRepository',
+)
+def verifyExternalInterpreterConsumer = tasks.register(
+    'verifyExternalInterpreterMavenConsumer',
+    Exec,
+) {
+    group = 'verification'
+    description = 'Resolve and execute dm-interpreter from a fresh standalone Kotlin/JVM build.'
+    dependsOn publishInterpreterToStaging
+    dependsOn prepareExternalInterpreterConsumer
+    inputs.dir(externalConsumerSourceDir)
+        .withPropertyName('externalConsumerSources')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    inputs.file(externalConsumerFixture)
+        .withPropertyName('externalConsumerModel')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    inputs.property('interpreterVersion', provider { project.version.toString() })
+    outputs.upToDateWhen { false }
+    doFirst {
+        environment 'INTERPRETER_MAVEN_REPOSITORY', interpreterStagingMavenDir.get().asFile.toURI()
+        environment 'INTERPRETER_VERSION', project.version.toString()
+        // The repository build uses an init script that adds mavenLocal for private development inputs.
+        // A separate Gradle home proves the public consumer has no such repository or project substitution.
+        environment 'GRADLE_USER_HOME', externalConsumerGradleHome.get().asFile.absolutePath
+        commandLine(
+            rootProject.file('gradlew').absolutePath,
+            '--no-daemon',
+            '--console=plain',
+            '--project-dir',
+            externalConsumerBuildDir.get().asFile.absolutePath,
+            'clean',
+            'run',
+        )
+    }
+}
+
+def verifyInterpreterMavenPublication = tasks.register('verifyInterpreterMavenPublication') {
+    group = 'verification'
+    description = 'Verify the staged independent dm-interpreter Maven publication and external consumer.'
+    dependsOn verifyExternalInterpreterConsumer
+    inputs.file(interpreterVersionFile)
+    inputs.dir(interpreterStagingMavenDir)
+    doLast {
+        def releaseVersion = interpreterVersionFile.getText('UTF-8').trim()
+        def repository = interpreterStagingMavenDir.get().asFile
+        def expectedArtifacts = [
+            'dm-interpreter'    : ['pom', 'module', 'mainJar', 'sourcesJar', 'javadocJar'],
+            'dm-interpreter-jvm': ['pom', 'module', 'mainJar', 'sourcesJar', 'javadocJar'],
+            'dm-interpreter-js' : ['pom', 'module', 'klib', 'sourcesJar', 'javadocJar'],
+        ]
+        expectedArtifacts.each { artifactId, artifactKinds ->
+            def moduleDir = new File(
+                repository,
+                "io/github/mbackschat/a12/dm/${artifactId}/${releaseVersion}",
+            )
+            def publishedFiles = moduleDir.listFiles()?.findAll { it.isFile() } ?: []
+            def artifactMatching = { kind, file ->
+                switch (kind) {
+                    case 'pom':
+                        return file.name.endsWith('.pom')
+                    case 'module':
+                        return file.name.endsWith('.module')
+                    case 'mainJar':
+                        return file.name.endsWith('.jar') &&
+                            !file.name.endsWith('-sources.jar') &&
+                            !file.name.endsWith('-javadoc.jar')
+                    case 'sourcesJar':
+                        return file.name.endsWith('-sources.jar')
+                    case 'javadocJar':
+                        return file.name.endsWith('-javadoc.jar')
+                    case 'klib':
+                        return file.name.endsWith('.klib')
+                    default:
+                        throw new GradleException("unknown staged artifact kind ${kind}")
+                }
+            }
+            artifactKinds.each { kind ->
+                def candidates = publishedFiles.findAll { artifactMatching(kind, it) }
+                if (!candidates || candidates.every { it.length() == 0L }) {
+                    throw new GradleException(
+                        "missing or empty ${kind} for ${artifactId}:${releaseVersion} under ${moduleDir}",
+                    )
+                }
+            }
+            def pomFile = publishedFiles
+                .findAll { artifactMatching('pom', it) }
+                .max { it.lastModified() }
+            def pom = new groovy.xml.XmlSlurper().parse(pomFile)
+            def actualIdentity = "${pom.groupId.text()}:${pom.artifactId.text()}:${pom.version.text()}"
+            def expectedIdentity = "${project.group}:${artifactId}:${releaseVersion}"
+            if (actualIdentity != expectedIdentity) {
+                throw new GradleException(
+                    "staged POM identity ${actualIdentity} does not match ${expectedIdentity}",
+                )
+            }
+            if (pom.licenses.license.name.text() != 'MIT License') {
+                throw new GradleException("${artifactId} POM does not declare the MIT License")
+            }
+            if (pom.url.text() != "${interpreterPublicRepository}/releases/tag/v${releaseVersion}") {
+                throw new GradleException("${artifactId} POM does not identify the matching public release")
+            }
+            if (pom.scm.tag.text() != "v${releaseVersion}") {
+                throw new GradleException("${artifactId} POM does not identify the matching public tag")
+            }
+        }
+    }
+}
+tasks.named('check') {
+    dependsOn verifyInterpreterMavenPublication
 }
 
 // --- Conformance corpus replay ---------------------------------------------------------------------

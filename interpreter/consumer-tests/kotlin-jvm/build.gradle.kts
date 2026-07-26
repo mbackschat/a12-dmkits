@@ -1,0 +1,19 @@
+plugins {
+    kotlin("jvm") version "2.2.0"
+    application
+}
+
+dependencies {
+    implementation(
+        "io.github.mbackschat.a12.dm:dm-interpreter:" +
+            providers.environmentVariable("INTERPRETER_VERSION").get(),
+    )
+}
+
+kotlin {
+    jvmToolchain(21)
+}
+
+application {
+    mainClass.set("ConsumerKt")
+}
