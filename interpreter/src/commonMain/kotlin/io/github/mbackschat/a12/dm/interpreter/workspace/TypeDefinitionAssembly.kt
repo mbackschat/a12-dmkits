@@ -14,7 +14,7 @@ internal class TypeDefinitionAssembly internal constructor(
     val root: JsonObject,
 ) {
     val dependencies: List<ResolvedModelReference> = immutableListSnapshot(dependencies)
-    val json: String = root.toString()
+    val json: String by lazy { root.toString() }
 }
 
 /**
@@ -28,16 +28,52 @@ internal object WorkspaceTypeDefinitionAssembler {
         entryModelId: String,
         limits: ModelPreparationLimits = ModelPreparationLimits.defaults(),
     ): TypeDefinitionAssembly {
+        val preparation = prepare(workspace, entryModelId, limits)
+        return preparation.complete(preparation.entry.root, elementsAlreadyCounted = false)
+    }
+
+    fun prepare(
+        workspace: AdmittedWorkspace,
+        entryModelId: String,
+        limits: ModelPreparationLimits = ModelPreparationLimits.defaults(),
+    ): WorkspaceTypeDefinitionPreparation {
         val context = WorkspaceAssemblyContext(workspace, limits)
         val entry = context.entry(entryModelId)
         val registry = TypeDefinitionRegistry(context, entryModelId)
         registry.registerWorkspaceClosure(entry)
-        val withEffectiveTypes = EffectiveTypeInliner(context, registry, entryModelId).inline(entry.root)
-        val intermediate = withEffectiveTypes.withoutTypeDefinitionReferences()
+        return WorkspaceTypeDefinitionPreparation(
+            entryModelId = entryModelId,
+            context = context,
+            entry = entry,
+            registry = registry,
+        )
+    }
+}
+
+internal class WorkspaceTypeDefinitionPreparation internal constructor(
+    val entryModelId: String,
+    val context: WorkspaceAssemblyContext,
+    val entry: ParsedWorkspaceSource,
+    private val registry: TypeDefinitionRegistry,
+) {
+
+    fun complete(
+        root: JsonObject,
+        elementsAlreadyCounted: Boolean,
+        finishRoot: (JsonObject) -> JsonObject = { it },
+    ): TypeDefinitionAssembly {
+        val withEffectiveTypes = EffectiveTypeInliner(
+            context = context,
+            definitions = registry,
+            entryModelId = entryModelId,
+            countPreparedElements = !elementsAlreadyCounted,
+        ).inline(root)
+        val finishedRoot = finishRoot(withEffectiveTypes.withoutTypeDefinitionReferences())
+        context.requirePreparedBytes(finishedRoot)
         return TypeDefinitionAssembly(
             entryModelId = entryModelId,
             dependencies = context.dependenciesSnapshot(),
-            root = intermediate,
+            root = finishedRoot,
         )
     }
 }
@@ -186,7 +222,7 @@ internal class TypeDefinitionRegistry(
         for (alias in includedAliases(model)) {
             val step = ModelReferenceStep.include(
                 fromModelId = model.source.modelId,
-                toModelId = includeReference(model.root, alias),
+                toModelId = model.root.includeReference(alias),
                 alias = alias,
             )
             val resolved = context.resolve(step, referenceChain)
@@ -241,7 +277,9 @@ internal class TypeDefinitionRegistry(
             ?: return emptyList()
         val aliases = mutableListOf<String>()
         val pending = mutableListOf<PendingGroup>()
-        rootGroups.asReversed().forEach { pending += PendingGroup(it, depth = 1) }
+        rootGroups.asReversed().forEach {
+            pending += PendingGroup(it, parentPath = "", depth = 1)
+        }
         while (pending.isNotEmpty()) {
             val pendingGroup = pending.removeAt(pending.lastIndex)
             val group = pendingGroup.element as? JsonObject ?: continue
@@ -250,28 +288,22 @@ internal class TypeDefinitionRegistry(
             }
             context.requireStructureDepth(pendingGroup.depth)
             val body = group.objectMember("Group") ?: continue
-            val elements = body.arrayMember("elements")
-            val alias = body.strictString("modelAlias")
-            if (!alias.isNullOrBlank() && (elements == null || elements.isEmpty())) {
-                aliases += alias
-                continue
-            }
-            elements?.asReversed()?.forEach {
-                pending += PendingGroup(it, depth = pendingGroup.depth + 1)
+            val name = group.strictString("name").orEmpty()
+            val path = "${pendingGroup.parentPath}/$name"
+            when (val assembly = classifyGroup(body, model, path)) {
+                is GroupAssembly.Include -> aliases += assembly.directive.alias
+                is GroupAssembly.Ordinary -> assembly.elements
+                    ?.asReversed()
+                    ?.forEach {
+                        pending += PendingGroup(
+                            element = it,
+                            parentPath = path,
+                            depth = pendingGroup.depth + 1,
+                        )
+                    }
             }
         }
         return aliases
-    }
-
-    private fun includeReference(root: JsonObject, alias: String): String {
-        val references = root.objectMember("header")?.arrayMember("modelReferences") ?: return alias
-        for (candidate in references) {
-            val reference = candidate as? JsonObject ?: continue
-            if (reference.strictString("alias") == alias) {
-                return reference.strictString("reference").orEmpty().ifBlank { alias }
-            }
-        }
-        return alias
     }
 
     private fun requireCompleteTypeDefinitionReference(
@@ -316,6 +348,7 @@ internal class TypeDefinitionRegistry(
 
 private data class PendingGroup(
     val element: JsonElement,
+    val parentPath: String,
     val depth: Int,
 )
 
@@ -344,6 +377,7 @@ internal class EffectiveTypeInliner(
     private val context: WorkspaceAssemblyContext,
     private val definitions: TypeDefinitionRegistry,
     private val entryModelId: String,
+    private val countPreparedElements: Boolean,
 ) {
 
     fun inline(root: JsonObject): JsonObject {
@@ -377,7 +411,9 @@ internal class EffectiveTypeInliner(
         val node = element as? JsonObject ?: return element
         val elementType = PreparedElementType.fromWireName(node.strictString("type")) ?: return node
         context.requireStructureDepth(depth)
-        context.consumePreparedElement()
+        if (countPreparedElements) {
+            context.consumePreparedElement()
+        }
         val name = node.strictString("name").orEmpty()
         val path = "$parentPath/$name"
         return when (elementType) {
@@ -457,7 +493,7 @@ internal class EffectiveTypeInliner(
     }
 }
 
-private enum class PreparedElementType(val wireName: String) {
+internal enum class PreparedElementType(val wireName: String) {
     FIELD("Field"),
     GROUP("Group"),
     RULE("Rule"),
@@ -492,3 +528,17 @@ internal fun JsonObject.replacing(key: String, value: JsonElement): JsonObject =
 internal fun JsonObject.objectMember(key: String): JsonObject? = get(key) as? JsonObject
 
 internal fun JsonObject.arrayMember(key: String): JsonArray? = get(key) as? JsonArray
+
+internal fun JsonObject.includeReference(alias: String): String {
+    val references = objectMember("header")?.arrayMember("modelReferences") ?: return alias
+    for (candidate in references) {
+        val reference = candidate as? JsonObject ?: continue
+        if (
+            reference.strictString("purpose") == ModelReferencePurpose.INCLUDE.wireName &&
+            reference.strictString("alias") == alias
+        ) {
+            return reference.strictString("reference").orEmpty().ifBlank { alias }
+        }
+    }
+    return alias
+}

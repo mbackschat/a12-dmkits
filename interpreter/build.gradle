@@ -1,7 +1,8 @@
 // The dm-interpreter (docs/INTERPRETER-SPEC.md; impl in docs/INTERPRETER-ARCHITECTURE.md) — a Kotlin Multiplatform, native-safe runtime
 // evaluator for conditions + computations. ONE common engine, two targets (JVM + JS/Node), so it runs
 // in a GraalVM native image (no Groovy) and as a Node-hosted JS library — Node is the SUPPORTED JS runtime;
-// a browser host is an unverified, deferred capability (INTERPRETER-FINDINGS IF138). It is a publication-eligible standalone module:
+// browser qualification is active release work (IG86) but remains unclaimed until its real-browser gates pass.
+// This is a publication-eligible standalone module:
 // it carries NO kernel/dmtool dependency — the kernel DIFFERENTIAL tests live in :adapter, not here, so
 // this module stays kernel-free even in test scope. That separation is enforced by `verifyInterpreterPurity`
 // below (proposal §8 — "separation by convention + linting, not a repo wall").
@@ -200,6 +201,13 @@ ${sources}
             def facts = groovy.json.JsonOutput.toJson(fixture.effectiveFieldTypes)
             "        ${groovy.json.JsonOutput.toJson(caseId)} -> ${groovy.json.JsonOutput.toJson(facts)}"
         }.join('\n')
+        def preparedStructureCases = manifest.cases.collect { caseId, fixture ->
+            def facts = groovy.json.JsonOutput.toJson(fixture.preparedStructure)
+            "        ${groovy.json.JsonOutput.toJson(caseId)} -> ${groovy.json.JsonOutput.toJson(facts)}"
+        }.join('\n')
+        def caseIds = manifest.cases.keySet()
+            .collect { groovy.json.JsonOutput.toJson(it) }
+            .join(', ')
         generatedWorkspacePreparationFixtureSource.parentFile.mkdirs()
         generatedWorkspacePreparationFixtureSource.text = """\
 package io.github.mbackschat.a12.dm.interpreter.workspace
@@ -219,6 +227,13 @@ ${sourceCases}
 ${effectiveTypeCases}
         else -> error("unknown workspace-preparation case: \$caseId")
     }
+
+    fun preparedStructure(caseId: String): String = when (caseId) {
+${preparedStructureCases}
+        else -> error("unknown workspace-preparation case: \$caseId")
+    }
+
+    fun caseIds(): List<String> = listOf(${caseIds})
 }
 """
     }
@@ -785,7 +800,7 @@ tasks.named('check') {
     dependsOn interpreterJsRuntimeClosure
 }
 
-// --- Conformance corpus replay (WI-6) --------------------------------------------------------------
+// --- Conformance corpus replay ---------------------------------------------------------------------
 // CorpusReplayCommonTest replays the committed corpus/cases tree through the interpreter on BOTH targets
 // (jvm + js). It locates the corpus via CORPUS_DIR (the robust Gradle-provided path — never a fragile
 // relative guess from the Node/JVM working dir; CONFORMANCE-CORPUS-SPEC) — a case's modelRef resolves

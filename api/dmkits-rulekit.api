@@ -1620,6 +1620,7 @@ public final class io.github.mbackschat.a12.dm.rulekit.dsl.GroupInfo
   public io.github.mbackschat.a12.dm.rulekit.dsl.StringRef str(java.lang.String)
   public io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef time(java.lang.String)
   public java.lang.String toString()
+  public java.util.Optional<java.lang.String> usageType()
 
 public sealed interface io.github.mbackschat.a12.dm.rulekit.dsl.GroupListOperand
 

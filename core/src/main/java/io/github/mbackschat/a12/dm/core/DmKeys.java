@@ -50,6 +50,7 @@ public final class DmKeys {
     public static final String MODEL_ALIAS = "modelAlias";
     public static final String PURPOSE = "purpose";
     public static final String REPEATABILITY = "repeatability";
+    public static final String USAGE_TYPE = "usageType";
     public static final String TYPE_DEFINITION_ID = "typeDefinitionId";
     public static final String SORT_FIELDS = "sortFields";
     public static final String INDEX_FIELD_NAME = "indexFieldName";

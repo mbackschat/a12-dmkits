@@ -69,6 +69,7 @@ public final class io.github.mbackschat.a12.dm.core.DmKeys
   public static final java.lang.String TYPE
   public static final java.lang.String TYPE_DEFINITIONS
   public static final java.lang.String TYPE_DEFINITION_ID
+  public static final java.lang.String USAGE_TYPE
   public static final java.lang.String VALUE
   public static final java.lang.String VALUES
 
@@ -130,6 +131,7 @@ public final class io.github.mbackschat.a12.dm.core.ModelIndex
   public java.util.OptionalInt stringMinLength(java.lang.String)
   public java.util.Optional<java.lang.String> stringPattern(java.lang.String)
   public java.util.Optional<java.lang.String> typeReferenceOf(java.lang.String)
+  public java.util.Optional<java.lang.String> usageTypeOfGroup(java.lang.String)
 
 public final class io.github.mbackschat.a12.dm.core.ModelLoader
   public static void loadAndCheck(java.lang.String, io.github.mbackschat.a12.dm.core.ModelResolver)

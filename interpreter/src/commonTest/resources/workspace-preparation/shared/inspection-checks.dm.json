@@ -65,6 +65,18 @@
             }
           }, {
             "type" : "Field",
+            "id" : "/Inspection/Disposition",
+            "name" : "Disposition",
+            "Field" : {
+              "fieldType" : {
+                "type" : "TypeDefType",
+                "TypeDefType" : {
+                  "typeDefinitionId" : "InspectionDisposition"
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
             "id" : "/Inspection/Result",
             "name" : "Result",
             "Field" : {

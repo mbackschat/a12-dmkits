@@ -1,5 +1,5 @@
 {
-  "version" : 2,
+  "version" : 4,
   "cases" : {
     "self-contained" : {
       "entryModelId" : "permit-basic",
@@ -23,6 +23,104 @@
           "type" : "NumberType",
           "NumberType" : {
             "maxFractionalDigits" : 0
+          }
+        }
+      },
+      "preparedStructure" : {
+        "/Permit" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/ApplicationNo" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/AreaNeedsNote" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/CopyRequestedArea" : {
+          "elementType" : "Computation"
+        },
+        "/Permit/Note" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/RequestedArea" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/ReviewedArea" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
           }
         }
       }
@@ -57,6 +155,80 @@
             "maxValue" : 999.5
           }
         }
+      },
+      "preparedStructure" : {
+        "/Permit" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/ApplicationCode" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : 8,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Decision" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "ENUMERATION",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : [ "APPROVE", "REJECT" ],
+            "enumCategories" : { },
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/RequestedArea" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 2,
+            "min" : "0.00",
+            "max" : "999.50",
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        }
       }
     },
     "include-contributed-typedef" : {
@@ -74,6 +246,80 @@
         },
         "/Permit/Details/Description" : {
           "type" : "StringType"
+        }
+      },
+      "preparedStructure" : {
+        "/Permit" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/ApplicationCode" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : 10,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Details" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Details/Description" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
         }
       }
     },
@@ -98,6 +344,12 @@
             "maxLength" : 6
           }
         },
+        "/Permit/Review/Inspection/Disposition" : {
+          "type" : "StringType",
+          "StringType" : {
+            "maxLength" : 6
+          }
+        },
         "/Permit/Review/Inspection/Result" : {
           "type" : "NumberType",
           "NumberType" : {
@@ -115,6 +367,200 @@
         },
         "/Permit/Review/Name" : {
           "type" : "StringType"
+        }
+      },
+      "preparedStructure" : {
+        "/Permit" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/ApplicationCode" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : 12,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/InspectionDisposition" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : 6,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/MountedInspectionFlag" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/Review" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Inspection" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Inspection/CopyScore" : {
+          "elementType" : "Computation"
+        },
+        "/Permit/Review/Inspection/Disposition" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : 6,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Inspection/NegativeScore" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/Review/Inspection/Result" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Inspection/Score" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Inspection/Summary" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Name" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/NestedInspectionFlag" : {
+          "elementType" : "Rule"
         }
       }
     },
@@ -139,6 +585,12 @@
             "maxLength" : 6
           }
         },
+        "/Permit/Review/Section/Inspection/Disposition" : {
+          "type" : "StringType",
+          "StringType" : {
+            "maxLength" : 6
+          }
+        },
         "/Permit/Review/Section/Inspection/Result" : {
           "type" : "NumberType",
           "NumberType" : {
@@ -157,6 +609,218 @@
         "/Permit/Review/Section/Name" : {
           "type" : "StringType"
         }
+      },
+      "preparedStructure" : {
+        "/Permit" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/ApplicationCode" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : 12,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/InspectionDisposition" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : 6,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/MountedInspectionFlag" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/Review" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Section" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Section/Inspection" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Section/Inspection/CopyScore" : {
+          "elementType" : "Computation"
+        },
+        "/Permit/Review/Section/Inspection/Disposition" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : 6,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Section/Inspection/NegativeScore" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/Review/Section/Inspection/Result" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Section/Inspection/Score" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Section/Inspection/Summary" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Section/Name" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Section/NestedInspectionFlag" : {
+          "elementType" : "Rule"
+        }
       }
     },
     "alias-with-exclusions" : {
@@ -166,6 +830,12 @@
         "permit-excluded" : "entries/permit-excluded.dm.json"
       },
       "effectiveFieldTypes" : {
+        "/Permit/Inspection/Disposition" : {
+          "type" : "StringType",
+          "StringType" : {
+            "maxLength" : 6
+          }
+        },
         "/Permit/Inspection/Result" : {
           "type" : "NumberType",
           "NumberType" : {
@@ -180,6 +850,1658 @@
         },
         "/Permit/Inspection/Summary" : {
           "type" : "StringType"
+        }
+      },
+      "preparedStructure" : {
+        "/Permit" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Inspection" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Inspection/Disposition" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : 6,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Inspection/Result" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Inspection/Score" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Inspection/Summary" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        }
+      }
+    },
+    "rules-excluded-computation-retained" : {
+      "entryModelId" : "permit-rules-excluded",
+      "sources" : {
+        "inspection-checks" : "shared/inspection-checks.dm.json",
+        "permit-rules-excluded" : "entries/permit-rules-excluded.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Permit/Inspection/Disposition" : {
+          "type" : "StringType",
+          "StringType" : {
+            "maxLength" : 6
+          }
+        },
+        "/Permit/Inspection/Result" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/Inspection/Score" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/Inspection/Summary" : {
+          "type" : "StringType"
+        }
+      },
+      "preparedStructure" : {
+        "/Permit" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Inspection" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Inspection/CopyScore" : {
+          "elementType" : "Computation"
+        },
+        "/Permit/Inspection/Disposition" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : 6,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Inspection/Result" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Inspection/Score" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Inspection/Summary" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        }
+      }
+    },
+    "computations-excluded-rule-retained" : {
+      "entryModelId" : "permit-computations-excluded",
+      "sources" : {
+        "inspection-checks" : "shared/inspection-checks.dm.json",
+        "permit-computations-excluded" : "entries/permit-computations-excluded.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Permit/Inspection/Disposition" : {
+          "type" : "StringType",
+          "StringType" : {
+            "maxLength" : 6
+          }
+        },
+        "/Permit/Inspection/Result" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/Inspection/Score" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/Inspection/Summary" : {
+          "type" : "StringType"
+        }
+      },
+      "preparedStructure" : {
+        "/Permit" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Inspection" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Inspection/Disposition" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : 6,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Inspection/NegativeScore" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/Inspection/Result" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Inspection/Score" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Inspection/Summary" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        }
+      }
+    },
+    "model-root-multiple-groups" : {
+      "entryModelId" : "permit-multi-root",
+      "sources" : {
+        "permit-multi-root-sections" : "shared/permit-multi-root-sections.dm.json",
+        "permit-multi-root" : "entries/permit-multi-root.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Permit/Sections/Applicant/Name" : {
+          "type" : "StringType"
+        },
+        "/Permit/Sections/Decision/Status" : {
+          "type" : "StringType"
+        }
+      },
+      "preparedStructure" : {
+        "/Permit" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Sections" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Sections/Applicant" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 3,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Sections/Applicant/Name" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Sections/Decision" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Sections/Decision/Status" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        }
+      }
+    },
+    "same-alias-mounted-twice" : {
+      "entryModelId" : "permit-repeated-mount",
+      "sources" : {
+        "inspection-checks" : "shared/inspection-checks.dm.json",
+        "permit-repeated-mount" : "entries/permit-repeated-mount.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Permit/Primary/Disposition" : {
+          "type" : "StringType",
+          "StringType" : {
+            "maxLength" : 6
+          }
+        },
+        "/Permit/Primary/Result" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/Primary/Score" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/Primary/Summary" : {
+          "type" : "StringType"
+        },
+        "/Permit/Secondary/Disposition" : {
+          "type" : "StringType",
+          "StringType" : {
+            "maxLength" : 6
+          }
+        },
+        "/Permit/Secondary/Result" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/Secondary/Score" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/Secondary/Summary" : {
+          "type" : "StringType"
+        }
+      },
+      "preparedStructure" : {
+        "/Permit" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Primary" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Primary/CopyScore" : {
+          "elementType" : "Computation"
+        },
+        "/Permit/Primary/Disposition" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : 6,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Primary/NegativeScore" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/Primary/Result" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Primary/Score" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Primary/Summary" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Secondary" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Secondary/CopyScore" : {
+          "elementType" : "Computation"
+        },
+        "/Permit/Secondary/Disposition" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : 6,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Secondary/NegativeScore" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/Secondary/Result" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Secondary/Score" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Secondary/Summary" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        }
+      }
+    },
+    "nested-rules-excluded" : {
+      "entryModelId" : "permit-nested-rules-excluded",
+      "sources" : {
+        "permit-types" : "shared/permit-types.dm.json",
+        "inspection-checks" : "shared/inspection-checks.dm.json",
+        "permit-section" : "shared/permit-section.dm.json",
+        "permit-nested-rules-excluded" : "entries/permit-nested-rules-excluded.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Permit/ApplicationCode" : {
+          "type" : "StringType",
+          "StringType" : {
+            "maxLength" : 12
+          }
+        },
+        "/Permit/InspectionDisposition" : {
+          "type" : "StringType",
+          "StringType" : {
+            "maxLength" : 6
+          }
+        },
+        "/Permit/Review/Inspection/Disposition" : {
+          "type" : "StringType",
+          "StringType" : {
+            "maxLength" : 6
+          }
+        },
+        "/Permit/Review/Inspection/Result" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/Review/Inspection/Score" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/Review/Inspection/Summary" : {
+          "type" : "StringType"
+        },
+        "/Permit/Review/Name" : {
+          "type" : "StringType"
+        }
+      },
+      "preparedStructure" : {
+        "/Permit" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/ApplicationCode" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : 12,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/InspectionDisposition" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : 6,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/MountedInspectionFlag" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/Review" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Inspection" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Inspection/CopyScore" : {
+          "elementType" : "Computation"
+        },
+        "/Permit/Review/Inspection/Disposition" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : 6,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Inspection/Result" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Inspection/Score" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Inspection/Summary" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Name" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        }
+      }
+    },
+    "attachment-rules-survive-outer-exclusion" : {
+      "entryModelId" : "permit-attachment-host",
+      "sources" : {
+        "permit-attachment-template" : "shared/permit-attachment-template.dm.json",
+        "permit-attachment-host" : "entries/permit-attachment-host.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Permit/Documents/Evidence/attachment_id" : {
+          "type" : "StringType"
+        },
+        "/Permit/Documents/Evidence/category" : {
+          "type" : "StringType"
+        },
+        "/Permit/Documents/Evidence/content" : {
+          "type" : "StringType",
+          "StringType" : {
+            "lineBreaksPermitted" : true,
+            "noValueValidation" : true
+          }
+        },
+        "/Permit/Documents/Evidence/description" : {
+          "type" : "StringType"
+        },
+        "/Permit/Documents/Evidence/internal_filename" : {
+          "type" : "StringType"
+        },
+        "/Permit/Documents/Evidence/mime_type" : {
+          "type" : "StringType"
+        },
+        "/Permit/Documents/Evidence/original_filename" : {
+          "type" : "StringType"
+        },
+        "/Permit/Documents/Evidence/size" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        }
+      },
+      "preparedStructure" : {
+        "/Permit" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents/Evidence" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : "attachment",
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents/Evidence/AttachmentExactlyOneSource" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/Documents/Evidence/AttachmentInternalFilenameRequired" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/Documents/Evidence/AttachmentMimeTypeRequired" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/Documents/Evidence/AttachmentSizeRequired" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/Documents/Evidence/attachment_id" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents/Evidence/category" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents/Evidence/content" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents/Evidence/description" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents/Evidence/internal_filename" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents/Evidence/mime_type" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents/Evidence/original_filename" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents/Evidence/size" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        }
+      }
+    },
+    "single-attachment-rules-survive-outer-exclusion" : {
+      "entryModelId" : "permit-attachment-single-host",
+      "sources" : {
+        "permit-attachment-template" : "shared/permit-attachment-template.dm.json",
+        "permit-attachment-single-host" : "entries/permit-attachment-single-host.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Permit/Documents/attachment_id" : {
+          "type" : "StringType"
+        },
+        "/Permit/Documents/category" : {
+          "type" : "StringType"
+        },
+        "/Permit/Documents/content" : {
+          "type" : "StringType",
+          "StringType" : {
+            "lineBreaksPermitted" : true,
+            "noValueValidation" : true
+          }
+        },
+        "/Permit/Documents/description" : {
+          "type" : "StringType"
+        },
+        "/Permit/Documents/internal_filename" : {
+          "type" : "StringType"
+        },
+        "/Permit/Documents/mime_type" : {
+          "type" : "StringType"
+        },
+        "/Permit/Documents/original_filename" : {
+          "type" : "StringType"
+        },
+        "/Permit/Documents/size" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        }
+      },
+      "preparedStructure" : {
+        "/Permit" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : "attachment",
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents/AttachmentExactlyOneSource" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/Documents/AttachmentInternalFilenameRequired" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/Documents/AttachmentMimeTypeRequired" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/Documents/AttachmentSizeRequired" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/Documents/attachment_id" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents/category" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents/content" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents/description" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents/internal_filename" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents/mime_type" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents/original_filename" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Documents/size" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        }
+      }
+    },
+    "single-provider-root-include" : {
+      "entryModelId" : "permit-root-mount-host",
+      "sources" : {
+        "inspection-checks" : "shared/inspection-checks.dm.json",
+        "inspection-root-mount" : "shared/inspection-root-mount.dm.json",
+        "permit-root-mount-host" : "entries/permit-root-mount-host.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Permit/Review/Disposition" : {
+          "type" : "StringType",
+          "StringType" : {
+            "maxLength" : 6
+          }
+        },
+        "/Permit/Review/Result" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/Review/Score" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/Review/Summary" : {
+          "type" : "StringType"
+        }
+      },
+      "preparedStructure" : {
+        "/Permit" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/CopyScore" : {
+          "elementType" : "Computation"
+        },
+        "/Permit/Review/Disposition" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : 6,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/NegativeScore" : {
+          "elementType" : "Rule"
+        },
+        "/Permit/Review/Result" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Score" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Permit/Review/Summary" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
         }
       }
     }

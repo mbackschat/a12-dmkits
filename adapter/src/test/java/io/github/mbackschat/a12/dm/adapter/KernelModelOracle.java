@@ -150,7 +150,7 @@ final class KernelModelOracle {
                 .map(a -> a.getName() + "=" + a.getValue()).toList();
         if (element instanceof IGroup g) {
             return new ElementFacts(true, null, null, null, null, null, null, null, null, null,
-                    g.getRepeatability(), annotations);
+                    g.getRepeatability(), g.getUsageType().orElse(null), annotations);
         }
         IField field = (IField) element;
         IFieldType type = field.getEffectiveType().orElseGet(field::getFieldType);
@@ -178,7 +178,7 @@ final class KernelModelOracle {
             pattern = string.getPattern().filter(p -> !p.isEmpty()).orElse(null);
         }
         return new ElementFacts(false, valueKind(type).name(), scale, min, max, minLength, maxLength, pattern,
-                enumValues, enumCategories, null, annotations);
+                enumValues, enumCategories, null, null, annotations);
     }
 
     /** Classify a kernel {@link IFieldType} into a {@link ValueKind} (subtype-first: DateTime/Time before Date). */

@@ -1,0 +1,54 @@
+{
+  "header" : {
+    "id" : "permit-multi-root",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ {
+      "alias" : "sections",
+      "modelType" : "document",
+      "purpose" : "include",
+      "reference" : "permit-multi-root-sections"
+    } ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "permit-multi-root",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Permit",
+        "name" : "Permit",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Group",
+            "id" : "/Permit/Sections",
+            "name" : "Sections",
+            "Group" : {
+              "repeatability" : 1,
+              "modelAlias" : "sections",
+              "includeLevel" : "MODEL_ROOT"
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

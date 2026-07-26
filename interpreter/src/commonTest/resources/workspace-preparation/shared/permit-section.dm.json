@@ -54,6 +54,20 @@
               "repeatability" : 1,
               "modelAlias" : "checksAlias"
             }
+          }, {
+            "type" : "Rule",
+            "id" : "/Section/NestedInspectionFlag",
+            "name" : "NestedInspectionFlag",
+            "Rule" : {
+              "errorEntityRelPath" : "../Name",
+              "errorCode" : "NESTED_INSPECTION_FLAG",
+              "errorCondition" : "FieldFilled(Name) And FieldFilled(Inspection/Score) And [Inspection/Score] < 0",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "The nested inspection needs attention."
+              } ]
+            }
           } ]
         }
       } ]

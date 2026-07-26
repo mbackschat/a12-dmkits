@@ -79,6 +79,8 @@ internal class WorkspaceAssemblyContext(
     private val parsedSources = linkedMapOf<String, ParsedWorkspaceSource>()
     /** Resolved edges stay in discovery order for deterministic dependency metadata and fingerprints. */
     private val dependencies = mutableListOf<ResolvedModelReference>()
+    /** A validated graph edge resolves to one immutable parsed source; later stages reuse it without re-admission. */
+    private val resolvedSources = linkedMapOf<ModelReferenceStep, ParsedWorkspaceSource>()
     private var referenceEdges = 0
     private var preparedElements = 0
 
@@ -143,8 +145,12 @@ internal class WorkspaceAssemblyContext(
                     ),
                 ),
             )
+        val parsedSource = parsed(source)
         dependencies += ResolvedModelReference(step, source)
-        return ResolvedWorkspaceReference(parsed(source), nextChain)
+        if (step !in resolvedSources) {
+            resolvedSources[step] = parsedSource
+        }
+        return ResolvedWorkspaceReference(parsedSource, nextChain)
     }
 
     fun consumePreparedElement() {
@@ -168,7 +174,24 @@ internal class WorkspaceAssemblyContext(
         }
     }
 
+    fun requirePreparedBytes(root: JsonObject) {
+        val maximum = limits.maxPreparedBytes.toLong()
+        val actual = compactJsonUtf8Size(root, stopAfter = maximum)
+        if (actual > maximum) {
+            throw resourceLimit(
+                resource = ModelPreparationResource.PREPARED_BYTES,
+                maximum = maximum,
+                actual = actual,
+            )
+        }
+    }
+
     fun dependenciesSnapshot(): List<ResolvedModelReference> = immutableListSnapshot(dependencies)
+
+    fun resolvedSource(step: ModelReferenceStep): ParsedWorkspaceSource =
+        checkNotNull(resolvedSources[step]) {
+            "workspace edge was not resolved during closure discovery: $step"
+        }
 
     private fun parsed(source: AdmittedWorkspaceModelSource): ParsedWorkspaceSource =
         parsedSources.getOrPut(source.modelId) {
@@ -182,12 +205,19 @@ internal class WorkspaceAssemblyContext(
         maximum: Int,
         actual: Int,
     ): ModelPreparationError =
+        resourceLimit(resource, maximum.toLong(), actual.toLong())
+
+    private fun resourceLimit(
+        resource: ModelPreparationResource,
+        maximum: Long,
+        actual: Long,
+    ): ModelPreparationError =
         ModelPreparationError(
             listOf(
                 ResourceLimitDiagnostic(
                     resource = resource,
-                    maximum = maximum.toLong(),
-                    actual = actual.toLong(),
+                    maximum = maximum,
+                    actual = actual,
                 ),
             ),
         )
@@ -251,6 +281,25 @@ internal data class InvalidTypeDefinitionDiagnostic(
 ) : ModelPreparationDiagnostic {
     override val code = ModelPreparationDiagnosticCode.INVALID_MODEL_SOURCE
     override val message = "invalid type definition at '$path': $reason"
+}
+
+internal data class InvalidModelElementDiagnostic(
+    override val modelId: String,
+    override val diagnosticLabel: String?,
+    override val path: String,
+    val reason: String,
+) : ModelPreparationDiagnostic {
+    override val code = ModelPreparationDiagnosticCode.INVALID_MODEL_SOURCE
+    override val message = "invalid model element at '$path': $reason"
+}
+
+internal data class InvalidIncludeMountDiagnostic(
+    override val modelId: String,
+    override val path: String,
+    val reason: String,
+) : ModelPreparationDiagnostic {
+    override val code = ModelPreparationDiagnosticCode.INVALID_INCLUDE_MOUNT
+    override val message = "invalid include mount at '$path': $reason"
 }
 
 internal fun JsonObject.strictString(key: String): String? =

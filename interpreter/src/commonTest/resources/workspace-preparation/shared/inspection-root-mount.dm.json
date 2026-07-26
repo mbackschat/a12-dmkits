@@ -1,0 +1,45 @@
+{
+  "header" : {
+    "id" : "inspection-root-mount",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ {
+      "alias" : "checksAlias",
+      "modelType" : "document",
+      "purpose" : "include",
+      "reference" : "inspection-checks"
+    } ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "inspection-root-mount",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/InspectionProxy",
+        "name" : "InspectionProxy",
+        "Group" : {
+          "repeatability" : 1,
+          "modelAlias" : "checksAlias"
+        }
+      } ]
+    }
+  }
+}

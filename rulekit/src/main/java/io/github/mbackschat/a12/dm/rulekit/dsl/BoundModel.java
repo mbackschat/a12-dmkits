@@ -438,6 +438,10 @@ public final class BoundModel {
         return map(index.annotationsOfGroup(groupPath));
     }
 
+    java.util.Optional<String> usageTypeOfGroup(String groupPath) {
+        return index.usageTypeOfGroup(groupPath);
+    }
+
     private static java.util.List<Annotation> map(java.util.List<io.github.mbackschat.a12.dm.core.Annotation> as) {
         return as.stream().map(a -> new Annotation(a.name(), a.value())).toList();
     }

@@ -1,0 +1,56 @@
+{
+  "header" : {
+    "id" : "permit-attachment-host",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ {
+      "alias" : "evidence",
+      "modelType" : "document",
+      "purpose" : "include",
+      "reference" : "permit-attachment-template"
+    } ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "permit-attachment-host",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Permit",
+        "name" : "Permit",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Group",
+            "id" : "/Permit/Documents",
+            "name" : "Documents",
+            "Group" : {
+              "repeatability" : 1,
+              "modelAlias" : "evidence",
+              "includeLevel" : "MODEL_ROOT",
+              "excludeRules" : true,
+              "excludeComputations" : true
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

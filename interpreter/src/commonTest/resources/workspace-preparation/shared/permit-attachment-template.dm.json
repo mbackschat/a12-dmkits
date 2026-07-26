@@ -1,0 +1,176 @@
+{
+  "header" : {
+    "id" : "permit-attachment-template",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "permit-attachment-template",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Evidence",
+        "name" : "Evidence",
+        "Group" : {
+          "repeatability" : 1,
+          "usageType" : "attachment",
+          "elements" : [ {
+            "type" : "Field",
+            "id" : "/Evidence/original_filename",
+            "name" : "original_filename",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Evidence/internal_filename",
+            "name" : "internal_filename",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Evidence/content",
+            "name" : "content",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType",
+                "StringType" : {
+                  "lineBreaksPermitted" : true,
+                  "noValueValidation" : true
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Evidence/attachment_id",
+            "name" : "attachment_id",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Evidence/size",
+            "name" : "size",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 0
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Evidence/mime_type",
+            "name" : "mime_type",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Evidence/category",
+            "name" : "category",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Evidence/description",
+            "name" : "description",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Evidence/AttachmentExactlyOneSource",
+            "name" : "AttachmentExactlyOneSource",
+            "Rule" : {
+              "errorEntityRelPath" : "../content",
+              "errorCode" : "ATTACHMENT_EXACTLY_ONE_SOURCE",
+              "errorCondition" : "GroupFilled(RuleGroup) and NotExactlyOneFieldFilled(attachment_id, content)",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "Provide exactly one of an attachment reference or inline content."
+              } ]
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Evidence/AttachmentSizeRequired",
+            "name" : "AttachmentSizeRequired",
+            "Rule" : {
+              "errorEntityRelPath" : "../size",
+              "errorCode" : "ATTACHMENT_SIZE_REQUIRED",
+              "errorCondition" : "FieldFilled(content) and FieldNotFilled(size)",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "When inline content is provided, its size is required."
+              } ]
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Evidence/AttachmentInternalFilenameRequired",
+            "name" : "AttachmentInternalFilenameRequired",
+            "Rule" : {
+              "errorEntityRelPath" : "../internal_filename",
+              "errorCode" : "ATTACHMENT_INTERNAL_FILENAME_REQUIRED",
+              "errorCondition" : "GroupFilled(RuleGroup) and FieldNotFilled(internal_filename)",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "An internal filename is required."
+              } ]
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Evidence/AttachmentMimeTypeRequired",
+            "name" : "AttachmentMimeTypeRequired",
+            "Rule" : {
+              "errorEntityRelPath" : "../mime_type",
+              "errorCode" : "ATTACHMENT_MIME_TYPE_REQUIRED",
+              "errorCondition" : "GroupFilled(RuleGroup) and FieldNotFilled(mime_type)",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "A MIME type is required."
+              } ]
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "header" : {
+    "id" : "permit-repeated-mount",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ {
+      "alias" : "checksAlias",
+      "modelType" : "document",
+      "purpose" : "include",
+      "reference" : "inspection-checks"
+    } ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "permit-repeated-mount",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Permit",
+        "name" : "Permit",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Group",
+            "id" : "/Permit/Primary",
+            "name" : "Primary",
+            "Group" : {
+              "repeatability" : 1,
+              "modelAlias" : "checksAlias"
+            }
+          }, {
+            "type" : "Group",
+            "id" : "/Permit/Secondary",
+            "name" : "Secondary",
+            "Group" : {
+              "repeatability" : 1,
+              "modelAlias" : "checksAlias"
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

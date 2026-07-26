@@ -117,6 +117,29 @@ class ModelReaderTest {
         assertTrue(reader.paths().contains("/Policy/Extras/Rider/Amount"), () -> "paths: " + reader.paths());
     }
 
+    @Test
+    void singleAttachmentRootShieldsItsMandatedRulesFromMountExclusions() {
+        String attachment = DocumentModelDraft.named("attachment").locale("en_US")
+                .attachmentGroup("Evidence", body -> { })
+                .build().toJson();
+        String permit = DocumentModelDraft.named("permit").locale("en_US")
+                .include("evidence", "attachment")
+                .rootGroup("Permit", root -> root.mount(
+                        "Documents",
+                        "evidence",
+                        MountOptions.single().excludingRules().excludingComputations()))
+                .build().toJson();
+
+        ModelReader reader = ModelReader.expand(permit, reference -> "attachment".equals(reference)
+                ? attachment
+                : null);
+
+        assertEquals("attachment",
+                reader.element("/Permit/Documents").path("Group").path("usageType").asText());
+        assertTrue(reader.toJson().contains("AttachmentExactlyOneSource"),
+                "the provider root's attachment shield survives when SINGLE_RG discards that root");
+    }
+
     // ── include exclude flags + the unmapped-reference signal (A4 guard) ────────────────────────────────
 
     @Test

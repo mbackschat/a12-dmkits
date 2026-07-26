@@ -255,6 +255,16 @@ public final class ModelIndex {
     }
 
     /**
+     * The group template marker at {@code groupPath}, such as {@code attachment} or {@code multi-select}.
+     * This is observable model structure: include expansion replaces a {@code SINGLE_RG} mount's slot with the
+     * discarded provider root's final slot (including absence), and attachment semantics depend on it.
+     */
+    public Optional<String> usageTypeOfGroup(String groupPath) {
+        JsonNode usageType = groupNode(groupPath).path(ElementType.GROUP.wireName()).path(DmKeys.USAGE_TYPE);
+        return usageType.isTextual() ? Optional.of(usageType.asText()) : Optional.empty();
+    }
+
+    /**
      * The id of the included model mounted at this group, when the group is an include boundary. Included
      * descendants remain ordinary inline nodes; nested mounts carry their own origin.
      */

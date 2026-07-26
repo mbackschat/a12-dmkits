@@ -315,15 +315,25 @@ public final class ModelReader {
             }
         } else if (!includedRootGroups.isEmpty()) {
             // SINGLE_RG (default): the single root group's children become the mount's children; the root group
-            // itself is discarded (its name maps to the mount path) — only its usageType is copied onto the mount.
+            // itself is discarded (its name maps to the mount path). Its final usageType slot replaces the mount's
+            // slot, including absence; a raw mount marker must not survive when the expanded provider has none.
             JsonNode includedRootGroup = includedRootGroups.get(0);
             String rootGroupName = includedRootGroup.path(DmKeys.NAME).asText();
             if (!rootGroupName.isEmpty()) {
                 prefixMap.put("/" + rootGroupName, mountPath);
             }
-            JsonNode usageType = includedRootGroup.path(ElementType.GROUP.wireName()).path("usageType");
-            if (!usageType.isMissingNode()) {
-                mountBody.set("usageType", usageType);
+            JsonNode usageType = includedRootGroup.path(ElementType.GROUP.wireName()).path(DmKeys.USAGE_TYPE);
+            if (usageType.isMissingNode()) {
+                mountBody.remove(DmKeys.USAGE_TYPE);
+            } else {
+                mountBody.set(DmKeys.USAGE_TYPE, usageType);
+            }
+            // SINGLE_RG discards the provider root, so its attachment shield must be transferred as behavior as
+            // well as metadata. Filtering first would erase the template's mandated rules even though the Kernel
+            // preserves them; WorkspacePreparationParityTest locks the external oracle.
+            if ("attachment".equals(usageType.asText())) {
+                excludeRules = false;
+                excludeComputations = false;
             }
             String includedRootPath = "/" + rootGroupName;
             includedRootGroup.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)
@@ -373,7 +383,7 @@ public final class ModelReader {
         }
         if (type == ElementType.GROUP) {
             ObjectNode body = (ObjectNode) node.path(ElementType.GROUP.wireName());
-            boolean attachment = "attachment".equals(body.path("usageType").asText());
+            boolean attachment = "attachment".equals(body.path(DmKeys.USAGE_TYPE).asText());
             JsonNode elements = body.path(DmKeys.ELEMENTS);
             if (!attachment && elements.isArray()) {
                 ArrayNode filtered = MAPPER.createArrayNode();

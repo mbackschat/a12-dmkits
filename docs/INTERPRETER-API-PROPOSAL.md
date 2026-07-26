@@ -107,7 +107,7 @@ The primary direct verbs remain deliberately familiar: `validateFull`, `validate
 | `ModelCollectionOptions` | TypeScript collection limits plus `AbortSignal`; Kotlin/Java project the same semantics through their native asynchronous surfaces |
 | `ModelWorkspace` | an immutable, resource-bounded set of sources indexed by `header.id`; it prepares one requested transitive closure |
 | `ModelWorkspaceConstructor.collect` | asynchronous acquisition façade that follows discovered references through a provider and freezes the resulting closure before preparation |
-| `ModelPreparationLimits` | explicit bounds on source count, source/total bytes, reference depth, reference edges, model-structure depth, and prepared element count |
+| `ModelPreparationLimits` | explicit bounds on source count, source/total/prepared bytes, reference depth, reference edges, model-structure depth, and prepared element count |
 | `ModelDependency` | one resolved include or type-definition edge retained as preparation metadata |
 | `ModelFingerprint` | a library-computed digest over the selected entry, every source in its resolved closure, and preparation-format/ABI identity |
 | `ModelPreparationDiagnostic` | one stable preparation code, optional source/model/path/reference-chain location, structured details, and corrective message |
@@ -262,6 +262,7 @@ interface ModelPreparationLimits {
   readonly maxReferenceEdges?: number;
   readonly maxStructureDepth?: number;
   readonly maxPreparedElements?: number;
+  readonly maxPreparedBytes?: number;
 }
 
 type ModelPreparationDiagnosticCode =
@@ -288,7 +289,8 @@ type ModelPreparationResource =
   | "reference-depth"
   | "reference-edges"
   | "structure-depth"
-  | "prepared-elements";
+  | "prepared-elements"
+  | "prepared-bytes";
 
 declare const modelVersionIdentityBrand: unique symbol;
 declare const modelOwnerIdentityBrand: unique symbol;
@@ -588,8 +590,9 @@ Omitting `ModelPreparationLimits` or `ModelCollectionOptions.limits` selects doc
 | reference edges | 4,096 | 65,536 |
 | model-structure depth | 64 | 128 |
 | prepared elements | 250,000 | 1,000,000 |
+| prepared output bytes | 64 MiB | 256 MiB |
 
-Source-byte limits count the exact strict UTF-8 bytes that source integrity hashes. A `diagnosticLabel` is retained only when it is one or two colon-separated safe identifier segments of letters, digits, `.`, `_`, or `-`, with at most 64 characters per segment; every other label is omitted before the source enters the workspace or a diagnostic is constructed. The grammar deliberately admits labels such as `showcase:policy` while excluding URLs, absolute paths, query strings, user-info, and authorization syntax.
+Source-byte limits count the exact strict UTF-8 bytes that source integrity hashes. After JSON decoding, every string value and object key must contain Unicode scalar values only. Kernel 30.8.1 accepts an escaped unpaired surrogate, but the portable serialization contract does not assign a host-independent prepared representation to that malformed code unit; the workspace deliberately rejects it with `INVALID_MODEL_SOURCE`. The prepared-output limit counts the exact compact-JSON UTF-8 representation after mounting, effective-type inlining, and consumed-reference removal. Preparation uses a capped tree walk before any full prepared JSON string is materialized, so repeated include payloads cannot bypass the element limit by amplifying large metadata or force one oversized serialization first. When the cap is exceeded, a resource diagnostic's `actual` is the observed lower bound `maximum + 1`, not the uncounted total. A `diagnosticLabel` is retained only when it is one or two colon-separated safe identifier segments of letters, digits, `.`, `_`, or `-`, with at most 64 characters per segment; every other label is omitted before the source enters the workspace or a diagnostic is constructed. The grammar deliberately admits labels such as `showcase:policy` while excluding URLs, absolute paths, query strings, user-info, and authorization syntax.
 
 The default configuration uses a system clock sampled once per evaluation transaction, model-carried time zone/declared base year/charset, the kernel-compatible date-completion base-year default, the BMP fallback charset, built-in predefined types, and empty custom registries. Missing custom constructs remain explicit in evaluation results as unsupported; they are never silently ignored.
 
@@ -1073,6 +1076,7 @@ interface FieldMetadata extends ModelOwned {
 interface GroupMetadata extends ModelOwned {
   readonly path: string;
   readonly repeatability: Repeatability;
+  readonly usageType?: string;
   readonly indexField?: FieldMetadata;
 
   fields(): readonly FieldMetadata[];
@@ -1597,6 +1601,12 @@ Workspace construction rejects a missing/invalid document header, resource-limit
 
 The assembled typedef namespace uses exact definition ids. Reaching the same declaration origin more than once through a diamond is one declaration and is not ambiguous. Duplicate local declarations are rejected, matching the Kernel. Two distinct source models declaring the same id are rejected with `AMBIGUOUS_TYPE_DEFINITION` even when their current field-type payloads are byte-equivalent. Kernel 30.8.1 accepts imported collisions and selects the first traversal result; the portable boundary is deliberately stricter because two providers still claim ownership of one name and a later payload change would otherwise turn source ordering into semantics. A malformed declaration is never skipped: a non-object declaration, absent or blank id, non-object `fieldType`, or incomplete nested `TypeDefType` fails with `INVALID_MODEL_SOURCE` at its declaration path, so successful preparation cannot retain malformed typedef residue.
 
+Structural mounting resolves each alias in the model that owns the mount and consumes `modelAlias`, `includeLevel`, the exclusion flags, and the now-vestigial header references. Defaults apply only to absent members: a present `modelAlias` must be a non-empty string, `elements` must be an array, `includeLevel` must be the string `SINGLE_RG` or `MODEL_ROOT`, and each exclusion must be a JSON Boolean. `includeLevel` and the exclusion members are refused without `modelAlias`; successful preparation retains none of those include-only directives. `SINGLE_RG` fully expands the provider first—including an include mounted at the provider root—then defaults an absent provider-root `repeatability` to one and discards that one non-repeatable root while copying its prepared children and replacing the mount's `usageType` slot with the provider root's final slot. A final value is copied and final absence removes any raw mount marker. A present portable provider-root `repeatability` must be the JSON integer `1`. `MODEL_ROOT` retains every top-level provider group, including non-default repeatability. Rule and computation exclusions are independent and behave transitively through nested includes, but each mount applies its flags only after its provider has been fully expanded. A retained group's final expanded `attachment` marker shields its subtree; a transient raw marker that a nested include replaces does not. When `SINGLE_RG` discards a final attachment root, that shield transfers to the mount and its copied children; when the final provider root has no marker, no attachment shield transfers. Reusing one alias at several mounts creates and charges each expanded output occurrence independently, even when a later exclusion removes it.
+
+An unknown, null, or wrong-typed include level; a numeric, Boolean, object, array, or blank alias; malformed `elements`; a `SINGLE_RG` provider with zero or multiple roots; or a provider-root repeatability that is not the JSON integer `1` fails with `INVALID_INCLUDE_MOUNT`. Kernel 30.8.1 also refuses zero or multiple roots and the measured repeatability counterexamples `2`, `2.1`, both Booleans, an object, an array, and the nonnumeric string `"one"`. A non-object element, an unknown element type, a known non-Group element at a model root, or a Group without an object body—including the discarded `SINGLE_RG` root—fails with `INVALID_MODEL_SOURCE`, matching the Kernel's refusal.
+
+The portable boundary deliberately rejects permissive Kernel shapes rather than guessing author intent: an explicit null alias fails instead of disabling the include; a non-Boolean exclusion flag fails instead of being treated as false; a group combining `modelAlias` with local elements fails instead of silently retaining the local elements while ignoring the include; exclusion flags on an ordinary group fail instead of being retained inertly; and every present provider-root repeatability other than integer `1` fails. That last strict rule includes Kernel-measured acceptances such as null, zero, negative and fractional representatives, and the numeric string `"1"`; accepting them would admit an invalid or coercion-dependent cardinality into the typed `Repeatability` contract. `includeLevel` without an alias is rejected by both. Successful portable preparation therefore never changes executable content through permissive coercion or shadowing and never carries preparation residue forward.
+
 Preparing an entry performs the complete common pipeline:
 
 1. resolve its transitive include and `typeDefinitions` references with cycle and limit checks;
@@ -1607,7 +1617,7 @@ Preparing an entry performs the complete common pipeline:
 
 Reference remapping covers rule conditions plus computation common preconditions, alternative preconditions, and operations. Relative and short references retain their binding semantics; a reference that cannot be mapped is a structured preparation failure, never a best-effort leftover.
 
-The prepared model retains its resolved `ModelDependency` edges, computed source digests, and diagnostic labels for diagnostics and tooling. Unused `fromSources` entries are neither parsed beyond workspace admission nor included in the prepared closure; `collect` does not request them at all.
+The prepared model retains its resolved `ModelDependency` edges, computed source digests, and diagnostic labels for diagnostics and tooling. Each retained mounted executable occurrence points to one shared provider namespace: occurrence-specific reference chain, source-local short-name policy and condition language, and bidirectional segment-aware source/output prefix mappings. Executable provenance carries that namespace plus a structural output ordinal, so repeated and wide `MODEL_ROOT` mounts stay linear in output size and later remapping can bind against the provider's expanded namespace without path guessing. Empty or fully excluded includes retain no executable provenance. Unused `fromSources` entries are neither parsed beyond workspace admission nor included in the prepared closure; `collect` does not request them at all.
 
 `PreparedModel.loadExpandedJson` remains the explicit fast path for callers that already own expanded, self-contained, name-path-keyed DM-JSON. Its residual guard rejects unresolved includes, unresolved type definitions, opaque identifiers, and other preparation residue with the same diagnostic model.
 

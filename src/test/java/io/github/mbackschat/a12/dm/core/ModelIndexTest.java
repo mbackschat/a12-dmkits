@@ -12,6 +12,8 @@ import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+
 /**
  * F0 foundation: rulekit binds to a fully-expanded, consistency-checked DocumentModel and indexes
  * its group tree / field types / repetition structure from the public model API alone (PROJECT-DESIGN §5a).
@@ -54,6 +56,19 @@ class ModelIndexTest {
     void knowsWhichGroupsRepeat() {
         assertTrue(index.isRepeating("/Subscription/Addons"), "Addons has repeatability 20");
         assertFalse(index.isRepeating("/Subscription"), "Subscription has repeatability 1");
+    }
+
+    @Test
+    void readsAGroupUsageTypeThroughTheTypedIndex() {
+        var attachment = DocumentModelDraft.named("attachment").locale("en_US")
+                .attachmentGroup("Evidence", body -> { })
+                .build()
+                .toJson();
+
+        var attachmentIndex = ModelIndex.ofSelfContained(attachment);
+
+        assertEquals("attachment", attachmentIndex.usageTypeOfGroup("/Evidence").orElseThrow());
+        assertTrue(index.usageTypeOfGroup("/Subscription").isEmpty());
     }
 
     @Test

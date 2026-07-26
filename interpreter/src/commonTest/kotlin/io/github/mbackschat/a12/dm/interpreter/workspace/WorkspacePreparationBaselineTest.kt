@@ -9,8 +9,8 @@ import kotlin.test.assertEquals
 
 /**
  * Independently consumable preparation baseline: the same typed-authored raw source is embedded into commonTest and
- * loaded/evaluated by the one common interpreter on both JVM and Node. Later R2 sets add multi-source preparation;
- * this self-contained case proves the fixture bridge itself does not depend on a JVM filesystem or the Kernel.
+ * loaded/evaluated by the one common interpreter on both JVM and Node. This self-contained case proves the fixture
+ * bridge itself does not depend on a JVM filesystem or the Kernel.
  */
 class WorkspacePreparationBaselineTest {
 

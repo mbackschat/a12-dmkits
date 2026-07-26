@@ -104,6 +104,19 @@ class WorkspaceSourceAdmissionTest {
     }
 
     @Test
+    fun rejectsEscapedUnpairedSurrogatesBeforeHostSerializersCanDiverge() {
+        val escapedSurrogate = "\\" + "uD800"
+        val source = raw("escaped", extra = ",\"text\":\"$escapedSurrogate\"")
+
+        val diagnostic = assertFailsWith<ModelPreparationError> {
+            WorkspaceSourceAdmission.admit(listOf(workspaceSource(source)))
+        }.diagnostics.single()
+
+        assertEquals(ModelPreparationDiagnosticCode.INVALID_MODEL_SOURCE, diagnostic.code)
+        assertTrue(diagnostic.message.contains("Unicode scalar"))
+    }
+
+    @Test
     fun enforcesModelCountPerSourceAndAggregateUtf8ByteLimits() {
         val small = source("small")
         val euro = source("euro", extra = ",\"text\":\"€\"")
@@ -182,6 +195,7 @@ class WorkspaceSourceAdmissionTest {
             .maxModelCount(Int.MAX_VALUE)
             .maxModelBytes(Int.MAX_VALUE)
             .maxTotalBytes(Int.MAX_VALUE)
+            .maxPreparedBytes(Int.MAX_VALUE)
             .maxReferenceDepth(Int.MAX_VALUE)
             .maxReferenceEdges(Int.MAX_VALUE)
             .maxStructureDepth(Int.MAX_VALUE)
@@ -191,6 +205,7 @@ class WorkspaceSourceAdmissionTest {
         assertEquals(ModelPreparationLimits.HARD_MAX_MODEL_COUNT, limits.maxModelCount)
         assertEquals(ModelPreparationLimits.HARD_MAX_MODEL_BYTES, limits.maxModelBytes)
         assertEquals(ModelPreparationLimits.HARD_MAX_TOTAL_BYTES, limits.maxTotalBytes)
+        assertEquals(ModelPreparationLimits.HARD_MAX_PREPARED_BYTES, limits.maxPreparedBytes)
         assertEquals(ModelPreparationLimits.HARD_MAX_REFERENCE_DEPTH, limits.maxReferenceDepth)
         assertEquals(ModelPreparationLimits.HARD_MAX_REFERENCE_EDGES, limits.maxReferenceEdges)
         assertEquals(ModelPreparationLimits.HARD_MAX_STRUCTURE_DEPTH, limits.maxStructureDepth)
@@ -204,6 +219,7 @@ class WorkspaceSourceAdmissionTest {
         assertEquals(256, limits.maxModelCount)
         assertEquals(4 * 1024 * 1024, limits.maxModelBytes)
         assertEquals(32 * 1024 * 1024, limits.maxTotalBytes)
+        assertEquals(64 * 1024 * 1024, limits.maxPreparedBytes)
         assertEquals(32, limits.maxReferenceDepth)
         assertEquals(4_096, limits.maxReferenceEdges)
         assertEquals(64, limits.maxStructureDepth)

@@ -98,7 +98,8 @@ final class PreparationParityHarness {
     private static ElementFacts readerFactsAt(ModelIndex index, String path) {
         if (index.isGroup(path)) {
             return new ElementFacts(true, null, null, null, null, null, null, null, null, null,
-                    index.maxRepetitions(path), annotations(index.annotationsOfGroup(path)));
+                    index.maxRepetitions(path), index.usageTypeOfGroup(path).orElse(null),
+                    annotations(index.annotationsOfGroup(path)));
         }
         var kind = index.kindOf(path);
         Integer scale = kind == io.github.mbackschat.a12.dm.core.ValueKind.NUMBER
@@ -120,7 +121,7 @@ final class PreparationParityHarness {
             enumCategories = index.enumCategories(path);
         }
         return new ElementFacts(false, kind.name(), scale, min, max, minLength, maxLength, pattern,
-                enumValues, enumCategories, null, annotations(index.annotationsOf(path)));
+                enumValues, enumCategories, null, null, annotations(index.annotationsOf(path)));
     }
 
     private static List<String> annotations(List<io.github.mbackschat.a12.dm.core.Annotation> annotations) {

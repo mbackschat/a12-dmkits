@@ -1514,6 +1514,8 @@ m.fields()
 String edited = s.validate().toJson();        // kernel gate, once
 ```
 
+**Group template markers stay on the typed navigation surface (finding 100).** `GroupInfo.usageType()` reads markers such as `attachment` and `multi-select`; `ModelIndex.usageTypeOfGroup(path)` is the kernel-free index peer for consumers working below `BoundModel`. This matters after include preparation as well as on authored models: a `SINGLE_RG` mount takes the discarded provider root's final marker, and final absence clears any raw marker on the mount. For example, `m.groupAt("/Claim/Evidence").orElseThrow().usageType().filter("attachment"::equals)` recognizes an expanded attachment template without inspecting raw DM-JSON keys.
+
 **Computations are enumerable too (kernel-free).** `ModelIndex.computations()` lists every authored computation with its declared `computedFieldRelPath` resolved to the **absolute target field path** (the rel base is the computation *element*, so a same-group target reads `"../Field"`). This is what a consumer that must reason about computation targets without the kernel uses — e.g. to reject a computation whose target sits in a repeatable scope:
 
 <!-- snippet: model-computations -->

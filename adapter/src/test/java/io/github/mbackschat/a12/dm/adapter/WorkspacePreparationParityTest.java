@@ -8,8 +8,8 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.adapter.preparation.WorkspacePreparationFixtures;
 
 /**
- * R2.1's reusable preparation-oracle lock: every typed-authored raw workspace is observed through the real
- * Kernel expander and the JVM {@code ModelReader}, then compared through one representation-neutral surface.
+ * Reusable preparation-oracle lock: every typed-authored raw workspace is observed through the real Kernel
+ * expander and the JVM {@code ModelReader}, then compared through one representation-neutral surface.
  */
 class WorkspacePreparationParityTest {
 

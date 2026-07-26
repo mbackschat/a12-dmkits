@@ -1,0 +1,97 @@
+{
+  "header" : {
+    "id" : "permit-nested-rules-excluded",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ {
+      "alias" : "sectionAlias",
+      "modelType" : "document",
+      "purpose" : "include",
+      "reference" : "permit-section"
+    }, {
+      "alias" : "permit-types",
+      "modelType" : "document",
+      "purpose" : "typeDefinitions",
+      "reference" : "permit-types"
+    } ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "permit-nested-rules-excluded",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Permit",
+        "name" : "Permit",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Field",
+            "id" : "/Permit/ApplicationCode",
+            "name" : "ApplicationCode",
+            "Field" : {
+              "fieldType" : {
+                "type" : "TypeDefType",
+                "TypeDefType" : {
+                  "typeDefinitionId" : "PermitCode"
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Permit/InspectionDisposition",
+            "name" : "InspectionDisposition",
+            "Field" : {
+              "fieldType" : {
+                "type" : "TypeDefType",
+                "TypeDefType" : {
+                  "typeDefinitionId" : "InspectionDisposition"
+                }
+              }
+            }
+          }, {
+            "type" : "Group",
+            "id" : "/Permit/Review",
+            "name" : "Review",
+            "Group" : {
+              "repeatability" : 1,
+              "modelAlias" : "sectionAlias",
+              "excludeRules" : true
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Permit/MountedInspectionFlag",
+            "name" : "MountedInspectionFlag",
+            "Rule" : {
+              "errorEntityRelPath" : "../ApplicationCode",
+              "errorCode" : "MOUNTED_INSPECTION_FLAG",
+              "errorCondition" : "FieldFilled(ApplicationCode) And FieldFilled(Review/Inspection/Score) And [Review/Inspection/Score] < 0",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "The mounted inspection needs attention."
+              } ]
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

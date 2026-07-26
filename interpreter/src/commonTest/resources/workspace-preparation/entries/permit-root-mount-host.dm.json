@@ -1,0 +1,53 @@
+{
+  "header" : {
+    "id" : "permit-root-mount-host",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ {
+      "alias" : "providerAlias",
+      "modelType" : "document",
+      "purpose" : "include",
+      "reference" : "inspection-root-mount"
+    } ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "permit-root-mount-host",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Permit",
+        "name" : "Permit",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Group",
+            "id" : "/Permit/Review",
+            "name" : "Review",
+            "Group" : {
+              "repeatability" : 1,
+              "modelAlias" : "providerAlias"
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

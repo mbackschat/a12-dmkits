@@ -16,6 +16,7 @@ import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.edit.EditSession;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 
 /**
  * The Level-1 navigation surface (study finding 9, §6c — jOOQ-{@code Meta}-style): streams of rich
@@ -52,6 +53,19 @@ class NavigationTest {
         List<String> paths = m.groups().map(GroupInfo::path).toList();
         assertEquals(List.of("/Subscription", "/Subscription/Addons", "/Subscription/Billing"), paths);
         assertTrue(m.groups().filter(g -> g.path().endsWith("Addons")).findFirst().orElseThrow().repeating());
+    }
+
+    @Test
+    void readsGroupUsageTypeWithoutLeavingTheNavigationSurface() {
+        var attachment = DocumentModelDraft.named("attachment").locale("en_US")
+                .attachmentGroup("Evidence", body -> { })
+                .build()
+                .toJson();
+
+        var evidence = BoundModel.ofJson(attachment).groupAt("/Evidence").orElseThrow();
+
+        assertEquals("attachment", evidence.usageType().orElseThrow());
+        assertTrue(m.groupAt("/Subscription").orElseThrow().usageType().isEmpty());
     }
 
     @Test

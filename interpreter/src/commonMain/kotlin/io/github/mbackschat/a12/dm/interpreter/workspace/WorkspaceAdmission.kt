@@ -2,6 +2,8 @@ package io.github.mbackschat.a12.dm.interpreter.workspace
 
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -17,7 +19,7 @@ internal fun <T> immutableListSnapshot(values: Collection<T>): List<T> = Immutab
  * Count strict UTF-8 bytes without allocating them. Null marks one unpaired UTF-16 surrogate. This pass lets
  * admission enforce the source and remaining-workspace ceilings before it creates the frozen byte array.
  */
-private fun strictUtf8ByteCount(text: String): Long? {
+internal fun strictUtf8ByteCount(text: String): Long? {
     var count = 0L
     var index = 0
     while (index < text.length) {
@@ -78,13 +80,15 @@ internal class WorkspaceModelSource private constructor(
 }
 
 /**
- * Resource bounds for raw-source admission. Defaults suit browser use; callers may tighten or widen them only
- * up to the hard maxima. Graph and model assembly consume the depth, edge, structure, and element bounds.
+ * Resource bounds for source admission and preparation. Defaults suit browser use; callers may tighten or widen
+ * them only up to the hard maxima. Graph and model assembly consume the reference, structure, element, and
+ * prepared-output bounds.
  */
 internal class ModelPreparationLimits private constructor(
     val maxModelCount: Int,
     val maxModelBytes: Int,
     val maxTotalBytes: Int,
+    val maxPreparedBytes: Int,
     val maxReferenceDepth: Int,
     val maxReferenceEdges: Int,
     val maxStructureDepth: Int,
@@ -94,6 +98,7 @@ internal class ModelPreparationLimits private constructor(
         const val DEFAULT_MAX_MODEL_COUNT = 256
         const val DEFAULT_MAX_MODEL_BYTES = 4 * 1024 * 1024
         const val DEFAULT_MAX_TOTAL_BYTES = 32 * 1024 * 1024
+        const val DEFAULT_MAX_PREPARED_BYTES = 64 * 1024 * 1024
         const val DEFAULT_MAX_REFERENCE_DEPTH = 32
         const val DEFAULT_MAX_REFERENCE_EDGES = 4_096
         const val DEFAULT_MAX_STRUCTURE_DEPTH = 64
@@ -102,6 +107,7 @@ internal class ModelPreparationLimits private constructor(
         const val HARD_MAX_MODEL_COUNT = 1_024
         const val HARD_MAX_MODEL_BYTES = 16 * 1024 * 1024
         const val HARD_MAX_TOTAL_BYTES = 128 * 1024 * 1024
+        const val HARD_MAX_PREPARED_BYTES = 256 * 1024 * 1024
         const val HARD_MAX_REFERENCE_DEPTH = 128
         const val HARD_MAX_REFERENCE_EDGES = 65_536
         const val HARD_MAX_STRUCTURE_DEPTH = 128
@@ -116,6 +122,7 @@ internal class ModelPreparationLimits private constructor(
         private var maxModelCount = DEFAULT_MAX_MODEL_COUNT
         private var maxModelBytes = DEFAULT_MAX_MODEL_BYTES
         private var maxTotalBytes = DEFAULT_MAX_TOTAL_BYTES
+        private var maxPreparedBytes = DEFAULT_MAX_PREPARED_BYTES
         private var maxReferenceDepth = DEFAULT_MAX_REFERENCE_DEPTH
         private var maxReferenceEdges = DEFAULT_MAX_REFERENCE_EDGES
         private var maxStructureDepth = DEFAULT_MAX_STRUCTURE_DEPTH
@@ -124,6 +131,7 @@ internal class ModelPreparationLimits private constructor(
         fun maxModelCount(value: Int) = apply { maxModelCount = positive("maxModelCount", value) }
         fun maxModelBytes(value: Int) = apply { maxModelBytes = positive("maxModelBytes", value) }
         fun maxTotalBytes(value: Int) = apply { maxTotalBytes = positive("maxTotalBytes", value) }
+        fun maxPreparedBytes(value: Int) = apply { maxPreparedBytes = positive("maxPreparedBytes", value) }
         fun maxReferenceDepth(value: Int) = apply { maxReferenceDepth = positive("maxReferenceDepth", value) }
         fun maxReferenceEdges(value: Int) = apply { maxReferenceEdges = positive("maxReferenceEdges", value) }
         fun maxStructureDepth(value: Int) = apply { maxStructureDepth = positive("maxStructureDepth", value) }
@@ -133,6 +141,7 @@ internal class ModelPreparationLimits private constructor(
             maxModelCount = minOf(maxModelCount, HARD_MAX_MODEL_COUNT),
             maxModelBytes = minOf(maxModelBytes, HARD_MAX_MODEL_BYTES),
             maxTotalBytes = minOf(maxTotalBytes, HARD_MAX_TOTAL_BYTES),
+            maxPreparedBytes = minOf(maxPreparedBytes, HARD_MAX_PREPARED_BYTES),
             maxReferenceDepth = minOf(maxReferenceDepth, HARD_MAX_REFERENCE_DEPTH),
             maxReferenceEdges = minOf(maxReferenceEdges, HARD_MAX_REFERENCE_EDGES),
             maxStructureDepth = minOf(maxStructureDepth, HARD_MAX_STRUCTURE_DEPTH),
@@ -153,6 +162,7 @@ internal enum class ModelPreparationDiagnosticCode {
     UNRESOLVED_MODEL_REFERENCE,
     MODEL_SOURCE_INTEGRITY_MISMATCH,
     MODEL_REFERENCE_CYCLE,
+    INVALID_INCLUDE_MOUNT,
     AMBIGUOUS_TYPE_DEFINITION,
     UNPREPARED_MODEL_RESIDUE,
     RESOURCE_LIMIT_EXCEEDED,
@@ -162,6 +172,7 @@ internal enum class ModelPreparationResource {
     MODEL_COUNT,
     MODEL_BYTES,
     TOTAL_BYTES,
+    PREPARED_BYTES,
     REFERENCE_DEPTH,
     REFERENCE_EDGES,
     STRUCTURE_DEPTH,
@@ -216,7 +227,14 @@ internal data class ResourceLimitDiagnostic(
     override val diagnosticLabel: String? = null,
 ) : ModelPreparationDiagnostic {
     override val code = ModelPreparationDiagnosticCode.RESOURCE_LIMIT_EXCEEDED
-    override val message = "workspace preparation exceeded ${resource.name.lowercase()} limit $maximum (actual $actual)"
+    override val message = if (
+        resource == ModelPreparationResource.PREPARED_BYTES &&
+        actual == maximum + 1
+    ) {
+        "workspace preparation exceeded ${resource.name.lowercase()} limit $maximum (observed at least $actual)"
+    } else {
+        "workspace preparation exceeded ${resource.name.lowercase()} limit $maximum (actual $actual)"
+    }
 }
 
 /** Typed aggregate failure; messages contain only model identities and already-sanitized labels. */
@@ -383,6 +401,13 @@ internal object WorkspaceSourceAdmission {
         val header = root?.get("header") as? JsonObject
         val idNode = header?.get("id") as? JsonPrimitive
         val id = idNode?.takeIf { it.isString }?.content
+        if (root != null && containsUnpairedSurrogate(root)) {
+            diagnostics += InvalidModelSourceDiagnostic(
+                label,
+                "model source JSON strings must contain only Unicode scalar values",
+            )
+            return null
+        }
         if (id.isNullOrBlank()) {
             diagnostics += InvalidModelSourceDiagnostic(
                 label,
@@ -391,6 +416,27 @@ internal object WorkspaceSourceAdmission {
             return null
         }
         return id
+    }
+
+    private fun containsUnpairedSurrogate(root: JsonObject): Boolean {
+        val pending = mutableListOf<JsonElement>(root)
+        while (pending.isNotEmpty()) {
+            when (val element = pending.removeAt(pending.lastIndex)) {
+                is JsonObject -> {
+                    if (element.keys.any { strictUtf8ByteCount(it) == null }) {
+                        return true
+                    }
+                    pending.addAll(element.values)
+                }
+                is JsonArray -> pending.addAll(element)
+                is JsonPrimitive -> {
+                    if (element.isString && strictUtf8ByteCount(element.content) == null) {
+                        return true
+                    }
+                }
+            }
+        }
+        return false
     }
 
     private fun sanitizeLabel(label: String?): String? =

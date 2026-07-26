@@ -35,6 +35,11 @@ public final class GroupInfo {
         return model.maxRepetitions(path);
     }
 
+    /** This group's template marker, such as {@code attachment} or {@code multi-select}, when declared. */
+    public java.util.Optional<String> usageType() {
+        return model.usageTypeOfGroup(path);
+    }
+
     /** This group as a typed authoring handle. */
     public GroupRef ref() {
         return model.group(path);
