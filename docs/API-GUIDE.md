@@ -690,7 +690,7 @@ Rule rule = m.rule(addons)                        // model-aware entry: rule liv
 <!-- teaser -->
 ```java
 new DslRenderer().render(condition);                       // canonical EN, absolute paths (no group context)
-rule.render();                                             // paths relative to the rule's group (../ to siblings)
+rule.render();                                             // relative within one root; cross-root references stay absolute
 new DslRenderer(ConditionLanguage.DE).render(condition);   // same AST, German keywords
 
 ValidationResult vr = new RuleValidator().check(modelJson, draftRule);   // F4: real kernel, no compile
@@ -703,6 +703,8 @@ System.out.println(all.toJson());                          // agent-parseable, o
 BoundModel m2 = m.add(rule);                               // snapshot (F0): write → NEW binding, re-validated
 m2.writeTo(path);                                          // DM-JSON write path — authored JSON, includes preserved (D9, F6)
 ```
+
+Relative paths never escape their root group: a rule under `/Dashboard` renders a typed reference to `/Dashboard/Status` as `Status`, while a typed reference to `/Application/Approved` remains `/Application/Approved`. The latter cannot be rendered as `../Application/Approved`; the DSL's parent navigation does not cross root-group boundaries.
 
 Typed persistence takes the stored condition language from the destination model. The AST remains language-independent; `BoundModel.add`, typed `ModelWriter` operations, and typed replacements render English or German only at the write boundary. Raw string/draft overloads remain verbatim for callers that already provide stored DSL text.
 

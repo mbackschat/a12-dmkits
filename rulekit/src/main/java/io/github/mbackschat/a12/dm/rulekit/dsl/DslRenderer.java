@@ -12,10 +12,11 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Span;
  * keyword knowledge lives outside the catalog.
  *
  * <p>Path policy (§18 fork 9, F3a): with a {@code baseGroup} set the renderer emits paths
- * <em>relative</em> to the rule's group (bare under the group, {@code ../} up to a sibling — both
- * kernel-verified, KERNEL-FINDINGS §10 (paths)), which is how {@code Rule}/{@code Computation} render;
- * without one it emits absolute paths. Keyword-segment quoting and honoring read
- * {@link PathStyle} hints are the remaining refinements.
+ * <em>relative</em> within that root group (bare under the group, {@code ../} up to a sibling — both
+ * kernel-verified, KERNEL-FINDINGS §10 (paths)). A reference into another root group remains
+ * absolute because the DSL's parent navigation cannot cross a root boundary. This is how
+ * {@code Rule}/{@code Computation} render; without a base group every path is absolute.
+ * Keyword-segment quoting and honoring read {@link PathStyle} hints are the remaining refinements.
  */
 public final class DslRenderer {
 
@@ -32,7 +33,7 @@ public final class DslRenderer {
         this(OperatorCatalog.load(), language, null);
     }
 
-    /** A renderer that emits paths relative to {@code baseGroup} (fork #9 / F3a); {@code null} = absolute. */
+    /** A renderer that emits same-root paths relative to {@code baseGroup}; {@code null} = absolute. */
     public DslRenderer(ConditionLanguage language, String baseGroup) {
         this(OperatorCatalog.load(), language, baseGroup);
     }
@@ -52,10 +53,9 @@ public final class DslRenderer {
     }
 
     /**
-     * A path in the configured form: relative to the rule's group when a {@code baseGroup} is set
-     * (fork #9 — the kernel's preferred, readable form, verified accepted: bare under the group,
-     * {@code ../} up to a sibling), else the absolute path. Both are kernel-valid; relative is the
-     * authoring norm.
+     * A path in the configured form: relative to the rule's group when the target belongs to the
+     * same root group, otherwise absolute. Same-root relative paths are the kernel's preferred,
+     * readable form; cross-root parent navigation is not legal DSL.
      */
     private String path(String absolute) {
         String form = baseGroup == null ? absolute : relativize(baseGroup, absolute);
@@ -96,6 +96,9 @@ public final class DslRenderer {
     private static String relativize(String base, String absolute) {
         String[] b = base.split("/");
         String[] f = absolute.split("/");
+        if (b.length > 1 && f.length > 1 && !b[1].equals(f[1])) {
+            return absolute;
+        }
         int common = 0;
         while (common < b.length && common < f.length && b[common].equals(f[common])) {
             common++;

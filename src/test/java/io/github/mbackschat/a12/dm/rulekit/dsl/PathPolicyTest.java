@@ -9,6 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -47,6 +49,26 @@ class PathPolicyTest {
         assertEquals("FieldFilled(MonthlyFee) And FieldFilled(../Tier)", rule.render());
         assertTrue(new RuleValidator().check(JSON, rule.draft()).ok(),
                 "../ sibling navigation must be kernel-accepted");
+    }
+
+    @Test
+    void keepsCrossRootReferencesAbsolute() {
+        String json = DocumentModelDraft.named("cross-root-paths").locale("en_US")
+                .rootGroup("Dashboard", group -> group.field("Alert", FieldKind.BOOLEAN))
+                .rootGroup("Application", group -> group.field("Approved", FieldKind.BOOLEAN))
+                .build()
+                .toJson();
+        BoundModel model = BoundModel.ofJson(json);
+        BoolRef alert = model.bool("/Dashboard/Alert");
+        BoolRef approved = model.bool("/Application/Approved");
+        Rule rule = model.rule(model.group("/Dashboard"))
+                .name("ApprovalAlertRule").errorField(alert)
+                .when(alert.filled().and(approved.filled()))
+                .code("APPROVAL_ALERT").severity(Severity.ERROR).message(en("x")).build();
+
+        assertEquals("FieldFilled(Alert) And FieldFilled(/Application/Approved)", rule.render());
+        assertTrue(new RuleValidator().check(json, rule.draft()).ok(),
+                "a reference in another root group must remain absolute and be kernel-accepted");
     }
 
     @Test
