@@ -44,6 +44,10 @@ trap 'rm -rf "$temporary"' EXIT
 
 mkdir -p "$report_dir"
 git archive "$previous_commit" | tar -x -C "$temporary"
+# build.sh anchors its isolated Gradle home at Git's common directory. The archive deliberately carries no
+# repository metadata, so give this disposable source tree an empty local repository; report identity remains
+# the resolved archived commit passed through deliveryCommit, not a fabricated local commit.
+git -C "$temporary" init --quiet
 
 echo "rebuilding previous release $previous_ref@$previous_commit"
 (
