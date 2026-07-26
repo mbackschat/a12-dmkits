@@ -6,8 +6,9 @@ The settled licensing decision and the reasoning behind it. The proposal's [§19
 
 - **rulekit source — MIT.** Every file in this repository is rulekit's own original work and ships **no kernel binary**, so the source carries no copyleft entanglement. MIT keeps the whole A12-consuming repo family consistent (`a12-kernel-demo` and `a12-kernel-bootstrap` are both MIT © mbackschat).
 - **The bundled CLI distributable — EUPL-1.2.** The standalone CLI (N10) embeds the kernel for a zero-install experience; the moment kernel bytecode is in a thing we hand out, that *artifact* must be offered under EUPL-1.2. rulekit's source stays MIT regardless.
+- **Interpreter Kernel drop-in artifact — EUPL-1.2 by explicit owner policy (2026-07-26).** The narrow JVM adapter embeds no Kernel bytecode: it implements the host-supplied Kernel API and delegates to the MIT interpreter core. It is nevertheless distributed under EUPL-1.2 as a deliberately conservative product boundary; this is a policy choice, not a claim that interface linking legally requires it.
 
-The governing rule, one line: **MIT for our source that resolves the kernel at build time; EUPL-1.2 for any artifact in which we bundle the kernel.** This same rule covers `a12-dmkits`, `a12-kernel-demo`, and the future CLI.
+The governing baseline is: **MIT for our source that resolves the kernel at build time; EUPL-1.2 for any artifact in which we bundle the kernel.** The interpreter drop-in is the one explicit stricter distribution choice: EUPL-1.2 even though it remains bytecode-free.
 
 ## Why this is sound — the facts
 
@@ -38,9 +39,11 @@ The European Commission's [EUPL FAQ](https://interoperable-europe.ec.europa.eu/c
 4. Keep the warranty disclaimer; label the distributed CLI EUPL-1.2.
 5. **No "mgm A12" name/logo** in product branding (the "Not an official A12 artifact" disclaimer already helps); the `rulekit` name is fine.
 
+The bytecode-free interpreter drop-in carries its own EUPL-1.2 text, adapter source JAR/source revision, API documentation, compatibility metadata, and checksums. It does not copy Kernel source, bundle Kernel classes, or claim that the host-supplied Kernel is part of the adapter artifact.
+
 ## Scope notes
 
 - **`a12-kernel-mm`** (EUPL-1.2) — reference/test-only metamodels, **never bundled** in the CLI runtime, so out of scope for redistribution. Committed fixtures remain our own originals (project `CLAUDE.md`).
 - **A12 Tools workspaces** (proprietary) — read-only pattern oracle, never committed, never shipped.
-- **Interpreter Kernel drop-in adapter** — the proposed JVM-only adapter implements the Kernel `IDocumentRtService` interface but delegates execution to the kernel-free interpreter. It is a new, separately packaged product boundary, not the existing broad `:adapter`; see [INTERPRETER-API-PROPOSAL](INTERPRETER-API-PROPOSAL.md) §10.2. The proposed policy is to publish that adapter under EUPL-1.2 deliberately while the base interpreter stays MIT. This policy still needs owner ratification and is not presented as a legal consequence of interface linking. If an adapter distribution ever embeds Kernel bytecode, the existing EUPL bundle rule applies without qualification.
+- **Interpreter Kernel drop-in adapter** — the JVM-only adapter implements the Kernel `IDocumentRtService` interface but delegates execution to the kernel-free interpreter. It is a new, separately packaged product boundary, not the existing broad `:adapter`; see [INTERPRETER-API-PROPOSAL](INTERPRETER-API-PROPOSAL.md) §10.2. Owner-ratified policy is to publish that bytecode-free adapter under EUPL-1.2 deliberately while the base interpreter stays MIT. This is not presented as a legal consequence of interface linking. If an adapter distribution ever embeds Kernel bytecode, the baseline EUPL bundle rule applies without qualification.
 - **Standard caveat:** this is engineering analysis, not legal advice. The permissive-into-copyleft combination is well-settled; the commercial option (`a12-license@mgm-tp.com`) remains available if a future need wants different terms.

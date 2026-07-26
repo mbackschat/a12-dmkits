@@ -100,8 +100,11 @@ The primary direct verbs remain deliberately familiar: `validateFull`, `validate
 | `RawModelJson` | one unexpanded DM-JSON source that may contain includes, imported typedefs, inline types, and opaque ids |
 | `ExpandedModelJson` | a `string` known to contain expanded, self-contained, name-path-keyed DM-JSON; the loader still validates that claim |
 | `ModelId` | the exact document-model identity read from `header.id`; filenames and URLs are not model identities |
-| `WorkspaceModelSource` | one raw source plus an optional caller-owned source name used only for diagnostics |
-| `ModelSourceProvider` | asynchronous host-acquisition port resolving one logical model id to source text on demand |
+| `WorkspaceModelSource` | one raw source plus optional expected integrity and a sanitized caller-owned diagnostic label |
+| `ModelSourceProvider` | snapshot-scoped asynchronous host-acquisition port resolving one logical model id to source text on demand |
+| `ModelSourceLoadContext` | per-load byte ceiling and cancellation signal supplied by the collector |
+| `ModelSourceProviderError` | typed acquisition failure distinguishing authorization, availability, cancellation, size, integrity, and unexpected provider failure |
+| `ModelCollectionOptions` | TypeScript collection limits plus `AbortSignal`; Kotlin/Java project the same semantics through their native asynchronous surfaces |
 | `ModelWorkspace` | an immutable, resource-bounded set of sources indexed by `header.id`; it prepares one requested transitive closure |
 | `ModelWorkspaceConstructor.collect` | asynchronous acquisition façade that follows discovered references through a provider and freezes the resulting closure before preparation |
 | `ModelPreparationLimits` | explicit bounds on source count, source/total bytes, reference depth, reference edges, and prepared element count |
@@ -187,20 +190,55 @@ type ExpandedModelJson = string;
 type RawModelJson = string;
 type ModelId = string;
 type ModelFingerprint = string;
+/** Validated 64-character lowercase hexadecimal SHA-256 over the strict UTF-8 JSON bytes. */
+type ModelSourceSha256 = string;
 
 type ModelReferencePurpose =
   | "include"
   | "type-definitions";
 
 interface WorkspaceModelSource {
-  readonly sourceName?: string;
+  readonly diagnosticLabel?: string;
+  readonly expectedSha256?: ModelSourceSha256;
   readonly json: RawModelJson;
+}
+
+interface ModelSourceLoadContext {
+  readonly maximumBytes: number;
+  readonly signal: AbortSignal;
+}
+
+type ModelSourceProviderFailureReason =
+  | "access-denied"
+  | "unavailable"
+  | "cancelled"
+  | "source-too-large"
+  | "integrity-mismatch"
+  | "provider-failed";
+
+interface ModelSourceProviderFailure {
+  readonly reason: ModelSourceProviderFailureReason;
+  readonly modelId: ModelId;
+  readonly retryable: boolean;
+  readonly message: string;
+  readonly cause?: unknown;
+}
+
+declare class ModelSourceProviderError extends Error {
+  constructor(failure: ModelSourceProviderFailure);
+  readonly code: "A12_MODEL_SOURCE_PROVIDER_FAILED";
+  readonly reason: ModelSourceProviderFailureReason;
+  readonly modelId: ModelId;
+  readonly retryable: boolean;
+  readonly cause?: unknown;
 }
 
 interface ModelSourceProvider {
   readonly name?: string;
+  readonly snapshotRevision?: string;
   load(
     modelId: ModelId,
+    context: ModelSourceLoadContext,
   ): Promise<WorkspaceModelSource | undefined>;
 }
 
@@ -212,7 +250,8 @@ interface ModelReferenceStep {
 }
 
 interface ModelDependency extends ModelReferenceStep {
-  readonly sourceName?: string;
+  readonly diagnosticLabel?: string;
+  readonly sha256: ModelSourceSha256;
 }
 
 interface ModelPreparationLimits {
@@ -230,6 +269,7 @@ type ModelPreparationDiagnosticCode =
   | "ENTRY_MODEL_NOT_FOUND"
   | "UNRESOLVED_MODEL_REFERENCE"
   | "MODEL_SOURCE_PROVIDER_FAILED"
+  | "MODEL_SOURCE_INTEGRITY_MISMATCH"
   | "MODEL_SOURCE_ID_MISMATCH"
   | "MODEL_REFERENCE_CYCLE"
   | "INVALID_INCLUDE_MOUNT"
@@ -262,14 +302,19 @@ type ModelOwnerIdentity = {
 interface ModelPreparationDiagnostic {
   readonly code: ModelPreparationDiagnosticCode;
   readonly providerName?: string;
-  readonly sourceName?: string;
+  readonly diagnosticLabel?: string;
   readonly requestedModelId?: ModelId;
   readonly actualModelId?: ModelId;
+  readonly providerFailureReason?:
+    ModelSourceProviderFailureReason;
+  readonly retryable?: boolean;
+  readonly expectedSha256?: ModelSourceSha256;
+  readonly actualSha256?: ModelSourceSha256;
   readonly modelId?: ModelId;
   readonly path?: string;
   readonly reference?: string;
   readonly referenceChain?: readonly ModelReferenceStep[];
-  readonly conflictingSourceNames?: readonly string[];
+  readonly conflictingDiagnosticLabels?: readonly string[];
   readonly resource?: ModelPreparationResource;
   readonly maximum?: number;
   readonly actual?: number;
@@ -469,6 +514,7 @@ interface PreparedModelConstructor {
 
 interface ModelWorkspace {
   readonly modelIds: readonly ModelId[];
+  readonly snapshotRevision?: string;
   prepare(
     entryModelId: ModelId,
   ): PreparedModel;
@@ -485,8 +531,13 @@ interface ModelWorkspaceConstructor {
   collect(
     entryModelId: ModelId,
     provider: ModelSourceProvider,
-    limits?: ModelPreparationLimits,
+    options?: ModelCollectionOptions,
   ): Promise<ModelWorkspace>;
+}
+
+interface ModelCollectionOptions {
+  readonly limits?: ModelPreparationLimits;
+  readonly signal?: AbortSignal;
 }
 
 declare const PreparedModel: PreparedModelConstructor;
@@ -507,9 +558,11 @@ const interpreter: Interpreter =
 
 | Boundary | Contract |
 |---|---|
-| Workspace construction | `fromSources` parses headers, enforces resource limits, indexes exact `header.id` values, and rejects ambiguous duplicates with `ModelPreparationError`; `sourceName` is diagnostic metadata, never lookup identity |
-| On-demand collection | `collect` calls `provider.load` at most once per exact discovered id, freezes each successful result, and returns an immutable workspace containing only the entry closure |
-| Provider failures | `undefined` becomes an unresolved-reference diagnostic; a rejected promise becomes `MODEL_SOURCE_PROVIDER_FAILED`; a returned `header.id` different from the requested id becomes `MODEL_SOURCE_ID_MISMATCH` |
+| Workspace construction | `fromSources` parses headers, enforces resource limits, verifies supplied SHA-256 values, indexes exact `header.id` values, and rejects ambiguous duplicates with `ModelPreparationError`; `diagnosticLabel` is sanitized presentation metadata, never lookup identity |
+| On-demand collection | `collect` calls `provider.load` at most once per exact discovered id, freezes each successful result, and returns an immutable workspace containing only one snapshot-consistent entry closure |
+| Provider failures | `undefined` becomes an unresolved-reference diagnostic; a typed rejection preserves reason/retryability; an untyped rejection becomes `"provider-failed"`; a returned `header.id` different from the requested id becomes `MODEL_SOURCE_ID_MISMATCH`; the collector never retries implicitly |
+| Acquisition limits | each load receives the effective hard-capped byte ceiling and cancellation signal; the provider stops oversized I/O before materializing a string, and the collector independently rechecks source and aggregate limits |
+| Source integrity | the collector verifies `expectedSha256`, retains the computed digest in dependency metadata, and computes the prepared fingerprint from the exact resolved bytes |
 | Workspace preparation | `prepare(entryModelId)` resolves and prepares only the selected model's transitive include/typedef closure; `tryPrepare` returns the same diagnostics through `ModelPreparationResult` |
 | Expanded loading | `loadExpandedJson` is an explicit fast path returning `PreparedModel` or throwing `ModelPreparationError`; `tryLoadExpandedJson` returns the same diagnostics through `ModelPreparationResult` |
 | Owner mismatch | `ModelOwnerMismatchError` covers foreign snapshots, pointers, and prepared-program handles; `expected` and `actual` are opaque correlation identities, not model content |
@@ -522,7 +575,7 @@ const interpreter: Interpreter =
 | Typed write | `DocumentValueWriteError` reports kind mismatch or lossy representation without changing the value |
 | Candidate preparation | `ProgramPreparationError` reports invalid candidate-rule or expression source without classifying the whole model as invalid |
 
-Omitting `ModelPreparationLimits` selects documented library defaults; it never disables bounds. A caller may tighten those defaults, while any widening is capped by hard implementation maxima so a browser cannot accidentally opt into unbounded parsing or expansion.
+Omitting `ModelPreparationLimits` or `ModelCollectionOptions.limits` selects documented library defaults; it never disables bounds. A caller may tighten those defaults, while any widening is capped by hard implementation maxima so a browser cannot accidentally opt into unbounded acquisition, parsing, or expansion.
 
 The default configuration uses a system clock sampled once per evaluation transaction, model-carried time zone/declared base year/charset, the kernel-compatible date-completion base-year default, the BMP fallback charset, built-in predefined types, and empty custom registries. Missing custom constructs remain explicit in evaluation results as unsupported; they are never silently ignored.
 
@@ -1522,9 +1575,9 @@ Strict preparation rejects a model time zone that the current multiplatform runt
 
 ### 4.1 Workspace preparation
 
-`ModelWorkspace` is the portable preparation boundary for raw DM-JSON. It is an immutable snapshot containing source text and no filesystem, URL, fetch, credential, database connection, or mutable resolver state. `fromSources` constructs it from an initial finite file map; `collect` acquires a closure asynchronously through `ModelSourceProvider` and freezes that closure before the synchronous common preparation pipeline runs.
+`ModelWorkspace` is the portable preparation boundary for raw DM-JSON. It is an immutable snapshot containing source text and no filesystem, URL, fetch, credential, database connection, or mutable resolver state. `fromSources` constructs it from an initial finite file map; `collect` acquires one snapshot-consistent closure asynchronously through `ModelSourceProvider` and freezes that closure before the synchronous common preparation pipeline runs.
 
-Each source is indexed by its exact `header.id`. `modelReferences[*].reference` resolves against that identity; include aliases select mount names and are not alternate model ids. An optional `sourceName` identifies a file, URL, or display label only in diagnostics.
+Each source is indexed by its exact `header.id`. `modelReferences[*].reference` resolves against that identity; include aliases select mount names and are not alternate model ids. An optional `diagnosticLabel` is sanitized presentation metadata only; it must not contain a credential, signed query, authorization datum, sensitive absolute path, or other acquisition secret.
 
 Workspace construction rejects a missing/invalid document header, resource-limit violation, and duplicate `header.id`. Duplicate rejection is a deliberately stricter host-input rule, not a claim about kernel consistency: choosing one of two sources would make preparation depend on caller order or filesystem traversal.
 
@@ -1538,7 +1591,7 @@ Preparing an entry performs the complete common pipeline:
 
 Reference remapping covers rule conditions plus computation common preconditions, alternative preconditions, and operations. Relative and short references retain their binding semantics; a reference that cannot be mapped is a structured preparation failure, never a best-effort leftover.
 
-The prepared model retains its resolved `ModelDependency` edges and source names for diagnostics and tooling. Unused `fromSources` entries are neither parsed beyond workspace admission nor included in the prepared closure; `collect` does not request them at all.
+The prepared model retains its resolved `ModelDependency` edges, computed source digests, and diagnostic labels for diagnostics and tooling. Unused `fromSources` entries are neither parsed beyond workspace admission nor included in the prepared closure; `collect` does not request them at all.
 
 `PreparedModel.loadExpandedJson` remains the explicit fast path for callers that already own expanded, self-contained, name-path-keyed DM-JSON. Its residual guard rejects unresolved includes, unresolved type definitions, opaque identifiers, and other preparation residue with the same diagnostic model.
 
@@ -1547,16 +1600,51 @@ The prepared model retains its resolved `ModelDependency` edges and source names
 - calls `load(id)` at most once for each exact id and caches that result privately;
 - discovers the next ids only by parsing references in already returned sources;
 - verifies that a returned source's `header.id` equals the requested id;
-- stops on missing sources, provider failures, cycles, or resource limits with the complete reference chain;
+- supplies the effective hard-capped byte ceiling and cancellation signal to every load;
+- verifies an optional expected SHA-256 and records the digest computed over the exact UTF-8 bytes;
+- stops on missing sources, typed/untyped provider failures, cancellation, integrity mismatch, cycles, or resource limits with the complete reference chain;
+- never retries a provider call implicitly;
 - retains the exact returned bytes, so provider mutation after collection cannot alter the workspace or prepared model.
+
+One provider instance represents one logical read snapshot for the duration of `collect`. An immutable HTTP manifest pins a revision and expected digest per model; a database provider uses a repeatable-read transaction/snapshot; a Git provider pins a commit; a directory provider indexes one stable scan. `snapshotRevision` is optional provenance, while the exact resolved bytes and computed digests remain authoritative for `ModelFingerprint`.
+
+Acquisition limits apply before and after materialization. A streaming HTTP/file/blob provider must stop reading at `maximumBytes` rather than first allocate an oversized string; the collector independently checks the returned UTF-8 byte count, total bytes, graph limits, and hard implementation maxima.
+
+`undefined` means model not found. A provider throws `ModelSourceProviderError` for an expected access, availability, cancellation, size, or integrity failure and supplies whether a host-level retry could be meaningful; an arbitrary rejection is normalized to `"provider-failed"` without losing the original cause. Retry/backoff, authentication refresh, provider-wide caching, writes, and watches are host policy and remain outside collection. V1 deliberately has no `loadMany`/batch hook; add one only if measured real-workspace latency justifies the larger contract.
+
+The asynchronous façade is platform-shaped rather than leaked into `commonMain`:
+
+| Consumer | Projection |
+|---|---|
+| TypeScript/JavaScript | `Promise<ModelWorkspace>` plus `AbortSignal` |
+| Kotlin | suspending collection façade |
+| Java | `CompletionStage<ModelWorkspace>` with cancellation propagation |
+| every platform | synchronous `fromSources` and deterministic synchronous preparation/evaluation |
+
+The collection algorithm is single-sourced behind those façades. With the project's Kotlin 2.2 pin, `jsMain` explicitly bridges the asynchronous collector to a Promise; the initial ABI does not depend on Kotlin 2.3's [experimental direct export of suspend functions](https://kotlinlang.org/docs/whatsnew23.html).
+
+The R2 contract locks are explicit:
+
+| Advertised invariant | Enforcement locus | Failing lock |
+|---|---|---|
+| one logical read snapshot | provider-session contract plus immutable manifest/transaction/commit adapters | mutate a dependency between loads and require rejection or the originally pinned bytes |
+| expected integrity | common collector SHA-256 verification | corrupt one fetched source and require `MODEL_SOURCE_INTEGRITY_MISMATCH` with expected/actual digests |
+| one load per exact id and no implicit retry | collector request memo | diamond dependency plus retryable failure; assert one provider call for each id |
+| cancellation on every platform | TypeScript/Kotlin/Java collection façades and provider context | cancel during a streaming load; assert no later dependency is requested and the typed cancellation survives |
+| acquisition-time and aggregate limits | bounded host reader plus common collector limits | exceed the per-source limit before full materialization, then separately exceed total bytes across legal small sources |
+| typed failures | provider-error normalization in the collector | exercise every failure reason plus an arbitrary rejection and assert stable code/reason/retryability/cause |
+| no acquisition-secret leakage | source admission and diagnostic projection | supply a credential-bearing URL/path label and assert it is rejected or sanitized from diagnostics, dependency metadata, and fingerprint inputs |
+| platform surface parity | generated TypeScript declarations plus Kotlin/Java consumer fixtures | compile and execute Promise/`AbortSignal`, suspending, and `CompletionStage` consumers against the packed artifacts |
 
 Concrete providers remain host adapters:
 
 | Host/source | Adapter |
 |---|---|
 | finite bundle/tests | in-memory map |
-| HTTP/CDN | explicit id-to-URL manifest plus `fetch` |
-| browser-local data | IndexedDB; OPFS for filesystem-like storage |
+| HTTP/CDN | immutable revisioned id-to-URL/SHA-256 manifest plus bounded `fetch` |
+| browser-local editable data | IndexedDB |
+| browser read-only/offline data | Cache Storage/service-worker responses pinned by the manifest |
+| browser-local filesystem-like data | OPFS |
 | user-selected browser directory | permission-gated File System Access adapter with import fallback |
 | Node/Next.js Node runtime | `node:fs/promises` directory/manifest adapter |
 | Next.js Edge runtime | `fetch`, database, platform KV, or object storage |
@@ -1565,45 +1653,74 @@ Concrete providers remain host adapters:
 The browser showcase uses an explicit HTTP manifest and on-demand collection:
 
 ```ts
+interface WorkspaceManifestModel {
+  readonly modelId: ModelId;
+  readonly url: string;
+  readonly sha256: ModelSourceSha256;
+}
+
 interface WorkspaceManifest {
+  readonly revision: string;
   readonly entryModelId: ModelId;
-  readonly models:
-    readonly {
-      readonly modelId: ModelId;
-      readonly url: string;
-    }[];
+  readonly models: readonly WorkspaceManifestModel[];
 }
 
 const manifest: WorkspaceManifest =
   await fetch("./models/workspace.json").then(
     response => response.json(),
   );
-const urlsById: ReadonlyMap<ModelId, string> =
+const entriesById:
+  ReadonlyMap<ModelId, WorkspaceManifestModel> =
   new Map(
     manifest.models.map(model => [
       model.modelId,
-      model.url,
+      model,
     ]),
   );
+
+declare function readUtf8Bounded(
+  response: Response,
+  maximumBytes: number,
+  signal: AbortSignal,
+): Promise<string>;
+
 const provider: ModelSourceProvider = {
   name: "showcase-http",
+  snapshotRevision: manifest.revision,
   async load(
     modelId: ModelId,
+    context: ModelSourceLoadContext,
   ): Promise<WorkspaceModelSource | undefined> {
-    const url: string | undefined =
-      urlsById.get(modelId);
-    if (url === undefined) {
+    const entry: WorkspaceManifestModel | undefined =
+      entriesById.get(modelId);
+    if (entry === undefined) {
       return undefined;
     }
-    const response: Response = await fetch(url);
+    const response: Response = await fetch(
+      entry.url,
+      { signal: context.signal },
+    );
     if (!response.ok) {
-      throw new Error(
-        `model fetch failed: ${response.status}`,
-      );
+      throw new ModelSourceProviderError({
+        reason:
+          response.status === 401 ||
+          response.status === 403
+            ? "access-denied"
+            : "unavailable",
+        modelId,
+        retryable: response.status >= 500,
+        message:
+          `model fetch failed: ${response.status}`,
+      });
     }
     return {
-      sourceName: url,
-      json: await response.text(),
+      diagnosticLabel: `showcase:${modelId}`,
+      expectedSha256: entry.sha256,
+      json: await readUtf8Bounded(
+        response,
+        context.maximumBytes,
+        context.signal,
+      ),
     };
   },
 };
@@ -1617,9 +1734,9 @@ const prepared: PreparedModel =
   workspace.prepare(manifest.entryModelId);
 ```
 
-The manifest maps ids to locations rather than deriving a URL from untrusted ids. The collector enforces each manifest id against the fetched `header.id`, which remains authoritative for interpreter lookup. Directory adapters likewise index validated headers instead of treating filenames as identities; server providers must not turn an untrusted id directly into a path or arbitrary remote URL.
+The manifest maps ids to locations rather than deriving a URL from untrusted ids. The collector enforces each manifest id and digest against the fetched source and its `header.id`, which remains authoritative for interpreter lookup. Directory adapters likewise index validated headers instead of treating filenames as identities; server providers must not turn an untrusted id directly into a path or arbitrary remote URL.
 
-Promise-returning provider calls are confined to collection. Evaluation and customization callbacks stay synchronous, and no provider is retained by `ModelWorkspace`, `PreparedModel`, or `Interpreter`.
+Asynchronous provider calls are confined to collection. Evaluation and customization callbacks stay synchronous, and no provider, signal, URL, credential, database handle, or mutable acquisition cache is retained by `ModelWorkspace`, `PreparedModel`, or `Interpreter`.
 
 V1 date precision supports only `"full"` and `"day-optional"`. Strict preparation rejects month-optional or year-optional declarations with a stable diagnostic such as `"UNSUPPORTED_DATE_PRECISION"`.
 
@@ -1631,7 +1748,7 @@ It does not coerce them, collapse them to fragments, or defer them as unsupporte
 
 Semantically equivalent JSON may therefore occupy two cache entries; that is a harmless miss. Changing an unused workspace source does not change the fingerprint, while changing any resolved dependency does. Returning one prepared model for different resolved source content is not harmless; canonical semantic hashing should not be claimed until a canonicalization contract exists.
 
-Every model-carried semantic input is covered by the resolved closure: ordered rules/computations, types and constraints, mounts, time zone, optional declared base year, model charset, and short-reference policy. The effective date-completion year is derived deterministically by applying the `2000` fallback. Runtime configuration and source names are excluded.
+Every model-carried semantic input is covered by the resolved closure: ordered rules/computations, types and constraints, mounts, time zone, optional declared base year, model charset, and short-reference policy. The effective date-completion year is derived deterministically by applying the `2000` fallback. Runtime configuration, diagnostic labels, and the provider's provenance-only snapshot revision are excluded.
 
 ### 4.3 Read-only introspection
 
@@ -4353,7 +4470,9 @@ kernel-free dm-interpreter core
 
 The proposed artifact is `io.github.mbackschat.a12.dm:dm-interpreter-kernel-dropin:0.x`. It is JVM-only, is never a dependency of the Kotlin Multiplatform or TypeScript interpreter packages, and is distinct from the broad internal `:adapter` module. The broad module remains a test oracle/backend and is not a publishable runtime product.
 
-The adapter contains no Kernel bytecode. Its compatibility metadata names the pinned Kernel API version, while the existing host application supplies that API/runtime through its own dependency setup; this is reasonable because the adapter has no use outside an application already compiled against `IDocumentRtService`. The public GitHub release repository hosts the adapter and its source/docs/license artifacts, not a mirror of the Kernel.
+The adapter contains no Kernel bytecode. Its compatibility metadata names the pinned Kernel API version, while the existing host application supplies that API/runtime through its own dependency setup; the adapter's build treats Kernel APIs as compile-only/host-provided because the artifact has no use outside an application already compiled against `IDocumentRtService`. The public GitHub release repository hosts the adapter and its source/docs/license artifacts, not a mirror of the Kernel.
+
+Publication inspects both the archive and resolved runtime graph. The JAR must contain no `com/mgmtp/**` entry, shaded Kernel class, or embedded Kernel JAR, and its runtime dependency graph must contain no Kernel artifact. Any future convenience distribution that embeds Kernel bytecode is a different artifact with the full Kernel-bundle notices/source obligations; it cannot silently replace this coordinate.
 
 For the pinned A12 Kernel 30.8.1 contract, the adapter implements `com.mgmtp.a12.kernel.md.rt.api.IDocumentRtService`. A release may call itself a drop-in replacement only when it implements every abstract method in that pinned interface, including the deprecated overloads that the interface still requires:
 
@@ -4385,11 +4504,13 @@ The drop-in compatibility claim has stronger gates than ordinary interpreter con
 2. differentially compare validation messages, pointers, repetition coordinates, formal findings, computation partitions, stored values, clear operations, and `applyTo` output against the dynamic-Groovy Kernel service, with static-Java characterization wherever it agrees;
 3. exercise full, partial, computation, precompile/cache, custom-extension, locale, clock, and legacy-context paths;
 4. run at least one real host integration smoke without changing that host's document/config/result call sites;
-5. publish a compatibility matrix naming the exact Kernel API versions for which the substitution claim is proven.
+5. publish a compatibility matrix naming the exact Kernel API versions for which the substitution claim is proven;
+6. inspect the JAR and resolved runtime graph and fail on any bundled/shaded/runtime Kernel artifact;
+7. verify the EUPL text, adapter source availability, exact source revision, API documentation, and checksums before publication.
 
 The adapter never calls Kernel validation or computation; that would defeat the clean-room interpreter boundary. Depending on Kernel API types for interoperability is permitted only in this separately packaged JVM edge.
 
-The base interpreter remains MIT and contains no Kernel code or dependency. The drop-in artifact has a separate license declaration and dependency graph. The proposed release policy is EUPL-1.2 for that adapter, making the Kernel-facing boundary unmistakable, while keeping the core MIT. This is a distribution choice rather than a claim that interface linking necessarily compels the EUPL: the European Commission's [EUPL FAQ](https://interoperable-europe.ec.europa.eu/collection/eupl/faqs) states that simple static or dynamic linking for interoperability does not by itself merge independent works. Any artifact that embeds Kernel bytecode remains EUPL-1.2 under the project's [licensing policy](LICENSING.md).
+The base interpreter remains MIT and contains no Kernel code or dependency. Owner decision 2026-07-26: publish the bytecode-free drop-in artifact under EUPL-1.2, making the Kernel-facing boundary unmistakable while keeping the core MIT. This is a deliberately conservative distribution choice rather than a claim that interface linking necessarily compels the EUPL: the European Commission's [EUPL FAQ](https://interoperable-europe.ec.europa.eu/collection/eupl/faqs) states that simple static or dynamic linking for interoperability does not by itself merge independent works. Any artifact that embeds Kernel bytecode also remains EUPL-1.2 under the project's [licensing policy](LICENSING.md), with the additional Kernel-bundle compliance obligations.
 
 ## 11. Correctness and performance
 
@@ -4467,7 +4588,7 @@ Zod scalar integration may proceed independently after the Operator API. Zod tra
 
 | Core contract | Optional after the core | Deliberately outside/deferred |
 |---|---|---|
-| resource-bounded raw `ModelWorkspace` preparation, async logical-id provider/collector, and strict expanded-input fast path | concrete adapters for IndexedDB, OPFS, user directories, Node/Next.js files, databases, and object stores | filesystem/network access inside `commonMain` |
+| resource-bounded raw `ModelWorkspace` preparation, snapshot/integrity-safe platform-projected logical-id provider/collector, and strict expanded-input fast path | reusable adapters for IndexedDB, Cache Storage, OPFS, user directories, Node/Next.js files, databases, and object stores | filesystem/network access inside `commonMain` |
 | prepared owner versus exclusive active interpreter split | explicit eager pool warmup | mandatory shared/reentrant evaluator |
 | read-only model introspection and caller-owned owner-aware application metadata | nested document-JSON adapter | dynamic model/rule authoring |
 | strict `unknown` decode, typed fast path, authenticity guard, and versioned lossless encode | document patch conveniences | Kernel document types in the core |
@@ -4486,7 +4607,7 @@ The customization architecture is also feasible. Custom Field Types are primaril
 Before publication, the following contracts need implementation and evidence:
 
 - commonMain workspace assembly for includes, imported typedefs, inline types, id normalization, and reference-aware mounts;
-- provider/collector laws for on-demand closure discovery, one load per id, id/header matching, failure propagation, and immutable source capture;
+- provider/collector laws for on-demand closure discovery, one load per id, id/header matching, snapshot consistency, expected-integrity verification, platform cancellation, typed failure propagation without implicit retry, acquisition-time and aggregate limits, sanitized diagnostics, and immutable source capture;
 - JVM/Node/browser preparation parity against the Java reader and kernel expansion oracle;
 - strict `unknown` ingress and resource limits;
 - lossless placement round trips and owner-aware authenticity;
