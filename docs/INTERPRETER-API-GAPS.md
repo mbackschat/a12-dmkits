@@ -8,7 +8,7 @@
 
 _None._
 
-The public v1 surface is implemented locally. Anonymous publication and the remaining browser performance claim are release/evaluator gaps IG85 and IG86, not missing API design.
+The public v1 surface and browser qualification are implemented locally. Anonymous publication is release gap IG85, not missing API design.
 
 ## 2. Deferred with re-open triggers
 

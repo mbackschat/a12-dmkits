@@ -5,7 +5,8 @@
   "scripts": {
     "build": "tsc --noEmit && vite build --base=/a12-interpreter-releases/showcase/",
     "measure:first-answer": "node scripts/performance.mjs",
-    "verify": "pnpm run build && node scripts/smoke.mjs"
+    "test:performance-policy": "node --test scripts/performance-policy.test.mjs",
+    "verify": "pnpm run test:performance-policy && pnpm run build && node scripts/smoke.mjs"
   },
   "devDependencies": {
     "playwright-core": "1.61.1",

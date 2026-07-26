@@ -9,27 +9,19 @@ import {
   withDeadline,
   withStaticServer,
 } from "./harness.mjs";
-
-const SAMPLE_COUNT = 50;
-const PERCENTILE = 0.95;
-
-const median = (values) => {
-  const sorted = [...values].sort((left, right) => left - right);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0
-    ? (sorted[middle - 1] + sorted[middle]) / 2
-    : sorted[middle];
-};
-
-const nearestRank = (values, percentile) => {
-  const sorted = [...values].sort((left, right) => left - right);
-  return sorted[Math.ceil(percentile * sorted.length) - 1];
-};
+import {
+  BROWSER_FIRST_ANSWER_POLICY,
+  enforceBrowserFirstAnswer,
+} from "./performance-policy.mjs";
 
 const samples = [];
 let chromeVersion;
 await withStaticServer(async (url) => {
-  for (let index = 0; index < SAMPLE_COUNT; index += 1) {
+  for (
+    let index = 0;
+    index < BROWSER_FIRST_ANSWER_POLICY.sampleCount;
+    index += 1
+  ) {
     const browser = await launchChrome();
     try {
       chromeVersion ??= browser.version();
@@ -57,15 +49,20 @@ await withStaticServer(async (url) => {
       await withDeadline("Chrome shutdown", browser.close());
     }
     if ((index + 1) % 10 === 0) {
-      console.log(`browser first-answer samples: ${index + 1}/${SAMPLE_COUNT}`);
+      console.log(
+        `browser first-answer samples: ${index + 1}/${
+          BROWSER_FIRST_ANSWER_POLICY.sampleCount
+        }`,
+      );
     }
   }
 });
 
 const cpu = cpus()[0]?.model ?? "unknown";
+const estimator = enforceBrowserFirstAnswer(samples);
 const report = {
   format: "a12-browser-first-answer-v1",
-  informativeUntilOwnerRatification: true,
+  informativeUntilOwnerRatification: false,
   commit: process.env.INTERPRETER_COMMIT ?? "unknown",
   scenario: {
     id: "browser-b1-10000-rows-first-answer",
@@ -85,12 +82,14 @@ const report = {
     cpu,
   },
   estimator: {
-    sampleCount: samples.length,
+    ...estimator,
     independence: "one fresh Chrome process per sample",
-    discardedSamples: 0,
-    percentile: PERCENTILE,
-    medianMillis: median(samples),
-    nearestRankP95Millis: nearestRank(samples, PERCENTILE),
+  },
+  releaseBar: {
+    metric: "nearest-rank-p95",
+    maximumMillis: BROWSER_FIRST_ANSWER_POLICY.maximumP95Millis,
+    ratifiedOn: BROWSER_FIRST_ANSWER_POLICY.ratifiedOn,
+    passed: true,
   },
   samplesMillis: samples,
 };

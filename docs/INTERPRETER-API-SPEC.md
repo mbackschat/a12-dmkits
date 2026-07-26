@@ -215,7 +215,7 @@ The public boundary is locked by:
 - package-content, dependency, source-map, secret, and checksum guards;
 - packed-package execution in Node and system Chrome.
 
-Browser semantics are qualified, but the browser support claim remains withheld until [INTERPRETER-GAPS](INTERPRETER-GAPS.md) IG86's owner-ratified first-answer gate passes. Anonymous public-GitHub delivery remains IG85.
+Browser support is qualified by packed-package semantic execution plus the owner-ratified first-answer release bar (IF224/IF225). Anonymous public-GitHub delivery remains IG85.
 
 ## 8. Explicit exclusions from the implemented API
 

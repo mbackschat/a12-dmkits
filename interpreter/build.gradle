@@ -1,7 +1,7 @@
 // The dm-interpreter (docs/INTERPRETER-SPEC.md; impl in docs/INTERPRETER-ARCHITECTURE.md) — a Kotlin Multiplatform, native-safe runtime
 // evaluator for conditions + computations. ONE common engine, two targets (JVM + JS), so it runs
 // in a GraalVM native image (no Groovy) and as a Node/browser JS library. Portable semantics and workspace
-// preparation are qualified in real Chrome (IF224); browser support remains unclaimed until IG86's p95 gate.
+// preparation and the ratified first-answer bar are qualified in real Chrome (IF224/IF225).
 // This is a publication-eligible standalone module:
 // it carries NO kernel/dmtool dependency — the kernel DIFFERENTIAL tests live in :adapter, not here, so
 // this module stays kernel-free even in test scope. That separation is enforced by `verifyInterpreterPurity`
@@ -96,6 +96,12 @@ kotlin {
             }
         }
     }
+}
+
+tasks.named('jsBrowserTest') {
+    // commonTest intentionally runs under Node and contains host probes that import node:* modules.
+    // Browser assurance comes from the packed-package Vite/Chrome consumer wired into check below.
+    enabled = false
 }
 
 // Kotlin 2.2 installs ABI validation as a nested extension of the multiplatform DSL. Configure that public
