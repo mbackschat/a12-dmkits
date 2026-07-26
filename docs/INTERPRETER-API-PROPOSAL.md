@@ -17,13 +17,13 @@ Preferred structure: motivation, scope, public API, typed examples, semantics an
 
 ## Status
 
-> **End-state vision capture.** This is the full destination assembled from interview Q&A and accumulated wishes, kept deliberately complete so no requirement is lost — not a scoped build order. The smallest buildable first increment (§12.1's minimum transport + ownership foundation, then the validate/compute + SPI increment) is extracted to [TS-API-MVP-PROPOSAL](TS-API-MVP-PROPOSAL.md); publication is gated on IG85.
+> **End-state vision capture.** This is the full destination assembled from interview Q&A and accumulated wishes, kept deliberately complete so no requirement is lost — not a scoped build order. The smallest buildable first increment (§12.1's workspace/preparation plus minimum transport and ownership foundation, then the validate/compute + SPI increment) is extracted to [TS-API-MVP-PROPOSAL](TS-API-MVP-PROPOSAL.md). The public-library wave has started: [INTERPRETER-RELEASE-PROPOSAL](INTERPRETER-RELEASE-PROPOSAL.md) activates IG68, IG85, and IG86 together.
 >
 > **Why this layer, and how much:** [TS-API-STUDY](TS-API-STUDY.md) §5 reads this proposal as a cheap, grounded *core* (load → document → validate/compute → SPIs) wrapped in a speculative service/editor/candidate *product bet* — build the core, design-but-defer the rest until a consumer justifies its shape.
 
 This proposal defines a TypeScript-first public API for the Kotlin Multiplatform A12 interpreter. It covers model preparation, lossless documents, direct storage access, validation, computations, customization, prepared programs, repeated-model services, and platform ownership.
 
-TypeScript on Node is the primary product surface. Java/JVM is a secondary projection of the same Kotlin `commonMain` implementation. Browser use is an important future form-UI scenario, not a current support claim.
+TypeScript on Node and in modern browsers is the primary product surface. Java/JVM is a secondary projection of the same Kotlin `commonMain` implementation. Browser support remains unclaimed until IG86's real-browser qualification gates pass.
 
 The base Kotlin Multiplatform interpreter and its TypeScript/JVM façades are clean-room, kernel-free, MIT-licensed artifacts. They do not import, link, reflect over, or bundle an A12 Kernel artifact.
 
@@ -36,14 +36,15 @@ API and package names are proposed contracts. Where a contract requires engine w
 The interpreter can credibly serve multi-threaded validation services, import pipelines, rule preview tools, dynamic forms, and JVM applications. The correct core distinguishes a prepared model definition or factory from each active evaluator:
 
 ```text
-expanded model ── prepare once ──► PreparedModel
-                                         │
-                 ┌───────────────────────┼───────────────────────┐
-                 ▼                       ▼                       ▼
-          Interpreter A-1         Interpreter A-2         Interpreter B-1
-          worker-confined         worker-confined       different config
-                 │                       │                       │
-                 └──────────── evaluate document snapshots ─────┘
+raw workspace ─┐
+               ├── prepare entry once ──► PreparedModel
+expanded JSON ─┘                              │
+                       ┌──────────────────────┼──────────────────────┐
+                       ▼                      ▼                      ▼
+                Interpreter A-1        Interpreter A-2        Interpreter B-1
+                worker-confined        worker-confined      different config
+                       │                      │                      │
+                       └────────── evaluate document snapshots ─────┘
 ```
 
 - `PreparedModel` represents one prepared owner domain and creates active interpreters within that domain. It may be immutable and share-safe, worker-confined, or independently instantiated per runtime lane; the public API does not mandate one implementation strategy.
@@ -63,7 +64,8 @@ The stable façade should cover the evaluator’s actual jobs and make the statu
 
 | Developer job | Engine today | Proposed product status |
 |---|---|---|
-| Load expanded DM-JSON | `ModelLoader.load` | core façade plus a stricter prepared-input guard |
+| Prepare raw models with includes and imported typedefs | JVM-side `ModelReader` only | core portable `ModelWorkspace` assembler with exact preparation semantics |
+| Load expanded DM-JSON | `ModelLoader.load` | explicit fast path plus a stricter prepared-input guard |
 | Reuse one model | retain one `DmInterpreter`; its stored ASTs parse lazily once | core `PreparedModel`/`Interpreter` boundary |
 | Reuse several models and concurrent instances | retain several `DmInterpreter` instances | core instance factory; optional bounded registry/runtime pool |
 | Inspect model structure | data exists on `ModelDef` | core stable read-only model metadata |
@@ -95,9 +97,15 @@ The primary direct verbs remain deliberately familiar: `validateFull`, `validate
 
 | Type | Meaning and ownership |
 |---|---|
+| `RawModelJson` | one unexpanded DM-JSON source that may contain includes, imported typedefs, inline types, and opaque ids |
 | `ExpandedModelJson` | a `string` known to contain expanded, self-contained, name-path-keyed DM-JSON; the loader still validates that claim |
-| `ModelFingerprint` | a library-computed digest string over exact model input bytes plus preparation-format/ABI identity |
-| `ModelPreparationDiagnostic` | one stable preparation code, optional model path, and corrective message |
+| `ModelId` | the exact document-model identity read from `header.id`; filenames and URLs are not model identities |
+| `WorkspaceModelSource` | one raw source plus an optional caller-owned source name used only for diagnostics |
+| `ModelWorkspace` | an immutable, resource-bounded set of sources indexed by `header.id`; it prepares one requested transitive closure |
+| `ModelPreparationLimits` | explicit bounds on source count, source/total bytes, reference depth, reference edges, and prepared element count |
+| `ModelDependency` | one resolved include or type-definition edge retained as preparation metadata |
+| `ModelFingerprint` | a library-computed digest over the selected entry, every source in its resolved closure, and preparation-format/ABI identity |
+| `ModelPreparationDiagnostic` | one stable preparation code, optional source/model/path/reference-chain location, structured details, and corrective message |
 | `ModelPreparationError` | typed JS-safe exception containing every preparation diagnostic |
 | `ModelPreparationResult` | non-throwing success/failure union for model preparation |
 | `UnknownModelPathError` | typed lookup exception containing the requested model-entity kind and path |
@@ -125,7 +133,7 @@ The primary direct verbs remain deliberately familiar: `validateFull`, `validate
 | `A12ConversionError` | the Operator API’s typed conversion exception, used when semantic value construction receives invalid components |
 | `A12Operators` | the stateless direct value-operator namespaces from the Operator API |
 | `PreparedModel` | one prepared owner domain containing or seeding model-only indexes; it contains no request document or caller callback instance and is not required to be shareable across threads or Workers |
-| `PreparedModelConstructor` | the typed `PreparedModel.loadExpandedJson(source)` export used to create a prepared definition |
+| `PreparedModelConstructor` | the typed expanded-input fast path used to create a prepared definition without a workspace |
 | `ModelVersionIdentity` | an opaque process/Worker-local identity for one exact registered or directly loaded model version; it is not a portable routing value |
 | `ModelOwnerIdentity` | an opaque process/Worker-local authenticity domain shared only by objects that may safely interoperate; separate runtime lanes may use different owners for the same model version |
 | `ModelOwnerMismatchError` | typed programmer error raised when two same-version or different-version model-owned runtime objects come from incompatible owner domains |
@@ -174,7 +182,60 @@ The zero-customization path has no configuration setup:
 
 ```ts
 type ExpandedModelJson = string;
+type RawModelJson = string;
+type ModelId = string;
 type ModelFingerprint = string;
+
+type ModelReferencePurpose =
+  | "include"
+  | "type-definitions";
+
+interface WorkspaceModelSource {
+  readonly sourceName?: string;
+  readonly json: RawModelJson;
+}
+
+interface ModelReferenceStep {
+  readonly fromModelId: ModelId;
+  readonly toModelId: ModelId;
+  readonly purpose: ModelReferencePurpose;
+  readonly alias?: string;
+}
+
+interface ModelDependency extends ModelReferenceStep {
+  readonly sourceName?: string;
+}
+
+interface ModelPreparationLimits {
+  readonly maxModelCount?: number;
+  readonly maxModelBytes?: number;
+  readonly maxTotalBytes?: number;
+  readonly maxReferenceDepth?: number;
+  readonly maxReferenceEdges?: number;
+  readonly maxPreparedElements?: number;
+}
+
+type ModelPreparationDiagnosticCode =
+  | "INVALID_MODEL_SOURCE"
+  | "DUPLICATE_MODEL_ID"
+  | "ENTRY_MODEL_NOT_FOUND"
+  | "UNRESOLVED_MODEL_REFERENCE"
+  | "MODEL_REFERENCE_CYCLE"
+  | "INVALID_INCLUDE_MOUNT"
+  | "AMBIGUOUS_TYPE_DEFINITION"
+  | "UNMAPPED_INCLUDED_REFERENCE"
+  | "UNPREPARED_MODEL_RESIDUE"
+  | "RESOURCE_LIMIT_EXCEEDED"
+  | "UNSUPPORTED_DATE_PRECISION"
+  | "UNSUPPORTED_TIME_ZONE";
+
+type ModelPreparationResource =
+  | "model-count"
+  | "model-bytes"
+  | "total-bytes"
+  | "reference-depth"
+  | "reference-edges"
+  | "prepared-elements";
 
 declare const modelVersionIdentityBrand: unique symbol;
 declare const modelOwnerIdentityBrand: unique symbol;
@@ -188,8 +249,16 @@ type ModelOwnerIdentity = {
 };
 
 interface ModelPreparationDiagnostic {
-  readonly code: string;
+  readonly code: ModelPreparationDiagnosticCode;
+  readonly sourceName?: string;
+  readonly modelId?: ModelId;
   readonly path?: string;
+  readonly reference?: string;
+  readonly referenceChain?: readonly ModelReferenceStep[];
+  readonly conflictingSourceNames?: readonly string[];
+  readonly resource?: ModelPreparationResource;
+  readonly maximum?: number;
+  readonly actual?: number;
   readonly message: string;
 }
 
@@ -384,18 +453,44 @@ interface PreparedModelConstructor {
   ): ModelPreparationResult;
 }
 
-declare const PreparedModel: PreparedModelConstructor;
-declare const expandedModelJson: ExpandedModelJson;
+interface ModelWorkspace {
+  readonly modelIds: readonly ModelId[];
+  prepare(
+    entryModelId: ModelId,
+  ): PreparedModel;
+  tryPrepare(
+    entryModelId: ModelId,
+  ): ModelPreparationResult;
+}
 
-const prepared: PreparedModel =
+interface ModelWorkspaceConstructor {
+  fromSources(
+    sources: readonly WorkspaceModelSource[],
+    limits?: ModelPreparationLimits,
+  ): ModelWorkspace;
+}
+
+declare const PreparedModel: PreparedModelConstructor;
+declare const ModelWorkspace: ModelWorkspaceConstructor;
+declare const expandedModelJson: ExpandedModelJson;
+declare const rawWorkspaceSources:
+  readonly WorkspaceModelSource[];
+
+const preparedFromExpanded: PreparedModel =
   PreparedModel.loadExpandedJson(expandedModelJson);
+const workspace: ModelWorkspace =
+  ModelWorkspace.fromSources(rawWorkspaceSources);
+const prepared: PreparedModel =
+  workspace.prepare("policy");
 const interpreter: Interpreter =
   prepared.createInterpreter();
 ```
 
 | Boundary | Contract |
 |---|---|
-| Model loading | `loadExpandedJson` returns `PreparedModel` or throws `ModelPreparationError`; `tryLoadExpandedJson` returns the same diagnostics through `ModelPreparationResult` |
+| Workspace construction | `fromSources` parses headers, enforces resource limits, indexes exact `header.id` values, and rejects ambiguous duplicates with `ModelPreparationError`; `sourceName` is diagnostic metadata, never lookup identity |
+| Workspace preparation | `prepare(entryModelId)` resolves and prepares only the selected model's transitive include/typedef closure; `tryPrepare` returns the same diagnostics through `ModelPreparationResult` |
+| Expanded loading | `loadExpandedJson` is an explicit fast path returning `PreparedModel` or throwing `ModelPreparationError`; `tryLoadExpandedJson` returns the same diagnostics through `ModelPreparationResult` |
 | Owner mismatch | `ModelOwnerMismatchError` covers foreign snapshots, pointers, and prepared-program handles; `expected` and `actual` are opaque correlation identities, not model content |
 | Model lookup | `UnknownModelPathError` reports the requested `ModelEntityKind` and path |
 | Document input | `DocumentInputError` aggregates portable placement diagnostics; every item has an envelope `inputPath` and may separately carry the attempted A12 `modelPath` |
@@ -405,6 +500,8 @@ const interpreter: Interpreter =
 | Row scope | `DocumentRowScopeError` carries the requested group path and supplied ancestor `GroupPointer` |
 | Typed write | `DocumentValueWriteError` reports kind mismatch or lossy representation without changing the value |
 | Candidate preparation | `ProgramPreparationError` reports invalid candidate-rule or expression source without classifying the whole model as invalid |
+
+Omitting `ModelPreparationLimits` selects documented library defaults; it never disables bounds. A caller may tighten those defaults, while any widening is capped by hard implementation maxima so a browser cannot accidentally opt into unbounded parsing or expansion.
 
 The default configuration uses a system clock sampled once per evaluation transaction, model-carried time zone/declared base year/charset, the kernel-compatible date-completion base-year default, the BMP fallback charset, built-in predefined types, and empty custom registries. Missing custom constructs remain explicit in evaluation results as unsupported; they are never silently ignored.
 
@@ -728,7 +825,9 @@ interface ModelOwned {
 }
 
 interface PreparedModel extends ModelOwned {
+  readonly entryModelId: ModelId;
   readonly fingerprint: ModelFingerprint;
+  readonly dependencies: readonly ModelDependency[];
   readonly model: ModelMetadata;
   readonly documents: PreparedDocumentApi;
 
@@ -1274,7 +1373,7 @@ The completion default never makes `BaseYear` legal when `declaredBaseYear` is a
 
 ### 3.2 Static versus configured state
 
-One prepared owner may own or seed only state derived from the expanded model:
+One prepared owner may own or seed only state derived from the prepared model closure:
 
 - the loaded model definition;
 - model-declared time zone, declared base year, effective date-completion base year, supported characters, field kinds, constraints, and reference policy;
@@ -1400,11 +1499,61 @@ Strict preparation rejects a model time zone that the current multiplatform runt
 
 ## 4. Model input, diagnostics, and introspection
 
-### 4.1 Prepared input
+### 4.1 Workspace preparation
 
-The standalone boundary initially accepts only expanded, self-contained, name-path-keyed DM-JSON. It rejects unresolved includes, unresolved type definitions, opaque identifiers that require an external resolver, and other preparation residue.
+`ModelWorkspace` is the portable preparation boundary for raw DM-JSON. It contains caller-supplied source text and no filesystem, URL, fetch, credential, or mutable resolver state. Browser and Node applications acquire sources asynchronously before constructing it; JVM applications may add separate directory/resource adapters without changing the common contract.
 
-`ModelLoader.load` is not yet that strict boundary: an unresolved type definition can currently degrade to a string kind. `PreparedModel.loadExpandedJson` must add a real residual/type/include guard and throw `ModelPreparationError` with structured diagnostics rather than accepting a semantically different model. `tryLoadExpandedJson` exposes the same failure without exceptions.
+Each source is indexed by its exact `header.id`. `modelReferences[*].reference` resolves against that identity; include aliases select mount names and are not alternate model ids. An optional `sourceName` identifies a file, URL, or display label only in diagnostics.
+
+Workspace construction rejects a missing/invalid document header, resource-limit violation, and duplicate `header.id`. Duplicate rejection is a deliberately stricter host-input rule, not a claim about kernel consistency: choosing one of two sources would make preparation depend on caller order or filesystem traversal.
+
+Preparing an entry performs the complete common pipeline:
+
+1. resolve its transitive include and `typeDefinitions` references with cycle and limit checks;
+2. merge imported type definitions and inline effective field types;
+3. mount includes with the exact `SINGLE_RG`/`MODEL_ROOT`, nesting, alias, `excludeRules`, and `excludeComputations` semantics;
+4. normalize element ids to name paths and remap every legal rule/computation reference fragment across the move;
+5. reject unresolved references, ambiguous imports, opaque ids, invalid mounts, or any other preparation residue.
+
+Reference remapping covers rule conditions plus computation common preconditions, alternative preconditions, and operations. Relative and short references retain their binding semantics; a reference that cannot be mapped is a structured preparation failure, never a best-effort leftover.
+
+The prepared model retains its resolved `ModelDependency` edges and source names for diagnostics and tooling. Unused workspace sources are neither parsed beyond workspace admission nor included in the prepared closure.
+
+`PreparedModel.loadExpandedJson` remains the explicit fast path for callers that already own expanded, self-contained, name-path-keyed DM-JSON. Its residual guard rejects unresolved includes, unresolved type definitions, opaque identifiers, and other preparation residue with the same diagnostic model.
+
+A browser adapter performs asynchronous acquisition outside the common interpreter API:
+
+```ts
+interface WorkspaceManifest {
+  readonly entryModelId: ModelId;
+  readonly models:
+    readonly {
+      readonly modelId: ModelId;
+      readonly url: string;
+    }[];
+}
+
+const manifest: WorkspaceManifest =
+  await fetch("./models/workspace.json").then(
+    response => response.json(),
+  );
+const sources: readonly WorkspaceModelSource[] =
+  await Promise.all(
+    manifest.models.map(async model => ({
+      sourceName: model.url,
+      json: await fetch(model.url).then(
+        response => response.text(),
+      ),
+    })),
+  );
+
+const workspace: ModelWorkspace =
+  ModelWorkspace.fromSources(sources);
+const prepared: PreparedModel =
+  workspace.prepare(manifest.entryModelId);
+```
+
+The manifest's `modelId` is an acquisition-time assertion that the adapter may check; `header.id` inside the fetched source remains authoritative for interpreter lookup.
 
 V1 date precision supports only `"full"` and `"day-optional"`. Strict preparation rejects month-optional or year-optional declarations with a stable diagnostic such as `"UNSUPPORTED_DATE_PRECISION"`.
 
@@ -1412,11 +1561,11 @@ It does not coerce them, collapse them to fragments, or defer them as unsupporte
 
 ### 4.2 Model identity
 
-`PreparedModel.fingerprint` is computed by the library, never trusted from a caller. When the API accepts a JavaScript string, the conservative initial identity is a digest of its exact UTF-8 encoding plus the prepared-input format and interpreter preparation ABI version; a byte-oriented overload may accept `Uint8Array`.
+`PreparedModel.fingerprint` is computed by the library, never trusted from a caller. For workspace preparation, the conservative identity digests the entry model id, the exact UTF-8 bytes of every source in the resolved closure ordered by model id, and the preparation-format/ABI version. For `loadExpandedJson`, it digests the exact UTF-8 source bytes and the same preparation identity; a later byte-oriented overload may accept `Uint8Array`.
 
-Semantically equivalent JSON may therefore occupy two cache entries; that is a harmless miss. Returning one prepared model for different source content is not harmless. Canonical semantic hashing should not be claimed until a canonicalization contract exists.
+Semantically equivalent JSON may therefore occupy two cache entries; that is a harmless miss. Changing an unused workspace source does not change the fingerprint, while changing any resolved dependency does. Returning one prepared model for different resolved source content is not harmless; canonical semantic hashing should not be claimed until a canonicalization contract exists.
 
-Every model-carried semantic input is already in the expanded bytes: ordered rules/computations, types and constraints, time zone, optional declared base year, model charset, and short-reference policy. The effective date-completion year is derived deterministically from those bytes by applying the `2000` fallback. Runtime configuration is excluded.
+Every model-carried semantic input is covered by the resolved closure: ordered rules/computations, types and constraints, mounts, time zone, optional declared base year, model charset, and short-reference policy. The effective date-completion year is derived deterministically by applying the `2000` fallback. Runtime configuration and source names are excluded.
 
 ### 4.3 Read-only introspection
 
@@ -1483,7 +1632,7 @@ const computations: readonly ComputationMetadata[] =
 
 The first contract should expose evaluation-relevant facts: traversable structure, path, kind, format/effective scale, constraints, repetition, index-field relationships, labels/messages where available, computation status, model time zone, declared base year, and effective date-completion base year. It should not publish `ModelDef` or internal maps as ABI.
 
-Preparing model JSON generated at runtime is supported. Authoring, editing, include resolution, and kernel-equivalent model consistency checking are not interpreter jobs; a future multiplatform modelkit may produce the expanded input without becoming part of this evaluator façade.
+Preparing model JSON generated at runtime is supported. Workspace assembly resolves includes and typedef imports, but authoring, editing, discovering files, fetching URLs, and kernel-equivalent model consistency checking remain outside the interpreter façade.
 
 ### 4.4 Caller-owned application metadata
 
@@ -4177,11 +4326,11 @@ Known decimal, regex, time-zone, preparation, and host gaps in [INTERPRETER-GAPS
 
 ## 12. Recommended product surface
 
-### 12.1 Minimum transport and ownership foundation
+### 12.1 Minimum workspace, transport, and ownership foundation
 
-The first implementable Interpreter increment should be a dependency-free transport and ownership foundation: `PlacementDocumentInputV1`, `DocumentDecodeLimits`, structured `DocumentInputDiagnostic` and `DocumentInputError` values, `PreparedModel` and `ModelOwnerIdentity`, `PreparedDocumentApi.tryDecodePlacements`, the typed `readPlacements` fast path, `encodePlacements`, `isSnapshot(value: unknown)`, and the resulting model-owned `DocumentSnapshot`.
+The first implementable Interpreter increment should establish two adjacent foundations. Preparation provides `WorkspaceModelSource`, resource-bounded immutable `ModelWorkspace`, transitive include/typedef assembly, structured `ModelPreparationDiagnostic`, `PreparedModel`, dependency metadata, and the explicit `loadExpandedJson` fast path. Transport and ownership provide `PlacementDocumentInputV1`, `DocumentDecodeLimits`, structured `DocumentInputDiagnostic` and `DocumentInputError` values, `ModelOwnerIdentity`, `PreparedDocumentApi.tryDecodePlacements`, the typed `readPlacements` fast path, `encodePlacements`, `isSnapshot(value: unknown)`, and the resulting model-owned `DocumentSnapshot`.
 
-This foundation is independently useful for HTTP, queue, persistence, plugin, and Worker boundaries. It establishes one authoritative A12-native document contract before optional framework adapters appear. It does not depend on the validation-service registry, runtime pooling, persistent editing, candidate programs, Zod, or browser support.
+These foundations are independently useful for browser, HTTP, queue, persistence, plugin, and Worker boundaries. They establish one portable model-preparation contract and one authoritative A12-native document contract before optional framework adapters appear. They do not depend on the validation-service registry, runtime pooling, persistent editing, candidate programs, or Zod.
 
 Once this foundation is stable, it is sufficient for the strict document-ingress and owner-bound snapshot portions of the optional [Zod integration proposal](ZOD-INTEGRATION-PROPOSAL.md). Validation-report projection still waits for the canonical `ValidationReport` contract.
 
@@ -4198,7 +4347,7 @@ Zod scalar integration may proceed independently after the Operator API. Zod tra
 
 | Core contract | Optional after the core | Deliberately outside/deferred |
 |---|---|---|
-| strict expanded-model preparation | bounded model registry/runtime pool | process-global/unbounded cache |
+| resource-bounded raw `ModelWorkspace` preparation plus strict expanded-input fast path | host acquisition adapters for directories, resources, URLs, and browser manifests | filesystem/network access inside `commonMain` |
 | prepared owner versus exclusive active interpreter split | explicit eager pool warmup | mandatory shared/reentrant evaluator |
 | read-only model introspection and caller-owned owner-aware application metadata | nested document-JSON adapter | dynamic model/rule authoring |
 | strict `unknown` decode, typed fast path, authenticity guard, and versioned lossless encode | document patch conveniences | Kernel document types in the core |
@@ -4207,7 +4356,7 @@ Zod scalar integration may proceed independently after the Operator API. Zod tra
 | kernel-free custom field-type/condition SPIs, immutable registries, and pre-bound lane slots | — | kernel types or process-global registries in the core |
 | full/relevant-set validation, lossless report axes/pointers, and configuration support report | number expression observer | arbitrary context-free expression claim |
 | stored-rule row outcomes | tracing/explanation if demanded | kernel consistency certification in TypeScript |
-| lossless compute, compute-field, compute-and-apply outcomes and deltas | browser after qualification | browser support by assumption |
+| lossless compute, compute-field, compute-and-apply outcomes and deltas | browser Worker adapter after main-thread qualification | browser support by assumption |
 
 This product is feasible, but it is not a rename exercise. The evaluator-backed validation/computation core is medium productization work; the definition/active-instance split and bounded registry/pool require explicit ownership but do not require one shared reentrant evaluator; a performant immutable editable document surface is a distinct substantial capability.
 
@@ -4215,11 +4364,13 @@ The customization architecture is also feasible. Custom Field Types are primaril
 
 Before publication, the following contracts need implementation and evidence:
 
+- commonMain workspace assembly for includes, imported typedefs, inline types, id normalization, and reference-aware mounts;
+- JVM/Node/browser preparation parity against the Java reader and kernel expansion oracle;
 - strict `unknown` ingress and resource limits;
 - lossless placement round trips and owner-aware authenticity;
 - direct callback-free storage reads;
 - exact field-aware typed rendering and custom-field conversion;
-- request-document cache confinement and strict prepared-input rejection;
+- request-document cache confinement and strict residual rejection;
 - model-zone clock sampling;
 - structured finding and computation channels;
 - complete custom field-type and custom-condition SPIs;
@@ -4227,6 +4378,6 @@ Before publication, the following contracts need implementation and evidence:
 - repeated-row rule outcomes and interpreter-binding factories;
 - Worker-local rollout and ownership;
 - JVM pool backpressure and lifecycle races;
-- the exact Node package ABI.
+- the exact Node/browser package ABI and generated TypeScript declarations.
 
-Persistent structural sharing, candidate programs, and browser support should not hold the core validation-service API hostage.
+Persistent structural sharing and candidate programs should not hold the core validation-service API hostage. Browser support is part of the publication gate, but it does not expand the core into a network/filesystem loader or promise-returning evaluator.

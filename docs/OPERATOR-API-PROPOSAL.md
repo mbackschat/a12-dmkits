@@ -17,7 +17,7 @@ Preferred structure: motivation, scope, public API, typed examples, semantics an
 
 ## Status
 
-> **End-state vision capture.** This is the full destination assembled from interview Q&A and accumulated wishes, kept deliberately complete so no requirement is lost — not a scoped build order. The smallest buildable first increment is extracted to [TS-API-MVP-PROPOSAL](TS-API-MVP-PROPOSAL.md); publication is gated on IG85.
+> **End-state vision capture.** This is the full destination assembled from interview Q&A and accumulated wishes, kept deliberately complete so no requirement is lost — not a scoped build order. The smallest buildable first increment is extracted to [TS-API-MVP-PROPOSAL](TS-API-MVP-PROPOSAL.md). The active interpreter publication does not by itself select the complete direct Operator API as a release product.
 >
 > **Why this layer, shown:** the motivation and a worked before/after (the money-float and end-of-month value bugs this API removes) live in [TS-API-STUDY](TS-API-STUDY.md) §4 — the study weighs this proposal alongside the Interpreter and Zod ones as one family.
 

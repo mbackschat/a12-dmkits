@@ -36,7 +36,7 @@ One seam, three layers. The rest of this study takes each in turn, then reads sc
 
 | Layer | Package | What it is | Grounded or new? | Consumer today |
 |---|---|---|---|---|
-| Operator core | `@a12/operators` | immutable A12 value family, exact codecs, direct operators | **grounded** — kernel-exact semantics already ship in `interpreter/src` (IF163/IF164/IF155); MVP is *extraction + projection* | none yet (IG85) |
+| Operator core | `@a12/operators` | immutable A12 value family, exact codecs, direct operators | **grounded** — kernel-exact semantics already ship in `interpreter/src` (IF163/IF164/IF155); MVP is *extraction + projection* | no direct-operator consumer selected yet; interpreter publication is separate |
 | Interpreter core | `@a12/interpreter` | prepare-once model → interpreter → model-owned document; validate/compute; custom SPIs | **mostly grounded** — thin façade over the existing `DmInterpreter` | none yet |
 | Interpreter layers | (same) | service registry + runtime pool, Worker coordinator, candidate programs, persistent form editor | **new** — the proposal itself calls these "new work" / a "distinct substantial capability" | none yet |
 | Zod adapters | `@a12/operators-zod`, `@a12/interpreter-zod` | boundary codecs + error bridge; strict transport schema; report projection | **thin** — delegates all semantics | none yet |
@@ -142,7 +142,7 @@ The family sorts cleanly into *build-now* and *design-but-defer* by one test: **
 | **Design, defer to a consumer** | interpreter service registry + pool, Worker coordinator, candidate programs, persistent form editor; `@a12/interpreter-zod` transport/report; wider zones, patterns, browser | genuinely new work; no external consumer exists yet, so building speculatively is the wrong bet |
 | **Drop from a first cut** | `@a12/interpreter-zod` §8 owner-bound snapshot adapter | the proposal's own open question; not a perf win |
 
-**The central caveat, stated plainly:** *there is no external consumer yet* — the whole family is gated on IG85. That is exactly why the MVP is the only part worth building speculatively: it is not a bet on demand, it is surfacing semantics the project already owns and has proven. Everything above the MVP should wait for the customer that justifies its shape.
+**Status update, 2026-07-26:** the GitHub Pages showcase is the first external interpreter consumer and activates the workspace/core/package/browser slice under IG68/IG85/IG86. It does not justify the optional service registry, pooling, editor, candidate-program, Zod, or complete direct-operator products; those still wait for a consumer that determines their shape.
 
 ## 8. Provenance and caveats
 
