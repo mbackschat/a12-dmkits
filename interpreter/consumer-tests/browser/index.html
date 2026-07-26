@@ -3,13 +3,207 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A12 interpreter browser smoke</title>
+    <meta
+      name="description"
+      content="Prepare A12 model workspaces and run validation and computation in your browser."
+    >
+    <title>A12 Interpreter Playground</title>
+    <link rel="stylesheet" href="/src/styles.css">
   </head>
   <body>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="A12 Interpreter Playground home">
+        <span class="brand-mark" aria-hidden="true">A12</span>
+        <span>Interpreter Playground</span>
+      </a>
+      <div class="package-badge">
+        <span>Package</span>
+        <code>@mbackschat/a12-interpreter</code>
+        <strong
+          id="package-version"
+          data-package="@mbackschat/a12-interpreter"
+        >…</strong>
+      </div>
+    </header>
+
     <main>
-      <h1>A12 interpreter browser smoke</h1>
-      <output id="status" data-state="running" aria-live="polite">Running…</output>
+      <section class="hero" aria-labelledby="hero-title">
+        <p class="eyebrow">Kotlin Multiplatform · TypeScript · browser-native</p>
+        <h1 id="hero-title">Run an A12 document model without a server round-trip.</h1>
+        <p class="hero-copy">
+          Resolve includes and imported typedefs, materialize a document, validate it, and compute derived values—all with the public package that ships to npm and Maven.
+        </p>
+        <div class="hero-facts" aria-label="Release facts">
+          <span><strong>JVM + Node + browser</strong> qualified</span>
+          <span><strong>209.3 ms</strong> measured browser p95</span>
+          <span><strong>33 cases</strong> replayed in Chrome</span>
+        </div>
+      </section>
+
+      <section class="playground" aria-labelledby="playground-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Live public API</p>
+            <h2 id="playground-title">Workspace → document → answer</h2>
+          </div>
+          <output id="status" data-state="running" aria-live="polite">Loading the packed interpreter…</output>
+        </div>
+
+        <div class="controls">
+          <label>
+            Scenario
+            <select id="scenario">
+              <option value="clean">Clean validation</option>
+              <option value="firing">Firing business rule</option>
+              <option value="formal-invalid">Formally invalid value</option>
+              <option value="computation">Derived value</option>
+              <option value="include-typedef">Include + imported typedef</option>
+            </select>
+          </label>
+          <label>
+            Workspace source
+            <select id="workspace-mode">
+              <option value="file-map">Finite file map</option>
+              <option value="provider">On-demand provider</option>
+            </select>
+          </label>
+          <label>
+            Entry model
+            <select id="entry-model-select" disabled>
+              <option>Bundled scenario entry</option>
+            </select>
+          </label>
+          <label>
+            Validation scope
+            <select id="validation-scope">
+              <option value="full">Full document</option>
+              <option value="relevant">Relevant scenario group</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="workbench">
+          <section class="editor-panel" aria-labelledby="document-title">
+            <div class="panel-heading">
+              <div>
+                <p class="step">01 · Input</p>
+                <h3 id="document-title">Placement document</h3>
+              </div>
+              <span id="scenario-note">A valid permit that should produce no findings.</span>
+            </div>
+            <div class="upload-row">
+              <label class="file-button">
+                Load workspace folder
+                <input
+                  id="workspace-folder-upload"
+                  type="file"
+                  webkitdirectory
+                  multiple
+                >
+              </label>
+              <label class="file-button">
+                Choose model files
+                <input
+                  id="workspace-upload"
+                  type="file"
+                  accept=".json,.dm.json,application/json"
+                  multiple
+                >
+              </label>
+              <label class="file-button">
+                Load placement document
+                <input
+                  id="document-upload"
+                  type="file"
+                  accept=".json,application/json"
+                >
+              </label>
+            </div>
+            <label class="editor-label" for="document-input">PlacementDocumentInputV1 JSON</label>
+            <textarea id="document-input" spellcheck="false"></textarea>
+          </section>
+
+          <section class="result-panel" aria-labelledby="result-title">
+            <div class="panel-heading">
+              <div>
+                <p class="step">02 · Output</p>
+                <h3 id="result-title">Structured result</h3>
+              </div>
+              <span>Nothing leaves this page.</span>
+            </div>
+            <div id="result-summary" class="result-summary" aria-live="polite">
+              Ready for an operation.
+            </div>
+            <pre id="result" tabindex="0"><code>{
+  "ready": true
+}</code></pre>
+          </section>
+        </div>
+
+        <div class="actions" aria-label="Interpreter operations">
+          <button id="prepare" type="button">Prepare workspace</button>
+          <button id="validate" class="primary" type="button">Validate</button>
+          <button id="compute" type="button">Compute</button>
+          <div id="relevant-selection" class="relevant-selection" hidden>
+            <label>
+              Relevant model path
+              <input id="relevant-path" type="text" value="/Permit">
+            </label>
+            <label>
+              Coordinates JSON
+              <input id="relevant-coordinates" type="text" value="[1]">
+            </label>
+          </div>
+        </div>
+
+        <aside id="workspace-summary" class="workspace-summary" aria-live="polite">
+          <div>
+            <span>Entry model</span>
+            <strong id="entry-model">—</strong>
+          </div>
+          <div>
+            <span>Resolved dependencies</span>
+            <strong id="dependency-count">—</strong>
+          </div>
+          <div>
+            <span>Provider requests</span>
+            <strong id="provider-requests">—</strong>
+          </div>
+          <div>
+            <span>Prepared fingerprint</span>
+            <code id="fingerprint">—</code>
+          </div>
+        </aside>
+      </section>
+
+      <section class="principles" aria-labelledby="principles-title">
+        <p class="eyebrow">What this proves</p>
+        <h2 id="principles-title">The same release boundary developers consume.</h2>
+        <div class="principle-grid">
+          <article>
+            <span aria-hidden="true">01</span>
+            <h3>Portable workspace</h3>
+            <p>Supply a finite source map or fetch the discovered closure by exact model id. Includes, typedefs, integrity, limits, and diagnostics share one contract.</p>
+          </article>
+          <article>
+            <span aria-hidden="true">02</span>
+            <h3>Reusable interpreter</h3>
+            <p>Prepare once, then decode and validate changing placement documents against the same immutable model—suited to responsive form input.</p>
+          </article>
+          <article>
+            <span aria-hidden="true">03</span>
+            <h3>Explicit results</h3>
+            <p>Validation findings, unsupported programs, computations, and preparation failures stay structured instead of becoming console-only messages.</p>
+          </article>
+        </div>
+      </section>
     </main>
+
+    <footer>
+      <span>Independent clean-room A12 interpreter</span>
+      <a href="https://github.com/mbackschat/a12-interpreter-releases">GitHub release repository</a>
+    </footer>
+
     <script>
       globalThis.__a12FirstAnswerStartedAt = performance.now();
     </script>

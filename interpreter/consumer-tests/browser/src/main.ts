@@ -3,8 +3,6 @@ import {
   type PlacementDocumentInputV1,
   type ValidationFinding,
 } from "@mbackschat/a12-interpreter";
-import {qualifyBrowser} from "./qualification.js";
-import {measureBrowserFirstAnswer} from "./performance.js";
 
 declare global {
   var __a12FirstAnswerStartedAt: number | undefined;
@@ -12,7 +10,7 @@ declare global {
 
 const status = document.querySelector<HTMLOutputElement>("#status");
 if (!status) {
-  throw new Error("browser smoke status output is missing");
+  throw new Error("browser status output is missing");
 }
 
 const fail = (error: unknown): never => {
@@ -48,9 +46,11 @@ const firstAnswer = async (): Promise<number> => {
     throw new Error("browser validation did not return AREA_NEEDS_NOTE");
   }
   const computation = interpreter.compute(snapshot).results;
-  if (computation.length !== 1 ||
-      computation[0]?.pointer.path !== "/Permit/ReviewedArea" ||
-      computation[0]?.value !== "120") {
+  if (
+    computation.length !== 1 ||
+    computation[0]?.pointer.path !== "/Permit/ReviewedArea" ||
+    computation[0]?.value !== "120"
+  ) {
     throw new Error("browser computation did not return the reviewed area");
   }
   return performance.now() - (
@@ -59,7 +59,9 @@ const firstAnswer = async (): Promise<number> => {
 };
 
 const run = async (): Promise<void> => {
-  if (new URLSearchParams(location.search).get("mode") === "performance") {
+  const mode = new URLSearchParams(location.search).get("mode");
+  if (mode === "performance") {
+    const {measureBrowserFirstAnswer} = await import("./performance.js");
     const elapsedMillis = await measureBrowserFirstAnswer();
     status.dataset.firstAnswerMillis = elapsedMillis.toFixed(3);
     status.dataset.performance = "passed";
@@ -69,23 +71,31 @@ const run = async (): Promise<void> => {
     } ms`;
     return;
   }
-  const firstAnswerMillis = await firstAnswer();
-  status.dataset.firstAnswerMillis = firstAnswerMillis.toFixed(3);
-  if (new URLSearchParams(location.search).get("mode") === "first-answer") {
+  if (mode === "first-answer") {
+    const firstAnswerMillis = await firstAnswer();
+    status.dataset.firstAnswerMillis = firstAnswerMillis.toFixed(3);
     status.dataset.state = "passed";
     status.textContent = `Packed interpreter first answer: ${
       firstAnswerMillis.toFixed(3)
     } ms`;
     return;
   }
-  const qualification = await qualifyBrowser();
-  status.dataset.corpusCases = qualification.corpusCases.toString();
-  status.dataset.workspace = qualification.workspace;
-  status.dataset.host = qualification.host;
-  status.dataset.state = "passed";
-  status.textContent =
-    `Packed interpreter browser qualification passed: ` +
-    `${qualification.corpusCases} corpus cases`;
+  if (mode === "qualification") {
+    const firstAnswerMillis = await firstAnswer();
+    const {qualifyBrowser} = await import("./qualification.js");
+    const qualification = await qualifyBrowser();
+    status.dataset.firstAnswerMillis = firstAnswerMillis.toFixed(3);
+    status.dataset.corpusCases = qualification.corpusCases.toString();
+    status.dataset.workspace = qualification.workspace;
+    status.dataset.host = qualification.host;
+    status.dataset.state = "passed";
+    status.textContent =
+      `Packed interpreter browser qualification passed: ` +
+      `${qualification.corpusCases} corpus cases`;
+    return;
+  }
+  const {startShowcase} = await import("./showcase.js");
+  await startShowcase();
 };
 
 void run().catch(fail);

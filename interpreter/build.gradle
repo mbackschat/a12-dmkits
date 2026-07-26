@@ -2135,6 +2135,11 @@ def prepareExternalInterpreterBrowserConsumer = tasks.register(
         def manifest = new File(destinationDir, 'public/corpus/cases.json')
         manifest.parentFile.mkdirs()
         manifest.setText(groovy.json.JsonOutput.toJson(casePaths) + '\n', 'UTF-8')
+        def releaseIdentity = new File(destinationDir, 'public/release.json')
+        releaseIdentity.setText(groovy.json.JsonOutput.toJson([
+            package: '@mbackschat/a12-interpreter',
+            version: project.version.toString(),
+        ]) + '\n', 'UTF-8')
     }
 }
 def installExternalInterpreterBrowserConsumerDependencies = tasks.register(

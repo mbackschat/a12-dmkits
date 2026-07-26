@@ -120,13 +120,15 @@ export const withStaticServer = async (operation) => {
       `http://127.0.0.1:${address.port}${PAGES_BASE}`,
     );
   } finally {
-    await withDeadline(
-      "static server shutdown",
-      new Promise((resolveClose, rejectClose) => {
-        server.close((error) =>
-          error ? rejectClose(error) : resolveClose());
-      }),
-    );
+    if (server.listening) {
+      await withDeadline(
+        "static server shutdown",
+        new Promise((resolveClose, rejectClose) => {
+          server.close((error) =>
+            error ? rejectClose(error) : resolveClose());
+        }),
+      );
+    }
   }
 };
 
