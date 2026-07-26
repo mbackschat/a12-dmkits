@@ -1,0 +1,42 @@
+{
+  "header" : {
+    "id" : "permit-types",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "permit-types",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "typeDefinitions" : [ {
+      "id" : "PermitCode",
+      "name" : "PermitCode",
+      "fieldType" : {
+        "type" : "StringType",
+        "StringType" : {
+          "maxLength" : 12
+        }
+      }
+    } ],
+    "modelRoot" : {
+      "rootGroups" : [ ]
+    }
+  }
+}

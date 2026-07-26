@@ -148,6 +148,76 @@ kotlin.sourceSets.commonTest.kotlin.srcDir(generatedPerformanceFixtureDir)
 tasks.named('compileTestKotlinJvm') { dependsOn generatePerformanceFixtureSource }
 tasks.named('compileTestKotlinJs') { dependsOn generatePerformanceFixtureSource }
 
+// R2's raw workspace matrix is authored once through modelkit/EditSession/rulekit in :adapter, then committed
+// as the exact source closure observed by the real Kernel/JVM-reader preparation lock. Embed that closure in
+// commonTest so both JVM and Node prove the standalone interpreter can consume the self-contained baseline
+// without adding a filesystem API or a kit dependency to the publication-eligible runtime.
+def workspacePreparationFixtureDir = file('src/commonTest/resources/workspace-preparation')
+def workspacePreparationFixtureManifest = new File(workspacePreparationFixtureDir, 'manifest.json')
+def workspacePreparationFixtureFiles = fileTree(workspacePreparationFixtureDir) { include '**/*.json' }
+def generatedWorkspacePreparationFixtureDir = layout.buildDirectory
+    .dir('generated/workspacePreparationFixtures/commonTest/kotlin')
+    .get()
+    .asFile
+def generatedWorkspacePreparationFixtureSource = new File(
+    generatedWorkspacePreparationFixtureDir,
+    'io/github/mbackschat/a12/dm/interpreter/workspace/WorkspacePreparationFixtureJson.kt',
+)
+def generateWorkspacePreparationFixtureSource = tasks.register('generateWorkspacePreparationFixtureSource') {
+    group = 'build'
+    description = 'Embed the typed-authored raw workspace matrix for common JVM/Node tests.'
+    inputs.files(workspacePreparationFixtureFiles)
+        .withPropertyName('typedWorkspacePreparationModels')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    outputs.file(generatedWorkspacePreparationFixtureSource)
+    doLast {
+        if (!workspacePreparationFixtureManifest.isFile()) {
+            throw new GradleException(
+                'missing workspace-preparation manifest; run :adapter:syncWorkspacePreparationFixtures')
+        }
+        def manifest = new groovy.json.JsonSlurper().parse(workspacePreparationFixtureManifest)
+        def entryCases = manifest.cases.collect { caseId, fixture ->
+            "        ${groovy.json.JsonOutput.toJson(caseId)} -> " +
+                groovy.json.JsonOutput.toJson(fixture.entryModelId)
+        }.join('\n')
+        def sourceCases = manifest.cases.collect { caseId, fixture ->
+            def sources = fixture.sources.collect { modelId, relativePath ->
+                def source = new File(workspacePreparationFixtureDir, relativePath as String)
+                if (!source.isFile()) {
+                    throw new GradleException(
+                        "missing workspace-preparation source ${relativePath}; " +
+                        'run :adapter:syncWorkspacePreparationFixtures')
+                }
+                def literal = groovy.json.JsonOutput.toJson(source.getText('UTF-8')).replace('$', '\\$')
+                "            ${groovy.json.JsonOutput.toJson(modelId)} to ${literal}"
+            }.join(',\n')
+            """\
+        ${groovy.json.JsonOutput.toJson(caseId)} -> mapOf(
+${sources}
+        )"""
+        }.join('\n')
+        generatedWorkspacePreparationFixtureSource.parentFile.mkdirs()
+        generatedWorkspacePreparationFixtureSource.text = """\
+package io.github.mbackschat.a12.dm.interpreter.workspace
+
+internal object WorkspacePreparationFixtureJson {
+    fun entryModelId(caseId: String): String = when (caseId) {
+${entryCases}
+        else -> error("unknown workspace-preparation case: \$caseId")
+    }
+
+    fun sources(caseId: String): Map<String, String> = when (caseId) {
+${sourceCases}
+        else -> error("unknown workspace-preparation case: \$caseId")
+    }
+}
+"""
+    }
+}
+kotlin.sourceSets.commonTest.kotlin.srcDir(generatedWorkspacePreparationFixtureDir)
+tasks.named('compileTestKotlinJvm') { dependsOn generateWorkspacePreparationFixtureSource }
+tasks.named('compileTestKotlinJs') { dependsOn generateWorkspacePreparationFixtureSource }
+
 // --- Separation by linting (proposal §8) ------------------------------------------------------------
 // The engine must never couple to the kernel or dmtool. A forbidden import fails the build, so the
 // kernel-free / native-safe / publication-eligible standalone boundary can't silently erode as the engine grows.

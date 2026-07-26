@@ -1,0 +1,36 @@
+{
+  "version" : 1,
+  "cases" : {
+    "self-contained" : {
+      "entryModelId" : "permit-basic",
+      "sources" : {
+        "permit-basic" : "self-contained/permit-basic.dm.json"
+      }
+    },
+    "imported-typedef-nested-single" : {
+      "entryModelId" : "permit-single",
+      "sources" : {
+        "permit-types" : "shared/permit-types.dm.json",
+        "inspection-checks" : "shared/inspection-checks.dm.json",
+        "permit-section" : "shared/permit-section.dm.json",
+        "permit-single" : "entries/permit-single.dm.json"
+      }
+    },
+    "imported-typedef-nested-model-root" : {
+      "entryModelId" : "permit-model-root",
+      "sources" : {
+        "permit-types" : "shared/permit-types.dm.json",
+        "inspection-checks" : "shared/inspection-checks.dm.json",
+        "permit-section" : "shared/permit-section.dm.json",
+        "permit-model-root" : "entries/permit-model-root.dm.json"
+      }
+    },
+    "alias-with-exclusions" : {
+      "entryModelId" : "permit-excluded",
+      "sources" : {
+        "inspection-checks" : "shared/inspection-checks.dm.json",
+        "permit-excluded" : "entries/permit-excluded.dm.json"
+      }
+    }
+  }
+}

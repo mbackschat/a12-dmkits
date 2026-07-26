@@ -1,0 +1,55 @@
+{
+  "header" : {
+    "id" : "permit-excluded",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ {
+      "alias" : "checksAlias",
+      "modelType" : "document",
+      "purpose" : "include",
+      "reference" : "inspection-checks"
+    } ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "permit-excluded",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Permit",
+        "name" : "Permit",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Group",
+            "id" : "/Permit/Inspection",
+            "name" : "Inspection",
+            "Group" : {
+              "repeatability" : 1,
+              "modelAlias" : "checksAlias",
+              "excludeRules" : true,
+              "excludeComputations" : true
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

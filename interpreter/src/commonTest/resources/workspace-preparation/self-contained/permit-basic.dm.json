@@ -1,0 +1,111 @@
+{
+  "header" : {
+    "id" : "permit-basic",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "permit-basic",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Permit",
+        "name" : "Permit",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Field",
+            "id" : "/Permit/ApplicationNo",
+            "name" : "ApplicationNo",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Permit/RequestedArea",
+            "name" : "RequestedArea",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 0
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Permit/ReviewedArea",
+            "name" : "ReviewedArea",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 0
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Permit/Note",
+            "name" : "Note",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Permit/AreaNeedsNote",
+            "name" : "AreaNeedsNote",
+            "Rule" : {
+              "errorEntityRelPath" : "../Note",
+              "errorCode" : "AREA_NEEDS_NOTE",
+              "errorCondition" : "FieldFilled(RequestedArea) And [RequestedArea] > 100 And FieldNotFilled(Note)",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "A large requested area needs a note."
+              } ]
+            }
+          }, {
+            "type" : "Computation",
+            "id" : "/Permit/CopyRequestedArea",
+            "name" : "CopyRequestedArea",
+            "Computation" : {
+              "computedFieldRelPath" : "../ReviewedArea",
+              "computationAlternatives" : [ {
+                "precondition" : "FieldFilled(ApplicationNo)",
+                "operation" : "[RequestedArea]"
+              } ],
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "The reviewed area follows the request."
+              } ]
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

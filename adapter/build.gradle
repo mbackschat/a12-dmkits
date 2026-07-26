@@ -250,6 +250,7 @@ tasks.named('test') {
         dependsOn 'footprintFixtureGuardTest'
         dependsOn 'performanceFixtureGuardTest'
         dependsOn 'profileFixtureGuardTest'
+        dependsOn 'workspacePreparationFixtureGuardTest'
     }
     dependsOn 'perfScriptGuardTest'
     // Millisecond filename lint — runs in the -Pfast inner loop too (unlike the heavyweight guards above).
@@ -266,6 +267,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ComputationPreconditionFidelityTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ModelSynthesisFidelityTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.profile.ProfileFixtureGuardTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.adapter.preparation.WorkspacePreparationFixtureGuardTest'
     }
 }
 
@@ -332,6 +334,51 @@ tasks.register('perfGateTest', Test) {
     // Measurements are observations, never reusable task outputs. Persist compilation/dependencies, not results.
     outputs.upToDateWhen { false }
     outputs.cacheIf { false }
+}
+
+def workspacePreparationFixtureDirectory =
+    rootProject.file('interpreter/src/commonTest/resources/workspace-preparation')
+def workspacePreparationFixtureFiles =
+    rootProject.fileTree(workspacePreparationFixtureDirectory) { include '**/*.json' }
+def workspacePreparationFixtureOutputs = [
+    'manifest.json',
+    'self-contained/permit-basic.dm.json',
+    'shared/permit-types.dm.json',
+    'shared/inspection-checks.dm.json',
+    'shared/permit-section.dm.json',
+    'entries/permit-single.dm.json',
+    'entries/permit-model-root.dm.json',
+    'entries/permit-excluded.dm.json',
+].collect { new File(workspacePreparationFixtureDirectory, it) }
+
+tasks.register('workspacePreparationFixtureGuardTest', Test) {
+    description = 'Verify the shared raw-workspace fixtures match their typed kit author.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    systemProperty 'workspace.preparation.fixture.dir', workspacePreparationFixtureDirectory.absolutePath
+    filter {
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.adapter.preparation.WorkspacePreparationFixtureGuardTest')
+    }
+    rootProject.guardInputs(it, ['typed workspace-preparation fixtures': workspacePreparationFixtureFiles])
+}
+
+tasks.register('syncWorkspacePreparationFixtures', Test) {
+    description = 'Regenerate shared raw-workspace fixtures through modelkit/EditSession/rulekit.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    systemProperty 'workspace.preparation.fixture.dir', workspacePreparationFixtureDirectory.absolutePath
+    systemProperty 'workspace.preparation.fixtures.fix', 'true'
+    filter {
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.adapter.preparation.WorkspacePreparationFixtureGuardTest')
+    }
+    outputs.files(workspacePreparationFixtureOutputs)
+    outputs.upToDateWhen { false }
 }
 
 def footprintFixtureDirectory = rootProject.file('interpreter/src/commonTest/resources/footprint')

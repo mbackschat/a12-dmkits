@@ -1,0 +1,102 @@
+{
+  "header" : {
+    "id" : "inspection-checks",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "inspection-checks",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Inspection",
+        "name" : "Inspection",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Field",
+            "id" : "/Inspection/Score",
+            "name" : "Score",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 0
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Inspection/Summary",
+            "name" : "Summary",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Inspection/Result",
+            "name" : "Result",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 0
+                }
+              }
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Inspection/NegativeScore",
+            "name" : "NegativeScore",
+            "Rule" : {
+              "errorEntityRelPath" : "../Score",
+              "errorCode" : "NEGATIVE_SCORE",
+              "errorCondition" : "FieldFilled(Score) And [Score] < 0",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "An inspection score cannot be negative."
+              } ]
+            }
+          }, {
+            "type" : "Computation",
+            "id" : "/Inspection/CopyScore",
+            "name" : "CopyScore",
+            "Computation" : {
+              "computedFieldRelPath" : "../Result",
+              "computationAlternatives" : [ {
+                "precondition" : "FieldFilled(Score)",
+                "operation" : "[Score]"
+              } ],
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "The result follows the inspection score."
+              } ]
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

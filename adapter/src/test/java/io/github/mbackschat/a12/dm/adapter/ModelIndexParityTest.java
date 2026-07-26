@@ -1,6 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -8,18 +7,14 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
-import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeSet;
 
 import org.junit.jupiter.api.Test;
 
-import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelResolver;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
@@ -89,15 +84,8 @@ class ModelIndexParityTest {
 
     /** Assert the kernel-free index and the kernel oracle carry identical name-paths and facts for one model. */
     private static void assertParity(String dmJson, ModelResolver resolver) {
-        KernelModelOracle kernel = KernelModelOracle.of(dmJson, resolver);
-        ModelIndex ours = ModelIndex.of(dmJson, resolver);
-
-        assertEquals(new TreeSet<>(kernel.paths()), new TreeSet<>(ourPaths(ours)),
-                "the kernel-free index and the kernel must key the same name-paths");
-        for (String path : kernel.paths()) {
-            assertEquals(kernel.factsAt(path), ourFactsAt(ours, path),
-                    () -> "facts diverge from the kernel at " + path);
-        }
+        PreparationParityHarness.assertElementsEquivalent(
+                PreparationParityHarness.observeElements(dmJson, resolver));
     }
 
     /** Sweep every document model under a corpus root; compare the ones the kernel accepts; return the count. */
@@ -112,18 +100,16 @@ class ModelIndexParityTest {
             } catch (IOException e) {
                 continue;
             }
-            KernelModelOracle kernel;
+            java.util.Map<String, ElementFacts> kernel;
             try {
-                kernel = KernelModelOracle.of(json, resolver);   // kernel load + expand + checkConsistency
+                kernel = PreparationParityHarness.observeKernelElements(json, resolver);
             } catch (RuntimeException kernelRejected) {
                 continue;   // a model the kernel itself won't load is not a parity concern
             }
-            ModelIndex ours = ModelIndex.of(json, resolver);
+            var reader = PreparationParityHarness.observeReaderElements(json, resolver);
+            var observation = new PreparationParityHarness.ElementObservation(kernel, reader);
             try {
-                assertEquals(new TreeSet<>(kernel.paths()), new TreeSet<>(ourPaths(ours)));
-                for (String path : kernel.paths()) {
-                    assertEquals(kernel.factsAt(path), ourFactsAt(ours, path), () -> "at " + path);
-                }
+                PreparationParityHarness.assertElementsEquivalent(observation);
                 compared++;
             } catch (AssertionError diverged) {
                 divergences.add(file.getFileName() + ": " + diverged.getMessage());
@@ -132,42 +118,6 @@ class ModelIndexParityTest {
         assertTrue(divergences.isEmpty(), () -> "index parity diverged from the kernel on:\n"
                 + String.join("\n", divergences.subList(0, Math.min(20, divergences.size()))));
         return compared;
-    }
-
-    private static List<String> ourPaths(ModelIndex index) {
-        List<String> paths = new ArrayList<>();
-        index.fieldPaths().forEach(paths::add);
-        index.groupPaths().forEach(paths::add);
-        return paths;
-    }
-
-    /** The kernel-free read surface at {@code path} — the mirror of {@link KernelModelOracle#factsAt}. */
-    private static ElementFacts ourFactsAt(ModelIndex index, String path) {
-        if (index.isGroup(path)) {
-            return new ElementFacts(true, null, null, null, null, null, null, null, null, null,
-                    index.maxRepetitions(path), annotations(index.annotationsOfGroup(path)));
-        }
-        var kind = index.kindOf(path);
-        Integer scale = kind == io.github.mbackschat.a12.dm.core.ValueKind.NUMBER ? index.numberScale(path) : null;
-        String min = index.numberMin(path).map(BigDecimal::toPlainString).orElse(null);
-        String max = index.numberMax(path).map(BigDecimal::toPlainString).orElse(null);
-        Integer minLength = index.stringMinLength(path).isPresent()
-                ? index.stringMinLength(path).getAsInt() : null;
-        Integer maxLength = index.stringMaxLength(path).isPresent()
-                ? index.stringMaxLength(path).getAsInt() : null;
-        String pattern = index.stringPattern(path).orElse(null);
-        List<String> enumValues = null;
-        Map<String, List<String>> enumCategories = null;
-        if (kind == io.github.mbackschat.a12.dm.core.ValueKind.ENUMERATION) {
-            enumValues = index.enumValues(path);
-            enumCategories = index.enumCategories(path);
-        }
-        return new ElementFacts(false, kind.name(), scale, min, max, minLength, maxLength, pattern,
-                enumValues, enumCategories, null, annotations(index.annotationsOf(path)));
-    }
-
-    private static List<String> annotations(List<io.github.mbackschat.a12.dm.core.Annotation> annotations) {
-        return annotations.stream().map(a -> a.name() + "=" + a.value()).toList();
     }
 
     // ── authored fixtures + corpus location ───────────────────────────────────────────────────────────────

@@ -342,7 +342,7 @@ The `R0`–`R10` rows are release milestones. The `R<n>.<n>` rows in §10.1 are 
 |---|---|---|---|---|---|
 | R0 | Establish current facts, dmtool pattern, and GitHub-only topology | BEST | — | done | This proposal records the evidence and fixed hosting boundary |
 | R1 | Ratify repository name, package coordinates, independent version train, first API slice, provider boundary, first-party-only meaning of GitHub-only, and drop-in sequencing/license | BEST | R0 | done | Every release-boundary decision is recorded in §13 |
-| R2 | Implement the original commonMain workspace assembler, platform-projected async source-provider collector, structured preparation API, minimum public interpreter façade, and document ownership contract, TDD-first | BEST | R1 | pending | Java-reader/kernel expansion parity plus snapshot/integrity/cancellation/failure/limit/privacy provider laws green on JVM/Node; public surface contains no implementation leaks |
+| R2 | Implement the original commonMain workspace assembler, platform-projected async source-provider collector, structured preparation API, minimum public interpreter façade, and document ownership contract, TDD-first | BEST | R1 | in progress | Java-reader/kernel expansion parity plus snapshot/integrity/cancellation/failure/limit/privacy provider laws green on JVM/Node; public surface contains no implementation leaks |
 | R3 | Add production Maven/npm packaging, generated `.d.ts`, Kotlin/TS ABI locks, package allowlist, source/docs artifacts, and delivery-footprint measurement | BEST | R2 | pending | Fresh local Maven and packed-tarball consumers compile and run |
 | R4 | Add the browser target, portable browser corpus, workspace-preparation coverage, host-sensitive locks, and browser first-answer evidence | BEST | R2, R3 | pending | Real-browser evaluation/preparation parity and owner-ratified performance bar |
 | R5 | Build the static showcase as a packed-package, revisioned manifest/SHA-backed on-demand workspace consumer with Cache Storage support and add browser E2E verification | BEST | R3, R4 | pending | Provider closure, integrity/cancellation/limit failures, offline reload, include/typedef, and clean/firing/formal-invalid/computation scenarios pass in a browser |
@@ -354,13 +354,13 @@ The `R0`–`R10` rows are release milestones. The `R<n>.<n>` rows in §10.1 are 
 
 ### 10.1 Session-sized task queue
 
-The current frontier is **R2.1**. Do not start a later set until its dependencies are `done` and the preceding landing has passed the §11 review gate. The public contract comes from [INTERPRETER-API-PROPOSAL](INTERPRETER-API-PROPOSAL.md), while [INTERPRETER-GAPS](INTERPRETER-GAPS.md) owns IG68, IG85, and IG86 until their full acceptance gates pass. Every implementation set uses red/green TDD, preserves each pre-fix failure in a unique `build/<set>-<item>-red.log`, runs the relevant JVM/Node/browser or external-consumer locks fresh, and closes or amends the owning gap/finding rows in the same commit when their acceptance gate has actually passed.
+The current frontier is **R2.2**. Do not start a later set until its dependencies are `done` and the preceding landing has passed the §11 review gate. The public contract comes from [INTERPRETER-API-PROPOSAL](INTERPRETER-API-PROPOSAL.md), while [INTERPRETER-GAPS](INTERPRETER-GAPS.md) owns IG68, IG85, and IG86 until their full acceptance gates pass. Every implementation set uses red/green TDD, preserves each pre-fix failure in a unique `build/<set>-<item>-red.log`, runs the relevant JVM/Node/browser or external-consumer locks fresh, and closes or amends the owning gap/finding rows in the same commit when their acceptance gate has actually passed.
 
 #### R2 — portable workspace and minimum public API
 
 | Set | Deliverable | Tier | Depends on | Status | Exit gate |
 |---|---|---|---|---|---|
-| R2.1 | Build the reusable model-preparation parity harness and license-safe own-domain raw-workspace fixtures for a self-contained entry, imported typedef, include mount, nested include, alias/exclusion, and cross-model references | BEST | R1 | pending | The adapter obtains Java `ModelReader` plus real-Kernel expansion observations, a deliberate negative control proves the comparison fires, and the self-contained baseline agrees with the current common loader on JVM and Node |
+| R2.1 | Build the reusable model-preparation parity harness and license-safe own-domain raw-workspace fixtures for a self-contained entry, imported typedef, include mount, nested include, alias/exclusion, and cross-model references | BEST | R1 | done | The adapter obtains Java `ModelReader` plus real-Kernel expansion observations, a deliberate negative control proves the comparison fires, and the self-contained baseline agrees with the current common loader on JVM and Node |
 | R2.2 | Add immutable `WorkspaceModelSource` admission: exact `header.id` indexing, duplicate rejection, SHA-256 verification, sanitized labels, frozen bytes, and per-source/aggregate resource limits with structured diagnostics | BEST | R2.1 | pending | Admission invariants each have a failing lock and pass on JVM/Node; no filesystem, network, storage, Kernel, or JVM type enters `commonMain` |
 | R2.3 | Assemble imported and inline type definitions into effective portable types | BEST | R2.2 | pending | Typedef fixture matrix matches the R2.1 Java-reader/Kernel observations and unresolved or cyclic typedef residue fails loudly |
 | R2.4 | Mount includes with exact `SINGLE_RG`/`MODEL_ROOT`, nesting, alias, `excludeRules`, and `excludeComputations` semantics | BEST | R2.3 | pending | Include fixture matrix and a predicted sibling case match both expansion oracles; cycle and depth limits fail structurally |
@@ -408,6 +408,12 @@ R10 starts only after the independently consumable MIT core is stable. Re-audit 
 | R10.6 | Substitute the drop-in unchanged in a real host, publish it as a separately licensed artifact, and publish the pinned compatibility matrix | BEST | R10.5 | pending | Real-host behavior, mixed-license metadata, source availability, checksums, anonymous consumption, and compatibility claims all pass |
 
 No set may publish or deploy while another session is active in the worktree.
+
+### 10.2 Program log
+
+- R2.1 extracted one representation-neutral preparation comparator and reused it in the older model-index parity lock, avoiding a second expansion-comparison mechanism.
+- The own-domain fixture author and freshness guard make the committed raw source closure reproducible through the typed kits; the same self-contained source executes on JVM and Node.
+- The red compile failure is preserved at `build/R2.1-parity-compile-red.log`; the R2.1 landing passed the real-Kernel/JVM preparation comparison, its deliberate negative control, include-remapping tri-check, fixture freshness guard, common JVM/Node baseline, purity lint, and semantics-map guard.
 
 ## 11. Review gate per landing
 
@@ -473,4 +479,4 @@ Ratified on 2026-07-26:
 - publish the independently consumable MIT core `v0.1.0` before the JVM Kernel drop-in;
 - publish the bytecode-free JVM drop-in artifact under EUPL-1.2 by explicit owner policy; this is deliberately conservative and is not presented as a consequence of interface linking.
 
-R1 is complete. The next program set is R2.1; no release implementation begins in this task-decomposition landing.
+R2.1 is complete. The next program set is R2.2.
