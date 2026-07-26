@@ -267,8 +267,9 @@ tasks.named('test') {
 // findings, and status in docs/NATIVE-IMAGE-GRAALVM.md. Not in the dev loop or CI; the JVM build is unaffected.
 // Groovy is excluded from the NATIVE classpath only (the JVM keeps it): GraalVM 25 compiles Groovy fine, but
 // picocli initializes groovy.lang.Closure at build time and its metadata stream is closed at runtime. The
-// trade-off — the runtime-eval verbs (model eval / rule eval / model compute) need Groovy and so don't work
-// in the native binary; the authoring/check/structure/read surface does (5/6 showboat demos pass).
+// runtime-eval verbs remain available in the native binary because the interpreter is their sole engine; the
+// JVM classpath stays unchanged for the remaining kernel-backed tooling. The native gate covers every
+// native-applicable demo.
 configurations.named('nativeImageClasspath') { exclude group: 'org.codehaus.groovy' }   // native-only; JVM keeps Groovy
 graalvmNative {
     toolchainDetection = false

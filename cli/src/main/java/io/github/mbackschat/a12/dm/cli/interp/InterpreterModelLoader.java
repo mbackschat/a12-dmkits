@@ -23,7 +23,7 @@ import io.github.mbackschat.a12.dm.modelkit.ModelTimeZoneContract;
  * by {@code InterpreterRealModelDiffTest} (the load→interpret path agrees with the live kernel).
  *
  * <p><b>Model loading is delegated</b> to the multiplatform {@link ModelLoader} in {@code :interpreter}
- * ({@code commonMain}) — the single, kernel-free, JVM+JS loader (WI-2 / proposal §6.2). This class keeps only
+ * ({@code commonMain}) — the single, kernel-free, JVM+JS loader (proposal §6.2). This class keeps only
  * the JVM-side <b>instance</b> loader ({@link #document}), which builds a {@link Document} from a Java map of
  * an already-parsed instance tree. Parity of {@link #load} with the engine loader is guarded by
  * {@code ModelLoaderParityTest}.

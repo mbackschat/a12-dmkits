@@ -711,7 +711,7 @@ class Interpreter(
     /**
      * The O(N²) inner-scan `(t, f, n)` tally of a starred filter quantifier — the general fallback for an
      * arbitrary `Having`, and the **reference** the hash-join fast path must equal on a recognized correlation
-     * `Having` (WI-4 property 6, [correlationTallyBothWays]). Iterates the group's rows, keeps those the filter
+     * `Having` (locked by [correlationTallyBothWays]). Iterates the group's rows, keeps those the filter
      * accepts, and 3-state-counts each kept row's star cell (present / empty / not-check-relevant).
      */
     private fun naiveStarQuantTally(star: Expr.Star, group: String): Triple<Int, Int, Int> {
@@ -735,7 +735,7 @@ class Interpreter(
         return Triple(t, f, n)
     }
 
-    // ---- WI-4 property seams (proposal §8; internal — consumed only by the property pack in commonTest) -------
+    // ── Property-test seams — internal, consumed only by the commonTest property pack ─────────────────
 
     /**
      * **Property 1 (lazy ≡ eager polarity).** Whether the production lazy-polarity walk [evalTypedLazy] agrees
@@ -980,8 +980,7 @@ class Interpreter(
      * `(Items* / Count)` (distinctness across the repetition's rows — the no-`--group` alternative to
      * `RepetitionNotUnique`). In both, **empties are skipped** (two empties are NOT a duplicate — only present
      * values compare); a filled-but-malformed operand makes the rule non-evaluable → suppressed (Unknown).
-     * Equality is the typed [eq] (numbers numerically — `5` == `5.00` across scales — strings as strings). The
-     * collected list is short, so an O(k²) pairwise scan is fine.
+     * Equality is the typed [eq] (numbers numerically — `5` == `5.00` across scales — strings as strings).
      */
     private fun fieldValuesNotUnique(args: List<Expr>): Tri {
         val values = mutableListOf<Val>()

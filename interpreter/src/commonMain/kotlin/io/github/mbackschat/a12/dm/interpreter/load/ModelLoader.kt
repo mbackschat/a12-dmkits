@@ -252,7 +252,7 @@ object ModelLoader {
         }
     }
 
-    // ── Field-type readers (ported 1:1 from InterpreterModelLoader). ────────────────────────────────
+    // ── Field-type readers ─────────────────────────────────────────────────────────────────────────
 
     private fun kindOf(fieldNode: JsonElement?): Kind =
         when (fieldNode.path("Field").path("fieldType").path("type").asText()) {
@@ -414,7 +414,6 @@ object ModelLoader {
         return if (i <= 0) "" else id.substring(0, i)
     }
 
-    /** Resolve a relpath against the NODE's own id (`../F` pops the node name, then appends). */
     /** Missing/null means strict `!=`; any present non-string or string outside the closed set fails loud. */
     private fun toleranceBandOf(alternative: JsonElement): ToleranceBand? {
         val value = (alternative as? JsonObject)?.get("toleranceRangeOp") ?: return null
@@ -425,6 +424,7 @@ object ModelLoader {
         return ToleranceBand.ofWire(value.asText())
     }
 
+    /** Resolve a relpath against the NODE's own id (`../F` pops the node name, then appends). */
     private fun resolveRel(nodeId: String, rel: String): String {
         var base = nodeId
         var r = rel

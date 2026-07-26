@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
  * case in the `corpus/cases` tree through the kernel-free [InterpreterReplay] on BOTH targets (`:interpreter:check` runs
  * `commonTest` on jvm + js). The **JS run (`jsNodeTest`) is the first kernel-grounded JS oracle**: the JVM
  * capture tri-verified `interpreter == kernel`, so a JS-vs-JVM interpreter split (a decimal-shim / regex / format
- * platform difference) surfaces here as a FAIL — the bug class WI-6 exists to catch.
+ * platform difference) surfaces here as a FAIL.
  *
  * Full conformance over the corpus = **zero FAIL and zero SKIP**; a SKIP on the current corpus is itself a
  * failure (there is nothing the committed cases legitimately can't evaluate). The corpus is located via the

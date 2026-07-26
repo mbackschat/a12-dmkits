@@ -137,12 +137,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
  * model-resolved refs + provenance) for free, exactly as if a human had built it.
  *
  * <p>Recursive {@code instanceof} dispatch over the kernel tree; any construct not covered raises
- * {@link UnsupportedConstructException} — fail-fast, never a silent loss (N8). Coverage (by corpus
- * priority): composite And/Or; comparisons on number/string/enum fields vs a constant or another
- * field; string patterns ({@code WM}/{@code NM} → {@code matches}/{@code violates}); single-field
- * and single-group presence; and the field-list and group-list quantifier families. Still
- * fail-fast (later slices): value-list membership, aggregates/{@code Having}, dates, tolerance
- * comparisons, operand-wrapping field ops ({@code Length}/{@code Round…}).
+ * {@link UnsupportedConstructException} — fail-fast, never a silent loss (N8). Supported shapes are established
+ * by the executable read corpus rather than duplicated as a stale-prone inventory here.
  *
  * <p>Kernel-canonicalization note (verified): the kernel parses single-field {@code FieldFilled(x)} /
  * {@code FieldNotFilled(x)} into an {@code IEntityListCondition} named {@code AllFieldsFilled} /

@@ -12,13 +12,11 @@ import io.github.mbackschat.a12.dm.interpreter.ast.ValueListQuantOp
  * A recursive-descent parser turning condition TEXT into the interpreter [Cond] AST. It lives in
  * commonMain, so it parses on JVM and JS alike.
  *
- * Parser source is a **hand-written completion** (INTERPRETER-SPEC §11, decided WI-P): kernel-free (no
- * parse-tree-api dependency), so it stays native-safe and JS-compilable, and the EUPL question on generating
- * from the kernel `.g4` is moot. It accepts the legal stored DSL the real kernel emits — verified against the
- * catalog + fuzz (100%) and the `a12-kernel-mm` + A12 Tools corpora (100%) by
- * [io.github.mbackschat.a12.dm.adapter.laws.ParserCorpusSweepTest]. Paths in condition text are RELATIVE to
- * the rule's group; [base] resolves them to absolute (base "/Order": `Quantity` → "/Order/Quantity",
- * `Items* / Count` → Star("/Order/Items/Count")).
+ * This is a hand-written clean-room parser with no kernel parse-tree dependency, so it remains native-safe and
+ * JS-compilable. [io.github.mbackschat.a12.dm.adapter.laws.ParserCorpusSweepTest] owns corpus conformance rather
+ * than duplicating a volatile coverage claim here. Paths in condition text are RELATIVE to the rule's group;
+ * [base] resolves them to absolute (base "/Order": `Quantity` → "/Order/Quantity`, `Items* / Count` →
+ * Star("/Order/Items/Count")).
  *
  * Grammar (low→high precedence): `or := and ("Or" and)*` · `and := primary ("And" primary)*` ·
  * `primary := "(" or ")" | expr (cmpOp expr)? | predicateCall`. Keyword case variants (And/and/AND, …),

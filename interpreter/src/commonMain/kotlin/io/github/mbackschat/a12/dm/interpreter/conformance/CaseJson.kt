@@ -20,7 +20,7 @@ import kotlinx.serialization.json.putJsonArray
 
 /**
  * (De)serialize a [ConformanceCase] to/from its `corpus/cases/<family>/<id>.json` — kernel-free and **multiplatform**
- * (JVM + JS), so both the JVM replay runner and the JS one (WI-6) share it. Tree API only
+ * (JVM + JS), so both replay runners share it. Tree API only
  * ([Json.parseToJsonElement] + a hand-written walk; proposal fork F1) — no `@Serializable`, no compiler plugin.
  *
  * The model lives in a **standalone** `models/<name>.json` file; the case carries only its corpus-root-relative

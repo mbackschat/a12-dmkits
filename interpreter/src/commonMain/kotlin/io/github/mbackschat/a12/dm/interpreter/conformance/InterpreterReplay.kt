@@ -23,8 +23,8 @@ import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
  * - the multiplatform replay suite (`CorpusReplayCommonTest`) that runs on **both** JVM and JS.
  *
  * Sharing the exact rendering is the point: JVM and JS produce byte-identical signatures for the same case, so a
- * JS-vs-JVM interpreter split (a decimal-shim / regex / format platform difference) surfaces as a corpus FAIL —
- * the bug class WI-6 exists to catch. The interpreter always asserts the **top-level** anchor
+ * JS-vs-JVM interpreter split (a decimal-shim / regex / format platform difference) surfaces as a corpus FAIL.
+ * The interpreter always asserts the **top-level** anchor
  * ([ConformanceCase.expected] / [ConformanceCase.computeExpected]); `divergences` are kernel-strategy records and
  * never apply to it.
  */
