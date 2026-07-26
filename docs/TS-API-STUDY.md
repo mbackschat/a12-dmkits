@@ -1,6 +1,6 @@
 # Study: is the A12 TypeScript API family worth building — and how much?
 
-> **Decision-support with a selected first increment (2026-07-22; updated 2026-07-26).** This study weighs the three end-state visions — the [Operator API](OPERATOR-API-PROPOSAL.md), the [Interpreter API](INTERPRETER-API-PROPOSAL.md), and the [Zod integration](ZOD-INTEGRATION-PROPOSAL.md) — as one family, and asks the question the proposals themselves do not: *why would anyone reach for this, and which parts earn their place?* The owner has since selected the independently consumable interpreter workspace/core/browser slice first; the direct Operator and Zod products come much later. All API names are **design-stage — not yet runnable**; the A12 *semantics* they rely on are the real, locked part (§8).
+> **Decision-support with a selected first increment (2026-07-22; updated 2026-07-26).** This study weighs the three end-state visions — the [Operator API](OPERATOR-API-PROPOSAL.md), the [archived Interpreter API proposal](archived/INTERPRETER-API-PROPOSAL.md), and the [Zod integration](ZOD-INTEGRATION-PROPOSAL.md) — as one family, and asks the question the proposals themselves do not: *why would anyone reach for this, and which parts earn their place?* The owner selected the independently consumable interpreter workspace/core/browser slice first; that core is now implemented and ABI-locked in [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md), while the direct Operator, Zod, and higher interpreter products remain design-stage.
 
 ## 1. The question
 

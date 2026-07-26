@@ -15,7 +15,7 @@ Owner direction fixed on 2026-07-26:
 - the independently consumable interpreter core ships first; the separate Operator API is a much later artifact and does not block it;
 - the immutable workspace/preparation boundary and asynchronous host-provider layer are accepted, including snapshot/integrity, cancellation/failure, acquisition-limit, safe-diagnostic, platform-projection, and browser-storage requirements;
 - a separately packaged EUPL-1.2 JVM adapter may expose the interpreter as a drop-in `IDocumentRtService` implementation for existing Kernel-consuming applications after the MIT core `v0.1.0`; it embeds no Kernel bytecode and is not part of the portable core;
-- implementing the core of [INTERPRETER-API-PROPOSAL](INTERPRETER-API-PROPOSAL.md) is the intended API-productization follow-up.
+- the implemented public core is governed by [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md), while later compatibility and higher-level product surfaces remain in [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md).
 
 This proposal's execution state follows the one-active-session-per-worktree rule. No worker session is active.
 
@@ -213,7 +213,7 @@ Next.js should consume the same interpreter package on both server and client. I
 
 Providers must not derive a filesystem path or remote URL directly from an untrusted model id. A directory adapter indexes ids from validated headers; an HTTP adapter uses an explicit manifest. This prevents path traversal and server-side request-forgery while preserving `header.id` as the only resolution identity.
 
-The explicit `loadExpandedJson` fast path stays available. The showcase must use the on-demand provider/workspace path, while a duplicate `header.id` is rejected deliberately rather than resolved by filesystem or caller ordering. Asynchronous provider calls end when collection produces the immutable workspace; evaluation and customization callbacks remain synchronous. Provider-wide caching, collector retries, writes, watches, implicit network access, batch-loading APIs, and a general virtual filesystem stay outside v0.1. The full public contract is in [INTERPRETER-API-PROPOSAL](INTERPRETER-API-PROPOSAL.md) §4.1.
+The explicit `loadExpandedJson` fast path stays available. The showcase must use the on-demand provider/workspace path, while a duplicate `header.id` is rejected deliberately rather than resolved by filesystem or caller ordering. Asynchronous provider calls end when collection produces the immutable workspace; evaluation and customization callbacks remain synchronous. Provider-wide caching, collector retries, writes, watches, implicit network access, batch-loading APIs, and a general virtual filesystem stay outside v0.1. The full public contract is in [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) §2.
 
 ### 5.3 Sequencing recommendation
 
@@ -221,7 +221,7 @@ Implement **the Track-B interpreter core**, not the entire 4,000-line end-state 
 
 The first interpreter tarball embeds or privately owns the minimum value types it needs. It does not depend on the complete later `@mbackschat/a12-operators` product. Shared public types may be extracted when that direct-operator artifact is selected, with an explicit compatibility plan for the already-published interpreter API.
 
-The portable core also does not depend on Kernel API types. Existing JVM applications may later add the separate `io.github.mbackschat.a12.dm:dm-interpreter-kernel-dropin` artifact and substitute its `IDocumentRtService` implementation without changing their `DocumentV2`, `DocumentProcessingConfig`, validation-result, or computation-result call sites. That adapter is broader than the custom-extension compatibility artifacts: it must implement full/partial validation, computation and `applyTo`, precompile/cache behavior, model-code identifiers, and the pinned interface's deprecated compatibility overloads. Its artifact contains no Kernel bytecode; the already-Kernel-consuming host supplies the pinned Kernel API/runtime. [INTERPRETER-API-PROPOSAL](INTERPRETER-API-PROPOSAL.md) §10.2 defines the contract and evidence gate.
+The portable core also does not depend on Kernel API types. Existing JVM applications may later add the separate `io.github.mbackschat.a12.dm:dm-interpreter-kernel-dropin` artifact and substitute its `IDocumentRtService` implementation without changing their `DocumentV2`, `DocumentProcessingConfig`, validation-result, or computation-result call sites. That adapter is broader than the custom-extension compatibility artifacts: it must implement full/partial validation, computation and `applyTo`, precompile/cache behavior, model-code identifiers, and the pinned interface's deprecated compatibility overloads. Its artifact contains no Kernel bytecode; the already-Kernel-consuming host supplies the pinned Kernel API/runtime. [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md#iag2--jvm-idocumentrtservice-drop-in) defines the deferred contract and re-open gate.
 
 ### 5.4 ABI and package locks
 
@@ -359,7 +359,7 @@ The `R0`–`R10` rows are release milestones. The `R<n>.<n>` rows in §10.1 are 
 
 ### 10.1 Session-sized task queue
 
-The current frontier is **R4.2**. Do not start a later set until its dependencies are `done` and the preceding landing has passed the §11 review gate. The public contract comes from [INTERPRETER-API-PROPOSAL](INTERPRETER-API-PROPOSAL.md); [INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) owns completed IF224, while [INTERPRETER-GAPS](INTERPRETER-GAPS.md) owns IG85 and IG86 until their acceptance gates pass. Every implementation set uses red/green TDD, preserves each pre-fix failure in a unique `build/<set>-<item>-red.log`, runs the relevant JVM/Node/browser or external-consumer locks fresh, and closes or amends the owning gap/finding rows in the same commit when their acceptance gate has actually passed.
+The current frontier is **R4.2**. Do not start a later set until its dependencies are `done` and the preceding landing has passed the §11 review gate. The public contract comes from [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md); deferred public surfaces live in [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md); [INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) owns completed IF224, while [INTERPRETER-GAPS](INTERPRETER-GAPS.md) owns IG85 and IG86 until their acceptance gates pass. Every implementation set uses red/green TDD, preserves each pre-fix failure in a unique `build/<set>-<item>-red.log`, runs the relevant JVM/Node/browser or external-consumer locks fresh, and closes or amends the owning gap/finding rows in the same commit when their acceptance gate has actually passed.
 
 #### R2 — portable workspace and minimum public API
 

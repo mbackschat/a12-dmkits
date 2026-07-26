@@ -27,7 +27,7 @@ The declarations use the proposed public TypeScript names consistently; catalog 
 
 The base Kotlin Multiplatform implementation and its TypeScript/JVM projections are clean-room, kernel-free, MIT-licensed artifacts. They do not import, link, reflect over, or bundle any A12 Kernel API or runtime artifact. Kernel source and differential execution are semantic evidence only, never a shipped or runtime dependency.
 
-Model-bound validation, documents, symbolic expressions, rules, computations, Custom Field Types, and Custom Conditions are intentionally outside this proposal. They belong to the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md).
+Model-bound validation, documents, rules, computations, Custom Field Types, and Custom Conditions belong to the implemented [Interpreter API spec](INTERPRETER-API-SPEC.md). Symbolic and candidate-program surfaces remain deferred in [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md#iag4--stored-and-candidate-program-apis).
 
 ## 1. Recommendation
 
@@ -2188,7 +2188,7 @@ The checked unwrapping form supports converters such as `A12Integer.tryToSafeInt
 
 These combinators execute ordinary functions over actual values. They do not build, serialize, prepare, cache, or later interpret an expression graph.
 
-Symbolic composition is a different interpreter/authoring API with AST, typing, preparation, and execution questions; it belongs in the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md) or a later authoring proposal.
+Symbolic composition is a different interpreter/authoring API with AST, typing, preparation, and execution questions; it remains deferred in [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md#iag4--stored-and-candidate-program-apis) or belongs in a later authoring proposal.
 
 ## 8. Capability and parity coverage
 

@@ -1,3 +1,5 @@
+> **Archived / resolved (2026-07-26).** The implemented workspace, placement-document, ownership, metadata, validation/computation, and customization contract graduated into [INTERPRETER-API-SPEC](../INTERPRETER-API-SPEC.md). Every feasible but unbuilt product surface, including the Kernel-shaped TypeScript import replacement added in §10.3, moved to [INTERPRETER-API-GAPS](../INTERPRETER-API-GAPS.md) with a re-open trigger. This file remains the full interview-derived end-state and rationale record; it is not a live contract or backlog.
+
 **Proposal-writing guideline — simple mode**
 
 Keep this document focused on the requested API proposal, not an implementation or rollout plan.
@@ -17,9 +19,9 @@ Preferred structure: motivation, scope, public API, typed examples, semantics an
 
 ## Status
 
-> **End-state vision capture.** This is the full destination assembled from interview Q&A and accumulated wishes, kept deliberately complete so no requirement is lost — not a scoped build order. The smallest buildable first increment (§12.1's workspace/preparation plus minimum transport and ownership foundation, then the validate/compute + SPI increment) is extracted to [TS-API-MVP-PROPOSAL](TS-API-MVP-PROPOSAL.md). The public-library wave has started: [INTERPRETER-RELEASE-PROPOSAL](INTERPRETER-RELEASE-PROPOSAL.md) activated IG68, IG85, and IG86 together; IG68 has since graduated as IF224.
+> **End-state vision capture.** This is the full destination assembled from interview Q&A and accumulated wishes, kept deliberately complete so no requirement is lost — not a scoped build order. The smallest buildable first increment (§12.1's workspace/preparation plus minimum transport and ownership foundation, then the validate/compute + SPI increment) is extracted to [TS-API-MVP-PROPOSAL](../TS-API-MVP-PROPOSAL.md). The public-library wave has started: [INTERPRETER-RELEASE-PROPOSAL](../INTERPRETER-RELEASE-PROPOSAL.md) activated IG68, IG85, and IG86 together; IG68 has since graduated as IF224.
 >
-> **Why this layer, and how much:** [TS-API-STUDY](TS-API-STUDY.md) §5 reads this proposal as a cheap, grounded *core* (load → document → validate/compute → SPIs) wrapped in a speculative service/editor/candidate *product bet* — build the core, design-but-defer the rest until a consumer justifies its shape.
+> **Why this layer, and how much:** [TS-API-STUDY](../TS-API-STUDY.md) §5 reads this proposal as a cheap, grounded *core* (load → document → validate/compute → SPIs) wrapped in a speculative service/editor/candidate *product bet* — build the core, design-but-defer the rest until a consumer justifies its shape.
 
 This proposal defines a TypeScript-first public API for the Kotlin Multiplatform A12 interpreter. It covers model preparation, lossless documents, direct storage access, validation, computations, customization, prepared programs, repeated-model services, and platform ownership.
 
@@ -27,7 +29,7 @@ TypeScript on Node and in modern browsers is the primary product surface. Java/J
 
 The base Kotlin Multiplatform interpreter and its TypeScript/JVM façades are clean-room, kernel-free, MIT-licensed artifacts. They do not import, link, reflect over, or bundle an A12 Kernel artifact.
 
-The direct [Operator API proposal](OPERATOR-API-PROPOSAL.md) remains independent and comes much later: calling `operators.dateTime.differenceInHours(start, end)` never requires an interpreter, while publishing the interpreter never requires the `operators` namespace. The first interpreter package owns the minimum exact value/result types needed by its model/document contract; a later Operator package may extract or re-export compatible shared types only through an explicit compatibility plan.
+The direct [Operator API proposal](../OPERATOR-API-PROPOSAL.md) remains independent and comes much later: calling `operators.dateTime.differenceInHours(start, end)` never requires an interpreter, while publishing the interpreter never requires the `operators` namespace. The first interpreter package owns the minimum exact value/result types needed by its model/document contract; a later Operator package may extract or re-export compatible shared types only through an explicit compatibility plan.
 
 API and package names are proposed contracts. Where a contract requires engine work beyond the present evaluator, the relevant section states that implementation dependency because kernel exactness and performance evidence are acceptance conditions.
 
@@ -921,7 +923,7 @@ Conformance laws preserve invocation order/cardinality, repetition scope, partia
 
 For native core callbacks, an exception is `InterpreterIntegrationError`; it never becomes ordinary rejection, unsupported semantics, or `false`.
 
-There is no Custom Operator SDK or operator registration. Operators remain the fixed, catalog-governed surface from the [Operator API proposal](OPERATOR-API-PROPOSAL.md).
+There is no Custom Operator SDK or operator registration. Operators remain the fixed, catalog-governed surface from the [Operator API proposal](../OPERATOR-API-PROPOSAL.md).
 
 All callbacks are synchronous. A runtime thenable from plain JavaScript or unsafe TypeScript fails at the callback boundary with `InterpreterIntegrationError`, is never awaited, and retires the lane.
 
@@ -1588,7 +1590,7 @@ A cached model must never freeze `Today` or `Now`. A system clock provider is sa
 
 `captureEvaluationTime()` samples the configured provider once and returns an `A12EvaluationTime` projected into the model zone. Supplying an explicit evaluation time avoids another clock read but still performs instant-preserving model-zone projection.
 
-This normalization is specific to model evaluation. Direct point-in-time operators use the sample’s own explicit zone as defined by the [Operator API proposal](OPERATOR-API-PROPOSAL.md).
+This normalization is specific to model evaluation. Direct point-in-time operators use the sample’s own explicit zone as defined by the [Operator API proposal](../OPERATOR-API-PROPOSAL.md).
 
 ```ts
 declare const interpreter: Interpreter;
@@ -2745,7 +2747,7 @@ if (evaluationValue.kind === "value") {
 
 The example keeps callback-free storage, configured formal state, evaluator-visible value, optional-date resolution, and fragment components distinct. A concrete evaluator value exists only in the `"value"` branch and may include evaluation normalization such as CRLF-to-LF.
 
-Successfully extracted values use the interpreter's exact immutable A12 value family. The first interpreter package exports no direct `operators` namespace; the later [Operator API proposal](OPERATOR-API-PROPOSAL.md) may accept or re-export compatible values under its own package:
+Successfully extracted values use the interpreter's exact immutable A12 value family. The first interpreter package exports no direct `operators` namespace; the later [Operator API proposal](../OPERATOR-API-PROPOSAL.md) may accept or re-export compatible values under its own package:
 
 ```ts
 declare const operators: A12Operators;
@@ -4378,7 +4380,7 @@ All model loading policy, parsing, paths, repetition semantics, formal-state beh
 
 The TypeScript façade is required product work: explicit exports, plain declarations, JS-safe errors, arrays/readonly DTOs, and strict TypeScript consumer tests. The ordinary JVM façade adapts Java collections and uses builders where justified. Neither façade contains evaluator logic or imports a kernel type.
 
-Optional TypeScript boundary adapters, including [Zod integration](ZOD-INTEGRATION-PROPOSAL.md), may validate portable DTOs and project reports. They delegate model-aware decode, authenticate with the exact owner, encode canonically, and preserve `ReportPointer`.
+Optional TypeScript boundary adapters, including [Zod integration](../ZOD-INTEGRATION-PROPOSAL.md), may validate portable DTOs and project reports. They delegate model-aware decode, authenticate with the exact owner, encode canonically, and preserve `ReportPointer`.
 
 They never enter `commonMain`, customization SPIs, parsing, AST traversal, warm lanes, or JVM APIs, and never become a second evaluator.
 
@@ -4579,7 +4581,24 @@ The drop-in compatibility claim has stronger gates than ordinary interpreter con
 
 The adapter never calls Kernel validation or computation; that would defeat the clean-room interpreter boundary. Depending on Kernel API types for interoperability is permitted only in this separately packaged JVM edge.
 
-The base interpreter remains MIT and contains no Kernel code or dependency. Owner decision 2026-07-26: publish the bytecode-free drop-in artifact under EUPL-1.2, making the Kernel-facing boundary unmistakable while keeping the core MIT. This is a deliberately conservative distribution choice rather than a claim that interface linking necessarily compels the EUPL: the European Commission's [EUPL FAQ](https://interoperable-europe.ec.europa.eu/collection/eupl/faqs) states that simple static or dynamic linking for interoperability does not by itself merge independent works. Any artifact that embeds Kernel bytecode also remains EUPL-1.2 under the project's [licensing policy](LICENSING.md), with the additional Kernel-bundle compliance obligations.
+The base interpreter remains MIT and contains no Kernel code or dependency. Owner decision 2026-07-26: publish the bytecode-free drop-in artifact under EUPL-1.2, making the Kernel-facing boundary unmistakable while keeping the core MIT. This is a deliberately conservative distribution choice rather than a claim that interface linking necessarily compels the EUPL: the European Commission's [EUPL FAQ](https://interoperable-europe.ec.europa.eu/collection/eupl/faqs) states that simple static or dynamic linking for interoperability does not by itself merge independent works. Any artifact that embeds Kernel bytecode also remains EUPL-1.2 under the project's [licensing policy](../LICENSING.md), with the additional Kernel-bundle compliance obligations.
+
+### 10.3 TypeScript import replacement for the A12 Kernel document runtime
+
+The TypeScript Kernel API is a real compatibility target, not a hypothetical adapter shape. The pinned 30.8.1 source publishes `@com.mgmtp.a12.kernel/kernel-md-facade`, which exposes `DocumentRtServiceFactory`, `DocumentRtCustomExtensionService`, `DocumentRtService`, `Document`, path/result types, Custom Field Type factories, and Custom Condition factories.
+
+A later separately packaged EUPL-1.2 adapter should let a real application replace those imports with `@mbackschat/a12-interpreter-kernel-compat`. Its validation, computation, result handling, ordinary nested-document input, and custom extension implementations should remain unchanged.
+
+The adapter preserves both extension-registration paths:
+
+- per-service `GeneratedCodeRtConfig` factories, which take precedence;
+- the deprecated global `DocumentRtCustomExtensionService` registration, with first-registration-first lookup.
+
+The adapter cannot accept an existing Kernel-generated validator script as its model definition. That script contains compiled evaluator behavior and its public metadata omits the original rule/computation expressions required by the interpreter. The host must instead provide raw/expanded DM-JSON or an interpreter-specific model bundle; the realistic migration is import replacement plus one explicit model-initialization change.
+
+Compatibility is proven against the actual existing project's imports and callback implementations, a compile fixture against the pinned public declarations, and differential full/partial validation plus computation/result tests. The local Kernel checkout contains the authoritative TypeScript sources but no built `lib/` artifacts, so executable Kernel-TS comparison requires either a local build or the corresponding published 30.8.1 packages.
+
+The live scope and re-open trigger are [INTERPRETER-API-GAPS IAG1](../INTERPRETER-API-GAPS.md#iag1--kernel-shaped-typescript-import-replacement).
 
 ## 11. Correctness and performance
 
@@ -4632,7 +4651,7 @@ The interactive path measures direct storage-read latency separately from formal
 
 If introducing the prepared boundary or façade worsens parser cost, AST traversal, startup, warmup, throughput, scaling, allocation, or relative footprint, that part does not ship. Direct operators remain independently feasible.
 
-Known decimal, regex, time-zone, preparation, and host gaps in [INTERPRETER-GAPS](INTERPRETER-GAPS.md), plus the new request-document/cache-confinement contract proposed here, constrain claims and must be closed or rejected explicitly.
+Known decimal, regex, time-zone, preparation, and host gaps in [INTERPRETER-GAPS](../INTERPRETER-GAPS.md), plus the new request-document/cache-confinement contract proposed here, constrain claims and must be closed or rejected explicitly.
 
 ## 12. Recommended product surface
 
@@ -4642,7 +4661,7 @@ The first implementable Interpreter increment should establish two adjacent foun
 
 These foundations are independently useful for browser, HTTP, queue, persistence, plugin, and Worker boundaries. They establish one portable model-preparation contract and one authoritative A12-native document contract before optional framework adapters appear. They do not depend on the validation-service registry, runtime pooling, persistent editing, candidate programs, or Zod.
 
-Once this foundation is stable, it is sufficient for the strict document-ingress and owner-bound snapshot portions of the optional [Zod integration proposal](ZOD-INTEGRATION-PROPOSAL.md). Validation-report projection still waits for the canonical `ValidationReport` contract.
+Once this foundation is stable, it is sufficient for the strict document-ingress and owner-bound snapshot portions of the optional [Zod integration proposal](../ZOD-INTEGRATION-PROPOSAL.md). Validation-report projection still waits for the canonical `ValidationReport` contract.
 
 The next customization-bearing increment contains:
 

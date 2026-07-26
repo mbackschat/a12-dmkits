@@ -23,7 +23,7 @@ Preferred structure: motivation, scope, public API, typed examples, semantics an
 
 This proposal defines optional Zod adapters for the TypeScript projections of the A12 Operator API and Interpreter API.
 
-The [Operator API proposal](OPERATOR-API-PROPOSAL.md) owns A12 scalar values, exact conversions, codecs, operator outcomes, structured scalar errors, and direct operator semantics. The [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md) owns models, documents, snapshots, reports, ownership, active interpreters, registries, pooling, concurrency, and lifecycle. This proposal does not redefine those contracts.
+The [Operator API proposal](OPERATOR-API-PROPOSAL.md) owns A12 scalar values, exact conversions, codecs, operator outcomes, structured scalar errors, and direct operator semantics. [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) owns the implemented model, document, snapshot, report, ownership, and active-interpreter contracts; [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md) owns deferred registries, pooling, concurrency, and lifecycle. This proposal does not redefine those contracts.
 
 The decision is to provide two optional TypeScript packages:
 
@@ -565,7 +565,7 @@ import type {
 } from "@mbackschat/a12-interpreter";
 ```
 
-`GroupPlacementInput` is the Interpreter-owned type for one concrete group-row placement. `FieldPlacementInput` is the Interpreter-owned type for one concrete raw field placement. `PlacementDocumentInputV1` is the Interpreter-owned versioned envelope containing those readonly collections. Their exact property definitions remain single-sourced in the base package and the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md).
+`GroupPlacementInput` is the Interpreter-owned type for one concrete group-row placement. `FieldPlacementInput` is the Interpreter-owned type for one concrete raw field placement. `PlacementDocumentInputV1` is the Interpreter-owned versioned envelope containing those readonly collections. Their exact property definitions remain single-sourced in the base package and [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) §4.
 
 The Zod adapter validates this portable structure. It does not decode A12 field values or determine whether a path and coordinate vector are valid for a particular model.
 
@@ -975,7 +975,7 @@ Model-derived schema caches must use an exact immutable model version or verifie
 
 If an A12 application-facing adapter later accepts caller-provided validation libraries, the [Standard Schema interface](https://standardschema.dev/schema) is preferable to exposing Zod-specific types at that generic boundary. Zod implements Standard Schema.
 
-Standard Schema neither implements the interpreter’s native customization SPI nor adapts existing Kernel extensions. That contract has one owner: [Reusing every A12 Kernel evaluator extension](INTERPRETER-API-PROPOSAL.md#101-reusing-every-a12-kernel-evaluator-extension).
+Standard Schema neither implements the interpreter’s native customization SPI nor adapts existing Kernel extensions. The implemented callback contract lives in [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) §6; the later Kernel-shaped TypeScript adapter is tracked in [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md#iag1--kernel-shaped-typescript-import-replacement).
 
 Any Standard Schema integration with the synchronous Interpreter path must:
 
@@ -1010,7 +1010,7 @@ canonical detached A12 report
     └── optional form or transport projection
 ```
 
-The A12 service remains responsible for model versions, aliases, configuration identity, active instances, exclusivity, backpressure, lifecycle, and metrics as defined by the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md).
+The A12 service remains responsible for model versions, aliases, configuration identity, active instances, exclusivity, backpressure, lifecycle, and metrics. That service layer is deferred in [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md#iag5--registered-services-pools-version-switching-and-worker-coordination).
 
 ### 12.2 Worker-local schemas and adapters
 
@@ -1147,7 +1147,7 @@ These risks should be resolved in the owning API proposal or isolated behind ada
 
 `@mbackschat/a12-operators-zod` does not wait for Interpreter API development. It can ship as soon as the Operator API’s dependency-free scalar codecs, runtime guards, structured errors, and package-instance contract are stable.
 
-Interpreter integration begins with the A12-native minimum transport and ownership foundation defined by the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md): the versioned placement DTO, decode limits, structured input diagnostics, prepared ownership, model-aware decode, typed fast read, canonical encode, and snapshot authenticity guard.
+Interpreter integration begins with the A12-native minimum transport and ownership foundation defined by [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md): the versioned placement DTO, decode limits, structured input diagnostics, prepared ownership, model-aware decode, typed fast read, canonical encode, and snapshot authenticity guard.
 
 The strict Zod placement schema may be designed and tested earlier, but it should not be published before that authoritative core decoder exists. Otherwise the adapter risks becoming the accidental document specification or a second validator.
 
@@ -1179,7 +1179,7 @@ Ship optional Zod integration as a boundary layer over complete A12-native APIs.
 
 Start with `@mbackschat/a12-operators-zod`: exact scalar codecs, safe-number decode-only support, encode-safe object/array composition, and structured issue translation. Add `@mbackschat/a12-interpreter-zod` for the strict placement DTO at the same boundary. Add the owner-bound snapshot adapter and form projections only where they preserve complete ownership, error channels, and report information.
 
-Keep direct operators and warm Interpreter evaluation entirely Zod-free. The adapters should feel natural to TypeScript developers while remaining mechanically dependent on the semantics and ownership contracts defined by the [Operator API proposal](OPERATOR-API-PROPOSAL.md) and [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md).
+Keep direct operators and warm Interpreter evaluation entirely Zod-free. The adapters should feel natural to TypeScript developers while remaining mechanically dependent on the semantics and ownership contracts defined by the [Operator API proposal](OPERATOR-API-PROPOSAL.md) and [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md).
 
 ## References
 
