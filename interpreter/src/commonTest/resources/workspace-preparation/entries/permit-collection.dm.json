@@ -1,0 +1,80 @@
+{
+  "header" : {
+    "id" : "permit-collection",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ {
+      "alias" : "section",
+      "modelType" : "document",
+      "purpose" : "include",
+      "reference" : "permit-collection-section"
+    }, {
+      "alias" : "unused",
+      "modelType" : "document",
+      "purpose" : "include",
+      "reference" : "permit-collection-unused"
+    }, {
+      "alias" : "permit-collection-left-types",
+      "modelType" : "document",
+      "purpose" : "typeDefinitions",
+      "reference" : "permit-collection-left-types"
+    }, {
+      "alias" : "permit-collection-right-types",
+      "modelType" : "document",
+      "purpose" : "typeDefinitions",
+      "reference" : "permit-collection-right-types"
+    } ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "permit-collection",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Permit",
+        "name" : "Permit",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Field",
+            "id" : "/Permit/CollectionCode",
+            "name" : "CollectionCode",
+            "Field" : {
+              "fieldType" : {
+                "type" : "TypeDefType",
+                "TypeDefType" : {
+                  "typeDefinitionId" : "CollectionCode"
+                }
+              }
+            }
+          }, {
+            "type" : "Group",
+            "id" : "/Permit/Section",
+            "name" : "Section",
+            "Group" : {
+              "repeatability" : 1,
+              "modelAlias" : "section"
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

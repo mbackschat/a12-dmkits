@@ -21,6 +21,13 @@ private class ImmutableListSnapshot<T>(values: Collection<T>) : AbstractList<T>(
 
 internal fun <T> immutableListSnapshot(values: Collection<T>): List<T> = ImmutableListSnapshot(values)
 
+private val safeDiagnosticMetadataPattern =
+    Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,63}(:[A-Za-z0-9][A-Za-z0-9._-]{0,63})?")
+
+/** Retain only short logical metadata that cannot carry a path, URL, query, user-info, or credential syntax. */
+internal fun sanitizeDiagnosticMetadata(value: String?): String? =
+    value?.takeIf { it.length <= 129 && safeDiagnosticMetadataPattern.matches(it) }
+
 /**
  * Count strict UTF-8 bytes without allocating them. Null marks one unpaired UTF-16 surrogate. This pass lets
  * admission enforce the source and remaining-workspace ceilings before it creates the frozen byte array.
@@ -89,6 +96,36 @@ internal data class ResourceLimitDiagnostic(
     }
 }
 
+internal fun resourceLimit(
+    resource: ModelPreparationResource,
+    maximum: Int,
+    actual: Int,
+    diagnosticLabel: String? = null,
+): ModelPreparationError =
+    resourceLimit(
+        resource = resource,
+        maximum = maximum.toLong(),
+        actual = actual.toLong(),
+        diagnosticLabel = diagnosticLabel,
+    )
+
+internal fun resourceLimit(
+    resource: ModelPreparationResource,
+    maximum: Long,
+    actual: Long,
+    diagnosticLabel: String? = null,
+): ModelPreparationError =
+    ModelPreparationError.from(
+        listOf(
+            ResourceLimitDiagnostic(
+                resource = resource,
+                maximum = maximum,
+                actual = actual,
+                diagnosticLabel = diagnosticLabel,
+            ),
+        ),
+    )
+
 /** One admitted source whose bytes, digest, identity, and presentation label cannot be mutated by the caller. */
 internal class AdmittedWorkspaceModelSource internal constructor(
     val modelId: String,
@@ -115,7 +152,6 @@ internal class AdmittedWorkspace internal constructor(sources: List<AdmittedWork
  */
 internal object WorkspaceSourceAdmission {
     private val digestPattern = Regex("[0-9a-f]{64}")
-    private val safeLabelPattern = Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,63}(:[A-Za-z0-9][A-Za-z0-9._-]{0,63})?")
     private data class FrozenSource(
         val supplied: WorkspaceModelSource,
         val diagnosticLabel: String?,
@@ -128,21 +164,17 @@ internal object WorkspaceSourceAdmission {
     ): AdmittedWorkspace {
         val snapshot = sources.toList()
         if (snapshot.size > limits.maxModelCount) {
-            throw ModelPreparationError.from(
-                listOf(
-                    ResourceLimitDiagnostic(
-                        resource = ModelPreparationResource.MODEL_COUNT,
-                        maximum = limits.maxModelCount.toLong(),
-                        actual = snapshot.size.toLong(),
-                    ),
-                ),
+            throw resourceLimit(
+                resource = ModelPreparationResource.MODEL_COUNT,
+                maximum = limits.maxModelCount,
+                actual = snapshot.size,
             )
         }
 
         val frozen = mutableListOf<FrozenSource>()
         var totalBytes = 0L
         for (source in snapshot) {
-            val diagnosticLabel = sanitizeLabel(source.diagnosticLabel)
+            val diagnosticLabel = sanitizeDiagnosticMetadata(source.diagnosticLabel)
             val byteCount = strictUtf8ByteCount(source.json)
             if (byteCount == null) {
                 throw ModelPreparationError.from(
@@ -155,27 +187,19 @@ internal object WorkspaceSourceAdmission {
                 )
             }
             if (byteCount > limits.maxModelBytes) {
-                throw ModelPreparationError.from(
-                    listOf(
-                        ResourceLimitDiagnostic(
-                            resource = ModelPreparationResource.MODEL_BYTES,
-                            maximum = limits.maxModelBytes.toLong(),
-                            actual = byteCount,
-                            diagnosticLabel = diagnosticLabel,
-                        ),
-                    ),
+                throw resourceLimit(
+                    resource = ModelPreparationResource.MODEL_BYTES,
+                    maximum = limits.maxModelBytes.toLong(),
+                    actual = byteCount,
+                    diagnosticLabel = diagnosticLabel,
                 )
             }
             totalBytes += byteCount
             if (totalBytes > limits.maxTotalBytes) {
-                throw ModelPreparationError.from(
-                    listOf(
-                        ResourceLimitDiagnostic(
-                            resource = ModelPreparationResource.TOTAL_BYTES,
-                            maximum = limits.maxTotalBytes.toLong(),
-                            actual = totalBytes,
-                        ),
-                    ),
+                throw resourceLimit(
+                    resource = ModelPreparationResource.TOTAL_BYTES,
+                    maximum = limits.maxTotalBytes.toLong(),
+                    actual = totalBytes,
                 )
             }
             val bytes = source.json.encodeToByteArray(throwOnInvalidSequence = true)
@@ -282,7 +306,4 @@ internal object WorkspaceSourceAdmission {
         }
         return false
     }
-
-    private fun sanitizeLabel(label: String?): String? =
-        label?.takeIf { it.length <= 129 && safeLabelPattern.matches(it) }
 }

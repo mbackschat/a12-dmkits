@@ -69,6 +69,13 @@ public final class WorkspacePreparationFixtures {
     private static final String NEUTRAL_REFERENCE_HOST_ID = "policy-reference-neutral-en";
     private static final String REVERSE_NEUTRAL_REFERENCE_PROVIDER_ID = "benefits-reference-neutral-en";
     private static final String REVERSE_NEUTRAL_REFERENCE_HOST_ID = "policy-reference-neutral-de";
+    private static final String COLLECTION_ENTRY_ID = "permit-collection";
+    private static final String COLLECTION_LEFT_TYPES_ID = "permit-collection-left-types";
+    private static final String COLLECTION_RIGHT_TYPES_ID = "permit-collection-right-types";
+    private static final String COLLECTION_SHARED_TYPES_ID = "permit-collection-shared-types";
+    private static final String COLLECTION_SECTION_ID = "permit-collection-section";
+    private static final String COLLECTION_CHECKLIST_ID = "permit-collection-checklist";
+    private static final String COLLECTION_UNUSED_ID = "permit-collection-unused";
 
     private WorkspacePreparationFixtures() {
     }
@@ -146,6 +153,13 @@ public final class WorkspacePreparationFixtures {
                 REVERSE_NEUTRAL_REFERENCE_HOST_ID,
                 REVERSE_NEUTRAL_REFERENCE_PROVIDER_ID,
                 ConditionLanguage.DE);
+        var collectionSharedTypes = collectionSharedTypes();
+        var collectionLeftTypes = collectionLeftTypes();
+        var collectionRightTypes = collectionRightTypes();
+        var collectionChecklist = collectionChecklist();
+        var collectionSection = collectionSection();
+        var collectionUnused = collectionUnused();
+        var collectionEntry = collectionEntry();
 
         return List.of(
                 FixtureCase.builder()
@@ -398,6 +412,22 @@ public final class WorkspacePreparationFixtures {
                                 "/Policy/PolicyNo",
                                 "/Policy/Cover/Note"))
                         .expectedRules(Set.of("/Policy/Cover/NoteEqualsX"))
+                        .build(),
+                FixtureCase.builder()
+                        .id("collection-diamond-unmounted")
+                        .entryModelId(COLLECTION_ENTRY_ID)
+                        .sources(sources(
+                                collectionSharedTypes,
+                                collectionLeftTypes,
+                                collectionRightTypes,
+                                collectionChecklist,
+                                collectionSection,
+                                collectionUnused,
+                                collectionEntry))
+                        .expectedFields(Set.of(
+                                "/Permit/CollectionCode",
+                                "/Permit/Section/SectionCode",
+                                "/Permit/Section/Checklist/Comment"))
                         .build());
     }
 
@@ -452,6 +482,67 @@ public final class WorkspacePreparationFixtures {
                 .message(en("The reviewed area follows the request."))
                 .build());
         return session.validate().toJson();
+    }
+
+    private static String collectionSharedTypes() {
+        return DocumentModelDraft.typeDefModel(COLLECTION_SHARED_TYPES_ID).locale("en_US")
+                .typeDef("CollectionCode", type -> type.string(text -> text.maxLength(16)))
+                .build()
+                .toJson();
+    }
+
+    private static String collectionLeftTypes() {
+        return DocumentModelDraft.typeDefModel(COLLECTION_LEFT_TYPES_ID).locale("en_US")
+                .importTypeDefs(COLLECTION_SHARED_TYPES_ID)
+                .typeDef("LeftCollectionMarker", type -> type.string(text -> text.maxLength(1)))
+                .build()
+                .toJson();
+    }
+
+    private static String collectionRightTypes() {
+        return DocumentModelDraft.typeDefModel(COLLECTION_RIGHT_TYPES_ID).locale("en_US")
+                .importTypeDefs(COLLECTION_SHARED_TYPES_ID)
+                .typeDef("RightCollectionMarker", type -> type.string(text -> text.maxLength(1)))
+                .build()
+                .toJson();
+    }
+
+    private static String collectionChecklist() {
+        return DocumentModelDraft.named(COLLECTION_CHECKLIST_ID).locale("en_US")
+                .rootGroup("Checklist", checklist -> checklist.field("Comment", FieldKind.STRING))
+                .build()
+                .toJson();
+    }
+
+    private static String collectionSection() {
+        return DocumentModelDraft.named(COLLECTION_SECTION_ID).locale("en_US")
+                .importTypeDefs(COLLECTION_SHARED_TYPES_ID)
+                .include("checklist", COLLECTION_CHECKLIST_ID)
+                .rootGroup("Section", section -> section
+                        .typedefField("SectionCode", "CollectionCode")
+                        .mount("Checklist", "checklist"))
+                .build()
+                .toJson();
+    }
+
+    private static String collectionUnused() {
+        return DocumentModelDraft.named(COLLECTION_UNUSED_ID).locale("en_US")
+                .rootGroup("Unused", unused -> unused.field("Secret", FieldKind.STRING))
+                .build()
+                .toJson();
+    }
+
+    private static String collectionEntry() {
+        return DocumentModelDraft.named(COLLECTION_ENTRY_ID).locale("en_US")
+                .importTypeDefs(COLLECTION_LEFT_TYPES_ID)
+                .importTypeDefs(COLLECTION_RIGHT_TYPES_ID)
+                .include("section", COLLECTION_SECTION_ID)
+                .include("unused", COLLECTION_UNUSED_ID)
+                .rootGroup("Permit", permit -> permit
+                        .typedefField("CollectionCode", "CollectionCode")
+                        .mount("Section", "section"))
+                .build()
+                .toJson();
     }
 
     private static String permitTypes() {

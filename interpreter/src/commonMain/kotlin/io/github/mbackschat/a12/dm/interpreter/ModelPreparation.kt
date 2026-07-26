@@ -214,8 +214,12 @@ enum class ModelPreparationDiagnosticCode {
     ENTRY_MODEL_NOT_FOUND,
     /** A required include or type-definition model id is absent from the workspace. */
     UNRESOLVED_MODEL_REFERENCE,
+    /** A provider refused or failed one exact-id acquisition request. */
+    MODEL_SOURCE_PROVIDER_FAILED,
     /** A supplied expected SHA-256 does not match the exact admitted source bytes. */
     MODEL_SOURCE_INTEGRITY_MISMATCH,
+    /** A provider returned a source whose `header.id` differs from the requested exact id. */
+    MODEL_SOURCE_ID_MISMATCH,
     /** The transitive include/type-definition graph returns to a model already on the active path. */
     MODEL_REFERENCE_CYCLE,
     /** An include directive cannot be mounted without discarding or inventing authored structure. */
@@ -262,6 +266,9 @@ enum class ModelPreparationResource {
 interface ModelPreparationDiagnostic {
     val code: ModelPreparationDiagnosticCode
     val diagnosticLabel: String? get() = null
+    val requestedModelId: String? get() = null
+    val actualModelId: String? get() = null
+    val providerFailureReason: ModelSourceProviderFailureReason? get() = null
     val expectedSha256: String? get() = null
     val actualSha256: String? get() = null
     val modelId: String? get() = null
@@ -284,14 +291,18 @@ interface ModelPreparationDiagnostic {
 /** Aggregate failure for source admission or model preparation. */
 class ModelPreparationError private constructor(
     diagnostics: List<ModelPreparationDiagnostic>,
-) : RuntimeException(diagnostics.joinToString("; ") { it.message }) {
+    cause: Throwable?,
+) : RuntimeException(diagnostics.joinToString("; ") { it.message }, cause) {
     val code: String = "A12_MODEL_PREPARATION_FAILED"
     val diagnostics: List<ModelPreparationDiagnostic> = immutableListSnapshot(diagnostics)
 
     companion object {
         @JvmSynthetic
-        internal fun from(diagnostics: List<ModelPreparationDiagnostic>): ModelPreparationError =
-            ModelPreparationError(diagnostics)
+        internal fun from(
+            diagnostics: List<ModelPreparationDiagnostic>,
+            cause: Throwable? = null,
+        ): ModelPreparationError =
+            ModelPreparationError(diagnostics, cause)
     }
 }
 

@@ -17,12 +17,16 @@ import kotlin.jvm.JvmStatic
 import kotlin.jvm.JvmSynthetic
 
 /**
- * Immutable exact-id workspace produced from a finite set of caller-supplied sources. Construction admits and
+ * Immutable exact-id workspace produced from a finite or provider-collected source set. Construction admits and
  * freezes every supplied source; [prepare] resolves only the requested entry's transitive closure.
+ *
+ * [snapshotRevision] is sanitized provenance captured from a collection provider. It is null for finite
+ * [fromSources] workspaces and never contributes to a prepared-model fingerprint.
  */
 class ModelWorkspace private constructor(
     private val admitted: AdmittedWorkspace,
     private val limits: ModelPreparationLimits,
+    val snapshotRevision: String?,
 ) {
     val modelIds: List<String> = immutableListSnapshot(admitted.modelIds)
 
@@ -52,7 +56,30 @@ class ModelWorkspace private constructor(
             ModelWorkspace(
                 admitted = WorkspaceSourceAdmission.admit(sources, limits),
                 limits = limits,
+                snapshotRevision = null,
             )
+
+        /**
+         * Collect one exact-id transitive closure through a snapshot-scoped provider. Calls are sequential and
+         * deterministic; each exact id is loaded at most once, and collection never retries implicitly.
+         *
+         * This suspending Kotlin boundary uses no coroutine-library type. [signal] is therefore also supplied to
+         * the provider so applications can connect their own task or request cancellation mechanism.
+         */
+        @JvmSynthetic
+        suspend fun collect(
+            entryModelId: String,
+            provider: ModelSourceProvider,
+            limits: ModelPreparationLimits = ModelPreparationLimits.defaults(),
+            signal: ModelCollectionSignal = ModelCollectionSignal.NONE,
+        ): ModelWorkspace {
+            val collected = ModelWorkspaceCollector.collect(entryModelId, provider, limits, signal)
+            return ModelWorkspace(
+                admitted = WorkspaceSourceAdmission.admit(collected.sources, limits),
+                limits = limits,
+                snapshotRevision = collected.snapshotRevision,
+            )
+        }
     }
 }
 

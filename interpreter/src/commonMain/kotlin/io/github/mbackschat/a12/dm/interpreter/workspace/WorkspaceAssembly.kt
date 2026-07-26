@@ -29,32 +29,18 @@ internal data class ResolvedWorkspaceReference(
     val referenceChain: List<ModelReferenceStep>,
 )
 
-/** Shared graph, source, dependency, and resource state for every stage of one synchronous preparation. */
-internal class WorkspaceAssemblyContext(
-    private val workspace: AdmittedWorkspace,
+/** Shared occurrence-based edge/depth/cycle guard for collection and synchronous preparation. */
+internal class WorkspaceReferenceTraversal(
     private val limits: ModelPreparationLimits,
 ) {
-    /** Exact-id parse memo: each admitted immutable source is decoded into a tree at most once per preparation. */
-    private val parsedSources = linkedMapOf<String, ParsedWorkspaceSource>()
-    /** Distinct resolved edges stay in first-discovery order for deterministic public dependency metadata. */
-    private val dependencies = linkedMapOf<ModelReferenceStep, ResolvedModelReference>()
-    /** A validated graph edge resolves to one immutable parsed source; later stages reuse it without re-admission. */
-    private val resolvedSources = linkedMapOf<ModelReferenceStep, ParsedWorkspaceSource>()
     private var referenceEdges = 0
-    private var preparedElements = 0
 
-    fun entry(modelId: String): ParsedWorkspaceSource {
-        val source = workspace.source(modelId)
-            ?: throw ModelPreparationError.from(listOf(EntryModelNotFoundDiagnostic(modelId)))
-        return parsed(source)
-    }
-
-    fun resolve(
+    fun follow(
         step: ModelReferenceStep,
         referenceChain: List<ModelReferenceStep>,
-    ): ResolvedWorkspaceReference {
+    ): List<ModelReferenceStep> {
         // Count the attempted edge before cycle/lookup work. A hostile graph can expose at most limit+1 edges,
-        // including the edge that proves the refusal, without forcing another source parse.
+        // including the edge that proves the refusal, without forcing another source parse or provider call.
         referenceEdges++
         if (referenceEdges > limits.maxReferenceEdges) {
             throw resourceLimit(
@@ -73,8 +59,8 @@ internal class WorkspaceAssemblyContext(
             )
         }
 
-        // Cycles span purposes: include → typedef → include is still a cycle in one preparation closure. Only
-        // ancestors participate, so the same source reached through a separate diamond remains legal.
+        // Cycles span purposes: include → typedef → include is still a cycle in one closure. Only ancestors
+        // participate, so the same source reached through a separate diamond remains legal.
         val modelsOnPath = buildList {
             if (nextChain.isNotEmpty()) {
                 add(nextChain.first().fromModelId)
@@ -92,6 +78,36 @@ internal class WorkspaceAssemblyContext(
                 ),
             )
         }
+        return nextChain
+    }
+
+}
+
+/** Shared graph, source, dependency, and resource state for every stage of one synchronous preparation. */
+internal class WorkspaceAssemblyContext(
+    private val workspace: AdmittedWorkspace,
+    private val limits: ModelPreparationLimits,
+) {
+    /** Exact-id parse memo: each admitted immutable source is decoded into a tree at most once per preparation. */
+    private val parsedSources = linkedMapOf<String, ParsedWorkspaceSource>()
+    /** Distinct resolved edges stay in first-discovery order for deterministic public dependency metadata. */
+    private val dependencies = linkedMapOf<ModelReferenceStep, ResolvedModelReference>()
+    /** A validated graph edge resolves to one immutable parsed source; later stages reuse it without re-admission. */
+    private val resolvedSources = linkedMapOf<ModelReferenceStep, ParsedWorkspaceSource>()
+    private val referenceTraversal = WorkspaceReferenceTraversal(limits)
+    private var preparedElements = 0
+
+    fun entry(modelId: String): ParsedWorkspaceSource {
+        val source = workspace.source(modelId)
+            ?: throw ModelPreparationError.from(listOf(EntryModelNotFoundDiagnostic(modelId)))
+        return parsed(source)
+    }
+
+    fun resolve(
+        step: ModelReferenceStep,
+        referenceChain: List<ModelReferenceStep>,
+    ): ResolvedWorkspaceReference {
+        val nextChain = referenceTraversal.follow(step, referenceChain)
 
         val source = workspace.source(step.toModelId)
             ?: throw ModelPreparationError.from(
@@ -153,27 +169,6 @@ internal class WorkspaceAssemblyContext(
             ParsedWorkspaceSource(source, root)
         }
 
-    private fun resourceLimit(
-        resource: ModelPreparationResource,
-        maximum: Int,
-        actual: Int,
-    ): ModelPreparationError =
-        resourceLimit(resource, maximum.toLong(), actual.toLong())
-
-    private fun resourceLimit(
-        resource: ModelPreparationResource,
-        maximum: Long,
-        actual: Long,
-    ): ModelPreparationError =
-        ModelPreparationError.from(
-            listOf(
-                ResourceLimitDiagnostic(
-                    resource = resource,
-                    maximum = maximum,
-                    actual = actual,
-                ),
-            ),
-        )
 }
 
 internal fun requirePreparedBytesWithin(
@@ -183,14 +178,10 @@ internal fun requirePreparedBytesWithin(
     val maximum = limits.maxPreparedBytes.toLong()
     val actual = compactJsonUtf8Size(root, stopAfter = maximum)
     if (actual > maximum) {
-        throw ModelPreparationError.from(
-            listOf(
-                ResourceLimitDiagnostic(
-                    resource = ModelPreparationResource.PREPARED_BYTES,
-                    maximum = maximum,
-                    actual = actual,
-                ),
-            ),
+        throw resourceLimit(
+            resource = ModelPreparationResource.PREPARED_BYTES,
+            maximum = maximum,
+            actual = actual,
         )
     }
 }
@@ -202,7 +193,7 @@ private data class EntryModelNotFoundDiagnostic(
     override val message = "entry model '$modelId' is not present in the workspace"
 }
 
-private data class UnresolvedModelReferenceDiagnostic(
+internal data class UnresolvedModelReferenceDiagnostic(
     override val modelId: String,
     override val diagnosticLabel: String?,
     override val reference: String,
@@ -212,7 +203,7 @@ private data class UnresolvedModelReferenceDiagnostic(
     override val message = "model '$modelId' references unavailable model '$reference'"
 }
 
-private data class ModelReferenceCycleDiagnostic(
+internal data class ModelReferenceCycleDiagnostic(
     override val modelId: String,
     override val reference: String,
     override val referenceChain: List<ModelReferenceStep>,

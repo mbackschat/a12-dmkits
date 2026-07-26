@@ -112,20 +112,6 @@ internal class TypeDefinitionRegistry(
         registerStructuralClosure(entry, emptyList())
     }
 
-    /**
-     * Register a normal entry/included model. A non-empty local definition array selects local mode and suppresses
-     * imports, matching the observed ModelReader/Kernel preparation rule; Kernel consistency owns illegal mixtures.
-     */
-    fun registerStructuralModel(
-        model: ParsedWorkspaceSource,
-        referenceChain: List<ModelReferenceStep>,
-    ) {
-        val localDefinitionCount = registerLocalDefinitions(model)
-        if (localDefinitionCount == 0) {
-            registerImports(model, referenceChain)
-        }
-    }
-
     fun resolve(definitionId: String): TypeDefinitionResolution =
         resolutions[definitionId] ?: resolveIteratively(definitionId)
 
@@ -155,13 +141,17 @@ internal class TypeDefinitionRegistry(
         referenceChain: List<ModelReferenceStep>,
     ) {
         registerLocalDefinitions(model)
-        registerImports(model, referenceChain)
+        registerDiscoveredReferences(
+            model = model,
+            referenceChain = referenceChain,
+            mode = WorkspaceReferenceDiscoveryMode.TYPE_DEFINITION_PROVIDER,
+        )
     }
 
-    private fun registerLocalDefinitions(model: ParsedWorkspaceSource): Int {
+    private fun registerLocalDefinitions(model: ParsedWorkspaceSource) {
         val typeDefinitions = model.root.objectMember("content")
             ?.arrayMember("typeDefinitions")
-            ?: return 0
+            ?: return
         // A non-empty declaration array selects local mode. This preserves the preparation observation; a malformed
         // member is refused rather than ignored to activate imports.
         typeDefinitions.forEachIndexed { index, candidate ->
@@ -182,28 +172,26 @@ internal class TypeDefinitionRegistry(
                 ),
             )
         }
-        return typeDefinitions.size
     }
 
-    private fun registerImports(
+    private fun registerDiscoveredReferences(
         model: ParsedWorkspaceSource,
         referenceChain: List<ModelReferenceStep>,
+        mode: WorkspaceReferenceDiscoveryMode,
     ) {
-        val references = model.root.objectMember("header")
-            ?.arrayMember("modelReferences")
-            ?: return
-        for (candidate in references) {
-            val reference = candidate as? JsonObject ?: continue
-            if (reference.strictString("purpose") != ModelReferencePurpose.TYPE_DEFINITIONS.wireName) {
-                continue
-            }
-            val step = ModelReferenceStep.typeDefinitions(
-                fromModelId = model.source.modelId,
-                toModelId = reference.strictString("reference").orEmpty(),
-                alias = reference.strictString("alias"),
-            )
+        val references = WorkspaceReferenceDiscovery.discover(
+            source = model,
+            mode = mode,
+            requireStructureDepth = context::requireStructureDepth,
+        )
+        for (step in references) {
             val resolved = context.resolve(step, referenceChain)
-            registerImportedModel(resolved.parsedSource, resolved.referenceChain)
+            when (step.purpose) {
+                ModelReferencePurpose.INCLUDE ->
+                    registerStructuralClosure(resolved.parsedSource, resolved.referenceChain)
+                ModelReferencePurpose.TYPE_DEFINITIONS ->
+                    registerImportedModel(resolved.parsedSource, resolved.referenceChain)
+            }
         }
     }
 
@@ -232,16 +220,12 @@ internal class TypeDefinitionRegistry(
         model: ParsedWorkspaceSource,
         referenceChain: List<ModelReferenceStep>,
     ) {
-        registerStructuralModel(model, referenceChain)
-        for (alias in includedAliases(model)) {
-            val step = ModelReferenceStep.include(
-                fromModelId = model.source.modelId,
-                toModelId = model.root.includeReference(alias),
-                alias = alias,
-            )
-            val resolved = context.resolve(step, referenceChain)
-            registerStructuralClosure(resolved.parsedSource, resolved.referenceChain)
-        }
+        registerLocalDefinitions(model)
+        registerDiscoveredReferences(
+            model = model,
+            referenceChain = referenceChain,
+            mode = WorkspaceReferenceDiscoveryMode.STRUCTURAL,
+        )
     }
 
     /**
@@ -284,56 +268,6 @@ internal class TypeDefinitionRegistry(
         return outcome
     }
 
-    private fun includedAliases(model: ParsedWorkspaceSource): List<String> {
-        val rootGroups = model.root.objectMember("content")
-            ?.objectMember("modelRoot")
-            ?.arrayMember("rootGroups")
-            ?: return emptyList()
-        val aliases = mutableListOf<String>()
-        val pending = mutableListOf<PendingElement>()
-        rootGroups.asReversed().forEach {
-            pending += PendingElement(it, parentPath = "", depth = 1)
-        }
-        while (pending.isNotEmpty()) {
-            val candidate = pending.removeAt(pending.lastIndex)
-            val structure = requirePreparedElementStructure(
-                element = candidate.element,
-                parentPath = candidate.parentPath,
-                position = if (candidate.parentPath.isEmpty()) {
-                    PreparedElementPosition.MODEL_ROOT
-                } else {
-                    PreparedElementPosition.NESTED
-                },
-            ) { path, reason ->
-                throw invalidModelElement(model, path, reason)
-            }
-            context.requireStructureDepth(candidate.depth)
-            if (structure.type != PreparedElementType.GROUP) {
-                continue
-            }
-            val path = "${candidate.parentPath}/${structure.name}"
-            val children = requirePreparedGroupChildren(structure.body, path) { invalidPath, reason ->
-                if ("modelAlias" in structure.body) {
-                    throw invalidIncludeMount(model.source.modelId, invalidPath, reason)
-                }
-                throw invalidModelElement(model, invalidPath, reason)
-            }
-            when (val assembly = classifyGroup(structure.body, children, model, path)) {
-                is GroupAssembly.Include -> aliases += assembly.directive.alias
-                is GroupAssembly.Ordinary -> assembly.elements
-                    ?.asReversed()
-                    ?.forEach {
-                        pending += PendingElement(
-                            element = it,
-                            parentPath = path,
-                            depth = candidate.depth + 1,
-                        )
-                    }
-            }
-        }
-        return aliases
-    }
-
     private fun requireCompleteTypeDefinitionReference(
         modelId: String,
         path: String,
@@ -373,12 +307,6 @@ internal class TypeDefinitionRegistry(
         const val TYPE_DEF_TYPE = "TypeDefType"
     }
 }
-
-private data class PendingElement(
-    val element: JsonElement,
-    val parentPath: String,
-    val depth: Int,
-)
 
 /** Closed effective-type lookup: either the complete concrete payload or the exact dangling/cyclic residue. */
 internal sealed interface TypeDefinitionResolution {

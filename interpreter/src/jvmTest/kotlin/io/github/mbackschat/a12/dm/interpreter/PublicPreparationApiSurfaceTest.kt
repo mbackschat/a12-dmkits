@@ -14,8 +14,8 @@ import kotlin.test.assertTrue
 class PublicPreparationApiSurfaceTest {
 
     @Test
-    fun r2_6CallablePublicPreparationSurfaceDoesNotExposeImplementationTypes() {
-        val leaks = implementationLeaksFrom(R2_6_PUBLIC_PREPARATION_TYPES)
+    fun callablePublicPreparationSurfaceDoesNotExposeImplementationTypes() {
+        val leaks = implementationLeaksFrom(PUBLIC_PREPARATION_TYPES)
 
         assertTrue(
             leaks.isEmpty(),
@@ -40,12 +40,33 @@ class PublicPreparationApiSurfaceTest {
             ModelReferenceStep::class.java,
             ModelDependency::class.java,
             ModelPreparationError::class.java,
+            ModelSourceLoadContext::class.java,
         )) {
             assertTrue(
                 outputType.declaredConstructors.none { it.isCallablePublic() },
                 "${outputType.simpleName} is produced by preparation and must not expose a Java constructor",
             )
         }
+    }
+
+    @Test
+    fun suspendingCollectorStaysOutsideTheJavaSurfaceUntilTheCompletionStageProjection() {
+        assertTrue(
+            ModelWorkspace::class.java.methods.none { method ->
+                method.name == "collect" && method.isCallablePublic()
+            },
+            "R2.9 owns the Java CompletionStage collection projection",
+        )
+    }
+
+    @Test
+    fun providerLoadContextHasNoJavaCallableFactory() {
+        assertTrue(
+            ModelSourceLoadContext.Companion::class.java.methods.none { method ->
+                method.returnType == ModelSourceLoadContext::class.java && method.isCallablePublic()
+            },
+            "ModelSourceLoadContext must be created only by the collector",
+        )
     }
 
     @Test
@@ -86,7 +107,7 @@ class PublicPreparationApiSurfaceTest {
             executable.isCallablePublic() &&
                 executable.referencedClasses().any { referenced ->
                     referenced.name.startsWith(PROJECT_PACKAGE_PREFIX) &&
-                        referenced !in R2_6_PUBLIC_PREPARATION_TYPE_SET
+                        referenced !in PUBLIC_PREPARATION_TYPE_SET
                 }
         }
 
@@ -132,7 +153,7 @@ class PublicPreparationApiSurfaceTest {
     private companion object {
         // R3.3 owns the complete packaged Kotlin/TypeScript ABI dump. This focused pre-publication lock covers every
         // type intentionally introduced by R2.6, including the nested builders and result variants.
-        val R2_6_PUBLIC_PREPARATION_TYPES = listOf(
+        val PUBLIC_PREPARATION_TYPES = listOf(
             WorkspaceModelSource::class.java,
             WorkspaceModelSource.Companion::class.java,
             WorkspaceModelSource.Builder::class.java,
@@ -147,6 +168,15 @@ class PublicPreparationApiSurfaceTest {
             ModelDependency.Companion::class.java,
             ModelPreparationDiagnosticCode::class.java,
             ModelPreparationResource::class.java,
+            ModelSourceProviderFailureReason::class.java,
+            ModelCollectionSignal::class.java,
+            ModelCollectionSignal.Companion::class.java,
+            ModelSourceLoadContext::class.java,
+            ModelSourceLoadContext.Companion::class.java,
+            ModelSourceProvider::class.java,
+            ModelSourceProviderError::class.java,
+            ModelSourceProviderError.Companion::class.java,
+            ModelSourceProviderError.Builder::class.java,
             ModelPreparationDiagnostic::class.java,
             ModelPreparationError::class.java,
             ModelPreparationError.Companion::class.java,
@@ -164,7 +194,7 @@ class PublicPreparationApiSurfaceTest {
             PreparedModel.Companion::class.java,
         )
 
-        val R2_6_PUBLIC_PREPARATION_TYPE_SET = R2_6_PUBLIC_PREPARATION_TYPES.toSet()
+        val PUBLIC_PREPARATION_TYPE_SET = PUBLIC_PREPARATION_TYPES.toSet()
         const val PROJECT_PACKAGE_PREFIX = "io.github.mbackschat.a12.dm.interpreter"
     }
 }

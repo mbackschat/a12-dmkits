@@ -562,6 +562,8 @@ const interpreter: Interpreter =
   prepared.createInterpreter();
 ```
 
+The common Kotlin projection uses `suspend fun ModelSourceProvider.load(modelId: String, context: ModelSourceLoadContext): WorkspaceModelSource?` and `suspend fun ModelWorkspace.Companion.collect(entryModelId: String, provider: ModelSourceProvider, limits: ModelPreparationLimits = defaults(), signal: ModelCollectionSignal = NONE): ModelWorkspace`. `ModelCollectionSignal` is the portable cancellation token passed through every load context; the contract deliberately introduces no `kotlinx.coroutines` type or runtime dependency. A coroutine-based host connects its own task cancellation to that signal. The Kotlin/JS implementation bridges the suspending collector to `Promise` and the token to the caller's `AbortSignal` using the Kotlin stdlib; R3.2 owns the intentional `@JsExport` names and generated TypeScript façade, while R2.9 owns the Java `CompletionStage` projection.
+
 | Boundary | Contract |
 |---|---|
 | Workspace construction | `fromSources` parses headers, enforces resource limits, verifies supplied SHA-256 values, indexes exact `header.id` values, and rejects ambiguous duplicates with `ModelPreparationError`; `diagnosticLabel` is sanitized presentation metadata, never lookup identity |
@@ -1651,7 +1653,7 @@ The asynchronous façade is platform-shaped rather than leaked into `commonMain`
 | Java | `CompletionStage<ModelWorkspace>` with cancellation propagation, added with the R2.9 Java consumer fixture |
 | every platform | synchronous `fromSources` and deterministic synchronous preparation/evaluation |
 
-The collection algorithm is single-sourced behind those façades. R2.7 lands the suspending Kotlin and TypeScript Promise projections; the Java `CompletionStage` projection follows in R2.9 so it is introduced with its first external compile fixture rather than as an unconsumed compatibility surface. With the project's Kotlin 2.2 pin, `jsMain` explicitly bridges the asynchronous collector to a Promise; the initial ABI does not depend on Kotlin 2.3's [experimental direct export of suspend functions](https://kotlinlang.org/docs/whatsnew23.html).
+The collection algorithm is single-sourced behind those façades. R2.7 lands the suspending Kotlin boundary and the stdlib-only Kotlin/JS Promise/`AbortSignal` bridge; R3.2 turns that bridge into the intentionally named exported TypeScript surface, and the Java `CompletionStage` projection follows in R2.9 so it is introduced with its first external compile fixture rather than as an unconsumed compatibility surface. With the project's Kotlin 2.2 pin, the initial ABI does not depend on Kotlin 2.3's [experimental direct export of suspend functions](https://kotlinlang.org/docs/whatsnew23.html).
 
 The R2 contract locks are explicit:
 
@@ -1660,11 +1662,11 @@ The R2 contract locks are explicit:
 | one logical read snapshot | provider-session contract plus immutable manifest/transaction/commit adapters | mutate a dependency between loads and require rejection or the originally pinned bytes |
 | expected integrity | common collector SHA-256 verification | corrupt one fetched source and require `MODEL_SOURCE_INTEGRITY_MISMATCH` with expected/actual digests |
 | one load per exact id and no implicit retry | collector request memo | diamond dependency plus typed failure; assert one provider call for each id |
-| cancellation on the R2.7 platforms | TypeScript/Kotlin collection façades and provider context | cancel during a streaming load; assert no later dependency is requested and the typed cancellation survives |
+| cancellation on the R2.7 platforms | suspending Kotlin boundary, Kotlin/JS Promise/`AbortSignal` bridge, and provider context | abort after a Promise provider load; assert no later dependency is requested and the typed cancellation survives |
 | acquisition-time and aggregate limits | bounded host reader plus common collector limits | exceed the per-source limit before full materialization, then separately exceed total bytes across legal small sources |
 | typed failures | provider-error normalization in the collector | exercise every failure reason plus an arbitrary rejection and assert stable code/reason/cause |
 | no acquisition-secret leakage | source admission and diagnostic projection | supply a credential-bearing URL/path label and assert it is rejected or sanitized from diagnostics, dependency metadata, and fingerprint inputs |
-| platform surface parity | generated TypeScript declarations plus Kotlin consumer fixtures in R2.7; Java consumer fixture in R2.9 | compile and execute Promise/`AbortSignal` and suspending consumers in R2.7, then the `CompletionStage` consumer when the Java façade lands |
+| platform surface parity | common Kotlin consumer laws plus the real Kotlin/JS Promise/`AbortSignal` bridge in R2.7; generated TypeScript declarations in R3.2; Java consumer fixture in R2.9 | execute the suspending and Promise/`AbortSignal` paths in R2.7, then compile the exported TypeScript and `CompletionStage` consumers when those façades land |
 
 Concrete providers remain host adapters:
 

@@ -1,0 +1,70 @@
+{
+  "header" : {
+    "id" : "permit-collection-section",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ {
+      "alias" : "checklist",
+      "modelType" : "document",
+      "purpose" : "include",
+      "reference" : "permit-collection-checklist"
+    }, {
+      "alias" : "permit-collection-shared-types",
+      "modelType" : "document",
+      "purpose" : "typeDefinitions",
+      "reference" : "permit-collection-shared-types"
+    } ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "permit-collection-section",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Section",
+        "name" : "Section",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Field",
+            "id" : "/Section/SectionCode",
+            "name" : "SectionCode",
+            "Field" : {
+              "fieldType" : {
+                "type" : "TypeDefType",
+                "TypeDefType" : {
+                  "typeDefinitionId" : "CollectionCode"
+                }
+              }
+            }
+          }, {
+            "type" : "Group",
+            "id" : "/Section/Checklist",
+            "name" : "Checklist",
+            "Group" : {
+              "repeatability" : 1,
+              "modelAlias" : "checklist"
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

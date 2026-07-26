@@ -360,12 +360,13 @@ def verifyInterpreterPurity = tasks.register('verifyInterpreterPurity') {
         // sourceSet -> forbidden import prefixes (+ why). commonMain must be pure common Kotlin (it compiles
         // to JS); the JVM shim may touch java.* but never the kernel; the JS shim is pure Kotlin/JS + externals.
         def rules = [
-            commonMain: [forbidden: ['java.', 'javax.', 'com.mgmtp.', 'groovy.'], allowed: commonAllowedPrefixes,
-                         why: 'must be pure common Kotlin (compiles to JS) — no JVM/kernel/groovy types'],
-            jvmMain   : [forbidden: ['com.mgmtp.', 'groovy.'],
-                         why: 'the JVM shim may use java.* but never the kernel/groovy (no runtime kernel dep)'],
-            jsMain    : [forbidden: ['java.', 'javax.', 'com.mgmtp.', 'groovy.'],
-                         why: 'the JS shim is pure Kotlin/JS + JS externals'],
+            commonMain: [forbidden: ['java.', 'javax.', 'com.mgmtp.', 'groovy.', 'kotlinx.coroutines.'],
+                         allowed: commonAllowedPrefixes,
+                         why: 'must be pure common Kotlin with no JVM/kernel/groovy/coroutine-library types'],
+            jvmMain   : [forbidden: ['com.mgmtp.', 'groovy.', 'kotlinx.coroutines.'],
+                         why: 'the JVM shim may use java.* but never the kernel/groovy/coroutine library'],
+            jsMain    : [forbidden: ['java.', 'javax.', 'com.mgmtp.', 'groovy.', 'kotlinx.coroutines.'],
+                         why: 'the JS shim is pure Kotlin/JS + externals with no coroutine-library ABI'],
             commonTest: [forbidden: ['com.mgmtp.', 'groovy.'],
                          why: 'the kernel differential tests live in :adapter, not here — keep this module kernel-free'],
         ]
