@@ -105,7 +105,9 @@ public final class ModelReader {
         Set<ObjectNode> elementsWithResiduals = Collections.newSetFromMap(new IdentityHashMap<>());
         Map<ObjectNode, String> origins = new IdentityHashMap<>();
         Map<ObjectNode, String> typeRefs = new IdentityHashMap<>();
-        expandContent(root, resolver, typeDefs, new HashSet<>(), elementsWithResiduals, origins);
+        Map<ObjectNode, String> conditionLanguages = new IdentityHashMap<>();
+        expandContent(root, resolver, typeDefs, new HashSet<>(), elementsWithResiduals, origins,
+                conditionLanguages);
         JsonNode modelRoot = root.path(DmKeys.CONTENT).path(DmKeys.MODEL_ROOT);
         captureTypeDefRefs(modelRoot, typeRefs);
         inlineTypeDefs(modelRoot, typeDefs, new HashSet<>());
@@ -203,7 +205,8 @@ public final class ModelReader {
 
     /** Collect this model's type-definitions, resolve header typedef imports, then expand every include mount. */
     private static void expandContent(ObjectNode root, ModelResolver resolver, Map<String, JsonNode> typeDefs,
-            Set<String> visiting, Set<ObjectNode> elementsWithResiduals, Map<ObjectNode, String> origins) {
+            Set<String> visiting, Set<ObjectNode> elementsWithResiduals, Map<ObjectNode, String> origins,
+            Map<ObjectNode, String> conditionLanguages) {
         JsonNode content = root.path(DmKeys.CONTENT);
         collectTypeDefs(content, typeDefs);
         // Header "typeDefinitions"-purpose imports are ingested only when the model declares no local ones
@@ -212,7 +215,32 @@ public final class ModelReader {
             importTypeDefs(root, resolver, typeDefs, visiting);
         }
         JsonNode rootGroups = content.path(DmKeys.MODEL_ROOT).path(DmKeys.ROOT_GROUPS);
-        expandElements(rootGroups, root, resolver, typeDefs, visiting, elementsWithResiduals, origins, "");
+        captureConditionLanguages(rootGroups, conditionLanguageCode(root), conditionLanguages);
+        expandElements(rootGroups, root, resolver, typeDefs, visiting, elementsWithResiduals, origins,
+                conditionLanguages, "");
+    }
+
+    private static String conditionLanguageCode(ObjectNode root) {
+        return root.path(DmKeys.CONTENT).path(DmKeys.MODEL_CONFIG)
+                .path("conditionLanguage").path("code").asText("en_US");
+    }
+
+    private static void captureConditionLanguages(JsonNode elements, String languageCode,
+            Map<ObjectNode, String> conditionLanguages) {
+        for (JsonNode candidate : elements) {
+            if (!(candidate instanceof ObjectNode element)) {
+                continue;
+            }
+            ElementType type = ElementType.of(element);
+            if (type == ElementType.RULE || type == ElementType.COMPUTATION) {
+                conditionLanguages.putIfAbsent(element, languageCode);
+            } else if (type == ElementType.GROUP) {
+                captureConditionLanguages(
+                        element.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS),
+                        languageCode,
+                        conditionLanguages);
+            }
+        }
     }
 
     /** Merge {@code content.typeDefinitions} into {@code typeDefs} (keyed by id; first wins — the kernel dedups
@@ -252,7 +280,7 @@ public final class ModelReader {
      *  own absolute path is known — the anchor the condition remap rewrites included references onto. */
     private static void expandElements(JsonNode elements, ObjectNode baseRoot, ModelResolver resolver,
             Map<String, JsonNode> typeDefs, Set<String> visiting, Set<ObjectNode> elementsWithResiduals,
-            Map<ObjectNode, String> origins, String parentPath) {
+            Map<ObjectNode, String> origins, Map<ObjectNode, String> conditionLanguages, String parentPath) {
         if (!elements.isArray()) {
             return;
         }
@@ -268,10 +296,10 @@ public final class ModelReader {
             // idempotency guard (an already-mounted group is not re-expanded).
             if (!alias.isEmpty() && (existing.isMissingNode() || existing.isEmpty())) {
                 mount(groupNode, body, alias, baseRoot, resolver, typeDefs, visiting, elementsWithResiduals,
-                        origins, groupPath);
+                        origins, conditionLanguages, groupPath);
             } else {
                 expandElements(existing, baseRoot, resolver, typeDefs, visiting, elementsWithResiduals, origins,
-                        groupPath);
+                        conditionLanguages, groupPath);
             }
         }
     }
@@ -280,14 +308,16 @@ public final class ModelReader {
      *  children (SINGLE_RG) or every top-level group (MODEL_ROOT), after fully expanding the included model. */
     private static void mount(ObjectNode mountGroup, ObjectNode mountBody, String alias, ObjectNode baseRoot,
             ModelResolver resolver, Map<String, JsonNode> typeDefs, Set<String> visiting,
-            Set<ObjectNode> elementsWithResiduals, Map<ObjectNode, String> origins, String mountPath) {
+            Set<ObjectNode> elementsWithResiduals, Map<ObjectNode, String> origins,
+            Map<ObjectNode, String> conditionLanguages, String mountPath) {
         String reference = referenceForAlias(baseRoot, alias);
         if (visiting.contains(reference)) {
             throw new IllegalArgumentException("include cycle detected at reference \"" + reference + "\"");
         }
         ObjectNode includedRoot = resolve(resolver, reference);
         visiting.add(reference);
-        expandContent(includedRoot, resolver, typeDefs, visiting, elementsWithResiduals, origins);
+        expandContent(includedRoot, resolver, typeDefs, visiting, elementsWithResiduals, origins,
+                conditionLanguages);
         visiting.remove(reference);
         String sourceModel = includedRoot.path(DmKeys.HEADER).path(DmKeys.ID).asText(reference);
         origins.put(mountGroup, sourceModel);
@@ -349,7 +379,8 @@ public final class ModelReader {
                 // Remap every absolute included reference onto its post-mount location; a reference this cannot map
                 // (an absolute first segment naming no mounted top-group) is left verbatim and its element recorded
                 // so the consumer refuses rather than mis-evaluate.
-                remapMountedConditions(kept, prefixMap, elementsWithResiduals, symbols, child.parentPath());
+                remapMountedConditions(kept, prefixMap, elementsWithResiduals, symbols, conditionLanguages,
+                        child.parentPath());
             }
         }
         // The include directives are now consumed — drop them so the expanded group is a plain, self-contained
@@ -444,17 +475,20 @@ public final class ModelReader {
      *  naming no mounted top-group) is left verbatim and its element recorded in {@code elementsWithResiduals}, so a
      *  correctness-critical consumer refuses rather than mis-evaluate (A4 / IF122). Recurses into groups. */
     private static void remapMountedConditions(JsonNode node, Map<String, String> prefixMap,
-            Set<ObjectNode> elementsWithResiduals, ModelSymbols symbols, String parentPath) {
+            Set<ObjectNode> elementsWithResiduals, ModelSymbols symbols,
+            Map<ObjectNode, String> conditionLanguages, String parentPath) {
         ElementType type = ElementType.of(node);
         if (type == ElementType.RULE) {
             ObjectNode element = (ObjectNode) node;
             boolean residual = remapConditionKey((ObjectNode) node.path(ElementType.RULE.wireName()),
-                    "errorCondition", referenceContext(prefixMap, symbols, parentPath));
+                    "errorCondition", referenceContext(prefixMap, symbols, parentPath,
+                            conditionLanguages.get(element)));
             updateResidual(elementsWithResiduals, element, residual);
         } else if (type == ElementType.COMPUTATION) {
             ObjectNode element = (ObjectNode) node;
             ObjectNode body = (ObjectNode) node.path(ElementType.COMPUTATION.wireName());
-            ConditionReferenceRemapper.ReferenceContext context = referenceContext(prefixMap, symbols, parentPath);
+            ConditionReferenceRemapper.ReferenceContext context = referenceContext(
+                    prefixMap, symbols, parentPath, conditionLanguages.get(element));
             boolean residual = remapConditionKey(body, "commonPrecondition", context);
             for (JsonNode alt : body.path("computationAlternatives")) {
                 if (alt instanceof ObjectNode altObj) {
@@ -466,16 +500,18 @@ public final class ModelReader {
         } else if (type == ElementType.GROUP) {
             String groupPath = parentPath + "/" + node.path(DmKeys.NAME).asText();
             for (JsonNode child : node.path(ElementType.GROUP.wireName()).path(DmKeys.ELEMENTS)) {
-                remapMountedConditions(child, prefixMap, elementsWithResiduals, symbols, groupPath);
+                remapMountedConditions(child, prefixMap, elementsWithResiduals, symbols, conditionLanguages,
+                        groupPath);
             }
         }
     }
 
     private static ConditionReferenceRemapper.ReferenceContext referenceContext(
-            Map<String, String> prefixMap, ModelSymbols symbols, String declaringGroup) {
+            Map<String, String> prefixMap, ModelSymbols symbols, String declaringGroup,
+            String conditionLanguageCode) {
         return new ConditionReferenceRemapper.ReferenceContext(
                 prefixMap, declaringGroup, symbols.entityPaths(), symbols.fieldsByShortName(),
-                symbols.shortNamesAllowed());
+                symbols.shortNamesAllowed(), conditionLanguageCode);
     }
 
     private static void updateResidual(Set<ObjectNode> elementsWithResiduals, ObjectNode element, boolean residual) {
@@ -531,8 +567,15 @@ public final class ModelReader {
      * unit test.
      */
     static RemapResult remapAbsolutePaths(String condition, Map<String, String> prefixMap) {
+        return remapAbsolutePaths(condition, prefixMap, "en_US");
+    }
+
+    static RemapResult remapAbsolutePaths(
+            String condition,
+            Map<String, String> prefixMap,
+            String conditionLanguageCode) {
         ConditionReferenceRemapper.Result result =
-                ConditionReferenceRemapper.remapAbsolutePaths(condition, prefixMap);
+                ConditionReferenceRemapper.remapAbsolutePaths(condition, prefixMap, conditionLanguageCode);
         return new RemapResult(result.text(), result.hadResidual());
     }
 

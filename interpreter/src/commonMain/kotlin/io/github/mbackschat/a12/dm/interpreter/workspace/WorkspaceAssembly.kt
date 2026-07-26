@@ -175,15 +175,7 @@ internal class WorkspaceAssemblyContext(
     }
 
     fun requirePreparedBytes(root: JsonObject) {
-        val maximum = limits.maxPreparedBytes.toLong()
-        val actual = compactJsonUtf8Size(root, stopAfter = maximum)
-        if (actual > maximum) {
-            throw resourceLimit(
-                resource = ModelPreparationResource.PREPARED_BYTES,
-                maximum = maximum,
-                actual = actual,
-            )
-        }
+        requirePreparedBytesWithin(root, limits)
     }
 
     fun dependenciesSnapshot(): List<ResolvedModelReference> = immutableListSnapshot(dependencies)
@@ -221,6 +213,25 @@ internal class WorkspaceAssemblyContext(
                 ),
             ),
         )
+}
+
+internal fun requirePreparedBytesWithin(
+    root: JsonObject,
+    limits: ModelPreparationLimits,
+) {
+    val maximum = limits.maxPreparedBytes.toLong()
+    val actual = compactJsonUtf8Size(root, stopAfter = maximum)
+    if (actual > maximum) {
+        throw ModelPreparationError(
+            listOf(
+                ResourceLimitDiagnostic(
+                    resource = ModelPreparationResource.PREPARED_BYTES,
+                    maximum = maximum,
+                    actual = actual,
+                ),
+            ),
+        )
+    }
 }
 
 private data class EntryModelNotFoundDiagnostic(
@@ -272,6 +283,30 @@ internal data class UnpreparedTypeDefinitionDiagnostic(
     } else {
         "unresolved type definition '$reference' leaves TypeDefType residue at '$path'"
     }
+}
+
+internal data class UnmappedIncludedReferenceDiagnostic(
+    override val modelId: String,
+    override val diagnosticLabel: String?,
+    override val path: String,
+    override val reference: String,
+    override val referenceChain: List<ModelReferenceStep>,
+) : ModelPreparationDiagnostic {
+    override val code = ModelPreparationDiagnosticCode.UNMAPPED_INCLUDED_REFERENCE
+    override val message = "mounted executable '$path' retains unmapped provider reference '$reference'"
+}
+
+internal data class IncompatibleConditionLanguageDiagnostic(
+    override val modelId: String,
+    override val diagnosticLabel: String?,
+    override val path: String,
+    override val referenceChain: List<ModelReferenceStep>,
+    val sourceLanguage: String,
+    val entryLanguage: String,
+) : ModelPreparationDiagnostic {
+    override val code = ModelPreparationDiagnosticCode.INCOMPATIBLE_CONDITION_LANGUAGE
+    override val message =
+        "mounted executable '$path' uses $sourceLanguage syntax that is incompatible with entry language $entryLanguage"
 }
 
 internal data class InvalidTypeDefinitionDiagnostic(

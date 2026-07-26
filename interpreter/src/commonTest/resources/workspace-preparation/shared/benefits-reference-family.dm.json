@@ -1,0 +1,232 @@
+{
+  "header" : {
+    "id" : "benefits-reference-family",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "benefits-reference-family",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "opaque-1",
+        "name" : "Benefits",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Field",
+            "id" : "opaque-2",
+            "name" : "Threshold",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 0
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "opaque-3",
+            "name" : "Note",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Group",
+            "id" : "opaque-4",
+            "name" : "Lines",
+            "Group" : {
+              "repeatability" : 5,
+              "indexFieldName" : "Key",
+              "elements" : [ {
+                "type" : "Field",
+                "id" : "opaque-5",
+                "name" : "Key",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "StringType"
+                  }
+                }
+              }, {
+                "type" : "Field",
+                "id" : "opaque-6",
+                "name" : "Amount",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "NumberType",
+                    "NumberType" : {
+                      "maxFractionalDigits" : 0
+                    }
+                  }
+                }
+              } ]
+            }
+          }, {
+            "type" : "Group",
+            "id" : "opaque-7",
+            "name" : "Level",
+            "Group" : {
+              "repeatability" : 1,
+              "elements" : [ {
+                "type" : "Field",
+                "id" : "opaque-8",
+                "name" : "Value",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "NumberType",
+                    "NumberType" : {
+                      "maxFractionalDigits" : 0
+                    }
+                  }
+                }
+              }, {
+                "type" : "Group",
+                "id" : "opaque-9",
+                "name" : "Deep",
+                "Group" : {
+                  "repeatability" : 1,
+                  "elements" : [ {
+                    "type" : "Field",
+                    "id" : "opaque-10",
+                    "name" : "Marker",
+                    "Field" : {
+                      "fieldType" : {
+                        "type" : "NumberType",
+                        "NumberType" : {
+                          "maxFractionalDigits" : 0
+                        }
+                      }
+                    }
+                  }, {
+                    "type" : "Field",
+                    "id" : "opaque-11",
+                    "name" : "Total",
+                    "Field" : {
+                      "fieldType" : {
+                        "type" : "NumberType",
+                        "NumberType" : {
+                          "maxFractionalDigits" : 0
+                        }
+                      }
+                    }
+                  }, {
+                    "type" : "Rule",
+                    "id" : "opaque-12",
+                    "name" : "DeepNegative",
+                    "Rule" : {
+                      "errorEntityRelPath" : "../Marker",
+                      "errorCode" : "DEEP",
+                      "errorCondition" : "FieldFilled(Marker) And [Marker] < 0",
+                      "severity" : "ERROR",
+                      "errorMessage" : [ {
+                        "locale" : "en_US",
+                        "text" : "The deep marker cannot be negative."
+                      } ]
+                    }
+                  }, {
+                    "type" : "Computation",
+                    "id" : "opaque-13",
+                    "name" : "CopyThreshold",
+                    "Computation" : {
+                      "computedFieldRelPath" : "../Total",
+                      "commonPrecondition" : "FieldFilled(/Benefits/Level/Deep/Marker) And [Threshold] > 0",
+                      "computationAlternatives" : [ {
+                        "precondition" : "[/Benefits/Level/Deep/Marker] < 0 And [Threshold] > 0",
+                        "operation" : "[Threshold]"
+                      }, {
+                        "precondition" : "[/Benefits/Level/Deep/Marker] >= 0 And [Threshold] > 0",
+                        "operation" : "[Threshold]"
+                      } ],
+                      "errorMessage" : [ {
+                        "locale" : "en_US",
+                        "text" : "The total follows the provider threshold."
+                      } ]
+                    }
+                  } ]
+                }
+              }, {
+                "type" : "Rule",
+                "id" : "opaque-14",
+                "name" : "LevelNegative",
+                "Rule" : {
+                  "errorEntityRelPath" : "../Value",
+                  "errorCode" : "LEVEL",
+                  "errorCondition" : "FieldFilled(Value) And [Value] < 0",
+                  "severity" : "ERROR",
+                  "errorMessage" : [ {
+                    "locale" : "en_US",
+                    "text" : "The benefit level cannot be negative."
+                  } ]
+                }
+              } ]
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "opaque-15",
+            "name" : "OuterMatch",
+            "Rule" : {
+              "errorEntityRelPath" : "../Note",
+              "errorCode" : "OUTER",
+              "errorCondition" : "FieldFilled(Note) And Sum(Lines*/Amount Having [Lines/Amount] == [$Threshold]) > 0",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "A matching benefit line needs review."
+              } ]
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "opaque-16",
+            "name" : "IndexedAmount",
+            "Rule" : {
+              "errorEntityRelPath" : "../Note",
+              "errorCode" : "INDEXED",
+              "errorCondition" : "FieldFilled(Note) And [Lines/Amount For Note] > 0",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "A keyed benefit amount needs review."
+              } ]
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "opaque-17",
+            "name" : "RootPresent",
+            "Rule" : {
+              "errorEntityRelPath" : "../Note",
+              "errorCode" : "ROOT",
+              "errorCondition" : "FieldFilled(Note) Or GroupFilled(/Benefits) Or FieldFilled(Threshold) Or FieldFilled(Level/Value)",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "The benefit root is present."
+              } ]
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

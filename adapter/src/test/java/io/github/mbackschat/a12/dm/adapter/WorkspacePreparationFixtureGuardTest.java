@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.adapter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -13,10 +15,13 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.core.ModelReader;
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.adapter.preparation.WorkspacePreparationFixtures;
+import io.github.mbackschat.a12.dm.adapter.preparation.WorkspacePreparationFixtures.FixtureDisposition;
 
 /**
  * Freshness guard for the committed raw-workspace matrix. Every DM-JSON source is regenerated through the typed
@@ -61,9 +66,21 @@ class WorkspacePreparationFixtureGuardTest {
         }
     }
 
+    @Test
+    void rejectedFixtureCannotClaimPreparedOutput() {
+        assertThrows(IllegalArgumentException.class, () ->
+                WorkspacePreparationFixtures.FixtureCase.builder()
+                        .id("rejected")
+                        .entryModelId("entry")
+                        .sources(Map.of("entry", "{}"))
+                        .expectedFields(java.util.Set.of("/Impossible"))
+                        .disposition(FixtureDisposition.MIXED_CONDITION_LANGUAGE)
+                        .build());
+    }
+
     private static String manifest() throws IOException {
         var root = JSON.createObjectNode();
-        root.put("version", 4);
+        root.put("version", 6);
         var cases = root.putObject("cases");
         var committed = WorkspacePreparationFixtures.committedFiles();
         for (var fixture : WorkspacePreparationFixtures.cases()) {
@@ -72,6 +89,24 @@ class WorkspacePreparationFixtureGuardTest {
             ObjectNode sources = entry.putObject("sources");
             for (var modelId : fixture.sources().keySet()) {
                 sources.put(modelId, pathOf(committed, modelId));
+            }
+            switch (fixture.disposition()) {
+                case MIXED_CONDITION_LANGUAGE -> {
+                    var error = assertThrows(
+                            ModelConsistencyException.class,
+                            () -> PreparationParityHarness.observe(fixture.entryJson(), fixture.resolver()),
+                            fixture.id());
+                    assertTrue(
+                            error.notifications().stream()
+                                    .map(notification -> notification.message())
+                                    .anyMatch(message -> message.contains("[MVK_UNEXPECTED_TOKEN]")),
+                            () -> fixture.id() + " must retain the measured Kernel rejection: "
+                                    + error.getMessage());
+                    entry.put("expectedPreparationDiagnostic", "INCOMPATIBLE_CONDITION_LANGUAGE");
+                    continue;
+                }
+                case VALID -> {
+                }
             }
             var observation = PreparationParityHarness.observe(fixture.entryJson(), fixture.resolver());
             PreparationParityHarness.assertEquivalent(observation);
@@ -91,6 +126,8 @@ class WorkspacePreparationFixtureGuardTest {
                     .forEach(path ->
                             assertEquals("Computation", elements.get(path).path("elementType").asText(), path));
             elements.forEach(preparedStructure::set);
+            ObjectNode preparedElements = entry.putObject("preparedElements");
+            preparedElements(expanded).forEach(preparedElements::set);
         }
         return JSON.writerWithDefaultPrettyPrinter().writeValueAsString(root) + System.lineSeparator();
     }
@@ -136,6 +173,55 @@ class WorkspacePreparationFixtureGuardTest {
         var structure = JSON.createObjectNode();
         structure.put("elementType", elementType);
         return structure;
+    }
+
+    private static Map<String, JsonNode> preparedElements(JsonNode expanded) {
+        var elements = new java.util.TreeMap<String, JsonNode>();
+        collectPreparedElements(expanded, elements);
+        return elements;
+    }
+
+    private static void collectPreparedElements(JsonNode node, Map<String, JsonNode> elements) {
+        if (node.isObject()) {
+            var elementType = node.path("type").asText();
+            var id = node.path("id").asText();
+            if (switch (elementType) {
+                case "Group", "Field", "Rule", "Computation" -> !id.isEmpty();
+                default -> false;
+            }) {
+                var facts = JSON.createObjectNode();
+                facts.set("id", valueOrNull(node.get("id")));
+                facts.put("elementType", elementType);
+                switch (elementType) {
+                    case "Rule" ->
+                        facts.set("errorCondition", valueOrNull(node.path("Rule").get("errorCondition")));
+                    case "Computation" -> {
+                        var body = node.path("Computation");
+                        facts.set("commonPrecondition", valueOrNull(body.get("commonPrecondition")));
+                        var alternatives = facts.putArray("alternatives");
+                        var candidates = body.path("computationAlternatives");
+                        if (candidates.isArray()) {
+                            candidates.forEach(candidate -> {
+                                var alternative = alternatives.addObject();
+                                alternative.set("precondition", valueOrNull(candidate.get("precondition")));
+                                alternative.set("operation", valueOrNull(candidate.get("operation")));
+                            });
+                        }
+                    }
+                    case "Group", "Field" -> {
+                    }
+                    default -> throw new IllegalStateException("unexpected prepared element type: " + elementType);
+                }
+                elements.put(id, facts);
+            }
+            node.elements().forEachRemaining(child -> collectPreparedElements(child, elements));
+        } else if (node.isArray()) {
+            node.elements().forEachRemaining(child -> collectPreparedElements(child, elements));
+        }
+    }
+
+    private static JsonNode valueOrNull(JsonNode value) {
+        return value == null ? NullNode.getInstance() : value;
     }
 
     private static String pathOf(java.util.Map<String, String> committed, String modelId) {

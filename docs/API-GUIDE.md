@@ -690,7 +690,7 @@ Rule rule = m.rule(addons)                        // model-aware entry: rule liv
 <!-- teaser -->
 ```java
 new DslRenderer().render(condition);                       // canonical EN, absolute paths (no group context)
-rule.render();                                             // fork-9: paths relative to the rule's group (../ to siblings)
+rule.render();                                             // paths relative to the rule's group (../ to siblings)
 new DslRenderer(ConditionLanguage.DE).render(condition);   // same AST, German keywords
 
 ValidationResult vr = new RuleValidator().check(modelJson, draftRule);   // F4: real kernel, no compile
@@ -702,6 +702,19 @@ System.out.println(all.toJson());                          // agent-parseable, o
 
 BoundModel m2 = m.add(rule);                               // snapshot (F0): write → NEW binding, re-validated
 m2.writeTo(path);                                          // DM-JSON write path — authored JSON, includes preserved (D9, F6)
+```
+
+Typed persistence takes the stored condition language from the destination model. The AST remains language-independent; `BoundModel.add`, typed `ModelWriter` operations, and typed replacements render English or German only at the write boundary. Raw string/draft overloads remain verbatim for callers that already provide stored DSL text.
+
+<!-- snippet: condition-language-write -->
+```java
+BoundModel model = germanModel();
+
+BoundModel added = model.add(positiveAmountRule(model, "PositiveAmount"));
+var amount = added.num("/Policy/Amount");
+BoundModel replaced = added.replaceCondition(
+        "/Policy/PositiveAmount",
+        amount.filled().and(amount.gt(10)));
 ```
 
 For a generated or profile-derived model, collect typed programs first and append the complete population in one immutable write. This preserves the same terminal consistency gate without multiplying whole-model parse and pretty-print work by the number of rules and computations:

@@ -7,19 +7,32 @@ import java.util.Set;
 /**
  * Collects and rewrites entity-reference spans in one condition/computation fragment. This is deliberately a
  * small lexer for the reference-bearing surface, not a slash search: quoted string literals and comments are
- * opaque, while reference atoms are recognized in bracket/function arguments and after grammar separators such
- * as {@code In}, {@code For}, {@code Having}, and {@code @From}.
+ * opaque, while reference atoms are recognized in bracket/function arguments and after grammar separators in
+ * the executable's configured source language, such as {@code In}, {@code For}/{@code Fuer},
+ * {@code Having}/{@code Mit}, and {@code @From}/{@code @Von}.
  */
 final class ConditionReferenceRemapper {
 
-    private static final Set<String> REFERENCE_SEPARATORS = Set.of(
+    private static final Set<String> ENGLISH_REFERENCE_SEPARATORS = Set.of(
             "And", "and", "AND", "Or", "or", "OR",
             "In", "in", "IN", "For", "Having",
             "PatternMatched", "PatternViolated",
             "DiffersWithToleranceRange1", "DiffersWithToleranceRange2",
             "DiffersWithToleranceRange5", "DiffersWithToleranceRange10");
-    private static final Set<String> NON_REFERENCE_ATOMS = Set.of(
+    private static final Set<String> GERMAN_REFERENCE_SEPARATORS = Set.of(
+            "Und", "und", "UND", "Oder", "oder", "ODER",
+            "In", "in", "IN", "Fuer", "Mit",
+            "WieMuster", "NichtWieMuster",
+            "UngleichMitToleranz1", "UngleichMitToleranz2",
+            "UngleichMitToleranz5", "UngleichMitToleranz10");
+    private static final Set<String> ENGLISH_NON_REFERENCE_ATOMS = Set.of(
             "True", "False", "Today", "Now", "BaseYear", "FirstDay", "LastDay", "RuleGroup");
+    private static final Set<String> GERMAN_NON_REFERENCE_ATOMS = Set.of(
+            "Wahr", "Falsch", "Heute", "Jetzt", "Referenzjahr", "ErsterTag", "LetzterTag", "RegelKontext");
+    private static final LanguageProfile ENGLISH = new LanguageProfile(
+            ENGLISH_REFERENCE_SEPARATORS, ENGLISH_NON_REFERENCE_ATOMS, "CustomCondition", "From");
+    private static final LanguageProfile GERMAN = new LanguageProfile(
+            GERMAN_REFERENCE_SEPARATORS, GERMAN_NON_REFERENCE_ATOMS, "ApplikationsBedingung", "Von");
 
     private ConditionReferenceRemapper() {
     }
@@ -32,20 +45,31 @@ final class ConditionReferenceRemapper {
             String declaringGroup,
             Set<String> entityPaths,
             Map<String, List<String>> fieldsByShortName,
-            boolean shortNamesAllowed) {
+            boolean shortNamesAllowed,
+            String conditionLanguageCode) {
     }
 
     static Result remapAbsolutePaths(String source, Map<String, String> prefixMap) {
-        return new Scanner(source, new ReferenceContext(prefixMap, "", Set.of(), Map.of(), false)).remap();
+        return remapAbsolutePaths(source, prefixMap, "en_US");
+    }
+
+    static Result remapAbsolutePaths(String source, Map<String, String> prefixMap, String conditionLanguageCode) {
+        return new Scanner(source,
+                new ReferenceContext(prefixMap, "", Set.of(), Map.of(), false, conditionLanguageCode)).remap();
     }
 
     static Result remapReferences(String source, ReferenceContext context) {
         return new Scanner(source, context).remap();
     }
 
+    static LanguageProfile languageProfile(String conditionLanguageCode) {
+        return "de_DE".equals(conditionLanguageCode) ? GERMAN : ENGLISH;
+    }
+
     private static final class Scanner {
         private final String source;
         private final ReferenceContext context;
+        private final LanguageProfile language;
         private final StringBuilder output;
         private int position;
         private boolean expectsAtom = true;
@@ -56,6 +80,7 @@ final class ConditionReferenceRemapper {
         private Scanner(String source, ReferenceContext context) {
             this.source = source;
             this.context = context;
+            this.language = languageProfile(context.conditionLanguageCode());
             this.output = new StringBuilder(source.length());
         }
 
@@ -79,8 +104,7 @@ final class ConditionReferenceRemapper {
                     position++;
                     expectsAtom = false;
                 } else if (c == '@') {
-                    copyAtKeyword();
-                    expectsAtom = true;
+                    expectsAtom = copyAtKeyword();
                 } else if (c == '-' && peek(1) == '>') {
                     output.append("->");
                     position += 2;
@@ -134,20 +158,20 @@ final class ConditionReferenceRemapper {
                 expectsAtom = false;
                 return;
             }
-            if ("CustomCondition".equals(word)) {
+            if (language.customCondition().equals(word)) {
                 output.append(word);
                 position = wordEnd;
                 skipNextIdentifier = true;
                 expectsAtom = true;
                 return;
             }
-            if (REFERENCE_SEPARATORS.contains(word)) {
+            if (language.referenceSeparators().contains(word)) {
                 output.append(word);
                 position = wordEnd;
                 expectsAtom = true;
                 return;
             }
-            if (NON_REFERENCE_ATOMS.contains(word)) {
+            if (language.nonReferenceAtoms().contains(word)) {
                 output.append(word);
                 position = wordEnd;
                 expectsAtom = false;
@@ -341,17 +365,20 @@ final class ConditionReferenceRemapper {
             output.append(source, start, position);
         }
 
-        private void copyAtKeyword() {
+        private boolean copyAtKeyword() {
             output.append('@');
             position++;
             int whitespaceEnd = skipWhitespace(position);
             output.append(source, position, whitespaceEnd);
             position = whitespaceEnd;
-            if (position < source.length() && isIdentifierStart(source.charAt(position))) {
-                int end = identifierEnd(position);
-                output.append(source, position, end);
-                position = end;
+            if (position >= source.length() || !isIdentifierStart(source.charAt(position))) {
+                return false;
             }
+            int end = identifierEnd(position);
+            String keyword = source.substring(position, end);
+            output.append(source, position, end);
+            position = end;
+            return language.atFrom().equals(keyword);
         }
 
         private void copyNumber() {
@@ -415,6 +442,13 @@ final class ConditionReferenceRemapper {
     }
 
     private record Segment(String value, int end, boolean quoted) {
+    }
+
+    record LanguageProfile(
+            Set<String> referenceSeparators,
+            Set<String> nonReferenceAtoms,
+            String customCondition,
+            String atFrom) {
     }
 
     private static boolean isIdentifierStart(char c) {

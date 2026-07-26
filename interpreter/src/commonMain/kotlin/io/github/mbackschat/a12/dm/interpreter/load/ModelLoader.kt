@@ -9,6 +9,7 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
+import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
 import io.github.mbackschat.a12.dm.interpreter.model.ToleranceBand
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldTypeDeclaration
@@ -79,8 +80,22 @@ object ModelLoader {
         // against java.util.TimeZone before this kernel-free JVM+JS boundary.
         val timeZoneNode = (modelConfig as? JsonObject)?.get("timeZone")
         val timeZone = if (timeZoneNode == null) ModelTimeZone.UTC else ModelTimeZone.of(timeZoneNode.asTextOrNull())
-        return ModelDef(sink.fields, sink.rules, sink.comps, sink.repeatable, sink.declaredReps, sink.indexFields,
-            baseYear, fieldRefByShortNameAllowed = shortNameRefs, legalCharset = legalCharset, timeZone = timeZone)
+        val conditionLanguage = ConditionLanguage.fromCode(
+            modelConfig.path("conditionLanguage").path("code").asTextOrNull(),
+        )
+        return ModelDef(
+            fields = sink.fields,
+            rules = sink.rules,
+            computations = sink.comps,
+            repeatableGroups = sink.repeatable,
+            declaredReps = sink.declaredReps,
+            indexFields = sink.indexFields,
+            baseYear = baseYear,
+            fieldRefByShortNameAllowed = shortNameRefs,
+            legalCharset = legalCharset,
+            timeZone = timeZone,
+            conditionLanguage = conditionLanguage,
+        )
     }
 
     /** The mutable accumulators of one [load] pass — insertion-ordered to match the DM-JSON document order. */

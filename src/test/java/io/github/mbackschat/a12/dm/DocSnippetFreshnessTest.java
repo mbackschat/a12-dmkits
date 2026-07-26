@@ -110,6 +110,8 @@ class DocSnippetFreshnessTest {
             new Lock("authored-references", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/modelkit/ModelDocumentAuthoredReferenceStateTest.java"),
             new Lock("bulk-program-write", "docs/API-GUIDE.md", BULK_WRITE),
+            new Lock("condition-language-write", "docs/API-GUIDE.md",
+                    "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/ConditionLanguageWriteTest.java"),
             new Lock("profile-extract", "docs/API-GUIDE.md", PROFILE_FACADE),
             new Lock("profile-compare", "docs/API-GUIDE.md", PROFILE_COMPARE));
 

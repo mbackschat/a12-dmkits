@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.mbackschat.a12.dm.adapter.perf.PerfCatalog
+import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import io.github.mbackschat.a12.dm.interpreter.parse.parseExpression
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog
@@ -16,11 +17,13 @@ import kotlin.io.path.extension
 /**
  * The **parser coverage sweep** (WI-P of SEMANTICS-FORMALIZATION-PROPOSAL, from Phase-0 S1). Re-creates the
  * throwaway Phase-0 sweep as a PERMANENT guard: it parses the DSL the real kernel stores and asserts the
- * interpreter's hand-written parser accepts it. Two populations, two postures:
+ * interpreter's hand-written parser accepts it. Three populations, three postures:
  *
  *  - **canonical / in-repo (always-on, must be 100%):** every catalog `validExample` + `computationExample`
  *    ([OperatorCatalog]) and every [PerfCatalog.fuzzConditions] string. These are our own canonical DSL — a
  *    parse failure here is a straight regression, so the guard is unconditional.
+ *  - **German catalog (always-on, must be 100%):** the same catalog examples localized from the catalog's live
+ *    bilingual keyword pairs and parsed under [ConditionLanguage.DE].
  *  - **real corpora (opt-in, classified):** every distinct `errorCondition`/`precondition` (→ [parseCondition])
  *    and `operation` (→ [parseExpression]) harvested from the `a12-kernel-mm` metamodels and the A12 Tools
  *    workspaces. Both skip silently when absent (external-sibling pattern — the EUPL/proprietary corpora are
@@ -51,6 +54,72 @@ class ParserCorpusSweepTest {
         println("[parser-sweep] canonical: ${conds} conditions + ${exprs} operations parsed, ${failures.size} failed")
         assertTrue(failures.isEmpty()) {
             "canonical in-repo DSL must parse 100% — a failure here is a parser regression:\n" +
+                failures.joinToString("\n") { "  [${it.source}] ${it.error}\n      ${it.text.take(160)}" }
+        }
+    }
+
+    @Test
+    fun germanCatalogPopulationCanonicalizesToTheEnglishAst() {
+        val failures = mutableListOf<Failure>()
+        val catalog = OperatorCatalog.load()
+        val keywords = buildMap {
+            catalog.entries().forEach { entry ->
+                val english = entry.keywords()?.en()
+                val german = entry.keywords()?.de()
+                if (
+                    english != null &&
+                    german != null &&
+                    english.all { it.isLetterOrDigit() || it == '_' }
+                ) {
+                    put(english, german)
+                }
+            }
+            put("RuleGroup", "RegelKontext")
+        }
+        var conditions = 0
+        var expressions = 0
+        val localizedKeywords = linkedSetOf<String>()
+        for (entry in catalog.entries()) {
+            entry.validExample()?.dsl()?.let { english ->
+                conditions++
+                tryCompareLocalizedCondition(
+                    english,
+                    localizeGerman(english, keywords, localizedKeywords),
+                    "catalog-de:${entry.id()}",
+                    failures,
+                )
+            }
+            entry.computationExample()?.operation()?.let { english ->
+                expressions++
+                tryCompareLocalizedExpression(
+                    english,
+                    localizeGerman(english, keywords, localizedKeywords),
+                    "catalog-de:${entry.id()}",
+                    failures,
+                )
+            }
+        }
+        val ruleGroupCondition = "GroupFilled(RuleGroup)"
+        tryCompareLocalizedCondition(
+            ruleGroupCondition,
+            localizeGerman(ruleGroupCondition, keywords, localizedKeywords),
+            "grammar-de:RuleGroup",
+            failures,
+        )
+        val missingKeywords = keywords.keys - localizedKeywords
+        if (missingKeywords.isNotEmpty()) {
+            failures += Failure(
+                source = "catalog-de:coverage",
+                text = missingKeywords.sorted().joinToString(),
+                error = "bilingual identifier keywords absent from every catalog example",
+            )
+        }
+        println(
+            "[parser-sweep] German catalog: $conditions conditions + " +
+                "$expressions operations parsed, ${failures.size} failed",
+        )
+        assertTrue(failures.isEmpty()) {
+            "every CI-locked German catalog keyword must canonicalize to the English AST:\n" +
                 failures.joinToString("\n") { "  [${it.source}] ${it.error}\n      ${it.text.take(160)}" }
         }
     }
@@ -120,20 +189,115 @@ class ParserCorpusSweepTest {
 
     private data class Failure(val source: String, val text: String, val error: String)
 
-    private fun tryParseCond(text: String, source: String, into: MutableList<Failure>) {
+    private fun tryParseCond(
+        text: String,
+        source: String,
+        into: MutableList<Failure>,
+        language: ConditionLanguage = ConditionLanguage.EN,
+    ) {
         try {
-            parseCondition(text, BASE)
+            parseCondition(text, BASE, language = language)
         } catch (t: Throwable) {
             into.add(Failure(source, text, "${t::class.simpleName}: ${t.message}"))
         }
     }
 
-    private fun tryParseExpr(text: String, source: String, into: MutableList<Failure>) {
+    private fun tryParseExpr(
+        text: String,
+        source: String,
+        into: MutableList<Failure>,
+        language: ConditionLanguage = ConditionLanguage.EN,
+    ) {
         try {
-            parseExpression(text, BASE)
+            parseExpression(text, BASE, language = language)
         } catch (t: Throwable) {
             into.add(Failure(source, text, "${t::class.simpleName}: ${t.message}"))
         }
+    }
+
+    private fun tryCompareLocalizedCondition(
+        english: String,
+        german: String,
+        source: String,
+        into: MutableList<Failure>,
+    ) {
+        try {
+            val englishAst = parseCondition(english, BASE, language = ConditionLanguage.EN)
+            val germanAst = parseCondition(german, BASE, language = ConditionLanguage.DE)
+            if (englishAst != germanAst) {
+                into += Failure(source, german, "localized AST differs from English: $germanAst != $englishAst")
+            }
+        } catch (t: Throwable) {
+            into += Failure(source, german, "${t::class.simpleName}: ${t.message}")
+        }
+    }
+
+    private fun tryCompareLocalizedExpression(
+        english: String,
+        german: String,
+        source: String,
+        into: MutableList<Failure>,
+    ) {
+        try {
+            val englishAst = parseExpression(english, BASE, language = ConditionLanguage.EN)
+            val germanAst = parseExpression(german, BASE, language = ConditionLanguage.DE)
+            if (englishAst != germanAst) {
+                into += Failure(source, german, "localized AST differs from English: $germanAst != $englishAst")
+            }
+        } catch (t: Throwable) {
+            into += Failure(source, german, "${t::class.simpleName}: ${t.message}")
+        }
+    }
+
+    private fun localizeGerman(
+        english: String,
+        keywords: Map<String, String>,
+        localizedKeywords: MutableSet<String> = linkedSetOf(),
+    ): String {
+        val localized = StringBuilder(english.length)
+        var position = 0
+        var quoted = false
+        var pathQuoted = false
+        while (position < english.length) {
+            val current = english[position]
+            when {
+                current == '"' && !pathQuoted -> {
+                    quoted = !quoted
+                    localized.append(current)
+                    position++
+                }
+                current == '\'' && !quoted -> {
+                    pathQuoted = !pathQuoted
+                    localized.append(current)
+                    position++
+                }
+                !quoted && !pathQuoted && english.startsWith("@From", position) -> {
+                    localized.append("@Von")
+                    position += "@From".length
+                }
+                !quoted && !pathQuoted && (current.isLetter() || current == '_') -> {
+                    var end = position + 1
+                    while (
+                        end < english.length &&
+                        (english[end].isLetterOrDigit() || english[end] == '_')
+                    ) {
+                        end++
+                    }
+                    val identifier = english.substring(position, end)
+                    val replacement = keywords[identifier]
+                    if (replacement != null) {
+                        localizedKeywords += identifier
+                    }
+                    localized.append(replacement ?: identifier)
+                    position = end
+                }
+                else -> {
+                    localized.append(current)
+                    position++
+                }
+            }
+        }
+        return localized.toString()
     }
 
     /** Harvest DISTINCT condition + operation strings from every `*.json` under [root]. */

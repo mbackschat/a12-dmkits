@@ -30,6 +30,12 @@ java {
     }
 }
 
+// One contract matrix locks the Java reader and portable interpreter reference scanners to the same bilingual
+// language profiles. The interpreter generates common JVM/JS test data from this directory; root Java tests read
+// the identical resource from their ordinary test classpath.
+sourceSets.test.resources.srcDir(
+        'interpreter/src/commonTest/resources/reference-remap-profile')
+
 // Ratchet (A12K-3589 / docs/TESTING-SPEC "no deprecated-kernel-API" guardian): a kernel API MARKED FOR REMOVAL
 // cannot compile in a kernel-facing compilation. Only the `removal` lint (not `deprecation`) is treated as an
 // error, so a new call to a removal-scheduled kernel API fails the build while plain-@Deprecated APIs (incl.

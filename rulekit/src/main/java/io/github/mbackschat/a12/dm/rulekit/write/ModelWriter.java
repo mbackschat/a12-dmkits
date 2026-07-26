@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -15,8 +16,12 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import io.github.mbackschat.a12.dm.core.DmKeys;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
@@ -36,11 +41,14 @@ public final class ModelWriter {
     private ModelWriter() {
     }
 
-    /** Returns {@code modelJson} with {@code rule} (a built {@link Rule}, with its real messages) added to its target group. */
+    /**
+     * Returns {@code modelJson} with {@code rule} added to its target group. The rule is rendered in the destination
+     * model's declared condition language; the raw-slot overload remains verbatim.
+     */
     public static String addRule(String modelJson, Rule rule) {
-        return DmJson.insertIntoGroup(modelJson, rule.group().path(),
+        return insertTyped(modelJson, rule.group().path(), language ->
                 ruleNode(rule.group().path() + "/" + rule.name(), rule.name(), rule.errorEntityRelPath(),
-                        rule.code(), rule.render(), rule.severity().name(), rule.messages()));
+                        rule.code(), rule.render(language), rule.severity().name(), rule.messages()));
     }
 
     /**
@@ -63,16 +71,26 @@ public final class ModelWriter {
      */
     public static String replaceCondition(String modelJson, String ruleFullName, String newConditionText) {
         try {
-            com.fasterxml.jackson.databind.node.ObjectNode root =
-                    (com.fasterxml.jackson.databind.node.ObjectNode) MAPPER.readTree(modelJson);
-            ObjectNode rule = DmJson.findElement(root, "Rule", ruleFullName);
-            if (rule == null) {
-                throw PrecheckException.notFound(RkCode.NO_SUCH_RULE, ruleFullName);
-            }
-            ObjectNode body = (ObjectNode) rule.path("Rule");
-            String oldText = body.path("errorCondition").asText("");
-            body.put("errorCondition", Comments.preserveLeading(oldText, newConditionText));
-            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+            ObjectNode root = (ObjectNode) MAPPER.readTree(modelJson);
+            replaceConditionIn(root, ruleFullName, newConditionText);
+            return write(root);
+        } catch (IOException e) {
+            throw new UncheckedIOException("failed to read/write the model DM-JSON", e);
+        }
+    }
+
+    /**
+     * Typed condition replacement rendered in the destination model's declared condition language. The raw-text
+     * overload remains the verbatim CLI/spec path.
+     */
+    public static String replaceCondition(String modelJson, String ruleFullName, Condition newCondition) {
+        Objects.requireNonNull(newCondition, "newCondition");
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(modelJson);
+            String groupPath = ruleFullName.substring(0, ruleFullName.lastIndexOf('/'));
+            String rendered = new DslRenderer(conditionLanguage(root), groupPath).render(newCondition);
+            replaceConditionIn(root, ruleFullName, rendered);
+            return write(root);
         } catch (IOException e) {
             throw new UncheckedIOException("failed to read/write the model DM-JSON", e);
         }
@@ -80,7 +98,7 @@ public final class ModelWriter {
 
     /**
      * Returns {@code modelJson} with the rule's {@code severity} slot set to {@code severity} (the enum name),
-     * leaving its condition and messages untouched — the in-place severity edit (FEATURE-GAPS).
+     * leaving its condition and messages untouched.
      */
     public static String replaceSeverity(String modelJson, String ruleFullName, String severity) {
         try {
@@ -143,10 +161,13 @@ public final class ModelWriter {
         }
     }
 
-    /** Returns {@code modelJson} with {@code computation} (a built {@link Computation}) added to its computed field's group (F6). */
+    /**
+     * Returns {@code modelJson} with {@code computation} added to its computed field's group. Typed fragments render
+     * in the destination model's declared condition language.
+     */
     public static String addComputation(String modelJson, Computation computation) {
-        return DmJson.insertIntoGroup(modelJson, computation.groupPath(),
-                computationNode(computation.draft(), computation.messages()));
+        return insertTyped(modelJson, computation.groupPath(), language ->
+                computationNode(computation.draft(language), computation.messages()));
     }
 
     /**
@@ -164,6 +185,7 @@ public final class ModelWriter {
         Objects.requireNonNull(computations, "computations");
         try {
             ObjectNode root = (ObjectNode) MAPPER.readTree(modelJson);
+            ConditionLanguage language = conditionLanguage(root);
             Map<String, ArrayNode> elementsByGroup = new HashMap<>();
             for (Rule rule : rules) {
                 Objects.requireNonNull(rule, "rule");
@@ -173,16 +195,16 @@ public final class ModelWriter {
                                 rule.name(),
                                 rule.errorEntityRelPath(),
                                 rule.code(),
-                                rule.render(),
+                                rule.render(language),
                                 rule.severity().name(),
                                 rule.messages()));
             }
             for (Computation computation : computations) {
                 Objects.requireNonNull(computation, "computation");
                 elements(root, elementsByGroup, computation.groupPath()).add(
-                        computationNode(computation.draft(), computation.messages()));
+                        computationNode(computation.draft(language), computation.messages()));
             }
-            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+            return write(root);
         } catch (IOException e) {
             throw new UncheckedIOException("failed to read/write the model DM-JSON", e);
         }
@@ -199,6 +221,50 @@ public final class ModelWriter {
             }
             return elements;
         });
+    }
+
+    /**
+     * Parse once so choosing the model-owned language and appending the rendered element cannot observe different
+     * source snapshots. Raw-slot writers bypass this helper because their text is already the stored representation.
+     */
+    private static String insertTyped(
+            String modelJson,
+            String groupPath,
+            Function<ConditionLanguage, ObjectNode> element) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(modelJson);
+            ArrayNode elements = DmJson.groupElements(root, groupPath);
+            if (elements == null) {
+                throw new IllegalArgumentException("no group at path: " + groupPath);
+            }
+            elements.add(element.apply(conditionLanguage(root)));
+            return write(root);
+        } catch (IOException e) {
+            throw new UncheckedIOException("failed to read/write the model DM-JSON", e);
+        }
+    }
+
+    private static ConditionLanguage conditionLanguage(JsonNode root) {
+        String code = root.path(DmKeys.CONTENT)
+                .path(DmKeys.MODEL_CONFIG)
+                .path(DmKeys.CONDITION_LANGUAGE)
+                .path(DmKeys.CODE)
+                .asText("en_US");
+        return "de_DE".equals(code) ? ConditionLanguage.DE : ConditionLanguage.EN;
+    }
+
+    private static void replaceConditionIn(ObjectNode root, String ruleFullName, String newConditionText) {
+        ObjectNode rule = DmJson.findElement(root, "Rule", ruleFullName);
+        if (rule == null) {
+            throw PrecheckException.notFound(RkCode.NO_SUCH_RULE, ruleFullName);
+        }
+        ObjectNode body = (ObjectNode) rule.path("Rule");
+        String oldText = body.path("errorCondition").asText("");
+        body.put("errorCondition", Comments.preserveLeading(oldText, newConditionText));
+    }
+
+    private static String write(ObjectNode root) throws IOException {
+        return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
     }
 
     /**

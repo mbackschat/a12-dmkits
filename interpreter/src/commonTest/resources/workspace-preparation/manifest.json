@@ -1,5 +1,5 @@
 {
-  "version" : 4,
+  "version" : 6,
   "cases" : {
     "self-contained" : {
       "entryModelId" : "permit-basic",
@@ -123,6 +123,42 @@
             "annotations" : [ ]
           }
         }
+      },
+      "preparedElements" : {
+        "/Permit" : {
+          "id" : "/Permit",
+          "elementType" : "Group"
+        },
+        "/Permit/ApplicationNo" : {
+          "id" : "/Permit/ApplicationNo",
+          "elementType" : "Field"
+        },
+        "/Permit/AreaNeedsNote" : {
+          "id" : "/Permit/AreaNeedsNote",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(RequestedArea) And [RequestedArea] > 100 And FieldNotFilled(Note)"
+        },
+        "/Permit/CopyRequestedArea" : {
+          "id" : "/Permit/CopyRequestedArea",
+          "elementType" : "Computation",
+          "commonPrecondition" : null,
+          "alternatives" : [ {
+            "precondition" : "FieldFilled(ApplicationNo)",
+            "operation" : "[RequestedArea]"
+          } ]
+        },
+        "/Permit/Note" : {
+          "id" : "/Permit/Note",
+          "elementType" : "Field"
+        },
+        "/Permit/RequestedArea" : {
+          "id" : "/Permit/RequestedArea",
+          "elementType" : "Field"
+        },
+        "/Permit/ReviewedArea" : {
+          "id" : "/Permit/ReviewedArea",
+          "elementType" : "Field"
+        }
       }
     },
     "local-typedef" : {
@@ -229,6 +265,24 @@
             "annotations" : [ ]
           }
         }
+      },
+      "preparedElements" : {
+        "/Permit" : {
+          "id" : "/Permit",
+          "elementType" : "Group"
+        },
+        "/Permit/ApplicationCode" : {
+          "id" : "/Permit/ApplicationCode",
+          "elementType" : "Field"
+        },
+        "/Permit/Decision" : {
+          "id" : "/Permit/Decision",
+          "elementType" : "Field"
+        },
+        "/Permit/RequestedArea" : {
+          "id" : "/Permit/RequestedArea",
+          "elementType" : "Field"
+        }
       }
     },
     "include-contributed-typedef" : {
@@ -320,6 +374,24 @@
             "usageType" : null,
             "annotations" : [ ]
           }
+        }
+      },
+      "preparedElements" : {
+        "/Permit" : {
+          "id" : "/Permit",
+          "elementType" : "Group"
+        },
+        "/Permit/ApplicationCode" : {
+          "id" : "/Permit/ApplicationCode",
+          "elementType" : "Field"
+        },
+        "/Permit/Details" : {
+          "id" : "/Permit/Details",
+          "elementType" : "Group"
+        },
+        "/Permit/Details/Description" : {
+          "id" : "/Permit/Details/Description",
+          "elementType" : "Field"
         }
       }
     },
@@ -561,6 +633,72 @@
         },
         "/Permit/Review/NestedInspectionFlag" : {
           "elementType" : "Rule"
+        }
+      },
+      "preparedElements" : {
+        "/Permit" : {
+          "id" : "/Permit",
+          "elementType" : "Group"
+        },
+        "/Permit/ApplicationCode" : {
+          "id" : "/Permit/ApplicationCode",
+          "elementType" : "Field"
+        },
+        "/Permit/InspectionDisposition" : {
+          "id" : "/Permit/InspectionDisposition",
+          "elementType" : "Field"
+        },
+        "/Permit/MountedInspectionFlag" : {
+          "id" : "/Permit/MountedInspectionFlag",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(ApplicationCode) And FieldFilled(Review/Inspection/Score) And [Review/Inspection/Score] < 0"
+        },
+        "/Permit/Review" : {
+          "id" : "/Permit/Review",
+          "elementType" : "Group"
+        },
+        "/Permit/Review/Inspection" : {
+          "id" : "/Permit/Review/Inspection",
+          "elementType" : "Group"
+        },
+        "/Permit/Review/Inspection/CopyScore" : {
+          "id" : "/Permit/Review/Inspection/CopyScore",
+          "elementType" : "Computation",
+          "commonPrecondition" : null,
+          "alternatives" : [ {
+            "precondition" : "FieldFilled(Score)",
+            "operation" : "[Score]"
+          } ]
+        },
+        "/Permit/Review/Inspection/Disposition" : {
+          "id" : "/Permit/Review/Inspection/Disposition",
+          "elementType" : "Field"
+        },
+        "/Permit/Review/Inspection/NegativeScore" : {
+          "id" : "/Permit/Review/Inspection/NegativeScore",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Score) And [Score] < 0"
+        },
+        "/Permit/Review/Inspection/Result" : {
+          "id" : "/Permit/Review/Inspection/Result",
+          "elementType" : "Field"
+        },
+        "/Permit/Review/Inspection/Score" : {
+          "id" : "/Permit/Review/Inspection/Score",
+          "elementType" : "Field"
+        },
+        "/Permit/Review/Inspection/Summary" : {
+          "id" : "/Permit/Review/Inspection/Summary",
+          "elementType" : "Field"
+        },
+        "/Permit/Review/Name" : {
+          "id" : "/Permit/Review/Name",
+          "elementType" : "Field"
+        },
+        "/Permit/Review/NestedInspectionFlag" : {
+          "id" : "/Permit/Review/NestedInspectionFlag",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Name) And FieldFilled(Inspection/Score) And [Inspection/Score] < 0"
         }
       }
     },
@@ -821,6 +959,76 @@
         "/Permit/Review/Section/NestedInspectionFlag" : {
           "elementType" : "Rule"
         }
+      },
+      "preparedElements" : {
+        "/Permit" : {
+          "id" : "/Permit",
+          "elementType" : "Group"
+        },
+        "/Permit/ApplicationCode" : {
+          "id" : "/Permit/ApplicationCode",
+          "elementType" : "Field"
+        },
+        "/Permit/InspectionDisposition" : {
+          "id" : "/Permit/InspectionDisposition",
+          "elementType" : "Field"
+        },
+        "/Permit/MountedInspectionFlag" : {
+          "id" : "/Permit/MountedInspectionFlag",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(ApplicationCode) And FieldFilled(Review/Section/Inspection/Score) And [Review/Section/Inspection/Score] < 0"
+        },
+        "/Permit/Review" : {
+          "id" : "/Permit/Review",
+          "elementType" : "Group"
+        },
+        "/Permit/Review/Section" : {
+          "id" : "/Permit/Review/Section",
+          "elementType" : "Group"
+        },
+        "/Permit/Review/Section/Inspection" : {
+          "id" : "/Permit/Review/Section/Inspection",
+          "elementType" : "Group"
+        },
+        "/Permit/Review/Section/Inspection/CopyScore" : {
+          "id" : "/Permit/Review/Section/Inspection/CopyScore",
+          "elementType" : "Computation",
+          "commonPrecondition" : null,
+          "alternatives" : [ {
+            "precondition" : "FieldFilled(Score)",
+            "operation" : "[Score]"
+          } ]
+        },
+        "/Permit/Review/Section/Inspection/Disposition" : {
+          "id" : "/Permit/Review/Section/Inspection/Disposition",
+          "elementType" : "Field"
+        },
+        "/Permit/Review/Section/Inspection/NegativeScore" : {
+          "id" : "/Permit/Review/Section/Inspection/NegativeScore",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Score) And [Score] < 0"
+        },
+        "/Permit/Review/Section/Inspection/Result" : {
+          "id" : "/Permit/Review/Section/Inspection/Result",
+          "elementType" : "Field"
+        },
+        "/Permit/Review/Section/Inspection/Score" : {
+          "id" : "/Permit/Review/Section/Inspection/Score",
+          "elementType" : "Field"
+        },
+        "/Permit/Review/Section/Inspection/Summary" : {
+          "id" : "/Permit/Review/Section/Inspection/Summary",
+          "elementType" : "Field"
+        },
+        "/Permit/Review/Section/Name" : {
+          "id" : "/Permit/Review/Section/Name",
+          "elementType" : "Field"
+        },
+        "/Permit/Review/Section/NestedInspectionFlag" : {
+          "id" : "/Permit/Review/Section/NestedInspectionFlag",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Name) And FieldFilled(Inspection/Score) And [Inspection/Score] < 0"
+        }
       }
     },
     "alias-with-exclusions" : {
@@ -960,6 +1168,32 @@
             "usageType" : null,
             "annotations" : [ ]
           }
+        }
+      },
+      "preparedElements" : {
+        "/Permit" : {
+          "id" : "/Permit",
+          "elementType" : "Group"
+        },
+        "/Permit/Inspection" : {
+          "id" : "/Permit/Inspection",
+          "elementType" : "Group"
+        },
+        "/Permit/Inspection/Disposition" : {
+          "id" : "/Permit/Inspection/Disposition",
+          "elementType" : "Field"
+        },
+        "/Permit/Inspection/Result" : {
+          "id" : "/Permit/Inspection/Result",
+          "elementType" : "Field"
+        },
+        "/Permit/Inspection/Score" : {
+          "id" : "/Permit/Inspection/Score",
+          "elementType" : "Field"
+        },
+        "/Permit/Inspection/Summary" : {
+          "id" : "/Permit/Inspection/Summary",
+          "elementType" : "Field"
         }
       }
     },
@@ -1104,6 +1338,41 @@
             "annotations" : [ ]
           }
         }
+      },
+      "preparedElements" : {
+        "/Permit" : {
+          "id" : "/Permit",
+          "elementType" : "Group"
+        },
+        "/Permit/Inspection" : {
+          "id" : "/Permit/Inspection",
+          "elementType" : "Group"
+        },
+        "/Permit/Inspection/CopyScore" : {
+          "id" : "/Permit/Inspection/CopyScore",
+          "elementType" : "Computation",
+          "commonPrecondition" : null,
+          "alternatives" : [ {
+            "precondition" : "FieldFilled(Score)",
+            "operation" : "[Score]"
+          } ]
+        },
+        "/Permit/Inspection/Disposition" : {
+          "id" : "/Permit/Inspection/Disposition",
+          "elementType" : "Field"
+        },
+        "/Permit/Inspection/Result" : {
+          "id" : "/Permit/Inspection/Result",
+          "elementType" : "Field"
+        },
+        "/Permit/Inspection/Score" : {
+          "id" : "/Permit/Inspection/Score",
+          "elementType" : "Field"
+        },
+        "/Permit/Inspection/Summary" : {
+          "id" : "/Permit/Inspection/Summary",
+          "elementType" : "Field"
+        }
       }
     },
     "computations-excluded-rule-retained" : {
@@ -1247,6 +1516,37 @@
             "annotations" : [ ]
           }
         }
+      },
+      "preparedElements" : {
+        "/Permit" : {
+          "id" : "/Permit",
+          "elementType" : "Group"
+        },
+        "/Permit/Inspection" : {
+          "id" : "/Permit/Inspection",
+          "elementType" : "Group"
+        },
+        "/Permit/Inspection/Disposition" : {
+          "id" : "/Permit/Inspection/Disposition",
+          "elementType" : "Field"
+        },
+        "/Permit/Inspection/NegativeScore" : {
+          "id" : "/Permit/Inspection/NegativeScore",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Score) And [Score] < 0"
+        },
+        "/Permit/Inspection/Result" : {
+          "id" : "/Permit/Inspection/Result",
+          "elementType" : "Field"
+        },
+        "/Permit/Inspection/Score" : {
+          "id" : "/Permit/Inspection/Score",
+          "elementType" : "Field"
+        },
+        "/Permit/Inspection/Summary" : {
+          "id" : "/Permit/Inspection/Summary",
+          "elementType" : "Field"
+        }
       }
     },
     "model-root-multiple-groups" : {
@@ -1371,6 +1671,32 @@
             "usageType" : null,
             "annotations" : [ ]
           }
+        }
+      },
+      "preparedElements" : {
+        "/Permit" : {
+          "id" : "/Permit",
+          "elementType" : "Group"
+        },
+        "/Permit/Sections" : {
+          "id" : "/Permit/Sections",
+          "elementType" : "Group"
+        },
+        "/Permit/Sections/Applicant" : {
+          "id" : "/Permit/Sections/Applicant",
+          "elementType" : "Group"
+        },
+        "/Permit/Sections/Applicant/Name" : {
+          "id" : "/Permit/Sections/Applicant/Name",
+          "elementType" : "Field"
+        },
+        "/Permit/Sections/Decision" : {
+          "id" : "/Permit/Sections/Decision",
+          "elementType" : "Group"
+        },
+        "/Permit/Sections/Decision/Status" : {
+          "id" : "/Permit/Sections/Decision/Status",
+          "elementType" : "Field"
         }
       }
     },
@@ -1635,6 +1961,80 @@
             "annotations" : [ ]
           }
         }
+      },
+      "preparedElements" : {
+        "/Permit" : {
+          "id" : "/Permit",
+          "elementType" : "Group"
+        },
+        "/Permit/Primary" : {
+          "id" : "/Permit/Primary",
+          "elementType" : "Group"
+        },
+        "/Permit/Primary/CopyScore" : {
+          "id" : "/Permit/Primary/CopyScore",
+          "elementType" : "Computation",
+          "commonPrecondition" : null,
+          "alternatives" : [ {
+            "precondition" : "FieldFilled(Score)",
+            "operation" : "[Score]"
+          } ]
+        },
+        "/Permit/Primary/Disposition" : {
+          "id" : "/Permit/Primary/Disposition",
+          "elementType" : "Field"
+        },
+        "/Permit/Primary/NegativeScore" : {
+          "id" : "/Permit/Primary/NegativeScore",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Score) And [Score] < 0"
+        },
+        "/Permit/Primary/Result" : {
+          "id" : "/Permit/Primary/Result",
+          "elementType" : "Field"
+        },
+        "/Permit/Primary/Score" : {
+          "id" : "/Permit/Primary/Score",
+          "elementType" : "Field"
+        },
+        "/Permit/Primary/Summary" : {
+          "id" : "/Permit/Primary/Summary",
+          "elementType" : "Field"
+        },
+        "/Permit/Secondary" : {
+          "id" : "/Permit/Secondary",
+          "elementType" : "Group"
+        },
+        "/Permit/Secondary/CopyScore" : {
+          "id" : "/Permit/Secondary/CopyScore",
+          "elementType" : "Computation",
+          "commonPrecondition" : null,
+          "alternatives" : [ {
+            "precondition" : "FieldFilled(Score)",
+            "operation" : "[Score]"
+          } ]
+        },
+        "/Permit/Secondary/Disposition" : {
+          "id" : "/Permit/Secondary/Disposition",
+          "elementType" : "Field"
+        },
+        "/Permit/Secondary/NegativeScore" : {
+          "id" : "/Permit/Secondary/NegativeScore",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Score) And [Score] < 0"
+        },
+        "/Permit/Secondary/Result" : {
+          "id" : "/Permit/Secondary/Result",
+          "elementType" : "Field"
+        },
+        "/Permit/Secondary/Score" : {
+          "id" : "/Permit/Secondary/Score",
+          "elementType" : "Field"
+        },
+        "/Permit/Secondary/Summary" : {
+          "id" : "/Permit/Secondary/Summary",
+          "elementType" : "Field"
+        }
       }
     },
     "nested-rules-excluded" : {
@@ -1869,6 +2269,62 @@
             "usageType" : null,
             "annotations" : [ ]
           }
+        }
+      },
+      "preparedElements" : {
+        "/Permit" : {
+          "id" : "/Permit",
+          "elementType" : "Group"
+        },
+        "/Permit/ApplicationCode" : {
+          "id" : "/Permit/ApplicationCode",
+          "elementType" : "Field"
+        },
+        "/Permit/InspectionDisposition" : {
+          "id" : "/Permit/InspectionDisposition",
+          "elementType" : "Field"
+        },
+        "/Permit/MountedInspectionFlag" : {
+          "id" : "/Permit/MountedInspectionFlag",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(ApplicationCode) And FieldFilled(Review/Inspection/Score) And [Review/Inspection/Score] < 0"
+        },
+        "/Permit/Review" : {
+          "id" : "/Permit/Review",
+          "elementType" : "Group"
+        },
+        "/Permit/Review/Inspection" : {
+          "id" : "/Permit/Review/Inspection",
+          "elementType" : "Group"
+        },
+        "/Permit/Review/Inspection/CopyScore" : {
+          "id" : "/Permit/Review/Inspection/CopyScore",
+          "elementType" : "Computation",
+          "commonPrecondition" : null,
+          "alternatives" : [ {
+            "precondition" : "FieldFilled(Score)",
+            "operation" : "[Score]"
+          } ]
+        },
+        "/Permit/Review/Inspection/Disposition" : {
+          "id" : "/Permit/Review/Inspection/Disposition",
+          "elementType" : "Field"
+        },
+        "/Permit/Review/Inspection/Result" : {
+          "id" : "/Permit/Review/Inspection/Result",
+          "elementType" : "Field"
+        },
+        "/Permit/Review/Inspection/Score" : {
+          "id" : "/Permit/Review/Inspection/Score",
+          "elementType" : "Field"
+        },
+        "/Permit/Review/Inspection/Summary" : {
+          "id" : "/Permit/Review/Inspection/Summary",
+          "elementType" : "Field"
+        },
+        "/Permit/Review/Name" : {
+          "id" : "/Permit/Review/Name",
+          "elementType" : "Field"
         }
       }
     },
@@ -2122,6 +2578,72 @@
             "annotations" : [ ]
           }
         }
+      },
+      "preparedElements" : {
+        "/Permit" : {
+          "id" : "/Permit",
+          "elementType" : "Group"
+        },
+        "/Permit/Documents" : {
+          "id" : "/Permit/Documents",
+          "elementType" : "Group"
+        },
+        "/Permit/Documents/Evidence" : {
+          "id" : "/Permit/Documents/Evidence",
+          "elementType" : "Group"
+        },
+        "/Permit/Documents/Evidence/AttachmentExactlyOneSource" : {
+          "id" : "/Permit/Documents/Evidence/AttachmentExactlyOneSource",
+          "elementType" : "Rule",
+          "errorCondition" : "GroupFilled(RuleGroup) and NotExactlyOneFieldFilled(attachment_id, content)"
+        },
+        "/Permit/Documents/Evidence/AttachmentInternalFilenameRequired" : {
+          "id" : "/Permit/Documents/Evidence/AttachmentInternalFilenameRequired",
+          "elementType" : "Rule",
+          "errorCondition" : "GroupFilled(RuleGroup) and FieldNotFilled(internal_filename)"
+        },
+        "/Permit/Documents/Evidence/AttachmentMimeTypeRequired" : {
+          "id" : "/Permit/Documents/Evidence/AttachmentMimeTypeRequired",
+          "elementType" : "Rule",
+          "errorCondition" : "GroupFilled(RuleGroup) and FieldNotFilled(mime_type)"
+        },
+        "/Permit/Documents/Evidence/AttachmentSizeRequired" : {
+          "id" : "/Permit/Documents/Evidence/AttachmentSizeRequired",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(content) and FieldNotFilled(size)"
+        },
+        "/Permit/Documents/Evidence/attachment_id" : {
+          "id" : "/Permit/Documents/Evidence/attachment_id",
+          "elementType" : "Field"
+        },
+        "/Permit/Documents/Evidence/category" : {
+          "id" : "/Permit/Documents/Evidence/category",
+          "elementType" : "Field"
+        },
+        "/Permit/Documents/Evidence/content" : {
+          "id" : "/Permit/Documents/Evidence/content",
+          "elementType" : "Field"
+        },
+        "/Permit/Documents/Evidence/description" : {
+          "id" : "/Permit/Documents/Evidence/description",
+          "elementType" : "Field"
+        },
+        "/Permit/Documents/Evidence/internal_filename" : {
+          "id" : "/Permit/Documents/Evidence/internal_filename",
+          "elementType" : "Field"
+        },
+        "/Permit/Documents/Evidence/mime_type" : {
+          "id" : "/Permit/Documents/Evidence/mime_type",
+          "elementType" : "Field"
+        },
+        "/Permit/Documents/Evidence/original_filename" : {
+          "id" : "/Permit/Documents/Evidence/original_filename",
+          "elementType" : "Field"
+        },
+        "/Permit/Documents/Evidence/size" : {
+          "id" : "/Permit/Documents/Evidence/size",
+          "elementType" : "Field"
+        }
       }
     },
     "single-attachment-rules-survive-outer-exclusion" : {
@@ -2356,6 +2878,68 @@
             "annotations" : [ ]
           }
         }
+      },
+      "preparedElements" : {
+        "/Permit" : {
+          "id" : "/Permit",
+          "elementType" : "Group"
+        },
+        "/Permit/Documents" : {
+          "id" : "/Permit/Documents",
+          "elementType" : "Group"
+        },
+        "/Permit/Documents/AttachmentExactlyOneSource" : {
+          "id" : "/Permit/Documents/AttachmentExactlyOneSource",
+          "elementType" : "Rule",
+          "errorCondition" : "GroupFilled(RuleGroup) and NotExactlyOneFieldFilled(attachment_id, content)"
+        },
+        "/Permit/Documents/AttachmentInternalFilenameRequired" : {
+          "id" : "/Permit/Documents/AttachmentInternalFilenameRequired",
+          "elementType" : "Rule",
+          "errorCondition" : "GroupFilled(RuleGroup) and FieldNotFilled(internal_filename)"
+        },
+        "/Permit/Documents/AttachmentMimeTypeRequired" : {
+          "id" : "/Permit/Documents/AttachmentMimeTypeRequired",
+          "elementType" : "Rule",
+          "errorCondition" : "GroupFilled(RuleGroup) and FieldNotFilled(mime_type)"
+        },
+        "/Permit/Documents/AttachmentSizeRequired" : {
+          "id" : "/Permit/Documents/AttachmentSizeRequired",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(content) and FieldNotFilled(size)"
+        },
+        "/Permit/Documents/attachment_id" : {
+          "id" : "/Permit/Documents/attachment_id",
+          "elementType" : "Field"
+        },
+        "/Permit/Documents/category" : {
+          "id" : "/Permit/Documents/category",
+          "elementType" : "Field"
+        },
+        "/Permit/Documents/content" : {
+          "id" : "/Permit/Documents/content",
+          "elementType" : "Field"
+        },
+        "/Permit/Documents/description" : {
+          "id" : "/Permit/Documents/description",
+          "elementType" : "Field"
+        },
+        "/Permit/Documents/internal_filename" : {
+          "id" : "/Permit/Documents/internal_filename",
+          "elementType" : "Field"
+        },
+        "/Permit/Documents/mime_type" : {
+          "id" : "/Permit/Documents/mime_type",
+          "elementType" : "Field"
+        },
+        "/Permit/Documents/original_filename" : {
+          "id" : "/Permit/Documents/original_filename",
+          "elementType" : "Field"
+        },
+        "/Permit/Documents/size" : {
+          "id" : "/Permit/Documents/size",
+          "elementType" : "Field"
+        }
       }
     },
     "single-provider-root-include" : {
@@ -2502,6 +3086,1903 @@
             "usageType" : null,
             "annotations" : [ ]
           }
+        }
+      },
+      "preparedElements" : {
+        "/Permit" : {
+          "id" : "/Permit",
+          "elementType" : "Group"
+        },
+        "/Permit/Review" : {
+          "id" : "/Permit/Review",
+          "elementType" : "Group"
+        },
+        "/Permit/Review/CopyScore" : {
+          "id" : "/Permit/Review/CopyScore",
+          "elementType" : "Computation",
+          "commonPrecondition" : null,
+          "alternatives" : [ {
+            "precondition" : "FieldFilled(Score)",
+            "operation" : "[Score]"
+          } ]
+        },
+        "/Permit/Review/Disposition" : {
+          "id" : "/Permit/Review/Disposition",
+          "elementType" : "Field"
+        },
+        "/Permit/Review/NegativeScore" : {
+          "id" : "/Permit/Review/NegativeScore",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Score) And [Score] < 0"
+        },
+        "/Permit/Review/Result" : {
+          "id" : "/Permit/Review/Result",
+          "elementType" : "Field"
+        },
+        "/Permit/Review/Score" : {
+          "id" : "/Permit/Review/Score",
+          "elementType" : "Field"
+        },
+        "/Permit/Review/Summary" : {
+          "id" : "/Permit/Review/Summary",
+          "elementType" : "Field"
+        }
+      }
+    },
+    "reference-family-single" : {
+      "entryModelId" : "policy-reference-single",
+      "sources" : {
+        "benefits-reference-family" : "shared/benefits-reference-family.dm.json",
+        "policy-reference-single" : "entries/policy-reference-single.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Policy/Cover/Level/Deep/Marker" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/Cover/Level/Deep/Total" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/Cover/Level/Value" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/Cover/Lines/Amount" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/Cover/Lines/Key" : {
+          "type" : "StringType"
+        },
+        "/Policy/Cover/Note" : {
+          "type" : "StringType"
+        },
+        "/Policy/Cover/Threshold" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/PolicyNo" : {
+          "type" : "StringType"
+        },
+        "/Policy/Renewal/Level/Deep/Marker" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/Renewal/Level/Deep/Total" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/Renewal/Level/Value" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/Renewal/Lines/Amount" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/Renewal/Lines/Key" : {
+          "type" : "StringType"
+        },
+        "/Policy/Renewal/Note" : {
+          "type" : "StringType"
+        },
+        "/Policy/Renewal/Threshold" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/Threshold" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        }
+      },
+      "preparedStructure" : {
+        "/Policy" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/IndexedAmount" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Cover/Level" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Level/Deep" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Level/Deep/CopyThreshold" : {
+          "elementType" : "Computation"
+        },
+        "/Policy/Cover/Level/Deep/DeepNegative" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Cover/Level/Deep/Marker" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Level/Deep/Total" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Level/LevelNegative" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Cover/Level/Value" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Lines" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 5,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Lines/Amount" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Lines/Key" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Note" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/OuterMatch" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Cover/RootPresent" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Cover/Threshold" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/PolicyNo" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Renewal" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Renewal/IndexedAmount" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Renewal/Level" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Renewal/Level/Deep" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Renewal/Level/Deep/CopyThreshold" : {
+          "elementType" : "Computation"
+        },
+        "/Policy/Renewal/Level/Deep/DeepNegative" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Renewal/Level/Deep/Marker" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Renewal/Level/Deep/Total" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Renewal/Level/LevelNegative" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Renewal/Level/Value" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Renewal/Lines" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 5,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Renewal/Lines/Amount" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Renewal/Lines/Key" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Renewal/Note" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Renewal/OuterMatch" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Renewal/RootPresent" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Renewal/Threshold" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Threshold" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        }
+      },
+      "preparedElements" : {
+        "/Policy" : {
+          "id" : "/Policy",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover" : {
+          "id" : "/Policy/Cover",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover/IndexedAmount" : {
+          "id" : "/Policy/Cover/IndexedAmount",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Note) And [Lines/Amount For Note] > 0"
+        },
+        "/Policy/Cover/Level" : {
+          "id" : "/Policy/Cover/Level",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover/Level/Deep" : {
+          "id" : "/Policy/Cover/Level/Deep",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover/Level/Deep/CopyThreshold" : {
+          "id" : "/Policy/Cover/Level/Deep/CopyThreshold",
+          "elementType" : "Computation",
+          "commonPrecondition" : "FieldFilled(/Policy/Cover/Level/Deep/Marker) And [/Policy/Cover/Threshold] > 0",
+          "alternatives" : [ {
+            "precondition" : "[/Policy/Cover/Level/Deep/Marker] < 0 And [/Policy/Cover/Threshold] > 0",
+            "operation" : "[/Policy/Cover/Threshold]"
+          }, {
+            "precondition" : "[/Policy/Cover/Level/Deep/Marker] >= 0 And [/Policy/Cover/Threshold] > 0",
+            "operation" : "[/Policy/Cover/Threshold]"
+          } ]
+        },
+        "/Policy/Cover/Level/Deep/DeepNegative" : {
+          "id" : "/Policy/Cover/Level/Deep/DeepNegative",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Marker) And [Marker] < 0"
+        },
+        "/Policy/Cover/Level/Deep/Marker" : {
+          "id" : "/Policy/Cover/Level/Deep/Marker",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/Level/Deep/Total" : {
+          "id" : "/Policy/Cover/Level/Deep/Total",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/Level/LevelNegative" : {
+          "id" : "/Policy/Cover/Level/LevelNegative",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Value) And [Value] < 0"
+        },
+        "/Policy/Cover/Level/Value" : {
+          "id" : "/Policy/Cover/Level/Value",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/Lines" : {
+          "id" : "/Policy/Cover/Lines",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover/Lines/Amount" : {
+          "id" : "/Policy/Cover/Lines/Amount",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/Lines/Key" : {
+          "id" : "/Policy/Cover/Lines/Key",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/Note" : {
+          "id" : "/Policy/Cover/Note",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/OuterMatch" : {
+          "id" : "/Policy/Cover/OuterMatch",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Note) And Sum(Lines*/Amount Having [Lines/Amount] == [$Threshold]) > 0"
+        },
+        "/Policy/Cover/RootPresent" : {
+          "id" : "/Policy/Cover/RootPresent",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Note) Or GroupFilled(/Policy/Cover) Or FieldFilled(Threshold) Or FieldFilled(Level/Value)"
+        },
+        "/Policy/Cover/Threshold" : {
+          "id" : "/Policy/Cover/Threshold",
+          "elementType" : "Field"
+        },
+        "/Policy/PolicyNo" : {
+          "id" : "/Policy/PolicyNo",
+          "elementType" : "Field"
+        },
+        "/Policy/Renewal" : {
+          "id" : "/Policy/Renewal",
+          "elementType" : "Group"
+        },
+        "/Policy/Renewal/IndexedAmount" : {
+          "id" : "/Policy/Renewal/IndexedAmount",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Note) And [Lines/Amount For Note] > 0"
+        },
+        "/Policy/Renewal/Level" : {
+          "id" : "/Policy/Renewal/Level",
+          "elementType" : "Group"
+        },
+        "/Policy/Renewal/Level/Deep" : {
+          "id" : "/Policy/Renewal/Level/Deep",
+          "elementType" : "Group"
+        },
+        "/Policy/Renewal/Level/Deep/CopyThreshold" : {
+          "id" : "/Policy/Renewal/Level/Deep/CopyThreshold",
+          "elementType" : "Computation",
+          "commonPrecondition" : "FieldFilled(/Policy/Renewal/Level/Deep/Marker) And [/Policy/Renewal/Threshold] > 0",
+          "alternatives" : [ {
+            "precondition" : "[/Policy/Renewal/Level/Deep/Marker] < 0 And [/Policy/Renewal/Threshold] > 0",
+            "operation" : "[/Policy/Renewal/Threshold]"
+          }, {
+            "precondition" : "[/Policy/Renewal/Level/Deep/Marker] >= 0 And [/Policy/Renewal/Threshold] > 0",
+            "operation" : "[/Policy/Renewal/Threshold]"
+          } ]
+        },
+        "/Policy/Renewal/Level/Deep/DeepNegative" : {
+          "id" : "/Policy/Renewal/Level/Deep/DeepNegative",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Marker) And [Marker] < 0"
+        },
+        "/Policy/Renewal/Level/Deep/Marker" : {
+          "id" : "/Policy/Renewal/Level/Deep/Marker",
+          "elementType" : "Field"
+        },
+        "/Policy/Renewal/Level/Deep/Total" : {
+          "id" : "/Policy/Renewal/Level/Deep/Total",
+          "elementType" : "Field"
+        },
+        "/Policy/Renewal/Level/LevelNegative" : {
+          "id" : "/Policy/Renewal/Level/LevelNegative",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Value) And [Value] < 0"
+        },
+        "/Policy/Renewal/Level/Value" : {
+          "id" : "/Policy/Renewal/Level/Value",
+          "elementType" : "Field"
+        },
+        "/Policy/Renewal/Lines" : {
+          "id" : "/Policy/Renewal/Lines",
+          "elementType" : "Group"
+        },
+        "/Policy/Renewal/Lines/Amount" : {
+          "id" : "/Policy/Renewal/Lines/Amount",
+          "elementType" : "Field"
+        },
+        "/Policy/Renewal/Lines/Key" : {
+          "id" : "/Policy/Renewal/Lines/Key",
+          "elementType" : "Field"
+        },
+        "/Policy/Renewal/Note" : {
+          "id" : "/Policy/Renewal/Note",
+          "elementType" : "Field"
+        },
+        "/Policy/Renewal/OuterMatch" : {
+          "id" : "/Policy/Renewal/OuterMatch",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Note) And Sum(Lines*/Amount Having [Lines/Amount] == [$Threshold]) > 0"
+        },
+        "/Policy/Renewal/RootPresent" : {
+          "id" : "/Policy/Renewal/RootPresent",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Note) Or GroupFilled(/Policy/Renewal) Or FieldFilled(Threshold) Or FieldFilled(Level/Value)"
+        },
+        "/Policy/Renewal/Threshold" : {
+          "id" : "/Policy/Renewal/Threshold",
+          "elementType" : "Field"
+        },
+        "/Policy/Threshold" : {
+          "id" : "/Policy/Threshold",
+          "elementType" : "Field"
+        }
+      }
+    },
+    "reference-family-model-root" : {
+      "entryModelId" : "policy-reference-model-root",
+      "sources" : {
+        "benefits-reference-family" : "shared/benefits-reference-family.dm.json",
+        "policy-reference-model-root" : "entries/policy-reference-model-root.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Policy/Cover/Benefits/Level/Deep/Marker" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/Cover/Benefits/Level/Deep/Total" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/Cover/Benefits/Level/Value" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/Cover/Benefits/Lines/Amount" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/Cover/Benefits/Lines/Key" : {
+          "type" : "StringType"
+        },
+        "/Policy/Cover/Benefits/Note" : {
+          "type" : "StringType"
+        },
+        "/Policy/Cover/Benefits/Threshold" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/PolicyNo" : {
+          "type" : "StringType"
+        },
+        "/Policy/Threshold" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        }
+      },
+      "preparedStructure" : {
+        "/Policy" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Benefits" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Benefits/IndexedAmount" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Cover/Benefits/Level" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Benefits/Level/Deep" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Benefits/Level/Deep/CopyThreshold" : {
+          "elementType" : "Computation"
+        },
+        "/Policy/Cover/Benefits/Level/Deep/DeepNegative" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Cover/Benefits/Level/Deep/Marker" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Benefits/Level/Deep/Total" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Benefits/Level/LevelNegative" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Cover/Benefits/Level/Value" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Benefits/Lines" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 5,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Benefits/Lines/Amount" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Benefits/Lines/Key" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Benefits/Note" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Benefits/OuterMatch" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Cover/Benefits/RootPresent" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Cover/Benefits/Threshold" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/PolicyNo" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Threshold" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        }
+      },
+      "preparedElements" : {
+        "/Policy" : {
+          "id" : "/Policy",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover" : {
+          "id" : "/Policy/Cover",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover/Benefits" : {
+          "id" : "/Policy/Cover/Benefits",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover/Benefits/IndexedAmount" : {
+          "id" : "/Policy/Cover/Benefits/IndexedAmount",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Note) And [Lines/Amount For Note] > 0"
+        },
+        "/Policy/Cover/Benefits/Level" : {
+          "id" : "/Policy/Cover/Benefits/Level",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover/Benefits/Level/Deep" : {
+          "id" : "/Policy/Cover/Benefits/Level/Deep",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover/Benefits/Level/Deep/CopyThreshold" : {
+          "id" : "/Policy/Cover/Benefits/Level/Deep/CopyThreshold",
+          "elementType" : "Computation",
+          "commonPrecondition" : "FieldFilled(/Policy/Cover/Benefits/Level/Deep/Marker) And [/Policy/Cover/Benefits/Threshold] > 0",
+          "alternatives" : [ {
+            "precondition" : "[/Policy/Cover/Benefits/Level/Deep/Marker] < 0 And [/Policy/Cover/Benefits/Threshold] > 0",
+            "operation" : "[/Policy/Cover/Benefits/Threshold]"
+          }, {
+            "precondition" : "[/Policy/Cover/Benefits/Level/Deep/Marker] >= 0 And [/Policy/Cover/Benefits/Threshold] > 0",
+            "operation" : "[/Policy/Cover/Benefits/Threshold]"
+          } ]
+        },
+        "/Policy/Cover/Benefits/Level/Deep/DeepNegative" : {
+          "id" : "/Policy/Cover/Benefits/Level/Deep/DeepNegative",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Marker) And [Marker] < 0"
+        },
+        "/Policy/Cover/Benefits/Level/Deep/Marker" : {
+          "id" : "/Policy/Cover/Benefits/Level/Deep/Marker",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/Benefits/Level/Deep/Total" : {
+          "id" : "/Policy/Cover/Benefits/Level/Deep/Total",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/Benefits/Level/LevelNegative" : {
+          "id" : "/Policy/Cover/Benefits/Level/LevelNegative",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Value) And [Value] < 0"
+        },
+        "/Policy/Cover/Benefits/Level/Value" : {
+          "id" : "/Policy/Cover/Benefits/Level/Value",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/Benefits/Lines" : {
+          "id" : "/Policy/Cover/Benefits/Lines",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover/Benefits/Lines/Amount" : {
+          "id" : "/Policy/Cover/Benefits/Lines/Amount",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/Benefits/Lines/Key" : {
+          "id" : "/Policy/Cover/Benefits/Lines/Key",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/Benefits/Note" : {
+          "id" : "/Policy/Cover/Benefits/Note",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/Benefits/OuterMatch" : {
+          "id" : "/Policy/Cover/Benefits/OuterMatch",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Note) And Sum(Lines*/Amount Having [Lines/Amount] == [$Threshold]) > 0"
+        },
+        "/Policy/Cover/Benefits/RootPresent" : {
+          "id" : "/Policy/Cover/Benefits/RootPresent",
+          "elementType" : "Rule",
+          "errorCondition" : "FieldFilled(Note) Or GroupFilled(/Policy/Cover/Benefits) Or FieldFilled(Threshold) Or FieldFilled(Level/Value)"
+        },
+        "/Policy/Cover/Benefits/Threshold" : {
+          "id" : "/Policy/Cover/Benefits/Threshold",
+          "elementType" : "Field"
+        },
+        "/Policy/PolicyNo" : {
+          "id" : "/Policy/PolicyNo",
+          "elementType" : "Field"
+        },
+        "/Policy/Threshold" : {
+          "id" : "/Policy/Threshold",
+          "elementType" : "Field"
+        }
+      }
+    },
+    "reference-family-german-single" : {
+      "entryModelId" : "policy-reference-single-de",
+      "sources" : {
+        "benefits-reference-family-de" : "shared/benefits-reference-family-de.dm.json",
+        "policy-reference-single-de" : "entries/policy-reference-single-de.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Policy/Cover/Level/Deep/Marker" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/Cover/Level/Deep/Total" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/Cover/Level/Value" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/Cover/Lines/Amount" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/Cover/Lines/Key" : {
+          "type" : "StringType"
+        },
+        "/Policy/Cover/Note" : {
+          "type" : "StringType"
+        },
+        "/Policy/Cover/Threshold" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Policy/PolicyNo" : {
+          "type" : "StringType"
+        },
+        "/Policy/Threshold" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        }
+      },
+      "preparedStructure" : {
+        "/Policy" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/IndexedAmount" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Cover/Level" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Level/Deep" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Level/Deep/CopyThreshold" : {
+          "elementType" : "Computation"
+        },
+        "/Policy/Cover/Level/Deep/DeepNegative" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Cover/Level/Deep/Marker" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Level/Deep/Total" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Level/LevelNegative" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Cover/Level/Value" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Lines" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 5,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Lines/Amount" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Lines/Key" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Note" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/OuterMatch" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Cover/RootPresent" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/Cover/Threshold" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/PolicyNo" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Threshold" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "NUMBER",
+            "scale" : 0,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        }
+      },
+      "preparedElements" : {
+        "/Policy" : {
+          "id" : "/Policy",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover" : {
+          "id" : "/Policy/Cover",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover/IndexedAmount" : {
+          "id" : "/Policy/Cover/IndexedAmount",
+          "elementType" : "Rule",
+          "errorCondition" : "FeldAngegeben(Note) und [Lines/Amount Fuer Note] > 0"
+        },
+        "/Policy/Cover/Level" : {
+          "id" : "/Policy/Cover/Level",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover/Level/Deep" : {
+          "id" : "/Policy/Cover/Level/Deep",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover/Level/Deep/CopyThreshold" : {
+          "id" : "/Policy/Cover/Level/Deep/CopyThreshold",
+          "elementType" : "Computation",
+          "commonPrecondition" : "FeldAngegeben(/Policy/Cover/Level/Deep/Marker) Und [/Policy/Cover/Threshold] > 0",
+          "alternatives" : [ {
+            "precondition" : "[/Policy/Cover/Level/Deep/Marker] < 0 Und [/Policy/Cover/Threshold] > 0",
+            "operation" : "[/Policy/Cover/Threshold]"
+          }, {
+            "precondition" : "[/Policy/Cover/Level/Deep/Marker] >= 0 Und [/Policy/Cover/Threshold] > 0",
+            "operation" : "[/Policy/Cover/Threshold]"
+          } ]
+        },
+        "/Policy/Cover/Level/Deep/DeepNegative" : {
+          "id" : "/Policy/Cover/Level/Deep/DeepNegative",
+          "elementType" : "Rule",
+          "errorCondition" : "FeldAngegeben(Marker) Und [Marker] < 0"
+        },
+        "/Policy/Cover/Level/Deep/Marker" : {
+          "id" : "/Policy/Cover/Level/Deep/Marker",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/Level/Deep/Total" : {
+          "id" : "/Policy/Cover/Level/Deep/Total",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/Level/LevelNegative" : {
+          "id" : "/Policy/Cover/Level/LevelNegative",
+          "elementType" : "Rule",
+          "errorCondition" : "FeldAngegeben(Value) UND [Value] < 0"
+        },
+        "/Policy/Cover/Level/Value" : {
+          "id" : "/Policy/Cover/Level/Value",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/Lines" : {
+          "id" : "/Policy/Cover/Lines",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover/Lines/Amount" : {
+          "id" : "/Policy/Cover/Lines/Amount",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/Lines/Key" : {
+          "id" : "/Policy/Cover/Lines/Key",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/Note" : {
+          "id" : "/Policy/Cover/Note",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/OuterMatch" : {
+          "id" : "/Policy/Cover/OuterMatch",
+          "elementType" : "Rule",
+          "errorCondition" : "FeldAngegeben(Note) Und Summe(Lines*/Amount Mit [Lines/Amount] == [$Threshold]) > 0"
+        },
+        "/Policy/Cover/RootPresent" : {
+          "id" : "/Policy/Cover/RootPresent",
+          "elementType" : "Rule",
+          "errorCondition" : "FeldAngegeben(Note) ODER KontextAngegeben(/Policy/Cover) oder FeldAngegeben(Threshold) Oder FeldAngegeben(Level/Value)"
+        },
+        "/Policy/Cover/Threshold" : {
+          "id" : "/Policy/Cover/Threshold",
+          "elementType" : "Field"
+        },
+        "/Policy/PolicyNo" : {
+          "id" : "/Policy/PolicyNo",
+          "elementType" : "Field"
+        },
+        "/Policy/Threshold" : {
+          "id" : "/Policy/Threshold",
+          "elementType" : "Field"
+        }
+      }
+    },
+    "reference-family-mixed-language-nested" : {
+      "entryModelId" : "envelope-reference-nested-mixed",
+      "sources" : {
+        "benefits-reference-family-de" : "shared/benefits-reference-family-de.dm.json",
+        "policy-reference-middle-mixed" : "shared/policy-reference-middle-mixed.dm.json",
+        "envelope-reference-nested-mixed" : "entries/envelope-reference-nested-mixed.dm.json"
+      },
+      "expectedPreparationDiagnostic" : "INCOMPATIBLE_CONDITION_LANGUAGE"
+    },
+    "reference-family-mixed-language-neutral" : {
+      "entryModelId" : "policy-reference-neutral-en",
+      "sources" : {
+        "benefits-reference-neutral-de" : "shared/benefits-reference-neutral-de.dm.json",
+        "policy-reference-neutral-en" : "entries/policy-reference-neutral-en.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Policy/Cover/Note" : {
+          "type" : "StringType"
+        },
+        "/Policy/PolicyNo" : {
+          "type" : "StringType"
+        }
+      },
+      "preparedStructure" : {
+        "/Policy" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Note" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/NoteEqualsX" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/PolicyNo" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        }
+      },
+      "preparedElements" : {
+        "/Policy" : {
+          "id" : "/Policy",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover" : {
+          "id" : "/Policy/Cover",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover/Note" : {
+          "id" : "/Policy/Cover/Note",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/NoteEqualsX" : {
+          "id" : "/Policy/Cover/NoteEqualsX",
+          "elementType" : "Rule",
+          "errorCondition" : "[Note] == \"x\""
+        },
+        "/Policy/PolicyNo" : {
+          "id" : "/Policy/PolicyNo",
+          "elementType" : "Field"
+        }
+      }
+    },
+    "reference-family-mixed-language-neutral-reverse" : {
+      "entryModelId" : "policy-reference-neutral-de",
+      "sources" : {
+        "benefits-reference-neutral-en" : "shared/benefits-reference-neutral-en.dm.json",
+        "policy-reference-neutral-de" : "entries/policy-reference-neutral-de.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Policy/Cover/Note" : {
+          "type" : "StringType"
+        },
+        "/Policy/PolicyNo" : {
+          "type" : "StringType"
+        }
+      },
+      "preparedStructure" : {
+        "/Policy" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover" : {
+          "elementType" : "Group",
+          "facts" : {
+            "group" : true,
+            "kind" : null,
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : 1,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/Note" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        },
+        "/Policy/Cover/NoteEqualsX" : {
+          "elementType" : "Rule"
+        },
+        "/Policy/PolicyNo" : {
+          "elementType" : "Field",
+          "facts" : {
+            "group" : false,
+            "kind" : "STRING",
+            "scale" : null,
+            "min" : null,
+            "max" : null,
+            "minLength" : null,
+            "maxLength" : null,
+            "pattern" : null,
+            "enumValues" : null,
+            "enumCategories" : null,
+            "repeatability" : null,
+            "usageType" : null,
+            "annotations" : [ ]
+          }
+        }
+      },
+      "preparedElements" : {
+        "/Policy" : {
+          "id" : "/Policy",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover" : {
+          "id" : "/Policy/Cover",
+          "elementType" : "Group"
+        },
+        "/Policy/Cover/Note" : {
+          "id" : "/Policy/Cover/Note",
+          "elementType" : "Field"
+        },
+        "/Policy/Cover/NoteEqualsX" : {
+          "id" : "/Policy/Cover/NoteEqualsX",
+          "elementType" : "Rule",
+          "errorCondition" : "[Note] == \"x\""
+        },
+        "/Policy/PolicyNo" : {
+          "id" : "/Policy/PolicyNo",
+          "elementType" : "Field"
         }
       }
     }

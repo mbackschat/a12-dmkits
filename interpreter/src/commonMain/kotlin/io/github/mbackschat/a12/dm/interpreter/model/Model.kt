@@ -425,6 +425,8 @@ data class ModelDef(
      *  applies to every DATE/DATE_TIME parse at eval time, making Europe/Berlin datetime arithmetic DST-aware
      *  ([ModelTimeZone]; KERNEL-FINDINGS §6). */
     val timeZone: ModelTimeZone = ModelTimeZone.UTC,
+    /** The stored condition/computation keyword language, independent of display locales. */
+    val conditionLanguage: ConditionLanguage = ConditionLanguage.EN,
 ) {
     val kinds: Map<String, Kind> = fields.associate { it.path to it.kind }
     val repeatable: Set<String> = repeatableGroups + declaredReps.keys

@@ -32,5 +32,4 @@ Two kinds live here when present: a **deferred** item (parked or owner-accepted 
 
 ## 3. Out of scope (won't build unless the trigger flips; recorded so it's not re-investigated)
 
-- **IG28 — German display-language parsing.** `DslRenderer(ConditionLanguage.DE)` is display-only; stored kernel conditions are canonical English, so the interpreter has no valid-model need to parse German keywords. **Re-open trigger:** the kernel starts persisting conditions in the authoring language, or a consumer needs to evaluate a DE-rendered string. Detail: [KERNEL-FINDINGS.md](KERNEL-FINDINGS.md) “stored conditions are canonical English.”
 - **IG6 — byte-identical kernel formal-error text.** The kernel's German-only wording is EUPL/commercial-licensed and cannot be copied into the kernel-free interpreter. The interpreter's own English wording preserves the actionable code, pointer, and severity. **Re-open trigger:** a consumer needs verbatim kernel text and a license-clean source exists. Detail: [INTERPRETER-FINDINGS.md](INTERPRETER-FINDINGS.md) IF3 and [KERNEL-INTEGRATION-NOTES.md](KERNEL-INTEGRATION-NOTES.md).

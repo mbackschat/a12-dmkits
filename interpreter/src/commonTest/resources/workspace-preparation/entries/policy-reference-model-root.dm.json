@@ -1,0 +1,75 @@
+{
+  "header" : {
+    "id" : "policy-reference-model-root",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ {
+      "alias" : "benefits",
+      "modelType" : "document",
+      "purpose" : "include",
+      "reference" : "benefits-reference-family"
+    } ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "policy-reference-model-root",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "opaque-1",
+        "name" : "Policy",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Field",
+            "id" : "opaque-2",
+            "name" : "PolicyNo",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "opaque-3",
+            "name" : "Threshold",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 0
+                }
+              }
+            }
+          }, {
+            "type" : "Group",
+            "id" : "opaque-4",
+            "name" : "Cover",
+            "Group" : {
+              "repeatability" : 1,
+              "modelAlias" : "benefits",
+              "includeLevel" : "MODEL_ROOT"
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

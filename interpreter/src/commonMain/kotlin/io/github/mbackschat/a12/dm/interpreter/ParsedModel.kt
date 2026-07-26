@@ -61,7 +61,7 @@ internal class ParsedModel(
     private val ruleCondAst: Map<RuleDef, Lazy<Cond>> =
         model.rules.associateWith { r -> lazy {
             observe(PreparationWork.RULE_AST, r.path)
-            parseCondition(r.conditionText, r.group, refResolver)
+            parseCondition(r.conditionText, r.group, refResolver, model.conditionLanguage)
         } }
 
     private val compParsedAst: Map<ComputationDef, Lazy<ParsedComputation>> =
@@ -88,14 +88,21 @@ internal class ParsedModel(
     }
 
     private fun parseComputation(c: ComputationDef): ParsedComputation = ParsedComputation(
-        c.commonPrecondition?.let { parseCondition(it, c.group, refResolver) },
-        c.alternatives.map { ParsedAlternative(it.precondition?.let { p -> parseCondition(p, c.group, refResolver) }, parseExpression(it.operation, c.group, refResolver), it.tolerance) },
+        c.commonPrecondition?.let { parseCondition(it, c.group, refResolver, model.conditionLanguage) },
+        c.alternatives.map {
+            ParsedAlternative(
+                it.precondition?.let { p -> parseCondition(p, c.group, refResolver, model.conditionLanguage) },
+                parseExpression(it.operation, c.group, refResolver, model.conditionLanguage),
+                it.tolerance,
+            )
+        },
     )
 
     /** The parsed condition AST for [rule] — cached for a model rule or an implicit computation-validation rule;
      *  a one-off parse for an ad-hoc candidate. */
     fun condAstOf(rule: RuleDef): Cond =
-        ruleCondAst[rule]?.value ?: implicitComputationAst[rule]?.value ?: parseCondition(rule.conditionText, rule.group, refResolver)
+        ruleCondAst[rule]?.value ?: implicitComputationAst[rule]?.value
+        ?: parseCondition(rule.conditionText, rule.group, refResolver, model.conditionLanguage)
 
     /** The parsed form of [comp] (a model computation) — cached. */
     fun parsedOf(comp: ComputationDef): ParsedComputation = compParsedAst.getValue(comp).value

@@ -161,10 +161,8 @@ public final class BoundModel {
      * breaks the rule fails loudly here.
      */
     public BoundModel replaceCondition(String ruleFullName, Condition newCondition) {
-        String groupPath = ruleFullName.substring(0, ruleFullName.lastIndexOf('/'));
-        String conditionText = new DslRenderer(ConditionLanguage.EN, groupPath).render(newCondition);
         return ofJson(io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.replaceCondition(
-                requireWritable(), ruleFullName, conditionText), resolver);
+                requireWritable(), ruleFullName, newCondition), resolver);
     }
 
     /** The model as DM-JSON text (the retained source, with any writes applied). */

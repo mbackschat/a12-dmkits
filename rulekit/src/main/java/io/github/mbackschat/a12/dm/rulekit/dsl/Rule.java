@@ -45,21 +45,27 @@ public record Rule(
     }
 
     /**
-     * Canonical EN condition text — paths rendered relative to the rule's group (fork #9), with any
+     * Canonical EN condition text — paths rendered relative to the rule's group, with any
      * authored {@link #comments} emitted as {@code ;;} lines at their node's position. An empty
      * side-channel renders the plain canonical text.
      */
     public String render() {
-        return new DslRenderer(ConditionLanguage.EN, group.path()).render(condition, comments);
+        return render(ConditionLanguage.EN);
     }
 
+    /** Canonical condition text in {@code language}, with paths relative to the rule's group. */
     public String render(ConditionLanguage language) {
         return new DslRenderer(language, group.path()).render(condition, comments);
     }
 
     /** The bridge to the F4 validator ({@code RuleValidator.check(modelJson, rule.draft())}). */
     public DraftRule draft() {
-        return new DraftRule(group.path(), name, errorEntityRelPath(), render(), code, severity.name());
+        return draft(ConditionLanguage.EN);
+    }
+
+    /** The F4 validator draft rendered in the destination model's condition {@code language}. */
+    public DraftRule draft(ConditionLanguage language) {
+        return new DraftRule(group.path(), name, errorEntityRelPath(), render(language), code, severity.name());
     }
 
     /**

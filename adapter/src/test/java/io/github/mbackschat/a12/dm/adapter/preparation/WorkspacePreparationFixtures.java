@@ -4,20 +4,31 @@ import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.MountOptions;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
+import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 
 /**
  * The single typed author for the committed raw-workspace fixtures. The interpreter consumes the generated
@@ -47,6 +58,17 @@ public final class WorkspacePreparationFixtures {
     private static final String ATTACHMENT_SINGLE_HOST_ID = "permit-attachment-single-host";
     private static final String ROOT_MOUNT_PROVIDER_ID = "inspection-root-mount";
     private static final String ROOT_MOUNT_HOST_ID = "permit-root-mount-host";
+    private static final String REFERENCE_PROVIDER_ID = "benefits-reference-family";
+    private static final String REFERENCE_SINGLE_ID = "policy-reference-single";
+    private static final String REFERENCE_MODEL_ROOT_ID = "policy-reference-model-root";
+    private static final String GERMAN_REFERENCE_PROVIDER_ID = "benefits-reference-family-de";
+    private static final String GERMAN_REFERENCE_SINGLE_ID = "policy-reference-single-de";
+    private static final String MIXED_REFERENCE_MIDDLE_ID = "policy-reference-middle-mixed";
+    private static final String MIXED_REFERENCE_NESTED_ID = "envelope-reference-nested-mixed";
+    private static final String NEUTRAL_REFERENCE_PROVIDER_ID = "benefits-reference-neutral-de";
+    private static final String NEUTRAL_REFERENCE_HOST_ID = "policy-reference-neutral-en";
+    private static final String REVERSE_NEUTRAL_REFERENCE_PROVIDER_ID = "benefits-reference-neutral-en";
+    private static final String REVERSE_NEUTRAL_REFERENCE_HOST_ID = "policy-reference-neutral-de";
 
     private WorkspacePreparationFixtures() {
     }
@@ -81,6 +103,49 @@ public final class WorkspacePreparationFixtures {
         var attachmentSingleHost = attachmentSingleHost();
         var rootMountProvider = rootMountProvider();
         var rootMountHost = rootMountHost();
+        var referenceProvider = referenceFamilyProvider(REFERENCE_PROVIDER_ID, ConditionLanguage.EN);
+        var referenceSingle = referenceFamilyHost(
+                REFERENCE_SINGLE_ID,
+                REFERENCE_PROVIDER_ID,
+                ConditionLanguage.EN,
+                MountOptions.single(),
+                true);
+        var referenceModelRoot = referenceFamilyHost(
+                REFERENCE_MODEL_ROOT_ID,
+                REFERENCE_PROVIDER_ID,
+                ConditionLanguage.EN,
+                MountOptions.single().asModelRoot(),
+                false);
+        var germanReferenceProvider = referenceFamilyProvider(
+                GERMAN_REFERENCE_PROVIDER_ID,
+                ConditionLanguage.DE);
+        var germanReferenceSingle = referenceFamilyHost(
+                GERMAN_REFERENCE_SINGLE_ID,
+                GERMAN_REFERENCE_PROVIDER_ID,
+                ConditionLanguage.DE,
+                MountOptions.single(),
+                false);
+        var mixedReferenceMiddle = referenceFamilyHost(
+                MIXED_REFERENCE_MIDDLE_ID,
+                GERMAN_REFERENCE_PROVIDER_ID,
+                ConditionLanguage.EN,
+                MountOptions.single(),
+                false);
+        var mixedReferenceNested = nestedReferenceHost();
+        var neutralReferenceProvider = neutralReferenceProvider(
+                NEUTRAL_REFERENCE_PROVIDER_ID,
+                ConditionLanguage.DE);
+        var neutralReferenceHost = neutralReferenceHost(
+                NEUTRAL_REFERENCE_HOST_ID,
+                NEUTRAL_REFERENCE_PROVIDER_ID,
+                ConditionLanguage.EN);
+        var reverseNeutralReferenceProvider = neutralReferenceProvider(
+                REVERSE_NEUTRAL_REFERENCE_PROVIDER_ID,
+                ConditionLanguage.EN);
+        var reverseNeutralReferenceHost = neutralReferenceHost(
+                REVERSE_NEUTRAL_REFERENCE_HOST_ID,
+                REVERSE_NEUTRAL_REFERENCE_PROVIDER_ID,
+                ConditionLanguage.DE);
 
         return List.of(
                 FixtureCase.builder()
@@ -282,6 +347,57 @@ public final class WorkspacePreparationFixtures {
                         .expectedComputations(Map.of(
                                 "/Permit/Review/CopyScore",
                                 "/Permit/Review/Result"))
+                        .build(),
+                FixtureCase.builder()
+                        .id("reference-family-single")
+                        .entryModelId(REFERENCE_SINGLE_ID)
+                        .sources(sources(referenceProvider, referenceSingle))
+                        .expectedFields(referenceFields("/Policy/Cover", "/Policy/Renewal"))
+                        .expectedRules(referenceRules("/Policy/Cover", "/Policy/Renewal"))
+                        .expectedComputations(referenceComputations("/Policy/Cover", "/Policy/Renewal"))
+                        .build(),
+                FixtureCase.builder()
+                        .id("reference-family-model-root")
+                        .entryModelId(REFERENCE_MODEL_ROOT_ID)
+                        .sources(sources(referenceProvider, referenceModelRoot))
+                        .expectedFields(referenceFields("/Policy/Cover/Benefits"))
+                        .expectedRules(referenceRules("/Policy/Cover/Benefits"))
+                        .expectedComputations(referenceComputations("/Policy/Cover/Benefits"))
+                        .build(),
+                FixtureCase.builder()
+                        .id("reference-family-german-single")
+                        .entryModelId(GERMAN_REFERENCE_SINGLE_ID)
+                        .sources(sources(germanReferenceProvider, germanReferenceSingle))
+                        .expectedFields(referenceFields("/Policy/Cover"))
+                        .expectedRules(referenceRules("/Policy/Cover"))
+                        .expectedComputations(referenceComputations("/Policy/Cover"))
+                        .build(),
+                FixtureCase.builder()
+                        .id("reference-family-mixed-language-nested")
+                        .entryModelId(MIXED_REFERENCE_NESTED_ID)
+                        .sources(sources(
+                                germanReferenceProvider,
+                                mixedReferenceMiddle,
+                                mixedReferenceNested))
+                        .disposition(FixtureDisposition.MIXED_CONDITION_LANGUAGE)
+                        .build(),
+                FixtureCase.builder()
+                        .id("reference-family-mixed-language-neutral")
+                        .entryModelId(NEUTRAL_REFERENCE_HOST_ID)
+                        .sources(sources(neutralReferenceProvider, neutralReferenceHost))
+                        .expectedFields(Set.of(
+                                "/Policy/PolicyNo",
+                                "/Policy/Cover/Note"))
+                        .expectedRules(Set.of("/Policy/Cover/NoteEqualsX"))
+                        .build(),
+                FixtureCase.builder()
+                        .id("reference-family-mixed-language-neutral-reverse")
+                        .entryModelId(REVERSE_NEUTRAL_REFERENCE_HOST_ID)
+                        .sources(sources(reverseNeutralReferenceProvider, reverseNeutralReferenceHost))
+                        .expectedFields(Set.of(
+                                "/Policy/PolicyNo",
+                                "/Policy/Cover/Note"))
+                        .expectedRules(Set.of("/Policy/Cover/NoteEqualsX"))
                         .build());
     }
 
@@ -426,6 +542,327 @@ public final class WorkspacePreparationFixtures {
                 .rootGroup("Permit", permit -> permit.mount("Review", "providerAlias"))
                 .build()
                 .toJson();
+    }
+
+    private static String referenceFamilyProvider(
+            String modelId,
+            ConditionLanguage language) {
+        var structure = DocumentModelDraft.named(modelId).locale("en_US")
+                .rootGroup("Benefits", root -> root
+                        .numberField("Threshold", number -> number.fractionDigits(0))
+                        .field("Note", FieldKind.STRING)
+                        .group("Lines", lines -> lines
+                                .repeatable(5)
+                                .field("Key", FieldKind.STRING)
+                                .numberField("Amount", number -> number.fractionDigits(0))
+                                .indexField("Key"))
+                        .group("Level", level -> level
+                                .numberField("Value", number -> number.fractionDigits(0))
+                                .group("Deep", deep -> deep
+                                        .numberField("Marker", number -> number.fractionDigits(0))
+                                        .numberField("Total", number -> number.fractionDigits(0)))))
+                .build()
+                .toJson();
+        structure = withConditionLanguage(structure, language);
+        var model = io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(structure);
+        var benefits = model.group("/Benefits");
+        var threshold = model.num("/Benefits/Threshold");
+        var note = model.str("/Benefits/Note");
+        var amount = model.num("/Benefits/Lines/Amount");
+        var levelValue = model.num("/Benefits/Level/Value");
+        var marker = model.num("/Benefits/Level/Deep/Marker");
+        var total = model.num("/Benefits/Level/Deep/Total");
+
+        var outerCondition = note.filled().and(
+                Dsl.sum(model.flatten("/Benefits/Lines*/Amount").having(amount.eq(threshold.outer()))).gt(0));
+        var indexedCondition = note.filled().and(amount.forIndex(note.field()).gt(0));
+        var outerRule = model.rule(benefits)
+                .name("OuterMatch")
+                .errorField(note)
+                .when(outerCondition)
+                .code("OUTER")
+                .severity(Severity.ERROR)
+                .message(en("A matching benefit line needs review."))
+                .build();
+        var indexedRule = model.rule(benefits)
+                .name("IndexedAmount")
+                .errorField(note)
+                .when(indexedCondition)
+                .code("INDEXED")
+                .severity(Severity.ERROR)
+                .message(en("A keyed benefit amount needs review."))
+                .build();
+        var rootCondition = note.filled()
+                .or(benefits.filled())
+                .or(threshold.filled())
+                .or(levelValue.filled());
+        var rootRule = model.rule(benefits)
+                .name("RootPresent")
+                .errorField(note)
+                .when(rootCondition)
+                .code("ROOT")
+                .severity(Severity.ERROR)
+                .message(en("The benefit root is present."))
+                .build();
+        var levelCondition = levelValue.filled().and(levelValue.lt(0));
+        var levelRule = model.rule(model.group("/Benefits/Level"))
+                .name("LevelNegative")
+                .errorField(levelValue)
+                .when(levelCondition)
+                .code("LEVEL")
+                .severity(Severity.ERROR)
+                .message(en("The benefit level cannot be negative."))
+                .build();
+        var deepCondition = marker.filled().and(marker.lt(0));
+        var deepRule = model.rule(model.group("/Benefits/Level/Deep"))
+                .name("DeepNegative")
+                .errorField(marker)
+                .when(deepCondition)
+                .code("DEEP")
+                .severity(Severity.ERROR)
+                .message(en("The deep marker cannot be negative."))
+                .build();
+
+        model = model.add(outerRule);
+        model = model.add(indexedRule);
+        model = model.add(rootRule);
+        model = model.add(levelRule);
+        model = model.add(deepRule);
+        var canonicalComputation = model.computation(total)
+                .name("CopyThreshold")
+                .commonPrecondition(marker.filled().and(threshold.gt(0)))
+                .when(marker.lt(0).and(threshold.gt(0)))
+                .calc(threshold.value())
+                .when(marker.ge(0).and(threshold.gt(0)))
+                .calc(threshold.value())
+                .message(en("The total follows the provider threshold."))
+                .build();
+        model = model.add(canonicalComputation);
+
+        // A short path is an intentionally non-canonical storage style. Keep the fixture typed by rendering an
+        // equivalent Computation AST whose provider-local threshold ref carries that stored spelling.
+        var shortThreshold = new NumberRef(new FieldRef("Threshold", ValueKind.NUMBER), 0);
+        var storedComputation = model.computation(total)
+                .name("CopyThreshold")
+                .commonPrecondition(marker.filled().and(shortThreshold.gt(0)))
+                .when(marker.lt(0).and(shortThreshold.gt(0)))
+                .calc(shortThreshold.value())
+                .when(marker.ge(0).and(shortThreshold.gt(0)))
+                .calc(shortThreshold.value())
+                .message(en("The total follows the provider threshold."))
+                .build();
+
+        var absolute = new DslRenderer(language);
+        var styled = ModelWriter.replaceComputation(
+                model.toJson(),
+                "/Benefits/Level/Deep/CopyThreshold",
+                storedPathDraft(storedComputation, absolute),
+                storedComputation.messages());
+        if (language == ConditionLanguage.DE) {
+            // The German lexer admits the same lower/canonical/upper variants as its English peer. Keep each
+            // style in the real-Kernel fixture so portable parsing does not accidentally accept only rendering output.
+            styled = ModelWriter.replaceCondition(
+                    styled,
+                    "/Benefits/IndexedAmount",
+                    indexedRule.render(language).replace(" Und ", " und "));
+            styled = ModelWriter.replaceCondition(
+                    styled,
+                    "/Benefits/RootPresent",
+                    rootRule.render(language)
+                            .replaceFirst(" Oder ", " ODER ")
+                            .replaceFirst(" Oder ", " oder "));
+            styled = ModelWriter.replaceCondition(
+                    styled,
+                    "/Benefits/Level/LevelNegative",
+                    levelRule.render(language).replace(" Und ", " UND "));
+        }
+        // The raw-slot styling above is intentional concrete-syntax coverage. Re-bind before replacing ids so the
+        // real authoring gate proves the case variants and unique short-name references remain legal.
+        styled = io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(styled).toJson();
+        var root = objectModel(styled);
+        rewriteOpaqueElementIds(root);
+        return writeModel(root);
+    }
+
+    private static String referenceFamilyHost(
+            String id,
+            String providerId,
+            ConditionLanguage language,
+            MountOptions options,
+            boolean repeatedMount) {
+        var source = DocumentModelDraft.named(id).locale("en_US")
+                .include("benefits", providerId)
+                .rootGroup("Policy", policy -> {
+                    policy.field("PolicyNo", FieldKind.STRING)
+                            .numberField("Threshold", number -> number.fractionDigits(0))
+                            .mount("Cover", "benefits", options);
+                    if (repeatedMount) {
+                        policy.mount("Renewal", "benefits", options);
+                    }
+                })
+                .build()
+                .toJson();
+        source = withConditionLanguage(source, language);
+        var root = objectModel(source);
+        rewriteOpaqueElementIds(root);
+        return writeModel(root);
+    }
+
+    private static String nestedReferenceHost() {
+        return DocumentModelDraft.named(MIXED_REFERENCE_NESTED_ID).locale("en_US")
+                .include("policy", MIXED_REFERENCE_MIDDLE_ID)
+                .rootGroup("Envelope", envelope -> envelope
+                        .field("EntryNo", FieldKind.STRING)
+                        .mount("NestedPolicy", "policy"))
+                .build()
+                .toJson();
+    }
+
+    private static String neutralReferenceProvider(
+            String modelId,
+            ConditionLanguage language) {
+        var structure = DocumentModelDraft.named(modelId).locale("en_US")
+                .rootGroup("Benefits", benefits -> benefits.field("Note", FieldKind.STRING))
+                .build()
+                .toJson();
+        structure = withConditionLanguage(structure, language);
+        var model = io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel.ofJson(structure);
+        var benefits = model.group("/Benefits");
+        var note = model.str("/Benefits/Note");
+        var rule = model.rule(benefits)
+                .name("NoteEqualsX")
+                .errorField(note)
+                .when(note.eq("x"))
+                .code("NOTE_EQUALS_X")
+                .severity(Severity.ERROR)
+                .message(en("The note must not equal x."))
+                .build();
+        var root = objectModel(model.add(rule).toJson());
+        rewriteOpaqueElementIds(root);
+        return writeModel(root);
+    }
+
+    private static String neutralReferenceHost(
+            String modelId,
+            String providerId,
+            ConditionLanguage language) {
+        var source = DocumentModelDraft.named(modelId).locale("en_US")
+                .include("benefits", providerId)
+                .rootGroup("Policy", policy -> policy
+                        .field("PolicyNo", FieldKind.STRING)
+                        .mount("Cover", "benefits"))
+                .build()
+                .toJson();
+        source = withConditionLanguage(source, language);
+        var root = objectModel(source);
+        rewriteOpaqueElementIds(root);
+        return writeModel(root);
+    }
+
+    private static String withConditionLanguage(String source, ConditionLanguage language) {
+        if (language == ConditionLanguage.EN) {
+            return source;
+        }
+        var session = EditSession.read(source);
+        session.config().conditionLanguage("de_DE");
+        return session.toJson();
+    }
+
+    private static Set<String> referenceFields(String... mountedRoots) {
+        var fields = new LinkedHashSet<String>();
+        fields.add("/Policy/PolicyNo");
+        fields.add("/Policy/Threshold");
+        for (var root : mountedRoots) {
+            addReferenceProviderFields(fields, root);
+        }
+        return Set.copyOf(fields);
+    }
+
+    private static void addReferenceProviderFields(Set<String> fields, String root) {
+        fields.add(root + "/Threshold");
+        fields.add(root + "/Note");
+        fields.add(root + "/Lines/Key");
+        fields.add(root + "/Lines/Amount");
+        fields.add(root + "/Level/Value");
+        fields.add(root + "/Level/Deep/Marker");
+        fields.add(root + "/Level/Deep/Total");
+    }
+
+    private static Set<String> referenceRules(String... mountedRoots) {
+        var rules = new LinkedHashSet<String>();
+        for (var root : mountedRoots) {
+            rules.add(root + "/OuterMatch");
+            rules.add(root + "/IndexedAmount");
+            rules.add(root + "/RootPresent");
+            rules.add(root + "/Level/LevelNegative");
+            rules.add(root + "/Level/Deep/DeepNegative");
+        }
+        return Set.copyOf(rules);
+    }
+
+    private static Map<String, String> referenceComputations(String... mountedRoots) {
+        var computations = new LinkedHashMap<String, String>();
+        for (var root : mountedRoots) {
+            computations.put(root + "/Level/Deep/CopyThreshold", root + "/Level/Deep/Total");
+        }
+        return Map.copyOf(computations);
+    }
+
+    /**
+     * A unique short-name reference is deliberately non-canonical stored syntax: the normal computation draft renders
+     * relative paths. Build the raw-slot draft from the typed computation with an absolute renderer so only that
+     * concrete spelling differs; the authoring gate above proves the result remains model-legal.
+     */
+    private static DraftComputation storedPathDraft(
+            io.github.mbackschat.a12.dm.rulekit.dsl.Computation computation,
+            DslRenderer renderer) {
+        return new DraftComputation(
+                computation.groupPath(),
+                computation.name(),
+                computation.computedFieldRelPath(),
+                computation.commonPrecondition().map(renderer::render).orElse(null),
+                computation.alternatives().stream()
+                        .map(alternative -> new DraftComputation.Alternative(
+                                alternative.precondition().map(renderer::render).orElse(null),
+                                renderer.render(alternative.operation()),
+                                alternative.toleranceRangeOp().orElse(null)))
+                        .toList(),
+                computation.errorCodesToSuppress());
+    }
+
+    private static void rewriteOpaqueElementIds(ObjectNode root) {
+        // Opaque ids are a foreign-storage witness: the typed kits correctly author name-path ids, then this
+        // concrete DM-JSON boundary emulates models persisted by a producer whose ids carry no path meaning.
+        var next = new int[] { 1 };
+        rewriteOpaqueElementIds(root, next);
+    }
+
+    private static void rewriteOpaqueElementIds(JsonNode node, int[] next) {
+        if (node.isObject()) {
+            var elementType = node.path("type").asText();
+            if (Set.of("Group", "Field", "Rule", "Computation").contains(elementType)) {
+                ((ObjectNode) node).put("id", "opaque-" + next[0]++);
+            }
+            node.elements().forEachRemaining(child -> rewriteOpaqueElementIds(child, next));
+        } else if (node.isArray()) {
+            node.elements().forEachRemaining(child -> rewriteOpaqueElementIds(child, next));
+        }
+    }
+
+    private static ObjectNode objectModel(String json) {
+        try {
+            return (ObjectNode) JSON.readTree(json);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalArgumentException("fixture is not valid JSON", exception);
+        }
+    }
+
+    private static String writeModel(ObjectNode root) {
+        try {
+            return JSON.writerWithDefaultPrettyPrinter().writeValueAsString(root) + System.lineSeparator();
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("could not serialize typed-authored fixture", exception);
+        }
     }
 
     private static String permitSection(Map<String, String> providers) {
@@ -609,7 +1046,8 @@ public final class WorkspacePreparationFixtures {
             Map<String, String> sources,
             Set<String> expectedFields,
             Set<String> expectedRules,
-            Map<String, String> expectedComputations) {
+            Map<String, String> expectedComputations,
+            FixtureDisposition disposition) {
 
         public FixtureCase {
             id = Objects.requireNonNull(id, "id");
@@ -618,12 +1056,25 @@ public final class WorkspacePreparationFixtures {
             Objects.requireNonNull(expectedFields, "expectedFields");
             Objects.requireNonNull(expectedRules, "expectedRules");
             Objects.requireNonNull(expectedComputations, "expectedComputations");
+            disposition = Objects.requireNonNull(disposition, "disposition");
             sources = Collections.unmodifiableMap(new LinkedHashMap<>(sources));
             expectedFields = Set.copyOf(expectedFields);
             expectedRules = Set.copyOf(expectedRules);
             expectedComputations = Map.copyOf(expectedComputations);
             if (!sources.containsKey(entryModelId)) {
                 throw new IllegalArgumentException("entry source is absent: " + entryModelId);
+            }
+            switch (disposition) {
+                case VALID -> {
+                }
+                case MIXED_CONDITION_LANGUAGE -> {
+                    if (!expectedFields.isEmpty()
+                            || !expectedRules.isEmpty()
+                            || !expectedComputations.isEmpty()) {
+                        throw new IllegalArgumentException(
+                                "a rejected fixture cannot claim prepared output");
+                    }
+                }
             }
         }
 
@@ -647,6 +1098,7 @@ public final class WorkspacePreparationFixtures {
             private Set<String> expectedFields = Set.of();
             private Set<String> expectedRules = Set.of();
             private Map<String, String> expectedComputations = Map.of();
+            private FixtureDisposition disposition = FixtureDisposition.VALID;
 
             private Builder() {
             }
@@ -693,6 +1145,13 @@ public final class WorkspacePreparationFixtures {
                 return this;
             }
 
+            public Builder disposition(FixtureDisposition value) {
+                if (value != null) {
+                    disposition = value;
+                }
+                return this;
+            }
+
             public FixtureCase build() {
                 return new FixtureCase(
                         id,
@@ -700,8 +1159,14 @@ public final class WorkspacePreparationFixtures {
                         sources,
                         expectedFields,
                         expectedRules,
-                        expectedComputations);
+                        expectedComputations,
+                        disposition);
             }
         }
+    }
+
+    public enum FixtureDisposition {
+        VALID,
+        MIXED_CONDITION_LANGUAGE,
     }
 }

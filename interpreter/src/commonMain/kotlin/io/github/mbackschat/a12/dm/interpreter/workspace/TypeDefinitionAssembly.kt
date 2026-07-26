@@ -525,6 +525,9 @@ private fun JsonObject.withoutTypeDefinitionReferences(): JsonObject {
 internal fun JsonObject.replacing(key: String, value: JsonElement): JsonObject =
     JsonObject(mapValues { (candidate, original) -> if (candidate == key) value else original })
 
+internal fun JsonObject.setting(key: String, value: JsonElement): JsonObject =
+    JsonObject(toMutableMap().apply { this[key] = value })
+
 internal fun JsonObject.objectMember(key: String): JsonObject? = get(key) as? JsonObject
 
 internal fun JsonObject.arrayMember(key: String): JsonArray? = get(key) as? JsonArray

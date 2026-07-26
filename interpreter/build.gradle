@@ -177,9 +177,20 @@ def generateWorkspacePreparationFixtureSource = tasks.register('generateWorkspac
                 'missing workspace-preparation manifest; run :adapter:syncWorkspacePreparationFixtures')
         }
         def manifest = new groovy.json.JsonSlurper().parse(workspacePreparationFixtureManifest)
+        // JsonOutput emits valid quoted Kotlin literals except for Kotlin's additional `$` interpolation syntax.
+        // Route every manifest/source value through one encoder so a DSL correlation token cannot become source code.
+        def kotlinStringLiteral = { value ->
+            groovy.json.JsonOutput.toJson(value).replace('$', '\\$')
+        }
+        def validCases = manifest.cases.findAll { ignored, fixture ->
+            !fixture.containsKey('expectedPreparationDiagnostic')
+        }
+        def rejectedCases = manifest.cases.findAll { ignored, fixture ->
+            fixture.containsKey('expectedPreparationDiagnostic')
+        }
         def entryCases = manifest.cases.collect { caseId, fixture ->
-            "        ${groovy.json.JsonOutput.toJson(caseId)} -> " +
-                groovy.json.JsonOutput.toJson(fixture.entryModelId)
+            "        ${kotlinStringLiteral(caseId)} -> " +
+                kotlinStringLiteral(fixture.entryModelId)
         }.join('\n')
         def sourceCases = manifest.cases.collect { caseId, fixture ->
             def sources = fixture.sources.collect { modelId, relativePath ->
@@ -189,24 +200,35 @@ def generateWorkspacePreparationFixtureSource = tasks.register('generateWorkspac
                         "missing workspace-preparation source ${relativePath}; " +
                         'run :adapter:syncWorkspacePreparationFixtures')
                 }
-                def literal = groovy.json.JsonOutput.toJson(source.getText('UTF-8')).replace('$', '\\$')
-                "            ${groovy.json.JsonOutput.toJson(modelId)} to ${literal}"
+                def literal = kotlinStringLiteral(source.getText('UTF-8'))
+                "            ${kotlinStringLiteral(modelId)} to ${literal}"
             }.join(',\n')
             """\
-        ${groovy.json.JsonOutput.toJson(caseId)} -> mapOf(
+        ${kotlinStringLiteral(caseId)} -> mapOf(
 ${sources}
         )"""
         }.join('\n')
-        def effectiveTypeCases = manifest.cases.collect { caseId, fixture ->
+        def effectiveTypeCases = validCases.collect { caseId, fixture ->
             def facts = groovy.json.JsonOutput.toJson(fixture.effectiveFieldTypes)
-            "        ${groovy.json.JsonOutput.toJson(caseId)} -> ${groovy.json.JsonOutput.toJson(facts)}"
+            "        ${kotlinStringLiteral(caseId)} -> ${kotlinStringLiteral(facts)}"
         }.join('\n')
-        def preparedStructureCases = manifest.cases.collect { caseId, fixture ->
+        def preparedStructureCases = validCases.collect { caseId, fixture ->
             def facts = groovy.json.JsonOutput.toJson(fixture.preparedStructure)
-            "        ${groovy.json.JsonOutput.toJson(caseId)} -> ${groovy.json.JsonOutput.toJson(facts)}"
+            "        ${kotlinStringLiteral(caseId)} -> ${kotlinStringLiteral(facts)}"
         }.join('\n')
-        def caseIds = manifest.cases.keySet()
-            .collect { groovy.json.JsonOutput.toJson(it) }
+        def preparedElementCases = validCases.collect { caseId, fixture ->
+            def facts = groovy.json.JsonOutput.toJson(fixture.preparedElements)
+            "        ${kotlinStringLiteral(caseId)} -> ${kotlinStringLiteral(facts)}"
+        }.join('\n')
+        def expectedDiagnosticCases = rejectedCases.collect { caseId, fixture ->
+            "        ${kotlinStringLiteral(caseId)} -> " +
+                kotlinStringLiteral(fixture.expectedPreparationDiagnostic)
+        }.join('\n')
+        def caseIds = validCases.keySet()
+            .collect(kotlinStringLiteral)
+            .join(', ')
+        def rejectedCaseIds = rejectedCases.keySet()
+            .collect(kotlinStringLiteral)
             .join(', ')
         generatedWorkspacePreparationFixtureSource.parentFile.mkdirs()
         generatedWorkspacePreparationFixtureSource.text = """\
@@ -233,7 +255,19 @@ ${preparedStructureCases}
         else -> error("unknown workspace-preparation case: \$caseId")
     }
 
+    fun preparedElements(caseId: String): String = when (caseId) {
+${preparedElementCases}
+        else -> error("unknown workspace-preparation case: \$caseId")
+    }
+
+    fun expectedPreparationDiagnostic(caseId: String): String = when (caseId) {
+${expectedDiagnosticCases}
+        else -> error("unknown rejected workspace-preparation case: \$caseId")
+    }
+
     fun caseIds(): List<String> = listOf(${caseIds})
+
+    fun rejectedCaseIds(): List<String> = listOf(${rejectedCaseIds})
 }
 """
     }
@@ -241,6 +275,69 @@ ${preparedStructureCases}
 kotlin.sourceSets.commonTest.kotlin.srcDir(generatedWorkspacePreparationFixtureDir)
 tasks.named('compileTestKotlinJvm') { dependsOn generateWorkspacePreparationFixtureSource }
 tasks.named('compileTestKotlinJs') { dependsOn generateWorkspacePreparationFixtureSource }
+
+// The Java ModelReader and commonMain reference scanners are independent implementations by design. Generate
+// portable test data from their one bilingual contract matrix; root Java tests put the same JSON on their test
+// classpath, so either implementation drifting from the accepted tokens fails without coupling the artifacts.
+def referenceRemapLanguageProfiles = file(
+    'src/commonTest/resources/reference-remap-profile/reference-remap-language-profiles.json')
+def generatedReferenceRemapProfileDir = layout.buildDirectory
+    .dir('generated/referenceRemapProfile/commonTest/kotlin')
+    .get()
+    .asFile
+def generatedReferenceRemapProfileSource = new File(
+    generatedReferenceRemapProfileDir,
+    'io/github/mbackschat/a12/dm/interpreter/workspace/ReferenceRemapLanguageProfiles.kt',
+)
+def generateReferenceRemapProfileSource = tasks.register('generateReferenceRemapProfileSource') {
+    group = 'build'
+    description = 'Generate the portable lexer-profile matrix shared with the Java reader guard.'
+    inputs.file(referenceRemapLanguageProfiles)
+        .withPropertyName('referenceRemapLanguageProfiles')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    outputs.file(generatedReferenceRemapProfileSource)
+    doLast {
+        def profiles = new groovy.json.JsonSlurper().parse(referenceRemapLanguageProfiles)
+        def kotlinList = { values ->
+            'listOf(' + values.collect(groovy.json.JsonOutput.&toJson).join(', ') + ')'
+        }
+        def cases = ['en_US', 'de_DE'].collect { code ->
+            def profile = profiles[code]
+            if (profile == null) {
+                throw new GradleException("missing reference-remap language profile ${code}")
+            }
+            """\
+        ReferenceRemapLanguageProfile(
+            code = ${groovy.json.JsonOutput.toJson(code)},
+            referenceSeparators = ${kotlinList(profile.referenceSeparators)},
+            nonReferenceAtoms = ${kotlinList(profile.nonReferenceAtoms)},
+            customCondition = ${groovy.json.JsonOutput.toJson(profile.customCondition)},
+            atFrom = ${groovy.json.JsonOutput.toJson(profile.atFrom)},
+        )"""
+        }.join(',\n')
+        generatedReferenceRemapProfileSource.parentFile.mkdirs()
+        generatedReferenceRemapProfileSource.text = """\
+package io.github.mbackschat.a12.dm.interpreter.workspace
+
+internal data class ReferenceRemapLanguageProfile(
+    val code: String,
+    val referenceSeparators: List<String>,
+    val nonReferenceAtoms: List<String>,
+    val customCondition: String,
+    val atFrom: String,
+)
+
+internal object ReferenceRemapLanguageProfiles {
+    val all: List<ReferenceRemapLanguageProfile> = listOf(
+${cases},
+    )
+}
+"""
+    }
+}
+kotlin.sourceSets.commonTest.kotlin.srcDir(generatedReferenceRemapProfileDir)
+tasks.named('compileTestKotlinJvm') { dependsOn generateReferenceRemapProfileSource }
+tasks.named('compileTestKotlinJs') { dependsOn generateReferenceRemapProfileSource }
 
 // --- Separation by linting (proposal §8) ------------------------------------------------------------
 // The engine must never couple to the kernel or dmtool. A forbidden import fails the build, so the

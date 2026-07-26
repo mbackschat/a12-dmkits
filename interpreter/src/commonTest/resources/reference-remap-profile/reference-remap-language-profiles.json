@@ -1,0 +1,68 @@
+{
+  "en_US": {
+    "referenceSeparators": [
+      "And",
+      "and",
+      "AND",
+      "Or",
+      "or",
+      "OR",
+      "In",
+      "in",
+      "IN",
+      "For",
+      "Having",
+      "PatternMatched",
+      "PatternViolated",
+      "DiffersWithToleranceRange1",
+      "DiffersWithToleranceRange2",
+      "DiffersWithToleranceRange5",
+      "DiffersWithToleranceRange10"
+    ],
+    "nonReferenceAtoms": [
+      "True",
+      "False",
+      "Today",
+      "Now",
+      "BaseYear",
+      "FirstDay",
+      "LastDay",
+      "RuleGroup"
+    ],
+    "customCondition": "CustomCondition",
+    "atFrom": "From"
+  },
+  "de_DE": {
+    "referenceSeparators": [
+      "Und",
+      "und",
+      "UND",
+      "Oder",
+      "oder",
+      "ODER",
+      "In",
+      "in",
+      "IN",
+      "Fuer",
+      "Mit",
+      "WieMuster",
+      "NichtWieMuster",
+      "UngleichMitToleranz1",
+      "UngleichMitToleranz2",
+      "UngleichMitToleranz5",
+      "UngleichMitToleranz10"
+    ],
+    "nonReferenceAtoms": [
+      "Wahr",
+      "Falsch",
+      "Heute",
+      "Jetzt",
+      "Referenzjahr",
+      "ErsterTag",
+      "LetzterTag",
+      "RegelKontext"
+    ],
+    "customCondition": "ApplikationsBedingung",
+    "atFrom": "Von"
+  }
+}

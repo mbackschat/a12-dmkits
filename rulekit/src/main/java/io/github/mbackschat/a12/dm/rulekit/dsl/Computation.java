@@ -76,7 +76,12 @@ public record Computation(
 
     /** The bridge to the F4 validator ({@code RuleValidator.check(modelJson, computation.draft())}). */
     public DraftComputation draft() {
-        DslRenderer renderer = new DslRenderer(ConditionLanguage.EN, groupPath);
+        return draft(ConditionLanguage.EN);
+    }
+
+    /** The F4 validator draft rendered in the destination model's condition {@code language}. */
+    public DraftComputation draft(ConditionLanguage language) {
+        DslRenderer renderer = new DslRenderer(language, groupPath);
         return new DraftComputation(
                 groupPath,
                 name,

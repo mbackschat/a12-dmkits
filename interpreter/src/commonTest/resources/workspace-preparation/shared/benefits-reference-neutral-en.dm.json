@@ -1,0 +1,63 @@
+{
+  "header" : {
+    "id" : "benefits-reference-neutral-en",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "benefits-reference-neutral-en",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "opaque-1",
+        "name" : "Benefits",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Field",
+            "id" : "opaque-2",
+            "name" : "Note",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "opaque-3",
+            "name" : "NoteEqualsX",
+            "Rule" : {
+              "errorEntityRelPath" : "../Note",
+              "errorCode" : "NOTE_EQUALS_X",
+              "errorCondition" : "[Note] == \"x\"",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "The note must not equal x."
+              } ]
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

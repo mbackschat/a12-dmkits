@@ -48,35 +48,123 @@ internal class MountedNamespace internal constructor(
     prefixes: List<MountedPrefix>,
 ) {
     val referenceChain: List<ModelReferenceStep> = immutableListSnapshot(referenceChain)
-    val prefixes: List<MountedPrefix> = immutableListSnapshot(prefixes)
+    val mapping = MountedPrefixMapping(prefixes)
+    val prefixes: List<MountedPrefix> get() = mapping.prefixes
 
     /** The one segment-safe output mapping, or null when the path is unmapped or maps ambiguously. */
     fun outputPathFor(sourcePath: String): String? =
-        translate(sourcePath, MountedPrefix::sourcePrefix, MountedPrefix::outputPrefix)
+        mapping.outputPathFor(sourcePath)
 
     /** The one segment-safe provider mapping, or null when the path is unmapped or maps ambiguously. */
     fun sourcePathFor(outputPath: String): String? =
-        translate(outputPath, MountedPrefix::outputPrefix, MountedPrefix::sourcePrefix)
-
-    private fun translate(
-        path: String,
-        from: (MountedPrefix) -> String,
-        to: (MountedPrefix) -> String,
-    ): String? =
-        prefixes.mapNotNull { prefix ->
-            val sourcePrefix = from(prefix)
-            when {
-                path == sourcePrefix -> to(prefix)
-                path.startsWith("$sourcePrefix/") -> to(prefix) + path.removePrefix(sourcePrefix)
-                else -> null
-            }
-        }.distinct().singleOrNull()
+        mapping.sourcePathFor(outputPath)
 }
 
 internal data class MountedPrefix(
     val sourcePrefix: String,
     val outputPrefix: String,
 )
+
+/**
+ * Immutable segment indexes for one physical mount's provider↔output prefixes. Lookup work is bounded by path
+ * depth, not by a wide MODEL_ROOT provider's number of root groups.
+ */
+internal class MountedPrefixMapping(
+    prefixes: List<MountedPrefix>,
+    lookupObserver: (() -> Unit)? = null,
+) {
+    val prefixes: List<MountedPrefix> = immutableListSnapshot(prefixes)
+    private val outputBySource = SegmentPrefixIndex(
+        prefixes = this.prefixes,
+        from = MountedPrefix::sourcePrefix,
+        to = MountedPrefix::outputPrefix,
+        lookupObserver = lookupObserver,
+    )
+    private val sourceByOutput = SegmentPrefixIndex(
+        prefixes = this.prefixes,
+        from = MountedPrefix::outputPrefix,
+        to = MountedPrefix::sourcePrefix,
+        lookupObserver = lookupObserver,
+    )
+
+    fun outputPathFor(sourcePath: String): String? = outputBySource.translate(sourcePath)
+
+    fun sourcePathFor(outputPath: String): String? = sourceByOutput.translate(outputPath)
+}
+
+private class SegmentPrefixIndex(
+    prefixes: List<MountedPrefix>,
+    from: (MountedPrefix) -> String,
+    to: (MountedPrefix) -> String,
+    private val lookupObserver: (() -> Unit)?,
+) {
+    private val root = PrefixNode()
+
+    init {
+        prefixes.forEach { prefix ->
+            add(from(prefix), to(prefix))
+        }
+    }
+
+    fun translate(path: String): String? {
+        if (!path.startsWith('/')) {
+            return null
+        }
+        var node = root
+        var segmentStart = 1
+        var candidate: String? = null
+        while (segmentStart <= path.length) {
+            val segmentEnd = path.indexOf('/', startIndex = segmentStart)
+                .let { if (it < 0) path.length else it }
+            if (segmentEnd == segmentStart) {
+                return null
+            }
+            lookupObserver?.invoke()
+            node = node.children[path.substring(segmentStart, segmentEnd)] ?: return candidate
+            if (node.targets.isNotEmpty()) {
+                val suffix = path.substring(segmentEnd)
+                for (target in node.targets) {
+                    val translated = target + suffix
+                    if (candidate != null && candidate != translated) {
+                        return null
+                    }
+                    candidate = translated
+                }
+            }
+            if (segmentEnd == path.length) {
+                return candidate
+            }
+            segmentStart = segmentEnd + 1
+        }
+        return candidate
+    }
+
+    private fun add(prefix: String, target: String) {
+        require(prefix.startsWith('/') && prefix.length > 1) {
+            "mounted prefixes must be non-root absolute paths"
+        }
+        var node = root
+        var segmentStart = 1
+        while (segmentStart <= prefix.length) {
+            val segmentEnd = prefix.indexOf('/', startIndex = segmentStart)
+                .let { if (it < 0) prefix.length else it }
+            require(segmentEnd > segmentStart) {
+                "mounted prefixes must not contain empty path segments"
+            }
+            node = node.children.getOrPut(prefix.substring(segmentStart, segmentEnd)) { PrefixNode() }
+            if (segmentEnd == prefix.length) {
+                node.targets += target
+                return
+            }
+            segmentStart = segmentEnd + 1
+        }
+    }
+}
+
+private class PrefixNode {
+    val children = linkedMapOf<String, PrefixNode>()
+    val targets = linkedSetOf<String>()
+}
 
 /** Portable structural include assembly over the already admitted and graph-validated workspace closure. */
 internal object WorkspaceIncludeAssembler {
@@ -299,7 +387,7 @@ private class IncludeMounter(
         )
         val mountedBody = body.withoutIncludeDirectives()
             .withTransferredUsageType(mounted.usageTypeTransfer)
-            .replacingOrAdding("elements", JsonArray(mounted.children))
+            .setting("elements", JsonArray(mounted.children))
         return node.replacing(PreparedElementType.GROUP.wireName, mountedBody)
     }
 
@@ -417,7 +505,7 @@ private class IncludeMounter(
                         referenceChain = referenceChain,
                     )
                 }
-                rootBody.replacingOrAdding("elements", JsonArray(children))
+            rootBody.setting("elements", JsonArray(children))
             }
         }
         val filteredBody = filterMountedGroupBody(mountedBody, exclusions, mountPath)
@@ -781,13 +869,10 @@ private fun JsonObject.withTransferredUsageType(transfer: UsageTypeTransfer): Js
         if (transfer.value == null) {
             JsonObject(filterKeys { it != "usageType" })
         } else {
-            replacingOrAdding("usageType", transfer.value)
+            setting("usageType", transfer.value)
         }
     }
 }
-
-private fun JsonObject.replacingOrAdding(key: String, value: JsonElement): JsonObject =
-    JsonObject(toMutableMap().apply { this[key] = value })
 
 private fun JsonObject.withoutModelReferences(): JsonObject {
     val header = objectMember("header") ?: return this
@@ -807,7 +892,7 @@ private fun JsonObject.fieldRefByShortNameAllowed(): Boolean =
         ?.toBooleanStrictOrNull()
         ?: false
 
-private fun JsonObject.conditionLanguageCode(): String? =
+internal fun JsonObject.conditionLanguageCode(): String? =
     objectMember("content")
         ?.objectMember("modelConfig")
         ?.objectMember("conditionLanguage")

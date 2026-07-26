@@ -7,10 +7,12 @@ import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.ast.ValueListQuantOp
+import io.github.mbackschat.a12.dm.interpreter.model.ConditionLanguage
 
 /**
- * A recursive-descent parser turning condition TEXT into the interpreter [Cond] AST. It lives in
- * commonMain, so it parses on JVM and JS alike.
+ * A recursive-descent parser turning condition TEXT into the interpreter [Cond] AST. [ConditionLanguage] selects
+ * the model's stored English or German keyword vocabulary; display locales are independent. It lives in commonMain,
+ * so it parses on JVM and JS alike.
  *
  * This is a hand-written clean-room parser with no kernel parse-tree dependency, so it remains native-safe and
  * JS-compilable. [io.github.mbackschat.a12.dm.adapter.laws.ParserCorpusSweepTest] owns corpus conformance rather
@@ -22,12 +24,38 @@ import io.github.mbackschat.a12.dm.interpreter.ast.ValueListQuantOp
  * `primary := "(" or ")" | expr (cmpOp expr)? | predicateCall`. Keyword case variants (And/and/AND, …),
  * `;;` comments, `..Name` turning-point paths, and the `For` semantic-index suffix on bare args are handled.
  */
-fun parseCondition(text: String, base: String, resolver: RefResolver = DEFAULT_RESOLVER): Cond =
-    ConditionParser(text, base, resolver).parse().lowerArithmetic()
+fun parseCondition(text: String, base: String): Cond =
+    parseCondition(text, base, DEFAULT_RESOLVER, ConditionLanguage.EN)
+
+fun parseCondition(text: String, base: String, resolver: RefResolver): Cond =
+    parseCondition(text, base, resolver, ConditionLanguage.EN)
+
+fun parseCondition(text: String, base: String, language: ConditionLanguage): Cond =
+    parseCondition(text, base, DEFAULT_RESOLVER, language)
+
+fun parseCondition(
+    text: String,
+    base: String,
+    resolver: RefResolver,
+    language: ConditionLanguage,
+): Cond = ConditionParser(text, base, resolver, language).parse().lowerArithmetic()
 
 /** Parse a value expression (a computation's right-hand side), paths relative to [base]. */
-fun parseExpression(text: String, base: String, resolver: RefResolver = DEFAULT_RESOLVER): Expr =
-    ConditionParser(text, base, resolver).parseTopExpr().lowerArithmetic()
+fun parseExpression(text: String, base: String): Expr =
+    parseExpression(text, base, DEFAULT_RESOLVER, ConditionLanguage.EN)
+
+fun parseExpression(text: String, base: String, resolver: RefResolver): Expr =
+    parseExpression(text, base, resolver, ConditionLanguage.EN)
+
+fun parseExpression(text: String, base: String, language: ConditionLanguage): Expr =
+    parseExpression(text, base, DEFAULT_RESOLVER, language)
+
+fun parseExpression(
+    text: String,
+    base: String,
+    resolver: RefResolver,
+    language: ConditionLanguage,
+): Expr = ConditionParser(text, base, resolver, language).parseTopExpr().lowerArithmetic()
 
 /**
  * Resolves a **bare, relative, single-segment** reference (`[Name]` / a bare `Name` arg) to its absolute
@@ -46,7 +74,12 @@ fun interface RefResolver {
 /** The declaring-group-only resolver — `base/name`, the pre-IF119 behavior; used when no model is supplied. */
 val DEFAULT_RESOLVER: RefResolver = RefResolver { base, name -> "$base/$name" }
 
-private class ConditionParser(private val src: String, private val base: String, private val resolver: RefResolver) {
+private class ConditionParser(
+    private val src: String,
+    private val base: String,
+    private val resolver: RefResolver,
+    private val language: ConditionLanguage,
+) {
 
     private var pos = 0
 
@@ -165,19 +198,28 @@ private class ConditionParser(private val src: String, private val base: String,
             else -> when {
                 c == '-' || c.isDigit() -> readNumber()
                 else -> {
-                    val name = readIdent()
-                    require(name.isNotEmpty()) { "parser: unexpected '$c' at $pos in \"$src\"" }
-                    when (name) {
+                    val quoted = c == '\''
+                    val authoredName = readIdent()
+                    require(authoredName.isNotEmpty()) { "parser: unexpected '$c' at $pos in \"$src\"" }
+                    val keyword = if (quoted) null else language.canonicalKeyword(authoredName)
+                    when (keyword) {
                         "True" -> Expr.BoolLit(true)
                         "False" -> Expr.BoolLit(false)
-                        in CONSTANTS -> Expr.Const(name)
+                        in CONSTANTS -> Expr.Const(checkNotNull(keyword))
                         // `RuleGroup` (the kernel's RegelKontext) is the rule's OWN group — the [base] itself, not a
                         // child field/group. See [readRef] for the full rationale (IF63); this is the BARE-argument
                         // form (`GroupFilled(RuleGroup)`), which never reaches [readRef].
                         "RuleGroup" -> Expr.Field(base)
                         else -> {
                             skipWs()
-                            if (peek() == '(') Expr.Func(name, readArgs()) else entitySuffix(pathFrom(name))
+                            if (peek() == '(') {
+                                require(quoted || !language.isForeignKeyword(authoredName)) {
+                                    "parser: '$authoredName' is not a function keyword in ${language.code}"
+                                }
+                                Expr.Func(keyword ?: authoredName, readArgs())
+                            } else {
+                                entitySuffix(pathFrom(authoredName))
+                            }
                         }
                     }
                 }
@@ -334,7 +376,7 @@ private class ConditionParser(private val src: String, private val base: String,
      */
     private fun matchValueListQuant(): Cond? {
         val save = pos
-        val op = ValueListQuantOp.byName(readIdent())
+        val op = readCanonicalKeyword()?.let(ValueListQuantOp::byName)
         skipWs()
         if (op == null || peek() != '(') { pos = save; return null }
         next()   // consume '('
@@ -355,15 +397,18 @@ private class ConditionParser(private val src: String, private val base: String,
         skipWs()
         // An infix grammar literal separating arg0 from the rest: `In` for `NumberOfValueInFields(value In f1, …)`
         // / `AtLeastOneDateRangeOverlaps(range In rangeList)`. The kernel's `inOp` is `'In' | 'IN' | 'in'`, so
-        // matchKeyword("In") accepts all three via KEYWORD_VARIANTS. For every other function the next token is `,`/`)`.
+        // matchKeyword("In") accepts all three language-independent variants. For every other function the next
+        // token is `,`/`)`.
         if (matchKeyword("In")) { args.add(parseArg()); skipWs() }
         while (peek() == ',') { next(); args.add(parseArg()); skipWs() }
         // `@From <group>` (localized `@Von`) — RepetitionNotUnique's optional reference-group selector. The
         // group ref (a relative name/path, `RuleGroup`, `..`, or absolute) is captured raw as a trailing
         // `@From:<ref>` marker arg; the consumer (DmInterpreter) splits it off the key fields and resolves it.
         if (peek() == '@') {
-            next()                                  // '@'
-            readIdent()                             // From / Von (consumed; not validated)
+            next()
+            require(matchKeyword("From")) {
+                "parser: expected the localized @From keyword in \"$src\""
+            }
             skipWs()
             args.add(Expr.StrLit("@From:" + readGroupRef()))
             skipWs()
@@ -441,13 +486,16 @@ private class ConditionParser(private val src: String, private val base: String,
         return false
     }
 
-    /** Consume the keyword if it is the next identifier; otherwise leave the position untouched. A keyword with
-     *  enumerated CASE VARIANTS ([KEYWORD_VARIANTS]) matches any of its variants — nothing else (no case-folding). */
+    /** Consume the localized form of [kw] if it is next; otherwise leave the position untouched. */
     private fun matchKeyword(kw: String): Boolean {
         val save = pos
+        skipWs()
+        if (peek() == '\'') {
+            pos = save
+            return false
+        }
         val id = readIdent()
-        val accepted = KEYWORD_VARIANTS[kw]
-        if (if (accepted == null) id == kw else id in accepted) return true
+        if (language.accepts(id, kw)) return true
         pos = save
         return false
     }
@@ -455,10 +503,16 @@ private class ConditionParser(private val src: String, private val base: String,
     /** Consume the next identifier if it is one of [kws]; return it, else null (position untouched). */
     private fun matchOneOf(kws: Set<String>): String? {
         val save = pos
-        val id = readIdent()
+        val id = readCanonicalKeyword()
         if (id in kws) return id
         pos = save
         return null
+    }
+
+    private fun readCanonicalKeyword(): String? {
+        skipWs()
+        if (peek() == '\'') return null
+        return language.canonicalKeyword(readIdent())
     }
 
     private fun tryCmpOp(): CmpOp? {
@@ -521,19 +575,5 @@ private class ConditionParser(private val src: String, private val base: String,
          *  structurally by `ValueAsDate` (never evaluated standalone). */
         val CONSTANTS = setOf("Today", "Now", "BaseYear", "FirstDay", "LastDay")
 
-        /**
-         * Keyword CASE VARIANTS the kernel enumerates (`LexerTerminals_en`: the UND/ODER/IN token families) —
-         * the kernel accepts EXACTLY these spellings per keyword, so `aNd`/`oR`/`In`-miscased stay REJECTED
-         * (not blanket case-folding). Real stored conditions mix all three (the A12 Tools workspaces freely use
-         * `and`, `AND`, `Or`). Keywords absent here (`FieldFilled`, `Having`, `For`, …) match their single
-         * spelling only. The `to`/`To`/`TO` (ZU) family is intentionally absent: its only user is the
-         * `ValueNotConsistent` separator, which the interpreter does not parse (not in the catalog, not in the
-         * real corpora), so it has no match site — adding it would be dead.
-         */
-        val KEYWORD_VARIANTS: Map<String, Set<String>> = mapOf(
-            "And" to setOf("And", "and", "AND"),
-            "Or" to setOf("Or", "or", "OR"),
-            "In" to setOf("In", "in", "IN"),
-        )
     }
 }

@@ -371,6 +371,30 @@ class IncludeAssemblyTest {
     }
 
     @Test
+    fun widePrefixLookupWorkDependsOnPathDepthRatherThanNamespaceWidth() {
+        val prefixes = (1..2_048).map {
+            MountedPrefix(
+                sourcePrefix = "/Source$it",
+                outputPrefix = "/Envelope/Mount/Output$it",
+            )
+        }
+        var probes = 0
+        val mapping = MountedPrefixMapping(prefixes) { probes++ }
+
+        prefixes.forEachIndexed { index, prefix ->
+            assertEquals(
+                "${prefix.outputPrefix}/Nested/Value",
+                mapping.outputPathFor("${prefix.sourcePrefix}/Nested/Value"),
+            )
+            assertEquals(
+                "${prefix.sourcePrefix}/Nested/Value",
+                mapping.sourcePathFor("${prefix.outputPrefix}/Nested/Value"),
+            )
+            assertTrue(probes <= (index + 1) * 6)
+        }
+    }
+
+    @Test
     fun preparedOutputBytesAreBoundedBeforeJsonMaterialization() {
         val result = assemble("same-alias-mounted-twice")
         val preparedBytes = result.root.toString().encodeToByteArray().size

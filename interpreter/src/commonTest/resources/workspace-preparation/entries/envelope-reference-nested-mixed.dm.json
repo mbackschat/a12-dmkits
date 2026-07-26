@@ -1,0 +1,62 @@
+{
+  "header" : {
+    "id" : "envelope-reference-nested-mixed",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ {
+      "alias" : "policy",
+      "modelType" : "document",
+      "purpose" : "include",
+      "reference" : "policy-reference-middle-mixed"
+    } ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "envelope-reference-nested-mixed",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Envelope",
+        "name" : "Envelope",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Field",
+            "id" : "/Envelope/EntryNo",
+            "name" : "EntryNo",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Group",
+            "id" : "/Envelope/NestedPolicy",
+            "name" : "NestedPolicy",
+            "Group" : {
+              "repeatability" : 1,
+              "modelAlias" : "policy"
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}
