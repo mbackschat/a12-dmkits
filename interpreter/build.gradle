@@ -12,15 +12,32 @@ plugins {
     id 'org.jetbrains.dokka' version '2.2.0'
 }
 
-def interpreterVersionFile = file('VERSION')
-def interpreterReleaseVersion = interpreterVersionFile.getText('UTF-8').trim()
-if (!(interpreterReleaseVersion ==~ /\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/)) {
-    throw new GradleException(
-        "interpreter/VERSION must contain one SemVer value, found '${interpreterReleaseVersion}'",
-    )
-}
+def legacyInterpreterVersionFile = file('VERSION')
 group = 'io.github.mbackschat.a12.dm'
-version = interpreterReleaseVersion
+version = rootProject.version
+
+def verifyInterpreterVersionAlignment = tasks.register('verifyInterpreterVersionAlignment') {
+    group = 'verification'
+    description = 'Require every interpreter artifact to use the main repository release version.'
+    inputs.property('mainRepositoryVersion', provider { rootProject.version.toString() })
+    inputs.property('interpreterVersion', provider { project.version.toString() })
+    inputs.property(
+        'legacyInterpreterVersionFileExists',
+        provider { legacyInterpreterVersionFile.exists() },
+    )
+    doLast {
+        if (project.version.toString() != rootProject.version.toString()) {
+            throw new GradleException(
+                "interpreter version ${project.version} must equal main repository version ${rootProject.version}",
+            )
+        }
+        if (legacyInterpreterVersionFile.exists()) {
+            throw new GradleException(
+                'interpreter/VERSION must not exist; the main repository version is the single source',
+            )
+        }
+    }
+}
 
 base {
     archivesName = 'dm-interpreter'
@@ -478,7 +495,10 @@ def verifyInterpreterPurity = tasks.register('verifyInterpreterPurity') {
         }
     }
 }
-tasks.named('check') { dependsOn verifyInterpreterPurity }
+tasks.named('check') {
+    dependsOn verifyInterpreterPurity
+    dependsOn verifyInterpreterVersionAlignment
+}
 
 // --- Relative footprint: the NFR-F1 hard-zero + a reproducible runtime-closure measurement (IG79 → IF160) ---
 enum RuntimeClosureEntryKind {
@@ -1170,13 +1190,13 @@ def verifyExternalInterpreterJsConsumer = tasks.register(
 
 def verifyInterpreterMavenPublication = tasks.register('verifyInterpreterMavenPublication') {
     group = 'verification'
-    description = 'Verify the staged independent dm-interpreter Maven publication and external consumer.'
+    description = 'Verify the staged dm-interpreter Maven publication and external consumer.'
     dependsOn verifyExternalInterpreterConsumer
     dependsOn verifyExternalInterpreterJsConsumer
-    inputs.file(interpreterVersionFile)
+    inputs.property('interpreterVersion', provider { project.version.toString() })
     inputs.dir(interpreterStagingMavenDir)
     doLast {
-        def releaseVersion = interpreterVersionFile.getText('UTF-8').trim()
+        def releaseVersion = project.version.toString()
         def repository = interpreterStagingMavenDir.get().asFile
         def expectedArtifacts = [
             'dm-interpreter'    : ['pom', 'module', 'mainJar', 'sourcesJar', 'javadocJar'],
@@ -1562,7 +1582,7 @@ def requirePackedInterpreterNpmPackage = tasks.register('requirePackedInterprete
     description = 'Require the real interpreter npm tarball before resolving the external consumer.'
     dependsOn verifyInterpreterNpmPackage
     dependsOn prepareExternalInterpreterTypeScriptConsumer
-    inputs.file(interpreterVersionFile)
+    inputs.property('interpreterVersion', provider { project.version.toString() })
     outputs.upToDateWhen { false }
     doLast {
         def tarball = interpreterNpmTarball.get().asFile

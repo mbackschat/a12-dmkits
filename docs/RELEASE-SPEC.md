@@ -6,7 +6,7 @@ The **durable** contract for releasing this project: the surfaces we ship, how e
 
 ## 1. What we ship
 
-**dmtool v1 ships ONE surface: the `dmtool` CLI native binary.** The dmkit developer-library surface (JARs, JavaDoc, the LLM API doc, a dev skill) is **deferred — not dmtool v1**; it is recorded for later in §11. The independently versioned interpreter publication is an active, separate proposal: [INTERPRETER-RELEASE-PROPOSAL](INTERPRETER-RELEASE-PROPOSAL.md).
+**dmtool v1 ships ONE surface: the `dmtool` CLI native binary.** The dmkit developer-library surface (JARs, JavaDoc, the LLM API doc, a dev skill) is **deferred — not dmtool v1**; it is recorded for later in §11. The root-version-aligned interpreter publication is an active, separate proposal: [INTERPRETER-RELEASE-PROPOSAL](INTERPRETER-RELEASE-PROPOSAL.md).
 
 | Surface | Audience | v1 artifacts | Channel |
 |---|---|---|---|
@@ -172,7 +172,7 @@ A static Maven repo (one-line `maven { url }` consume) is a later upgrade; it do
 
 ## 10. Distribution topology & channels
 
-**Source repo PRIVATE (early testers) + a separate PUBLIC release-mirror repo as the single public distribution point for dmtool and the dmkits described by this spec.** The release step publishes every downloadable artifact to the mirror's GitHub Releases (and its Pages), so anonymous consumers and agents fetch from the mirror while the source stays private. Going public later retires the mirror (releases move to the source repo). The standalone interpreter has its own version train and proposed public mirror in [INTERPRETER-RELEASE-PROPOSAL](INTERPRETER-RELEASE-PROPOSAL.md). The dmtool mirror holds:
+**Source repo PRIVATE (early testers) + a separate PUBLIC release-mirror repo as the single public distribution point for dmtool and the dmkits described by this spec.** The release step publishes every downloadable artifact to the mirror's GitHub Releases (and its Pages), so anonymous consumers and agents fetch from the mirror while the source stays private. Going public later retires the mirror (releases move to the source repo). The standalone interpreter shares the main repository version and has its own proposed public mirror in [INTERPRETER-RELEASE-PROPOSAL](INTERPRETER-RELEASE-PROPOSAL.md). The dmtool mirror holds:
 
 - the **CLI native binaries** per-OS + `SHA256SUMS`;
 - the **developer JARs** — five per-kit artifacts (`dmkits-core`/`-rulekit`/`-modelkit`/`-edit`/`-schemakit`) + the `dmkits` aggregator POM (kernel-decoupling Stage 4); `-javadoc.jar`/`-sources.jar` ride publishing-prep (§3b);

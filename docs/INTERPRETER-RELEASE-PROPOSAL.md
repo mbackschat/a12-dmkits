@@ -14,8 +14,9 @@ Owner direction fixed on 2026-07-26:
 - the browser interpreter must use a workspace abstraction to resolve included models and imported typedefs; that requirement was activated as IG68 and is now completed as IF224, while IG85 and IG86 remain live release gaps;
 - the independently consumable interpreter core ships first; the separate Operator API is a much later artifact and does not block it;
 - the immutable workspace/preparation boundary and asynchronous host-provider layer are accepted, including snapshot/integrity, cancellation/failure, acquisition-limit, safe-diagnostic, platform-projection, and browser-storage requirements;
-- a separately packaged EUPL-1.2 JVM adapter may expose the interpreter as a drop-in `IDocumentRtService` implementation for existing Kernel-consuming applications after the MIT core `v0.1.0`; it embeds no Kernel bytecode and is not part of the portable core;
+- a separately packaged EUPL-1.2 JVM adapter may expose the interpreter as a drop-in `IDocumentRtService` implementation for existing Kernel-consuming applications after the MIT core `v0.9.1`; it embeds no Kernel bytecode and is not part of the portable core;
 - the implemented public core is governed by [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md), while later compatibility and higher-level product surfaces remain in [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md).
+- the interpreter mirror reuses the dmtool public-mirror protocol and implementation wherever the artifact shapes permit; a separate mechanism requires a named necessity plus a parity guard.
 
 This proposal's execution state follows the one-active-session-per-worktree rule. No worker session is active.
 
@@ -59,7 +60,7 @@ Success means:
 | Packaging | Maven/KMP and npm artifacts, standalone Kotlin/JVM/Kotlin/JS/TypeScript consumers, ABI/content/dependency/secret/checksum locks, and IF173 delivery bases are complete locally (IG85) | Preserve the gates through public-mirror assembly and prove anonymous GitHub consumption |
 | Docs | The root README explains the engine, but there is no interpreter-owned package README or shipped API reference | Add one canonical package README plus derived references |
 | License | The interpreter core is original, kernel-free MIT code; the JVM drop-in has a separate Kernel-facing boundary | Keep the core artifacts MIT and publish the bytecode-free drop-in artifact under EUPL-1.2 by explicit owner policy; never copy Kernel code or silently publish a mixed-license binary |
-| Kernel drop-in | The internal `:adapter` is a broad Kernel oracle/backend, not a narrow distributable replacement service | After core `v0.1.0`, design and publish a separate JVM-only `IDocumentRtService` adapter with a pinned compatibility matrix |
+| Kernel drop-in | The internal `:adapter` is a broad Kernel oracle/backend, not a narrow distributable replacement service | After core `v0.9.1`, design and publish a separate JVM-only `IDocumentRtService` adapter with a pinned compatibility matrix |
 
 The browser workspace/showcase and publication request flipped IG68, IG85, and IG86's re-open triggers. IG68 has completed its lifecycle as IF224; IG85 and IG86 remain open release requirements until public anonymous delivery and the browser first-answer bar respectively pass.
 
@@ -78,7 +79,7 @@ All identities were ratified on 2026-07-26:
 | Public mirror release tag | `vX.Y.Z` | ratified |
 | Pages root | `https://mbackschat.github.io/a12-interpreter-releases/` | ratified |
 
-Use an independent interpreter SemVer train. Reusing dmtool’s root version would either begin the new library at an unrelated dmtool version or republish unchanged interpreter bytes on CLI-only releases. `:interpreter` may override the root version—the root build already reserves that option.
+All artifacts built from this repository use its one root version. The owner corrected the earlier independent-version decision on 2026-07-27 so dmtool, Kotlin/Multiplatform publications, the TypeScript tarball, Pages content, manifests, and public tags cannot drift. `:interpreter` has no separate version file; `verifyInterpreterVersionAlignment` enforces the rule.
 
 `@mbackschat/a12-interpreter` was selected because the npm scope communicates authorship while the package portion communicates A12 compatibility. The same convention is reserved for the later, separately selected Operator artifact (`@mbackschat/a12-operators`); neither name presents the package as an official `@a12` publication.
 
@@ -89,7 +90,7 @@ GitHub Packages’ npm registry requires a classic personal access token even to
 Instead, each GitHub Release carries a standard npm-compatible tarball:
 
 ```sh
-pnpm add https://github.com/mbackschat/a12-interpreter-releases/releases/download/v0.1.0/a12-interpreter-0.1.0.tgz
+pnpm add https://github.com/mbackschat/a12-interpreter-releases/releases/download/v0.9.1/a12-interpreter-0.9.1.tgz
 ```
 
 The package’s own `package.json` declares `@mbackschat/a12-interpreter` as its import name. The release URL is the distribution coordinate; the lockfile records the resolved artifact and integrity.
@@ -105,7 +106,7 @@ repositories {
 }
 
 dependencies {
-    implementation("io.github.mbackschat.a12.dm:dm-interpreter:0.1.0")
+    implementation("io.github.mbackschat.a12.dm:dm-interpreter:0.9.1")
 }
 ```
 
@@ -327,9 +328,9 @@ When R10 later publishes `dm-interpreter-kernel-dropin`, the same public release
 
 ## 9. Release flow
 
-Adopt dmtool’s good mechanics while changing the artifact-specific parts:
+Reuse dmtool’s public-mirror implementation and protocol, changing only artifact-specific inputs and outputs. Shared release identity, repository assembly, draft promotion, checksums, Pages deployment, anonymous smoke, and Git identity belong in shared scripts or directly reused helpers rather than interpreter-specific copies. Every necessary divergence must name the artifact constraint and have a parity guard against the dmtool contract.
 
-1. Bump the independent interpreter version, update `interpreter/CHANGELOG.md`, verify the public API/ABI diff, commit, and push `interpreter-vX.Y.Z`.
+1. Bump the main repository version once through its standard release flow, update `interpreter/CHANGELOG.md`, verify every interpreter artifact has the root version and review the public API/ABI diff, then commit and push `interpreter-vX.Y.Z`.
 2. Run `scripts/publish-interpreter-release.sh interpreter-vX.Y.Z`; it assembles the public mirror workflow/content, configures the fresh mirror clone through [`scripts/release-git-identity.sh`](../scripts/release-git-identity.sh), verifies both `GIT_AUTHOR_IDENT` and `GIT_COMMITTER_IDENT`, pushes it, creates a **draft** `vX.Y.Z` release, and dispatches the public mirror build. The publisher refuses to commit or push unless both identities are exactly `Martin Backschat <mbackschat@mail.de>`, independently of the release machine's global Git configuration.
 3. The public workflow checks out the private source tag using a read-only `SOURCE_REPO_TOKEN`, builds all artifacts, runs JVM/Node/browser/package/consumer gates, uploads release assets, and writes `SHA256SUMS`.
 4. Review the draft and run `scripts/publish-interpreter-release.sh interpreter-vX.Y.Z --go-live`.
@@ -346,15 +347,15 @@ The `R0`–`R10` rows are release milestones. The `R<n>.<n>` rows in §10.1 are 
 | Milestone | Outcome | Tier | Depends on | Status | Exit gate |
 |---|---|---|---|---|---|
 | R0 | Establish current facts, dmtool pattern, and GitHub-only topology | BEST | — | done | This proposal records the evidence and fixed hosting boundary |
-| R1 | Ratify repository name, package coordinates, independent version train, first API slice, provider boundary, first-party-only meaning of GitHub-only, and drop-in sequencing/license | BEST | R0 | done | Every release-boundary decision is recorded in §13 |
+| R1 | Ratify repository name, package coordinates, root-version alignment, first API slice, provider boundary, first-party-only meaning of GitHub-only, and drop-in sequencing/license | BEST | R0 | done | Every release-boundary decision is recorded in §13 |
 | R2 | Implement the original commonMain workspace assembler, assembler-only expanded-model artifact, platform-projected async source-provider collector, structured preparation API, minimum public interpreter façade, document ownership contract, and dmtool workspace dogfooding, TDD-first | BEST | R1 | done | Java-reader/kernel expansion parity plus snapshot/integrity/cancellation/failure/limit/privacy provider laws green on JVM/Node; dmtool expansion/runtime preparation uses the public workspace boundary; public surface contains no implementation leaks |
 | R3 | Add production Maven/npm packaging, generated `.d.ts`, Kotlin/TS ABI locks, package allowlist, source/docs artifacts, and delivery-footprint measurement | BEST | R2 | done | Fresh local Maven and packed-tarball consumers compile and run |
 | R4 | Add the browser target, portable browser corpus, workspace-preparation coverage, host-sensitive locks, and browser first-answer evidence | BEST | R2, R3 | in progress | Real-browser evaluation/preparation parity and owner-ratified performance bar |
 | R5 | Build the static showcase as a packed-package, revisioned manifest/SHA-backed on-demand workspace consumer with Cache Storage support and add browser E2E verification | BEST | R3, R4 | pending | Provider closure, integrity/cancellation/limit failures, offline reload, include/typedef, and clean/firing/formal-invalid/computation scenarios pass in a browser |
 | R6 | Write the canonical README/API guide, add tested snippets, and generate Dokka/TypeScript/`llms.txt` references | REGULAR | R3, R5 | pending | Docs describe only shipped API; links and examples are verified |
 | R7 | Create the public mirror assembler, build/deploy workflows, cumulative Pages/Maven layout, and staged publisher | BEST | R1, R3, R5, R6 | pending | A dry-run release in a temporary/fresh mirror proves every refusal and success path |
-| R8 | Publish `v0.1.0-rc.1`, consume it anonymously from GitHub Release and Pages, and run the full release review gate | BEST | R7 | pending | No in-repo resolution; all public URLs and checksums pass |
-| R9 | Fix RC findings by class, publish stable `v0.1.0`, confirm IF224 plus IG85/IG86 disposition, update durable docs, and run the release retro | BEST | R8 | pending | Stable release live; Pages/showcase/API docs live; ledgers clean |
+| R8 | Publish `v0.9.1-rc.1`, consume it anonymously from GitHub Release and Pages, and run the full release review gate | BEST | R7 | pending | No in-repo resolution; all public URLs and checksums pass |
+| R9 | Fix RC findings by class, publish stable `v0.9.1`, confirm IF224 plus IG85/IG86 disposition, update durable docs, and run the release retro | BEST | R8 | pending | Stable release live; Pages/showcase/API docs live; ledgers clean |
 | R10 | Specify, license, implement, and publish the narrow JVM Kernel drop-in artifact as its own follow-up release | BEST | R9 | pending | A pinned `IDocumentRtService` consumer and a real host substitute the implementation unchanged; differential, result-application, cache, extension, source-availability, and mixed-license gates pass |
 
 ### 10.1 Session-sized task queue
@@ -383,7 +384,7 @@ R2.9–R2.11 deliberately use one common assembler for two different terminal op
 
 | Set | Deliverable | Tier | Depends on | Status | Exit gate |
 |---|---|---|---|---|---|
-| R3.1 | Add the independent version source and Maven/KMP publication with POM identity, MIT metadata, sources, API docs, and a fresh Kotlin/JVM consumer | BEST | R2.11 | done | A consumer outside the repository resolves only the staged GitHub-layout Maven tree, compiles, and evaluates a model |
+| R3.1 | Use the root version as the single artifact identity and add Maven/KMP publication with POM identity, MIT metadata, sources, API docs, and a fresh Kotlin/JVM consumer | BEST | R2.11 | done | A consumer outside the repository resolves only the staged GitHub-layout Maven tree, compiles, and evaluates a model |
 | R3.2 | Add the intentional TypeScript export façade and pack the real npm-compatible tarball with JavaScript, `.d.ts`, browser-safe source maps, metadata, license, and README | BEST | R2.11 | done | A fresh pnpm project installs the tarball by file/URL form, type-checks, expands and prepares a workspace, validates, and computes without repository substitution |
 | R3.3 | Add Kotlin and TypeScript ABI locks, package allowlists, dependency/secret scans, a deterministic checksum manifest, and real npm/Maven delivery-footprint plus previous-release delta reporting | REGULAR | R3.1, R3.2 | done | Contract and package-content drift fail mechanically; the packed artifacts pass purity and consumer smokes; IG85 implementation is complete pending anonymous public-repository consumption |
 | R4.1 | Add the Kotlin/JS browser target and a minimal bundler consumer of the packed tarball with no Node-only API | BEST | R3.2 | done | The packed interpreter loads and evaluates in a real browser under the repository-relative Pages base path |
@@ -399,9 +400,9 @@ R2.9–R2.11 deliberately use one common assembler for two different terminal op
 |---|---|---|---|---|---|
 | R7.1 | Build the deterministic public-mirror assembler with public README, license/disclaimer, showcase, cumulative Maven/API layout, workflow sources, and an explicit file allowlist | BEST | R3.3, R5.2, R6.2 | pending | Two assemblies are byte-identical apart from declared provenance fields; secret/private-source and unexpected-file injections are rejected |
 | R7.2 | Add staged source-tag publisher and public-repository workflows for draft assets, checksums, Pages deployment, immutable version directories, anonymous smokes, publisher-owned author/committer identity, and go-live refusals | BEST | R7.1 | pending | A disposable fresh mirror proves every commit is `Martin Backschat <mbackschat@mail.de>` and exercises every refusal plus the complete draft-to-production path without publishing a production identity |
-| R8.1 | Create the public `a12-interpreter-releases` repository and publish `v0.1.0-rc.1` through the staged path | BEST | R7.2 | pending | The release remains draft until anonymous Maven, tarball, API-doc, showcase, checksum, and production Pages smokes pass; the reviewed release is then made public and IG85 graduates to a finding |
+| R8.1 | Create the public `a12-interpreter-releases` repository and publish `v0.9.1-rc.1` through the staged path | BEST | R7.2 | pending | The release remains draft until anonymous Maven, tarball, API-doc, showcase, checksum, and production Pages smokes pass; the reviewed release is then made public and IG85 graduates to a finding |
 | R9.1 | Review RC evidence and user feedback; for every finding, reproduce, generalize, and insert one bounded corrective `R9.F<n>` set for the root-cause class | BEST | R8.1 | pending | The RC has no unresolved release blocker and every correction has fresh package/browser/consumer evidence |
-| R9.2 | Publish stable `v0.1.0`, preserve immutable RC/versioned Pages content, confirm IF224 plus IG85/IG86 disposition, update durable docs, and run the full program retro | BEST | R9.1 | pending | Stable assets, Maven tree, API docs, and showcase are anonymously consumable from the public repository; manifests/checksums agree; ledgers are clean |
+| R9.2 | Publish stable `v0.9.1`, preserve immutable RC/versioned Pages content, confirm IF224 plus IG85/IG86 disposition, update durable docs, and run the full program retro | BEST | R9.1 | pending | Stable assets, Maven tree, API docs, and showcase are anonymously consumable from the public repository; manifests/checksums agree; ledgers are clean |
 
 #### R10 — later EUPL Kernel drop-in
 
@@ -433,7 +434,7 @@ No set may publish or deploy while another session is active in the worktree.
 - R2.9 exposes one assembler-only expanded-model conversion through `ModelWorkspace.expand`/`tryExpand`: it reuses the exact assembly seam used by `prepare` but returns before `ModelLoader`, does not retain a second model-sized string in `PreparedModel`, and returns no partial artifact on failure. JVM/Node laws prove that Kernel-legal `Europe/Paris`, `MONTH_OPTIONAL`, and `YEAR_OPTIONAL` sources expand even though interpreter preparation refuses them; retained local typedef declarations, consumed-residue removal, prepared-byte limits, and throwing/non-throwing failure parity are locked. The shared reference-assembly fixture remains directly compared with Java-reader/Kernel observations, and the additive result types are registered in the temporary JVM surface guard. Red evidence is preserved at `build/R2.9-expansion-api-red.log`; the completion gate passed full interpreter JVM/Node, runtime-closure and purity checks plus the focused adapter fixture/parity guards.
 - R2.10 exposes the model-owned minimum interpreter façade rather than publishing the internal engine shape: one `PreparedModel` now owns metadata and canonical group/field/relevance pointer factories, document snapshots, full/partial validation, computation, support reporting, and immutable custom-condition/custom-field registries. Host factory, callback, and recursive-entry failures cross the boundary as stable typed integration errors; results contain detached immutable records, and foreign or stale model-owned inputs fail before evaluation. The Java projection adapts the common suspending collector to `CompletionStage`, propagates caller cancellation into both the portable signal and in-flight provider stage, and translates provider-stage cancellation back into the common `CANCELLED` diagnostic without adding a coroutine dependency. Common JVM/Node consumers, Java compile/runtime consumption, public-surface construction/leak guards, and real-Kernel customization differentials lock the contract; R3.2 retains responsibility for intentional TypeScript export names and declarations. Red evidence is preserved at `build/R2.10-public-interpreter-api-red.log` and `build/R2.10-java-completion-stage-red.log`.
 - R2.11 adds dmtool `model expand` as a bare self-contained DM-JSON artifact or no-partial-write `-o` operation and migrates every interpreter runtime verb from the Java `ModelReader` assembler to public on-demand `ModelWorkspace` collection/expansion plus the strict expanded-input evaluator gate. The CLI adapter supplies only ids requested by the portable collector through the existing filesystem `ModelResolver`; assembly remains single-sourced in commonMain, while `ModelReader` remains only in Java core metadata/index and parity roles. Conversion stops before evaluator-only timezone/date-precision checks, runtime retains the JVM-valid-timezone versus typo distinction, portable diagnostics map to corrective `refused` envelopes, and the obsolete CLI relativization exception is removed. Manifest/help, parameter, schema-exemption, demonstration, command-reference, forced-native discoverability, README/CLI-SPEC/architecture, gap/finding, and semantics-map obligations travel with the feature. Red evidence is preserved at `build/R2.11-model-expand-red.log`; the focused runtime/conformance suites passed, all 11 discovered demos matched the live CLI, and `build/r211-full.log` records the 6m12s scoped completion gate across interpreter checks, fresh Kernel-backed adapter/CLI estates, and documentation guards.
-- R3.1 gives `:interpreter` its independent `interpreter/VERSION` SemVer source and stages the root, JVM, and JS Kotlin Multiplatform publications under the exact GitHub Pages Maven layout. Every publication carries the MIT/public-release/tag POM identity, Kotlin module metadata, source artifact, and a Dokka HTML documentation JAR; implementation subpackages stay auditable in source artifacts without being presented as the supported API reference. The verification task rejects missing or empty platform, metadata, source, documentation, or POM artifacts and validates identity/license/release metadata. Its fresh Kotlin/JVM consumer is copied into a separate build, uses a separate Gradle home with no repository init scripts, resolves first-party coordinates only from the staged tree and third-party dependencies only from public upstream repositories, then prepares a typed-authored model and executes validation plus computation. The intentional initial failure is preserved at `build/R3.1-maven-publication-red.log`; focused publication evidence is at `build/R3.1-maven-publication-green.log`.
+- R3.1 stages the root, JVM, and JS Kotlin Multiplatform publications under the exact GitHub Pages Maven layout. Corrected 2026-07-27: the owner aligned the interpreter with the repository's root version, removed the separate `interpreter/VERSION` source, and added a guard that fails if an independent version returns. Every publication carries the MIT/public-release/tag POM identity, Kotlin module metadata, source artifact, and a Dokka HTML documentation JAR; implementation subpackages stay auditable in source artifacts without being presented as the supported API reference. The verification task rejects missing or empty platform, metadata, source, documentation, or POM artifacts and validates identity/license/release metadata. Its fresh Kotlin/JVM consumer is copied into a separate build, uses a separate Gradle home with no repository init scripts, resolves first-party coordinates only from the staged tree and third-party dependencies only from public upstream repositories, then prepares a typed-authored model and executes validation plus computation. The intentional initial failure is preserved at `build/R3.1-maven-publication-red.log`; focused publication evidence is at `build/R3.1-maven-publication-green.log`, and the alignment correction's red evidence is at `build/R4.2-version-alignment-red.log`.
 - R3.2 packages `@mbackschat/a12-interpreter` as ESM through a two-layer boundary: a private compiler-generated Kotlin/JS bridge and an authored TypeScript façade containing the intentional public ABI. The façade exposes finite and provider-collected workspaces, assembler-only expansion, strict preparation, runtime-`unknown` placement decoding, owner-bound documents/pointers, partial/full validation, computation, support reporting, native typed errors, and synchronous custom condition/field-type callbacks. Its positive signed-32-bit coordinate guard is locked against every pinned Kernel `DocumentPointer` factory and prevents Kotlin/JS narrowing; thenables fail as typed integration errors rather than being awaited. The tarball carries MIT metadata, README/license, browser-safe embedded-source maps, and only the runtime `big.js` dependency. A fresh pnpm project installs the actual tarball with no substitution, compiles under strict TypeScript, exercises include/typedef collection and expansion, structured decode failures, coordinate refusals, validation/computation, customization invocation, and the thenable refusal, then runs on Node. Red evidence is preserved at `build/R3.2-typescript-package-red.log` and `build/R3.2-customization-red.log`.
 - R3.3 freezes the intentional package-root Kotlin and TypeScript contracts in reviewed ABI files, with a TypeScript negative control proving that a public declaration cannot leak a package-local support type. Exact normalized Maven and npm file allowlists, explicit POM/module dependency sets, source/metadata secret scans, clean Maven staging, and one sorted SHA-256 manifest make package drift mechanical without claiming byte-identical compiler output. Fresh standalone Kotlin/JVM and Kotlin/JS builds resolve only the staged first-party Maven coordinates and execute validation/computation; the existing strict TypeScript build installs and executes the packed tarball. IF173 protocol v2 adds the resulting npm tarball and exact staged Maven repository to the five existing bases, records pre-package revisions as `NOT_AVAILABLE_IN_BASELINE`, and emits no invented zero or ratio. The baseline archive is initialized only as a disposable empty Git worktree so the standard isolated build wrapper can run; report identity remains the resolved archived commit. Red evidence is preserved at `build/R3.3-kotlin-abi-red.log`, `build/R3.3-package-policy-red.log`, and `build/R3.3-delivery-baseline-red.log`; the completion gate passes the full interpreter JVM/Node estate, package/ABI/purity locks, all three external consumers, adapter and CLI estates, documentation guards, and the clean-tree current/previous delivery comparison.
 - R4.1 registers Kotlin/JS's browser environment while retaining Node as the shared-test host, then adds one fresh Vite consumer that installs the actual tarball and fetches its typed-authored model relative to `/a12-interpreter-releases/showcase/`. A deadline-bounded `playwright-core` harness launches the system Chrome/Chromium rather than downloading a browser and proves preparation, structured validation, and decimal computation from the production bundle. The package's existing Node-import scan remains the static purity gate. Kotlin's Node and browser library-distribution tasks share one output directory, so the external browser gate intentionally consumes the already packed Node-produced library instead of requesting a redundant conflicting copy task. Red evidence is preserved at `build/R4.1-browser-target-red.log`, `build/R4.1-browser-consumer-red.log`, and `build/R4.1-browser-distribution-red.log`.
@@ -456,7 +457,7 @@ In addition to the normal master-session review gate, every release-proposal lan
 
 ## 12. Required, optional, and excluded
 
-### Required for `v0.1.0`
+### Required for `v0.9.1`
 
 - minimum public interpreter API;
 - commonMain raw-workspace preparation with include/typedef/id/reference-remap parity;
@@ -468,12 +469,12 @@ In addition to the normal master-session review gate, every release-proposal lan
 - ABI/package-content/delivery-footprint locks;
 - anonymous non-repo consumers and immutable staged release flow.
 
-### Optional after `v0.1.0`
+### Optional after `v0.9.1`
 
 - direct `@mbackschat/a12-operators` product;
 - Zod adapters;
 - packaged reusable IndexedDB, Cache Storage, OPFS, user-directory, Node/Next.js, database, or object-store provider adapters beyond the core provider port and showcase-local HTTP/Cache Storage implementations;
-- JVM-only EUPL-1.2 `dm-interpreter-kernel-dropin`, published separately after core `v0.1.0` and its Kernel-version compatibility implementation is proven;
+- JVM-only EUPL-1.2 `dm-interpreter-kernel-dropin`, published separately after core `v0.9.1` and its Kernel-version compatibility implementation is proven;
 - richer showcase visualizations;
 - custom domain or custom Pages theme;
 - public source snapshot beyond the source JAR.
@@ -493,7 +494,7 @@ In addition to the normal master-session review gate, every release-proposal lan
 
 Ratified on 2026-07-26:
 
-- the repository, Maven coordinate, tag, Pages, and independent-version identities in §3.1;
+- the repository, Maven coordinate, tag, Pages, and root-version-aligned identities in §3.1;
 - `@mbackschat/a12-interpreter` as the TypeScript package name;
 - “GitHub-only” applies to first-party artifacts; third-party dependencies continue to resolve from Maven Central/npm;
 - publish the independently consumable interpreter core first; the Operator API is a separate, much later artifact;
@@ -504,7 +505,8 @@ Ratified on 2026-07-26:
 - retain concrete local type-definition declarations in canonical expanded output while removing consumed references/directives and every `TypeDefType` use;
 - add dmtool's `model expand` only after the Java on-demand provider projection, then migrate the interpreter runtime verbs to the same on-demand `ModelWorkspace` collector/assembler plus strict expanded-input gate; keep `ModelReader` for the published Java core's index/metadata role and parity evidence rather than creating a third resolver or a speculative shared module;
 - configure and verify every public interpreter-mirror commit through `scripts/release-git-identity.sh`; author and committer must both be exactly `Martin Backschat <mbackschat@mail.de>` before any push;
-- publish the independently consumable MIT core `v0.1.0` before the JVM Kernel drop-in;
+- reuse or share the dmtool public-mirror publisher, repository assembler, manifest/checksum rules, staged draft-to-live protocol, Pages deployment, and anonymous verification; maintain no interpreter-specific variant without a named artifact constraint and mechanical parity guard;
+- publish the independently consumable MIT core `v0.9.1` before the JVM Kernel drop-in;
 - publish the bytecode-free JVM drop-in artifact under EUPL-1.2 by explicit owner policy; this is deliberately conservative and is not presented as a consequence of interface linking.
 
 R4.2 semantic qualification is complete. Its 50-process first-answer evidence and owner-ratified p95 bar remain before the set is done.
