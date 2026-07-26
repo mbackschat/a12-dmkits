@@ -1485,6 +1485,8 @@ Aligned in the same change: [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md) Non-funct
 - **The lock.** The source-of-truth over-claim (`interpreter/build.gradle` said the module "runs … in the browser") is corrected to name Node as the supported runtime and browser as deferred; every doc that treated Node as browser proof now says so. The deferred residual is tracked in [INTERPRETER-GAPS.md](INTERPRETER-GAPS.md) §2, not §1 — it is an owner-accepted capability residual, not a silent mismatch.
 - **Re-open trigger.** A real browser consumer materializes, or the publication wave promises browser support. Then: add a `browser()` target + a bundled consumer smoke, replay the portable conformance subset in a real browser, and give browser first-answer its own explicitly scoped bar (Node may remain a separate CI proxy only after equivalence is demonstrated).
 
+Corrected 2026-07-26: the re-open trigger fired. R4.1 now registers the browser environment and executes the real packed tarball through a Vite bundle in system Chrome under the repository-relative Pages base. The historical decision remains accurate for its date; R4.2 owns conformance, host-sensitive replay, and first-answer qualification before browser support is claimed.
+
 Aligned in the same change: `interpreter/build.gradle`, `interpreter/CLAUDE.md`, [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md), [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md), [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md), IF134's distribution note, the IG82 row (its browser over-claim item), and the OPERATOR-API proposal cross-ref.
 
 ### IF139 — `validateFull` fails loudly on unsupported rules, so the messages-only convenience can't produce a false-clean result (SHIPPED 2026-07-19, graduated from IG97)

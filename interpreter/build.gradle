@@ -45,6 +45,7 @@ kotlin {
                 }
             }
         }
+        browser()
         useEsModules()
         binaries.library()
         generateTypeScriptDefinitions()
@@ -2027,6 +2028,93 @@ def verifyInterpreterReleaseArtifacts = tasks.register(
 }
 tasks.named('check') {
     dependsOn verifyInterpreterReleaseArtifacts
+}
+
+// --- R4.1 real-browser packed-package consumer -----------------------------------------------------
+def externalBrowserConsumerSourceDir = file('consumer-tests/browser')
+def externalBrowserConsumerBuildDir = rootProject.layout.buildDirectory.dir(
+    'interpreter-release/consumer/browser',
+)
+def externalBrowserConsumerStoreDir = rootProject.layout.buildDirectory.dir(
+    'interpreter-release/consumer-browser-pnpm-store',
+)
+def externalBrowserConsumerModel = file(
+    'src/commonTest/resources/workspace-preparation/self-contained/permit-basic.dm.json',
+)
+def prepareExternalInterpreterBrowserConsumer = tasks.register(
+    'prepareExternalInterpreterBrowserConsumer',
+    Sync,
+) {
+    group = 'verification'
+    description = 'Create a fresh repository-relative browser consumer for the packed interpreter tarball.'
+    from(externalBrowserConsumerSourceDir)
+    from(externalBrowserConsumerModel) {
+        into('public/models')
+    }
+    into(externalBrowserConsumerBuildDir)
+    inputs.file(externalBrowserConsumerModel)
+        .withPropertyName('typedAuthoredBrowserConsumerModel')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    outputs.upToDateWhen { false }
+    doFirst {
+        project.delete(externalBrowserConsumerBuildDir)
+    }
+}
+def installExternalInterpreterBrowserConsumerDependencies = tasks.register(
+    'installExternalInterpreterBrowserConsumerDependencies',
+    Exec,
+) {
+    group = 'verification'
+    description = 'Resolve the fresh browser consumer development tools from public npm.'
+    dependsOn requirePackedInterpreterNpmPackage
+    dependsOn prepareExternalInterpreterBrowserConsumer
+    workingDir externalBrowserConsumerBuildDir
+    commandLine(
+        'pnpm',
+        'install',
+        '--config.confirmModulesPurge=false',
+        '--frozen-lockfile=false',
+        '--lockfile=false',
+        '--store-dir',
+        externalBrowserConsumerStoreDir.get().asFile.absolutePath,
+    )
+    environment 'CI', 'true'
+    outputs.upToDateWhen { false }
+}
+def installPackedInterpreterInBrowserConsumer = tasks.register(
+    'installPackedInterpreterInBrowserConsumer',
+    Exec,
+) {
+    group = 'verification'
+    description = 'Install the real interpreter tarball into the fresh browser consumer.'
+    dependsOn installExternalInterpreterBrowserConsumerDependencies
+    workingDir externalBrowserConsumerBuildDir
+    commandLine(
+        'pnpm',
+        'add',
+        '--save-exact',
+        '--lockfile=false',
+        '--store-dir',
+        externalBrowserConsumerStoreDir.get().asFile.absolutePath,
+        interpreterNpmTarball.get().asFile.absolutePath,
+    )
+    environment 'CI', 'true'
+    outputs.upToDateWhen { false }
+}
+def verifyExternalInterpreterBrowserConsumer = tasks.register(
+    'verifyExternalInterpreterBrowserConsumer',
+    Exec,
+) {
+    group = 'verification'
+    description = 'Bundle and execute the packed interpreter under real Chrome at its Pages base path.'
+    dependsOn installPackedInterpreterInBrowserConsumer
+    workingDir externalBrowserConsumerBuildDir
+    commandLine('pnpm', 'run', 'verify')
+    environment 'CI', 'true'
+    outputs.upToDateWhen { false }
+}
+tasks.named('check') {
+    dependsOn verifyExternalInterpreterBrowserConsumer
 }
 
 // --- Conformance corpus replay ---------------------------------------------------------------------
