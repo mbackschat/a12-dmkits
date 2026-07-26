@@ -55,6 +55,18 @@
               }
             }
           }, {
+            "type" : "Field",
+            "id" : "/Permit/InspectionDisposition",
+            "name" : "InspectionDisposition",
+            "Field" : {
+              "fieldType" : {
+                "type" : "TypeDefType",
+                "TypeDefType" : {
+                  "typeDefinitionId" : "InspectionDisposition"
+                }
+              }
+            }
+          }, {
             "type" : "Group",
             "id" : "/Permit/Review",
             "name" : "Review",

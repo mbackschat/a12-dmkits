@@ -25,6 +25,16 @@
       },
       "fieldRefByShortNameAllowed" : true
     },
+    "typeDefinitions" : [ {
+      "id" : "InspectionDisposition",
+      "name" : "InspectionDisposition",
+      "fieldType" : {
+        "type" : "StringType",
+        "StringType" : {
+          "maxLength" : 6
+        }
+      }
+    } ],
     "modelRoot" : {
       "rootGroups" : [ {
         "type" : "Group",

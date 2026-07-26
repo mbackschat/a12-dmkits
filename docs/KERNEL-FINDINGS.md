@@ -1913,6 +1913,8 @@ A consumer pulls those types in via a header `modelReferences` entry whose **`pu
 
 Consequence for authoring: a consumer's `typedefField` may reference an **imported** id that isn't locally declared, so rulekit's draft-time local-typedef-ref check defers to the kernel when an import is present (the kernel resolves it at expand). *(Locked: `modelkit.TypeDefModelImportTest` — type-def-only standalone valid; consumer-from-scratch import + imported-typed fields; the edit path.)* Modeled via `DocumentModelDraft.typeDefModel(id)` (provider), `Builder.importTypeDefs(ref)` / `ModelDocument.addImport(ref)` / `EditSession.addImport(ref)` / CLI `typedef import --reference` (consumer).
 
+Kernel 30.8.1 collision measurements distinguish local declarations from imported providers. Two local declarations with the same id are rejected during load. Two imported providers declaring the same id are accepted, whether their payloads differ or are byte-equivalent; with differing string lengths, the consuming field resolves to the first provider's length. This is an observed acceptance/selection result, not authority for a portable host to preserve traversal-order selection: the standalone workspace contract rejects distinct-provider ownership collisions explicitly. *(Locked: `WorkspaceTypeDefinitionCollisionKernelTest`.)*
+
 ## Attachment & Multi-Select are `usageType` group templates with kernel-validated canonical compositions (2026-06-13, source-verified)
 
 > Fold: not-foldable — model-structure templates validated at consistency time; no evaluation behavior beyond the ordinary rules they mandate.

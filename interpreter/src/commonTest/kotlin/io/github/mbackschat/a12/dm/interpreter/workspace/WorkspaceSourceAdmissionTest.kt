@@ -93,14 +93,14 @@ class WorkspaceSourceAdmissionTest {
 
     @Test
     fun rejectsMalformedUtf16InsteadOfHashingReplacementCharacters() {
-        val malformed = """{"header":{"id":"policy"},"text":"${'\uD800'}"}"""
+        for (codeUnit in listOf(0xd800, 0xdc00)) {
+            val diagnostic = assertFailsWith<ModelPreparationError> {
+                WorkspaceSourceAdmission.admit(listOf(workspaceSource(malformedJson(codeUnit))))
+            }.diagnostics.single()
 
-        val diagnostic = assertFailsWith<ModelPreparationError> {
-            WorkspaceSourceAdmission.admit(listOf(workspaceSource(malformed)))
-        }.diagnostics.single()
-
-        assertEquals(ModelPreparationDiagnosticCode.INVALID_MODEL_SOURCE, diagnostic.code)
-        assertTrue(diagnostic.message.contains("strict UTF-8"))
+            assertEquals(ModelPreparationDiagnosticCode.INVALID_MODEL_SOURCE, diagnostic.code)
+            assertTrue(diagnostic.message.contains("strict UTF-8"))
+        }
     }
 
     @Test
@@ -184,6 +184,7 @@ class WorkspaceSourceAdmissionTest {
             .maxTotalBytes(Int.MAX_VALUE)
             .maxReferenceDepth(Int.MAX_VALUE)
             .maxReferenceEdges(Int.MAX_VALUE)
+            .maxStructureDepth(Int.MAX_VALUE)
             .maxPreparedElements(Int.MAX_VALUE)
             .build()
 
@@ -192,6 +193,7 @@ class WorkspaceSourceAdmissionTest {
         assertEquals(ModelPreparationLimits.HARD_MAX_TOTAL_BYTES, limits.maxTotalBytes)
         assertEquals(ModelPreparationLimits.HARD_MAX_REFERENCE_DEPTH, limits.maxReferenceDepth)
         assertEquals(ModelPreparationLimits.HARD_MAX_REFERENCE_EDGES, limits.maxReferenceEdges)
+        assertEquals(ModelPreparationLimits.HARD_MAX_STRUCTURE_DEPTH, limits.maxStructureDepth)
         assertEquals(ModelPreparationLimits.HARD_MAX_PREPARED_ELEMENTS, limits.maxPreparedElements)
     }
 
@@ -204,6 +206,7 @@ class WorkspaceSourceAdmissionTest {
         assertEquals(32 * 1024 * 1024, limits.maxTotalBytes)
         assertEquals(32, limits.maxReferenceDepth)
         assertEquals(4_096, limits.maxReferenceEdges)
+        assertEquals(64, limits.maxStructureDepth)
         assertEquals(250_000, limits.maxPreparedElements)
     }
 
@@ -283,6 +286,16 @@ class WorkspaceSourceAdmissionTest {
         .diagnosticLabel(diagnosticLabel)
         .expectedSha256(expectedSha256)
         .build()
+
+    /**
+     * Build the invalid code unit at runtime: Kotlin/JS rewrites a source-level lone-surrogate literal to `?`,
+     * which would test an ordinary ASCII source instead of the workspace admission boundary.
+     */
+    private fun malformedJson(codeUnit: Int): String = buildString {
+        append("""{"header":{"id":"policy"},"text":"""")
+        append(codeUnit.toChar())
+        append("\"}")
+    }
 
     private fun raw(id: String, extra: String = ""): String =
         """{"header":{"id":"$id"}$extra}"""

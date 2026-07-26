@@ -1,0 +1,110 @@
+{
+  "header" : {
+    "id" : "permit-local-typedef",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "permit-local-typedef",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "typeDefinitions" : [ {
+      "id" : "LocalPermitCode",
+      "name" : "LocalPermitCode",
+      "fieldType" : {
+        "type" : "StringType",
+        "StringType" : {
+          "maxLength" : 8
+        }
+      }
+    }, {
+      "id" : "LocalArea",
+      "name" : "LocalArea",
+      "fieldType" : {
+        "type" : "NumberType",
+        "NumberType" : {
+          "maxFractionalDigits" : 2,
+          "minValue" : 0.00,
+          "maxValue" : 999.50
+        }
+      }
+    }, {
+      "id" : "LocalDecision",
+      "name" : "LocalDecision",
+      "fieldType" : {
+        "type" : "EnumerationType",
+        "EnumerationType" : {
+          "values" : [ {
+            "value" : "APPROVE"
+          }, {
+            "value" : "REJECT"
+          } ]
+        }
+      }
+    } ],
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Permit",
+        "name" : "Permit",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Field",
+            "id" : "/Permit/ApplicationCode",
+            "name" : "ApplicationCode",
+            "Field" : {
+              "fieldType" : {
+                "type" : "TypeDefType",
+                "TypeDefType" : {
+                  "typeDefinitionId" : "LocalPermitCode"
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Permit/RequestedArea",
+            "name" : "RequestedArea",
+            "Field" : {
+              "fieldType" : {
+                "type" : "TypeDefType",
+                "TypeDefType" : {
+                  "typeDefinitionId" : "LocalArea"
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Permit/Decision",
+            "name" : "Decision",
+            "Field" : {
+              "fieldType" : {
+                "type" : "TypeDefType",
+                "TypeDefType" : {
+                  "typeDefinitionId" : "LocalDecision"
+                }
+              }
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

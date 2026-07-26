@@ -343,6 +343,9 @@ def workspacePreparationFixtureFiles =
 def workspacePreparationFixtureOutputs = [
     'manifest.json',
     'self-contained/permit-basic.dm.json',
+    'entries/permit-local-typedef.dm.json',
+    'shared/permit-section-types.dm.json',
+    'entries/permit-include-typedef.dm.json',
     'shared/permit-types.dm.json',
     'shared/inspection-checks.dm.json',
     'shared/permit-section.dm.json',

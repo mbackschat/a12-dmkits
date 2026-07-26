@@ -20,14 +20,17 @@ import io.github.mbackschat.a12.dm.modelkit.MountOptions;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
 /**
- * The single typed author for R2's committed raw-workspace fixtures. The interpreter consumes the generated
- * serializations, while the adapter can rebuild them through modelkit/EditSession/rulekit for freshness checks.
+ * The single typed author for the committed raw-workspace fixtures. The interpreter consumes the generated
+ * serializations, while the adapter rebuilds them through modelkit/EditSession/rulekit for freshness checks.
  */
 public final class WorkspacePreparationFixtures {
 
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final String SELF_CONTAINED_ID = "permit-basic";
+    private static final String LOCAL_TYPEDEF_ID = "permit-local-typedef";
     private static final String TYPES_ID = "permit-types";
+    private static final String INCLUDE_TYPES_ID = "permit-section-types";
+    private static final String INCLUDE_TYPES_ENTRY_ID = "permit-include-typedef";
     private static final String CHECKS_ID = "inspection-checks";
     private static final String SECTION_ID = "permit-section";
     private static final String SINGLE_ID = "permit-single";
@@ -44,6 +47,9 @@ public final class WorkspacePreparationFixtures {
         var section = permitSection(sectionSources);
         var shared = sources(types, checks, section);
         var selfContained = selfContained();
+        var localTypedef = localTypedef();
+        var includeTypes = includeTypes();
+        var includeTypesEntry = includeTypesEntry();
         var single = permitEntry(SINGLE_ID, MountOptions.single(),
                 "/Permit/Review/Inspection", shared);
         var modelRoot = permitEntry(MODEL_ROOT_ID, MountOptions.single().asModelRoot(),
@@ -64,11 +70,29 @@ public final class WorkspacePreparationFixtures {
                         .expectedComputations(Map.of("/Permit/CopyRequestedArea", "/Permit/ReviewedArea"))
                         .build(),
                 FixtureCase.builder()
+                        .id("local-typedef")
+                        .entryModelId(LOCAL_TYPEDEF_ID)
+                        .sources(sources(localTypedef))
+                        .expectedFields(Set.of(
+                                "/Permit/ApplicationCode",
+                                "/Permit/RequestedArea",
+                                "/Permit/Decision"))
+                        .build(),
+                FixtureCase.builder()
+                        .id("include-contributed-typedef")
+                        .entryModelId(INCLUDE_TYPES_ENTRY_ID)
+                        .sources(sources(includeTypes, includeTypesEntry))
+                        .expectedFields(Set.of(
+                                "/Permit/ApplicationCode",
+                                "/Permit/Details/Description"))
+                        .build(),
+                FixtureCase.builder()
                         .id("imported-typedef-nested-single")
                         .entryModelId(SINGLE_ID)
                         .sources(sources(types, checks, section, single))
                         .expectedFields(Set.of(
                                 "/Permit/ApplicationCode",
+                                "/Permit/InspectionDisposition",
                                 "/Permit/Review/Name",
                                 "/Permit/Review/Inspection/Score",
                                 "/Permit/Review/Inspection/Summary",
@@ -86,6 +110,7 @@ public final class WorkspacePreparationFixtures {
                         .sources(sources(types, checks, section, modelRoot))
                         .expectedFields(Set.of(
                                 "/Permit/ApplicationCode",
+                                "/Permit/InspectionDisposition",
                                 "/Permit/Review/Section/Name",
                                 "/Permit/Review/Section/Inspection/Score",
                                 "/Permit/Review/Section/Inspection/Summary",
@@ -168,8 +193,42 @@ public final class WorkspacePreparationFixtures {
                 .toJson();
     }
 
+    private static String localTypedef() {
+        return DocumentModelDraft.named(LOCAL_TYPEDEF_ID).locale("en_US")
+                .typeDef("LocalPermitCode", type -> type.string(text -> text.maxLength(8)))
+                .typeDef("LocalArea",
+                        type -> type.number(number -> number.fractionDigits(2).min("0.00").max("999.50")))
+                .typeDef("LocalDecision",
+                        type -> type.enumeration(enumeration -> enumeration.value("APPROVE").value("REJECT")))
+                .rootGroup("Permit", permit -> permit
+                        .typedefField("ApplicationCode", "LocalPermitCode")
+                        .typedefField("RequestedArea", "LocalArea")
+                        .typedefField("Decision", "LocalDecision"))
+                .build()
+                .toJson();
+    }
+
+    private static String includeTypes() {
+        return DocumentModelDraft.named(INCLUDE_TYPES_ID).locale("en_US")
+                .typeDef("IncludedPermitCode", type -> type.string(text -> text.maxLength(10)))
+                .rootGroup("Section", section -> section.field("Description", FieldKind.STRING))
+                .build()
+                .toJson();
+    }
+
+    private static String includeTypesEntry() {
+        return DocumentModelDraft.named(INCLUDE_TYPES_ENTRY_ID).locale("en_US")
+                .include("section-types", INCLUDE_TYPES_ID)
+                .rootGroup("Permit", permit -> permit
+                        .typedefField("ApplicationCode", "IncludedPermitCode")
+                        .mount("Details", "section-types"))
+                .build()
+                .toJson();
+    }
+
     private static String inspectionChecks() {
         var structure = DocumentModelDraft.named(CHECKS_ID).locale("en_US")
+                .typeDef("InspectionDisposition", type -> type.string(text -> text.maxLength(6)))
                 .rootGroup("Inspection", inspection -> inspection
                         .numberField("Score", number -> number.fractionDigits(0))
                         .field("Summary", FieldKind.STRING)
@@ -217,6 +276,7 @@ public final class WorkspacePreparationFixtures {
                 .include("sectionAlias", SECTION_ID)
                 .rootGroup("Permit", permit -> permit
                         .typedefField("ApplicationCode", "PermitCode")
+                        .typedefField("InspectionDisposition", "InspectionDisposition")
                         .mount("Review", "sectionAlias", options))
                 .build()
                 .toJson();

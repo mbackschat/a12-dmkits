@@ -107,7 +107,7 @@ The primary direct verbs remain deliberately familiar: `validateFull`, `validate
 | `ModelCollectionOptions` | TypeScript collection limits plus `AbortSignal`; Kotlin/Java project the same semantics through their native asynchronous surfaces |
 | `ModelWorkspace` | an immutable, resource-bounded set of sources indexed by `header.id`; it prepares one requested transitive closure |
 | `ModelWorkspaceConstructor.collect` | asynchronous acquisition façade that follows discovered references through a provider and freezes the resulting closure before preparation |
-| `ModelPreparationLimits` | explicit bounds on source count, source/total bytes, reference depth, reference edges, and prepared element count |
+| `ModelPreparationLimits` | explicit bounds on source count, source/total bytes, reference depth, reference edges, model-structure depth, and prepared element count |
 | `ModelDependency` | one resolved include or type-definition edge retained as preparation metadata |
 | `ModelFingerprint` | a library-computed digest over the selected entry, every source in its resolved closure, and preparation-format/ABI identity |
 | `ModelPreparationDiagnostic` | one stable preparation code, optional source/model/path/reference-chain location, structured details, and corrective message |
@@ -260,6 +260,7 @@ interface ModelPreparationLimits {
   readonly maxTotalBytes?: number;
   readonly maxReferenceDepth?: number;
   readonly maxReferenceEdges?: number;
+  readonly maxStructureDepth?: number;
   readonly maxPreparedElements?: number;
 }
 
@@ -286,6 +287,7 @@ type ModelPreparationResource =
   | "total-bytes"
   | "reference-depth"
   | "reference-edges"
+  | "structure-depth"
   | "prepared-elements";
 
 declare const modelVersionIdentityBrand: unique symbol;
@@ -584,6 +586,7 @@ Omitting `ModelPreparationLimits` or `ModelCollectionOptions.limits` selects doc
 | total source bytes | 32 MiB | 128 MiB |
 | reference depth | 32 | 128 |
 | reference edges | 4,096 | 65,536 |
+| model-structure depth | 64 | 128 |
 | prepared elements | 250,000 | 1,000,000 |
 
 Source-byte limits count the exact strict UTF-8 bytes that source integrity hashes. A `diagnosticLabel` is retained only when it is one or two colon-separated safe identifier segments of letters, digits, `.`, `_`, or `-`, with at most 64 characters per segment; every other label is omitted before the source enters the workspace or a diagnostic is constructed. The grammar deliberately admits labels such as `showcase:policy` while excluding URLs, absolute paths, query strings, user-info, and authorization syntax.
@@ -1591,6 +1594,8 @@ Strict preparation rejects a model time zone that the current multiplatform runt
 Each source is indexed by its exact `header.id`. `modelReferences[*].reference` resolves against that identity; include aliases select mount names and are not alternate model ids. An optional `diagnosticLabel` is sanitized presentation metadata only; it must not contain a credential, signed query, authorization datum, sensitive absolute path, or other acquisition secret.
 
 Workspace construction rejects a missing/invalid document header, resource-limit violation, and duplicate `header.id`. Duplicate rejection is a deliberately stricter host-input rule, not a claim about kernel consistency: choosing one of two sources would make preparation depend on caller order or filesystem traversal.
+
+The assembled typedef namespace uses exact definition ids. Reaching the same declaration origin more than once through a diamond is one declaration and is not ambiguous. Duplicate local declarations are rejected, matching the Kernel. Two distinct source models declaring the same id are rejected with `AMBIGUOUS_TYPE_DEFINITION` even when their current field-type payloads are byte-equivalent. Kernel 30.8.1 accepts imported collisions and selects the first traversal result; the portable boundary is deliberately stricter because two providers still claim ownership of one name and a later payload change would otherwise turn source ordering into semantics. A malformed declaration is never skipped: a non-object declaration, absent or blank id, non-object `fieldType`, or incomplete nested `TypeDefType` fails with `INVALID_MODEL_SOURCE` at its declaration path, so successful preparation cannot retain malformed typedef residue.
 
 Preparing an entry performs the complete common pipeline:
 

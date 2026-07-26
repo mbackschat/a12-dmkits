@@ -1208,7 +1208,7 @@ catalog.addRule(r -> r.name("SkuFormat").errorField(sku)
 s.validate();                                                        // the resolver threads through the gate
 ```
 
-The included price list's **own** rule travels with it — mounted twice, it applies at both `/Catalog/Retail` and `/Catalog/Wholesale` — and the base's rules over the mounted fields validate against the real, expanded model. The written-back DM-JSON keeps the include as a `modelAlias` reference, never inlined; included content doesn't leak into the base. *Test-backed: `edit.MultiModelTest` (two-location include of a ruled model + rules over mounted fields + type-def) and `rulekit.dsl.IncludesTypedefsRuleTest` (single mount + type-def, EN/DE render).*
+The included price list's **own** rule travels with it — mounted twice, it applies at both `/Catalog/Retail` and `/Catalog/Wholesale` — and the base's rules over the mounted fields validate against the real, expanded model. An included model may also declare a type definition used by a field in the base; `DocumentModelDraft` defers that externally supplied reference to resolver-backed preparation just as it does for an explicit `typeDefinitions` import. A closed self-contained draft still rejects an undeclared id immediately. The written-back DM-JSON keeps the include as a `modelAlias` reference, never inlined; included content doesn't leak into the base. *Test-backed: `edit.MultiModelTest` (two-location include of a ruled model + rules over mounted fields + type-def), `rulekit.dsl.IncludesTypedefsRuleTest` (single mount + type-def, EN/DE render), and `modelkit.TypeDefModelImportTest` (include-contributed definition; finding 99).*
 
 ### 5d.1 Compare two model states headlessly (`ModelDiff`)
 

@@ -1,10 +1,80 @@
 {
-  "version" : 1,
+  "version" : 2,
   "cases" : {
     "self-contained" : {
       "entryModelId" : "permit-basic",
       "sources" : {
         "permit-basic" : "self-contained/permit-basic.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Permit/ApplicationNo" : {
+          "type" : "StringType"
+        },
+        "/Permit/Note" : {
+          "type" : "StringType"
+        },
+        "/Permit/RequestedArea" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/ReviewedArea" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        }
+      }
+    },
+    "local-typedef" : {
+      "entryModelId" : "permit-local-typedef",
+      "sources" : {
+        "permit-local-typedef" : "entries/permit-local-typedef.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Permit/ApplicationCode" : {
+          "type" : "StringType",
+          "StringType" : {
+            "maxLength" : 8
+          }
+        },
+        "/Permit/Decision" : {
+          "type" : "EnumerationType",
+          "EnumerationType" : {
+            "values" : [ {
+              "value" : "APPROVE"
+            }, {
+              "value" : "REJECT"
+            } ]
+          }
+        },
+        "/Permit/RequestedArea" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 2,
+            "minValue" : 0.0,
+            "maxValue" : 999.5
+          }
+        }
+      }
+    },
+    "include-contributed-typedef" : {
+      "entryModelId" : "permit-include-typedef",
+      "sources" : {
+        "permit-section-types" : "shared/permit-section-types.dm.json",
+        "permit-include-typedef" : "entries/permit-include-typedef.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Permit/ApplicationCode" : {
+          "type" : "StringType",
+          "StringType" : {
+            "maxLength" : 10
+          }
+        },
+        "/Permit/Details/Description" : {
+          "type" : "StringType"
+        }
       }
     },
     "imported-typedef-nested-single" : {
@@ -14,6 +84,38 @@
         "inspection-checks" : "shared/inspection-checks.dm.json",
         "permit-section" : "shared/permit-section.dm.json",
         "permit-single" : "entries/permit-single.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Permit/ApplicationCode" : {
+          "type" : "StringType",
+          "StringType" : {
+            "maxLength" : 12
+          }
+        },
+        "/Permit/InspectionDisposition" : {
+          "type" : "StringType",
+          "StringType" : {
+            "maxLength" : 6
+          }
+        },
+        "/Permit/Review/Inspection/Result" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/Review/Inspection/Score" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/Review/Inspection/Summary" : {
+          "type" : "StringType"
+        },
+        "/Permit/Review/Name" : {
+          "type" : "StringType"
+        }
       }
     },
     "imported-typedef-nested-model-root" : {
@@ -23,6 +125,38 @@
         "inspection-checks" : "shared/inspection-checks.dm.json",
         "permit-section" : "shared/permit-section.dm.json",
         "permit-model-root" : "entries/permit-model-root.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Permit/ApplicationCode" : {
+          "type" : "StringType",
+          "StringType" : {
+            "maxLength" : 12
+          }
+        },
+        "/Permit/InspectionDisposition" : {
+          "type" : "StringType",
+          "StringType" : {
+            "maxLength" : 6
+          }
+        },
+        "/Permit/Review/Section/Inspection/Result" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/Review/Section/Inspection/Score" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/Review/Section/Inspection/Summary" : {
+          "type" : "StringType"
+        },
+        "/Permit/Review/Section/Name" : {
+          "type" : "StringType"
+        }
       }
     },
     "alias-with-exclusions" : {
@@ -30,6 +164,23 @@
       "sources" : {
         "inspection-checks" : "shared/inspection-checks.dm.json",
         "permit-excluded" : "entries/permit-excluded.dm.json"
+      },
+      "effectiveFieldTypes" : {
+        "/Permit/Inspection/Result" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/Inspection/Score" : {
+          "type" : "NumberType",
+          "NumberType" : {
+            "maxFractionalDigits" : 0
+          }
+        },
+        "/Permit/Inspection/Summary" : {
+          "type" : "StringType"
+        }
       }
     }
   }

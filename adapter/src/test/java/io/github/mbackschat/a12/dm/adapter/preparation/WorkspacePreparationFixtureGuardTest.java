@@ -6,12 +6,16 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.TreeSet;
 
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import io.github.mbackschat.a12.dm.core.ModelReader;
 
 /**
  * Freshness guard for the committed raw-workspace matrix. Every DM-JSON source is regenerated through the typed
@@ -58,7 +62,7 @@ class WorkspacePreparationFixtureGuardTest {
 
     private static String manifest() throws IOException {
         var root = JSON.createObjectNode();
-        root.put("version", 1);
+        root.put("version", 2);
         var cases = root.putObject("cases");
         var committed = WorkspacePreparationFixtures.committedFiles();
         for (var fixture : WorkspacePreparationFixtures.cases()) {
@@ -68,8 +72,32 @@ class WorkspacePreparationFixtureGuardTest {
             for (var modelId : fixture.sources().keySet()) {
                 sources.put(modelId, pathOf(committed, modelId));
             }
+            ObjectNode effectiveFieldTypes = entry.putObject("effectiveFieldTypes");
+            var observed = effectiveFieldTypes(fixture);
+            assertEquals(new TreeSet<>(fixture.expectedFields()), new TreeSet<>(observed.keySet()),
+                    () -> fixture.id() + " effective field-type observation coverage");
+            observed.forEach(effectiveFieldTypes::set);
         }
         return JSON.writerWithDefaultPrettyPrinter().writeValueAsString(root) + System.lineSeparator();
+    }
+
+    private static Map<String, JsonNode> effectiveFieldTypes(WorkspacePreparationFixtures.FixtureCase fixture)
+            throws IOException {
+        var expanded = JSON.readTree(ModelReader.expand(fixture.entryJson(), fixture.resolver()).toJson());
+        var fields = new java.util.TreeMap<String, JsonNode>();
+        collectEffectiveFieldTypes(expanded, fields);
+        return fields;
+    }
+
+    private static void collectEffectiveFieldTypes(JsonNode node, Map<String, JsonNode> fields) {
+        if (node.isObject()) {
+            if ("Field".equals(node.path("type").asText()) && node.path("id").isTextual()) {
+                fields.put(node.path("id").asText(), node.path("Field").path("fieldType"));
+            }
+            node.elements().forEachRemaining(child -> collectEffectiveFieldTypes(child, fields));
+        } else if (node.isArray()) {
+            node.elements().forEachRemaining(child -> collectEffectiveFieldTypes(child, fields));
+        }
     }
 
     private static String pathOf(java.util.Map<String, String> committed, String modelId) {

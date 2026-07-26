@@ -1,0 +1,65 @@
+{
+  "header" : {
+    "id" : "permit-include-typedef",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ {
+      "alias" : "section-types",
+      "modelType" : "document",
+      "purpose" : "include",
+      "reference" : "permit-section-types"
+    } ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "permit-include-typedef",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Permit",
+        "name" : "Permit",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Field",
+            "id" : "/Permit/ApplicationCode",
+            "name" : "ApplicationCode",
+            "Field" : {
+              "fieldType" : {
+                "type" : "TypeDefType",
+                "TypeDefType" : {
+                  "typeDefinitionId" : "IncludedPermitCode"
+                }
+              }
+            }
+          }, {
+            "type" : "Group",
+            "id" : "/Permit/Details",
+            "name" : "Details",
+            "Group" : {
+              "repeatability" : 1,
+              "modelAlias" : "section-types"
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

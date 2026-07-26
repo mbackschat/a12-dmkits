@@ -1280,9 +1280,9 @@ public final class DocumentModelDraft {
 
     /** Referential integrity: every {@code typedefField} must point at a declared {@code typeDef}. */
     private void checkTypeDefReferences() {
-        // when the model imports type-defs from elsewhere, a ref may resolve to an imported id — the local
-        // ids aren't the full set, so defer the check to the kernel's expand-time resolution.
-        if (!typeDefImports.isEmpty()) {
+        // Imports and mounted includes both contribute to the assembly-wide type-definition namespace. Without
+        // the referenced sources this draft knows only the local subset, so the resolver-backed gate owns the check.
+        if (!typeDefImports.isEmpty() || !includes.isEmpty()) {
             return;
         }
         Set<String> declared = new HashSet<>();

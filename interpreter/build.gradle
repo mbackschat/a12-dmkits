@@ -148,7 +148,7 @@ kotlin.sourceSets.commonTest.kotlin.srcDir(generatedPerformanceFixtureDir)
 tasks.named('compileTestKotlinJvm') { dependsOn generatePerformanceFixtureSource }
 tasks.named('compileTestKotlinJs') { dependsOn generatePerformanceFixtureSource }
 
-// R2's raw workspace matrix is authored once through modelkit/EditSession/rulekit in :adapter, then committed
+// The raw workspace matrix is authored once through modelkit/EditSession/rulekit in :adapter, then committed
 // as the exact source closure observed by the real Kernel/JVM-reader preparation lock. Embed that closure in
 // commonTest so both JVM and Node prove the standalone interpreter can consume the self-contained baseline
 // without adding a filesystem API or a kit dependency to the publication-eligible runtime.
@@ -196,6 +196,10 @@ def generateWorkspacePreparationFixtureSource = tasks.register('generateWorkspac
 ${sources}
         )"""
         }.join('\n')
+        def effectiveTypeCases = manifest.cases.collect { caseId, fixture ->
+            def facts = groovy.json.JsonOutput.toJson(fixture.effectiveFieldTypes)
+            "        ${groovy.json.JsonOutput.toJson(caseId)} -> ${groovy.json.JsonOutput.toJson(facts)}"
+        }.join('\n')
         generatedWorkspacePreparationFixtureSource.parentFile.mkdirs()
         generatedWorkspacePreparationFixtureSource.text = """\
 package io.github.mbackschat.a12.dm.interpreter.workspace
@@ -208,6 +212,11 @@ ${entryCases}
 
     fun sources(caseId: String): Map<String, String> = when (caseId) {
 ${sourceCases}
+        else -> error("unknown workspace-preparation case: \$caseId")
+    }
+
+    fun effectiveFieldTypes(caseId: String): String = when (caseId) {
+${effectiveTypeCases}
         else -> error("unknown workspace-preparation case: \$caseId")
     }
 }

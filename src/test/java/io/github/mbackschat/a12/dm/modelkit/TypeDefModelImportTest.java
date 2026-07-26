@@ -3,13 +3,12 @@ package io.github.mbackschat.a12.dm.modelkit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.StringReader;
-
 import org.junit.jupiter.api.Test;
 
-import io.github.mbackschat.a12.dm.core.ModelResolver;
-
+import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
+import io.github.mbackschat.a12.dm.core.ModelResolver;
+import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
  * Type-def-only model + import (FEATURE-GAPS). A <b>type-def-only</b> model carries only reusable
@@ -79,5 +78,27 @@ class TypeDefModelImportTest {
                 .toJson();
         assertTrue(ModelDocument.read(consumer).typeDefImports().contains("catalogtypes"),
                 "the edit path declares the import; the kernel validated the imported-typed field");
+    }
+
+    @Test
+    void anIncludedModelCanContributeATypeDefinitionToTheConsumerNamespace() throws Exception {
+        String component = DocumentModelDraft.named("catalog-component").locale("en_US")
+                .typeDef("ComponentCode", type -> type.string(string -> string.maxLength(10)))
+                .rootGroup("Component", group -> group.field("Description", FieldKind.STRING))
+                .build()
+                .toJson();
+        String consumer = DocumentModelDraft.named("catalog").locale("en_US")
+                .include("component", "catalog-component")
+                .rootGroup("Catalog", catalog -> catalog
+                        .typedefField("Code", "ComponentCode")
+                        .mount("Details", "component"))
+                .build()
+                .toJson();
+        ModelResolver resolver = reference -> "catalog-component".equals(reference) ? component : null;
+
+        ModelLoader.loadAndCheck(consumer, resolver);
+        assertEquals(
+                ValueKind.STRING,
+                ModelIndex.of(consumer, resolver).kindOf("/Catalog/Code"));
     }
 }
