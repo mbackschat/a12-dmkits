@@ -1,0 +1,2 @@
+# Kotlin 2.2 ABI validation generates this JVM golden with one required terminal blank line.
+interpreter/api/interpreter.api whitespace=-blank-at-eof

@@ -1,0 +1,412 @@
+# @mbackschat/a12-interpreter public TypeScript ABI
+
+## A12Result
+export type A12Result<T, E extends Error> = {
+    readonly ok: true;
+    readonly value: T;
+} | {
+    readonly ok: false;
+    readonly error: E;
+};
+
+## ComputationOutcome
+export type ComputationOutcome = "value" | "cleared" | "errored";
+
+## ComputationReport
+export interface ComputationReport {
+    readonly results: readonly ComputationResult[];
+    readonly unsupported: readonly UnsupportedProgram[];
+    readonly fullySupported: boolean;
+}
+
+## ComputationResult
+export interface ComputationResult {
+    readonly pointer: FieldPointer;
+    readonly outcome: ComputationOutcome;
+    readonly value?: string;
+}
+
+## ComputeOptions
+export interface ComputeOptions {
+    readonly locale?: string;
+}
+
+## CustomCondition
+export type CustomCondition = (invocation: CustomConditionInvocation) => boolean;
+
+## CustomConditionDocumentView
+export interface CustomConditionDocumentView {
+    value(pointer: FieldPointer): string | undefined;
+    fields(): readonly FieldPointer[];
+}
+
+## CustomConditionInvocation
+export interface CustomConditionInvocation {
+    readonly document: CustomConditionDocumentView;
+    readonly relevantEntities?: readonly RelevantEntityPointer[];
+    readonly formallyIncorrectEntities: readonly FieldPointer[];
+    readonly errorPointer: FieldPointer;
+}
+
+## CustomFieldValidationParameters
+export interface CustomFieldValidationParameters {
+    readonly locale: string;
+    readonly minLength?: number;
+    readonly maxLength?: number;
+    readonly isDisplayValue: boolean;
+}
+
+## CustomFieldValidationResult
+export type CustomFieldValidationResult = {
+    readonly accepted: true;
+} | {
+    readonly accepted: false;
+    readonly errorKey: string;
+    readonly message?: string;
+};
+
+## CustomFieldValidator
+export type CustomFieldValidator = (value: string, parameters: CustomFieldValidationParameters) => CustomFieldValidationResult;
+
+## DocumentCoordinateError
+export declare class DocumentCoordinateError extends Error {
+    readonly reason: DocumentCoordinateReasonCode;
+    readonly path: string;
+    readonly coordinateIndex: number | undefined;
+    readonly expectedCoordinateCount: number | undefined;
+    readonly actualCoordinateCount: number | undefined;
+    readonly code: "A12_DOCUMENT_COORDINATE_INVALID";
+    constructor(reason: DocumentCoordinateReasonCode, path: string, coordinateIndex: number | undefined, expectedCoordinateCount: number | undefined, actualCoordinateCount: number | undefined, message: string);
+}
+
+## DocumentCoordinateReasonCode
+export type DocumentCoordinateReasonCode = "coordinate-count-mismatch" | "coordinate-not-positive" | "coordinate-outside-portable-range" | "field-terminal-not-one";
+
+## DocumentDecodeLimits
+export interface DocumentDecodeLimits {
+    readonly maxGroupPlacements?: number;
+    readonly maxFieldPlacements?: number;
+    readonly maxCoordinatesPerPlacement?: number;
+    readonly maxPathCodeUnits?: number;
+    readonly maxRawCodeUnitsPerField?: number;
+    readonly maxTotalRawCodeUnits?: number;
+    readonly maxModelNestingDepth?: number;
+}
+
+## DocumentDecodeOptions
+export interface DocumentDecodeOptions {
+    readonly limits?: DocumentDecodeLimits;
+}
+
+## DocumentInputDiagnostic
+export interface DocumentInputDiagnostic {
+    readonly reasonCode: string;
+    readonly inputPath: readonly DocumentInputPathSegment[];
+    readonly modelPath?: string;
+    readonly placementKind?: DocumentPlacementKind;
+    readonly placementIndex?: number;
+    readonly coordinateIndex?: number;
+    readonly message: string;
+    readonly details?: Readonly<Record<string, unknown>>;
+}
+
+## DocumentInputError
+export declare class DocumentInputError extends Error {
+    readonly diagnostics: readonly DocumentInputDiagnostic[];
+    readonly code: "A12_DOCUMENT_INPUT_INVALID";
+    constructor(diagnostics: readonly DocumentInputDiagnostic[], message?: string);
+}
+
+## DocumentInputPathSegment
+export type DocumentInputPathSegment = string | number;
+
+## DocumentPlacementKind
+export type DocumentPlacementKind = "group" | "field";
+
+## DocumentPointer
+export declare abstract class DocumentPointer {
+    readonly entityKind: ModelEntityKind;
+    readonly path: string;
+    readonly coordinates: readonly number[];
+}
+
+## DocumentSnapshot
+export declare class DocumentSnapshot {
+    private constructor();
+}
+
+## FieldPlacementInput
+export interface FieldPlacementInput {
+    readonly path: string;
+    readonly coordinates: readonly number[];
+    readonly raw: string;
+}
+
+## FieldPointer
+export declare class FieldPointer extends DocumentPointer {
+    private constructor();
+}
+
+## GroupPlacementInput
+export interface GroupPlacementInput {
+    readonly path: string;
+    readonly coordinates: readonly number[];
+}
+
+## GroupPointer
+export declare class GroupPointer extends DocumentPointer {
+    private constructor();
+}
+
+## Interpreter
+export declare class Interpreter {
+    private readonly core;
+    supportReport(): InterpreterSupportReport;
+    validateFull(snapshot: DocumentSnapshot, options?: ValidationOptions): ValidationReport;
+    validatePart(snapshot: DocumentSnapshot, relevant: readonly RelevantEntityPointer[], options?: ValidationOptions): ValidationReport;
+    compute(snapshot: DocumentSnapshot, options?: ComputeOptions): ComputationReport;
+}
+
+## InterpreterConfiguration
+export interface InterpreterConfiguration {
+    readonly customFieldTypes?: Readonly<Record<string, CustomFieldValidator>>;
+    readonly customConditions?: Readonly<Record<string, CustomCondition>>;
+}
+
+## InterpreterIntegrationError
+export declare class InterpreterIntegrationError extends Error {
+    readonly phase: "bind" | "evaluate";
+    readonly reason: InterpreterIntegrationReason;
+    readonly code: "A12_INTERPRETER_INTEGRATION_FAILED";
+    constructor(phase: "bind" | "evaluate", reason: InterpreterIntegrationReason, message: string);
+}
+
+## InterpreterIntegrationReason
+export type InterpreterIntegrationReason = "factory-threw" | "callback-threw" | "reentrant-evaluation" | "thenable-returned";
+
+## InterpreterSupportReport
+export interface InterpreterSupportReport {
+    readonly unsupported: readonly UnsupportedProgram[];
+    readonly fullySupported: boolean;
+}
+
+## InvalidCoordinateReason
+export type InvalidCoordinateReason = "not-number" | "not-safe-integer" | "not-positive" | "outside-portable-range";
+
+## ModelCollectionOptions
+export interface ModelCollectionOptions {
+    readonly limits?: ModelPreparationLimits;
+    readonly signal?: AbortSignal;
+}
+
+## ModelDependency
+export interface ModelDependency {
+    readonly fromModelId: string;
+    readonly toModelId: string;
+    readonly purpose: "include" | "type-definitions";
+    readonly alias?: string;
+    readonly diagnosticLabel?: string;
+    readonly sha256: string;
+}
+
+## ModelEntityKind
+export type ModelEntityKind = "group" | "field";
+
+## ModelMetadata
+export declare class ModelMetadata {
+    private readonly core;
+    readonly documentModelId: string;
+    pointer(path: string, coordinates: readonly number[]): DocumentPointer;
+    relevantPointer(path: string, coordinates: readonly RelevantCoordinate[]): RelevantEntityPointer;
+}
+
+## ModelOwnerMismatchError
+export declare class ModelOwnerMismatchError extends Error {
+    readonly code: "A12_MODEL_OWNER_MISMATCH";
+    constructor(message?: string);
+}
+
+## ModelPreparationDiagnostic
+export interface ModelPreparationDiagnostic {
+    readonly code: string;
+    readonly diagnosticLabel?: string;
+    readonly requestedModelId?: string;
+    readonly actualModelId?: string;
+    readonly providerFailureReason?: ModelSourceProviderFailureReason;
+    readonly expectedSha256?: string;
+    readonly actualSha256?: string;
+    readonly modelId?: string;
+    readonly path?: string;
+    readonly reference?: string;
+    readonly referenceChain?: readonly ModelReferenceStep[];
+    readonly conflictingDiagnosticLabels?: readonly string[];
+    readonly resource?: string;
+    readonly maximum?: number;
+    readonly actual?: number;
+    readonly firstSourceModelId?: string;
+    readonly conflictingSourceModelId?: string;
+    readonly sourceLanguage?: string;
+    readonly entryLanguage?: string;
+    readonly reason?: string;
+    readonly cyclic?: boolean;
+    readonly message: string;
+}
+
+## ModelPreparationError
+export declare class ModelPreparationError extends Error {
+    readonly diagnostics: readonly ModelPreparationDiagnostic[];
+    readonly code: "A12_MODEL_PREPARATION_FAILED";
+    constructor(diagnostics: readonly ModelPreparationDiagnostic[], message: string);
+}
+
+## ModelPreparationLimits
+export interface ModelPreparationLimits {
+    readonly maxModelCount?: number;
+    readonly maxModelBytes?: number;
+    readonly maxTotalBytes?: number;
+    readonly maxPreparedBytes?: number;
+    readonly maxReferenceDepth?: number;
+    readonly maxReferenceEdges?: number;
+    readonly maxStructureDepth?: number;
+    readonly maxPreparedElements?: number;
+}
+
+## ModelReferenceStep
+export interface ModelReferenceStep {
+    readonly fromModelId: string;
+    readonly toModelId: string;
+    readonly purpose: "include" | "type-definitions";
+    readonly alias?: string;
+}
+
+## ModelSourceLoadContext
+export interface ModelSourceLoadContext {
+    readonly maximumBytes: number;
+    readonly signal: AbortSignal;
+}
+
+## ModelSourceProvider
+export interface ModelSourceProvider {
+    readonly snapshotRevision?: string;
+    load(modelId: string, context: ModelSourceLoadContext): Promise<WorkspaceModelSource | undefined>;
+}
+
+## ModelSourceProviderError
+export declare class ModelSourceProviderError extends Error {
+    readonly reason: ModelSourceProviderFailureReason;
+    readonly modelId: string;
+    readonly code: "A12_MODEL_SOURCE_PROVIDER_FAILED";
+    constructor(reason: ModelSourceProviderFailureReason, modelId: string, options?: ErrorOptions);
+}
+
+## ModelSourceProviderFailureReason
+export type ModelSourceProviderFailureReason = "access-denied" | "unavailable" | "cancelled" | "source-too-large" | "integrity-mismatch" | "provider-failed";
+
+## ModelWorkspace
+export declare class ModelWorkspace {
+    private readonly core;
+    readonly modelIds: readonly string[];
+    readonly snapshotRevision: string | undefined;
+    static fromSources(sources: readonly WorkspaceModelSource[], limits?: ModelPreparationLimits): ModelWorkspace;
+    static collect(entryModelId: string, provider: ModelSourceProvider, options?: ModelCollectionOptions): Promise<ModelWorkspace>;
+    expand(entryModelId: string): string;
+    tryExpand(entryModelId: string): A12Result<string, ModelPreparationError>;
+    prepare(entryModelId: string): PreparedModel;
+    tryPrepare(entryModelId: string): A12Result<PreparedModel, ModelPreparationError>;
+}
+
+## PlacementDocumentInputV1
+export interface PlacementDocumentInputV1 {
+    readonly version: 1;
+    readonly groups: readonly GroupPlacementInput[];
+    readonly fields: readonly FieldPlacementInput[];
+}
+
+## PreparedDocumentApi
+export declare class PreparedDocumentApi {
+    private readonly core;
+    isSnapshot(value: unknown): value is DocumentSnapshot;
+    decodePlacements(input: unknown, options?: DocumentDecodeOptions): DocumentSnapshot;
+    tryDecodePlacements(input: unknown, options?: DocumentDecodeOptions): A12Result<DocumentSnapshot, DocumentInputError>;
+    readPlacements(input: PlacementDocumentInputV1, options?: DocumentDecodeOptions): DocumentSnapshot;
+    encodePlacements(snapshot: DocumentSnapshot): PlacementDocumentInputV1;
+    private readBridgeDocument;
+}
+
+## PreparedModel
+export declare class PreparedModel {
+    private readonly core;
+    readonly entryModelId: string;
+    readonly fingerprint: string;
+    readonly dependencies: readonly ModelDependency[];
+    readonly documents: PreparedDocumentApi;
+    readonly model: ModelMetadata;
+    static loadExpandedJson(source: string): PreparedModel;
+    static tryLoadExpandedJson(source: string): A12Result<PreparedModel, ModelPreparationError>;
+    createInterpreter(configuration?: InterpreterConfiguration): Interpreter;
+}
+
+## RelevantCoordinate
+export type RelevantCoordinate = number | "ALL";
+
+## RelevantEntityPointer
+export type RelevantEntityPointer = DocumentPointer | RelevantSelectionPointer;
+
+## RelevantSelectionPointer
+export declare class RelevantSelectionPointer {
+    readonly entityKind: ModelEntityKind;
+    readonly path: string;
+    readonly coordinates: readonly RelevantCoordinate[];
+    private constructor();
+}
+
+## UnknownModelPathError
+export declare class UnknownModelPathError extends Error {
+    readonly path: string;
+    readonly code: "A12_UNKNOWN_MODEL_PATH";
+    constructor(path: string, message?: string);
+}
+
+## UnsupportedProgram
+export interface UnsupportedProgram {
+    readonly path: string;
+    readonly reason: string;
+}
+
+## ValidationFinding
+export interface ValidationFinding {
+    readonly code: string;
+    readonly rulePath: string;
+    readonly errorPath: string;
+    readonly severity: ValidationSeverity;
+    readonly type: ValidationFindingType;
+    readonly text: string;
+    readonly referenced: readonly string[];
+    readonly fillToFix: readonly string[];
+}
+
+## ValidationFindingType
+export type ValidationFindingType = "value" | "omission";
+
+## ValidationOptions
+export interface ValidationOptions {
+    readonly locale?: string;
+}
+
+## ValidationReport
+export interface ValidationReport {
+    readonly findings: readonly ValidationFinding[];
+    readonly unsupported: readonly UnsupportedProgram[];
+    readonly noErrorOccurred: boolean;
+    readonly fullySupported: boolean;
+}
+
+## ValidationSeverity
+export type ValidationSeverity = "error" | "warning" | "info";
+
+## WorkspaceModelSource
+export interface WorkspaceModelSource {
+    readonly json: string;
+    readonly diagnosticLabel?: string;
+    readonly expectedSha256?: string;
+}

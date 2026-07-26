@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Rebuild and compare all IG79 delivery byte bases with the previous release using one collector definition.
+# Rebuild and compare all IF173 delivery byte bases with the previous release using one collector definition.
 # Numerical signals remain informative: this script promotes no threshold and changes no CI schedule.
 #
 # Usage: scripts/interpreter-delivery-footprint.sh <previous-release-ref> <runner-id>

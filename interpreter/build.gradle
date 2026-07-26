@@ -80,6 +80,36 @@ kotlin {
     }
 }
 
+// Kotlin 2.2 installs ABI validation as a nested extension of the multiplatform DSL. Configure that public
+// extension directly because Groovy cannot call the Kotlin-only `abiValidation {}` shortcut.
+def interpreterAbiValidation = kotlin.extensions
+    .getByType(org.jetbrains.kotlin.gradle.dsl.abi.AbiValidationMultiplatformExtension)
+interpreterAbiValidation.enabled.set(true)
+interpreterAbiValidation.filters {
+    included {
+        // The release contract is the package-root façade. Engine implementation packages remain public only
+        // where another module still consumes them during the pre-1.0 migration; publishing must not freeze them.
+        byNames.add('io.github.mbackschat.a12.dm.interpreter.*')
+    }
+    excluded {
+        // These root-package declarations predate the model-owned façade and expose engine storage/arithmetic
+        // types. They remain callable by in-repo migration consumers but are not part of the published contract.
+        byNames.addAll([
+            'io.github.mbackschat.a12.dm.interpreter.Big',
+            'io.github.mbackschat.a12.dm.interpreter.Dec',
+            'io.github.mbackschat.a12.dm.interpreter.Dec_jvmKt',
+            'io.github.mbackschat.a12.dm.interpreter.DEC_ZERO',
+            'io.github.mbackschat.a12.dm.interpreter.DmInterpreter',
+            'io.github.mbackschat.a12.dm.interpreter.InvalidModelTimeZoneException',
+            'io.github.mbackschat.a12.dm.interpreter.RoundMode',
+            'io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException',
+            'io.github.mbackschat.a12.dm.interpreter.UnsupportedModelTimeZoneException',
+            'io.github.mbackschat.a12.dm.interpreter.dec',
+            'io.github.mbackschat.a12.dm.interpreter.decOrNull',
+        ])
+    }
+}
+
 // The footprint workers must stay KMP/kernel-free, while their models must be authored through the public
 // modelkit/EditSession/rulekit surface. :adapter owns that typed author + freshness guard; this task turns its
 // three committed canonical serializations into commonTest constants consumed identically by JVM and Node.
@@ -936,6 +966,11 @@ tasks.named('check') {
 // gate pass when the publication is incomplete.
 def interpreterStagingMavenDir = rootProject.layout.buildDirectory.dir('interpreter-release/maven')
 def interpreterPublicRepository = 'https://github.com/mbackschat/a12-interpreter-releases'
+def cleanInterpreterMavenStaging = tasks.register('cleanInterpreterMavenStaging', Delete) {
+    group = 'build'
+    description = 'Remove stale interpreter Maven files before staging one coherent publication.'
+    delete interpreterStagingMavenDir
+}
 
 dokka {
     dokkaPublications {
@@ -1002,6 +1037,12 @@ publishing {
         }
     }
 }
+tasks.withType(org.gradle.api.publish.maven.tasks.PublishToMavenRepository).configureEach { publishTask ->
+    if (publishTask.repository.name == 'interpreterStaging') {
+        publishTask.dependsOn cleanInterpreterMavenStaging
+        publishTask.mustRunAfter cleanInterpreterMavenStaging
+    }
+}
 
 def externalConsumerSourceDir = file('consumer-tests/kotlin-jvm')
 def externalConsumerBuildDir = rootProject.layout.buildDirectory.dir(
@@ -1009,6 +1050,13 @@ def externalConsumerBuildDir = rootProject.layout.buildDirectory.dir(
 )
 def externalConsumerGradleHome = rootProject.layout.buildDirectory.dir(
     'interpreter-release/consumer-gradle-home',
+)
+def externalJsConsumerSourceDir = file('consumer-tests/kotlin-js')
+def externalJsConsumerBuildDir = rootProject.layout.buildDirectory.dir(
+    'interpreter-release/consumer/kotlin-js',
+)
+def externalJsConsumerGradleHome = rootProject.layout.buildDirectory.dir(
+    'interpreter-release/consumer-js-gradle-home',
 )
 def externalConsumerFixture = file(
     'src/commonTest/resources/workspace-preparation/self-contained/permit-basic.dm.json',
@@ -1028,6 +1076,27 @@ def prepareExternalInterpreterConsumer = tasks.register(
         .withPropertyName('typedAuthoredConsumerModel')
         .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
     outputs.upToDateWhen { false }
+}
+def prepareExternalInterpreterJsConsumer = tasks.register(
+    'prepareExternalInterpreterJsConsumer',
+    Sync,
+) {
+    group = 'verification'
+    description = 'Create a fresh standalone Kotlin/JS consumer for the staged interpreter publication.'
+    from(externalJsConsumerSourceDir)
+    from(externalConsumerFixture) {
+        into('src/jsMain/resources')
+    }
+    into(externalJsConsumerBuildDir)
+    inputs.file(externalConsumerFixture)
+        .withPropertyName('typedAuthoredJsConsumerModel')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    outputs.upToDateWhen { false }
+    doFirst {
+        // Kotlin/JS installs symlinked node_modules below the disposable build. Recreate the consumer before
+        // Sync inspects that old output so a second verification is as isolated as the first.
+        project.delete(externalJsConsumerBuildDir)
+    }
 }
 
 def publishInterpreterToStaging = tasks.named(
@@ -1066,11 +1135,43 @@ def verifyExternalInterpreterConsumer = tasks.register(
         )
     }
 }
+def verifyExternalInterpreterJsConsumer = tasks.register(
+    'verifyExternalInterpreterMavenJsConsumer',
+    Exec,
+) {
+    group = 'verification'
+    description = 'Resolve and execute dm-interpreter from a fresh standalone Kotlin/JS build.'
+    dependsOn publishInterpreterToStaging
+    dependsOn prepareExternalInterpreterJsConsumer
+    inputs.dir(externalJsConsumerSourceDir)
+        .withPropertyName('externalJsConsumerSources')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    inputs.file(externalConsumerFixture)
+        .withPropertyName('externalJsConsumerModel')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    inputs.property('interpreterVersion', provider { project.version.toString() })
+    outputs.upToDateWhen { false }
+    doFirst {
+        environment 'INTERPRETER_MAVEN_REPOSITORY', interpreterStagingMavenDir.get().asFile.toURI()
+        environment 'INTERPRETER_VERSION', project.version.toString()
+        environment 'GRADLE_USER_HOME', externalJsConsumerGradleHome.get().asFile.absolutePath
+        commandLine(
+            rootProject.file('gradlew').absolutePath,
+            '--no-daemon',
+            '--console=plain',
+            '--project-dir',
+            externalJsConsumerBuildDir.get().asFile.absolutePath,
+            'clean',
+            'jsNodeDevelopmentRun',
+        )
+    }
+}
 
 def verifyInterpreterMavenPublication = tasks.register('verifyInterpreterMavenPublication') {
     group = 'verification'
     description = 'Verify the staged independent dm-interpreter Maven publication and external consumer.'
     dependsOn verifyExternalInterpreterConsumer
+    dependsOn verifyExternalInterpreterJsConsumer
     inputs.file(interpreterVersionFile)
     inputs.dir(interpreterStagingMavenDir)
     doLast {
@@ -1155,6 +1256,9 @@ def interpreterNpmPackageBuildDir = layout.buildDirectory.dir('npm-package')
 def interpreterTypeScriptSourceDir = file('typescript')
 def interpreterTypeScriptCompiler = rootProject.layout.projectDirectory.file(
     'build/js/node_modules/typescript/bin/tsc',
+)
+def interpreterTypeScriptModule = rootProject.layout.projectDirectory.file(
+    'build/js/node_modules/typescript/lib/typescript.js',
 )
 def stageInterpreterNpmPackage = tasks.register('stageInterpreterNpmPackage', Sync) {
     group = 'build'
@@ -1530,6 +1634,399 @@ def verifyInterpreterNpmPublication = tasks.register('verifyInterpreterNpmPublic
 }
 tasks.named('check') {
     dependsOn verifyInterpreterNpmPublication
+}
+
+// --- R3.3 ABI, package-content, dependency, secret, and checksum locks ------------------------------
+def interpreterApiDir = file('api')
+def interpreterReleaseContractBuildDir = layout.buildDirectory.dir('release-contract')
+def generatedTypeScriptApi = interpreterReleaseContractBuildDir.map {
+    it.file('typescript.api')
+}
+def generatedNpmPackageManifest = interpreterReleaseContractBuildDir.map {
+    it.file('npm-package-files.txt')
+}
+def generatedMavenPackageManifest = interpreterReleaseContractBuildDir.map {
+    it.file('maven-package-files.txt')
+}
+def committedTypeScriptApi = new File(interpreterApiDir, 'typescript.api')
+def committedNpmPackageManifest = new File(interpreterApiDir, 'npm-package-files.txt')
+def committedMavenPackageManifest = new File(interpreterApiDir, 'maven-package-files.txt')
+
+def verifyInterpreterTypeScriptApiTool = tasks.register(
+    'verifyInterpreterTypeScriptApiTool',
+    Exec,
+) {
+    group = 'verification'
+    description = 'Prove that the TypeScript ABI renderer rejects package-local support types.'
+    dependsOn compileInterpreterTypeScriptFacade
+    inputs.files(
+        new File(interpreterTypeScriptSourceDir, 'scripts/public-api.mjs'),
+        new File(interpreterTypeScriptSourceDir, 'scripts/public-api.test.mjs'),
+    )
+    environment(
+        'INTERPRETER_TYPESCRIPT_MODULE',
+        interpreterTypeScriptModule.asFile.absolutePath,
+    )
+    commandLine(
+        'node',
+        '--test',
+        new File(
+            interpreterTypeScriptSourceDir,
+            'scripts/public-api.test.mjs',
+        ).absolutePath,
+    )
+}
+
+def generateInterpreterTypeScriptApi = tasks.register(
+    'generateInterpreterTypeScriptApi',
+    Exec,
+) {
+    group = 'build'
+    description = 'Render the package-root TypeScript exports as one deterministic reviewed ABI.'
+    dependsOn compileInterpreterTypeScriptFacade
+    dependsOn verifyInterpreterTypeScriptApiTool
+    inputs.file(new File(interpreterTypeScriptSourceDir, 'scripts/public-api.mjs'))
+    inputs.dir(interpreterNpmPackageBuildDir.map { it.dir('dist') })
+    outputs.file(generatedTypeScriptApi)
+    doFirst {
+        generatedTypeScriptApi.get().asFile.parentFile.mkdirs()
+        commandLine(
+            'node',
+            new File(interpreterTypeScriptSourceDir, 'scripts/public-api.mjs').absolutePath,
+            interpreterTypeScriptModule.asFile.absolutePath,
+            interpreterNpmPackageBuildDir.get().file('dist/index.d.ts').asFile.absolutePath,
+            generatedTypeScriptApi.get().asFile.absolutePath,
+        )
+    }
+}
+
+def normalizeMavenPackagePath = { String path ->
+    def normalized = path.replace(project.version.toString(), '<version>')
+    if (project.version.toString().endsWith('-SNAPSHOT')) {
+        def baseVersion = project.version.toString() - '-SNAPSHOT'
+        normalized = normalized.replaceAll(
+            java.util.regex.Pattern.quote(baseVersion) + /-\d{8}\.\d{6}-\d+/,
+            '<snapshot-build>',
+        )
+    }
+    normalized
+}
+def packageManifestText = { Collection<String> entries ->
+    entries.toSet().toList().sort().join('\n') + '\n'
+}
+def generateInterpreterPackageManifests = tasks.register(
+    'generateInterpreterPackageManifests',
+) {
+    group = 'build'
+    description = 'Render exact npm and normalized Maven staged-file manifests.'
+    dependsOn packInterpreterNpmPackage
+    dependsOn publishInterpreterToStaging
+    inputs.file(interpreterNpmTarball)
+    inputs.dir(interpreterStagingMavenDir)
+    outputs.file(generatedNpmPackageManifest)
+    outputs.file(generatedMavenPackageManifest)
+    doLast {
+        def npmEntries = []
+        tarTree(interpreterNpmTarball.get().asFile).visit { details ->
+            if (!details.directory) {
+                npmEntries += details.relativePath.pathString
+            }
+        }
+        def mavenRoot = interpreterStagingMavenDir.get().asFile
+        def mavenEntries = fileTree(mavenRoot).files.collect { published ->
+            normalizeMavenPackagePath(
+                mavenRoot.toPath().relativize(published.toPath()).toString().replace('\\', '/'),
+            )
+        }
+        if (!npmEntries || !mavenEntries) {
+            throw new GradleException('interpreter package manifests cannot be empty')
+        }
+        def npmManifestFile = generatedNpmPackageManifest.get().asFile
+        def mavenManifestFile = generatedMavenPackageManifest.get().asFile
+        npmManifestFile.parentFile.mkdirs()
+        npmManifestFile.setText(packageManifestText(npmEntries), 'UTF-8')
+        mavenManifestFile.setText(packageManifestText(mavenEntries), 'UTF-8')
+    }
+}
+
+def assertReleaseContract = { String label, File committed, File generated ->
+    if (!committed.isFile()) {
+        throw new GradleException(
+            "missing reviewed ${label} ${committed}; run :interpreter:updateInterpreterReleaseContracts",
+        )
+    }
+    if (committed.getText('UTF-8') != generated.getText('UTF-8')) {
+        throw new GradleException(
+            "${label} drifted from ${committed}; run :interpreter:updateInterpreterReleaseContracts " +
+                'and review the diff',
+        )
+    }
+}
+def collectCoordinates
+collectCoordinates = { value, Set<String> sink ->
+    if (value instanceof Map) {
+        if (value.group instanceof String && value.module instanceof String) {
+            sink.add("${value.group}:${value.module}")
+        }
+        value.values().each { child -> collectCoordinates(child, sink) }
+    } else if (value instanceof Collection) {
+        value.each { child -> collectCoordinates(child, sink) }
+    }
+}
+def releaseSecretPatterns = [
+    [
+        name: 'corporate email/domain',
+        pattern: java.util.regex.Pattern.compile('(?i)mgm-tp\\.com'),
+    ],
+    [
+        name: 'machine-local Unix path',
+        pattern: java.util.regex.Pattern.compile('(?:/Users/|/home/[^/\\s]+/)'),
+    ],
+    [
+        name: 'machine-local Windows path',
+        pattern: java.util.regex.Pattern.compile('(?i)[A-Z]:\\\\Users\\\\'),
+    ],
+    [
+        name: 'machine-local file URL',
+        pattern: java.util.regex.Pattern.compile('(?i)file:(?://)?(?:/Users/|/home/|[A-Z]:)'),
+    ],
+    [
+        name: 'private repository URL',
+        pattern: java.util.regex.Pattern.compile(
+            '(?i)https?://[^\\s"<>]*(?:artifactory|nexus|mgmtp)',
+        ),
+    ],
+    [
+        name: 'GitHub/npm token',
+        pattern: java.util.regex.Pattern.compile(
+            '(?i)(?:gh[pousr]|github_pat|npm)_[A-Za-z0-9_]{20,}',
+        ),
+    ],
+    [
+        name: 'private key',
+        pattern: java.util.regex.Pattern.compile(
+            '-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----',
+        ),
+    ],
+]
+def scanReleaseText = { String label, String text, List<String> violations ->
+    releaseSecretPatterns.each { rule ->
+        if (rule.pattern.matcher(text).find()) {
+            violations += "${label}: ${rule.name}"
+        }
+    }
+}
+
+def verifyInterpreterReleaseContracts = tasks.register(
+    'verifyInterpreterReleaseContracts',
+) {
+    group = 'verification'
+    description = 'Lock TypeScript ABI and exact package contents; scan dependency and secret boundaries.'
+    dependsOn generateInterpreterTypeScriptApi
+    dependsOn generateInterpreterPackageManifests
+    inputs.files(
+        committedTypeScriptApi,
+        committedNpmPackageManifest,
+        committedMavenPackageManifest,
+    )
+    outputs.upToDateWhen { false }
+    doLast {
+        assertReleaseContract(
+            'TypeScript ABI',
+            committedTypeScriptApi,
+            generatedTypeScriptApi.get().asFile,
+        )
+        assertReleaseContract(
+            'npm package allowlist',
+            committedNpmPackageManifest,
+            generatedNpmPackageManifest.get().asFile,
+        )
+        assertReleaseContract(
+            'Maven package allowlist',
+            committedMavenPackageManifest,
+            generatedMavenPackageManifest.get().asFile,
+        )
+
+        def mavenRoot = interpreterStagingMavenDir.get().asFile
+        def poms = fileTree(mavenRoot) { include '**/*.pom' }.files
+        def expectedPomDependencies = [
+            'dm-interpreter': [
+                'org.jetbrains.kotlin:kotlin-stdlib:2.2.0:runtime',
+            ] as Set,
+            'dm-interpreter-jvm': [
+                'org.jetbrains.kotlin:kotlin-stdlib:2.2.0:compile',
+                'org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.9.0:runtime',
+            ] as Set,
+            'dm-interpreter-js': [
+                'org.jetbrains.kotlin:kotlin-dom-api-compat:2.2.0:compile',
+                'org.jetbrains.kotlin:kotlin-stdlib-js:2.2.0:compile',
+                'org.jetbrains.kotlinx:kotlinx-serialization-json-js:1.9.0:runtime',
+            ] as Set,
+        ]
+        def actualPomDependencies = [:].withDefault { [] as Set }
+        poms.each { pomFile ->
+            def pom = new groovy.xml.XmlSlurper().parse(pomFile)
+            def artifactId = pom.artifactId.text()
+            pom.dependencies.dependency.each { dependency ->
+                actualPomDependencies[artifactId] += [
+                    dependency.groupId.text(),
+                    dependency.artifactId.text(),
+                    dependency.version.text(),
+                    dependency.scope.text(),
+                ].join(':')
+            }
+        }
+        if (poms.size() != expectedPomDependencies.size() ||
+            actualPomDependencies != expectedPomDependencies) {
+            throw new GradleException(
+                "unexpected interpreter Maven dependency contract ${actualPomDependencies}; " +
+                    "expected ${expectedPomDependencies}",
+            )
+        }
+
+        def moduleCoordinates = [] as Set
+        fileTree(mavenRoot) { include '**/*.module' }.files.each { moduleFile ->
+            collectCoordinates(
+                new groovy.json.JsonSlurper().parse(moduleFile),
+                moduleCoordinates,
+            )
+        }
+        def expectedModuleCoordinates = [
+            'io.github.mbackschat.a12.dm:dm-interpreter',
+            'io.github.mbackschat.a12.dm:dm-interpreter-jvm',
+            'io.github.mbackschat.a12.dm:dm-interpreter-js',
+            'org.jetbrains.kotlin:kotlin-dom-api-compat',
+            'org.jetbrains.kotlin:kotlin-stdlib',
+            'org.jetbrains.kotlinx:kotlinx-serialization-json',
+        ] as Set
+        if (moduleCoordinates != expectedModuleCoordinates) {
+            throw new GradleException(
+                "unexpected interpreter Gradle-module dependency contract ${moduleCoordinates}; " +
+                    "expected ${expectedModuleCoordinates}",
+            )
+        }
+
+        def violations = []
+        def npmArchive = tarTree(interpreterNpmTarball.get().asFile)
+        npmArchive.visit { details ->
+            scanReleaseText("npm entry ${details.relativePath}", details.relativePath.pathString, violations)
+        }
+        npmArchive.files.each { packed ->
+            scanReleaseText("npm payload ${packed.name}", packed.getText('UTF-8'), violations)
+        }
+        fileTree(mavenRoot) {
+            include '**/*.pom'
+            include '**/*.module'
+            include '**/*.json'
+        }.files.each { metadata ->
+            scanReleaseText("Maven metadata ${metadata.name}", metadata.getText('UTF-8'), violations)
+        }
+        fileTree(mavenRoot) { include '**/*-sources.jar' }.files.each { sourcesJar ->
+            zipTree(sourcesJar).matching {
+                include '**/*.kt'
+                include '**/*.java'
+                include '**/*.json'
+                include '**/*.md'
+            }.files.each { source ->
+                scanReleaseText("Maven source ${source.name}", source.getText('UTF-8'), violations)
+            }
+        }
+        if (violations) {
+            throw new GradleException(
+                "interpreter release artifacts expose secret/private-source markers:\n  " +
+                    violations.toSet().toList().sort().join('\n  '),
+            )
+        }
+    }
+}
+
+def updateInterpreterReleaseContracts = tasks.register(
+    'updateInterpreterReleaseContracts',
+) {
+    group = 'documentation'
+    description = 'Regenerate reviewed TypeScript ABI and package-content allowlists.'
+    dependsOn generateInterpreterTypeScriptApi
+    dependsOn generateInterpreterPackageManifests
+    outputs.upToDateWhen { false }
+    doLast {
+        interpreterApiDir.mkdirs()
+        [
+            (generatedTypeScriptApi.get().asFile): committedTypeScriptApi,
+            (generatedNpmPackageManifest.get().asFile): committedNpmPackageManifest,
+            (generatedMavenPackageManifest.get().asFile): committedMavenPackageManifest,
+        ].each { generated, committed ->
+            committed.setText(generated.getText('UTF-8'), 'UTF-8')
+        }
+    }
+}
+
+def sha256File = { File artifact ->
+    def digest = java.security.MessageDigest.getInstance('SHA-256')
+    artifact.withInputStream { input ->
+        def buffer = new byte[64 * 1024]
+        for (int read = input.read(buffer); read >= 0; read = input.read(buffer)) {
+            if (read > 0) {
+                digest.update(buffer, 0, read)
+            }
+        }
+    }
+    digest.digest().collect { String.format('%02x', it & 0xff) }.join()
+}
+def interpreterChecksums = rootProject.layout.buildDirectory.file(
+    'interpreter-release/SHA256SUMS',
+)
+def generateInterpreterReleaseChecksums = tasks.register(
+    'generateInterpreterReleaseChecksums',
+) {
+    group = 'build'
+    description = 'Write one stable, sorted SHA-256 manifest for the staged npm and Maven payloads.'
+    dependsOn verifyInterpreterReleaseContracts
+    outputs.file(interpreterChecksums)
+    doLast {
+        def assets = [:]
+        assets["npm/${interpreterNpmTarball.get().asFile.name}"] =
+            interpreterNpmTarball.get().asFile
+        def mavenRoot = interpreterStagingMavenDir.get().asFile
+        fileTree(mavenRoot).files.findAll { artifact ->
+            !artifact.name.matches(/.*\.(?:md5|sha1|sha256|sha512)$/) &&
+                artifact.name != 'maven-metadata.xml'
+        }.each { artifact ->
+            def relative = mavenRoot.toPath()
+                .relativize(artifact.toPath())
+                .toString()
+                .replace('\\', '/')
+            assets["maven/${relative}"] = artifact
+        }
+        def render = {
+            assets.keySet().toList().sort().collect { relative ->
+                "${sha256File(assets[relative])}  ${relative}"
+            }.join('\n') + '\n'
+        }
+        def first = render()
+        def second = render()
+        if (first != second) {
+            throw new GradleException('interpreter checksum rendering is not deterministic')
+        }
+        def target = interpreterChecksums.get().asFile
+        target.parentFile.mkdirs()
+        target.setText(first, 'UTF-8')
+    }
+}
+
+def verifyInterpreterReleaseArtifacts = tasks.register(
+    'verifyInterpreterReleaseArtifacts',
+) {
+    group = 'verification'
+    description = 'Run the complete local Maven/npm ABI, package, purity, consumer, and checksum gate.'
+    dependsOn tasks.named('checkLegacyAbi')
+    dependsOn verifyInterpreterReleaseContracts
+    dependsOn generateInterpreterReleaseChecksums
+    dependsOn verifyInterpreterMavenPublication
+    dependsOn verifyInterpreterNpmPublication
+    dependsOn verifyInterpreterPurity
+}
+tasks.named('check') {
+    dependsOn verifyInterpreterReleaseArtifacts
 }
 
 // --- Conformance corpus replay ---------------------------------------------------------------------

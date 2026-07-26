@@ -1,0 +1,236 @@
+// Klib ABI Dump
+// Targets: [js]
+// Rendering settings:
+// - Signature version: 2
+// - Show manifest properties: true
+// - Show declarations: true
+
+// Library unique name: <io.github.mbackschat.a12.dm:interpreter>
+final enum class io.github.mbackschat.a12.dm.interpreter/ComputationOutcome : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/ComputationOutcome> { // io.github.mbackschat.a12.dm.interpreter/ComputationOutcome|null[0]
+    enum entry CLEARED // io.github.mbackschat.a12.dm.interpreter/ComputationOutcome.CLEARED|null[0]
+    enum entry ERRORED // io.github.mbackschat.a12.dm.interpreter/ComputationOutcome.ERRORED|null[0]
+    enum entry VALUE // io.github.mbackschat.a12.dm.interpreter/ComputationOutcome.VALUE|null[0]
+}
+
+final enum class io.github.mbackschat.a12.dm.interpreter/CustomizationKind : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/CustomizationKind> { // io.github.mbackschat.a12.dm.interpreter/CustomizationKind|null[0]
+    enum entry CUSTOM_CONDITION // io.github.mbackschat.a12.dm.interpreter/CustomizationKind.CUSTOM_CONDITION|null[0]
+    enum entry CUSTOM_FIELD_TYPE // io.github.mbackschat.a12.dm.interpreter/CustomizationKind.CUSTOM_FIELD_TYPE|null[0]
+}
+
+final enum class io.github.mbackschat.a12.dm.interpreter/CustomizationRegistrationReason : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/CustomizationRegistrationReason> { // io.github.mbackschat.a12.dm.interpreter/CustomizationRegistrationReason|null[0]
+    enum entry DUPLICATE_NAME // io.github.mbackschat.a12.dm.interpreter/CustomizationRegistrationReason.DUPLICATE_NAME|null[0]
+    enum entry EMPTY_NAME // io.github.mbackschat.a12.dm.interpreter/CustomizationRegistrationReason.EMPTY_NAME|null[0]
+}
+
+final enum class io.github.mbackschat.a12.dm.interpreter/DocumentCoordinateReason : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/DocumentCoordinateReason> { // io.github.mbackschat.a12.dm.interpreter/DocumentCoordinateReason|null[0]
+    enum entry COORDINATE_COUNT_MISMATCH // io.github.mbackschat.a12.dm.interpreter/DocumentCoordinateReason.COORDINATE_COUNT_MISMATCH|null[0]
+    enum entry INVALID_COORDINATE // io.github.mbackschat.a12.dm.interpreter/DocumentCoordinateReason.INVALID_COORDINATE|null[0]
+    enum entry INVALID_FIELD_REPETITION // io.github.mbackschat.a12.dm.interpreter/DocumentCoordinateReason.INVALID_FIELD_REPETITION|null[0]
+}
+
+final enum class io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode> { // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode|null[0]
+    enum entry CONFLICTING_PLACEMENT // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.CONFLICTING_PLACEMENT|null[0]
+    enum entry COORDINATE_COUNT_MISMATCH // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.COORDINATE_COUNT_MISMATCH|null[0]
+    enum entry DUPLICATE_PLACEMENT // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.DUPLICATE_PLACEMENT|null[0]
+    enum entry INVALID_COORDINATE // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.INVALID_COORDINATE|null[0]
+    enum entry INVALID_FIELD_REPETITION // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.INVALID_FIELD_REPETITION|null[0]
+    enum entry RESOURCE_LIMIT_EXCEEDED // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.RESOURCE_LIMIT_EXCEEDED|null[0]
+    enum entry UNKNOWN_MODEL_PATH // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.UNKNOWN_MODEL_PATH|null[0]
+    enum entry UNSUPPORTED_VERSION // io.github.mbackschat.a12.dm.interpreter/DocumentInputReasonCode.UNSUPPORTED_VERSION|null[0]
+}
+
+final enum class io.github.mbackschat.a12.dm.interpreter/DocumentInputResource : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/DocumentInputResource> { // io.github.mbackschat.a12.dm.interpreter/DocumentInputResource|null[0]
+    enum entry COORDINATES_PER_PLACEMENT // io.github.mbackschat.a12.dm.interpreter/DocumentInputResource.COORDINATES_PER_PLACEMENT|null[0]
+    enum entry FIELD_PLACEMENTS // io.github.mbackschat.a12.dm.interpreter/DocumentInputResource.FIELD_PLACEMENTS|null[0]
+    enum entry GROUP_PLACEMENTS // io.github.mbackschat.a12.dm.interpreter/DocumentInputResource.GROUP_PLACEMENTS|null[0]
+    enum entry MODEL_NESTING_DEPTH // io.github.mbackschat.a12.dm.interpreter/DocumentInputResource.MODEL_NESTING_DEPTH|null[0]
+    enum entry PATH_CODE_UNITS // io.github.mbackschat.a12.dm.interpreter/DocumentInputResource.PATH_CODE_UNITS|null[0]
+    enum entry RAW_CODE_UNITS_PER_FIELD // io.github.mbackschat.a12.dm.interpreter/DocumentInputResource.RAW_CODE_UNITS_PER_FIELD|null[0]
+    enum entry TOTAL_RAW_CODE_UNITS // io.github.mbackschat.a12.dm.interpreter/DocumentInputResource.TOTAL_RAW_CODE_UNITS|null[0]
+}
+
+final enum class io.github.mbackschat.a12.dm.interpreter/DocumentPlacementKind : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/DocumentPlacementKind> { // io.github.mbackschat.a12.dm.interpreter/DocumentPlacementKind|null[0]
+    enum entry FIELD // io.github.mbackschat.a12.dm.interpreter/DocumentPlacementKind.FIELD|null[0]
+    enum entry GROUP // io.github.mbackschat.a12.dm.interpreter/DocumentPlacementKind.GROUP|null[0]
+}
+
+final enum class io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationPhase : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationPhase> { // io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationPhase|null[0]
+    enum entry BIND // io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationPhase.BIND|null[0]
+    enum entry EVALUATE // io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationPhase.EVALUATE|null[0]
+}
+
+final enum class io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationReason : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationReason> { // io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationReason|null[0]
+    enum entry CALLBACK_THREW // io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationReason.CALLBACK_THREW|null[0]
+    enum entry FACTORY_THREW // io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationReason.FACTORY_THREW|null[0]
+    enum entry REENTRANT_EVALUATION // io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationReason.REENTRANT_EVALUATION|null[0]
+}
+
+final enum class io.github.mbackschat.a12.dm.interpreter/ModelEntityKind : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/ModelEntityKind> { // io.github.mbackschat.a12.dm.interpreter/ModelEntityKind|null[0]
+    enum entry FIELD // io.github.mbackschat.a12.dm.interpreter/ModelEntityKind.FIELD|null[0]
+    enum entry GROUP // io.github.mbackschat.a12.dm.interpreter/ModelEntityKind.GROUP|null[0]
+}
+
+final enum class io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode> { // io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode|null[0]
+    enum entry AMBIGUOUS_TYPE_DEFINITION // io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode.AMBIGUOUS_TYPE_DEFINITION|null[0]
+    enum entry DUPLICATE_MODEL_ID // io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode.DUPLICATE_MODEL_ID|null[0]
+    enum entry ENTRY_MODEL_NOT_FOUND // io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode.ENTRY_MODEL_NOT_FOUND|null[0]
+    enum entry INCOMPATIBLE_CONDITION_LANGUAGE // io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode.INCOMPATIBLE_CONDITION_LANGUAGE|null[0]
+    enum entry INVALID_INCLUDE_MOUNT // io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode.INVALID_INCLUDE_MOUNT|null[0]
+    enum entry INVALID_MODEL_SOURCE // io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode.INVALID_MODEL_SOURCE|null[0]
+    enum entry MODEL_REFERENCE_CYCLE // io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode.MODEL_REFERENCE_CYCLE|null[0]
+    enum entry MODEL_SOURCE_ID_MISMATCH // io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode.MODEL_SOURCE_ID_MISMATCH|null[0]
+    enum entry MODEL_SOURCE_INTEGRITY_MISMATCH // io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode.MODEL_SOURCE_INTEGRITY_MISMATCH|null[0]
+    enum entry MODEL_SOURCE_PROVIDER_FAILED // io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode.MODEL_SOURCE_PROVIDER_FAILED|null[0]
+    enum entry RESOURCE_LIMIT_EXCEEDED // io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode.RESOURCE_LIMIT_EXCEEDED|null[0]
+    enum entry UNMAPPED_INCLUDED_REFERENCE // io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode.UNMAPPED_INCLUDED_REFERENCE|null[0]
+    enum entry UNPREPARED_MODEL_RESIDUE // io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode.UNPREPARED_MODEL_RESIDUE|null[0]
+    enum entry UNRESOLVED_MODEL_REFERENCE // io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode.UNRESOLVED_MODEL_REFERENCE|null[0]
+    enum entry UNSUPPORTED_DATE_PRECISION // io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode.UNSUPPORTED_DATE_PRECISION|null[0]
+    enum entry UNSUPPORTED_TIME_ZONE // io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnosticCode.UNSUPPORTED_TIME_ZONE|null[0]
+}
+
+final enum class io.github.mbackschat.a12.dm.interpreter/ModelPreparationResource : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/ModelPreparationResource> { // io.github.mbackschat.a12.dm.interpreter/ModelPreparationResource|null[0]
+    enum entry MODEL_BYTES // io.github.mbackschat.a12.dm.interpreter/ModelPreparationResource.MODEL_BYTES|null[0]
+    enum entry MODEL_COUNT // io.github.mbackschat.a12.dm.interpreter/ModelPreparationResource.MODEL_COUNT|null[0]
+    enum entry PREPARED_BYTES // io.github.mbackschat.a12.dm.interpreter/ModelPreparationResource.PREPARED_BYTES|null[0]
+    enum entry PREPARED_ELEMENTS // io.github.mbackschat.a12.dm.interpreter/ModelPreparationResource.PREPARED_ELEMENTS|null[0]
+    enum entry REFERENCE_DEPTH // io.github.mbackschat.a12.dm.interpreter/ModelPreparationResource.REFERENCE_DEPTH|null[0]
+    enum entry REFERENCE_EDGES // io.github.mbackschat.a12.dm.interpreter/ModelPreparationResource.REFERENCE_EDGES|null[0]
+    enum entry STRUCTURE_DEPTH // io.github.mbackschat.a12.dm.interpreter/ModelPreparationResource.STRUCTURE_DEPTH|null[0]
+    enum entry TOTAL_BYTES // io.github.mbackschat.a12.dm.interpreter/ModelPreparationResource.TOTAL_BYTES|null[0]
+}
+
+final enum class io.github.mbackschat.a12.dm.interpreter/ModelReferencePurpose : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/ModelReferencePurpose> { // io.github.mbackschat.a12.dm.interpreter/ModelReferencePurpose|null[0]
+    enum entry INCLUDE // io.github.mbackschat.a12.dm.interpreter/ModelReferencePurpose.INCLUDE|null[0]
+    enum entry TYPE_DEFINITIONS // io.github.mbackschat.a12.dm.interpreter/ModelReferencePurpose.TYPE_DEFINITIONS|null[0]
+}
+
+final enum class io.github.mbackschat.a12.dm.interpreter/ModelSourceProviderFailureReason : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/ModelSourceProviderFailureReason> { // io.github.mbackschat.a12.dm.interpreter/ModelSourceProviderFailureReason|null[0]
+    enum entry ACCESS_DENIED // io.github.mbackschat.a12.dm.interpreter/ModelSourceProviderFailureReason.ACCESS_DENIED|null[0]
+    enum entry CANCELLED // io.github.mbackschat.a12.dm.interpreter/ModelSourceProviderFailureReason.CANCELLED|null[0]
+    enum entry INTEGRITY_MISMATCH // io.github.mbackschat.a12.dm.interpreter/ModelSourceProviderFailureReason.INTEGRITY_MISMATCH|null[0]
+    enum entry PROVIDER_FAILED // io.github.mbackschat.a12.dm.interpreter/ModelSourceProviderFailureReason.PROVIDER_FAILED|null[0]
+    enum entry SOURCE_TOO_LARGE // io.github.mbackschat.a12.dm.interpreter/ModelSourceProviderFailureReason.SOURCE_TOO_LARGE|null[0]
+    enum entry UNAVAILABLE // io.github.mbackschat.a12.dm.interpreter/ModelSourceProviderFailureReason.UNAVAILABLE|null[0]
+}
+
+final enum class io.github.mbackschat.a12.dm.interpreter/ValidationFindingType : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/ValidationFindingType> { // io.github.mbackschat.a12.dm.interpreter/ValidationFindingType|null[0]
+    enum entry OMISSION // io.github.mbackschat.a12.dm.interpreter/ValidationFindingType.OMISSION|null[0]
+    enum entry VALUE // io.github.mbackschat.a12.dm.interpreter/ValidationFindingType.VALUE|null[0]
+}
+
+final enum class io.github.mbackschat.a12.dm.interpreter/ValidationSeverity : kotlin/Enum<io.github.mbackschat.a12.dm.interpreter/ValidationSeverity> { // io.github.mbackschat.a12.dm.interpreter/ValidationSeverity|null[0]
+    enum entry ERROR // io.github.mbackschat.a12.dm.interpreter/ValidationSeverity.ERROR|null[0]
+    enum entry INFO // io.github.mbackschat.a12.dm.interpreter/ValidationSeverity.INFO|null[0]
+    enum entry WARNING // io.github.mbackschat.a12.dm.interpreter/ValidationSeverity.WARNING|null[0]
+}
+
+abstract fun interface io.github.mbackschat.a12.dm.interpreter/CustomCondition // io.github.mbackschat.a12.dm.interpreter/CustomCondition|null[0]
+
+abstract fun interface io.github.mbackschat.a12.dm.interpreter/CustomConditionFactory // io.github.mbackschat.a12.dm.interpreter/CustomConditionFactory|null[0]
+
+abstract fun interface io.github.mbackschat.a12.dm.interpreter/CustomFieldTypeFactory // io.github.mbackschat.a12.dm.interpreter/CustomFieldTypeFactory|null[0]
+
+abstract fun interface io.github.mbackschat.a12.dm.interpreter/CustomFieldValidator // io.github.mbackschat.a12.dm.interpreter/CustomFieldValidator|null[0]
+
+abstract interface io.github.mbackschat.a12.dm.interpreter/DocumentInputDiagnostic // io.github.mbackschat.a12.dm.interpreter/DocumentInputDiagnostic|null[0]
+
+abstract interface io.github.mbackschat.a12.dm.interpreter/ModelCollectionSignal // io.github.mbackschat.a12.dm.interpreter/ModelCollectionSignal|null[0]
+
+abstract interface io.github.mbackschat.a12.dm.interpreter/ModelOwned // io.github.mbackschat.a12.dm.interpreter/ModelOwned|null[0]
+
+abstract interface io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnostic // io.github.mbackschat.a12.dm.interpreter/ModelPreparationDiagnostic|null[0]
+
+abstract interface io.github.mbackschat.a12.dm.interpreter/ModelSourceProvider // io.github.mbackschat.a12.dm.interpreter/ModelSourceProvider|null[0]
+
+sealed interface io.github.mbackschat.a12.dm.interpreter/CustomFieldValidationResult // io.github.mbackschat.a12.dm.interpreter/CustomFieldValidationResult|null[0]
+
+sealed interface io.github.mbackschat.a12.dm.interpreter/DocumentPointer : io.github.mbackschat.a12.dm.interpreter/RelevantEntityPointer // io.github.mbackschat.a12.dm.interpreter/DocumentPointer|null[0]
+
+sealed interface io.github.mbackschat.a12.dm.interpreter/ModelExpansionResult // io.github.mbackschat.a12.dm.interpreter/ModelExpansionResult|null[0]
+
+sealed interface io.github.mbackschat.a12.dm.interpreter/ModelPreparationResult // io.github.mbackschat.a12.dm.interpreter/ModelPreparationResult|null[0]
+
+sealed interface io.github.mbackschat.a12.dm.interpreter/RelevantCoordinate // io.github.mbackschat.a12.dm.interpreter/RelevantCoordinate|null[0]
+
+sealed interface io.github.mbackschat.a12.dm.interpreter/RelevantEntityPointer : io.github.mbackschat.a12.dm.interpreter/ModelOwned // io.github.mbackschat.a12.dm.interpreter/RelevantEntityPointer|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/ComputationReport // io.github.mbackschat.a12.dm.interpreter/ComputationReport|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/ComputationResult // io.github.mbackschat.a12.dm.interpreter/ComputationResult|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/CustomConditionDocumentView : io.github.mbackschat.a12.dm.interpreter/ModelOwned // io.github.mbackschat.a12.dm.interpreter/CustomConditionDocumentView|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/CustomConditionInvocation // io.github.mbackschat.a12.dm.interpreter/CustomConditionInvocation|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/CustomConditionRegistry // io.github.mbackschat.a12.dm.interpreter/CustomConditionRegistry|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/CustomFieldTypeRegistry // io.github.mbackschat.a12.dm.interpreter/CustomFieldTypeRegistry|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/CustomFieldValidationParameters // io.github.mbackschat.a12.dm.interpreter/CustomFieldValidationParameters|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/CustomizationRegistrationError : kotlin/IllegalArgumentException // io.github.mbackschat.a12.dm.interpreter/CustomizationRegistrationError|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/DocumentCoordinateError : kotlin/RuntimeException // io.github.mbackschat.a12.dm.interpreter/DocumentCoordinateError|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/DocumentDecodeLimits // io.github.mbackschat.a12.dm.interpreter/DocumentDecodeLimits|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/DocumentInputError : kotlin/RuntimeException // io.github.mbackschat.a12.dm.interpreter/DocumentInputError|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/DocumentSnapshot : io.github.mbackschat.a12.dm.interpreter/ModelOwned // io.github.mbackschat.a12.dm.interpreter/DocumentSnapshot|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/FieldPlacementInput // io.github.mbackschat.a12.dm.interpreter/FieldPlacementInput|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/FieldPointer : io.github.mbackschat.a12.dm.interpreter/DocumentPointer // io.github.mbackschat.a12.dm.interpreter/FieldPointer|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/GroupPlacementInput // io.github.mbackschat.a12.dm.interpreter/GroupPlacementInput|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/GroupPointer : io.github.mbackschat.a12.dm.interpreter/DocumentPointer // io.github.mbackschat.a12.dm.interpreter/GroupPointer|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/Interpreter : io.github.mbackschat.a12.dm.interpreter/ModelOwned // io.github.mbackschat.a12.dm.interpreter/Interpreter|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/InterpreterConfiguration // io.github.mbackschat.a12.dm.interpreter/InterpreterConfiguration|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationError : kotlin/RuntimeException // io.github.mbackschat.a12.dm.interpreter/InterpreterIntegrationError|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/InterpreterSupportReport // io.github.mbackschat.a12.dm.interpreter/InterpreterSupportReport|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/ModelDependency // io.github.mbackschat.a12.dm.interpreter/ModelDependency|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/ModelMetadata : io.github.mbackschat.a12.dm.interpreter/ModelOwned // io.github.mbackschat.a12.dm.interpreter/ModelMetadata|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/ModelOwnerIdentity // io.github.mbackschat.a12.dm.interpreter/ModelOwnerIdentity|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/ModelOwnerMismatchError : kotlin/RuntimeException // io.github.mbackschat.a12.dm.interpreter/ModelOwnerMismatchError|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/ModelPreparationError : kotlin/RuntimeException // io.github.mbackschat.a12.dm.interpreter/ModelPreparationError|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/ModelPreparationLimits // io.github.mbackschat.a12.dm.interpreter/ModelPreparationLimits|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/ModelReferenceStep // io.github.mbackschat.a12.dm.interpreter/ModelReferenceStep|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/ModelSourceLoadContext // io.github.mbackschat.a12.dm.interpreter/ModelSourceLoadContext|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/ModelSourceProviderError : kotlin/RuntimeException // io.github.mbackschat.a12.dm.interpreter/ModelSourceProviderError|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/ModelVersionIdentity // io.github.mbackschat.a12.dm.interpreter/ModelVersionIdentity|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/ModelWorkspace // io.github.mbackschat.a12.dm.interpreter/ModelWorkspace|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/PlacementDocumentInputV1 // io.github.mbackschat.a12.dm.interpreter/PlacementDocumentInputV1|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/PreparedDocumentApi // io.github.mbackschat.a12.dm.interpreter/PreparedDocumentApi|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/PreparedModel : io.github.mbackschat.a12.dm.interpreter/ModelOwned // io.github.mbackschat.a12.dm.interpreter/PreparedModel|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/RelevantSelectionPointer : io.github.mbackschat.a12.dm.interpreter/RelevantEntityPointer // io.github.mbackschat.a12.dm.interpreter/RelevantSelectionPointer|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/UnknownModelPathError : kotlin/RuntimeException // io.github.mbackschat.a12.dm.interpreter/UnknownModelPathError|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/UnsupportedProgram // io.github.mbackschat.a12.dm.interpreter/UnsupportedProgram|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/ValidationFinding // io.github.mbackschat.a12.dm.interpreter/ValidationFinding|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/ValidationReport // io.github.mbackschat.a12.dm.interpreter/ValidationReport|null[0]
+
+final class io.github.mbackschat.a12.dm.interpreter/WorkspaceModelSource // io.github.mbackschat.a12.dm.interpreter/WorkspaceModelSource|null[0]

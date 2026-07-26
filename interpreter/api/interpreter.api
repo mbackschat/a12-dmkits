@@ -1,0 +1,791 @@
+public final class io/github/mbackschat/a12/dm/interpreter/ComputationOutcome : java/lang/Enum {
+	public static final field CLEARED Lio/github/mbackschat/a12/dm/interpreter/ComputationOutcome;
+	public static final field ERRORED Lio/github/mbackschat/a12/dm/interpreter/ComputationOutcome;
+	public static final field VALUE Lio/github/mbackschat/a12/dm/interpreter/ComputationOutcome;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ComputationOutcome;
+	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/ComputationOutcome;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ComputationReport {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ComputationReport$Companion;
+	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getFullySupported ()Z
+	public final fun getResults ()Ljava/util/List;
+	public final fun getUnsupported ()Ljava/util/List;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ComputationResult {
+	public fun <init> (Lio/github/mbackschat/a12/dm/interpreter/FieldPointer;Lio/github/mbackschat/a12/dm/interpreter/ComputationOutcome;Ljava/lang/String;)V
+	public final fun component1 ()Lio/github/mbackschat/a12/dm/interpreter/FieldPointer;
+	public final fun component2 ()Lio/github/mbackschat/a12/dm/interpreter/ComputationOutcome;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun copy (Lio/github/mbackschat/a12/dm/interpreter/FieldPointer;Lio/github/mbackschat/a12/dm/interpreter/ComputationOutcome;Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ComputationResult;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/ComputationResult;Lio/github/mbackschat/a12/dm/interpreter/FieldPointer;Lio/github/mbackschat/a12/dm/interpreter/ComputationOutcome;Ljava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/ComputationResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOutcome ()Lio/github/mbackschat/a12/dm/interpreter/ComputationOutcome;
+	public final fun getPointer ()Lio/github/mbackschat/a12/dm/interpreter/FieldPointer;
+	public final fun getValue ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class io/github/mbackschat/a12/dm/interpreter/CustomCondition {
+	public abstract fun check (Lio/github/mbackschat/a12/dm/interpreter/CustomConditionInvocation;)Z
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/CustomConditionDocumentView : io/github/mbackschat/a12/dm/interpreter/ModelOwned {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/CustomConditionDocumentView$Companion;
+	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;Lio/github/mbackschat/a12/dm/interpreter/ModelMetadata;Lio/github/mbackschat/a12/dm/interpreter/model/CustomConditionData;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun fields ()Ljava/util/List;
+	public final fun getModel ()Lio/github/mbackschat/a12/dm/interpreter/ModelMetadata;
+	public fun getModelVersion ()Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;
+	public fun getOwner ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
+	public final fun getSnapshot ()Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;
+	public final fun value (Lio/github/mbackschat/a12/dm/interpreter/FieldPointer;)Ljava/lang/String;
+}
+
+public abstract interface class io/github/mbackschat/a12/dm/interpreter/CustomConditionFactory {
+	public abstract fun create (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/CustomCondition;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/CustomConditionInvocation {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/CustomConditionInvocation$Companion;
+	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/CustomConditionDocumentView;Ljava/util/List;Ljava/util/List;Lio/github/mbackschat/a12/dm/interpreter/FieldPointer;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getDocument ()Lio/github/mbackschat/a12/dm/interpreter/CustomConditionDocumentView;
+	public final fun getErrorPointer ()Lio/github/mbackschat/a12/dm/interpreter/FieldPointer;
+	public final fun getFormallyIncorrectEntities ()Ljava/util/List;
+	public final fun getRelevantEntities ()Ljava/util/List;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry$Companion;
+	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/CustomConditionFactory;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public static final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry$Builder;
+	public static final fun empty ()Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry;
+	public static final fun fromFactory (Lio/github/mbackschat/a12/dm/interpreter/CustomConditionFactory;)Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry;
+}
+
+public abstract interface class io/github/mbackschat/a12/dm/interpreter/CustomFieldTypeFactory {
+	public abstract fun create (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/CustomFieldValidator;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry$Companion;
+	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeFactory;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public static final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry$Builder;
+	public static final fun empty ()Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry;
+	public static final fun fromFactory (Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeFactory;)Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/CustomFieldValidationParameters {
+	public fun <init> (Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;Z)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/Integer;
+	public final fun component3 ()Ljava/lang/Integer;
+	public final fun component4 ()Z
+	public final fun copy (Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;Z)Lio/github/mbackschat/a12/dm/interpreter/CustomFieldValidationParameters;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/CustomFieldValidationParameters;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;ZILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/CustomFieldValidationParameters;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getLocale ()Ljava/lang/String;
+	public final fun getMaxLength ()Ljava/lang/Integer;
+	public final fun getMinLength ()Ljava/lang/Integer;
+	public fun hashCode ()I
+	public final fun isDisplayValue ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class io/github/mbackschat/a12/dm/interpreter/CustomFieldValidationResult {
+}
+
+public abstract interface class io/github/mbackschat/a12/dm/interpreter/CustomFieldValidator {
+	public abstract fun validate (Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/CustomFieldValidationParameters;)Lio/github/mbackschat/a12/dm/interpreter/CustomFieldValidationResult;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/CustomizationKind : java/lang/Enum {
+	public static final field CUSTOM_CONDITION Lio/github/mbackschat/a12/dm/interpreter/CustomizationKind;
+	public static final field CUSTOM_FIELD_TYPE Lio/github/mbackschat/a12/dm/interpreter/CustomizationKind;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/CustomizationKind;
+	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/CustomizationKind;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/CustomizationRegistrationError : java/lang/IllegalArgumentException {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/CustomizationRegistrationError$Companion;
+	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/CustomizationKind;Lio/github/mbackschat/a12/dm/interpreter/CustomizationRegistrationReason;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCode ()Ljava/lang/String;
+	public final fun getCustomizationKind ()Lio/github/mbackschat/a12/dm/interpreter/CustomizationKind;
+	public final fun getName ()Ljava/lang/String;
+	public final fun getReason ()Lio/github/mbackschat/a12/dm/interpreter/CustomizationRegistrationReason;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/CustomizationRegistrationReason : java/lang/Enum {
+	public static final field DUPLICATE_NAME Lio/github/mbackschat/a12/dm/interpreter/CustomizationRegistrationReason;
+	public static final field EMPTY_NAME Lio/github/mbackschat/a12/dm/interpreter/CustomizationRegistrationReason;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/CustomizationRegistrationReason;
+	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/CustomizationRegistrationReason;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/DocumentCoordinateError : java/lang/RuntimeException {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/DocumentCoordinateError$Companion;
+	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/DocumentCoordinateReason;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getActualCoordinateCount ()Ljava/lang/Integer;
+	public final fun getCode ()Ljava/lang/String;
+	public final fun getCoordinateIndex ()Ljava/lang/Integer;
+	public final fun getExpectedCoordinateCount ()Ljava/lang/Integer;
+	public final fun getPath ()Ljava/lang/String;
+	public final fun getReason ()Lio/github/mbackschat/a12/dm/interpreter/DocumentCoordinateReason;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/DocumentCoordinateReason : java/lang/Enum {
+	public static final field COORDINATE_COUNT_MISMATCH Lio/github/mbackschat/a12/dm/interpreter/DocumentCoordinateReason;
+	public static final field INVALID_COORDINATE Lio/github/mbackschat/a12/dm/interpreter/DocumentCoordinateReason;
+	public static final field INVALID_FIELD_REPETITION Lio/github/mbackschat/a12/dm/interpreter/DocumentCoordinateReason;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/DocumentCoordinateReason;
+	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/DocumentCoordinateReason;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits$Companion;
+	public static final field DEFAULT_MAX_COORDINATES_PER_PLACEMENT I
+	public static final field DEFAULT_MAX_FIELD_PLACEMENTS I
+	public static final field DEFAULT_MAX_GROUP_PLACEMENTS I
+	public static final field DEFAULT_MAX_MODEL_NESTING_DEPTH I
+	public static final field DEFAULT_MAX_PATH_CODE_UNITS I
+	public static final field DEFAULT_MAX_RAW_CODE_UNITS_PER_FIELD I
+	public static final field DEFAULT_MAX_TOTAL_RAW_CODE_UNITS I
+	public static final field HARD_MAX_COORDINATES_PER_PLACEMENT I
+	public static final field HARD_MAX_FIELD_PLACEMENTS I
+	public static final field HARD_MAX_GROUP_PLACEMENTS I
+	public static final field HARD_MAX_MODEL_NESTING_DEPTH I
+	public static final field HARD_MAX_PATH_CODE_UNITS I
+	public static final field HARD_MAX_RAW_CODE_UNITS_PER_FIELD I
+	public static final field HARD_MAX_TOTAL_RAW_CODE_UNITS I
+	public synthetic fun <init> (IIIIIIILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public static final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits$Builder;
+	public static final fun defaults ()Lio/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits;
+	public final fun getMaxCoordinatesPerPlacement ()I
+	public final fun getMaxFieldPlacements ()I
+	public final fun getMaxGroupPlacements ()I
+	public final fun getMaxModelNestingDepth ()I
+	public final fun getMaxPathCodeUnits ()I
+	public final fun getMaxRawCodeUnitsPerField ()I
+	public final fun getMaxTotalRawCodeUnits ()I
+}
+
+public abstract interface class io/github/mbackschat/a12/dm/interpreter/DocumentInputDiagnostic {
+	public fun getActual ()Ljava/lang/Long;
+	public fun getActualCoordinateCount ()Ljava/lang/Integer;
+	public fun getActualVersion ()Ljava/lang/Integer;
+	public fun getCoordinateIndex ()Ljava/lang/Integer;
+	public fun getExpectedCoordinateCount ()Ljava/lang/Integer;
+	public fun getExpectedVersion ()Ljava/lang/Integer;
+	public fun getFirstPlacementIndex ()Ljava/lang/Integer;
+	public fun getMaximum ()Ljava/lang/Long;
+	public abstract fun getMessage ()Ljava/lang/String;
+	public fun getModelPath ()Ljava/lang/String;
+	public fun getPlacementIndex ()Ljava/lang/Integer;
+	public fun getPlacementKind ()Lio/github/mbackschat/a12/dm/interpreter/DocumentPlacementKind;
+	public abstract fun getReasonCode ()Lio/github/mbackschat/a12/dm/interpreter/DocumentInputReasonCode;
+	public fun getResource ()Lio/github/mbackschat/a12/dm/interpreter/DocumentInputResource;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/DocumentInputDiagnostic$DefaultImpls {
+	public static fun getActual (Lio/github/mbackschat/a12/dm/interpreter/DocumentInputDiagnostic;)Ljava/lang/Long;
+	public static fun getActualCoordinateCount (Lio/github/mbackschat/a12/dm/interpreter/DocumentInputDiagnostic;)Ljava/lang/Integer;
+	public static fun getActualVersion (Lio/github/mbackschat/a12/dm/interpreter/DocumentInputDiagnostic;)Ljava/lang/Integer;
+	public static fun getCoordinateIndex (Lio/github/mbackschat/a12/dm/interpreter/DocumentInputDiagnostic;)Ljava/lang/Integer;
+	public static fun getExpectedCoordinateCount (Lio/github/mbackschat/a12/dm/interpreter/DocumentInputDiagnostic;)Ljava/lang/Integer;
+	public static fun getExpectedVersion (Lio/github/mbackschat/a12/dm/interpreter/DocumentInputDiagnostic;)Ljava/lang/Integer;
+	public static fun getFirstPlacementIndex (Lio/github/mbackschat/a12/dm/interpreter/DocumentInputDiagnostic;)Ljava/lang/Integer;
+	public static fun getMaximum (Lio/github/mbackschat/a12/dm/interpreter/DocumentInputDiagnostic;)Ljava/lang/Long;
+	public static fun getModelPath (Lio/github/mbackschat/a12/dm/interpreter/DocumentInputDiagnostic;)Ljava/lang/String;
+	public static fun getPlacementIndex (Lio/github/mbackschat/a12/dm/interpreter/DocumentInputDiagnostic;)Ljava/lang/Integer;
+	public static fun getPlacementKind (Lio/github/mbackschat/a12/dm/interpreter/DocumentInputDiagnostic;)Lio/github/mbackschat/a12/dm/interpreter/DocumentPlacementKind;
+	public static fun getResource (Lio/github/mbackschat/a12/dm/interpreter/DocumentInputDiagnostic;)Lio/github/mbackschat/a12/dm/interpreter/DocumentInputResource;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/DocumentInputError : java/lang/RuntimeException {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/DocumentInputError$Companion;
+	public synthetic fun <init> (Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCode ()Ljava/lang/String;
+	public final fun getDiagnostics ()Ljava/util/List;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/DocumentInputReasonCode : java/lang/Enum {
+	public static final field CONFLICTING_PLACEMENT Lio/github/mbackschat/a12/dm/interpreter/DocumentInputReasonCode;
+	public static final field COORDINATE_COUNT_MISMATCH Lio/github/mbackschat/a12/dm/interpreter/DocumentInputReasonCode;
+	public static final field DUPLICATE_PLACEMENT Lio/github/mbackschat/a12/dm/interpreter/DocumentInputReasonCode;
+	public static final field INVALID_COORDINATE Lio/github/mbackschat/a12/dm/interpreter/DocumentInputReasonCode;
+	public static final field INVALID_FIELD_REPETITION Lio/github/mbackschat/a12/dm/interpreter/DocumentInputReasonCode;
+	public static final field RESOURCE_LIMIT_EXCEEDED Lio/github/mbackschat/a12/dm/interpreter/DocumentInputReasonCode;
+	public static final field UNKNOWN_MODEL_PATH Lio/github/mbackschat/a12/dm/interpreter/DocumentInputReasonCode;
+	public static final field UNSUPPORTED_VERSION Lio/github/mbackschat/a12/dm/interpreter/DocumentInputReasonCode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/DocumentInputReasonCode;
+	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/DocumentInputReasonCode;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/DocumentInputResource : java/lang/Enum {
+	public static final field COORDINATES_PER_PLACEMENT Lio/github/mbackschat/a12/dm/interpreter/DocumentInputResource;
+	public static final field FIELD_PLACEMENTS Lio/github/mbackschat/a12/dm/interpreter/DocumentInputResource;
+	public static final field GROUP_PLACEMENTS Lio/github/mbackschat/a12/dm/interpreter/DocumentInputResource;
+	public static final field MODEL_NESTING_DEPTH Lio/github/mbackschat/a12/dm/interpreter/DocumentInputResource;
+	public static final field PATH_CODE_UNITS Lio/github/mbackschat/a12/dm/interpreter/DocumentInputResource;
+	public static final field RAW_CODE_UNITS_PER_FIELD Lio/github/mbackschat/a12/dm/interpreter/DocumentInputResource;
+	public static final field TOTAL_RAW_CODE_UNITS Lio/github/mbackschat/a12/dm/interpreter/DocumentInputResource;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/DocumentInputResource;
+	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/DocumentInputResource;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/DocumentPlacementKind : java/lang/Enum {
+	public static final field FIELD Lio/github/mbackschat/a12/dm/interpreter/DocumentPlacementKind;
+	public static final field GROUP Lio/github/mbackschat/a12/dm/interpreter/DocumentPlacementKind;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/DocumentPlacementKind;
+	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/DocumentPlacementKind;
+}
+
+public abstract interface class io/github/mbackschat/a12/dm/interpreter/DocumentPointer : io/github/mbackschat/a12/dm/interpreter/RelevantEntityPointer {
+	public abstract fun getCoordinates ()Ljava/util/List;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/DocumentSnapshot : io/github/mbackschat/a12/dm/interpreter/ModelOwned {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot$Companion;
+	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;Lio/github/mbackschat/a12/dm/interpreter/eval/Document;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getModelVersion ()Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;
+	public fun getOwner ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/FieldPlacementInput {
+	public fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/util/List;Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/FieldPlacementInput;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/FieldPlacementInput;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/FieldPlacementInput;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCoordinates ()Ljava/util/List;
+	public final fun getPath ()Ljava/lang/String;
+	public final fun getRaw ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/FieldPointer : io/github/mbackschat/a12/dm/interpreter/DocumentPointer {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/FieldPointer$Companion;
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCoordinates ()Ljava/util/List;
+	public fun getEntityKind ()Lio/github/mbackschat/a12/dm/interpreter/ModelEntityKind;
+	public fun getModelVersion ()Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;
+	public fun getOwner ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
+	public fun getPath ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/GroupPlacementInput {
+	public fun <init> (Ljava/lang/String;Ljava/util/List;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/List;
+	public final fun copy (Ljava/lang/String;Ljava/util/List;)Lio/github/mbackschat/a12/dm/interpreter/GroupPlacementInput;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/GroupPlacementInput;Ljava/lang/String;Ljava/util/List;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/GroupPlacementInput;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCoordinates ()Ljava/util/List;
+	public final fun getPath ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/GroupPointer : io/github/mbackschat/a12/dm/interpreter/DocumentPointer {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/GroupPointer$Companion;
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getCoordinates ()Ljava/util/List;
+	public fun getEntityKind ()Lio/github/mbackschat/a12/dm/interpreter/ModelEntityKind;
+	public fun getModelVersion ()Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;
+	public fun getOwner ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
+	public fun getPath ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/Interpreter : io/github/mbackschat/a12/dm/interpreter/ModelOwned {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/Interpreter$Companion;
+	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/PreparedModel;Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun compute (Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;)Lio/github/mbackschat/a12/dm/interpreter/ComputationReport;
+	public final fun compute (Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ComputationReport;
+	public static synthetic fun compute$default (Lio/github/mbackschat/a12/dm/interpreter/Interpreter;Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;Ljava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/ComputationReport;
+	public fun getModelVersion ()Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;
+	public fun getOwner ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
+	public final fun supportReport ()Lio/github/mbackschat/a12/dm/interpreter/InterpreterSupportReport;
+	public final fun validateFull (Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;)Lio/github/mbackschat/a12/dm/interpreter/ValidationReport;
+	public final fun validateFull (Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ValidationReport;
+	public static synthetic fun validateFull$default (Lio/github/mbackschat/a12/dm/interpreter/Interpreter;Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;Ljava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/ValidationReport;
+	public final fun validatePart (Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;Ljava/util/List;)Lio/github/mbackschat/a12/dm/interpreter/ValidationReport;
+	public final fun validatePart (Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;Ljava/util/List;Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ValidationReport;
+	public static synthetic fun validatePart$default (Lio/github/mbackschat/a12/dm/interpreter/Interpreter;Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;Ljava/util/List;Ljava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/ValidationReport;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration$Companion;
+	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/CustomFieldTypeRegistry;Lio/github/mbackschat/a12/dm/interpreter/CustomConditionRegistry;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public static final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration$Builder;
+	public static final fun defaults ()Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationError : java/lang/RuntimeException {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationError$Companion;
+	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationPhase;Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationReason;Ljava/lang/Throwable;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCode ()Ljava/lang/String;
+	public final fun getPhase ()Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationPhase;
+	public final fun getReason ()Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationReason;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationPhase : java/lang/Enum {
+	public static final field BIND Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationPhase;
+	public static final field EVALUATE Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationPhase;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationPhase;
+	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationPhase;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationReason : java/lang/Enum {
+	public static final field CALLBACK_THREW Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationReason;
+	public static final field FACTORY_THREW Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationReason;
+	public static final field REENTRANT_EVALUATION Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationReason;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationReason;
+	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/InterpreterIntegrationReason;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/InterpreterSupportReport {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/InterpreterSupportReport$Companion;
+	public synthetic fun <init> (Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getFullySupported ()Z
+	public final fun getUnsupported ()Ljava/util/List;
+}
+
+public abstract interface class io/github/mbackschat/a12/dm/interpreter/JavaModelSourceProvider {
+	public fun getSnapshotRevision ()Ljava/lang/String;
+	public abstract fun load (Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/ModelSourceLoadContext;)Ljava/util/concurrent/CompletionStage;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/JavaModelSourceProvider$DefaultImpls {
+	public static fun getSnapshotRevision (Lio/github/mbackschat/a12/dm/interpreter/JavaModelSourceProvider;)Ljava/lang/String;
+}
+
+public abstract interface class io/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal$Companion;
+	public abstract fun isCancelled ()Z
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelDependency {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelDependency$Companion;
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Ljava/lang/String;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAlias ()Ljava/lang/String;
+	public final fun getDiagnosticLabel ()Ljava/lang/String;
+	public final fun getFromModelId ()Ljava/lang/String;
+	public final fun getPurpose ()Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;
+	public final fun getSha256 ()Ljava/lang/String;
+	public final fun getToModelId ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelEntityKind : java/lang/Enum {
+	public static final field FIELD Lio/github/mbackschat/a12/dm/interpreter/ModelEntityKind;
+	public static final field GROUP Lio/github/mbackschat/a12/dm/interpreter/ModelEntityKind;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ModelEntityKind;
+	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/ModelEntityKind;
+}
+
+public abstract interface class io/github/mbackschat/a12/dm/interpreter/ModelExpansionResult {
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelMetadata : io/github/mbackschat/a12/dm/interpreter/ModelOwned {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelMetadata$Companion;
+	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/PreparedModel;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getDocumentModelId ()Ljava/lang/String;
+	public fun getModelVersion ()Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;
+	public fun getOwner ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
+	public final fun pointer (Ljava/lang/String;Ljava/util/List;)Lio/github/mbackschat/a12/dm/interpreter/DocumentPointer;
+	public final fun relevantPointer (Ljava/lang/String;Ljava/util/List;)Lio/github/mbackschat/a12/dm/interpreter/RelevantEntityPointer;
+}
+
+public abstract interface class io/github/mbackschat/a12/dm/interpreter/ModelOwned {
+	public abstract fun getModelVersion ()Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;
+	public abstract fun getOwner ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity$Companion;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelOwnerMismatchError : java/lang/RuntimeException {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerMismatchError$Companion;
+	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getActual ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
+	public final fun getCode ()Ljava/lang/String;
+	public final fun getExpected ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
+}
+
+public abstract interface class io/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic {
+	public fun getActual ()Ljava/lang/Long;
+	public fun getActualModelId ()Ljava/lang/String;
+	public fun getActualSha256 ()Ljava/lang/String;
+	public abstract fun getCode ()Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+	public fun getConflictingDiagnosticLabels ()Ljava/util/List;
+	public fun getConflictingSourceModelId ()Ljava/lang/String;
+	public fun getCyclic ()Ljava/lang/Boolean;
+	public fun getDiagnosticLabel ()Ljava/lang/String;
+	public fun getEntryLanguage ()Ljava/lang/String;
+	public fun getExpectedSha256 ()Ljava/lang/String;
+	public fun getFirstSourceModelId ()Ljava/lang/String;
+	public fun getMaximum ()Ljava/lang/Long;
+	public abstract fun getMessage ()Ljava/lang/String;
+	public fun getModelId ()Ljava/lang/String;
+	public fun getPath ()Ljava/lang/String;
+	public fun getProviderFailureReason ()Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason;
+	public fun getReason ()Ljava/lang/String;
+	public fun getReference ()Ljava/lang/String;
+	public fun getReferenceChain ()Ljava/util/List;
+	public fun getRequestedModelId ()Ljava/lang/String;
+	public fun getResource ()Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResource;
+	public fun getSourceLanguage ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic$DefaultImpls {
+	public static fun getActual (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Ljava/lang/Long;
+	public static fun getActualModelId (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Ljava/lang/String;
+	public static fun getActualSha256 (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Ljava/lang/String;
+	public static fun getConflictingDiagnosticLabels (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Ljava/util/List;
+	public static fun getConflictingSourceModelId (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Ljava/lang/String;
+	public static fun getCyclic (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Ljava/lang/Boolean;
+	public static fun getDiagnosticLabel (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Ljava/lang/String;
+	public static fun getEntryLanguage (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Ljava/lang/String;
+	public static fun getExpectedSha256 (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Ljava/lang/String;
+	public static fun getFirstSourceModelId (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Ljava/lang/String;
+	public static fun getMaximum (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Ljava/lang/Long;
+	public static fun getModelId (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Ljava/lang/String;
+	public static fun getPath (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Ljava/lang/String;
+	public static fun getProviderFailureReason (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason;
+	public static fun getReason (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Ljava/lang/String;
+	public static fun getReference (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Ljava/lang/String;
+	public static fun getReferenceChain (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Ljava/util/List;
+	public static fun getRequestedModelId (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Ljava/lang/String;
+	public static fun getResource (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResource;
+	public static fun getSourceLanguage (Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnostic;)Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode : java/lang/Enum {
+	public static final field AMBIGUOUS_TYPE_DEFINITION Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+	public static final field DUPLICATE_MODEL_ID Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+	public static final field ENTRY_MODEL_NOT_FOUND Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+	public static final field INCOMPATIBLE_CONDITION_LANGUAGE Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+	public static final field INVALID_INCLUDE_MOUNT Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+	public static final field INVALID_MODEL_SOURCE Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+	public static final field MODEL_REFERENCE_CYCLE Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+	public static final field MODEL_SOURCE_ID_MISMATCH Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+	public static final field MODEL_SOURCE_INTEGRITY_MISMATCH Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+	public static final field MODEL_SOURCE_PROVIDER_FAILED Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+	public static final field RESOURCE_LIMIT_EXCEEDED Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+	public static final field UNMAPPED_INCLUDED_REFERENCE Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+	public static final field UNPREPARED_MODEL_RESIDUE Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+	public static final field UNRESOLVED_MODEL_REFERENCE Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+	public static final field UNSUPPORTED_DATE_PRECISION Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+	public static final field UNSUPPORTED_TIME_ZONE Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationDiagnosticCode;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelPreparationError : java/lang/RuntimeException {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationError$Companion;
+	public synthetic fun <init> (Ljava/util/List;Ljava/lang/Throwable;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCode ()Ljava/lang/String;
+	public final fun getDiagnostics ()Ljava/util/List;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits$Companion;
+	public static final field DEFAULT_MAX_MODEL_BYTES I
+	public static final field DEFAULT_MAX_MODEL_COUNT I
+	public static final field DEFAULT_MAX_PREPARED_BYTES I
+	public static final field DEFAULT_MAX_PREPARED_ELEMENTS I
+	public static final field DEFAULT_MAX_REFERENCE_DEPTH I
+	public static final field DEFAULT_MAX_REFERENCE_EDGES I
+	public static final field DEFAULT_MAX_STRUCTURE_DEPTH I
+	public static final field DEFAULT_MAX_TOTAL_BYTES I
+	public static final field HARD_MAX_MODEL_BYTES I
+	public static final field HARD_MAX_MODEL_COUNT I
+	public static final field HARD_MAX_PREPARED_BYTES I
+	public static final field HARD_MAX_PREPARED_ELEMENTS I
+	public static final field HARD_MAX_REFERENCE_DEPTH I
+	public static final field HARD_MAX_REFERENCE_EDGES I
+	public static final field HARD_MAX_STRUCTURE_DEPTH I
+	public static final field HARD_MAX_TOTAL_BYTES I
+	public synthetic fun <init> (IIIIIIIILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public static final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits$Builder;
+	public static final fun defaults ()Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits;
+	public final fun getMaxModelBytes ()I
+	public final fun getMaxModelCount ()I
+	public final fun getMaxPreparedBytes ()I
+	public final fun getMaxPreparedElements ()I
+	public final fun getMaxReferenceDepth ()I
+	public final fun getMaxReferenceEdges ()I
+	public final fun getMaxStructureDepth ()I
+	public final fun getMaxTotalBytes ()I
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelPreparationResource : java/lang/Enum {
+	public static final field MODEL_BYTES Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResource;
+	public static final field MODEL_COUNT Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResource;
+	public static final field PREPARED_BYTES Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResource;
+	public static final field PREPARED_ELEMENTS Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResource;
+	public static final field REFERENCE_DEPTH Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResource;
+	public static final field REFERENCE_EDGES Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResource;
+	public static final field STRUCTURE_DEPTH Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResource;
+	public static final field TOTAL_BYTES Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResource;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResource;
+	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResource;
+}
+
+public abstract interface class io/github/mbackschat/a12/dm/interpreter/ModelPreparationResult {
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose : java/lang/Enum {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose$Companion;
+	public static final field INCLUDE Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;
+	public static final field TYPE_DEFINITIONS Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;
+	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelReferenceStep {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelReferenceStep$Companion;
+	public synthetic fun <init> (Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAlias ()Ljava/lang/String;
+	public final fun getFromModelId ()Ljava/lang/String;
+	public final fun getPurpose ()Lio/github/mbackschat/a12/dm/interpreter/ModelReferencePurpose;
+	public final fun getToModelId ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelSourceLoadContext {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelSourceLoadContext$Companion;
+	public synthetic fun <init> (ILio/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getMaximumBytes ()I
+	public final fun getSignal ()Lio/github/mbackschat/a12/dm/interpreter/ModelCollectionSignal;
+}
+
+public abstract interface class io/github/mbackschat/a12/dm/interpreter/ModelSourceProvider {
+	public fun getSnapshotRevision ()Ljava/lang/String;
+	public abstract fun load (Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/ModelSourceLoadContext;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelSourceProvider$DefaultImpls {
+	public static fun getSnapshotRevision (Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProvider;)Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelSourceProviderError : java/lang/RuntimeException {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderError$Companion;
+	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public static final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderError$Builder;
+	public final fun getCode ()Ljava/lang/String;
+	public final fun getModelId ()Ljava/lang/String;
+	public final fun getReason ()Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason : java/lang/Enum {
+	public static final field ACCESS_DENIED Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason;
+	public static final field CANCELLED Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason;
+	public static final field INTEGRITY_MISMATCH Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason;
+	public static final field PROVIDER_FAILED Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason;
+	public static final field SOURCE_TOO_LARGE Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason;
+	public static final field UNAVAILABLE Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason;
+	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/ModelSourceProviderFailureReason;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity$Companion;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelWorkspace {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ModelWorkspace$Companion;
+	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/workspace/AdmittedWorkspace;Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun expand (Ljava/lang/String;)Ljava/lang/String;
+	public static final fun fromSources (Ljava/util/List;)Lio/github/mbackschat/a12/dm/interpreter/ModelWorkspace;
+	public static final fun fromSources (Ljava/util/List;Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits;)Lio/github/mbackschat/a12/dm/interpreter/ModelWorkspace;
+	public final fun getModelIds ()Ljava/util/List;
+	public final fun getSnapshotRevision ()Ljava/lang/String;
+	public final fun prepare (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/PreparedModel;
+	public final fun tryExpand (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ModelExpansionResult;
+	public final fun tryPrepare (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResult;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ModelWorkspaceJava {
+	public static final field INSTANCE Lio/github/mbackschat/a12/dm/interpreter/ModelWorkspaceJava;
+	public static final fun collect (Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/JavaModelSourceProvider;)Ljava/util/concurrent/CompletionStage;
+	public static final fun collect (Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/JavaModelSourceProvider;Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits;)Ljava/util/concurrent/CompletionStage;
+	public static synthetic fun collect$default (Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/JavaModelSourceProvider;Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationLimits;ILjava/lang/Object;)Ljava/util/concurrent/CompletionStage;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/PlacementDocumentInputV1 {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/PlacementDocumentInputV1$Companion;
+	public static final field SUPPORTED_VERSION I
+	public fun <init> (Ljava/util/List;Ljava/util/List;I)V
+	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;IILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()I
+	public final fun copy (Ljava/util/List;Ljava/util/List;I)Lio/github/mbackschat/a12/dm/interpreter/PlacementDocumentInputV1;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/PlacementDocumentInputV1;Ljava/util/List;Ljava/util/List;IILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/PlacementDocumentInputV1;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFields ()Ljava/util/List;
+	public final fun getGroups ()Ljava/util/List;
+	public final fun getVersion ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/PreparedDocumentApi {
+	public final fun encodePlacements (Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;)Lio/github/mbackschat/a12/dm/interpreter/PlacementDocumentInputV1;
+	public final fun readPlacements (Lio/github/mbackschat/a12/dm/interpreter/PlacementDocumentInputV1;)Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;
+	public final fun readPlacements (Lio/github/mbackschat/a12/dm/interpreter/PlacementDocumentInputV1;Lio/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits;)Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;
+	public static synthetic fun readPlacements$default (Lio/github/mbackschat/a12/dm/interpreter/PreparedDocumentApi;Lio/github/mbackschat/a12/dm/interpreter/PlacementDocumentInputV1;Lio/github/mbackschat/a12/dm/interpreter/DocumentDecodeLimits;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/DocumentSnapshot;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/PreparedModel : io/github/mbackschat/a12/dm/interpreter/ModelOwned {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/PreparedModel$Companion;
+	public final fun createInterpreter ()Lio/github/mbackschat/a12/dm/interpreter/Interpreter;
+	public final fun createInterpreter (Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration;)Lio/github/mbackschat/a12/dm/interpreter/Interpreter;
+	public static synthetic fun createInterpreter$default (Lio/github/mbackschat/a12/dm/interpreter/PreparedModel;Lio/github/mbackschat/a12/dm/interpreter/InterpreterConfiguration;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/Interpreter;
+	public final fun getDependencies ()Ljava/util/List;
+	public final fun getDocuments ()Lio/github/mbackschat/a12/dm/interpreter/PreparedDocumentApi;
+	public final fun getEntryModelId ()Ljava/lang/String;
+	public final fun getFingerprint ()Ljava/lang/String;
+	public final fun getModel ()Lio/github/mbackschat/a12/dm/interpreter/ModelMetadata;
+	public fun getModelVersion ()Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;
+	public fun getOwner ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
+	public static final fun loadExpandedJson (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/PreparedModel;
+	public static final fun tryLoadExpandedJson (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ModelPreparationResult;
+}
+
+public abstract interface class io/github/mbackschat/a12/dm/interpreter/RelevantCoordinate {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/RelevantCoordinate$Companion;
+	public static fun all ()Lio/github/mbackschat/a12/dm/interpreter/RelevantCoordinate;
+	public static fun exact (I)Lio/github/mbackschat/a12/dm/interpreter/RelevantCoordinate;
+}
+
+public abstract interface class io/github/mbackschat/a12/dm/interpreter/RelevantEntityPointer : io/github/mbackschat/a12/dm/interpreter/ModelOwned {
+	public abstract fun getEntityKind ()Lio/github/mbackschat/a12/dm/interpreter/ModelEntityKind;
+	public abstract fun getPath ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/RelevantSelectionPointer : io/github/mbackschat/a12/dm/interpreter/RelevantEntityPointer {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/RelevantSelectionPointer$Companion;
+	public synthetic fun <init> (Lio/github/mbackschat/a12/dm/interpreter/ModelEntityKind;Ljava/lang/String;Ljava/util/List;Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCoordinates ()Ljava/util/List;
+	public fun getEntityKind ()Lio/github/mbackschat/a12/dm/interpreter/ModelEntityKind;
+	public fun getModelVersion ()Lio/github/mbackschat/a12/dm/interpreter/ModelVersionIdentity;
+	public fun getOwner ()Lio/github/mbackschat/a12/dm/interpreter/ModelOwnerIdentity;
+	public fun getPath ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/UnknownModelPathError : java/lang/RuntimeException {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/UnknownModelPathError$Companion;
+	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCode ()Ljava/lang/String;
+	public final fun getPath ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/UnsupportedProgram {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/UnsupportedProgram;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/UnsupportedProgram;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/UnsupportedProgram;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPath ()Ljava/lang/String;
+	public final fun getReason ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ValidationFinding {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;Lio/github/mbackschat/a12/dm/interpreter/ValidationFindingType;Ljava/lang/String;Ljava/util/List;Ljava/util/List;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;
+	public final fun component5 ()Lio/github/mbackschat/a12/dm/interpreter/ValidationFindingType;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun component7 ()Ljava/util/List;
+	public final fun component8 ()Ljava/util/List;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;Lio/github/mbackschat/a12/dm/interpreter/ValidationFindingType;Ljava/lang/String;Ljava/util/List;Ljava/util/List;)Lio/github/mbackschat/a12/dm/interpreter/ValidationFinding;
+	public static synthetic fun copy$default (Lio/github/mbackschat/a12/dm/interpreter/ValidationFinding;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;Lio/github/mbackschat/a12/dm/interpreter/ValidationFindingType;Ljava/lang/String;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Lio/github/mbackschat/a12/dm/interpreter/ValidationFinding;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCode ()Ljava/lang/String;
+	public final fun getErrorPath ()Ljava/lang/String;
+	public final fun getFillToFix ()Ljava/util/List;
+	public final fun getReferenced ()Ljava/util/List;
+	public final fun getRulePath ()Ljava/lang/String;
+	public final fun getSeverity ()Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;
+	public final fun getText ()Ljava/lang/String;
+	public final fun getType ()Lio/github/mbackschat/a12/dm/interpreter/ValidationFindingType;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ValidationFindingType : java/lang/Enum {
+	public static final field OMISSION Lio/github/mbackschat/a12/dm/interpreter/ValidationFindingType;
+	public static final field VALUE Lio/github/mbackschat/a12/dm/interpreter/ValidationFindingType;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ValidationFindingType;
+	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/ValidationFindingType;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ValidationReport {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/ValidationReport$Companion;
+	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getFindings ()Ljava/util/List;
+	public final fun getFullySupported ()Z
+	public final fun getNoErrorOccurred ()Z
+	public final fun getUnsupported ()Ljava/util/List;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/ValidationSeverity : java/lang/Enum {
+	public static final field ERROR Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;
+	public static final field INFO Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;
+	public static final field WARNING Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;
+	public static fun values ()[Lio/github/mbackschat/a12/dm/interpreter/ValidationSeverity;
+}
+
+public final class io/github/mbackschat/a12/dm/interpreter/WorkspaceModelSource {
+	public static final field Companion Lio/github/mbackschat/a12/dm/interpreter/WorkspaceModelSource$Companion;
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public static final fun builder ()Lio/github/mbackschat/a12/dm/interpreter/WorkspaceModelSource$Builder;
+	public final fun getDiagnosticLabel ()Ljava/lang/String;
+	public final fun getExpectedSha256 ()Ljava/lang/String;
+	public final fun getJson ()Ljava/lang/String;
+}
+

@@ -236,12 +236,46 @@ gradle.projectsEvaluated {
     }
 
     def nativeOverride = root.providers.gradleProperty('deliveryNativeBinary')
+    boolean previousBaselineBuild = root.providers.gradleProperty('deliveryPreviousBaseline')
+        .map { it.toBoolean() }.getOrElse(false)
+    def publicationSurface = { String label, List<String> taskNames ->
+        def present = taskNames.findAll { interpreter.tasks.findByName(it) != null }
+        if (present && present.size() != taskNames.size()) {
+            throw new GradleException(
+                "${label} delivery task pair is incomplete; present ${present}, expected ${taskNames}",
+            )
+        }
+        boolean measured = present.size() == taskNames.size()
+        if (!measured && !previousBaselineBuild) {
+            throw new GradleException(
+                "current revision lacks the required ${label} delivery tasks ${taskNames}",
+            )
+        }
+        [measured: measured, taskNames: taskNames]
+    }
+    def npmSurface = publicationSurface(
+        'npm-packed',
+        ['packInterpreterNpmPackage', 'verifyInterpreterNpmPublication'],
+    )
+    def mavenSurface = publicationSurface(
+        'maven-publication',
+        [
+            'verifyExternalInterpreterMavenConsumer',
+            'verifyExternalInterpreterMavenJsConsumer',
+        ],
+    )
     def snapshot = root.tasks.register('interpreterDeliveryFootprintSnapshot') {
         group = 'measurement'
-        description = 'Write exact thin/packed/JS-KLIB/native/trimmed-JVM delivery byte bases and previous-release deltas.'
+        description = 'Write exact JVM/KLIB/npm/Maven/native delivery byte bases and previous-release deltas.'
         dependsOn packedJvm
         dependsOn trimmedJvm
         dependsOn interpreter.tasks.named('jsJar')
+        if (npmSurface.measured) {
+            npmSurface.taskNames.each { dependsOn interpreter.tasks.named(it) }
+        }
+        if (mavenSurface.measured) {
+            mavenSurface.taskNames.each { dependsOn interpreter.tasks.named(it) }
+        }
         if (!nativeOverride.isPresent()) dependsOn cli.tasks.named('nativeCompile')
         def outputProvider = root.providers.gradleProperty('deliveryOutput')
             .map { root.file(it) }
@@ -293,8 +327,6 @@ gradle.projectsEvaluated {
             }
             boolean skipSmoke = root.providers.gradleProperty('deliverySkipArtifactSmoke')
                 .map { it.toBoolean() }.getOrElse(false)
-            boolean previousBaseline = root.providers.gradleProperty('deliveryPreviousBaseline')
-                .map { it.toBoolean() }.getOrElse(false)
             def artifactSmoke = skipSmoke
                 ? [status: 'SKIPPED_FOR_COLLECTOR_TEST_ONLY']
                 : [
@@ -304,7 +336,7 @@ gradle.projectsEvaluated {
                         jvmJar,
                         deliveryDir.get().dir('external-jvm-consumer').asFile,
                         smokeModel,
-                        previousBaseline,
+                        previousBaselineBuild,
                     ),
                     nativeCli: smokeCli(nativeBinary, smokeModel, smokeInstance, root.version.toString()),
                     trimmedJvmCli: smokeCli(trimmedLaunchers[0], smokeModel, smokeInstance, root.version.toString()),
@@ -313,38 +345,90 @@ gradle.projectsEvaluated {
             def bases = [
                 [
                     id: 'jvm-thin',
+                    status: 'MEASURED',
                     definition: 'interpreter JVM jar only',
                     bytes: jvmJar.length(),
                     sha256: sha256(jvmJar),
                 ],
                 [
                     id: 'jvm-packed',
+                    status: 'MEASURED',
                     definition: 'reproducible zip of the interpreter JVM jar plus exact non-JDK runtime files',
                     bytes: packed.length(),
                     sha256: sha256(packed),
                 ],
                 [
                     id: 'js-klib',
+                    status: 'MEASURED',
                     definition: 'interpreter Kotlin/JS KLIB only; not a production npm package',
                     bytes: jsJar.length(),
                     sha256: sha256(jsJar),
                 ],
                 [
                     id: 'native-cli',
+                    status: 'MEASURED',
                     definition: 'GraalVM native dmtool executable',
                     bytes: nativeBinary.length(),
                     sha256: sha256(nativeBinary),
                 ],
                 [
                     id: 'trimmed-jvm-app',
+                    status: 'MEASURED',
                     definition: 'jpackage app image with a jlink-trimmed JDK and the same Groovy-excluded classpath as native dmtool',
                     bytes: byteSize(trimmedImage),
                     sha256: sha256(trimmedImage),
                 ],
             ]
+            if (npmSurface.measured) {
+                def npmArchives = interpreter.tasks.named('packInterpreterNpmPackage')
+                    .get().outputs.files.files.findAll { it.isFile() && it.name.endsWith('.tgz') }
+                if (npmArchives.size() != 1) {
+                    throw new GradleException(
+                        "npm-packed expected one task output tarball, found ${npmArchives}",
+                    )
+                }
+                File npmArchive = npmArchives[0]
+                bases << [
+                    id: 'npm-packed',
+                    status: 'MEASURED',
+                    definition: 'real packed @mbackschat/a12-interpreter tarball after the external TypeScript consumer smoke',
+                    bytes: npmArchive.length(),
+                    sha256: sha256(npmArchive),
+                ]
+            } else {
+                bases << [
+                    id: 'npm-packed',
+                    status: 'NOT_AVAILABLE_IN_BASELINE',
+                    definition: 'real packed @mbackschat/a12-interpreter tarball after the external TypeScript consumer smoke',
+                    reason: 'The archived baseline predates the paired npm pack and external-consumer delivery tasks.',
+                ]
+            }
+            if (mavenSurface.measured) {
+                File mavenRepository = root.layout.buildDirectory
+                    .dir('interpreter-release/maven').get().asFile
+                if (!mavenRepository.isDirectory() || byteSize(mavenRepository) == 0L) {
+                    throw new GradleException(
+                        "maven-publication expected a non-empty clean staged repository at ${mavenRepository}",
+                    )
+                }
+                bases << [
+                    id: 'maven-publication',
+                    status: 'MEASURED',
+                    definition: 'exact clean staged Maven repository after standalone Kotlin/JVM and Kotlin/JS consumer smokes',
+                    bytes: byteSize(mavenRepository),
+                    sha256: sha256(mavenRepository),
+                ]
+            } else {
+                bases << [
+                    id: 'maven-publication',
+                    status: 'NOT_AVAILABLE_IN_BASELINE',
+                    definition: 'exact clean staged Maven repository after standalone Kotlin/JVM and Kotlin/JS consumer smokes',
+                    reason: 'The archived baseline predates the paired standalone Kotlin/JVM and Kotlin/JS Maven consumer delivery tasks.',
+                ]
+            }
 
             def report = [
-                protocolVersion: 1,
+                protocolVersion: 2,
                 informativeOnly: true,
                 collectorSha256: collectorSha,
                 commit: commit,
@@ -359,14 +443,6 @@ gradle.projectsEvaluated {
                 ],
                 artifactSmoke: artifactSmoke,
                 bases: bases,
-                deferredSurfaces: [
-                    productionNpm: [
-                        measured: false,
-                        ownerDecision: 'IG85',
-                        reason: 'No functional production npm package exists: publication/API/.d.ts/consumer smoke are owner-deferred.',
-                        reopenRule: 'The IG85 publication increment must pack and consumer-smoke the real production npm package, then add it to this previous-release comparison.',
-                    ],
-                ],
                 nativeToTrimmedJvmRatio: (bases.find { it.id == 'native-cli' }.bytes as double) /
                     (bases.find { it.id == 'trimmed-jvm-app' }.bytes as double),
             ]
@@ -376,7 +452,7 @@ gradle.projectsEvaluated {
                 File previousFile = root.file(previousPath)
                 if (!previousFile.isFile()) throw new GradleException("previous delivery report is missing: ${previousFile}")
                 def previous = new JsonSlurper().parse(previousFile)
-                if (previous.protocolVersion != 1) {
+                if (previous.protocolVersion != 2) {
                     throw new GradleException("unsupported previous delivery protocol ${previous.protocolVersion}")
                 }
                 if (previous.collectorSha256 != collectorSha) {
@@ -402,22 +478,50 @@ gradle.projectsEvaluated {
                 ]
                 report.comparisons = bases.collect { current ->
                     def old = previousById[current.id]
-                    double ratio = (current.bytes as double) / (old.bytes as double)
-                    [
-                        id: current.id,
-                        previousBytes: old.bytes,
-                        currentBytes: current.bytes,
-                        deltaBytes: (current.bytes as long) - (old.bytes as long),
-                        ratio: ratio,
-                        candidateReviewSignalOverTenPercent: ratio > 1.10d,
-                    ]
+                    if (current.status != 'MEASURED') {
+                        throw new GradleException(
+                            "current base ${current.id} must be measured, got ${current.status}",
+                        )
+                    }
+                    switch (old.status) {
+                        case 'MEASURED':
+                            double ratio = (current.bytes as double) / (old.bytes as double)
+                            return [
+                                id: current.id,
+                                status: 'MEASURED',
+                                previousBytes: old.bytes,
+                                currentBytes: current.bytes,
+                                deltaBytes: (current.bytes as long) - (old.bytes as long),
+                                ratio: ratio,
+                                candidateReviewSignalOverTenPercent: ratio > 1.10d,
+                            ]
+                        case 'NOT_AVAILABLE_IN_BASELINE':
+                            if (!old.reason?.trim()) {
+                                throw new GradleException(
+                                    "unavailable previous base ${old.id} lacks a reason",
+                                )
+                            }
+                            return [
+                                id: current.id,
+                                status: 'NO_PREVIOUS_MEASUREMENT',
+                                previousStatus: old.status,
+                                currentBytes: current.bytes,
+                                reason: old.reason,
+                            ]
+                        default:
+                            throw new GradleException(
+                                "previous base ${old.id} has unsupported status ${old.status}",
+                            )
+                    }
                 }
             }
 
             File output = outputProvider.get()
             output.parentFile.mkdirs()
             output.text = JsonOutput.prettyPrint(JsonOutput.toJson(report)) + System.lineSeparator()
-            println "[delivery-footprint] ${label}@${commit}: ${bases.collect { "${it.id}=${it.bytes}" }.join(' ')} → ${output}"
+            println "[delivery-footprint] ${label}@${commit}: ${bases.collect {
+                it.status == 'MEASURED' ? "${it.id}=${it.bytes}" : "${it.id}=${it.status}"
+            }.join(' ')} → ${output}"
         }
     }
 }
