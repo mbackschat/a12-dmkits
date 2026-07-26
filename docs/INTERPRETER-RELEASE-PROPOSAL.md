@@ -8,8 +8,13 @@ Owner direction fixed on 2026-07-26:
 
 - all first-party release artifacts are hosted by a new public GitHub repository;
 - npm-compatible packages are welcome, but the public GitHub repository—not npmjs.org or GitHub Packages—is their host;
+- TypeScript packages must not use the `@a12` scope because it implies an official A12 package; the proposed owner-signalling replacement is `@mbackschat/a12-interpreter`;
+- public third-party dependencies continue to resolve from Maven Central/npm;
 - the release needs a public `README.md`, developer API documentation, and a TypeScript/JavaScript browser showcase hosted on GitHub Pages;
 - the browser interpreter must use a workspace abstraction to resolve included models and imported typedefs, making IG68 a required release gap alongside IG85 and IG86;
+- the independently consumable interpreter core ships first; the separate Operator API is a much later artifact and does not block it;
+- the immutable workspace/preparation boundary is accepted, with an asynchronous host-provider layer proposed for on-demand acquisition;
+- a separately packaged JVM adapter may expose the interpreter as a drop-in `IDocumentRtService` implementation for existing Kernel-consuming applications; it is not part of the portable core;
 - implementing the core of [INTERPRETER-API-PROPOSAL](INTERPRETER-API-PROPOSAL.md) is the intended API-productization follow-up.
 
 This proposal's execution state follows the one-active-session-per-worktree rule. No worker session is active.
@@ -34,6 +39,7 @@ Success means:
 - both packages are consumed by fresh projects with no Gradle project substitution or in-repo npm workspace;
 - an actual browser runs the portable conformance subset;
 - the browser prepares a raw multi-model workspace containing both an include and an imported typedef;
+- the showcase acquires only the entry model's discovered closure through `ModelSourceProvider`;
 - the showcase consumes the packed public TypeScript artifact rather than reaching into build output or internal Kotlin declarations;
 - human and generated API documentation describe only the shipped public surface;
 - releases are staged, verified, and then published immutably.
@@ -51,7 +57,8 @@ Success means:
 | Workspace preparation | `ModelLoader` accepts expanded, self-contained, name-path-keyed DM-JSON; only the JVM-side Java `ModelReader` resolves raw includes, imported typedefs, opaque ids, and mounted references (IG68) | Implement one original commonMain workspace assembler and prove parity before the showcase may claim raw-model support |
 | Packaging | No Maven/npm publication wiring or ABI lock exists (IG85) | Publication, non-repo consumer smokes, package measurement, and ABI locks land together |
 | Docs | The root README explains the engine, but there is no interpreter-owned package README or shipped API reference | Add one canonical package README plus derived references |
-| License | The interpreter is original, kernel-free MIT code | The public interpreter repository is MIT-only; do not copy dmtool’s EUPL bundle |
+| License | The interpreter core is original, kernel-free MIT code; the proposed JVM drop-in has a separate Kernel-facing boundary | Keep the core artifacts MIT and declare the drop-in's license per artifact; never copy Kernel code or silently publish a mixed-license binary |
+| Kernel drop-in | The internal `:adapter` is a broad Kernel oracle/backend, not a narrow distributable replacement service | Design and publish a separate JVM-only `IDocumentRtService` adapter only after its contract, compatibility matrix, and per-artifact license are ratified |
 
 The browser workspace/showcase and publication request flip IG68, IG85, and IG86's re-open triggers. They are now open release requirements and must be resolved through their normal lifecycle when this work ships.
 
@@ -59,18 +66,20 @@ The browser workspace/showcase and publication request flip IG68, IG85, and IG86
 
 ### 3.1 Recommended identity
 
-These names are proposed and need one owner confirmation before implementation:
+All identities except the replacement TypeScript package name were ratified on 2026-07-26:
 
-| Surface | Recommended identity |
-|---|---|
-| Public repository | `mbackschat/a12-interpreter-releases` |
-| TypeScript package name inside the tarball | `@a12/interpreter` |
-| Maven coordinate | `io.github.mbackschat.a12.dm:dm-interpreter:X.Y.Z` |
-| Private source tag | `interpreter-vX.Y.Z` |
-| Public mirror release tag | `vX.Y.Z` |
-| Pages root | `https://mbackschat.github.io/a12-interpreter-releases/` |
+| Surface | Identity | Status |
+|---|---|---|
+| Public repository | `mbackschat/a12-interpreter-releases` | ratified |
+| TypeScript package name inside the tarball | `@mbackschat/a12-interpreter` | recommended; confirmation pending |
+| Maven coordinate | `io.github.mbackschat.a12.dm:dm-interpreter:X.Y.Z` | ratified |
+| Private source tag | `interpreter-vX.Y.Z` | ratified |
+| Public mirror release tag | `vX.Y.Z` | ratified |
+| Pages root | `https://mbackschat.github.io/a12-interpreter-releases/` | ratified |
 
 Use an independent interpreter SemVer train. Reusing dmtool’s root version would either begin the new library at an unrelated dmtool version or republish unchanged interpreter bytes on CLI-only releases. `:interpreter` may override the root version—the root build already reserves that option.
+
+`@mbackschat/a12-interpreter` is recommended because the npm scope communicates authorship while the package portion communicates A12 compatibility. The same convention is reserved for the later, separately selected Operator artifact (`@mbackschat/a12-operators`); neither name presents the package as an official `@a12` publication.
 
 ### 3.2 Why not GitHub Packages
 
@@ -82,7 +91,7 @@ Instead, each GitHub Release carries a standard npm-compatible tarball:
 pnpm add https://github.com/mbackschat/a12-interpreter-releases/releases/download/v0.1.0/a12-interpreter-0.1.0.tgz
 ```
 
-The package’s own `package.json` still declares the normal `@a12/interpreter` import name. The release URL is the distribution coordinate; the lockfile records the resolved artifact and integrity.
+The package’s own `package.json` declares `@mbackschat/a12-interpreter` as its import name. The release URL is the distribution coordinate; the lockfile records the resolved artifact and integrity.
 
 ### 3.3 Maven from GitHub Pages
 
@@ -161,7 +170,7 @@ The browser showcase is the first real external consumer of this surface. Any fr
 
 ### 5.2 Workspace boundary
 
-The common interpreter API accepts an immutable, caller-populated workspace indexed by exact model `header.id`. Browser/Node/JVM adapters acquire source text; `commonMain` performs deterministic synchronous preparation without filesystem, network, credential, or Promise APIs.
+The common interpreter API accepts an immutable, caller-populated workspace indexed by exact model `header.id`. `ModelWorkspace.fromSources` covers the initial finite file-map case. Browser/Node/JVM adapters acquire source text; `commonMain` performs deterministic synchronous preparation without filesystem, network, credential, or Promise APIs.
 
 Preparation resolves only the selected entry model's transitive closure and:
 
@@ -172,13 +181,36 @@ Preparation resolves only the selected entry model's transitive closure and:
 - remaps rule and computation references across include mounts;
 - fails with structured source/model/reference-chain diagnostics on any ambiguity or residue.
 
-The explicit `loadExpandedJson` fast path stays available. The showcase must use the workspace path, while a duplicate `header.id` is rejected deliberately rather than resolved by filesystem or caller ordering. The full public contract is in [INTERPRETER-API-PROPOSAL](INTERPRETER-API-PROPOSAL.md) §4.1.
+An acquisition layer adds `ModelSourceProvider.load(modelId): Promise<WorkspaceModelSource | undefined>` and `ModelWorkspace.collect(entryModelId, provider, limits)`. Collection calls the provider at most once for each discovered exact id, follows only the transitive closure, freezes the returned source bytes into an immutable workspace, and then invokes the synchronous common assembler. A missing source, provider failure, returned-id mismatch, cycle, or limit breach carries the requested id and reference chain in a structured diagnostic.
+
+The provider is deliberately smaller than a virtual filesystem: it resolves logical model ids to source text. This admits:
+
+| Host/source | Provider strategy |
+|---|---|
+| initial bundle or test | immutable in-memory `Map<ModelId, WorkspaceModelSource>` |
+| HTTP/CDN/server | explicit manifest maps ids to URLs; fetch only discovered dependencies |
+| browser-local database | IndexedDB object store keyed by model id |
+| browser-local filesystem-like store | Origin Private File System (OPFS) |
+| user-selected browser directory | permission-gated File System Access adapter, with a file-input/import fallback |
+| Node.js or Next.js Node runtime | `node:fs/promises` directory adapter that indexes `header.id`, optionally from a generated manifest |
+| Next.js Edge runtime | HTTP, database, or platform KV/object-store provider; no filesystem assumption |
+| application database/CMS/Git/object store | application-owned lookup callback implementing the same provider |
+
+IndexedDB is the default recommendation for an editable browser-local workspace; it is an asynchronous transactional key-value store intended for substantial structured local data. OPFS is appropriate when the application wants origin-private filesystem semantics or larger file-oriented storage. Direct user-directory access is an optional progressive enhancement because it is permission-gated and its File System Access specification remains incubating.
+
+Next.js should consume the same interpreter package on both server and client. In the default Node.js server runtime, a server-only provider may use `node:fs/promises`; Next.js documents Node.js as the default/recommended runtime. Its Edge runtime does not support filesystem access, so that deployment uses a fetch/database/KV provider instead. Browser Client Components use IndexedDB, OPFS, fetch, or a user-selected directory; no Node adapter may enter the browser bundle. See the official [Next.js runtime contract](https://nextjs.org/docs/pages/api-reference/edge), [Node.js filesystem API](https://nodejs.org/api/fs.html), [IndexedDB specification](https://www.w3.org/TR/IndexedDB/), and [File System Access draft](https://wicg.github.io/file-system-access/).
+
+Providers must not derive a filesystem path or remote URL directly from an untrusted model id. A directory adapter indexes ids from validated headers; an HTTP adapter uses an explicit manifest. This prevents path traversal and server-side request-forgery while preserving `header.id` as the only resolution identity.
+
+The explicit `loadExpandedJson` fast path stays available. The showcase must use the on-demand provider/workspace path, while a duplicate `header.id` is rejected deliberately rather than resolved by filesystem or caller ordering. Promise-returning provider calls end when collection produces the immutable workspace; evaluation and customization callbacks remain synchronous. The full public contract is in [INTERPRETER-API-PROPOSAL](INTERPRETER-API-PROPOSAL.md) §4.1.
 
 ### 5.3 Sequencing recommendation
 
 Implement **the Track-B interpreter core**, not the entire 4,000-line end-state proposal, as the publication prerequisite. The service registry/pool, Worker coordinator, candidate programs, persistent form editor, Zod adapters, and broad Java façade remain consumer-gated follow-ups.
 
-Before coding, reconcile one boundary with [TS-API-MVP-PROPOSAL](TS-API-MVP-PROPOSAL.md): whether the first interpreter tarball embeds the minimum value types it needs or depends on a separately released `@a12/operators` package. Recommendation: keep the first interpreter release independently consumable and do not make the full Operator API a release blocker; split `@a12/operators` only when its direct-operator surface ships as its own product.
+The first interpreter tarball embeds or privately owns the minimum value types it needs. It does not depend on the complete later `@mbackschat/a12-operators` product. Shared public types may be extracted when that direct-operator artifact is selected, with an explicit compatibility plan for the already-published interpreter API.
+
+The portable core also does not depend on Kernel API types. Existing JVM applications may later add the separate `io.github.mbackschat.a12.dm:dm-interpreter-kernel-dropin` artifact and substitute its `IDocumentRtService` implementation without changing their `DocumentV2`, `DocumentProcessingConfig`, validation-result, or computation-result call sites. That adapter is broader than the custom-extension compatibility artifacts: it must implement full/partial validation, computation and `applyTo`, precompile/cache behavior, model-code identifiers, and the pinned interface's deprecated compatibility overloads. Its artifact contains no Kernel bytecode; the already-Kernel-consuming host supplies the pinned Kernel API/runtime. [INTERPRETER-API-PROPOSAL](INTERPRETER-API-PROPOSAL.md) §10.2 defines the contract and evidence gate.
 
 ### 5.4 ABI and package locks
 
@@ -246,7 +278,7 @@ Node remains a supported runtime; browser support becomes a separately verified 
 The first showcase is a static TypeScript app with no server:
 
 - fetch a bundled workspace manifest containing an entry model, an included model, and a typedef model;
-- construct `ModelWorkspace`, select the entry by `header.id`, and prepare it in the browser;
+- implement the manifest-backed `ModelSourceProvider`, collect the entry closure on demand, and prepare it in the browser;
 - visibly demonstrate one included field/program and one field whose imported typedef supplies its effective semantics;
 - edit the versioned placement JSON;
 - run full validation, partial validation, and compute-then-validate;
@@ -278,6 +310,8 @@ Each draft GitHub Release contains at least:
 
 The TypeScript tarball and Maven POMs declare MIT, the public repository URL, the matching GitHub release/tag, and only the dependencies actually present in the artifact graph.
 
+When R10 later publishes `dm-interpreter-kernel-dropin`, the same public release repository additionally carries its binary and source JARs, generated API documentation, EUPL-1.2 text, exact source revision, pinned Kernel API compatibility metadata, and its own checksums. The mirror README and Maven metadata state licenses per artifact; the MIT core is never relabeled or made dependent on the drop-in.
+
 ## 9. Release flow
 
 Adopt dmtool’s good mechanics while changing the artifact-specific parts:
@@ -297,15 +331,16 @@ Status values: `pending`, `in progress`, `gated`, `done`. Model tier follows the
 | Set | Work items | Tier | Depends on | Status | Exit gate |
 |---|---|---|---|---|---|
 | R0 | Establish current facts, dmtool pattern, and GitHub-only topology | BEST | — | done | This proposal records the evidence and fixed hosting boundary |
-| R1 | Ratify repository name, package coordinates, independent version train, first API slice, and first-party-only meaning of GitHub-only | BEST | R0 | pending | Owner decisions recorded here and in `RELEASE-SPEC` |
-| R2 | Implement the original commonMain workspace assembler, structured preparation API, minimum public interpreter façade, and document ownership contract, TDD-first | BEST | R1 | pending | Java-reader/kernel expansion parity plus JVM/Node laws green; public surface contains no implementation leaks |
+| R1 | Ratify repository name, package coordinates, independent version train, first API slice, provider boundary, and first-party-only meaning of GitHub-only | BEST | R0 | in progress | Only TypeScript package-name and minimal provider-contract confirmations remain (§13) |
+| R2 | Implement the original commonMain workspace assembler, async source-provider collector, structured preparation API, minimum public interpreter façade, and document ownership contract, TDD-first | BEST | R1 | pending | Java-reader/kernel expansion parity plus provider-closure and JVM/Node laws green; public surface contains no implementation leaks |
 | R3 | Add production Maven/npm packaging, generated `.d.ts`, Kotlin/TS ABI locks, package allowlist, source/docs artifacts, and delivery-footprint measurement | BEST | R2 | pending | Fresh local Maven and packed-tarball consumers compile and run |
 | R4 | Add the browser target, portable browser corpus, workspace-preparation coverage, host-sensitive locks, and browser first-answer evidence | BEST | R2 | pending | Real-browser evaluation/preparation parity and owner-ratified performance bar |
-| R5 | Build the static showcase as a packed-package workspace consumer and add browser E2E verification | BEST | R3, R4 | pending | Include/typedef plus clean/firing/formal-invalid/computation scenarios pass in a browser |
+| R5 | Build the static showcase as a packed-package, manifest-backed on-demand workspace consumer and add browser E2E verification | BEST | R3, R4 | pending | Provider closure, include/typedef, and clean/firing/formal-invalid/computation scenarios pass in a browser |
 | R6 | Write the canonical README/API guide, add tested snippets, and generate Dokka/TypeScript/`llms.txt` references | REGULAR | R2, R3 | pending | Docs describe only shipped API; links and examples are verified |
 | R7 | Create the public mirror assembler, build/deploy workflows, cumulative Pages/Maven layout, and staged publisher | BEST | R1, R3, R5, R6 | pending | A dry-run release in a temporary/fresh mirror proves every refusal and success path |
 | R8 | Publish `v0.1.0-rc.1`, consume it anonymously from GitHub Release and Pages, and run the full release review gate | BEST | R7 | pending | No in-repo resolution; all public URLs and checksums pass |
 | R9 | Fix RC findings by class, publish stable `v0.1.0`, resolve IG68/IG85/IG86, update durable docs, and run the release retro | BEST | R8 | pending | Stable release live; Pages/showcase/API docs live; ledgers clean |
+| R10 | Specify, license, implement, and publish the narrow JVM Kernel drop-in artifact as its own follow-up release | BEST | R9 | pending | A pinned `IDocumentRtService` consumer and a real host substitute the implementation unchanged; differential, result-application, cache, extension, source-availability, and mixed-license gates pass |
 
 Each set lands as a verified conventional commit and updates this table in the same commit. No set may publish or deploy while another session is active in the worktree.
 
@@ -339,8 +374,10 @@ In addition to the normal master-session review gate, every release-proposal lan
 
 ### Optional after `v0.1.0`
 
-- direct `@a12/operators` product;
+- direct `@mbackschat/a12-operators` product;
 - Zod adapters;
+- packaged IndexedDB, OPFS, user-directory, Node/Next.js, database, or object-store provider adapters beyond the core provider port and showcase HTTP implementation;
+- JVM-only `dm-interpreter-kernel-dropin`, published separately after its Kernel-version compatibility and licensing decisions are ratified;
 - richer showcase visualizations;
 - custom domain or custom Pages theme;
 - public source snapshot beyond the source JAR.
@@ -353,13 +390,22 @@ In addition to the normal master-session review gate, every release-proposal lan
 - the full service pool/Worker coordinator/candidate-program/form-editor end state;
 - host filesystem/network discovery inside the common interpreter API;
 - an arbitrary remote-workspace browser UI beyond the bundled showcase;
-- changing the kernel consistency/MVK oracle or dmtool’s release channel.
+- changing the kernel consistency/MVK oracle or dmtool’s release channel;
+- publishing the existing broad internal `:adapter` module.
 
-## 13. Decisions still needed before R2
+## 13. Decision record and remaining confirmation
 
-1. Confirm the recommended repository/name/version identities in §3.1.
-2. Confirm that “GitHub-only” applies to first-party artifacts, while public third-party dependencies continue to resolve from Maven Central/npm.
-3. Confirm the §5.3 recommendation: publish the independently consumable interpreter core first and do not make the full direct Operator API a `v0.1.0` blocker.
-4. Confirm the §5.2 workspace shape: host adapters preload source text; common preparation remains deterministic and synchronous, indexed by `header.id`, with duplicate ids rejected.
+Ratified on 2026-07-26:
 
-These decisions do not block the plan; they block public API implementation and irreversible repository/package naming.
+- the repository, Maven coordinate, tag, Pages, and independent-version identities in §3.1;
+- “GitHub-only” applies to first-party artifacts; third-party dependencies continue to resolve from Maven Central/npm;
+- publish the independently consumable interpreter core first; the Operator API is a separate, much later artifact;
+- keep preparation deterministic and synchronous over an immutable workspace indexed by exact `header.id`;
+- reject duplicate ids rather than selecting by caller/filesystem order.
+
+The provider extension in §5.2 preserves that boundary by completing asynchronous acquisition before preparation. The Kernel drop-in in §5.3 preserves the portable-core boundary by depending on Kernel types only in a separate JVM artifact. Four confirmations remain:
+
+1. Accept `@mbackschat/a12-interpreter` as the replacement TypeScript package name.
+2. Accept the minimal asynchronous `ModelSourceProvider`/`ModelWorkspace.collect` acquisition contract, leaving concrete HTTP, IndexedDB, OPFS, directory, Next.js, and database adapters outside the common evaluator core.
+3. Keep the drop-in adapter as R10 after the independently consumable MIT core `v0.1.0` (recommended), rather than making it a core-release prerequisite.
+4. Publish the drop-in adapter under EUPL-1.2 as an explicit product policy (recommended), while acknowledging that the official EUPL guidance does not make simple interoperability linking alone the reason; any Kernel-bundled artifact remains EUPL-1.2.

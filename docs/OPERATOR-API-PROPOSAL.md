@@ -2297,7 +2297,7 @@ TypeScript examples, names, declaration review, and consumer tests define the pu
 
 The exported operators must be normal callable functions so they can be passed to `map`, application code, or composition helpers.
 
-The discoverable namespace, including `operators.dateTime.differenceInHours`, is the primary surface. Browser-oriented family subpaths such as `@a12/operators/date-time` may additionally re-export the same functions when emitted Kotlin/JS bundle measurements prove useful dead-code elimination. A subpath never carries a second TypeScript semantic implementation and never changes the function name or signature.
+The discoverable namespace, including `operators.dateTime.differenceInHours`, is the primary surface. Browser-oriented family subpaths such as `@mbackschat/a12-operators/date-time` may additionally re-export the same functions when emitted Kotlin/JS bundle measurements prove useful dead-code elimination. A subpath never carries a second TypeScript semantic implementation and never changes the function name or signature.
 
 Current JavaScript evidence supports Node. This proposal does not promise a browser target until a real browser consumer triggers packaging and compatibility qualification.
 

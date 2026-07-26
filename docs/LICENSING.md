@@ -28,7 +28,7 @@ Two clarifications that usually cause confusion:
 1. **EUPL's compatibility-list excluding MIT is irrelevant here.** That Appendix only matters when combining EUPL with *another copyleft* and relicensing the combined work under it (e.g. GPLv3). Including *permissive* code is always allowed.
 2. **Source vs artifact are separate, and only the artifact touches EUPL.** The GitHub source repo is pure MIT (no kernel). Building MIT code against the EUPL kernel where the *user* supplies their own kernel (via the bootstrap) distributes no EUPL — fully fine. EUPL applies only to a release that physically embeds the kernel.
 
-This also sidesteps the one genuinely grey area — the EUPL "derivative work" / linking question — because we never invoke EUPL except at the bundle, where it plainly applies.
+The European Commission's [EUPL FAQ](https://interoperable-europe.ec.europa.eu/collection/eupl/faqs) says that simple static or dynamic linking for interoperability does not by itself merge independent works or extend the EUPL to the linked component. The settled rule above does not need a broader linking theory: bundling Kernel bytecode is the clear trigger already selected by this project's distribution policy.
 
 ## EUPL-1.2 compliance checklist (for the bundled CLI, when built)
 
@@ -42,4 +42,5 @@ This also sidesteps the one genuinely grey area — the EUPL "derivative work" /
 
 - **`a12-kernel-mm`** (EUPL-1.2) — reference/test-only metamodels, **never bundled** in the CLI runtime, so out of scope for redistribution. Committed fixtures remain our own originals (project `CLAUDE.md`).
 - **A12 Tools workspaces** (proprietary) — read-only pattern oracle, never committed, never shipped.
+- **Interpreter Kernel drop-in adapter** — the proposed JVM-only adapter implements the Kernel `IDocumentRtService` interface but delegates execution to the kernel-free interpreter. It is a new, separately packaged product boundary, not the existing broad `:adapter`; see [INTERPRETER-API-PROPOSAL](INTERPRETER-API-PROPOSAL.md) §10.2. The proposed policy is to publish that adapter under EUPL-1.2 deliberately while the base interpreter stays MIT. This policy still needs owner ratification and is not presented as a legal consequence of interface linking. If an adapter distribution ever embeds Kernel bytecode, the existing EUPL bundle rule applies without qualification.
 - **Standard caveat:** this is engineering analysis, not legal advice. The permissive-into-copyleft combination is well-settled; the commercial option (`a12-license@mgm-tp.com`) remains available if a future need wants different terms.

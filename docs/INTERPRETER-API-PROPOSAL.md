@@ -27,7 +27,7 @@ TypeScript on Node and in modern browsers is the primary product surface. Java/J
 
 The base Kotlin Multiplatform interpreter and its TypeScript/JVM façades are clean-room, kernel-free, MIT-licensed artifacts. They do not import, link, reflect over, or bundle an A12 Kernel artifact.
 
-The direct [Operator API proposal](OPERATOR-API-PROPOSAL.md) remains independent: calling `operators.dateTime.differenceInHours(start, end)` never requires an interpreter. This proposal is the model/document layer for behavior that genuinely needs paths, repetitions, formal state, relevance, rules, computations, or runtime customization.
+The direct [Operator API proposal](OPERATOR-API-PROPOSAL.md) remains independent and comes much later: calling `operators.dateTime.differenceInHours(start, end)` never requires an interpreter, while publishing the interpreter never requires the `operators` namespace. The first interpreter package owns the minimum exact value/result types needed by its model/document contract; a later Operator package may extract or re-export compatible shared types only through an explicit compatibility plan.
 
 API and package names are proposed contracts. Where a contract requires engine work beyond the present evaluator, the relevant section states that implementation dependency because kernel exactness and performance evidence are acceptance conditions.
 
@@ -101,7 +101,9 @@ The primary direct verbs remain deliberately familiar: `validateFull`, `validate
 | `ExpandedModelJson` | a `string` known to contain expanded, self-contained, name-path-keyed DM-JSON; the loader still validates that claim |
 | `ModelId` | the exact document-model identity read from `header.id`; filenames and URLs are not model identities |
 | `WorkspaceModelSource` | one raw source plus an optional caller-owned source name used only for diagnostics |
+| `ModelSourceProvider` | asynchronous host-acquisition port resolving one logical model id to source text on demand |
 | `ModelWorkspace` | an immutable, resource-bounded set of sources indexed by `header.id`; it prepares one requested transitive closure |
+| `ModelWorkspaceConstructor.collect` | asynchronous acquisition façade that follows discovered references through a provider and freezes the resulting closure before preparation |
 | `ModelPreparationLimits` | explicit bounds on source count, source/total bytes, reference depth, reference edges, and prepared element count |
 | `ModelDependency` | one resolved include or type-definition edge retained as preparation metadata |
 | `ModelFingerprint` | a library-computed digest over the selected entry, every source in its resolved closure, and preparation-format/ABI identity |
@@ -116,9 +118,9 @@ The primary direct verbs remain deliberately familiar: `validateFull`, `validate
 | `DocumentCellValue` | the closed union accepted by typed document writes: an ordinary `A12Value`, a model-owned day-optional date, or a model-owned date fragment |
 | `DocumentValueWriteError` | typed field-aware write exception carrying the target field, supplied `DocumentCellValue` kind, and exact failure reason |
 | `ProgramPreparationError` | typed candidate-rule/expression preparation exception |
-| `A12Value` | the direct Operator API’s discriminated union of valid immutable A12 scalar values |
-| `A12Result<T, E>` | the Operator API’s non-throwing success-`T`/error-`E` union |
-| `A12Truth` | the Operator API’s evaluated-kernel-Boolean or explicit not-evaluated condition result; it is never silently collapsed to native `boolean` |
+| `A12Value` | the interpreter-owned discriminated union of valid immutable A12 scalar values needed at the model/document boundary |
+| `A12Result<T, E>` | the interpreter package's non-throwing success-`T`/error-`E` union |
+| `A12Truth` | the interpreter package's evaluated-kernel-Boolean or explicit not-evaluated condition result; it is never silently collapsed to native `boolean` |
 | `A12String` | an immutable supplied A12 text value, also used for stored enumeration codes |
 | `A12Boolean` | an immutable wrapped two-state Boolean document value |
 | `A12Confirm` | the distinct immutable filled-confirmation value; it is not Boolean false/true |
@@ -130,8 +132,8 @@ The primary direct verbs remain deliberately familiar: `validateFull`, `validate
 | `A12DateRange` | an inclusive pair of complete `A12Date` endpoints |
 | `A12TimeZone` | an explicitly supported model/operator time-zone identity |
 | `A12BaseYear` | a validated base-year value with integer/date/range projections |
-| `A12ConversionError` | the Operator API’s typed conversion exception, used when semantic value construction receives invalid components |
-| `A12Operators` | the stateless direct value-operator namespaces from the Operator API |
+| `A12ConversionError` | the interpreter package's typed conversion exception, used when semantic value construction receives invalid components |
+| `A12Operators` | the future direct Operator product's stateless value namespaces; not exported by the first interpreter package |
 | `PreparedModel` | one prepared owner domain containing or seeding model-only indexes; it contains no request document or caller callback instance and is not required to be shareable across threads or Workers |
 | `PreparedModelConstructor` | the typed expanded-input fast path used to create a prepared definition without a workspace |
 | `ModelVersionIdentity` | an opaque process/Worker-local identity for one exact registered or directly loaded model version; it is not a portable routing value |
@@ -166,7 +168,7 @@ The primary direct verbs remain deliberately familiar: `validateFull`, `validate
 | `FieldPointer` / `GroupPointer` | narrowed document pointers accepted by field-only or group-only operations |
 | `RelevantEntityPointer` | model-owned input selection pointer supporting concrete coordinates and explicit `ALL` repetition selection |
 | `ReportPointer` | model-owned result pointer supporting concrete, wildcard, and partially known repetition coordinates without fabricating a cell |
-| `A12EvaluationTime` | the Operator API’s immutable exact-instant/time-zone sample; interpreter calls reproject its instant into the prepared model’s zone |
+| `A12EvaluationTime` | the interpreter package's immutable exact-instant/time-zone sample; interpreter calls reproject its instant into the prepared model’s zone |
 | `ComputeOptions` | per-call computation options, including a message locale and an optional explicit `A12EvaluationTime` |
 | `ComputeAndApplyResult` | applied/not-applied result with detached outcomes; only unsupported computation prevents the atomic update |
 | `ProgramEvaluationOptions` | shared per-call locale and optional explicit evaluation time for rules/expressions |
@@ -195,6 +197,13 @@ interface WorkspaceModelSource {
   readonly json: RawModelJson;
 }
 
+interface ModelSourceProvider {
+  readonly name?: string;
+  load(
+    modelId: ModelId,
+  ): Promise<WorkspaceModelSource | undefined>;
+}
+
 interface ModelReferenceStep {
   readonly fromModelId: ModelId;
   readonly toModelId: ModelId;
@@ -220,6 +229,8 @@ type ModelPreparationDiagnosticCode =
   | "DUPLICATE_MODEL_ID"
   | "ENTRY_MODEL_NOT_FOUND"
   | "UNRESOLVED_MODEL_REFERENCE"
+  | "MODEL_SOURCE_PROVIDER_FAILED"
+  | "MODEL_SOURCE_ID_MISMATCH"
   | "MODEL_REFERENCE_CYCLE"
   | "INVALID_INCLUDE_MOUNT"
   | "AMBIGUOUS_TYPE_DEFINITION"
@@ -250,7 +261,10 @@ type ModelOwnerIdentity = {
 
 interface ModelPreparationDiagnostic {
   readonly code: ModelPreparationDiagnosticCode;
+  readonly providerName?: string;
   readonly sourceName?: string;
+  readonly requestedModelId?: ModelId;
+  readonly actualModelId?: ModelId;
   readonly modelId?: ModelId;
   readonly path?: string;
   readonly reference?: string;
@@ -468,6 +482,11 @@ interface ModelWorkspaceConstructor {
     sources: readonly WorkspaceModelSource[],
     limits?: ModelPreparationLimits,
   ): ModelWorkspace;
+  collect(
+    entryModelId: ModelId,
+    provider: ModelSourceProvider,
+    limits?: ModelPreparationLimits,
+  ): Promise<ModelWorkspace>;
 }
 
 declare const PreparedModel: PreparedModelConstructor;
@@ -489,6 +508,8 @@ const interpreter: Interpreter =
 | Boundary | Contract |
 |---|---|
 | Workspace construction | `fromSources` parses headers, enforces resource limits, indexes exact `header.id` values, and rejects ambiguous duplicates with `ModelPreparationError`; `sourceName` is diagnostic metadata, never lookup identity |
+| On-demand collection | `collect` calls `provider.load` at most once per exact discovered id, freezes each successful result, and returns an immutable workspace containing only the entry closure |
+| Provider failures | `undefined` becomes an unresolved-reference diagnostic; a rejected promise becomes `MODEL_SOURCE_PROVIDER_FAILED`; a returned `header.id` different from the requested id becomes `MODEL_SOURCE_ID_MISMATCH` |
 | Workspace preparation | `prepare(entryModelId)` resolves and prepares only the selected model's transitive include/typedef closure; `tryPrepare` returns the same diagnostics through `ModelPreparationResult` |
 | Expanded loading | `loadExpandedJson` is an explicit fast path returning `PreparedModel` or throwing `ModelPreparationError`; `tryLoadExpandedJson` returns the same diagnostics through `ModelPreparationResult` |
 | Owner mismatch | `ModelOwnerMismatchError` covers foreign snapshots, pointers, and prepared-program handles; `expected` and `actual` are opaque correlation identities, not model content |
@@ -1501,7 +1522,7 @@ Strict preparation rejects a model time zone that the current multiplatform runt
 
 ### 4.1 Workspace preparation
 
-`ModelWorkspace` is the portable preparation boundary for raw DM-JSON. It contains caller-supplied source text and no filesystem, URL, fetch, credential, or mutable resolver state. Browser and Node applications acquire sources asynchronously before constructing it; JVM applications may add separate directory/resource adapters without changing the common contract.
+`ModelWorkspace` is the portable preparation boundary for raw DM-JSON. It is an immutable snapshot containing source text and no filesystem, URL, fetch, credential, database connection, or mutable resolver state. `fromSources` constructs it from an initial finite file map; `collect` acquires a closure asynchronously through `ModelSourceProvider` and freezes that closure before the synchronous common preparation pipeline runs.
 
 Each source is indexed by its exact `header.id`. `modelReferences[*].reference` resolves against that identity; include aliases select mount names and are not alternate model ids. An optional `sourceName` identifies a file, URL, or display label only in diagnostics.
 
@@ -1517,11 +1538,31 @@ Preparing an entry performs the complete common pipeline:
 
 Reference remapping covers rule conditions plus computation common preconditions, alternative preconditions, and operations. Relative and short references retain their binding semantics; a reference that cannot be mapped is a structured preparation failure, never a best-effort leftover.
 
-The prepared model retains its resolved `ModelDependency` edges and source names for diagnostics and tooling. Unused workspace sources are neither parsed beyond workspace admission nor included in the prepared closure.
+The prepared model retains its resolved `ModelDependency` edges and source names for diagnostics and tooling. Unused `fromSources` entries are neither parsed beyond workspace admission nor included in the prepared closure; `collect` does not request them at all.
 
 `PreparedModel.loadExpandedJson` remains the explicit fast path for callers that already own expanded, self-contained, name-path-keyed DM-JSON. Its residual guard rejects unresolved includes, unresolved type definitions, opaque identifiers, and other preparation residue with the same diagnostic model.
 
-A browser adapter performs asynchronous acquisition outside the common interpreter API:
+`ModelSourceProvider` is a logical-id lookup port, not a virtual filesystem. A collection:
+
+- calls `load(id)` at most once for each exact id and caches that result privately;
+- discovers the next ids only by parsing references in already returned sources;
+- verifies that a returned source's `header.id` equals the requested id;
+- stops on missing sources, provider failures, cycles, or resource limits with the complete reference chain;
+- retains the exact returned bytes, so provider mutation after collection cannot alter the workspace or prepared model.
+
+Concrete providers remain host adapters:
+
+| Host/source | Adapter |
+|---|---|
+| finite bundle/tests | in-memory map |
+| HTTP/CDN | explicit id-to-URL manifest plus `fetch` |
+| browser-local data | IndexedDB; OPFS for filesystem-like storage |
+| user-selected browser directory | permission-gated File System Access adapter with import fallback |
+| Node/Next.js Node runtime | `node:fs/promises` directory/manifest adapter |
+| Next.js Edge runtime | `fetch`, database, platform KV, or object storage |
+| application storage | database/CMS/Git/object-store callback |
+
+The browser showcase uses an explicit HTTP manifest and on-demand collection:
 
 ```ts
 interface WorkspaceManifest {
@@ -1537,23 +1578,48 @@ const manifest: WorkspaceManifest =
   await fetch("./models/workspace.json").then(
     response => response.json(),
   );
-const sources: readonly WorkspaceModelSource[] =
-  await Promise.all(
-    manifest.models.map(async model => ({
-      sourceName: model.url,
-      json: await fetch(model.url).then(
-        response => response.text(),
-      ),
-    })),
+const urlsById: ReadonlyMap<ModelId, string> =
+  new Map(
+    manifest.models.map(model => [
+      model.modelId,
+      model.url,
+    ]),
   );
+const provider: ModelSourceProvider = {
+  name: "showcase-http",
+  async load(
+    modelId: ModelId,
+  ): Promise<WorkspaceModelSource | undefined> {
+    const url: string | undefined =
+      urlsById.get(modelId);
+    if (url === undefined) {
+      return undefined;
+    }
+    const response: Response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(
+        `model fetch failed: ${response.status}`,
+      );
+    }
+    return {
+      sourceName: url,
+      json: await response.text(),
+    };
+  },
+};
 
 const workspace: ModelWorkspace =
-  ModelWorkspace.fromSources(sources);
+  await ModelWorkspace.collect(
+    manifest.entryModelId,
+    provider,
+  );
 const prepared: PreparedModel =
   workspace.prepare(manifest.entryModelId);
 ```
 
-The manifest's `modelId` is an acquisition-time assertion that the adapter may check; `header.id` inside the fetched source remains authoritative for interpreter lookup.
+The manifest maps ids to locations rather than deriving a URL from untrusted ids. The collector enforces each manifest id against the fetched `header.id`, which remains authoritative for interpreter lookup. Directory adapters likewise index validated headers instead of treating filenames as identities; server providers must not turn an untrusted id directly into a path or arbitrary remote URL.
+
+Promise-returning provider calls are confined to collection. Evaluation and customization callbacks stay synchronous, and no provider is retained by `ModelWorkspace`, `PreparedModel`, or `Interpreter`.
 
 V1 date precision supports only `"full"` and `"day-optional"`. Strict preparation rejects month-optional or year-optional declarations with a stable diagnostic such as `"UNSUPPORTED_DATE_PRECISION"`.
 
@@ -2495,7 +2561,7 @@ if (evaluationValue.kind === "value") {
 
 The example keeps callback-free storage, configured formal state, evaluator-visible value, optional-date resolution, and fragment components distinct. A concrete evaluator value exists only in the `"value"` branch and may include evaluation normalization such as CRLF-to-LF.
 
-Successfully extracted values are ordinary values from the [Operator API proposal](OPERATOR-API-PROPOSAL.md). `A12Operators` is that proposal’s stateless type for the exported `operators` namespace:
+Successfully extracted values use the interpreter's exact immutable A12 value family. The first interpreter package exports no direct `operators` namespace; the later [Operator API proposal](OPERATOR-API-PROPOSAL.md) may accept or re-export compatible values under its own package:
 
 ```ts
 declare const operators: A12Operators;
@@ -4086,8 +4152,8 @@ Public results and failures use arrays, readonly objects, discriminated unions, 
 | invalid document structure | `DocumentInputError` with all diagnostics, each carrying `inputPath` and an optional separate `modelPath` |
 | invalid pointer coordinate count/value | `DocumentCoordinateError` before mutation |
 | row enumeration scoped by a non-ancestor | `DocumentRowScopeError` |
-| invalid day-optional date component | Operator API `A12ConversionError`; no value is created |
-| non-fragment field, mismatched fragment shape, or invalid fragment component | Operator API `A12ConversionError` from `dateFragment`, or a failed `A12Result` from `tryDateFragment`; no value is created |
+| invalid day-optional date component | interpreter `A12ConversionError`; no value is created |
+| non-fragment field, mismatched fragment shape, or invalid fragment component | interpreter `A12ConversionError` from `dateFragment`, or a failed `A12Result` from `tryDateFragment`; no value is created |
 | typed value cannot be represented exactly by its target field | `DocumentValueWriteError`; no cell is changed |
 | unknown model path | `UnknownModelPathError` |
 | malformed field text | retained raw state plus validation finding/suppression |
@@ -4157,7 +4223,7 @@ Existing extensions are reused through two required, separately packaged artifac
 
 | Artifact | Purpose |
 |---|---|
-| `@a12/interpreter-kernel-compat` | adapt existing TypeScript Kernel field-type and condition factories |
+| `@mbackschat/a12-interpreter-kernel-compat` | adapt existing TypeScript Kernel field-type and condition factories |
 | `a12-interpreter-kernel-compat-jvm` | adapt existing JVM Kernel field-type and condition factories |
 
 The base Kotlin Multiplatform interpreter defines its own license-free extension interfaces. The adapter artifacts may depend on the corresponding Kernel API, so their licensing and distribution are separate from the base interpreter.
@@ -4271,6 +4337,60 @@ An adapter must support existing extension implementations unchanged. Similar-lo
 
 Each supported Kernel release has an extension-inventory check. If a later Kernel adds another evaluator extension point, the matching core SPI and platform adapters are required before that release can claim extension compatibility.
 
+### 10.2 JVM drop-in replacement for the A12 Kernel document runtime service
+
+Reusing Kernel extension implementations and replacing the Kernel validation service are different compatibility products. §10.1 adapts callbacks into the kernel-free API. A drop-in adapter instead presents the Kernel-facing interface expected by an existing JVM application and delegates its execution to the interpreter:
+
+```text
+existing JVM application
+          │ IDocumentRtService + Kernel document/config/result types
+          ▼
+dm-interpreter-kernel-dropin
+          │ frozen interpreter model/document/config/report types
+          ▼
+kernel-free dm-interpreter core
+```
+
+The proposed artifact is `io.github.mbackschat.a12.dm:dm-interpreter-kernel-dropin:0.x`. It is JVM-only, is never a dependency of the Kotlin Multiplatform or TypeScript interpreter packages, and is distinct from the broad internal `:adapter` module. The broad module remains a test oracle/backend and is not a publishable runtime product.
+
+The adapter contains no Kernel bytecode. Its compatibility metadata names the pinned Kernel API version, while the existing host application supplies that API/runtime through its own dependency setup; this is reasonable because the adapter has no use outside an application already compiled against `IDocumentRtService`. The public GitHub release repository hosts the adapter and its source/docs/license artifacts, not a mirror of the Kernel.
+
+For the pinned A12 Kernel 30.8.1 contract, the adapter implements `com.mgmtp.a12.kernel.md.rt.api.IDocumentRtService`. A release may call itself a drop-in replacement only when it implements every abstract method in that pinned interface, including the deprecated overloads that the interface still requires:
+
+- `validateFull`;
+- `validatePart`;
+- `compute`;
+- `precompileDocumentModel`;
+- `createModelCodeIdentifier`.
+
+The modern calls convert `DocumentV2`, `DocumentMultiPointer`, and `DocumentProcessingConfig` into the interpreter's model-owned immutable inputs. Validation results implement `IDocumentValidationResult`. Computation results implement the complete `IDocumentComputationResult` contract, including its result partitions and `applyTo(DocumentV2)` behavior. Deprecated mutable-document overloads remain compatibility shims while they exist in the pinned interface; their removal follows a separately tested Kernel-version ratchet rather than an interpreter-core API change.
+
+`DocumentProcessingConfig` is adapted per call without widening the kernel-free core:
+
+| Kernel input | Interpreter handling |
+|---|---|
+| validation locale | ordinary interpreter message locale |
+| `currentDateForTest` | one evaluation-time sample |
+| custom condition factory | §10.1 compatibility binding |
+| custom field-type factory | §10.1 compatibility binding |
+| deprecated `additionalInformation` | adapter-owned per-call context visible only to adapted legacy callbacks |
+
+The legacy `additionalInformation` map does not enter the core public API. If an adapted callback still depends on it, the drop-in adapter carries it through its own call context; native interpreter SPI implementations continue to receive explicit constructor/binding configuration.
+
+Model loading is an injected adapter responsibility. `precompileDocumentModel` converts and prepares the supplied `IDocumentModel` into a cache entry, while validation/computation locate the matching prepared model through an explicit resolver configured when the service is constructed. The cache key returned by `createModelCodeIdentifier` must match the pinned Kernel service's observable identifier behavior for the configured model-id provider and variant. No model is guessed from filesystem order, and the public common workspace provider remains independent of Kernel types.
+
+The drop-in compatibility claim has stronger gates than ordinary interpreter conformance:
+
+1. compile a consumer against the pinned `IDocumentRtService` and substitute only the service implementation;
+2. differentially compare validation messages, pointers, repetition coordinates, formal findings, computation partitions, stored values, clear operations, and `applyTo` output against the dynamic-Groovy Kernel service, with static-Java characterization wherever it agrees;
+3. exercise full, partial, computation, precompile/cache, custom-extension, locale, clock, and legacy-context paths;
+4. run at least one real host integration smoke without changing that host's document/config/result call sites;
+5. publish a compatibility matrix naming the exact Kernel API versions for which the substitution claim is proven.
+
+The adapter never calls Kernel validation or computation; that would defeat the clean-room interpreter boundary. Depending on Kernel API types for interoperability is permitted only in this separately packaged JVM edge.
+
+The base interpreter remains MIT and contains no Kernel code or dependency. The drop-in artifact has a separate license declaration and dependency graph. The proposed release policy is EUPL-1.2 for that adapter, making the Kernel-facing boundary unmistakable, while keeping the core MIT. This is a distribution choice rather than a claim that interface linking necessarily compels the EUPL: the European Commission's [EUPL FAQ](https://interoperable-europe.ec.europa.eu/collection/eupl/faqs) states that simple static or dynamic linking for interoperability does not by itself merge independent works. Any artifact that embeds Kernel bytecode remains EUPL-1.2 under the project's [licensing policy](LICENSING.md).
+
 ## 11. Correctness and performance
 
 The interpreter remains a clean-room, kernel-free implementation and must match the applicable kernel behavior exactly. The stable façade delegates to the existing evaluator; it does not create a parallel execution path.
@@ -4328,7 +4448,7 @@ Known decimal, regex, time-zone, preparation, and host gaps in [INTERPRETER-GAPS
 
 ### 12.1 Minimum workspace, transport, and ownership foundation
 
-The first implementable Interpreter increment should establish two adjacent foundations. Preparation provides `WorkspaceModelSource`, resource-bounded immutable `ModelWorkspace`, transitive include/typedef assembly, structured `ModelPreparationDiagnostic`, `PreparedModel`, dependency metadata, and the explicit `loadExpandedJson` fast path. Transport and ownership provide `PlacementDocumentInputV1`, `DocumentDecodeLimits`, structured `DocumentInputDiagnostic` and `DocumentInputError` values, `ModelOwnerIdentity`, `PreparedDocumentApi.tryDecodePlacements`, the typed `readPlacements` fast path, `encodePlacements`, `isSnapshot(value: unknown)`, and the resulting model-owned `DocumentSnapshot`.
+The first implementable Interpreter increment should establish two adjacent foundations. Preparation provides `WorkspaceModelSource`, `ModelSourceProvider`, resource-bounded `ModelWorkspace.fromSources`/`collect`, immutable closure snapshots, transitive include/typedef assembly, structured `ModelPreparationDiagnostic`, `PreparedModel`, dependency metadata, and the explicit `loadExpandedJson` fast path. Transport and ownership provide `PlacementDocumentInputV1`, `DocumentDecodeLimits`, structured `DocumentInputDiagnostic` and `DocumentInputError` values, `ModelOwnerIdentity`, `PreparedDocumentApi.tryDecodePlacements`, the typed `readPlacements` fast path, `encodePlacements`, `isSnapshot(value: unknown)`, and the resulting model-owned `DocumentSnapshot`.
 
 These foundations are independently useful for browser, HTTP, queue, persistence, plugin, and Worker boundaries. They establish one portable model-preparation contract and one authoritative A12-native document contract before optional framework adapters appear. They do not depend on the validation-service registry, runtime pooling, persistent editing, candidate programs, or Zod.
 
@@ -4347,7 +4467,7 @@ Zod scalar integration may proceed independently after the Operator API. Zod tra
 
 | Core contract | Optional after the core | Deliberately outside/deferred |
 |---|---|---|
-| resource-bounded raw `ModelWorkspace` preparation plus strict expanded-input fast path | host acquisition adapters for directories, resources, URLs, and browser manifests | filesystem/network access inside `commonMain` |
+| resource-bounded raw `ModelWorkspace` preparation, async logical-id provider/collector, and strict expanded-input fast path | concrete adapters for IndexedDB, OPFS, user directories, Node/Next.js files, databases, and object stores | filesystem/network access inside `commonMain` |
 | prepared owner versus exclusive active interpreter split | explicit eager pool warmup | mandatory shared/reentrant evaluator |
 | read-only model introspection and caller-owned owner-aware application metadata | nested document-JSON adapter | dynamic model/rule authoring |
 | strict `unknown` decode, typed fast path, authenticity guard, and versioned lossless encode | document patch conveniences | Kernel document types in the core |
@@ -4357,6 +4477,7 @@ Zod scalar integration may proceed independently after the Operator API. Zod tra
 | full/relevant-set validation, lossless report axes/pointers, and configuration support report | number expression observer | arbitrary context-free expression claim |
 | stored-rule row outcomes | tracing/explanation if demanded | kernel consistency certification in TypeScript |
 | lossless compute, compute-field, compute-and-apply outcomes and deltas | browser Worker adapter after main-thread qualification | browser support by assumption |
+| kernel-free JVM/KMP and TypeScript interpreter packages | JVM-only `dm-interpreter-kernel-dropin` implementing the pinned Kernel runtime-service contract | Kernel types or a Kernel-service compatibility claim in the portable core |
 
 This product is feasible, but it is not a rename exercise. The evaluator-backed validation/computation core is medium productization work; the definition/active-instance split and bounded registry/pool require explicit ownership but do not require one shared reentrant evaluator; a performant immutable editable document surface is a distinct substantial capability.
 
@@ -4365,6 +4486,7 @@ The customization architecture is also feasible. Custom Field Types are primaril
 Before publication, the following contracts need implementation and evidence:
 
 - commonMain workspace assembly for includes, imported typedefs, inline types, id normalization, and reference-aware mounts;
+- provider/collector laws for on-demand closure discovery, one load per id, id/header matching, failure propagation, and immutable source capture;
 - JVM/Node/browser preparation parity against the Java reader and kernel expansion oracle;
 - strict `unknown` ingress and resource limits;
 - lossless placement round trips and owner-aware authenticity;

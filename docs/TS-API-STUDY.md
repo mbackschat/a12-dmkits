@@ -1,6 +1,6 @@
 # Study: is the A12 TypeScript API family worth building — and how much?
 
-> **Decision-support, not a decision (2026-07-22).** This study weighs the three end-state visions — the [Operator API](OPERATOR-API-PROPOSAL.md), the [Interpreter API](INTERPRETER-API-PROPOSAL.md), and the [Zod integration](ZOD-INTEGRATION-PROPOSAL.md) — as one family, and asks the question the proposals themselves do not: *why would anyone reach for this, and which parts earn their place?* The scope readings here are recommendations that feed the [MVP build order](TS-API-MVP-PROPOSAL.md); the scope calls are still open. All API names are **design-stage — not yet runnable**; the A12 *semantics* they rely on are the real, locked part (§8).
+> **Decision-support with a selected first increment (2026-07-22; updated 2026-07-26).** This study weighs the three end-state visions — the [Operator API](OPERATOR-API-PROPOSAL.md), the [Interpreter API](INTERPRETER-API-PROPOSAL.md), and the [Zod integration](ZOD-INTEGRATION-PROPOSAL.md) — as one family, and asks the question the proposals themselves do not: *why would anyone reach for this, and which parts earn their place?* The owner has since selected the independently consumable interpreter workspace/core/browser slice first; the direct Operator and Zod products come much later. All API names are **design-stage — not yet runnable**; the A12 *semantics* they rely on are the real, locked part (§8).
 
 ## 1. The question
 
@@ -26,20 +26,20 @@ One seam, three layers. The rest of this study takes each in turn, then reads sc
         unknown / wire input
                  │
      ┌───────────▼───────────┐   optional, in the Zod idiom
-     │   @a12/operators-zod   │   @a12/interpreter-zod
+     │   @mbackschat/a12-operators-zod   │   @mbackschat/a12-interpreter-zod
      └───────────┬───────────┘
                  ▼
-   @a12/operators  ──────►  @a12/interpreter
+   @mbackschat/a12-operators  ──────►  @mbackschat/a12-interpreter
    (values + operators)     (model + document + validate/compute)
         one kernel-free Kotlin commonMain, projected TS-first (+ secondary JVM)
 ```
 
 | Layer | Package | What it is | Grounded or new? | Consumer today |
 |---|---|---|---|---|
-| Operator core | `@a12/operators` | immutable A12 value family, exact codecs, direct operators | **grounded** — kernel-exact semantics already ship in `interpreter/src` (IF163/IF164/IF155); MVP is *extraction + projection* | no direct-operator consumer selected yet; interpreter publication is separate |
-| Interpreter core | `@a12/interpreter` | prepare-once model → interpreter → model-owned document; validate/compute; custom SPIs | **mostly grounded** — thin façade over the existing `DmInterpreter` | none yet |
+| Operator core | `@mbackschat/a12-operators` | immutable A12 value family, exact codecs, direct operators | **grounded** — kernel-exact semantics already ship in `interpreter/src` (IF163/IF164/IF155); MVP is *extraction + projection* | no direct-operator consumer selected yet; interpreter publication is separate |
+| Interpreter core | `@mbackschat/a12-interpreter` | prepare-once model → interpreter → model-owned document; validate/compute; custom SPIs | **mostly grounded** — thin façade over the existing `DmInterpreter` plus the IG68 workspace/provider preparation boundary | GitHub Pages showcase selected 2026-07-26 |
 | Interpreter layers | (same) | service registry + runtime pool, Worker coordinator, candidate programs, persistent form editor | **new** — the proposal itself calls these "new work" / a "distinct substantial capability" | none yet |
-| Zod adapters | `@a12/operators-zod`, `@a12/interpreter-zod` | boundary codecs + error bridge; strict transport schema; report projection | **thin** — delegates all semantics | none yet |
+| Zod adapters | `@mbackschat/a12-operators-zod`, `@mbackschat/a12-interpreter-zod` | boundary codecs + error bridge; strict transport schema; report projection | **thin** — delegates all semantics | none yet |
 
 The unifying thesis: **kernel-exact A12 semantics, clean-room and kernel-free, projected TypeScript-first from one Kotlin `commonMain`, MIT-licensed** — the same decoupling thrust as [KERNEL-DECOUPLING-PROPOSAL](KERNEL-DECOUPLING-PROPOSAL.md), aimed at the JS/TS ecosystem.
 
@@ -50,7 +50,7 @@ The unifying thesis: **kernel-exact A12 semantics, clean-room and kernel-free, p
 A checkout that sums line totals and computes a net-30 due date, with *no interpreter* — just wrap, operate, unwrap:
 
 ```ts
-import { operators, A12Number, A12Integer, A12Date } from "@a12/operators";
+import { operators, A12Number, A12Integer, A12Date } from "@mbackschat/a12-operators";
 
 const lineTotals: readonly A12Number[] =
   ["0.10", "0.20", "0.30"].map(A12Number.parse);
@@ -75,7 +75,7 @@ Both native results are type-correct and wrong relative to the kernel. The usual
 
 ### 5.1 Why it exists (a document is not a shape)
 
-The Operator API stops where *model/document* semantics begin. A rule like "if `coverageType = comprehensive`, then `deductible` is required, per repeated `vehicles[*]` row" cannot be expressed as a value computation — it needs the model's paths, the repetition coordinates, formal field state (absent / present-empty / malformed), relevance, and the rule engine. That is exactly what `@a12/interpreter` owns: `PreparedModel` (prepare once) → `Interpreter` (config-bound, worker-confined) → model-owned `DocumentSnapshot` → `validateFull`/`validatePart`/`compute`.
+The Operator API stops where *model/document* semantics begin. A rule like "if `coverageType = comprehensive`, then `deductible` is required, per repeated `vehicles[*]` row" cannot be expressed as a value computation — it needs the model's paths, the repetition coordinates, formal field state (absent / present-empty / malformed), relevance, and the rule engine. That is exactly what `@mbackschat/a12-interpreter` owns: `PreparedModel` (prepare once) → `Interpreter` (config-bound, worker-confined) → model-owned `DocumentSnapshot` → `validateFull`/`validatePart`/`compute`.
 
 ### 5.2 Assessment
 
@@ -95,8 +95,8 @@ Zod validates the *shape* of `unknown`; A12 owns *value semantics* past the boun
 ### 6.2 The boundary, shown
 
 ```ts
-import { operators, A12Number, A12Date } from "@a12/operators";
-import { a12Zod, A12ZodCodec } from "@a12/operators-zod";
+import { operators, A12Number, A12Date } from "@mbackschat/a12-operators";
+import { a12Zod, A12ZodCodec } from "@mbackschat/a12-operators-zod";
 import * as z from "zod";
 
 interface CartWire   { readonly lineTotals: readonly string[];   readonly invoiceDate: string; }
@@ -127,8 +127,8 @@ bad.error.issues[0].params.a12; // { source: "a12", errorCode: "A12_CONVERSION_E
 
 | Piece | Reading | Why |
 |---|---|---|
-| **`@a12/operators-zod`** (scalars + composition + error bridge) | **Strong — the whole convincing story** | delivers the §4/§6.2 payoff; no interpreter dependency; MVP-small |
-| `@a12/interpreter-zod` §7 transport schema | thin, **consumer-gated** | largely redundant with the interpreter's own `unknown` boundary (proposal §7.4) — justified only to compose into a bigger Zod schema |
+| **`@mbackschat/a12-operators-zod`** (scalars + composition + error bridge) | **Strong — the whole convincing story** | delivers the §4/§6.2 payoff; no interpreter dependency; MVP-small |
+| `@mbackschat/a12-interpreter-zod` §7 transport schema | thin, **consumer-gated** | largely redundant with the interpreter's own `unknown` boundary (proposal §7.4) — justified only to compose into a bigger Zod schema |
 | §9 report/form projection | useful, **consumer-driven** | its `mapPointer` is app-owned by nature |
 | §8 owner-bound snapshot adapter | **weakest** | the proposal itself flags it isn't a perf win and questions whether it saves enough code (§17.5) |
 
@@ -138,15 +138,15 @@ The family sorts cleanly into *build-now* and *design-but-defer* by one test: **
 
 | Verdict | Layers | Rationale |
 |---|---|---|
-| **Build now** (the [MVP](TS-API-MVP-PROPOSAL.md)) | `@a12/operators` core; `@a12/interpreter` core (transport/ownership + validate/compute + custom SPIs); `@a12/operators-zod` scalar codecs | extraction + projection of semantics that already ship and are differential-locked — low risk, and the foundation every later layer needs |
-| **Design, defer to a consumer** | interpreter service registry + pool, Worker coordinator, candidate programs, persistent form editor; `@a12/interpreter-zod` transport/report; wider zones, patterns, browser | genuinely new work; no external consumer exists yet, so building speculatively is the wrong bet |
-| **Drop from a first cut** | `@a12/interpreter-zod` §8 owner-bound snapshot adapter | the proposal's own open question; not a perf win |
+| **Build now** (the [MVP](TS-API-MVP-PROPOSAL.md)) | `@mbackschat/a12-interpreter` core (workspace/provider + transport/ownership + validate/compute + custom SPIs) and browser qualification | the GitHub Pages showcase is the selected consumer; it activates IG68/IG85/IG86 and the smallest independently consumable interpreter slice |
+| **Design, defer to its selected follow-up** | JVM Kernel `IDocumentRtService` drop-in; interpreter service registry + pool, Worker coordinator, candidate programs, persistent form editor; `@mbackschat/a12-interpreter-zod` transport/report; wider zones and patterns | the drop-in has a concrete compatibility target but follows the portable core; the other layers still lack a consumer that determines their shape |
+| **Drop from a first cut** | `@mbackschat/a12-interpreter-zod` §8 owner-bound snapshot adapter | the proposal's own open question; not a perf win |
 
 **Status update, 2026-07-26:** the GitHub Pages showcase is the first external interpreter consumer and activates the workspace/core/package/browser slice under IG68/IG85/IG86. It does not justify the optional service registry, pooling, editor, candidate-program, Zod, or complete direct-operator products; those still wait for a consumer that determines their shape.
 
 ## 8. Provenance and caveats
 
-- **Design-stage code.** The `@a12/operators` / `@a12/interpreter` / `-zod` surfaces do not exist yet; names follow the three proposals and the Zod 4 codec API. Snippets are illustrative, not executed. If this argument later needs to be airtight, the move is to build the MVP's operator slice and turn §4/§6.2 into executed snippets.
+- **Design-stage code.** The `@mbackschat/a12-operators` / `@mbackschat/a12-interpreter` / `-zod` surfaces do not exist yet; names follow the three proposals and the Zod 4 codec API. Snippets are illustrative, not executed. If this argument later needs to be airtight, the move is to build the MVP's operator slice and turn §4/§6.2 into executed snippets.
 - **The A12 semantics are the locked part.** `AddMonths("31.01.2008", 1) = "29.02.2008"` (end-of-month clamp, never carries) is verified and locked by `DateArithmeticLawsTest` — see [KERNEL-SEMANTICS](KERNEL-SEMANTICS.md) / [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §6. Arbitrary-precision `MathContext(50)`/HALF_UP decimals are the interpreter's `Dec` semantics (IF163). Three-valued `A12Truth` is [OPERATOR-API-PROPOSAL](OPERATOR-API-PROPOSAL.md) §4.
 - The native JS results (`0.6000000000000001`; `2008-01-31` + 1 month → `2008-03-02`) are stock IEEE-754 and `Date` overflow behavior.
-- **The scope readings are recommendations, not decisions** — they feed the MVP build order; the calls remain open.
+- **The interpreter-first sequencing is decided.** The proposed package name, provider contract, follow-up placement of the JVM Kernel drop-in, and that adapter's per-artifact license remain the confirmations listed in [INTERPRETER-RELEASE-PROPOSAL](INTERPRETER-RELEASE-PROPOSAL.md) §13.

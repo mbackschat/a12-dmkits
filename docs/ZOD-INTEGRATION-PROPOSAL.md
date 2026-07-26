@@ -17,7 +17,7 @@ Preferred structure: motivation, scope, public API, typed examples, semantics an
 
 ## Status
 
-> **End-state vision capture.** This is the full destination assembled from interview Q&A and accumulated wishes, kept deliberately complete so no requirement is lost — not a scoped build order. The smallest buildable first increment (`@a12/operators-zod` scalar codecs + error bridge, §16 steps 1–2) is extracted to [TS-API-MVP-PROPOSAL](TS-API-MVP-PROPOSAL.md). The active interpreter publication does not by itself select a Zod package for release.
+> **End-state vision capture.** This is the full destination assembled from interview Q&A and accumulated wishes, kept deliberately complete so no requirement is lost — not a scoped build order. The smallest buildable first increment (`@mbackschat/a12-operators-zod` scalar codecs + error bridge, §16 steps 1–2) is extracted to [TS-API-MVP-PROPOSAL](TS-API-MVP-PROPOSAL.md). The active interpreter publication does not by itself select a Zod package for release.
 >
 > **Why, and how much — the motivation this doc lacks:** the before/after worked study (the money-float and end-of-month bugs), the two-directional argument (Zod↔A12), and the open scope reading live in [TS-API-STUDY](TS-API-STUDY.md) §6 — the study that weighs this proposal alongside the Operator and Interpreter APIs as one family.
 
@@ -27,10 +27,10 @@ The [Operator API proposal](OPERATOR-API-PROPOSAL.md) owns A12 scalar values, ex
 
 The decision is to provide two optional TypeScript packages:
 
-- `@a12/operators-zod` for exact native/wire-to-A12 scalar adapters and Zod composition.
-- `@a12/interpreter-zod` for strict portable DTO schemas, an optional model-owner-bound snapshot adapter, and lossless validation-report projections.
+- `@mbackschat/a12-operators-zod` for exact native/wire-to-A12 scalar adapters and Zod composition.
+- `@mbackschat/a12-interpreter-zod` for strict portable DTO schemas, an optional model-owner-bound snapshot adapter, and lossless validation-report projections.
 
-Zod remains outside Kotlin `commonMain`, the base `@a12/operators` and `@a12/interpreter` JavaScript artifacts, the interpreter evaluator, and Java APIs. Applications that do not install and call the adapters pay no Zod dependency, bundle, startup, allocation, or runtime cost.
+Zod remains outside Kotlin `commonMain`, the base `@mbackschat/a12-operators` and `@mbackschat/a12-interpreter` JavaScript artifacts, the interpreter evaluator, and Java APIs. Applications that do not install and call the adapters pay no Zod dependency, bundle, startup, allocation, or runtime cost.
 
 The initial supported JavaScript host follows the base packages’ qualified surface: Node. Browser and form examples describe intended integration behavior, but they become a support claim only after the underlying Operator/Interpreter packages pass browser packaging, conformance, and performance qualification.
 
@@ -91,22 +91,22 @@ The integration does not:
 ## 4. Package and dependency boundaries
 
 ```text
-@a12/operators-zod
-    ├── peer/singleton ──> @a12/operators
+@mbackschat/a12-operators-zod
+    ├── peer/singleton ──> @mbackschat/a12-operators
     └── peer ────────────> zod
 
-@a12/interpreter-zod
-    ├── peer/singleton ──> @a12/interpreter
-    ├── peer/singleton ──> @a12/operators
-    ├── peer/singleton ──> @a12/operators-zod
+@mbackschat/a12-interpreter-zod
+    ├── peer/singleton ──> @mbackschat/a12-interpreter
+    ├── peer/singleton ──> @mbackschat/a12-operators
+    ├── peer/singleton ──> @mbackschat/a12-operators-zod
     └── peer ────────────> zod
 ```
 
 Both Zod packages depend only on Zod and the kernel-free A12 base packages shown above. They remain kernel-free and MIT-licensed and have no direct or transitive dependency on an A12 Kernel API or runtime artifact.
 
-The adapter packages should require Zod 4.1 or a later explicitly qualified compatible range as a peer dependency. They must not install private copies of Zod or the A12 base packages. Package-manager and bundler qualification must verify one physical `@a12/operators` instance per JavaScript realm, because the core authenticity contract deliberately rejects wrappers from duplicate package copies.
+The adapter packages should require Zod 4.1 or a later explicitly qualified compatible range as a peer dependency. They must not install private copies of Zod or the A12 base packages. Package-manager and bundler qualification must verify one physical `@mbackschat/a12-operators` instance per JavaScript realm, because the core authenticity contract deliberately rejects wrappers from duplicate package copies.
 
-`@a12/interpreter-zod` uses `@a12/operators-zod` for the encode-safe codec marker and dependency-neutral Zod issue-context types, while core scalar codecs and conversion-issue types continue to come from `@a12/operators`. It does not duplicate those adapter mechanisms. The dependency does not put Zod into either base A12 package.
+`@mbackschat/a12-interpreter-zod` uses `@mbackschat/a12-operators-zod` for the encode-safe codec marker and dependency-neutral Zod issue-context types, while core scalar codecs and conversion-issue types continue to come from `@mbackschat/a12-operators`. It does not duplicate those adapter mechanisms. The dependency does not put Zod into either base A12 package.
 
 Ready-made public codecs may use ordinary Zod APIs for the simplest consumer experience. Adapter internals that accept caller-provided Zod definitions should follow [Zod’s library-author guidance](https://zod.dev/library-authors) and type against `zod/v4/core` where doing so materially improves compatibility with Zod and Zod Mini.
 
@@ -178,9 +178,9 @@ type A12ZodObjectOutput<
 };
 ```
 
-`A12ZodCodec<Input, Output>` is issued only by `@a12/operators-zod` or by its composition helpers. The hidden TypeScript brand communicates the encode-safe contract, while runtime adapter metadata lets the composition factory reject an ordinary schema that was only asserted to the branded type. This metadata is an accidental-misuse guard, not a security boundary against hostile JavaScript.
+`A12ZodCodec<Input, Output>` is issued only by `@mbackschat/a12-operators-zod` or by its composition helpers. The hidden TypeScript brand communicates the encode-safe contract, while runtime adapter metadata lets the composition factory reject an ordinary schema that was only asserted to the branded type. This metadata is an accidental-misuse guard, not a security boundary against hostile JavaScript.
 
-Every scalar codec uses the exact core companion guard for its output schema: `A12Integer.is(value: unknown)` for integer output rather than the wider `A12Number.is`, and the corresponding concrete guard for every other value kind. The settled core policy accepts wrappers only from the same physical `@a12/operators` package instance and JavaScript realm.
+Every scalar codec uses the exact core companion guard for its output schema: `A12Integer.is(value: unknown)` for integer output rather than the wider `A12Number.is`, and the corresponding concrete guard for every other value kind. The settled core policy accepts wrappers only from the same physical `@mbackschat/a12-operators` package instance and JavaScript realm.
 
 A wrapper from a duplicate bundle, Worker, iframe realm, structured clone, persistence layer, or network is foreign. The application encodes it to the exact portable representation and decodes a new local wrapper. Each encode transform delegates to the corresponding core `tryEncode` operation after the output guard succeeds.
 
@@ -291,7 +291,7 @@ declare const a12InterpreterZodIssueBridge:
   A12InterpreterZodIssueBridge;
 ```
 
-`@a12/operators-zod` exports `A12ZodIssueMetadataBase`, `A12ZodConversionIssueMetadata`, the common raw-issue/context types, and `a12ZodIssueBridge`. `@a12/interpreter-zod` imports those dependency-neutral adapter types, defines `A12ZodDocumentInputIssueMetadata`, and exports `a12InterpreterZodIssueBridge`.
+`@mbackschat/a12-operators-zod` exports `A12ZodIssueMetadataBase`, `A12ZodConversionIssueMetadata`, the common raw-issue/context types, and `a12ZodIssueBridge`. `@mbackschat/a12-interpreter-zod` imports those dependency-neutral adapter types, defines `A12ZodDocumentInputIssueMetadata`, and exports `a12InterpreterZodIssueBridge`.
 
 The operator adapter never imports Interpreter types. The public declarations may expose Zod’s concrete context and issue types rather than these narrow explanatory interfaces. The observable contract is:
 
@@ -338,7 +338,7 @@ There is no zone-less local-date-time codec. Daylight-saving overlap and gap beh
 import type {
   A12DateRangeWire,
   A12DateTimeWire,
-} from "@a12/operators";
+} from "@mbackschat/a12-operators";
 
 interface A12ZodAdapters
   extends A12ZodComposition {
@@ -414,17 +414,17 @@ import * as z from "zod";
 import {
   A12Integer,
   operators,
-} from "@a12/operators";
+} from "@mbackschat/a12-operators";
 import type {
   A12Date,
   A12Number,
-} from "@a12/operators";
+} from "@mbackschat/a12-operators";
 import {
   a12Zod,
-} from "@a12/operators-zod";
+} from "@mbackschat/a12-operators-zod";
 import type {
   A12ZodCodec,
-} from "@a12/operators-zod";
+} from "@mbackschat/a12-operators-zod";
 
 interface OrderWire {
   readonly amount: string;
@@ -562,7 +562,7 @@ import type {
   FieldPlacementInput,
   GroupPlacementInput,
   PlacementDocumentInputV1,
-} from "@a12/interpreter";
+} from "@mbackschat/a12-interpreter";
 ```
 
 `GroupPlacementInput` is the Interpreter-owned type for one concrete group-row placement. `FieldPlacementInput` is the Interpreter-owned type for one concrete raw field placement. `PlacementDocumentInputV1` is the Interpreter-owned versioned envelope containing those readonly collections. Their exact property definitions remain single-sourced in the base package and the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md).
@@ -577,7 +577,7 @@ import type {
   FieldPlacementInput,
   GroupPlacementInput,
   PlacementDocumentInputV1,
-} from "@a12/interpreter";
+} from "@mbackschat/a12-interpreter";
 
 const placementCoordinateSchema:
   z.ZodNumber =
@@ -683,10 +683,10 @@ import type {
   PreparedModel,
   ValidationOptions,
   ValidationReport,
-} from "@a12/interpreter";
+} from "@mbackschat/a12-interpreter";
 import {
   createPlacementDocumentInputV1Schema,
-} from "@a12/interpreter-zod";
+} from "@mbackschat/a12-interpreter-zod";
 
 declare const requestBody: unknown;
 declare const prepared: PreparedModel;
@@ -1145,17 +1145,17 @@ These risks should be resolved in the owning API proposal or isolated behind ada
 
 ## 16. Delivery sequence
 
-`@a12/operators-zod` does not wait for Interpreter API development. It can ship as soon as the Operator API’s dependency-free scalar codecs, runtime guards, structured errors, and package-instance contract are stable.
+`@mbackschat/a12-operators-zod` does not wait for Interpreter API development. It can ship as soon as the Operator API’s dependency-free scalar codecs, runtime guards, structured errors, and package-instance contract are stable.
 
 Interpreter integration begins with the A12-native minimum transport and ownership foundation defined by the [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md): the versioned placement DTO, decode limits, structured input diagnostics, prepared ownership, model-aware decode, typed fast read, canonical encode, and snapshot authenticity guard.
 
 The strict Zod placement schema may be designed and tested earlier, but it should not be published before that authoritative core decoder exists. Otherwise the adapter risks becoming the accidental document specification or a second validator.
 
 1. Publish and test the dependency-free A12 scalar codecs, runtime guards, and structured conversion errors from the Operator API.
-2. Implement `@a12/operators-zod` scalar codecs and the error bridge.
+2. Implement `@mbackschat/a12-operators-zod` scalar codecs and the error bridge.
 3. Add branded encode-safe `object` and `array` composition with TypeScript declaration tests and runtime provenance checks.
 4. Implement and stabilize the Interpreter API’s dependency-free minimum transport and ownership foundation.
-5. Publish the strict `PlacementDocumentInputV1` schema and configurable transport-limit schema factory in `@a12/interpreter-zod`.
+5. Publish the strict `PlacementDocumentInputV1` schema and configurable transport-limit schema factory in `@mbackschat/a12-interpreter-zod`.
 6. Add the prepared-owner-bound snapshot adapter using the stable core owner guard, model-aware decoder, and canonical encoder.
 7. Add the lossless report/form projection only after complete canonical Interpreter reports are stable.
 8. Add Worker-specific examples and conformance tests without embedding a Worker coordinator into the adapter package.
@@ -1177,7 +1177,7 @@ The following decisions remain local to the optional adapters and do not change 
 
 Ship optional Zod integration as a boundary layer over complete A12-native APIs.
 
-Start with `@a12/operators-zod`: exact scalar codecs, safe-number decode-only support, encode-safe object/array composition, and structured issue translation. Add `@a12/interpreter-zod` for the strict placement DTO at the same boundary. Add the owner-bound snapshot adapter and form projections only where they preserve complete ownership, error channels, and report information.
+Start with `@mbackschat/a12-operators-zod`: exact scalar codecs, safe-number decode-only support, encode-safe object/array composition, and structured issue translation. Add `@mbackschat/a12-interpreter-zod` for the strict placement DTO at the same boundary. Add the owner-bound snapshot adapter and form projections only where they preserve complete ownership, error channels, and report information.
 
 Keep direct operators and warm Interpreter evaluation entirely Zod-free. The adapters should feel natural to TypeScript developers while remaining mechanically dependent on the semantics and ownership contracts defined by the [Operator API proposal](OPERATOR-API-PROPOSAL.md) and [Interpreter API proposal](INTERPRETER-API-PROPOSAL.md).
 
