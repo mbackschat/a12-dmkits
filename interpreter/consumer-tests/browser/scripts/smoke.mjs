@@ -37,6 +37,26 @@ await withStaticServer(async (url) => {
         `showcase package version mismatch: ${await version.textContent()}`,
       );
     }
+    const bundleSize = showcase.locator(
+      "#bundle-size[data-gzip-bytes][data-uncompressed-bytes]",
+    );
+    if (await bundleSize.count() !== 1) {
+      throw new Error("showcase does not expose measured bundle sizes");
+    }
+    const gzipBytes = Number(await bundleSize.getAttribute("data-gzip-bytes"));
+    const uncompressedBytes = Number(
+      await bundleSize.getAttribute("data-uncompressed-bytes"),
+    );
+    if (
+      !Number.isSafeInteger(gzipBytes) ||
+      !Number.isSafeInteger(uncompressedBytes) ||
+      gzipBytes <= 0 ||
+      gzipBytes >= uncompressedBytes
+    ) {
+      throw new Error(
+        `showcase bundle sizes are invalid: ${gzipBytes}/${uncompressedBytes}`,
+      );
+    }
     const assertOutput = async (operation, expected) => {
       const output = showcase.locator(
         `#result[data-operation='${operation}']`,

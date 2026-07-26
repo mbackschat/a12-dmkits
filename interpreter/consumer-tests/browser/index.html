@@ -37,6 +37,10 @@
           <span><strong>JVM + Node + browser</strong> qualified</span>
           <span><strong>209.3 ms</strong> measured browser p95</span>
           <span><strong>33 cases</strong> replayed in Chrome</span>
+          <span>
+            <strong id="bundle-size">…</strong>
+            interpreter JS entry (<output id="bundle-size-uncompressed">…</output> minified)
+          </span>
         </div>
       </section>
 
@@ -81,6 +85,18 @@
             </select>
           </label>
         </div>
+        <details class="failure-controls">
+          <summary>Exercise provider failure handling</summary>
+          <label>
+            Failure simulation
+            <select id="provider-failure">
+              <option value="none">None</option>
+              <option value="integrity-mismatch">Integrity mismatch</option>
+              <option value="source-too-large">Source limit</option>
+              <option value="cancelled">Cancellation after first source</option>
+            </select>
+          </label>
+        </details>
 
         <div class="workbench">
           <section class="editor-panel" aria-labelledby="document-title">
@@ -91,6 +107,9 @@
               </div>
               <span id="scenario-note">A valid permit that should produce no findings.</span>
             </div>
+            <p class="upload-intro">
+              A bundled demo is ready. Choose a scenario and validate, or use your own files:
+            </p>
             <div class="upload-row">
               <label class="file-button">
                 Load workspace folder
@@ -119,6 +138,13 @@
                 >
               </label>
             </div>
+            <nav class="example-downloads" aria-label="Download demo inputs">
+              <span>Demo files:</span>
+              <a href="examples/documents/permit-valid.json" download>valid data</a>
+              <a href="examples/documents/permit-formal-invalid.json" download>invalid data</a>
+              <a href="models/permit-basic.dm.json" download>model</a>
+              <a href="showcase-manifest.json" download>workspace manifest</a>
+            </nav>
             <label class="editor-label" for="document-input">PlacementDocumentInputV1 JSON</label>
             <textarea id="document-input" spellcheck="false"></textarea>
           </section>
@@ -168,6 +194,10 @@
           <div>
             <span>Provider requests</span>
             <strong id="provider-requests">—</strong>
+          </div>
+          <div>
+            <span>Workspace revision</span>
+            <code id="manifest-revision">—</code>
           </div>
           <div>
             <span>Prepared fingerprint</span>

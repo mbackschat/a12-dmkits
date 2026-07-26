@@ -3,10 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc --noEmit && vite build --base=/a12-interpreter-releases/showcase/",
+    "build": "tsc --noEmit && vite build --manifest --base=/a12-interpreter-releases/showcase/ && node scripts/write-bundle-size.mjs",
     "measure:first-answer": "node scripts/performance.mjs",
     "test:performance-policy": "node --test scripts/performance-policy.test.mjs",
-    "verify": "pnpm run test:performance-policy && pnpm run build && node scripts/smoke.mjs"
+    "verify": "pnpm run test:performance-policy && pnpm run build && node scripts/smoke.mjs && node scripts/offline.mjs"
   },
   "devDependencies": {
     "playwright-core": "1.61.1",

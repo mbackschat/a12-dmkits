@@ -2140,6 +2140,42 @@ def prepareExternalInterpreterBrowserConsumer = tasks.register(
             package: '@mbackschat/a12-interpreter',
             version: project.version.toString(),
         ]) + '\n', 'UTF-8')
+        def digestHex = { byte[] value ->
+            java.security.MessageDigest.getInstance('SHA-256')
+                .digest(value)
+                .collect { String.format('%02x', it & 0xff) }
+                .join()
+        }
+        def manifestSources = [[
+            source: externalBrowserConsumerModel,
+            path: "models/${externalBrowserConsumerModel.name}",
+        ]] + externalBrowserConsumerWorkspaceFiles.files.collect { source ->
+            def relative = externalBrowserConsumerWorkspaceDir.toPath()
+                .relativize(source.toPath())
+                .toString()
+                .replace(File.separatorChar, '/' as char)
+            [source: source, path: "workspace/${relative}"]
+        }
+        def manifestModels = manifestSources.collect { item ->
+            def json = new groovy.json.JsonSlurper().parse(item.source)
+            [
+                modelId: json.header.id,
+                path: item.path,
+                sha256: digestHex(item.source.bytes),
+            ]
+        }.sort { left, right -> left.modelId <=> right.modelId }
+        def revisionInput = manifestModels.collect {
+            "${it.modelId}\u0000${it.path}\u0000${it.sha256}\n"
+        }.join().getBytes('UTF-8')
+        def showcaseManifest = new File(
+            destinationDir,
+            'public/showcase-manifest.json',
+        )
+        showcaseManifest.setText(groovy.json.JsonOutput.toJson([
+            schemaVersion: 1,
+            revision: digestHex(revisionInput),
+            models: manifestModels,
+        ]) + '\n', 'UTF-8')
     }
 }
 def installExternalInterpreterBrowserConsumerDependencies = tasks.register(

@@ -1,11 +1,14 @@
 import {
-  ModelSourceProviderError,
   ModelWorkspace,
-  type PlacementDocumentInputV1,
   type PreparedModel,
   type RelevantCoordinate,
   type WorkspaceModelSource,
 } from "@mbackschat/a12-interpreter";
+import {
+  BundledWorkspaceDelivery,
+  loadShowcaseManifest,
+  prepareOfflineShell,
+} from "./delivery.js";
 
 type ScenarioId =
   | "clean"
@@ -15,12 +18,17 @@ type ScenarioId =
   | "include-typedef";
 type WorkspaceMode = "file-map" | "provider";
 type WorkspaceId = "permit-basic" | "permit-workspace";
+type ProviderFailure =
+  | "none"
+  | "integrity-mismatch"
+  | "source-too-large"
+  | "cancelled";
 
 interface Scenario {
   readonly workspace: WorkspaceId;
   readonly entryModelId: string;
   readonly note: string;
-  readonly input: PlacementDocumentInputV1;
+  readonly inputPath: string;
   readonly relevantPath: string;
   readonly relevantCoordinates: readonly number[];
 }
@@ -28,6 +36,13 @@ interface Scenario {
 interface ReleaseIdentity {
   readonly package: string;
   readonly version: string;
+}
+
+interface BundleSize {
+  readonly schemaVersion: 1;
+  readonly asset: string;
+  readonly uncompressedBytes: number;
+  readonly gzipBytes: number;
 }
 
 interface PreparedState {
@@ -42,36 +57,12 @@ interface UploadedWorkspace {
   readonly revision: number;
 }
 
-const permitInput = (
-  applicationNo: string,
-  requestedArea: string,
-  note?: string,
-): PlacementDocumentInputV1 => ({
-  version: 1,
-  groups: [{path: "/Permit", coordinates: [1]}],
-  fields: [
-    {
-      path: "/Permit/ApplicationNo",
-      coordinates: [1, 1],
-      raw: applicationNo,
-    },
-    {
-      path: "/Permit/RequestedArea",
-      coordinates: [1, 1],
-      raw: requestedArea,
-    },
-    ...(note === undefined
-      ? []
-      : [{path: "/Permit/Note", coordinates: [1, 1], raw: note}]),
-  ],
-});
-
 const scenarios: Readonly<Record<ScenarioId, Scenario>> = {
   clean: {
     workspace: "permit-basic",
     entryModelId: "permit-basic",
     note: "A valid permit that should produce no findings.",
-    input: permitInput("P-42", "80"),
+    inputPath: "examples/documents/permit-valid.json",
     relevantPath: "/Permit",
     relevantCoordinates: [1],
   },
@@ -79,7 +70,7 @@ const scenarios: Readonly<Record<ScenarioId, Scenario>> = {
     workspace: "permit-basic",
     entryModelId: "permit-basic",
     note: "A large requested area without a note fires AREA_NEEDS_NOTE.",
-    input: permitInput("P-42", "120"),
+    inputPath: "examples/documents/permit-rule-firing.json",
     relevantPath: "/Permit",
     relevantCoordinates: [1],
   },
@@ -87,7 +78,7 @@ const scenarios: Readonly<Record<ScenarioId, Scenario>> = {
     workspace: "permit-basic",
     entryModelId: "permit-basic",
     note: "Malformed numeric text remains present and becomes a formal finding.",
-    input: permitInput("P-42", "not-a-number"),
+    inputPath: "examples/documents/permit-formal-invalid.json",
     relevantPath: "/Permit",
     relevantCoordinates: [1],
   },
@@ -95,7 +86,7 @@ const scenarios: Readonly<Record<ScenarioId, Scenario>> = {
     workspace: "permit-basic",
     entryModelId: "permit-basic",
     note: "The computation copies RequestedArea into ReviewedArea.",
-    input: permitInput("P-42", "125", "manual review"),
+    inputPath: "examples/documents/permit-computation.json",
     relevantPath: "/Permit",
     relevantCoordinates: [1],
   },
@@ -103,35 +94,10 @@ const scenarios: Readonly<Record<ScenarioId, Scenario>> = {
     workspace: "permit-workspace",
     entryModelId: "permit-single",
     note: "The entry imports a typedef and mounts a nested inspection model.",
-    input: {
-      version: 1,
-      groups: [],
-      fields: [
-        {
-          path: "/Permit/ApplicationCode",
-          coordinates: [1, 1],
-          raw: "ABCDEFGHIJKLM",
-        },
-        {
-          path: "/Permit/Review/Inspection/Score",
-          coordinates: [1, 1, 1, 1],
-          raw: "-1",
-        },
-      ],
-    },
+    inputPath: "examples/documents/permit-workspace-invalid.json",
     relevantPath: "/Permit",
     relevantCoordinates: [1],
   },
-};
-
-const sourcePaths: Readonly<Record<WorkspaceId, readonly string[]>> = {
-  "permit-basic": ["models/permit-basic.dm.json"],
-  "permit-workspace": [
-    "workspace/entries/permit-single.dm.json",
-    "workspace/shared/permit-section.dm.json",
-    "workspace/shared/inspection-checks.dm.json",
-    "workspace/shared/permit-types.dm.json",
-  ],
 };
 
 const requiredElement = <T extends Element>(
@@ -159,6 +125,10 @@ const validationScopeSelect = requiredElement(
   "#validation-scope",
   HTMLSelectElement,
 );
+const providerFailureSelect = requiredElement(
+  "#provider-failure",
+  HTMLSelectElement,
+);
 const relevantSelection = requiredElement(
   "#relevant-selection",
   HTMLDivElement,
@@ -177,6 +147,12 @@ const entryModel = requiredElement("#entry-model", HTMLElement);
 const dependencyCount = requiredElement("#dependency-count", HTMLElement);
 const providerRequests = requiredElement("#provider-requests", HTMLElement);
 const fingerprint = requiredElement("#fingerprint", HTMLElement);
+const manifestRevision = requiredElement("#manifest-revision", HTMLElement);
+const bundleSize = requiredElement("#bundle-size", HTMLElement);
+const bundleSizeUncompressed = requiredElement(
+  "#bundle-size-uncompressed",
+  HTMLElement,
+);
 const operationButtons = Array.from(
   document.querySelectorAll<HTMLButtonElement>(".actions button"),
 );
@@ -184,12 +160,16 @@ const operationButtons = Array.from(
 let preparedState: PreparedState | undefined;
 let uploadedWorkspace: UploadedWorkspace | undefined;
 let uploadRevision = 0;
+let bundledDelivery: BundledWorkspaceDelivery | undefined;
 
 const currentScenario = (): Scenario =>
   scenarios[scenarioSelect.value as ScenarioId];
 
 const fetchText = async (path: string): Promise<string> => {
-  const response = await fetch(`${import.meta.env.BASE_URL}${path}`);
+  const response = await fetch(`${import.meta.env.BASE_URL}${path}`, {
+    cache: "no-store",
+    credentials: "omit",
+  });
   if (!response.ok) {
     throw new Error(`${path} request failed with HTTP ${response.status}`);
   }
@@ -204,53 +184,56 @@ const modelIdOf = (json: string): string => {
   return parsed.header.id;
 };
 
-const loadSources = async (
-  workspace: WorkspaceId,
-): Promise<readonly WorkspaceModelSource[]> =>
-  Promise.all(sourcePaths[workspace].map(async (path) => ({
-    json: await fetchText(path),
-    diagnosticLabel: path,
-  })));
-
 const prepareWorkspace = async (): Promise<PreparedState> => {
   const scenario = currentScenario();
   const mode = workspaceModeSelect.value as WorkspaceMode;
+  const failure = providerFailureSelect.value as ProviderFailure;
   const workspaceIdentity = uploadedWorkspace === undefined
     ? scenario.workspace
     : `upload-${uploadedWorkspace.revision}`;
   const selectedEntryModelId = uploadedWorkspace === undefined
     ? scenario.entryModelId
     : entryModelSelect.value;
-  const key = `${mode}:${workspaceIdentity}:${selectedEntryModelId}`;
+  const key = `${mode}:${workspaceIdentity}:${selectedEntryModelId}:${failure}`;
   if (preparedState?.key === key) {
     return preparedState;
   }
 
   status.dataset.state = "running";
   status.textContent = "Resolving the workspace…";
-  const sources = uploadedWorkspace?.sources ??
-    await loadSources(scenario.workspace);
+  const delivery = bundledDelivery;
+  if (delivery === undefined) {
+    throw new Error("bundled workspace delivery is not initialized");
+  }
   const requests: string[] = [];
+  const abortController = new AbortController();
+  const collectionOptions = failure === "source-too-large"
+    ? {
+      signal: abortController.signal,
+      limits: {maxModelBytes: 64},
+    }
+    : {signal: abortController.signal};
   const workspace = mode === "file-map"
-    ? ModelWorkspace.fromSources(sources)
+    ? ModelWorkspace.fromSources(
+      uploadedWorkspace?.sources ?? await delivery.loadAll(),
+    )
     : await ModelWorkspace.collect(selectedEntryModelId, {
-      snapshotRevision: `showcase-r5.1-${workspaceIdentity}`,
+      snapshotRevision: delivery.revision,
       async load(modelId, context) {
         requests.push(modelId);
-        if (context.signal.aborted) {
-          throw new ModelSourceProviderError("cancelled", modelId);
+        const source = uploadedWorkspace === undefined
+          ? await delivery.load(modelId, context)
+          : uploadedWorkspace.sources.find(({json}) =>
+            modelIdOf(json) === modelId);
+        if (source !== undefined && failure === "integrity-mismatch") {
+          return {...source, expectedSha256: "0".repeat(64)};
         }
-        const source = sources.find(({json}) => modelIdOf(json) === modelId);
-        if (
-          source !== undefined &&
-          new TextEncoder().encode(source.json).byteLength >
-            context.maximumBytes
-        ) {
-          throw new ModelSourceProviderError("source-too-large", modelId);
+        if (failure === "cancelled" && requests.length === 1) {
+          abortController.abort();
         }
         return source;
       },
-    });
+    }, collectionOptions);
   const model = workspace.prepare(selectedEntryModelId);
   preparedState = {
     key,
@@ -276,6 +259,10 @@ const renderSummary = (
   fingerprint.textContent = state.model.fingerprint;
   summary.dataset.fingerprint = state.model.fingerprint;
   summary.dataset.requestCount = state.requests.length.toString();
+  summary.dataset.manifestRevision = bundledDelivery?.revision;
+  manifestRevision.textContent = uploadedWorkspace === undefined
+    ? bundledDelivery?.revision ?? "—"
+    : "local files";
 };
 
 const renderResult = (operation: string, value: unknown): void => {
@@ -344,12 +331,16 @@ const snapshot = async (): Promise<{
   };
 };
 
-const selectScenario = (): void => {
+const selectScenario = async (): Promise<void> => {
   const scenario = currentScenario();
   uploadedWorkspace = undefined;
   entryModelSelect.disabled = true;
   entryModelSelect.replaceChildren(new Option("Bundled scenario entry"));
-  documentInput.value = JSON.stringify(scenario.input, null, 2);
+  documentInput.value = JSON.stringify(
+    JSON.parse(await fetchText(scenario.inputPath)) as unknown,
+    null,
+    2,
+  );
   scenarioNote.textContent = scenario.note;
   relevantPath.value = scenario.relevantPath;
   relevantCoordinates.value = JSON.stringify(scenario.relevantCoordinates);
@@ -405,23 +396,53 @@ const loadDocumentFile = async (file: File): Promise<void> => {
   status.textContent = "Placement document loaded locally and remains editable.";
 };
 
-const loadReleaseIdentity = async (): Promise<void> => {
+const loadReleaseIdentity = async (): Promise<ReleaseIdentity> => {
   const identity = JSON.parse(await fetchText("release.json")) as ReleaseIdentity;
   if (identity.package !== "@mbackschat/a12-interpreter") {
     throw new Error(`unexpected showcase package '${identity.package}'`);
   }
   requiredElement("#package-version", HTMLElement).textContent =
     identity.version;
+  return identity;
+};
+
+const loadBundleSize = async (): Promise<void> => {
+  const measured = JSON.parse(
+    await fetchText("bundle-size.json"),
+  ) as Partial<BundleSize>;
+  if (
+    measured.schemaVersion !== 1 ||
+    typeof measured.asset !== "string" ||
+    !measured.asset.startsWith("assets/") ||
+    !measured.asset.endsWith(".js") ||
+    typeof measured.gzipBytes !== "number" ||
+    typeof measured.uncompressedBytes !== "number" ||
+    !Number.isSafeInteger(measured.gzipBytes) ||
+    !Number.isSafeInteger(measured.uncompressedBytes) ||
+    measured.gzipBytes <= 0 ||
+    measured.gzipBytes >= measured.uncompressedBytes
+  ) {
+    throw new Error("showcase bundle-size measurement is invalid");
+  }
+  bundleSize.textContent = `${Math.round(measured.gzipBytes / 1_000)} kB gzip`;
+  bundleSize.dataset.gzipBytes = measured.gzipBytes.toString();
+  bundleSize.dataset.uncompressedBytes = measured.uncompressedBytes.toString();
+  bundleSizeUncompressed.textContent =
+    `${Math.round(measured.uncompressedBytes / 1_000)} kB`;
 };
 
 export const startShowcase = async (): Promise<void> => {
-  scenarioSelect.addEventListener("change", selectScenario);
+  scenarioSelect.addEventListener("change", () => {
+    void withOperation(selectScenario);
+  });
   validationScopeSelect.addEventListener("change", () => {
     relevantSelection.hidden = validationScopeSelect.value !== "relevant";
   });
   workspaceModeSelect.addEventListener("change", () => {
     preparedState = undefined;
-    selectScenario();
+  });
+  providerFailureSelect.addEventListener("change", () => {
+    preparedState = undefined;
   });
   entryModelSelect.addEventListener("change", () => {
     preparedState = undefined;
@@ -507,7 +528,15 @@ export const startShowcase = async (): Promise<void> => {
     }),
   );
 
-  selectScenario();
-  await loadReleaseIdentity();
+  await Promise.all([loadReleaseIdentity(), loadBundleSize()]);
+  bundledDelivery = new BundledWorkspaceDelivery(
+    await loadShowcaseManifest(),
+  );
+  await selectScenario();
   await prepareWorkspace();
+  await prepareOfflineShell(
+    bundledDelivery.revision,
+    Object.values(scenarios).map(({inputPath}) => inputPath),
+  );
+  status.dataset.offlineReady = "true";
 };

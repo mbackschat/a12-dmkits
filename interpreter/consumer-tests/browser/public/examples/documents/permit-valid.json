@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "groups": [
+    {
+      "path": "/Permit",
+      "coordinates": [1]
+    }
+  ],
+  "fields": [
+    {
+      "path": "/Permit/ApplicationNo",
+      "coordinates": [1, 1],
+      "raw": "P-42"
+    },
+    {
+      "path": "/Permit/RequestedArea",
+      "coordinates": [1, 1],
+      "raw": "80"
+    }
+  ]
+}
