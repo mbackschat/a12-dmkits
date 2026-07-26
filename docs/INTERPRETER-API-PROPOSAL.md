@@ -36,9 +36,10 @@ API and package names are proposed contracts. Where a contract requires engine w
 The interpreter can credibly serve multi-threaded validation services, import pipelines, rule preview tools, dynamic forms, and JVM applications. The correct core distinguishes a prepared model definition or factory from each active evaluator:
 
 ```text
-raw workspace ─┐
-               ├── prepare entry once ──► PreparedModel
-expanded JSON ─┘                              │
+raw workspace ─┬── expand entry ─────────► ExpandedModelJson
+               └── prepare entry once ──┐
+expanded JSON ───────────────────────────┴──► PreparedModel
+                                               │
                        ┌──────────────────────┼──────────────────────┐
                        ▼                      ▼                      ▼
                 Interpreter A-1        Interpreter A-2        Interpreter B-1
@@ -65,6 +66,7 @@ The stable façade should cover the evaluator’s actual jobs and make the statu
 | Developer job | Engine today | Proposed product status |
 |---|---|---|
 | Prepare raw models with includes and imported typedefs | JVM-side `ModelReader` only | core portable `ModelWorkspace` assembler with exact preparation semantics |
+| Export one fully expanded DM-JSON artifact | JVM-side `ModelReader.toJson` only | core portable `ModelWorkspace.expand` boundary that stops before evaluator loading |
 | Load expanded DM-JSON | `ModelLoader.load` | explicit fast path plus a stricter prepared-input guard |
 | Reuse one model | retain one `DmInterpreter`; its stored ASTs parse lazily once | core `PreparedModel`/`Interpreter` boundary |
 | Reuse several models and concurrent instances | retain several `DmInterpreter` instances | core instance factory; optional bounded registry/runtime pool |
@@ -113,6 +115,7 @@ The primary direct verbs remain deliberately familiar: `validateFull`, `validate
 | `ModelPreparationDiagnostic` | one stable preparation code, optional source/model/path/reference-chain location, structured details, and corrective message |
 | `ModelPreparationError` | typed JS-safe exception containing every preparation diagnostic |
 | `ModelPreparationResult` | non-throwing success/failure union for model preparation |
+| `ModelExpansionResult` | non-throwing success/failure union for assembler-only expanded DM-JSON output |
 | `UnknownModelPathError` | typed lookup exception containing the requested model-entity kind and path |
 | `DocumentInputError` | typed decoding exception containing every invalid transport/model placement diagnostic, with separate input and model paths |
 | `DocumentCoordinateError` | typed pointer-construction exception for the wrong coordinate count, a coordinate that is not a positive safe integer, or a field terminal coordinate other than 1 |
@@ -337,6 +340,10 @@ type ModelPreparationResult =
   | {readonly ok: true; readonly model: PreparedModel}
   | {readonly ok: false; readonly error: ModelPreparationError};
 
+type ModelExpansionResult =
+  | {readonly ok: true; readonly json: ExpandedModelJson}
+  | {readonly ok: false; readonly error: ModelPreparationError};
+
 interface ModelOwnerMismatchError extends Error {
   readonly code: "A12_MODEL_OWNER_MISMATCH";
   readonly expected: ModelOwnerIdentity;
@@ -530,6 +537,12 @@ interface PreparedModelConstructor {
 interface ModelWorkspace {
   readonly modelIds: readonly ModelId[];
   readonly snapshotRevision?: string;
+  expand(
+    entryModelId: ModelId,
+  ): ExpandedModelJson;
+  tryExpand(
+    entryModelId: ModelId,
+  ): ModelExpansionResult;
   prepare(
     entryModelId: ModelId,
   ): PreparedModel;
@@ -565,13 +578,15 @@ const preparedFromExpanded: PreparedModel =
   PreparedModel.loadExpandedJson(expandedModelJson);
 const workspace: ModelWorkspace =
   ModelWorkspace.fromSources(rawWorkspaceSources);
+const expanded: ExpandedModelJson =
+  workspace.expand("policy");
 const prepared: PreparedModel =
   workspace.prepare("policy");
 const interpreter: Interpreter =
   prepared.createInterpreter();
 ```
 
-The common Kotlin projection uses `suspend fun ModelSourceProvider.load(modelId: String, context: ModelSourceLoadContext): WorkspaceModelSource?` and `suspend fun ModelWorkspace.Companion.collect(entryModelId: String, provider: ModelSourceProvider, limits: ModelPreparationLimits = defaults(), signal: ModelCollectionSignal = NONE): ModelWorkspace`. `ModelCollectionSignal` is the portable cancellation token passed through every load context; the contract deliberately introduces no `kotlinx.coroutines` type or runtime dependency. A coroutine-based host connects its own task cancellation to that signal. The Kotlin/JS implementation bridges the suspending collector to `Promise` and the token to the caller's `AbortSignal` using the Kotlin stdlib; R3.2 owns the intentional `@JsExport` names and generated TypeScript façade, while R2.9 owns the Java `CompletionStage` projection.
+The common Kotlin projection uses `suspend fun ModelSourceProvider.load(modelId: String, context: ModelSourceLoadContext): WorkspaceModelSource?` and `suspend fun ModelWorkspace.Companion.collect(entryModelId: String, provider: ModelSourceProvider, limits: ModelPreparationLimits = defaults(), signal: ModelCollectionSignal = NONE): ModelWorkspace`. `ModelCollectionSignal` is the portable cancellation token passed through every load context; the contract deliberately introduces no `kotlinx.coroutines` type or runtime dependency. A coroutine-based host connects its own task cancellation to that signal. The Kotlin/JS implementation bridges the suspending collector to `Promise` and the token to the caller's `AbortSignal` using the Kotlin stdlib; R3.2 owns the intentional `@JsExport` names and generated TypeScript façade, while R2.10 owns the Java `CompletionStage` projection.
 
 | Boundary | Contract |
 |---|---|
@@ -580,7 +595,8 @@ The common Kotlin projection uses `suspend fun ModelSourceProvider.load(modelId:
 | Provider failures | `undefined` becomes an unresolved-reference diagnostic; a typed rejection preserves its reason and cause; an untyped rejection becomes `"provider-failed"`; a returned `header.id` different from the requested id becomes `MODEL_SOURCE_ID_MISMATCH`; the collector never retries implicitly |
 | Acquisition limits | each load receives the effective hard-capped byte ceiling and cancellation signal; the provider stops oversized I/O before materializing a string, and the collector independently rechecks source and aggregate limits |
 | Source integrity | admission/collection verifies `expectedSha256`, retains the digest computed from each exact resolved source, and computes the prepared fingerprint from those computed digests |
-| Workspace preparation | `prepare(entryModelId)` resolves and prepares only the selected model's transitive include/typedef closure; `tryPrepare` returns the same diagnostics through `ModelPreparationResult` |
+| Workspace expansion | `expand(entryModelId)` returns the selected closure's assembled JSON before interpreter loading; `tryExpand` returns the same assembler diagnostics through `ModelExpansionResult` |
+| Workspace preparation | `prepare(entryModelId)` shares the same assembly pass and then applies the interpreter loader/evaluability gates; `tryPrepare` returns the same diagnostics through `ModelPreparationResult` |
 | Expanded loading | `loadExpandedJson` is an explicit fast path returning `PreparedModel` or throwing `ModelPreparationError`; `tryLoadExpandedJson` returns the same diagnostics through `ModelPreparationResult`, including malformed element structure, date precision, and computation-target paths |
 | Owner mismatch | `ModelOwnerMismatchError` covers foreign snapshots, pointers, and prepared-program handles; `expected` and `actual` are opaque correlation identities, not model content |
 | Model lookup | `UnknownModelPathError` reports the requested `ModelEntityKind` and path |
@@ -594,7 +610,7 @@ The common Kotlin projection uses `suspend fun ModelSourceProvider.load(modelId:
 
 Omitting `ModelPreparationLimits` or `ModelCollectionOptions.limits` selects documented library defaults; it never disables bounds. A caller may tighten those defaults, while any widening is capped by hard implementation maxima so a browser cannot accidentally opt into unbounded acquisition, parsing, or expansion.
 
-The expanded-input guard treats only `content.modelRoot.rootGroups` and nested `Group.elements` as the document-element tree. One shared presence-aware classifier validates both raw workspace assembly and expanded loading while the loader collects from that tree only. Every retained element must be an object with one of the closed `Group`/`Field`/`Rule`/`Computation` types, a string name, a string name-path `id`, and a matching object body; root elements must be groups, `Group.elements` must be an array when present, field-type discriminators and date precision must be admitted enum strings, and a relative computation target must not walk above the model root. Element records outside the tree fail with `INVALID_MODEL_SOURCE`, matching measured Kernel rejections for a well-formed Field placed in either an unknown header member or an unknown member of a real Field body. Real-Kernel 30.8.1 characterization refuses the same malformed family except that it admits an absent/null `Field` body and coerces present non-string Field names/ids; the portable boundary deliberately refuses those shapes because interpreting them would invent a field definition or lose the string identity required by this API. `tryLoadExpandedJson` maps every such refusal to `INVALID_MODEL_SOURCE` rather than leaking a host exception.
+The expanded-input guard treats only `content.modelRoot.rootGroups` and nested `Group.elements` as the document-element tree. One shared presence-aware classifier validates both raw workspace assembly and expanded loading while the loader collects from that tree only. Every retained element must be an object with one of the closed `Group`/`Field`/`Rule`/`Computation` types, a string name, a string name-path `id`, and a matching object body; root elements must be groups and `Group.elements` must be an array when present. Element records outside the tree fail with `INVALID_MODEL_SOURCE`, matching measured Kernel rejections for a well-formed Field placed in either an unknown header member or an unknown member of a real Field body. Real-Kernel 30.8.1 characterization refuses the same malformed family except that it admits an absent/null `Field` body and coerces present non-string Field names/ids; the portable boundary deliberately refuses those shapes because interpreting them would invent a field definition or lose the string identity required by this API. After assembly, `ModelLoader` additionally requires supported field-type discriminators and date precision and refuses a relative computation target that walks above the model root. Those are prepared-model/evaluability checks, not all assembler-output conditions. `tryLoadExpandedJson` maps every refusal to the structured preparation family rather than leaking a host exception.
 
 | Limit | Default | Hard maximum |
 |---|---:|---:|
@@ -1630,6 +1646,12 @@ Preparing an entry performs the complete common pipeline:
 4. normalize element ids to name paths and remap every legal rule/computation reference fragment across the move;
 5. reject unresolved references, ambiguous imports, opaque ids, invalid mounts, or any other preparation residue.
 
+`expand(entryModelId)` ends exactly after this assembler pipeline and returns its compact `ExpandedModelJson`. It does not call `ModelLoader`, create a `PreparedModel`, or apply interpreter-evaluability gates. A model that is legal to expand but uses a currently unsupported evaluator feature, such as a kernel-legal named time zone outside the interpreter's supported set or a month/year-optional date precision, therefore expands successfully even though `prepare(entryModelId)` subsequently refuses it. Both operations share one internal assembly result; neither reimplements include, typedef, or reference resolution.
+
+Successful expansion removes consumed header model references and include-only directives, replaces every field `TypeDefType` use with its effective concrete type, and retains the entry model's local `content.typeDefinitions` declarations with concrete `fieldType` values. Retaining those inert declarations is part of the canonical expanded-output contract; stripping them would be a separate transformation. `expand` never returns partial output after a diagnostic.
+
+This distinction is deliberate: expansion answers “can this workspace be converted into a self-contained model?”, while preparation additionally answers “can this interpreter load and evaluate that model?”. `UNSUPPORTED_TIME_ZONE` and `UNSUPPORTED_DATE_PRECISION` are loader/evaluability diagnostics and cannot arise solely from `expand`; structural, graph, ambiguity, residue, and resource diagnostics apply to both operations.
+
 Reference remapping covers rule conditions plus computation common preconditions, alternative preconditions, and operations. Each executable is scanned in its source model's configured condition language, including while it moves through nested providers; a keyword in the other language remains available as an ordinary field/group path segment, but cannot acquire evaluator meaning as a foreign function head or grammar separator. The localized reference-group token is exact: `@From` in English and `@Von` in German. Because the prepared model has one entry-level condition language, preparation compares a differently configured provider fragment's canonical source-language and entry-language ASTs: language-neutral syntax may survive the mount, while localized syntax that the entry grammar would reinterpret or reject fails with `INCOMPATIBLE_CONDITION_LANGUAGE`. This is the real Kernel boundary, not a blanket configuration mismatch. Relative and short references retain their binding semantics; a reference that cannot be mapped is a structured preparation failure, never a best-effort leftover.
 
 The prepared model retains each distinct resolved `ModelDependency` edge once in first-discovery order, with computed source digests and diagnostic labels for diagnostics and tooling; repeated physical mounts of the same exact edge do not duplicate public dependency metadata. Each retained mounted executable occurrence points to one shared provider namespace: occurrence-specific reference chain, source-local short-name policy and condition language, and bidirectional segment-aware source/output prefix mappings. Executable provenance carries that namespace plus a structural output ordinal, so repeated and wide `MODEL_ROOT` mounts stay linear in output size and later remapping can bind against the provider's expanded namespace without path guessing. Empty or fully excluded includes retain no executable provenance. Unused `fromSources` entries are neither parsed beyond workspace admission nor included in the prepared closure; `collect` does not request them at all.
@@ -1659,10 +1681,10 @@ The asynchronous façade is platform-shaped rather than leaked into `commonMain`
 |---|---|
 | TypeScript/JavaScript | `Promise<ModelWorkspace>` plus `AbortSignal` |
 | Kotlin | suspending collection façade |
-| Java | `CompletionStage<ModelWorkspace>` with cancellation propagation, added with the R2.9 Java consumer fixture |
+| Java | `CompletionStage<ModelWorkspace>` with cancellation propagation, added with the R2.10 Java consumer fixture |
 | every platform | synchronous `fromSources` and deterministic synchronous preparation/evaluation |
 
-The collection algorithm is single-sourced behind those façades. R2.7 lands the suspending Kotlin boundary and the stdlib-only Kotlin/JS Promise/`AbortSignal` bridge; R3.2 turns that bridge into the intentionally named exported TypeScript surface, and the Java `CompletionStage` projection follows in R2.9 so it is introduced with its first external compile fixture rather than as an unconsumed compatibility surface. With the project's Kotlin 2.2 pin, the initial ABI does not depend on Kotlin 2.3's [experimental direct export of suspend functions](https://kotlinlang.org/docs/whatsnew23.html).
+The collection algorithm is single-sourced behind those façades. R2.7 lands the suspending Kotlin boundary and the stdlib-only Kotlin/JS Promise/`AbortSignal` bridge; R3.2 turns that bridge into the intentionally named exported TypeScript surface, and the Java `CompletionStage` projection follows in R2.10 so it is introduced with its first external compile fixture rather than as an unconsumed compatibility surface. With the project's Kotlin 2.2 pin, the initial ABI does not depend on Kotlin 2.3's [experimental direct export of suspend functions](https://kotlinlang.org/docs/whatsnew23.html).
 
 The R2 contract locks are explicit:
 
@@ -1675,7 +1697,9 @@ The R2 contract locks are explicit:
 | acquisition-time and aggregate limits | bounded host reader plus common collector limits | exceed the per-source limit before full materialization, then separately exceed total bytes across legal small sources |
 | typed failures | provider-error normalization in the collector | exercise every failure reason plus an arbitrary rejection and assert stable code/reason/cause |
 | no acquisition-secret leakage | source admission and diagnostic projection | supply a credential-bearing URL/path label and assert it is rejected or sanitized from diagnostics, dependency metadata, and fingerprint inputs |
-| platform surface parity | common Kotlin consumer laws plus the real Kotlin/JS Promise/`AbortSignal` bridge in R2.7; generated TypeScript declarations in R3.2; Java consumer fixture in R2.9 | execute the suspending and Promise/`AbortSignal` paths in R2.7, then compile the exported TypeScript and `CompletionStage` consumers when those façades land |
+| assembler-only expansion | `ModelWorkspace.expand` ends at the shared reference assembly; `prepare` alone invokes `ModelLoader` | expand kernel-legal models using an unsupported named time zone and each unsupported date-precision family, then require `prepare` to refuse those same sources at the evaluator gate |
+| canonical expanded output | assembly retains concrete local typedef declarations and removes consumed references/directives | compare the portable output projection with the Java-reader parity fixture and assert no `TypeDefType` or include residue remains |
+| platform surface parity | common Kotlin consumer laws plus the real Kotlin/JS Promise/`AbortSignal` bridge in R2.7; generated TypeScript declarations in R3.2; Java consumer fixture in R2.10 | execute the suspending and Promise/`AbortSignal` paths in R2.7, then compile the exported TypeScript and `CompletionStage` consumers when those façades land |
 
 Concrete providers remain host adapters:
 
@@ -2909,7 +2933,7 @@ const report: ValidationReport =
 
 `supportReport()` checks the prepared model against bound types, conditions, charset, time zones, operators, and program forms without reading a document or invoking validation callbacks. Services can therefore fail readiness before accepting traffic.
 
-Support is configuration-aware: the same prepared model can be fully supported by one bound custom-type/condition registry and incomplete under another. The report therefore belongs to `Interpreter` and lands with the configured façade in R2.9; the model-static R2.6 `PreparedModel` does not expose a misleading configuration-free report.
+Support is configuration-aware: the same prepared model can be fully supported by one bound custom-type/condition registry and incomplete under another. The report therefore belongs to `Interpreter` and lands with the configured façade in R2.10; the model-static R2.6 `PreparedModel` does not expose a misleading configuration-free report.
 
 `fullySupported` means no known capability is unsupported. `fullyResolved` additionally means none remains deferred to a source factory whose invocation cardinality prevents eager probing.
 
@@ -4612,7 +4636,7 @@ Known decimal, regex, time-zone, preparation, and host gaps in [INTERPRETER-GAPS
 
 ### 12.1 Minimum workspace, transport, and ownership foundation
 
-The first implementable Interpreter increment should establish two adjacent foundations. Preparation provides `WorkspaceModelSource`, `ModelSourceProvider`, resource-bounded `ModelWorkspace.fromSources`/`collect`, immutable closure snapshots, transitive include/typedef assembly, structured `ModelPreparationDiagnostic`, `PreparedModel`, dependency metadata, and the explicit `loadExpandedJson` fast path. Transport and ownership provide `PlacementDocumentInputV1`, `DocumentDecodeLimits`, structured `DocumentInputDiagnostic` and `DocumentInputError` values, `ModelOwnerIdentity`, `PreparedDocumentApi.tryDecodePlacements`, the typed `readPlacements` fast path, `encodePlacements`, `isSnapshot(value: unknown)`, and the resulting model-owned `DocumentSnapshot`.
+The first implementable Interpreter increment should establish two adjacent foundations. Preparation provides `WorkspaceModelSource`, `ModelSourceProvider`, resource-bounded `ModelWorkspace.fromSources`/`collect`, immutable closure snapshots, transitive include/typedef assembly, assembler-only `expand`/`tryExpand`, structured `ModelPreparationDiagnostic`, `PreparedModel`, dependency metadata, and the explicit `loadExpandedJson` fast path. Transport and ownership provide `PlacementDocumentInputV1`, `DocumentDecodeLimits`, structured `DocumentInputDiagnostic` and `DocumentInputError` values, `ModelOwnerIdentity`, `PreparedDocumentApi.tryDecodePlacements`, the typed `readPlacements` fast path, `encodePlacements`, `isSnapshot(value: unknown)`, and the resulting model-owned `DocumentSnapshot`.
 
 These foundations are independently useful for browser, HTTP, queue, persistence, plugin, and Worker boundaries. They establish one portable model-preparation contract and one authoritative A12-native document contract before optional framework adapters appear. They do not depend on the validation-service registry, runtime pooling, persistent editing, candidate programs, or Zod.
 
@@ -4631,7 +4655,7 @@ Zod scalar integration may proceed independently after the Operator API. Zod tra
 
 | Core contract | Optional after the core | Deliberately outside/deferred |
 |---|---|---|
-| resource-bounded raw `ModelWorkspace` preparation, snapshot/integrity-safe platform-projected logical-id provider/collector, and strict expanded-input fast path | reusable adapters for IndexedDB, Cache Storage, OPFS, user directories, Node/Next.js files, databases, and object stores | filesystem/network access inside `commonMain` |
+| resource-bounded raw `ModelWorkspace` expansion/preparation, snapshot/integrity-safe platform-projected logical-id provider/collector, and strict expanded-input fast path | reusable adapters for IndexedDB, Cache Storage, OPFS, user directories, Node/Next.js files, databases, and object stores | filesystem/network access inside `commonMain` |
 | prepared owner versus exclusive active interpreter split | explicit eager pool warmup | mandatory shared/reentrant evaluator |
 | read-only model introspection and caller-owned owner-aware application metadata | nested document-JSON adapter | dynamic model/rule authoring |
 | strict `unknown` decode, typed fast path, authenticity guard, and versioned lossless encode | document patch conveniences | Kernel document types in the core |
