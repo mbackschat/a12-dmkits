@@ -17,7 +17,8 @@ data class GroupPlacementInput(
 /**
  * One raw field cell of the V1 placement envelope. [raw] preserves exact lexical text: `""` is a present-empty
  * cell (deliberately different from omitting the placement), and malformed text stays present so formal
- * validation can report it.
+ * validation can report it. The terminal coordinate names the field rather than a repetition axis and must be
+ * 1; Kernel document conversion refuses any other value before validation.
  */
 data class FieldPlacementInput(
     val path: String,
@@ -27,9 +28,10 @@ data class FieldPlacementInput(
 
 /**
  * The versioned, behavior-free placement transport. Omission means absent; explicit group placements preserve
- * empty and sparse rows; coordinates carry one positive 1-based repetition index per path part, the field part
- * included. Coordinates above a declared repetition maximum — a non-repeatable group's coordinate 2 included —
- * remain representable and are reported by formal validation, matching the measured Kernel document boundary.
+ * empty and sparse rows; coordinates carry one positive 1-based index per path part. Group coordinates above an
+ * effective repetition maximum — a non-repeatable group's coordinate 2 included — remain representable and are
+ * reported by formal validation. A field placement's terminal coordinate must be 1 because the Kernel document
+ * boundary cannot represent a repeated field.
  */
 data class PlacementDocumentInputV1(
     val groups: List<GroupPlacementInput>,
@@ -136,6 +138,12 @@ enum class DocumentInputReasonCode {
 
     /** A coordinate is not a positive 1-based repetition index. */
     INVALID_COORDINATE,
+
+    /**
+     * A field placement's terminal coordinate is positive but not 1. The Kernel's document conversion refuses
+     * this class before either evaluation strategy can run; fields have no repeatability declaration.
+     */
+    INVALID_FIELD_REPETITION,
 
     /** Decoding exceeded one configured resource ceiling. */
     RESOURCE_LIMIT_EXCEEDED,
@@ -408,6 +416,18 @@ private object PlacementReader {
                 diagnostics += InvalidCoordinateDiagnostic(kind, index, coordinateIndex, path, coordinate)
             }
         }
+        if (
+            kind == DocumentPlacementKind.FIELD &&
+            coordinates.size == parts &&
+            coordinates.last() > 1
+        ) {
+            diagnostics += InvalidFieldRepetitionDiagnostic(
+                placementIndex = index,
+                coordinateIndex = coordinates.lastIndex,
+                modelPath = path,
+                coordinate = coordinates.last(),
+            )
+        }
 
         val identity = PlacementIdentity(kind, path, coordinates.toList())
         val first = firstByIdentity[identity]
@@ -502,6 +522,18 @@ private data class InvalidCoordinateDiagnostic(
     override val reasonCode = DocumentInputReasonCode.INVALID_COORDINATE
     override val message = "${placementKind.name.lowercase()} placement $placementIndex at '$modelPath' carries " +
         "coordinate $coordinate at position $coordinateIndex; repetition indices are positive and 1-based"
+}
+
+private data class InvalidFieldRepetitionDiagnostic(
+    override val placementIndex: Int,
+    override val coordinateIndex: Int,
+    override val modelPath: String,
+    private val coordinate: Int,
+) : DocumentInputDiagnostic {
+    override val reasonCode = DocumentInputReasonCode.INVALID_FIELD_REPETITION
+    override val placementKind = DocumentPlacementKind.FIELD
+    override val message = "field placement $placementIndex at '$modelPath' carries terminal coordinate " +
+        "$coordinate; a field's terminal coordinate must be 1"
 }
 
 private data class ResourceLimitExceededDiagnostic(

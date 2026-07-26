@@ -115,7 +115,7 @@ The primary direct verbs remain deliberately familiar: `validateFull`, `validate
 | `ModelPreparationResult` | non-throwing success/failure union for model preparation |
 | `UnknownModelPathError` | typed lookup exception containing the requested model-entity kind and path |
 | `DocumentInputError` | typed decoding exception containing every invalid transport/model placement diagnostic, with separate input and model paths |
-| `DocumentCoordinateError` | typed pointer-construction exception for the wrong coordinate count or a coordinate that is not a positive safe integer |
+| `DocumentCoordinateError` | typed pointer-construction exception for the wrong coordinate count, a coordinate that is not a positive safe integer, or a field terminal coordinate other than 1 |
 | `DocumentRowScopeError` | typed row-enumeration exception when the supplied ancestor row cannot contain the requested group |
 | `DateFragmentComponents` | closed component input union for explicit year-month, year, month, or month-day fragment construction |
 | `DocumentCellValue` | the closed union accepted by typed document writes: an ordinary `A12Value`, a model-owned day-optional date, or a model-owned date fragment |
@@ -428,6 +428,14 @@ type DocumentInputDiagnostic =
       };
     }
   | DocumentInputDiagnosticBase & {
+      readonly reasonCode: "invalid-field-repetition";
+      readonly details: {
+        readonly coordinateIndex: number;
+        readonly expected: 1;
+        readonly actual: number;
+      };
+    }
+  | DocumentInputDiagnosticBase & {
       readonly reasonCode: "resource-limit-exceeded";
       readonly details: {
         readonly limit: DocumentInputResourceLimit;
@@ -477,7 +485,8 @@ interface DocumentInputError extends Error {
 
 type DocumentCoordinateReasonCode =
   | "coordinate-count-mismatch"
-  | "coordinate-not-positive-safe-integer";
+  | "coordinate-not-positive-safe-integer"
+  | "field-terminal-not-one";
 
 interface DocumentCoordinateError extends Error {
   readonly code: "A12_DOCUMENT_COORDINATES_INVALID";
@@ -578,7 +587,7 @@ The common Kotlin projection uses `suspend fun ModelSourceProvider.load(modelId:
 | Document input | `DocumentInputError` aggregates portable placement diagnostics; every item has an envelope `inputPath` and may separately carry the attempted A12 `modelPath` |
 | Diagnostic details | The discriminated `details` member carries expected/received type, version, count, limit, property, duplicate, or conflict data; consumers never parse presentation-only `message` |
 | Placement location | `placementIndex`, when present, is zero-based into the corresponding input array |
-| Coordinates | `DocumentCoordinateError` reports the exact model path, expected coordinate count, supplied coordinates, and whether arity or positive-safe-integer validation failed |
+| Coordinates | `DocumentCoordinateError` reports the exact model path, expected coordinate count, supplied coordinates, and whether arity, positive-safe-integer, or field-terminal validation failed |
 | Row scope | `DocumentRowScopeError` carries the requested group path and supplied ancestor `GroupPointer` |
 | Typed write | `DocumentValueWriteError` reports kind mismatch or lossy representation without changing the value |
 | Candidate preparation | `ProgramPreparationError` reports invalid candidate-rule or expression source without classifying the whole model as invalid |
@@ -1945,9 +1954,9 @@ interface DocumentDecodeOptions {
 
 `PlacementDocumentInputV1` is the portable, behavior-free DTO. `GroupPlacementInput` creates one concrete row; `FieldPlacementInput` stores one raw cell.
 
-`path` is an absolute model path validated during decoding. `coordinates` contains one positive, 1-based repetition index per path part, including the field part, and `raw` preserves exact lexical text.
+`path` is an absolute model path validated during decoding. `coordinates` contains one positive, 1-based index per path part, including the field part, and `raw` preserves exact lexical text. A field's terminal coordinate identifies the field rather than a repetition axis and must be 1.
 
-Omission means absent, `raw: ""` means present-empty, and malformed text remains present for formal validation. Explicit group placements preserve empty and sparse rows. Positive coordinates above a declared repetition maximum — coordinate 2 on a non-repeatable group included — stay representable and are reported by formal validation, matching the measured Kernel document boundary (`zuGrosseLfdNummer`); decoding refuses only non-positive coordinates and wrong arity.
+Omission means absent, `raw: ""` means present-empty, and malformed text remains present for formal validation. Explicit group placements preserve empty and sparse rows. Positive group coordinates above an effective repetition maximum — coordinate 2 on a non-repeatable group included — stay representable and are reported by formal validation, matching the measured Kernel document boundary (`zuGrosseLfdNummer`). Decoding refuses non-positive coordinates, wrong arity, and a field terminal coordinate other than 1; the last refusal matches the Kernel's V1-to-V2 document conversion, which throws before either evaluation strategy can run.
 
 ```ts
 declare const prepared: PreparedModel;
@@ -2034,7 +2043,7 @@ const snapshot: DocumentSnapshot = builder.freeze();
 
 `DocumentBuilder` is a mutable, single-owner helper bound to one prepared model. Mutations accept validated pointers rather than duplicate raw path/coordinate overloads.
 
-`GroupRef.row` and `ModelMetadata.pointer` reject wrong arity or non-positive/non-safe-integer coordinates with `DocumentCoordinateError`. Coordinates above a repetition maximum remain representable for formal validation, and repeated `addGroup` is idempotent.
+`GroupRef.row` and `ModelMetadata.pointer` reject wrong arity, non-positive/non-safe-integer coordinates, and a field terminal coordinate other than 1 with `DocumentCoordinateError`. Group coordinates above an effective repetition maximum remain representable for formal validation, and repeated `addGroup` is idempotent.
 
 #### Exact typed storage
 
@@ -2162,7 +2171,7 @@ const taxRowsByLine: readonly (readonly GroupRowRef[])[] =
   );
 ```
 
-`instantiatedRows` includes explicit empty rows and rows implied by fields, preserves sparse positive indexes, supports nested repetitions, and returns canonical ascending complete coordinates.
+`instantiatedRows` includes explicit empty rows and rows implied by fields, preserves sparse positive group indexes, supports nested repetitions, and returns canonical ascending complete coordinates. Every field pointer carries terminal coordinate 1.
 
 Omitting `within` searches all parent contexts; supplying it restricts results to descendants. Foreign owners raise `ModelOwnerMismatchError`, non-ancestor same-model rows raise `DocumentRowScopeError`, and enumeration reads placements directly without serialization.
 

@@ -19,6 +19,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
 import java.util.Optional
 import java.util.function.Consumer
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
@@ -79,6 +81,49 @@ class OverRepetitionFormalGateDiffTest {
     }
 
     private fun model() = BoundModel.ofJson(base)
+
+    private val fieldCoordinateBase = DocumentModelDraft.named("application").locale("en_US")
+        .rootGroup("Application", Consumer { a ->
+            a.stringField("Reference", Consumer { })
+                .group("Lines", Consumer<GroupBuilder> { l ->
+                    l.repeatable(2).numberField("Amount", Consumer { })
+                })
+        })
+        .build().toJson()
+
+    /**
+     * A field's terminal coordinate is not a repetition axis: the Kernel's V1-to-V2 document conversion refuses
+     * any value other than 1 before either evaluation strategy can run. The two cases lock the class rather than
+     * one path: a root field at terminal 2 and a nested field at terminal 3.
+     */
+    @Test
+    fun fieldTerminalCoordinateOtherThanOneIsRejectedBeforeEitherKernelStrategy() {
+        val documents = listOf(
+            RuntimeLaws.doc()
+                .group(APPLICATION, 1)
+                .field(REFERENCE, "APP-1", 1, 2),
+            RuntimeLaws.doc()
+                .group(APPLICATION, 1)
+                .group(APPLICATION_LINES, 1, 1)
+                .field(AMOUNT, "10", 1, 1, 3),
+        )
+        val expectedCoordinates = listOf(2, 3)
+        val staticEngine = RuntimeLaws.kernelJavaEngine(fieldCoordinateBase)
+
+        documents.forEachIndexed { index, document ->
+            val coordinate = expectedCoordinates[index]
+            val dynamic = assertThrows(AssertionError::class.java) {
+                RuntimeLaws.messages(fieldCoordinateBase, document)
+            }
+            val java = assertThrows(AssertionError::class.java) {
+                staticEngine.instance(document)
+            }
+
+            val expected = "expected repetition 1 for field, but got $coordinate"
+            assertTrue(dynamic.message.orEmpty().contains(expected), "dynamic-Groovy document conversion: ${dynamic.message}")
+            assertTrue(java.message.orEmpty().contains(expected), "static-Java document conversion: ${java.message}")
+        }
+    }
 
     /** A VALID over-limit descendant exposes over-repetition, and the in-cap sibling stays fully ordinary (clean). */
     @Test fun validOverLimitDescendantExposesOverRepetitionAndInCapSiblingStaysOrdinary() =
@@ -286,5 +331,10 @@ class OverRepetitionFormalGateDiffTest {
         const val TAG = "/Bundle/Tag"
         const val SECTION = "/Bundle/Section"
         const val LINES = "/Bundle/Section/Lines"
+
+        const val APPLICATION = "/Application"
+        const val REFERENCE = "/Application/Reference"
+        const val APPLICATION_LINES = "/Application/Lines"
+        const val AMOUNT = "/Application/Lines/Amount"
     }
 }

@@ -130,6 +130,34 @@ class PlacementTransportTest {
     }
 
     @Test
+    fun readRefusesPositiveFieldTerminalCoordinatesAboveOneWithDedicatedDiagnostic() {
+        val input = PlacementDocumentInputV1(
+            groups = emptyList(),
+            fields = listOf(
+                FieldPlacementInput("/Order/Ref", listOf(1, 2), "ORD-2"),
+                FieldPlacementInput("/Order/Items/Qty", listOf(1, 1, 3), "4"),
+            ),
+        )
+
+        val error = assertFailsWith<DocumentInputError> {
+            prepared().documents.readPlacements(input)
+        }
+
+        assertEquals(
+            setOf(DocumentInputReasonCode.INVALID_FIELD_REPETITION),
+            error.diagnostics.map { it.reasonCode }.toSet(),
+        )
+        assertEquals(
+            listOf(
+                Triple(0, 1, "/Order/Ref"),
+                Triple(1, 2, "/Order/Items/Qty"),
+            ),
+            error.diagnostics.map { Triple(it.placementIndex, it.coordinateIndex, it.modelPath) },
+        )
+        assertTrue(error.diagnostics.all { it.placementKind == DocumentPlacementKind.FIELD })
+    }
+
+    @Test
     fun readRejectsAnUnsupportedVersionAsTheSoleDiagnostic() {
         val documents = prepared().documents
         val error = assertFailsWith<DocumentInputError> {
