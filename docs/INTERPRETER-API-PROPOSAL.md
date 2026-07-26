@@ -577,6 +577,17 @@ const interpreter: Interpreter =
 
 Omitting `ModelPreparationLimits` or `ModelCollectionOptions.limits` selects documented library defaults; it never disables bounds. A caller may tighten those defaults, while any widening is capped by hard implementation maxima so a browser cannot accidentally opt into unbounded acquisition, parsing, or expansion.
 
+| Limit | Default | Hard maximum |
+|---|---:|---:|
+| model count | 256 | 1,024 |
+| bytes per model | 4 MiB | 16 MiB |
+| total source bytes | 32 MiB | 128 MiB |
+| reference depth | 32 | 128 |
+| reference edges | 4,096 | 65,536 |
+| prepared elements | 250,000 | 1,000,000 |
+
+Source-byte limits count the exact strict UTF-8 bytes that source integrity hashes. A `diagnosticLabel` is retained only when it is one or two colon-separated safe identifier segments of letters, digits, `.`, `_`, or `-`, with at most 64 characters per segment; every other label is omitted before the source enters the workspace or a diagnostic is constructed. The grammar deliberately admits labels such as `showcase:policy` while excluding URLs, absolute paths, query strings, user-info, and authorization syntax.
+
 The default configuration uses a system clock sampled once per evaluation transaction, model-carried time zone/declared base year/charset, the kernel-compatible date-completion base-year default, the BMP fallback charset, built-in predefined types, and empty custom registries. Missing custom constructs remain explicit in evaluation results as unsupported; they are never silently ignored.
 
 #### Runtime configuration and customization

@@ -354,14 +354,14 @@ The `R0`–`R10` rows are release milestones. The `R<n>.<n>` rows in §10.1 are 
 
 ### 10.1 Session-sized task queue
 
-The current frontier is **R2.2**. Do not start a later set until its dependencies are `done` and the preceding landing has passed the §11 review gate. The public contract comes from [INTERPRETER-API-PROPOSAL](INTERPRETER-API-PROPOSAL.md), while [INTERPRETER-GAPS](INTERPRETER-GAPS.md) owns IG68, IG85, and IG86 until their full acceptance gates pass. Every implementation set uses red/green TDD, preserves each pre-fix failure in a unique `build/<set>-<item>-red.log`, runs the relevant JVM/Node/browser or external-consumer locks fresh, and closes or amends the owning gap/finding rows in the same commit when their acceptance gate has actually passed.
+The current frontier is **R2.3**. Do not start a later set until its dependencies are `done` and the preceding landing has passed the §11 review gate. The public contract comes from [INTERPRETER-API-PROPOSAL](INTERPRETER-API-PROPOSAL.md), while [INTERPRETER-GAPS](INTERPRETER-GAPS.md) owns IG68, IG85, and IG86 until their full acceptance gates pass. Every implementation set uses red/green TDD, preserves each pre-fix failure in a unique `build/<set>-<item>-red.log`, runs the relevant JVM/Node/browser or external-consumer locks fresh, and closes or amends the owning gap/finding rows in the same commit when their acceptance gate has actually passed.
 
 #### R2 — portable workspace and minimum public API
 
 | Set | Deliverable | Tier | Depends on | Status | Exit gate |
 |---|---|---|---|---|---|
 | R2.1 | Build the reusable model-preparation parity harness and license-safe own-domain raw-workspace fixtures for a self-contained entry, imported typedef, include mount, nested include, alias/exclusion, and cross-model references | BEST | R1 | done | The adapter obtains Java `ModelReader` plus real-Kernel expansion observations, a deliberate negative control proves the comparison fires, and the self-contained baseline agrees with the current common loader on JVM and Node |
-| R2.2 | Add immutable `WorkspaceModelSource` admission: exact `header.id` indexing, duplicate rejection, SHA-256 verification, sanitized labels, frozen bytes, and per-source/aggregate resource limits with structured diagnostics | BEST | R2.1 | pending | Admission invariants each have a failing lock and pass on JVM/Node; no filesystem, network, storage, Kernel, or JVM type enters `commonMain` |
+| R2.2 | Add immutable `WorkspaceModelSource` admission: exact `header.id` indexing, duplicate rejection, SHA-256 verification, sanitized labels, frozen bytes, and per-source/aggregate resource limits with structured diagnostics | BEST | R2.1 | done | Admission invariants each have a failing lock and pass on JVM/Node; no filesystem, network, storage, Kernel, or JVM type enters `commonMain` |
 | R2.3 | Assemble imported and inline type definitions into effective portable types | BEST | R2.2 | pending | Typedef fixture matrix matches the R2.1 Java-reader/Kernel observations and unresolved or cyclic typedef residue fails loudly |
 | R2.4 | Mount includes with exact `SINGLE_RG`/`MODEL_ROOT`, nesting, alias, `excludeRules`, and `excludeComputations` semantics | BEST | R2.3 | pending | Include fixture matrix and a predicted sibling case match both expansion oracles; cycle and depth limits fail structurally |
 | R2.5 | Normalize opaque element ids to name paths and remap every reference-bearing rule/computation fragment, including preconditions, alternatives, operations, and relative/short references | BEST | R2.4 | pending | A reference-family sweep matches the Java reader and Kernel expansion with no unprepared residue; a second-instance lock covers each shared remapping mechanism |
@@ -414,6 +414,7 @@ No set may publish or deploy while another session is active in the worktree.
 - R2.1 extracted one representation-neutral preparation comparator and reused it in the older model-index parity lock, avoiding a second expansion-comparison mechanism.
 - The own-domain fixture author and freshness guard make the committed raw source closure reproducible through the typed kits; the same self-contained source executes on JVM and Node.
 - The red compile failure is preserved at `build/R2.1-parity-compile-red.log`; the R2.1 landing passed the real-Kernel/JVM preparation comparison, its deliberate negative control, include-remapping tri-check, fixture freshness guard, common JVM/Node baseline, purity lint, and semantics-map guard.
+- R2.2 admits an exact-id immutable source snapshot with strict UTF-8 SHA-256, duplicate and integrity diagnostics, syntactically sanitized labels, and documented browser-bounded defaults/hard maxima. A non-allocating strict UTF-8 pass refuses per-source and aggregate excess before allocating frozen bytes, parsing, or hashing; exposed lists and byte arrays resist runtime mutation on JVM and Node. The pre-fix failures are preserved at `build/R2.2-source-admission-red.log`, `build/R2.2-limit-order-red.log`, `build/R2.2-aggregate-bounded-red.log`, and `build/R2.2-strict-immutable-red.log`.
 
 ## 11. Review gate per landing
 
@@ -479,4 +480,4 @@ Ratified on 2026-07-26:
 - publish the independently consumable MIT core `v0.1.0` before the JVM Kernel drop-in;
 - publish the bytecode-free JVM drop-in artifact under EUPL-1.2 by explicit owner policy; this is deliberately conservative and is not presented as a consequence of interface linking.
 
-R2.1 is complete. The next program set is R2.2.
+R2.2 is complete. The next program set is R2.3.
