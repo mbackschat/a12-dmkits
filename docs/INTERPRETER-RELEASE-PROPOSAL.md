@@ -336,21 +336,78 @@ The go-live operation refuses a published release, an existing version directory
 
 Status values: `pending`, `in progress`, `gated`, `done`. Model tier follows the master-session policy: **BEST** for public-contract, semantics, and cross-platform truth; **REGULAR** only for mechanical work after the contract is frozen.
 
-| Set | Work items | Tier | Depends on | Status | Exit gate |
+The `R0`–`R10` rows are release milestones. The `R<n>.<n>` rows in §10.1 are the one-session work sets that advance them. R0 and R1 were completed before this decomposition. Only one set may be `in progress`, every finished set lands as one verified conventional commit, and the same commit updates both its set and milestone status.
+
+| Milestone | Outcome | Tier | Depends on | Status | Exit gate |
 |---|---|---|---|---|---|
 | R0 | Establish current facts, dmtool pattern, and GitHub-only topology | BEST | — | done | This proposal records the evidence and fixed hosting boundary |
 | R1 | Ratify repository name, package coordinates, independent version train, first API slice, provider boundary, first-party-only meaning of GitHub-only, and drop-in sequencing/license | BEST | R0 | done | Every release-boundary decision is recorded in §13 |
 | R2 | Implement the original commonMain workspace assembler, platform-projected async source-provider collector, structured preparation API, minimum public interpreter façade, and document ownership contract, TDD-first | BEST | R1 | pending | Java-reader/kernel expansion parity plus snapshot/integrity/cancellation/failure/limit/privacy provider laws green on JVM/Node; public surface contains no implementation leaks |
 | R3 | Add production Maven/npm packaging, generated `.d.ts`, Kotlin/TS ABI locks, package allowlist, source/docs artifacts, and delivery-footprint measurement | BEST | R2 | pending | Fresh local Maven and packed-tarball consumers compile and run |
-| R4 | Add the browser target, portable browser corpus, workspace-preparation coverage, host-sensitive locks, and browser first-answer evidence | BEST | R2 | pending | Real-browser evaluation/preparation parity and owner-ratified performance bar |
+| R4 | Add the browser target, portable browser corpus, workspace-preparation coverage, host-sensitive locks, and browser first-answer evidence | BEST | R2, R3 | pending | Real-browser evaluation/preparation parity and owner-ratified performance bar |
 | R5 | Build the static showcase as a packed-package, revisioned manifest/SHA-backed on-demand workspace consumer with Cache Storage support and add browser E2E verification | BEST | R3, R4 | pending | Provider closure, integrity/cancellation/limit failures, offline reload, include/typedef, and clean/firing/formal-invalid/computation scenarios pass in a browser |
-| R6 | Write the canonical README/API guide, add tested snippets, and generate Dokka/TypeScript/`llms.txt` references | REGULAR | R2, R3 | pending | Docs describe only shipped API; links and examples are verified |
+| R6 | Write the canonical README/API guide, add tested snippets, and generate Dokka/TypeScript/`llms.txt` references | REGULAR | R3, R5 | pending | Docs describe only shipped API; links and examples are verified |
 | R7 | Create the public mirror assembler, build/deploy workflows, cumulative Pages/Maven layout, and staged publisher | BEST | R1, R3, R5, R6 | pending | A dry-run release in a temporary/fresh mirror proves every refusal and success path |
 | R8 | Publish `v0.1.0-rc.1`, consume it anonymously from GitHub Release and Pages, and run the full release review gate | BEST | R7 | pending | No in-repo resolution; all public URLs and checksums pass |
-| R9 | Fix RC findings by class, publish stable `v0.1.0`, resolve IG68/IG85/IG86, update durable docs, and run the release retro | BEST | R8 | pending | Stable release live; Pages/showcase/API docs live; ledgers clean |
+| R9 | Fix RC findings by class, publish stable `v0.1.0`, confirm IG68/IG85/IG86 closure, update durable docs, and run the release retro | BEST | R8 | pending | Stable release live; Pages/showcase/API docs live; ledgers clean |
 | R10 | Specify, license, implement, and publish the narrow JVM Kernel drop-in artifact as its own follow-up release | BEST | R9 | pending | A pinned `IDocumentRtService` consumer and a real host substitute the implementation unchanged; differential, result-application, cache, extension, source-availability, and mixed-license gates pass |
 
-Each set lands as a verified conventional commit and updates this table in the same commit. No set may publish or deploy while another session is active in the worktree.
+### 10.1 Session-sized task queue
+
+The current frontier is **R2.1**. Do not start a later set until its dependencies are `done` and the preceding landing has passed the §11 review gate. The public contract comes from [INTERPRETER-API-PROPOSAL](INTERPRETER-API-PROPOSAL.md), while [INTERPRETER-GAPS](INTERPRETER-GAPS.md) owns IG68, IG85, and IG86 until their full acceptance gates pass. Every implementation set uses red/green TDD, preserves each pre-fix failure in a unique `build/<set>-<item>-red.log`, runs the relevant JVM/Node/browser or external-consumer locks fresh, and closes or amends the owning gap/finding rows in the same commit when their acceptance gate has actually passed.
+
+#### R2 — portable workspace and minimum public API
+
+| Set | Deliverable | Tier | Depends on | Status | Exit gate |
+|---|---|---|---|---|---|
+| R2.1 | Build the reusable model-preparation parity harness and license-safe own-domain raw-workspace fixtures for a self-contained entry, imported typedef, include mount, nested include, alias/exclusion, and cross-model references | BEST | R1 | pending | The adapter obtains Java `ModelReader` plus real-Kernel expansion observations, a deliberate negative control proves the comparison fires, and the self-contained baseline agrees with the current common loader on JVM and Node |
+| R2.2 | Add immutable `WorkspaceModelSource` admission: exact `header.id` indexing, duplicate rejection, SHA-256 verification, sanitized labels, frozen bytes, and per-source/aggregate resource limits with structured diagnostics | BEST | R2.1 | pending | Admission invariants each have a failing lock and pass on JVM/Node; no filesystem, network, storage, Kernel, or JVM type enters `commonMain` |
+| R2.3 | Assemble imported and inline type definitions into effective portable types | BEST | R2.2 | pending | Typedef fixture matrix matches the R2.1 Java-reader/Kernel observations and unresolved or cyclic typedef residue fails loudly |
+| R2.4 | Mount includes with exact `SINGLE_RG`/`MODEL_ROOT`, nesting, alias, `excludeRules`, and `excludeComputations` semantics | BEST | R2.3 | pending | Include fixture matrix and a predicted sibling case match both expansion oracles; cycle and depth limits fail structurally |
+| R2.5 | Normalize opaque element ids to name paths and remap every reference-bearing rule/computation fragment, including preconditions, alternatives, operations, and relative/short references | BEST | R2.4 | pending | A reference-family sweep matches the Java reader and Kernel expansion with no unprepared residue; a second-instance lock covers each shared remapping mechanism |
+| R2.6 | Add `ModelWorkspace.fromSources`, `prepare`/`tryPrepare`, `PreparedModel` dependency metadata/fingerprint/support report, and the strict expanded-input fast path | BEST | R2.5 | pending | Raw and pre-expanded paths converge on the same prepared semantics, unused sources remain outside the closure, diagnostics contain no acquisition secrets, and the public boundary exposes no internal AST or mutable state |
+| R2.7 | Add asynchronous logical-id collection through `ModelSourceProvider` with snapshot revision, expected digest, one-load-per-id, typed no-retry failures, cancellation, acquisition-time byte limits, and Kotlin suspension/Java `CompletionStage`/TypeScript `Promise` plus `AbortSignal` projections | BEST | R2.6 | pending | Snapshot, integrity, cancellation, failure, limit, privacy, and discovered-closure laws pass on JVM/Node; platform async types remain outside `commonMain` |
+| R2.8 | Add placement transport and model-owned document snapshots: V1 decode/encode, bounds, structured input errors, owner identity, pointers, and cross-model/stale-object rejection | BEST | R2.6 | pending | Transport round trips on JVM/Node; malformed, oversized, foreign, and stale inputs fail without partial mutation |
+| R2.9 | Define and expose the minimum interpreter façade for full/partial validation and computation plus configuration, custom condition, and custom field-type SPIs through JS-safe result/error types | BEST | R2.7, R2.8 | pending | Kotlin, Java, and TypeScript compile fixtures use only the public surface; adapter differentials prove callback and evaluation semantics; `verifyInterpreterPurity` and all common JVM/Node tests pass; IG68 implementation is complete pending its real-browser gate |
+
+#### R3–R6 — packages, browser, showcase, and documentation
+
+| Set | Deliverable | Tier | Depends on | Status | Exit gate |
+|---|---|---|---|---|---|
+| R3.1 | Add the independent version source and Maven/KMP publication with POM identity, MIT metadata, sources, API docs, and a fresh Kotlin/JVM consumer | BEST | R2.9 | pending | A consumer outside the repository resolves only the staged GitHub-layout Maven tree, compiles, and evaluates a model |
+| R3.2 | Add the intentional TypeScript export façade and pack the real npm-compatible tarball with JavaScript, `.d.ts`, browser-safe source maps, metadata, license, and README | BEST | R2.9 | pending | A fresh pnpm project installs the tarball by file/URL form, type-checks, prepares a workspace, validates, and computes without repository substitution |
+| R3.3 | Add Kotlin and TypeScript ABI locks, package allowlists, dependency/secret scans, reproducible checksums, and real npm/Maven delivery-footprint plus previous-release delta reporting | REGULAR | R3.1, R3.2 | pending | Contract and package-content drift fail mechanically; the packed artifacts pass purity and consumer smokes; IG85 implementation is complete pending anonymous public-repository consumption |
+| R4.1 | Add the Kotlin/JS browser target and a minimal bundler consumer of the packed tarball with no Node-only API | BEST | R3.2 | pending | The packed interpreter loads and evaluates in a real browser under the repository-relative Pages base path |
+| R4.2 | Replay the portable conformance and R2 raw-workspace subsets in a real browser, retain host-sensitive decimal/regex locks, and measure browser first-answer independently | BEST | R4.1, R2.9 | pending | Browser results match the qualified JVM/Node corpus; the owner ratifies the explicitly scoped performance bar; IG68 and IG86 graduate to findings |
+| R5.1 | Build the accessible static TypeScript showcase as a genuine packed-package consumer: edit placement JSON, prepare file-map and manifest/provider workspaces, validate, compute, and render structured diagnostics | BEST | R3.3, R4.2 | pending | Browser E2E covers clean, firing, formal-invalid, computation, include, and imported-typedef scenarios without internal imports or hand-expanded showcase models |
+| R5.2 | Add revisioned manifest/SHA acquisition, cancellation/integrity/limit failure UX, Cache Storage offline reload, and production-style GitHub Pages base-path tests | BEST | R5.1 | pending | A real browser proves discovered-closure loading, safe errors, offline reload, cache revision isolation, and no credential/private-path exposure |
+| R6.1 | Write the public interpreter `README.md` and concise developer guide with tested TypeScript, Kotlin, Java, finite-map workspace, on-demand provider, document, validation, computation, and customization examples | REGULAR | R3.3, R5.1 | pending | Every snippet compiles or executes against packed artifacts and every referenced Markdown link resolves |
+| R6.2 | Generate versioned Kotlin and TypeScript API references plus `llms.txt`, package them as the documented API-doc asset, and add no-drift guards | REGULAR | R6.1 | pending | Public declarations are documented, generated references match ABI locks, the archive has no private/internal surface, and docs contain no promise beyond the shipped contract |
+
+#### R7–R9 — public repository and release
+
+| Set | Deliverable | Tier | Depends on | Status | Exit gate |
+|---|---|---|---|---|---|
+| R7.1 | Build the deterministic public-mirror assembler with public README, license/disclaimer, showcase, cumulative Maven/API layout, workflow sources, and an explicit file allowlist | BEST | R3.3, R5.2, R6.2 | pending | Two assemblies are byte-identical apart from declared provenance fields; secret/private-source and unexpected-file injections are rejected |
+| R7.2 | Add staged source-tag publisher and public-repository workflows for draft assets, checksums, Pages deployment, immutable version directories, anonymous smokes, and go-live refusals | BEST | R7.1 | pending | A disposable fresh mirror exercises every refusal and the complete draft-to-production path without publishing a production identity |
+| R8.1 | Create the public `a12-interpreter-releases` repository and publish `v0.1.0-rc.1` through the staged path | BEST | R7.2 | pending | The release remains draft until anonymous Maven, tarball, API-doc, showcase, checksum, and production Pages smokes pass; the reviewed release is then made public and IG85 graduates to a finding |
+| R9.1 | Review RC evidence and user feedback; for every finding, reproduce, generalize, and insert one bounded corrective `R9.F<n>` set for the root-cause class | BEST | R8.1 | pending | The RC has no unresolved release blocker and every correction has fresh package/browser/consumer evidence |
+| R9.2 | Publish stable `v0.1.0`, preserve immutable RC/versioned Pages content, confirm IG68/IG85/IG86 disposition, update durable docs, and run the full program retro | BEST | R9.1 | pending | Stable assets, Maven tree, API docs, and showcase are anonymously consumable from the public repository; manifests/checksums agree; ledgers are clean |
+
+#### R10 — later EUPL Kernel drop-in
+
+R10 starts only after the independently consumable MIT core is stable. Re-audit the pinned Kernel interface and license boundary at that time; if the contract has changed, decompose these rows further before implementation.
+
+| Set | Deliverable | Tier | Depends on | Status | Exit gate |
+|---|---|---|---|---|---|
+| R10.1 | Create the separate EUPL-1.2 JVM drop-in module, pin and audit the complete `IDocumentRtService` contract, keep Kernel APIs compile-only/host-provided, and add bytecode/runtime-closure/source-availability guards | BEST | R9.2 | pending | The artifact contains no Kernel bytecode or runtime dependency, ships corresponding source/license/docs, and a pinned consumer compiles against every required method including deprecated overloads |
+| R10.2 | Implement Kernel model/document ingress, prepared-model resolution, `precompileDocumentModel`, `createModelCodeIdentifier`, and lifecycle/cache identity | BEST | R10.1 | pending | Pinned-service differentials cover model conversion, ownership, precompile/cache hits and misses, variants, identifier behavior, and failure translation without Kernel evaluation delegation |
+| R10.3 | Implement modern and deprecated `validateFull`/`validatePart` methods plus the complete `IDocumentValidationResult` projection | BEST | R10.2 | pending | Dynamic-Groovy differentials match messages, formal findings, pointers, repetition coordinates, locale, and partial scope; static-Java evidence is recorded wherever applicable |
+| R10.4 | Implement modern and deprecated `compute` methods plus complete `IDocumentComputationResult` partitions and `applyTo(DocumentV2)` behavior | BEST | R10.3 | pending | Dynamic-Groovy differentials match stored values, clear operations, result partitions, and applied documents; static-Java evidence is recorded wherever applicable |
+| R10.5 | Adapt clock, custom-condition, custom-field-type, and legacy `additionalInformation` configuration with exact factory cardinality and lane-confined lifecycle | BEST | R10.4 | pending | Existing Kernel extension implementations run unchanged; callback, lifecycle, deprecated-context, and no-customization-path differentials pass |
+| R10.6 | Substitute the drop-in unchanged in a real host, publish it as a separately licensed artifact, and publish the pinned compatibility matrix | BEST | R10.5 | pending | Real-host behavior, mixed-license metadata, source availability, checksums, anonymous consumption, and compatibility claims all pass |
+
+No set may publish or deploy while another session is active in the worktree.
 
 ## 11. Review gate per landing
 
@@ -416,4 +473,4 @@ Ratified on 2026-07-26:
 - publish the independently consumable MIT core `v0.1.0` before the JVM Kernel drop-in;
 - publish the bytecode-free JVM drop-in artifact under EUPL-1.2 by explicit owner policy; this is deliberately conservative and is not presented as a consequence of interface linking.
 
-R1 is complete. The next program set is R2; no release implementation begins in this decision-record landing.
+R1 is complete. The next program set is R2.1; no release implementation begins in this task-decomposition landing.
