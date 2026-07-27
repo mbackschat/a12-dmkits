@@ -19,7 +19,7 @@ Preferred structure: motivation, scope, public API, typed examples, semantics an
 
 ## Status
 
-> **End-state vision capture.** This is the full destination assembled from interview Q&A and accumulated wishes, kept deliberately complete so no requirement is lost — not a scoped build order. The smallest buildable first increment (§12.1's workspace/preparation plus minimum transport and ownership foundation, then the validate/compute + SPI increment) was extracted to [TS-API-MVP-PROPOSAL](../TS-API-MVP-PROPOSAL.md). The public-library wave in [INTERPRETER-RELEASE-PROPOSAL](../INTERPRETER-RELEASE-PROPOSAL.md) activated IG68, IG85, and IG86 together; all three later graduated as IF224–IF226.
+> **End-state vision capture.** This is the full destination assembled from interview Q&A and accumulated wishes, kept deliberately complete so no requirement is lost — not a scoped build order. The smallest buildable first increment (§12.1's workspace/preparation plus minimum transport and ownership foundation, then the validate/compute + SPI increment) was extracted to the [archived TS API MVP proposal](TS-API-MVP-PROPOSAL.md). The public-library contract is now implemented under [INTERPRETER-RELEASE-SPEC](../INTERPRETER-RELEASE-SPEC.md); IG68, IG85, and IG86 graduated as IF224–IF226.
 >
 > **Why this layer, and how much:** [TS-API-STUDY](../TS-API-STUDY.md) §5 reads this proposal as a cheap, grounded *core* (load → document → validate/compute → SPIs) wrapped in a speculative service/editor/candidate *product bet* — build the core, design-but-defer the rest until a consumer justifies its shape.
 
