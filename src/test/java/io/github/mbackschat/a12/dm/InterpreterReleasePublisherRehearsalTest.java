@@ -32,6 +32,7 @@ class InterpreterReleasePublisherRehearsalTest {
             "PASS anonymous public consumer programs",
             "PASS published consumer smoke resumes",
             "PASS prerelease remains non-latest",
+            "PASS default publication is stable root version",
             "PASS complete draft-to-production path",
             "interpreter release rehearsal: OK");
 

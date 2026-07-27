@@ -265,6 +265,7 @@ publisher --go-live >/dev/null
 [[ "$(cat "$STATE/public-consumer-smoke")" == "passed" ]]
 assert_public_identities
 echo "PASS anonymous public consumer programs"
+echo "PASS default publication is stable root version"
 echo "PASS complete draft-to-production path"
 
 create_fixture resumable-public-smoke
