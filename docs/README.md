@@ -26,6 +26,7 @@ Agent-first router: find your job, follow the links. The per-doc entries below d
 | find **open work / what's not built yet** | the `-GAPS` ledgers: [FEATURE-GAPS](FEATURE-GAPS.md), [CLI-CONFORMANCE-GAPS](CLI-CONFORMANCE-GAPS.md), [DEV-API-GAPS](DEV-API-GAPS.md), [INTERPRETER-GAPS](INTERPRETER-GAPS.md), [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md), [INTERPRETER-RELEASE-GAPS](INTERPRETER-RELEASE-GAPS.md), [MODEL-REVIEW-GAPS](MODEL-REVIEW-GAPS.md), [SCHEMAKIT-GAPS](SCHEMAKIT-GAPS.md) |
 | **run the eval / probe** experience instruments | [EVAL-SPEC](EVAL-SPEC.md) ([EVAL-PRIMER](EVAL-PRIMER.md) first if evals are new) / [PROBE-SPEC](PROBE-SPEC.md) |
 | **release / package** the tool or library | [RELEASE-SPEC](RELEASE-SPEC.md) / [INTERPRETER-RELEASE-SPEC](INTERPRETER-RELEASE-SPEC.md) / [INTERPRETER-RELEASE-GAPS](INTERPRETER-RELEASE-GAPS.md) / [NATIVE-IMAGE-GRAALVM](NATIVE-IMAGE-GRAALVM.md) |
+| move **document JSON onto A12's canonical shape** (the active migration) | [A12-SHAPE-CONSOLIDATION](A12-SHAPE-CONSOLIDATION.md) — ordered plan; spec in [KERNEL-FINDINGS](KERNEL-FINDINGS.md), rule in [CLAUDE.md](../CLAUDE.md) |
 | settle a **licensing** question | [LICENSING](LICENSING.md) |
 | see the **big-picture architecture** (modules, boundaries, dependency edges) | [ARCHITECTURE](ARCHITECTURE.md) |
 | read the **vision + decision log** | [PROJECT-DESIGN](PROJECT-DESIGN.md) |
