@@ -274,7 +274,8 @@ release_scan_public_tree "$MIRROR_STAGE"
 release_write_public_inventory "$MIRROR_STAGE"
 "$ROOT/scripts/check-interpreter-release-repo.sh" "$MIRROR_STAGE" >/dev/null
 
-rsync -a --delete --exclude='.git/' "$MIRROR_STAGE/" "$DESTINATION/"
+rsync -a --checksum --delete --exclude='.git/' "$MIRROR_STAGE/" "$DESTINATION/"
+release_verify_public_inventory "$DESTINATION"
 mkdir -p "$ASSETS_DIRECTORY"
 if [[ "${#EXISTING_ASSETS[@]}" -gt 0 ]]; then
   rm -f "${EXISTING_ASSETS[@]}"

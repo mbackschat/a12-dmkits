@@ -152,7 +152,7 @@ say "3. Push the mirror CONTENT (rsync --delete into a fresh clone)"
 rm -rf "$CLONE"
 gh repo clone "$MIRROR" "$CLONE" -- --depth 1
 configure_release_git_identity "$CLONE"
-rsync -a --delete --exclude='.git' "$DEST"/ "$CLONE"/
+rsync -a --checksum --delete --exclude='.git' "$DEST"/ "$CLONE"/
 if [[ -n "$(git -C "$CLONE" status --porcelain)" ]]; then
   git -C "$CLONE" add -A
   git -C "$CLONE" commit -m "release $TAG — kernel $KVER (A12 Tools $A12)"

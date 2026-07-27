@@ -221,6 +221,7 @@ tasks.register('interpreterReleaseGuardTest', Test) {
             'public smoke'      : file('scripts/smoke-interpreter-public-release.sh'),
             'rehearsal'         : file('scripts/rehearse-interpreter-release.sh'),
             'rehearsal backend' : file('scripts/interpreter-release-rehearsal-host.sh'),
+            'dmtool publisher'  : file('scripts/publish-release.sh'),
             'consumer programs' : fileTree('interpreter/consumer-tests') {
                 include 'kotlin-jvm/**/*'
                 include 'typescript/**/*'

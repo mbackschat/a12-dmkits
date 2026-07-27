@@ -121,6 +121,18 @@ class InterpreterReleaseMirrorAssemblerTest {
         assertEquals(before, treeDigests(mirror));
     }
 
+    @Test
+    void publicMirrorSyncsCompareContentInsteadOfTrustingSizeAndTimestamp() throws Exception {
+        for (var script : List.of(
+                "scripts/assemble-interpreter-release-repo.sh",
+                "scripts/publish-release.sh")) {
+            var source = Files.readString(repoFile(script));
+            assertTrue(
+                    source.contains("rsync -a --checksum --delete"),
+                    () -> script + " can retain stale same-size, same-timestamp release content");
+        }
+    }
+
     private ReleaseInputs releaseInputs(String version) throws IOException {
         var root = temporaryDirectory.resolve("inputs-" + version);
         Files.createDirectories(root);
