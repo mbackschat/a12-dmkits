@@ -10,7 +10,9 @@ import {
   type DocumentCoordinateReasonCode,
 } from "./errors.js";
 
+/** Whether a model-owned pointer addresses a group row or field cell. */
 export type ModelEntityKind = "group" | "field";
+/** One exact repetition or every repetition at one partial-validation level. */
 export type RelevantCoordinate = number | "ALL";
 
 const pointerCores =
@@ -18,6 +20,7 @@ const pointerCores =
 const relevantCores =
   new WeakMap<RelevantSelectionPointer, InterpreterBridgeRelevantPointer>();
 
+/** Exact model-owned address of one declared group row or field cell. */
 export abstract class DocumentPointer {
   readonly entityKind: ModelEntityKind;
   readonly path: string;
@@ -41,6 +44,7 @@ export abstract class DocumentPointer {
   }
 }
 
+/** Exact model-owned group-row pointer. */
 export class GroupPointer extends DocumentPointer {
   private constructor(core: InterpreterBridgePointer) {
     super(core);
@@ -52,6 +56,7 @@ export class GroupPointer extends DocumentPointer {
   }
 }
 
+/** Exact model-owned field-cell pointer. */
 export class FieldPointer extends DocumentPointer {
   private constructor(core: InterpreterBridgePointer) {
     super(core);
@@ -63,6 +68,7 @@ export class FieldPointer extends DocumentPointer {
   }
 }
 
+/** Partial-validation pointer containing at least one all-repetitions selector. */
 export class RelevantSelectionPointer {
   readonly entityKind: ModelEntityKind;
   readonly path: string;
@@ -96,6 +102,7 @@ export class RelevantSelectionPointer {
   }
 }
 
+/** Exact or all-repetitions model-owned pointer accepted by partial validation. */
 export type RelevantEntityPointer = DocumentPointer | RelevantSelectionPointer;
 
 /** @internal */
@@ -170,6 +177,7 @@ const exactCoordinate = (
     return coordinate;
 };
 
+/** Prepared-model metadata and checked pointer factories. */
 export class ModelMetadata {
   readonly documentModelId: string;
 

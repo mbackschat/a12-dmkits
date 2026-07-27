@@ -14,9 +14,12 @@ import {
   type RelevantEntityPointer,
 } from "./model.js";
 
+/** Presentation severity of one validation finding. */
 export type ValidationSeverity = "error" | "warning" | "info";
+/** Whether a firing reports an invalid value or a required omission. */
 export type ValidationFindingType = "value" | "omission";
 
+/** Detached projection of one firing validation rule. */
 export interface ValidationFinding {
   readonly code: string;
   readonly rulePath: string;
@@ -28,16 +31,19 @@ export interface ValidationFinding {
   readonly fillToFix: readonly string[];
 }
 
+/** One rule or computation the configured interpreter cannot evaluate. */
 export interface UnsupportedProgram {
   readonly path: string;
   readonly reason: string;
 }
 
+/** Document-independent support audit for a prepared model and callback configuration. */
 export interface InterpreterSupportReport {
   readonly unsupported: readonly UnsupportedProgram[];
   readonly fullySupported: boolean;
 }
 
+/** Detached validation findings and the independent support status. */
 export interface ValidationReport {
   readonly findings: readonly ValidationFinding[];
   readonly unsupported: readonly UnsupportedProgram[];
@@ -45,24 +51,29 @@ export interface ValidationReport {
   readonly fullySupported: boolean;
 }
 
+/** Whether one computed field received a value, was cleared, or could not be computed. */
 export type ComputationOutcome = "value" | "cleared" | "errored";
 
+/** Detached outcome for one computed field cell. */
 export interface ComputationResult {
   readonly pointer: FieldPointer;
   readonly outcome: ComputationOutcome;
   readonly value?: string;
 }
 
+/** Detached computation outcomes and the independent support status. */
 export interface ComputationReport {
   readonly results: readonly ComputationResult[];
   readonly unsupported: readonly UnsupportedProgram[];
   readonly fullySupported: boolean;
 }
 
+/** Per-call locale for full or partial validation. */
 export interface ValidationOptions {
   readonly locale?: string;
 }
 
+/** Per-call locale for computation. */
 export interface ComputeOptions {
   readonly locale?: string;
 }
@@ -121,6 +132,7 @@ const computationReport = (
     fullySupported: report.fullySupported,
   });
 
+/** Reusable evaluator bound to one prepared model and callback configuration. */
 export class Interpreter {
   /** @internal */
   constructor(private readonly core: InterpreterBridgeInterpreter) {}

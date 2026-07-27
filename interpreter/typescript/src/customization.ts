@@ -13,6 +13,7 @@ import {
   type RelevantEntityPointer,
 } from "./model.js";
 
+/** Locale, declaration bounds, and value mode supplied to a custom field validator. */
 export interface CustomFieldValidationParameters {
   readonly locale: string;
   readonly minLength?: number;
@@ -20,6 +21,7 @@ export interface CustomFieldValidationParameters {
   readonly isDisplayValue: boolean;
 }
 
+/** Accepted custom field text or a project-owned rejection key and optional message. */
 export type CustomFieldValidationResult =
   | {readonly accepted: true}
   | {
@@ -28,16 +30,19 @@ export type CustomFieldValidationResult =
       readonly message?: string;
     };
 
+/** Synchronous validator for one named custom field type. */
 export type CustomFieldValidator = (
   value: string,
   parameters: CustomFieldValidationParameters,
 ) => CustomFieldValidationResult;
 
+/** Read-only model-owned Document access available during a custom condition call. */
 export interface CustomConditionDocumentView {
   value(pointer: FieldPointer): string | undefined;
   fields(): readonly FieldPointer[];
 }
 
+/** Document, relevance, formal-error, and error-pointer context for one custom condition. */
 export interface CustomConditionInvocation {
   readonly document: CustomConditionDocumentView;
   readonly relevantEntities?: readonly RelevantEntityPointer[];
@@ -45,8 +50,10 @@ export interface CustomConditionInvocation {
   readonly errorPointer: FieldPointer;
 }
 
+/** Synchronous error condition; returning true fires the owning rule. */
 export type CustomCondition = (invocation: CustomConditionInvocation) => boolean;
 
+/** Named project callbacks bound while creating an interpreter. */
 export interface InterpreterConfiguration {
   readonly customFieldTypes?: Readonly<Record<string, CustomFieldValidator>>;
   readonly customConditions?: Readonly<Record<string, CustomCondition>>;

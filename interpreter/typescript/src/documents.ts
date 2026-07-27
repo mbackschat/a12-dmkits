@@ -20,17 +20,20 @@ import {
   type DocumentDecodeOptions,
 } from "./limits.js";
 
+/** One explicit group row in version 1 Document JSON. */
 export interface GroupPlacementInput {
   readonly path: string;
   readonly coordinates: readonly number[];
 }
 
+/** One present field cell and its unchanged raw text in version 1 Document JSON. */
 export interface FieldPlacementInput {
   readonly path: string;
   readonly coordinates: readonly number[];
   readonly raw: string;
 }
 
+/** Lossless portable Document JSON accepted by every supported runtime. */
 export interface DocumentInputV1 {
   readonly version: 1;
   readonly groups: readonly GroupPlacementInput[];
@@ -40,6 +43,7 @@ export interface DocumentInputV1 {
 const snapshotCores =
   new WeakMap<DocumentSnapshot, InterpreterBridgeDocumentSnapshot>();
 
+/** Immutable, opaque Document state owned by one prepared model. */
 export class DocumentSnapshot {
   private constructor(core: InterpreterBridgeDocumentSnapshot) {
     snapshotCores.set(this, core);
@@ -477,6 +481,7 @@ const documentInputFromBridge = (
       }))),
   });
 
+/** Model-aware Document decoding, typed reading, ownership checks, and lossless encoding. */
 export class PreparedDocumentApi {
   /** @internal */
   constructor(private readonly core: InterpreterBridgeDocuments) {}

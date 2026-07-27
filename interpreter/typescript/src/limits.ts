@@ -1,3 +1,4 @@
+/** Optional resource ceilings for source admission, graph assembly, and prepared output. */
 export interface ModelPreparationLimits {
   readonly maxModelCount?: number;
   readonly maxModelBytes?: number;
@@ -9,6 +10,7 @@ export interface ModelPreparationLimits {
   readonly maxPreparedElements?: number;
 }
 
+/** Optional resource ceilings applied before a Document snapshot is constructed. */
 export interface DocumentDecodeLimits {
   readonly maxGroupPlacements?: number;
   readonly maxFieldPlacements?: number;
@@ -19,6 +21,7 @@ export interface DocumentDecodeLimits {
   readonly maxModelNestingDepth?: number;
 }
 
+/** Options for strict unknown-input decoding or typed Document reading. */
 export interface DocumentDecodeOptions {
   readonly limits?: DocumentDecodeLimits;
 }

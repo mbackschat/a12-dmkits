@@ -13,17 +13,20 @@ import {
 } from "./limits.js";
 import {PreparedModel} from "./prepared-model.js";
 
+/** Raw DM-JSON plus optional safe label and expected SHA-256 integrity. */
 export interface WorkspaceModelSource {
   readonly json: string;
   readonly diagnosticLabel?: string;
   readonly expectedSha256?: string;
 }
 
+/** Remaining byte ceiling and cancellation signal for one provider request. */
 export interface ModelSourceLoadContext {
   readonly maximumBytes: number;
   readonly signal: AbortSignal;
 }
 
+/** Application-owned asynchronous source acquisition port. */
 export interface ModelSourceProvider {
   readonly snapshotRevision?: string;
   load(
@@ -32,6 +35,7 @@ export interface ModelSourceProvider {
   ): Promise<WorkspaceModelSource | undefined>;
 }
 
+/** Resource limits and cancellation for on-demand workspace collection. */
 export interface ModelCollectionOptions {
   readonly limits?: ModelPreparationLimits;
   readonly signal?: AbortSignal;
@@ -48,6 +52,7 @@ const bridgeSource = (
 
 const defaultSignal = (): AbortSignal => new AbortController().signal;
 
+/** Immutable finite source snapshot that expands or prepares one selected model closure. */
 export class ModelWorkspace {
   readonly modelIds: readonly string[];
   readonly snapshotRevision: string | undefined;

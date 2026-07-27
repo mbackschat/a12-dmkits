@@ -215,3 +215,7 @@ The base artifacts are clean-room, kernel-free, and MIT-licensed. They do not li
 The supported model time zones are `UTC`, `GMT`, and `Europe/Berlin`. Optional-month and optional-year date precisions are outside the evaluator boundary. The support report and each evaluation report make program-level unsupported constructs visible.
 
 For the exact semantic contract and complete declaration inventory, see the [interpreter API spec](INTERPRETER-API-SPEC.md) and its linked ABI goldens. Deferred Kernel-shaped compatibility adapters and richer stateful products are listed separately in [interpreter API gaps](INTERPRETER-API-GAPS.md).
+
+## 10. Generated references
+
+The version-matched API documentation asset `dm-interpreter-0.9.1-api-docs.zip` contains this tested guide, a Dokka Kotlin reference, a TypeScript reference generated from the declaration file inside the packed npm tarball, and `llms.txt`. Its immutable release layout starts at `api/v0.9.1/`; the public mirror adds `api/latest/` only after that release has passed the complete gate.

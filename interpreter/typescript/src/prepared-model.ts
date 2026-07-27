@@ -16,6 +16,7 @@ import {Interpreter} from "./evaluation.js";
 import {bridge} from "./internal/bridge.js";
 import {ModelMetadata} from "./model.js";
 
+/** One distinct resolved workspace dependency in deterministic discovery order. */
 export interface ModelDependency {
   readonly fromModelId: string;
   readonly toModelId: string;
@@ -41,6 +42,7 @@ const dependency = (
     sha256: source.sha256,
   });
 
+/** Immutable prepared model that owns metadata, Documents, pointers, and interpreters. */
 export class PreparedModel {
   readonly entryModelId: string;
   readonly fingerprint: string;

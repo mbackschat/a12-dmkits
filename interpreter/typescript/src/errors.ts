@@ -1,9 +1,11 @@
 import type {InterpreterBridgeFailure} from "../internal/a12-interpreter-core.mjs";
 
+/** Success or one native typed error without throwing. */
 export type A12Result<T, E extends Error> =
   | {readonly ok: true; readonly value: T}
   | {readonly ok: false; readonly error: E};
 
+/** Stable category supplied when an application-owned model provider cannot return a source. */
 export type ModelSourceProviderFailureReason =
   | "access-denied"
   | "unavailable"
@@ -12,6 +14,7 @@ export type ModelSourceProviderFailureReason =
   | "integrity-mismatch"
   | "provider-failed";
 
+/** Application-owned acquisition failure with a stable reason and requested model id. */
 export class ModelSourceProviderError extends Error {
   readonly code = "A12_MODEL_SOURCE_PROVIDER_FAILED" as const;
 
@@ -25,6 +28,7 @@ export class ModelSourceProviderError extends Error {
   }
 }
 
+/** One directed include or imported-type-definition edge in a diagnostic chain. */
 export interface ModelReferenceStep {
   readonly fromModelId: string;
   readonly toModelId: string;
@@ -32,6 +36,7 @@ export interface ModelReferenceStep {
   readonly alias?: string;
 }
 
+/** Structured, privacy-safe detail for one model preparation failure. */
 export interface ModelPreparationDiagnostic {
   readonly code: string;
   readonly diagnosticLabel?: string;
@@ -57,6 +62,7 @@ export interface ModelPreparationDiagnostic {
   readonly message: string;
 }
 
+/** Aggregate source-admission, collection, expansion, or preparation failure. */
 export class ModelPreparationError extends Error {
   readonly code = "A12_MODEL_PREPARATION_FAILED" as const;
 
@@ -66,14 +72,18 @@ export class ModelPreparationError extends Error {
   }
 }
 
+/** One object-key or array-index segment locating invalid Document input. */
 export type DocumentInputPathSegment = string | number;
+/** Whether a Document diagnostic refers to a group-row or field-cell entry. */
 export type DocumentPlacementKind = "group" | "field";
+/** Why one supplied coordinate cannot be represented by the portable Document boundary. */
 export type InvalidCoordinateReason =
   | "not-number"
   | "not-safe-integer"
   | "not-positive"
   | "outside-portable-range";
 
+/** Structured detail for one invalid part of supplied Document input. */
 export interface DocumentInputDiagnostic {
   readonly reasonCode: string;
   readonly inputPath: readonly DocumentInputPathSegment[];
@@ -85,6 +95,7 @@ export interface DocumentInputDiagnostic {
   readonly details?: Readonly<Record<string, unknown>>;
 }
 
+/** Aggregate Document decoding failure produced before a snapshot is created. */
 export class DocumentInputError extends Error {
   readonly code = "A12_DOCUMENT_INPUT_INVALID" as const;
 
@@ -94,6 +105,7 @@ export class DocumentInputError extends Error {
   }
 }
 
+/** A snapshot or pointer belongs to another prepared model. */
 export class ModelOwnerMismatchError extends Error {
   readonly code = "A12_MODEL_OWNER_MISMATCH" as const;
 
@@ -103,6 +115,7 @@ export class ModelOwnerMismatchError extends Error {
   }
 }
 
+/** A requested pointer path names no declared group or field. */
 export class UnknownModelPathError extends Error {
   readonly code = "A12_UNKNOWN_MODEL_PATH" as const;
 
@@ -112,12 +125,14 @@ export class UnknownModelPathError extends Error {
   }
 }
 
+/** Stable reason why a concrete or partial-validation pointer cannot be constructed. */
 export type DocumentCoordinateReasonCode =
   | "coordinate-count-mismatch"
   | "coordinate-not-positive"
   | "coordinate-outside-portable-range"
   | "field-terminal-not-one";
 
+/** Invalid model-owned pointer coordinates. */
 export class DocumentCoordinateError extends Error {
   readonly code = "A12_DOCUMENT_COORDINATE_INVALID" as const;
 
@@ -134,6 +149,7 @@ export class DocumentCoordinateError extends Error {
   }
 }
 
+/** A project callback failed, re-entered evaluation, or returned asynchronously. */
 export class InterpreterIntegrationError extends Error {
   readonly code = "A12_INTERPRETER_INTEGRATION_FAILED" as const;
 
@@ -147,6 +163,7 @@ export class InterpreterIntegrationError extends Error {
   }
 }
 
+/** Stable category for a project customization integration failure. */
 export type InterpreterIntegrationReason =
   | "factory-threw"
   | "callback-threw"

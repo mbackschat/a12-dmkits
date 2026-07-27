@@ -35,7 +35,14 @@ await withStaticServer(async (url) => {
     const version = showcase.locator(
       "#package-version[data-package='@mbackschat/a12-interpreter']",
     );
-    if (await version.textContent() !== "0.9.1") {
+    const releaseIdentity = await showcase.evaluate(async () => {
+      const response = await fetch("release.json");
+      if (!response.ok) {
+        throw new Error(`release identity failed with HTTP ${response.status}`);
+      }
+      return await response.json() as {version: string};
+    });
+    if (await version.textContent() !== releaseIdentity.version) {
       throw new Error(
         `showcase package version mismatch: ${await version.textContent()}`,
       );

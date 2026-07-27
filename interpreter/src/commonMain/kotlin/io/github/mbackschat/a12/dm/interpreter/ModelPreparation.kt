@@ -306,6 +306,7 @@ class ModelPreparationError private constructor(
     }
 }
 
+/** Non-throwing result of preparing one model for evaluation. */
 sealed interface ModelPreparationResult {
     data class Success(val model: PreparedModel) : ModelPreparationResult
     data class Failure(val error: ModelPreparationError) : ModelPreparationResult

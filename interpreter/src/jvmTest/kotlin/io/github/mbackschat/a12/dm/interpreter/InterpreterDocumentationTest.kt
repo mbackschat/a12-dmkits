@@ -118,6 +118,30 @@ class InterpreterDocumentationTest {
     }
 
     @Test
+    fun interpreterScriptsDeriveTheRepositoryVersion() {
+        val build = Files.readString(repoFile("build.gradle"))
+        val version = requireNotNull(Regex("""(?m)^version = '([^']+)'$""").find(build)).groupValues[1]
+        val sourceRoots = listOf(
+            repoFile("interpreter/typescript/scripts"),
+            repoFile("interpreter/consumer-tests/browser/scripts"),
+            repoFile("interpreter/consumer-tests/browser/src"),
+        )
+        val failures = sourceRoots.flatMap { root ->
+            Files.walk(root).use { paths ->
+                paths.filter(Files::isRegularFile)
+                    .filter { it.fileName.toString().substringAfterLast('.', "") in setOf("ts", "mjs") }
+                    .filter { Files.readString(it).contains(version) }
+                    .map { repoRoot().relativize(it).toString() }
+                    .toList()
+            }
+        }
+        assertTrue(
+            failures.isEmpty(),
+            "interpreter scripts repeat repository version $version instead of deriving it:\n${failures.joinToString("\n")}",
+        )
+    }
+
+    @Test
     fun relativeLinksInPublicInterpreterDocumentsResolve() {
         val documents = listOf(
             repoFile("interpreter/README.md") to repoRoot(),

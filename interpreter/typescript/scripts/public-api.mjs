@@ -14,7 +14,7 @@ const isWithin = (root, file) => {
   return path !== "" && !path.startsWith("..") && !isAbsolute(path);
 };
 
-export async function renderPublicApi(typescriptPath, indexPath) {
+export async function describePublicApi(typescriptPath, indexPath) {
   const ts = await import(pathToFileURL(typescriptPath).href);
   const program = ts.createProgram({
     rootNames: [indexPath],
@@ -91,25 +91,40 @@ export async function renderPublicApi(typescriptPath, indexPath) {
     );
   }
 
-  const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
-  const declarations = exported.map((exportedSymbol) => {
+  const printer = ts.createPrinter({
+    newLine: ts.NewLineKind.LineFeed,
+    removeComments: true,
+  });
+  return exported.map((exportedSymbol) => {
     const target = canonicalSymbol(checker, ts, exportedSymbol);
     const nodes = target.declarations ?? [];
     if (nodes.length === 0) {
       throw new Error(`public export ${exportedSymbol.getName()} has no declaration`);
     }
-    const rendered = nodes
+    const signature = nodes
       .map((node) =>
         printer.printNode(ts.EmitHint.Unspecified, node, node.getSourceFile()),
       )
       .join("\n");
-    return `## ${exportedSymbol.getName()}\n${rendered}`;
+    return {
+      name: exportedSymbol.getName(),
+      documentation: ts.displayPartsToString(
+        target.getDocumentationComment(checker),
+      ).trim(),
+      signature,
+    };
   });
+}
 
+export async function renderPublicApi(typescriptPath, indexPath) {
+  const declarations = await describePublicApi(typescriptPath, indexPath);
   return [
     "# @mbackschat/a12-interpreter public TypeScript ABI",
     "",
-    ...declarations.flatMap((declaration) => [declaration, ""]),
+    ...declarations.flatMap(({name, signature}) => [
+      `## ${name}\n${signature}`,
+      "",
+    ]),
   ].join("\n");
 }
 
