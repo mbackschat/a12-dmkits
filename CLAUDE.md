@@ -8,6 +8,10 @@ Design and rationale live under [`docs/`](docs/) — **[`docs/README.md`](docs/R
 
 English is the project default: code, identifiers, comments, docs, and the **default render target** (`DslRenderer` defaults to `ConditionLanguage.EN`) are English. **German is a supported render target, not the default** — the operator catalog carries verified `de` keywords and `new DslRenderer(ConditionLanguage.DE)` renders to it. Translations are welcome; English stays canonical.
 
+### Document terminology
+
+In prose, user interfaces, and document-level APIs, a **DocumentModel** validates a **Document**. Do not call the domain object a “Data Document” or “placement document”; “placement” belongs only to individual location records such as a field value at a model path and repetition coordinate.
+
 ## Commits
 
 Automatically commit each finished, verified feature set unless the user explicitly asks not to commit. Never commit partial, failing, or unrelated work. A prompt shortcut that explicitly forbids committing, such as the global `F:` shortcut, remains an exception.

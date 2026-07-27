@@ -406,7 +406,7 @@ const loadDocumentFile = async (file: File): Promise<void> => {
   const parsed: unknown = JSON.parse(await file.text());
   documentInput.value = JSON.stringify(parsed, null, 2);
   status.dataset.state = "passed";
-  status.textContent = "Placement document loaded locally and remains editable.";
+  status.textContent = "Document loaded locally and remains editable.";
 };
 
 const loadReleaseIdentity = async (): Promise<ReleaseIdentity> => {

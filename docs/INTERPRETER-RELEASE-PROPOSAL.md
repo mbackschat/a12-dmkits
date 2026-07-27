@@ -294,9 +294,9 @@ The first showcase is a static TypeScript app with no server:
 - fetch a bundled workspace manifest containing an entry model, an included model, and a typedef model;
 - implement the manifest-backed `ModelSourceProvider`, collect the entry closure on demand, and prepare it in the browser;
 - visibly demonstrate one included field/program and one field whose imported typedef supplies its effective semantics;
-- provide ready-to-run valid, rule-firing, formally invalid, computation, and include/typedef placement documents so the complete showcase needs no upload;
+- provide ready-to-run valid, rule-firing, formally invalid, computation, and include/typedef Documents so the complete showcase needs no upload;
 - edit the versioned placement JSON;
-- load a local placement document and a local model workspace through a folder picker or multi-file fallback without uploading either to a server;
+- load a local Document and a local model workspace through a folder picker or multi-file fallback without uploading either to a server;
 - choose the entry model for a local workspace and switch the same sources between finite-map and on-demand-provider preparation;
 - run full validation, partial validation, and compute-then-validate;
 - inspect findings, pointers, severities, suppressions, unsupported constructs, and computed values;

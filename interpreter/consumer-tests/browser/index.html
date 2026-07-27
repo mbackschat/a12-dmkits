@@ -36,7 +36,7 @@
         <div class="hero-details">
           <p>
             <span class="detail-marker" aria-hidden="true">&gt;</span>
-            <span>Use a built-in example or load your own workspace and placement document.</span>
+            <span>Use a built-in example or load your own workspace and Document.</span>
           </p>
           <p>
             <span class="detail-marker" aria-hidden="true">&gt;</span>
@@ -44,14 +44,18 @@
           </p>
         </div>
         <div class="hero-facts" aria-label="Release facts">
-          <span><strong>JVM + Node + browser</strong> qualified</span>
-          <span><strong>209.3 ms</strong> measured browser p95</span>
-          <span><strong>33 cases</strong> replayed in Chrome</span>
+          <span><strong>209.3 ms p95</strong> interpreter creation + full validation</span>
+          <span><strong>≤250 ms target</strong> passed</span>
+          <span><strong>33/33 conformance cases</strong> passed in Chrome</span>
+          <span><strong>JVM · Node.js · Chrome</strong> tested targets</span>
           <span>
             <strong id="bundle-size">…</strong>
             interpreter JS bundle (<output id="bundle-size-uncompressed">…</output> minified)
           </span>
         </div>
+        <p class="performance-context">
+          Performance case: interpreter creation through full validation of an already prepared 10,000-row Document with 4,900 findings, measured in 50 fresh Chrome runs. p95 means 95% of runs completed in 209.3 ms or less. Model preparation and Document creation are not timed.
+        </p>
       </section>
 
       <section class="playground" aria-labelledby="playground-title">
@@ -71,7 +75,7 @@
               <option value="include-typedef">Included model + typedef input</option>
             </select>
           </label>
-          <p>Each choice loads a placement document and its matching model workspace. <span id="scenario-note">The valid permit should produce no findings.</span></p>
+          <p>Each choice loads a Document and its matching model workspace. <span id="scenario-note">The valid permit should produce no findings.</span></p>
         </div>
 
         <div class="advanced-controls">
@@ -138,14 +142,14 @@
         <div class="workbench">
           <section class="editor-panel" aria-labelledby="document-title">
             <div class="panel-heading">
-              <h3 id="document-title">Placement document</h3>
+              <h3 id="document-title">Document</h3>
             </div>
-            <label class="editor-label" for="document-input">Placement document JSON</label>
-            <p class="editor-help">This editable JSON is the document passed to Validate or Compute. Choosing a demo document or loading a document file replaces it.</p>
+            <label class="editor-label" for="document-input">Document JSON</label>
+            <p class="editor-help">This editable JSON is the Document passed to Validate or Compute. Choosing a demo Document or loading a Document file replaces it.</p>
             <textarea id="document-input" spellcheck="false"></textarea>
             <h4>Use your own files</h4>
             <p class="upload-intro">
-              The demo needs no files. To use your own data, load a model workspace, a placement document, or both.
+              The demo needs no files. To use your own data, load a model workspace, a Document, or both.
             </p>
             <p class="workspace-help">
               A workspace can contain included models and imported typedefs. Select the folder—or all related model files—so the interpreter can resolve them locally.
@@ -175,7 +179,7 @@
                   type="file"
                   accept=".json,application/json"
                 >
-                <span class="file-button-label">Load placement document</span>
+                <span class="file-button-label">Load Document</span>
               </label>
             </div>
             <label id="entry-model-control" hidden>
@@ -236,11 +240,11 @@
         <ol class="manual-steps">
           <li>
             <h3>Start with a built-in example</h3>
-            <p>Choose a demo document, then select Validate or Compute. The matching model workspace and placement document are already loaded; no download or upload is required.</p>
+            <p>Choose a demo Document, then select Validate or Compute. The matching model workspace and Document are already loaded; no download or upload is required.</p>
           </li>
           <li>
             <h3>Use your own files</h3>
-            <p>Use Load workspace folder for a directory of related models, or Choose model files to select them individually. Then choose the entry model. Load placement document replaces the editable JSON input.</p>
+            <p>Use Load workspace folder for a directory of related models, or Choose model files to select them individually. Then choose the entry model. Load Document replaces the editable JSON input.</p>
           </li>
           <li>
             <h3>Choose how the workspace is read</h3>
@@ -252,11 +256,11 @@
           </li>
           <li>
             <h3>Choose the validation scope</h3>
-            <p>Full document validates the complete placement document. Relevant scenario group validates only the group and coordinates shown beside the operation buttons. Results and failures appear as structured JSON.</p>
+            <p>Full document validates the complete Document. Relevant scenario group validates only the group and coordinates shown beside the operation buttons. Results and failures appear as structured JSON.</p>
           </li>
           <li>
             <h3>Local file handling</h3>
-            <p>Nothing is uploaded. The page reads selected models and placement documents locally in the browser and does not store user-selected files in its offline cache.</p>
+            <p>Nothing is uploaded. The page reads selected models and Documents locally in the browser and does not store user-selected files in its offline cache.</p>
           </li>
         </ol>
       </details>

@@ -87,6 +87,44 @@ await withStaticServer(async (url) => {
     ) {
       throw new Error("showcase prompt marker resembles a disclosure control");
     }
+    const releaseFacts = (await showcase.locator(".hero-facts").textContent())
+      ?.replaceAll(/\s+/g, " ");
+    for (const expected of [
+      "209.3 ms p95 interpreter creation + full validation",
+      "≤250 ms target passed",
+      "33/33 conformance cases passed in Chrome",
+      "JVM · Node.js · Chrome tested targets",
+    ]) {
+      if (!releaseFacts?.includes(expected)) {
+        throw new Error(
+          `showcase release facts lack context '${expected}': ${releaseFacts}`,
+        );
+      }
+    }
+    const performanceContext = (await showcase.locator(
+      ".performance-context",
+    ).textContent())?.replaceAll(/\s+/g, " ");
+    for (const expected of [
+      "10,000-row Document",
+      "4,900 findings",
+      "50 fresh Chrome runs",
+      "95% of runs",
+      "209.3 ms or less",
+    ]) {
+      if (!performanceContext?.includes(expected)) {
+        throw new Error(
+          `showcase performance result lacks context '${expected}': ${
+            performanceContext
+          }`,
+        );
+      }
+    }
+    const visibleShowcaseText = await showcase.locator("body").innerText();
+    if (/(?:data|placement) document/i.test(visibleShowcaseText)) {
+      throw new Error(
+        "showcase qualifies the Kernel domain term 'Document'",
+      );
+    }
     const exampleDownloads = await showcase.locator(".example-downloads")
       .textContent();
     if (
@@ -236,7 +274,7 @@ await withStaticServer(async (url) => {
     });
     await showcase.locator(
       "#status[data-state=passed]",
-    ).filter({hasText: "Placement document loaded"}).waitFor();
+    ).filter({hasText: "Document loaded"}).waitFor();
     await showcase.click("#validate");
     await assertOutput("validate-full", ["AREA_NEEDS_NOTE"]);
 
