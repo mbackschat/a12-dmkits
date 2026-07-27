@@ -2,7 +2,7 @@
 
 ## Status
 
-**Execution is in progress; R2–R7 are complete, and R8.1 is gated on GitHub authentication plus the RC/stable artifact-version decision recorded below.** This proposal is also the inter-session state carrier for taking `:interpreter` from an in-repo, source-consumable Kotlin Multiplatform module to a documented public artifact with portable workspace preparation, a browser-qualified TypeScript surface, and a GitHub Pages showcase.
+**Execution is in progress; R2–R7 are complete, and R8.1 is gated on the RC/stable artifact-version decision recorded below.** This proposal is also the inter-session state carrier for taking `:interpreter` from an in-repo, source-consumable Kotlin Multiplatform module to a documented public artifact with portable workspace preparation, a browser-qualified TypeScript surface, and a GitHub Pages showcase.
 
 Owner direction fixed on 2026-07-26:
 
@@ -416,10 +416,11 @@ R2.9–R2.11 deliberately use one common assembler for two different terminal op
 
 ### 10.2 R8.1 publication gate
 
-No public repository, source tag, draft release, immutable Maven/API directory, or Pages deployment may be created until both blockers are resolved:
+No public repository, source tag, draft release, immutable Maven/API directory, or Pages deployment may be created until the remaining blocker is resolved:
 
-- `gh auth status` currently reports an invalid token for `mbackschat`; the source commits are not yet published to `origin`, `interpreter-v0.9.1` does not exist, and the public release repository cannot be created through the staged path until GitHub CLI authentication is restored.
 - The current plan combines GitHub RC tag `v0.9.1-rc.1` with root-aligned artifact version `0.9.1`. Publishing that RC would permanently occupy Maven `0.9.1` and `api/v0.9.1`; the immutable-mirror contract would then correctly refuse a corrected stable `v0.9.1`. The owner must choose one coherent policy before R8: publish final `0.9.1` bytes under the RC tag and allow only an identical stable relabel (any correction becomes `0.9.2`), give the RC artifacts a distinct root-aligned prerelease version, or skip the public RC and publish `0.9.1` stable after the completed rehearsal. The publisher must implement and lock the chosen policy before the first public immutable version is written.
+
+GitHub authentication was restored and verified on 2026-07-27 for `mbackschat` with the required `repo` and `workflow` scopes. The private source repository and public dmtool reference repository are reachable; `mbackschat/a12-interpreter-releases` does not yet exist, as required before the first staged publication.
 
 #### R10 — later EUPL Kernel drop-in
 
