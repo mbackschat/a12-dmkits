@@ -21,7 +21,7 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class InterpreterReleaseMirrorAssemblerTest {
 
-    private static final String VERSION = "0.9.1";
+    private static final String VERSION = "0.9.2";
     private static final String SOURCE_SHA = "0123456789abcdef0123456789abcdef01234567";
 
     @TempDir
@@ -41,11 +41,12 @@ class InterpreterReleaseMirrorAssemblerTest {
         assertEquals(treeDigests(firstMirror), treeDigests(secondMirror));
         assertEquals(treeDigests(firstAssets), treeDigests(secondAssets));
         assertTrue(Files.isRegularFile(firstMirror.resolve("site/showcase/index.html")));
-        assertTrue(Files.isRegularFile(firstMirror.resolve("site/api/v0.9.1/index.html")));
+        assertTrue(Files.isRegularFile(firstMirror.resolve("site/api/v" + VERSION + "/index.html")));
         assertTrue(Files.isRegularFile(firstMirror.resolve("site/api/latest/index.html")));
         assertTrue(Files.isRegularFile(firstMirror.resolve(
-                "site/maven/io/github/mbackschat/a12/dm/dm-interpreter/0.9.1/dm-interpreter-0.9.1.pom")));
-        assertTrue(Files.readString(firstMirror.resolve("README.md")).contains("0.9.1"));
+                "site/maven/io/github/mbackschat/a12/dm/dm-interpreter/" + VERSION
+                        + "/dm-interpreter-" + VERSION + ".pom")));
+        assertTrue(Files.readString(firstMirror.resolve("README.md")).contains(VERSION));
         assertTrue(Files.readString(firstMirror.resolve("site/privacy.html"))
                 .contains("Martin Backschat"));
         assertTrue(Files.readString(firstMirror.resolve("site/privacy.html"))
@@ -89,11 +90,11 @@ class InterpreterReleaseMirrorAssemblerTest {
         assemble(inputs, mirror, assets);
 
         Files.writeString(mirror.resolve("unexpected.txt"), "injected\n");
-        var unexpected = runAssembler(releaseInputs("0.9.2"), mirror, assets);
+        var unexpected = runAssembler(releaseInputs("0.9.3"), mirror, assets);
         assertEquals(1, unexpected.exitCode());
         assertTrue(unexpected.output().contains("public file inventory"), unexpected::output);
 
-        var secretInputs = releaseInputs("0.9.3");
+        var secretInputs = releaseInputs("0.9.4");
         Files.writeString(secretInputs.showcase().resolve("secret.txt"),
                 "private checkout: /Users/example/a12\n");
         var secretMirror = temporaryDirectory.resolve("secret-mirror");

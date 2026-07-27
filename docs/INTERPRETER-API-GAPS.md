@@ -66,7 +66,7 @@ A separate JVM-only EUPL-1.2 artifact implements the complete pinned Kernel 30.8
 
 The artifact is not the broad internal `:adapter`, contains no Kernel bytecode, and keeps Kernel API/runtime dependencies host-provided.
 
-**Re-open trigger:** the core `v0.9.1` release is public and a real JVM host is available for unchanged substitution. The release-program R10 gate owns its build and publication sequence.
+**Re-open trigger:** the core `v0.9.2` release is public and a real JVM host is available for unchanged substitution. The release-program R10 gate owns its build and publication sequence.
 
 ### IAG3 — richer document values, storage, inspection, and persistent editing
 

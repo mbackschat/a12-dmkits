@@ -226,8 +226,8 @@ The base artifacts are clean-room, kernel-free, and MIT-licensed. They do not li
 
 The supported model time zones are `UTC`, `GMT`, and `Europe/Berlin`. Optional-month and optional-year date precisions are outside the evaluator boundary. The support report and each evaluation report make program-level unsupported constructs visible.
 
-The versioned Kotlin and TypeScript references contain the complete published declaration inventory. Deferred compatibility adapters and richer stateful products are not part of the v0.9.1 public artifacts.
+The versioned Kotlin and TypeScript references contain the complete published declaration inventory. Deferred compatibility adapters and richer stateful products are not part of the v0.9.2 public artifacts.
 
 ## 10. Generated references
 
-The version-matched API documentation asset `dm-interpreter-0.9.1-api-docs.zip` contains this tested guide, a Dokka Kotlin reference, a TypeScript reference generated from the declaration file inside the packed npm tarball, and `llms.txt`. Its immutable release layout starts at `api/v0.9.1/`; the public mirror adds `api/latest/` only after that release has passed the complete gate.
+The version-matched API documentation asset `dm-interpreter-0.9.2-api-docs.zip` contains this tested guide, a Dokka Kotlin reference, a TypeScript reference generated from the declaration file inside the packed npm tarball, and `llms.txt`. Its immutable release layout starts at `api/v0.9.2/`; the public mirror adds `api/latest/` only after that release has passed the complete gate.
