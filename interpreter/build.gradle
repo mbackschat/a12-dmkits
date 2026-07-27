@@ -1182,6 +1182,8 @@ def verifyExternalInterpreterJsConsumer = tasks.register(
         environment 'INTERPRETER_MAVEN_REPOSITORY', interpreterStagingMavenDir.get().asFile.toURI()
         environment 'INTERPRETER_VERSION', project.version.toString()
         environment 'GRADLE_USER_HOME', externalJsConsumerGradleHome.get().asFile.absolutePath
+        // The isolated public consumer resolves third-party JS dependencies from npm itself, not Yarn's optional registry proxy.
+        environment 'YARN_REGISTRY', 'https://registry.npmjs.org'
         commandLine(
             rootProject.file('gradlew').absolutePath,
             '--no-daemon',
