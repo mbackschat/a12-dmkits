@@ -130,7 +130,16 @@ h1 {
 }
 
 .hero-details p {
+  display: flex;
+  gap: 8px;
   margin-bottom: 4px;
+}
+
+.detail-marker {
+  flex: none;
+  color: var(--blue-dark);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-weight: 700;
 }
 
 .hero-facts {

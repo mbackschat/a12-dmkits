@@ -70,6 +70,23 @@ await withStaticServer(async (url) => {
         "independent showcase links to an unrelated operator policy",
       );
     }
+    const heroDetailMarkers = showcase.locator(
+      ".hero-details .detail-marker",
+    );
+    const heroDetailMarkerText = await heroDetailMarkers.allTextContents();
+    if (
+      await heroDetailMarkers.count() !== 2 ||
+      heroDetailMarkerText.some((marker) => marker !== ">")
+    ) {
+      throw new Error("showcase detail lines lack literal prompt markers");
+    }
+    if (
+      await showcase.locator(
+        "summary .detail-marker, details > .detail-marker",
+      ).count() !== 0
+    ) {
+      throw new Error("showcase prompt marker resembles a disclosure control");
+    }
     const exampleDownloads = await showcase.locator(".example-downloads")
       .textContent();
     if (
