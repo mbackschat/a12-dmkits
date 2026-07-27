@@ -173,11 +173,15 @@ import io.github.mbackschat.a12.dm.interpreter.ComputationReport;
 import io.github.mbackschat.a12.dm.interpreter.DocumentInputV1;
 import io.github.mbackschat.a12.dm.interpreter.FieldPlacementInput;
 import io.github.mbackschat.a12.dm.interpreter.GroupPlacementInput;
+import io.github.mbackschat.a12.dm.interpreter.JavaModelSourceProvider;
 import io.github.mbackschat.a12.dm.interpreter.ModelWorkspace;
+import io.github.mbackschat.a12.dm.interpreter.ModelWorkspaceJava;
 import io.github.mbackschat.a12.dm.interpreter.ValidationReport;
 import io.github.mbackschat.a12.dm.interpreter.WorkspaceModelSource;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 public final class JavaGuideExample {
     public record Result(ValidationReport validation, ComputationReport computation) {}
@@ -197,6 +201,14 @@ public final class JavaGuideExample {
                 interpreter.validateFull(document),
                 interpreter.compute(document));
     }
+
+    public static CompletionStage<String> collectEntryModelId(String modelJson) {
+        var source = WorkspaceModelSource.builder().json(modelJson).build();
+        JavaModelSourceProvider provider =
+                (modelId, context) -> CompletableFuture.completedFuture(source);
+        return ModelWorkspaceJava.collect("permit-basic", provider)
+                .thenApply(workspace -> workspace.prepare("permit-basic").getEntryModelId());
+    }
 }
 ```
 
@@ -214,7 +226,7 @@ The base artifacts are clean-room, kernel-free, and MIT-licensed. They do not li
 
 The supported model time zones are `UTC`, `GMT`, and `Europe/Berlin`. Optional-month and optional-year date precisions are outside the evaluator boundary. The support report and each evaluation report make program-level unsupported constructs visible.
 
-For the exact semantic contract and complete declaration inventory, see the [interpreter API spec](INTERPRETER-API-SPEC.md) and its linked ABI goldens. Deferred Kernel-shaped compatibility adapters and richer stateful products are listed separately in [interpreter API gaps](INTERPRETER-API-GAPS.md).
+The versioned Kotlin and TypeScript references contain the complete published declaration inventory. Deferred compatibility adapters and richer stateful products are not part of the v0.9.1 public artifacts.
 
 ## 10. Generated references
 

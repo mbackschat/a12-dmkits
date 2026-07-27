@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -38,6 +39,14 @@ class SharedReadmeRegionTest {
         assertTrue(!region(TOP).contains("docs/"),
                 "the shared:dmtool-story block must not link into docs/ — the public mirror has no docs/ tree, "
                         + "so keep doc pointers in the top-level-only sections, outside the markers.");
+    }
+
+    @Test
+    void topLevelReadmeDescribesTheStandaloneCliAsShipped() throws IOException {
+        var readme = Files.readString(TOP);
+
+        assertTrue(readme.contains("**The shipped standalone CLI distributable: EUPL-1.2**"));
+        assertFalse(readme.contains("future standalone CLI distributable"));
     }
 
     /** The text strictly between the BEGIN marker line and the END marker, trimmed. */

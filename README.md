@@ -872,4 +872,4 @@ It hard-rejects the mechanical violations and reminds on the judgment rule; bypa
 
 - **Source: MIT.** The kits' own original work, shipping no kernel binary, so they carry no copyleft entanglement — consistent with the sibling `a12-kernel-demo` / `a12-kernel-bootstrap` (both MIT).
 - **The kernel: dual `EUPL-1.2 OR commercial`** (upstream, not ours).
-- **The future standalone CLI distributable: EUPL-1.2**, because it *bundles* the kernel — the source stays MIT.
+- **The shipped standalone CLI distributable: EUPL-1.2**, because it *bundles* the kernel — the source stays MIT.

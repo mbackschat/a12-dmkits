@@ -14,6 +14,22 @@ const isWithin = (root, file) => {
   return path !== "" && !path.startsWith("..") && !isAbsolute(path);
 };
 
+const isPrivateMember = (ts, member) =>
+  (member.name !== undefined && ts.isPrivateIdentifier(member.name)) ||
+  member.modifiers?.some(({kind}) => kind === ts.SyntaxKind.PrivateKeyword) === true;
+
+const publicDocumentationNode = (ts, node) =>
+  ts.isClassDeclaration(node)
+    ? ts.factory.updateClassDeclaration(
+      node,
+      node.modifiers,
+      node.name,
+      node.typeParameters,
+      node.heritageClauses,
+      node.members.filter((member) => !isPrivateMember(ts, member)),
+    )
+    : node;
+
 export async function describePublicApi(typescriptPath, indexPath) {
   const ts = await import(pathToFileURL(typescriptPath).href);
   const program = ts.createProgram({
@@ -91,9 +107,13 @@ export async function describePublicApi(typescriptPath, indexPath) {
     );
   }
 
-  const printer = ts.createPrinter({
+  const abiPrinter = ts.createPrinter({
     newLine: ts.NewLineKind.LineFeed,
     removeComments: true,
+  });
+  const documentationPrinter = ts.createPrinter({
+    newLine: ts.NewLineKind.LineFeed,
+    removeComments: false,
   });
   return exported.map((exportedSymbol) => {
     const target = canonicalSymbol(checker, ts, exportedSymbol);
@@ -103,7 +123,20 @@ export async function describePublicApi(typescriptPath, indexPath) {
     }
     const signature = nodes
       .map((node) =>
-        printer.printNode(ts.EmitHint.Unspecified, node, node.getSourceFile()),
+        abiPrinter.printNode(
+          ts.EmitHint.Unspecified,
+          node,
+          node.getSourceFile(),
+        ),
+      )
+      .join("\n");
+    const documentedSignature = nodes
+      .map((node) =>
+        documentationPrinter.printNode(
+          ts.EmitHint.Unspecified,
+          publicDocumentationNode(ts, node),
+          node.getSourceFile(),
+        ),
       )
       .join("\n");
     return {
@@ -112,6 +145,7 @@ export async function describePublicApi(typescriptPath, indexPath) {
         target.getDocumentationComment(checker),
       ).trim(),
       signature,
+      documentedSignature,
     };
   });
 }

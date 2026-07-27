@@ -54,7 +54,9 @@ const defaultSignal = (): AbortSignal => new AbortController().signal;
 
 /** Immutable finite source snapshot that expands or prepares one selected model closure. */
 export class ModelWorkspace {
+  /** Exact model ids frozen into this workspace. */
   readonly modelIds: readonly string[];
+  /** Optional sanitized provider revision; excluded from prepared-model identity. */
   readonly snapshotRevision: string | undefined;
 
   /** @internal */
@@ -63,6 +65,7 @@ export class ModelWorkspace {
     this.snapshotRevision = core.snapshotRevision ?? undefined;
   }
 
+  /** Admit and freeze a caller-supplied finite model source set. */
   static fromSources(
     sources: readonly WorkspaceModelSource[],
     limits?: ModelPreparationLimits,
@@ -80,6 +83,7 @@ export class ModelWorkspace {
     return new ModelWorkspace(result.value);
   }
 
+  /** Load one discovered dependency closure through an application-owned provider. */
   static async collect(
     entryModelId: string,
     provider: ModelSourceProvider,
@@ -105,6 +109,7 @@ export class ModelWorkspace {
     return new ModelWorkspace(result.value);
   }
 
+  /** Return self-contained DM-JSON without applying evaluator support checks. */
   expand(entryModelId: string): string {
     const result = this.core.expand(entryModelId);
     if (result.failure !== null && result.failure !== undefined) {
@@ -116,6 +121,7 @@ export class ModelWorkspace {
     return result.value;
   }
 
+  /** Return expansion success or the same typed preparation error without throwing. */
   tryExpand(
     entryModelId: string,
   ): A12Result<string, ModelPreparationError> {
@@ -125,6 +131,7 @@ export class ModelWorkspace {
     );
   }
 
+  /** Resolve and load one entry model as a reusable prepared model. */
   prepare(entryModelId: string): PreparedModel {
     const result = this.core.prepare(entryModelId);
     if (result.failure !== null && result.failure !== undefined) {
@@ -136,6 +143,7 @@ export class ModelWorkspace {
     return new PreparedModel(result.value);
   }
 
+  /** Return preparation success or the same typed preparation error without throwing. */
   tryPrepare(
     entryModelId: string,
   ): A12Result<PreparedModel, ModelPreparationError> {

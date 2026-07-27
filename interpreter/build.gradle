@@ -1004,7 +1004,13 @@ dokka {
         html {
             moduleName.set('dm-interpreter')
             moduleVersion.set(project.version.toString())
+            // Remote Kotlin/JDK inventories make identical source render differently depending on
+            // network/cache state. The guard still rejects unresolved links into this module.
+            offlineMode.set(true)
         }
+    }
+    pluginsConfiguration.html {
+        footerMessage.set("A12 Interpreter ${project.version} · MIT License")
     }
     dokkaSourceSets.configureEach {
         suppressedFiles.from(
@@ -1891,8 +1897,12 @@ def generatedTypeScriptReference = interpreterApiDocsGeneratedDir.map {
     it.file('typescript/index.html')
 }
 def generatedLlmReference = interpreterApiDocsGeneratedDir.map { it.file('llms.txt') }
+def generatedApiDocumentationIndex = interpreterApiDocsGeneratedDir.map { it.file('index.html') }
 def interpreterApiDocsArchive = interpreterApiDocsBuildDir.map {
     it.file("dm-interpreter-${project.version}-api-docs.zip")
+}
+def interpreterApiDocsComparisonArchive = interpreterApiDocsBuildDir.map {
+    it.file("reproducibility/dm-interpreter-${project.version}-api-docs.zip")
 }
 def interpreterApiGuide = rootProject.file('docs/INTERPRETER-API-GUIDE.md')
 def committedJvmApi = file('api/interpreter.api')
@@ -2015,48 +2025,23 @@ def generateInterpreterLlmReference = tasks.register(
     inputs.property('interpreterApiDocsVersion', project.version.toString())
     outputs.file(generatedLlmReference)
     doLast {
-        def first = renderInterpreterLlmReference()
-        def second = renderInterpreterLlmReference()
-        if (first != second) {
-            throw new GradleException('interpreter llms.txt rendering is not deterministic')
-        }
         def target = generatedLlmReference.get().asFile
         target.parentFile.mkdirs()
-        target.setText(first, 'UTF-8')
+        target.setText(renderInterpreterLlmReference(), 'UTF-8')
     }
 }
 
-def stageInterpreterApiDocumentation = tasks.register(
-    'stageInterpreterApiDocumentation',
-    Sync,
+def generateInterpreterApiDocumentationIndex = tasks.register(
+    'generateInterpreterApiDocumentationIndex',
 ) {
     group = 'documentation'
-    description = 'Stage one immutable versioned Kotlin/TypeScript/llms documentation tree.'
-    dependsOn tasks.named('dokkaGeneratePublicationHtml')
-    dependsOn generateInterpreterTypeScriptReference
-    dependsOn generateInterpreterLlmReference
-    from(tasks.named('dokkaGeneratePublicationHtml').flatMap { it.outputDirectory }) {
-        into("${interpreterApiDocsVersionPath}/kotlin")
-    }
-    from(generatedTypeScriptReference) {
-        into("${interpreterApiDocsVersionPath}/typescript")
-    }
-    from(generatedLlmReference) {
-        into(interpreterApiDocsVersionPath)
-    }
-    from(file('README.md')) {
-        into(interpreterApiDocsVersionPath)
-    }
-    from(interpreterApiGuide) {
-        into(interpreterApiDocsVersionPath)
-    }
-    into interpreterApiDocsStageDir
+    description = 'Generate the versioned API-documentation landing page.'
+    inputs.property('interpreterApiDocsVersion', project.version.toString())
+    outputs.file(generatedApiDocumentationIndex)
     doLast {
-        def index = interpreterApiDocsStageDir.get()
-            .file("${interpreterApiDocsVersionPath}/index.html")
-            .asFile
-        index.parentFile.mkdirs()
-        index.setText("""<!doctype html>
+        def target = generatedApiDocumentationIndex.get().asFile
+        target.parentFile.mkdirs()
+        target.setText("""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -2073,6 +2058,7 @@ li { margin: 0.5rem 0; }
 <h1>A12 Interpreter ${project.version} API</h1>
 <p>Version-matched public references generated from the shipped package and reviewed ABI locks.</p>
 <ul>
+<li><a href="README.md">Package README</a></li>
 <li><a href="kotlin/index.html">Kotlin API</a></li>
 <li><a href="typescript/index.html">TypeScript API</a></li>
 <li><a href="INTERPRETER-API-GUIDE.md">Developer guide</a></li>
@@ -2083,6 +2069,37 @@ li { margin: 0.5rem 0; }
 </html>
 """, 'UTF-8')
     }
+}
+
+def stageInterpreterApiDocumentation = tasks.register(
+    'stageInterpreterApiDocumentation',
+    Sync,
+) {
+    group = 'documentation'
+    description = 'Stage one immutable versioned Kotlin/TypeScript/llms documentation tree.'
+    dependsOn tasks.named('dokkaGeneratePublicationHtml')
+    dependsOn generateInterpreterApiDocumentationIndex
+    dependsOn generateInterpreterTypeScriptReference
+    dependsOn generateInterpreterLlmReference
+    from(tasks.named('dokkaGeneratePublicationHtml').flatMap { it.outputDirectory }) {
+        into("${interpreterApiDocsVersionPath}/kotlin")
+    }
+    from(generatedTypeScriptReference) {
+        into("${interpreterApiDocsVersionPath}/typescript")
+    }
+    from(generatedLlmReference) {
+        into(interpreterApiDocsVersionPath)
+    }
+    from(generatedApiDocumentationIndex) {
+        into(interpreterApiDocsVersionPath)
+    }
+    from(file('README.md')) {
+        into(interpreterApiDocsVersionPath)
+    }
+    from(interpreterApiGuide) {
+        into(interpreterApiDocsVersionPath)
+    }
+    into interpreterApiDocsStageDir
 }
 
 def packInterpreterApiDocumentation = tasks.register(
@@ -2099,160 +2116,25 @@ def packInterpreterApiDocumentation = tasks.register(
     reproducibleFileOrder = true
 }
 
+def packInterpreterApiDocumentationComparison = tasks.register(
+    'packInterpreterApiDocumentationComparison',
+    Zip,
+) {
+    group = 'verification'
+    description = 'Build a second normalized API-documentation archive for digest comparison.'
+    dependsOn stageInterpreterApiDocumentation
+    from(interpreterApiDocsStageDir)
+    destinationDirectory.set(interpreterApiDocsBuildDir.map { it.dir('reproducibility') })
+    archiveFileName.set(interpreterApiDocsComparisonArchive.map { it.asFile.name })
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
 def verifyInterpreterApiDocumentation = tasks.register(
     'verifyInterpreterApiDocumentation',
 ) {
     group = 'verification'
     description = 'Verify versioned API docs against ABI locks and reject private or undocumented surfaces.'
-    dependsOn tasks.named('checkLegacyAbi')
-    dependsOn generateInterpreterTypeScriptApi
-    dependsOn packInterpreterApiDocumentation
-    inputs.files(
-        committedTypeScriptApi,
-        committedJvmApi,
-        committedKlibApi,
-        generatedTypeScriptApi,
-        interpreterApiDocsArchive,
-    )
-    outputs.upToDateWhen { false }
-    doLast {
-        assertReleaseContract(
-            'TypeScript ABI',
-            committedTypeScriptApi,
-            generatedTypeScriptApi.get().asFile,
-        )
-
-        def stageRoot = interpreterApiDocsStageDir.get().asFile
-        def versionRoot = new File(stageRoot, interpreterApiDocsVersionPath)
-        def required = [
-            'index.html',
-            'README.md',
-            'INTERPRETER-API-GUIDE.md',
-            'llms.txt',
-            'kotlin/index.html',
-            'typescript/index.html',
-        ]
-        def missing = required.findAll { relative ->
-            def candidate = new File(versionRoot, relative)
-            !candidate.isFile() || candidate.length() == 0L
-        }
-        if (missing) {
-            throw new GradleException("interpreter API docs miss ${missing}")
-        }
-
-        def expectedTypeScriptNames = committedTypeScriptApi.readLines('UTF-8')
-            .findAll { it.startsWith('## ') }
-            .collect { it.substring(3) }
-            .toSet()
-        def typeScriptHtml = new File(versionRoot, 'typescript/index.html').getText('UTF-8')
-        def actualTypeScriptNames = []
-        def typeScriptMatcher = (typeScriptHtml =~ /<section id="([^"]+)">/)
-        while (typeScriptMatcher.find()) {
-            actualTypeScriptNames += java.net.URLDecoder.decode(
-                typeScriptMatcher.group(1),
-                java.nio.charset.StandardCharsets.UTF_8,
-            )
-        }
-        if (actualTypeScriptNames.toSet() != expectedTypeScriptNames ||
-            actualTypeScriptNames.size() != expectedTypeScriptNames.size()) {
-            throw new GradleException(
-                "TypeScript reference exports ${actualTypeScriptNames.toSet()} do not match " +
-                    "the reviewed ABI ${expectedTypeScriptNames}",
-            )
-        }
-
-        def expectedKotlinNames = publicJvmTypeNames()
-        def kotlinRoot = new File(versionRoot, 'kotlin')
-        if (new File(kotlinRoot, 'dm-interpreter/[root]').exists()) {
-            throw new GradleException('Kotlin reference exposes the private package-less JS bridge')
-        }
-        def kotlinPackage = new File(
-            kotlinRoot,
-            'dm-interpreter/io.github.mbackschat.a12.dm.interpreter',
-        )
-        def packageIndex = new File(kotlinPackage, 'index.html').getText('UTF-8')
-        def kotlinEntries = [:]
-        def kotlinEntryMatcher = (
-            packageIndex =~
-                /(?s)data-name="[^"]*%2FClasslikes%2F[^"]*".*?<a href="([^"]+\/index\.html)">([^<]+)<\/a>/
-        )
-        while (kotlinEntryMatcher.find()) {
-            kotlinEntries[kotlinEntryMatcher.group(2)] = kotlinEntryMatcher.group(1)
-        }
-        if (kotlinEntries.keySet() != expectedKotlinNames) {
-            throw new GradleException(
-                "Kotlin reference declarations ${kotlinEntries.keySet()} do not match " +
-                    "the reviewed JVM ABI ${expectedKotlinNames}",
-            )
-        }
-        def undocumentedKotlin = kotlinEntries.findAll { name, relative ->
-            !new File(kotlinPackage, relative)
-                .getText('UTF-8')
-                .contains('<p class="paragraph">')
-        }.keySet()
-        if (undocumentedKotlin) {
-            throw new GradleException(
-                "undocumented public Kotlin declarations: ${undocumentedKotlin}",
-            )
-        }
-
-        def llms = new File(versionRoot, 'llms.txt').getText('UTF-8')
-        if (llms != renderInterpreterLlmReference()) {
-            throw new GradleException(
-                'llms.txt does not exactly contain the tested guide and reviewed ABI locks',
-            )
-        }
-
-        def stagedEntries = fileTree(stageRoot).files.collect { entry ->
-            stageRoot.toPath().relativize(entry.toPath()).toString().replace('\\', '/')
-        }.toSet()
-        def archiveEntries = [] as Set
-        zipTree(interpreterApiDocsArchive.get().asFile).visit { details ->
-            if (!details.directory) {
-                archiveEntries += details.relativePath.pathString
-            }
-        }
-        if (archiveEntries != stagedEntries ||
-            archiveEntries.any { !it.startsWith("${interpreterApiDocsVersionPath}/") }) {
-            throw new GradleException(
-                "interpreter API-doc archive entries ${archiveEntries} do not match staged " +
-                    "version ${interpreterApiDocsVersionPath}",
-            )
-        }
-        def violations = []
-        fileTree(versionRoot) {
-            include '**/*.html'
-            include '**/*.json'
-            include '**/*.js'
-            include '**/*.md'
-            include '**/*.txt'
-        }.files.each { document ->
-            def text = document.getText('UTF-8')
-            scanReleaseText(
-                "API documentation ${versionRoot.toPath().relativize(document.toPath())}",
-                text,
-                violations,
-            )
-            [
-                'InterpreterBridge',
-                'DmInterpreter',
-                'kotlin/jvm/internal/DefaultConstructorMarker',
-                'io/github/mbackschat/a12/dm/interpreter/eval/',
-                'io/github/mbackschat/a12/dm/interpreter/load/',
-                'io/github/mbackschat/a12/dm/interpreter/model/',
-                'io/github/mbackschat/a12/dm/interpreter/workspace/',
-            ].findAll { marker -> text.contains(marker) }.each { marker ->
-                violations += "${versionRoot.toPath().relativize(document.toPath())}: " +
-                    "private surface ${marker}"
-            }
-        }
-        if (violations) {
-            throw new GradleException(
-                "interpreter API docs expose secret/private-source markers:\n  " +
-                    violations.toSet().toList().sort().join('\n  '),
-            )
-        }
-    }
 }
 
 def verifyInterpreterReleaseContracts = tasks.register(
@@ -2375,6 +2257,125 @@ def verifyInterpreterReleaseContracts = tasks.register(
                     violations.toSet().toList().sort().join('\n  '),
             )
         }
+    }
+}
+
+def interpreterJvmTest = tasks.named('jvmTest', Test)
+def interpreterDocGuardTest = tasks.register('interpreterDocGuardTest', Test) {
+    group = 'verification'
+    description = 'Run public documentation guards with every runtime-read repository file declared as an input.'
+    dependsOn tasks.named('jvmTestClasses')
+    testClassesDirs = interpreterJvmTest.get().testClassesDirs
+    classpath = interpreterJvmTest.get().classpath
+    filter {
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.interpreter.InterpreterDocumentationTest',
+        )
+    }
+    rootProject.guardInputs(it, [
+        'root version': rootProject.file('build.gradle'),
+        'public interpreter guide': rootProject.file('docs/INTERPRETER-API-GUIDE.md'),
+        'interpreter public/source text': fileTree('.') {
+            exclude 'build/**'
+            include 'README.md'
+            include 'build.gradle'
+            include '**/*.gradle'
+            include '**/*.html'
+            include '**/*.java'
+            include '**/*.json'
+            include '**/*.kt'
+            include '**/*.md'
+            include '**/*.mjs'
+            include '**/*.properties'
+            include '**/*.sh'
+            include '**/*.toml'
+            include '**/*.ts'
+            include '**/*.yaml'
+            include '**/*.yml'
+        },
+    ])
+}
+
+def interpreterApiDocumentationTest = tasks.register(
+    'interpreterApiDocumentationTest',
+    Test,
+) {
+    group = 'verification'
+    description = 'Verify the generated public API-documentation asset against reviewed declarations.'
+    dependsOn tasks.named('jvmTestClasses')
+    dependsOn tasks.named('checkLegacyAbi')
+    dependsOn packInterpreterApiDocumentation
+    dependsOn packInterpreterApiDocumentationComparison
+    testClassesDirs = interpreterJvmTest.get().testClassesDirs
+    classpath = interpreterJvmTest.get().classpath
+    filter {
+        includeTestsMatching(
+            'io.github.mbackschat.a12.dm.interpreter.InterpreterApiDocumentationTest',
+        )
+    }
+    systemProperty(
+        'interpreter.api.docs.version',
+        project.version.toString(),
+    )
+    systemProperty(
+        'interpreter.api.docs.stage',
+        interpreterApiDocsStageDir.get().asFile.absolutePath,
+    )
+    systemProperty(
+        'interpreter.api.docs.archive',
+        interpreterApiDocsArchive.get().asFile.absolutePath,
+    )
+    systemProperty(
+        'interpreter.api.docs.comparisonArchive',
+        interpreterApiDocsComparisonArchive.get().asFile.absolutePath,
+    )
+    systemProperty(
+        'interpreter.api.docs.typescriptAbi',
+        committedTypeScriptApi.absolutePath,
+    )
+    systemProperty(
+        'interpreter.api.docs.jvmAbi',
+        committedJvmApi.absolutePath,
+    )
+    systemProperty(
+        'interpreter.api.docs.klibAbi',
+        committedKlibApi.absolutePath,
+    )
+    systemProperty(
+        'interpreter.api.docs.guide',
+        interpreterApiGuide.absolutePath,
+    )
+    inputs.dir(interpreterApiDocsStageDir)
+        .withPropertyName('generatedApiDocumentation')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    inputs.files(
+        interpreterApiDocsArchive,
+        interpreterApiDocsComparisonArchive,
+    )
+        .withPropertyName('apiDocumentationArchives')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    rootProject.guardInputs(it, [
+        'reviewed TypeScript ABI': committedTypeScriptApi,
+        'reviewed JVM ABI': committedJvmApi,
+        'reviewed KLIB ABI': committedKlibApi,
+        'public interpreter guide': interpreterApiGuide,
+    ])
+}
+
+verifyInterpreterApiDocumentation.configure {
+    dependsOn interpreterApiDocumentationTest
+    dependsOn verifyInterpreterReleaseContracts
+}
+
+interpreterJvmTest.configure {
+    dependsOn interpreterDocGuardTest
+    filter {
+        excludeTestsMatching(
+            'io.github.mbackschat.a12.dm.interpreter.InterpreterDocumentationTest',
+        )
+        excludeTestsMatching(
+            'io.github.mbackschat.a12.dm.interpreter.InterpreterApiDocumentationTest',
+        )
     }
 }
 

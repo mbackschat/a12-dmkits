@@ -30,11 +30,11 @@ export async function renderTypeScriptReference(
     .map(({name}) => `<li><a href="#${encodeURIComponent(name)}">${escapeHtml(name)}</a></li>`)
     .join("\n");
   const sections = declarations
-    .map(({name, documentation, signature}) => [
+    .map(({name, documentation, documentedSignature}) => [
       `<section id="${encodeURIComponent(name)}">`,
       `<h2>${escapeHtml(name)}</h2>`,
       `<p>${escapeHtml(documentation)}</p>`,
-      `<pre><code>${escapeHtml(signature)}</code></pre>`,
+      `<pre><code>${escapeHtml(documentedSignature)}</code></pre>`,
       "</section>",
     ].join("\n"))
     .join("\n");

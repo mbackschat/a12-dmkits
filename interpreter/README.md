@@ -116,8 +116,7 @@ The core is MIT-licensed and contains no Kernel bytecode or runtime dependency. 
 
 ## Documentation
 
-- [Developer API guide](docs/INTERPRETER-API-GUIDE.md)
-- [Implemented API contract](docs/INTERPRETER-API-SPEC.md)
+- [Developer API guide](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.9.1/site/api/v0.9.1/INTERPRETER-API-GUIDE.md)
 - Version-matched Kotlin and TypeScript references plus `llms.txt` are packaged in `dm-interpreter-0.9.1-api-docs.zip` under `api/v0.9.1/`
 - Browser showcase: `https://mbackschat.github.io/a12-interpreter-releases/showcase/`
-- [MIT license](LICENSE)
+- [MIT license](https://github.com/mbackschat/a12-interpreter-releases/blob/v0.9.1/LICENSE)

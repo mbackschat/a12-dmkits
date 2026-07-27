@@ -18,7 +18,7 @@ uvx showboat@0.6.1 verify examples/cli-tour.md
 uvx showboat@0.6.1 extract examples/cli-tour.md
 ```
 
-Run from the **repo root**. The demos call the bare **`dmtool`** (what an installed/plugin user actually types — not the repo artifact `bin/dmtool`), so put the repo `bin/` on PATH for `verify`: the shim there resolves `dmtool` to the JVM launcher. Model paths are **`examples/models/…`** — the demos' **own** sample fixtures (decoupled from the JUnit test fixtures under `cli/src/test/resources/models/`: same kind of model, different *purpose* — user-facing showcase vs. internal coverage — so they live apart and are published with the demos to the mirror). `JAVA_HOME` must point at JDK 21 for **both** build and `verify` (the launcher runs Groovy for the runtime-eval verbs). Export both first:
+Run from the **repo root**. The demos call the bare **`dmtool`** (what an installed/plugin user actually types — not the repo artifact `bin/dmtool`), so put the repo `bin/` on PATH for `verify`: the shim there resolves `dmtool` to the JVM launcher. Model paths are **`examples/models/…`** — the demos' **own** sample fixtures (decoupled from the JUnit test fixtures under `cli/src/test/resources/models/`: same kind of model, different *purpose* — user-facing showcase vs. internal coverage — so they live apart and are published with the demos to the mirror). `JAVA_HOME` must point at JDK 21 for both the build and the JVM launcher; the shipped native CLI exposes the same verb surface without requiring a local JVM. Export both first:
 
 ```bash
 export JAVA_HOME="$(/usr/libexec/java_home -v 21)"

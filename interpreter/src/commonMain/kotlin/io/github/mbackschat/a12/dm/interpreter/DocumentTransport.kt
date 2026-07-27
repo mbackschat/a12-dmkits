@@ -15,7 +15,7 @@ data class GroupPlacementInput(
 )
 
 /**
- * One raw field cell of the V1 Document input. [raw] preserves exact lexical text: `""` is a present-empty
+ * One raw field cell of the V1 Document input. `raw` preserves exact lexical text: `""` is a present-empty
  * cell (deliberately different from omitting the placement), and malformed text stays present so formal
  * validation can report it. The terminal coordinate names the field rather than a repetition axis and must be
  * 1; Kernel document conversion refuses any other value before validation.
@@ -216,7 +216,7 @@ class DocumentInputError private constructor(
 
 /**
  * A model-owned runtime object reached an API belonging to a different prepared owner domain — a foreign model,
- * or a stale snapshot of an earlier preparation of the same sources. [expected] and [actual] are opaque
+ * or a stale snapshot of an earlier preparation of the same sources. `expected` and `actual` are opaque
  * correlation identities, never model content.
  */
 class ModelOwnerMismatchError private constructor(
@@ -263,6 +263,10 @@ class DocumentSnapshot private constructor(
 class PreparedDocumentApi internal constructor(
     private val prepared: PreparedModel,
 ) {
+    /**
+     * Validate the complete V1 transport before constructing an immutable, owner-bound Document snapshot.
+     * Resource-limit failures are fail-fast; model-aware input diagnostics aggregate.
+     */
     @JvmOverloads
     fun readDocument(
         input: DocumentInputV1,
@@ -272,6 +276,7 @@ class PreparedDocumentApi internal constructor(
         return DocumentSnapshot.of(prepared.owner, prepared.modelVersion, document)
     }
 
+    /** Encode a snapshot from this prepared owner without losing empty cells, raw text, or explicit group rows. */
     fun encodeDocument(snapshot: DocumentSnapshot): DocumentInputV1 {
         if (snapshot.owner !== prepared.owner) {
             throw ModelOwnerMismatchError.of(expected = prepared.owner, actual = snapshot.owner)

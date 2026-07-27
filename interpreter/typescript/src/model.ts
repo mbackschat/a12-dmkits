@@ -179,6 +179,7 @@ const exactCoordinate = (
 
 /** Prepared-model metadata and checked pointer factories. */
 export class ModelMetadata {
+  /** Exact DocumentModel id from the prepared entry model. */
   readonly documentModelId: string;
 
   /** @internal */
@@ -186,6 +187,7 @@ export class ModelMetadata {
     this.documentModelId = core.documentModelId;
   }
 
+  /** Create an exact group-row or field-cell pointer after path and coordinate checks. */
   pointer(path: string, coordinates: readonly number[]): DocumentPointer {
     const result = this.core.pointer(path, exactCoordinates(path, coordinates));
     if (result.failure !== null && result.failure !== undefined) {
@@ -197,6 +199,7 @@ export class ModelMetadata {
     return pointerFromBridge(result.value);
   }
 
+  /** Create an exact or all-repetitions pointer for partial validation. */
   relevantPointer(
     path: string,
     coordinates: readonly RelevantCoordinate[],

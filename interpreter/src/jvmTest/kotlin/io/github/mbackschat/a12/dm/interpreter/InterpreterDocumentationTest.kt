@@ -103,10 +103,11 @@ class InterpreterDocumentationTest {
     }
 
     @Test
-    fun publicReadmeUsesTheRepositoryVersion() {
+    fun publicReleaseDocumentsUseTheRepositoryVersion() {
         val build = Files.readString(repoFile("build.gradle"))
         val version = requireNotNull(Regex("""(?m)^version = '([^']+)'$""").find(build)).groupValues[1]
         val readme = Files.readString(repoFile("interpreter/README.md"))
+        assertOnlyRepositoryVersion("interpreter/README.md", readme, version)
         assertTrue(
             listOf(
                 "Version `$version`",
@@ -115,47 +116,53 @@ class InterpreterDocumentationTest {
             ).all(readme::contains),
             "interpreter/README.md does not consistently use repository version $version",
         )
+        val guide = Files.readString(repoFile("docs/INTERPRETER-API-GUIDE.md"))
+        assertOnlyRepositoryVersion("docs/INTERPRETER-API-GUIDE.md", guide, version)
+        assertTrue(
+            listOf(
+                "dm-interpreter-$version-api-docs.zip",
+                "api/v$version/",
+            ).all(guide::contains),
+            "docs/INTERPRETER-API-GUIDE.md does not consistently use repository version $version",
+        )
     }
 
     @Test
-    fun interpreterScriptsDeriveTheRepositoryVersion() {
+    fun interpreterSourcesDoNotRepeatTheRepositoryVersion() {
         val build = Files.readString(repoFile("build.gradle"))
         val version = requireNotNull(Regex("""(?m)^version = '([^']+)'$""").find(build)).groupValues[1]
-        val sourceRoots = listOf(
-            repoFile("interpreter/typescript/scripts"),
-            repoFile("interpreter/consumer-tests/browser/scripts"),
-            repoFile("interpreter/consumer-tests/browser/src"),
-        )
-        val failures = sourceRoots.flatMap { root ->
-            Files.walk(root).use { paths ->
-                paths.filter(Files::isRegularFile)
-                    .filter { it.fileName.toString().substringAfterLast('.', "") in setOf("ts", "mjs") }
-                    .filter { Files.readString(it).contains(version) }
-                    .map { repoRoot().relativize(it).toString() }
-                    .toList()
-            }
+        val interpreterRoot = repoFile("interpreter")
+        val allowed = setOf(repoFile("interpreter/README.md"))
+        val failures = Files.walk(interpreterRoot).use { paths ->
+            paths.filter(Files::isRegularFile)
+                .filter { !interpreterRoot.relativize(it).startsWith("build") }
+                .filter { it.fileName.toString().substringAfterLast('.', "") in TEXT_EXTENSIONS }
+                .filter { it !in allowed }
+                .filter { Files.readString(it).contains(version) }
+                .map { repoRoot().relativize(it).toString() }
+                .toList()
         }
         assertTrue(
             failures.isEmpty(),
-            "interpreter scripts repeat repository version $version instead of deriving it:\n${failures.joinToString("\n")}",
+            "interpreter sources repeat repository version $version instead of deriving it:\n${failures.joinToString("\n")}",
         )
     }
 
     @Test
-    fun relativeLinksInPublicInterpreterDocumentsResolve() {
+    fun multiplyPackagedPublicDocumentsUsePortableLinks() {
         val documents = listOf(
-            repoFile("interpreter/README.md") to repoRoot(),
-            repoFile("docs/INTERPRETER-API-GUIDE.md") to repoFile("docs"),
+            repoFile("interpreter/README.md"),
+            repoFile("docs/INTERPRETER-API-GUIDE.md"),
         )
-        val failures = documents.flatMap { (document, linkBase) ->
+        val failures = documents.flatMap { document ->
             markdownLinks(Files.readString(document))
                 .filterNot(::isExternalOrAnchored)
-                .map { it.substringBefore('#') }
-                .filter { it.isNotBlank() }
-                .filterNot { linkBase.resolve(it).normalize().exists() }
                 .map { "${repoRoot().relativize(document)} -> $it" }
         }
-        assertTrue(failures.isEmpty(), "unresolved interpreter documentation links:\n${failures.joinToString("\n")}")
+        assertTrue(
+            failures.isEmpty(),
+            "multiply-packaged interpreter documents contain context-dependent links:\n${failures.joinToString("\n")}",
+        )
     }
 
     private fun taggedRegion(source: Path, id: String): String {
@@ -199,6 +206,15 @@ class InterpreterDocumentationTest {
         }
     }
 
+    private fun assertOnlyRepositoryVersion(document: String, text: String, version: String) {
+        val foreign = Regex("""\b\d+\.\d+\.\d+\b""")
+            .findAll(text)
+            .map { it.value }
+            .filter { it != version }
+            .toSet()
+        assertTrue(foreign.isEmpty(), "$document contains stale or unrelated versions: $foreign")
+    }
+
     private fun leadingSpaces(value: String): Int = value.indexOfFirst { it != ' ' }.let {
         if (it < 0) value.length else it
     }
@@ -211,5 +227,23 @@ class InterpreterDocumentationTest {
             candidate = candidate.parent ?: error("repository root not found")
         }
         return candidate
+    }
+
+    companion object {
+        private val TEXT_EXTENSIONS = setOf(
+            "gradle",
+            "html",
+            "java",
+            "json",
+            "kt",
+            "md",
+            "mjs",
+            "properties",
+            "sh",
+            "toml",
+            "ts",
+            "yaml",
+            "yml",
+        )
     }
 }

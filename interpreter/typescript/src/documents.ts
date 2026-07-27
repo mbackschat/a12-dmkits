@@ -486,11 +486,13 @@ export class PreparedDocumentApi {
   /** @internal */
   constructor(private readonly core: InterpreterBridgeDocuments) {}
 
+  /** Test whether a value is a Document snapshot owned by this prepared model. */
   isSnapshot(value: unknown): value is DocumentSnapshot {
     return value instanceof DocumentSnapshot &&
       this.core.isSnapshot(value.bridgeValue());
   }
 
+  /** Strictly decode unknown input and construct an immutable Document snapshot. */
   decodeDocument(
     input: unknown,
     options?: DocumentDecodeOptions,
@@ -498,6 +500,7 @@ export class PreparedDocumentApi {
     return this.readBridgeDocument(decodeUnknownDocument(input, options), options);
   }
 
+  /** Return strict decoding success or the same typed input error without throwing. */
   tryDecodeDocument(
     input: unknown,
     options?: DocumentDecodeOptions,
@@ -508,6 +511,7 @@ export class PreparedDocumentApi {
     );
   }
 
+  /** Validate typed V1 input and construct an immutable Document snapshot. */
   readDocument(
     input: DocumentInputV1,
     options?: DocumentDecodeOptions,
@@ -515,6 +519,7 @@ export class PreparedDocumentApi {
     return this.readBridgeDocument(bridgeDocumentFromTyped(input), options);
   }
 
+  /** Encode an owned snapshot without losing rows, empty cells, or raw text. */
   encodeDocument(snapshot: DocumentSnapshot): DocumentInputV1 {
     if (!this.isSnapshot(snapshot)) {
       throw new ModelOwnerMismatchError();

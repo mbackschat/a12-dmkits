@@ -192,6 +192,7 @@ class ModelMetadata private constructor(
 ) : ModelOwned by prepared {
     val documentModelId: String get() = prepared.entryModelId
 
+    /** Create an exact group-row or field-cell pointer after path, arity, and coordinate validation. */
     fun pointer(path: String, coordinates: List<Int>): DocumentPointer {
         val kind = entityKind(path)
         requireCoordinates(path, kind, coordinates)
@@ -203,6 +204,7 @@ class ModelMetadata private constructor(
         }
     }
 
+    /** Create a partial-validation pointer whose coordinates may select exact or all repetitions. */
     fun relevantPointer(path: String, coordinates: List<RelevantCoordinate>): RelevantEntityPointer {
         val kind = entityKind(path)
         requireCoordinateCount(path, coordinates.size)
@@ -727,14 +729,17 @@ class Interpreter private constructor(
         }
     }
 
+    /** Report unsupported rules and computations once, independently of any Document. */
     fun supportReport(): InterpreterSupportReport = support
 
+    /** Validate every applicable rule against one owned Document snapshot. */
     @JvmOverloads
     fun validateFull(snapshot: DocumentSnapshot, locale: String = "en_US"): ValidationReport =
         evaluate(snapshot) {
             validationReport(engine.validate(snapshot.document(), locale))
         }
 
+    /** Validate only rules relevant to the supplied exact or all-repetitions model pointers. */
     @JvmOverloads
     fun validatePart(
         snapshot: DocumentSnapshot,
@@ -746,6 +751,7 @@ class Interpreter private constructor(
             validationReport(engine.validatePart(snapshot.document(), entities, locale))
         }
 
+    /** Evaluate every model computation against one owned Document without mutating the snapshot. */
     @JvmOverloads
     fun compute(snapshot: DocumentSnapshot, locale: String = "en_US"): ComputationReport =
         evaluate(snapshot) {

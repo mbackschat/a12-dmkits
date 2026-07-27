@@ -137,10 +137,12 @@ export class Interpreter {
   /** @internal */
   constructor(private readonly core: InterpreterBridgeInterpreter) {}
 
+  /** Report unsupported rules or computations without reading a Document. */
   supportReport(): InterpreterSupportReport {
     return supportReport(this.core.supportReport());
   }
 
+  /** Validate every applicable rule against one owned Document snapshot. */
   validateFull(
     snapshot: DocumentSnapshot,
     options?: ValidationOptions,
@@ -158,6 +160,7 @@ export class Interpreter {
     return validationReport(result.value);
   }
 
+  /** Validate only rules relevant to the supplied exact or partial pointers. */
   validatePart(
     snapshot: DocumentSnapshot,
     relevant: readonly RelevantEntityPointer[],
@@ -177,6 +180,7 @@ export class Interpreter {
     return validationReport(result.value);
   }
 
+  /** Evaluate every supported computation against one owned Document snapshot. */
   compute(
     snapshot: DocumentSnapshot,
     options?: ComputeOptions,

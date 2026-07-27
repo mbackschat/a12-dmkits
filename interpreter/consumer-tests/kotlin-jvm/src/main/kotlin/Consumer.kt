@@ -10,5 +10,6 @@ fun main() {
     check(kotlinResult.computation.results.single().value == "120")
     check(javaResult.validation().findings.map { it.code } == listOf("AREA_NEEDS_NOTE"))
     check(javaResult.computation().results.single().value == "120")
+    check(JavaGuideExample.collectEntryModelId(modelJson).toCompletableFuture().get() == "permit-basic")
     println("staged Maven interpreter consumer passed")
 }

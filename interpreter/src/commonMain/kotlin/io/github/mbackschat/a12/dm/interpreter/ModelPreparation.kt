@@ -7,9 +7,9 @@ import kotlin.jvm.JvmSynthetic
 /**
  * One immutable raw DM-JSON source supplied to [ModelWorkspace].
  *
- * [diagnosticLabel] is presentation metadata only. Workspace admission retains it only when it is a short,
- * credential-free logical label. [expectedSha256], when present, must be the lowercase SHA-256 of the exact strict
- * UTF-8 bytes in [json].
+ * `diagnosticLabel` is presentation metadata only. Workspace admission retains it only when it is a short,
+ * credential-free logical label. `expectedSha256`, when present, must be the lowercase SHA-256 of the exact strict
+ * UTF-8 bytes in `json`.
  */
 class WorkspaceModelSource private constructor(
     val json: String,

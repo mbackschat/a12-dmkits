@@ -20,7 +20,7 @@ import kotlin.jvm.JvmSynthetic
  * Immutable exact-id workspace produced from a finite or provider-collected source set. Construction admits and
  * freezes every supplied source; [prepare] resolves only the requested entry's transitive closure.
  *
- * [snapshotRevision] is sanitized provenance captured from a collection provider. It is null for finite
+ * `snapshotRevision` is sanitized provenance captured from a collection provider. It is null for finite
  * [fromSources] workspaces and never contributes to a prepared-model fingerprint.
  */
 class ModelWorkspace private constructor(
@@ -31,11 +31,12 @@ class ModelWorkspace private constructor(
     val modelIds: List<String> = immutableListSnapshot(admitted.modelIds)
 
     /**
-     * Expand one transitive closure into compact self-contained DM-JSON without invoking [ModelLoader].
+     * Expand one transitive closure into compact self-contained DM-JSON without invoking the internal model loader.
      * Interpreter-specific evaluability checks therefore belong to [prepare], not this conversion boundary.
      */
     fun expand(entryModelId: String): String = assemble(entryModelId).json
 
+    /** Return either the expanded DM-JSON or the same typed preparation error thrown by [expand]. */
     fun tryExpand(entryModelId: String): ModelExpansionResult =
         try {
             ModelExpansionResult.Success(expand(entryModelId))
@@ -52,6 +53,7 @@ class ModelWorkspace private constructor(
         return PreparedModel.fromWorkspace(admitted, assembly)
     }
 
+    /** Return either a new prepared owner domain or the same typed preparation error thrown by [prepare]. */
     fun tryPrepare(entryModelId: String): ModelPreparationResult =
         try {
             ModelPreparationResult.Success(prepare(entryModelId))
@@ -63,6 +65,10 @@ class ModelWorkspace private constructor(
         WorkspaceReferenceAssembler.assemble(admitted, entryModelId, limits)
 
     companion object {
+        /**
+         * Admit and freeze a caller-supplied finite source map. References are resolved only when [prepare] or
+         * [expand] selects an entry model.
+         */
         @JvmStatic
         @JvmOverloads
         fun fromSources(
@@ -119,6 +125,7 @@ class PreparedModel private constructor(
     /** Minimal owner-bound model lookup and pointer factory. */
     val model: ModelMetadata = ModelMetadata.create(this)
 
+    /** Create a reusable active evaluator bound to this prepared model and customization configuration. */
     @JvmOverloads
     fun createInterpreter(
         configuration: InterpreterConfiguration = InterpreterConfiguration.defaults(),
@@ -129,6 +136,10 @@ class PreparedModel private constructor(
     internal fun definition(): ModelDef = definition
 
     companion object {
+        /**
+         * Load already self-contained DM-JSON into a new prepared owner domain without workspace expansion.
+         * Interpreter-specific evaluability checks still apply.
+         */
         @JvmStatic
         fun loadExpandedJson(source: String): PreparedModel {
             val limits = ModelPreparationLimits.defaults()
@@ -146,6 +157,7 @@ class PreparedModel private constructor(
             )
         }
 
+        /** Return either the loaded prepared model or the typed error thrown by [loadExpandedJson]. */
         @JvmStatic
         fun tryLoadExpandedJson(source: String): ModelPreparationResult =
             try {
