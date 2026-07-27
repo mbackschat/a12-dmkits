@@ -2707,6 +2707,8 @@ def interpreterPublicMirrorDir = rootProject.layout.buildDirectory.dir(
 def interpreterPublicAssetsDir = rootProject.layout.buildDirectory.dir(
     'interpreter-release/public-assets',
 )
+def interpreterReleaseTag = providers.gradleProperty('interpreterReleaseTag')
+    .orElse("v${project.version}")
 def assembleInterpreterPublicMirror = tasks.register(
     'assembleInterpreterPublicMirror',
     Exec,
@@ -2724,6 +2726,8 @@ def assembleInterpreterPublicMirror = tasks.register(
         interpreterPublicAssetsDir.get().asFile.absolutePath,
         '--version',
         project.version.toString(),
+        '--release-tag',
+        interpreterReleaseTag.get(),
         '--source-tag',
         "interpreter-v${project.version}",
         '--source-sha',
@@ -2777,6 +2781,7 @@ def assembleInterpreterPublicMirror = tasks.register(
     inputs.dir(interpreterApiDocsStageDir)
     inputs.dir(externalBrowserConsumerBuildDir.map { it.dir('dist') })
     inputs.property('interpreterPublicMirrorVersion', project.version.toString())
+    inputs.property('interpreterPublicMirrorReleaseTag', interpreterReleaseTag)
     inputs.property('interpreterPublicMirrorSource', interpreterCommit)
     outputs.dir(interpreterPublicMirrorDir)
     outputs.dir(interpreterPublicAssetsDir)

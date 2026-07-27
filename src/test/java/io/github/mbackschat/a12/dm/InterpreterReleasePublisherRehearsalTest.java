@@ -90,6 +90,21 @@ class InterpreterReleasePublisherRehearsalTest {
         assertTrue(backend.contains("smoke-interpreter-public-release.sh"));
     }
 
+    @Test
+    void stageConsumesTheQualifiedMirrorWithoutASecondAssembly() throws Exception {
+        var core = Files.readString(repoFile("scripts/interpreter-release-publisher-core.sh"));
+        var stage = core.substring(
+                core.indexOf("interpreter_release_stage()"),
+                core.indexOf("interpreter_release_smoke_pages()"));
+
+        assertTrue(core.contains("preview=\"$source_root/build/interpreter-release/public-mirror\""));
+        assertTrue(core.contains("assets=\"$source_root/build/interpreter-release/public-assets\""));
+        assertTrue(core.contains("interpreter_release_assemble_public_mirror()"));
+        assertFalse(
+                stage.contains("interpreter_release_assemble"),
+                "the full interpreter gate already assembles and verifies these exact release outputs");
+    }
+
     private static Path repoFile(String relative) {
         for (String base : List.of(".", "..", "../..")) {
             var candidate = Path.of(base, relative);

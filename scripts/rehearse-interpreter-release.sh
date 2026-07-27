@@ -17,6 +17,12 @@ create_synthetic_builder() {
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VERSION="$(sed -nE "s/^version = '([^']+)'/\1/p" "$ROOT/build.gradle")"
+RELEASE_TAG="v$VERSION"
+for argument in "$@"; do
+  case "$argument" in
+    -PinterpreterReleaseTag=*) RELEASE_TAG="${argument#*=}" ;;
+  esac
+done
 OUTPUT="$ROOT/build/interpreter-release"
 rm -rf "$OUTPUT"
 mkdir -p \
@@ -64,6 +70,26 @@ printf '%s\n' '# llms' > "$OUTPUT/api-docs/stage/api/v$VERSION/llms.txt"
 
 printf '%s\n' '<title>Interpreter showcase</title>' > "$OUTPUT/consumer/browser/dist/index.html"
 printf '%s\n' 'console.log("showcase");' > "$OUTPUT/consumer/browser/dist/assets/app.js"
+
+"$ROOT/scripts/assemble-interpreter-release-repo.sh" \
+  --destination "$OUTPUT/public-mirror" \
+  --assets-directory "$OUTPUT/public-assets" \
+  --version "$VERSION" \
+  --release-tag "$RELEASE_TAG" \
+  --source-tag "interpreter-v$VERSION" \
+  --source-sha "$(git -C "$ROOT" rev-parse HEAD)" \
+  --npm-tarball "$OUTPUT/npm/a12-interpreter-$VERSION.tgz" \
+  --maven-repository "$OUTPUT/maven" \
+  --api-documentation "$OUTPUT/api-docs/stage/api/v$VERSION" \
+  --api-docs-archive "$OUTPUT/api-docs/dm-interpreter-$VERSION-api-docs.zip" \
+  --showcase "$OUTPUT/consumer/browser/dist" \
+  --readme "$ROOT/interpreter/public-release/README.md" \
+  --changelog "$ROOT/interpreter/CHANGELOG.md" \
+  --license "$ROOT/LICENSE" \
+  --disclaimer "$ROOT/interpreter/public-release/DISCLAIMER.md" \
+  --privacy "$ROOT/interpreter/public-release/privacy.html" \
+  --landing-page "$ROOT/interpreter/public-release/index.html" \
+  --workflow-directory "$ROOT/.github/interpreter-mirror-workflows"
 EOF
   chmod +x "$target"
 }

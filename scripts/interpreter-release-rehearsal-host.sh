@@ -59,7 +59,7 @@ release_host_dispatch_build() {
   if [[ "${INTERPRETER_RELEASE_REHEARSAL_WRONG_WORKFLOW_IDENTITY:-0}" == "1" ]]; then
     git -C "$workflow_clone" config user.name "Wrong Publisher"
   fi
-  interpreter_release_assemble \
+  interpreter_release_assemble_public_mirror \
     "$INTERPRETER_RELEASE_SOURCE_ROOT" \
     "$workflow_clone" \
     "$source_assets"

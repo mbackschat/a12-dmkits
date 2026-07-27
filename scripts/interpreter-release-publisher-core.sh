@@ -170,7 +170,7 @@ interpreter_release_verify_payload() {
     interpreter_release_fail "showcase archive is missing index.html"
 }
 
-interpreter_release_assemble() {
+interpreter_release_assemble_public_mirror() {
   local source_root="$1" mirror="$2" assets="$3"
   "$source_root/scripts/assemble-interpreter-release-repo.sh" \
     --destination "$mirror" \
@@ -202,8 +202,8 @@ interpreter_release_stage() {
     interpreter_release_fail "release $RELEASE_TAG is already published and immutable"
 
   clone="$work_directory/public-mirror"
-  preview="$work_directory/local-preview"
-  assets="$work_directory/assets"
+  preview="$source_root/build/interpreter-release/public-mirror"
+  assets="$source_root/build/interpreter-release/public-assets"
   release_require_safe_derived_directory "$clone"
   release_require_safe_derived_directory "$preview"
   release_require_safe_derived_directory "$assets"
@@ -213,8 +213,12 @@ interpreter_release_stage() {
   interpreter_release_verify_commit_identities "$clone"
   interpreter_release_refuse_existing_version "$clone" "$RELEASE_ARTIFACT_VERSION"
 
-  "$source_root/build.sh" --console=plain :interpreter:check
-  interpreter_release_assemble "$source_root" "$preview" "$assets"
+  "$source_root/build.sh" \
+    --console=plain \
+    "-PinterpreterReleaseTag=$RELEASE_TAG" \
+    :interpreter:check
+  release_verify_public_inventory "$preview"
+  "$source_root/scripts/check-interpreter-release-repo.sh" "$preview" >/dev/null
   interpreter_release_verify_payload \
     "$assets" \
     "$RELEASE_ARTIFACT_VERSION" \
