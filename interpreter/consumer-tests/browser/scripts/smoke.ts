@@ -90,6 +90,28 @@ await withStaticServer(async (url) => {
     ) {
       throw new Error("showcase prompt marker resembles a disclosure control");
     }
+    const performanceEvidence = showcase.locator(
+      "details.performance-evidence",
+    );
+    if (
+      await performanceEvidence.count() !== 1 ||
+      await performanceEvidence.getAttribute("open") === null ||
+      !(
+        await performanceEvidence.locator(":scope > summary").textContent()
+      )?.includes("Performance and compatibility")
+    ) {
+      throw new Error(
+        "showcase performance evidence is not an open collapsible section",
+      );
+    }
+    if (
+      await performanceEvidence.locator(".performance-results > p").count() !==
+        2
+    ) {
+      throw new Error(
+        "showcase does not separate representative and stress results",
+      );
+    }
     const releaseFacts = (await showcase.locator(".hero-facts").textContent())
       ?.replaceAll(/\s+/g, " ");
     for (const expected of [
@@ -112,12 +134,12 @@ await withStaticServer(async (url) => {
     for (const expected of [
       "200 group rows",
       "23.1 kB",
-      "median 10.2 ms",
+      "10.2 ms median",
       "10,000 rows",
       "4,900 findings",
       "10 fresh Chrome runs",
       "expands to 50",
-      "median 177.1 ms",
+      "177.1 ms median",
     ]) {
       if (!performanceContext?.includes(expected)) {
         throw new Error(

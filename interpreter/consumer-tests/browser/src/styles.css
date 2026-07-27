@@ -142,11 +142,22 @@ h1 {
   font-weight: 700;
 }
 
+.performance-evidence {
+  margin-top: 32px;
+}
+
+.performance-evidence > summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--blue-dark);
+  font-weight: 700;
+}
+
 .hero-facts {
   display: flex;
   flex-wrap: wrap;
   gap: 0;
-  margin-top: 32px;
+  margin-top: 16px;
   color: var(--muted);
   font-size: 1rem;
 }
@@ -170,6 +181,14 @@ h1 {
   color: var(--muted);
   font-size: 1rem;
   line-height: 1.55;
+}
+
+.performance-results p {
+  margin-bottom: 2px;
+}
+
+.measurement-method {
+  margin: 8px 0 0;
 }
 
 .playground {
