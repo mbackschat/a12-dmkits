@@ -12,7 +12,9 @@ on:
         required: true
 
 permissions:
-  contents: read
+  # GitHub exposes draft releases only to tokens with push-level repository access. The workflow needs
+  # this permission solely so its pre-deployment draft check observes the real release state.
+  contents: write
   pages: write
   id-token: write
 

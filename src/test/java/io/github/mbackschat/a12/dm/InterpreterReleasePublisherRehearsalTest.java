@@ -73,6 +73,9 @@ class InterpreterReleasePublisherRehearsalTest {
         var pages = Files.readString(repoFile(".github/interpreter-mirror-workflows/deploy-pages.yml"));
         assertTrue(pages.contains("run-name: Deploy Pages for ${{ inputs.release_tag }}"));
         assertTrue(pages.contains("workflow_dispatch:"));
+        assertTrue(
+                pages.lines().anyMatch("  contents: write"::equals),
+                "the workflow token needs push-level contents access to inspect a private draft release");
         assertTrue(pages.contains("Verify the requested release is still a draft"));
         assertTrue(pages.contains("uses: actions/deploy-pages@"));
         assertFalse(pages.contains("push:"), "a mirror push must not deploy draft content");
