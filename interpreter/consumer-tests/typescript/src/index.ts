@@ -13,6 +13,10 @@ import {
   type WorkspaceModelSource,
 } from "@mbackschat/a12-interpreter";
 
+import {validateWithProjectCondition} from "./guide-customization.js";
+import {runInterpreter} from "./guide-finite.js";
+import {collectWorkspace} from "./guide-provider.js";
+
 const model = (name: string): string =>
   readFileSync(new URL(`../models/${name}.dm.json`, import.meta.url), "utf8");
 
@@ -23,6 +27,17 @@ const sourcesById = new Map<string, WorkspaceModelSource>([
   ["permit-types", {json: model("permit-types"), diagnosticLabel: "permit-types"}],
   ["permit-basic", {json: model("permit-basic"), diagnosticLabel: "permit-basic"}],
 ]);
+
+const guideResult = runInterpreter(model("permit-basic"));
+if (guideResult.full.findings.map(({code}) => code).join(",") !== "AREA_NEEDS_NOTE" ||
+    guideResult.computation.results[0]?.value !== "120" ||
+    !guideResult.partial.fullySupported) {
+  throw new Error("finite-workspace guide example returned an unexpected result");
+}
+const guideWorkspace = await collectWorkspace("permit-single", sourcesById);
+if (guideWorkspace.prepare("permit-single").entryModelId !== "permit-single") {
+  throw new Error("provider guide example did not prepare its entry model");
+}
 
 const finiteWorkspace = ModelWorkspace.fromSources([...sourcesById.values()]);
 const expanded = finiteWorkspace.expand("permit-single");
@@ -170,6 +185,21 @@ const customizedReport = customized.validateFull(customSnapshot);
 if (conditionCalls !== 1 ||
     customizedReport.findings.every(({code}) => code !== "INELIGIBLE_ORDER")) {
   throw new Error("custom condition did not reach validation");
+}
+const guideCustomization = validateWithProjectCondition(
+  model("order-ruled"),
+  {
+    version: 1,
+    groups: [{path: "/Order", coordinates: [1]}],
+    fields: [{
+      path: "/Order/CustomerName",
+      coordinates: [1, 1],
+      raw: "ACME",
+    }],
+  },
+);
+if (guideCustomization.findings.every(({code}) => code !== "INELIGIBLE_ORDER")) {
+  throw new Error("customization guide example returned no authored finding");
 }
 
 const asynchronousCondition = (async () => true) as unknown as CustomCondition;

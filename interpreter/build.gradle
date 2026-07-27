@@ -1297,7 +1297,7 @@ def stageInterpreterNpmPackage = tasks.register('stageInterpreterNpmPackage', Sy
         into('src')
     }
     from(new File(interpreterTypeScriptSourceDir, 'tsconfig.json'))
-    from(new File(interpreterTypeScriptSourceDir, 'README.md')) {
+    from(file('README.md')) {
         rename { 'README.md' }
     }
     from(rootProject.file('LICENSE')) {

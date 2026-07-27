@@ -78,7 +78,7 @@ Prefer typed Java in your own JVM project? The same engine is a library — see 
 | a **modeller / BA**, or an **LLM agent** | **`dmtool`**, the CLI | verbs + JSON I/O, single native binary, self-describing — no Java toolchain to install |
 | a **developer**, editing models in your own JVM project | **rulekit / modelkit** as a library | typed builders, kernel-checked, in your own code & compiler |
 
-*(The kits — rulekit, modelkit, dm.edit, schemakit — are a **Java** library. The **interpreter** is Kotlin Multiplatform and targets **JVM and JS**; Node is the supported/tested JS runtime, while browser support is deferred and unverified (IF138).)*
+*(The kits — rulekit, modelkit, dm.edit, schemakit — are a **Java** library. The **interpreter** is Kotlin Multiplatform and its packed library is tested on JVM, Node.js, and Chrome.)*
 
 ---
 
@@ -795,7 +795,8 @@ More library idioms and the design rationale live in the [API guide](docs/API-GU
 Runtime evaluation — *which rules fire on this document, what does each computed field evaluate to* — runs on a **clean-room, kernel-free interpreter** (Kotlin Multiplatform). It is the sole runtime eval engine, the one behind `model eval` / `rule eval` / `model compute` / `model seed` — and the reason those verbs work in the native binary: the interpreter needs **no codegen step at all**, where the kernel's Groovy codegen can't go native. Those verbs and `model expand` now share the interpreter's portable workspace boundary for includes and imported typedefs; the JVM/Jackson model reader remains a metadata/index implementation, not a second runtime resolver.
 
 - **Kernel-exact, by verification.** Its results are checked rule-for-rule against the real A12 kernel by a **differential test suite** plus a model-driven fuzzer, and it replays a **conformance corpus** of kernel-verified expected outcomes — captured tri-verified against the kernel's two evaluation strategies — on both JVM and JS.
-- **A standalone library, not just the CLI's engine.** One common engine, two targets — **JVM and JS** — so the same evaluator runs in your JVM service, the GraalVM native image, and Node. Browser support is deferred and unverified (IF138).
+- **A standalone library, not just the CLI's engine.** One common engine serves **JVM, Node.js, and browser** applications. The public TypeScript, Kotlin, and Java API prepares finite or provider-backed workspaces, resolves includes and imported type definitions, reads Documents, reuses a prepared interpreter across form changes, runs full or partial validation, computes derived values, and hosts project field/condition callbacks.
+- **A developer-facing release surface.** Start with the [interpreter README](interpreter/README.md) and the packed-artifact-tested [API guide](docs/INTERPRETER-API-GUIDE.md), or inspect the [browser showcase source](interpreter/consumer-tests/browser/) that the release repository deploys to GitHub Pages.
 - **Fast, and measured — never assumed.** It scales **linearly** (a single document stays linear to 300 000 rows, ~2.5 µs/row), and across **every measured shape it is competitive-to-far-faster than the kernel** — measured against the kernel's own generated validator compiled as Java, the Groovy-tax-free baseline: ~2–3× on the rule-count sweeps, ~5× on the combined real-world case, 25–50× on aggregates, up to ~165× on huge documents. On JS it stays linear too (~60–106 ms at 10 000 rows on Node). Method + full numbers: [`docs/INTERPRETER-PERFORMANCE.md`](docs/INTERPRETER-PERFORMANCE.md).
 
 ---
