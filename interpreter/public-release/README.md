@@ -95,7 +95,7 @@ The browser showcase uses this same public provider/workspace boundary. You can 
 
 ## Release contents
 
-Each release contains:
+This release contains:
 
 - `a12-interpreter-@VERSION@.tgz` — npm-compatible TypeScript/JavaScript package with the compiled browser/Node runtime, declarations, source maps, README, and license.
 - `dm-interpreter-@VERSION@-maven-repository.zip` — complete offline Maven repository containing the Kotlin Multiplatform, JVM, and JS artifacts, Gradle metadata, POMs, documentation JARs, source JARs, and checksums.
