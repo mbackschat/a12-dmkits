@@ -59,6 +59,15 @@ interface UploadedWorkspace {
   readonly revision: number;
 }
 
+interface TimedOperation<T> {
+  readonly value: T;
+  readonly samplesMillis: readonly number[];
+}
+
+type TimedOperationName = "validation" | "computation";
+
+const MAX_OPERATION_RUNS = 100;
+
 const scenarios: Readonly<Record<ScenarioId, Scenario>> = {
   clean: {
     workspace: "permit-basic",
@@ -152,6 +161,11 @@ const documentInput = requiredElement("#document-input", HTMLTextAreaElement);
 const scenarioNote = requiredElement("#scenario-note", HTMLSpanElement);
 const result = requiredElement("#result", HTMLPreElement);
 const resultSummary = requiredElement("#result-summary", HTMLDivElement);
+const operationRuns = requiredElement("#operation-runs", HTMLInputElement);
+const operationTiming = requiredElement(
+  "#operation-timing",
+  HTMLOutputElement,
+);
 const summary = requiredElement("#workspace-summary", HTMLElement);
 const entryModel = requiredElement("#entry-model", HTMLElement);
 const dependencyCount = requiredElement("#dependency-count", HTMLElement);
@@ -170,6 +184,10 @@ const livePerformance = requiredElement(
 const operationButtons = Array.from(
   document.querySelectorAll<HTMLButtonElement>(".actions button"),
 );
+const operationControls: readonly (HTMLButtonElement | HTMLInputElement)[] = [
+  ...operationButtons,
+  operationRuns,
+];
 
 let preparedState: PreparedState | undefined;
 let uploadedWorkspace: UploadedWorkspace | undefined;
@@ -297,6 +315,72 @@ const summarizeResult = (
   resultSummary.dataset.count = count.toString();
 };
 
+const resetOperationTiming = (): void => {
+  operationTiming.hidden = true;
+  operationTiming.textContent = "";
+  delete operationTiming.dataset.samples;
+  delete operationTiming.dataset.metric;
+  delete operationTiming.dataset.operation;
+  delete operationTiming.dataset.millis;
+};
+
+const selectedOperationRuns = (): number => {
+  const runs = operationRuns.valueAsNumber;
+  if (
+    !Number.isSafeInteger(runs) ||
+    runs < 1 ||
+    runs > MAX_OPERATION_RUNS
+  ) {
+    throw new Error(
+      `Runs must be a whole number from 1 to ${MAX_OPERATION_RUNS}.`,
+    );
+  }
+  return runs;
+};
+
+const timeOperation = <T>(
+  runs: number,
+  operation: () => T,
+): TimedOperation<T> => {
+  let startedAt = performance.now();
+  let value = operation();
+  const samplesMillis = [performance.now() - startedAt];
+  for (let index = 1; index < runs; index += 1) {
+    startedAt = performance.now();
+    value = operation();
+    samplesMillis.push(performance.now() - startedAt);
+  }
+  return {value, samplesMillis};
+};
+
+const p95Of = (samplesMillis: readonly number[]): number => {
+  const ordered = [...samplesMillis].sort((left, right) => left - right);
+  return ordered[Math.ceil(ordered.length * 0.95) - 1]!;
+};
+
+const renderOperationTiming = (
+  operation: TimedOperationName,
+  samplesMillis: readonly number[],
+): void => {
+  const metric = samplesMillis.length === 1 ? "elapsed" : "p95";
+  const milliseconds = metric === "elapsed"
+    ? samplesMillis[0]!
+    : p95Of(samplesMillis);
+  const label = operation === "validation" ? "Validation" : "Computation";
+  const runs = samplesMillis.length === 1
+    ? "one run"
+    : `${samplesMillis.length} runs`;
+  operationTiming.hidden = false;
+  operationTiming.dataset.samples = samplesMillis.length.toString();
+  operationTiming.dataset.metric = metric;
+  operationTiming.dataset.operation = operation;
+  operationTiming.dataset.millis = milliseconds.toString();
+  operationTiming.textContent =
+    `${label}: ${milliseconds.toFixed(2)} ms${
+      metric === "p95" ? " p95" : ""
+    } · ${runs} · same prepared interpreter and Document.`;
+};
+
 const renderError = (error: unknown): void => {
   const exposed = error instanceof Error
     ? {
@@ -317,16 +401,17 @@ const renderError = (error: unknown): void => {
 const withOperation = async (
   operation: () => Promise<void>,
 ): Promise<void> => {
-  operationButtons.forEach((button) => {
-    button.disabled = true;
+  resetOperationTiming();
+  operationControls.forEach((control) => {
+    control.disabled = true;
   });
   try {
     await operation();
   } catch (error) {
     renderError(error);
   } finally {
-    operationButtons.forEach((button) => {
-      button.disabled = false;
+    operationControls.forEach((control) => {
+      control.disabled = false;
     });
   }
 };
@@ -569,17 +654,27 @@ export const startShowcase = async (): Promise<void> => {
     "click",
     () => void withOperation(async () => {
       const document = await snapshot();
+      const runs = selectedOperationRuns();
       const validationScope = validationScopeSelect.value;
-      const report = validationScope === "full"
-        ? document.state.interpreter.validateFull(document.value)
-        : document.state.interpreter.validatePart(document.value, [
+      const relevantPointers = validationScope === "full"
+        ? undefined
+        : [
           document.state.model.model.relevantPointer(
             relevantPath.value,
             selectedRelevantCoordinates(),
           ),
-        ]);
+        ];
+      const validate = () => relevantPointers === undefined
+        ? document.state.interpreter.validateFull(document.value)
+        : document.state.interpreter.validatePart(
+          document.value,
+          relevantPointers,
+        );
+      const timed = timeOperation(runs, validate);
+      const report = timed.value;
       renderResult(`validate-${validationScope}`, report);
       summarizeResult("Validation complete", report.findings.length, "finding");
+      renderOperationTiming("validation", timed.samplesMillis);
       status.dataset.state = "passed";
       status.textContent = validationScope === "full"
         ? "Full validation completed."
@@ -590,7 +685,11 @@ export const startShowcase = async (): Promise<void> => {
     "click",
     () => void withOperation(async () => {
       const document = await snapshot();
-      const report = document.state.interpreter.compute(document.value);
+      const timed = timeOperation(
+        selectedOperationRuns(),
+        () => document.state.interpreter.compute(document.value),
+      );
+      const report = timed.value;
       renderResult("compute", {
         ...report,
         results: report.results.map((entry) => ({
@@ -603,6 +702,7 @@ export const startShowcase = async (): Promise<void> => {
         })),
       });
       summarizeResult("Computation complete", report.results.length, "result");
+      renderOperationTiming("computation", timed.samplesMillis);
       status.dataset.state = "passed";
       status.textContent = "Computation completed.";
     }),

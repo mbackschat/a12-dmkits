@@ -132,6 +132,18 @@
           <button id="validate" class="primary" type="button">Validate</button>
           <button id="compute" type="button">Compute</button>
           <button id="prepare" type="button">Prepare workspace</button>
+          <label class="operation-runs-control">
+            Runs
+            <input
+              id="operation-runs"
+              type="number"
+              min="1"
+              max="100"
+              step="1"
+              value="1"
+              inputmode="numeric"
+            >
+          </label>
           <label class="validation-scope-control">
             Validation scope
             <select id="validation-scope">
@@ -217,6 +229,12 @@
             <div id="result-summary" class="result-summary" aria-live="polite">
               Ready for an operation.
             </div>
+            <output
+              id="operation-timing"
+              class="operation-timing"
+              aria-live="polite"
+              hidden
+            ></output>
             <pre id="result" tabindex="0"><code>{
   "ready": true
 }</code></pre>
@@ -264,7 +282,7 @@
           </li>
           <li>
             <h3>Prepare, validate, or compute</h3>
-            <p>Prepare workspace resolves the selected model and shows its dependencies. Validate and Compute prepare automatically when the model selection has changed.</p>
+            <p>Prepare workspace resolves the selected model and shows its dependencies. Validate and Compute prepare automatically when the model selection has changed. Runs repeats validation or computation against the same prepared interpreter and Document; one run reports elapsed time and multiple runs report p95.</p>
           </li>
           <li>
             <h3>Choose the validation scope</h3>

@@ -208,6 +208,8 @@ await withStaticServer(async (url) => {
       "On-demand provider",
       "Full document",
       "Relevant scenario group",
+      "same prepared interpreter and Document",
+      "multiple runs report p95",
       "Nothing is uploaded",
     ]) {
       if (!manualText?.includes(expected)) {
@@ -280,10 +282,49 @@ await withStaticServer(async (url) => {
         }
       }
     };
+    const operationRuns = showcase.locator("#operation-runs");
+    if (
+      await operationRuns.count() !== 1 ||
+      await operationRuns.inputValue() !== "1" ||
+      await operationRuns.getAttribute("min") !== "1" ||
+      await operationRuns.getAttribute("max") !== "100"
+    ) {
+      throw new Error(
+        "showcase does not expose a bounded one-run operation control",
+      );
+    }
+    const assertTiming = async (
+      samples: number,
+      metric: "elapsed" | "p95",
+      operation: "validation" | "computation",
+    ): Promise<void> => {
+      const timing = showcase.locator(
+        `#operation-timing[data-samples='${samples}'][data-metric='${metric}'][data-operation='${operation}']`,
+      );
+      await withDeadline(`${operation} timing`, timing.waitFor());
+      const milliseconds = Number(await timing.getAttribute("data-millis"));
+      if (!Number.isFinite(milliseconds) || milliseconds < 0) {
+        throw new Error(
+          `${operation} timing is invalid: ${milliseconds}`,
+        );
+      }
+      const text = await timing.textContent();
+      const expectedRuns = samples === 1 ? "one run" : `${samples} runs`;
+      if (
+        !text?.includes(expectedRuns) ||
+        !text.includes("prepared interpreter") ||
+        !text.includes("Document")
+      ) {
+        throw new Error(
+          `${operation} timing lacks reusable-operation context: ${text}`,
+        );
+      }
+    };
 
     await showcase.selectOption("#scenario", "clean");
     await showcase.click("#validate");
     await assertOutput("validate-full", ['"findings": []']);
+    await assertTiming(1, "elapsed", "validation");
 
     await showcase.locator("#document-upload").setInputFiles({
       name: "permit-input.json",
@@ -310,11 +351,14 @@ await withStaticServer(async (url) => {
     ).filter({hasText: "Document loaded"}).waitFor();
     await showcase.click("#validate");
     await assertOutput("validate-full", ["AREA_NEEDS_NOTE"]);
+    await assertTiming(1, "elapsed", "validation");
 
     await showcase.selectOption("#scenario", "firing");
     await showcase.selectOption("#validation-scope", "relevant");
+    await operationRuns.fill("5");
     await showcase.click("#validate");
     await assertOutput("validate-relevant", ["AREA_NEEDS_NOTE"]);
+    await assertTiming(5, "p95", "validation");
     await showcase.selectOption("#validation-scope", "full");
 
     await showcase.selectOption("#scenario", "formal-invalid");
@@ -322,8 +366,11 @@ await withStaticServer(async (url) => {
     await assertOutput("validate-full", ["zahlHatUngueltigeZeichen"]);
 
     await showcase.selectOption("#scenario", "computation");
+    await operationRuns.fill("3");
     await showcase.click("#compute");
     await assertOutput("compute", ["/Permit/ReviewedArea", '"value": "125"']);
+    await assertTiming(3, "p95", "computation");
+    await operationRuns.fill("1");
 
     await showcase.click(".workspace-controls summary");
     await showcase.selectOption("#workspace-mode", "file-map");

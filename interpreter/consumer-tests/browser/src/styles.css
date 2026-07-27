@@ -323,7 +323,8 @@ button {
 }
 
 select,
-.relevant-selection input {
+.relevant-selection input,
+.operation-runs-control input {
   width: 100%;
   padding: 11px 12px;
   border: 1px solid var(--line);
@@ -532,6 +533,13 @@ pre {
   color: #ffc29d;
 }
 
+.operation-timing {
+  display: block;
+  margin: -4px 0 13px;
+  color: #a9eaff;
+  font-size: 0.9rem;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -586,6 +594,10 @@ a:focus-visible {
 .validation-scope-control {
   flex: 0 1 260px;
   margin-left: auto;
+}
+
+.operation-runs-control {
+  flex: 0 0 88px;
 }
 
 .relevant-selection[hidden] {
