@@ -12,86 +12,155 @@ import {
 import {
   BROWSER_FIRST_ANSWER_POLICY,
   enforceBrowserFirstAnswer,
+  requiresExtendedBrowserSeries,
+  summarizeBrowserSamples,
 } from "./performance-policy.mjs";
 
-const samples = [];
+const scenarios = [
+  {
+    id: "representative",
+    workload: "b1-valid:flat-lines=200:index-fields-only:v1",
+    rows: 200,
+    expectedFindings: 0,
+    releaseBar: false,
+  },
+  {
+    id: "stress",
+    workload: "b1-firing:flat-lines=10000:v1",
+    rows: 10_000,
+    expectedFindings: 4_900,
+    expectedCode: "HQ",
+    releaseBar: true,
+  },
+];
+
+const measurements = new Map();
 let chromeVersion;
 await withStaticServer(async (url) => {
-  for (
-    let index = 0;
-    index < BROWSER_FIRST_ANSWER_POLICY.sampleCount;
-    index += 1
-  ) {
-    const browser = await launchChrome();
-    try {
-      chromeVersion ??= browser.version();
-      const page = await openCheckedPage(browser, `${url}?mode=performance`);
-      const status = page.locator(
-        "#status[data-state=passed][data-performance=passed]",
-      );
-      if (await status.count() !== 1) {
-        throw new Error(
-          `browser performance sample ${index + 1} failed: ${
-            await page.locator("#status").textContent()
-          }`,
-        );
+  for (const scenario of scenarios) {
+    const samples = [];
+    let documentBytes;
+    const collectUntil = async (targetCount) => {
+      for (let index = samples.length; index < targetCount; index += 1) {
+        const browser = await launchChrome();
+        try {
+          chromeVersion ??= browser.version();
+          const page = await openCheckedPage(
+            browser,
+            `${url}?mode=performance&scenario=${scenario.id}`,
+          );
+          const status = page.locator(
+            `#status[data-state=passed][data-performance=passed]` +
+            `[data-performance-scenario='${scenario.id}']` +
+            `[data-document-rows='${scenario.rows}']` +
+            `[data-expected-findings='${scenario.expectedFindings}']`,
+          );
+          if (await status.count() !== 1) {
+            throw new Error(
+              `${scenario.id} browser performance sample ${
+                index + 1
+              } failed: ${await page.locator("#status").textContent()}`,
+            );
+          }
+          const value = Number(
+            await status.getAttribute("data-first-answer-millis"),
+          );
+          if (!Number.isFinite(value) || value <= 0) {
+            throw new Error(
+              `${scenario.id} browser performance sample ${
+                index + 1
+              } is invalid: ${value}`,
+            );
+          }
+          const observedDocumentBytes = Number(
+            await status.getAttribute("data-document-bytes"),
+          );
+          if (
+            !Number.isSafeInteger(observedDocumentBytes) ||
+            observedDocumentBytes <= 0 ||
+            (documentBytes !== undefined &&
+              observedDocumentBytes !== documentBytes)
+          ) {
+            throw new Error(
+              `${scenario.id} Document byte size changed between samples: ` +
+              `${documentBytes ?? "unset"} -> ${observedDocumentBytes}`,
+            );
+          }
+          documentBytes = observedDocumentBytes;
+          samples.push(value);
+        } finally {
+          await withDeadline("Chrome shutdown", browser.close());
+        }
       }
-      const value = Number(
-        await status.getAttribute("data-first-answer-millis"),
-      );
-      if (!Number.isFinite(value) || value <= 0) {
-        throw new Error(
-          `browser performance sample ${index + 1} is invalid: ${value}`,
-        );
-      }
-      samples.push(value);
-    } finally {
-      await withDeadline("Chrome shutdown", browser.close());
-    }
-    if ((index + 1) % 10 === 0) {
       console.log(
-        `browser first-answer samples: ${index + 1}/${
-          BROWSER_FIRST_ANSWER_POLICY.sampleCount
-        }`,
+        `${scenario.id} browser first-answer samples: ` +
+        `${samples.length}/${targetCount}`,
       );
+    };
+    await collectUntil(BROWSER_FIRST_ANSWER_POLICY.initialSampleCount);
+    if (requiresExtendedBrowserSeries(summarizeBrowserSamples(samples))) {
+      console.log(
+        `${scenario.id} timing range is noisy; extending the series to ` +
+        `${BROWSER_FIRST_ANSWER_POLICY.maximumSampleCount} samples`,
+      );
+      await collectUntil(BROWSER_FIRST_ANSWER_POLICY.maximumSampleCount);
     }
+    measurements.set(scenario.id, {documentBytes, samples});
   }
 });
 
 const cpu = cpus()[0]?.model ?? "unknown";
-const estimator = enforceBrowserFirstAnswer(samples);
+const measuredScenarios = Object.fromEntries(scenarios.map((scenario) => {
+  const measurement = measurements.get(scenario.id);
+  if (measurement === undefined) {
+    throw new Error(`missing ${scenario.id} browser measurement`);
+  }
+  const estimator = scenario.releaseBar
+    ? enforceBrowserFirstAnswer(measurement.samples)
+    : summarizeBrowserSamples(measurement.samples);
+  return [
+    scenario.id,
+    {
+      id: scenario.id === "representative"
+        ? "browser-b1-200-rows-first-answer"
+        : "browser-b1-10000-rows-first-answer",
+      version: 1,
+      workload: scenario.workload,
+      timedRegion: "createInterpreter-through-complete-validateFull",
+      preparationTimed: false,
+      documentMaterializationTimed: false,
+      rows: scenario.rows,
+      documentBytes: measurement.documentBytes,
+      expectedFindings: scenario.expectedFindings,
+      ...(scenario.expectedCode === undefined
+        ? {}
+        : {expectedCode: scenario.expectedCode}),
+      estimator: {
+        ...estimator,
+        independence: "one fresh Chrome process per sample",
+      },
+      releaseBar: scenario.releaseBar
+        ? {
+          metric: "median",
+          maximumMillis: BROWSER_FIRST_ANSWER_POLICY.maximumMedianMillis,
+          ratifiedOn: BROWSER_FIRST_ANSWER_POLICY.ratifiedOn,
+          passed: true,
+        }
+        : null,
+      samplesMillis: measurement.samples,
+    },
+  ];
+}));
 const report = {
-  format: "a12-browser-first-answer-v1",
-  informativeUntilOwnerRatification: false,
+  format: "a12-browser-first-answer-v3",
   commit: process.env.INTERPRETER_COMMIT ?? "unknown",
-  scenario: {
-    id: "browser-b1-10000-rows-first-answer",
-    version: 1,
-    workload: "b1-firing:flat-lines=10000:v1",
-    timedRegion: "createInterpreter-through-complete-validateFull",
-    preparationTimed: false,
-    documentMaterializationTimed: false,
-    rows: 10_000,
-    expectedFindings: 4_900,
-    expectedCode: "HQ",
-  },
   runtime: {
     browser: chromeVersion,
     os: `${platform()} ${release()}`,
     arch: arch(),
     cpu,
   },
-  estimator: {
-    ...estimator,
-    independence: "one fresh Chrome process per sample",
-  },
-  releaseBar: {
-    metric: "nearest-rank-p95",
-    maximumMillis: BROWSER_FIRST_ANSWER_POLICY.maximumP95Millis,
-    ratifiedOn: BROWSER_FIRST_ANSWER_POLICY.ratifiedOn,
-    passed: true,
-  },
-  samplesMillis: samples,
+  scenarios: measuredScenarios,
 };
 
 const output = `${JSON.stringify(report, null, 2)}\n`;

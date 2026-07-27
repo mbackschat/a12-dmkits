@@ -28,7 +28,10 @@ await withStaticServer(async (url) => {
     }
     console.log(await page.locator("#status").textContent());
 
-    const showcase = await openCheckedPage(browser, url);
+    const showcase = await openCheckedPage(
+      browser,
+      `${url}?skip-live-performance=1`,
+    );
     const version = showcase.locator(
       "#package-version[data-package='@mbackschat/a12-interpreter']",
     );
@@ -90,8 +93,10 @@ await withStaticServer(async (url) => {
     const releaseFacts = (await showcase.locator(".hero-facts").textContent())
       ?.replaceAll(/\s+/g, " ");
     for (const expected of [
-      "209.3 ms p95 interpreter creation + full validation",
-      "≤250 ms target passed",
+      "10.2 ms median 200-row Document",
+      "not measured this browser · one 200-row run",
+      "177.1 ms median 10,000-row stress Document",
+      "≤250 ms stress target passed",
       "33/33 conformance cases passed in Chrome",
       "JVM · Node.js · Chrome tested targets",
     ]) {
@@ -105,11 +110,14 @@ await withStaticServer(async (url) => {
       ".performance-context",
     ).textContent())?.replaceAll(/\s+/g, " ");
     for (const expected of [
-      "10,000-row Document",
+      "200 group rows",
+      "23.1 kB",
+      "median 10.2 ms",
+      "10,000 rows",
       "4,900 findings",
-      "50 fresh Chrome runs",
-      "95% of runs",
-      "209.3 ms or less",
+      "10 fresh Chrome runs",
+      "expands to 50",
+      "median 177.1 ms",
     ]) {
       if (!performanceContext?.includes(expected)) {
         throw new Error(
@@ -341,14 +349,14 @@ await withStaticServer(async (url) => {
 
     const performancePage = await openCheckedPage(
       browser,
-      `${url}?mode=performance`,
+      `${url}?mode=performance&scenario=stress`,
     );
     const performanceStatus = performancePage.locator(
-      "#status[data-state=passed][data-performance=passed]",
+      "#status[data-state=passed][data-performance=passed][data-performance-scenario=stress][data-document-rows='10000'][data-expected-findings='4900']",
     );
     if (await performanceStatus.count() !== 1) {
       throw new Error(
-        `browser performance scenario failed: ${
+        `stress browser performance scenario failed: ${
           await performancePage.locator("#status").textContent()
         }`,
       );

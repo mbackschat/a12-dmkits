@@ -44,8 +44,13 @@
           </p>
         </div>
         <div class="hero-facts" aria-label="Release facts">
-          <span><strong>209.3 ms p95</strong> interpreter creation + full validation</span>
-          <span><strong>≤250 ms target</strong> passed</span>
+          <span><strong>10.2 ms median</strong> 200-row Document</span>
+          <span>
+            <strong><output id="live-performance">measuring…</output></strong>
+            this browser · one 200-row run
+          </span>
+          <span><strong>177.1 ms median</strong> 10,000-row stress Document</span>
+          <span><strong>≤250 ms stress target</strong> passed</span>
           <span><strong>33/33 conformance cases</strong> passed in Chrome</span>
           <span><strong>JVM · Node.js · Chrome</strong> tested targets</span>
           <span>
@@ -54,7 +59,7 @@
           </span>
         </div>
         <p class="performance-context">
-          Performance case: interpreter creation through full validation of an already prepared 10,000-row Document with 4,900 findings, measured in 50 fresh Chrome runs. p95 means 95% of runs completed in 209.3 ms or less. Model preparation and Document creation are not timed.
+          Current measurement: 200 group rows, 23.1 kB, no findings, median 10.2 ms; stress case: 10,000 rows, 2.01 MB, 4,900 findings, median 177.1 ms. Both stable series used 10 fresh Chrome runs. A noisy series expands to 50 only when its observed range is greater than half the median. Both cases measure interpreter creation through full validation; model preparation and Document creation are not timed.
         </p>
       </section>
 

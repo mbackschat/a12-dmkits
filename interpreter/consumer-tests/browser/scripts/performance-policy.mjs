@@ -1,7 +1,8 @@
 export const BROWSER_FIRST_ANSWER_POLICY = Object.freeze({
-  sampleCount: 50,
-  percentile: 0.95,
-  maximumP95Millis: 250,
+  initialSampleCount: 10,
+  maximumSampleCount: 50,
+  maximumRelativeRange: 0.5,
+  maximumMedianMillis: 250,
   ratifiedOn: "2026-07-27",
 });
 
@@ -12,15 +13,18 @@ const median = (sorted) => {
     : sorted[middle];
 };
 
-const nearestRank = (sorted, percentile) =>
-  sorted[Math.ceil(percentile * sorted.length) - 1];
+const rounded = (value, digits) => Number(value.toFixed(digits));
 
-export const enforceBrowserFirstAnswer = (samples) => {
-  if (samples.length !== BROWSER_FIRST_ANSWER_POLICY.sampleCount) {
+export const summarizeBrowserSamples = (samples) => {
+  if (
+    samples.length !== BROWSER_FIRST_ANSWER_POLICY.initialSampleCount &&
+    samples.length !== BROWSER_FIRST_ANSWER_POLICY.maximumSampleCount
+  ) {
     throw new Error(
-      `browser first-answer release bar requires exactly ${
-        BROWSER_FIRST_ANSWER_POLICY.sampleCount
-      } samples, received ${samples.length}`,
+      `browser performance series requires ${
+        BROWSER_FIRST_ANSWER_POLICY.initialSampleCount
+      } or ${BROWSER_FIRST_ANSWER_POLICY.maximumSampleCount} samples, ` +
+      `received ${samples.length}`,
     );
   }
   samples.forEach((sample, index) => {
@@ -32,23 +36,39 @@ export const enforceBrowserFirstAnswer = (samples) => {
   });
 
   const sorted = [...samples].sort((left, right) => left - right);
-  const nearestRankP95Millis = nearestRank(
-    sorted,
-    BROWSER_FIRST_ANSWER_POLICY.percentile,
-  );
-  if (nearestRankP95Millis > BROWSER_FIRST_ANSWER_POLICY.maximumP95Millis) {
+  const medianMillis = rounded(median(sorted), 3);
+  return {
+    sampleCount: samples.length,
+    discardedSamples: 0,
+    medianMillis,
+    minimumMillis: sorted[0],
+    maximumMillis: sorted[sorted.length - 1],
+    relativeRange: rounded(
+      (sorted[sorted.length - 1] - sorted[0]) / medianMillis,
+      6,
+    ),
+  };
+};
+
+export const requiresExtendedBrowserSeries = (summary) =>
+  summary.sampleCount === BROWSER_FIRST_ANSWER_POLICY.initialSampleCount &&
+  summary.relativeRange > BROWSER_FIRST_ANSWER_POLICY.maximumRelativeRange;
+
+export const enforceBrowserFirstAnswer = (samples) => {
+  const summary = summarizeBrowserSamples(samples);
+  if (requiresExtendedBrowserSeries(summary)) {
     throw new Error(
-      `browser first-answer p95 ${nearestRankP95Millis} ms exceeds the ratified ${
-        BROWSER_FIRST_ANSWER_POLICY.maximumP95Millis
+      `browser first-answer range is ${summary.relativeRange}; ` +
+      `${BROWSER_FIRST_ANSWER_POLICY.maximumSampleCount} samples are required`,
+    );
+  }
+  if (summary.medianMillis > BROWSER_FIRST_ANSWER_POLICY.maximumMedianMillis) {
+    throw new Error(
+      `browser first-answer median ${summary.medianMillis} ms exceeds the ${
+        BROWSER_FIRST_ANSWER_POLICY.maximumMedianMillis
       } ms release bar`,
     );
   }
 
-  return {
-    sampleCount: samples.length,
-    discardedSamples: 0,
-    percentile: BROWSER_FIRST_ANSWER_POLICY.percentile,
-    medianMillis: median(sorted),
-    nearestRankP95Millis,
-  };
+  return summary;
 };

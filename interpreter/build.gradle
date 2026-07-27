@@ -2232,7 +2232,7 @@ def verifyExternalInterpreterBrowserConsumer = tasks.register(
     outputs.upToDateWhen { false }
 }
 def browserPerformanceReport = rootProject.layout.buildDirectory.file(
-    'reports/interpreter-browser-performance/r4.2.json',
+    'reports/interpreter-browser-performance/r5.2.json',
 )
 def interpreterCommit = providers.exec {
     workingDir rootProject.rootDir
@@ -2243,7 +2243,7 @@ def measureExternalInterpreterBrowserFirstAnswer = tasks.register(
     Exec,
 ) {
     group = 'verification'
-    description = 'Measure 50 independent packed-interpreter B1 first answers in fresh Chrome processes.'
+    description = 'Measure representative and stress packed-interpreter first answers in fresh Chrome processes.'
     dependsOn verifyExternalInterpreterBrowserConsumer
     workingDir externalBrowserConsumerBuildDir
     commandLine('pnpm', 'run', 'measure:first-answer')

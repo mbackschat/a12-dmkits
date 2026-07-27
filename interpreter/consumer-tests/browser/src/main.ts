@@ -61,13 +61,26 @@ const firstAnswer = async (): Promise<number> => {
 const run = async (): Promise<void> => {
   const mode = new URLSearchParams(location.search).get("mode");
   if (mode === "performance") {
-    const {measureBrowserFirstAnswer} = await import("./performance.js");
-    const elapsedMillis = await measureBrowserFirstAnswer();
-    status.dataset.firstAnswerMillis = elapsedMillis.toFixed(3);
+    const params = new URLSearchParams(location.search);
+    const {
+      BrowserPerformanceScenario,
+      measureBrowserFirstAnswer,
+    } = await import("./performance.js");
+    const requestedScenario = params.get("scenario");
+    const scenario = requestedScenario ===
+        BrowserPerformanceScenario.REPRESENTATIVE
+      ? BrowserPerformanceScenario.REPRESENTATIVE
+      : BrowserPerformanceScenario.STRESS;
+    const measurement = await measureBrowserFirstAnswer(scenario);
+    status.dataset.firstAnswerMillis = measurement.elapsedMillis.toFixed(3);
     status.dataset.performance = "passed";
+    status.dataset.performanceScenario = measurement.scenario;
+    status.dataset.documentRows = measurement.rows.toString();
+    status.dataset.documentBytes = measurement.documentBytes.toString();
+    status.dataset.expectedFindings = measurement.expectedFindings.toString();
     status.dataset.state = "passed";
-    status.textContent = `B1 browser first answer: ${
-      elapsedMillis.toFixed(3)
+    status.textContent = `${measurement.scenario} browser first answer: ${
+      measurement.elapsedMillis.toFixed(3)
     } ms`;
     return;
   }

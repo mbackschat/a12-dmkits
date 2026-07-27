@@ -163,6 +163,10 @@ const bundleSizeUncompressed = requiredElement(
   "#bundle-size-uncompressed",
   HTMLElement,
 );
+const livePerformance = requiredElement(
+  "#live-performance",
+  HTMLOutputElement,
+);
 const operationButtons = Array.from(
   document.querySelectorAll<HTMLButtonElement>(".actions button"),
 );
@@ -444,6 +448,32 @@ const loadBundleSize = async (): Promise<void> => {
     `${Math.round(measured.uncompressedBytes / 1_000)} kB`;
 };
 
+const measureRepresentativePerformance = async (): Promise<void> => {
+  if (
+    new URLSearchParams(location.search).get("skip-live-performance") === "1"
+  ) {
+    livePerformance.textContent = "not measured";
+    livePerformance.dataset.state = "skipped";
+    return;
+  }
+  try {
+    const {
+      BrowserPerformanceScenario,
+      measureBrowserFirstAnswer,
+    } = await import("./performance.js");
+    const measurement = await measureBrowserFirstAnswer(
+      BrowserPerformanceScenario.REPRESENTATIVE,
+    );
+    livePerformance.textContent = `${measurement.elapsedMillis.toFixed(1)} ms`;
+    livePerformance.dataset.state = "passed";
+    livePerformance.dataset.documentBytes =
+      measurement.documentBytes.toString();
+  } catch {
+    livePerformance.textContent = "unavailable";
+    livePerformance.dataset.state = "failed";
+  }
+};
+
 const exampleDocumentPaths = (): readonly string[] =>
   Object.values(scenarios).map(({inputPath}) => inputPath);
 
@@ -587,6 +617,7 @@ export const startShowcase = async (): Promise<void> => {
   );
   await selectScenario();
   await prepareWorkspace();
+  void measureRepresentativePerformance();
   if (offlineEnabled) {
     await prepareOfflineShell(
       bundledDelivery.revision,
