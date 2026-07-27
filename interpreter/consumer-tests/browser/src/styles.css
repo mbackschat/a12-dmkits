@@ -144,40 +144,7 @@ h1 {
 
 .performance-evidence {
   margin-top: 32px;
-}
-
-.performance-evidence > summary {
-  width: fit-content;
-  cursor: pointer;
-  color: var(--blue-dark);
-  font-weight: 700;
-}
-
-.hero-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0;
-  margin-top: 16px;
-  color: var(--muted);
-  font-size: 1rem;
-}
-
-.hero-facts span {
-  padding-right: 16px;
-}
-
-.hero-facts span + span {
-  padding-left: 16px;
-  border-left: 1px solid var(--line);
-}
-
-.hero-facts strong {
-  color: var(--ink);
-}
-
-.performance-context {
   max-width: 920px;
-  margin-top: 12px;
   color: var(--muted);
   font-size: 1rem;
   line-height: 1.55;
@@ -187,8 +154,8 @@ h1 {
   margin-bottom: 2px;
 }
 
-.measurement-method {
-  margin: 8px 0 0;
+.performance-results strong {
+  color: var(--ink);
 }
 
 .playground {
@@ -738,18 +705,6 @@ footer nav {
 
   .brand > span:last-child {
     display: none;
-  }
-
-  .hero-facts {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .hero-facts span,
-  .hero-facts span + span {
-    padding: 0;
-    border: 0;
   }
 
   .panel-heading {

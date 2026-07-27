@@ -90,62 +90,61 @@ await withStaticServer(async (url) => {
     ) {
       throw new Error("showcase prompt marker resembles a disclosure control");
     }
-    const performanceEvidence = showcase.locator(
-      "details.performance-evidence",
-    );
+    const performanceEvidence = showcase.locator(".performance-evidence");
     if (
       await performanceEvidence.count() !== 1 ||
-      await performanceEvidence.getAttribute("open") === null ||
-      !(
-        await performanceEvidence.locator(":scope > summary").textContent()
-      )?.includes("Performance and compatibility")
+      await performanceEvidence.locator(":scope > summary").count() !== 0
     ) {
       throw new Error(
-        "showcase performance evidence is not an open collapsible section",
+        "showcase performance evidence is not always visible",
       );
     }
     if (
       await performanceEvidence.locator(".performance-results > p").count() !==
-        2
+        3
     ) {
       throw new Error(
-        "showcase does not separate representative and stress results",
+        "showcase does not separate representative, stress, and bundle results",
       );
     }
-    const releaseFacts = (await showcase.locator(".hero-facts").textContent())
+    if (
+      await showcase.locator(".hero-facts, .measurement-method").count() !== 0
+    ) {
+      throw new Error("showcase retains duplicated facts or methodology");
+    }
+    const performanceContext = (await performanceEvidence.textContent())
       ?.replaceAll(/\s+/g, " ");
     for (const expected of [
-      "10.2 ms median 200-row Document",
-      "not measured this browser · one 200-row run",
-      "177.1 ms median 10,000-row stress Document",
-      "≤250 ms stress target passed",
-      "33/33 conformance cases passed in Chrome",
-      "JVM · Node.js · Chrome tested targets",
-    ]) {
-      if (!releaseFacts?.includes(expected)) {
-        throw new Error(
-          `showcase release facts lack context '${expected}': ${releaseFacts}`,
-        );
-      }
-    }
-    const performanceContext = (await showcase.locator(
-      ".performance-context",
-    ).textContent())?.replaceAll(/\s+/g, " ");
-    for (const expected of [
+      "Representative:",
       "200 group rows",
       "23.1 kB",
       "10.2 ms median",
+      "not measured this browser",
+      "Stress:",
       "10,000 rows",
       "4,900 findings",
-      "10 fresh Chrome runs",
-      "expands to 50",
       "177.1 ms median",
+      "interpreter JS bundle",
     ]) {
       if (!performanceContext?.includes(expected)) {
         throw new Error(
           `showcase performance result lacks context '${expected}': ${
             performanceContext
           }`,
+        );
+      }
+    }
+    for (const removed of [
+      "stress target passed",
+      "conformance cases passed",
+      "tested targets",
+      "fresh Chrome runs",
+      "observed range",
+      "model preparation",
+    ]) {
+      if (performanceContext?.includes(removed)) {
+        throw new Error(
+          `showcase retains removed performance prose '${removed}': ${performanceContext}`,
         );
       }
     }
