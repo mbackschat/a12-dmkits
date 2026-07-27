@@ -30,7 +30,7 @@ expanded DM-JSON ── PreparedModel.loadExpandedJson
               ▼
         PreparedModel
           ├── model metadata and pointers
-          ├── placement document codec
+          ├── Document codec
           └── configured Interpreter
                     ├── validateFull
                     ├── validatePart
@@ -107,14 +107,14 @@ Passing a foreign or stale model-owned object fails before evaluation with `Mode
 
 Coordinates are positive signed 32-bit integers. A field pointer's terminal coordinate is always `1`; this is a measured Kernel document-conversion boundary rather than a repetition maximum. Group coordinates above a declared maximum remain representable so formal validation can report them.
 
-## 4. Placement document transport
+## 4. Document transport
 
 ### 4.1 Versioned lossless envelope
 
-`PlacementDocumentInputV1` is the canonical portable document boundary:
+`DocumentInputV1` is the canonical portable document boundary:
 
 ```ts
-interface PlacementDocumentInputV1 {
+interface DocumentInputV1 {
   readonly version: 1;
   readonly groups: readonly GroupPlacementInput[];
   readonly fields: readonly FieldPlacementInput[];
@@ -132,7 +132,7 @@ interface FieldPlacementInput {
 }
 ```
 
-The flat placements preserve:
+The Document's flat placement records preserve:
 
 - absent versus present-empty fields;
 - malformed but present raw field text;
@@ -144,7 +144,7 @@ Decode followed by encode reaches a fixed point after the first encode because f
 
 ### 4.2 Strict decoding
 
-`PreparedModel.documents.decodePlacements` accepts `unknown` on TypeScript and validates the complete envelope before constructing a `DocumentSnapshot`. `readPlacements` is the typed fast path over the same validator; it is not a trust bypass.
+`PreparedModel.documents.decodeDocument` accepts `unknown` on TypeScript and validates the complete envelope before constructing a `DocumentSnapshot`. `readDocument` is the typed fast path over the same validator; it is not a trust bypass.
 
 Decoding:
 
@@ -155,9 +155,9 @@ Decoding:
 - aggregates model-aware input diagnostics;
 - performs no partial document mutation when validation fails.
 
-`DocumentInputError` carries structured input paths plus optional model paths and placement/coordinate positions. `tryDecodePlacements` returns the same failure through `A12Result`.
+`DocumentInputError` carries structured input paths plus optional model paths and placement/coordinate positions. `tryDecodeDocument` returns the same failure through `A12Result`.
 
-`encodePlacements` checks owner identity and emits the lossless V1 representation. `isSnapshot` recognizes only authentic snapshots owned by that prepared model.
+`encodeDocument` checks owner identity and emits the lossless V1 representation. `isSnapshot` recognizes only authentic snapshots owned by that prepared model.
 
 ## 5. Interpreter lifecycle and evaluation
 

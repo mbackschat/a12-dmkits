@@ -15,12 +15,12 @@ import kotlin.test.assertTrue
  * identity. Coordinates above a declared maximum — a non-repeatable group's coordinate 2 included — stay
  * representable for formal validation (measured Kernel basis: `OverRepetitionFormalGateDiffTest`).
  */
-class PlacementTransportTest {
+class DocumentTransportTest {
 
     @Test
     fun roundTripPreservesStatesRowsAndRawTextAndReachesItsFixedPoint() {
         val documents = prepared().documents
-        val input = PlacementDocumentInputV1(
+        val input = DocumentInputV1(
             groups = listOf(
                 GroupPlacementInput("/Order", listOf(1)),
                 GroupPlacementInput("/Order/Items", listOf(1, 2)),
@@ -35,8 +35,8 @@ class PlacementTransportTest {
             ),
         )
 
-        val snapshot = documents.readPlacements(input)
-        val encoded = documents.encodePlacements(snapshot)
+        val snapshot = documents.readDocument(input)
+        val encoded = documents.encodeDocument(snapshot)
 
         assertEquals(
             listOf(
@@ -63,14 +63,14 @@ class PlacementTransportTest {
         )
         assertEquals(1, encoded.version)
 
-        val reEncoded = documents.encodePlacements(documents.readPlacements(encoded))
+        val reEncoded = documents.encodeDocument(documents.readDocument(encoded))
         assertEquals(encoded, reEncoded, "encode of decode(encode(...)) is the fixed point")
     }
 
     @Test
     fun readAggregatesEveryModelLevelDefectBeforeConstruction() {
         val documents = prepared().documents
-        val input = PlacementDocumentInputV1(
+        val input = DocumentInputV1(
             groups = listOf(
                 GroupPlacementInput("/Order/Nowhere", listOf(1, 1)),
                 GroupPlacementInput("/Order/Items", listOf(1)),
@@ -86,7 +86,7 @@ class PlacementTransportTest {
         )
 
         val error = assertFailsWith<DocumentInputError> {
-            documents.readPlacements(input)
+            documents.readDocument(input)
         }
 
         val byReason = error.diagnostics.groupBy { it.reasonCode }
@@ -131,7 +131,7 @@ class PlacementTransportTest {
 
     @Test
     fun readRefusesPositiveFieldTerminalCoordinatesAboveOneWithDedicatedDiagnostic() {
-        val input = PlacementDocumentInputV1(
+        val input = DocumentInputV1(
             groups = emptyList(),
             fields = listOf(
                 FieldPlacementInput("/Order/Ref", listOf(1, 2), "ORD-2"),
@@ -140,7 +140,7 @@ class PlacementTransportTest {
         )
 
         val error = assertFailsWith<DocumentInputError> {
-            prepared().documents.readPlacements(input)
+            prepared().documents.readDocument(input)
         }
 
         assertEquals(
@@ -161,8 +161,8 @@ class PlacementTransportTest {
     fun readRejectsAnUnsupportedVersionAsTheSoleDiagnostic() {
         val documents = prepared().documents
         val error = assertFailsWith<DocumentInputError> {
-            documents.readPlacements(
-                PlacementDocumentInputV1(
+            documents.readDocument(
+                DocumentInputV1(
                     groups = listOf(GroupPlacementInput("/Order/Nowhere", listOf(1))),
                     fields = emptyList(),
                     version = 2,
@@ -182,7 +182,7 @@ class PlacementTransportTest {
         val cases = listOf(
             Triple(
                 DocumentDecodeLimits.builder().maxGroupPlacements(1).build(),
-                PlacementDocumentInputV1(
+                DocumentInputV1(
                     groups = listOf(
                         GroupPlacementInput("/Order", listOf(1)),
                         GroupPlacementInput("/Order/Items", listOf(1, 1)),
@@ -193,7 +193,7 @@ class PlacementTransportTest {
             ),
             Triple(
                 DocumentDecodeLimits.builder().maxFieldPlacements(1).build(),
-                PlacementDocumentInputV1(
+                DocumentInputV1(
                     groups = emptyList(),
                     fields = listOf(
                         FieldPlacementInput("/Order/Ref", listOf(1, 1), "a"),
@@ -204,7 +204,7 @@ class PlacementTransportTest {
             ),
             Triple(
                 DocumentDecodeLimits.builder().maxCoordinatesPerPlacement(2).build(),
-                PlacementDocumentInputV1(
+                DocumentInputV1(
                     groups = emptyList(),
                     fields = listOf(FieldPlacementInput("/Order/Items/Qty", listOf(1, 1, 1), "2")),
                 ),
@@ -212,7 +212,7 @@ class PlacementTransportTest {
             ),
             Triple(
                 DocumentDecodeLimits.builder().maxPathCodeUnits(8).build(),
-                PlacementDocumentInputV1(
+                DocumentInputV1(
                     groups = emptyList(),
                     fields = listOf(FieldPlacementInput("/Order/Ref", listOf(1, 1), "a")),
                 ),
@@ -220,7 +220,7 @@ class PlacementTransportTest {
             ),
             Triple(
                 DocumentDecodeLimits.builder().maxRawCodeUnitsPerField(3).build(),
-                PlacementDocumentInputV1(
+                DocumentInputV1(
                     groups = emptyList(),
                     fields = listOf(FieldPlacementInput("/Order/Ref", listOf(1, 1), "abcd")),
                 ),
@@ -228,7 +228,7 @@ class PlacementTransportTest {
             ),
             Triple(
                 DocumentDecodeLimits.builder().maxTotalRawCodeUnits(5).build(),
-                PlacementDocumentInputV1(
+                DocumentInputV1(
                     groups = emptyList(),
                     fields = listOf(
                         FieldPlacementInput("/Order/Ref", listOf(1, 1), "abc"),
@@ -239,7 +239,7 @@ class PlacementTransportTest {
             ),
             Triple(
                 DocumentDecodeLimits.builder().maxModelNestingDepth(1).build(),
-                PlacementDocumentInputV1(
+                DocumentInputV1(
                     groups = emptyList(),
                     fields = listOf(FieldPlacementInput("/Order/Ref", listOf(1, 1), "a")),
                 ),
@@ -249,7 +249,7 @@ class PlacementTransportTest {
 
         for ((limits, input, resource) in cases) {
             val error = assertFailsWith<DocumentInputError>(resource.name) {
-                prepared().documents.readPlacements(input, limits)
+                prepared().documents.readDocument(input, limits)
             }
             val diagnostic = error.diagnostics.single()
             assertEquals(DocumentInputReasonCode.RESOURCE_LIMIT_EXCEEDED, diagnostic.reasonCode, resource.name)
@@ -258,7 +258,7 @@ class PlacementTransportTest {
             assertNotNull(diagnostic.actual, resource.name)
         }
         // The touched instance stays untouched by the failing sibling cases above.
-        documents.readPlacements(PlacementDocumentInputV1(emptyList(), emptyList()))
+        documents.readDocument(DocumentInputV1(emptyList(), emptyList()))
     }
 
     @Test
@@ -274,7 +274,7 @@ class PlacementTransportTest {
     @Test
     fun coordinatesAboveDeclaredMaximaStayRepresentableIncludingNonRepeatableGroups() {
         val documents = prepared().documents
-        val input = PlacementDocumentInputV1(
+        val input = DocumentInputV1(
             groups = listOf(
                 GroupPlacementInput("/Order/Items", listOf(1, 5)),
                 GroupPlacementInput("/Order/Shipping", listOf(1, 2)),
@@ -285,7 +285,7 @@ class PlacementTransportTest {
             ),
         )
 
-        val encoded = documents.encodePlacements(documents.readPlacements(input))
+        val encoded = documents.encodeDocument(documents.readDocument(input))
 
         assertTrue(GroupPlacementInput("/Order/Shipping", listOf(1, 2)) in encoded.groups)
         assertTrue(FieldPlacementInput("/Order/Items/Qty", listOf(1, 9, 1), "4") in encoded.fields)
@@ -295,8 +295,8 @@ class PlacementTransportTest {
     fun encodeRefusesForeignAndStaleSnapshotsByOwnerIdentity() {
         val first = prepared()
         val second = prepared()
-        val snapshot = first.documents.readPlacements(
-            PlacementDocumentInputV1(
+        val snapshot = first.documents.readDocument(
+            DocumentInputV1(
                 groups = listOf(GroupPlacementInput("/Order", listOf(1))),
                 fields = emptyList(),
             ),
@@ -304,17 +304,17 @@ class PlacementTransportTest {
 
         assertSame(first.owner, snapshot.owner)
         assertSame(first.modelVersion, snapshot.modelVersion)
-        first.documents.encodePlacements(snapshot)
+        first.documents.encodeDocument(snapshot)
 
         val stale = assertFailsWith<ModelOwnerMismatchError> {
-            second.documents.encodePlacements(snapshot)
+            second.documents.encodeDocument(snapshot)
         }
         assertSame(second.owner, stale.expected)
         assertSame(first.owner, stale.actual)
 
         val foreign = PreparedModel.loadExpandedJson(foreignModel())
         assertFailsWith<ModelOwnerMismatchError> {
-            foreign.documents.encodePlacements(snapshot)
+            foreign.documents.encodeDocument(snapshot)
         }
     }
 
@@ -323,13 +323,13 @@ class PlacementTransportTest {
         val documents = prepared().documents
         val coordinates = mutableListOf(1, 1)
         val fields = mutableListOf(FieldPlacementInput("/Order/Ref", coordinates, "ORD-9"))
-        val input = PlacementDocumentInputV1(groups = mutableListOf(), fields = fields)
+        val input = DocumentInputV1(groups = mutableListOf(), fields = fields)
 
-        val snapshot = documents.readPlacements(input)
+        val snapshot = documents.readDocument(input)
         coordinates[1] = 7
         fields.clear()
 
-        val encoded = documents.encodePlacements(snapshot)
+        val encoded = documents.encodeDocument(snapshot)
         assertEquals(
             listOf(FieldPlacementInput("/Order/Ref", listOf(1, 1), "ORD-9")),
             encoded.fields,

@@ -35,7 +35,7 @@ import io.github.mbackschat.a12.dm.interpreter.ModelSourceProvider as CoreModelS
 import io.github.mbackschat.a12.dm.interpreter.ModelSourceProviderError as CoreModelSourceProviderError
 import io.github.mbackschat.a12.dm.interpreter.ModelSourceProviderFailureReason as CoreProviderFailureReason
 import io.github.mbackschat.a12.dm.interpreter.ModelWorkspace as CoreModelWorkspace
-import io.github.mbackschat.a12.dm.interpreter.PlacementDocumentInputV1 as CorePlacementDocument
+import io.github.mbackschat.a12.dm.interpreter.DocumentInputV1 as CoreDocumentInput
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel as CorePreparedModel
 import io.github.mbackschat.a12.dm.interpreter.RelevantCoordinate as CoreRelevantCoordinate
 import io.github.mbackschat.a12.dm.interpreter.RelevantEntityPointer as CoreRelevantEntityPointer
@@ -159,21 +159,21 @@ class InterpreterBridgeFieldPlacement(
 }
 
 @JsExport
-class InterpreterBridgePlacementDocument(
+class InterpreterBridgeDocumentInput(
     val version: Int,
     val groups: Array<InterpreterBridgeGroupPlacement>,
     val fields: Array<InterpreterBridgeFieldPlacement>,
 ) {
-    internal fun toCore(): CorePlacementDocument =
-        CorePlacementDocument(
+    internal fun toCore(): CoreDocumentInput =
+        CoreDocumentInput(
             version = version,
             groups = groups.map(InterpreterBridgeGroupPlacement::toCore),
             fields = fields.map(InterpreterBridgeFieldPlacement::toCore),
         )
 
     companion object {
-        internal fun fromCore(document: CorePlacementDocument): InterpreterBridgePlacementDocument =
-            InterpreterBridgePlacementDocument(
+        internal fun fromCore(document: CoreDocumentInput): InterpreterBridgeDocumentInput =
+            InterpreterBridgeDocumentInput(
                 version = document.version,
                 groups = document.groups.map { group ->
                     InterpreterBridgeGroupPlacement(group.path, group.coordinates.toTypedArray())
@@ -303,14 +303,14 @@ class InterpreterBridgeModelDependency internal constructor(
 class InterpreterBridgeDocuments internal constructor(
     private val prepared: CorePreparedModel,
 ) {
-    fun readPlacements(
-        input: InterpreterBridgePlacementDocument,
+    fun readDocument(
+        input: InterpreterBridgeDocumentInput,
         limitsJson: String?,
     ): InterpreterBridgeDocumentResult =
         try {
             InterpreterBridgeDocumentResult(
                 InterpreterBridgeDocumentSnapshot(
-                    prepared.documents.readPlacements(input.toCore(), documentLimits(limitsJson)),
+                    prepared.documents.readDocument(input.toCore(), documentLimits(limitsJson)),
                 ),
                 null,
             )
@@ -318,10 +318,10 @@ class InterpreterBridgeDocuments internal constructor(
             InterpreterBridgeDocumentResult(null, documentInputFailure(error))
         }
 
-    fun encodePlacements(
+    fun encodeDocument(
         snapshot: InterpreterBridgeDocumentSnapshot,
-    ): InterpreterBridgePlacementDocument =
-        InterpreterBridgePlacementDocument.fromCore(prepared.documents.encodePlacements(snapshot.core))
+    ): InterpreterBridgeDocumentInput =
+        InterpreterBridgeDocumentInput.fromCore(prepared.documents.encodeDocument(snapshot.core))
 
     fun isSnapshot(snapshot: InterpreterBridgeDocumentSnapshot?): Boolean =
         snapshot != null && snapshot.core.owner === prepared.owner

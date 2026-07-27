@@ -37,7 +37,7 @@ export {
 export type {
   FieldPlacementInput,
   GroupPlacementInput,
-  PlacementDocumentInputV1,
+  DocumentInputV1,
 } from "./documents.js";
 
 export {Interpreter} from "./evaluation.js";

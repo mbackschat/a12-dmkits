@@ -1,6 +1,6 @@
 import {
   ModelWorkspace,
-  type PlacementDocumentInputV1,
+  type DocumentInputV1,
   type ValidationFinding,
 } from "@mbackschat/a12-interpreter";
 
@@ -30,7 +30,7 @@ const firstAnswer = async (): Promise<number> => {
   const modelJson = await modelResponse.text();
   const prepared = ModelWorkspace.fromSources([{json: modelJson}])
     .prepare("permit-basic");
-  const placements: PlacementDocumentInputV1 = {
+  const document: DocumentInputV1 = {
     version: 1,
     groups: [{path: "/Permit", coordinates: [1]}],
     fields: [
@@ -38,7 +38,7 @@ const firstAnswer = async (): Promise<number> => {
       {path: "/Permit/RequestedArea", coordinates: [1, 1], raw: "120"},
     ],
   };
-  const snapshot = prepared.documents.decodePlacements(placements);
+  const snapshot = prepared.documents.decodeDocument(document);
   const interpreter = prepared.createInterpreter();
   const findings: readonly ValidationFinding[] =
     interpreter.validateFull(snapshot).findings;

@@ -6,7 +6,7 @@ import kotlin.test.assertTrue
 
 /**
  * Lock for the complete declared group inventory (R2.8 substrate): the loader records EVERY Group element id,
- * not only repeatable/index-bearing ones, so the placement transport can validate a group placement against a
+ * not only repeatable/index-bearing ones, so the Document transport can validate a group placement against a
  * declared field-less, non-repeatable group instead of guessing from field-path prefixes.
  */
 class ModelLoaderGroupInventoryTest {

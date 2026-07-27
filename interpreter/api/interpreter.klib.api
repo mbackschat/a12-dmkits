@@ -177,6 +177,8 @@ final class io.github.mbackschat.a12.dm.interpreter/DocumentDecodeLimits // io.g
 
 final class io.github.mbackschat.a12.dm.interpreter/DocumentInputError : kotlin/RuntimeException // io.github.mbackschat.a12.dm.interpreter/DocumentInputError|null[0]
 
+final class io.github.mbackschat.a12.dm.interpreter/DocumentInputV1 // io.github.mbackschat.a12.dm.interpreter/DocumentInputV1|null[0]
+
 final class io.github.mbackschat.a12.dm.interpreter/DocumentSnapshot : io.github.mbackschat.a12.dm.interpreter/ModelOwned // io.github.mbackschat.a12.dm.interpreter/DocumentSnapshot|null[0]
 
 final class io.github.mbackschat.a12.dm.interpreter/FieldPlacementInput // io.github.mbackschat.a12.dm.interpreter/FieldPlacementInput|null[0]
@@ -216,8 +218,6 @@ final class io.github.mbackschat.a12.dm.interpreter/ModelSourceProviderError : k
 final class io.github.mbackschat.a12.dm.interpreter/ModelVersionIdentity // io.github.mbackschat.a12.dm.interpreter/ModelVersionIdentity|null[0]
 
 final class io.github.mbackschat.a12.dm.interpreter/ModelWorkspace // io.github.mbackschat.a12.dm.interpreter/ModelWorkspace|null[0]
-
-final class io.github.mbackschat.a12.dm.interpreter/PlacementDocumentInputV1 // io.github.mbackschat.a12.dm.interpreter/PlacementDocumentInputV1|null[0]
 
 final class io.github.mbackschat.a12.dm.interpreter/PreparedDocumentApi // io.github.mbackschat.a12.dm.interpreter/PreparedDocumentApi|null[0]
 

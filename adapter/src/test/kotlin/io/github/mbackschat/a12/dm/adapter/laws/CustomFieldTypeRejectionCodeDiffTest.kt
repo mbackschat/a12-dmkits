@@ -14,7 +14,7 @@ import io.github.mbackschat.a12.dm.interpreter.InterpreterConfiguration
 import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationError
 import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationPhase
 import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationReason
-import io.github.mbackschat.a12.dm.interpreter.PlacementDocumentInputV1
+import io.github.mbackschat.a12.dm.interpreter.DocumentInputV1
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
 import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
@@ -104,8 +104,8 @@ class CustomFieldTypeRejectionCodeDiffTest {
         val javaStatic = engine.messages(engine.instance(kDoc), factory).filter { it.field().contains("Code") }.map { it.code() }
         val interp = DmInterpreter(def, customFieldTypes = codeTypes).validate(iDoc).messages
             .filter { it.errorPath.contains("Code") }.map { it.code }
-        val publicSnapshot = publicPrepared.documents.readPlacements(
-            PlacementDocumentInputV1(
+        val publicSnapshot = publicPrepared.documents.readDocument(
+            DocumentInputV1(
                 groups = listOf(GroupPlacementInput("/Order", listOf(1))),
                 fields = listOf(FieldPlacementInput(CODE, listOf(1, 1), value)),
             ),
@@ -163,8 +163,8 @@ class CustomFieldTypeRejectionCodeDiffTest {
     }
 
     private fun publicSnapshot(value: String) =
-        publicPrepared.documents.readPlacements(
-            PlacementDocumentInputV1(
+        publicPrepared.documents.readDocument(
+            DocumentInputV1(
                 groups = listOf(GroupPlacementInput("/Order", listOf(1))),
                 fields = listOf(FieldPlacementInput(CODE, listOf(1, 1), value)),
             ),

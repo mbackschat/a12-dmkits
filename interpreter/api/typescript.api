@@ -120,6 +120,13 @@ export declare class DocumentInputError extends Error {
 ## DocumentInputPathSegment
 export type DocumentInputPathSegment = string | number;
 
+## DocumentInputV1
+export interface DocumentInputV1 {
+    readonly version: 1;
+    readonly groups: readonly GroupPlacementInput[];
+    readonly fields: readonly FieldPlacementInput[];
+}
+
 ## DocumentPlacementKind
 export type DocumentPlacementKind = "group" | "field";
 
@@ -315,21 +322,14 @@ export declare class ModelWorkspace {
     tryPrepare(entryModelId: string): A12Result<PreparedModel, ModelPreparationError>;
 }
 
-## PlacementDocumentInputV1
-export interface PlacementDocumentInputV1 {
-    readonly version: 1;
-    readonly groups: readonly GroupPlacementInput[];
-    readonly fields: readonly FieldPlacementInput[];
-}
-
 ## PreparedDocumentApi
 export declare class PreparedDocumentApi {
     private readonly core;
     isSnapshot(value: unknown): value is DocumentSnapshot;
-    decodePlacements(input: unknown, options?: DocumentDecodeOptions): DocumentSnapshot;
-    tryDecodePlacements(input: unknown, options?: DocumentDecodeOptions): A12Result<DocumentSnapshot, DocumentInputError>;
-    readPlacements(input: PlacementDocumentInputV1, options?: DocumentDecodeOptions): DocumentSnapshot;
-    encodePlacements(snapshot: DocumentSnapshot): PlacementDocumentInputV1;
+    decodeDocument(input: unknown, options?: DocumentDecodeOptions): DocumentSnapshot;
+    tryDecodeDocument(input: unknown, options?: DocumentDecodeOptions): A12Result<DocumentSnapshot, DocumentInputError>;
+    readDocument(input: DocumentInputV1, options?: DocumentDecodeOptions): DocumentSnapshot;
+    encodeDocument(snapshot: DocumentSnapshot): DocumentInputV1;
     private readBridgeDocument;
 }
 

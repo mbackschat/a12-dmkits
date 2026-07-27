@@ -51,7 +51,7 @@ export const measureBrowserFirstAnswer = async (): Promise<number> => {
   const modelJson = await fetchModel();
   const prepared = ModelWorkspace.fromSources([{json: modelJson}])
     .prepare("perf");
-  const snapshot = prepared.documents.readPlacements({
+  const snapshot = prepared.documents.readDocument({
     version: 1,
     groups: [],
     fields: fields(),

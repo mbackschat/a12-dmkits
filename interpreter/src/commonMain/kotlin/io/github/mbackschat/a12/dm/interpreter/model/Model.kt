@@ -406,7 +406,7 @@ data class ModelDef(
     val indexFields: Set<String> = emptySet(),
     /** EVERY declared group id — field-less and non-repeatable groups included. [repeatable] and field-path
      *  prefixes under-approximate the declared tree (a structural container with no fields is invisible to
-     *  both), so the placement transport validates group placements against this complete inventory. */
+     *  both), so the Document transport validates group placements against this complete inventory. */
     val groupPaths: Set<String> = emptySet(),
     /** The model's configured base year (the kernel's `modelInfo.baseYear`), or null when none is declared —
      *  the value of the `BaseYear` point-in-time constant (a model that uses `BaseYear` without one is a

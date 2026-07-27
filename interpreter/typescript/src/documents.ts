@@ -1,7 +1,7 @@
 import type {
   InterpreterBridgeDocumentSnapshot,
   InterpreterBridgeDocuments,
-  InterpreterBridgePlacementDocument,
+  InterpreterBridgeDocumentInput,
 } from "../internal/a12-interpreter-core.mjs";
 
 import {
@@ -31,7 +31,7 @@ export interface FieldPlacementInput {
   readonly raw: string;
 }
 
-export interface PlacementDocumentInputV1 {
+export interface DocumentInputV1 {
   readonly version: 1;
   readonly groups: readonly GroupPlacementInput[];
   readonly fields: readonly FieldPlacementInput[];
@@ -372,7 +372,7 @@ const parseFields = (
 const decodeUnknownDocument = (
   input: unknown,
   options: DocumentDecodeOptions | undefined,
-): InterpreterBridgePlacementDocument => {
+): InterpreterBridgeDocumentInput => {
   const diagnostics: DocumentInputDiagnostic[] = [];
   const record = recordValue(input, [], diagnostics);
   if (record === undefined) {
@@ -392,7 +392,7 @@ const decodeUnknownDocument = (
       diagnostic(
         "unsupported-version",
         ["version"],
-        `unsupported placement document version ${record.version}`,
+        `unsupported document version ${record.version}`,
         {expected: 1, actual: record.version},
       ),
     );
@@ -403,12 +403,12 @@ const decodeUnknownDocument = (
   if (diagnostics.length > 0 || groups === undefined || fields === undefined) {
     throw new DocumentInputError(Object.freeze([...diagnostics]));
   }
-  return new bridge.InterpreterBridgePlacementDocument(1, groups, fields);
+  return new bridge.InterpreterBridgeDocumentInput(1, groups, fields);
 };
 
 const bridgeDocumentFromTyped = (
-  input: PlacementDocumentInputV1,
-): InterpreterBridgePlacementDocument => {
+  input: DocumentInputV1,
+): InterpreterBridgeDocumentInput => {
   const typedCoordinate = (
     coordinate: number,
     placementKind: "group" | "field",
@@ -456,12 +456,12 @@ const bridgeDocumentFromTyped = (
         )),
       field.raw,
     ));
-  return new bridge.InterpreterBridgePlacementDocument(input.version, groups, fields);
+  return new bridge.InterpreterBridgeDocumentInput(input.version, groups, fields);
 };
 
-const placementDocumentFromBridge = (
-  input: InterpreterBridgePlacementDocument,
-): PlacementDocumentInputV1 =>
+const documentInputFromBridge = (
+  input: InterpreterBridgeDocumentInput,
+): DocumentInputV1 =>
   Object.freeze({
     version: 1 as const,
     groups: Object.freeze(input.groups.map((group) =>
@@ -486,44 +486,44 @@ export class PreparedDocumentApi {
       this.core.isSnapshot(value.bridgeValue());
   }
 
-  decodePlacements(
+  decodeDocument(
     input: unknown,
     options?: DocumentDecodeOptions,
   ): DocumentSnapshot {
     return this.readBridgeDocument(decodeUnknownDocument(input, options), options);
   }
 
-  tryDecodePlacements(
+  tryDecodeDocument(
     input: unknown,
     options?: DocumentDecodeOptions,
   ): A12Result<DocumentSnapshot, DocumentInputError> {
     return resultOf(
-      () => this.decodePlacements(input, options),
+      () => this.decodeDocument(input, options),
       DocumentInputError,
     );
   }
 
-  readPlacements(
-    input: PlacementDocumentInputV1,
+  readDocument(
+    input: DocumentInputV1,
     options?: DocumentDecodeOptions,
   ): DocumentSnapshot {
     return this.readBridgeDocument(bridgeDocumentFromTyped(input), options);
   }
 
-  encodePlacements(snapshot: DocumentSnapshot): PlacementDocumentInputV1 {
+  encodeDocument(snapshot: DocumentSnapshot): DocumentInputV1 {
     if (!this.isSnapshot(snapshot)) {
       throw new ModelOwnerMismatchError();
     }
-    return placementDocumentFromBridge(
-      this.core.encodePlacements(snapshot.bridgeValue()),
+    return documentInputFromBridge(
+      this.core.encodeDocument(snapshot.bridgeValue()),
     );
   }
 
   private readBridgeDocument(
-    input: InterpreterBridgePlacementDocument,
+    input: InterpreterBridgeDocumentInput,
     options: DocumentDecodeOptions | undefined,
   ): DocumentSnapshot {
-    const result = this.core.readPlacements(
+    const result = this.core.readDocument(
       input,
       documentLimitsJson(options?.limits),
     );

@@ -8,8 +8,8 @@ import {
   PreparedModel,
   type CustomCondition,
   type CustomFieldValidator,
+  type DocumentInputV1,
   type ModelSourceProvider,
-  type PlacementDocumentInputV1,
   type WorkspaceModelSource,
 } from "@mbackschat/a12-interpreter";
 
@@ -60,7 +60,7 @@ if (requested.includes("permit-basic") || new Set(requested).size !== requested.
 const prepared = PreparedModel.loadExpandedJson(
   finiteWorkspace.expand("permit-basic"),
 );
-const input: PlacementDocumentInputV1 = {
+const input: DocumentInputV1 = {
   version: 1,
   groups: [{path: "/Permit", coordinates: [1]}],
   fields: [
@@ -68,7 +68,7 @@ const input: PlacementDocumentInputV1 = {
     {path: "/Permit/RequestedArea", coordinates: [1, 1], raw: "125"},
   ],
 };
-const snapshot = prepared.documents.decodePlacements(input);
+const snapshot = prepared.documents.decodeDocument(input);
 const neverUsedCondition: CustomCondition = () => false;
 const neverUsedFieldValidator: CustomFieldValidator = () => ({accepted: true});
 const interpreter = prepared.createInterpreter({
@@ -88,12 +88,12 @@ if (computation.results.length !== 1 ||
   throw new Error("computation did not return the expected target value");
 }
 
-const canonical = prepared.documents.encodePlacements(snapshot);
+const canonical = prepared.documents.encodeDocument(snapshot);
 if (canonical.version !== 1 || canonical.fields.length !== 2) {
-  throw new Error("placement transport did not round-trip");
+  throw new Error("Document transport did not round-trip");
 }
 
-const malformed = prepared.documents.tryDecodePlacements({
+const malformed = prepared.documents.tryDecodeDocument({
   version: 1,
   groups: [],
   fields: [{
@@ -106,11 +106,11 @@ const malformed = prepared.documents.tryDecodePlacements({
 if (malformed.ok ||
     malformed.error.diagnostics[0]?.reasonCode !== "unknown-property" ||
     malformed.error.diagnostics[0]?.inputPath.join("/") !== "fields/0/unexpected") {
-  throw new Error("unknown placement input did not produce a structured diagnostic");
+  throw new Error("unknown Document member did not produce a structured diagnostic");
 }
 
 try {
-  prepared.documents.readPlacements({
+  prepared.documents.readDocument({
     version: 1,
     groups: [{path: "/Permit", coordinates: [2_147_483_648]}],
     fields: [],
@@ -147,7 +147,7 @@ if (new InterpreterIntegrationError(
 }
 
 const customPrepared = PreparedModel.loadExpandedJson(model("order-ruled"));
-const customSnapshot = customPrepared.documents.readPlacements({
+const customSnapshot = customPrepared.documents.readDocument({
   version: 1,
   groups: [{path: "/Order", coordinates: [1]}],
   fields: [{path: "/Order/CustomerName", coordinates: [1, 1], raw: "ACME"}],

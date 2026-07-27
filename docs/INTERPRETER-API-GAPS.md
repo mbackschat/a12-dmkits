@@ -72,9 +72,9 @@ The artifact is not the broad internal `:adapter`, contains no Kernel bytecode, 
 
 The archived vision includes typed A12 scalar values, typed document writes, direct lossless storage reads, complete formal inspection, display/internal conversion, row enumeration, a mutable builder, and a persistent structural-sharing editor suitable for form state.
 
-The v1 placement transport and immutable `DocumentSnapshot` deliberately precede this layer. No stateful editor, hidden mutable session, or public cache contract is inferred from repeated validation.
+The v1 Document transport and immutable `DocumentSnapshot` deliberately precede this layer. No stateful editor, hidden mutable session, or public cache contract is inferred from repeated validation.
 
-**Re-open trigger:** a real form or import consumer needs programmatic editing or typed reads that cannot be expressed cleanly as decode/encode of placement documents. The first increment must identify one consumer workflow and prove that its structural sharing and cache retention improve repeated-edit validation without leaking owner state.
+**Re-open trigger:** a real form or import consumer needs programmatic editing or typed reads that cannot be expressed cleanly as Document decode/encode. The first increment must identify one consumer workflow and prove that its structural sharing and cache retention improve repeated-edit validation without leaking owner state.
 
 ### IAG4 — stored, targeted, and candidate program APIs
 

@@ -7,17 +7,17 @@ The first package surface supports finite and on-demand model workspaces, includ
 ```ts
 import {
   ModelWorkspace,
-  type PlacementDocumentInputV1,
+  type DocumentInputV1,
 } from "@mbackschat/a12-interpreter";
 
 const workspace = ModelWorkspace.fromSources([{json: rawModelJson}]);
 const prepared = workspace.prepare("policy");
-const input: PlacementDocumentInputV1 = {
+const input: DocumentInputV1 = {
   version: 1,
   groups: [{path: "/Policy", coordinates: [1]}],
   fields: [],
 };
-const snapshot = prepared.documents.decodePlacements(input);
+const snapshot = prepared.documents.decodeDocument(input);
 const report = prepared.createInterpreter().validateFull(snapshot);
 ```
 

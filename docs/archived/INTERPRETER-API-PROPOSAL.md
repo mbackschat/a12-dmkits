@@ -1273,21 +1273,21 @@ interface DocumentInspection extends ModelOwned {
 
 interface PreparedDocumentApi extends ModelOwned {
   isSnapshot(value: unknown): value is DocumentSnapshot;
-  decodePlacements(
+  decodeDocument(
     input: unknown,
     options?: DocumentDecodeOptions,
   ): DocumentSnapshot;
-  tryDecodePlacements(
+  tryDecodeDocument(
     input: unknown,
     options?: DocumentDecodeOptions,
   ): A12Result<DocumentSnapshot, DocumentInputError>;
-  readPlacements(
-    input: PlacementDocumentInputV1,
+  readDocument(
+    input: DocumentInputV1,
     options?: DocumentDecodeOptions,
   ): DocumentSnapshot;
-  encodePlacements(
+  encodeDocument(
     snapshot: DocumentSnapshot,
-  ): PlacementDocumentInputV1;
+  ): DocumentInputV1;
   create(): DocumentBuilder;
   dayOptionalDate(
     year: A12Integer,
@@ -1494,7 +1494,7 @@ The completion default never makes `BaseYear` legal when `declaredBaseYear` is a
 | Inspection | Detached model-owned index from one complete formal pass; lookup never reevaluates or reinvokes callbacks |
 | Builders/editors | Single-owner mutable helpers whose `freeze()` returns a new snapshot; typed removal restores absence or removes a complete subtree |
 | `isSnapshot` | Authenticates a snapshot from the exact prepared owner without relying only on structure or `instanceof` |
-| Placement codec | `decodePlacements` is authoritative unknown ingress; `tryDecodePlacements` is non-throwing; `readPlacements` is the validated-DTO fast path; `encodePlacements` is canonical output |
+| Document codec | `decodeDocument` is authoritative unknown ingress; `tryDecodeDocument` is non-throwing; `readDocument` is the validated-DTO fast path; `encodeDocument` is canonical output |
 | Partial dates | Day-optional and date-fragment constructors produce exact same-owner model values |
 | Optional extensions | Persistent editing and prepared programs use separate capability types and capability-specific loaders/adapters; core `PreparedModel` promises neither |
 
@@ -1557,7 +1557,7 @@ const reportB: ValidationReport =
   interpreterB.validateFull(snapshot);
 ```
 
-A snapshot or handle carrying a different `ModelOwnerIdentity` fails with `ModelOwnerMismatchError` even when its model version and paths match. A service that uses lane-owned prepared models must therefore decode a portable placement DTO only after selecting the lane; it cannot decode once and pass that snapshot among lanes. A service may share snapshots or model-bound codecs across lanes only when those lanes deliberately and provably share one owner domain.
+A snapshot or handle carrying a different `ModelOwnerIdentity` fails with `ModelOwnerMismatchError` even when its model version and paths match. A service that uses lane-owned prepared models must therefore decode a portable Document DTO only after selecting the lane; it cannot decode once and pass that snapshot among lanes. A service may share snapshots or model-bound codecs across lanes only when those lanes deliberately and provably share one owner domain.
 
 If preparation of an ad hoc rule depends on callback availability, either callback resolution must be deferred to evaluation or the handle must be explicitly interpreter-bound. The API must not claim both forms of ownership at once.
 
@@ -1945,7 +1945,7 @@ The interpreter, not the direct operator package, owns document structures. Its 
 - stable field and group pointers;
 - model ownership and version.
 
-A convenient nested JSON object cannot be the canonical contract until those states have exact representations. The safest initial transport is a versioned placement envelope containing explicit group rows and raw field cells. A nested-object adapter may be added later.
+A convenient nested JSON object cannot be the canonical contract until those states have exact representations. The safest initial transport is a versioned Document envelope containing explicit group rows and raw field cells. A nested-object adapter may be added later.
 
 ```ts
 interface GroupPlacementInput {
@@ -1959,7 +1959,7 @@ interface FieldPlacementInput {
   readonly raw: string;
 }
 
-interface PlacementDocumentInputV1 {
+interface DocumentInputV1 {
   readonly version: 1;
   readonly groups: readonly GroupPlacementInput[];
   readonly fields: readonly FieldPlacementInput[];
@@ -1980,7 +1980,7 @@ interface DocumentDecodeOptions {
 }
 ```
 
-`PlacementDocumentInputV1` is the portable, behavior-free DTO. `GroupPlacementInput` creates one concrete row; `FieldPlacementInput` stores one raw cell.
+`DocumentInputV1` is the portable, behavior-free DTO. `GroupPlacementInput` creates one concrete row; `FieldPlacementInput` stores one raw cell.
 
 `path` is an absolute model path validated during decoding. `coordinates` contains one positive, 1-based index per path part, including the field part, and `raw` preserves exact lexical text. A field's terminal coordinate identifies the field rather than a repetition axis and must be 1.
 
@@ -2004,22 +2004,22 @@ const decodeOptions: DocumentDecodeOptions = {
 };
 
 const snapshot: DocumentSnapshot =
-  prepared.documents.decodePlacements(
+  prepared.documents.decodeDocument(
     requestBody,
     decodeOptions,
   );
 const canonicalDocument:
-  PlacementDocumentInputV1 =
-  prepared.documents.encodePlacements(snapshot);
+  DocumentInputV1 =
+  prepared.documents.encodeDocument(snapshot);
 ```
 
-`decodePlacements` is authoritative public ingress: validate runtime shape, reject unknown canonical-v1 keys, enforce resource limits, then perform model-aware path/coordinate checks and aggregate failures in `DocumentInputError`.
+`decodeDocument` is authoritative public ingress: validate runtime shape, reject unknown canonical-v1 keys, enforce resource limits, then perform model-aware path/coordinate checks and aggregate failures in `DocumentInputError`.
 
-`tryDecodePlacements` performs the same work through `A12Result<DocumentSnapshot, DocumentInputError>`. `readPlacements` is the fast path for data already validated by a trusted decoder; a TypeScript annotation alone is not evidence of validation.
+`tryDecodeDocument` performs the same work through `A12Result<DocumentSnapshot, DocumentInputError>`. `readDocument` is the fast path for data already validated by a trusted decoder; a TypeScript annotation alone is not evidence of validation.
 
-The implementation sequencing is deliberate: R2.8 ships `readPlacements` and `encodePlacements` over the typed placement DTOs with one shared validation engine — version, resource ceilings (fail-fast), model paths, coordinate arity and positivity, duplicates, and conflicts all run for the typed path too, so the fast path bypasses only unknown/native-shape decoding. `decodePlacements`/`tryDecodePlacements` land with the R3.2 exported TypeScript adapter that makes runtime-`unknown` ingress reachable; the shape-level reason codes (`invalid-native-type`, `unknown-property`, `missing-property`) join the published reason-code set there, while `unsupported-version` is already reachable through the typed envelope. The Kotlin diagnostics carry structured members (`placementKind`, `placementIndex`, `coordinateIndex`, `firstPlacementIndex`, resource/maximum/actual) from which the R3.2 adapter derives the TS `inputPath` segments.
+The implementation sequencing is deliberate: R2.8 ships `readDocument` and `encodeDocument` over the typed Document DTOs with one shared validation engine — version, resource ceilings (fail-fast), model paths, coordinate arity and positivity, duplicates, and conflicts all run for the typed path too, so the fast path bypasses only unknown/native-shape decoding. `decodeDocument`/`tryDecodeDocument` land with the R3.2 exported TypeScript adapter that makes runtime-`unknown` ingress reachable; the shape-level reason codes (`invalid-native-type`, `unknown-property`, `missing-property`) join the published reason-code set there, while `unsupported-version` is already reachable through the typed envelope. The Kotlin diagnostics carry structured members (`placementKind`, `placementIndex`, `coordinateIndex`, `firstPlacementIndex`, resource/maximum/actual) from which the R3.2 adapter derives the TS `inputPath` segments.
 
-`encodePlacements` writes a round-trippable `PlacementDocumentInputV1` after an owner check. A malformed number or date remains valid document input; it is not a valid direct `A12Number` or `A12Date`. Every diagnostic always carries its transport `inputPath`, such as `["fields", 2, "coordinates", 1]`, and separately carries the attempted `modelPath`, such as `"/Order/Lines/Amount"`, when known.
+`encodeDocument` writes a round-trippable `DocumentInputV1` after an owner check. A malformed number or date remains valid document input; it is not a valid direct `A12Number` or `A12Date`. Every diagnostic always carries its transport `inputPath`, such as `["fields", 2, "coordinates", 1]`, and separately carries the attempted `modelPath`, such as `"/Order/Lines/Amount"`, when known.
 
 Raw request-byte limits and JSON-parser depth limits must run before or during JSON parsing, because an already-created JavaScript object no longer has an authoritative byte size. The A12 decoder then enforces placement, coordinate, path, raw-content, and model-depth limits before evaluator hot paths run. It rejects rather than truncates. Cooperative deadline checks inside every AST traversal are a separate performance-sensitive capability and are not silently introduced by this façade.
 
@@ -2126,7 +2126,7 @@ Only the `"converted"` result supplies internal text suitable for `A12String.of`
 - `removeField` idempotently restores exact field absence without deleting an explicitly stored containing row.
 - `removeGroup` idempotently removes the group placement and descendant subtree while preserving siblings and ancestors.
 - `putRaw(pointer, "")` creates present-empty storage and is intentionally different from `removeField`.
-- Both construction helpers expose these operations for undo and persistent editing without rebuilding placement DTOs.
+- Both construction helpers expose these operations for undo and persistent editing without rebuilding Document DTOs.
 
 Builders are not evaluable. `freeze()` produces a stable request document whose stored placements no longer mutate. The initial service contract keeps it and its evaluation view confined to one request/runtime lease; it does not need to be concurrently shareable.
 
@@ -3224,7 +3224,7 @@ A form retains one prepared model and configured interpreter for its lifetime:
 declare const prepared:
   PreparedModelWithDocumentEditing;
 declare const configuration: InterpreterConfiguration;
-declare const initialDocument: PlacementDocumentInputV1;
+declare const initialDocument: DocumentInputV1;
 declare const render:
   (report: ValidationReport) => void;
 
@@ -3232,7 +3232,7 @@ const interpreter: Interpreter =
   prepared.createInterpreter(configuration);
 
 let snapshot: DocumentSnapshot =
-  prepared.documents.readPlacements(initialDocument);
+  prepared.documents.readDocument(initialDocument);
 
 function onValueChanged(
   pointer: FieldPointer,
@@ -3479,7 +3479,7 @@ declare class RegisteredInterpreterConfiguration {
   release(): void;
 }
 
-interface ValidatePlacementsRequest {
+interface ValidateDocumentRequest {
   readonly model: RegisteredModel | RegisteredModelAlias;
   readonly document: unknown;
   readonly options?: ValidationOptions;
@@ -3656,7 +3656,7 @@ The types have deliberately narrow roles:
 | `InterpreterBindings` | one active interpreter instance’s predefined/custom implementations and optional exclusive cleanup callback |
 | `InterpreterConfigurationRegistration` | factory definition used only when the application customizes interpreter semantics |
 | `RegisteredInterpreterConfiguration` | service-issued immutable configuration token plus a caller pin; it is a pool-key dimension, not the callback instances themselves |
-| `ValidatePlacementsRequest` | one complete validation request: model selector, untrusted portable placement input, per-call options, and optional custom configuration |
+| `ValidateDocumentRequest` | one complete validation request: model selector, untrusted portable Document input, per-call options, and optional custom configuration |
 | `SupportModelRequest` | one model/configuration selector for readiness inspection without a document |
 | `WarmModelRequest` / `WarmModelReport` | explicit eager warmup request and its measured result |
 | `ValidationServiceMetrics` | detached lifecycle state plus gauges/counters for registrations, admitted work, disposal, pool use, cache hits/misses, preparation, creation, and eviction |
@@ -3713,7 +3713,7 @@ interface ValidationService {
     ValidationServiceConfigurationRegistry;
 
   validatePlacements(
-    request: ValidatePlacementsRequest,
+    request: ValidateDocumentRequest,
   ): ValidationReport;
   support(
     request: SupportModelRequest,
@@ -3827,7 +3827,7 @@ const supportRequest: SupportModelRequest = {
 const supportReport: InterpreterSupportReport =
   service.support(supportRequest);
 
-const orderDocumentInput: PlacementDocumentInputV1 = {
+const orderDocumentInput: DocumentInputV1 = {
   version: 1,
   groups: [
     {path: "/Order", coordinates: [1]},
@@ -3844,7 +3844,7 @@ const orderDocumentInput: PlacementDocumentInputV1 = {
 const validationOptions: ValidationOptions = {
   locale: "en_US",
 };
-const request: ValidatePlacementsRequest = {
+const request: ValidateDocumentRequest = {
   model: ordersModelV2,
   document: orderDocumentInput,
   options: validationOptions,
@@ -3861,9 +3861,9 @@ const report: ValidationReport =
 | `ordersModelV2` | `RegisteredModel` | service-issued, runtime-owner-checked token pinning one immutable registered model version |
 | `supportRequest` | `SupportModelRequest` | exact model/default-configuration selector for readiness inspection |
 | `supportReport` | `InterpreterSupportReport` | detached support coverage checked before accepting requests |
-| `orderDocumentInput` | `PlacementDocumentInputV1` | portable raw placement DTO for one order document |
+| `orderDocumentInput` | `DocumentInputV1` | portable raw Document DTO for one order document |
 | `validationOptions` | `ValidationOptions` | per-call locale and optional immutable evaluation-time sample |
-| `request` | `ValidatePlacementsRequest` | complete model/untrusted-document/options/configuration input for one validation |
+| `request` | `ValidateDocumentRequest` | complete model/untrusted-document/options/configuration input for one validation |
 | `report` | `ValidationReport` | detached readonly findings and unsupported-program results |
 
 Registered-model tokens expose identity, fingerprint, and lifecycle—not model internals or evaluator methods. Variable names remain application code only.
@@ -3872,7 +3872,7 @@ Registered-model tokens expose identity, fingerprint, and lifecycle—not model 
 
 Concurrent JVM registrations of identical bytes and preparation ABI are single-flight but return separate pins to one version identity. Releasing one pin does not invalidate others, and different bytes remain different versions even when semantically equivalent.
 
-The portable readonly placement DTO may cross a network, queue, JVM thread, or Node Worker boundary. The request member is deliberately `unknown`, so the service still performs authoritative shape and model-aware decoding rather than trusting a compile-time annotation. The DTO contains no cache and is not a model-bound `DocumentSnapshot`.
+The portable readonly Document DTO may cross a network, queue, JVM thread, or Node Worker boundary. The request member is deliberately `unknown`, so the service still performs authoritative shape and model-aware decoding rather than trusting a compile-time annotation. The DTO contains no cache and is not a model-bound `DocumentSnapshot`.
 
 | Service limit | Contract |
 |---|---|
@@ -3892,7 +3892,7 @@ For each call, the service performs this exact ownership sequence:
 
 1. Resolve and temporarily pin the requested model version and interpreter configuration.
 2. Lease one warm `Interpreter` exclusively from the `(modelVersion, interpreterConfiguration)` pool.
-3. Decode `request.document` through that lane owner’s authoritative `decodePlacements(..., {limits: serviceOptions.documentDecodeLimits})` into a request-confined `DocumentSnapshot`.
+3. Decode `request.document` through that lane owner’s authoritative `decodeDocument(..., {limits: serviceOptions.documentDecodeLimits})` into a request-confined `DocumentSnapshot`.
 4. Invoke the leased lane’s `validateFull`, copy the result into a detached `ValidationReport`, and discard the request document/caches.
 5. Return or retire the interpreter and release the temporary pins.
 
@@ -3911,7 +3911,7 @@ Passing raw configuration values on every request would be unsafe and slow. The 
 ```ts
 declare const service: ValidationService;
 declare const ordersModelV2: RegisteredModel;
-declare const orderDocumentInput: PlacementDocumentInputV1;
+declare const orderDocumentInput: DocumentInputV1;
 declare const fallbackLegalCharset: LegalCharset;
 declare const createPredefinedTypes:
   () => PredefinedTypeRegistry;
@@ -3956,7 +3956,7 @@ const tenantConfiguration:
       configurationDefinition,
     );
 
-const request: ValidatePlacementsRequest = {
+const request: ValidateDocumentRequest = {
   model: ordersModelV2,
   document: orderDocumentInput,
   configuration: tenantConfiguration,
@@ -4081,7 +4081,7 @@ interface ValidateWorkerMessage {
     PortableModelVersionId;
   readonly configuration:
     PortableConfigurationId;
-  readonly document: PlacementDocumentInputV1;
+  readonly document: DocumentInputV1;
   readonly options: ValidationOptionsWireV1;
 }
 
@@ -4251,7 +4251,7 @@ interface WorkerValidationCoordinator {
     configuration:
       PortableConfigurationId,
     document:
-      PlacementDocumentInputV1,
+      DocumentInputV1,
     options: ValidationOptionsWireV1,
   ): Promise<ValidationReportWireV1>;
 }
@@ -4269,9 +4269,9 @@ In one Worker, the default is one `WarmInterpreterLane` per `(PortableModelVersi
 
 `isSnapshot` authenticates only that lane’s owner domain. Decode and optional model-bound adapter lookup occur after lane selection, and one lane’s codec never creates snapshots for another owner.
 
-Workers exchange only portable model source/fingerprints, routing IDs, placement DTOs, per-call locale/time options, and encoded result DTOs. They never exchange `PreparedModel`, `Interpreter`, `DocumentSnapshot`, model-owned pointers, scalar wrapper objects, callbacks, registries, schema objects, or local identities.
+Workers exchange only portable model source/fingerprints, routing IDs, Document DTOs, per-call locale/time options, and encoded result DTOs. They never exchange `PreparedModel`, `Interpreter`, `DocumentSnapshot`, model-owned pointers, scalar wrapper objects, callbacks, registries, schema objects, or local identities.
 
-Each Worker receives the structured-cloned message as `unknown`, validates the versioned message envelope, then passes its `document` through the selected lane’s authoritative `decodePlacements`. A TypeScript `ValidateWorkerMessage` annotation on the coordinator side is not a runtime trust boundary.
+Each Worker receives the structured-cloned message as `unknown`, validates the versioned message envelope, then passes its `document` through the selected lane’s authoritative `decodeDocument`. A TypeScript `ValidateWorkerMessage` annotation on the coordinator side is not a runtime trust boundary.
 
 ### 8.8 Explicitly typed JVM usage
 
@@ -4281,10 +4281,10 @@ The Java façade projects the same request types. `RegisteredModel`, `Registered
 static ValidationReport validateOne(
         ValidationService service,
         RegisteredModel ordersModelV2,
-        PlacementDocumentInputV1 documentInput,
+        DocumentInputV1 documentInput,
         ValidationOptions options) {
-    ValidatePlacementsRequest request =
-            ValidatePlacementsRequest.builder()
+    ValidateDocumentRequest request =
+            ValidateDocumentRequest.builder()
                     .model(ordersModelV2)
                     .document(documentInput)
                     .options(options)
@@ -4294,7 +4294,7 @@ static ValidationReport validateOne(
 }
 ```
 
-`ValidatePlacementsRequest.Builder` is the Java projection of the TypeScript readonly request. Its optional configuration method selects a custom registration; omission uses the service default.
+`ValidateDocumentRequest.Builder` is the Java projection of the TypeScript readonly request. Its optional configuration method selects a custom registration; omission uses the service default.
 
 The method is synchronous and concurrently callable from JVM threads, with a distinct exclusive interpreter lease per request.
 
@@ -4657,7 +4657,7 @@ Known decimal, regex, time-zone, preparation, and host gaps in [INTERPRETER-GAPS
 
 ### 12.1 Minimum workspace, transport, and ownership foundation
 
-The first implementable Interpreter increment should establish two adjacent foundations. Preparation provides `WorkspaceModelSource`, `ModelSourceProvider`, resource-bounded `ModelWorkspace.fromSources`/`collect`, immutable closure snapshots, transitive include/typedef assembly, assembler-only `expand`/`tryExpand`, structured `ModelPreparationDiagnostic`, `PreparedModel`, dependency metadata, and the explicit `loadExpandedJson` fast path. Transport and ownership provide `PlacementDocumentInputV1`, `DocumentDecodeLimits`, structured `DocumentInputDiagnostic` and `DocumentInputError` values, `ModelOwnerIdentity`, `PreparedDocumentApi.tryDecodePlacements`, the typed `readPlacements` fast path, `encodePlacements`, `isSnapshot(value: unknown)`, and the resulting model-owned `DocumentSnapshot`.
+The first implementable Interpreter increment should establish two adjacent foundations. Preparation provides `WorkspaceModelSource`, `ModelSourceProvider`, resource-bounded `ModelWorkspace.fromSources`/`collect`, immutable closure snapshots, transitive include/typedef assembly, assembler-only `expand`/`tryExpand`, structured `ModelPreparationDiagnostic`, `PreparedModel`, dependency metadata, and the explicit `loadExpandedJson` fast path. Transport and ownership provide `DocumentInputV1`, `DocumentDecodeLimits`, structured `DocumentInputDiagnostic` and `DocumentInputError` values, `ModelOwnerIdentity`, `PreparedDocumentApi.tryDecodeDocument`, the typed `readDocument` fast path, `encodeDocument`, `isSnapshot(value: unknown)`, and the resulting model-owned `DocumentSnapshot`.
 
 These foundations are independently useful for browser, HTTP, queue, persistence, plugin, and Worker boundaries. They establish one portable model-preparation contract and one authoritative A12-native document contract before optional framework adapters appear. They do not depend on the validation-service registry, runtime pooling, persistent editing, candidate programs, or Zod.
 

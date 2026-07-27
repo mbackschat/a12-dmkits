@@ -8,14 +8,14 @@ import kotlin.jvm.JvmOverloads
 import kotlin.jvm.JvmStatic
 import kotlin.jvm.JvmSynthetic
 
-/** One explicit group row of the V1 placement envelope: one positive 1-based index per path part. */
+/** One explicit group row of the V1 Document input: one positive 1-based index per path part. */
 data class GroupPlacementInput(
     val path: String,
     val coordinates: List<Int>,
 )
 
 /**
- * One raw field cell of the V1 placement envelope. [raw] preserves exact lexical text: `""` is a present-empty
+ * One raw field cell of the V1 Document input. [raw] preserves exact lexical text: `""` is a present-empty
  * cell (deliberately different from omitting the placement), and malformed text stays present so formal
  * validation can report it. The terminal coordinate names the field rather than a repetition axis and must be
  * 1; Kernel document conversion refuses any other value before validation.
@@ -27,13 +27,13 @@ data class FieldPlacementInput(
 )
 
 /**
- * The versioned, behavior-free placement transport. Omission means absent; explicit group placements preserve
+ * The versioned, behavior-free Document transport. Omission means absent; explicit group placements preserve
  * empty and sparse rows; coordinates carry one positive 1-based index per path part. Group coordinates above an
  * effective repetition maximum — a non-repeatable group's coordinate 2 included — remain representable and are
  * reported by formal validation. A field placement's terminal coordinate must be 1 because the Kernel document
  * boundary cannot represent a repeated field.
  */
-data class PlacementDocumentInputV1(
+data class DocumentInputV1(
     val groups: List<GroupPlacementInput>,
     val fields: List<FieldPlacementInput>,
     val version: Int = SUPPORTED_VERSION,
@@ -44,7 +44,7 @@ data class PlacementDocumentInputV1(
 }
 
 /**
- * Resource bounds for placement decoding. Caller values are capped by the hard implementation maxima so an API
+ * Resource bounds for Document decoding. Caller values are capped by the hard implementation maxima so an API
  * consumer cannot accidentally disable the browser-safe denial-of-service guards.
  */
 class DocumentDecodeLimits private constructor(
@@ -255,24 +255,24 @@ class DocumentSnapshot private constructor(
 }
 
 /**
- * The placement-transport verbs of one [PreparedModel]. [readPlacements] is the typed ingress: it validates the
+ * The Document transport of one [PreparedModel]. [readDocument] is the typed ingress: it validates the
  * complete envelope — version, resource limits, model paths, coordinate arity and positivity, duplicates, and
- * conflicts — and only then constructs the snapshot, so a failing input mutates nothing. [encodePlacements] is
+ * conflicts — and only then constructs the snapshot, so a failing input mutates nothing. [encodeDocument] is
  * the lossless owner-checked read-back and the transport's round-trip oracle.
  */
 class PreparedDocumentApi internal constructor(
     private val prepared: PreparedModel,
 ) {
     @JvmOverloads
-    fun readPlacements(
-        input: PlacementDocumentInputV1,
+    fun readDocument(
+        input: DocumentInputV1,
         limits: DocumentDecodeLimits = DocumentDecodeLimits.defaults(),
     ): DocumentSnapshot {
-        val document = PlacementReader.read(prepared.definition(), input, limits)
+        val document = DocumentReader.read(prepared.definition(), input, limits)
         return DocumentSnapshot.of(prepared.owner, prepared.modelVersion, document)
     }
 
-    fun encodePlacements(snapshot: DocumentSnapshot): PlacementDocumentInputV1 {
+    fun encodeDocument(snapshot: DocumentSnapshot): DocumentInputV1 {
         if (snapshot.owner !== prepared.owner) {
             throw ModelOwnerMismatchError.of(expected = prepared.owner, actual = snapshot.owner)
         }
@@ -286,7 +286,7 @@ class PreparedDocumentApi internal constructor(
                 fields += FieldPlacementInput(record.path, coordinates, record.raw.orEmpty())
             }
         }
-        return PlacementDocumentInputV1(
+        return DocumentInputV1(
             groups = immutableListSnapshot(groups),
             fields = immutableListSnapshot(fields),
         )
@@ -294,13 +294,13 @@ class PreparedDocumentApi internal constructor(
 }
 
 /**
- * The one shared placement validation engine (both the typed ingress and the later unknown-shape decoder land
+ * The one shared Document validation engine (both the typed ingress and the later unknown-shape decoder land
  * here). Resource ceilings fail fast; model-level defects aggregate so a caller sees every defect at once; the
  * document is constructed only after the complete envelope passed.
  */
-private object PlacementReader {
+private object DocumentReader {
 
-    fun read(model: ModelDef, input: PlacementDocumentInputV1, limits: DocumentDecodeLimits): Document {
+    fun read(model: ModelDef, input: DocumentInputV1, limits: DocumentDecodeLimits): Document {
         requireSupportedVersion(input.version)
         val groups = input.groups.toList()
         val fields = input.fields.toList()
@@ -441,11 +441,11 @@ private object PlacementReader {
     }
 
     private fun requireSupportedVersion(version: Int) {
-        if (version != PlacementDocumentInputV1.SUPPORTED_VERSION) {
+        if (version != DocumentInputV1.SUPPORTED_VERSION) {
             throw DocumentInputError.from(
                 listOf(
                     UnsupportedVersionDiagnostic(
-                        expectedVersion = PlacementDocumentInputV1.SUPPORTED_VERSION,
+                        expectedVersion = DocumentInputV1.SUPPORTED_VERSION,
                         actualVersion = version,
                     ),
                 ),
@@ -486,7 +486,7 @@ private data class UnsupportedVersionDiagnostic(
 ) : DocumentInputDiagnostic {
     override val reasonCode = DocumentInputReasonCode.UNSUPPORTED_VERSION
     override val message =
-        "placement transport version $actualVersion is not supported; this boundary reads version $expectedVersion"
+        "Document version $actualVersion is not supported; this boundary reads version $expectedVersion"
 }
 
 private data class UnknownModelPathDiagnostic(

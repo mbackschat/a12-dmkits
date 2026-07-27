@@ -15,7 +15,7 @@ import io.github.mbackschat.a12.dm.interpreter.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationError
 import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationPhase
 import io.github.mbackschat.a12.dm.interpreter.InterpreterIntegrationReason
-import io.github.mbackschat.a12.dm.interpreter.PlacementDocumentInputV1
+import io.github.mbackschat.a12.dm.interpreter.DocumentInputV1
 import io.github.mbackschat.a12.dm.interpreter.PreparedModel
 import io.github.mbackschat.a12.dm.interpreter.ValidationFindingType
 import io.github.mbackschat.a12.dm.interpreter.eval.newDocument
@@ -109,8 +109,8 @@ class CustomConditionDiffTest {
             .validate(iDoc).messages.firstOrNull { it.code == "CC" }
             ?.type?.let { if (it == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR" }
         val fields = name?.let { listOf(FieldPlacementInput(NAME, listOf(1, 1), it)) }.orEmpty()
-        val publicSnapshot = publicPrepared.documents.readPlacements(
-            PlacementDocumentInputV1(
+        val publicSnapshot = publicPrepared.documents.readDocument(
+            DocumentInputV1(
                 groups = listOf(GroupPlacementInput("/Order", listOf(1))),
                 fields = fields,
             ),
@@ -176,8 +176,8 @@ class CustomConditionDiffTest {
     }
 
     private fun publicSnapshot(name: String) =
-        publicPrepared.documents.readPlacements(
-            PlacementDocumentInputV1(
+        publicPrepared.documents.readDocument(
+            DocumentInputV1(
                 groups = listOf(GroupPlacementInput("/Order", listOf(1))),
                 fields = listOf(FieldPlacementInput(NAME, listOf(1, 1), name)),
             ),

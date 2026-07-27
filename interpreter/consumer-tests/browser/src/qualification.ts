@@ -1,7 +1,7 @@
 import {
   type ComputationResult,
   ModelWorkspace,
-  type PlacementDocumentInputV1,
+  type DocumentInputV1,
   type PreparedModel,
   type ValidationFinding,
 } from "@mbackschat/a12-interpreter";
@@ -85,9 +85,9 @@ const stringFieldPathsOf = (json: string): ReadonlySet<string> => {
   return paths;
 };
 
-const placementDocument = (
+const documentInput = (
   placements: readonly CorpusPlacement[],
-): PlacementDocumentInputV1 => ({
+): DocumentInputV1 => ({
   version: 1,
   groups: placements
     .filter(({kind}) => kind === "GROUP")
@@ -185,8 +185,8 @@ const replayCorpusCase = async (
   const {prepared, stringFieldPaths} = await prepareCorpusModel(
     corpusCase.modelRef,
   );
-  const snapshot = prepared.documents.decodePlacements(
-    placementDocument(corpusCase.placements),
+  const snapshot = prepared.documents.decodeDocument(
+    documentInput(corpusCase.placements),
   );
   const interpreter = prepared.createInterpreter();
   switch (corpusCase.op.kind) {
@@ -309,7 +309,7 @@ const qualifyRawWorkspace = async (): Promise<void> => {
     );
   }
 
-  const snapshot = finite.documents.decodePlacements({
+  const snapshot = finite.documents.decodeDocument({
     version: 1,
     groups: [],
     fields: [
@@ -340,7 +340,7 @@ const qualifyHostBoundaries = async (): Promise<void> => {
   const modelJson = await fetchText("models/permit-basic.dm.json");
   const prepared = ModelWorkspace.fromSources([{json: modelJson}])
     .prepare("permit-basic");
-  const snapshot = prepared.documents.decodePlacements({
+  const snapshot = prepared.documents.decodeDocument({
     version: 1,
     groups: [],
     fields: [

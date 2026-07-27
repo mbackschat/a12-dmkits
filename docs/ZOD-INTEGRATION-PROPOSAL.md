@@ -61,9 +61,9 @@ The adapter must remain thin. It validates JavaScript and transport structure, d
 | Safe native integer number to `A12Integer` | Decode only |
 | Zod object and array composition over encode-safe A12 codecs | Yes |
 | Structured A12 conversion errors to nested Zod issues | Yes |
-| Strict `PlacementDocumentInputV1` transport schema | Yes |
+| Strict `DocumentInputV1` transport schema | Yes |
 | Configurable transport resource limits | Yes, through a schema factory or surrounding ingress layer |
-| Model-owner-bound placement decode plus core snapshot encode adapter | Optional |
+| Model-owner-bound Document decode plus core snapshot encode adapter | Optional |
 | Validation report to form/Zod-style issue projection | Yes, without replacing or truncating the report |
 | Advisory model-derived form/input schemas | Optional and explicitly non-authoritative |
 | Standard Schema interoperability | Optional integration glue only |
@@ -555,17 +555,17 @@ This is not required for the initial adapter. A future helper must accept an `A1
 
 ### 7.1 Canonical portable input
 
-The Interpreter API defines and owns the canonical placement DTO. The Zod adapter imports those public types without redeclaring their property contracts:
+The Interpreter API defines and owns the canonical Document DTO. The Zod adapter imports those public types without redeclaring their property contracts:
 
 ```ts
 import type {
   FieldPlacementInput,
   GroupPlacementInput,
-  PlacementDocumentInputV1,
+  DocumentInputV1,
 } from "@mbackschat/a12-interpreter";
 ```
 
-`GroupPlacementInput` is the Interpreter-owned type for one concrete group-row placement. `FieldPlacementInput` is the Interpreter-owned type for one concrete raw field placement. `PlacementDocumentInputV1` is the Interpreter-owned versioned envelope containing those readonly collections. Their exact property definitions remain single-sourced in the base package and [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) §4.
+`GroupPlacementInput` is the Interpreter-owned type for one concrete group-row placement. `FieldPlacementInput` is the Interpreter-owned type for one concrete raw field placement. `DocumentInputV1` is the Interpreter-owned versioned envelope containing those readonly collections. Their exact property definitions remain single-sourced in the base package and [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md) §4.
 
 The Zod adapter validates this portable structure. It does not decode A12 field values or determine whether a path and coordinate vector are valid for a particular model.
 
@@ -576,7 +576,7 @@ import * as z from "zod";
 import type {
   FieldPlacementInput,
   GroupPlacementInput,
-  PlacementDocumentInputV1,
+  DocumentInputV1,
 } from "@mbackschat/a12-interpreter";
 
 const placementCoordinateSchema:
@@ -605,8 +605,8 @@ const fieldPlacementInputSchema:
     raw: z.string(),
   });
 
-const placementDocumentInputV1Schema:
-  z.ZodType<PlacementDocumentInputV1> =
+const documentInputV1Schema:
+  z.ZodType<DocumentInputV1> =
   z.strictObject({
     version: z.literal(1),
     groups:
@@ -625,7 +625,7 @@ const placementDocumentInputV1Schema:
 | `placementCoordinateSchema` | `z.ZodNumber` | positive safe-integer transport coordinate |
 | `groupPlacementInputSchema` | `z.ZodType<GroupPlacementInput>` | strict group-placement object shape |
 | `fieldPlacementInputSchema` | `z.ZodType<FieldPlacementInput>` | strict raw field-placement object shape |
-| `placementDocumentInputV1Schema` | `z.ZodType<PlacementDocumentInputV1>` | strict versioned placement envelope |
+| `documentInputV1Schema` | `z.ZodType<DocumentInputV1>` | strict versioned Document envelope |
 
 The exported schemas reject unknown object members. They validate:
 
@@ -651,7 +651,7 @@ Those are model-aware Interpreter responsibilities.
 
 The module-constant schema establishes shape only. It is suitable for tests and already resource-bounded application values; an untrusted service boundary uses the configured factory in §7.3.
 
-The static `PlacementDocumentInputV1` schema is fixture-tested with accepted and rejected examples. Fixtures cover the version discriminator, required and unknown members, placement arrays, native string fields, positive safe-integer coordinates, and representative structural failures.
+The static `DocumentInputV1` schema is fixture-tested with accepted and rejected examples. Fixtures cover the version discriminator, required and unknown members, placement arrays, native string fields, positive safe-integer coordinates, and representative structural failures.
 
 ### 7.3 Configurable ingress limits
 
@@ -659,9 +659,9 @@ One module-constant schema cannot encode every service’s resource policy. The 
 
 ```ts
 declare function
-createPlacementDocumentInputV1Schema(
+createDocumentInputV1Schema(
   limits: DocumentDecodeLimits,
-): z.ZodType<PlacementDocumentInputV1>;
+): z.ZodType<DocumentInputV1>;
 ```
 
 `limits` has type `DocumentDecodeLimits`. Every member is a positive safe native configuration integer, not an A12 numeric value.
@@ -679,13 +679,13 @@ import type {
   DocumentDecodeOptions,
   DocumentSnapshot,
   Interpreter,
-  PlacementDocumentInputV1,
+  DocumentInputV1,
   PreparedModel,
   ValidationOptions,
   ValidationReport,
 } from "@mbackschat/a12-interpreter";
 import {
-  createPlacementDocumentInputV1Schema,
+  createDocumentInputV1Schema,
 } from "@mbackschat/a12-interpreter-zod";
 
 declare const requestBody: unknown;
@@ -704,15 +704,15 @@ const decodeLimits: DocumentDecodeLimits = {
   maxModelNestingDepth: 64,
 };
 
-const placementDocumentInputV1Schema:
-  z.ZodType<PlacementDocumentInputV1> =
-  createPlacementDocumentInputV1Schema(
+const documentInputV1Schema:
+  z.ZodType<DocumentInputV1> =
+  createDocumentInputV1Schema(
     decodeLimits,
   );
 
 const documentInput:
-  PlacementDocumentInputV1 =
-  placementDocumentInputV1Schema.parse(
+  DocumentInputV1 =
+  documentInputV1Schema.parse(
     requestBody,
   );
 
@@ -721,7 +721,7 @@ const decodeOptions: DocumentDecodeOptions = {
 };
 
 const snapshot: DocumentSnapshot =
-  prepared.documents.readPlacements(
+  prepared.documents.readDocument(
     documentInput,
     decodeOptions,
   );
@@ -744,7 +744,7 @@ The numeric limits are an illustrative service policy, not library defaults. A d
 The two stages answer different questions:
 
 1. Zod establishes that the external value has the versioned transport shape.
-2. `readPlacements` establishes model paths, coordinate arity, model ownership, and A12 document storage semantics.
+2. `readDocument` establishes model paths, coordinate arity, model ownership, and A12 document storage semantics.
 
 Zod transport diagnostics and model-aware Interpreter diagnostics remain separate channels. Within `DocumentInputDiagnostic`, `inputPath` identifies the portable transport location while `modelPath` identifies the attempted A12 model location; projection never substitutes `modelPath` for `inputPath`.
 
@@ -754,23 +754,23 @@ The dependency-free Interpreter API retains its own safe `unknown` decoding boun
 
 ### 8.1 Purpose
 
-Applications that repeatedly decode placement documents inside larger Zod request schemas may benefit from an owner-bound adapter:
+Applications that repeatedly decode Documents inside larger Zod request schemas may benefit from an owner-bound adapter:
 
 ```text
-PlacementDocumentInputV1
+DocumentInputV1
     ↔ model-owned DocumentSnapshot
 ```
 
 The two directions remain thin but deliberately use different public methods:
 
-- `decodeSchema` delegates to the owner’s non-throwing `tryDecodePlacements` with one complete `DocumentDecodeLimits`;
-- `encode` delegates directly to the same owner’s `encodePlacements`;
+- `decodeSchema` delegates to the owner’s non-throwing `tryDecodeDocument` with one complete `DocumentDecodeLimits`;
+- `encode` delegates directly to the same owner’s `encodeDocument`;
 - expected `DocumentInputError` values become Zod issues;
 - decoded output is authenticated with `isSnapshot(value: unknown)`;
 - encode-side foreign ownership remains the core `ModelOwnerMismatchError` programmer-error channel rather than becoming a document-input Zod issue;
 - foreign-owner or structurally similar objects are rejected.
 
-This is not advertised as one generic `A12ZodCodec<PlacementDocumentInputV1, DocumentSnapshot>`. Generic Zod encode/safe-encode semantics would turn an encode-side owner guard into an ordinary schema issue and erase the Interpreter API’s programmer-error distinction.
+This is not advertised as one generic `A12ZodCodec<DocumentInputV1, DocumentSnapshot>`. Generic Zod encode/safe-encode semantics would turn an encode-side owner guard into an ordinary schema issue and erase the Interpreter API’s programmer-error distinction.
 
 ### 8.2 Prepared-owner factory
 
@@ -782,12 +782,12 @@ interface PreparedZodDocumentAdapter {
     ModelVersionIdentity;
   readonly decodeSchema:
     A12ZodDecoder<
-      PlacementDocumentInputV1,
+      DocumentInputV1,
       DocumentSnapshot
     >;
   encode(
     snapshot: DocumentSnapshot,
-  ): PlacementDocumentInputV1;
+  ): DocumentInputV1;
 }
 
 declare function
@@ -799,7 +799,7 @@ createPreparedDocumentAdapter(
 
 `prepared` has type `PreparedModel` and supplies the exact model owner plus its authoritative document decoder and encoder. `limits` has type `DocumentDecodeLimits` and is captured as immutable adapter configuration. The returned `PreparedZodDocumentAdapter.owner` is the same opaque `ModelOwnerIdentity`, while `modelVersion` identifies the exact local model version. Callers derive neither identity from a model alias, path, source string, or fingerprint.
 
-The decode transform calls `prepared.documents.tryDecodePlacements(input, {limits})`, translates only its failed `DocumentInputError` result into Zod issues, and returns the authentic snapshot on success. Its output schema verifies that success through `prepared.documents.isSnapshot(value: unknown)` without structural typing or `instanceof`.
+The decode transform calls `prepared.documents.tryDecodeDocument(input, {limits})`, translates only its failed `DocumentInputError` result into Zod issues, and returns the authentic snapshot on success. Its output schema verifies that success through `prepared.documents.isSnapshot(value: unknown)` without structural typing or `instanceof`.
 
 `encode(snapshot)` calls the core encoder. A foreign-owner snapshot therefore propagates `ModelOwnerMismatchError` and is never relabeled as invalid portable input.
 
@@ -808,7 +808,7 @@ The decode transform calls `prepared.documents.tryDecodePlacements(input, {limit
 The public factory applies only to a local `PreparedModel` owner:
 
 - If active lanes share that exact prepared owner and its `ModelOwnerIdentity` under a proven concurrency contract, one prepared-owner adapter may be cached with it.
-- If each active lane has a distinct owner, the service uses the shared static Zod transport schema first, selects the lane, and then calls that lane’s core `PreparedDocumentApi.tryDecodePlacements` directly. It does not manufacture a public adapter from a service token or a structurally similar owner record.
+- If each active lane has a distinct owner, the service uses the shared static Zod transport schema first, selects the lane, and then calls that lane’s core `PreparedDocumentApi.tryDecodeDocument` directly. It does not manufacture a public adapter from a service token or a structurally similar owner record.
 - A model fingerprint or portable model-version identifier may locate an entry, but it is never sufficient to authenticate a snapshot.
 - An alias is routing state and must never be the adapter cache key.
 
@@ -1033,9 +1033,9 @@ Do not send these values across a Worker boundary:
 
 Send only versioned plain DTOs, model source or verified portable identifiers where the service contract permits them, and encoded detached result DTOs. Node Worker messages use structured cloning; functions cannot be cloned and class prototypes are not preserved. See the [Node.js Worker Threads documentation](https://nodejs.org/api/worker_threads.html).
 
-Every Worker message payload is received as `unknown`. A Worker-facing service validates the complete versioned outer envelope—including message kind/version, request ID, portable model and configuration IDs, placement document, and portable validation options—before routing or model lookup.
+Every Worker message payload is received as `unknown`. A Worker-facing service validates the complete versioned outer envelope—including message kind/version, request ID, portable model and configuration IDs, Document, and portable validation options—before routing or model lookup.
 
-`placementDocumentInputV1Schema` validates only the nested document member and is not sufficient as a Worker protocol schema. Replies carry the Interpreter API’s plain `ValidationReportWireV1` projection rather than Kotlin/JS result objects.
+`documentInputV1Schema` validates only the nested document member and is not sufficient as a Worker protocol schema. Replies carry the Interpreter API’s plain `ValidationReportWireV1` projection rather than Kotlin/JS result objects.
 
 The exact coordinator envelope belongs to the Interpreter/service contract. An optional Zod schema may mirror that portable shape without owning its routing semantics.
 
@@ -1066,7 +1066,7 @@ Schema immutability does not make a callback safe if the callback closes over mu
 
 ### 12.5 On-keyup validation
 
-Do not strictly parse and clone an entire placement document through Zod on every keypress. A form often needs to preserve temporarily malformed raw text so the Interpreter can report it.
+Do not strictly parse and clone an entire Document through Zod on every keypress. A form often needs to preserve temporarily malformed raw text so the Interpreter can report it.
 
 The recommended flow is:
 
@@ -1124,7 +1124,7 @@ The integration is technically feasible once the core contracts in the sibling p
 | Scalar codecs backed by core A12 codecs | High | Small–medium |
 | Encode-safe object and array composition | High | Small |
 | A12 conversion-error bridge | High | Small–medium |
-| Strict static placement DTO schema | High | Small |
+| Strict static Document DTO schema | High | Small |
 | Configurable transport-limit schema factory | High | Small |
 | Prepared-owner-bound snapshot adapter | High if the owner guard and encoder are public | Medium |
 | Lane-owned static-schema plus core-decode integration | High | Small |
@@ -1147,7 +1147,7 @@ These risks should be resolved in the owning API proposal or isolated behind ada
 
 `@mbackschat/a12-operators-zod` does not wait for Interpreter API development. It can ship as soon as the Operator API’s dependency-free scalar codecs, runtime guards, structured errors, and package-instance contract are stable.
 
-Interpreter integration begins with the A12-native minimum transport and ownership foundation defined by [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md): the versioned placement DTO, decode limits, structured input diagnostics, prepared ownership, model-aware decode, typed fast read, canonical encode, and snapshot authenticity guard.
+Interpreter integration begins with the A12-native minimum transport and ownership foundation defined by [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md): the versioned Document DTO, decode limits, structured input diagnostics, prepared ownership, model-aware decode, typed fast read, canonical encode, and snapshot authenticity guard.
 
 The strict Zod placement schema may be designed and tested earlier, but it should not be published before that authoritative core decoder exists. Otherwise the adapter risks becoming the accidental document specification or a second validator.
 
@@ -1155,7 +1155,7 @@ The strict Zod placement schema may be designed and tested earlier, but it shoul
 2. Implement `@mbackschat/a12-operators-zod` scalar codecs and the error bridge.
 3. Add branded encode-safe `object` and `array` composition with TypeScript declaration tests and runtime provenance checks.
 4. Implement and stabilize the Interpreter API’s dependency-free minimum transport and ownership foundation.
-5. Publish the strict `PlacementDocumentInputV1` schema and configurable transport-limit schema factory in `@mbackschat/a12-interpreter-zod`.
+5. Publish the strict `DocumentInputV1` schema and configurable transport-limit schema factory in `@mbackschat/a12-interpreter-zod`.
 6. Add the prepared-owner-bound snapshot adapter using the stable core owner guard, model-aware decoder, and canonical encoder.
 7. Add the lossless report/form projection only after complete canonical Interpreter reports are stable.
 8. Add Worker-specific examples and conformance tests without embedding a Worker coordinator into the adapter package.
@@ -1177,7 +1177,7 @@ The following decisions remain local to the optional adapters and do not change 
 
 Ship optional Zod integration as a boundary layer over complete A12-native APIs.
 
-Start with `@mbackschat/a12-operators-zod`: exact scalar codecs, safe-number decode-only support, encode-safe object/array composition, and structured issue translation. Add `@mbackschat/a12-interpreter-zod` for the strict placement DTO at the same boundary. Add the owner-bound snapshot adapter and form projections only where they preserve complete ownership, error channels, and report information.
+Start with `@mbackschat/a12-operators-zod`: exact scalar codecs, safe-number decode-only support, encode-safe object/array composition, and structured issue translation. Add `@mbackschat/a12-interpreter-zod` for the strict Document DTO at the same boundary. Add the owner-bound snapshot adapter and form projections only where they preserve complete ownership, error channels, and report information.
 
 Keep direct operators and warm Interpreter evaluation entirely Zod-free. The adapters should feel natural to TypeScript developers while remaining mechanically dependent on the semantics and ownership contracts defined by the [Operator API proposal](OPERATOR-API-PROPOSAL.md) and [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md).
 

@@ -109,7 +109,7 @@ class Document(internal val config: DocumentConfig) {
     private val instantiatedGroups = HashSet<Pair<String, List<Int>>>()
 
     /** Every stored placement — explicit and auto-instantiated groups, present-empty cells, raw lexical text —
-     *  in insertion order. The placement transport's encoder reads this; the mutable list itself never leaks. */
+     *  in insertion order. The Document encoder reads this; the mutable list itself never leaks. */
     internal fun placementsSnapshot(): List<DocumentPlacementRecord> =
         placements.map { DocumentPlacementRecord(it.path, it.reps, it.isGroup, if (it.isGroup) null else it.raw) }
 
