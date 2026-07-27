@@ -98,11 +98,15 @@ class InterpreterReleasePublisherRehearsalTest {
         var stage = core.substring(
                 core.indexOf("interpreter_release_stage()"),
                 core.indexOf("interpreter_release_smoke_pages()"));
+        var qualification = core.substring(
+                core.indexOf("interpreter_release_qualify()"),
+                core.indexOf("interpreter_release_stage()"));
 
         assertTrue(core.contains("preview=\"$source_root/build/interpreter-release/public-mirror\""));
         assertTrue(core.contains("assets=\"$source_root/build/interpreter-release/public-assets\""));
         assertTrue(core.contains("interpreter_release_qualify()"));
         assertTrue(core.contains("interpreter_release_assemble_public_mirror()"));
+        assertFalse(qualification.contains("build.sh"), "the complete Gradle gate has its own bounded command");
         assertFalse(stage.contains("build.sh"), "stage must consume a verified qualification receipt");
         assertFalse(
                 stage.contains("interpreter_release_assemble"),

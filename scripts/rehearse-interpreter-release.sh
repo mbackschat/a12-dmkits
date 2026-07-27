@@ -136,6 +136,7 @@ create_fixture() {
   git -C "$SOURCE" remote add origin "$SOURCE_ORIGIN"
   git -C "$SOURCE" push --quiet origin main "interpreter-v$tag_version"
   git init --quiet --bare --initial-branch=main "$MIRROR_ORIGIN"
+  "$SOURCE/build.sh" >/dev/null
 }
 
 publisher_raw() {
@@ -284,16 +285,19 @@ seed_mirror_commit \
 expect_refusal "existing immutable version" "already exists" publisher
 
 create_fixture missing-dts
+REHEARSAL_PACKAGE_MODE=missing-dts "$SOURCE/build.sh" >/dev/null
 expect_refusal "missing TypeScript declaration" "missing package/dist/index.d.ts" \
-  publisher REHEARSAL_PACKAGE_MODE=missing-dts
+  publisher_raw --qualify
 
 create_fixture empty-js
+REHEARSAL_PACKAGE_MODE=empty-js "$SOURCE/build.sh" >/dev/null
 expect_refusal "empty JavaScript package" "JavaScript entry is empty" \
-  publisher REHEARSAL_PACKAGE_MODE=empty-js
+  publisher_raw --qualify
 
 create_fixture missing-doc
+REHEARSAL_PACKAGE_MODE=missing-doc "$SOURCE/build.sh" >/dev/null
 expect_refusal "missing API documentation" "missing its landing page" \
-  publisher REHEARSAL_PACKAGE_MODE=missing-doc
+  publisher_raw --qualify
 
 create_fixture failed-url
 publisher >/dev/null
@@ -334,6 +338,7 @@ publisher --go-live >/dev/null
 echo "PASS published consumer smoke resumes"
 
 create_fixture prerelease
+"$SOURCE/build.sh" -PinterpreterReleaseTag=v0.9.1-rc.1 >/dev/null
 publisher --release-tag v0.9.1-rc.1 >/dev/null
 publisher --release-tag v0.9.1-rc.1 --go-live >/dev/null
 [[ "$(cat "$STATE/releases/v0.9.1-rc.1/state")" == "published" ]]

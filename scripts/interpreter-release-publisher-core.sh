@@ -248,10 +248,6 @@ interpreter_release_qualify() {
   release_require_safe_derived_directory "$assets"
   rm -f "$receipt"
 
-  "$source_root/build.sh" \
-    --console=plain \
-    "-PinterpreterReleaseTag=$RELEASE_TAG" \
-    :interpreter:check
   release_verify_public_inventory "$preview"
   "$source_root/scripts/check-interpreter-release-repo.sh" "$preview" >/dev/null
   interpreter_release_verify_payload \
