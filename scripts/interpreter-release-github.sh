@@ -86,12 +86,13 @@ release_host_ensure_pages() {
 }
 
 release_host_deploy_pages() {
-  local tag="$1" previous run_id attempts
+  local tag="$1" allow_published_refresh="${2:-false}" previous run_id attempts
   release_host_ensure_pages
   previous="$(release_host_run_for_title deploy-pages.yml "Deploy Pages for $tag" || true)"
   gh workflow run deploy-pages.yml \
     --repo "$RELEASE_HOST_REPOSITORY" \
-    -f release_tag="$tag"
+    -f release_tag="$tag" \
+    -f allow_published_refresh="$allow_published_refresh"
   run_id=""
   attempts=0
   while [[ -z "$run_id" || "$run_id" == "$previous" ]]; do

@@ -2768,6 +2768,8 @@ def assembleInterpreterPublicMirror = tasks.register(
         file('public-release/privacy.html').absolutePath,
         '--landing-page',
         file('public-release/index.html').absolutePath,
+        '--maven-landing-page',
+        file('public-release/maven.html').absolutePath,
         '--workflow-directory',
         rootProject.file('.github/interpreter-mirror-workflows').absolutePath,
     )
@@ -2780,6 +2782,7 @@ def assembleInterpreterPublicMirror = tasks.register(
         file('public-release/DISCLAIMER.md'),
         file('public-release/privacy.html'),
         file('public-release/index.html'),
+        file('public-release/maven.html'),
         rootProject.file('scripts/assemble-interpreter-release-repo.sh'),
         rootProject.file('scripts/check-interpreter-release-repo.sh'),
         rootProject.file('scripts/interpreter-release-assets.sh'),

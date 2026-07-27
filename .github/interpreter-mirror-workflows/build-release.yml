@@ -105,6 +105,7 @@ jobs:
             --disclaimer "$GITHUB_WORKSPACE/source/interpreter/public-release/DISCLAIMER.md" \
             --privacy "$GITHUB_WORKSPACE/source/interpreter/public-release/privacy.html" \
             --landing-page "$GITHUB_WORKSPACE/source/interpreter/public-release/index.html" \
+            --maven-landing-page "$GITHUB_WORKSPACE/source/interpreter/public-release/maven.html" \
             --workflow-directory "$GITHUB_WORKSPACE/source/.github/interpreter-mirror-workflows"
 
       - name: Prepare the generated mirror commit with the release identity

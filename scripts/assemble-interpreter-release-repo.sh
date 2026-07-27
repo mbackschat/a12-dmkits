@@ -30,6 +30,7 @@ LICENSE_SOURCE=""
 DISCLAIMER_SOURCE=""
 PRIVACY_SOURCE=""
 LANDING_PAGE_SOURCE=""
+MAVEN_LANDING_PAGE_SOURCE=""
 WORKFLOW_DIRECTORY=""
 
 while [[ $# -gt 0 ]]; do
@@ -51,6 +52,7 @@ while [[ $# -gt 0 ]]; do
     --disclaimer) DISCLAIMER_SOURCE="${2:?missing --disclaimer value}"; shift 2 ;;
     --privacy) PRIVACY_SOURCE="${2:?missing --privacy value}"; shift 2 ;;
     --landing-page) LANDING_PAGE_SOURCE="${2:?missing --landing-page value}"; shift 2 ;;
+    --maven-landing-page) MAVEN_LANDING_PAGE_SOURCE="${2:?missing --maven-landing-page value}"; shift 2 ;;
     --workflow-directory) WORKFLOW_DIRECTORY="${2:?missing --workflow-directory value}"; shift 2 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
@@ -78,7 +80,8 @@ for file in \
   "$LICENSE_SOURCE" \
   "$DISCLAIMER_SOURCE" \
   "$PRIVACY_SOURCE" \
-  "$LANDING_PAGE_SOURCE"; do
+  "$LANDING_PAGE_SOURCE" \
+  "$MAVEN_LANDING_PAGE_SOURCE"; do
   [[ -f "$file" ]] || { echo "required release input not found: $file" >&2; exit 2; }
 done
 for directory in "$MAVEN_REPOSITORY" "$API_DOCUMENTATION" "$SHOWCASE" "$WORKFLOW_DIRECTORY"; do
@@ -163,6 +166,7 @@ This generated repository's contributor guidance lives in [CLAUDE.md](CLAUDE.md)
 EOF
 
 render_versioned_source "$LANDING_PAGE_SOURCE" "$MIRROR_STAGE/site/index.html"
+render_versioned_source "$MAVEN_LANDING_PAGE_SOURCE" "$MIRROR_STAGE/site/maven/index.html"
 cp "$PRIVACY_SOURCE" "$MIRROR_STAGE/site/privacy.html"
 : > "$MIRROR_STAGE/site/.nojekyll"
 rm -rf "$MIRROR_STAGE/site/showcase" "$MIRROR_STAGE/site/api/latest"

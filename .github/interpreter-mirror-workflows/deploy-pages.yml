@@ -10,6 +10,11 @@ on:
       release_tag:
         description: "Reviewed draft release whose site tree should go live"
         required: true
+      allow_published_refresh:
+        description: "Deploy a documentation-only refresh after this release is published"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   # GitHub exposes draft releases only to tokens with push-level repository access. The workflow needs
@@ -33,10 +38,23 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Verify the requested release is still a draft
+        if: ${{ !inputs.allow_published_refresh }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           test "$(gh release view "${{ inputs.release_tag }}" --json isDraft -q .isDraft)" = true
+
+      - name: Verify the requested published release
+        if: ${{ inputs.allow_published_refresh }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          test "$(gh release view "${{ inputs.release_tag }}" --json isDraft -q .isDraft)" = false
+          git fetch --no-tags origin \
+            "refs/tags/${{ inputs.release_tag }}:refs/tags/${{ inputs.release_tag }}"
+          git diff --exit-code "${{ inputs.release_tag }}" -- \
+            ':(glob)site/api/v*/**' \
+            ':(glob)site/maven/io/**'
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

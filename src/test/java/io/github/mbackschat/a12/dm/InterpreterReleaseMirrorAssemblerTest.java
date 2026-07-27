@@ -46,6 +46,12 @@ class InterpreterReleaseMirrorAssemblerTest {
         assertTrue(Files.isRegularFile(firstMirror.resolve(
                 "site/maven/io/github/mbackschat/a12/dm/dm-interpreter/" + VERSION
                         + "/dm-interpreter-" + VERSION + ".pom")));
+        var mavenLandingPage = Files.readString(firstMirror.resolve("site/maven/index.html"));
+        assertTrue(mavenLandingPage.contains(
+                "io.github.mbackschat.a12.dm:dm-interpreter:" + VERSION));
+        assertTrue(mavenLandingPage.contains(
+                "io/github/mbackschat/a12/dm/dm-interpreter/" + VERSION
+                        + "/dm-interpreter-" + VERSION + ".pom"));
         assertTrue(Files.readString(firstMirror.resolve("README.md")).contains(VERSION));
         assertTrue(Files.readString(firstMirror.resolve("site/privacy.html"))
                 .contains("Martin Backschat"));
@@ -158,6 +164,12 @@ class InterpreterReleaseMirrorAssemblerTest {
                 "<h1>Privacy</h1><p>Martin Backschat operates this GitHub Pages site.</p>\n");
         write(root.resolve("public-sources/index.html"),
                 "<title>A12 Interpreter @VERSION@</title>\n");
+        write(root.resolve("public-sources/maven.html"),
+                """
+                <title>A12 Interpreter Maven repository</title>
+                <code>io.github.mbackschat.a12.dm:dm-interpreter:@VERSION@</code>
+                <a href="io/github/mbackschat/a12/dm/dm-interpreter/@VERSION@/dm-interpreter-@VERSION@.pom">POM</a>
+                """);
         write(root.resolve("public-sources/workflows/build-release.yml"), "name: build-release\n");
         write(root.resolve("public-sources/workflows/deploy-pages.yml"), "name: deploy-pages\n");
         return new ReleaseInputs(version, root);
@@ -190,6 +202,7 @@ class InterpreterReleaseMirrorAssemblerTest {
                 "--disclaimer", inputs.disclaimer().toString(),
                 "--privacy", inputs.privacy().toString(),
                 "--landing-page", inputs.landingPage().toString(),
+                "--maven-landing-page", inputs.mavenLandingPage().toString(),
                 "--workflow-directory", inputs.workflows().toString());
         var process = new ProcessBuilder(command).redirectErrorStream(true).start();
         var output = new String(process.getInputStream().readAllBytes());
@@ -278,6 +291,10 @@ class InterpreterReleaseMirrorAssemblerTest {
 
         Path landingPage() {
             return publicSource("index.html");
+        }
+
+        Path mavenLandingPage() {
+            return publicSource("maven.html");
         }
 
         Path workflows() {

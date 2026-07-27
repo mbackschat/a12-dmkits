@@ -79,6 +79,11 @@ class InterpreterReleasePublisherRehearsalTest {
                 pages.lines().anyMatch("  contents: write"::equals),
                 "the workflow token needs push-level contents access to inspect a private draft release");
         assertTrue(pages.contains("Verify the requested release is still a draft"));
+        assertTrue(pages.contains("allow_published_refresh"));
+        assertTrue(pages.contains("Verify the requested published release"));
+        assertTrue(pages.contains("git diff --exit-code"));
+        assertTrue(pages.contains("site/maven/io"));
+        assertTrue(pages.contains("site/api/v*"));
         assertTrue(pages.contains("uses: actions/deploy-pages@"));
         assertFalse(pages.contains("push:"), "a mirror push must not deploy draft content");
     }

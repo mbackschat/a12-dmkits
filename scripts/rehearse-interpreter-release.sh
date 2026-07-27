@@ -91,6 +91,7 @@ printf '%s\n' 'console.log("showcase");' > "$OUTPUT/consumer/browser/dist/assets
   --disclaimer "$ROOT/interpreter/public-release/DISCLAIMER.md" \
   --privacy "$ROOT/interpreter/public-release/privacy.html" \
   --landing-page "$ROOT/interpreter/public-release/index.html" \
+  --maven-landing-page "$ROOT/interpreter/public-release/maven.html" \
   --workflow-directory "$ROOT/.github/interpreter-mirror-workflows"
 EOF
   chmod +x "$target"

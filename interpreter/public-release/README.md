@@ -4,12 +4,18 @@ This repository is the public distribution of the independent, kernel-free A12 D
 
 > **Independent project.** This is not an official A12 or mgm artifact.
 
-## Start here
+## Try it in your browser
 
-- [Try the interpreter in your browser](https://mbackschat.github.io/a12-interpreter-releases/showcase/)
-- [Read the developer guide](https://mbackschat.github.io/a12-interpreter-releases/api/latest/INTERPRETER-API-GUIDE.md)
+**[Open the A12 Interpreter browser showcase →](https://mbackschat.github.io/a12-interpreter-releases/showcase/)**
+
+Use the built-in models and Documents or load your own local workspace. Your selected files stay in the browser.
+
+## Documentation
+
+- [Read the developer guide](https://github.com/mbackschat/a12-interpreter-releases/blob/@RELEASE_TAG@/site/api/v@VERSION@/INTERPRETER-API-GUIDE.md) — rendered Markdown for the released version
 - [Browse the TypeScript API](https://mbackschat.github.io/a12-interpreter-releases/api/latest/typescript/)
 - [Browse the Kotlin API](https://mbackschat.github.io/a12-interpreter-releases/api/latest/kotlin/)
+- [Open the public release site](https://mbackschat.github.io/a12-interpreter-releases/) — current version, installation coordinates, showcase, API references, and privacy information
 
 Version **@VERSION@** runs the same clean-room Kotlin implementation on the JVM, Node.js, and in the browser. The qualified browser package replays 33 portable conformance cases; the showcase's current production bundle is about 211 kB gzip. Its representative 200-row Document validates in a 10.2 ms median, while the 10,000-row stress Document validates with 4,900 findings in a 177.1 ms median.
 
@@ -57,7 +63,7 @@ Keep the prepared model and interpreter when a form validates repeated edits; de
 
 ## Kotlin and Java
 
-Resolve the first-party publication from this repository's GitHub Pages Maven tree. Third-party Kotlin dependencies continue to resolve from Maven Central.
+Resolve the first-party publication from this repository's [GitHub Pages Maven repository](https://mbackschat.github.io/a12-interpreter-releases/maven/). Third-party Kotlin dependencies continue to resolve from Maven Central.
 
 ```kotlin
 repositories {
@@ -91,12 +97,12 @@ The browser showcase uses this same public provider/workspace boundary. You can 
 
 Each release contains:
 
-- `a12-interpreter-@VERSION@.tgz`
-- `dm-interpreter-@VERSION@-maven-repository.zip`
-- `dm-interpreter-@VERSION@-api-docs.zip`
-- `dm-interpreter-@VERSION@-showcase.zip`
-- `release-manifest.json`
-- `SHA256SUMS`
+- `a12-interpreter-@VERSION@.tgz` — npm-compatible TypeScript/JavaScript package with the compiled browser/Node runtime, declarations, source maps, README, and license.
+- `dm-interpreter-@VERSION@-maven-repository.zip` — complete offline Maven repository containing the Kotlin Multiplatform, JVM, and JS artifacts, Gradle metadata, POMs, documentation JARs, source JARs, and checksums.
+- `dm-interpreter-@VERSION@-api-docs.zip` — versioned developer guide plus generated TypeScript and Kotlin API references for offline use or static hosting.
+- `dm-interpreter-@VERSION@-showcase.zip` — deployable static browser showcase, including its built-in example workspaces, Documents, conformance data, and measured bundle metadata.
+- `release-manifest.json` — machine-readable release identity, source tag and commit, package coordinates, supported targets, artifact sizes, and SHA-256 digests.
+- `SHA256SUMS` — checksum list for verifying every release payload and the manifest.
 
 Published GitHub Release assets and versioned Maven/API directories are immutable. A defect is fixed in a later patch release rather than by replacing a published artifact.
 

@@ -197,6 +197,7 @@ interpreter_release_assemble_public_mirror() {
     --disclaimer "$source_root/interpreter/public-release/DISCLAIMER.md" \
     --privacy "$source_root/interpreter/public-release/privacy.html" \
     --landing-page "$source_root/interpreter/public-release/index.html" \
+    --maven-landing-page "$source_root/interpreter/public-release/maven.html" \
     --workflow-directory "$source_root/.github/interpreter-mirror-workflows"
 }
 
