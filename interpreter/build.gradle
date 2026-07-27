@@ -2696,6 +2696,98 @@ tasks.named('check') {
     dependsOn verifyExternalInterpreterBrowserConsumer
 }
 
+// --- R7.1 deterministic public mirror --------------------------------------------------------------
+// dmtool's latest-only plugin mirror can be regenerated with rsync --delete. The interpreter cannot use
+// that mechanism across its historical area because published Maven and API versions are cumulative.
+// The shared protocol remains the same; this task supplies already-qualified artifact trees to the
+// cumulative assembler, whose exact inventory guards every retained byte.
+def interpreterPublicMirrorDir = rootProject.layout.buildDirectory.dir(
+    'interpreter-release/public-mirror',
+)
+def interpreterPublicAssetsDir = rootProject.layout.buildDirectory.dir(
+    'interpreter-release/public-assets',
+)
+def assembleInterpreterPublicMirror = tasks.register(
+    'assembleInterpreterPublicMirror',
+    Exec,
+) {
+    group = 'build'
+    description = 'Assemble the cumulative public interpreter mirror and immutable release payload.'
+    dependsOn verifyInterpreterReleaseArtifacts
+    dependsOn verifyExternalInterpreterBrowserConsumer
+    workingDir rootProject.rootDir
+    commandLine(
+        rootProject.file('scripts/assemble-interpreter-release-repo.sh').absolutePath,
+        '--destination',
+        interpreterPublicMirrorDir.get().asFile.absolutePath,
+        '--assets-directory',
+        interpreterPublicAssetsDir.get().asFile.absolutePath,
+        '--version',
+        project.version.toString(),
+        '--source-tag',
+        "interpreter-v${project.version}",
+        '--source-sha',
+        interpreterCommit.get(),
+        '--npm-tarball',
+        interpreterNpmTarball.get().asFile.absolutePath,
+        '--maven-repository',
+        interpreterStagingMavenDir.get().asFile.absolutePath,
+        '--api-documentation',
+        interpreterApiDocsStageDir.get()
+            .dir("api/v${project.version}")
+            .asFile
+            .absolutePath,
+        '--api-docs-archive',
+        interpreterApiDocsArchive.get().asFile.absolutePath,
+        '--showcase',
+        externalBrowserConsumerBuildDir.get().dir('dist').asFile.absolutePath,
+        '--readme',
+        file('public-release/README.md').absolutePath,
+        '--changelog',
+        file('CHANGELOG.md').absolutePath,
+        '--license',
+        rootProject.file('LICENSE').absolutePath,
+        '--disclaimer',
+        file('public-release/DISCLAIMER.md').absolutePath,
+        '--privacy',
+        file('public-release/privacy.html').absolutePath,
+        '--landing-page',
+        file('public-release/index.html').absolutePath,
+        '--workflow-directory',
+        rootProject.file('.github/interpreter-mirror-workflows').absolutePath,
+    )
+    inputs.files(
+        interpreterNpmTarball,
+        interpreterApiDocsArchive,
+        file('public-release/README.md'),
+        file('CHANGELOG.md'),
+        rootProject.file('LICENSE'),
+        file('public-release/DISCLAIMER.md'),
+        file('public-release/privacy.html'),
+        file('public-release/index.html'),
+        rootProject.file('scripts/assemble-interpreter-release-repo.sh'),
+        rootProject.file('scripts/check-interpreter-release-repo.sh'),
+        rootProject.file('scripts/interpreter-release-assets.sh'),
+        rootProject.file('scripts/release-mirror-common.sh'),
+        rootProject.fileTree('.github/interpreter-mirror-workflows') {
+            include '*.yml'
+        },
+    )
+    inputs.dir(interpreterStagingMavenDir)
+    inputs.dir(interpreterApiDocsStageDir)
+    inputs.dir(externalBrowserConsumerBuildDir.map { it.dir('dist') })
+    inputs.property('interpreterPublicMirrorVersion', project.version.toString())
+    inputs.property('interpreterPublicMirrorSource', interpreterCommit)
+    outputs.dir(interpreterPublicMirrorDir)
+    outputs.dir(interpreterPublicAssetsDir)
+    doFirst {
+        project.delete(interpreterPublicMirrorDir, interpreterPublicAssetsDir)
+    }
+}
+tasks.named('check') {
+    dependsOn assembleInterpreterPublicMirror
+}
+
 // --- Conformance corpus replay ---------------------------------------------------------------------
 // CorpusReplayCommonTest replays the committed corpus/cases tree through the interpreter on BOTH targets
 // (jvm + js). It locates the corpus via CORPUS_DIR (the robust Gradle-provided path — never a fragile

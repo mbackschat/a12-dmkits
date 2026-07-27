@@ -80,6 +80,17 @@ await withStaticServer(async (url) => {
         "independent showcase links to an unrelated operator policy",
       );
     }
+    const privacyNotice = showcase.locator(
+      "footer a[href='../privacy.html']",
+    );
+    if (
+      await privacyNotice.count() !== 1 ||
+      await privacyNotice.textContent() !== "Privacy notice"
+    ) {
+      throw new Error(
+        "showcase does not link its site-specific privacy notice",
+      );
+    }
     const heroDetailMarkers = showcase.locator(
       ".hero-details .detail-marker",
     );

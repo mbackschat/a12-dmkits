@@ -1,0 +1,48 @@
+name: deploy pages
+
+# Deployment is manual and belongs to the publisher's go-live path. A mirror-content push therefore cannot
+# make draft Maven/API/showcase content public before the release review has passed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Reviewed draft release whose site tree should go live"
+        required: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the generated public mirror
+        uses: actions/checkout@v6
+
+      - name: Verify the requested release is still a draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          test "$(gh release view "${{ inputs.release_tag }}" --json isDraft -q .isDraft)" = true
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload the static site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -95,15 +95,17 @@ tasks.named('test') {
     useJUnitPlatform()
     dependsOn 'docGuardTest'
     dependsOn 'apiGuardTest'
-    // The repo-file-reading guards run in docGuardTest / apiGuardTest (with those files as their inputs); keep
-    // them out of the broad suite so a doc/marker/golden-only edit can't leave a stale-green `test` (TESTING-SPEC
-    // "Tests that read repo files at runtime").
+    dependsOn 'interpreterReleaseMirrorGuardTest'
+    // Repo-file-reading guards run in input-declared dedicated tasks; keep them out of the broad suite so a
+    // doc/marker/golden/script-only edit cannot leave a stale-green `test` (TESTING-SPEC "Tests that read
+    // repo files at runtime").
     filter {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.BuildPerformancePolicyTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.GateTierWiringTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.api.PublicApiGuardTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.InterpreterReleaseMirrorAssemblerTest'
     }
 }
 
@@ -135,7 +137,7 @@ ext.guardInputs = { Test task, Map<String, ?> named ->
     }
 }
 
-// Four root-project guards read REPO FILES at RUNTIME that Gradle can't infer as test inputs:
+// Root-project guards below read REPO FILES at RUNTIME that Gradle can't infer as test inputs:
 // DocSnippetFreshnessTest reads docs/API-GUIDE.md (its test-source side is covered — a region edit changes
 // bytecode), and DslCatalogBridgeTest reads the dsl package's `catalog:<Id>` Javadoc markers — which compile
 // to IDENTICAL bytecode, so a marker-only edit would leave the plain `test` task up-to-date and skip the very
@@ -188,6 +190,24 @@ tasks.register('apiGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.api.PublicApiGuardTest'
     }
     guardInputs(it, ['api goldens': fileTree('api') { include '**/*.api' }])
+}
+
+tasks.register('interpreterReleaseMirrorGuardTest', Test) {
+    description = 'Synthetic cumulative-mirror laws with every runtime-read release input declared.'
+    group = 'verification'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.InterpreterReleaseMirrorAssemblerTest'
+    }
+    guardInputs(it, [
+            'assembler'      : file('scripts/assemble-interpreter-release-repo.sh'),
+            'mirror checker' : file('scripts/check-interpreter-release-repo.sh'),
+            'asset names'    : file('scripts/interpreter-release-assets.sh'),
+            'mirror helpers' : file('scripts/release-mirror-common.sh'),
+            'release license': file('LICENSE'),
+    ])
 }
 
 // The fixer: regenerate the five kit goldens in place from the live dump. One command, no hand-copy. The
