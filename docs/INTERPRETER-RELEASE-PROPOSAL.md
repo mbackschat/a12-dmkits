@@ -2,7 +2,7 @@
 
 ## Status
 
-**Execution is in progress; R2–R7 are complete, and R8.1 is next.** This proposal is also the inter-session state carrier for taking `:interpreter` from an in-repo, source-consumable Kotlin Multiplatform module to a documented public artifact with portable workspace preparation, a browser-qualified TypeScript surface, and a GitHub Pages showcase.
+**Execution is in progress; R2–R7 are complete, and R8.1 is gated on GitHub authentication plus the RC/stable artifact-version decision recorded below.** This proposal is also the inter-session state carrier for taking `:interpreter` from an in-repo, source-consumable Kotlin Multiplatform module to a documented public artifact with portable workspace preparation, a browser-qualified TypeScript surface, and a GitHub Pages showcase.
 
 Owner direction fixed on 2026-07-26:
 
@@ -364,7 +364,7 @@ The `R0`–`R10` rows are release milestones. The `R<n>.<n>` rows in §10.1 are 
 | R5 | Build the static showcase as a packed-package, revisioned manifest/SHA-backed on-demand workspace consumer with Cache Storage support and add browser E2E verification | BEST | R3, R4 | done | Provider closure, integrity/cancellation/limit failures, offline reload, include/typedef, and clean/firing/formal-invalid/computation scenarios pass in a browser |
 | R6 | Write the canonical README/API guide, add tested snippets, and generate Dokka/TypeScript/`llms.txt` references | REGULAR | R3, R5 | done | Docs describe only shipped API; links and examples are verified |
 | R7 | Create the public mirror assembler, build/deploy workflows, cumulative Pages/Maven layout, and staged publisher | BEST | R1, R3, R5, R6 | done | A dry-run release in a temporary/fresh mirror proves every refusal and success path |
-| R8 | Publish `v0.9.1-rc.1`, consume it anonymously from GitHub Release and Pages, and run the full release review gate | BEST | R7 | pending | No in-repo resolution; all public URLs and checksums pass |
+| R8 | Publish `v0.9.1-rc.1`, consume it anonymously from GitHub Release and Pages, and run the full release review gate | BEST | R7 | gated | No in-repo resolution; all public URLs and checksums pass |
 | R9 | Fix RC findings by class, publish stable `v0.9.1`, confirm IF224/IF225 plus IG85 disposition, update durable docs, and run the release retro | BEST | R8 | pending | Stable release live; Pages/showcase/API docs live; ledgers clean |
 | R10 | Specify, license, implement, and publish the narrow JVM Kernel drop-in artifact as its own follow-up release | BEST | R9 | pending | A pinned `IDocumentRtService` consumer and a real host substitute the implementation unchanged; differential, result-application, cache, extension, source-availability, and mixed-license gates pass |
 
@@ -410,9 +410,16 @@ R2.9–R2.11 deliberately use one common assembler for two different terminal op
 |---|---|---|---|---|---|
 | R7.1 | Build the deterministic public-mirror assembler with public README, license/disclaimer, operator-approved site-specific privacy notice, showcase, cumulative Maven/API layout, workflow sources, and an explicit file allowlist | BEST | R3.3, R5.2, R6.2 | done | Two assemblies are byte-identical apart from declared provenance fields; secret/private-source and unexpected-file injections are rejected; the Pages notice names the actual operator and GitHub hosting rather than borrowing an unrelated policy |
 | R7.2 | Add staged source-tag publisher and public-repository workflows for draft assets, checksums, Pages deployment, immutable version directories, anonymous smokes, publisher-owned author/committer identity, and go-live refusals | BEST | R7.1 | done | A disposable fresh mirror proves every commit is `Martin Backschat <mbackschat@mail.de>` and exercises every refusal plus the complete draft-to-production path without publishing a production identity |
-| R8.1 | Create the public `a12-interpreter-releases` repository and publish `v0.9.1-rc.1` through the staged path | BEST | R7.2 | pending | Authenticated draft-asset and anonymous Pages checks pass before publication; the release is then published non-latest, every asset plus the Maven/TypeScript consumers passes anonymously, and IG85 graduates to a finding |
+| R8.1 | Create the public `a12-interpreter-releases` repository and publish `v0.9.1-rc.1` through the staged path | BEST | R7.2 | gated | Authenticated draft-asset and anonymous Pages checks pass before publication; the release is then published non-latest, every asset plus the Maven/TypeScript consumers passes anonymously, and IG85 graduates to a finding |
 | R9.1 | Review RC evidence and user feedback; for every finding, reproduce, generalize, and insert one bounded corrective `R9.F<n>` set for the root-cause class | BEST | R8.1 | pending | The RC has no unresolved release blocker and every correction has fresh package/browser/consumer evidence |
 | R9.2 | Publish stable `v0.9.1`, preserve immutable RC/versioned Pages content, confirm IF224/IF225 plus IG85 disposition, update durable docs, and run the full program retro | BEST | R9.1 | pending | Stable assets, Maven tree, API docs, and showcase are anonymously consumable from the public repository; manifests/checksums agree; ledgers are clean |
+
+### 10.2 R8.1 publication gate
+
+No public repository, source tag, draft release, immutable Maven/API directory, or Pages deployment may be created until both blockers are resolved:
+
+- `gh auth status` currently reports an invalid token for `mbackschat`; the source commits are not yet published to `origin`, `interpreter-v0.9.1` does not exist, and the public release repository cannot be created through the staged path until GitHub CLI authentication is restored.
+- The current plan combines GitHub RC tag `v0.9.1-rc.1` with root-aligned artifact version `0.9.1`. Publishing that RC would permanently occupy Maven `0.9.1` and `api/v0.9.1`; the immutable-mirror contract would then correctly refuse a corrected stable `v0.9.1`. The owner must choose one coherent policy before R8: publish final `0.9.1` bytes under the RC tag and allow only an identical stable relabel (any correction becomes `0.9.2`), give the RC artifacts a distinct root-aligned prerelease version, or skip the public RC and publish `0.9.1` stable after the completed rehearsal. The publisher must implement and lock the chosen policy before the first public immutable version is written.
 
 #### R10 — later EUPL Kernel drop-in
 
@@ -429,7 +436,7 @@ R10 starts only after the independently consumable MIT core is stable. Re-audit 
 
 No set may publish or deploy while another session is active in the worktree.
 
-### 10.2 Program log
+### 10.3 Program log
 
 - R2.1 extracted one representation-neutral preparation comparator and reused it in the older model-index parity lock, avoiding a second expansion-comparison mechanism.
 - The own-domain fixture author and freshness guard make the committed raw source closure reproducible through the typed kits; the same self-contained source executes on JVM and Node.
@@ -525,4 +532,4 @@ Ratified on 2026-07-26:
 - publish the independently consumable MIT core `v0.9.1` before the JVM Kernel drop-in;
 - publish the bytecode-free JVM drop-in artifact under EUPL-1.2 by explicit owner policy; this is deliberately conservative and is not presented as a consequence of interface linking.
 
-R7 is complete. The next program set is R8.1.
+R7 is complete. R8.1 is gated by §10.2.
