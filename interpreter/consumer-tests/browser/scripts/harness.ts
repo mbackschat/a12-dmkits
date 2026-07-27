@@ -1,22 +1,31 @@
 import {createServer} from "node:http";
+import type {IncomingMessage, ServerResponse} from "node:http";
 import {access, readFile, stat} from "node:fs/promises";
 import {constants} from "node:fs";
 import {resolve, sep} from "node:path";
 import process from "node:process";
 
-import {chromium} from "playwright-core";
+import {
+  chromium,
+  type Browser,
+  type BrowserContext,
+  type Page,
+} from "playwright-core";
 
 export const PAGES_BASE = "/a12-interpreter-releases/showcase/";
 export const DEADLINE_MILLIS = 10_000;
 
 const distribution = resolve("dist");
 
-export const withDeadline = async (label, operation) => {
-  let timeout;
+export const withDeadline = async <T>(
+  label: string,
+  operation: PromiseLike<T>,
+): Promise<T> => {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       operation,
-      new Promise((_, reject) => {
+      new Promise<T>((_, reject) => {
         timeout = setTimeout(
           () => reject(new Error(`${label} exceeded ${DEADLINE_MILLIS} ms`)),
           DEADLINE_MILLIS,
@@ -24,11 +33,13 @@ export const withDeadline = async (label, operation) => {
       }),
     ]);
   } finally {
-    clearTimeout(timeout);
+    if (timeout !== undefined) {
+      clearTimeout(timeout);
+    }
   }
 };
 
-const contentType = (path) => {
+const contentType = (path: string): string => {
   if (path.endsWith(".html")) return "text/html; charset=utf-8";
   if (path.endsWith(".js")) return "text/javascript; charset=utf-8";
   if (path.endsWith(".json")) return "application/json; charset=utf-8";
@@ -37,7 +48,10 @@ const contentType = (path) => {
   return "application/octet-stream";
 };
 
-const serve = async (request, response) => {
+const serve = async (
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> => {
   try {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
     if (!url.pathname.startsWith(PAGES_BASE)) {
@@ -75,9 +89,10 @@ const executableCandidates = [
   "/usr/bin/google-chrome-stable",
   "/usr/bin/chromium",
   "/usr/bin/chromium-browser",
-].filter(Boolean);
+].filter((candidate): candidate is string =>
+  candidate !== undefined && candidate.length > 0);
 
-const chromeExecutable = async () => {
+const chromeExecutable = async (): Promise<string> => {
   for (const candidate of executableCandidates) {
     try {
       await access(candidate, constants.X_OK);
@@ -91,7 +106,7 @@ const chromeExecutable = async () => {
   );
 };
 
-export const launchChrome = async () =>
+export const launchChrome = async (): Promise<Browser> =>
   withDeadline(
     "Chrome launch",
     chromium.launch({
@@ -100,16 +115,18 @@ export const launchChrome = async () =>
     }),
   );
 
-export const withStaticServer = async (operation) => {
+export const withStaticServer = async <T>(
+  operation: (url: string) => Promise<T>,
+): Promise<T> => {
   const server = createServer((request, response) => {
     void serve(request, response);
   });
   try {
     await withDeadline(
       "static server startup",
-      new Promise((resolveListen, rejectListen) => {
+      new Promise<void>((resolveListen, rejectListen) => {
         server.once("error", rejectListen);
-        server.listen(0, "127.0.0.1", resolveListen);
+        server.listen(0, "127.0.0.1", () => resolveListen());
       }),
     );
     const address = server.address();
@@ -123,7 +140,7 @@ export const withStaticServer = async (operation) => {
     if (server.listening) {
       await withDeadline(
         "static server shutdown",
-        new Promise((resolveClose, rejectClose) => {
+        new Promise<void>((resolveClose, rejectClose) => {
           server.close((error) =>
             error ? rejectClose(error) : resolveClose());
         }),
@@ -132,9 +149,12 @@ export const withStaticServer = async (operation) => {
   }
 };
 
-export const openCheckedPage = async (browser, url) => {
+export const openCheckedPage = async (
+  browser: Browser | BrowserContext,
+  url: string,
+): Promise<Page> => {
   const page = await withDeadline("browser page creation", browser.newPage());
-  const pageErrors = [];
+  const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   const response = await withDeadline(
     "browser navigation",

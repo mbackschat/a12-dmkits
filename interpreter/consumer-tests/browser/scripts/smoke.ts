@@ -6,11 +6,11 @@ import {
   PAGES_BASE,
   withDeadline,
   withStaticServer,
-} from "./harness.mjs";
+} from "./harness.js";
 
 await withStaticServer(async (url) => {
   const browser = await launchChrome();
-  let primaryFailure;
+  let primaryFailure: unknown;
   try {
     const page = await openCheckedPage(browser, `${url}?mode=qualification`);
     const qualification = page.locator(
@@ -241,7 +241,10 @@ await withStaticServer(async (url) => {
         );
       }
     }
-    const assertOutput = async (operation, expected) => {
+    const assertOutput = async (
+      operation: string,
+      expected: readonly string[],
+    ): Promise<void> => {
       const output = showcase.locator(
         `#result[data-operation='${operation}']`,
       );

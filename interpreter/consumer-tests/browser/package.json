@@ -3,12 +3,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc --noEmit && vite build --manifest --base=/a12-interpreter-releases/showcase/ && node scripts/write-bundle-size.mjs",
-    "measure:first-answer": "node scripts/performance.mjs",
-    "test:performance-policy": "node --test scripts/performance-policy.test.mjs",
-    "verify": "pnpm run test:performance-policy && pnpm run build && node scripts/smoke.mjs && node scripts/offline.mjs"
+    "check": "tsc --noEmit && tsc -p tsconfig.scripts.json --noEmit && tsc -p tsconfig.service-worker.json --noEmit",
+    "build:scripts": "tsc -p tsconfig.scripts.json",
+    "build:service-worker": "tsc -p tsconfig.service-worker.json",
+    "build": "pnpm run check && pnpm run build:scripts && vite build --manifest --base=/a12-interpreter-releases/showcase/ && pnpm run build:service-worker && node build/browser-scripts/write-bundle-size.js",
+    "measure:first-answer": "pnpm run build:scripts && node build/browser-scripts/performance.js",
+    "test:performance-policy": "pnpm run build:scripts && node --test build/browser-scripts/performance-policy.test.js",
+    "verify": "pnpm run build && node --test build/browser-scripts/performance-policy.test.js && node build/browser-scripts/smoke.js && node build/browser-scripts/offline.js"
   },
   "devDependencies": {
+    "@types/node": "20.19.43",
     "playwright-core": "1.61.1",
     "typescript": "5.9.3",
     "vite": "8.1.5"

@@ -6,16 +6,36 @@ export const BROWSER_FIRST_ANSWER_POLICY = Object.freeze({
   ratifiedOn: "2026-07-27",
 });
 
-const median = (sorted) => {
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0
-    ? (sorted[middle - 1] + sorted[middle]) / 2
-    : sorted[middle];
+export interface BrowserPerformanceSummary {
+  readonly sampleCount: number;
+  readonly discardedSamples: 0;
+  readonly medianMillis: number;
+  readonly minimumMillis: number;
+  readonly maximumMillis: number;
+  readonly relativeRange: number;
+}
+
+const valueAt = (values: readonly number[], index: number): number => {
+  const value = values[index];
+  if (value === undefined) {
+    throw new Error(`browser performance sample ${index + 1} is missing`);
+  }
+  return value;
 };
 
-const rounded = (value, digits) => Number(value.toFixed(digits));
+const median = (sorted: readonly number[]): number => {
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (valueAt(sorted, middle - 1) + valueAt(sorted, middle)) / 2
+    : valueAt(sorted, middle);
+};
 
-export const summarizeBrowserSamples = (samples) => {
+const rounded = (value: number, digits: number): number =>
+  Number(value.toFixed(digits));
+
+export const summarizeBrowserSamples = (
+  samples: readonly number[],
+): BrowserPerformanceSummary => {
   if (
     samples.length !== BROWSER_FIRST_ANSWER_POLICY.initialSampleCount &&
     samples.length !== BROWSER_FIRST_ANSWER_POLICY.maximumSampleCount
@@ -37,24 +57,30 @@ export const summarizeBrowserSamples = (samples) => {
 
   const sorted = [...samples].sort((left, right) => left - right);
   const medianMillis = rounded(median(sorted), 3);
+  const minimumMillis = valueAt(sorted, 0);
+  const maximumMillis = valueAt(sorted, sorted.length - 1);
   return {
     sampleCount: samples.length,
     discardedSamples: 0,
     medianMillis,
-    minimumMillis: sorted[0],
-    maximumMillis: sorted[sorted.length - 1],
+    minimumMillis,
+    maximumMillis,
     relativeRange: rounded(
-      (sorted[sorted.length - 1] - sorted[0]) / medianMillis,
+      (maximumMillis - minimumMillis) / medianMillis,
       6,
     ),
   };
 };
 
-export const requiresExtendedBrowserSeries = (summary) =>
+export const requiresExtendedBrowserSeries = (
+  summary: BrowserPerformanceSummary,
+): boolean =>
   summary.sampleCount === BROWSER_FIRST_ANSWER_POLICY.initialSampleCount &&
   summary.relativeRange > BROWSER_FIRST_ANSWER_POLICY.maximumRelativeRange;
 
-export const enforceBrowserFirstAnswer = (samples) => {
+export const enforceBrowserFirstAnswer = (
+  samples: readonly number[],
+): BrowserPerformanceSummary => {
   const summary = summarizeBrowserSamples(samples);
   if (requiresExtendedBrowserSeries(summary)) {
     throw new Error(

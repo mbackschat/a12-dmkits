@@ -42,6 +42,10 @@ The priority rule in “What this module is” is the auto-loaded guard; [`../do
 
 Numerical candidates live in [`../docs/INTERPRETER-SPEC.md`](../docs/INTERPRETER-SPEC.md) “Non-functional contract” and become release bars only through IF137's per-number certification. That release posture does not weaken the development target: exactness remains mandatory, cold and warm are co-equal regimes, a bounded cache that earns its cost is encouraged, and any repeatable interpreter loss to either kernel strategy remains the next performance defect.
 
+## Browser source discipline
+
+Production code, service workers, Node-side browser tests, and measurement/build utilities under `consumer-tests/browser` are authored as TypeScript. Generated JavaScript exists only under ignored build output. `verifyExternalInterpreterBrowserTypeScriptSources` rejects checked-in `.js` and `.mjs` siblings.
+
 ## Structure for a future GENERATOR — separate runtime semantics from evaluation strategy (standing requirement, decided 2026-06-23)
 
 We build the **interpreter** now, but must stay flexible to later add a **generator** (the kernel's approach: emit code per model instead of tree-walking). **Both an interpreter and a generator are evaluation *strategies* that delegate to the SAME runtime** — the operator implementations. So **don't implement the generator, but keep the layering ready for it**:

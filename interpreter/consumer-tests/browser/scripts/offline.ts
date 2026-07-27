@@ -4,7 +4,7 @@ import {
   PAGES_BASE,
   withDeadline,
   withStaticServer,
-} from "./harness.mjs";
+} from "./harness.js";
 
 const failureCases = [
   {
@@ -17,10 +17,10 @@ const failureCases = [
 
 await withStaticServer(async (url) => {
   const browser = await launchChrome();
-  let primaryFailure;
+  let primaryFailure: unknown;
   try {
     const context = await browser.newContext();
-    const unsafeRequests = [];
+    const unsafeRequests: string[] = [];
     const showcaseOrigin = new URL(url).origin;
     context.on("request", (request) => {
       const headers = request.headers();

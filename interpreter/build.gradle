@@ -2058,6 +2058,28 @@ tasks.named('check') {
 
 // --- R4.1 real-browser packed-package consumer -----------------------------------------------------
 def externalBrowserConsumerSourceDir = file('consumer-tests/browser')
+def verifyExternalInterpreterBrowserTypeScriptSources = tasks.register(
+    'verifyExternalInterpreterBrowserTypeScriptSources',
+) {
+    group = 'verification'
+    description = 'Reject authored JavaScript in the TypeScript browser consumer.'
+    inputs.dir(externalBrowserConsumerSourceDir)
+        .withPropertyName('browserConsumerSources')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+    doLast {
+        def authoredJavaScript = fileTree(externalBrowserConsumerSourceDir) {
+            include '**/*.js'
+            include '**/*.mjs'
+        }.files.sort { left, right -> left.path <=> right.path }
+        if (!authoredJavaScript.isEmpty()) {
+            def relativePaths = authoredJavaScript.collect {
+                externalBrowserConsumerSourceDir.toPath().relativize(it.toPath())
+            }.join(', ')
+            throw new GradleException(
+                "browser consumer executable sources must be TypeScript: ${relativePaths}")
+        }
+    }
+}
 def externalBrowserConsumerBuildDir = rootProject.layout.buildDirectory.dir(
     'interpreter-release/consumer/browser',
 )
@@ -2225,6 +2247,7 @@ def verifyExternalInterpreterBrowserConsumer = tasks.register(
 ) {
     group = 'verification'
     description = 'Bundle and execute the packed interpreter under real Chrome at its Pages base path.'
+    dependsOn verifyExternalInterpreterBrowserTypeScriptSources
     dependsOn installPackedInterpreterInBrowserConsumer
     workingDir externalBrowserConsumerBuildDir
     commandLine('pnpm', 'run', 'verify')

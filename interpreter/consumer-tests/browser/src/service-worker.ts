@@ -1,8 +1,12 @@
-const scopeUrl = new URL(self.registration.scope);
+const serviceWorker = self as unknown as ServiceWorkerGlobalScope;
+const scopeUrl = new URL(serviceWorker.registration.scope);
 
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
-self.addEventListener("fetch", (event) => {
+serviceWorker.addEventListener("install", () => serviceWorker.skipWaiting());
+serviceWorker.addEventListener(
+  "activate",
+  (event) => event.waitUntil(serviceWorker.clients.claim()),
+);
+serviceWorker.addEventListener("fetch", (event) => {
   const requestUrl = new URL(event.request.url);
   if (
     event.request.method !== "GET" ||

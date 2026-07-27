@@ -6,7 +6,7 @@ import {
   enforceBrowserFirstAnswer,
   requiresExtendedBrowserSeries,
   summarizeBrowserSamples,
-} from "./performance-policy.mjs";
+} from "./performance-policy.js";
 
 test("the browser first-answer median boundary passes with ten fresh samples", () => {
   const summary = enforceBrowserFirstAnswer(

@@ -8,24 +8,43 @@ import {
   openCheckedPage,
   withDeadline,
   withStaticServer,
-} from "./harness.mjs";
+} from "./harness.js";
 import {
   BROWSER_FIRST_ANSWER_POLICY,
   enforceBrowserFirstAnswer,
   requiresExtendedBrowserSeries,
   summarizeBrowserSamples,
-} from "./performance-policy.mjs";
+} from "./performance-policy.js";
 
-const scenarios = [
+enum PerformanceScenarioId {
+  REPRESENTATIVE = "representative",
+  STRESS = "stress",
+}
+
+interface PerformanceScenario {
+  readonly id: PerformanceScenarioId;
+  readonly workload: string;
+  readonly rows: number;
+  readonly expectedFindings: number;
+  readonly expectedCode?: string;
+  readonly releaseBar: boolean;
+}
+
+interface PerformanceMeasurement {
+  readonly documentBytes: number;
+  readonly samples: readonly number[];
+}
+
+const scenarios: readonly PerformanceScenario[] = [
   {
-    id: "representative",
+    id: PerformanceScenarioId.REPRESENTATIVE,
     workload: "b1-valid:flat-lines=200:index-fields-only:v1",
     rows: 200,
     expectedFindings: 0,
     releaseBar: false,
   },
   {
-    id: "stress",
+    id: PerformanceScenarioId.STRESS,
     workload: "b1-firing:flat-lines=10000:v1",
     rows: 10_000,
     expectedFindings: 4_900,
@@ -34,13 +53,13 @@ const scenarios = [
   },
 ];
 
-const measurements = new Map();
-let chromeVersion;
+const measurements = new Map<PerformanceScenarioId, PerformanceMeasurement>();
+let chromeVersion: string | undefined;
 await withStaticServer(async (url) => {
   for (const scenario of scenarios) {
-    const samples = [];
-    let documentBytes;
-    const collectUntil = async (targetCount) => {
+    const samples: number[] = [];
+    let documentBytes: number | undefined;
+    const collectUntil = async (targetCount: number): Promise<void> => {
       for (let index = samples.length; index < targetCount; index += 1) {
         const browser = await launchChrome();
         try {
@@ -105,6 +124,9 @@ await withStaticServer(async (url) => {
       );
       await collectUntil(BROWSER_FIRST_ANSWER_POLICY.maximumSampleCount);
     }
+    if (documentBytes === undefined) {
+      throw new Error(`${scenario.id} browser measurement has no Document size`);
+    }
     measurements.set(scenario.id, {documentBytes, samples});
   }
 });
@@ -121,7 +143,7 @@ const measuredScenarios = Object.fromEntries(scenarios.map((scenario) => {
   return [
     scenario.id,
     {
-      id: scenario.id === "representative"
+      id: scenario.id === PerformanceScenarioId.REPRESENTATIVE
         ? "browser-b1-200-rows-first-answer"
         : "browser-b1-10000-rows-first-answer",
       version: 1,
