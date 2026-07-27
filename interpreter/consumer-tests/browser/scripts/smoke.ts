@@ -40,11 +40,26 @@ await withStaticServer(async (url) => {
       if (!response.ok) {
         throw new Error(`release identity failed with HTTP ${response.status}`);
       }
-      return await response.json() as {version: string};
+      return await response.json() as {
+        version: string;
+        a12Kernel: string;
+        a12Distribution: string;
+      };
     });
     if (await version.textContent() !== releaseIdentity.version) {
       throw new Error(
         `showcase package version mismatch: ${await version.textContent()}`,
+      );
+    }
+    const semanticsTarget = await showcase
+      .locator("#semantics-target")
+      .textContent();
+    const expectedSemanticsTarget =
+      `A12 Kernel ${releaseIdentity.a12Kernel}`
+      + ` · A12 Tools ${releaseIdentity.a12Distribution}`;
+    if (semanticsTarget !== expectedSemanticsTarget) {
+      throw new Error(
+        `showcase semantics target mismatch: ${semanticsTarget}`,
       );
     }
     const bundleSize = showcase.locator(

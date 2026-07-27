@@ -4,7 +4,13 @@ This document tracks only open or trigger-gated work in the interpreter publicat
 
 ## Open
 
-None.
+### IRG2 — publish the showcase semantics badge
+
+The browser showcase names the A12 Kernel semantics target beside the package version, single-sourced from the root `kernelVersion`/`a12Distribution` pins and asserted by the Chrome smoke gate. It is implemented but not on the public site: rendering it needs a rebuilt browser bundle, and refreshing that bundle under an already-published tag would leave the live showcase differing from the immutable `dm-interpreter-<version>-showcase.zip` asset of that release. The public README states the same target and does ship, because it has no immutable asset counterpart.
+
+**Trigger:** the next interpreter release, which regenerates the whole mirror from source.
+
+**Completion:** the deployed showcase renders the semantics target and the Pages showcase tree matches that release's showcase asset.
 
 ## Trigger-gated
 

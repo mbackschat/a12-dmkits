@@ -86,6 +86,14 @@ footer {
   color: var(--blue-dark);
 }
 
+/* Subordinate to the package version: the semantics target is reference information, not the headline. */
+.package-badge .semantics-target {
+  padding-left: 8px;
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 .hero {
   padding: 56px 0 60px;
 }

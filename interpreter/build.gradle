@@ -2585,9 +2585,13 @@ def prepareExternalInterpreterBrowserConsumer = tasks.register(
         manifest.parentFile.mkdirs()
         manifest.setText(groovy.json.JsonOutput.toJson(casePaths) + '\n', 'UTF-8')
         def releaseIdentity = new File(destinationDir, 'public/release.json')
+        // The showcase names the semantics target beside the package version, single-sourced from the root
+        // pins so a kernel bump cannot leave the published page advertising the previous kernel.
         releaseIdentity.setText(groovy.json.JsonOutput.toJson([
             package: '@mbackschat/a12-interpreter',
             version: project.version.toString(),
+            a12Kernel: rootProject.ext.kernelVersion,
+            a12Distribution: rootProject.ext.a12Distribution,
         ]) + '\n', 'UTF-8')
         def digestHex = { byte[] value ->
             java.security.MessageDigest.getInstance('SHA-256')

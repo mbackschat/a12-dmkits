@@ -107,6 +107,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.BuildPerformancePolicyTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.GateTierWiringTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.VersionMentionFreshnessTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.api.PublicApiGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.InterpreterReleaseMirrorAssemblerTest'
@@ -161,10 +162,20 @@ tasks.register('docGuardTest', Test) {
         includeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.BuildPerformancePolicyTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.GateTierWiringTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.VersionMentionFreshnessTest'
         includeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
     }
     guardInputs(it, [
             'docs/API-GUIDE.md': file('docs/API-GUIDE.md'),
+            // VersionMentionFreshnessTest reads each of these at runtime; undeclared, a prose-only edit left
+            // the broad `test` task UP-TO-DATE and the drift guard silently unrun.
+            'version mentions' : files(
+                    'README.md',
+                    'plugin/README.md',
+                    'plugin/CHANGELOG.md',
+                    'plugin/.claude-plugin/plugin.json',
+                    'plugin-codex/.codex-plugin/plugin.json',
+                    'interpreter/public-release/README.md'),
             'root build'       : file('build.gradle'),
             'Gradle environment': file('scripts/gradle-environment.sh'),
             'gradle.properties': file('gradle.properties'),

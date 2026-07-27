@@ -38,6 +38,8 @@ interface Scenario {
 interface ReleaseIdentity {
   readonly package: string;
   readonly version: string;
+  readonly a12Kernel: string;
+  readonly a12Distribution: string;
 }
 
 interface BundleSize {
@@ -505,6 +507,8 @@ const loadReleaseIdentity = async (): Promise<ReleaseIdentity> => {
   }
   requiredElement("#package-version", HTMLElement).textContent =
     identity.version;
+  requiredElement("#semantics-target", HTMLElement).textContent =
+    `A12 Kernel ${identity.a12Kernel} · A12 Tools ${identity.a12Distribution}`;
   return identity;
 };
 

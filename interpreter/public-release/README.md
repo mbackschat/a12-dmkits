@@ -31,6 +31,8 @@ The interpreter runs the same clean-room Kotlin implementation on the JVM, Node.
 
 The package performs no implicit filesystem, network, storage, or credential access. It contains no A12 Kernel bytecode or runtime dependency.
 
+**Semantics target.** This release reproduces the evaluation behavior of **A12 Kernel 30.8.1**, as shipped in the **A12 Tools 2025.06-ext5** distribution. The implementation is clean-room and is verified by differential testing against that kernel; the target version is stated so you can tell which kernel's semantics a given release was matched to.
+
 ## TypeScript and JavaScript
 
 Install the npm-compatible tarball directly from the GitHub Release:

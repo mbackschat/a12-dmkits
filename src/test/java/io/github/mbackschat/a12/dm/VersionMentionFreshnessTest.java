@@ -29,7 +29,10 @@ class VersionMentionFreshnessTest {
             "plugin/README.md",
             "plugin/CHANGELOG.md",
             "plugin/.claude-plugin/plugin.json",
-            "plugin-codex/.codex-plugin/plugin.json");
+            "plugin-codex/.codex-plugin/plugin.json",
+            // The public interpreter README states the semantics target its differential is run against, so a
+            // kernel bump must not leave the published mirror advertising the previous kernel.
+            "interpreter/public-release/README.md");
 
     @Test
     void everyVersionMentionMatchesTheBuildPins() throws IOException {
