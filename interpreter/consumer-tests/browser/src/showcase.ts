@@ -66,7 +66,7 @@ interface TimedOperation<T> {
 
 type TimedOperationName = "validation" | "computation";
 
-const MAX_OPERATION_RUNS = 100;
+const MAX_OPERATION_RUNS = 100_000;
 
 const scenarios: Readonly<Record<ScenarioId, Scenario>> = {
   clean: {

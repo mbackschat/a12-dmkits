@@ -286,7 +286,7 @@ await withStaticServer(async (url) => {
       await operationRuns.count() !== 1 ||
       await operationRuns.inputValue() !== "1" ||
       await operationRuns.getAttribute("min") !== "1" ||
-      await operationRuns.getAttribute("max") !== "100"
+      await operationRuns.getAttribute("max") !== "100000"
     ) {
       throw new Error(
         "showcase does not expose a bounded one-run operation control",
