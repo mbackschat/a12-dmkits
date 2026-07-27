@@ -22,6 +22,8 @@ class InterpreterReleasePublisherRehearsalTest {
             "PASS dirty source",
             "PASS source tag/version mismatch",
             "PASS source tag/SHA mismatch",
+            "PASS unqualified stage",
+            "PASS changed qualified outputs",
             "PASS published release",
             "PASS existing immutable version",
             "PASS missing TypeScript declaration",
@@ -99,7 +101,9 @@ class InterpreterReleasePublisherRehearsalTest {
 
         assertTrue(core.contains("preview=\"$source_root/build/interpreter-release/public-mirror\""));
         assertTrue(core.contains("assets=\"$source_root/build/interpreter-release/public-assets\""));
+        assertTrue(core.contains("interpreter_release_qualify()"));
         assertTrue(core.contains("interpreter_release_assemble_public_mirror()"));
+        assertFalse(stage.contains("build.sh"), "stage must consume a verified qualification receipt");
         assertFalse(
                 stage.contains("interpreter_release_assemble"),
                 "the full interpreter gate already assembles and verifies these exact release outputs");

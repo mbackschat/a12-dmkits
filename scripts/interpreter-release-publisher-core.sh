@@ -14,18 +14,23 @@ interpreter_release_version() {
 
 interpreter_release_parse() {
   [[ $# -ge 1 ]] || {
-    echo "usage: publish-interpreter-release.sh interpreter-vX.Y.Z [--release-tag vX.Y.Z] [--go-live]" >&2
+    echo "usage: publish-interpreter-release.sh interpreter-vX.Y.Z [--release-tag vX.Y.Z] [--qualify|--go-live]" >&2
     return 2
   }
   RELEASE_SOURCE_TAG="$1"
   shift
   RELEASE_TAG=""
+  RELEASE_QUALIFY=0
   RELEASE_GO_LIVE=0
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --release-tag)
         RELEASE_TAG="${2:?missing --release-tag value}"
         shift 2
+        ;;
+      --qualify)
+        RELEASE_QUALIFY=1
+        shift
         ;;
       --go-live)
         RELEASE_GO_LIVE=1
@@ -44,6 +49,8 @@ interpreter_release_parse() {
   RELEASE_TAG="${RELEASE_TAG:-v$RELEASE_SOURCE_VERSION}"
   [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]] ||
     interpreter_release_fail "release tag must be vMAJOR.MINOR.PATCH with an optional suffix"
+  [[ "$RELEASE_QUALIFY" != "1" || "$RELEASE_GO_LIVE" != "1" ]] ||
+    interpreter_release_fail "--qualify and --go-live are mutually exclusive"
 }
 
 interpreter_release_source_preflight() {
@@ -193,6 +200,70 @@ interpreter_release_assemble_public_mirror() {
     --workflow-directory "$source_root/.github/interpreter-mirror-workflows"
 }
 
+interpreter_release_write_qualification_receipt() {
+  local receipt="$1" preview="$2" assets="$3" temporary
+  temporary="$receipt.tmp.$$"
+  {
+    printf 'source_tag=%s\n' "$RELEASE_SOURCE_TAG"
+    printf 'source_sha=%s\n' "$RELEASE_SOURCE_SHA"
+    printf 'artifact_version=%s\n' "$RELEASE_ARTIFACT_VERSION"
+    printf 'release_tag=%s\n' "$RELEASE_TAG"
+    printf 'public_inventory_sha256=%s\n' "$(release_sha256 "$preview/PUBLIC-FILES.sha256")"
+    printf 'asset_checksums_sha256=%s\n' "$(release_sha256 "$assets/SHA256SUMS")"
+  } > "$temporary"
+  mv "$temporary" "$receipt"
+}
+
+interpreter_release_verify_qualified_outputs() {
+  local source_root="$1" work_directory="$2" preview="$3" assets="$4" receipt expected
+  receipt="$work_directory/qualified-release.txt"
+  [[ -f "$receipt" ]] ||
+    interpreter_release_fail "no qualified release receipt exists — run the publisher with --qualify first"
+
+  release_verify_public_inventory "$preview"
+  "$source_root/scripts/check-interpreter-release-repo.sh" "$preview" >/dev/null
+  interpreter_release_verify_payload \
+    "$assets" \
+    "$RELEASE_ARTIFACT_VERSION" \
+    "$RELEASE_TAG" \
+    "$RELEASE_SOURCE_TAG" \
+    "$RELEASE_SOURCE_SHA"
+
+  expected="$(mktemp)"
+  interpreter_release_write_qualification_receipt "$expected" "$preview" "$assets"
+  if ! cmp -s "$receipt" "$expected"; then
+    rm -f "$expected"
+    interpreter_release_fail "qualified release receipt does not match the current source or outputs"
+  fi
+  rm -f "$expected"
+}
+
+interpreter_release_qualify() {
+  local source_root="$1" work_directory="$2" preview assets receipt
+  interpreter_release_source_preflight "$source_root" true
+  preview="$source_root/build/interpreter-release/public-mirror"
+  assets="$source_root/build/interpreter-release/public-assets"
+  receipt="$work_directory/qualified-release.txt"
+  release_require_safe_derived_directory "$preview"
+  release_require_safe_derived_directory "$assets"
+  rm -f "$receipt"
+
+  "$source_root/build.sh" \
+    --console=plain \
+    "-PinterpreterReleaseTag=$RELEASE_TAG" \
+    :interpreter:check
+  release_verify_public_inventory "$preview"
+  "$source_root/scripts/check-interpreter-release-repo.sh" "$preview" >/dev/null
+  interpreter_release_verify_payload \
+    "$assets" \
+    "$RELEASE_ARTIFACT_VERSION" \
+    "$RELEASE_TAG" \
+    "$RELEASE_SOURCE_TAG" \
+    "$RELEASE_SOURCE_SHA"
+  interpreter_release_write_qualification_receipt "$receipt" "$preview" "$assets"
+  echo "QUALIFIED: $RELEASE_TAG at $RELEASE_SOURCE_SHA"
+}
+
 interpreter_release_stage() {
   local source_root="$1" work_directory="$2" clone preview assets release_state notes commit_sha unexpected
   interpreter_release_source_preflight "$source_root" true
@@ -207,24 +278,12 @@ interpreter_release_stage() {
   release_require_safe_derived_directory "$clone"
   release_require_safe_derived_directory "$preview"
   release_require_safe_derived_directory "$assets"
-  rm -rf "$clone" "$preview" "$assets"
+  rm -rf "$clone"
   mkdir -p "$work_directory"
+  interpreter_release_verify_qualified_outputs "$source_root" "$work_directory" "$preview" "$assets"
   release_host_clone_mirror "$clone"
   interpreter_release_verify_commit_identities "$clone"
   interpreter_release_refuse_existing_version "$clone" "$RELEASE_ARTIFACT_VERSION"
-
-  "$source_root/build.sh" \
-    --console=plain \
-    "-PinterpreterReleaseTag=$RELEASE_TAG" \
-    :interpreter:check
-  release_verify_public_inventory "$preview"
-  "$source_root/scripts/check-interpreter-release-repo.sh" "$preview" >/dev/null
-  interpreter_release_verify_payload \
-    "$assets" \
-    "$RELEASE_ARTIFACT_VERSION" \
-    "$RELEASE_TAG" \
-    "$RELEASE_SOURCE_TAG" \
-    "$RELEASE_SOURCE_SHA"
 
   if [[ -f "$clone/PUBLIC-FILES.sha256" ]]; then
     release_verify_public_inventory "$clone"
@@ -373,9 +432,10 @@ publish_interpreter_release() {
   release_require_safe_derived_directory "$work_directory"
   mkdir -p "$work_directory"
 
-  if [[ "$RELEASE_GO_LIVE" == "1" ]]; then
-    interpreter_release_go_live "$source_root" "$work_directory"
-  else
-    interpreter_release_stage "$source_root" "$work_directory"
-  fi
+  case "$RELEASE_QUALIFY:$RELEASE_GO_LIVE" in
+    1:0) interpreter_release_qualify "$source_root" "$work_directory" ;;
+    0:1) interpreter_release_go_live "$source_root" "$work_directory" ;;
+    0:0) interpreter_release_stage "$source_root" "$work_directory" ;;
+    *) interpreter_release_fail "invalid publisher operation" ;;
+  esac
 }

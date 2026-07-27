@@ -2,6 +2,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=interpreter-release-assets.sh
+. "$ROOT/scripts/interpreter-release-assets.sh"
 REHEARSAL_ROOT="$(mktemp -d)"
 trap 'rm -rf "$REHEARSAL_ROOT"' EXIT
 
@@ -136,7 +138,7 @@ create_fixture() {
   git init --quiet --bare --initial-branch=main "$MIRROR_ORIGIN"
 }
 
-publisher() {
+publisher_raw() {
   local extra_environment=()
   local publisher_arguments=()
   local argument
@@ -157,6 +159,16 @@ publisher() {
     INTERPRETER_RELEASE_DOWNLOAD_BASE="file://$STATE/public-assets" \
     "${extra_environment[@]}" \
     "$PUBLISHER" "$SOURCE_TAG" "${publisher_arguments[@]}"
+}
+
+publisher() {
+  case " $* " in
+    *" --qualify "*|*" --go-live "*) publisher_raw "$@" ;;
+    *)
+      publisher_raw "$@" --qualify >/dev/null
+      publisher_raw "$@"
+      ;;
+  esac
 }
 
 expect_refusal() {
@@ -238,6 +250,24 @@ git -C "$SOURCE" push --quiet origin main
 git -C "$SOURCE" push --quiet --force origin HEAD:refs/tags/0.9.1
 git -C "$SOURCE_ORIGIN" update-ref "refs/tags/$SOURCE_TAG" "$(git -C "$SOURCE" rev-parse HEAD)"
 expect_refusal "source tag/SHA mismatch" "source tag/SHA mismatch" publisher
+
+create_fixture unqualified-stage
+expect_refusal "unqualified stage" "no qualified release receipt exists" publisher_raw
+
+create_fixture changed-qualified-output
+publisher_raw --qualify >/dev/null
+printf '\n' >> "$SOURCE/build/interpreter-release/public-assets/release-manifest.json"
+(
+  cd "$SOURCE/build/interpreter-release/public-assets"
+  while IFS= read -r file; do
+    printf '%s  %s\n' "$(shasum -a 256 "$file" | awk '{print $1}')" "$file"
+  done < <(
+    interpreter_release_asset_names "${RELEASE_TAG#v}"
+    printf '%s\n' release-manifest.json
+  ) | LC_ALL=C sort > SHA256SUMS.changed
+  mv SHA256SUMS.changed SHA256SUMS
+)
+expect_refusal "changed qualified outputs" "qualified release receipt does not match" publisher_raw
 
 create_fixture published-release
 mkdir -p "$STATE/releases/$RELEASE_TAG"
