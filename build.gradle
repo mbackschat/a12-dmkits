@@ -95,7 +95,7 @@ tasks.named('test') {
     useJUnitPlatform()
     dependsOn 'docGuardTest'
     dependsOn 'apiGuardTest'
-    dependsOn 'interpreterReleaseMirrorGuardTest'
+    dependsOn 'interpreterReleaseGuardTest'
     // Repo-file-reading guards run in input-declared dedicated tasks; keep them out of the broad suite so a
     // doc/marker/golden/script-only edit cannot leave a stale-green `test` (TESTING-SPEC "Tests that read
     // repo files at runtime").
@@ -106,6 +106,7 @@ tasks.named('test') {
         excludeTestsMatching 'io.github.mbackschat.a12.dm.rulekit.catalog.DslCatalogBridgeTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.api.PublicApiGuardTest'
         excludeTestsMatching 'io.github.mbackschat.a12.dm.InterpreterReleaseMirrorAssemblerTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.InterpreterReleasePublisherRehearsalTest'
     }
 }
 
@@ -192,21 +193,37 @@ tasks.register('apiGuardTest', Test) {
     guardInputs(it, ['api goldens': fileTree('api') { include '**/*.api' }])
 }
 
-tasks.register('interpreterReleaseMirrorGuardTest', Test) {
-    description = 'Synthetic cumulative-mirror laws with every runtime-read release input declared.'
+tasks.register('interpreterReleaseGuardTest', Test) {
+    description = 'Synthetic interpreter mirror and staged-publisher laws with every runtime-read release input declared.'
     group = 'verification'
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     filter {
         includeTestsMatching 'io.github.mbackschat.a12.dm.InterpreterReleaseMirrorAssemblerTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.InterpreterReleasePublisherRehearsalTest'
     }
     guardInputs(it, [
-            'assembler'      : file('scripts/assemble-interpreter-release-repo.sh'),
-            'mirror checker' : file('scripts/check-interpreter-release-repo.sh'),
-            'asset names'    : file('scripts/interpreter-release-assets.sh'),
-            'mirror helpers' : file('scripts/release-mirror-common.sh'),
-            'release license': file('LICENSE'),
+            'assembler'         : file('scripts/assemble-interpreter-release-repo.sh'),
+            'mirror checker'    : file('scripts/check-interpreter-release-repo.sh'),
+            'asset names'       : file('scripts/interpreter-release-assets.sh'),
+            'mirror helpers'    : file('scripts/release-mirror-common.sh'),
+            'release identity'  : file('scripts/release-git-identity.sh'),
+            'publisher'         : file('scripts/publish-interpreter-release.sh'),
+            'publisher core'    : file('scripts/interpreter-release-publisher-core.sh'),
+            'GitHub backend'    : file('scripts/interpreter-release-github.sh'),
+            'public smoke'      : file('scripts/smoke-interpreter-public-release.sh'),
+            'rehearsal'         : file('scripts/rehearse-interpreter-release.sh'),
+            'rehearsal backend' : file('scripts/interpreter-release-rehearsal-host.sh'),
+            'consumer programs' : fileTree('interpreter/consumer-tests') {
+                include 'kotlin-jvm/**/*'
+                include 'typescript/**/*'
+            },
+            'interpreter build'  : file('interpreter/build.gradle'),
+            'release changelog' : file('interpreter/CHANGELOG.md'),
+            'public documents'  : fileTree('interpreter/public-release') { include '**/*' },
+            'public workflows'  : fileTree('.github/interpreter-mirror-workflows') { include '*.yml' },
+            'release license'   : file('LICENSE'),
     ])
 }
 

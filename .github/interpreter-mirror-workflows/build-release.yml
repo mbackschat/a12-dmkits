@@ -1,4 +1,5 @@
 name: build release
+run-name: Build release ${{ inputs.release_tag }}
 
 # Single-sourced in the private source repository and copied into the generated public mirror. This
 # maintainer-triggered workflow is the interpreter counterpart to dmtool's build-native workflow: it checks
@@ -106,17 +107,25 @@ jobs:
             --landing-page "$GITHUB_WORKSPACE/source/interpreter/public-release/index.html" \
             --workflow-directory "$GITHUB_WORKSPACE/source/.github/interpreter-mirror-workflows"
 
-      - name: Commit the generated mirror with the release identity
+      - name: Prepare the generated mirror commit with the release identity
         working-directory: public
         shell: bash
         run: |
           source ../source/scripts/release-git-identity.sh
+          source ../source/scripts/interpreter-release-assets.sh
+          source ../source/scripts/release-mirror-common.sh
+          source ../source/scripts/interpreter-release-publisher-core.sh
+          interpreter_release_verify_payload \
+            "../source/build/interpreter-release/public-assets" \
+            "${{ inputs.artifact_version }}" \
+            "${{ inputs.release_tag }}" \
+            "${{ inputs.source_ref }}" \
+            "${{ inputs.source_sha }}"
           configure_release_git_identity "$GITHUB_WORKSPACE/public"
           git add -A
           git commit -m "release ${{ inputs.release_tag }}" || test -z "$(git status --porcelain)"
-          test "$(git log -1 --format='%an <%ae>|%cn <%ce>')" = \
-            "Martin Backschat <mbackschat@mail.de>|Martin Backschat <mbackschat@mail.de>"
-          git push
+          interpreter_release_verify_commit_identities "$GITHUB_WORKSPACE/public"
+          git tag -f "${{ inputs.release_tag }}"
 
       - name: Upload the immutable draft assets
         shell: bash
@@ -125,3 +134,10 @@ jobs:
           gh release upload "${{ inputs.release_tag }}" \
             source/build/interpreter-release/public-assets/* \
             --clobber
+
+      - name: Publish the mirror commit and release tag atomically
+        working-directory: public
+        shell: bash
+        run: |
+          test "$(gh release view "${{ inputs.release_tag }}" --json isDraft -q .isDraft)" = true
+          git push --atomic origin HEAD:main "+refs/tags/${{ inputs.release_tag }}"

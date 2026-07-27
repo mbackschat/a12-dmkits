@@ -1,4 +1,5 @@
 name: deploy pages
+run-name: Deploy Pages for ${{ inputs.release_tag }}
 
 # Deployment is manual and belongs to the publisher's go-live path. A mirror-content push therefore cannot
 # make draft Maven/API/showcase content public before the release review has passed.
