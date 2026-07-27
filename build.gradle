@@ -166,6 +166,7 @@ tasks.register('docGuardTest', Test) {
     guardInputs(it, [
             'docs/API-GUIDE.md': file('docs/API-GUIDE.md'),
             'root build'       : file('build.gradle'),
+            'Gradle environment': file('scripts/gradle-environment.sh'),
             'gradle.properties': file('gradle.properties'),
             'cache smoke'      : file('scripts/verify-build-cache.sh'),
             'demo verifier'    : file('scripts/verify-demos.sh'),
@@ -219,6 +220,7 @@ tasks.register('interpreterReleaseGuardTest', Test) {
             'publisher core'    : file('scripts/interpreter-release-publisher-core.sh'),
             'GitHub backend'    : file('scripts/interpreter-release-github.sh'),
             'public smoke'      : file('scripts/smoke-interpreter-public-release.sh'),
+            'Gradle environment': file('scripts/gradle-environment.sh'),
             'rehearsal'         : file('scripts/rehearse-interpreter-release.sh'),
             'rehearsal backend' : file('scripts/interpreter-release-rehearsal-host.sh'),
             'dmtool publisher'  : file('scripts/publish-release.sh'),

@@ -3,6 +3,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=gradle-environment.sh
+. "$ROOT/scripts/gradle-environment.sh"
 # shellcheck source=release-mirror-common.sh
 . "$ROOT/scripts/release-mirror-common.sh"
 
@@ -49,8 +51,17 @@ KOTLIN_CONSUMER="$WORK_DIRECTORY/kotlin-jvm"
 TYPESCRIPT_CONSUMER="$WORK_DIRECTORY/typescript"
 GRADLE_HOME="$WORK_DIRECTORY/gradle-home"
 PNPM_STORE="$WORK_DIRECTORY/pnpm-store"
+SOURCE_GRADLE_USER_HOME="$(a12_gradle_user_home "$ROOT")"
+SOURCE_WRAPPER_DISTS="$SOURCE_GRADLE_USER_HOME/wrapper/dists"
 rm -rf "$WORK_DIRECTORY"
-mkdir -p "$WORK_DIRECTORY"
+mkdir -p "$WORK_DIRECTORY" "$GRADLE_HOME/wrapper"
+[[ -d "$SOURCE_WRAPPER_DISTS" ]] || {
+  echo "resolved Gradle wrapper distribution not found: $SOURCE_WRAPPER_DISTS" >&2
+  exit 2
+}
+# Dependency caches and init scripts stay isolated. Only the already-verified wrapper distribution is shared,
+# so an anonymous consumer smoke cannot fail on or be delayed by a redundant Gradle download.
+ln -s "$SOURCE_WRAPPER_DISTS" "$GRADLE_HOME/wrapper/dists"
 
 "${deadline[@]}" 120 \
   "$ROOT/build.sh" \

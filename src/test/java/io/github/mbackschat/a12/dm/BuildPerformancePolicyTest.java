@@ -58,10 +58,13 @@ class BuildPerformancePolicyTest {
     @Test
     void buildWrapperDerivesTheSharedHomeFromTheCommonGitDirectory() throws IOException {
         String script = Files.readString(locate("build.sh"));
+        String environment = Files.readString(locate("scripts/gradle-environment.sh"));
 
-        assertTrue(script.contains("rev-parse --path-format=absolute --git-common-dir"),
+        assertTrue(script.contains("scripts/gradle-environment.sh"),
+                "the build wrapper and release consumers must share one Gradle-home derivation");
+        assertTrue(environment.contains("rev-parse --path-format=absolute --git-common-dir"),
                 "a linked worktree must resolve the primary checkout instead of using its own filesystem parent");
-        assertTrue(script.contains("COMMON_CHECKOUT"),
+        assertTrue(environment.contains("common_checkout"),
                 "the isolated Gradle home must be anchored at the common checkout shared by every worktree");
     }
 

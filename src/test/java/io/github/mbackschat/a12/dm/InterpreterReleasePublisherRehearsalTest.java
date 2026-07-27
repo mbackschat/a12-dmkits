@@ -96,6 +96,34 @@ class InterpreterReleasePublisherRehearsalTest {
     }
 
     @Test
+    void isolatedConsumerHomesReuseTheAlreadyResolvedGradleDistribution() throws Exception {
+        var interpreterBuild = Files.readString(repoFile("interpreter/build.gradle"));
+        var consumerTasks = interpreterBuild.substring(
+                interpreterBuild.indexOf("def verifyExternalInterpreterConsumer"),
+                interpreterBuild.indexOf("def verifyInterpreterMavenPublication"));
+        assertTrue(
+                interpreterBuild.contains("gradle.gradleHomeDir"),
+                "in-build standalone consumers must use the already-running Gradle distribution");
+        assertFalse(
+                consumerTasks.contains("rootProject.file('gradlew')"),
+                "an isolated consumer home must not force the wrapper to download Gradle again");
+        assertEquals(
+                2,
+                consumerTasks.lines()
+                        .filter(line -> line.contains("currentGradleExecutable.get().absolutePath"))
+                        .count(),
+                "both JVM and JS standalone consumers must reuse the current distribution");
+
+        var smoke = Files.readString(repoFile("scripts/smoke-interpreter-public-release.sh"));
+        assertTrue(smoke.contains(". \"$ROOT/scripts/gradle-environment.sh\""));
+        assertTrue(smoke.contains("a12_gradle_user_home"));
+        assertTrue(smoke.contains("ln -s \"$SOURCE_WRAPPER_DISTS\" \"$GRADLE_HOME/wrapper/dists\""));
+        assertTrue(
+                smoke.contains("GRADLE_USER_HOME=\"$GRADLE_HOME\""),
+                "only the distribution is reused; dependency caches and init scripts must remain isolated");
+    }
+
+    @Test
     void stageConsumesTheQualifiedMirrorWithoutASecondAssembly() throws Exception {
         var core = Files.readString(repoFile("scripts/interpreter-release-publisher-core.sh"));
         var stage = core.substring(

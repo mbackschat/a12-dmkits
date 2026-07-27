@@ -1145,6 +1145,17 @@ def prepareExternalInterpreterJsConsumer = tasks.register(
 def publishInterpreterToStaging = tasks.named(
     'publishAllPublicationsToInterpreterStagingRepository',
 )
+def currentGradleExecutable = provider {
+    def unixExecutable = new File(gradle.gradleHomeDir, 'bin/gradle')
+    if (unixExecutable.isFile()) {
+        return unixExecutable
+    }
+    def windowsExecutable = new File(gradle.gradleHomeDir, 'bin/gradle.bat')
+    if (windowsExecutable.isFile()) {
+        return windowsExecutable
+    }
+    throw new GradleException("current Gradle executable not found under ${gradle.gradleHomeDir}")
+}
 def verifyExternalInterpreterConsumer = tasks.register(
     'verifyExternalInterpreterMavenConsumer',
     Exec,
@@ -1168,7 +1179,7 @@ def verifyExternalInterpreterConsumer = tasks.register(
         // A separate Gradle home proves the public consumer has no such repository or project substitution.
         environment 'GRADLE_USER_HOME', externalConsumerGradleHome.get().asFile.absolutePath
         commandLine(
-            rootProject.file('gradlew').absolutePath,
+            currentGradleExecutable.get().absolutePath,
             '--no-daemon',
             '--console=plain',
             '--project-dir',
@@ -1201,7 +1212,7 @@ def verifyExternalInterpreterJsConsumer = tasks.register(
         // The isolated public consumer resolves third-party JS dependencies from npm itself, not Yarn's optional registry proxy.
         environment 'YARN_REGISTRY', 'https://registry.npmjs.org'
         commandLine(
-            rootProject.file('gradlew').absolutePath,
+            currentGradleExecutable.get().absolutePath,
             '--no-daemon',
             '--console=plain',
             '--project-dir',
