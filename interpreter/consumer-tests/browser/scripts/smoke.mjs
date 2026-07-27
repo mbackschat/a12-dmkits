@@ -57,6 +57,127 @@ await withStaticServer(async (url) => {
         `showcase bundle sizes are invalid: ${gzipBytes}/${uncompressedBytes}`,
       );
     }
+    const bundleFact = await showcase.locator("#bundle-size").locator("..")
+      .textContent();
+    if (!bundleFact?.includes("interpreter JS bundle") ||
+      bundleFact.includes("entry")) {
+      throw new Error(`showcase bundle label uses build jargon: ${bundleFact}`);
+    }
+    if (
+      await showcase.locator("a[href*='mgm-tp.com']").count() !== 0
+    ) {
+      throw new Error(
+        "independent showcase links to an unrelated operator policy",
+      );
+    }
+    const exampleDownloads = await showcase.locator(".example-downloads")
+      .textContent();
+    if (
+      !exampleDownloads?.includes("No download is needed") ||
+      !exampleDownloads.includes("inspect or reuse")
+    ) {
+      throw new Error(
+        `showcase does not explain its optional downloads: ${exampleDownloads}`,
+      );
+    }
+    const controlHierarchy = await showcase.evaluate(() => ({
+      legacyControlBar: document.querySelector(".controls") !== null,
+      scenario: document.querySelector("#scenario")
+        ?.closest(".example-picker") !== null,
+      workspaceMode: document.querySelector("#workspace-mode")
+        ?.closest("details.workspace-controls") !== null,
+      entryModel: document.querySelector("#entry-model-select")
+        ?.closest("#entry-model-control") !== null,
+      validationScope: document.querySelector("#validation-scope")
+        ?.closest(".actions") !== null,
+    }));
+    if (
+      controlHierarchy.legacyControlBar ||
+      !controlHierarchy.scenario ||
+      !controlHierarchy.workspaceMode ||
+      !controlHierarchy.entryModel ||
+      !controlHierarchy.validationScope
+    ) {
+      throw new Error(
+        `showcase controls have no task hierarchy: ${
+          JSON.stringify(controlHierarchy)
+        }`,
+      );
+    }
+    if (!(await showcase.locator("#entry-model-control").isHidden())) {
+      throw new Error("entry model control is visible before custom files");
+    }
+    const manual = showcase.locator("details.manual");
+    if (await manual.count() !== 1) {
+      throw new Error("showcase does not expose a single instruction section");
+    }
+    if (await manual.getAttribute("open") !== null) {
+      throw new Error("showcase instructions are expanded by default");
+    }
+    const manualText = await manual.textContent();
+    for (const expected of [
+      "How to use this page",
+      "built-in example",
+      "workspace folder",
+      "Finite file map",
+      "On-demand provider",
+      "Full document",
+      "Relevant scenario group",
+      "Nothing is uploaded",
+    ]) {
+      if (!manualText?.includes(expected)) {
+        throw new Error(
+          `showcase manual is missing ${JSON.stringify(expected)}: ${manualText}`,
+        );
+      }
+    }
+    if ((await showcase.getByText("What this proves").count()) !== 0) {
+      throw new Error("showcase retains the marketing-only proof section");
+    }
+    if (
+      (await showcase.getByText("01 · Input").count()) !== 0 ||
+      (await showcase.getByText("02 · Output").count()) !== 0
+    ) {
+      throw new Error("showcase retains decorative workflow numbering");
+    }
+    const uploadButtons = showcase.locator(".file-button");
+    if (await uploadButtons.count() !== 3) {
+      throw new Error("showcase does not expose three upload buttons");
+    }
+    for (let index = 0; index < 3; index += 1) {
+      const uploadButton = uploadButtons.nth(index);
+      if (await uploadButton.locator(".file-button-label").count() !== 1) {
+        throw new Error(`upload control ${index + 1} has no button surface`);
+      }
+      const buttonStyle = await uploadButton.locator(".file-button-label")
+        .evaluate((element) => {
+          const style = getComputedStyle(element);
+          return {
+            borderStyle: style.borderStyle,
+            paddingBlockStart: Number.parseFloat(style.paddingBlockStart),
+            paddingInlineStart: Number.parseFloat(style.paddingInlineStart),
+          };
+        });
+      if (
+        buttonStyle.borderStyle === "none" ||
+        buttonStyle.paddingBlockStart < 8 ||
+        buttonStyle.paddingInlineStart < 12
+      ) {
+        throw new Error(
+          `upload control ${index + 1} is not visibly button-shaped`,
+        );
+      }
+      const nativeInput = uploadButton.locator("input[type=file]");
+      const nativeBounds = await nativeInput.boundingBox();
+      if (
+        nativeBounds !== null &&
+        (nativeBounds.width > 1 || nativeBounds.height > 1)
+      ) {
+        throw new Error(
+          `upload control ${index + 1} exposes native filename chrome`,
+        );
+      }
+    }
     const assertOutput = async (operation, expected) => {
       const output = showcase.locator(
         `#result[data-operation='${operation}']`,
@@ -116,6 +237,7 @@ await withStaticServer(async (url) => {
     await showcase.click("#compute");
     await assertOutput("compute", ["/Permit/ReviewedArea", '"value": "125"']);
 
+    await showcase.click(".workspace-controls summary");
     await showcase.selectOption("#workspace-mode", "file-map");
     await showcase.selectOption("#scenario", "include-typedef");
     await showcase.locator("#workspace-folder-upload").setInputFiles(
@@ -124,6 +246,9 @@ await withStaticServer(async (url) => {
     await showcase.locator(
       "#status[data-state=passed]",
     ).filter({hasText: "Workspace files loaded"}).waitFor();
+    if (!(await showcase.locator("#entry-model-control").isVisible())) {
+      throw new Error("entry model control stays hidden after custom files");
+    }
     await showcase.selectOption("#entry-model-select", "permit-single");
     await showcase.click("#prepare");
     await showcase.click("#validate");

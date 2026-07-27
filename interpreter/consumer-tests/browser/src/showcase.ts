@@ -7,7 +7,9 @@ import {
 import {
   BundledWorkspaceDelivery,
   loadShowcaseManifest,
+  offlineUseWasEnabled,
   prepareOfflineShell,
+  type ShowcaseManifest,
 } from "./delivery.js";
 
 type ScenarioId =
@@ -121,6 +123,10 @@ const entryModelSelect = requiredElement(
   "#entry-model-select",
   HTMLSelectElement,
 );
+const entryModelControl = requiredElement(
+  "#entry-model-control",
+  HTMLLabelElement,
+);
 const validationScopeSelect = requiredElement(
   "#validation-scope",
   HTMLSelectElement,
@@ -128,6 +134,10 @@ const validationScopeSelect = requiredElement(
 const providerFailureSelect = requiredElement(
   "#provider-failure",
   HTMLSelectElement,
+);
+const enableOfflineButton = requiredElement(
+  "#enable-offline",
+  HTMLButtonElement,
 );
 const relevantSelection = requiredElement(
   "#relevant-selection",
@@ -160,6 +170,7 @@ const operationButtons = Array.from(
 let preparedState: PreparedState | undefined;
 let uploadedWorkspace: UploadedWorkspace | undefined;
 let uploadRevision = 0;
+let bundledManifest: ShowcaseManifest | undefined;
 let bundledDelivery: BundledWorkspaceDelivery | undefined;
 
 const currentScenario = (): Scenario =>
@@ -334,6 +345,7 @@ const snapshot = async (): Promise<{
 const selectScenario = async (): Promise<void> => {
   const scenario = currentScenario();
   uploadedWorkspace = undefined;
+  entryModelControl.hidden = true;
   entryModelSelect.disabled = true;
   entryModelSelect.replaceChildren(new Option("Bundled scenario entry"));
   documentInput.value = JSON.stringify(
@@ -383,6 +395,7 @@ const loadWorkspaceFiles = async (files: FileList): Promise<void> => {
     ...admitted.modelIds.map((modelId) => new Option(modelId, modelId)),
   );
   entryModelSelect.disabled = false;
+  entryModelControl.hidden = false;
   scenarioNote.textContent =
     `Loaded ${sources.length} workspace file${sources.length === 1 ? "" : "s"} locally. Select the entry model, then prepare.`;
   status.dataset.state = "passed";
@@ -431,6 +444,37 @@ const loadBundleSize = async (): Promise<void> => {
     `${Math.round(measured.uncompressedBytes / 1_000)} kB`;
 };
 
+const exampleDocumentPaths = (): readonly string[] =>
+  Object.values(scenarios).map(({inputPath}) => inputPath);
+
+const markOfflineReady = (): void => {
+  enableOfflineButton.disabled = true;
+  enableOfflineButton.textContent = "Offline use enabled";
+  status.dataset.offlineReady = "true";
+  status.dataset.state = "passed";
+  status.textContent = "Offline use enabled for the built-in showcase files.";
+};
+
+const enableOfflineUse = async (): Promise<void> => {
+  const manifest = bundledManifest;
+  if (manifest === undefined) {
+    throw new Error("showcase manifest is not initialized");
+  }
+  enableOfflineButton.disabled = true;
+  status.dataset.state = "running";
+  status.textContent = "Preparing built-in files for offline use…";
+  try {
+    await prepareOfflineShell(manifest.revision, exampleDocumentPaths());
+    const offlineDelivery = new BundledWorkspaceDelivery(manifest, true);
+    await offlineDelivery.loadAll();
+    bundledDelivery = offlineDelivery;
+    markOfflineReady();
+  } catch (error) {
+    enableOfflineButton.disabled = false;
+    throw error;
+  }
+};
+
 export const startShowcase = async (): Promise<void> => {
   scenarioSelect.addEventListener("change", () => {
     void withOperation(selectScenario);
@@ -442,10 +486,16 @@ export const startShowcase = async (): Promise<void> => {
     preparedState = undefined;
   });
   providerFailureSelect.addEventListener("change", () => {
+    if (providerFailureSelect.value !== "none") {
+      workspaceModeSelect.value = "provider";
+    }
     preparedState = undefined;
   });
   entryModelSelect.addEventListener("change", () => {
     preparedState = undefined;
+  });
+  enableOfflineButton.addEventListener("click", () => {
+    void withOperation(enableOfflineUse);
   });
   for (const selector of ["#workspace-folder-upload", "#workspace-upload"]) {
     requiredElement(selector, HTMLInputElement).addEventListener(
@@ -529,14 +579,19 @@ export const startShowcase = async (): Promise<void> => {
   );
 
   await Promise.all([loadReleaseIdentity(), loadBundleSize()]);
+  const offlineEnabled = offlineUseWasEnabled();
+  bundledManifest = await loadShowcaseManifest(offlineEnabled);
   bundledDelivery = new BundledWorkspaceDelivery(
-    await loadShowcaseManifest(),
+    bundledManifest,
+    offlineEnabled,
   );
   await selectScenario();
   await prepareWorkspace();
-  await prepareOfflineShell(
-    bundledDelivery.revision,
-    Object.values(scenarios).map(({inputPath}) => inputPath),
-  );
-  status.dataset.offlineReady = "true";
+  if (offlineEnabled) {
+    await prepareOfflineShell(
+      bundledDelivery.revision,
+      exampleDocumentPaths(),
+    );
+    markOfflineReady();
+  }
 };

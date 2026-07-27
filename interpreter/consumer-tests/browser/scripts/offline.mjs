@@ -36,9 +36,58 @@ await withStaticServer(async (url) => {
     });
     const page = await openCheckedPage(context, url);
     await withDeadline(
+      "offline control readiness",
+      Promise.race([
+        page.locator("#enable-offline").waitFor({state: "attached"}),
+        page.locator("#status[data-offline-ready=true]").waitFor(),
+      ]),
+    );
+    const initialClientState = await page.evaluate(async () => ({
+      cookies: document.cookie,
+      localStorageEntries: localStorage.length,
+      sessionStorageEntries: sessionStorage.length,
+      cacheNames: await caches.keys(),
+      serviceWorkers: (await navigator.serviceWorker.getRegistrations()).length,
+    }));
+    if (
+      initialClientState.cookies !== "" ||
+      initialClientState.localStorageEntries !== 0 ||
+      initialClientState.sessionStorageEntries !== 0 ||
+      initialClientState.cacheNames.length !== 0 ||
+      initialClientState.serviceWorkers !== 0
+    ) {
+      throw new Error(
+        `showcase writes client storage before explicit offline use: ${
+          JSON.stringify(initialClientState)
+        }`,
+      );
+    }
+    await page.click(".offline-controls summary");
+    await page.click("#enable-offline");
+    await withDeadline(
       "offline readiness",
       page.locator("#status[data-offline-ready=true]").waitFor(),
     );
+    const enabledClientState = await page.evaluate(async () => ({
+      cookies: document.cookie,
+      localStorageEntries: localStorage.length,
+      sessionStorageEntries: sessionStorage.length,
+      cacheNames: await caches.keys(),
+      serviceWorkers: (await navigator.serviceWorker.getRegistrations()).length,
+    }));
+    if (
+      enabledClientState.cookies !== "" ||
+      enabledClientState.localStorageEntries !== 0 ||
+      enabledClientState.sessionStorageEntries !== 0 ||
+      enabledClientState.cacheNames.length === 0 ||
+      enabledClientState.serviceWorkers !== 1
+    ) {
+      throw new Error(
+        `explicit offline use has an unexpected storage footprint: ${
+          JSON.stringify(enabledClientState)
+        }`,
+      );
+    }
 
     const revision = await page.locator("#workspace-summary")
       .getAttribute("data-manifest-revision");
@@ -46,10 +95,12 @@ await withStaticServer(async (url) => {
       throw new Error("showcase did not expose its manifest revision");
     }
 
-    await page.selectOption("#workspace-mode", "provider");
     await page.click(".failure-controls summary");
     for (const {reason, expectedDiagnostic} of failureCases) {
       await page.selectOption("#provider-failure", reason);
+      if (await page.locator("#workspace-mode").inputValue() !== "provider") {
+        throw new Error(`${reason} did not select provider loading`);
+      }
       await page.locator("#result").evaluate((element) => {
         delete element.dataset.operation;
       });
@@ -75,7 +126,6 @@ await withStaticServer(async (url) => {
 
     await page.selectOption("#provider-failure", "none");
     await page.selectOption("#scenario", "include-typedef");
-    await page.selectOption("#workspace-mode", "provider");
     await page.click("#prepare");
     await page.click("#validate");
     const onlineResult = await page.locator(
@@ -115,6 +165,7 @@ await withStaticServer(async (url) => {
       page.locator("#status[data-offline-ready=true]").waitFor(),
     );
     await page.selectOption("#scenario", "include-typedef");
+    await page.click(".workspace-controls summary");
     await page.selectOption("#workspace-mode", "provider");
     await page.click("#prepare");
     await page.click("#validate");

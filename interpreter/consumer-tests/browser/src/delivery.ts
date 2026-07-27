@@ -16,7 +16,7 @@ export interface ShowcaseManifest {
   readonly models: readonly ShowcaseManifestModel[];
 }
 
-const INDEX_CACHE = "a12-interpreter-showcase-index";
+const LEGACY_INDEX_CACHE = "a12-interpreter-showcase-index";
 const MODEL_CACHE_PREFIX = "a12-interpreter-showcase-models:";
 const SHELL_CACHE_PREFIX = "a12-interpreter-showcase-shell:";
 const SHA256 = /^[0-9a-f]{64}$/;
@@ -78,38 +78,42 @@ const validateManifest = (value: unknown): ShowcaseManifest => {
 
 const removeStaleRevisionCaches = async (revision: string): Promise<void> => {
   const retained = new Set([
-    INDEX_CACHE,
     `${MODEL_CACHE_PREFIX}${revision}`,
     `${SHELL_CACHE_PREFIX}${revision}`,
   ]);
   await Promise.all((await caches.keys())
     .filter((name) =>
-      (name.startsWith(MODEL_CACHE_PREFIX) ||
+      (name === LEGACY_INDEX_CACHE ||
+        name.startsWith(MODEL_CACHE_PREFIX) ||
         name.startsWith(SHELL_CACHE_PREFIX)) &&
       !retained.has(name))
     .map((name) => caches.delete(name)));
 };
 
-export const loadShowcaseManifest = async (): Promise<ShowcaseManifest> => {
+export const offlineUseWasEnabled = (): boolean =>
+  navigator.serviceWorker.controller !== null;
+
+export const loadShowcaseManifest = async (
+  offlineEnabled: boolean,
+): Promise<ShowcaseManifest> => {
   const url = publicUrl("showcase-manifest.json");
-  const index = await caches.open(INDEX_CACHE);
   let response: Response;
-  let fromNetwork = false;
   try {
     response = await networkResponse(url);
-    fromNetwork = true;
   } catch {
-    const cached = await index.match(url);
+    if (!offlineEnabled) {
+      throw new Error("showcase manifest is unavailable");
+    }
+    const cached = await caches.match(url);
     if (cached === undefined) {
       throw new Error("showcase manifest is unavailable online and offline");
     }
     response = cached;
   }
   const manifest = validateManifest(await response.clone().json());
-  if (fromNetwork) {
-    await index.put(url, response);
+  if (offlineEnabled) {
+    await removeStaleRevisionCaches(manifest.revision);
   }
-  await removeStaleRevisionCaches(manifest.revision);
   return manifest;
 };
 
@@ -140,9 +144,11 @@ const sourceBytes = async (
 
 export class BundledWorkspaceDelivery {
   readonly #manifest: ShowcaseManifest;
+  readonly #offlineEnabled: boolean;
 
-  constructor(manifest: ShowcaseManifest) {
+  constructor(manifest: ShowcaseManifest, offlineEnabled: boolean) {
     this.#manifest = manifest;
+    this.#offlineEnabled = offlineEnabled;
   }
 
   get revision(): string {
@@ -162,9 +168,9 @@ export class BundledWorkspaceDelivery {
       throw new ModelSourceProviderError("cancelled", modelId);
     }
     const url = publicUrl(model.path);
-    const cache = await caches.open(
-      `${MODEL_CACHE_PREFIX}${this.revision}`,
-    );
+    const cache = this.#offlineEnabled
+      ? await caches.open(`${MODEL_CACHE_PREFIX}${this.revision}`)
+      : undefined;
     let response: Response;
     let fromNetwork = false;
     try {
@@ -176,7 +182,7 @@ export class BundledWorkspaceDelivery {
           cause: error,
         });
       }
-      const cached = await cache.match(url);
+      const cached = await cache?.match(url);
       if (cached === undefined) {
         throw new ModelSourceProviderError("unavailable", modelId, {
           cause: error,
@@ -189,7 +195,7 @@ export class BundledWorkspaceDelivery {
       model,
       context.maximumBytes,
     );
-    if (fromNetwork) {
+    if (fromNetwork && cache !== undefined) {
       await cache.put(
         url,
         new Response(bytes, {
