@@ -124,7 +124,7 @@ The interpreter has its **own multiplatform AST** and does **not** import `dm.co
 1. **No dependency on `cli`/dmtool** — they consume it, never the reverse.
 2. **No *runtime* dependency on the kernel** — the whole point. The kernel appears only as a **test-only** conformance oracle.
 3. **A clean data contract, not a shared object model** (§6) — owns its AST and a kernel-free prepared-DM-JSON → `ModelDef` loader (`load.ModelLoader`, JVM + JS — WI-2; it rejects unprepared residue loud, IF145); the bounded commonMain raw-workspace assembler is complete across JVM, Node, Chrome, and dmtool (IF224).
-4. **Eligible for independent publication** — the dependency boundary permits Maven (JVM) + npm-compatible (JS) artifacts under their own coordinates; GitHub-only publication/ABI work is active IG85 work.
+4. **Independently published** — the dependency boundary permits Maven (JVM) + npm-compatible (JS) artifacts under their own coordinates; IF226 records the completed GitHub-only publication and anonymous consumer proof.
 
 Hold these from day one and extraction (§8) stays cheap.
 
@@ -147,7 +147,7 @@ Hold these from day one and extraction (§8) stays cheap.
 - The kernel **differential tests stay in `:adapter`** (not `:interpreter`'s test source) — so `:interpreter` carries **zero** kernel dependency even in test scope, which is exactly what keeps it cleanly publishable.
 - `:interpreter` never depends on `:` (rulekit core), `:adapter`, or `:cli` — they consume it, never the reverse.
 
-**The local publication boundary and artifacts are satisfied; public deployment is not.** `:interpreter` is kernel/dmtool-free and now stages Maven/KMP publications plus the functional npm-compatible TypeScript package, locks the intentional Kotlin/TypeScript contracts and exact package contents, and executes fresh standalone Kotlin/JVM, Kotlin/JS, and TypeScript consumers. [IG85](INTERPRETER-GAPS.md) remains open only for anonymous consumption from the public GitHub release repository and Pages Maven tree under [INTERPRETER-RELEASE-PROPOSAL](INTERPRETER-RELEASE-PROPOSAL.md).
+**The publication boundary is satisfied end to end.** `:interpreter` is kernel/dmtool-free, stages Maven/KMP publications plus the functional npm-compatible TypeScript package, locks the intentional Kotlin/TypeScript contracts and exact package contents, and executes fresh standalone Kotlin/JVM, Kotlin/JS, and TypeScript consumers. Stable `v0.9.1` is published from the public GitHub release repository; IF226 records the anonymous release-asset and Pages Maven consumers that close the delivery boundary under [INTERPRETER-RELEASE-PROPOSAL](INTERPRETER-RELEASE-PROPOSAL.md).
 
 **Extraction to a sibling repo remains a *future option*, no longer a prerequisite.** Do it **only if** the interpreter earns an independent life — a non-dmtool consumer needs its own release cadence, or it ships as standalone OSS with its own issue tracker. Because §7's hygiene is lint-enforced from day one, that extraction stays a *lift* (move the module + its tests, point dmtool at the published dep), not a rewrite — so deferring it costs nothing.
 

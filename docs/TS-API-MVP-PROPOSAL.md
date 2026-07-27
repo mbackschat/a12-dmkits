@@ -4,7 +4,7 @@
 
 Extracted from the three end-state vision proposals — [OPERATOR-API-PROPOSAL](OPERATOR-API-PROPOSAL.md), the [archived INTERPRETER-API-PROPOSAL](archived/INTERPRETER-API-PROPOSAL.md), and [ZOD-INTEGRATION-PROPOSAL](ZOD-INTEGRATION-PROPOSAL.md). This doc names the **smallest complete, publishable slice to build first**. The implemented interpreter contract has since graduated into [INTERPRETER-API-SPEC](INTERPRETER-API-SPEC.md), and every unbuilt interpreter capability is retained with a re-open trigger in [INTERPRETER-API-GAPS](INTERPRETER-API-GAPS.md).
 
-The developer-library wave has started. [INTERPRETER-RELEASE-PROPOSAL](INTERPRETER-RELEASE-PROPOSAL.md) activated IG68, IG85, and IG86; portable workspace preparation and browser first-answer qualification have since completed as IF224/IF225, while public delivery remains under IG85. Its first delivery is Track B plus browser/package qualification. Owner decision 2026-07-26: Track A is a separate artifact that comes much later, and Track C follows its owning core only if selected.
+The developer-library wave is complete. [INTERPRETER-RELEASE-PROPOSAL](INTERPRETER-RELEASE-PROPOSAL.md) activated IG68, IG85, and IG86; portable workspace preparation, browser first-answer qualification, and anonymous public delivery completed as IF224–IF226. Its first delivery is Track B plus browser/package qualification. Owner decision 2026-07-26: Track A is a separate artifact that comes much later, and Track C follows its owning core only if selected.
 
 The decision-support behind *why this family and how much of it* — the motivation, worked before/after, and per-layer scope reading that this slice sequences — is [TS-API-STUDY](TS-API-STUDY.md).
 
@@ -57,4 +57,4 @@ Everything in §4 then follows, consumer-driven.
 
 ## 6. Exit
 
-When this increment ships, its pieces are marked done in the interpreter vision proposal (its contract is the durable record), and the corresponding rows here drain. Then archive this sequencing doc; the later Operator and Zod products remain in their own proposals. The interpreter release carries completed IF224/IF225 and resolves IG85.
+The increment shipped with IF224–IF226 and its pieces are marked done in the interpreter vision proposal (the durable contract). The later Operator and Zod products remain in their own proposals.

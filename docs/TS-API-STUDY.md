@@ -138,11 +138,11 @@ The family sorts cleanly into *build-now* and *design-but-defer* by one test: **
 
 | Verdict | Layers | Rationale |
 |---|---|---|
-| **Build now** (the [MVP](TS-API-MVP-PROPOSAL.md)) | `@mbackschat/a12-interpreter` core (workspace/provider + transport/ownership + validate/compute + custom SPIs) and browser qualification | the GitHub Pages showcase is the selected consumer; it activated the workspace/publication/browser slice, completed workspace preparation/browser qualification as IF224/IF225, and leaves IG85 active |
+| **Built** (the [MVP](TS-API-MVP-PROPOSAL.md)) | `@mbackschat/a12-interpreter` core (workspace/provider + transport/ownership + validate/compute + custom SPIs) and browser qualification | the GitHub Pages showcase is the selected consumer; it activated and completed the workspace/publication/browser slice as IF224–IF226 |
 | **Design, defer to its selected follow-up** | JVM Kernel `IDocumentRtService` drop-in; interpreter service registry + pool, Worker coordinator, candidate programs, persistent form editor; `@mbackschat/a12-interpreter-zod` transport/report; wider zones and patterns | the drop-in has a concrete compatibility target but follows the portable core; the other layers still lack a consumer that determines their shape |
 | **Drop from a first cut** | `@mbackschat/a12-interpreter-zod` §8 owner-bound snapshot adapter | the proposal's own open question; not a perf win |
 
-**Status update, 2026-07-27:** the GitHub Pages showcase is the first external interpreter consumer. Its packed-package browser qualification completes the workspace/core and first-answer slice as IF224/IF225; public delivery remains under IG85. It does not justify the optional service registry, pooling, editor, candidate-program, Zod, or complete direct-operator products; those still wait for a consumer that determines their shape.
+**Status update, 2026-07-27:** the GitHub Pages showcase is the first external interpreter consumer. Its packed-package browser qualification and public delivery complete the workspace/core, first-answer, and publication slice as IF224–IF226. It does not justify the optional service registry, pooling, editor, candidate-program, Zod, or complete direct-operator products; those still wait for a consumer that determines their shape.
 
 ## 8. Provenance and caveats
 

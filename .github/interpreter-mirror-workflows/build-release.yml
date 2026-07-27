@@ -140,4 +140,7 @@ jobs:
         shell: bash
         run: |
           test "$(gh release view "${{ inputs.release_tag }}" --json isDraft -q .isDraft)" = true
+          mirror_sha="$(git rev-parse HEAD)"
           git push --atomic origin HEAD:main "+refs/tags/${{ inputs.release_tag }}"
+          gh release edit "${{ inputs.release_tag }}" --target "$mirror_sha" --verify-tag
+          test "$(gh release view "${{ inputs.release_tag }}" --json targetCommitish -q .targetCommitish)" = "$mirror_sha"

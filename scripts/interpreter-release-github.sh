@@ -72,8 +72,22 @@ release_host_download_assets() {
     --dir "$2"
 }
 
+release_host_ensure_pages() {
+  local endpoint build_type
+  endpoint="repos/$RELEASE_HOST_REPOSITORY/pages"
+  if build_type="$(gh api "$endpoint" --jq '.build_type // empty' 2>/dev/null)"; then
+    [[ "$build_type" == "workflow" ]] ||
+      gh api --method PUT "$endpoint" -f build_type=workflow >/dev/null
+  else
+    # A new public mirror has no Pages site until it is explicitly created. Configure that repository
+    # boundary before dispatch so the deployment cannot fail later inside actions/configure-pages.
+    gh api --method POST "$endpoint" -f build_type=workflow >/dev/null
+  fi
+}
+
 release_host_deploy_pages() {
   local tag="$1" previous run_id attempts
+  release_host_ensure_pages
   previous="$(release_host_run_for_title deploy-pages.yml "Deploy Pages for $tag" || true)"
   gh workflow run deploy-pages.yml \
     --repo "$RELEASE_HOST_REPOSITORY" \

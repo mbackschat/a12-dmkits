@@ -8,7 +8,7 @@
 
 _None._
 
-The public v1 surface and browser qualification are implemented locally. Anonymous publication is release gap IG85, not missing API design.
+The public v1 surface, browser qualification, and anonymous publication are complete as IF224–IF226. This ledger therefore tracks only later API products, not release delivery.
 
 ## 2. Deferred with re-open triggers
 

@@ -64,6 +64,8 @@ class InterpreterReleasePublisherRehearsalTest {
         assertTrue(build.contains("interpreter_release_verify_payload"));
         assertTrue(build.contains("interpreter_release_verify_commit_identities"));
         assertTrue(build.contains("git push --atomic origin HEAD:main \"+refs/tags/${{ inputs.release_tag }}\""));
+        assertTrue(build.contains("gh release edit \"${{ inputs.release_tag }}\" --target \"$mirror_sha\" --verify-tag"));
+        assertTrue(build.contains("--json targetCommitish -q .targetCommitish"));
         assertTrue(build.contains("test \"$(gh release view \"${{ inputs.release_tag }}\" --json isDraft -q .isDraft)\" = true"));
         assertTrue(
                 build.indexOf("- name: Upload the immutable draft assets")
@@ -93,6 +95,29 @@ class InterpreterReleasePublisherRehearsalTest {
 
         var backend = Files.readString(repoFile("scripts/interpreter-release-github.sh"));
         assertTrue(backend.contains("smoke-interpreter-public-release.sh"));
+    }
+
+    @Test
+    void productionGoLiveBootstrapsFreshGitHubPagesBeforeDeployment() throws Exception {
+        var backend = Files.readString(repoFile("scripts/interpreter-release-github.sh"));
+        var bootstrapStart = backend.indexOf("release_host_ensure_pages()");
+        assertTrue(bootstrapStart >= 0, "the production backend must own fresh-repository Pages setup");
+        var pagesBootstrap = backend.substring(
+                bootstrapStart,
+                backend.indexOf("release_host_deploy_pages()"));
+        var pagesDeployment = backend.substring(
+                backend.indexOf("release_host_deploy_pages()"),
+                backend.indexOf("release_host_publish_nonlatest()"));
+
+        assertTrue(pagesBootstrap.contains("gh api"));
+        assertTrue(pagesBootstrap.contains("--method POST"));
+        assertTrue(pagesBootstrap.contains("--method PUT"));
+        assertTrue(pagesBootstrap.contains("build_type=workflow"));
+        var bootstrapCall = pagesDeployment.indexOf("release_host_ensure_pages");
+        var workflowDispatch = pagesDeployment.indexOf("gh workflow run deploy-pages.yml");
+        assertTrue(
+                bootstrapCall >= 0 && bootstrapCall < workflowDispatch,
+                "a new public repository must enable Pages in workflow mode before its first deployment");
     }
 
     @Test

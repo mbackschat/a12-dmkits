@@ -12,7 +12,7 @@
 
 ## 1. Open (to fix)
 
-- **IG85 — implementation and local delivery proof are complete; anonymous public-GitHub consumption remains (delivery gap, found 2026-07-19; activated 2026-07-26; R3.1–R3.3 completed 2026-07-26).** The interpreter shares the main repository's version; root/JVM/JS KMP publications use that identity in the future GitHub Pages Maven layout; the functional `@mbackschat/a12-interpreter` tarball carries the same version with generated `.d.ts`; reviewed Kotlin/JVM/KLIB and TypeScript ABI locks; exact npm/Maven package allowlists; dependency, secret, and checksum gates; and fresh standalone Kotlin/JVM, Kotlin/JS, and strict TypeScript consumers. The Kotlin/JS consumer proves the published KLIB contributes its transitive `big.js:6.2.2` npm dependency before executing real decimal validation/computation. IF173 protocol v2 measures the actual npm tarball and clean staged Maven repository alongside the existing JVM/KLIB/native bases; an older revision that predates a delivery surface records `NOT_AVAILABLE_IN_BASELINE` and receives no fictional numeric delta. The row remains open only until R8 consumes the release assets and Pages Maven tree anonymously from the new public GitHub repository.
+(none)
 
 New semantic or performance defects belong here only while they have actionable work and a defined completion gate.
 
