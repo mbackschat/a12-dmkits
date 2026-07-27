@@ -2,7 +2,7 @@ plugins {
     id 'java-library'
     // Kotlin JVM — for the interpreter↔kernel differential tests (laws/*DiffTest.kt) + the KernelCustomConditions
     // bridge in main; consumes :interpreter. See docs/INTERPRETER-ARCHITECTURE.md (the kernel-as-oracle approach).
-    id 'org.jetbrains.kotlin.jvm' version '2.2.0'
+    id 'org.jetbrains.kotlin.jvm'
 }
 
 // The kernel-adapter (PROJECT-DESIGN D15 / N8 tier 3): an OPT-IN, Java-only boundary around unstable

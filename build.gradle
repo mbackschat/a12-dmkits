@@ -1,6 +1,10 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
+    // Pin Kotlin once at the root: Gradle reports independent loads in :adapter and :interpreter as an
+    // unsupported configuration that may break the build.
+    id 'org.jetbrains.kotlin.jvm' version '2.2.0' apply false
+    id 'org.jetbrains.kotlin.multiplatform' version '2.2.0' apply false
 }
 
 group = 'io.github.mbackschat.a12.dm'
@@ -161,6 +165,7 @@ tasks.register('docGuardTest', Test) {
     }
     guardInputs(it, [
             'docs/API-GUIDE.md': file('docs/API-GUIDE.md'),
+            'root build'       : file('build.gradle'),
             'gradle.properties': file('gradle.properties'),
             'cache smoke'      : file('scripts/verify-build-cache.sh'),
             'demo verifier'    : file('scripts/verify-demos.sh'),
@@ -168,6 +173,7 @@ tasks.register('docGuardTest', Test) {
             'nightly workflow' : file('.github/workflows/nightly-performance.yml'),
             'perf launcher'    : file('scripts/perf.sh'),
             'adapter build'    : file('adapter/build.gradle'),
+            'interpreter build': file('interpreter/build.gradle'),
             'native capture'   : file('scripts/capture-native-config.sh'),
             // dsl sources + the operator catalog moved to :rulekit in the Stage-4 module cut.
             'dsl sources'      : fileTree('rulekit/src/main/java/io/github/mbackschat/a12/dm/rulekit/dsl') { include '**/*.java' },

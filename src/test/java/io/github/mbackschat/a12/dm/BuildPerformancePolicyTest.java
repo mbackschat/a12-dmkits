@@ -9,6 +9,7 @@ import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 
@@ -31,6 +32,19 @@ class BuildPerformancePolicyTest {
 
         assertEquals("-Xmx1536m", properties.getProperty("kotlin.daemon.jvmargs"),
                 "the default 512 MiB Kotlin daemon OOMs when cold JVM, JS, and adapter test compilation overlap");
+    }
+
+    @Test
+    void kotlinPluginVersionIsLoadedOnceAtTheRoot() throws IOException {
+        var rootBuild = Files.readString(locate("build.gradle"));
+        var adapterBuild = Files.readString(locate("adapter/build.gradle"));
+        var interpreterBuild = Files.readString(locate("interpreter/build.gradle"));
+
+        var jvmVersion = rootPluginVersion(rootBuild, "org.jetbrains.kotlin.jvm");
+        var multiplatformVersion = rootPluginVersion(rootBuild, "org.jetbrains.kotlin.multiplatform");
+        assertEquals(jvmVersion, multiplatformVersion, "all Kotlin plugin ids must share one root-owned version");
+        assertFalse(adapterBuild.contains("id 'org.jetbrains.kotlin.jvm' version"));
+        assertFalse(interpreterBuild.contains("id 'org.jetbrains.kotlin.multiplatform' version"));
     }
 
     @Test
@@ -77,6 +91,13 @@ class BuildPerformancePolicyTest {
             properties.load(reader);
         }
         return properties;
+    }
+
+    private static String rootPluginVersion(String build, String pluginId) {
+        var matcher = Pattern.compile(
+                "id '" + Pattern.quote(pluginId) + "' version '([^']+)' apply false").matcher(build);
+        assertTrue(matcher.find(), () -> "root build must own the version for " + pluginId);
+        return matcher.group(1);
     }
 
     private static Path locate(String relativePath) {
