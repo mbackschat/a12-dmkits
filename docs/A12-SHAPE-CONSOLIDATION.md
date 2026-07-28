@@ -35,6 +35,24 @@ Both open questions were settled by measurement, not assumption:
 
 Two by-products worth knowing for the remaining steps: the **read path stays exactly as permissive as A12's reader** (an array is accepted at a non-repeating group, so an over-repetition is still representable at the boundary — no capability was lost), and two duplicated surfaces were removed rather than migrated (`DocumentPlacementKind` → the existing `ModelEntityKind`; `maxCoordinatesPerPlacement` → `maxModelNestingDepth`, with a new pre-parse `maxDocumentCodeUnits`).
 
+### Step 2b — the transport becomes VALUE-NORMALIZING for every typed kind (owner decision, 2026-07-28)
+
+**Decided: option A.** A12's document is **value-normalizing** — it stores `String | Boolean | BigDecimal | Instant | InstantRange` and re-renders from the parsed value on write. Ours was **text-preserving**. Read→write therefore differs for any input whose text is not already the canonical rendering of its value, and that is a *class*, not the number case alone:
+
+| kind | authored | A12 writes | we wrote (before this step) |
+|---|---|---|---|
+| NUMBER | `1e5` | `100000` | `1e5` *(fixed 2026-07-28)* |
+| BOOLEAN/CONFIRM | `"TRUE"` | `true` | `"TRUE"` |
+| DATE family | non-canonical spelling | re-rendered through the declared format | verbatim — **unmeasured, do not assume** |
+
+The owner chose to **match A12 exactly** rather than record a divergence class. Constraints that make this non-trivial, all established by measurement:
+
+- **Scale is observable, so the number normalization target is `asText()` (`1E+5`), not the plain form (`100000`).** `BigDecimal("1E+5")` has scale −5 and `BigDecimal("100000")` scale 0; the §5 scale gates, computed-store fit, and typed equality all read scale. Normalizing to plain would fix a display divergence and create an evaluation one. The writer already emits plain independently, so both ends land correctly.
+- **The malformed pass-through must survive.** A value the converter cannot parse is kept verbatim and written back as a string — A12's own `[A12K-3638]` behaviour. Normalization applies only to values that parse.
+- **String and Enumeration are NOT normalized** — the kernel stores their text as-is.
+
+Details, the source chain, and the unmeasured link (`DatenImpl.getValueForDisplay` returns a stored string, but which formatter fills it) are in [INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) IF227.
+
 ### Step 3 — dmtool CLI document I/O
 
 - `cli/.../DocInstance.java` — drop the `"fields"` wrapper (A12 has no wrapper; root group names are top-level keys), accept native JSON number/boolean.
