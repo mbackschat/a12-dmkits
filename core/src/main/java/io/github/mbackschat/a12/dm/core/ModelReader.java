@@ -13,6 +13,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -58,13 +59,23 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 public final class ModelReader {
 
     /**
-     * Numbers are parsed as {@link BigDecimal} with trailing zeros PRESERVED — so a declared {@code minValue}/
-     * {@code maxValue} reads back at the authored literal's exact scale, matching the kernel (which keeps the
-     * literal verbatim; the CLI renders it as-is). A plain mapper drops {@code 50.00} to a {@code double}
-     * {@code 50.0}, and {@code USE_BIG_DECIMAL_FOR_FLOATS} alone still strips ({@code 50.00} → {@code 5E+1})
-     * unless {@code STRIP_TRAILING_BIGDECIMAL_ZEROES} is disabled.
+     * Configured to match A12's own model mapper ({@code ObjectMapperProvider.createPreconfiguredObjectMapper}),
+     * because a model A12 reads must be a model we read.
+     *
+     * <p>Numbers are parsed as {@link BigDecimal} with trailing zeros PRESERVED — so a declared
+     * {@code minValue}/{@code maxValue} reads back at the authored literal's exact scale, matching the kernel
+     * (which keeps the literal verbatim; the CLI renders it as-is). A plain mapper drops {@code 50.00} to a
+     * {@code double} {@code 50.0}, and {@code USE_BIG_DECIMAL_FOR_FLOATS} alone still strips
+     * ({@code 50.00} → {@code 5E+1}) unless {@code STRIP_TRAILING_BIGDECIMAL_ZEROES} is disabled.
+     *
+     * <p>Comments are accepted for the same reason: A12 enables {@code ALLOW_COMMENTS} on both of its mappers, so
+     * a commented DM-JSON model is a legal A12 artifact and refusing one makes a file the A12 tooling
+     * round-trips unreadable here. A trailing comma stays a parse error, which A12 also refuses — the parity is
+     * two-sided (INTERPRETER-FINDINGS IF228, whose first pass fixed the {@code :interpreter} parse sites and
+     * missed this JVM one).
      */
     private static final ObjectMapper MAPPER = JsonMapper.builder()
+            .enable(JsonParser.Feature.ALLOW_COMMENTS)
             .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
             .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
             .build();

@@ -54,12 +54,6 @@ class A12JsonIngressDiffTest {
             // have changed a text-reading check — here a decimal point on a scale-0 field. INTERPRETER-GAPS
             // IG85. (`UnitPrice=250.0` is NOT in this set: on a scale-2 field the kept zero breaks nothing.)
             "Quantity=\"250.00\" EVAL kernel=[] interpreter=[zahlHatDezimalTrenner]",
-            // The interpreter has no formal check for a malformed BOOLEAN/CONFIRM token at all — a
-            // pre-existing gap, unrelated to the ingress (it is equally absent on the internal path).
-            // INTERPRETER-GAPS IG84.
-            "ExpressShipping=\"yes\" EVAL kernel=[feldJaNeinFalsch] interpreter=[]",
-            "TermsConfirmed=false EVAL kernel=[feldJaFalsch] interpreter=[]",
-            "TermsConfirmed=\"false\" EVAL kernel=[feldJaFalsch] interpreter=[]",
         )
     }
 }

@@ -17,6 +17,7 @@ This changelog covers the independently consumable interpreter packages, API doc
 
 ### Fixed
 
+- **A malformed BOOLEAN or CONFIRM value is now a formal error**, as it is in A12: a boolean must be exactly `true` or `false` (`feldJaNeinFalsch` otherwise) and a confirm exactly `true` (`feldJaFalsch` otherwise, including a well-formed `false`). The check is **case-sensitive** on a stored value — `"TRUE"` is invalid — while a document read from JSON still normalizes `"TRUE"` to `true` before storage, so this is reachable by a caller that fills a `Document` directly. Previously no such check existed and a malformed token evaluated as `false`, silently, instead of making the field invalid and suppressing the rules that read it.
 - **JSON comments are accepted in a model source and in a document**, as they are by A12: both of the Kernel's mappers enable `ALLOW_COMMENTS`, so a commented file is a legal A12 artifact and was previously refused here. A trailing comma remains a parse error, which A12 also refuses.
 - Numbers are written in A12's **plain** form, matching the Kernel's `WRITE_BIGDECIMAL_AS_PLAIN` generator: never scientific notation, with the authored scale intact (`250.00` stays `250.00`, `1e5` becomes `100000`, `1.2e-3` becomes `0.0012`).
 - A confirm field's `false` is written back as the string `"false"`, not as a JSON boolean: A12's converter accepts only `true` for a confirm, so `false` is a value it could not convert.

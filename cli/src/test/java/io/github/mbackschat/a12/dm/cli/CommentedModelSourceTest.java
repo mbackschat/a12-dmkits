@@ -1,0 +1,81 @@
+package io.github.mbackschat.a12.dm.cli;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+/**
+ * A <b>commented DM-JSON model</b> is a legal A12 artifact, so every {@code dmtool} model verb reads one.
+ *
+ * <p>A12 builds both of its mappers with {@code JsonParser.Feature.ALLOW_COMMENTS} —
+ * {@code ObjectMapperProvider.createPreconfiguredObjectMapper} for the model serializer and
+ * {@code createObjectMapperForDocSerializer} for documents — so refusing a comment makes a file the A12 tooling
+ * round-trips unreadable here (KERNEL-FINDINGS "The canonical Document JSON …"; INTERPRETER-FINDINGS IF228).
+ *
+ * <p><b>Why this test exists separately from the interpreter's.</b> IF228's first pass fixed the six
+ * {@code :interpreter} parse sites behind one shared {@code A12_JSON} and reported the class closed. It was not:
+ * {@code core.ModelReader} is a seventh site in the same class, on the JVM path every model verb uses, and it
+ * carried A12's number configuration while missing the comment one — the give-away that the mapper had been
+ * matched for one concern and not audited for the others. This locks the JVM half end-to-end through the binary.
+ *
+ * <p>A trailing comma stays a parse error, because A12 refuses one too: the parity is two-sided, never a general
+ * leniency.
+ */
+class CommentedModelSourceTest {
+
+    @TempDir
+    Path dir;
+
+    /** The project's ruled order fixture with comments inserted at three structural positions. */
+    private Path commentedOrderModel() throws Exception {
+        String json = Files.readString(CliTestSupport.orderRuled(dir));
+        String commented = "// the order model this workspace prepares\n"
+                + json.replaceFirst("\\{", "{\n  /* header first, as A12 writes it */");
+        Path file = dir.resolve("commented.dm.json");
+        Files.writeString(file, commented);
+        return file;
+    }
+
+    @Test
+    void aCommentedModelDescribesExactlyLikeTheUncommentedOne() throws Exception {
+        Path plain = CliTestSupport.orderRuled(dir);
+        Path commented = commentedOrderModel();
+
+        CliTestSupport.Result plainRun = CliTestSupport.run("-m", plain.toString(), "model", "describe");
+        CliTestSupport.Result commentedRun = CliTestSupport.run("-m", commented.toString(), "model", "describe");
+
+        assertEquals(0, commentedRun.code(), () -> "a commented model must read: " + commentedRun.err());
+        assertEquals(plainRun.out(), commentedRun.out(),
+                "comments are concrete syntax — they leave no trace in the described model");
+    }
+
+    @Test
+    void aCommentedModelStillPassesTheKernelConsistencyGate() throws Exception {
+        // `model check` is the kernel-backed oracle, so this proves the comment survives all the way through
+        // preparation into the kernel's own reader rather than merely past our parse.
+        Path commented = commentedOrderModel();
+
+        CliTestSupport.Result res = CliTestSupport.run("-m", commented.toString(), "model", "check");
+
+        assertEquals(0, res.code(), () -> "the kernel accepts the commented model too: " + res.err() + res.out());
+    }
+
+    @Test
+    void aTrailingCommaIsStillRefusedBecauseA12RefusesOneToo() throws Exception {
+        String json = Files.readString(CliTestSupport.orderRuled(dir));
+        Path broken = dir.resolve("trailing-comma.dm.json");
+        Files.writeString(broken, json.replaceFirst("\\}\\s*$", ",}"));
+
+        CliTestSupport.Result res = CliTestSupport.run("-m", broken.toString(), "model", "describe");
+
+        assertNotEquals(0, res.code(), () -> "a trailing comma is not part of A12's leniency: " + res.out());
+        assertTrue(res.err().toLowerCase().contains("model") || !res.err().isBlank(),
+                () -> "and it fails with a diagnostic rather than silently: " + res.err());
+    }
+}

@@ -214,6 +214,17 @@ enum class FormalErrorCode(val id: String) {
 
     /** A NUMBER whose value-string length exceeds the field's declared `maxLength` (the kernel's `zahlZuLang`). */
     NUMBER_TOO_LONG("zahlZuLang"),
+
+    /** A BOOLEAN token other than the exact lowercase `true` / `false` — the kernel's `feldJaNeinFalsch`. The
+     *  check is **case-SENSITIVE**: `TRUE`, `FALSE`, and `True` are all formally invalid, as are `yes`/`1`/`0`.
+     *  (Distinct from the *evaluation* of an already-stored value, which reads case-insensitively; and from JSON
+     *  ingress, which normalizes `"TRUE"` to `true` before storage, exactly as A12's converter does — so this
+     *  fires on the internal path where a caller fills a `Document` directly. Probe-measured, IF229.) */
+    BOOLEAN_INVALID("feldJaNeinFalsch"),
+
+    /** A CONFIRM token other than the exact lowercase `true` — the kernel's `feldJaFalsch`. A confirm has no
+     *  false: a well-formed `false` is a formal error, as are `TRUE`, `yes`, and `1` (probe-measured, IF229). */
+    CONFIRM_INVALID("feldJaFalsch"),
 }
 
 fun formalError(
@@ -353,9 +364,18 @@ internal fun typeFormatErrorCached(
         // A STRING (incl. an ENUM, which is STRING-kind) is well-formed by construction; its only formal
         // errors are the declared constraints (pattern / enum-domain, then length).
         Kind.STRING -> stringConstraintError(raw, constraints, patternMatches)
-        Kind.BOOLEAN, Kind.CONFIRM -> null
+        // A boolean stores the exact lowercase `true`/`false`; a confirm has no false, so only `true` is legal
+        // (KERNEL-SEMANTICS §1, KERNEL-FINDINGS §2). Both checks are case-SENSITIVE — probe-measured against the
+        // kernel, which reports `feldJaNeinFalsch` for `TRUE`/`True` and `feldJaFalsch` for a confirm's `TRUE`
+        // (IF229). Case-insensitivity belongs to two OTHER layers: reading a stored value as a `Val.Bool`, and
+        // JSON ingress, which normalizes the token before it is ever stored.
+        Kind.BOOLEAN -> if (raw == TRUE_TOKEN || raw == FALSE_TOKEN) null else FormalErrorCode.BOOLEAN_INVALID
+        Kind.CONFIRM -> if (raw == TRUE_TOKEN) null else FormalErrorCode.CONFIRM_INVALID
     }
 }
+
+private const val TRUE_TOKEN = "true"
+private const val FALSE_TOKEN = "false"
 
 /**
  * Declared-constraint check for a (well-formed, non-empty) STRING or ENUM value (IF20). The kernel checks the
@@ -548,6 +568,10 @@ fun formalErrorText(code: FormalErrorCode, locale: String, scale: Int? = null): 
             if (de) "Zahl ist zu kurz." else "Number is too short."
         FormalErrorCode.NUMBER_TOO_LONG ->
             if (de) "Zahl ist zu lang." else "Number is too long."
+        FormalErrorCode.BOOLEAN_INVALID ->
+            if (de) "Wert muss genau \"true\" oder \"false\" sein." else "Value must be exactly \"true\" or \"false\"."
+        FormalErrorCode.CONFIRM_INVALID ->
+            if (de) "Bestätigung muss genau \"true\" sein." else "Confirmation must be exactly \"true\"."
     }
 }
 
