@@ -5,8 +5,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -31,7 +35,14 @@ import picocli.CommandLine.Parameters;
         description = "Export the model as the finding-13 artifacts (fields/groups/rules JSONL + model card): one to stdout, or all four to --out-dir.")
 final class ExportCommand extends BaseCommand {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = JsonMapper.builder()
+            // DM-JSON is parsed the way A12 parses it (`ObjectMapperProvider.createPreconfiguredObjectMapper`): a
+            // number keeps the authored literal's exact scale, and a comment is legal. A DEFAULT mapper builds a
+            // DoubleNode (0.50 -> 0.5) and refuses a comment outright. API-FINDINGS 103 / IF228.
+            .enable(JsonParser.Feature.ALLOW_COMMENTS)
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
+            .build();
 
     @Parameters(index = "0", arity = "0..1", paramLabel = "<artifact>",
             description = "one of: fields | groups | rules | card (default: card). Ignored with --out-dir.")

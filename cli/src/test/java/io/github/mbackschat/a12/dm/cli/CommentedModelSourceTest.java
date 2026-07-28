@@ -67,6 +67,30 @@ class CommentedModelSourceTest {
     }
 
     @Test
+    void everyVerbThatParsesTheModelReadsACommentedOne() throws Exception {
+        // The first pass at this class locked `model describe` and `model check` only, and declared the defect class
+        // closed. It was not: four more sites each held their own default mapper, and an independent review found
+        // them all through the binary. These are its discriminating cases, so the class is locked by ROLE (parse an
+        // A12-owned shape) rather than by the sites someone happened to look at (IF228).
+        Path plain = CliTestSupport.orderRuled(dir);
+        Path commented = commentedOrderModel();
+
+        // rulekit.validate.RuleValidator — the worst of them: it reported `verification: KERNEL_CONFIRMED` and
+        // blamed the candidate rule for a model the kernel had never been handed.
+        CliTestSupport.Result check = CliTestSupport.run("-m", commented.toString(), "rule", "check",
+                "/Order/DeliveryNotBeforeOrder");
+        assertEquals(CliTestSupport.run("-m", plain.toString(), "rule", "check", "/Order/DeliveryNotBeforeOrder").code(),
+                check.code(), () -> "rule check must not depend on comments: " + check.out() + check.err());
+
+        // cli.ExportCommand — both readTree sites.
+        for (String artifact : new String[] {"rules", "card"}) {
+            CliTestSupport.Result export =
+                    CliTestSupport.run("-m", commented.toString(), "export", artifact);
+            assertEquals(0, export.code(), () -> "export " + artifact + ": " + export.err());
+        }
+    }
+
+    @Test
     void aTrailingCommaIsStillRefusedBecauseA12RefusesOneToo() throws Exception {
         String json = Files.readString(CliTestSupport.orderRuled(dir));
         Path broken = dir.resolve("trailing-comma.dm.json");

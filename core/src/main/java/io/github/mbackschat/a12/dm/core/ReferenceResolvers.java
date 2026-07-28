@@ -8,8 +8,12 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 
 /**
  * Factory methods for {@link ModelResolver} ({@code id → DM-JSON}, our kernel-free resolver type). Every
@@ -84,7 +88,14 @@ public final class ReferenceResolvers {
      * {@code AccessDeniedException} and abort the whole index.
      */
     private static Map<String, String> indexDocumentModels(Path... roots) {
-        ObjectMapper mapper = new ObjectMapper();
+        // A candidate file is a DM-JSON model, so it is parsed the way A12 parses one: a commented model must be
+        // INDEXED, not skipped. It was skipped before, and because indexIfDocumentModel swallows the parse error the
+        // symptom was a later RK_UNRESOLVED_REFERENCE naming an id whose file is sitting on disk (IF228).
+        ObjectMapper mapper = JsonMapper.builder()
+                .enable(JsonParser.Feature.ALLOW_COMMENTS)
+                .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+                .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
+                .build();
         Map<String, String> byId = new HashMap<>();
         for (Path root : roots) {
             try {

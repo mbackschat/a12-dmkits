@@ -4,8 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.github.mbackschat.a12.dm.core.Severity;
 
 import io.github.mbackschat.a12.dm.core.ModelFormat;
@@ -31,7 +35,14 @@ import io.github.mbackschat.a12.dm.core.ModelFormat;
  */
 public final class ModelVersion {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = JsonMapper.builder()
+            // DM-JSON is parsed the way A12 parses it (`ObjectMapperProvider.createPreconfiguredObjectMapper`): a
+            // number keeps the authored literal's exact scale, and a comment is legal. A DEFAULT mapper builds a
+            // DoubleNode (0.50 -> 0.5) and refuses a comment outright. API-FINDINGS 103 / IF228.
+            .enable(JsonParser.Feature.ALLOW_COMMENTS)
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
+            .build();
 
     /** The model-format version this build authors/expects (the comparison reference). */
     public static final String REFERENCE = ModelFormat.VERSION;

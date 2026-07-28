@@ -19,9 +19,14 @@ import org.junit.jupiter.api.Test
  * defect — it is equally absent when a caller fills a `Document` directly. The A12 Document-JSON ingress path is
  * covered by [A12JsonIngressDiffTest], whose characterized-residual set carried these rows until now.
  *
- * The token matrix is deliberately wider than the two codes: case variants pin that the Kernel's comparison is
- * `equalsIgnoreCase` on **both** tokens rather than only on `true` (the half the ledger had not measured), and
- * the German/numeric spellings pin that nothing else is quietly accepted.
+ * The token matrix is deliberately wider than the two codes: the case variants pin that this check is
+ * case-**SENSITIVE** — `TRUE`, `FALSE`, and `True` are each a formal error here — and the German/numeric
+ * spellings pin that nothing else is quietly accepted.
+ *
+ * (An earlier version of this comment claimed the matrix pinned an `equalsIgnoreCase` comparison. That belongs to
+ * the **ingress converter**, a different layer, whose rows live in `A12JsonIngressKernelTest`; asserting it here
+ * imported the mechanism this very test disproves for the stored-token layer. Caught by review — it is the same
+ * layer-confusion IF229 exists to record, committed in the file that records it.)
  */
 class BooleanTokenFormalDiffTest {
 
@@ -40,6 +45,33 @@ class BooleanTokenFormalDiffTest {
         }.toSet()
 
         assertEquals(emptySet<String>(), divergences, "BOOLEAN/CONFIRM token formal validity diverged")
+    }
+
+    @Test
+    fun theKernelsOwnVerdictsAreAlsoPinnedSoTheDOCUMENTEDFactCannotROT() {
+        // The differential above asserts only kernel == interpreter, so if the kernel ever became case-INSENSITIVE
+        // both sides would move together and it would still pass — while IF229's central corrected fact (this check
+        // is case-sensitive) silently became false. Review caught that; these rows pin the kernel's own answers, so
+        // a kernel change fails HERE and forces the finding to be re-read rather than rotting.
+        val expected = mapOf(
+            (BOOLEAN to "true") to emptyList<String>(),
+            (BOOLEAN to "false") to emptyList(),
+            (BOOLEAN to "TRUE") to listOf("feldJaNeinFalsch"),
+            (BOOLEAN to "True") to listOf("feldJaNeinFalsch"),
+            (BOOLEAN to "yes") to listOf("feldJaNeinFalsch"),
+            (CONFIRM to "true") to emptyList(),
+            (CONFIRM to "TRUE") to listOf("feldJaFalsch"),
+            (CONFIRM to "false") to listOf("feldJaFalsch"),
+        )
+
+        for ((key, codes) in expected) {
+            val (field, token) = key
+            assertEquals(
+                codes,
+                RuntimeLaws.firedCodes(orderJson, setOf("/Order"), mapOf(field to token)).sorted(),
+                "the KERNEL's verdict for $field=\"$token\" changed — re-read INTERPRETER-FINDINGS IF229",
+            )
+        }
     }
 
     private companion object {

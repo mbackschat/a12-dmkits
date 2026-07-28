@@ -8,8 +8,12 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Supplier;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -35,7 +39,14 @@ import io.github.mbackschat.a12.dm.core.spi.ConsistencyOracle;
  */
 public final class RuleValidator {
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = JsonMapper.builder()
+            // DM-JSON is parsed the way A12 parses it (`ObjectMapperProvider.createPreconfiguredObjectMapper`): a
+            // number keeps the authored literal's exact scale, and a comment is legal. A DEFAULT mapper builds a
+            // DoubleNode (0.50 -> 0.5) and refuses a comment outright. API-FINDINGS 103 / IF228.
+            .enable(JsonParser.Feature.ALLOW_COMMENTS)
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
+            .build();
     private final DiagnosticEnricher enricher = new DiagnosticEnricher(OperatorCatalog.load());
 
     /** Check {@code rule} against the model given as DM-JSON text (self-contained model). */

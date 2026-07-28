@@ -1,7 +1,10 @@
 package io.github.mbackschat.a12.dm.schemakit;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -36,7 +39,14 @@ import java.util.function.IntConsumer;
  */
 public final class JsonSchemaImporter {
 
-    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper JSON = JsonMapper.builder()
+            // A JSON Schema is not an A12 shape, so its leniency is ours to choose and comments stay refused — but
+            // its NUMBERS land in the DM-JSON this importer writes, so a declared `minimum`/`maximum` must keep the
+            // authored scale. A default mapper builds a DoubleNode: 0.50 became 0.5 and a beyond-double bound became
+            // 1.2345678901234568E+21 in the emitted model. API-FINDINGS 103.
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
+            .build();
     private static final ObjectMapper YAML = new ObjectMapper(new YAMLFactory());   // OpenAPI specs are often YAML
     private static final String DEFAULT_MODEL_ID = "ImportedModel";
     private static final String ROOT_GROUP = "Root";

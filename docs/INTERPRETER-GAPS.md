@@ -12,7 +12,18 @@
 
 ## 1. Open (to fix)
 
-*Empty.* No open semantic or performance defect currently carries actionable work — every live item is dispositioned in §2 or §3 with its re-open trigger. An empty §1 is a real state, not an oversight: it means the next defect found gets a row here rather than joining a queue.
+- **IG87 — a `minFractionalDigits` field draws THREE false formal errors, because the kernel's runtime PADS a stored decimal and we do not** (found by independent review 2026-07-28, measured against the real kernel). IG85 recorded that A12 renders one stored decimal twice and claimed they "differ exactly on fractional trailing zeros beyond `minFractionalDigits`". That is only half the split: the runtime's `setScale(max(bd.stripTrailingZeros().scale(), minFractionalDigits))` also **pads** when the stored value has *fewer* fractional digits than `minFractionalDigits`, and `FormalError.kt` checks our stored text directly. On a `minFractionalDigits: 2` field:
+
+  | authored Document JSON | kernel | interpreter |
+  |---|---|---|
+  | `250` | — | `zahlOhneDezimalTrenner` |
+  | `250.0` | — | `zahlFalscheAnzahlNachkommastellen` |
+  | `250.5` | — | `zahlFalscheAnzahlNachkommastellen` |
+  | `250.00` | — | — |
+
+  **Why no guard caught it:** `A12JsonIngressDiffTest.KNOWN_DIVERGENCES` calls itself "the exhaustive, characterized residual", but it is exhaustive only over `A12JsonIngressKernelTest.rows()`, and **that model declares no `minFractionalDigits`** — so the whole padding direction is outside the matrix. An "exhaustive" set is only exhaustive over its generator. **Completion gate:** the ingress matrix gains a `minFractionalDigits` field so the class is *reachable*; the three rows above either pass or are named residuals; IG85's "differ exactly on trailing zeros" wording is corrected (its own quoted formula pads, which the prose called stripping). Related to IG85 but **not** the same residual — this one fires errors the kernel does not, on values a user would plainly write.
+
+*No other* open semantic or performance defect currently carries actionable work — every live item is dispositioned in §2 or §3 with its re-open trigger. An empty §1 is a real state, not an oversight: it means the next defect found gets a row here rather than joining a queue.
 
 New semantic or performance defects belong here only while they have actionable work and a defined completion gate.
 

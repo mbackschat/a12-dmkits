@@ -96,6 +96,27 @@ class NumberSpecScaleFidelityTest {
     }
 
     @Test
+    void anImportedJsonSchemaBoundKeepsItsAuthoredScale() throws Exception {
+        // `model import-jsonschema` is a production verb whose input numbers land in the DM-JSON it writes, so its
+        // mapper owes the same fidelity even though a JSON Schema is not itself an A12 shape. It used to emit
+        // `"minValue" : 0.5` for an authored 0.50, and `1.2345678901234568E+21` — the DoubleNode signature — for a
+        // bound beyond double precision, silently destroying a constraint the user had declared. API-FINDINGS 103.
+        Path schema = dir.resolve("schema.json");
+        Files.writeString(schema, """
+                {"$schema":"http://json-schema.org/draft-07/schema#","title":"Ord","type":"object",
+                 "properties":{"Amount":{"type":"number","minimum":0.50,"maximum":10.00},
+                               "Huge":{"type":"number","maximum":1234567890123456789012.5}}}""");
+
+        CliTestSupport.Result out = CliTestSupport.run("model", "import-jsonschema", "--schema", schema.toString());
+        assertEquals(0, out.code(), () -> "import succeeds: " + out.err());
+
+        assertTrue(out.out().contains("0.50"), () -> "an authored 0.50 bound must not degrade to 0.5: " + out.out());
+        assertTrue(out.out().contains("10.00"), () -> "nor 10.00 to 10.0: " + out.out());
+        assertTrue(out.out().contains("1234567890123456789012.5"),
+                () -> "a beyond-double bound must survive, never as scientific notation: " + out.out());
+    }
+
+    @Test
     void aNativeJsonNumberIsRefusedWithATypeCorrective() throws Exception {
         // The spec contract declares these as strings, and the precheck says so rather than coercing — worth
         // pinning, because a silent coercion is exactly where a scale would be lost without a diagnostic.
