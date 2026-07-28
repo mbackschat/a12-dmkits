@@ -3,8 +3,12 @@ package io.github.mbackschat.a12.dm.rulekit.write;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -20,7 +24,17 @@ import io.github.mbackschat.a12.dm.core.ElementType;
  */
 final class DmJson {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = JsonMapper.builder()
+            // DM-JSON is parsed the way A12 parses it (`ObjectMapperProvider.createPreconfiguredObjectMapper`):
+            // a number keeps the authored literal's exact scale, and a comment is legal. A DEFAULT mapper builds a
+            // DoubleNode, so `0.50` is already `0.5` before anything reads it — and because this surface writes the
+            // tree back, an unrelated edit then rewrites every number in the model it passes through (measured
+            // 2026-07-28; INTERPRETER-FINDINGS IF228). Behavioural guard, not a shared constant, keeps these in
+            // step: `cli … NumberSpecScaleFidelityTest` + `cli … CommentedModelSourceTest`.
+            .enable(JsonParser.Feature.ALLOW_COMMENTS)
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
+            .build();
 
     private DmJson() {
     }

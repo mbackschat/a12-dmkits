@@ -96,9 +96,13 @@ Not tidiness: once the ingress is A12 JSON, the corpus is the main regression ne
 
 ### Step 5 — audit the rest of the boundary
 
-Every remaining consumer-visible type: match it to an A12 counterpart or record that none exists. Two known candidates:
+**Partly done (2026-07-28).** `ValidationSeverity` is settled and the audit found a defect nobody had listed:
 
-- **`ValidationSeverity`** is `"error"|"warning"|"info"` while A12 model JSON writes `"severity": "ERROR"` — **unverified**, that casing is the rule *definition*, not the validation *result*; read A12's result types before claiming a divergence.
+- **`ValidationSeverity` — NO divergence, verified.** The Kotlin enum is `{ERROR, WARNING, INFO}`, exactly A12's `IMessage.Severity{ERROR, WARNING, INFO}`, name for name. The suspicion below was about the TypeScript surface's lowercase string union — and A12 ships **no** TS severity type (searched `kernel-ts` and the doc snippets), so there is no counterpart to match and a TS-idiomatic union is a legitimate own-surface choice. `ValidationFindingType{VALUE, OMISSION}` maps 1:1 to A12's `MessageType{VALUE_ERROR, OMISSION_ERROR}`; we drop `_ERROR` deliberately, because severity is an independent axis and `VALUE_ERROR` reads wrong on a `WARNING`.
+- **The audit's real find: a default Jackson mapper on every model-rewriting surface.** Not a type-shape divergence but a *behaviour* one, and it corrupted user data — an unrelated `field add` rewrote a pre-existing `minValue: 0.50` to `0.5`. Fixed at all four sites; rationale in [API-FINDINGS](API-FINDINGS.md) finding 103, the comment half in [INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) IF228. **The lesson for the rest of this audit: match A12 on I/O *behaviour*, not only on type shape — the boundary types were fine and the parsing underneath them was not.**
+
+Still open — every remaining consumer-visible type: match it to an A12 counterpart or record that none exists.
+
 - **`KernelAdapter.evaluate` / `compute` / `testRule` take `Map<String, Object>`** — a nested field map, i.e. the A12 tree *decoded into Java collections* rather than A12 Document JSON. Left alone by step 3 on purpose (owner call: different boundary, no shipped surface at risk) — production `:cli` no longer parses a document, so the map's only remaining callers are the kernel-side test harness `KernelEval` and `InterpreterRealModelDiffTest`'s kernel leg, both of which feed it the *same* canonical text the interpreter leg reads. The honest A12 route for a kernel-backed adapter is the kernel's **own** `IDocumentV2Serializer.deserializeV2` (already used by `RuntimeLaws.jsonIngress`), which would also put the kernel leg of the differential on A12's real ingress regime instead of the V1 string regime. Decide it as part of this audit, not before.
 
 ### Step 6 — release 0.9.2

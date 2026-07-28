@@ -11,9 +11,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -52,7 +56,17 @@ public final class DocumentModelDraft {
      */
     static final String DEFAULT_CONDITION_LANGUAGE = "en_US";
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = JsonMapper.builder()
+            // DM-JSON is parsed the way A12 parses it (`ObjectMapperProvider.createPreconfiguredObjectMapper`):
+            // a number keeps the authored literal's exact scale, and a comment is legal. A DEFAULT mapper builds a
+            // DoubleNode, so `0.50` is already `0.5` before anything reads it — and because this surface writes the
+            // tree back, an unrelated edit then rewrites every number in the model it passes through (measured
+            // 2026-07-28; INTERPRETER-FINDINGS IF228). Behavioural guard, not a shared constant, keeps these in
+            // step: `cli … NumberSpecScaleFidelityTest` + `cli … CommentedModelSourceTest`.
+            .enable(JsonParser.Feature.ALLOW_COMMENTS)
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .disable(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES)
+            .build();
 
     private final String id;
     private final List<String> locales;
