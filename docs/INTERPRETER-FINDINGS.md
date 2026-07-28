@@ -2331,7 +2331,7 @@ The interpreter had **no formal check for a boolean or confirm token at all**: `
 
 | authored token (internal path) | kernel |
 |---|---|
-| boolean `true`, `false` | clean |
+| boolean `true`, `false` *(the DEFAULT tokens — see the scope limit below)* | clean |
 | boolean `TRUE`, `FALSE`, `True` | `feldJaNeinFalsch` |
 | boolean `yes`, `1`, `0`, `wahr` | `feldJaNeinFalsch` |
 | confirm `true` | clean |
